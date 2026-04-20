@@ -90,11 +90,19 @@
 
 # NLSpec conformance
 
-- Enforce conformance with NLSpec guidelines
-- Use https://github.com/TG-Techie/NLSpec-Spec/blob/main/nlspec-spec.md as prior art inspiration
-    - but diverge from NLSpec's use of `intent` as the name of the main upstream stage.
-    - in `livespec`, `spec.md` is the authoritative living specification and `intent` refers to revision inputs feeding into it.
-    - the overall process is a loop, not a one-way pass: intent feeds spec revision, spec governs implementation, and implementation plus observation generate new intent inputs.
+- Enforce conformance with NLSpec guidelines via progressive disclosure across every skill sub-command.
+- `livespec-nlspec-guidelines.md` is an adapted version of the original NLSpec spec, embedded in the skill's instructions.
+  - Source: https://github.com/TG-Techie/NLSpec-Spec/blob/main/nlspec-spec.md
+  - The adapted version references the original source but rewrites sections that conflict with livespec's model:
+    - Lifecycle: the one-way `Intent → NLSpec → Implementation` chain becomes a loop — intent feeds spec revision, spec governs implementation, implementation and observation generate new intent inputs.
+    - Terminology: `intent` refers to revision inputs (seeds, requests, critiques, external requirements, observations, implementation feedback), not the upstream stage. `spec` names the current authoritative living specification.
+    - "What a Spec Is Not": the README comparison accounts for the revision loop — implementation feedback is a legitimate intent input that can change the spec.
+    - "Specs in Iterative Development": the loop is the model, not a tension to be reconciled.
+    - Appendix A (Implementing): spec problem handling references `propose-change` and `critique` as concrete mechanisms.
+    - Appendix B (Authoring): references the multi-file model (`spec.md`, `contracts.md`, `constraints.md`, `scenarios.md`) and BCP 14 language as concrete expectations.
+    - Appendix C (Evaluating): references `doctor` and `critique` as the mechanisms for evaluation.
+  - Sections that are compatible as-is (with only NLSpec → spec terminology substitution): behavioral completeness, unambiguous interfaces, explicit defaults, mapping tables, testable acceptance criteria, conceptual fidelity, spec economy, intentional vs accidental ambiguity, structure of specs in practice, how specs relate to each other.
+- Every skill sub-command enforces NLSpec guidelines using progressive disclosure — the relevant subset of guidelines is surfaced in context for the sub-command being executed, not the full document every time.
 
 # Spec templates
 

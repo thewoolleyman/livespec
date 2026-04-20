@@ -1,12 +1,10 @@
-(NOTE: Prior art copied from from https://github.com/TG-Techie/NLSpec-Spec/blob/ed7a531884c456787254d0450d450664e296b75b/nlspec-spec.md)
-
 # What an NLSpec Is
 
 A grounding document for agents that read, write, implement, and evaluate natural language specifications.
 
-## Version
+## Prior Art
 
-0.2.2
+Adapted from [NLSpec Spec v0.2.2](https://github.com/TG-Techie/NLSpec-Spec/blob/ed7a531884c456787254d0450d450664e296b75b/nlspec-spec.md) by TG-Techie. The original is preserved at `prior-art/nlspec-spec.md`. This version refines the lifecycle model from a one-way chain to a governed loop, and clarifies that intent refers to revision inputs feeding into the spec rather than naming a distinct upstream stage.
 
 ---
 
@@ -14,15 +12,19 @@ A grounding document for agents that read, write, implement, and evaluate natura
 
 An NLSpec is a **prescriptive, generative document written in natural language that fully determines the construction of a software system**. It sits between human intent and working code. It is the authoritative source of truth from which implementation is derived — not a description of something that already exists, not a proposal for discussion, not a guide for users. It is the thing the code must satisfy.
 
-The relationship is directional and non-negotiable:
+The relationship is a governed loop:
 
-**Intent → NLSpec → Implementation**
+**Intent → NLSpec → Implementation → Observation → Intent**
 
-Intent is what someone wants. It's rough, directional, incomplete. "I need a unified LLM client." "Build me a pipeline runner that uses DOT graphs." Intent contains the *why* and broad *what*, but leaves *how* and *precisely what* unresolved.
+Intent is revision input: seeds, requests, critiques, external requirements, observations, and implementation feedback. It is rough, directional, and often incomplete. Intent contains the *why* and broad *what*, but leaves *how* and *precisely what* unresolved.
+
+The NLSpec is the current authoritative specification. It absorbs intent through a governed revision process — proposed changes are reviewed, acknowledged, and incorporated. The NLSpec resolves every decision that matters for correctness and interoperability while leaving every decision that doesn't matter to the implementer. This is a hard, deliberate line to draw, and drawing it well is what separates a good spec from a bad one.
 
 Implementation is code. It's maximally specific, executable, testable. It contains every decision, including ones the spec author never thought about (buffer sizes, import ordering, variable names).
 
-The NLSpec occupies the space between. Its job is to resolve every decision that matters for correctness and interoperability while leaving every decision that doesn't matter to the implementer. This is a hard, deliberate line to draw, and drawing it well is what separates a good spec from a bad one.
+Observation is what comes back: test results, deployment behavior, user feedback, critique output, drift detection. Observation generates new intent, which feeds back into the spec through the revision process.
+
+The loop is the model. The spec is not a one-time artifact produced from intent and handed off. It is a living document that evolves through governed revision as the system it describes is built, deployed, and observed.
 
 An NLSpec is not a fuzzy artifact. The word "natural language" might suggest informality. It does not. The language is natural; the precision is engineering-grade. When a spec says "the adapter must inject `cache_control` breakpoints automatically for agentic workloads," that sentence has the same binding force as a type signature. It is a requirement. The implementation either does it or violates the spec.
 
@@ -78,7 +80,7 @@ Acceptance criteria serve a second purpose: they bound the scope. If something i
 
 Several artifacts look like NLSpecs. They share surface features — prose, technical content, descriptions of systems. They are not the same thing. The distinctions are functional, not stylistic.
 
-**A README** describes something that exists. An NLSpec describes something that should be built. The arrow of authority is reversed: a README is derived from code; code is derived from an NLSpec. When code and README conflict, you update the README. When code and NLSpec conflict, you update the code.
+**A README** describes something that exists. An NLSpec describes something that should be built. The arrow of authority is reversed: a README is derived from code; code is derived from an NLSpec. When code and README conflict, you update the README. When code and NLSpec conflict, you update the code. When implementation reveals that the spec itself needs to change, that feedback enters as intent — a revision input — not as a silent override. The spec remains authoritative until it is revised through the governed process.
 
 **A design document** proposes an approach for evaluation. It says "here's how we could build this; let's discuss." An NLSpec says "here's how this will be built; go build it." A design doc invites disagreement before commitment. An NLSpec is the result of that disagreement being resolved. Shipping a design doc to an implementer produces negotiation. Shipping an NLSpec produces code.
 
@@ -90,7 +92,7 @@ Several artifacts look like NLSpecs. They share surface features — prose, tech
 
 **A tutorial or guide** teaches a human how to use or build something, optimizing for learning. It may omit details, simplify, reorder for pedagogy. An NLSpec optimizes for completeness and precision, not for learning. It may be hard to read linearly. That's acceptable. A spec that sacrifices precision for readability has failed at its primary job.
 
-The critical distinction across all of these: **an NLSpec is the source of truth that generates an implementation. Every other document type is either upstream of it (intent, design docs) or downstream of it (API docs, READMEs, tutorials, test plans). Confusing the direction produces the wrong artifact.**
+The critical distinction across all of these: **an NLSpec is the source of truth that generates an implementation. Every other document type is either upstream of it (intent inputs, design docs) or downstream of it (API docs, READMEs, tutorials, test plans). Confusing the direction produces the wrong artifact.**
 
 
 ## What Completeness Means
@@ -218,15 +220,13 @@ Complex systems require multiple NLSpecs that reference each other. The coding a
 **Composition is through interfaces, not inheritance.** The pipeline runner doesn't extend the coding agent — it defines a `CodergenBackend` interface and says "implement this however you want; the pipeline doesn't care." This is the same principle as intentional ambiguity applied at the system level: the spec determines the contract, not the mechanism.
 
 
-## Specs in Iterative Development
+## NLSpecs in Iterative Development
 
-The `Intent → NLSpec → Implementation` chain is not a single pass. In practice — particularly in conversational and agent-assisted development — intent is revealed progressively. A user may not know what they want until they see what they don't want. Requirements emerge, shift, and sharpen as work proceeds.
+The governed loop — Intent → NLSpec → Implementation → Observation → Intent — means the specification is always evolving. This is not a weakness. It is the model.
 
-This does not weaken the spec-first principle. It changes the cadence.
+In iterative development, implementation can serve as an epistemological tool — you build something small to discover whether a concept is sound, whether an interface feels right, whether an edge case matters. This is not implementation-of-spec. It is exploration. Its purpose is to surface insight, not to satisfy requirements. The insight it produces is intent — revision input that feeds back into the spec through the governed process.
 
-In iterative development, implementation can serve as an epistemological tool — you build something small to discover whether a concept is sound, whether an interface feels right, whether an edge case matters. This is not implementation-of-spec. It is exploration. It lives in the intent phase of the `Intent → NLSpec → Implementation` chain, even though it looks like code. Its purpose is to surface insight, not to satisfy requirements.
-
-When exploration reveals something real — a requirement, a constraint, a behavioral expectation — that insight enters the spec. But it enters **as if the exploration never happened.** The spec is a vacuum artifact. It is written in a world where only intent and domain knowledge exist, not prototypes. The spec does not say "based on our prototype, we discovered X." It says "X." It absorbs the insight and presents it as a freestanding requirement, authoritative on its own terms.
+When exploration reveals something real — a requirement, a constraint, a behavioral expectation — that insight enters the spec through the revision process. But it enters **as if the exploration never happened.** The spec is a vacuum artifact. It is written in a world where only intent and domain knowledge exist, not prototypes. The spec does not say "based on our prototype, we discovered X." It says "X." It absorbs the insight and presents it as a freestanding requirement, authoritative on its own terms.
 
 The discipline is: **at no point should the implementation encode a behavioral requirement that the spec does not reflect.** When exploration produces insight, the spec absorbs it before or simultaneously with the implementation encoding it. The spec leads or keeps pace. It never trails. And when the spec absorbs a new requirement, it must do so in a way that preserves self-consistency — the spec at every point in time is a coherent, complete document, not a patchwork of incremental additions.
 
