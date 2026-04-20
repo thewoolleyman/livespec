@@ -1,4 +1,4 @@
-# MLSpec Terminology and Structure Summary
+# NLSpec Terminology and Structure Summary
 
 ## Context
 
@@ -106,7 +106,7 @@ and later also acknowledges iteration and progressive discovery. That means the 
 ### NLSpec
 
 - NLSpec spec: <https://github.com/TG-Techie/NLSpec-Spec/blob/main/nlspec-spec.md>
-- Local copy reviewed in this folder: [nlspec-spec.md](/Users/cwoolley/workspace/livespec/brainstorming/approach-2-mlspec-based/nlspec-spec.md:15)
+- Local copy reviewed in this folder: `nlspec-spec.md`
 
 Relevant takeaway:
 

@@ -2,12 +2,22 @@
 
 - integration testing is python scripts testing skills a throwaway tmp dir, directly executing claude code and comparing to spec expectations
 - Integration tests reflect actual specifications. Have an CLAUDE.md in the tests dir which helps enforce consistency
-  of tests with actual specification. Split into separate test files per part of the specification - intent, contracts, constraints.
+  of tests with actual specification. Split into separate test files per part of the specification - spec, contracts, constraints, scenarios.
 - Meta test "test_drift_prevention" test which ensures that every major section of the specification has a corresponding test.
 
 # File location
 
 - prompt to Default to SPECIFICATION dir in root, or if non-default, save in .livespec.jsonc config file in project root. Must handle multiple specifications in same project.
+
+# Specification model
+
+- The specification is conceptually one logical living specification.
+- It is represented as multiple files to create explicit boundaries for LLMs and tools.
+- `spec.md` is the primary source surface of the living specification.
+- `contracts.md`, `constraints.md`, and `scenarios.md` are specialized operational partitions of the same specification.
+- Split files are intentional because those partitions can be processed with lower nondeterminism and stronger checking than the general spec surface.
+- `scenarios.md` is intentionally isolated so it can support holdout scenario usage in the StrongDM Dark Factory style.
+- `intent` is not the name of the primary spec file. The term is reserved for inputs feeding into specification revision: seeds, requests, critiques, external requirements, observations, and implementation feedback.
 
 # SPECIFICATION directory structure
 
@@ -15,7 +25,7 @@
 `.livespec.jsonc` - optional config file for livespec, including default specification dir, and any other config options, lives at root of project
 - `SPECIFICATION` - contains all files generated/mainained by livespec (except .livespec.jsonc)
     - `README.md` - overview of the specification files and subdirs
-    - Actual specification files based on template, e.g. `intent.md`, `contracts.md`,
+    - Actual specification files based on template, e.g. `spec.md`, `contracts.md`,
       `constraints.md`, `scenarios.md`
     - `proposed_changes`
         - `README.md`
@@ -24,7 +34,7 @@
     - `history` dir
         -
         `vnnn` directories - All past and current versions of specification and proposed_changes / acknowledgements, in subdirs by version
-           - All spec files, but prepended with `vnnn-` to indicate version, e.g. `v001-intent.md`, `v001-contracts.md`, etc.
+           - All spec files, but prepended with `vnnn-` to indicate version, e.g. `v001-spec.md`, `v001-contracts.md`, etc.
              This prevents the historic version files from confusing LLMS or being found through autocomplete by humans.
            - proposed changes files for that version, with filename format:
              `v001-proposed-change-<topic>.md`
@@ -44,6 +54,7 @@
 - `propose-change <topic> <freeform text>`
     - create or update a change proposal
     - Can reference an inline diff against latest version, to make specific targeted and deterministic edits.
+    - Proposed changes are one mechanism for bringing new intent into the current spec.
 - `critique <author>`
     - Author defaults to current AI model
     - Automatically use AI to critique the current plan and create or update a change proposal with topic `<author-critique>`
@@ -63,12 +74,13 @@
     - For diff between current and latest history version, prompt to auto-create a proposed change (contianing just the diff and a summary) and a revision. 
 - All commands should run doctor before and after execution.
 
-# MLSpec conformance
+# NLSpec conformance
 
 - Enforce conformance with NLSpec guidelines
 - Use https://github.com/TG-Techie/NLSpec-Spec/blob/main/nlspec-spec.md as prior art inspiration
-    - but there are concerns with "intent" terminology, and implied one-way flow from intent -> spec -> implemenetation.
-    - Instead It's a loop.
+    - but diverge from NLSpec's use of `intent` as the name of the main upstream stage.
+    - in `livespec`, `spec.md` is the authoritative living specification and `intent` refers to revision inputs feeding into it.
+    - the overall process is a loop, not a one-way pass: intent feeds spec revision, spec governs implementation, and implementation plus observation generate new intent inputs.
 
 # Spec templates
 
