@@ -3,7 +3,7 @@
 - integration testing is python scripts testing skills a throwaway tmp dir, directly executing claude code and comparing to spec expectations
 - Integration tests reflect actual specifications. Have an CLAUDE.md in the tests dir which helps enforce consistency
   of tests with actual specification. Split into separate test files per part of the specification - spec, contracts, constraints, scenarios.
-- Meta test "test_drift_prevention" test which ensures that every major section of the specification has a corresponding test.
+- Meta test "section_drift_prevention" test which ensures that every major section of the specification has a corresponding test.
 
 # File location
 
@@ -25,7 +25,9 @@
 # SPECIFICATION directory structure
 
 -
-`.livespec.jsonc` - optional config file for livespec, including default specification dir, and any other config options, lives at root of project
+`.livespec.jsonc` - optional config file for livespec, including: specification dir path (relative to project root, default `SPECIFICATION`), and active template (default `livespec`, other options `openspec` or `custom`)
+  - lives at root of project
+  - There is a json schema for this file, and it is always enforced when reading and writing it.
 - `SPECIFICATION` - contains all files generated/maintained by livespec (except .livespec.jsonc)
     - `README.md` - overview of the specification files and subdirs
     - Actual specification files based on template, e.g. `spec.md`, `contracts.md`,
@@ -35,6 +37,7 @@
         - versioned proposed changes
         - filename format: `v001-proposed-change-<topic>.md`
     - `history` dir
+        - `README.md`
         -
         `vnnn` directories - All past and current versions of specification and proposed_changes / acknowledgements, in subdirs by version
            - All spec files, but prepended with `vnnn-` to indicate version, e.g. `v001-spec.md`, `v001-contracts.md`, etc.
@@ -71,10 +74,18 @@
     - move proposed change to history
     -  and acknowledgements to history
 - `doctor`
-    - static script, not AI
-    - Check and optionally fix any statically-enforcable constraint.
-    - e.g.: directory structure, template compliance, missing versions in history, diff between current version and latest version in history, missing tests, etc.
-    - For diff between current and latest history version, prompt to auto-create a proposed change (contianing just the diff and a summary) and a revision. 
+    - two phases - static checks (no LLM), and LLM-driven.
+    - static phase is code script - just called by LLM as first step, and exits with output if nonzero exit code.
+    - Static checks include: 
+      - Check and optionally fix any statically-enforcable constraint.
+      - e.g.: directory structure, template compliance, missing versions in history, diff between current version and latest version in history, missing tests, etc.
+      - For diff between current and latest history version, prompt to auto-create a proposed change (contianing just the diff and a summary) and a revision.
+    - LLM-driven checks include:
+      - NLSpec compliance checks (LLM driven)
+      - template compliance checks (LLM driven) 
+      - drift checks (LLM driven)
+    - LLM-driven checks are not hard fails, instead they will prompt to initiate a critique to drive a fix for the fail.
+      
 - All commands should run doctor before and after execution.
 
 # NLSpec conformance
