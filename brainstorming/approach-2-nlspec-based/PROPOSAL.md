@@ -8,6 +8,7 @@
 # File location
 
 - prompt to Default to SPECIFICATION dir in root, or if non-default, save in .livespec.jsonc config file in project root. Must handle multiple specifications in same project.
+- `.livespec.jsonc` must also specify which specification template is active for the project.
 
 # Specification model
 
@@ -15,15 +16,17 @@
 - It is represented as multiple files to create explicit boundaries for LLMs and tools.
 - `spec.md` is the primary source surface of the living specification.
 - `contracts.md`, `constraints.md`, and `scenarios.md` are specialized operational partitions of the same specification.
+- Normative requirements in `spec.md`, `contracts.md`, and `constraints.md` should use BCP 14 requirement language (`MUST`, `MUST NOT`, `SHALL`, `SHALL NOT`, `SHOULD`, `SHOULD NOT`, `MAY`, `OPTIONAL`) as defined by RFC 2119 and RFC 8174.
 - Split files are intentional because those partitions can be processed with lower nondeterminism and stronger checking than the general spec surface.
 - `scenarios.md` is intentionally isolated so it can support holdout scenario usage in the StrongDM Dark Factory style.
+- Scenario examples and acceptance criteria in `scenarios.md` should use fenced `gherkin` code blocks with `Scenario`, `Given`, `When`, `Then`, `And`, and `But` syntax so they render predictably in Markdown while staying close to standard Gherkin conventions.
 - `intent` is not the name of the primary spec file. The term is reserved for inputs feeding into specification revision: seeds, requests, critiques, external requirements, observations, and implementation feedback.
 
 # SPECIFICATION directory structure
 
 -
 `.livespec.jsonc` - optional config file for livespec, including default specification dir, and any other config options, lives at root of project
-- `SPECIFICATION` - contains all files generated/mainained by livespec (except .livespec.jsonc)
+- `SPECIFICATION` - contains all files generated/maintained by livespec (except .livespec.jsonc)
     - `README.md` - overview of the specification files and subdirs
     - Actual specification files based on template, e.g. `spec.md`, `contracts.md`,
       `constraints.md`, `scenarios.md`
@@ -86,3 +89,7 @@
 
 - Allow different formats of specification
 - Allow custom critique prompt
+- The template defines the on-disk structure of the `SPECIFICATION`, including whether it is single-file, split into multiple files, or shaped to match another ecosystem such as OpenSpec.
+- `livespec` should provide an alternate built-in template that writes the default OpenSpec structure for teams that want OpenSpec-compatible spec layout without adopting OpenSpec's full lifecycle model.
+- Livespec does not require a specific subdomain model. Ownership boundaries, cross-cutting concerns, and any routing of changes across subdomains are template- and implementation-specific concerns, not Livespec v1 guarantees.
+- The exact representation and loading mechanism for templates is still to be designed and is intentionally not specified here yet.
