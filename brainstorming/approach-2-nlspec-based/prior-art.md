@@ -98,6 +98,10 @@ This document collects the prior art discussed while developing the current NLSp
 
     Context: This was useful as prior art for AI-assisted or code-assisted specification generation and drift management. It supported the concern with explicit boundaries, drift detection, and keeping spec and implementation aligned over time.
 
+22. Sumers, Theodore R., Shunyu Yao, Karthik Narasimhan, and Thomas L. Griffiths. "Cognitive Architectures for Language Agents." arXiv. <https://arxiv.org/pdf/2309.02427>
+
+    Context: This is not direct prior art for specification management, but it is relevant background for AI-native implementation systems. It provides a useful vocabulary for separating memory, action space, and decision-making loops in language agents, which may help frame the downstream implementation step that consumes a `SPECIFICATION` even though it does not directly solve spec governance.
+
 ## How These Sources Shaped the Current Model
 
 The sources above pushed the design in five concrete directions:
