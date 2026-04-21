@@ -181,12 +181,14 @@ skip such commands is forbidden.
   away.
 * Functions longer than two lines MUST declare their positional
   arguments by name at the top of the function body:
+
   ```
   my_func() {
     local arg1="${1}" arg2="${2}"
     ...
   }
   ```
+
   Variadic functions are exempt; they MUST use `shift` with
   descriptive local-variable assignments.
 * Functions MUST use `local` for any variable they set, unless the
@@ -459,61 +461,366 @@ network access at runtime; any `curl` or `wget` of the boilerplate
 would fail.
 
 Runnable scripts MUST source the boilerplate via:
+
 ```
 source "$(dirname "${BASH_SOURCE[0]}")/bash-boilerplate.sh"
 ```
+
 or, when the boilerplate lives at a non-sibling path,
+
 ```
 source "$(realpath "$(dirname "${BASH_SOURCE[0]}")/../scripts/bash-boilerplate.sh")"
 ```
 
 ---
 
-## Static analysis
+## Module structure and library boundaries
 
-### shellcheck
+Skill script collections grow. What starts as three scripts becomes
+thirty, and the architectural choices made early determine whether
+the collection remains maintainable. This section mandates the
+structure, not as a stylistic preference, but because bash lacks
+the language features (namespaces, import systems, visibility
+modifiers) that make informal structure sufficient in other
+languages. The rules below compensate for those missing features
+with conventions that can be checked mechanically.
 
-* Every committed bash script MUST pass `shellcheck` at severity
-  `style` (the strictest default level) with zero findings.
-* `shellcheck` MUST be invoked with `--external-sources`
-  (equivalently `-x`) so that sourced files are analyzed.
-* Per-line disables (`# shellcheck disable=SCNNNN`) are permitted
-  but MUST be accompanied by an inline comment stating why the
-  disable is safe. Disables without justification are forbidden.
-* Project-wide disables via `.shellcheckrc` are discouraged. When
-  used, the `.shellcheckrc` MUST be committed and each `disable=`
-  entry MUST include a comment explaining the rationale.
-* The `shellcheck` version used in CI MUST be pinned (e.g., via a
-  container digest or package version). Floating `latest` is
-  forbidden because new releases can introduce new checks that
-  break the build without a corresponding code change.
+### Single responsibility per library
 
-### shfmt
+* Every sourceable library file (`*.sh` or `*.bash`) MUST address
+  exactly one concern. A concern is a cohesive capability such as
+  "config file parsing," "BCP 14 keyword validation," or "version
+  directory comparison" — not a grab bag.
+* Catch-all libraries are forbidden. Filenames like `utils.sh`,
+  `helpers.sh`, `common.sh`, `misc.sh`, `lib.sh`, or `shared.sh`
+  MUST NOT exist in the repository. A CI check MUST reject files
+  with these names (see "Enforcement additions" below). The
+  prohibition is mechanical because the pattern is a reliable
+  signal that single-responsibility has been abandoned.
+* Every library MUST begin with a header comment block stating
+  (a) its single concern in one sentence, (b) the prefix used by
+  its exported functions, and (c) the other libraries it sources.
+  A CI check MUST reject libraries without this header.
 
-* Every committed bash script MUST be formatted with `shfmt` using
-  the flags `-i 2 -ci -bn -sr`, meaning: 2-space indent, indent
-  switch cases, binary ops at start of next line, redirect
-  operators followed by a space.
-* CI MUST invoke `shfmt -d` and MUST fail the build when the
-  command produces any diff.
-* Authors SHOULD configure their editors or a pre-commit hook to
-  run `shfmt -w` on save.
-* The `shfmt` version MUST be pinned in CI for the same reason as
-  `shellcheck`.
+### Function-name prefixing
 
-### Additional static analysis
+Bash has no module or namespace system; every sourced function
+shares one global namespace. Name collisions are silent — the last
+definition wins — and `shellcheck` does not detect them. Prefixing
+is therefore mandatory, not stylistic.
 
-* `shellharden --check` MUST be run in CI against every committed
-  bash script and MUST exit zero. `shellharden` catches unquoted
-  expansions more aggressively than `shellcheck` and its check
-  mode is non-destructive.
-* Skills MAY additionally run `bashate` or `bash-language-server`;
-  neither is required.
-* Binaries used for static analysis MUST be installed via a
-  reproducible mechanism (package manager with pinned version,
-  container image with pinned digest, or `asdf`/`mise` with pinned
-  versions). Downloading tools from unversioned URLs at CI time is
-  forbidden.
+* Every function defined in a library MUST be prefixed with the
+  library's short identifier, followed by an underscore. The
+  identifier MUST match the library's filename minus the
+  extension. Examples: `bcp14_validate` in `bcp14.sh`, `config_read`
+  in `config.sh`, `version_compare` in `version.sh`.
+* Functions intended for use only within the defining library
+  ("private" helpers) MUST carry an additional leading underscore:
+  `_bcp14_tokenize`, `_config_normalize_path`. Private functions
+  MUST NOT be called from any file other than the one that defines
+  them. A CI check MUST reject cross-library calls to any function
+  whose name starts with `_`.
+* Functions in executable scripts (not libraries) SHOULD also
+  follow a consistent prefix derived from the script name, but
+  they MUST at minimum use unique names that do not shadow any
+  library function.
+* The `main` function is the only reserved name and is exempt
+  from prefixing in executable scripts.
+
+### No kitchen-sink imports
+
+* A library MUST NOT source another library unless it calls a
+  function from that library. Sourcing "just in case" is forbidden:
+  it creates hidden coupling and slows script startup.
+* A library's header comment block MUST list every other library it
+  sources. CI MUST verify that every `source` statement in a library
+  corresponds to an entry in that list, and that every listed
+  library is actually sourced.
+* Circular sourcing (A sources B, B sources A, possibly transitive)
+  is forbidden. CI MUST build the source-dependency graph across
+  all bundled libraries and MUST fail the build if any cycle is
+  detected.
+
+---
+
+## Purity and I/O isolation
+
+The most reliable way to make bash code testable is to separate
+computation from side effects. Functions that touch the filesystem,
+the network, or the process environment cannot be unit-tested with
+the same ease as functions that only transform arguments into
+return values. This section mandates that separation.
+
+### The pure / impure distinction
+
+* Every library file MUST be classified as either *pure* or
+  *impure*. The classification MUST appear as a
+  `# purity: pure` or `# purity: impure` directive in the library's
+  header comment block.
+* A *pure* library's functions:
+  * MUST NOT read or write files.
+  * MUST NOT read or write environment variables except those
+    passed explicitly as function arguments.
+  * MUST NOT invoke external commands that produce side effects
+    (no `mkdir`, `rm`, `curl`, `git`, `ssh`, etc.).
+  * MAY invoke external commands that are deterministic
+    transformations of stdin to stdout (`jq`, `awk`, `sed`, `tr`,
+    `sort`, `grep`) provided the invocation has no filesystem
+    or network side effect.
+  * MUST receive all inputs as function arguments, and MUST emit
+    all outputs on stdout (or via a return code).
+* An *impure* library's functions are permitted to do any of the
+  above but MUST be reachable from pure code only via a thin
+  wrapper layer (see "Impure wrapper pattern" below).
+* Executable scripts are classified as impure by definition;
+  the distinction applies to libraries only. A script's `main`
+  function orchestrates impure operations and is exempt from the
+  classification directive.
+
+### Impure wrapper pattern
+
+To keep tests ergonomic, impure operations MUST be encapsulated in
+thin wrapper functions that are easy to stub:
+
+* Each impure operation MUST be wrapped in a dedicated function
+  whose body is the side-effecting command and nothing else (plus
+  argument validation).
+* Pure code that needs an impure operation MUST call the wrapper
+  function by name, never invoke the underlying command directly.
+* Tests stub wrappers by re-defining them after sourcing the
+  library under test. This is the mechanism bash offers for
+  dependency injection; the mandate above exists so that
+  mechanism is always available.
+
+Example:
+
+```
+# In fs.sh (impure):
+fs_read_file() {
+  local path="${1}"
+  cat -- "${path}"
+}
+
+# In validate.sh (pure, sources fs.sh):
+validate_spec_file() {
+  local path="${1}"
+  local content
+  content="$(fs_read_file "${path}")"
+  _validate_content "${content}"
+}
+
+# In tests/validate.bats:
+@test "validate_spec_file detects missing MUST" {
+  fs_read_file() { printf 'This spec says should instead of MUST.\n'; }
+  run validate_spec_file "fake-path"
+  [ "$status" -ne 0 ]
+}
+```
+
+### No global variable writes from functions
+
+* Functions MUST NOT write to variables outside their own scope
+  except via explicit, documented outer-scope-write patterns (e.g.,
+  the boilerplate's own `_log_prefix`). Every assignment inside a
+  function body MUST be preceded by `local`, `declare`, `readonly`,
+  or be to a positional parameter.
+* CI MUST detect function-internal assignments to bare variable
+  names (without `local`/`declare`/`readonly`) and MUST fail the
+  build when any are found. This check is implemented as a grep
+  over a bash-AST-aware walker or a targeted regex; exact
+  implementation is left to the skill, but the behavior is
+  mandatory.
+* Functions that legitimately need to return structured data MUST
+  do so via stdout (with the caller using command substitution) or
+  via a nameref parameter declared with `declare -n`. Writing to
+  an implicit outer variable by naming convention is forbidden.
+
+---
+
+## Complexity thresholds
+
+The thresholds below are adapted from language-agnostic research —
+McCabe's original cyclomatic complexity recommendation (1976) and
+Martin's "Clean Code" function-sizing guidance (2008). They are
+conventions, not laws of physics, but they are enforced
+mechanically because soft targets do not survive LLM-generated
+code. LLMs are excellent at honoring structural patterns when those
+patterns are gated in CI and unreliable at honoring them otherwise.
+
+### Cyclomatic complexity
+
+* Every function in every bundled bash file MUST have cyclomatic
+  complexity (CCN) ≤ 7. This is stricter than McCabe's
+  oft-cited ≤ 10; the tighter bound is deliberate. Bash control
+  flow is harder to read than most languages and functions with
+  CCN 8-10 almost always decompose cleanly.
+* CCN MUST be measured by `shellmetrics`
+  ([github.com/shellspec/shellmetrics](https://github.com/shellspec/shellmetrics)).
+  CI MUST invoke `shellmetrics --csv` on every bundled bash file
+  and MUST fail the build if any function reports a CCN greater
+  than 7.
+* The `shellmetrics` version MUST be pinned in CI. Because
+  `shellmetrics` itself is a shell script, pinning is done by
+  committing a specific version to the repository or by pinning
+  the upstream commit hash in the CI tool-installation step.
+* Per-function waivers are NOT permitted. If a function cannot be
+  brought under the threshold, it MUST be decomposed.
+
+### Function length
+
+* Every function MUST contain no more than 50 logical lines of
+  code (LLOC — non-blank, non-comment lines). This is Martin's
+  "Clean Code" upper bound; the aspirational target is 20.
+* LLOC MUST be measured by `shellmetrics` (which reports LLOC
+  alongside CCN). CI MUST fail the build if any function's LLOC
+  exceeds 50.
+
+### File length
+
+* Every bundled bash file MUST contain no more than 300 logical
+  lines of code. Files approaching this limit are almost always
+  addressing more than one concern and MUST be decomposed before
+  they cross it.
+* LLOC MUST be measured across the whole file. CI MUST fail the
+  build if any file's LLOC exceeds 300. No off-the-shelf tool
+  measures whole-file LLOC for bash; a small CI-side script that
+  strips comments and blank lines and counts the rest is
+  sufficient. The skill MUST bundle such a script under
+  `scripts/ci/` and MUST invoke it in CI.
+
+### Function argument count
+
+* Every function MUST accept no more than 4 positional arguments.
+  Functions that need more MUST accept a configuration variable
+  (an associative array, a nameref to one, or a file path) or be
+  decomposed.
+* This is checked by a small CI-side script that parses each
+  function body for `local arg1="${1}" ... local argN="${N}"`
+  patterns (the mandated argument-declaration form from the
+  "Functions and `main`" section above) and counts the highest
+  positional index used. Variadic functions are exempt and MUST
+  be annotated with a `# variadic` comment immediately above the
+  function definition.
+
+### Honest limits of these checks
+
+Cyclomatic complexity, function length, file length, and argument
+count are proxies for readability and cohesion, not direct
+measurements of either. A function can have CCN 3, LLOC 15, and
+three arguments and still be unreadable; a function with CCN 8
+can occasionally be clearer than two functions with CCN 4 each.
+The thresholds catch the common failure modes; they do not
+substitute for periodic human review of the generated scripts.
+Authors who believe a threshold violation produces clearer code
+MUST refactor anyway; the mechanical gate is more valuable than
+any individual exception.
+
+---
+
+## Testability requirements
+
+Testability is the property that makes the rest of this
+specification enforceable. A script that cannot be tested cannot
+be refactored safely, cannot be verified to honor the other
+constraints, and cannot be maintained by an LLM working from the
+specification alone. This section mandates the minimum conditions
+under which the bats test suite can exercise every bundled
+function.
+
+### Sourceable guard for executable scripts
+
+* Every executable script MUST be safe to source as well as safe to
+  execute. The script's final statement MUST therefore be:
+
+  ```
+  if [[ "${0}" == "${BASH_SOURCE[0]}" ]]; then
+    main "$@"
+  fi
+  ```
+
+  not a bare `main "$@"`. When the file is executed directly,
+  `$0` equals `${BASH_SOURCE[0]}` and `main` runs. When the file
+  is sourced (as bats will do to reach its functions directly),
+  `$0` is the sourcing shell or bats runner and `main` does not
+  run, so tests can exercise individual functions without
+  triggering the script's end-to-end behavior.
+* A CI check MUST verify that every executable script (no `.sh`
+  or `.bash` extension) ends with this exact guard idiom.
+
+### Test scope
+
+* Every function (both library functions and a script's internal
+  helpers) MUST have at least one test in bats. Testing only
+  `main` is insufficient because it exercises the integration path
+  and leaves internal branches uncovered.
+* Tests MUST NOT shell out to the script under test for unit-level
+  assertions. They MUST source the script or library and call the
+  function directly. End-to-end tests that do invoke the script as
+  a subprocess are permitted and required, but they are separate
+  from the unit-level requirement above.
+
+### Assertion library
+
+* Tests MUST use `bats-assert`
+  ([github.com/bats-core/bats-assert](https://github.com/bats-core/bats-assert))
+  for all assertions. Bare `[[ ... ]]` or `[ ... ]` assertions
+  inside `@test` blocks are forbidden because they produce opaque
+  failure messages. `bats-assert` produces structured diff output
+  that appears in Claude's context when a test fails, which is the
+  property that matters here.
+* Tests SHOULD also use `bats-support` (required by `bats-assert`)
+  and MAY use `bats-file` for filesystem assertions.
+
+### Test fixtures and isolation
+
+* Every test that requires filesystem state MUST create that state
+  in the `BATS_TEST_TMPDIR` that bats provides. Tests MUST NOT
+  create files outside that directory, MUST NOT rely on files
+  elsewhere in the repo except explicit fixtures under
+  `tests/fixtures/`, and MUST NOT mutate anything under
+  `tests/fixtures/`.
+* Tests MUST NOT require network access. Functions that would
+  normally call the network MUST be invoked only through their
+  impure wrappers (see "Impure wrapper pattern") and those
+  wrappers MUST be stubbed in the test.
+* Tests MUST be independent of execution order. The bats `setup`
+  and `teardown` hooks MUST leave no residue that could affect
+  another test.
+
+---
+
+## Code coverage
+
+Tests that exist but do not cover the code under them provide
+false confidence. A coverage gate is therefore mandatory, but the
+threshold differs between pure and impure code because the two
+categories have different coverage feasibility floors.
+
+* Coverage MUST be measured by `kcov`
+  ([github.com/SimonKagstrom/kcov](https://github.com/SimonKagstrom/kcov)).
+  `bashcov` is permitted as an alternative but its Ruby dependency
+  makes it a heavier install; `kcov` is the default.
+* Pure libraries MUST achieve 100% line coverage. This is feasible
+  because pure functions have no environmental dependencies and
+  every branch can be exercised from tests that provide inputs
+  directly.
+* Overall coverage across all bundled bash files MUST be at least
+  80%. The gap between 100% pure and 80% overall accounts for
+  branches in impure code that are genuinely hard to exercise
+  (error paths in filesystem operations, network failure modes,
+  etc.).
+* CI MUST run the full bats suite under `kcov`, MUST produce a
+  coverage report, and MUST fail the build when either threshold
+  is not met.
+* `kcov` is known to be flaky on Alpine/musl and unavailable on
+  macOS. CI matrices that include non-Linux OSes MAY skip the
+  coverage gate on those OSes but MUST run it on at least one
+  Linux configuration per pull request. The threshold applies to
+  that Linux run.
+* The `kcov` version MUST be pinned. Coverage tooling pinning is
+  particularly important because small differences in how `kcov`
+  handles bash's DEBUG trap can shift reported coverage by several
+  percentage points.
 
 ---
 
@@ -522,7 +829,7 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")/../scripts/bash-boilerplate.s
 * Every bash script bundled with the skill MUST have at least one
   corresponding test under `tests/`. This requirement composes
   with the top-level testing requirements in
-  [PROPOSAL.md — Testing approach](PROPOSAL.md#testing-approach);
+  [PROPOSAL.md — Testing approach](https://github.com/thewoolleyman/livespec/blob/master/brainstorming/approach-2-nlspec-based/PROPOSAL.md#testing-approach);
   this section adds the bash-specific concretions.
 * Tests for bash scripts MUST use `bats-core`
   ([github.com/bats-core/bats-core](https://github.com/bats-core/bats-core)).
@@ -537,6 +844,9 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")/../scripts/bash-boilerplate.s
   * One test that verifies the script's exit code on an invalid
     flag or missing required arg is the "usage error" code
     defined in "Exit code contract" below.
+* Each exported library function MUST have, at minimum, one
+  happy-path test and one failure-mode test, per the scope rule
+  in "Testability requirements".
 * Tests MUST NOT depend on network access, on files outside the
   repo, or on global state mutations. Tests that require a
   filesystem fixture MUST create it in a `bats`-provided temporary
@@ -561,6 +871,20 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")/../scripts/bash-boilerplate.s
     executable bit set.
   * A check that no staged bash script carries a `.sh` or `.bash`
     extension unless it is a sourced library.
+  * `shellmetrics` on every staged bash script, rejecting any
+    function with CCN > 7 or LLOC > 50.
+  * A file-length check that rejects any staged bash file whose
+    LLOC exceeds 300.
+  * A forbidden-filename check that rejects any staged file whose
+    name matches the catch-all library blacklist (`utils.sh`,
+    `helpers.sh`, `common.sh`, `misc.sh`, `lib.sh`, `shared.sh`).
+  * A library-header check that rejects any staged library
+    (`*.sh`, `*.bash`) whose first non-shebang non-blank lines do
+    not include the `# purity:` directive and the sources list.
+  * A sourceable-guard check that rejects any staged executable
+    script whose final lines do not implement the
+    `if [[ "${0}" == "${BASH_SOURCE[0]}" ]]; then main "$@"; fi`
+    idiom.
 * Commits MUST be blocked when any of these checks fail. Bypassing
   via `git commit --no-verify` is permitted for local experimental
   commits but MUST NOT appear on any pushed branch; CI catches
@@ -571,18 +895,41 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")/../scripts/bash-boilerplate.s
 ### Continuous integration
 
 * CI MUST run the full static-analysis suite (`shellcheck`,
-  `shfmt`, `shellharden`) against every bash file in the
-  repository on every pull request and every push to the default
-  branch. "Changed files only" is forbidden at CI level; the
-  pre-commit hook covers the changed-files-fast-feedback case,
+  `shfmt`, `shellharden`, `shellmetrics`) against every bash file
+  in the repository on every pull request and every push to the
+  default branch. "Changed files only" is forbidden at CI level;
+  the pre-commit hook covers the changed-files-fast-feedback case,
   but CI MUST verify the whole tree because rename/move operations
   and non-bash-language edits can still affect the bash surface.
 * CI MUST run the full `bats` test suite on every pull request and
   every push to the default branch.
+* CI MUST run the test suite under `kcov` and MUST enforce the
+  coverage thresholds defined in "Code coverage" above.
+* CI MUST run the full architectural-check suite, which comprises:
+  * The file-length, filename-blacklist, library-header,
+    sourceable-guard, and function-argument-count checks from the
+    pre-commit list.
+  * A cross-library private-function-call check that rejects any
+    call from file A to a `_`-prefixed function defined in file B.
+  * A source-dependency-graph check that rejects any circular
+    import.
+  * A global-variable-write check that rejects any function-body
+    assignment not preceded by `local`, `declare`, or `readonly`.
+  * A header-consistency check that verifies every `source`
+    statement in a library corresponds to an entry in that
+    library's header sources list, and vice versa.
+* These architectural checks MUST be implemented as small bash
+  scripts under `scripts/ci/`, named by concern
+  (`check-library-headers`, `check-source-graph`, etc.), each
+  conforming to the same constraints this document imposes on the
+  rest of the skill's scripts. They are not exempt from their own
+  rules.
 * CI MUST fail the build on any static-analysis finding, any test
-  failure, or any non-zero exit from any of the commands above.
+  failure, any coverage threshold miss, any architectural-check
+  finding, or any non-zero exit from any of the commands above.
 * CI MUST cache tool installation (to avoid redundant downloads)
-  but MUST NOT cache test results or analysis results across runs.
+  but MUST NOT cache test results, analysis results, or coverage
+  results across runs.
 * CI MUST run on the same major OS families the skill supports
   (minimally Linux; optionally macOS). The CI matrix MUST pin the
   bash version(s) under test.
@@ -654,3 +1001,11 @@ are listed so their absence is a deliberate boundary, not a gap.
   reported with exit `127`; installing them is the caller's
   problem, not the script's. The Anthropic API runtime environment
   has no network access for runtime installs.
+* **AST-based cohesion metrics.** No off-the-shelf tool measures
+  LCOM or similar cohesion metrics for bash. The mandatory
+  single-responsibility, single-concern, and prefix rules are
+  mechanical proxies for cohesion; real cohesion measurement is
+  not in scope.
+* **Mutation testing.** Tools like `mutmut` and `stryker` do not
+  support bash. Coverage is the substitute; mutation-score gates
+  are not in scope.
