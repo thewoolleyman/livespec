@@ -1,3 +1,6 @@
+### Project ignores
+tmp/
+
 ### macOS template
 # General
 .DS_Store
