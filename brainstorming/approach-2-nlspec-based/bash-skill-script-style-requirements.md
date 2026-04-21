@@ -686,7 +686,7 @@ patterns are gated in CI and unreliable at honoring them otherwise.
   measures whole-file LLOC for bash; a small CI-side script that
   strips comments and blank lines and counts the rest is
   sufficient. The skill MUST bundle such a script under
-  `scripts/ci/` and MUST invoke it in CI.
+  `scripts/checks/` and MUST invoke it in CI.
 
 ### Function argument count
 
@@ -919,7 +919,7 @@ categories have different coverage feasibility floors.
     statement in a library corresponds to an entry in that
     library's header sources list, and vice versa.
 * These architectural checks MUST be implemented as small bash
-  scripts under `scripts/ci/`, named by concern
+  scripts under `scripts/checks/`, named by concern
   (`check-library-headers`, `check-source-graph`, etc.), each
   conforming to the same constraints this document imposes on the
   rest of the skill's scripts. They are not exempt from their own

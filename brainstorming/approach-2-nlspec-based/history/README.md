@@ -62,9 +62,38 @@ entries keep their original naming (immutable history).
   `custom_critique_prompt` and `specification_dir` from
   `.livespec.jsonc`, and more. Full decision record is in
   `v003/proposed_changes/proposal-critique-v02-revision.md`.
+- **v004** — revise driven by
+  `proposed_changes/proposal-critique-v03.md` and its revision.
+  Mid-interview, the user rewrote
+  `bash-skill-script-style-requirements.md` to add module
+  structure, purity/I/O isolation, complexity thresholds,
+  testability, coverage, and architectural checks; four
+  additional critique items (G22-G26) were appended to cover
+  gaps between the rewritten style doc and PROPOSAL.md.
+  Major structural changes: `schemas/` added to skill layout;
+  `livespec-nlspec-spec.md` canonicalized at template root
+  only; executables renamed (`dispatch`, `doctor-static` with
+  no `.sh`); `scripts/bash-boilerplate.sh` added; `scripts/ci/`
+  renamed to `scripts/checks/` in both PROPOSAL.md and the
+  bash style doc; `prompts/propose-change.md` promoted to
+  REQUIRED; `critique` uses internal delegation to
+  `propose-change`; check #9 compares committed state
+  (`git show HEAD:`) rather than working tree; doctor
+  static-phase exit codes aligned to bash style doc (0/1/3);
+  `plugin.json` delegated to Claude Code's current format;
+  check #13 collapsed into #2 (now 12 static checks);
+  `prune-history` preserves original-earliest across repeat
+  prunes; `propose-change` drops content-shape sniffing in
+  favor of `--findings-json` flag; `revise` orders files by
+  `created_at` with whole-revise delegation scope;
+  `<revision-steering-intent>` now forbids content injection;
+  Testing section consolidated to name `bats-assert`,
+  `bats-support`, `kcov` with coverage thresholds, and the
+  `tests/` skeleton tree. Full decision record is in
+  `v004/proposed_changes/proposal-critique-v03-revision.md`.
 
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v003/PROPOSAL.md` until the next revise.
+byte-identical to `history/v004/PROPOSAL.md` until the next revise.
