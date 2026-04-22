@@ -1,0 +1,136 @@
+{
+  "version": "v010",
+  "produced_from": "v009",
+  "critique_file": "v010/proposed_changes/proposal-critique-v09.md",
+  "revision_file": "v010/proposed_changes/proposal-critique-v09-revision.md",
+  "session_date": "2026-04-22",
+  "reviser_human": "thewoolleyman",
+  "reviser_llm": "Claude Opus 4.7 (1M context)",
+  "pass_framing": "recreatability defect cleanup (DoctorInternalError/Fold.collect residuals; io/git semantics; custom-template path resolution; exit code 4 for schema validation; HelpRequested; coverage scope; .vendor.jsonc rename; inverse --run-pre-check flag; Finding relocation; tracked symlink; template_format_version enumeration; prune-history repeat-no-op)",
+  "turns": [
+    {
+      "role": "user",
+      "content": "read and follow /data/projects/livespec/brainstorming/approach-2-nlspec-based/critique-interview-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Loaded required files (PROPOSAL.md v009, livespec-nlspec-spec.md, python-skill-script-style-requirements.md v009, deferred-items.md v009, companion docs, v009 critique + revision + conversation.json, history/README.md). Delegated older history (v001-v008) summarization to a background Explore agent. Produced a 14-item critique (J1-J14) saved to proposed_changes/v010-proposed-change-proposal-critique-v09.md. Began interview with J1."
+    },
+    {
+      "role": "assistant",
+      "summary": "J1 (malformation): retired DoctorInternalError + mechanism-level Fold.collect still in PROPOSAL.md lines 1284, 1303, DoD #6 and style doc per-check module contract, contradicting v009 I2/I6/I10. Options: A rewrite both residuals (recommended); B PROPOSAL.md only; C style doc only."
+    },
+    { "role": "user", "content": "A: rewrite both residuals (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J2 (malformation): io/git.get_git_user() semantics disagree between PROPOSAL.md (git-unavailable → IOSuccess('unknown')) and deferred-items + revision (git-binary absent → IOFailure(GitUnavailableError) exit 3). Options: A align to revision intent (recommended); B always succeed with 'unknown'; C split cases."
+    },
+    { "role": "user", "content": "A: fail on missing binary, fall back on missing config (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J3 (incompleteness): SKILL.md literal @-reference paths don't resolve for custom templates at arbitrary user paths. Options: A skill-prose Read-tool runtime dispatch (recommended); B wrapper emits resolved path; C copy-to-canonical; D drop custom templates."
+    },
+    {
+      "role": "user",
+      "content": "B, because we will eventually need to make this location more flexible for user-provided templates, which will not live in the canonical skill distributed source/plugin."
+    },
+    {
+      "role": "assistant",
+      "summary": "Acknowledged J3 → B. Added `bin/resolve_template.py` wrapper (two-step Bash + Read dispatch) to PROPOSAL.md layout. Proceeded to J4."
+    },
+    {
+      "role": "assistant",
+      "summary": "J4 (ambiguity): exit 3 is shared across schema validation, pre-step static, sub-command precondition, post-step static. SKILL.md retry rule says 'retry on validation-class findings' but no discriminator exists. Options: A finding_class kwarg in stderr structlog (recommended); B new exit code 4 for validation; C retry everything on exit 3; D drop retry loop."
+    },
+    { "role": "user", "content": "[clarify] When is automated schema validation required? I don't recognize that requirement." },
+    {
+      "role": "assistant",
+      "summary": "Cited v009 I8 disposition: wrappers validate LLM-produced JSON internally; on malformed payload exit 3 with structured findings; SKILL.md re-invokes template prompt up to 3 retries. Distinct from non-retryable exit-3 classes (doctor static, precondition). Clarified the retry scope."
+    },
+    { "role": "user", "content": "[clarify] Are there any standards being broken if we reintroduced the new exit code 4?" },
+    {
+      "role": "assistant",
+      "summary": "Explained no POSIX/sysexits.h standard is broken by adding exit 4; noted sysexits.h's EX_TEMPFAIL=75 matches semantically but would break livespec's 0-3 range consistency. Re-recommended B as actually cleaner for LLM retry classification (exit code is primitive the LLM reads directly; no stderr parsing needed)."
+    },
+    { "role": "user", "content": "Do option b" },
+    {
+      "role": "assistant",
+      "summary": "J4 → B: new exit code 4 for schema validation; retry on 4; abort on 3. ValidationError.exit_code updated to 4. Style doc exit-code table gains row; SKILL.md renames Retry-on-exit-3 → Retry-on-exit-4. Proceeded to J5."
+    },
+    {
+      "role": "assistant",
+      "summary": "J5 (malformation): build_parser() -> ArgumentParser in commands/<cmd>.py violates check-public-api-result-typed as narrowed by v009 I4. Options: A exempt build_parser (recommended); B rename _build_parser private; C wrap Result[ArgumentParser, Never]; D move to io/cli.py."
+    },
+    { "role": "user", "content": "A: add `build_parser` to exemption list (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J6 (incompleteness): propose-change `author` field has no precedence rule. Options: A mirror I13 env-var → payload → unknown-llm (recommended); B always 'unknown-llm'; C required --author flag."
+    },
+    { "role": "user", "content": "A: mirror I13 precedence (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J7 (incorrectness): --help routed through IOFailure(UsageError) → exit 2 conflates help with usage error. Options: A HelpRequested marker; supervisor exits 0 (recommended); B supervisor pre-flow --help check; C accept non-standard exit 2."
+    },
+    { "role": "user", "content": "A: add `HelpRequested` marker, supervisor exits 0 (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J8 (ambiguity): coverage scope is scripts/livespec/** + dev-tooling/**; scripts/bin/ silent. Options: A include scripts/bin/ explicitly (recommended); B exclude explicitly."
+    },
+    { "role": "user", "content": "A: include `scripts/bin/` explicitly (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J9 (ambiguity): PROPOSAL.md + deferred-items still say '.vendor.toml (or per-lib VERSION files)'; every other doc says .vendor.toml only. Options: A strip stale clause (recommended); B leave as-is; C reopen v007 choice."
+    },
+    { "role": "user", "content": "[clarify] is toml python standard? will we need to pull in toml dependency?" },
+    {
+      "role": "assistant",
+      "summary": "Explained tomllib is 3.11+ stdlib (forbidden per style doc's 3.10+ floor); .vendor.toml would require vendoring tomli. Today .vendor.toml has no Python reader (check-vendor-audit was removed v007), but if future code wanted to parse it we'd need tomli or a new format. Recast J9 with format choice: A keep .vendor.toml human-only; B switch to .vendor.jsonc (reuse vendored jsoncomment, zero new deps); C per-lib VERSION files (zero-dep plaintext); D vendor tomli."
+    },
+    { "role": "user", "content": "b" },
+    {
+      "role": "assistant",
+      "summary": "J9 → B: switch .vendor.toml → .vendor.jsonc; renamed across PROPOSAL.md, style doc, deferred-items, DoD; .vendor.jsonc shape documented as JSONC object keyed by lib name."
+    },
+    {
+      "role": "assistant",
+      "summary": "J10 (incompleteness): no CLI re-enable for pre-step when config disables it. Options: A add --run-pre-check inverse flag; B document limitation (recommended); C reverse formula."
+    },
+    { "role": "user", "content": "A: add inverse CLI flag (--run-pre-check)" },
+    {
+      "role": "assistant",
+      "summary": "J10 → A: mutually-exclusive --skip-pre-check / --run-pre-check flag pair; both → argparse UsageError exit 2. bin/doctor_static.py rejects both (supersedes v009 I14)."
+    },
+    {
+      "role": "assistant",
+      "summary": "J11 (ambiguity): Finding lives at doctor/finding.py but check-schema-dataclass-pairing walks only schemas/dataclasses/*.py. Options: A move Finding to schemas/dataclasses/finding.py (recommended); B widen pairing walker transitively; C inline shape as dict."
+    },
+    { "role": "user", "content": "A: move `Finding` to schemas/dataclasses/finding.py (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J12 (ambiguity): dogfood symlink git-tracking disposition unspecified. Options: A committed tracked symlink (recommended); B gitignored, just bootstrap mandatory."
+    },
+    { "role": "user", "content": "A: committed tracked symlink (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J13 (ambiguity): template_format_version 'supported by livespec' has no enumerated set. Options: A explicit PROPOSAL.md invariant 'v1 supports only {1}' (recommended); B defer to static-check-semantics; C leave silent."
+    },
+    { "role": "user", "content": "A: explicit invariant in PROPOSAL.md: 'v1 supports only template_format_version: 1' (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "J14 (ambiguity): prune-history repeat behavior on already-pruned project unspecified. Options: A extend idempotency rule; no-op (recommended); B leave as-is; C explicit informational message."
+    },
+    { "role": "user", "content": "A: extend idempotency rule; it is a no-op (Recommended)" },
+    {
+      "role": "user",
+      "content": "[mid-J3 enrichment] On J2 [sic; meant J3], record explicitly that it is a deferred future feature to allow users to host custom specifications templates at arbitrary locations, or have some extension mechanism."
+    },
+    {
+      "role": "assistant",
+      "summary": "Confirmed the user meant J3 (J2 was git semantics). Added a new deferred-items entry user-hosted-custom-templates capturing v2+ template-discovery extensibility: remote URLs, registries, plugin-path hints, per-environment overrides. bin/resolve_template.py output contract is the stability shield."
+    },
+    {
+      "role": "assistant",
+      "summary": "All 14 interview items resolved (J1-J8, J10-J14 on recommended/alternate options; J9 on alternate B after TOML-dependency probe). Saved feedback memory about minimizing new dependencies / preferring existing vendored parsers. Executed the dogfood apply. Wrote revision file at history/v010/proposed_changes/proposal-critique-v09-revision.md capturing per-item dispositions (J1-J14). Updated python-skill-script-style-requirements.md: cleaned DoctorInternalError in per-check module contract (J1); .vendor.toml → .vendor.jsonc (J9); Finding moved to schemas/dataclasses/ (J11); exit-code table row for 4 + HelpRequested class + ValidationError.exit_code = 4 + supervisor three-way pattern match (J4, J7); build_parser exemption (J5); --skip-pre-check / --run-pre-check mutually-exclusive pair (J10); coverage scope includes scripts/bin/ (J8). Updated PROPOSAL.md: Fold.collect stripped in §'Static-phase structure' + DoD #6 (J1); io/git.get_git_user() semantics unified (J2); resolve_template.py in layout trees (J3); two-step template-prompt dispatch in SKILL.md body (J3); Retry-on-exit-4 (J4); propose-change Author identifier resolution + env-var widening (J6); pre-step skip control bidirectional (J10); static-phase exit codes extended + supervisor three-way pattern match (J4, J7); template_format_version: {1} invariant + user-hosted deferred ref (J13); .vendor.toml → .vendor.jsonc (J9); Finding relocation (J11); prune-history repeat-no-op (J14); dogfood symlink committed (J12). Updated deferred-items.md: widened static-check-semantics (J4, J5, J7, J10, J11, J14), wrapper-input-schemas (J6), task-runner-and-ci-config (J8, J9, J10), skill-md-prose-authoring (J3, J4, J7, J10); added new user-hosted-custom-templates entry (J3). Copied PROPOSAL.md to history/v010/PROPOSAL.md (byte-identical). Moved critique from proposed_changes/ to history/v010/proposed_changes/. Updated history/README.md with v010 entry and repointed the Pointer paragraph. Captured this conversation.json."
+    }
+  ]
+}

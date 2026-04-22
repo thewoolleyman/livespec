@@ -29,7 +29,7 @@ Each entry uses this shape:
 ### <id>
 
 - **Source:** <which version surfaced this item, e.g. v002 / v003 /
-  v004 / v005 / v006 / v007 / v008>
+  v004 / v005 / v006 / v007 / v008 / v009 / v010>
 - **Target spec file(s):** <repo-root-relative path(s)>
 - **How to resolve:** <one paragraph describing what the eventual
   propose-change must produce>
@@ -102,31 +102,43 @@ Each entry uses this shape:
 
 ### task-runner-and-ci-config
 
-- **Source:** v006 (carried forward to v009; scope widened in v009 per I3)
+- **Source:** v006 (carried forward to v010; scope widened in v009 per I3; scope widened in v010 per J8, J9, J10)
 - **Target spec file(s):** `<repo-root>/justfile`,
   `<repo-root>/lefthook.yml`,
   `<repo-root>/.github/workflows/ci.yml`,
   `<repo-root>/.mise.toml`,
   `<repo-root>/pyproject.toml`,
-  `<repo-root>/.vendor.toml` (or per-lib VERSION files per G12)
+  `<repo-root>/.vendor.jsonc` (v010 J9: renamed from `.vendor.toml`
+  to avoid requiring a new `tomli` vendored dep; the already-
+  vendored `jsoncomment` parses it).
 - **How to resolve:** Author the actual config files per the
   patterns in `python-skill-script-style-requirements.md`.
   Includes: `just bootstrap` target (G16; also creates the
   `.claude/skills/ → ../.claude-plugin/skills/` dogfood symlink
-  per I11), `just check` aggregation behavior (G15), CI matrix
+  per I11 — and v010 J12 made that symlink a committed tracked
+  symbolic link, so `just bootstrap` is defensive rather than
+  mandatory), `just check` aggregation behavior (G15), CI matrix
   with `fail-fast: false`, pinned tool versions,
   ruff/pyright/pytest/coverage configuration (including
-  `max-args=6` + `max-positional-args=6` per H5), the recorded
-  vendored-lib versions (including `jsoncomment` per H2), AND
-  the new `check-schema-dataclass-pairing` target (I3). Also
-  pick up the narrowed `check-no-raise-outside-io` and
-  `check-no-except-outside-io` targets per I10.
+  `max-args=6` + `max-positional-args=6` per H5, AND coverage
+  `source` extended to include `scripts/bin/` per v010 J8 so
+  `_bootstrap.py` lands in the 100% line+branch surface), the
+  recorded vendored-lib versions (including `jsoncomment` per
+  H2), AND the new `check-schema-dataclass-pairing` target (I3).
+  Also pick up the narrowed `check-no-raise-outside-io` and
+  `check-no-except-outside-io` targets per I10, AND the
+  mutually-exclusive `--skip-pre-check` / `--run-pre-check` flag
+  pair in pre-step-having sub-command wrappers per v010 J10
+  (lefthook pre-commit/pre-push hook invocations of those
+  sub-commands must pass one of the two flags OR neither,
+  defaulting to the config value).
 
 ### static-check-semantics
 
 - **Source:** v007 (renamed in v008 from `ast-check-semantics`;
-  scope widened per H3, H11, H13, H14; scope widened again in
-  v009 per I1, I4, I5, I7, I10, and I3)
+  scope widened per H3, H11, H13, H14; scope widened in v009 per
+  I1, I4, I5, I7, I10, I3; scope widened in v010 per J4, J5, J7,
+  J10, J11, J14)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -216,6 +228,57 @@ Each entry uses this shape:
     the missing-config case; failure only on unexpected
     `git`-binary absence (domain error
     `GitUnavailableError`, exit 3).
+  - **Exit code 4 for ValidationError** (v010 J4): the
+    supervisor's `derive_exit_code` maps
+    `IOFailure(ValidationError)` to exit `4` (retryable by
+    template re-prompt), distinct from exit `3`
+    (`PreconditionError` / `GitUnavailableError`;
+    non-retryable). Other `LivespecError` subclasses map to
+    their class-attribute `exit_code`. `bin/doctor_static.py`
+    never emits `4` because it takes no JSON input.
+    `HelpRequested` (not a `LivespecError`) maps to exit `0`
+    after emitting help text to stdout.
+  - **`build_parser` exemption in
+    `check-public-api-result-typed`** (v010 J5): exempt
+    functions named `build_parser` in `commands/**.py`
+    alongside `main` in `commands/**.py` and
+    `doctor/run_static.py`. Pure argparse factory; no effects;
+    cannot fail; returns `ArgumentParser` (a framework type).
+  - **Supervisor three-way pattern match for
+    `HelpRequested` / `UsageError` / other
+    `LivespecError`** (v010 J7): `check-supervisor-discipline`
+    allows the supervisor's `derive_exit_code` to pattern-match
+    three classes distinctly. `HelpRequested` is NOT a
+    `LivespecError` subclass; emits text to stdout; exits 0.
+    `UsageError` (a `LivespecError`) emits to stderr; exits 2.
+    Other `LivespecError` subclasses emit to stderr; exit
+    `err.exit_code`. Uncaught exception → supervisor's
+    `try/except Exception` bug-catcher → exit 1.
+  - **Mutually-exclusive pre-step flag pair** (v010 J10):
+    argparse-level mutually exclusive group for
+    `--skip-pre-check` / `--run-pre-check` on pre-step-having
+    sub-commands (`propose-change`, `critique`, `revise`,
+    `prune-history`); both flags set → `UsageError` (exit 2);
+    neither → config default. `bin/doctor_static.py` rejects
+    BOTH flags (supersedes v009 I14's "rejects
+    `--skip-pre-check`" — now rejects both).
+  - **`check-schema-dataclass-pairing` walker scope**
+    (v010 J11): still walks only
+    `scripts/livespec/schemas/dataclasses/*.py`. `Finding`
+    moved from `doctor/finding.py` to
+    `schemas/dataclasses/finding.py` so both `Finding` and
+    `DoctorFindings` live in the pairing-walked tree.
+    Implementer choice whether `finding.schema.json` is a
+    standalone schema OR the `Finding` shape is embedded as
+    the `items` schema of `doctor_findings.schema.json`'s
+    `findings` array (either is acceptable; check must pass
+    either way).
+  - **`prune-history` already-pruned precondition**
+    (v010 J14): `prune-history` detects the
+    "oldest-surviving-is-already-`PRUNED_HISTORY.json`"
+    state before step 4 and short-circuits with an
+    informational `status: "skipped"` finding; no marker
+    re-write.
 
 ### returns-pyright-plugin-disposition
 
@@ -261,7 +324,7 @@ Each entry uses this shape:
 
 ### skill-md-prose-authoring
 
-- **Source:** v008 (H4; carried forward to v009 with I8 reshape)
+- **Source:** v008 (H4; carried forward to v010 with I8 reshape; scope widened in v010 per J3, J4, J7, J10)
 - **Target spec file(s):**
   `.claude-plugin/skills/<sub-command>/SKILL.md` (one per
   sub-command: `seed`, `propose-change`, `critique`, `revise`,
@@ -270,20 +333,42 @@ Each entry uses this shape:
   body shape codified in PROPOSAL.md §"Per-sub-command SKILL.md
   body structure" (opening statement; when to invoke; inputs;
   ordered LLM-driven steps; post-wrapper behavior; failure
-  handling). Cover: sub-command trigger phrases, Bash invocations
-  of `bin/<cmd>.py` with explicit argv, template prompt
-  `@`-references, **retry-on-wrapper-exit-3** prose per I8 (on
-  exit 3 with validation-class findings, re-invoke the template
-  prompt with error context and retry, up to 3 retries;
-  wrappers validate internally; no separate validator CLI
-  wrappers), per-proposal confirmation dialogue (`revise` only),
-  `--skip-pre-check` / `--skip-subjective-checks` handling,
-  exit-code narration (including exit 2 for `--skip-pre-check`
-  passed to `bin/doctor_static.py` per I14).
+  handling). Cover:
+  - sub-command trigger phrases;
+  - Bash invocations of `bin/<cmd>.py` with explicit argv;
+  - **template prompt dispatch via `bin/resolve_template.py`**
+    (v010 J3): two-step flow — invoke `bin/resolve_template.py`
+    via Bash, capture stdout (the resolved template directory
+    path), then use Read to fetch `<path>/prompts/<name>.md`.
+    Replaces v009's literal `@`-reference approach; works
+    uniformly for built-in and custom templates;
+  - **retry-on-wrapper-exit-4** prose (v010 J4; renamed from
+    v009 I8's retry-on-exit-3): on exit 4 re-invoke the
+    template prompt with error context from stderr and retry,
+    up to 3 retries; exit 3 is NOT retryable (pre-step /
+    precondition failure — surface findings and abort);
+    wrappers validate internally; no separate validator CLI
+    wrappers;
+  - **exit 0 on `--help`** (v010 J7): help text goes to stdout
+    via the `HelpRequested` supervisor path; not an error;
+  - per-proposal confirmation dialogue (`revise` only);
+  - **mutually-exclusive `--skip-pre-check` / `--run-pre-check`
+    flag pair** (v010 J10): Inputs section for every pre-step-
+    having sub-command lists both; narration for both flags
+    (skip warning when `--skip-pre-check` is set or config
+    default is skip=true; neutral when `--run-pre-check`
+    overrides config default skip=true);
+    `--skip-subjective-checks` (LLM-layer only; never passed
+    to Python) handling;
+  - exit-code narration (exit 0 on help; exit 2 on usage error
+    including both-flags-set; exit 3 on precondition /
+    doctor-static; exit 4 on schema validation; exit 1 on
+    bug / unexpected exception; exit 126 / 127 on permission /
+    missing tool).
 
 ### wrapper-input-schemas
 
-- **Source:** v008 (H6 + H10; carried forward to v009 with I3 widening)
+- **Source:** v008 (H6 + H10; carried forward to v010 with I3 widening; scope widened in v010 per J6)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/schemas/proposal_findings.schema.json`
   (renamed from `critique_findings.schema.json`),
@@ -296,7 +381,13 @@ Each entry uses this shape:
   - `proposal_findings.schema.json` — propose-change / critique
     template-prompt output. Each finding has `name`,
     `target_spec_files[]`, `summary`, `motivation`,
-    `proposed_changes`.
+    `proposed_changes`. v010 J6 adds an optional file-level
+    `author` field (string) so the LLM can self-declare the
+    propose-change author per the precedence rule documented
+    in PROPOSAL.md §"propose-change → Author identifier
+    resolution" (CLI `--author` → env var
+    `LIVESPEC_REVISER_LLM` → payload `author` field →
+    `"unknown-llm"` fallback).
   - `doctor_findings.schema.json` — doctor static-phase JSON
     output. Each finding has `check_id`, `status` (one of
     `pass`/`fail`/`skipped`), `message`, `path`, `line`.
@@ -324,3 +415,37 @@ Each entry uses this shape:
   Validators in `scripts/livespec/validate/<name>.py` return
   `Result[<Dataclass>, ValidationError]` from the factory
   shape per v007 G4.
+
+### user-hosted-custom-templates
+
+- **Source:** v010 (J3; new)
+- **Target spec file(s):** `SPECIFICATION/spec.md` (v2+ scope
+  note and future template-discovery section); potentially
+  `SPECIFICATION/contracts.md` (for the resolved-template-path
+  output contract of `bin/resolve_template.py` if that contract
+  needs versioning).
+- **How to resolve:** Codify in v2 scope (post-v1) that
+  `bin/resolve_template.py` is the extensibility seam for
+  future template-discovery mechanisms. v1 accepts only built-in
+  names (`"livespec"`) or project-root-relative directory paths
+  for `.livespec.jsonc`'s `template` field. v2+ may extend the
+  resolution algorithm to support additional sources without
+  breaking the wrapper's output contract (stdout = resolved
+  absolute template directory path; exit 0 on success; exit 3
+  on invalid template config). Candidate v2+ sources include:
+  - **Remote URLs**: `https://example.com/templates/my-template`
+    (fetch + cache locally; integrity-verify).
+  - **Template registries**: a named registry entry resolved
+    through a trust-anchored catalogue file.
+  - **Plugin-path hints**: templates shipped by other Claude
+    Code plugins / skills, resolved via a plugin-discovery
+    mechanism.
+  - **Per-environment overrides**: env var
+    `LIVESPEC_TEMPLATE_OVERRIDE` pointing at an absolute
+    directory path, letting users test alternate templates
+    without editing `.livespec.jsonc`.
+
+  The v1 wrapper MUST keep its output contract stable so v2
+  extensions land as additive functionality. The
+  `template-exists` doctor check continues to validate the
+  resolved path regardless of its source.

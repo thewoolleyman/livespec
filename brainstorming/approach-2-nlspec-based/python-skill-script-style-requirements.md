@@ -122,7 +122,7 @@ under `.claude-plugin/scripts/_vendor/<lib>/`. All vendored libs MUST be:
 - Zero-transitive-dep or all-transitive-deps-also-vendored.
 
 Locked vendored libs for v008 (each pinned to an exact upstream ref
-recorded in `<repo-root>/.vendor.toml`):
+recorded in `<repo-root>/.vendor.jsonc`):
 
 - **`returns`** (dry-python/returns, BSD-2) — ROP primitives: `Result`,
   `IOResult`, `@safe`, `@impure_safe`, `flow`, `bind`, `Fold.collect`,
@@ -161,8 +161,8 @@ would not find them on `import`.
 - **Re-vendoring goes through `just vendor-update <lib>`** — the only
   blessed mutation path. The recipe fetches the upstream ref, copies
   it under `_vendor/<lib>/`, preserves `LICENSE`, and updates
-  `.vendor.toml`'s recorded ref.
-- **`.vendor.toml`** records `{upstream_url, upstream_ref, vendored_at}`
+  `.vendor.jsonc`'s recorded ref.
+- **`.vendor.jsonc`** records `{upstream_url, upstream_ref, vendored_at}`
   per lib. No hashes; no automated drift-detection check (`check-
   vendor-audit` was removed in v007 as over-engineered for the threat
   model).
@@ -196,7 +196,6 @@ The shipped bundle organizes Python code as:
     ├── commands/                         # one module per sub-command
     ├── doctor/
     │   ├── run_static.py                 # orchestrator (single ROP chain)
-    │   ├── finding.py
     │   └── static/                       # per-check modules + static registry
     │       ├── __init__.py               # static registry: imports each check by name, exports (SLUG, run) tuples
     │       └── <check>.py                # one module per check
@@ -218,6 +217,7 @@ The shipped bundle organizes Python code as:
     │   │   ├── revise_input.py
     │   │   ├── proposal_findings.py
     │   │   ├── doctor_findings.py
+    │   │   ├── finding.py                           # Finding dataclass + pass_finding / fail_finding constructors (moved from doctor/finding.py per v010 J11)
     │   │   ├── proposed_change_front_matter.py
     │   │   └── revision_front_matter.py
     │   ├── doctor_findings.schema.json             # doctor static-phase output contract
@@ -244,14 +244,20 @@ Per sub-package conventions:
 - **`commands/<cmd>.py`** — one module per sub-command. Exports `run()`
   (ROP-returning) and `main()` (supervisor that unwraps to exit code).
 - **`doctor/run_static.py`** — static-phase orchestrator. Composes all
-  check modules via a single ROP chain (`Fold.collect`).
+  check modules via a single ROP chain. The specific composition
+  primitive is implementer choice under the architecture-level
+  constraints (see `livespec-nlspec-spec.md` §"Architecture-Level
+  Constraints" and §"Railway-Oriented Programming" below).
 - **`doctor/static/__init__.py`** — **static registry.** Imports every
   check module by name and re-exports a tuple of `(SLUG, run)` pairs.
   Adding or removing a check is one explicit edit to the registry.
   No dynamic discovery. Pyright strict can fully type-check the
   composition through this registry.
 - **`doctor/static/<check>.py`** — one module per static check. Exports
-  `SLUG` constant and `run(ctx) -> IOResult[Finding, DoctorInternalError]`.
+  `SLUG` constant and `run(ctx) -> IOResult[Finding, E]` where `E` is
+  any `LivespecError` subclass (see §"Exit code contract" for the
+  retirement of the v008-era `DoctorInternalError` and the domain-
+  error-only discipline that replaces it).
 - **`io/`** — impure boundary. Every function wraps a side-effecting
   operation (filesystem, subprocess, git) with `@impure_safe`. Also
   hosts thin typed facades over vendored libs whose surface types are
@@ -370,11 +376,15 @@ Contract:
 
 - **`livespec/io/cli.py`** exposes `@impure_safe`-wrapped functions
   that construct argparse invocations with `exit_on_error=False`
-  (Python 3.9+), returning `IOResult[Namespace, UsageError]`.
-  `-h`/`--help` is detected explicitly before `parse_args` runs;
-  on detection, the function returns `IOFailure(UsageError("<help
-  text>"))` so the supervisor can emit the help text and exit `2`
-  via the railway rather than argparse's implicit `SystemExit(0)`.
+  (Python 3.9+), returning `IOResult[Namespace, UsageError |
+  HelpRequested]`. `-h`/`--help` is detected explicitly before
+  `parse_args` runs; on detection, the function returns
+  `IOFailure(HelpRequested("<help text>"))` (NOT `UsageError`).
+  The supervisor pattern-matches `HelpRequested` into an exit-0
+  path (help text to stdout), distinct from `UsageError`'s exit-2
+  path (bad flag / wrong arg count to stderr). Avoids argparse's
+  implicit `SystemExit(0)` without conflating help requests with
+  usage errors.
 - **`livespec/commands/<cmd>.py`** exposes a pure
   `build_parser() -> ArgumentParser` factory. This factory
   constructs the parser (subparsers, flags, help strings) but does
@@ -382,23 +392,20 @@ Contract:
   parser shape without effectful invocation.
 - `livespec.commands.<cmd>.main()` threads argv through the
   railway:
-  ```python
-  def main() -> int:
-      parser = build_parser()
-      ctx = flow(
-          sys.argv[1:],
-          lambda argv: parse_args(argv, parser),  # IOResult[Namespace, UsageError]
-          bind(build_context),                     # IOResult[Context, LivespecError]
-          bind(run_static),                        # pre-step
-          bind(<cmd>_run),                         # sub-command logic
-          bind(run_static),                        # post-step
-      )
-      return derive_exit_code(ctx)
-  ```
-  `IOFailure(UsageError)` maps to exit `2`;
-  `IOFailure(err)` maps to `err.exit_code`;
-  `IOSuccess(...)` with any `status: "fail"` finding maps to
-  exit `3`; otherwise exit `0`.
+  Supervisor pattern-match derives the exit code from the final
+  `IOResult` payload:
+  - `IOFailure(HelpRequested(text))`: emit `text` to stdout; exit 0.
+  - `IOFailure(err)` where `err` is a `LivespecError` subclass:
+    emit structured-error JSON line to stderr via structlog; exit
+    `err.exit_code` (which is `2` for `UsageError`, `3` for
+    `PreconditionError` / `GitUnavailableError`, `4` for
+    `ValidationError`, `126` for `PermissionDeniedError`, `127`
+    for `ToolMissingError`).
+  - `IOSuccess(...)` with any `status: "fail"` finding: exit `3`.
+  - `IOSuccess(...)` otherwise: exit `0`.
+  - Uncaught exception (bug): supervisor's top-level
+    `try/except Exception` logs via structlog with traceback and
+    returns `1`.
 - `check-supervisor-discipline` scope: `livespec/**` is in scope;
   `bin/*.py` (including `_bootstrap.py`) is the sole exempt
   subtree. `argparse`'s `SystemExit` path is impossible under
@@ -517,11 +524,21 @@ Applicability and flags:
   post-step LLM-driven phase.
 - **`propose-change`, `critique`, `revise`** have both pre-step
   and post-step static.
-- **`--skip-pre-check`** is a wrapper-parsed flag that skips
-  pre-step for wrappers that have one. `bin/doctor_static.py`
-  does NOT accept `--skip-pre-check`; passing it produces an
-  argparse usage error via `livespec/io/cli.py` and the wrapper
-  exits `2` via `IOFailure(UsageError)`.
+- **`--skip-pre-check` and `--run-pre-check`** are a mutually-
+  exclusive wrapper-parsed flag pair for sub-commands that have a
+  pre-step (propose-change, critique, revise, prune-history):
+  - `--skip-pre-check` → skip pre-step (skip = true).
+  - `--run-pre-check` → run pre-step (skip = false), overriding
+    `.livespec.jsonc`'s `pre_step_skip_static_checks: true` for
+    the current invocation.
+  - Neither flag → use config's `pre_step_skip_static_checks`
+    value.
+  - Both flags → argparse usage error (exit 2 via
+    `IOFailure(UsageError)`).
+
+  `bin/doctor_static.py` rejects BOTH flags (exit 2 via
+  `IOFailure(UsageError)`); it IS the static phase and has no
+  pre/post wrap.
 - **`--skip-subjective-checks`** is an LLM-layer flag that never
   reaches Python — it gates the post-step LLM-driven phase,
   which is skill prose.
@@ -580,13 +597,19 @@ imports).
   annotations. Private (single-leading-underscore) helpers SHOULD be
   annotated.
 - Every public function's return annotation MUST be `Result[_, _]` or
-  `IOResult[_, _]`, UNLESS the function is a supervisor at a
-  deliberate side-effect boundary (e.g., `main() -> int` in
-  `commands/*.py` and `doctor/run_static.py`, or any function
-  returning `None`). The rule exempts only such supervisors; the
-  precise AST scope is documented in the `static-check-semantics`
-  deferred item (`check-public-api-result-typed` exempts functions
-  named `main` in `commands/**.py` and `doctor/run_static.py`).
+  `IOResult[_, _]`, UNLESS the function is:
+  - a supervisor at a deliberate side-effect boundary (e.g.,
+    `main() -> int` in `commands/*.py` and `doctor/run_static.py`,
+    or any function returning `None`), OR
+  - the `build_parser() -> ArgumentParser` factory in
+    `commands/**.py`: a pure argparse constructor that produces a
+    framework type, has no effects, and cannot fail.
+
+  The rule exempts only those two cases; the precise AST scope is
+  documented in the `static-check-semantics` deferred item
+  (`check-public-api-result-typed` exempts functions named `main`
+  in `commands/**.py` and `doctor/run_static.py`, PLUS functions
+  named `build_parser` in `commands/**.py`).
 - **`Any` is forbidden outside `io/` boundary wrappers and vendored-lib
   facades.** The thin facades under `livespec/io/<lib>_facade.py` are
   the ONLY place `Any` may appear, and they exist precisely to confine
@@ -715,10 +738,16 @@ Rules:
 Coverage is measured by `coverage.py` via `pytest-cov`:
 
 - **100% line + branch coverage** is mandatory across the whole Python
-  surface in `scripts/livespec/**` and `<repo-root>/dev-tooling/**`.
-  No tier split. `_vendor/` is excluded.
-- `pyproject.toml`'s `[tool.coverage.run]` sets `source = ["livespec"]`
-  and `branch = true`.
+  surface in `scripts/livespec/**`, `scripts/bin/**`, and
+  `<repo-root>/dev-tooling/**`. No tier split. `_vendor/` is excluded.
+  `scripts/bin/` is included because `_bootstrap.py` carries real logic
+  (Python-version check + sys.path setup) that warrants enforcement;
+  the 6-line wrapper bodies are pragma-excluded per the rules below
+  (trivial pass-throughs covered by the wrapper-shape meta-test).
+- `pyproject.toml`'s `[tool.coverage.run]` sets `source` to include
+  both the `livespec` package and the `bin/` directory (the exact path
+  form is implementer choice; e.g., an additional `source` entry for
+  `scripts/bin` or a `run_also` directive) and `branch = true`.
 - `[tool.coverage.report]` sets `fail_under = 100`, `show_missing = true`,
   `skip_covered = false`.
 - Enforced by `just check-coverage`.
@@ -821,10 +850,11 @@ preserved from v005/v006:
 
 | Code | Meaning |
 |---|---|
-| `0` | Success. |
+| `0` | Success. Also covers intentional `--help` output: a `-h` / `--help` request is not an error and exits with `0` via the `HelpRequested` supervisor pattern-match path (see §"HelpRequested disposition" below). |
 | `1` | Script-internal failure (unexpected runtime error; likely a bug). |
 | `2` | Usage error: bad flag, wrong argument count, malformed invocation. |
 | `3` | Input or precondition failed: referenced file/path/value missing, malformed, or in an incompatible state. |
+| `4` | Schema validation failed (retryable): LLM-provided JSON payload does not conform to the wrapper's input schema. Per-sub-command SKILL.md prose retries the template prompt with error context, up to 3 retries. Distinct from exit `3` (precondition failure) so the LLM can classify failures deterministically without parsing stderr. |
 | `126` | Permission denied: a required file exists but is not executable/readable/writable. |
 | `127` | Required external tool not on PATH, or Python version too old. |
 
@@ -856,7 +886,15 @@ Implementation:
       exit_code: ClassVar[int] = 3
 
   class ValidationError(LivespecError):
-      exit_code: ClassVar[int] = 3
+      """Schema validation failure on LLM-provided JSON payload.
+
+      Retryable: the sub-command's SKILL.md prose re-invokes the
+      template prompt with error context and retries (up to 3).
+      Exit code 4 (distinct from PreconditionError's exit 3) so the
+      LLM can deterministically classify retryable vs non-retryable
+      exit-3-class failures without parsing stderr.
+      """
+      exit_code: ClassVar[int] = 4
 
   class GitUnavailableError(LivespecError):
       exit_code: ClassVar[int] = 3
@@ -866,6 +904,18 @@ Implementation:
 
   class ToolMissingError(LivespecError):
       exit_code: ClassVar[int] = 127
+
+
+  class HelpRequested(Exception):
+      """User requested help (`-h` or `--help`); NOT a LivespecError.
+
+      A HelpRequested is an informational early-exit category — not a
+      domain error (no retry / fix improves it) and not a bug (user
+      asked for help). Does not subclass LivespecError. The supervisor
+      pattern-matches HelpRequested separately from LivespecError and
+      returns exit 0 after emitting the help text to stdout.
+      """
+      exit_code: ClassVar[int] = 0
   ```
 - `IOFailure(err)` payloads are `LivespecError` subclasses. Doctor
   static check signatures are `run(ctx) -> IOResult[Finding, E]`
@@ -874,12 +924,20 @@ Implementation:
   propagate as raised exceptions to the supervisor's bug-catcher
   and result in exit `1`).
 - Supervisors (`main()` in `commands/<cmd>.py` and
-  `doctor/run_static.py`) pattern-match on the final `IOResult`
-  and return `err.exit_code` on `IOFailure`, AND wrap their body
-  in a top-level `try/except Exception` bug-catcher that logs via
-  structlog and returns `1` on any uncaught exception (see
-  "Supervisor discipline" under §"Railway-Oriented Programming"
-  above).
+  `doctor/run_static.py`) pattern-match on the final `IOResult`:
+  - `IOFailure(HelpRequested(text))`: emit `text` to stdout; return
+    `0`. HelpRequested is NOT a `LivespecError` — it's an
+    informational early-exit category.
+  - `IOFailure(err)` where `err` is a `LivespecError` subclass: emit
+    structured-error JSON line to stderr via structlog; return
+    `err.exit_code`.
+  - `IOSuccess(...)` with any `status: "fail"` finding: return `3`.
+  - `IOSuccess(...)` otherwise: return `0`.
+
+  Supervisors ALSO wrap their body in a top-level
+  `try/except Exception` bug-catcher that logs via structlog and
+  returns `1` on any uncaught exception (see "Supervisor discipline"
+  under §"Railway-Oriented Programming" above).
 - `sys.exit(err.exit_code)` appears only in `bin/*.py` shebang
   wrappers and `bin/_bootstrap.py`. Everywhere else stays on the
   railway.
@@ -1058,10 +1116,10 @@ Mutating targets (opt-in, not run in CI):
 |---|---|
 | `just fmt` | `ruff format .` |
 | `just lint-fix` | `ruff check --fix .` |
-| `just vendor-update <lib>` | Re-vendor a library, updating `.vendor.toml`. |
+| `just vendor-update <lib>` | Re-vendor a library, updating `.vendor.jsonc`. |
 
 Note: `check-vendor-audit` was removed in v007. Vendored libs are
-version-pinned in `.vendor.toml`; the no-edit discipline plus code
+version-pinned in `.vendor.jsonc`; the no-edit discipline plus code
 review and git diff visibility cover the threat model.
 
 ### Invocation surfaces
@@ -1129,5 +1187,5 @@ inadvertently landing in read-only fixture trees.
 - **Ruby / Node / other language hooks.** No non-Python dev-tooling
   scripts.
 - **Automated vendored-lib drift detection.** Pinned versions in
-  `.vendor.toml` + the no-edit discipline + code review are the
+  `.vendor.jsonc` + the no-edit discipline + code review are the
   controls; no `check-vendor-audit` script exists.

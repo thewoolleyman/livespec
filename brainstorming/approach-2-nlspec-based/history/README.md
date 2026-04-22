@@ -506,8 +506,117 @@ entries keep their original naming (immutable history).
   Full decision record is in
   `v009/proposed_changes/proposal-critique-v08-revision.md`.
 
+- **v010** — revise driven by
+  `proposed_changes/proposal-critique-v09.md` and its revision.
+  A **recreatability defect cleanup pass** surfacing 14 items
+  (J1-J14) labelled with the NLSpec failure-mode framework
+  (ambiguity / malformation / incompleteness / incorrectness).
+  Three items moved from recommended to alternate option based on
+  user input: J4 (new exit code `4` for schema validation; user
+  correctly probed exit-code conventions and the alternate is
+  cleaner than the structlog-kwarg discriminator); J9 (switch
+  `.vendor.toml` → `.vendor.jsonc` reusing already-vendored
+  `jsoncomment` rather than forcing a new `tomli` dep on the 3.10+
+  floor); J10 (add inverse `--run-pre-check` flag for
+  bidirectional CLI control over pre-step skip). One mid-interview
+  enrichment on J3 added a new deferred-items entry
+  `user-hosted-custom-templates` capturing v2+ template-discovery
+  extension intent. Major structural changes:
+  **DoctorInternalError + Fold.collect residuals cleaned** — v009
+  I10 retired `DoctorInternalError` and I2/I6 backed off from
+  naming `Fold.collect` as normative mechanism, but the
+  implementer pass left residuals in PROPOSAL.md §"Static-phase
+  structure" (lines 1284, 1303, DoD #6) and the style doc's
+  per-check module contract. v010 J1 scrubs both: doctor static
+  check signatures uniformly say `IOResult[Finding, E]` where `E`
+  is any `LivespecError` subclass; orchestrator composition says
+  "single ROP chain, specific primitive is implementer choice."
+  **io/git.get_git_user() semantics unified** — PROPOSAL.md said
+  "git-unavailable → `IOSuccess('unknown')`"; deferred-items +
+  v009 revision said "git-binary absent → `IOFailure
+  (GitUnavailableError)` exit 3." v010 J2 aligns PROPOSAL.md to
+  the revision intent: missing binary = IOFailure (exit 3);
+  missing config = IOSuccess("unknown") fallback.
+  **Custom-template prompt-path resolution** — v009 SKILL.md body
+  used literal `@`-references that work only for the built-in
+  `livespec` template. v010 J3 introduces `bin/resolve_template.py`
+  (+ `livespec/commands/resolve_template.py`): a two-step dispatch
+  where SKILL.md prose invokes the wrapper via Bash, captures the
+  resolved path from stdout, then uses Read to fetch
+  `<path>/prompts/<name>.md`. Works uniformly for built-in and
+  custom templates; seeds the extensibility surface for the new
+  deferred-items entry `user-hosted-custom-templates`.
+  **New exit code 4 for schema validation** — v010 J4 splits the
+  retryable validation failure from non-retryable precondition
+  failures. `ValidationError.exit_code = 4` (was 3); SKILL.md
+  retry step renames to "Retry-on-exit-4." Clean exit-code
+  discriminator; LLM can classify failures without parsing
+  stderr structlog events.
+  **build_parser exemption in check-public-api-result-typed** —
+  v010 J5 adds the `build_parser` factory in `commands/**.py` to
+  the exemption list (alongside `main`). Pure argparse
+  constructor, no effects, framework return type.
+  **Propose-change author precedence** — v010 J6 mirrors v009 I13
+  for propose-change's `author` field: CLI `--author` → env var
+  `LIVESPEC_REVISER_LLM` → LLM self-declared `author` field in
+  `proposal_findings.schema.json` payload → `"unknown-llm"`
+  fallback. Env var coverage widens to propose-change alongside
+  revise and critique; schema extends with optional file-level
+  `author` field.
+  **HelpRequested class; `--help` exits 0** — v010 J7 adds
+  `HelpRequested` as a non-`LivespecError` informational early-
+  exit category. Supervisor pattern-matches it separately from
+  `UsageError`; help text to stdout; exit 0. Avoids the v009
+  conflation of help-requested with usage-error (both would have
+  exited 2).
+  **Coverage scope includes scripts/bin/** — v010 J8 extends the
+  100% line+branch mandate from `scripts/livespec/**` +
+  `dev-tooling/**` to also include `scripts/bin/**`. `_bootstrap.py`
+  is fully covered; wrapper bodies pragma-excluded (trivial
+  pass-throughs verified by the wrapper-shape meta-test).
+  **`.vendor.toml` → `.vendor.jsonc`** — v010 J9 renames to avoid
+  adding a new `tomli` vendored library (stdlib `tomllib` is
+  3.11+-only, forbidden on the 3.10+ floor); the already-vendored
+  `jsoncomment` parses `.vendor.jsonc`. Strips the stale "or
+  per-lib VERSION files" parenthetical.
+  **Inverse --run-pre-check flag** — v010 J10 adds bidirectional
+  CLI control: `--skip-pre-check` → skip; `--run-pre-check` → run
+  (overrides config); neither → use config default; both →
+  argparse mutually-exclusive UsageError exit 2.
+  `bin/doctor_static.py` rejects both flags (supersedes v009 I14's
+  single-flag rejection — now rejects both).
+  **Finding moved to schemas/dataclasses/finding.py** — v010 J11
+  co-locates `Finding` with `DoctorFindings` in the
+  `check-schema-dataclass-pairing`-walked tree. Constructor
+  helpers (`pass_finding`, `fail_finding`) move with it.
+  **Dogfood symlink committed to git** — v010 J12 codifies that
+  `.claude/skills/ → ../.claude-plugin/skills/` is a tracked
+  symbolic link (not gitignored). `just bootstrap` is defensive
+  (re-creates if a developer deletes it); not required before
+  Claude Code can load skills on a fresh clone.
+  **template_format_version supported-set enumerated** — v010 J13
+  adds "v1 livespec supports only `template_format_version: 1`"
+  as an explicit invariant in PROPOSAL.md §"Custom templates are
+  in v1 scope." Future versions extend the set.
+  **prune-history repeat-no-op** — v010 J14 extends the
+  idempotency rule: "Running `prune-history` on a project where
+  the oldest surviving history entry is already a
+  `PRUNED_HISTORY.json` marker (no full versions to prune) is a
+  no-op. The existing marker is NOT re-written."
+  **New deferred-items entry user-hosted-custom-templates** —
+  explicit capture of v2+ template-discovery extension intent
+  (remote URLs, registries, plugin-path hints, per-environment
+  overrides). `bin/resolve_template.py`'s output contract is the
+  stability shield for future extensions.
+  **Scope-widened deferred-items entries:** `static-check-
+  semantics` (J4, J5, J7, J10, J11, J14), `wrapper-input-schemas`
+  (J6), `task-runner-and-ci-config` (J8, J9, J10),
+  `skill-md-prose-authoring` (J3, J4, J7, J10). No entries
+  removed. Full decision record is in
+  `v010/proposed_changes/proposal-critique-v09-revision.md`.
+
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v009/PROPOSAL.md` until the next revise.
+byte-identical to `history/v010/PROPOSAL.md` until the next revise.
