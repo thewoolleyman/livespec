@@ -136,9 +136,63 @@ entries keep their original naming (immutable history).
   mechanical definition (B15); stdin-routing checks permitted
   (B17). Full decision record is in
   `v005/proposed_changes/proposal-critique-v04-revision.md`.
+- **v006** — revise driven by
+  `proposed_changes/proposal-critique-v05.md` and its revision.
+  A **language migration** pass (not a defect critique): bash
+  replaced by Python 3.10+ as the implementation language for
+  every skill-bundled script and every dev-tooling enforcement
+  script. Motivating thesis: the v005 bash style doc grew to
+  ~24 pages of rules compensating for features bash lacks
+  (namespaces, import systems, data structures, a type system,
+  AST access, test/coverage tooling); Python supplies those
+  natively, shrinking the style doc and the enforcement
+  toolchain. Major structural changes:
+  **ROP-all-the-way-down** — vendored `dry-python/returns` for
+  Result / IOResult / `@safe` / `@impure_safe` / `flow` / `bind`
+  / `Fold.collect`. Every public function returns `Result` (pure)
+  or `IOResult` (effectful). `sys.exit` only in shebang-wrapper
+  supervisors; raises only at the `io/` boundary.
+  **Type safety via pyright strict** (gating); ruff with strict
+  rule selection (E F I B UP SIM C90 N RUF + PL + PTH) replaces
+  shellcheck + shfmt + shellharden + shellmetrics; pytest +
+  pytest-cov + pytest-icdiff replaces bats-core + bats-assert +
+  bats-support + kcov.
+  **Coverage raised to 100% line + branch everywhere** (pure/
+  impure tier split retired with kcov; `# pragma: no cover —
+  <reason>` the sole escape hatch, capped per file).
+  **Complexity thresholds tightened** to Python density (CCN ≤ 10,
+  func ≤ 30 LLOC, file ≤ 200 LLOC, nesting ≤ 4, no args limit,
+  no waivers).
+  **Vendored pure-Python libs** under `scripts/_vendor/`:
+  `dry-python/returns` (BSD-2), `fastjsonschema` (MIT),
+  `structlog` (BSD-2/MIT dual). `check-vendor-audit` target
+  enforces drift detection against pinned upstream versions.
+  **Per-command shebang wrappers** at `scripts/bin/*.py` (no
+  top-level dispatcher, no bash stub, no per-check executables);
+  single `bin/doctor_static.py` runs the whole static phase via
+  one ROP chain composing per-check modules via `Fold.collect`.
+  **Structural purity** enforced by directory (`parse/` and
+  `validate/` pure, AST-checked; `io/` impure, `@impure_safe`).
+  **Structured JSON logging** via `structlog` (JSON-only to
+  stderr, `run_id` per invocation, kwargs-only style).
+  **just task runner + lefthook hooks + GitHub Actions CI** with
+  the invariant that `justfile` is the single source of truth
+  for all dev-tooling invocations (`check-no-direct-tool-invocation`
+  target enforces).
+  **Per-directory `CLAUDE.md` coverage** across `scripts/`,
+  `tests/`, and `dev-tooling/` (enforced by
+  `check-claude-md-coverage`).
+  **Retired artifacts:** `bash-skill-script-style-requirements.md`
+  archived under `history/v006/retired-documents/` with README;
+  `bash-boilerplate.sh` and its symlink deleted; `scripts/dispatch`
+  (bash) removed; every bash-era enforcement tool (`shellcheck`,
+  `shfmt`, `shellharden`, `shellmetrics`, `kcov`, `bats-*`,
+  `tree-sitter-bash`, `jq` at runtime) retired. Full decision
+  record is in
+  `v006/proposed_changes/proposal-critique-v05-revision.md`.
 
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v005/PROPOSAL.md` until the next revise.
+byte-identical to `history/v006/PROPOSAL.md` until the next revise.
