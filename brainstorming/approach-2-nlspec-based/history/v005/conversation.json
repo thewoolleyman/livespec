@@ -1,0 +1,197 @@
+{
+  "metadata": {
+    "session": "v005-critique-interview",
+    "captured_at": "2026-04-22T00:00:00Z",
+    "participants": {
+      "user": "thewoolleyman",
+      "assistant": "Claude Opus 4.7 (1M context)"
+    },
+    "format_notes": "User messages are verbatim. Assistant responses are substantive summaries (actual responses were often long; full decisions captured in PROPOSAL.md, bash-skill-script-style-requirements.md, and proposal-critique-v04-revision.md). Tool-use descriptions omitted; only conversational exchange captured. This pass focused specifically on bash-skill-script-style-requirements.md and its relationship to PROPOSAL.md and any realistic implementation."
+  },
+  "turns": [
+    {
+      "turn": 1,
+      "user": "read and follow /data/projects/livespec/brainstorming/approach-2-nlspec-based/critique-interview-prompt.md\n\n\nBut this critique should focus specifically on brainstorming/approach-2-nlspec-based/bash-skill-script-style-requirements.md vand their relationship to the proposal and actual implementation of the app.  vWe need to ensure that they are all possible, pragmatic, and maintainable for real-life usage and not inconsistent or unreasonable or non-pragmatic in any way.",
+      "assistant": "Read the critique-interview prompt and the full bash-skill-script-style-requirements.md. Scoped the critique specifically to whether the style doc's rules are (1) possible to satisfy, (2) pragmatic for authoring, (3) maintainable in real-life usage, and (4) internally/cross-doc consistent. Read PROPOSAL.md, history/v004 critique + revision, goals-and-non-goals.md to understand prior decisions. Produced 17 items: 4 Major (B1-B4), 6 Significant (B5-B10), 7 Smaller (B11-B17). Saved to proposed_changes/v005-proposed-change-proposal-critique-v04.md using the multi-proposal format."
+    },
+    {
+      "turn": 2,
+      "assistant": "Began interview with B1 (final-line contradiction between 'bare main $@' and 'sourceable guard' rules). Three options: (a) guard wins, (b) bare main wins, (c) keep both and reword.",
+      "user": "[B1 answered: (a) Guard wins; drop bare rule.]"
+    },
+    {
+      "turn": 3,
+      "assistant": "B2 (100% pure-library kcov coverage infeasible due to DEBUG-trap granularity). Options: (a) lower to ≥95%, (b) keep 100% + bounded ignore annotations, (c) keep 100% and refactor around artifacts, (d) drop pure tier.",
+      "user": "[B2 answered: (a) Lower to ≥ 95%.]"
+    },
+    {
+      "turn": 4,
+      "assistant": "B3 (AST-level enforcement checks — private-call, source-cycle, global-write — hard to implement reliably). Options: (a) name a parser tool, (b) grep heuristics keep MUST, (c) drop to SHOULD, (d) drop for v1. Referred to these as 'CI checks' in the framing.",
+      "user_via_rejection": "Wanted clarification.",
+      "user": "You should not be referring to these checks as specific to CI. They should just be part of the enforcement suite that can be invoked directly via a git pre-commit and pre-push hooks as well as on CI or invoked manually. There should be Makefile entry points for them so they can easily be hooked into any tool to be invoked as long as you are running on linux"
+    },
+    {
+      "turn": 5,
+      "assistant": "Acknowledged the framing correction. Saved to memory: enforcement suite is invocation-agnostic, Linux-only, Makefile-driven; pre-commit / pre-push / CI / manual are all consumers. Updated the critique file's B3 to drop CI-specific framing. Added a new item B18 (reframe the style doc's §'Enforcement via git hooks and CI' section around invocation-agnostic Makefile entry points with a short per-surface subsection listing which targets each surface calls; Linux-only stated once)."
+    },
+    {
+      "turn": 6,
+      "assistant": "Re-asked B3 with the reframing: same four options but now about an enforcement suite invocable via Makefile targets. No recommendation given.",
+      "user_via_rejection": "Wanted clarification.",
+      "user": "Why aren't you giving me your recommended option like you did in the previous interviews?"
+    },
+    {
+      "turn": 7,
+      "assistant": "Acknowledged. Saved to memory: every AskUserQuestion in critique sessions must lead with a recommended option and state why; don't present options as a neutral menu. Re-asked B3 with '(a) Name a parser tool (Recommended)' first and a one-line rationale: three checks guard real invariants; tree-sitter-bash is maintained and acceptable given Linux-only.",
+      "user": "Option 1, name a parser tool.  Also the proposal should dictate that mise is used to manage tool dependencies and versions where possible (new requirement)"
+    },
+    {
+      "turn": 8,
+      "assistant": "Noted new requirement. Saved to memory: livespec uses mise for tool dependency/version management; tool-pinning language collapses to '.mise.toml'. Added new item B19 to the critique file capturing the mise mandate — committed .mise.toml at repo root pins shellcheck, shfmt, shellharden, shellmetrics, kcov, bats-core, bats-assert, bats-support, jq, tree-sitter-bash. Scatter-pinned per-tool language in the style doc collapses into this mandate. Marked B3 answered (a)."
+    },
+    {
+      "turn": 9,
+      "assistant": "B4 (combined thresholds CCN ≤ 7, LLOC ≤ 50, args ≤ 4 too strict; 'no waivers' rule). Options: (a) raise to CCN ≤ 10, args ≤ 6 (Recommended), (b) permit waivers with justification, (c) keep + named exemptions, (d) keep unchanged.",
+      "user": "[B4 answered: (a) CCN ≤ 10, args ≤ 6.]"
+    },
+    {
+      "turn": 10,
+      "assistant": "B5 (noclobber always-on is disruptive). Options: (a) drop from mandatory strict mode (Recommended), (b) keep + atomic overwrite() helper, (c) keep as-is.",
+      "user": "[B5 answered: (a) Drop noclobber.]"
+    },
+    {
+      "turn": 11,
+      "assistant": "B6 (BASH_XTRACE / BASH_VERBOSE collide with bash's reserved namespace). Options: (a) LIVESPEC_* prefix (Recommended), (b) SKILL_* prefix, (c) keep BASH_*.",
+      "user": "[B6 answered: (a) LIVESPEC_*.]"
+    },
+    {
+      "turn": 12,
+      "assistant": "B7 (realpath in non-sibling source pattern is not portable). Options: (a) cd && pwd pure-bash (Recommended), (b) keep realpath + pin via mise, (c) keep realpath + document.",
+      "user": "[B7 answered: (a) cd && pwd.]"
+    },
+    {
+      "turn": 13,
+      "assistant": "B8 (pure library env-var ban over-restricts). Options: (a) allow-list of reads (IFS, LC_ALL, LANG, PATH, HOME, TMPDIR); ban writes (Recommended), (b) keep strict rule, (c) drop purity classification.",
+      "user": "[B8 answered: (a) Allow-list reads; ban writes.]"
+    },
+    {
+      "turn": 14,
+      "assistant": "B9 (kcov coverage gate not runnable on macOS). Reframed given the mise + Linux-only enforcement framing. Options: (b) Docker wrapper in scripts/ (Recommended), (a) CI-only no local wrapper, (c) endorse bashcov on macOS.",
+      "user": "[B9 answered: (b) Docker wrapper.]"
+    },
+    {
+      "turn": 15,
+      "assistant": "B10 (scripts/checks/* executable vs library classification ambiguous). Presented three concrete layouts: (a) standalone executables, (b) executables + shared scripts/lib/, (c) umbrella executable + library-functions. Recommended (b).",
+      "user_via_rejection": "Wanted clarification.",
+      "user": "You're being too vague. Explain to me exactly what you are proposing for executables versus library files: what their extensions will be or if they won't have one, and what the directory structure layout will be if they will be segregated."
+    },
+    {
+      "turn": 16,
+      "assistant": "Produced concrete layouts for each option: full tree diagrams with .sh extensions, executable bit placement, tests/ mirror paths, Makefile target mapping. Restated recommendation: (b) executables + scripts/lib/.",
+      "user_via_rejection": "Wanted further clarification.",
+      "user": "I am really confused.What is the checks directory? Only things that are only called by doctor?  Stop trying to get me to pick an option and continue discussing this until I understand it. Make me a table that lays this out."
+    },
+    {
+      "turn": 17,
+      "assistant": "Stepped back. Produced a comparison table distinguishing the two different 'checks' in the skill: doctor-static's internal validations (policing the USER's SPECIFICATION at runtime) vs scripts/checks/* architectural checks (policing LIVESPEC's own bash source at dev-time). Noted the latter is developer-only infrastructure conflated with runtime assets by the current layout. Surfaced the implicit question: should scripts/checks/* move OUT of the shipped bundle entirely?",
+      "user": "Okay, then I want you to step back and if checks is a shitty name or if it should really be split into multiple directories, then let's come up with the better names."
+    },
+    {
+      "turn": 18,
+      "assistant": "Produced a comprehensive table: five script categories (shared boilerplate, dispatcher, doctor-static validator, architectural-enforcement, third-party tool wrappers) by purpose/audience/runtime-need. Proposed runtime/dev split with concrete layouts: runtime in .claude-plugin/skills/livespec/scripts/; dev-time at <repo-root>/tools/. Rename candidates for the architectural-check tree: enforcement, arch-checks, lint, policy, meta-lint, self-checks. Strongly recommended `enforcement/` + moving out of bundle.",
+      "user": "Yes, that was the main confusion. Obviously, the shared skill, which is under Claude Plugin, only needs to contain stuff that is actually needed at run time for the skill.  And obviously things that are only linting and enforcement checks should not live in the skill. \n\nThe doctor script itself should be decomposed into separate files, right? The example above only lists dispatch and doctor-static.\n\nAnd your tools directory is in the right direction, but we should make it explicit that it's for development.  so maybe `dev-tooling` or something."
+    },
+    {
+      "turn": 19,
+      "assistant": "Confirmed all three. Produced concrete layout: runtime bundle contains bash-boilerplate.sh + dispatch + doctor/ (with run-static orchestrator and static/ subdir of per-check executables). Dev-time tree at <repo-root>/dev-tooling/ contains bash-boilerplate.sh (symlink) + enforcement/ (architectural-check executables). Listed open questions: (1) confirm `enforcement/` naming, (2) filename convention for decomposed doctor static checks (NN-<slug> vs <slug>), (3) symlink vs dev-side copy for bash-boilerplate.sh.",
+      "user": "1. go with that recommendation:\n\n2. That's fine, as long as it won't cause problems when renamed if we insert/delete steps.  Confirm it wont.\n\n3. Symlink is fine."
+    },
+    {
+      "turn": 20,
+      "assistant": "Confirmed NN-<slug> numbered naming would be SAFE under insert/delete ONLY if check numbers are stable identifiers (never reused or renumbered); new checks take next-unused number; deleted checks leave permanent gaps; orchestrator iterates by glob so gaps are transparent. Cited syscall numbers / RFC numbers as precedent. Said I would update the critique file to reflect B10's multi-part resolution.",
+      "user_via_interrupt": "Rejected the numbered naming.",
+      "user": "No, I don't like that there are numbers  in the filename.  if it is not implying position and sequence. That's just asking for confusion.  There should just be a standardized slug name, and the JSON finding should also not have hard-coded numbers either. There's no valid reason that we need this, right?"
+    },
+    {
+      "turn": 21,
+      "assistant": "Confirmed no valid reason to keep numbers. Proposed slug-only naming: filenames like `livespec-jsonc-valid`, `template-exists`, `out-of-band-edits`, `bcp14-keyword-wellformedness`, `gherkin-blank-line-format`, `anchor-reference-resolution`. JSON finding check_id format becomes `doctor-<slug>` (e.g., `doctor-version-contiguity`) instead of `doctor-06`. Insert/delete is a non-event; no stable-number invariant to guard; no 'what about deprecated check' question to answer.",
+      "user": "yes"
+    },
+    {
+      "turn": 22,
+      "assistant": "Updated the critique file: B10 rewritten around runtime/dev split + dev-tooling/ naming + enforcement/ rename + symlinked bash-boilerplate.sh. Added B20 for doctor-static decomposition + slug-only naming + doctor-<slug> check_id format. Moved to B11 (complexity waivers, given B4 relaxed thresholds and B19 mise pinning). Options: (a) no waivers (Recommended), (b) bounded waivers, (c) unlimited with justification.",
+      "user": "[B11 answered: (a) No waivers.]"
+    },
+    {
+      "turn": 23,
+      "assistant": "B12 (bash 4.4 floor vs macOS default bash 3.2). Framed as 'how should the skill handle macOS default bash 3.2 at runtime'. Options: (a) version check in boilerplate (Recommended), (b) document only, (c) support bash 3.2.",
+      "user_via_rejection": "Wanted clarification.",
+      "user": "Why doesn't the MISE pinning work on Mac OS too? It has MISe"
+    },
+    {
+      "turn": 24,
+      "assistant": "Acknowledged: mise works on macOS. The distinction missed: mise is dev-environment tooling; end users of livespec don't necessarily have mise installed. Made the developer-vs-end-user split explicit with a table. Three paths: (a) mandate bash 4.4+ as runtime dep like jq (users install via brew/apt/mise); (b) mandate mise itself as end-user runtime dep; (c) support bash 3.2 so nothing is required. Recommended (a) as closest to how jq is handled.",
+      "user": "Okay, so this is a huge problem.The only reason we're using bash, on all the headaches that it brings, isto have maximum portability and minimal run time dependencies across all POSIX systems. Are you now telling me that we have specified things that do not work on the standard Bash version 3 that comes with the latest Mac OS?"
+    },
+    {
+      "turn": 25,
+      "assistant": "Confronted the core-premise violation head-on. Inventoried every bash 4.x feature currently touched by the style doc/proposal (namerefs, associative arrays, mapfile, ${var,,}, 4.4 nounset+empty-array fix) and showed that each has a 3.2-compatible alternative: return-via-stdout instead of namerefs; key=value lines instead of assoc arrays; while-read instead of mapfile; tr instead of ${var,,}; ${arr[@]-} instead of the 4.4 fix. Concluded targeting bash 3.2 for runtime IS feasible with modest style-doc adjustments. Proposed two-tier standard (runtime 3.2, dev-tooling 4.4+). Noted the 'Skill runtime environments ship bash 5.x' premise in the style doc is wrong: Claude Code's bash tool runs on the end user's machine, not in Anthropic's sandbox."
+    },
+    {
+      "turn": 26,
+      "user": "Your recommendation for different standards for run time versus dev essentially means that we have to have two versions of our scripting standards?"
+    },
+    {
+      "turn": 27,
+      "assistant": "Retracted the two-tier proposal. Offered a single 3.2-compatible standard uniformly applied to runtime and dev-tooling. Dev-tooling STILL runs on whatever bash is installed (bash 5.x works fine with 3.2-compatible code); the CODE just doesn't USE 4.x features. Listed what the single standard drops (namerefs, associative arrays, mapfile, case-conversion) and what it keeps (everything else). Practical consequences: runtime works on any user bash; dev-tooling runs on bash 5.x but code is 3.2-compat; optional future CI matrix could smoke-test on bash 3.2 container.",
+      "user": "Why would you pin mise to a version that is higher than what we actually expect?"
+    },
+    {
+      "turn": 28,
+      "assistant": "Correct: pin mise's bash to the minimum supported version (3.2.57) exactly, so developers and CI run the same bash version macOS end users have. Any accidental 4.x construct fails loudly in dev, not silently on a macOS user. Updated .mise.toml example: bash = \"3.2.57\". Boilerplate's version check asserts >= 3.2 floor (lets end users on 5.x also work). Single uniform standard everywhere; mise pin = the floor, not 'latest'.",
+      "user": "yes"
+    },
+    {
+      "turn": 29,
+      "assistant": "Updated the critique file: B12 rewritten as single-3.2-standard resolution + mise pins bash=3.2.57 + style-doc wrong-premise sentence removed. B19 updated to show bash = \"3.2.57\" in the .mise.toml example. Moved on."
+    },
+    {
+      "turn": 30,
+      "assistant": "B13 (test file dual-naming boundary). With B10 + B20 in place, per-script tests mirror implementation trees (tests/scripts/, tests/dev-tooling/), per-spec-file tests (tests/test_*.bats) exercise rule-coverage. Options: (a) keep both, document boundary (Recommended), (b) per-spec-file only, (c) per-script only.",
+      "user": "[B13 answered: (a) Keep both, document boundary.]"
+    },
+    {
+      "turn": 31,
+      "assistant": "B14 (tests/ skeleton doesn't mirror nested scripts/). Options: (a) full nested skeleton + mirror rule (Recommended), (b) flat + prose.",
+      "user": "[B14 answered: (a) Full nested skeleton.]"
+    },
+    {
+      "turn": 32,
+      "assistant": "B15 (variadic definition unclear). Options: (a) mechanical '$@'/'$*' read definition (Recommended), (b) drop the exemption, (c) annotation-only no CI check.",
+      "user": "[B15 answered: (a) Mechanical definition.]"
+    },
+    {
+      "turn": 33,
+      "assistant": "B16 (library header format not parseable). Options: (a) # key: value directive format (Recommended), (b) free-form prose + regex, (c) YAML front-matter.",
+      "user": "[B16 answered: (a) Directive format.]"
+    },
+    {
+      "turn": 34,
+      "assistant": "B17 (interactivity-check absolute ban over-strict). Options: (a) refine to prompt-paths only (Recommended), (b) keep absolute ban, (c) drop ban entirely.",
+      "user": "[B17 answered: (a) Refine to prompt-paths only.]"
+    },
+    {
+      "turn": 35,
+      "assistant": "Summarized all decisions in a table (B1-B20). Asked user whether to confirm implicitly-accepted items (B18 enforcement reframe, B19 mise, B20 doctor decomposition) or proceed to dogfood apply.",
+      "user": "move on."
+    },
+    {
+      "turn": 36,
+      "assistant": "Started dogfood apply: rewrote bash-skill-script-style-requirements.md in full, applying every B-item decision (dropped bare-main rule, relaxed thresholds, dropped noclobber, renamed env vars to LIVESPEC_*, replaced realpath with cd && pwd, added purity allow-list, reframed enforcement as invocation-agnostic Makefile targets, added Tool dependency management section for mise, switched bash floor to 3.2, dropped 4.x features, mandated '${arr[@]-}' for empty-array expansion under nounset, named tree-sitter-bash, added mechanical variadic definition, added structured library header format, refined interactivity ban). Edited PROPOSAL.md incrementally: updated skill-layout tree (removed scripts/checks/, decomposed doctor-static into doctor/run-static + doctor/static/<slug>); split Dependencies into runtime (jq + bash 3.2+) and developer-time (mise-managed); rewrote §'doctor' with slug-based checks, slug-based check_id format, orchestrator contract; added §'Developer tooling layout' for dev-tooling/ + Makefile + .mise.toml + .pre-commit-config.yaml; rewrote §'Testing approach' with full nested mirrored tree; updated DoD items for per-check executables / bash-3.2 assertion / dev-tooling presence; replaced all 'check #N' prose references with slug form."
+    },
+    {
+      "turn": 37,
+      "assistant": "Created history/v005/ with byte-identical PROPOSAL.md copy; moved critique file from proposed_changes/ to history/v005/proposed_changes/proposal-critique-v04.md; wrote proposal-critique-v04-revision.md capturing all per-item dispositions; updated history/README.md with v005 entry summarizing runtime/dev split, single-3.2 standard, mise-managed versions, doctor decomposition, enforcement-suite reframing, and style-doc relaxations; captured session as history/v005/conversation.json."
+    }
+  ]
+}

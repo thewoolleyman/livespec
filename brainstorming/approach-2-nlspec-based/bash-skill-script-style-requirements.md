@@ -10,14 +10,15 @@ section.
 Scripts governed by this section are invoked by Claude as tools via
 the bash tool. They execute **non-interactively**: no TTY is attached
 to any standard stream, no user prompt is possible, and stdin is not
-a terminal. Interactive-shell affordances are therefore forbidden
-throughout this section, not merely discouraged.
+a terminal for the purpose of reaching a prompt. Interactive-shell
+affordances that lead to user prompting are forbidden throughout this
+section, not merely discouraged.
 
 The normative source of truth for bash practice in this section is
 Greg Wooledge's wiki at
 [mywiki.wooledge.org](http://mywiki.wooledge.org/) — in particular
-the `BashFAQ`, `BashPitfalls`, `BashGuide`, `Quotes`, `NoClobber`,
-and `ProcessManagement` pages. Where a rule below cites a specific
+the `BashFAQ`, `BashPitfalls`, `BashGuide`, `Quotes`, and
+`ProcessManagement` pages. Where a rule below cites a specific
 Wooledge page, that citation is authoritative; where a rule below is
 silent on a question Wooledge covers, the Wooledge default applies.
 No other bash style guide is normative for this section.
@@ -34,10 +35,13 @@ This section uses BCP 14 / RFC 2119 / RFC 8174 keywords (`MUST`,
   skill, including but not limited to scripts referenced from
   `SKILL.md`, scripts invoked by the skill's sub-commands, and the
   shared `bash-boilerplate.sh` library itself.
-* The `doctor` sub-command's static phase, when implemented in bash,
-  MUST comply with this section in full. When implemented in another
-  language, this section does not apply; a parallel section for that
-  language is out of scope for v1.
+* Scripts under `<livespec-repo-root>/dev-tooling/` (the
+  enforcement suite and associated developer tooling) are also
+  governed by this section.
+* The `doctor` sub-command's static phase is decomposed into
+  per-check executables, each of which is a bash script and MUST
+  comply with this section in full. A parallel section for other
+  implementation languages is out of scope for v1.
 * Scripts that are examples, fixtures, or test inputs under `tests/`
   MUST comply unless the test explicitly exercises a non-conforming
   input, in which case the non-conformance MUST be declared in a
@@ -47,8 +51,8 @@ This section uses BCP 14 / RFC 2119 / RFC 8174 keywords (`MUST`,
 
 ## Non-interactive execution
 
-Skill scripts run under the Claude bash tool in a code execution
-environment. The following invariants hold, and the following
+Skill scripts run under the Claude bash tool in the end user's local
+shell environment. The following invariants hold, and the following
 affordances are forbidden because they cannot function in that
 context:
 
@@ -60,36 +64,52 @@ context:
   human-confirmation step MUST instead fail with an actionable
   message and exit code `3` (precondition failed), leaving the
   decision to the caller.
-* Scripts MUST NOT branch on interactivity checks (`[[ -t 0 ]]`,
-  `[[ -t 1 ]]`, `[[ -p /dev/stdin ]]`, `tty -s`). These checks
-  always resolve to the non-interactive branch in the skill runtime,
-  so the opposite branch is unreachable dead code.
+* Scripts MUST NOT branch on interactivity checks **to reach an
+  interactive-prompt path**. `[[ -t 0 ]]` and `[[ -p /dev/stdin ]]`
+  MAY be used to differentiate stdin-pipe from stdin-file-redirect
+  (both non-interactive), provided neither branch reads from a
+  terminal and neither branch prompts the user. `[[ -t 1 ]]` and
+  `tty -s` remain forbidden outright; no legitimate non-interactive
+  use exists.
 * Scripts MUST NOT rely on job control or on signal semantics that
   apply only to interactive shells (e.g., `SIGTSTP` beyond the
   default handler).
 * All configuration and input MUST arrive through one of: positional
-  arguments, optional flags, environment variables, or files named
-  by the above. No other input channel is valid.
+  arguments, optional flags, environment variables, files named by
+  the above, or stdin pipe (when documented). No other input channel
+  is valid.
 
 ---
 
-## Interpreter and shebang
+## Interpreter, shebang, and bash version
 
 * Every bash script MUST begin with `#!/usr/bin/env bash`. The
   `/usr/bin/env` form is required because it locates `bash` via
   `PATH`, accommodating systems where bash is installed outside
-  `/bin` (e.g., Homebrew on macOS installs a modern bash at
-  `/opt/homebrew/bin/bash` or `/usr/local/bin/bash`).
+  `/bin`.
 * Scripts MUST NOT use `#!/bin/sh`, `#!/bin/bash`, or any other
   interpreter path.
 * Scripts MUST NOT be written to be POSIX-sh-compatible. Bashisms
   are permitted and expected.
-* Scripts MUST target bash 4.4 or newer. Bash 4.4 (released 2016) is
-  the baseline because it fixed several `nounset` pitfalls with
-  empty arrays and `"$@"`
-  ([BashFAQ/112](http://mywiki.wooledge.org/BashFAQ/112)). Skill
-  runtime environments ship bash 5.x; targeting 4.4 is a safety
-  floor.
+* **Scripts MUST target bash 3.2.57 or newer.** Bash 3.2 is the
+  baseline because macOS ships bash 3.2.57 at `/bin/bash` on every
+  supported release (Apple has not shipped a newer bash since 2007
+  due to GPLv3). The skill's scripts execute on the end user's
+  machine via Claude Code's bash tool; portability to stock macOS
+  is a core premise of choosing bash.
+* Features introduced in bash 4.x or later MUST NOT be used by
+  scripts bundled in the skill runtime. Specifically forbidden:
+  * Namerefs (`declare -n`, `local -n`).
+  * Associative arrays (`declare -A`).
+  * `mapfile` / `readarray` (use `while IFS= read -r line` instead).
+  * `${var,,}` / `${var^^}` case conversion (use
+    `tr '[:upper:]' '[:lower:]'`).
+* The `bash-boilerplate.sh` MUST include a version assertion that
+  exits `127` with an actionable message if run under bash < 3.2.
+* Tool pinning (see "Tool dependency management" below) pins bash to
+  `3.2.57` exactly for developers and CI, so accidental 4.x-only
+  constructs fail at authoring time rather than silently on an
+  end-user macOS.
 
 ---
 
@@ -110,9 +130,6 @@ order:
   meaningful MUST be explicitly tested, regardless of `errexit`.
 * `set -o errtrace` — ERR traps MUST be inherited by subshells and
   functions.
-* `set -o noclobber` — `>` MUST NOT overwrite an existing file
-  silently ([NoClobber](http://mywiki.wooledge.org/NoClobber)).
-  Authors who need overwrite semantics MUST use `>|` explicitly.
 * `set -o pipefail` — a pipeline's exit status MUST be the rightmost
   non-zero exit of any of its commands.
 * `set -o nounset` — unbound variable references MUST cause
@@ -122,6 +139,16 @@ order:
   variables the surrounding shell might rely on but leave unset —
   specifically `: "${PROMPT_COMMAND:=}"` — so that `nounset` does
   not trip on variables the shell itself references.
+
+When expanding a possibly-empty array under `nounset`, scripts MUST
+use `"${arr[@]-}"` (empty-default) rather than `"${arr[@]}"`. Bash
+3.2 errors on the latter when the array is empty; the empty-default
+form is portable from 3.2 onward.
+
+`noclobber` is **not** part of mandatory strict mode. Authors who
+want accidental-overwrite protection for a specific section MAY
+enable `set -o noclobber` locally and use `>|` for intentional
+overwrites within that section.
 
 The script MUST set `set -e` on its own first line, before sourcing
 the boilerplate, so that a failure during sourcing itself still
@@ -166,13 +193,13 @@ skip such commands is forbidden.
 * All executable logic MUST live inside functions. The only code at
   the top level of a runnable script is: the shebang, the initial
   `set -e`, the sourcing of the boilerplate, function definitions,
-  optional `readonly` constant declarations, and the `main`
-  invocation.
-* Every runnable script MUST define a `main` function and invoke it
-  as `main "$@"` on the final line. The `set +o nounset` /
-  `main "$@"` / `set -o nounset` wrap that appears in some older
-  bash idioms is forbidden; it was a workaround for pre-4.4
-  empty-`"$@"` behavior that no longer applies.
+  optional `readonly` constant declarations, and the sourceable
+  guard invoking `main` (see "Testability requirements — Sourceable
+  guard for executable scripts" below).
+* Every runnable script MUST define a `main` function. The script's
+  final statement MUST be the sourceable guard idiom. A bare
+  `main "$@"` on the final line is forbidden because it breaks
+  source-based testing.
 * Function definitions MUST use the `name() { ... }` form. The
   `function` keyword (both `function name { }` and
   `function name() { }`) is forbidden. The keyword form is
@@ -190,7 +217,8 @@ skip such commands is forbidden.
   ```
 
   Variadic functions are exempt; they MUST use `shift` with
-  descriptive local-variable assignments.
+  descriptive local-variable assignments and MUST carry the
+  `# variadic` annotation (see "Function argument count" below).
 * Functions MUST use `local` for any variable they set, unless the
   function is deliberately setting an outer-scope variable, in
   which case a comment MUST state that intent.
@@ -220,10 +248,11 @@ skip such commands is forbidden.
 * `"$@"` MUST be used when forwarding all positional arguments.
   Unquoted `$@` and `"$*"` are forbidden for forwarding
   ([BashPitfalls #1](http://mywiki.wooledge.org/BashPitfalls#for_f_in_.24.28ls_.2A.mp3.29)).
-* `${array[@]}` MUST be quoted as `"${array[@]}"` when expanded.
-  Scripts MUST NOT use `${array}` or `$array` when referring to an
-  array; both expand to the first element only and are almost
-  always a bug
+* `${array[@]}` MUST be quoted as `"${array[@]}"` when expanded;
+  when the array may be empty under `nounset`, the empty-default
+  form `"${array[@]-}"` MUST be used. Scripts MUST NOT use
+  `${array}` or `$array` when referring to an array; both expand
+  to the first element only and are almost always a bug
   ([BashFAQ/005](http://mywiki.wooledge.org/BashFAQ/005)).
 * `${BASH_SOURCE}` MUST be written as `${BASH_SOURCE[0]}`. The
   un-indexed form expands to the first element but looks like a
@@ -259,6 +288,12 @@ skip such commands is forbidden.
   leading dashes. Filenames with leading dashes MUST be passed with
   `--` separators or with a `./` prefix where the tool does not
   support `--`.
+* Bash 4.x features (associative arrays, namerefs, `mapfile`) MUST
+  NOT be used (see "Interpreter, shebang, and bash version"). When a
+  function needs to return structured data, it MUST emit the data on
+  stdout using a documented format (newline-separated records,
+  `key=value` lines, JSON via `jq`) and the caller MUST capture with
+  command substitution or process substitution.
 
 ---
 
@@ -297,7 +332,7 @@ skip such commands is forbidden.
   `printf '...' >&2`. Emitting diagnostic output on stdout is
   forbidden.
 * Anything the caller might parse (structured data, lists, file
-  paths) MUST go to stdout.
+  paths, JSON findings) MUST go to stdout.
 * Status and progress messages MUST go to stderr so they do not
   contaminate stdout capture.
 
@@ -324,11 +359,11 @@ patterns common in human-facing scripts.
 * If a script accepts flags, it SHOULD support `-h`/`--help` that
   prints the usage text. `-V`/`--version` is OPTIONAL.
 * A `--debug` flag is NOT required. Debug mode MUST be controlled
-  exclusively by the `BASH_XTRACE` and `BASH_VERBOSE` environment
-  variables (see "Debug and verbose affordances"). Scripts MAY add
-  a `--debug` flag as a human-ergonomics convenience, but it MUST
-  act by setting `BASH_XTRACE=true` internally and invoking the
-  boilerplate's `handle_bash_xtrace` function; it MUST NOT
+  exclusively by the `LIVESPEC_XTRACE` and `LIVESPEC_VERBOSE`
+  environment variables (see "Debug and verbose affordances").
+  Scripts MAY add a `--debug` flag as a human-ergonomics convenience,
+  but it MUST act by setting `LIVESPEC_XTRACE=true` internally and
+  invoking the boilerplate's `handle_xtrace` function; it MUST NOT
   introduce a parallel mechanism.
 * Scripts MUST NOT prompt the user for any input. Missing required
   input MUST produce an error message, a hint at the correct
@@ -366,7 +401,7 @@ first-class concern, not an afterthought.
   enough information for Claude to repair the input or escalate.
 * Scripts MUST NOT log progress on every iteration of a long loop
   by default. Verbose progress MUST be gated on
-  `BASH_VERBOSE=true`.
+  `LIVESPEC_VERBOSE=true`.
 
 ---
 
@@ -390,20 +425,21 @@ first-class concern, not an afterthought.
 The boilerplate exposes two environment-variable switches and no
 other debug-activation mechanism:
 
-* `BASH_XTRACE=true` MUST enable `set -o xtrace` and install a
+* `LIVESPEC_XTRACE=true` MUST enable `set -o xtrace` and install a
   `PS4` that expands `${BASH_SOURCE[0]}`, `${LINENO}`, and
-  `${FUNCNAME[0]}` at **trace-emission time**, so that each traced
+  `${FUNCNAME[0]-}` at **trace-emission time**, so that each traced
   command reports its own source, line, and function. `PS4` MUST
   therefore be set with single quotes (or with escaped `\$`) to
   defer expansion; setting `PS4` with double quotes that expand
   these variables once at assignment time is a latent bug and is
   forbidden.
-* `BASH_VERBOSE=true` MUST enable `set -o verbose`.
-* Alternative debug-variable names (`DEBUG`, `TRACE`, `XDEBUG`, or
-  bespoke per-script variables) MUST NOT be introduced. Uniformity
-  across scripts matters more than individual naming preference,
-  because Claude and humans alike benefit from a single memorized
-  switch.
+* `LIVESPEC_VERBOSE=true` MUST enable `set -o verbose`.
+* Alternative debug-variable names (`DEBUG`, `TRACE`, `XDEBUG`,
+  `BASH_XTRACE`, or bespoke per-script variables) MUST NOT be
+  introduced. Uniformity across scripts matters more than individual
+  naming preference, because Claude and humans alike benefit from a
+  single memorized switch. The `LIVESPEC_` prefix is chosen to avoid
+  collision with bash's reserved `BASH_` namespace.
 
 ---
 
@@ -414,12 +450,16 @@ other debug-activation mechanism:
   sourced.
 * Sourced libraries MUST carry a `.sh` or `.bash` extension.
 * Executable scripts MUST have the executable bit set on every file
-  committed to the repository. Git hooks MUST verify this (see
-  "Enforcement" below).
+  committed to the repository. Enforcement hooks MUST verify this
+  (see "Enforcement suite" below).
 * Script filenames MUST use kebab-case (`validate-spec`,
-  `generate-readme`), not snake_case or camelCase.
+  `generate-readme`), not snake_case or camelCase. Numbered prefixes
+  (`01-foo`, `02-bar`) MUST NOT be used; identifiers that otherwise
+  would be positional (e.g., the per-check scripts under
+  `scripts/doctor/static/`) MUST use descriptive slugs without
+  positional numbers.
 * Scripts MUST be invoked from `SKILL.md` by relative path from the
-  skill root (`scripts/validate-spec`), with forward slashes only.
+  skill root (`scripts/doctor/run-static`), with forward slashes only.
   Windows-style path separators are forbidden in any bundled path.
 
 ---
@@ -427,13 +467,18 @@ other debug-activation mechanism:
 ## Boilerplate requirement
 
 Every skill that bundles bash scripts MUST also bundle a single
-shared boilerplate file at `scripts/bash-boilerplate.sh`. The
+shared boilerplate file at `scripts/bash-boilerplate.sh` inside the
+skill bundle. The same file MUST be accessible to `dev-tooling/`
+scripts via a symlink at `dev-tooling/bash-boilerplate.sh` pointing
+to the bundled copy; this keeps one canonical source. The
 boilerplate is an internal artifact of the skill; no external
 source is normative for its contents. The boilerplate MUST, as a
 self-contained specification:
 
-* Enable `errexit`, `errtrace`, `noclobber`, `pipefail`, and
-  `nounset` as described under "Required strict mode".
+* Assert bash version `>= 3.2` via `BASH_VERSINFO`; exit `127` with
+  an actionable message otherwise.
+* Enable `errexit`, `errtrace`, `pipefail`, and `nounset` as
+  described under "Required strict mode".
 * Pre-define `PROMPT_COMMAND` via `: "${PROMPT_COMMAND:=}"` before
   enabling `nounset`, so that surrounding shell fixtures do not
   trip the option.
@@ -446,11 +491,11 @@ self-contained specification:
 * Install `trap onexit HUP INT QUIT TERM ERR`.
 * Define `disable_error_checking` and `enable_error_checking`
   helpers that toggle `errexit` and the ERR trap together.
-* Define a `handle_bash_xtrace` function that, when
-  `BASH_XTRACE=true`, sets `PS4` with single-quoted delimiters so
-  that `${BASH_SOURCE[0]}`, `${LINENO}`, and `${FUNCNAME[0]}`
+* Define a `handle_xtrace` function that, when
+  `LIVESPEC_XTRACE=true`, sets `PS4` with single-quoted delimiters
+  so that `${BASH_SOURCE[0]}`, `${LINENO}`, and `${FUNCNAME[0]-}`
   expand at trace-emission time, then enables `set -o xtrace`.
-* Honor `BASH_VERBOSE=true` by enabling `set -o verbose`.
+* Honor `LIVESPEC_VERBOSE=true` by enabling `set -o verbose`.
 * Define every function using the `name() { ... }` form; the
   `function` keyword is forbidden in the boilerplate as in all
   other scripts.
@@ -460,17 +505,23 @@ runtime. The Anthropic API execution environment does not provide
 network access at runtime; any `curl` or `wget` of the boilerplate
 would fail.
 
-Runnable scripts MUST source the boilerplate via:
+Runnable scripts MUST source the boilerplate via sibling lookup:
 
 ```
 source "$(dirname "${BASH_SOURCE[0]}")/bash-boilerplate.sh"
 ```
 
-or, when the boilerplate lives at a non-sibling path,
+When the boilerplate lives at a non-sibling path, scripts MUST use
+the pure-bash `cd && pwd` idiom (no external tools):
 
 ```
-source "$(realpath "$(dirname "${BASH_SOURCE[0]}")/../scripts/bash-boilerplate.sh")"
+boilerplate_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${boilerplate_dir}/bash-boilerplate.sh"
 ```
+
+`realpath`, `readlink -f`, and other external-tool-based path
+resolution MUST NOT appear in the sourcing critical path; those
+tools are not POSIX and are missing on some platforms.
 
 ---
 
@@ -493,14 +544,45 @@ with conventions that can be checked mechanically.
   directory comparison" — not a grab bag.
 * Catch-all libraries are forbidden. Filenames like `utils.sh`,
   `helpers.sh`, `common.sh`, `misc.sh`, `lib.sh`, or `shared.sh`
-  MUST NOT exist in the repository. A CI check MUST reject files
-  with these names (see "Enforcement additions" below). The
-  prohibition is mechanical because the pattern is a reliable
-  signal that single-responsibility has been abandoned.
-* Every library MUST begin with a header comment block stating
-  (a) its single concern in one sentence, (b) the prefix used by
-  its exported functions, and (c) the other libraries it sources.
-  A CI check MUST reject libraries without this header.
+  MUST NOT exist in the repository. An enforcement check MUST
+  reject files with these names.
+* Every library MUST begin with a structured header comment block
+  stating its single concern, function prefix, purity, and sourced
+  libraries. The format is specified under "Library header format"
+  below; an enforcement check MUST reject libraries with a missing
+  or malformed header.
+
+### Library header format
+
+Library headers MUST use this structured directive format, appearing
+within the first 20 lines of the file and before any function
+definition:
+
+```
+# concern: validate BCP 14 keyword usage in prose
+# prefix: bcp14
+# purity: pure
+# sources:
+#   - ./parse-markdown.sh
+#   - ./keyword-registry.sh
+```
+
+Rules:
+
+* Each directive is a `# <key>: <value>` line.
+* `concern` — one sentence describing the library's single
+  responsibility.
+* `prefix` — the identifier that prefixes exported function names;
+  MUST match the library's filename minus the extension.
+* `purity` — either `pure` or `impure` (see "Purity and I/O
+  isolation").
+* `sources` — multi-line list; each entry on its own line as
+  `#   - <path>`, path relative to the library file. MAY be empty
+  if the library sources nothing.
+* Missing, misspelled, or out-of-order directives → style violation.
+* The enforcement check cross-verifies that every `source` statement
+  in the file body corresponds to an entry in `sources`, and that
+  every `sources` entry is actually `source`d.
 
 ### Function-name prefixing
 
@@ -518,8 +600,8 @@ is therefore mandatory, not stylistic.
   ("private" helpers) MUST carry an additional leading underscore:
   `_bcp14_tokenize`, `_config_normalize_path`. Private functions
   MUST NOT be called from any file other than the one that defines
-  them. A CI check MUST reject cross-library calls to any function
-  whose name starts with `_`.
+  them. An enforcement check MUST reject cross-library calls to any
+  function whose name starts with `_`.
 * Functions in executable scripts (not libraries) SHOULD also
   follow a consistent prefix derived from the script name, but
   they MUST at minimum use unique names that do not shadow any
@@ -532,14 +614,18 @@ is therefore mandatory, not stylistic.
 * A library MUST NOT source another library unless it calls a
   function from that library. Sourcing "just in case" is forbidden:
   it creates hidden coupling and slows script startup.
-* A library's header comment block MUST list every other library it
-  sources. CI MUST verify that every `source` statement in a library
-  corresponds to an entry in that list, and that every listed
-  library is actually sourced.
+* A library's `sources` directive (see "Library header format") MUST
+  list every other library it sources. An enforcement check MUST
+  verify that every `source` statement in a library corresponds to
+  an entry in `sources`, and that every entry in `sources` is
+  actually sourced.
 * Circular sourcing (A sources B, B sources A, possibly transitive)
-  is forbidden. CI MUST build the source-dependency graph across
-  all bundled libraries and MUST fail the build if any cycle is
-  detected.
+  is forbidden. An enforcement check MUST build the source-
+  dependency graph across all bundled libraries and MUST fail the
+  build if any cycle is detected. The check uses `tree-sitter-bash`
+  (pinned via mise, per "Tool dependency management") to parse
+  `source` statements accurately, including conditional and dynamic
+  forms.
 
 ---
 
@@ -554,21 +640,24 @@ return values. This section mandates that separation.
 ### The pure / impure distinction
 
 * Every library file MUST be classified as either *pure* or
-  *impure*. The classification MUST appear as a
-  `# purity: pure` or `# purity: impure` directive in the library's
-  header comment block.
+  *impure*. The classification MUST appear as the `purity`
+  directive in the library's header (see "Library header format").
 * A *pure* library's functions:
   * MUST NOT read or write files.
-  * MUST NOT read or write environment variables except those
-    passed explicitly as function arguments.
+  * MUST NOT **write** environment variables or unset them.
+  * MAY **read** environment variables from this small allow-list
+    (framework values callers can easily set in test setup):
+    `IFS`, `LC_ALL`, `LANG`, `PATH`, `HOME`, `TMPDIR`. Reads of
+    any other environment variable are impure; those variables
+    MUST be passed as explicit function arguments instead.
   * MUST NOT invoke external commands that produce side effects
     (no `mkdir`, `rm`, `curl`, `git`, `ssh`, etc.).
   * MAY invoke external commands that are deterministic
     transformations of stdin to stdout (`jq`, `awk`, `sed`, `tr`,
     `sort`, `grep`) provided the invocation has no filesystem
     or network side effect.
-  * MUST receive all inputs as function arguments, and MUST emit
-    all outputs on stdout (or via a return code).
+  * MUST receive all non-allow-listed inputs as function arguments,
+    and MUST emit all outputs on stdout (or via a return code).
 * An *impure* library's functions are permitted to do any of the
   above but MUST be reachable from pure code only via a thin
   wrapper layer (see "Impure wrapper pattern" below).
@@ -596,12 +685,23 @@ Example:
 
 ```
 # In fs.sh (impure):
+# concern: filesystem read/write wrappers
+# prefix: fs
+# purity: impure
+# sources:
+
 fs_read_file() {
   local path="${1}"
   cat -- "${path}"
 }
 
 # In validate.sh (pure, sources fs.sh):
+# concern: spec-file content validation
+# prefix: validate
+# purity: pure
+# sources:
+#   - ./fs.sh
+
 validate_spec_file() {
   local path="${1}"
   local content
@@ -624,16 +724,19 @@ validate_spec_file() {
   the boilerplate's own `_log_prefix`). Every assignment inside a
   function body MUST be preceded by `local`, `declare`, `readonly`,
   or be to a positional parameter.
-* CI MUST detect function-internal assignments to bare variable
-  names (without `local`/`declare`/`readonly`) and MUST fail the
-  build when any are found. This check is implemented as a grep
-  over a bash-AST-aware walker or a targeted regex; exact
-  implementation is left to the skill, but the behavior is
-  mandatory.
+* An enforcement check MUST detect function-internal assignments to
+  bare variable names (without `local`/`declare`/`readonly`) and
+  MUST fail the build when any are found. The check uses
+  `tree-sitter-bash` (pinned via mise) to parse assignment nodes
+  accurately, distinguishing legitimate cases (subscript writes on
+  arrays declared in the same function, parameter expansion
+  defaults) from forbidden ones.
 * Functions that legitimately need to return structured data MUST
-  do so via stdout (with the caller using command substitution) or
-  via a nameref parameter declared with `declare -n`. Writing to
-  an implicit outer variable by naming convention is forbidden.
+  do so via stdout (with the caller using command substitution).
+  Writing to an implicit outer variable by naming convention is
+  forbidden. Nameref-based out-parameters (`declare -n`,
+  `local -n`) are forbidden because namerefs are bash 4.x (see
+  "Interpreter, shebang, and bash version").
 
 ---
 
@@ -650,19 +753,16 @@ patterns are gated in CI and unreliable at honoring them otherwise.
 ### Cyclomatic complexity
 
 * Every function in every bundled bash file MUST have cyclomatic
-  complexity (CCN) ≤ 7. This is stricter than McCabe's
-  oft-cited ≤ 10; the tighter bound is deliberate. Bash control
-  flow is harder to read than most languages and functions with
-  CCN 8-10 almost always decompose cleanly.
+  complexity (CCN) ≤ 10. This matches McCabe's original upper
+  bound; functions with CCN 11+ almost always decompose cleanly.
 * CCN MUST be measured by `shellmetrics`
   ([github.com/shellspec/shellmetrics](https://github.com/shellspec/shellmetrics)).
-  CI MUST invoke `shellmetrics --csv` on every bundled bash file
-  and MUST fail the build if any function reports a CCN greater
-  than 7.
-* The `shellmetrics` version MUST be pinned in CI. Because
-  `shellmetrics` itself is a shell script, pinning is done by
-  committing a specific version to the repository or by pinning
-  the upstream commit hash in the CI tool-installation step.
+  The enforcement suite MUST invoke `shellmetrics --csv` on every
+  bundled bash file and MUST fail when any function reports a CCN
+  greater than 10.
+* `shellmetrics` is pinned via mise (see "Tool dependency
+  management") to guarantee consistent measurement across
+  developers and CI.
 * Per-function waivers are NOT permitted. If a function cannot be
   brought under the threshold, it MUST be decomposed.
 
@@ -672,8 +772,8 @@ patterns are gated in CI and unreliable at honoring them otherwise.
   code (LLOC — non-blank, non-comment lines). This is Martin's
   "Clean Code" upper bound; the aspirational target is 20.
 * LLOC MUST be measured by `shellmetrics` (which reports LLOC
-  alongside CCN). CI MUST fail the build if any function's LLOC
-  exceeds 50.
+  alongside CCN). The enforcement suite MUST fail when any
+  function's LLOC exceeds 50.
 
 ### File length
 
@@ -681,34 +781,37 @@ patterns are gated in CI and unreliable at honoring them otherwise.
   lines of code. Files approaching this limit are almost always
   addressing more than one concern and MUST be decomposed before
   they cross it.
-* LLOC MUST be measured across the whole file. CI MUST fail the
-  build if any file's LLOC exceeds 300. No off-the-shelf tool
-  measures whole-file LLOC for bash; a small CI-side script that
-  strips comments and blank lines and counts the rest is
+* LLOC MUST be measured across the whole file. The enforcement
+  suite MUST fail when any file's LLOC exceeds 300. No off-the-shelf
+  tool measures whole-file LLOC for bash; a small enforcement script
+  that strips comments and blank lines and counts the rest is
   sufficient. The skill MUST bundle such a script under
-  `scripts/checks/` and MUST invoke it in CI.
+  `dev-tooling/enforcement/` and MUST invoke it in the suite.
 
 ### Function argument count
 
-* Every function MUST accept no more than 4 positional arguments.
-  Functions that need more MUST accept a configuration variable
-  (an associative array, a nameref to one, or a file path) or be
-  decomposed.
-* This is checked by a small CI-side script that parses each
-  function body for `local arg1="${1}" ... local argN="${N}"`
-  patterns (the mandated argument-declaration form from the
-  "Functions and `main`" section above) and counts the highest
-  positional index used. Variadic functions are exempt and MUST
-  be annotated with a `# variadic` comment immediately above the
-  function definition.
+* Every function MUST accept no more than 6 positional arguments.
+  Functions that need more MUST decompose or accept a file path
+  containing the configuration as newline-separated `key=value`
+  pairs.
+* Variadic functions are exempt and MUST be annotated with a
+  `# variadic` comment immediately above the function definition. A
+  function is variadic if its body reads `"$@"`, `"$*"`, `"${@:N}"`,
+  or `"${*:N}"` at any point. The enforcement check cross-verifies:
+  * A function with a `# variadic` annotation MUST read `"$@"` or
+    `"$*"` in its body; absence is a style violation.
+  * A function that reads `"$@"` or `"$*"` MUST have the
+    annotation; absence is a style violation.
+  * `main` is exempt from the annotation requirement (always
+    implicitly variadic; no annotation needed).
 
 ### Honest limits of these checks
 
 Cyclomatic complexity, function length, file length, and argument
 count are proxies for readability and cohesion, not direct
-measurements of either. A function can have CCN 3, LLOC 15, and
-three arguments and still be unreadable; a function with CCN 8
-can occasionally be clearer than two functions with CCN 4 each.
+measurements of either. A function can have CCN 5, LLOC 15, and
+three arguments and still be unreadable; a function with CCN 11
+can occasionally be clearer than two functions with CCN 6 each.
 The thresholds catch the common failure modes; they do not
 substitute for periodic human review of the generated scripts.
 Authors who believe a threshold violation produces clearer code
@@ -744,8 +847,8 @@ function.
   `$0` is the sourcing shell or bats runner and `main` does not
   run, so tests can exercise individual functions without
   triggering the script's end-to-end behavior.
-* A CI check MUST verify that every executable script (no `.sh`
-  or `.bash` extension) ends with this exact guard idiom.
+* An enforcement check MUST verify that every executable script (no
+  `.sh` or `.bash` extension) ends with this exact guard idiom.
 
 ### Test scope
 
@@ -758,6 +861,29 @@ function.
   function directly. End-to-end tests that do invoke the script as
   a subprocess are permitted and required, but they are separate
   from the unit-level requirement above.
+
+### Per-script vs per-specification-file tests
+
+Two complementary test-naming conventions apply, each with a
+distinct purpose:
+
+* **Per-script tests** at `tests/scripts/<path>.bats` and
+  `tests/dev-tooling/<path>.bats` mirror the implementation trees
+  1:1 (including subdirectories). They exercise the script's
+  contract: exit codes, JSON schema of stdout, input validation,
+  error paths, individual helper functions.
+* **Per-spec-file tests** at `tests/test_<spec-file>.bats`
+  (`test_spec.bats`, `test_contracts.bats`, `test_constraints.bats`,
+  `test_scenarios.bats`) exercise rules stated in a specification
+  file end-to-end, invoking whatever script(s) implement the rule.
+  The `tests/heading-coverage.json` meta-registry references
+  per-spec-file tests by heading; per-script tests are not
+  required to appear in the registry.
+
+A rule-level test that exercises `doctor/static/gherkin-blank-line-
+format` end-to-end is per-spec-file (lives in `test_scenarios.bats`),
+not per-script. The per-script test for the same check lives at
+`tests/scripts/doctor/static/gherkin-blank-line-format.bats`.
 
 ### Assertion library
 
@@ -798,144 +924,148 @@ categories have different coverage feasibility floors.
 
 * Coverage MUST be measured by `kcov`
   ([github.com/SimonKagstrom/kcov](https://github.com/SimonKagstrom/kcov)).
-  `bashcov` is permitted as an alternative but its Ruby dependency
-  makes it a heavier install; `kcov` is the default.
-* Pure libraries MUST achieve 100% line coverage. This is feasible
-  because pure functions have no environmental dependencies and
-  every branch can be exercised from tests that provide inputs
-  directly.
+* Pure libraries MUST achieve ≥ 95% line coverage. The gap between
+  100% and 95% accounts for `kcov`'s DEBUG-trap granularity
+  artifacts: short-circuit `&&`/`||` chains, multi-line `[[ ]]`
+  tests, and some `case`-arm bodies don't register as separate
+  lines even when every statement is tested.
 * Overall coverage across all bundled bash files MUST be at least
-  80%. The gap between 100% pure and 80% overall accounts for
+  80%. The gap between ≥ 95% pure and ≥ 80% overall accounts for
   branches in impure code that are genuinely hard to exercise
   (error paths in filesystem operations, network failure modes,
   etc.).
-* CI MUST run the full bats suite under `kcov`, MUST produce a
-  coverage report, and MUST fail the build when either threshold
-  is not met.
-* `kcov` is known to be flaky on Alpine/musl and unavailable on
-  macOS. CI matrices that include non-Linux OSes MAY skip the
-  coverage gate on those OSes but MUST run it on at least one
-  Linux configuration per pull request. The threshold applies to
-  that Linux run.
-* The `kcov` version MUST be pinned. Coverage tooling pinning is
-  particularly important because small differences in how `kcov`
-  handles bash's DEBUG trap can shift reported coverage by several
-  percentage points.
+* The enforcement suite MUST run the full bats suite under `kcov`,
+  MUST produce a coverage report, and MUST fail when either
+  threshold is not met.
+* `kcov` is Linux-only; the enforcement suite runs on Linux by
+  design (see "Enforcement suite"). Developers on non-Linux hosts
+  run the coverage gate via the `dev-tooling/scripts/coverage-in-
+  docker` wrapper that executes `kcov` inside a pinned Linux
+  container. The wrapper is invoked by the `make check-coverage`
+  target transparently.
+* `kcov` is pinned via mise (see "Tool dependency management"):
+  small differences in how `kcov` handles bash's DEBUG trap can
+  shift reported coverage by several percentage points, so pinning
+  is particularly important.
 
 ---
 
-## Testing
+## Tool dependency management
 
-* Every bash script bundled with the skill MUST have at least one
-  corresponding test under `tests/`. This requirement composes
-  with the top-level testing requirements in
-  [PROPOSAL.md — Testing approach](https://github.com/thewoolleyman/livespec/blob/master/brainstorming/approach-2-nlspec-based/PROPOSAL.md#testing-approach);
-  this section adds the bash-specific concretions.
-* Tests for bash scripts MUST use `bats-core`
-  ([github.com/bats-core/bats-core](https://github.com/bats-core/bats-core)).
-  The `bats` version MUST be pinned in CI.
-* Test files MUST mirror script names: `scripts/validate-spec` is
-  tested by `tests/scripts/validate-spec.bats`.
-* Each script MUST have, at minimum:
-  * One happy-path test that exercises the script's primary
-    contract.
-  * One test per documented failure mode (missing required arg,
-    missing input file, missing required tool, malformed input).
-  * One test that verifies the script's exit code on an invalid
-    flag or missing required arg is the "usage error" code
-    defined in "Exit code contract" below.
-* Each exported library function MUST have, at minimum, one
-  happy-path test and one failure-mode test, per the scope rule
-  in "Testability requirements".
-* Tests MUST NOT depend on network access, on files outside the
-  repo, or on global state mutations. Tests that require a
-  filesystem fixture MUST create it in a `bats`-provided temporary
-  directory and MUST NOT mutate the repo.
+External tools required by the enforcement suite (shellcheck,
+shfmt, shellharden, shellmetrics, kcov, bats-core, bats-assert,
+bats-support, jq, tree-sitter-bash, and bash itself) MUST be pinned
+via `mise` ([github.com/jdx/mise](https://github.com/jdx/mise)) in
+a committed `.mise.toml` at the livespec repository root.
+`mise install` MUST produce a ready-to-run environment for the full
+enforcement suite on Linux.
+
+Bash itself is pinned to **3.2.57 exactly** so developers and CI
+run the same bash version macOS end users have. Any accidental 4.x
+construct in a runtime script fails loudly during authoring, not
+silently when a macOS user invokes the skill.
+
+A minimal `.mise.toml` at the livespec repository root:
+
+```toml
+[tools]
+bash = "3.2.57"              # matches macOS /bin/bash for portability verification
+shellcheck = "0.10.0"
+shfmt = "3.8.0"
+shellharden = "4.3.1"
+shellmetrics = "0.5.1"
+kcov = "43"
+bats = "1.11.0"
+jq = "1.7.1"
+tree-sitter = "0.22.6"
+```
+
+Scatter-pinned per-tool language elsewhere in this document
+collapses into this mandate: where this document says "pinned via
+mise," the tool's version appears in `.mise.toml`.
+
+Tools that `mise` does not package natively are installed through
+`mise`'s plugin mechanism or through a small Makefile target that
+conforms to the rules in this document for executable scripts.
+
+The enforcement suite's Makefile targets assume `mise`-managed
+tools are on `PATH`. A `make check-tools` target MUST exist to
+verify every required tool is present at the pinned version; it
+runs as part of the enforcement suite.
 
 ---
 
-## Enforcement via git hooks and CI
+## Enforcement suite
 
-### Pre-commit hooks
+The enforcement suite is **invocation-surface-agnostic**. Every
+check is expressed as a Makefile target; pre-commit, pre-push, CI,
+and manual developer invocation are all *consumers* of those
+targets, not primary owners of the checks. The suite runs on
+Linux. Developers on non-Linux hosts run it via a pinned Linux
+container (see "Code coverage" above; the same wrapper pattern
+applies to any check that requires Linux).
 
-* The project MUST ship a pre-commit configuration
-  (`.pre-commit-config.yaml` for the `pre-commit` framework, or an
-  equivalent committed `.githooks/pre-commit` script) that runs
-  against staged files.
-* The pre-commit configuration MUST, at minimum, run:
-  * `shellcheck -x` on every staged bash script and the
-    boilerplate.
-  * `shfmt -d -i 2 -ci -bn -sr` on every staged bash script.
-  * `shellharden --check` on every staged bash script.
-  * A check that every staged executable bash script has the
-    executable bit set.
-  * A check that no staged bash script carries a `.sh` or `.bash`
-    extension unless it is a sourced library.
-  * `shellmetrics` on every staged bash script, rejecting any
-    function with CCN > 7 or LLOC > 50.
-  * A file-length check that rejects any staged bash file whose
-    LLOC exceeds 300.
-  * A forbidden-filename check that rejects any staged file whose
-    name matches the catch-all library blacklist (`utils.sh`,
-    `helpers.sh`, `common.sh`, `misc.sh`, `lib.sh`, `shared.sh`).
-  * A library-header check that rejects any staged library
-    (`*.sh`, `*.bash`) whose first non-shebang non-blank lines do
-    not include the `# purity:` directive and the sources list.
-  * A sourceable-guard check that rejects any staged executable
-    script whose final lines do not implement the
-    `if [[ "${0}" == "${BASH_SOURCE[0]}" ]]; then main "$@"; fi`
-    idiom.
-* Commits MUST be blocked when any of these checks fail. Bypassing
-  via `git commit --no-verify` is permitted for local experimental
-  commits but MUST NOT appear on any pushed branch; CI catches
-  these.
-* The pre-commit configuration MUST be installable by a single
-  documented command (e.g., `pre-commit install` or `make hooks`).
+### Canonical check list
 
-### Continuous integration
+The enforcement suite comprises these Makefile targets:
 
-* CI MUST run the full static-analysis suite (`shellcheck`,
-  `shfmt`, `shellharden`, `shellmetrics`) against every bash file
-  in the repository on every pull request and every push to the
-  default branch. "Changed files only" is forbidden at CI level;
-  the pre-commit hook covers the changed-files-fast-feedback case,
-  but CI MUST verify the whole tree because rename/move operations
-  and non-bash-language edits can still affect the bash surface.
-* CI MUST run the full `bats` test suite on every pull request and
-  every push to the default branch.
-* CI MUST run the test suite under `kcov` and MUST enforce the
-  coverage thresholds defined in "Code coverage" above.
-* CI MUST run the full architectural-check suite, which comprises:
-  * The file-length, filename-blacklist, library-header,
-    sourceable-guard, and function-argument-count checks from the
-    pre-commit list.
-  * A cross-library private-function-call check that rejects any
-    call from file A to a `_`-prefixed function defined in file B.
-  * A source-dependency-graph check that rejects any circular
-    import.
-  * A global-variable-write check that rejects any function-body
-    assignment not preceded by `local`, `declare`, or `readonly`.
-  * A header-consistency check that verifies every `source`
-    statement in a library corresponds to an entry in that
-    library's header sources list, and vice versa.
-* These architectural checks MUST be implemented as small bash
-  scripts under `scripts/checks/`, named by concern
-  (`check-library-headers`, `check-source-graph`, etc.), each
-  conforming to the same constraints this document imposes on the
-  rest of the skill's scripts. They are not exempt from their own
-  rules.
-* CI MUST fail the build on any static-analysis finding, any test
-  failure, any coverage threshold miss, any architectural-check
-  finding, or any non-zero exit from any of the commands above.
-* CI MUST cache tool installation (to avoid redundant downloads)
-  but MUST NOT cache test results, analysis results, or coverage
-  results across runs.
-* CI MUST run on the same major OS families the skill supports
-  (minimally Linux; optionally macOS). The CI matrix MUST pin the
-  bash version(s) under test.
-* CI jobs MUST run their shell steps with `set -euo pipefail` at
-  the shell level, so that a failed step in the CI script itself
-  does not silently pass.
+| Target | Purpose |
+|---|---|
+| `make check-shellcheck` | Run `shellcheck -x` on every bash file in the repository (including `.claude-plugin/skills/*/scripts/**` and `dev-tooling/**`). |
+| `make check-shfmt` | Run `shfmt -d -i 2 -ci -bn -sr` on every bash file. |
+| `make check-shellharden` | Run `shellharden --check` on every bash file. |
+| `make check-complexity` | Run `shellmetrics` on every bash file; fail on CCN > 10 or LLOC > 50 per function, or LLOC > 300 per file. |
+| `make check-executable-bit` | Verify every executable bash script (no `.sh` extension) has the executable bit set. |
+| `make check-filename-blacklist` | Reject files named `utils.sh`, `helpers.sh`, `common.sh`, `misc.sh`, `lib.sh`, `shared.sh`. |
+| `make check-library-headers` | Verify every library (`*.sh`, `*.bash`) has a valid structured header (`# concern:`, `# prefix:`, `# purity:`, `# sources:` directives); cross-verify `sources` against actual `source` statements. |
+| `make check-sourceable-guards` | Verify every executable script ends with the mandated guard idiom. |
+| `make check-private-calls` | Reject any call from file A to a `_`-prefixed function defined in file B. Uses `tree-sitter-bash` for reliable detection. |
+| `make check-source-graph` | Build the source-dependency graph across all bundled libraries; fail if any cycle is detected. Uses `tree-sitter-bash`. |
+| `make check-global-writes` | Detect function-body assignments not preceded by `local`, `declare`, or `readonly`. Uses `tree-sitter-bash`. |
+| `make check-arg-count` | Verify every function accepts ≤ 6 positional args (or carries `# variadic` annotation and reads `"$@"`/`"$*"`). |
+| `make check-tests` | Run the full `bats` suite. |
+| `make check-coverage` | Run the bats suite under `kcov`; enforce ≥ 95% pure / ≥ 80% overall. Wraps into a Linux container on non-Linux hosts. |
+| `make check-tools` | Verify every mise-pinned tool is installed at the pinned version. |
+| `make check` | Run the full suite: every target above. |
+
+### Check-script conventions
+
+Each bespoke check (i.e., everything except direct invocations of
+third-party tools like shellcheck) lives at
+`<livespec-repo-root>/dev-tooling/enforcement/check-<name>` as a
+standalone executable. The scripts themselves conform to every rule
+in this document; they are not exempt from their own rules.
+
+### Invocation surfaces
+
+* **Pre-commit (local, staged files):** runs the fast subset of the
+  suite — minimally `check-shellcheck`, `check-shfmt`,
+  `check-shellharden`, `check-executable-bit`,
+  `check-filename-blacklist`, `check-sourceable-guards`,
+  `check-library-headers` — against staged files.
+* **Pre-push (local, whole tree):** runs the full suite or a
+  near-full subset.
+* **CI (remote, whole tree on every pull request and every push to
+  the default branch):** runs the full suite, including
+  `check-coverage`.
+* **Manual (developer at the shell):** `make check`, `make
+  check-<name>`; same targets used by the hooks.
+
+The pre-commit configuration MUST be installable by a single
+documented command (e.g., `pre-commit install` or `make hooks`).
+
+Commits MUST be blocked when any pre-commit check fails. Bypassing
+via `git commit --no-verify` is permitted for local experimental
+commits but MUST NOT appear on any pushed branch; the pushed branch
+must pass the full suite when CI runs.
+
+CI MUST cache tool installation (mise-managed) to avoid redundant
+downloads but MUST NOT cache test results, analysis results, or
+coverage results across runs.
+
+CI jobs MUST run their shell steps with `set -euo pipefail` at
+the shell level, so that a failed step in the CI script itself
+does not silently pass.
 
 ---
 
@@ -953,7 +1083,7 @@ project-specific code for input and precondition failures:
 | `2`   | Usage error: bad flag, wrong number of arguments, malformed CLI invocation. Emits `--help` hint on stderr. |
 | `3`   | Input or precondition failed: a referenced file/path/value does not exist, cannot be parsed, or is in an incompatible state. Invalid configuration files (e.g., a malformed `.livespec.jsonc`) fall under this code; the specificity of the failure MUST appear in the stderr message, not in the exit code. |
 | `126` | Permission denied: a required file exists but is not executable/readable/writable as needed. Matches the shell's own `126`. |
-| `127` | Required external tool not on `PATH` (`jq`, `pandoc`, etc.). Matches the shell's own "command not found" code. |
+| `127` | Required external tool not on `PATH` (`jq`, `pandoc`, etc.), or bash version too old. Matches the shell's own "command not found" code. |
 
 Provenance: `0` and `1` are universal Unix convention. `2` matches
 bash's own convention for builtin invocation errors and is followed
@@ -987,9 +1117,11 @@ are listed so their absence is a deliberate boundary, not a gap.
 * **Interactive execution.** Skill scripts are non-interactive by
   design. Scripts intended for human use at a terminal are not
   governed by this section.
-* **Portability to POSIX sh.** Bashisms are permitted throughout.
-  Scripts that need sh-compatibility live outside the skill and
-  are governed by a different section (not in v1).
+* **Portability to POSIX sh.** Bashisms are permitted throughout,
+  within the bash 3.2 feature set.
+* **Bash features introduced after 3.2.57.** Namerefs, associative
+  arrays, `mapfile`, `${var,,}` are forbidden in the runtime code
+  (see "Interpreter, shebang, and bash version").
 * **Portability to zsh, ash, dash, ksh, or Windows shells.**
 * **Non-bash script languages.** Python, Node, and Deno scripts
   bundled with the skill are governed by their own (future)

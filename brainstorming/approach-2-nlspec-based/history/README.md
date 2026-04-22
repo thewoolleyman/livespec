@@ -91,9 +91,54 @@ entries keep their original naming (immutable history).
   `bats-support`, `kcov` with coverage thresholds, and the
   `tests/` skeleton tree. Full decision record is in
   `v004/proposed_changes/proposal-critique-v03-revision.md`.
+- **v005** — revise driven by
+  `proposed_changes/proposal-critique-v04.md` and its revision.
+  Critique focused specifically on
+  `bash-skill-script-style-requirements.md` (the style doc) and
+  its consequences for PROPOSAL.md — pragmatism,
+  implementability, maintainability, and internal consistency.
+  Major structural changes:
+  **Runtime vs dev-time split** — `scripts/checks/` removed
+  from the skill bundle; dev-time enforcement moves to
+  `<repo-root>/dev-tooling/enforcement/` with `Makefile`,
+  `.mise.toml`, `.pre-commit-config.yaml` at the repo root.
+  `bash-boilerplate.sh` symlinked from `dev-tooling/`.
+  **Single bash 3.2 standard** — the 4.4 floor is dropped;
+  single uniform standard targets bash 3.2.57+ (macOS default
+  `/bin/bash`). Bash 4.x features (namerefs, associative arrays,
+  `mapfile`, `${var,,}`) forbidden; `"${arr[@]-}"` mandated for
+  possibly-empty arrays under `nounset`. Boilerplate asserts
+  bash version at load; exits 127 if too old.
+  **Mise for tool pinning** — committed `.mise.toml` pins every
+  external tool (bash=3.2.57, shellcheck, shfmt, shellharden,
+  shellmetrics, kcov, bats-core, bats-assert, bats-support, jq,
+  tree-sitter-bash). Scattered "MUST be pinned in CI" language
+  collapses to the mise mandate.
+  **Doctor-static decomposed** — `scripts/doctor-static`
+  (monolithic) replaced by `scripts/doctor/run-static`
+  (orchestrator) plus per-check executables at
+  `scripts/doctor/static/<slug>`. Slug-only `check_id` format
+  (`doctor-out-of-band-edits`, etc.) replaces positional numbers.
+  Insert/delete of checks is a non-event.
+  **Enforcement suite reframing** — invocation-surface-agnostic;
+  every check is a Makefile target; pre-commit, pre-push, CI, and
+  manual invocation are consumers. §"Enforcement via git hooks
+  and CI" renamed §"Enforcement suite". Linux-only stated once.
+  **Style-doc rule relaxations** — `main "$@"` final-line rule
+  dropped in favor of sourceable guard (B1); CCN raised to ≤ 10,
+  args to ≤ 6 (B4); `noclobber` dropped from mandatory strict
+  mode (B5); `BASH_XTRACE`/`BASH_VERBOSE` renamed to
+  `LIVESPEC_XTRACE`/`LIVESPEC_VERBOSE` (B6); `realpath` replaced
+  with pure-bash `cd && pwd` (B7); pure-library env-var reads
+  allow-listed (B8); `kcov` pure-library threshold ≥ 95% (B2);
+  tree-sitter-bash named as parser for AST-level checks (B3);
+  structured library header format mandated (B16); variadic
+  mechanical definition (B15); stdin-routing checks permitted
+  (B17). Full decision record is in
+  `v005/proposed_changes/proposal-critique-v04-revision.md`.
 
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v004/PROPOSAL.md` until the next revise.
+byte-identical to `history/v005/PROPOSAL.md` until the next revise.
