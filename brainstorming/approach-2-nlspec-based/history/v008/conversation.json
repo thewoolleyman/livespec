@@ -1,0 +1,192 @@
+{
+  "version": "v008",
+  "produced_from": "v007",
+  "critique_file": "v008/proposed_changes/proposal-critique-v07.md",
+  "revision_file": "v008/proposed_changes/proposal-critique-v07-revision.md",
+  "session_date": "2026-04-22",
+  "reviser_human": "thewoolleyman",
+  "reviser_llm": "Claude Opus 4.7 (1M context)",
+  "pass_framing": "defect critique with grounded recreatability review",
+  "turns": [
+    {
+      "role": "user",
+      "content": "read and follow /data/projects/livespec/brainstorming/approach-2-nlspec-based/critique-interview-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Loaded required files (PROPOSAL.md, livespec-nlspec-spec.md, python-skill-script-style-requirements.md, deferred-items.md, companion docs, v007 critique + revision, history/README.md). Produced a 16-item critique (H1-H16) saved to proposed_changes/v008-proposed-change-proposal-critique-v07.md. Began the interview."
+    },
+    {
+      "role": "assistant",
+      "summary": "H1 (malformation): _bootstrap.py sys.path inserts scripts/ only; vendored libs at scripts/_vendor/ don't resolve as returns.io / fastjsonschema / structlog. Options: A insert both paths (recommended); B move vendored libs up; C rewrite imports to _vendor.<lib>."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H2 (incompleteness): .livespec.jsonc JSONC parser unspecified; stdlib json can't parse comments. Options: A hand-roll restricted parser (recommended); B vendor a pure-Python JSONC library; C drop JSONC for pure .livespec.json."
+    },
+    {
+      "role": "user",
+      "content": "B"
+    },
+    {
+      "role": "assistant",
+      "summary": "H2 follow-up: specific JSONC library. Options: A jsoncomment (MIT, JSONC-only, recommended); B pyjson5/json5 (Apache-2.0, JSON5 superset); C defer library selection."
+    },
+    {
+      "role": "user",
+      "content": "A (jsoncomment)"
+    },
+    {
+      "role": "assistant",
+      "summary": "H3 (malformation): argparse inside livespec.commands.<cmd>.main() raises SystemExit, violating check-supervisor-discipline. Options: A argparse in io/cli.py with @impure_safe + exit_on_error=False (recommended); B extend wrapper shape; C exempt commands/*.py."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H4 (incompleteness): SKILL.md prose body undefined. Options: A codify shape + defer content (recommended); B defer entirely; C author every body inline in PROPOSAL.md."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H5 (malformation): ruff max-args=6 vs 'no positional-arg limit' contradict. Initial options: A drop max-args=6 honoring v006 P9; B re-introduce at 8; C keep at 6 reversing v006 P9."
+    },
+    {
+      "role": "user",
+      "content": "Is there any reason to ever allow more than six? If there are more than that, it should be refactored to wrapper objects or structs, correct?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Acknowledged the user correctly identified the refactor-to-dataclass discipline as the load-bearing intent. Explained PLR0913 (all args) vs PLR0917 (positional only) distinction. Reframed: A max-args=6 only; B max-positional-args=6 only; C both at 6."
+    },
+    {
+      "role": "user",
+      "content": "C (both PLR0913 and PLR0917 at 6)"
+    },
+    {
+      "role": "assistant",
+      "summary": "H6 (ambiguity): seed and revise wrapper input contracts undocumented; seed hedged with 'or equivalent entry path'. Initial options used 'plan' terminology."
+    },
+    {
+      "role": "user",
+      "content": "I don't understand what you mean. What are these plans and how are they different than the JSON?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Clarified 'plan' was sloppy phrasing; explained that seed and revise have distinct JSON input shapes from the propose-change/critique findings array (seed input = {files[], intent}; revise input = {decisions: [{proposal_topic, decision, rationale, modifications, resulting_files[]}]}). Each needs its own schema. Reframed options: A named per-sub-command flags (--seed-json, --revise-json) + schemas (recommended); B defer; C one generic --input-json."
+    },
+    {
+      "role": "user",
+      "content": "A (named per-sub-command flags and schemas)"
+    },
+    {
+      "role": "assistant",
+      "summary": "H7 (incompleteness): context-dataclass field sets (DoctorContext etc.) undefined. Options: A codify minimum fields for all contexts (recommended); B codify only DoctorContext; C defer all."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H8 (malformation): doctor's allowed-tools 'Bash + Read (read-only)' vs out-of-band-edits auto-backfill writes. Options: A add Write to doctor's tools (recommended); B remove auto-backfill, route via dialogue; C keep read-only, document side channel."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H9 (ambiguity): factory-validator caching via functools.lru_cache keyed on $id can't be implemented as-stated (dict unhashable). Options: A compile cache in io/fastjsonschema_facade.py, facade-layer exemption (recommended); B @lru_cache with frozen schema tuple; C no caching."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H10 (ambiguity): findings→Proposal section mapping undefined; critique_findings.schema.json does double duty. Options: A split into doctor_findings and proposal_findings schemas (recommended; rename critique_findings → proposal_findings); B one shared schema with optional fields; C defer to template-prompt-authoring."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H11 (ambiguity): out-of-band-edits comparison semantics unclear. Initial options: A both sides HEAD-committed (claimed 'non-destructive'); B working-tree history; C mixed."
+    },
+    {
+      "role": "user",
+      "content": "How can option A be non-destructive if the auto fill writes the same version?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Acknowledged the user correctly identified that HEAD-to-HEAD comparison alone doesn't handle rerun-before-commit (second run would overwrite, collide, or pile up). Reframed A': HEAD-to-HEAD + pre-backfill guard checking for uncommitted history/v(N+1)/ or stale out-of-band-edit-*.md; emit 'commit existing backfill and re-run' without repeating the backfill. Truly non-destructive via explicit detection."
+    },
+    {
+      "role": "user",
+      "content": "Isn't that going to fail too if there are in-progress changes in history? But I guess that's okay because they'll only be there if a `rebase` was successfully completed, which means everything should have been committed before moving on."
+    },
+    {
+      "role": "assistant",
+      "summary": "Confirmed the commit-after-successful-revise workflow discipline makes the guard's behavior correct: uncommitted history/v(N+1)/ means the user skipped the commit step; refusing to proceed is the right signal."
+    },
+    {
+      "role": "user",
+      "content": "A' (HEAD-to-HEAD + pre-backfill guard)"
+    },
+    {
+      "role": "assistant",
+      "summary": "H12 (incompleteness): skill-owned directory-README paragraph content undefined. Options: A freeze paragraphs verbatim in PROPOSAL.md (recommended); B move content to template tree; C defer."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H13 (incompleteness): bcp14 typo list 'finite list (MUSNT, SHOLD, SHAL, etc.)' not enumerated. Options: A extend ast-check-semantics scope to cover markdown-parsing checks + rename to static-check-semantics (recommended); B enumerate verbatim; C drop typo detection."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H14 (ambiguity): anchor-reference-resolution algorithm specifics undefined. Options: A specify GFM slug generation in PROPOSAL.md (recommended); B defer; C drop static check."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H15 (ambiguity): tests/fixtures/ CLAUDE.md coverage carve-out. Options: A carve out tests/fixtures/** (recommended); B require recursively; C rename to tests/_fixtures/."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "H16 (incompleteness): auto-generated seed proposed-change sub-heading content (Target spec files, Summary, Motivation, Proposed Changes) undefined. Options: A freeze canonical content in PROPOSAL.md (recommended); B relax format; C defer to template-prompt-authoring."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "All 16 items resolved. Began the dogfood apply. Wrote revision file at history/v008/proposed_changes/proposal-critique-v07-revision.md. Applied the 16 decisions to PROPOSAL.md via targeted edits (doctor allowed-tools H8; SKILL.md body structure subsection H4; argparse seam note H3; _vendor/ jsoncomment H2; directory-README paragraphs H12; JSONC dialect H2; seed auto-capture H16 + wrapper input H6; propose-change schema split + mapping H10; critique schema rename H10; revise wrapper input H6; static-phase output contract H10; out-of-band-edits pre-backfill guard H11; bcp14 + gherkin + anchor rules H13/H14; DoD #13 fixtures carve-out H15; self-application deferred-items references H4/H6/H13). Updated python-skill-script-style-requirements.md (_bootstrap.py body H1; vendored libs jsoncomment H2; package layout cli.py + jsonc.py + schemas H2/H3/H10; context dataclasses H7; CLI argument parsing seam H3; ruff config max-args + max-positional-args H5; complexity thresholds H5; facade compile cache H9; check-global-writes exemption H9; CLAUDE.md coverage fixtures carve-out H15). Rewrote deferred-items.md: renamed ast-check-semantics → static-check-semantics with widened scope; added skill-md-prose-authoring (H4) and wrapper-input-schemas (H6+H10). Copied PROPOSAL.md to history/v008/PROPOSAL.md (byte-identical). Moved critique from proposed_changes/ to history/v008/proposed_changes/. Updated history/README.md with v008 entry and repointed the 'Pointer' paragraph. Captured this conversation.json."
+    }
+  ]
+}

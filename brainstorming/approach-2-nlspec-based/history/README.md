@@ -190,9 +190,195 @@ entries keep their original naming (immutable history).
   `tree-sitter-bash`, `jq` at runtime) retired. Full decision
   record is in
   `v006/proposed_changes/proposal-critique-v05-revision.md`.
+- **v007** — revise driven by
+  `proposed_changes/proposal-critique-v06.md` and its revision.
+  A **defect critique with grounded research**, surfacing
+  integration gaps the v005→v006 language migration left in
+  PROPOSAL.md and `python-skill-script-style-requirements.md`.
+  18 items (G1-G18) labelled with the NLSpec failure-mode
+  framework (ambiguity / malformation / incompleteness /
+  incorrectness). Major structural changes:
+  **Per-sub-command skill structure** — restructured from a
+  single `livespec` skill with internal `commands/` to one skill
+  per sub-command (`/livespec:seed`, `/livespec:doctor`, etc.).
+  Driven by Claude Code plugin invocation rules (research via
+  claude-code-guide agent confirmed plugin skills MUST be
+  namespaced `/<plugin>:<skill>` with no nested subcommand
+  syntax). Each skill carries its own scoped `description`,
+  `allowed-tools`, and (where applicable)
+  `disable-model-invocation` frontmatter. Shared scripts move
+  to plugin root: `.claude-plugin/scripts/`.
+  **Sub-command lifecycle orchestration as ROP chain** — new
+  PROPOSAL.md section codifying that the Python wrapper's
+  `livespec.commands.<cmd>.main()` composes pre-step doctor
+  static + sub-command logic + post-step doctor static as one
+  ROP chain. The post-step LLM-driven phase runs from skill
+  prose AFTER the wrapper exits. `--skip-pre-check` is
+  wrapper-parsed; `--skip-subjective-checks` is an LLM-layer flag
+  that never reaches Python.
+  **Shared `bin/_bootstrap.py`** — extracts sys.path setup +
+  Python version check into one shared module (~15 LOC) called
+  by every wrapper's `bootstrap()`. Each `bin/<cmd>.py` is now
+  a deterministic 6-line shape; `check-wrapper-shape` updated
+  to match. `__init__.py` no longer raises (resolves the
+  malformation between version-check raise and
+  `check-no-raise-outside-io`).
+  **Static check registry** — `livespec/doctor/static/__init__.py`
+  imports every check by name and re-exports `(SLUG, run)` tuples.
+  Adding/removing a check is one explicit registry edit. The
+  v005-era "check insert/delete is a non-event" invariant is
+  dropped (preferred static enumeration over dynamic discovery
+  for the strongest possible guardrails). Pyright strict can fully
+  type-check the orchestrator.
+  **Factory-shape validators** — `validate/<name>.py` modules
+  expose `validate_<name>(payload, schema) -> Result[...]`
+  taking the schema dict as a parameter. `io/` reads the schema;
+  `validate/` stays strictly pure. Resolves the malformation
+  between purity-by-directory and "validate/ uses fastjsonschema
+  loaded from schemas/".
+  **Restricted-YAML front-matter parser** — hand-rolled at
+  `livespec/parse/front_matter.py` (deferred to first-batch
+  propose-change). Front-matter values restricted to JSON-
+  compatible scalars; no nesting, no anchors. Codified in
+  PROPOSAL.md so the parser stays narrow forever.
+  **Vendored libs: drop check-vendor-audit, pin versions** —
+  vendoring discipline reduces to (1) pinned version recorded in
+  `.vendor.toml`, (2) no edits to `_vendor/`, (3) re-vendoring
+  only via `just vendor-update <lib>`. The audit script and its
+  schema-spec ambiguity are removed entirely; code review and
+  git diff visibility cover the threat model.
+  **Typed facades for vendored libs under `livespec/io/`** —
+  `fastjsonschema_facade.py`, `structlog_facade.py`, and
+  (conditionally) `returns_facade.py` confine `Any` and
+  `# type: ignore` to a small audited surface. Pyright config
+  excludes `_vendor/**` from strict mode.
+  **Doctor exit-code derivation codified** — supervisor maps
+  `IOFailure(err)` → `err.exit_code`; `IOSuccess(report)` + any
+  `status:fail` finding → exit 3; otherwise exit 0;
+  `status:skipped` never causes a fail exit.
+  **CLAUDE.md coverage canonicalized** to `scripts/` + `tests/`
+  + `dev-tooling/` with `_vendor/` and its entire subtree
+  explicitly excluded. Resolves five-way disagreement across docs.
+  **`just bootstrap`** target added for first-time setup
+  (`lefthook install` + any other one-time setup); `just check`
+  documented as continue-on-failure with aggregated exit.
+  **Structlog config exemption documented** for `__init__.py`'s
+  one-time `configure(...)` and `bind_contextvars(run_id=...)`
+  calls.
+  **New `deferred-items.md` companion** in the brainstorming
+  folder — canonical tracking list for items deferred to
+  first-batch propose-changes after seed. Each entry has a
+  stable id, target spec file(s), and how-to-resolve paragraph.
+  Future revisions MUST keep it authoritative; removals require
+  explicit explanation. Bootstrapped from v006's `Self-application`
+  list plus three new entries (`ast-check-semantics`,
+  `returns-pyright-plugin-disposition`, `front-matter-parser`).
+  **Documented "no `bin/doctor.py`" asymmetry** — `livespec
+  doctor` has no Python wrapper for the LLM-driven phase;
+  invocation is `bin/doctor_static.py` + skill prose.
+  **Propose-change/critique LLM-vs-wrapper split made explicit**
+  — `bin/propose_change.py` only accepts `--findings-json`;
+  the freeform `<intent>` path is LLM-driven (LLM invokes
+  template prompt, validates output, passes JSON to wrapper).
+  Full decision record is in
+  `v007/proposed_changes/proposal-critique-v06-revision.md`.
+
+- **v008** — revise driven by
+  `proposed_changes/proposal-critique-v07.md` and its revision.
+  A **defect critique with grounded recreatability review**,
+  surfacing 16 integration gaps (H1-H16) labelled with the NLSpec
+  failure-mode framework (ambiguity / malformation /
+  incompleteness / incorrectness). Two mid-interview corrections
+  materially reshaped items: H5's arg-count gate (user pushback
+  inverted the v006 P9 "no positional-arg limit" decision into
+  mechanical `PLR0913 + PLR0917` enforcement at 6), and H11's
+  out-of-band-edits cycle (user's "how is that non-destructive?"
+  question surfaced the need for an explicit pre-backfill guard).
+  Major structural changes:
+  **Bootstrap sys.path fix** — `bin/_bootstrap.py` now inserts
+  BOTH `scripts/` and `scripts/_vendor/` into `sys.path`; v007's
+  single-path bootstrap would have left every vendored-lib
+  import unresolvable.
+  **JSONC parser vendored** — `jsoncomment` (MIT) added as the
+  fourth vendored library. `scripts/livespec/parse/jsonc.py` is a
+  thin pure wrapper. PROPOSAL.md's `.livespec.jsonc` section
+  codifies the JSONC dialect (JSON + `//` and `/* ... */`
+  comments; no JSON5 extras).
+  **CLI argument-parsing seam** — argparse lives in
+  `livespec/io/cli.py`, wrapped with `@impure_safe` and
+  `exit_on_error=False`; `livespec/commands/<cmd>.py` exposes a
+  pure `build_parser()` factory. `IOFailure(UsageError)` → exit
+  `2` via the railway. `check-supervisor-discipline` scope
+  narrowed: `livespec/**` in scope; `bin/*.py` sole exempt
+  subtree.
+  **Per-sub-command SKILL.md body structure** — PROPOSAL.md
+  codifies the canonical body shape (opening, when-to-invoke,
+  inputs, ordered steps, post-wrapper, failure handling); actual
+  per-sub-command content deferred via new
+  `skill-md-prose-authoring` entry in `deferred-items.md`.
+  **Mechanical refactor-to-dataclass enforcement at 7+ args** —
+  `max-args = 6` AND `max-positional-args = 6` (ruff `PLR0913` +
+  `PLR0917`), reversing v006 P9. Functions needing more
+  parameters MUST refactor to accept a dataclass.
+  **Explicit seed / revise wrapper input contracts** —
+  `bin/seed.py --seed-json` with `seed_input.schema.json`;
+  `bin/revise.py --revise-json` with `revise_input.schema.json`.
+  The v007 "or equivalent entry path" hedging is removed.
+  **Context dataclass field sets codified** — Style doc lists
+  minimum fields for `DoctorContext`, `SeedContext`,
+  `ProposeChangeContext`, `CritiqueContext`, `ReviseContext`,
+  `PruneHistoryContext`.
+  **`doctor` allowed-tools honesty** — `Bash + Read + Write`
+  (the static phase writes under the `out-of-band-edits`
+  auto-backfill path). "Read-only validation" phrasing dropped.
+  **Factory-validator cache relocation** — The
+  `fastjsonschema.compile` cache moves to
+  `livespec/io/fastjsonschema_facade.py` (impure boundary).
+  `validate/` stays strictly pure. Cache added to the
+  documented `check-global-writes` exemption list alongside
+  `structlog.configure` and
+  `structlog.contextvars.bind_contextvars`.
+  **Findings-schema split** — `doctor_findings.schema.json`
+  (doctor static-phase output: `check_id/status/message/path/line`)
+  vs `proposal_findings.schema.json` (renamed from
+  `critique_findings.schema.json`; propose-change/critique
+  template output with `name/target_spec_files/summary/
+  motivation/proposed_changes`). One-to-one field-copy mapping
+  from proposal findings to `## Proposal` sections.
+  **Out-of-band-edits pre-backfill guard** — HEAD-to-HEAD
+  comparison plus a guard: if uncommitted
+  `SPECIFICATION/history/v(N+1)/` or stale
+  `out-of-band-edit-*.md` is on disk, the check emits "commit
+  existing backfill and re-run" without repeating the backfill.
+  Non-destructive via explicit detection.
+  **Skill-owned directory-README paragraphs frozen verbatim** in
+  PROPOSAL.md for `SPECIFICATION/proposed_changes/README.md` and
+  `SPECIFICATION/history/README.md`.
+  **Static-check-semantics deferred item** — Renamed from v007
+  `ast-check-semantics`; widened to cover markdown-parsing checks
+  (bcp14 typo list, GFM anchor-slug algorithm edge cases),
+  doctor-cycle semantics (pre-backfill guard details), and
+  argparse `SystemExit` disposition under supervisor-discipline.
+  **Anchor-reference-resolution GFM algorithm** codified in
+  PROPOSAL.md: lowercase; spaces → hyphens; punctuation stripped
+  except `-` and `_`; collapse multi-hyphens; fenced-block
+  headings excluded; no `{#custom-id}` in v1.
+  **`tests/fixtures/` carve-out** from `check-claude-md-coverage`
+  alongside the existing `_vendor/` carve-out.
+  **Canonical seed auto-capture content** frozen in PROPOSAL.md:
+  Target-spec-files = written paths; Summary = canonical one-liner;
+  Motivation = verbatim intent; Proposed Changes = verbatim intent.
+  **Two new deferred-items entries:**
+  `skill-md-prose-authoring` (v008 H4) and `wrapper-input-schemas`
+  (v008 H6 + H10 — includes the `proposal_findings` rename and
+  the new `doctor_findings`, `seed_input`, `revise_input`
+  schemas). `ast-check-semantics` renamed to
+  `static-check-semantics` with widened scope. Full decision
+  record is in
+  `v008/proposed_changes/proposal-critique-v07-revision.md`.
 
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v006/PROPOSAL.md` until the next revise.
+byte-identical to `history/v008/PROPOSAL.md` until the next revise.

@@ -3,9 +3,9 @@
 This section constrains how Python scripts bundled with a Claude Code
 skill governed by this specification are authored, tested, and enforced.
 It applies to every Python module under the shipped skill bundle
-(`.claude-plugin/skills/livespec/scripts/`) and to every Python module
-under the dev-tooling tree at `<repo-root>/dev-tooling/`. It does not
-apply to scripts written in other languages; livespec v006 ships no
+(`.claude-plugin/scripts/`) and to every Python module under the
+dev-tooling tree at `<repo-root>/dev-tooling/`. It does not
+apply to scripts written in other languages; livespec v008 ships no
 scripts in any language other than Python.
 
 Scripts governed by this section are invoked by Claude as tools via the
@@ -29,14 +29,15 @@ This section uses BCP 14 / RFC 2119 / RFC 8174 keywords (`MUST`,
 ## Scope
 
 - Every Python module bundled with the skill under
-  `.claude-plugin/skills/livespec/scripts/livespec/**`.
+  `.claude-plugin/scripts/livespec/**`.
 - Every Python shebang-wrapper executable under
-  `.claude-plugin/skills/livespec/scripts/bin/*.py`.
+  `.claude-plugin/scripts/bin/*.py`, including the shared
+  `_bootstrap.py` module.
 - Every Python module or script under `<repo-root>/dev-tooling/**`.
 - **Exempt:** vendored third-party code under
-  `.claude-plugin/skills/livespec/scripts/_vendor/**` — vendored libs
-  are audited for drift against upstream (`check-vendor-audit`), not
-  subjected to livespec's own style rules.
+  `.claude-plugin/scripts/_vendor/**` — vendored libs ship at pinned
+  upstream versions and are not subjected to livespec's own style
+  rules. See "Vendored third-party libraries" below.
 
 Tests under `<repo-root>/tests/` MUST comply unless a test explicitly
 exercises a non-conforming input, in which case the non-conformance MUST
@@ -69,9 +70,11 @@ be declared in a docstring at the top of the fixture.
   and improved typing syntax are expected idioms.
 - Bundled executables MUST use the shebang `#!/usr/bin/env python3`.
   No other interpreter path is valid.
-- The package `livespec/__init__.py` MUST assert `sys.version_info >=
-  (3, 10)` at import time and raise `ToolMissingError` (exit 127) if
-  older.
+- The shared `bin/_bootstrap.py:bootstrap()` function asserts
+  `sys.version_info >= (3, 10)` and exits `127` with an actionable
+  install instruction if older. `bin/_bootstrap.py` is the canonical
+  location for the version check; `scripts/livespec/__init__.py` does
+  NOT raise (it cannot — see "Railway-Oriented Programming" below).
 - The `.mise.toml` at the repo root pins the developer and CI Python
   version to an exact 3.10+ release; developers use `mise install` to
   match.
@@ -96,8 +99,7 @@ be declared in a docstring at the top of the fixture.
 ### Vendored third-party libraries
 
 The bundle ships a curated set of pure-Python third-party libraries
-under `.claude-plugin/skills/livespec/scripts/_vendor/<lib>/`. All
-vendored libs MUST be:
+under `.claude-plugin/scripts/_vendor/<lib>/`. All vendored libs MUST be:
 
 - Pure Python (no compiled wheels; no C / Rust extensions).
 - Permissively licensed (MIT, BSD-2-Clause, BSD-3-Clause, or
@@ -105,29 +107,54 @@ vendored libs MUST be:
 - Actively maintained by a reputable upstream.
 - Zero-transitive-dep or all-transitive-deps-also-vendored.
 
-Locked vendored libs for v006:
+Locked vendored libs for v008 (each pinned to an exact upstream ref
+recorded in `<repo-root>/.vendor.toml`):
 
 - **`returns`** (dry-python/returns, BSD-2) — ROP primitives: `Result`,
   `IOResult`, `@safe`, `@impure_safe`, `flow`, `bind`, `Fold.collect`,
-  `lash`.
+  `lash`. Whether to vendor returns' pyright plugin is a deferred
+  decision tracked in `deferred-items.md` (`returns-pyright-plugin-
+  disposition`).
 - **`fastjsonschema`** (horejsek/python-fastjsonschema, MIT) — JSON
   Schema Draft-7 validator.
 - **`structlog`** (hynek/structlog, BSD-2 / MIT dual) — structured JSON
   logging.
+- **`jsoncomment`** (MIT) — JSONC (JSON-with-comments) parser. A
+  comment-stripping pre-pass over stdlib `json.loads`; used by
+  `livespec/parse/jsonc.py` for `.livespec.jsonc` parsing and any
+  other JSONC input.
 
 Each vendored lib's `LICENSE` file MUST be preserved at
 `_vendor/<lib>/LICENSE`. A `NOTICES.md` at the repo root MUST list every
 vendored lib with its license and copyright.
 
-The `scripts/livespec/__init__.py` MUST insert `_vendor/` into
-`sys.path` at import time so vendored libs import under their natural
-names (`from returns.io import IOResult`).
+The shared `bin/_bootstrap.py:bootstrap()` function inserts BOTH the
+bundle's `scripts/` directory AND the bundle's `scripts/_vendor/`
+directory into `sys.path`. Adding `scripts/` makes the `livespec`
+package resolvable (`from livespec.commands.seed import main`).
+Adding `scripts/_vendor/` makes each vendored top-level package
+resolvable under its natural name (`from returns.io import IOResult`,
+`from fastjsonschema import compile`, `import structlog`,
+`import jsoncomment`). Adding only `scripts/` is insufficient —
+vendored libraries live one level deeper under `_vendor/` and Python
+would not find them on `import`.
 
-`check-vendor-audit` (see "Enforcement suite") diffs each vendored lib's
-source tree against its upstream pinned version recorded in
-`<repo-root>/.vendor.toml` (or equivalent manifest). Any drift fails
-the gate. Re-vendoring via `just vendor-update <lib>` is a deliberate
-maintainer action.
+### Vendoring discipline
+
+- **Never edit `_vendor/` files directly.** Any edit is treated as
+  drift; code review and git diff visibility are the catching
+  mechanisms.
+- **Re-vendoring goes through `just vendor-update <lib>`** — the only
+  blessed mutation path. The recipe fetches the upstream ref, copies
+  it under `_vendor/<lib>/`, preserves `LICENSE`, and updates
+  `.vendor.toml`'s recorded ref.
+- **`.vendor.toml`** records `{upstream_url, upstream_ref, vendored_at}`
+  per lib. No hashes; no automated drift-detection check (`check-
+  vendor-audit` was removed in v007 as over-engineered for the threat
+  model).
+- `_vendor/` is **excluded** from livespec's own style rules, type
+  checking strictness, coverage measurement, and CLAUDE.md coverage
+  enforcement.
 
 ---
 
@@ -136,8 +163,9 @@ maintainer action.
 The shipped bundle organizes Python code as:
 
 ```
-.claude-plugin/skills/livespec/scripts/
+.claude-plugin/scripts/
 ├── bin/                                   # shebang-wrapper executables
+│   ├── _bootstrap.py                      # SHARED: sys.path setup + Python version check
 │   ├── seed.py
 │   ├── propose_change.py
 │   ├── critique.py
@@ -147,25 +175,42 @@ The shipped bundle organizes Python code as:
 ├── _vendor/
 │   ├── returns/
 │   ├── fastjsonschema/
-│   └── structlog/
+│   ├── structlog/
+│   └── jsoncomment/
 └── livespec/
-    ├── __init__.py
-    ├── commands/                          # one module per sub-command
+    ├── __init__.py                       # configures structlog + binds run_id (no version check, no raise)
+    ├── commands/                         # one module per sub-command
     ├── doctor/
-    │   ├── run_static.py                  # orchestrator (single ROP chain)
+    │   ├── run_static.py                 # orchestrator (single ROP chain)
     │   ├── finding.py
-    │   └── static/                        # per-check modules
-    ├── io/                                # impure boundary wrappers
-    ├── parse/                             # pure parsers
-    ├── validate/                          # pure validators
-    ├── schemas/                           # JSON Schema Draft-7 files
-    ├── context.py                         # Context dataclasses
-    └── errors.py                          # LivespecError hierarchy
+    │   └── static/                       # per-check modules + static registry
+    │       ├── __init__.py               # static registry: imports each check by name, exports (SLUG, run) tuples
+    │       └── <check>.py                # one module per check
+    ├── io/                               # impure boundary wrappers + vendored-lib facades
+    │   ├── fs.py
+    │   ├── git.py
+    │   ├── cli.py                        # argparse wrappers (@impure_safe, exit_on_error=False)
+    │   ├── fastjsonschema_facade.py      # typed wrapper + compile-cache; only place Any from fastjsonschema is allowed
+    │   ├── structlog_facade.py           # typed wrapper; only place Any from structlog is allowed
+    │   └── returns_facade.py             # (typed re-exports if needed; see returns-pyright-plugin-disposition)
+    ├── parse/                            # pure parsers (Result-returning)
+    │   ├── jsonc.py                      # thin wrapper over vendored jsoncomment
+    │   └── front_matter.py               # restricted-YAML parser (deferred; see deferred-items.md)
+    ├── validate/                         # pure validators (factory shape: schema as parameter)
+    ├── schemas/                          # JSON Schema Draft-7 files
+    │   ├── doctor_findings.schema.json   # doctor static-phase output contract
+    │   ├── proposal_findings.schema.json # propose-change / critique template output
+    │   ├── seed_input.schema.json        # seed wrapper input (deferred; see deferred-items.md)
+    │   ├── revise_input.schema.json      # revise wrapper input (deferred; see deferred-items.md)
+    │   ├── livespec_config.schema.json   # .livespec.jsonc schema
+    │   └── front_matter.schema.json      # (deferred; see deferred-items.md)
+    ├── context.py                        # Context dataclasses
+    └── errors.py                         # LivespecError hierarchy
 ```
 
-- **`bin/`** — executable shebang-wrappers. Each file is ≤ 5 lines:
-  shebang + import of `main` + `raise SystemExit(main())`. No logic.
-  `chmod +x` applied. See "Shebang-wrapper contract" below.
+- **`bin/`** — executable shebang-wrappers + the shared `_bootstrap.py`.
+  Each wrapper file is exactly 6 lines matching the shape below. No
+  logic. `chmod +x` applied.
 - **`_vendor/`** — vendored third-party libs, exempt from livespec
   rules.
 - **`livespec/`** — the Python package. Every other file here follows
@@ -177,21 +222,137 @@ Per sub-package conventions:
   (ROP-returning) and `main()` (supervisor that unwraps to exit code).
 - **`doctor/run_static.py`** — static-phase orchestrator. Composes all
   check modules via a single ROP chain (`Fold.collect`).
+- **`doctor/static/__init__.py`** — **static registry.** Imports every
+  check module by name and re-exports a tuple of `(SLUG, run)` pairs.
+  Adding or removing a check is one explicit edit to the registry.
+  No dynamic discovery. Pyright strict can fully type-check the
+  composition through this registry.
 - **`doctor/static/<check>.py`** — one module per static check. Exports
   `SLUG` constant and `run(ctx) -> IOResult[Finding, DoctorInternalError]`.
 - **`io/`** — impure boundary. Every function wraps a side-effecting
-  operation (filesystem, subprocess, git) with `@impure_safe`.
+  operation (filesystem, subprocess, git) with `@impure_safe`. Also
+  hosts thin typed facades over vendored libs whose surface types are
+  not strict-pyright-clean (`fastjsonschema`, `structlog`); see "Type
+  safety" below.
 - **`parse/`** — pure parsers. Every function takes a string/bytes/dict
-  and returns `Result[T, ParseError]`.
-- **`validate/`** — pure validators. Uses `fastjsonschema` loaded from
-  `../schemas/*.schema.json`. Returns `Result[T, ValidationError]`.
+  and returns `Result[T, ParseError]`. Includes the restricted-YAML
+  parser at `parse/front_matter.py`.
+- **`validate/`** — pure validators using the **factory shape**: each
+  validator takes `(payload: dict, schema: dict)` and returns
+  `Result[T, ValidationError]`. Callers in `commands/` or `doctor/`
+  read schemas from disk via `io/` wrappers and pass the parsed dict.
+  Validators invoke `livespec.io.fastjsonschema_facade.compile_schema`
+  for the actual compile; the facade owns the compile cache (see
+  "Vendored-lib type-safety integration" below). `validate/` stays
+  strictly pure (no module-level mutable state, no filesystem I/O).
 - **`schemas/`** — JSON Schema Draft-7 files, one per public dataclass.
   Filename matches the dataclass: `LivespecConfig` →
   `livespec_config.schema.json`.
 - **`context.py`** — immutable context dataclasses (`DoctorContext`,
-  `SeedContext`, etc.) — the railway payload.
+  `SeedContext`, etc.) — the railway payload. See "Context
+  dataclasses" below for field sets.
 - **`errors.py`** — `LivespecError` hierarchy with per-subclass
   `exit_code` class attribute.
+
+### Context dataclasses
+
+Every context dataclass MUST be `@dataclass(frozen=True)` and carry
+exactly the fields below at minimum. Sub-command contexts embed
+`DoctorContext` rather than inheriting so the type checker can
+narrow each sub-command's payload independently.
+
+```python
+from dataclasses import dataclass
+from pathlib import Path
+
+@dataclass(frozen=True)
+class DoctorContext:
+    project_root: Path          # repo root containing SPECIFICATION/
+    config: LivespecConfig      # parsed .livespec.jsonc (dataclass; see validate/livespec_config.py)
+    template_root: Path         # resolved template directory (built-in path or custom)
+    run_id: str                 # uuid4 string bound at wrapper startup
+    git_head_available: bool    # false when not a git repo or no HEAD commit
+
+@dataclass(frozen=True)
+class SeedContext:
+    doctor: DoctorContext
+    seed_input: SeedInput       # parsed seed_input.schema.json payload
+
+@dataclass(frozen=True)
+class ProposeChangeContext:
+    doctor: DoctorContext
+    findings: ProposalFindings  # parsed proposal_findings.schema.json payload
+    topic: str
+
+@dataclass(frozen=True)
+class CritiqueContext:
+    doctor: DoctorContext
+    findings: ProposalFindings
+    author: str
+
+@dataclass(frozen=True)
+class ReviseContext:
+    doctor: DoctorContext
+    revise_input: ReviseInput   # parsed revise_input.schema.json payload
+    steering_intent: str | None
+
+@dataclass(frozen=True)
+class PruneHistoryContext:
+    doctor: DoctorContext
+```
+
+`LivespecConfig`, `SeedInput`, `ProposalFindings`, and `ReviseInput`
+are dataclasses generated from the corresponding `*.schema.json`
+files; each schema carries a `$id` naming the dataclass. Fields are
+filled at validation time (via the factory-shape validators under
+`livespec/validate/`).
+
+### CLI argument parsing seam
+
+argparse is the sole CLI parser and lives in `livespec/io/cli.py`.
+Rationale: `ArgumentParser.parse_args()` raises `SystemExit` on
+usage errors and `--help`; the 6-line wrapper shape leaves no room
+for it; `check-supervisor-discipline` forbids `SystemExit` outside
+`bin/*.py`. Routing argparse through the impure boundary keeps the
+railway intact.
+
+Contract:
+
+- **`livespec/io/cli.py`** exposes `@impure_safe`-wrapped functions
+  that construct argparse invocations with `exit_on_error=False`
+  (Python 3.9+), returning `IOResult[Namespace, UsageError]`.
+  `-h`/`--help` is detected explicitly before `parse_args` runs;
+  on detection, the function returns `IOFailure(UsageError("<help
+  text>"))` so the supervisor can emit the help text and exit `2`
+  via the railway rather than argparse's implicit `SystemExit(0)`.
+- **`livespec/commands/<cmd>.py`** exposes a pure
+  `build_parser() -> ArgumentParser` factory. This factory
+  constructs the parser (subparsers, flags, help strings) but does
+  NOT parse. Keeping construction pure lets tests introspect the
+  parser shape without effectful invocation.
+- `livespec.commands.<cmd>.main()` threads argv through the
+  railway:
+  ```python
+  def main() -> int:
+      parser = build_parser()
+      ctx = flow(
+          sys.argv[1:],
+          lambda argv: parse_args(argv, parser),  # IOResult[Namespace, UsageError]
+          bind(build_context),                     # IOResult[Context, LivespecError]
+          bind(run_static),                        # pre-step
+          bind(<cmd>_run),                         # sub-command logic
+          bind(run_static),                        # post-step
+      )
+      return derive_exit_code(ctx)
+  ```
+  `IOFailure(UsageError)` maps to exit `2`;
+  `IOFailure(err)` maps to `err.exit_code`;
+  `IOSuccess(...)` with any `status: "fail"` finding maps to
+  exit `3`; otherwise exit `0`.
+- `check-supervisor-discipline` scope: `livespec/**` is in scope;
+  `bin/*.py` (including `_bootstrap.py`) is the sole exempt
+  subtree. `argparse`'s `SystemExit` path is impossible under
+  `exit_on_error=False`; the AST check has no special case for it.
 
 ---
 
@@ -208,13 +369,15 @@ Every public function in `livespec/` MUST compose via ROP:
   with `@impure_safe` so exceptions become `IOFailure(...)` on the
   railway.
 - **No `raise` statements** outside `io/**` and `errors.py`. Enforced by
-  `check-no-raise-outside-io` (AST).
+  `check-no-raise-outside-io` (AST). The `bin/*.py` wrappers and
+  `bin/_bootstrap.py` are also allowed to `raise SystemExit` (covered
+  by `check-supervisor-discipline`'s `bin/*.py` scope).
 - **No `except:` clauses** outside `io/**` and `errors.py`. Exception
   handling happens at the `io/` boundary; internal code stays on the
   railway.
 - **`sys.exit` and `raise SystemExit`** appear ONLY in `bin/*.py`
-  shebang wrappers. Not in any `livespec/**` module. Enforced by
-  `check-supervisor-discipline`.
+  files (including `bin/_bootstrap.py`). Not in any `livespec/**`
+  module. Enforced by `check-supervisor-discipline`.
 
 Composition idioms this document mandates:
 
@@ -225,20 +388,55 @@ def run(ctx: DoctorContext) -> IOResult[Finding, DoctorInternalError]:
         ctx.project_root / ".livespec.jsonc",
         read_file,                 # IOResult[str, IOError]
         bind(parse_jsonc),         # Result[dict, ParseError]
-        bind(validate_config),     # Result[Config, ValidationError]
+        bind(lambda d: validate_config(d, schema)),  # Result[Config, ValidationError]; schema injected
     ).map(lambda _: pass_finding(SLUG)) \
      .lash(lambda err: IOSuccess(fail_finding(SLUG, err)))
 
-# In an orchestrator:
+# In an orchestrator (using the static registry):
 def run_static(ctx: DoctorContext) -> IOResult[FindingsReport, DoctorInternalError]:
-    results = [module.run(ctx) for _, module in discover_check_modules()]
+    from livespec.doctor.static import REGISTRY  # static import; pyright sees the typed tuples
+    results = [run_fn(ctx) for _slug, run_fn in REGISTRY]
     return Fold.collect(results, IOSuccess(())).map(
         lambda findings: FindingsReport(findings=list(findings))
     )
+
+# Sub-command wrapper composes pre-static + cmd + post-static (when applicable):
+def main() -> int:
+    ctx = build_context()
+    chain = flow(
+        ctx,
+        run_static,                       # pre-step (skipped if --skip-pre-check)
+        bind(seed_run),                   # sub-command logic
+        bind(run_static),                 # post-step
+    )
+    return derive_exit_code(chain)        # IOFailure -> err.exit_code; IOSuccess + any fail -> 3; else 0
 ```
 
 Every public function's `return` annotation MUST be `Result[_, _]` or
 `IOResult[_, _]`. Enforced by `check-public-api-result-typed` (AST).
+
+---
+
+## Sub-command lifecycle composition
+
+The wrapper-side ROP chain (composed inside
+`livespec.commands.<cmd>.main()`) owns pre-step doctor static +
+sub-command logic + post-step doctor static. Failures at any stage
+short-circuit. The post-step LLM-driven phase, where applicable, runs
+from skill prose **after** the wrapper exits (Python doesn't invoke
+the LLM).
+
+`--skip-pre-check` is a wrapper-parsed flag that elides the first
+`run_static` from the chain. `--skip-subjective-checks` is an LLM-layer
+flag that never reaches Python — it gates the post-step LLM-driven
+phase, which is skill prose.
+
+`bin/doctor_static.py` is the exception: it IS the static phase and has
+no pre/post wrap. `prune-history`'s wrapper has a pre-step but no
+post-step LLM-driven phase (post-step static still runs).
+
+See PROPOSAL.md § "Sub-command lifecycle orchestration" for the full
+contract.
 
 ---
 
@@ -257,10 +455,18 @@ markers:
   - `socket`, `http.*`, `urllib.*` (no network).
 - **`livespec/io/**` is IMPURE.** Every function there MUST be decorated
   with `@impure_safe` from dry-python/returns. Functions here are
-  thin wrappers over one side-effecting operation each.
+  thin wrappers over one side-effecting operation each. `io/` also
+  hosts thin typed facades over vendored libs whose surface types are
+  not strict-pyright-clean.
 - **Everything else** (`commands/`, `doctor/**`, `context.py`,
   `errors.py`) may call both pure and impure layers; these are
   composition layers.
+
+**Validators stay pure** by accepting their schema as a parameter
+(factory shape). The schema dict is read from disk by an `io/` wrapper
+and passed in by the caller. `fastjsonschema.compile` is cached via
+`functools.lru_cache` keyed on the schema's `$id`. This separates
+"reading" (impure) from "checking" (pure).
 
 Enforced by `check-purity` (AST walker over `parse/` and `validate/`
 imports).
@@ -270,22 +476,54 @@ imports).
 ## Type safety
 
 - **pyright strict mode** is mandatory. `pyproject.toml`'s
-  `[tool.pyright]` sets `typeCheckingMode = "strict"`. Enforced by
-  `just check-types` — any pyright diagnostic fails the gate.
+  `[tool.pyright]` sets `typeCheckingMode = "strict"` and excludes
+  `_vendor/**` from strict scope while keeping
+  `useLibraryCodeForTypes = true` so vendored libs' inferable types
+  reach the type checker. Enforced by `just check-types` — any pyright
+  diagnostic in non-vendored code fails the gate.
 - Every public function and every dataclass field MUST have type
   annotations. Private (single-leading-underscore) helpers SHOULD be
   annotated.
 - Every public function's return annotation MUST be `Result[_, _]` or
   `IOResult[_, _]` unless it returns `None` for a deliberate side-effect
   boundary (e.g., `main() -> int` supervisors in `commands/*.py`).
-- `Any` is forbidden outside `io/` boundary wrappers (and in those
-  wrappers only for third-party types pyright cannot see). An AST check
-  rejects `Any` annotations elsewhere.
-- `# type: ignore` is forbidden without a narrow justification comment
-  of the form `# type: ignore[<specific-code>] — <reason>`.
+- **`Any` is forbidden outside `io/` boundary wrappers and vendored-lib
+  facades.** The thin facades under `livespec/io/<lib>_facade.py` are
+  the ONLY place `Any` may appear, and they exist precisely to confine
+  `Any` to a small audited surface. An AST check rejects `Any`
+  annotations elsewhere.
+- **`# type: ignore` is forbidden without a narrow justification
+  comment** of the form `# type: ignore[<specific-code>] — <reason>`.
+  Vendored-lib facades MAY use `# type: ignore` for vendored-lib types
+  pyright cannot see; livespec code outside the facades MUST NOT.
 - Implicit `Optional` via `None` default without `| None` annotation is
   forbidden (pyright strict flags this).
 - mypy is not used; there is no mypy configuration file.
+
+### Vendored-lib type-safety integration
+
+- **`fastjsonschema`** exposes generated callables typed as
+  `Callable[[Any], Any]`. The thin facade at
+  `livespec/io/fastjsonschema_facade.py` exposes a fully-typed
+  surface: `compile_schema(schema_id: str, schema: dict) ->
+  Callable[[dict], Result[dict, ValidationError]]`. The facade
+  holds a module-level `_COMPILED: dict[str, Callable] = {}`
+  keyed on `$id` to dedupe compiles across calls. `functools.lru_cache`
+  can't be used directly (dicts are unhashable), and a module-level
+  cache would trip `check-global-writes` in pure code — so the cache
+  lives in the impure facade layer and is explicitly exempted. See
+  "Structured logging → Bootstrap" for the exemption list.
+- **`structlog`** logger calls are dynamically typed. The thin facade
+  at `livespec/io/structlog_facade.py` exposes typed logging functions:
+  `info(message: str, **kwargs: object) -> None`, etc.
+- **`dry-python/returns`**: its types (`Result`, `IOResult`) are used
+  pervasively throughout the codebase, not just at boundaries. The
+  facade pattern doesn't apply uniformly. Whether the returns pyright
+  plugin is vendored alongside the lib (and how it's configured) is
+  deferred: see `deferred-items.md` (`returns-pyright-plugin-
+  disposition`). If the plugin is not vendored, the thin
+  `livespec/io/returns_facade.py` MAY hold typed re-exports of the
+  primitives we use.
 
 ---
 
@@ -298,8 +536,10 @@ and complexity checker. Pinned via mise.
   - `target-version = "py310"`.
   - `line-length = 100`.
   - Rule selection: `E F I B UP SIM C90 N RUF PL PTH`.
-  - `[tool.ruff.lint.pylint]` sets `max-args = 6`, `max-branches = 10`,
-    `max-statements = 30`.
+  - `[tool.ruff.lint.pylint]` sets `max-args = 6`,
+    `max-positional-args = 6`, `max-branches = 10`,
+    `max-statements = 30`. Both arg-count gates are enforced; see
+    "Complexity thresholds".
 - `just check-lint` runs `ruff check .`. Any finding fails the gate.
 - `just check-format` runs `ruff format --check .`. Any diff fails.
 - Mutating targets for developers: `just fmt` (`ruff format`),
@@ -328,10 +568,12 @@ tests/
 │   ├── doctor/static/test_livespec_jsonc_valid.py
 │   ├── io/test_fs.py
 │   ├── parse/test_jsonc.py
+│   ├── parse/test_front_matter.py
 │   ├── validate/test_livespec_config.py
 │   └── ...
 ├── bin/                               # mirrors scripts/bin/
-│   └── test_wrappers.py               # meta-test: all wrappers match the shape
+│   ├── test_bootstrap.py              # covers bin/_bootstrap.py
+│   └── test_wrappers.py               # meta-test: all wrappers match the 6-line shape
 ├── dev-tooling/                       # mirrors <repo-root>/dev-tooling/
 │   └── checks/test_purity.py
 └── test_*.py                          # per-spec-file rule-coverage tests
@@ -362,6 +604,9 @@ Rules:
   every top-level (`##`) heading in each specification file has at
   least one corresponding per-spec-file test case in
   `heading-coverage.json`.
+- The meta-test `tests/bin/test_wrappers.py` verifies every
+  `scripts/bin/*.py` wrapper (excluding `_bootstrap.py`) matches the
+  exact 6-line shape (see "Shebang-wrapper contract" below).
 
 ---
 
@@ -380,8 +625,9 @@ Coverage is measured by `coverage.py` via `pytest-cov`:
 - **Escape hatch:** `# pragma: no cover — <reason>` on a single line or
   a bounded block; cap ≤ 3 pragma-lines per file. Bare `# pragma: no cover`
   without a reason is rejected by a targeted regex check. Common
-  legitimate uses: `if TYPE_CHECKING:` guards, `sys.version_info` gates,
-  `bin/*.py` wrapper bodies (each is a 3-line trivial pass-through).
+  legitimate uses: `if TYPE_CHECKING:` guards, `sys.version_info` gates
+  in `bin/_bootstrap.py`, the `bin/*.py` wrapper bodies (each is a
+  trivial 6-line pass-through covered by the wrapper-shape meta-test).
 
 ---
 
@@ -395,8 +641,14 @@ for Python's density:
 - **File ≤ 200 logical lines** (custom check at
   `<repo-root>/dev-tooling/checks/file_lloc.py`).
 - **Max nesting depth ≤ 4** (ruff PLR rule).
-- **No positional-arg limit** — Python's keyword-only args and
-  dataclasses decompose large parameter sets naturally.
+- **Arguments ≤ 6** per function, counted two ways, both enforced:
+  total args (ruff `PLR0913`, `max-args = 6`) AND positional args
+  (ruff `PLR0917`, `max-positional-args = 6`). Functions needing
+  more parameters MUST be refactored to accept a dataclass (or an
+  equivalent struct). This reverses v006 P9's "no positional-arg
+  limit" decision: the refactor-to-dataclass discipline is
+  load-bearing and requires mechanical enforcement, not voluntary
+  compliance.
 - **Waivers not permitted.** A function that can't meet the thresholds
   MUST be decomposed; the gate has no escape hatch. Refactor is the
   answer.
@@ -430,18 +682,42 @@ Logging uses vendored **`structlog`**. Configuration:
     name and structured context dict, not just `str(exc)`.
   - **stdout is reserved** for the structured-findings contract (per
     PROPOSAL.md's doctor static-phase stdout contract).
-- **Bootstrap:** `scripts/livespec/__init__.py` configures structlog's
-  processors pipeline to emit JSON via `structlog.processors.JSONRenderer()`.
+
+### Bootstrap
+
+`scripts/livespec/__init__.py` calls `structlog.configure(...)` exactly
+once and then binds `run_id` (UUID) via
+`structlog.contextvars.bind_contextvars(run_id=str(uuid.uuid4()))` in
+the same block. This happens on first import, which is per-process
+(each wrapper invocation is its own process; one bind per invocation).
+
+The following calls are **exempt** from `check-global-writes`
+because they configure or cache third-party library state, not
+livespec module-level state mutated from a function body:
+
+- `structlog.configure(...)` in `livespec/__init__.py`.
+- `structlog.contextvars.bind_contextvars(run_id=...)` in
+  `livespec/__init__.py`.
+- The module-level `_COMPILED: dict[str, Callable]` cache in
+  `livespec/io/fastjsonschema_facade.py` and its mutation via
+  `compile_schema`.
+
+The complete exemption list, its AST semantics, and the scope of
+`check-global-writes` are documented in the
+`static-check-semantics` deferred-items entry (renamed from the
+v007 `ast-check-semantics` entry and widened to cover
+markdown-parsing checks, doctor-cycle semantics, and the argparse
+`SystemExit` disposition under supervisor-discipline).
 
 The `log` logger is obtained via `structlog.get_logger(__name__)` in
-each module that logs.
+each module that logs, routed through `livespec/io/structlog_facade.py`.
 
 ---
 
 ## Exit code contract
 
 Scripts bundled with the skill MUST use the following exit codes,
-preserved from v005:
+preserved from v005/v006:
 
 | Code | Meaning |
 |---|---|
@@ -478,7 +754,20 @@ Implementation:
   `doctor/run_static.py`) pattern-match on the final `IOResult` and
   return `err.exit_code` on `IOFailure`.
 - `sys.exit(err.exit_code)` appears only in `bin/*.py` shebang
-  wrappers. Everywhere else stays on the railway.
+  wrappers and `bin/_bootstrap.py`. Everywhere else stays on the
+  railway.
+
+### Doctor static-phase exit-code derivation
+
+The `bin/doctor_static.py` supervisor (in
+`livespec.doctor.run_static.main()`) derives exit code from the
+final `IOResult[FindingsReport, DoctorInternalError]`:
+
+- On `IOFailure(err)`: emit a structured-error JSON line on stderr
+  via structlog, then exit `err.exit_code` (typically `1`).
+- On `IOSuccess(report)`: emit `{"findings": [...]}` to stdout,
+  then exit `3` if any finding has `status: "fail"`, else exit `0`.
+  `status: "skipped"` does NOT trigger a fail exit.
 
 Enforced by `check-supervisor-discipline` (AST).
 
@@ -487,33 +776,79 @@ Enforced by `check-supervisor-discipline` (AST).
 ## File naming and invocation
 
 - Python module and script filenames MUST use snake_case + `.py`.
-  Including `bin/*.py` shebang wrappers.
+  Including `bin/*.py` shebang wrappers and `bin/_bootstrap.py`.
 - Hyphens appear only in JSON wire contracts (`check_id` values like
   `"doctor-out-of-band-edits"`) and in PROPOSAL.md prose
   (`propose-change` sub-command name).
-- The slug↔module-name mapping for doctor-static checks converts
-  hyphens to underscores: JSON slug `out-of-band-edits` ↔ module
-  filename `out_of_band_edits.py`. The conversion happens at one
-  defined point in `doctor/run_static.py`.
+- The slug↔module-name mapping for doctor-static checks is recorded
+  literally in `scripts/livespec/doctor/static/__init__.py`'s static
+  registry. JSON slug `out-of-band-edits` ↔ module filename
+  `out_of_band_edits.py` ↔ check_id `doctor-out-of-band-edits`. There
+  is no conversion loop; the registry's import statements name both
+  forms.
 - Executables (`bin/*.py`) carry the shebang `#!/usr/bin/env python3`,
   the executable bit, and conform to the shape below.
 
 ### Shebang-wrapper contract
 
-Each file under `bin/*.py` MUST be ≤ 5 lines matching exactly this
-shape:
+Each file under `bin/*.py` (except `_bootstrap.py`) MUST consist of
+exactly the following 6-line shape (no other lines, no other
+statements):
 
 ```python
 #!/usr/bin/env python3
 """Shebang wrapper for <description>. No logic; see livespec.<module> for implementation."""
+from _bootstrap import bootstrap
+bootstrap()
 from livespec.<module>.<submodule> import main
 
 raise SystemExit(main())
 ```
 
-No other content. `# pragma: no cover` is applied to each wrapper file
-to acknowledge these are trivial pass-throughs. Enforced by
+`# pragma: no cover` is applied to each wrapper file's body to
+acknowledge these are trivial pass-throughs (the shape is verified
+by the `test_wrappers.py` meta-test). Enforced by
 `check-wrapper-shape` (AST-lite).
+
+### `bin/_bootstrap.py` contract
+
+The shared bootstrap module is the canonical location for sys.path
+setup and the Python-version check. It lives under `bin/` so its
+`raise SystemExit(127)` is allowed by `check-supervisor-discipline`.
+Body shape:
+
+```python
+"""Pre-livespec-import bootstrap: sys.path setup + Python version check.
+
+Imported by every bin/*.py wrapper before any livespec import. Lives under
+bin/ so raise SystemExit is permitted by check-supervisor-discipline.
+"""
+import sys
+from pathlib import Path
+
+
+def bootstrap() -> None:
+    if sys.version_info < (3, 10):
+        sys.stderr.write(
+            "livespec requires Python 3.10+; install via your package manager.\n"
+        )
+        raise SystemExit(127)
+    bundle_scripts = Path(__file__).resolve().parent.parent
+    bundle_vendor = bundle_scripts / "_vendor"
+    for path in (bundle_scripts, bundle_vendor):
+        path_str = str(path)
+        if path_str not in sys.path:
+            sys.path.insert(0, path_str)
+```
+
+The 6-line wrapper shape and `_bootstrap.py`'s body are jointly
+covered by:
+
+- `check-wrapper-shape`: every file under `bin/` matching `*.py`
+  except `_bootstrap.py` MUST match the 6-line template.
+- `tests/bin/test_wrappers.py`: meta-test asserts the same.
+- `tests/bin/test_bootstrap.py`: covers `bootstrap()`'s version
+  check and sys.path insertion behaviors.
 
 ---
 
@@ -523,7 +858,7 @@ The **`just`** task runner is the single source of truth for every
 dev-tooling invocation.
 
 - `justfile` at repo root owns every check, test, build, lint, format,
-  coverage, and vendor-management recipe.
+  coverage, bootstrap, and vendor-management recipe.
 - `lefthook.yml` owns when hooks fire (pre-commit, pre-push). Every
   `run:` field is `just <target>`; no direct tool invocations.
 - `.github/workflows/*.yml` owns CI triggers and parallelism. Every
@@ -533,6 +868,16 @@ dev-tooling invocation.
 
 This eliminates drift across invocation surfaces. A developer
 reproduces CI locally by running `just check`.
+
+`just check` runs every check target sequentially, **continues on
+failure**, and exits non-zero if any target failed (listing which
+targets failed at the end). This matches CI's `fail-fast: false`
+matrix; one local run reproduces full CI feedback.
+
+**First-time bootstrap:** `mise install` then `just bootstrap`. The
+`bootstrap` target runs `lefthook install` (registers the pre-commit
+and pre-push hooks with git) and any other one-time setup. Without
+`just bootstrap`, lefthook hooks do not fire on commit.
 
 Enforced by `check-no-direct-tool-invocation` (grep-level): any
 `ruff`/`pytest`/`pyright`/`python3` in `lefthook.yml` or any
@@ -553,22 +898,22 @@ specific native code works). No Windows support.
 
 | Target | Purpose |
 |---|---|
-| `just check` | Run every check below. |
+| `just bootstrap` | First-time setup: `lefthook install` + any other one-time setup. |
+| `just check` | Run every check below sequentially; continue on failure; non-zero exit if any failed. |
 | `just check-lint` | `ruff check .` |
 | `just check-format` | `ruff format --check .` |
-| `just check-types` | `pyright` (strict). |
+| `just check-types` | `pyright` (strict, with `_vendor/` excluded). |
 | `just check-complexity` | ruff C901 + PLR + file-LLOC custom check. |
 | `just check-purity` | AST: `parse/` + `validate/` don't import `io/` or effectful APIs. |
 | `just check-private-calls` | AST: no cross-module calls to `_`-prefixed functions defined elsewhere. |
 | `just check-import-graph` | AST: no circular imports in `livespec/**`. |
 | `just check-global-writes` | AST: no module-level mutable state writes from functions. |
-| `just check-supervisor-discipline` | AST: `sys.exit` / `raise SystemExit` only in `bin/*.py`. |
-| `just check-no-raise-outside-io` | AST: `raise` only in `io/**` and `errors.py`. |
+| `just check-supervisor-discipline` | AST: `sys.exit` / `raise SystemExit` only in `bin/*.py` (incl. `_bootstrap.py`). |
+| `just check-no-raise-outside-io` | AST: `raise` only in `io/**` and `errors.py` (and `bin/` per supervisor-discipline). |
 | `just check-public-api-result-typed` | AST: every public function returns `Result` or `IOResult` per annotation. |
 | `just check-main-guard` | AST: no `if __name__ == "__main__":` in `livespec/**`. |
-| `just check-wrapper-shape` | AST-lite: `bin/*.py` conforms to the shebang-wrapper contract. |
-| `just check-claude-md-coverage` | Every directory under `scripts/` and `tests/` contains a `CLAUDE.md`. |
-| `just check-vendor-audit` | Diff `_vendor/<lib>/` sources against pinned upstream version in `.vendor.toml`. |
+| `just check-wrapper-shape` | AST-lite: `bin/*.py` (except `_bootstrap.py`) conforms to the 6-line shebang-wrapper contract. |
+| `just check-claude-md-coverage` | Every directory under `scripts/` (excluding `_vendor/` subtree), `tests/`, and `dev-tooling/` contains a `CLAUDE.md`. |
 | `just check-no-direct-tool-invocation` | grep: `lefthook.yml` and `.github/workflows/*.yml` only invoke `just <target>`. |
 | `just check-tools` | Verify every mise-pinned tool is installed at the pinned version. |
 | `just check-tests` | `pytest`. |
@@ -581,6 +926,10 @@ Mutating targets (opt-in, not run in CI):
 | `just fmt` | `ruff format .` |
 | `just lint-fix` | `ruff check --fix .` |
 | `just vendor-update <lib>` | Re-vendor a library, updating `.vendor.toml`. |
+
+Note: `check-vendor-audit` was removed in v007. Vendored libs are
+version-pinned in `.vendor.toml`; the no-edit discipline plus code
+review and git diff visibility cover the threat model.
 
 ### Invocation surfaces
 
@@ -596,9 +945,20 @@ Mutating targets (opt-in, not run in CI):
 
 ## Agent-oriented documentation: CLAUDE.md coverage
 
-Every directory under `.claude-plugin/skills/livespec/scripts/` and
-`<repo-root>/tests/` MUST contain a `CLAUDE.md` file describing the
-local constraints an agent working in that directory must satisfy.
+Every directory under:
+
+- `.claude-plugin/scripts/` (with the entire `_vendor/` subtree
+  explicitly excluded), AND
+- `<repo-root>/tests/` (with the entire `fixtures/` subtree
+  explicitly excluded), AND
+- `<repo-root>/dev-tooling/`
+
+MUST contain a `CLAUDE.md` file describing the local constraints an
+agent working in that directory must satisfy. One optional
+`tests/fixtures/CLAUDE.md` at the fixtures root is permitted (it
+can explain the read-only discipline) but is not required, and
+subdirectories under `tests/fixtures/` are never required to carry
+`CLAUDE.md`.
 
 Each `CLAUDE.md`:
 
@@ -609,7 +969,11 @@ Each `CLAUDE.md`:
 - Is kept short (typically under 50 lines); it's a local crib sheet,
   not a full reference.
 
-Enforced by `just check-claude-md-coverage`.
+Enforced by `just check-claude-md-coverage`. The `_vendor/` carve-out
+prevents `check-claude-md-coverage` from forcing CLAUDE.md inside
+vendored libs (which would itself constitute a local edit). The
+`tests/fixtures/` carve-out prevents CLAUDE.md files from
+inadvertently landing in read-only fixture trees.
 
 ---
 
@@ -617,16 +981,20 @@ Enforced by `just check-claude-md-coverage`.
 
 - **Interactive CLI.** Python scripts bundled with the skill are
   non-interactive by design.
-- **Windows native support.** Not a v006 target; Linux + macOS only.
+- **Windows native support.** Not a v008 target; Linux + macOS only.
 - **Async / concurrency.** livespec's workload is synchronous and
   deterministic. No `asyncio`, no threading, no multiprocessing.
 - **Performance tuning.** livespec is a CLI-scale tool; no hot-path
   work.
 - **Runtime dependency resolution.** Missing `python3` or too-old
-  Python → exit 127; installing Python is the user's concern.
+  Python → exit 127 from `bin/_bootstrap.py`; installing Python is the
+  user's concern.
 - **LLM integration from Python.** Python scripts handle only
   deterministic work; LLM-driven behavior stays at the skill-markdown
-  layer (`SKILL.md`, `commands/<cmd>.md`, template prompts).
+  layer (per-sub-command `SKILL.md`, template prompts).
 - **Mypy compatibility.** Pyright is the sole type checker.
 - **Ruby / Node / other language hooks.** No non-Python dev-tooling
   scripts.
+- **Automated vendored-lib drift detection.** Pinned versions in
+  `.vendor.toml` + the no-edit discipline + code review are the
+  controls; no `check-vendor-audit` script exists.
