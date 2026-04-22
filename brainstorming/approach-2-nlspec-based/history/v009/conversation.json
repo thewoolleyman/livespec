@@ -1,0 +1,176 @@
+{
+  "version": "v009",
+  "produced_from": "v008",
+  "critique_file": "v009/proposed_changes/proposal-critique-v08.md",
+  "revision_file": "v009/proposed_changes/proposal-critique-v08-revision.md",
+  "session_date": "2026-04-22",
+  "reviser_human": "thewoolleyman",
+  "reviser_llm": "Claude Opus 4.7 (1M context)",
+  "pass_framing": "recreatability defect critique with discipline codification (architecture-vs-mechanism + domain-errors-vs-bugs)",
+  "turns": [
+    {
+      "role": "user",
+      "content": "read and follow /data/projects/livespec/brainstorming/approach-2-nlspec-based/critique-interview-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Loaded required files (PROPOSAL.md v008, livespec-nlspec-spec.md, python-skill-script-style-requirements.md, deferred-items.md, companion docs, v008 critique + revision + conversation.json, history/README.md). Produced a 14-item critique (I1-I14) saved to proposed_changes/v009-proposed-change-proposal-critique-v08.md. Began the interview with I1."
+    },
+    {
+      "role": "assistant",
+      "summary": "I1 (malformation): seed's pre-step doctor static would fail on a green-field repo (template-files-present missing) before seed_run creates the files. Options: A seed exempt from pre-step (recommended); B pre-seed check subset; C skipped-finding for missing-target checks; D document --skip-pre-check as first-run flow."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "I2 (ambiguity): run_static return type in wrapper chain — flow(ctx, run_static, bind(cmd_run), bind(run_static)) requires cmd_run to accept a FindingsReport (what run_static returns) but cmd_run needs a context. Also sub-command-wrapper findings emission undefined. Options: A run_static_gated ctx-pass-through (recommended); B run_static returns ctx; C explicit gate functions; D pseudocode declaration."
+    },
+    {
+      "role": "user",
+      "content": "I know, we said we wanted to define the shape of the contracts, but this seems like we are over specifying and going against the spirit of our nlspec guidelines. discuss this with me and give your thoughts."
+    },
+    {
+      "role": "assistant",
+      "summary": "Acknowledged the user correctly flagged that I2 (and I6) treat internal Python ROP composition as if it were architecture. Per livespec-nlspec-spec.md 'Specify behavior, not mechanism' + the two-implementer test, the specific return type of run_static inside the wrapper chain is implementer choice; different composition strategies produce identical observable behavior. Proposed two framings: back-off (strip illustration; state behavior) vs pin-down (fix the self-contradiction with more mechanism detail). Asked for disposition."
+    },
+    {
+      "role": "user",
+      "content": "For this particular specification, we do want to be fairly constrained to ensure that good quality, high architecture code is generated according to our guidelines. So the real question is, are we going down an endless rabbit hole of pulling threads here, or if we continue specifying these interfaces at this point, can we get to a well-clarified and clear point that won't be churning or flapping or causing problems or redirections of architecture during the actual implementation?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Gave honest convergence read: v009 is a convergence pass, not a rabbit hole. No item reopens prior architecture; remaining fixes have bounded blast radius; guardrails principle is served by the existing enforcement suite (pyright strict + AST checks). Proposed working rule: pin down architecture-level constraints (language deps, tooling, type-level public-API guarantees, structural boundaries enforced by checks); back off on mechanism (internal ROP composition, bind vs bind_result, illustrative chains). Applied rule: I2 and I6 become back-off items; I3-I14 stay pin-down. Estimated 10-15 decisions from seed-ready."
+    },
+    {
+      "role": "user",
+      "content": "I like the hard delineation between defining architecture but not defining mechanism in the specification. How can we codify that so that it gets carried over when we actually seed the implementation for live spec, and so that future critique and revised passes don't try to go down into the mechanism level and over specify? Do we need to update our version of livespec_nlspec_spec.md to explicitly say this, and also indicate that, in cases where you do want to be very controlled about code quality, it is acceptable to specify things like: - language dependencies - code quality tools - type level - externally facing architecture constraints"
+    },
+    {
+      "role": "assistant",
+      "summary": "Drafted a new top-level section 'Architecture-Level Constraints (Implementation Discipline)' for livespec-nlspec-spec.md, positioned between Spec Economy and Intentional vs. Accidental Ambiguity. Section codifies what's in scope (language deps, tooling, type-level public-API guarantees, structural boundaries enforced by checks, externally-visible invariants, inspected directory layouts) and what stays out (internal composition, illustrative code as normative, non-public signatures, mechanism where enforcement already binds it). The test: 'could this sentence be deleted without losing the guardrail?' Propagation is automatic (livespec-nlspec-spec.md is injected as reference context before every template-prompt invocation). Added item as I0 (meta). Options: A as drafted + reframe I2/I6 as back-off (recommended); B add section but keep I2/I6 pin-down; C add as Appendix D."
+    },
+    {
+      "role": "user",
+      "content": "Yes, option A as drafted. But I also at this point want to reintroduce the previously deleted original livespec-nlspec.md file that should live in the repo root prior-art folder, with a line at the top containing the permalink. Just like we previously had, you can see it in the git history. I want this there for easy local manual diffing to see the actual changes."
+    },
+    {
+      "role": "assistant",
+      "summary": "Traced git history — v003 had decided to 'delete nlspec-spec.md entirely; permalink-only reference' but the deletion was never actioned (file still lived at brainstorming/...). Executed housekeeping: created <repo-root>/prior-art/ via mkdir; git mv'd brainstorming/approach-2-nlspec-based/nlspec-spec.md → prior-art/nlspec-spec.md; replaced the 'NOTE: Prior art copied from from <URL>' first line with proper HTML-comment permalink + diffing-intent. Updated references in livespec-nlspec-spec.md header, prior-art.md entry #1 (note local copy for diffing), and critique-interview-prompt.md required-reading path. Confirmed I0 as drafted + reframe I2/I6."
+    },
+    {
+      "role": "assistant",
+      "summary": "I3 (incompleteness): 'LivespecConfig/SeedInput/ProposalFindings/ReviseInput are dataclasses generated from schemas' but no generator named; fastjsonschema validates not emits. Options: A hand-author dataclasses + check-schema-dataclass-pairing AST check (recommended); B codegen via datamodel-code-generator; C TypedDict instead of dataclass; D raw dict in railway payload."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "I4 (malformation): style doc Type safety rule says 'returns None for deliberate side-effect boundary (e.g., main() -> int supervisors)' — int is not None. Options: A rewrite as boundary-based exception regardless of return type (recommended); B enumerate allowed return types (int, None); C drop exception entirely (supervisor returns IOResult[int, Never])."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "I5 (malformation): revision front-matter requires reading git config user.name/user.email, but PROPOSAL.md Git section allowlist names only doctor-out-of-band-edits as a git reader. Options: A extend allowlist for git config reads + add io/git.py::get_git_user (recommended); B drop git-based capture, use env var; C require identity in wrapper JSON payload."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "I6 (incorrectness): style doc shows plain bind(parse_jsonc) on IOResult chain; dry-python/returns requires bind_result for Result-returning pure functions lifted into IOResult chains. Per the I0 discipline, this is mechanism-level. Disposition: back-off — strip the mixed-monad example, state the general rule (composition uses dry-python/returns primitives; mixed chains use bind_result/IOResult.from_result/equivalent; specific lifter is implementer choice; pyright + check-public-api-result-typed are the guardrails)."
+    },
+    {
+      "role": "assistant",
+      "summary": "I7 (ambiguity): doctor-static checks hard-code SPECIFICATION/ literal but templates MAY place spec files at repo root or any subdir. Options: A template-aware spec_root config field (recommended); B declare doctor checks livespec-template-only; C hard-code SPECIFICATION/."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "I8 (incompleteness): SKILL.md body step 'Validate output against a schema (name livespec.validate.<name>.validate entry point)' but LLM has no Python-function invocation mechanism. Options: A expose validators as CLI wrappers; B fold validation into main wrapper; LLM retries on exit 3 (recommended); C trust LLM, no Python-side validation."
+    },
+    {
+      "role": "user",
+      "content": "B (fold validation into the main wrapper)"
+    },
+    {
+      "role": "assistant",
+      "summary": "I9 (ambiguity): reviser_llm defined as model ID but populated as livespec-seed (skill-tool identity); author similarly dual-purpose. Options: A reserved livespec- prefix namespace (recommended); B split into three fields (reviser_tool / reviser_llm / reviser_human); C sum-type discriminator (provenance: human | llm | tool)."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "I10 (incompleteness): DoctorInternalError used throughout but not in errors.py hierarchy. Options: A add it with exit_code=1 (recommended); B replace with LivespecError; C introduce DoctorError hierarchy root."
+    },
+    {
+      "role": "user",
+      "content": "Unrecoverable bugs or coding / syntax errors should not be handled via ROP track. Only errors which are EXPECTED (externally caused by user, environment, system, infra, timing) and thus can be potentially successful again should be ROP errors. Otherwise, the code is broken and will never work, and should just hard throw an exception. Read this section for more context, and use it as inspiration for any rules/terminology as well. https://gitlab.com/gitlab-org/gitlab/-/blob/master/ee/lib/remote_development/README.md#what-types-of-errors-should-be-handled-as-domain-messages"
+    },
+    {
+      "role": "assistant",
+      "summary": "Fetched the GitLab doc section. Key rule: 'Domain message classes should normally only be defined and used for _expected_ errors. I.e., validation errors, yes. Infrastructure errors, or bugs in our own code, no.' Reshaped I10 entirely: DoctorInternalError retires (bugs aren't ROP-track citizens; category confusion to put them on the domain hierarchy). Rippled: @impure_safe becomes targeted-catch with exception enumeration; check-no-raise-outside-io narrows to LivespecError subclasses only (bug-class raises permitted anywhere); new check-no-except-outside-io with supervisor bug-catcher exemption; every supervisor gains top-level try/except Exception (logs via structlog + returns 1); assert statements first-class; LivespecError hierarchy is strictly expected-failure types. Drafted Error Handling Discipline subsection under the new Architecture-Level Constraints in livespec-nlspec-spec.md. Options: A add subsection + keep LivespecError name (recommended); B rename to LivespecDomainError; C adopt GitLab 'Message' terminology."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "Saved feedback memory: 'Domain errors vs bugs in ROP-style specs' and 'Specify architecture, not mechanism' for future sessions. Continuing interview with I11."
+    },
+    {
+      "role": "assistant",
+      "summary": "I11 (ambiguity): dogfood symlink 'X is symlinked to Y' direction undefined. Options: A .claude/skills → ../.claude-plugin/skills relative symlink (recommended; plugin dir canonical); B reverse direction; C drop symlink."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "I12 (ambiguity): front_matter.schema.json singular but proposed-change vs revision shapes differ. Options: A split into two schemas (recommended, sum-type fidelity); B oneOf discriminated union; C one schema with optional fields + prose invariant."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "I13 (incompleteness): 'host-provided LLM id' mechanism unspecified. Options: A env var LIVESPEC_REVISER_LLM with fallback (recommended); B LLM self-declaration in payload; C always unknown-llm in v1."
+    },
+    {
+      "role": "user",
+      "content": "Order of precedence: 1. ENV VAR. 2. Whatever LLM put in JSON wrapper input payload (prompt can tell it to do its best to determine it, or else use `unknown-llm`)"
+    },
+    {
+      "role": "assistant",
+      "summary": "I13 resolved as combined A+B with precedence: env var LIVESPEC_REVISER_LLM if set → LLM's self-declared reviser_llm field in wrapper JSON payload → literal 'unknown-llm'. Template prompts instruct LLM to populate the field with its best-effort model ID."
+    },
+    {
+      "role": "assistant",
+      "summary": "I14 (ambiguity): bin/doctor_static.py's disposition of --skip-pre-check undefined. Options: A reject with UsageError exit 2 (recommended); B silently accept as no-op; C accept and warn via structlog."
+    },
+    {
+      "role": "user",
+      "content": "A"
+    },
+    {
+      "role": "assistant",
+      "summary": "All 14 interview items resolved. Executed the dogfood apply. Wrote revision file at history/v009/proposed_changes/proposal-critique-v08-revision.md capturing per-item dispositions (I0-I14). Updated livespec-nlspec-spec.md with Architecture-Level Constraints section + Error Handling Discipline subsection. Updated python-skill-script-style-requirements.md: stripped ROP chain illustration + bind_result lifting example (I2/I6); added Dataclass authorship section + check-schema-dataclass-pairing target (I3); rewrote supervisor return rule to boundary-based exemption (I4); added io/git.py::get_git_user to package layout (I5); added spec_root: Path to DoctorContext (I7); rewrote @impure_safe to targeted-catch + narrowed check-no-raise-outside-io + added check-no-except-outside-io + added supervisor bug-catcher discipline (I10); retired DoctorInternalError from errors.py hierarchy + added ValidationError/GitUnavailableError (I10); split front-matter schemas references (I12); updated canonical just target list. Updated PROPOSAL.md: symlink direction (I11); seed pre-step exemption (I1); git-read allowlist extension (I5); template.json spec_root field (I7); wrapper-internal validation for seed/propose-change/critique/revise (I8); LIVESPEC_REVISER_LLM env var subsection (I13); reserved livespec- prefix namespace in proposed-change and revision format sections (I9); spec_root path parameterization in every doctor check (I7); doctor_static rejects --skip-pre-check (I14); dataclass pairing in schemas/ layout (I3); LivespecError hierarchy scope (I10); dev-tooling/checks/ list additions (check-no-except-outside-io, check-schema-dataclass-pairing). Updated deferred-items.md: widened static-check-semantics, front-matter-parser, wrapper-input-schemas, task-runner-and-ci-config, skill-md-prose-authoring; no items removed. Executed housekeeping: git mv nlspec-spec.md to <repo-root>/prior-art/ with permalink header; updated cross-references. Copied PROPOSAL.md to history/v009/PROPOSAL.md (byte-identical). Moved critique from proposed_changes/ to history/v009/proposed_changes/. Updated history/README.md with v009 entry and repointed the Pointer paragraph. Captured this conversation.json."
+    }
+  ]
+}

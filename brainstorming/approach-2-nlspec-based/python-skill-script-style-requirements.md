@@ -20,6 +20,20 @@ conventions baked in by `ruff` (astral-sh/ruff) and `pyright`
 that citation is authoritative; where a rule below is silent on a
 question the tooling covers, the tooling default applies.
 
+This document extends — and defers to — `livespec-nlspec-spec.md`
+§"Architecture-Level Constraints (Implementation Discipline)" and its
+"Error Handling Discipline" subsection. Rules below are architecture-
+level (language deps, code-quality tooling, type-level public-API
+guarantees, structural boundaries enforced by checks, externally-
+visible invariants, inspected directory layouts). Internal composition
+details (specific ROP primitives used, exact return annotations of
+private helpers, illustrative code held as normative) are OUT of scope
+— the enforcement suite carries the guardrail work. An implementation
+that passes the behavioral contracts in `PROPOSAL.md`, the
+type/purity/import/coverage checks, and the AST-enforcement suite
+satisfies this document regardless of the exact internal mechanism
+chosen.
+
 This section uses BCP 14 / RFC 2119 / RFC 8174 keywords (`MUST`,
 `MUST NOT`, `SHALL`, `SHALL NOT`, `SHOULD`, `SHOULD NOT`, `MAY`,
 `OPTIONAL`) for normative requirements.
@@ -188,7 +202,7 @@ The shipped bundle organizes Python code as:
     │       └── <check>.py                # one module per check
     ├── io/                               # impure boundary wrappers + vendored-lib facades
     │   ├── fs.py
-    │   ├── git.py
+    │   ├── git.py                        # git reads: get_git_user (user.name/user.email) + out-of-band-edits reads
     │   ├── cli.py                        # argparse wrappers (@impure_safe, exit_on_error=False)
     │   ├── fastjsonschema_facade.py      # typed wrapper + compile-cache; only place Any from fastjsonschema is allowed
     │   ├── structlog_facade.py           # typed wrapper; only place Any from structlog is allowed
@@ -197,15 +211,24 @@ The shipped bundle organizes Python code as:
     │   ├── jsonc.py                      # thin wrapper over vendored jsoncomment
     │   └── front_matter.py               # restricted-YAML parser (deferred; see deferred-items.md)
     ├── validate/                         # pure validators (factory shape: schema as parameter)
-    ├── schemas/                          # JSON Schema Draft-7 files
-    │   ├── doctor_findings.schema.json   # doctor static-phase output contract
-    │   ├── proposal_findings.schema.json # propose-change / critique template output
-    │   ├── seed_input.schema.json        # seed wrapper input (deferred; see deferred-items.md)
-    │   ├── revise_input.schema.json      # revise wrapper input (deferred; see deferred-items.md)
-    │   ├── livespec_config.schema.json   # .livespec.jsonc schema
-    │   └── front_matter.schema.json      # (deferred; see deferred-items.md)
+    ├── schemas/                          # JSON Schema Draft-7 files + paired dataclasses
+    │   ├── dataclasses/                             # paired hand-authored dataclasses (see below)
+    │   │   ├── livespec_config.py
+    │   │   ├── seed_input.py
+    │   │   ├── revise_input.py
+    │   │   ├── proposal_findings.py
+    │   │   ├── doctor_findings.py
+    │   │   ├── proposed_change_front_matter.py
+    │   │   └── revision_front_matter.py
+    │   ├── doctor_findings.schema.json             # doctor static-phase output contract
+    │   ├── proposal_findings.schema.json           # propose-change / critique template output
+    │   ├── seed_input.schema.json                  # seed wrapper input (deferred; see deferred-items.md)
+    │   ├── revise_input.schema.json                # revise wrapper input (deferred; see deferred-items.md)
+    │   ├── livespec_config.schema.json             # .livespec.jsonc schema
+    │   ├── proposed_change_front_matter.schema.json  # (deferred; see deferred-items.md)
+    │   └── revision_front_matter.schema.json         # (deferred; see deferred-items.md)
     ├── context.py                        # Context dataclasses
-    └── errors.py                         # LivespecError hierarchy
+    └── errors.py                         # LivespecError hierarchy (expected-failure classes only)
 ```
 
 - **`bin/`** — executable shebang-wrappers + the shared `_bootstrap.py`.
@@ -245,14 +268,40 @@ Per sub-package conventions:
   for the actual compile; the facade owns the compile cache (see
   "Vendored-lib type-safety integration" below). `validate/` stays
   strictly pure (no module-level mutable state, no filesystem I/O).
-- **`schemas/`** — JSON Schema Draft-7 files, one per public dataclass.
-  Filename matches the dataclass: `LivespecConfig` →
-  `livespec_config.schema.json`.
+- **`schemas/`** — JSON Schema Draft-7 files plus the
+  `dataclasses/` subdirectory that holds the paired hand-authored
+  dataclasses. Filename matches the dataclass: `LivespecConfig` →
+  `livespec_config.schema.json` paired with
+  `schemas/dataclasses/livespec_config.py`. `check-schema-dataclass-
+  pairing` enforces drift-free pairing in both directions (every
+  schema has a matching dataclass; every dataclass has a matching
+  schema). See "Dataclass authorship" below.
 - **`context.py`** — immutable context dataclasses (`DoctorContext`,
   `SeedContext`, etc.) — the railway payload. See "Context
   dataclasses" below for field sets.
 - **`errors.py`** — `LivespecError` hierarchy with per-subclass
-  `exit_code` class attribute.
+  `exit_code` class attribute. The hierarchy holds ONLY expected-
+  failure (domain error) classes per the Error Handling Discipline
+  below; bugs are NOT represented as `LivespecError` subclasses.
+
+### Dataclass authorship
+
+Each JSON Schema under `schemas/*.schema.json` has a paired
+hand-authored `@dataclass(frozen=True)` at
+`schemas/dataclasses/<name>.py`. The dataclass and the schema are
+co-authoritative: the schema is the wire contract (validated at
+boundary by `fastjsonschema`); the dataclass is the Python type
+threaded through the railway (`Result[<Dataclass>,
+ValidationError]` from each validator per the factory shape).
+
+- The file name matches the `$id`-derived snake_case dataclass
+  name (`LivespecConfig` → `livespec_config.py`).
+- Fields MUST match the schema one-to-one in name and Python type.
+- `schemas/__init__.py` re-exports every dataclass name for
+  convenient import.
+- No codegen toolchain. No generator. Drift between schema and
+  dataclass is caught mechanically by
+  `check-schema-dataclass-pairing` (AST walker over both sides).
 
 ### Context dataclasses
 
@@ -267,7 +316,8 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class DoctorContext:
-    project_root: Path          # repo root containing SPECIFICATION/
+    project_root: Path          # repo root containing the spec tree
+    spec_root: Path             # resolved template.json spec_root, repo-relative (default: Path("SPECIFICATION/"))
     config: LivespecConfig      # parsed .livespec.jsonc (dataclass; see validate/livespec_config.py)
     template_root: Path         # resolved template directory (built-in path or custom)
     run_id: str                 # uuid4 string bound at wrapper startup
@@ -358,85 +408,130 @@ Contract:
 
 ## Railway-Oriented Programming (ROP)
 
-Every public function in `livespec/` MUST compose via ROP:
+Every public function in `livespec/` MUST compose via ROP using
+`dry-python/returns` primitives:
 
 - **Pure functions** (in `parse/`, `validate/`) return `Result[T, E]`.
 - **Impure functions** (in `io/`) return `IOResult[T, E]`.
-- **Composition code** (`commands/`, `doctor/`) uses `flow(...)` +
-  `bind(...)` to chain steps; `.lash(...)` to convert known-domain
-  errors into success-track data where appropriate.
-- **Third-party code that raises** is wrapped at the `io/` boundary
-  with `@impure_safe` so exceptions become `IOFailure(...)` on the
-  railway.
-- **No `raise` statements** outside `io/**` and `errors.py`. Enforced by
-  `check-no-raise-outside-io` (AST). The `bin/*.py` wrappers and
-  `bin/_bootstrap.py` are also allowed to `raise SystemExit` (covered
-  by `check-supervisor-discipline`'s `bin/*.py` scope).
-- **No `except:` clauses** outside `io/**` and `errors.py`. Exception
-  handling happens at the `io/` boundary; internal code stays on the
-  railway.
+- **Composition code** (`commands/`, `doctor/`) threads steps
+  together using the library's composition primitives
+  (`flow`, `bind`, `bind_result`, `bind_ioresult`, `Fold.collect`,
+  `.map`, `.lash`, etc.). The specific primitives chosen to compose
+  a given chain are **implementer choice** under the architecture-
+  level constraints. Mixed-monad chains (e.g., `IOResult`-returning
+  I/O steps followed by `Result`-returning pure steps) MUST use the
+  appropriate lifting primitive from `dry-python/returns` (such as
+  `bind_result` on an `IOResult` chain, or explicit
+  `IOResult.from_result(...)`); pyright strict and
+  `check-public-api-result-typed` are the guardrails that catch
+  mis-composition.
+
+Error-handling routing (see `livespec-nlspec-spec.md`
+§"Architecture-Level Constraints — Error Handling Discipline" for
+the underlying principle):
+
+- **Expected failure modes** — user input, environment, infra,
+  timing — flow through the Result track as `LivespecError`
+  subclass payloads. They are *domain errors*.
+- **Unrecoverable bugs** — type mismatches, unreachable-branch
+  assertions, broken invariants, dependency misuse — propagate
+  as raised exceptions. They are NOT on the Result track.
+- **Third-party code that raises DOMAIN-meaningful exceptions**
+  (`FileNotFoundError`, `PermissionError`, `JSONDecodeError`,
+  etc.) is wrapped at the `io/` boundary using
+  `@safe(exceptions=(ExcType1, ExcType2, ...))` or
+  `@impure_safe(exceptions=(...))` with **explicit enumeration
+  of the expected exception types**. A blanket `@safe` or
+  `@impure_safe` with NO exception enumeration is forbidden —
+  it would swallow bugs as if they were domain failures.
+- **Raising `LivespecError` subclasses** (domain errors) is
+  restricted to `io/**` and `errors.py`. Enforced by
+  `check-no-raise-outside-io` (AST). Raising bug-class
+  exceptions (`TypeError`, `NotImplementedError`,
+  `AssertionError`, `RuntimeError` for unreachable branches,
+  etc.) is **permitted anywhere**; the AST check distinguishes
+  the two by subclass relationship to `LivespecError`.
+- **Catching exceptions** outside `io/**` is restricted to ONE
+  call site: the outermost supervisor's top-level
+  `try/except Exception` bug-catcher (see "Supervisor
+  discipline" below). `check-no-except-outside-io` enforces.
+- **`assert` statements are first-class.** Use them for
+  invariants the implementer believes always hold. An
+  `AssertionError` is a bug; it propagates to the supervisor
+  bug-catcher.
 - **`sys.exit` and `raise SystemExit`** appear ONLY in `bin/*.py`
   files (including `bin/_bootstrap.py`). Not in any `livespec/**`
   module. Enforced by `check-supervisor-discipline`.
 
-Composition idioms this document mandates:
-
-```python
-# In a doctor-static check:
-def run(ctx: DoctorContext) -> IOResult[Finding, DoctorInternalError]:
-    return flow(
-        ctx.project_root / ".livespec.jsonc",
-        read_file,                 # IOResult[str, IOError]
-        bind(parse_jsonc),         # Result[dict, ParseError]
-        bind(lambda d: validate_config(d, schema)),  # Result[Config, ValidationError]; schema injected
-    ).map(lambda _: pass_finding(SLUG)) \
-     .lash(lambda err: IOSuccess(fail_finding(SLUG, err)))
-
-# In an orchestrator (using the static registry):
-def run_static(ctx: DoctorContext) -> IOResult[FindingsReport, DoctorInternalError]:
-    from livespec.doctor.static import REGISTRY  # static import; pyright sees the typed tuples
-    results = [run_fn(ctx) for _slug, run_fn in REGISTRY]
-    return Fold.collect(results, IOSuccess(())).map(
-        lambda findings: FindingsReport(findings=list(findings))
-    )
-
-# Sub-command wrapper composes pre-static + cmd + post-static (when applicable):
-def main() -> int:
-    ctx = build_context()
-    chain = flow(
-        ctx,
-        run_static,                       # pre-step (skipped if --skip-pre-check)
-        bind(seed_run),                   # sub-command logic
-        bind(run_static),                 # post-step
-    )
-    return derive_exit_code(chain)        # IOFailure -> err.exit_code; IOSuccess + any fail -> 3; else 0
-```
-
 Every public function's `return` annotation MUST be `Result[_, _]` or
-`IOResult[_, _]`. Enforced by `check-public-api-result-typed` (AST).
+`IOResult[_, _]`, unless the function is a supervisor at a
+deliberate side-effect boundary (e.g., `main() -> int` in
+`commands/*.py` and `doctor/run_static.py`, or any function
+returning `None`). The rule exempts only such supervisors. Enforced
+by `check-public-api-result-typed` (AST); the exemption scope is
+documented in the `static-check-semantics` deferred item.
+
+### Supervisor discipline (bug-catcher)
+
+Every supervisor (the outermost entry-point function that owns
+exit-code emission — `main()` in every `commands/<cmd>.py` and in
+`doctor/run_static.py`) MUST wrap its ROP chain body in one
+`try/except Exception` bug-catcher whose exclusive job is:
+
+1. Log the exception via structlog with full traceback and
+   structured context (module, function, `run_id`).
+2. Return the bug-class exit code (`1`).
+
+This is the ONLY catch-all `except Exception` permitted in the
+codebase. `check-supervisor-discipline` enforces the scope:
+exactly one catch-all per supervisor; no catch-alls outside
+supervisors; no catch-alls swallow exceptions without logging and
+exit-1 return.
+
+The behavioral contract of the deterministic lifecycle (pre-step
+doctor static + sub-command logic + post-step doctor static) is
+described in `PROPOSAL.md` §"Sub-command lifecycle orchestration."
+The specific Python composition used to express that lifecycle is
+implementer choice under the above constraints.
 
 ---
 
 ## Sub-command lifecycle composition
 
-The wrapper-side ROP chain (composed inside
-`livespec.commands.<cmd>.main()`) owns pre-step doctor static +
-sub-command logic + post-step doctor static. Failures at any stage
-short-circuit. The post-step LLM-driven phase, where applicable, runs
-from skill prose **after** the wrapper exits (Python doesn't invoke
-the LLM).
+The wrapper (in `livespec.commands.<cmd>.main()`) owns the
+deterministic lifecycle: pre-step doctor static + sub-command logic
++ post-step doctor static. Fail-fast on any `status: "fail"`
+finding from pre-step or post-step per the behavioral contract in
+PROPOSAL.md §"Sub-command lifecycle orchestration." The post-step
+LLM-driven phase, where applicable, runs from skill prose **after**
+the wrapper exits (Python doesn't invoke the LLM).
 
-`--skip-pre-check` is a wrapper-parsed flag that elides the first
-`run_static` from the chain. `--skip-subjective-checks` is an LLM-layer
-flag that never reaches Python — it gates the post-step LLM-driven
-phase, which is skill prose.
+Applicability and flags:
 
-`bin/doctor_static.py` is the exception: it IS the static phase and has
-no pre/post wrap. `prune-history`'s wrapper has a pre-step but no
-post-step LLM-driven phase (post-step static still runs).
+- **`seed` is exempt from pre-step doctor static** (see
+  PROPOSAL.md). Seed's wrapper runs sub-command logic +
+  post-step only.
+- **`help` and `doctor`** have no pre-step and no post-step
+  wrapper-side static.
+- **`prune-history`** has pre-step and post-step static but no
+  post-step LLM-driven phase.
+- **`propose-change`, `critique`, `revise`** have both pre-step
+  and post-step static.
+- **`--skip-pre-check`** is a wrapper-parsed flag that skips
+  pre-step for wrappers that have one. `bin/doctor_static.py`
+  does NOT accept `--skip-pre-check`; passing it produces an
+  argparse usage error via `livespec/io/cli.py` and the wrapper
+  exits `2` via `IOFailure(UsageError)`.
+- **`--skip-subjective-checks`** is an LLM-layer flag that never
+  reaches Python — it gates the post-step LLM-driven phase,
+  which is skill prose.
 
-See PROPOSAL.md § "Sub-command lifecycle orchestration" for the full
-contract.
+Python composition mechanism for the lifecycle chain is implementer
+choice under the architecture-level constraints (see §"Railway-
+Oriented Programming" above; see `livespec-nlspec-spec.md`
+§"Architecture-Level Constraints" for the underlying principle
+permitting mechanism freedom where enforcement checks already
+constrain the outcome).
 
 ---
 
@@ -485,8 +580,13 @@ imports).
   annotations. Private (single-leading-underscore) helpers SHOULD be
   annotated.
 - Every public function's return annotation MUST be `Result[_, _]` or
-  `IOResult[_, _]` unless it returns `None` for a deliberate side-effect
-  boundary (e.g., `main() -> int` supervisors in `commands/*.py`).
+  `IOResult[_, _]`, UNLESS the function is a supervisor at a
+  deliberate side-effect boundary (e.g., `main() -> int` in
+  `commands/*.py` and `doctor/run_static.py`, or any function
+  returning `None`). The rule exempts only such supervisors; the
+  precise AST scope is documented in the `static-check-semantics`
+  deferred item (`check-public-api-result-typed` exempts functions
+  named `main` in `commands/**.py` and `doctor/run_static.py`).
 - **`Any` is forbidden outside `io/` boundary wrappers and vendored-lib
   facades.** The thin facades under `livespec/io/<lib>_facade.py` are
   the ONLY place `Any` may appear, and they exist precisely to confine
@@ -730,11 +830,23 @@ preserved from v005/v006:
 
 Implementation:
 
-- `livespec/errors.py` defines the hierarchy:
+- `livespec/errors.py` defines the hierarchy. It holds ONLY
+  expected-failure (domain error) classes per the Error Handling
+  Discipline in `livespec-nlspec-spec.md`. Bugs are NOT represented
+  as `LivespecError` subclasses:
   ```python
   from typing import ClassVar
 
   class LivespecError(Exception):
+      """Base class for expected-failure (domain error) classes.
+
+      A LivespecError represents a domain-meaningful failure that a
+      retry, corrected input, or environment fix could resolve. It
+      is ROP-track failure-payload material. Bugs (unrecoverable
+      programming errors) are NOT LivespecError subclasses; they
+      propagate as raised exceptions to the outermost supervisor's
+      bug-catcher.
+      """
       exit_code: ClassVar[int] = 1
 
   class UsageError(LivespecError):
@@ -743,16 +855,31 @@ Implementation:
   class PreconditionError(LivespecError):
       exit_code: ClassVar[int] = 3
 
+  class ValidationError(LivespecError):
+      exit_code: ClassVar[int] = 3
+
+  class GitUnavailableError(LivespecError):
+      exit_code: ClassVar[int] = 3
+
   class PermissionDeniedError(LivespecError):
       exit_code: ClassVar[int] = 126
 
   class ToolMissingError(LivespecError):
       exit_code: ClassVar[int] = 127
   ```
-- `IOFailure(err)` payloads are `LivespecError` subclasses.
+- `IOFailure(err)` payloads are `LivespecError` subclasses. Doctor
+  static check signatures are `run(ctx) -> IOResult[Finding, E]`
+  where `E` is any `LivespecError` subclass (NOT the retired
+  `DoctorInternalError` from prior revisions; bugs in a check
+  propagate as raised exceptions to the supervisor's bug-catcher
+  and result in exit `1`).
 - Supervisors (`main()` in `commands/<cmd>.py` and
-  `doctor/run_static.py`) pattern-match on the final `IOResult` and
-  return `err.exit_code` on `IOFailure`.
+  `doctor/run_static.py`) pattern-match on the final `IOResult`
+  and return `err.exit_code` on `IOFailure`, AND wrap their body
+  in a top-level `try/except Exception` bug-catcher that logs via
+  structlog and returns `1` on any uncaught exception (see
+  "Supervisor discipline" under §"Railway-Oriented Programming"
+  above).
 - `sys.exit(err.exit_code)` appears only in `bin/*.py` shebang
   wrappers and `bin/_bootstrap.py`. Everywhere else stays on the
   railway.
@@ -761,13 +888,17 @@ Implementation:
 
 The `bin/doctor_static.py` supervisor (in
 `livespec.doctor.run_static.main()`) derives exit code from the
-final `IOResult[FindingsReport, DoctorInternalError]`:
+final `IOResult` payload:
 
-- On `IOFailure(err)`: emit a structured-error JSON line on stderr
-  via structlog, then exit `err.exit_code` (typically `1`).
+- On `IOFailure(err)` (`err` is a `LivespecError` subclass — a
+  domain error): emit a structured-error JSON line on stderr via
+  structlog, then exit `err.exit_code`.
 - On `IOSuccess(report)`: emit `{"findings": [...]}` to stdout,
   then exit `3` if any finding has `status: "fail"`, else exit `0`.
   `status: "skipped"` does NOT trigger a fail exit.
+- On any uncaught exception (a bug): the supervisor's
+  `try/except Exception` logs via structlog with traceback and
+  returns `1`.
 
 Enforced by `check-supervisor-discipline` (AST).
 
@@ -909,8 +1040,10 @@ specific native code works). No Windows support.
 | `just check-import-graph` | AST: no circular imports in `livespec/**`. |
 | `just check-global-writes` | AST: no module-level mutable state writes from functions. |
 | `just check-supervisor-discipline` | AST: `sys.exit` / `raise SystemExit` only in `bin/*.py` (incl. `_bootstrap.py`). |
-| `just check-no-raise-outside-io` | AST: `raise` only in `io/**` and `errors.py` (and `bin/` per supervisor-discipline). |
-| `just check-public-api-result-typed` | AST: every public function returns `Result` or `IOResult` per annotation. |
+| `just check-no-raise-outside-io` | AST: raising of `LivespecError` subclasses (domain errors) restricted to `io/**` and `errors.py`. Raising bug-class exceptions (TypeError, NotImplementedError, AssertionError, etc.) permitted anywhere. |
+| `just check-no-except-outside-io` | AST: catching exceptions outside `io/**` permitted only in supervisor bug-catchers (top-level `try/except Exception` in `main()` of `commands/*.py` and `doctor/run_static.py`). |
+| `just check-public-api-result-typed` | AST: every public function returns `Result` or `IOResult` per annotation, except supervisors at the side-effect boundary (`main()` in `commands/**.py` and `doctor/run_static.py`). |
+| `just check-schema-dataclass-pairing` | AST: every `schemas/*.schema.json` has a paired dataclass at `schemas/dataclasses/<name>.py` with the `$id`-derived name and every listed field in matching Python type; and vice versa. Drift in either direction fails. |
 | `just check-main-guard` | AST: no `if __name__ == "__main__":` in `livespec/**`. |
 | `just check-wrapper-shape` | AST-lite: `bin/*.py` (except `_bootstrap.py`) conforms to the 6-line shebang-wrapper contract. |
 | `just check-claude-md-coverage` | Every directory under `scripts/` (excluding `_vendor/` subtree), `tests/`, and `dev-tooling/` contains a `CLAUDE.md`. |

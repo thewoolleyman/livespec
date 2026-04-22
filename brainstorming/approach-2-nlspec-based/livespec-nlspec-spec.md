@@ -4,7 +4,7 @@ A grounding document for agents that read, write, implement, and evaluate natura
 
 ## Prior Art
 
-Adapted from [NLSpec Spec v0.2.2](https://github.com/TG-Techie/NLSpec-Spec/blob/ed7a531884c456787254d0450d450664e296b75b/nlspec-spec.md) by TG-Techie. The original is preserved at `prior-art/nlspec-spec.md`. This version refines the lifecycle model from a one-way chain to a governed loop, and clarifies that intent refers to revision inputs feeding into the spec rather than naming a distinct upstream stage.
+Adapted from [NLSpec Spec v0.2.2](https://github.com/TG-Techie/NLSpec-Spec/blob/ed7a531884c456787254d0450d450664e296b75b/nlspec-spec.md) by TG-Techie. The original is preserved verbatim at `<repo-root>/prior-art/nlspec-spec.md` for easy local manual diffing against this adapted version. This version refines the lifecycle model from a one-way chain to a governed loop, and clarifies that intent refers to revision inputs feeding into the spec rather than naming a distinct upstream stage.
 
 ---
 
@@ -160,6 +160,66 @@ Economy interacts with the over-specification principle. This document advises: 
 **Non-local context dependencies burden the reader.** When understanding one section requires remembering a convention from an earlier section, a default from a third, and an exception from an appendix, the reader is carrying context that the spec's structure should be managing. A well-economized spec either states the relevant convention inline where it's used, or structures itself so that sections are self-contained with explicit references to shared definitions.
 
 **Implementation decomposition is not domain structure.** When a spec mirrors the internal factoring of code — five subsections for five helper functions — it has imported structure from the implementation's intentional ambiguity space into the spec. The spec describes the calculation. How the calculation is decomposed into functions is an implementation choice.
+
+
+## Architecture-Level Constraints (Implementation Discipline)
+
+Most NLSpecs specify behavior, not mechanism. An API spec doesn't say what data structure implements the routing table; a retry-policy spec doesn't say whether it's a loop or recursion. This is the correct default: the spec bounds *what* the system does; the implementer owns *how*.
+
+Some specifications legitimately extend into implementation architecture. These are specs where code quality, agent-generation guardrails, or cross-implementation consistency of the code *itself* are first-order concerns — not only the system's observable behavior. For such specs, there is a narrow carve-out where mechanism-adjacent constraints are in scope.
+
+### What IS in scope for architecture-level constraints
+
+- **Language dependencies and versions.** E.g., "Python 3.10+; no 3.11+ features."
+- **Code-quality tooling and gates.** E.g., "pyright strict is mandatory." "ruff rule selection is E F I B UP SIM C90 N RUF PL PTH." "100% line + branch coverage."
+- **Type-system guarantees at the public-API layer.** E.g., "Every public function returns `Result` or `IOResult`." "`Any` is forbidden outside designated facade modules." "No `except:` outside `io/`."
+- **Structural boundaries enforced by checks.** E.g., "`validate/` MUST NOT import from `io/`." "CLI argument parsing lives in `io/cli.py`." "`sys.exit` only in `bin/*.py`."
+- **Externally-visible architectural invariants.** E.g., "Exit codes follow the 0/1/2/3/127 contract." "Per-directory `CLAUDE.md` coverage." "Wrapper-shape conformance."
+- **Directory layout constraints inspected by the enforcement suite.**
+
+### What is NOT in scope, even for architecture-level constraints
+
+- **Internal composition details.** The specific primitives used to compose a chain (`bind` vs `bind_result` vs alternative shapes), the exact return type of an internal helper, the argv shape of a private module's entry point. These are implementer choices that the architectural checks already discipline without prose specification.
+- **Illustrative code presented as normative.** Pseudocode can illustrate a pattern without becoming a binding contract. An implementation passing the behavior checks and the architectural-constraint checks MUST NOT be treated as deviating because it doesn't match an illustration.
+- **Function signatures of non-public APIs.** If a check enforces the rule on public functions, the spec does not enumerate every function.
+- **Mechanism where an enforcement check already binds it.** If the rule is "purity by directory" and `check-purity` enforces it, the spec does not also need to state "therefore validator X has composition shape Y."
+
+### The test for architecture-level constraints
+
+For each implementation-architecture sentence in the spec, ask: *could this be deleted without losing the guardrail?* If an AST check, type-system rule, or style-tool rule already enforces the same discipline, the prose sentence is redundant — cut it. Keep only sentences that name the constraint at a level the enforcement suite works at.
+
+If no enforcement rule captures the constraint, the spec may legitimately state it in prose — but as a constraint on *where code lives* or *what properties code has*, not as an illustration of *how the code looks internally*.
+
+### Right level vs. wrong level (example)
+
+Right (architectural constraint):
+
+> Every module under `validate/` MUST return `Result[T, ValidationError]` from public functions. Purity is enforced by `check-purity`.
+
+Wrong (mechanism masquerading as constraint):
+
+> `validate_config` has signature `validate_config(payload: dict, schema: dict) -> Result[Config, ValidationError]` and is invoked via `flow(payload, bind(parse_jsonc), bind(lambda d: validate_config(d, schema)))`.
+
+Both touch the validator. The first bounds architecture (where validators live, what they return). The second illustrates one internal composition and treats it as a spec requirement. The first is load-bearing for guardrails; the second is not.
+
+### Error Handling Discipline
+
+Architecture-constrained specs that use Railway-Oriented Programming (Result / IOResult composition) SHOULD distinguish two categories of failure and route them differently:
+
+- **Domain errors** — *expected* failure modes arising from user input, environment, infrastructure, or timing. Validation failures, missing-but-addressable files, unavailable services, malformed configuration, tool-not-installed, git-not-present. These are legitimate domain outcomes: a retry, corrected input, or environment fix could resolve them. They flow through Result / IOResult composition on the failure track.
+
+- **Bugs** — *unrecoverable* programming errors. Type mismatches, unreachable-branch assertions, null dereferences, unmatched pattern exhaustion, broken invariants, dependency misuse, exhaustiveness failures. No retry or environment fix succeeds; the code is broken. They propagate as raised exceptions until the outermost supervisor logs them with traceback and emits the bug-class exit code.
+
+A blanket catch-all that converts every exception into a Result failure erases the distinction and treats bugs as recoverable. Architecture-constrained specs MUST NOT do this.
+
+The discipline:
+
+- Wrap only *expected* exception types at the impure boundary (e.g., `@safe(exceptions=(FileNotFoundError, PermissionError))` in dry-python/returns; enumerate the domain-meaningful exception types). A blanket `@safe` / `@impure_safe` with no exception enumeration is a red flag.
+- Supervisors — the outermost entry-point functions that own exit-code emission — are the ONLY place a bug-catcher `try/except Exception` is permitted. Its exclusive job is to log via structured logging and emit the bug-class exit code. Everywhere else, bugs propagate freely.
+- `assert` statements for implementer-believed invariants are first-class bug-detection; assertion failures are bugs, not domain errors.
+- The domain-error hierarchy is strictly expected-failure types; a "bug" subclass on the domain hierarchy is a category confusion and MUST be rejected.
+
+Inspired by [GitLab Remote Development's domain-message discipline](https://gitlab.com/gitlab-org/gitlab/-/blob/master/ee/lib/remote_development/README.md#what-types-of-errors-should-be-handled-as-domain-messages): "Domain message classes should normally only be defined and used for *expected* errors. I.e., validation errors, yes. Infrastructure errors, or bugs in our own code, no."
 
 
 ## Intentional vs. Accidental Ambiguity

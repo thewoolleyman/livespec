@@ -48,9 +48,10 @@ Working proposal and its embedded grounding:
 
 - `/data/projects/livespec/brainstorming/approach-2-nlspec-based/PROPOSAL.md`
 - `/data/projects/livespec/brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md`
-- `/data/projects/livespec/brainstorming/approach-2-nlspec-based/nlspec-spec.md`
-  (upstream source for `livespec-nlspec-spec.md`, for reference when
-  evaluating fidelity / adaptation)
+- `/data/projects/livespec/prior-art/nlspec-spec.md`
+  (upstream source for `livespec-nlspec-spec.md`, preserved verbatim
+  at the repo-root `prior-art/` directory for manual diffing against
+  the adapted version)
 
 Companion documents in the brainstorming folder (load every file
 directly under `brainstorming/approach-2-nlspec-based/` that isn't

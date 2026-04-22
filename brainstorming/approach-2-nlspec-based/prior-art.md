@@ -6,7 +6,7 @@ This document collects the prior art discussed while developing the current NLSp
 
 1. TG-Techie. "NLSpec Spec." GitHub. <https://github.com/TG-Techie/NLSpec-Spec/blob/ed7a531884c456787254d0450d450664e296b75b/nlspec-spec.md>
 
-   Context: This was the main direct prior art. It was useful for its emphasis on strong separation between intent, specification, and implementation; self-consistency; ambiguity discipline; and specification-first thinking. It was also the source of the specific framing we pushed against: `Intent -> NLSpec -> Implementation`.
+   Context: This was the main direct prior art. It was useful for its emphasis on strong separation between intent, specification, and implementation; self-consistency; ambiguity discipline; and specification-first thinking. It was also the source of the specific framing we pushed against: `Intent -> NLSpec -> Implementation`. A verbatim copy is preserved at `<repo-root>/prior-art/nlspec-spec.md` for easy local manual diffing against the adapted `livespec-nlspec-spec.md`.
 
 ## Requirements Engineering Foundations
 

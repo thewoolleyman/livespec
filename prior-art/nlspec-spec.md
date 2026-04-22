@@ -1,4 +1,5 @@
-(NOTE: Prior art copied from from https://github.com/TG-Techie/NLSpec-Spec/blob/ed7a531884c456787254d0450d450664e296b75b/nlspec-spec.md)
+<!-- Upstream permalink: https://github.com/TG-Techie/NLSpec-Spec/blob/ed7a531884c456787254d0450d450664e296b75b/nlspec-spec.md -->
+<!-- Preserved verbatim for manual diffing against `brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md` (our adapted version). -->
 
 # What an NLSpec Is
 

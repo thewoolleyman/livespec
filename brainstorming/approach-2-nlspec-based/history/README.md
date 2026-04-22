@@ -377,8 +377,137 @@ entries keep their original naming (immutable history).
   record is in
   `v008/proposed_changes/proposal-critique-v07-revision.md`.
 
+- **v009** — revise driven by
+  `proposed_changes/proposal-critique-v08.md` and its revision.
+  A **recreatability defect critique with discipline codification**,
+  surfacing 14 items (I1-I14) plus one mid-interview meta-item (I0)
+  labelled with the NLSpec failure-mode framework (ambiguity /
+  malformation / incompleteness / incorrectness). User-driven
+  reshapings this pass: I2 push (over-specification flagged) led to
+  the new I0 meta-item; I10 push ("unrecoverable bugs shouldn't be
+  handled via ROP track; only EXPECTED errors") led to full
+  codification of a domain-vs-bugs error-handling discipline
+  grounded in GitLab Remote Development's domain-message pattern.
+  Major structural changes:
+  **Architecture-vs-mechanism discipline codified** — new top-level
+  section `Architecture-Level Constraints (Implementation
+  Discipline)` added to `livespec-nlspec-spec.md` between §"Spec
+  Economy" and §"Intentional vs. Accidental Ambiguity." The
+  section names what's in scope for architecture-constrained
+  specs (language deps, code-quality tooling, type-level
+  public-API guarantees, structural boundaries enforced by
+  checks, externally-visible invariants, inspected directory
+  layouts) and what stays out (internal composition details,
+  illustrative code as normative, non-public signatures,
+  mechanism where an enforcement check already binds it). The
+  discipline self-propagates: `livespec-nlspec-spec.md` is
+  injected as reference context before every template-prompt
+  invocation.
+  **Error Handling Discipline codified** — new subsection under
+  Architecture-Level Constraints distinguishing *domain errors*
+  (expected: user input, environment, infra, timing; flow
+  through Result/IOResult track) from *bugs* (unrecoverable
+  programming errors; propagate as raised exceptions to the
+  outermost supervisor bug-catcher). Inspired by GitLab Remote
+  Development's "What types of errors should be handled as
+  domain Messages?" pattern.
+  **Python style doc consequences of the error discipline:**
+  `DoctorInternalError` **retired** (a "bug" subclass on the
+  domain hierarchy was a category confusion); `@safe` /
+  `@impure_safe` rule tightened from blanket-catch to
+  **targeted-catch** (MUST enumerate specific expected
+  exception types); `check-no-raise-outside-io` narrows to
+  restrict ONLY `LivespecError` subclasses (bug-class
+  exceptions are permitted everywhere); new
+  `check-no-except-outside-io` mirrors the narrowing for catch
+  clauses; **every supervisor gains a top-level
+  `try/except Exception` bug-catcher** (logs via structlog +
+  returns 1); `assert` statements first-class for invariants;
+  `LivespecError` hierarchy gains `ValidationError` and
+  `GitUnavailableError`; the "returns None for side-effect
+  boundary" supervisor exception rewritten to boundary-based
+  exemption regardless of return type.
+  **ROP composition illustrations backed off** — the style doc's
+  illustrative `flow(ctx, run_static, bind(cmd_run),
+  bind(run_static))` chain and `read_file / bind(parse_jsonc) /
+  bind(validate_config)` mixed-monad example were mechanism-
+  level over-specifications; stripped under I2 and I6 back-off
+  dispositions. Replaced with behavioral prose + the general rule
+  that composition uses `dry-python/returns` primitives
+  (`flow`, `bind`, `bind_result`, `bind_ioresult`, `Fold.collect`,
+  `.map`, `.lash`) and mixed-monad chains lift via
+  `bind_result` / `IOResult.from_result` / equivalent.
+  **Seed exempt from pre-step doctor static** — seed's purpose
+  is to create the template-declared files; pre-step
+  `template-files-present` would fail on a green-field repo
+  before `seed_run` ran. Added to the pre-step exemption list
+  alongside `help` and `doctor`.
+  **Spec-root parameterization for custom templates** —
+  `template.json` gains optional `spec_root: string` (default
+  `"SPECIFICATION/"`); `DoctorContext.spec_root: Path` added;
+  every doctor-static check's path references parameterized
+  against `<spec-root>/` (covers `proposed-changes-and-history-
+  dirs`, `version-directories-complete`, `version-contiguity`,
+  `revision-to-proposed-change-pairing`,
+  `proposed-change-topic-format`, `out-of-band-edits`,
+  `anchor-reference-resolution`). Custom templates can now use
+  `spec_root: "./"` or any subdirectory.
+  **LLM→validator protocol simplified** — SKILL.md prose names
+  `livespec.validate.<name>.validate` as the validation entry
+  point was under-specified (LLM has no Python-function
+  invocation mechanism). Simpler contract: wrapper validates
+  the payload internally; on validation failure exits 3 with
+  structured findings; LLM retries the template prompt with
+  error context up to 3 times. No separate validator CLI
+  wrappers.
+  **Schema ↔ dataclass pairing** — "dataclasses generated from
+  schemas" language replaced with hand-authored dataclasses at
+  `schemas/dataclasses/<name>.py`. New
+  `check-schema-dataclass-pairing` (AST) enforces drift-free
+  pairing in both directions. No codegen toolchain.
+  **Git-read allowlist extended** — `git config user.name /
+  user.email` added as a second documented git reader (for
+  `reviser_human` capture in `revise` and `seed` auto-capture).
+  New `livespec.io.git.get_git_user() -> IOResult[str,
+  GitUnavailableError]` function. Fallback to literal
+  `"unknown"` when git is unavailable or config values unset.
+  **Reserved `livespec-` author prefix** — identifiers with the
+  prefix are reserved for automated skill-tool authorship
+  (`livespec-seed`, `livespec-doctor`). Human and LLM authors
+  use non-prefixed identifiers. Front-matter schemas
+  pattern-validate the reservation.
+  **Front-matter schemas split** —
+  `proposed_change_front_matter.schema.json` (fields: `topic`,
+  `author`, `created_at`) and
+  `revision_front_matter.schema.json` (fields: `proposal`,
+  `decision`, `revised_at`, `reviser_human`, `reviser_llm`)
+  replace the single ambiguous `front_matter.schema.json`. Sum-
+  type fidelity per the livespec-nlspec-spec.md principle.
+  **LLM identifier precedence** — new environment variable
+  `LIVESPEC_REVISER_LLM` with precedence: env var → LLM
+  self-declaration in wrapper JSON payload → literal
+  `"unknown-llm"` fallback. The critique and revise template
+  prompts instruct the LLM to self-identify best-effort.
+  **Dogfood symlink direction specified** — `.claude/skills/`
+  is a relative symlink pointing at `../.claude-plugin/skills/`.
+  `just bootstrap` creates it idempotently.
+  **`bin/doctor_static.py` rejects `--skip-pre-check`** — the
+  flag is about wrapper lifecycle chains, not the static phase
+  itself. Passing it produces exit 2.
+  **Housekeeping:** the upstream `nlspec-spec.md` (TG-Techie's
+  prior art, preserved verbatim) relocated from
+  `brainstorming/approach-2-nlspec-based/nlspec-spec.md` to
+  `<repo-root>/prior-art/nlspec-spec.md`. Cross-references in
+  `livespec-nlspec-spec.md`, `prior-art.md`, and
+  `critique-interview-prompt.md` updated. The v003 disposition
+  to "delete entirely in favor of permalink" is replaced with
+  "preserve verbatim at repo-root `prior-art/` with permalink
+  header for easy local diffing against the adapted version."
+  Full decision record is in
+  `v009/proposed_changes/proposal-critique-v08-revision.md`.
+
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v008/PROPOSAL.md` until the next revise.
+byte-identical to `history/v009/PROPOSAL.md` until the next revise.

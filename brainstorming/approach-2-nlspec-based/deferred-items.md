@@ -102,7 +102,7 @@ Each entry uses this shape:
 
 ### task-runner-and-ci-config
 
-- **Source:** v006 (carried forward to v008)
+- **Source:** v006 (carried forward to v009; scope widened in v009 per I3)
 - **Target spec file(s):** `<repo-root>/justfile`,
   `<repo-root>/lefthook.yml`,
   `<repo-root>/.github/workflows/ci.yml`,
@@ -111,17 +111,22 @@ Each entry uses this shape:
   `<repo-root>/.vendor.toml` (or per-lib VERSION files per G12)
 - **How to resolve:** Author the actual config files per the
   patterns in `python-skill-script-style-requirements.md`.
-  Includes: `just bootstrap` target (G16), `just check`
-  aggregation behavior (G15), CI matrix with `fail-fast: false`,
-  pinned tool versions, ruff/pyright/pytest/coverage configuration
-  (including `max-args=6` + `max-positional-args=6` per H5), and
-  the recorded vendored-lib versions (including `jsoncomment` per
-  H2).
+  Includes: `just bootstrap` target (G16; also creates the
+  `.claude/skills/ → ../.claude-plugin/skills/` dogfood symlink
+  per I11), `just check` aggregation behavior (G15), CI matrix
+  with `fail-fast: false`, pinned tool versions,
+  ruff/pyright/pytest/coverage configuration (including
+  `max-args=6` + `max-positional-args=6` per H5), the recorded
+  vendored-lib versions (including `jsoncomment` per H2), AND
+  the new `check-schema-dataclass-pairing` target (I3). Also
+  pick up the narrowed `check-no-raise-outside-io` and
+  `check-no-except-outside-io` targets per I10.
 
 ### static-check-semantics
 
 - **Source:** v007 (renamed in v008 from `ast-check-semantics`;
-  scope widened per H3, H11, H13, H14)
+  scope widened per H3, H11, H13, H14; scope widened again in
+  v009 per I1, I4, I5, I7, I10, and I3)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -138,8 +143,40 @@ Each entry uses this shape:
     `# noqa` interactions) for each of `check-purity`,
     `check-private-calls`, `check-import-graph`,
     `check-global-writes`, `check-supervisor-discipline`,
-    `check-no-raise-outside-io`, `check-public-api-result-typed`,
-    `check-main-guard`, `check-wrapper-shape`.
+    `check-no-raise-outside-io`, `check-no-except-outside-io`,
+    `check-public-api-result-typed`, `check-main-guard`,
+    `check-wrapper-shape`, `check-schema-dataclass-pairing`.
+  - **Narrowed raise / except discipline** (v009 I10):
+    `check-no-raise-outside-io` accepts raising of bug-class
+    exceptions (`TypeError`, `NotImplementedError`,
+    `AssertionError`, `RuntimeError`, etc.) anywhere;
+    forbids raising `LivespecError` subclasses (domain
+    errors) outside `io/**` and `errors.py`. Mirror
+    semantics for `check-no-except-outside-io`:
+    catching bug-class exceptions is permitted only in the
+    supervisor bug-catcher; catching domain errors outside
+    `io/**` is forbidden. The AST check distinguishes
+    domain-error classes from bug-class by subclass
+    relationship to `LivespecError`.
+  - **Supervisor bug-catcher exemption** (v009 I10):
+    `check-supervisor-discipline` permits one top-level
+    `try/except Exception` in each supervisor (`main()` in
+    `commands/<cmd>.py` and `bin/doctor_static.py`) whose
+    body logs via structlog and returns the bug-class exit
+    code. This is the ONLY catch-all permitted.
+  - **Supervisor public-API exemption** (v009 I4):
+    `check-public-api-result-typed` exempts supervisor
+    functions (by name `main` in `commands/**.py` and in
+    `doctor/run_static.py`) from the Result/IOResult return
+    requirement; supervisors may return `int` or `None`
+    per style doc §"Type safety."
+  - **`check-schema-dataclass-pairing` semantics** (v009 I3):
+    walks `scripts/livespec/schemas/*.schema.json` and
+    `scripts/livespec/schemas/dataclasses/*.py`; for each
+    schema, asserts a paired dataclass exists (by
+    `$id`-derived name) with every listed field in matching
+    Python type; and vice versa. Drift in either direction
+    fails.
   - **`check-global-writes` exemption list** (v007 G14 +
     v008 H9): `structlog.configure` in `__init__.py`,
     `structlog.contextvars.bind_contextvars` in `__init__.py`,
@@ -149,6 +186,8 @@ Each entry uses this shape:
     `livespec/**` in scope; `bin/*.py` (including
     `_bootstrap.py`) as sole exempt subtree; argparse
     `SystemExit` path impossible under `exit_on_error=False`.
+    Under v009 I14: `bin/doctor_static.py`'s argparse does
+    not accept `--skip-pre-check`.
   - **Markdown-parsing checks** (v008 H13, H14):
     `bcp14-keyword-wellformedness`'s enumeration of detected
     misspellings and mixed-case standalone-word rules;
@@ -157,13 +196,26 @@ Each entry uses this shape:
     algorithm edge cases (case variations, non-ASCII
     headings, duplicate-heading disambiguation suffixes,
     fenced-block exclusion specifics).
-  - **Doctor-cycle semantics** (v008 H11):
+  - **Doctor-cycle semantics** (v008 H11 + v009 I1, I7):
     `out-of-band-edits` pre-backfill guard glob details (exact
     file/directory patterns that trigger the guard; behavior
     when only one of the guard predicates matches; ordering of
     the guard vs the comparison), `git_head_available`
-    detection logic, and the skipped-check finding shape on
-    non-git repos.
+    detection logic, the skipped-check finding shape on
+    non-git repos, AND the seed-exempt-from-pre-step
+    semantics (I1; how the sub-command lifecycle ROP chain
+    knows to elide pre-step for seed), AND `<spec-root>/`
+    path parameterization from `DoctorContext.spec_root`
+    applied to every path reference in every check
+    (I7; includes the edge case spec_root = "./" for
+    repo-root templates).
+  - **`io/git.get_git_user()` semantics** (v009 I5):
+    fallback behavior on missing git binary, missing config,
+    unset `user.name` or `user.email`; always returns
+    success with literal `"unknown"` rather than failure for
+    the missing-config case; failure only on unexpected
+    `git`-binary absence (domain error
+    `GitUnavailableError`, exit 3).
 
 ### returns-pyright-plugin-disposition
 
@@ -181,21 +233,35 @@ Each entry uses this shape:
 
 ### front-matter-parser
 
-- **Source:** v007 (carried forward to v008)
+- **Source:** v007 (carried forward to v009; scope widened in v009 per I9 and I12)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/parse/front_matter.py`,
-  `<bundle>/scripts/livespec/schemas/front_matter.schema.json`
+  `<bundle>/scripts/livespec/schemas/proposed_change_front_matter.schema.json`,
+  `<bundle>/scripts/livespec/schemas/revision_front_matter.schema.json`
 - **How to resolve:** Implement the restricted-YAML parser per the
   format restrictions codified in PROPOSAL.md "Proposed-change file
   format" and "Revision file format" (scalar-only,
-  JSON-compatible, no nesting). Author the JSON Schema for
-  proposed-change front-matter and revision front-matter.
+  JSON-compatible, no nesting). Author two distinct JSON Schemas
+  (I12): `proposed_change_front_matter.schema.json` (fields:
+  `topic`, `author`, `created_at`) and
+  `revision_front_matter.schema.json` (fields: `proposal`,
+  `decision`, `revised_at`, `reviser_human`, `reviser_llm`). Each
+  schema pattern-validates the reserved `livespec-` prefix
+  namespace convention from I9: identifiers matching the
+  `^livespec-` pattern are reserved for automated skill-tool
+  authorship (e.g., `livespec-seed`, `livespec-doctor`); fields
+  accepting human-or-LLM identifiers MUST NOT accept
+  user-supplied `livespec-`-prefixed values from non-skill
+  callers (enforced at parse time on the proposed-change /
+  revision file format, not at the front-matter schema layer).
   Validators in `validate/` consume the parsed dict via the
-  factory shape from G4.
+  factory shape from G4, routed through the dataclass pairing
+  from I3 (`ProposedChangeFrontMatter`, `RevisionFrontMatter`
+  dataclasses).
 
 ### skill-md-prose-authoring
 
-- **Source:** v008 (NEW, H4)
+- **Source:** v008 (H4; carried forward to v009 with I8 reshape)
 - **Target spec file(s):**
   `.claude-plugin/skills/<sub-command>/SKILL.md` (one per
   sub-command: `seed`, `propose-change`, `critique`, `revise`,
@@ -206,20 +272,26 @@ Each entry uses this shape:
   ordered LLM-driven steps; post-wrapper behavior; failure
   handling). Cover: sub-command trigger phrases, Bash invocations
   of `bin/<cmd>.py` with explicit argv, template prompt
-  `@`-references, schema validation routing via
-  `livespec.validate.<name>.validate`, per-proposal confirmation
-  dialogue (`revise` only), `--skip-pre-check` /
-  `--skip-subjective-checks` handling, exit-code narration.
+  `@`-references, **retry-on-wrapper-exit-3** prose per I8 (on
+  exit 3 with validation-class findings, re-invoke the template
+  prompt with error context and retry, up to 3 retries;
+  wrappers validate internally; no separate validator CLI
+  wrappers), per-proposal confirmation dialogue (`revise` only),
+  `--skip-pre-check` / `--skip-subjective-checks` handling,
+  exit-code narration (including exit 2 for `--skip-pre-check`
+  passed to `bin/doctor_static.py` per I14).
 
 ### wrapper-input-schemas
 
-- **Source:** v008 (NEW, H6 + H10)
+- **Source:** v008 (H6 + H10; carried forward to v009 with I3 widening)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/schemas/proposal_findings.schema.json`
   (renamed from `critique_findings.schema.json`),
   `<bundle>/scripts/livespec/schemas/doctor_findings.schema.json`,
   `<bundle>/scripts/livespec/schemas/seed_input.schema.json`,
-  `<bundle>/scripts/livespec/schemas/revise_input.schema.json`
+  `<bundle>/scripts/livespec/schemas/revise_input.schema.json`,
+  AND the paired hand-authored dataclasses under
+  `<bundle>/scripts/livespec/schemas/dataclasses/*.py` per I3.
 - **How to resolve:** Author the four JSON Schema Draft-7 files:
   - `proposal_findings.schema.json` — propose-change / critique
     template-prompt output. Each finding has `name`,
@@ -232,8 +304,23 @@ Each entry uses this shape:
     `{files: [{path, content}], intent}`.
   - `revise_input.schema.json` — revise wrapper input. Shape:
     `{decisions: [{proposal_topic, decision, rationale,
-    modifications, resulting_files: [{path, content}]}]}`.
+    modifications, resulting_files: [{path, content}], reviser_llm}]}`.
+    Note: optional `reviser_llm` field carries the LLM's
+    best-effort self-identification per I13 precedence.
+
+  Also author the paired hand-authored dataclasses per I3:
+  `ProposalFindings`, `DoctorFindings`, `SeedInput`,
+  `ReviseInput`, and `LivespecConfig` (for `.livespec.jsonc`).
+  Each dataclass lives at
+  `scripts/livespec/schemas/dataclasses/<name>.py` with fields
+  matching the schema. `check-schema-dataclass-pairing`
+  enforces drift-free pairing in both directions (every schema
+  has a dataclass; every dataclass has a schema).
 
   Also: rename every reference to the old
   `critique_findings.schema.json` → `proposal_findings.schema.json`
   in PROPOSAL.md, the style doc, and any layout diagrams.
+
+  Validators in `scripts/livespec/validate/<name>.py` return
+  `Result[<Dataclass>, ValidationError]` from the factory
+  shape per v007 G4.
