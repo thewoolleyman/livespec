@@ -224,8 +224,9 @@ and every subpackage within it). This document does not duplicate
 the tree — the layout is maintained in exactly one place.
 
 - **`bin/`** — executable shebang-wrappers + the shared `_bootstrap.py`.
-  Each wrapper file is exactly 6 lines matching the shape below. No
-  logic. `chmod +x` applied.
+  Each wrapper file is exactly 6 statements matching the shape
+  below (plus an optional single blank line between the imports
+  and `raise SystemExit(main())`). No logic. `chmod +x` applied.
 - **`_vendor/`** — vendored third-party libs, exempt from livespec
   rules.
 - **`livespec/`** — the Python package. Every other file here follows
@@ -384,8 +385,8 @@ filled at validation time (via the factory-shape validators under
 
 argparse is the sole CLI parser and lives in `livespec/io/cli.py`.
 Rationale: `ArgumentParser.parse_args()` raises `SystemExit` on
-usage errors and `--help`; the 6-line wrapper shape leaves no room
-for it; `check-supervisor-discipline` forbids `SystemExit` outside
+usage errors and `--help`; the 6-statement wrapper shape leaves no
+room for it; `check-supervisor-discipline` forbids `SystemExit` outside
 `bin/*.py`. Routing argparse through the impure boundary keeps the
 railway intact.
 
@@ -1035,7 +1036,8 @@ Rules:
   `heading-coverage.json`.
 - The meta-test `tests/bin/test_wrappers.py` verifies every
   `.claude-plugin/scripts/bin/*.py` wrapper (excluding `_bootstrap.py`) matches the
-  exact 6-line shape (see "Shebang-wrapper contract" below).
+  exact 6-statement shebang-wrapper shape (see "Shebang-wrapper
+  contract" below).
 
 ### Property-based testing for pure modules
 
@@ -1144,7 +1146,7 @@ Coverage is measured by `coverage.py` via `pytest-cov`:
   surface in `.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/bin/**`, and
   `<repo-root>/dev-tooling/**`. No tier split. `_vendor/` is excluded.
   `.claude-plugin/scripts/bin/` is included because `_bootstrap.py` carries real logic
-  (Python-version check + sys.path setup) AND the 6-line wrapper bodies
+  (Python-version check + sys.path setup) AND the 6-statement wrapper bodies
   themselves carry the `bootstrap()` call + the `raise SystemExit(main())`
   dispatch, all of which are real executable lines that v011 K3 brings
   under the same 100% gate via dedicated `tests/bin/test_<cmd>.py`
@@ -1168,11 +1170,18 @@ Coverage is measured by `coverage.py` via `pytest-cov`:
   `tests/bin/test_<cmd>.py` that imports the wrapper and catches
   `SystemExit` via `pytest.raises`, with `monkeypatch` stubbing
   `livespec.commands.<cmd>.main` (or the relevant module's `main`)
-  to a no-op returning exit `0`. The import triggers the 6-line
-  wrapper body (version check via `_bootstrap.bootstrap()`, package
-  import, `raise SystemExit(main())`) under coverage.py's tracer,
-  registering every line as covered. The wrapper-shape 6-line rule
-  is preserved unchanged; the meta-test `tests/bin/test_wrappers.py`
+  to a no-op returning exit `0`. The import triggers the
+  6-statement wrapper body (version check via
+  `_bootstrap.bootstrap()`, package import,
+  `raise SystemExit(main())`) under coverage.py's tracer,
+  registering every statement as covered. The wrapper-shape
+  6-statement rule is preserved unchanged (the optional blank
+  line between the imports and `raise SystemExit(main())` is
+  tolerated by `check-wrapper-shape`'s AST-lite walker, which
+  operates on the AST module body rather than raw line text;
+  see v016 P5 disposition in `deferred-items.md`'s
+  `static-check-semantics` entry); the meta-test
+  `tests/bin/test_wrappers.py`
   continues to verify that shape in parallel to the per-wrapper
   coverage tests.
 
@@ -1412,7 +1421,7 @@ preserved from v005/v006:
 | `1` | Script-internal failure (unexpected runtime error; likely a bug). |
 | `2` | Usage error: bad flag, wrong argument count, malformed invocation. |
 | `3` | Input or precondition failed: referenced file/path/value missing, malformed, or in an incompatible state. |
-| `4` | Schema validation failed (retryable): LLM-provided JSON payload does not conform to the wrapper's input schema. Per-sub-command SKILL.md prose retries the template prompt with error context, up to 2 retries (3 attempts total). Distinct from exit `3` (precondition failure) so the LLM can classify failures deterministically without parsing stderr. |
+| `4` | Schema validation failed (retryable): LLM-provided JSON payload does not conform to the wrapper's input schema. Per-sub-command SKILL.md prose SHOULD inspect exit `4`, treat it as a retryable malformed-payload signal, and SHOULD re-invoke the template prompt with error context. v1 intentionally does not specify an exact retry count. Distinct from exit `3` (precondition failure) so the LLM can classify failures deterministically without parsing stderr. |
 | `126` | Permission denied: a required file exists but is not executable/readable/writable. |
 | `127` | Required external tool not on PATH, or Python version too old. |
 
@@ -1446,10 +1455,11 @@ Implementation:
   class ValidationError(LivespecError):
       """Schema validation failure on LLM-provided JSON payload.
 
-      Retryable: the sub-command's SKILL.md prose re-invokes the
-      template prompt with error context, up to 2 retries
-      (3 attempts total). Exit code 4 (distinct from
-      PreconditionError's exit 3) so the LLM can deterministically
+      Retryable: the sub-command's SKILL.md prose SHOULD inspect
+      exit code 4, treat it as a malformed-payload signal, and SHOULD
+      re-invoke the template prompt with error context. v1 does
+      not specify an exact retry count. Exit code 4 (distinct from
+      PreconditionError's exit 3) lets the LLM deterministically
       classify retryable vs non-retryable exit-3-class failures
       without parsing stderr.
       """
@@ -1545,8 +1555,10 @@ Enforced by `check-supervisor-discipline` (AST).
 ### Shebang-wrapper contract
 
 Each file under `bin/*.py` (except `_bootstrap.py`) MUST consist of
-exactly the following 6-line shape (no other lines, no other
-statements):
+exactly the following shape, comprising 6 statements (no other
+statements, and no other lines beyond the optional single blank
+line between the import block and the `raise SystemExit(main())`
+statement):
 
 ```python
 #!/usr/bin/env python3
@@ -1562,11 +1574,16 @@ Each wrapper is covered by a dedicated per-wrapper test at
 `tests/bin/test_<cmd>.py` that imports the wrapper and catches
 `SystemExit` via `pytest.raises`, with `monkeypatch` stubbing the
 target `main` to a no-op (see §"Code coverage — Wrapper coverage").
-Coverage.py's tracer records every line of the 6-line body as
-covered without any `# pragma: no cover` application; the wrapper-
-shape 6-line rule is preserved strictly. Shape conformance is
+Coverage.py's tracer records every statement of the 6-statement
+body as covered without any `# pragma: no cover` application; the
+wrapper-shape contract is preserved strictly. Shape conformance is
 enforced by `check-wrapper-shape` (AST-lite) and verified in parallel
-by the `test_wrappers.py` meta-test.
+by the `test_wrappers.py` meta-test. The optional blank line
+between the import block and `raise SystemExit(main())` does NOT
+count as a statement for the 6-statement contract, and
+`check-wrapper-shape` explicitly permits its presence (v016 P5);
+the algorithm is codified in `deferred-items.md`'s
+`static-check-semantics` entry.
 
 ### `bin/_bootstrap.py` contract
 
@@ -1599,11 +1616,15 @@ def bootstrap() -> None:
             sys.path.insert(0, path_str)
 ```
 
-The 6-line wrapper shape and `_bootstrap.py`'s body are jointly
-covered by:
+The 6-statement wrapper shape and `_bootstrap.py`'s body are
+jointly covered by:
 
 - `check-wrapper-shape`: every file under `bin/` matching `*.py`
-  except `_bootstrap.py` MUST match the 6-line template.
+  except `_bootstrap.py` MUST match the 6-statement wrapper
+  template (the optional blank line between the import block and
+  `raise SystemExit(main())` is permitted; see the
+  `static-check-semantics` deferred entry for the exact
+  algorithm).
 - `tests/bin/test_wrappers.py`: meta-test asserts the same.
 - `tests/bin/test_bootstrap.py`: covers `bootstrap()`'s version
   check and sys.path insertion behaviors.
@@ -1674,7 +1695,7 @@ specific native code works). No Windows support.
 | `just check-public-api-result-typed` | AST: every public function (per `__all__` declaration; see `check-all-declared`) returns `Result` or `IOResult` per annotation, except supervisors at the side-effect boundary (`main()` in `commands/**.py` and `doctor/run_static.py`) and the `build_parser` factory in `commands/**.py`. |
 | `just check-schema-dataclass-pairing` | AST (three-way walker per v013 M6): for every `schemas/*.schema.json`, verifies a paired dataclass at `schemas/dataclasses/<name>.py` (the `$id`-derived name) AND a paired validator at `validate/<name>.py` exists; every listed schema field matches the dataclass's Python type; vice versa in all three walks. Drift in any direction fails. |
 | `just check-main-guard` | AST: no `if __name__ == "__main__":` in `.claude-plugin/scripts/livespec/**`. |
-| `just check-wrapper-shape` | AST-lite: `bin/*.py` (except `_bootstrap.py`) conforms to the 6-line shebang-wrapper contract. |
+| `just check-wrapper-shape` | AST-lite: `bin/*.py` (except `_bootstrap.py`) conforms to the 6-statement shebang-wrapper contract (optional blank line between the import block and `raise SystemExit(main())` permitted). |
 | `just check-keyword-only-args` | AST: every `def` in livespec scope uses `*` as first separator (all params keyword-only); every `@dataclass` declares the strict-dataclass triple `frozen=True, kw_only=True, slots=True`. Exempts Python-mandated dunder signatures and `__init__` of Exception subclasses that forward to `super().__init__(msg)`. |
 | `just check-match-keyword-only` | AST: every `match` statement's class pattern resolving to a livespec-authored class binds via keyword sub-patterns (`Foo(x=x)`), not positional (`Foo(x)`). Third-party library class destructures (`returns`-package types) are permitted positionally. |
 | `just check-no-inheritance` | AST: forbids `class X(Y):` in `.claude-plugin/scripts/livespec/**` where `Y` is not in the **direct-parent allowlist** `{Exception, BaseException, LivespecError, Protocol, NamedTuple, TypedDict}`. `LivespecError` subclasses are NOT acceptable bases (v013 M5 tightening enforces leaf-closed intent); `class RateLimitError(UsageError):` is rejected even though `UsageError` is itself a `LivespecError` subclass. Codifies flat-composition direction; `LivespecError` itself remains an open extension point. |
@@ -1688,13 +1709,13 @@ specific native code works). No Windows support.
 | `just check-tools` | Verify every mise-pinned tool is installed at the pinned version. |
 | `just check-tests` | `pytest`. |
 | `just check-coverage` | `pytest --cov` with 100% line+branch threshold. |
-| `just e2e-test-claude-code-mock` | v014 N9: E2E integration test against the `minimal` template via the livespec-authored mock at `<repo-root>/tests/e2e/fake_claude.py`. Deterministic; mock replaces only the Claude Agent SDK / LLM layer (wrappers always run for real). Part of `just check`. |
+| `just e2e-test-claude-code-mock` | v014 N9: E2E integration test against the `minimal` template via the livespec-authored mock at `<repo-root>/tests/e2e/fake_claude.py`. Deterministic; mock replaces only the Claude Agent SDK / LLM layer (wrappers always run for real). Runs the common pytest suite in mock mode, including the intentionally mock-only deterministic retry-on-exit-4 scenario. Part of `just check`. |
 
 Alternate-cadence targets (NOT in `just check`):
 
 | Target | Purpose |
 |---|---|
-| `just e2e-test-claude-code-real` | v014 N9: E2E integration test against the `minimal` template via the real `claude-agent-sdk`. Requires `ANTHROPIC_API_KEY`. Shared pytest suite with the mock target; env var `LIVESPEC_E2E_HARNESS=mock\|real` selects the executable. CI triggers: `merge_group` (pre-merge via merge queue), `push` to `master` (every master commit), `workflow_dispatch` (manual). Locally invokable. |
+| `just e2e-test-claude-code-real` | v014 N9: E2E integration test against the `minimal` template via the real `claude-agent-sdk`. Requires `ANTHROPIC_API_KEY`. Common pytest suite with the mock target; env var `LIVESPEC_E2E_HARNESS=mock\|real` selects the executable, and pytest markers / `skipif` annotations suppress intentionally mock-only cases such as deterministic retry-on-exit-4 coverage in real mode. CI triggers: `merge_group` (pre-merge via merge queue), `push` to `master` (every master commit), `workflow_dispatch` (manual). Locally invokable. |
 
 Release-gate targets (run on release-tag CI workflow only; NOT
 included in `just check`; NOT run per-commit):

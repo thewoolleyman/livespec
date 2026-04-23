@@ -1267,8 +1267,191 @@ entries keep their original naming (immutable history).
   Full decision record is in
   `v014/proposed_changes/proposal-critique-v13-revision.md`.
 
+- **v015** — revise driven by
+  `proposed_changes/proposal-critique-v14.md` and its
+  revision. A **recreatability-and-cross-doc-consistency
+  cleanup pass** surfacing 4 items (O1-O4), all of which
+  were framed as repairs to stale wording or underspecified
+  ownership boundaries introduced by earlier settled
+  decisions rather than as architectural reversals. Two
+  items preserved the v009 I7 / v014 N1 template direction
+  by removing stale generic hardcodings (O1, O2). One item
+  widened mid-interview from a `critique`-local naming
+  ambiguity into a general wrapper-boundary contract for
+  direct `propose-change` callers (O3). One item was
+  reshaped during interview from "how many retries?" into
+  "who owns the retry mechanism and what is actually
+  testable?" (O4). Major structural changes:
+  **Generic lifecycle paths parameterized by `<spec-root>`**
+  — O1: generic operational prose no longer hardcodes
+  `SPECIFICATION/...`; template-specific `livespec`
+  examples remain literal only in the sections that are
+  actually about that template. Applied to sub-command
+  semantics plus the generic versioning, pruning, revision-
+  file, doctor-output, and other operational sections.
+  **Seed/history snapshot wording made template-aware** —
+  O2: seed snapshots the active template's versioned
+  surface; per-version README copies exist only for
+  templates whose versioned surface defines one. The built-
+  in `minimal` template therefore continues to have no
+  `history/vNNN/README.md`.
+  **Central topic canonicalization at `propose-change`**
+  — O3: inbound `<topic>` is now explicitly treated as a
+  user-facing topic hint. `bin/propose_change.py`
+  canonicalizes it centrally (lowercase; runs of
+  non-`[a-z0-9]` collapse to `-`; trim; truncate to 64;
+  empty-after-canonicalization is `UsageError` exit 2) and
+  uses the canonicalized value for filename,
+  front-matter `topic`, and collision disambiguation.
+  `critique` now passes raw `<resolved-author>-critique`
+  topic hints into that shared rule instead of owning a
+  separate slugification path.
+  **Retry semantics de-over-specified; deterministic
+  retry-path E2E coverage narrowed to mock-only** — O4:
+  fixed retry counts were removed from the working docs.
+  Exit `4` remains the malformed-payload signal distinct
+  from exit `3`, and SKILL/prompt orchestration SHOULD use
+  wrapper return codes to decide whether to retry with
+  error context. The common E2E pytest suite now
+  explicitly allows harness-specific pytest markers /
+  `skipif`s; deterministic retry-on-exit-4 coverage runs
+  only in mock mode (first malformed, second well-formed)
+  and is skipped in real mode.
+  **Deferred-items updates:** 4 existing entries
+  scope-widened (`template-prompt-authoring`,
+  `static-check-semantics`, `skill-md-prose-authoring`,
+  `end-to-end-integration-test`); 0 new entries added;
+  0 removed.
+  **Careful-review pass (first)** caught 1 load-bearing
+  fix cluster: additional O1 path drift remained in generic
+  lifecycle prose outside the sub-command sections.
+  **Careful-review pass (second)** caught 5 more
+  load-bearing fixes: stale generic path references
+  remained in `Versioning`, `Pruning history`, `Revision
+  file format`, the doctor output example, and the
+  self-application seed path.
+  **Careful-review pass (third)** landed no load-bearing
+  fixes (final pass per the "continue until a pass lands no
+  load-bearing fixes" rule).
+  **Dedicated deferred-items-consistency pass** walked the
+  updated deferred entries and found 0 additional drift.
+  **Cumulative total findings across all 3 careful-review
+  passes + 1 deferred-items-consistency pass: 6
+  inconsistencies caught and fixed (1 + 5 + 0 + 0).**
+  Full decision record is in
+  `v015/proposed_changes/proposal-critique-v14-revision.md`.
+
+- **v016** — revise driven by
+  `proposed_changes/proposal-critique-v15.md` and its revision.
+  A **recreatability-and-cross-doc-consistency cleanup pass**
+  surfacing 5 items (P1-P5), all of which were framed as
+  repairs to stale or underspecified wording from earlier
+  settled decisions rather than architectural reversals. Four
+  items were accepted as proposed; one item (P4) was reshaped
+  during interview from "what exact `topic` value does
+  `out-of-band-edits` backfill assign?" into a MUST-level
+  single-canonicalization architecture requirement after the
+  user correctly pushed that the original framing had drifted
+  into implementation mechanism. Major structural changes:
+  **`anchor-reference-resolution` walk set codified** — P1:
+  under the built-in `minimal` template's `spec_root: "./"`,
+  the check was walking the entire repo root (top-level
+  `README.md`, `CONTRIBUTING.md`, source trees, `.github/`,
+  etc.) as an incidental side effect of v014 N1 plus v009 I7.
+  The check's walk is now scoped to the template-declared spec
+  file set, the spec-root `README.md` when the template
+  declares one, `<spec-root>/proposed_changes/**`,
+  `<spec-root>/history/**/proposed_changes/**`, and per-version
+  snapshots of each template-declared spec file. The same
+  walk-set semantic applies uniformly to any future
+  doctor-static check that walks `<spec-root>/` recursively.
+  **Seed's `.livespec.jsonc` write made wrapper-owned** — P2:
+  `bin/seed.py` writes `.livespec.jsonc` as part of its
+  deterministic file-shaping work, BEFORE post-step
+  doctor-static runs. `seed_input.schema.json` gains a required
+  top-level `template: string` field carrying the user-chosen
+  value from the pre-seed SKILL.md-prose dialogue. Post-step
+  now inspects a fully-bootstrapped project tree including the
+  `.livespec.jsonc` it just wrote.
+  **Reserve-suffix canonicalization mechanism added** — P3:
+  `bin/propose_change.py` gains `--reserve-suffix <text>` (also
+  exposed as a Python internal API parameter). When supplied,
+  canonicalization truncates the non-suffix portion to `64 −
+  len(canonicalized-suffix)` and re-appends the suffix
+  verbatim. `critique` uses this to guarantee its `-critique`
+  suffix survives truncation on long author slugs without
+  fragmenting v015 O3's single-rule canonicalization boundary.
+  **MUST-level single-canonicalization invariant for the
+  `topic` field** — P4: the `topic` YAML front-matter field
+  MUST be derived via the same canonicalization rule across
+  all creation paths (user-invoked `propose-change`,
+  `critique`'s internal delegation, skill-auto paths like
+  `seed` auto-capture and `out-of-band-edits` backfill).
+  Implementations MUST route all `topic` derivations through a
+  single shared canonicalization. No mechanism detail
+  prescribed (architecture, not mechanism).
+  **Shebang-wrapper contract 6-line → 6-statement** — P5:
+  the `"6-line shape"` phrasing was self-contradictory with
+  the canonical 7-line example (blank line between imports
+  and `raise SystemExit`). Rewrote as "6 statements (no other
+  statements, no other lines beyond the optional single blank
+  line...)". `check-wrapper-shape`'s AST-lite walker operates
+  on the AST module body so the optional blank is accepted
+  automatically; codified in `static-check-semantics`.
+  **Deferred-items updates:** 5 existing entries
+  scope-widened (`static-check-semantics` for P1/P3/P5 +
+  critique-path update, `wrapper-input-schemas` for P2,
+  `skill-md-prose-authoring` for P2/P3,
+  `template-prompt-authoring` for P2's schema-field addition
+  propagating to every template's seed prompt,
+  `enforcement-check-scripts` for P5's algorithm change);
+  0 new entries added; 0 removed.
+  **Careful-review pass (first)** caught 9 load-bearing fixes:
+  5 stale `6-line` phrasings in the style doc (lines 227,
+  388, 1149, 1173, 1176); 2 stale `6-line` phrasings in
+  PROPOSAL.md (lines 317, 2497 as-written pre-pass); a
+  pre-existing typo at PROPOSAL.md line 1960
+  (`python-skill-script-script-style-requirements.md`); a
+  previously-missed v015 O2 ripple where
+  `version-directories-complete` still required a
+  per-version `README.md` unconditionally contradicting
+  `minimal`'s no-per-version-README rule.
+  **Careful-review pass (second)** caught 2 load-bearing
+  fixes: the preceding paragraph of §"Proposed-change file
+  format" only named propose-change/critique as `topic`
+  sources (broadened for P4 consistency); and a
+  self-violation of the P4 disposition caught during that
+  broadening — the first draft prescribed an exact
+  `topic: out-of-band-edit-<UTC-seconds>` value, which P4's
+  reshape explicitly said is implementation choice.
+  **Careful-review pass (third)** landed 0 load-bearing fixes
+  (final pass per the "continue until a pass lands no
+  load-bearing fixes" rule).
+  **Dedicated deferred-items-consistency pass** landed 5
+  load-bearing findings distinct from the careful-review
+  passes: 3 Source-line drift fixes
+  (`skill-md-prose-authoring`, `template-prompt-authoring`,
+  `enforcement-check-scripts` all lacked v016 widening
+  notations despite body text widened elsewhere);
+  1 sub-section content update (the v014 N1 SKILL.md-prose
+  sub-section still said seed's SKILL.md writes
+  `.livespec.jsonc`, stale after P2's wrapper-ownership move);
+  1 cross-reference validity fix (two `see PROPOSAL.md §"seed
+  — ..."` references pointed at bolded-bullet labels not
+  `##`/`###` headings; rewrote as `§"seed" bullet "..."`
+  form). Layout-tree drift check: no new files introduced by
+  v016; no tree edits required. Example-vs-rule alignment
+  check: verified reserve-suffix arithmetic in the worked
+  examples (26+9=35; 73→55+9=64; pre-attached suffix strips
+  and re-appends cleanly).
+  **Cumulative total findings across all 3 careful-review
+  passes + 1 deferred-items-consistency pass: 16
+  inconsistencies caught and fixed (9 + 2 + 0 + 5).**
+  Full decision record is in
+  `v016/proposed_changes/proposal-critique-v15-revision.md`.
+
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v014/PROPOSAL.md` until the next revise.
+byte-identical to `history/v016/PROPOSAL.md` until the next revise.

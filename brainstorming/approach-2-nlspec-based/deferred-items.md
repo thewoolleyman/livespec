@@ -19,7 +19,7 @@ file rather than duplicating its contents.
   batch of work to file as proposed changes.
 - **Items have stable ids** (`kebab-case`), which serve as
   the topic/filename for the eventual propose-change file
-  (`SPECIFICATION/proposed_changes/<id>.md`).
+  (`<spec-root>/proposed_changes/<id>.md`).
 
 ## Item schema
 
@@ -40,7 +40,7 @@ Each entry uses this shape:
 
 ### template-prompt-authoring
 
-- **Source:** v001 (carried forward through every version; scope widened in v011 per K5; scope widened in v014 per N1 and N9)
+- **Source:** v001 (carried forward through every version; scope widened in v011 per K5; scope widened in v014 per N1 and N9; scope widened in v015 per O4; scope widened in v016 per P2 — seed prompts for every template MUST emit the new top-level `template` field in their JSON output)
 - **Target spec file(s):** `SPECIFICATION/spec.md`,
   `SPECIFICATION/contracts.md` (skill↔template I/O contracts),
   `specification-templates/livespec/prompts/*.md`,
@@ -133,7 +133,7 @@ Each entry uses this shape:
 
 ### enforcement-check-scripts
 
-- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6; v014 N2 and N4 affect sibling entries — `wrapper-input-schemas` and `static-check-semantics` — not this entry's scope)
+- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6; v014 N2 and N4 affect sibling entries — `wrapper-input-schemas` and `static-check-semantics` — not this entry's scope; v016 P5 widens `check_wrapper_shape.py`'s algorithm to permit the optional blank line per the `static-check-semantics` subsection; v016 P1 and P3 likewise affect `static-check-semantics` sibling subsections without adding a new check script)
 - **Target spec file(s):** `SPECIFICATION/constraints.md` +
   `<repo-root>/dev-tooling/checks/` + `<repo-root>/pyproject.toml`
   (`[tool.importlinter]` section per v012 L15a)
@@ -420,7 +420,8 @@ Each entry uses this shape:
   J10, J11, J14; scope widened in v011 per K3, K4, K5, K10;
   scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a;
   scope widened in v013 per M1, M4, M5, M6, M7; scope widened in
-  v014 per N2, N3, N4, N5, N6, C3)
+  v014 per N2, N3, N4, N5, N6, C3; scope widened in v015 per O3;
+  scope widened in v016 per P1, P3, P5)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -592,10 +593,57 @@ Each entry uses this shape:
     `tests/bin/test_<cmd>.py` that imports it and catches
     `SystemExit` via `pytest.raises`, with `monkeypatch` stubbing
     the target `main` to a no-op. Coverage.py's tracer registers
-    every line of the 6-line body under test. Wrapper-shape rule
-    preserved unchanged; `check-wrapper-shape` + `test_wrappers.py`
-    meta-test verify shape in parallel to per-wrapper coverage
-    tests.
+    every statement of the 6-statement body under test. Wrapper-
+    shape rule preserved unchanged; `check-wrapper-shape` +
+    `test_wrappers.py` meta-test verify shape in parallel to
+    per-wrapper coverage tests.
+  - **`check-wrapper-shape` algorithm** (v016 P5): the
+    AST-lite check accepts a wrapper file whose AST module
+    body consists of EXACTLY the six statements listed in
+    PROPOSAL.md §"Shebang-wrapper contract" in order
+    (the shebang and docstring count as one each for AST
+    purposes; `from _bootstrap import bootstrap`;
+    `bootstrap()`; `from livespec.<module>.<submodule> import main`;
+    `raise SystemExit(main())`). The check operates on the
+    AST module body, which naturally discards whitespace-only
+    lines, so the optional blank line between the import
+    block and the `raise SystemExit(main())` statement is
+    accepted automatically. The `test_wrappers.py` meta-test
+    applies the same algorithm. Implementations MUST NOT
+    enforce a literal line count on the file text (the v015
+    "6-line shape" phrasing was self-contradictory with the
+    canonical example and is superseded by the 6-statement
+    framing).
+  - **`anchor-reference-resolution` walk set** (v016 P1):
+    the check's walk is scoped to the active template's
+    declared spec artifact set, NOT a `<spec-root>/**` glob.
+    The walk set is computed by:
+    1. Resolve the active template's declared spec file set
+       from its `specification-template/` walk (see v011 K2
+       template resolution).
+    2. For each template-declared spec file, include it at
+       its `<spec-root>`-relative path.
+    3. If the template declares a spec-root `README.md` as
+       part of its `specification-template/`, include
+       `<spec-root>/README.md` (the built-in `livespec`
+       template declares one; the built-in `minimal` template
+       does not).
+    4. Include every file under
+       `<spec-root>/proposed_changes/**`.
+    5. Include every file under
+       `<spec-root>/history/**/proposed_changes/**`.
+    6. For each template-declared spec file `<f>`, include
+       every file under `<spec-root>/history/**/<f>` (the
+       per-version snapshots of that spec file).
+    Files outside the walk set are invisible to this check
+    even when they exist under `<spec-root>/`. Under the
+    built-in `minimal` template's `spec_root: "./"`, the
+    check does NOT read the project's top-level `README.md`,
+    `CONTRIBUTING.md`, `CHANGELOG.md`, source-tree markdown,
+    or `.github/` markdown. This walk-set semantic applies
+    uniformly to any future doctor-static check that walks
+    `<spec-root>/` recursively; check authors MUST use the
+    shared walk-set helper rather than a raw rglob.
   - **`check-keyword-only-args` semantics**
     (v011 K4): AST walker over `.claude-plugin/scripts/livespec/**`,
     `.claude-plugin/scripts/bin/**`, and `<repo-root>/dev-tooling/**`. For every
@@ -880,9 +928,11 @@ Each entry uses this shape:
     self-declared `author` field → `"unknown-llm"` fallback)
     produces an UNCONSTRAINED string (no schema pattern or
     runtime validator applies at the author-field level).
-    When the resolved value is used as a filename component
-    (the `<resolved-author>-critique.md` topic suffix in
-    `critique`; similar positions in future invocations), the
+    When the resolved value is used to derive a topic hint or
+    filename component (the raw `<resolved-author>` author stem
+    passed by `critique` to `propose_change`'s internal
+    canonicalization with reserve-suffix `"-critique"` per
+    v016 P3; similar positions in future invocations), the
     wrapper transforms the value via this rule:
     1. lowercase.
     2. replace every run of one or more non-[a-z0-9]
@@ -898,11 +948,71 @@ Each entry uses this shape:
     fields for audit-trail fidelity. The rule matches the GFM
     slug algorithm already used by
     `anchor-reference-resolution`, preserving monotonicity
-    across livespec's slug conventions. Applies uniformly
-    across `propose-change`, `critique`, and `revise`.
+    across livespec's slug conventions.
+  - **Topic canonicalization at the `propose-change` boundary**
+    (v015 O3): the CLI `<topic>` argument accepted by
+    `bin/propose_change.py` is a user-facing topic hint, not yet
+    the canonical artifact identifier. Before any collision
+    lookup, filename write, or front-matter population, the
+    wrapper canonicalizes the topic via the same slug rule
+    family: lowercase → replace runs of non-[a-z0-9] with a
+    single hyphen → strip leading/trailing hyphens → truncate to
+    64 characters. If the canonicalized result is empty, the
+    wrapper raises `UsageError` (exit 2). The canonicalized topic
+    is then used uniformly for the output filename, front-matter
+    `topic`, and the collision namespace (`foo.md`, `foo-2.md`,
+    ...). This rule applies to direct callers and to `critique`'s
+    internal delegation path alike.
+  - **Reserve-suffix topic canonicalization** (v016 P3):
+    `bin/propose_change.py` MAY be invoked with
+    `--reserve-suffix <text>` (or called via its Python
+    internal API with an equivalent keyword-only parameter,
+    which is how `critique`'s internal delegation path
+    supplies `-critique`). When `--reserve-suffix` is NOT
+    supplied, canonicalization behaves exactly as v015 O3
+    defines. When it IS supplied, the algorithm is:
+    1. Canonicalize the inbound topic hint with steps 1-3
+       (lowercase → non-`[a-z0-9]` runs → single hyphen →
+       strip leading/trailing hyphens) — call this
+       `<canonical-hint>`.
+    2. Canonicalize the `<suffix>` string with the same
+       steps 1-3 — call this `<canonical-suffix>`.
+    3. If `<canonical-hint>` already ends in `<canonical-suffix>`,
+       strip the trailing suffix from `<canonical-hint>`
+       before truncation. (This lets callers pass the hint
+       either with or without the suffix pre-attached.)
+    4. Truncate the resulting non-suffix portion to
+       `64 − len(<canonical-suffix>)` characters; strip
+       trailing hyphens left behind by the truncation.
+    5. Re-append `<canonical-suffix>` verbatim. The result
+       is at most 64 characters and the suffix is preserved
+       intact.
+    6. If the composed result is empty (e.g., the hint
+       canonicalizes to nothing and no suffix was supplied),
+       the wrapper raises `UsageError` (exit 2).
+    Worked examples (suffix = `-critique`; `len(-critique) = 9`;
+    non-suffix budget = `64 − 9 = 55` characters):
+    - Input `"Claude Opus 4.7 (1M context)"`, suffix
+      `"-critique"` → canonical hint
+      `claude-opus-4-7-1m-context` (26 chars) → no truncation
+      needed → output `claude-opus-4-7-1m-context-critique`
+      (35 chars).
+    - Input `"An unusually long author identifier that keeps going and going past fifty"`,
+      suffix `"-critique"` → canonical hint
+      `an-unusually-long-author-identifier-that-keeps-going-and-going-past-fifty`
+      (73 chars) → truncated to 55 chars
+      `an-unusually-long-author-identifier-that-keeps-going-an` →
+      re-appended → `an-unusually-long-author-identifier-that-keeps-going-an-critique`
+      (64 chars).
+    - Input `"Claude Opus 4.7-critique"`, suffix
+      `"-critique"` (suffix was pre-attached by caller) →
+      canonical hint strips trailing `-critique` →
+      `claude-opus-4-7` (15 chars) → no truncation → output
+      `claude-opus-4-7-critique` (24 chars).
   - **Collision-suffix semantics** (v014 N6): when
     `propose-change` or `critique` would write a file at a
-    topic whose filename already exists, the wrapper
+    canonicalized topic whose filename already exists, the
+    wrapper
     auto-disambiguates by appending a hyphen-separated
     monotonic integer suffix **starting at `2`**:
     - First write at topic `foo`: `foo.md` (no suffix).
@@ -910,7 +1020,8 @@ Each entry uses this shape:
     - Second collision: `foo-3.md`.
     - Nth collision: `foo-<N+1>.md` (no zero-padding).
     Determination: the wrapper enumerates files named
-    `<topic>.md` and `<topic>-<N>.md` in the target directory;
+    `<canonical-topic>.md` and `<canonical-topic>-<N>.md` in the
+    target directory;
     picks the lowest integer ≥ 2 such that no file with that
     suffix exists. Race: livespec is single-process; no lock
     needed. Alphanumeric sort misordering past 9 duplicates
@@ -1049,7 +1160,7 @@ Each entry uses this shape:
 
 ### skill-md-prose-authoring
 
-- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4; widened v014 per N1 and N7)
+- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4; widened v014 per N1 and N7; widened v015 per O3 and O4; widened v016 per P2 and P3)
 - **Target spec file(s):**
   `.claude-plugin/skills/<sub-command>/SKILL.md` (one per
   sub-command: `seed`, `propose-change`, `critique`, `revise`,
@@ -1068,14 +1179,15 @@ Each entry uses this shape:
     Replaces v009's literal `@`-reference approach; works
     uniformly for built-in and custom templates;
   - **retry-on-wrapper-exit-4** prose (v010 J4; renamed from
-    v009 I8's retry-on-exit-3; count semantics updated v013 M4):
-    on exit 4 re-invoke the template prompt with error context
-    from stderr and re-assemble the JSON payload, up to 2
-    retries (3 attempts total: 1 initial invocation + 2
-    retries). Abort on the third failing attempt. Exit 3 is
-    NOT retryable (pre-step / precondition failure — surface
-    findings and abort); wrappers validate internally; no
-    separate validator CLI wrappers;
+    v009 I8's retry-on-exit-3; retry-count language removed in
+    v015 O4): on exit 4, SKILL.md prose SHOULD inspect the
+    return code, treat it as a retryable malformed-payload
+    signal, and SHOULD re-invoke the template prompt with error
+    context from stderr to re-assemble the JSON payload. v1
+    intentionally leaves the exact retry count unspecified.
+    Exit 3 is NOT retryable (pre-step / precondition failure —
+    surface findings and abort); wrappers validate internally;
+    no separate validator CLI wrappers;
   - **exit 0 on `--help`** (v010 J7): help text goes to stdout
     via the `HelpRequested` supervisor path; not an error;
   - per-proposal confirmation dialogue (`revise` only);
@@ -1100,8 +1212,13 @@ Each entry uses this shape:
     bodies (identical precedence across all three:
     CLI → env var `LIVESPEC_AUTHOR_LLM` → payload `author` field
     → `"unknown-llm"` fallback). Critique body changes from
-    v010's positional `<author>` to `--author` flag; topic
-    still derived as `<resolved-author>-critique`.
+    v010's positional `<author>` to `--author` flag; critique
+    passes the raw `<resolved-author>` author stem plus the
+    reserve-suffix parameter `"-critique"` (v016 P3) to
+    `propose-change`'s internal canonicalization path, which
+    canonicalizes the composite topic before filename /
+    front-matter / collision handling while preserving the
+    `-critique` suffix under truncation.
   - exit-code narration (exit 0 on help; exit 2 on usage error
     including both-flags-set; exit 3 on precondition /
     doctor-static; exit 4 on schema validation; exit 1 on
@@ -1122,13 +1239,13 @@ Each entry uses this shape:
   driven phases.
 
   **v014 additions:**
-  - **Seed pre-seed template-choice dialogue** (v014 N1).
-    Seed's SKILL.md prose (`seed/SKILL.md` body Steps
-    section) MUST handle the pre-seed state specially:
-    BEFORE invoking `bin/resolve_template.py`, check
-    whether `.livespec.jsonc` exists at the project root.
-    If absent, prompt the user in dialogue for template
-    choice with these options:
+  - **Seed pre-seed template-choice dialogue** (v014 N1;
+    updated by v016 P2). Seed's SKILL.md prose
+    (`seed/SKILL.md` body Steps section) MUST handle the
+    pre-seed state specially: BEFORE invoking the wrapper,
+    check whether `.livespec.jsonc` exists at the project
+    root. If absent, prompt the user in dialogue for
+    template choice with these options:
     - `livespec` (default, multi-file SPECIFICATION/ layout
       with `spec.md` + `contracts.md` + `constraints.md` +
       `scenarios.md`). Recommended.
@@ -1137,15 +1254,22 @@ Each entry uses this shape:
     - custom path (user provides a relative-path-to-
       template-directory; the chosen path must contain a
       valid `template.json`).
-    After the user selects, seed uses the chosen template's
-    `prompts/seed.md` for content generation and writes
-    `.livespec.jsonc` at the end of the seed flow with
-    `template: "<chosen-value>"`. When `.livespec.jsonc` IS
-    present, seed invokes `bin/resolve_template.py` like
-    any other sub-command (no dialogue). Only seed's
-    SKILL.md prose has this special-case; every non-seed
-    sub-command's SKILL.md invokes `bin/resolve_template.py`
-    normally.
+    After the user selects, the SKILL.md prose MUST include
+    the chosen value in the seed-input JSON payload's
+    required top-level `template` field (v016 P2); the
+    wrapper consumes the `template` field both to bootstrap
+    `.livespec.jsonc` (see PROPOSAL.md §"seed" bullet
+    "`.livespec.jsonc` is wrapper-owned") and to locate
+    `prompts/seed.md` for content generation. When
+    `.livespec.jsonc` IS present, seed's SKILL.md prose MAY
+    skip the pre-seed dialogue and instead read the
+    existing `template` value (e.g., via a brief Bash
+    invocation of `bin/resolve_template.py`) to populate
+    the payload — but the wrapper's `template` ↔ on-disk
+    consistency check (v016 P2) catches any mismatch. The
+    SKILL.md prose MUST NOT write `.livespec.jsonc` via the
+    Write tool; wrapper-owned file-shaping is the single
+    source of truth for this file.
   - **Seed post-step-failure recovery narration** (v014 N7).
     Seed's SKILL.md prose (`seed/SKILL.md` body Failure
     handling section, exit-3 row) MUST surface the
@@ -1172,7 +1296,7 @@ Each entry uses this shape:
 
 ### wrapper-input-schemas
 
-- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8; widened v013 per M6; widened v014 per N2 and N5)
+- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8; widened v013 per M6; widened v014 per N2 and N5; widened v016 per P2)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/schemas/proposal_findings.schema.json`
   (renamed from `critique_findings.schema.json`),
@@ -1199,7 +1323,13 @@ Each entry uses this shape:
     output. Each finding has `check_id`, `status` (one of
     `pass`/`fail`/`skipped`), `message`, `path`, `line`.
   - `seed_input.schema.json` — seed wrapper input. Shape:
-    `{files: [{path, content}], intent}`.
+    `{template, files: [{path, content}], intent}`. The
+    top-level required `template: string` field (v016 P2)
+    carries the user-chosen template value from the pre-seed
+    SKILL.md-prose dialogue (one of `livespec`, `minimal`, or
+    a custom template path). The wrapper uses this value to
+    bootstrap `.livespec.jsonc` and to locate the template's
+    `prompts/seed.md`.
   - `revise_input.schema.json` — revise wrapper input. Shape:
     `{decisions: [{proposal_topic, decision, rationale,
     modifications, resulting_files: [{path, content}]}],
@@ -1286,6 +1416,29 @@ Each entry uses this shape:
     application consistent across `propose-change`,
     `critique`, and `revise` wrappers.
 
+  **v016 additions:**
+  - **`seed_input.schema.json` gains required `template`
+    field** (v016 P2). The schema's top-level object adds a
+    REQUIRED `template: string` property carrying the user-
+    chosen template value (one of `livespec`, `minimal`, or
+    a custom template path) from the pre-seed SKILL.md-prose
+    dialogue. The paired `SeedInput` dataclass gains a
+    matching field `template: TemplateName` (uses the v012
+    L8 NewType alias, consistent with how
+    `template_config.schema.json`/`TemplateConfig` and
+    `.livespec.jsonc`/`LivespecConfig` type their `template`
+    values). The paired `validate/seed_input.py` validator
+    enforces the required field at schema-validation time;
+    `check-schema-dataclass-pairing`'s three-way walker
+    catches drift symmetrically across schema, dataclass,
+    and validator. The wrapper uses this value (a) to
+    bootstrap `.livespec.jsonc` before post-step
+    doctor-static (see PROPOSAL.md §"seed" bullets
+    "`.livespec.jsonc` is wrapper-owned" and "wrapper
+    deterministic file-shaping work order") and (b) to
+    resolve the template's `prompts/seed.md` for content
+    generation.
+
 ### user-hosted-custom-templates
 
 - **Source:** v010 (J3; new)
@@ -1323,7 +1476,7 @@ Each entry uses this shape:
 
 ### end-to-end-integration-test
 
-- **Source:** v014 (N9; new)
+- **Source:** v014 (N9; new; widened in v015 per O4)
 - **Target spec file(s):**
   - `<repo-root>/tests/e2e/` — fixture tree, mock executable,
     pytest suite.
@@ -1350,9 +1503,11 @@ Each entry uses this shape:
     the sub-commands.
   - Pre-seeded fixtures for the three error-path tests (N9
     D4-b): (a) for retry-on-exit-4 — a fixture that triggers
-    a schema-invalid LLM payload in the mock tier via a
-    specific delimiter comment directive (real tier relies
-    on LLM nondeterminism to occasionally trigger); (b) for
+    a schema-invalid LLM payload in the **mock tier only** via a
+    specific delimiter comment directive; the mock then returns a
+    well-formed payload on the second attempt so the test covers
+    exactly one retry cycle. The real tier skips this scenario
+    via pytest marker/skipif; (b) for
     doctor-static fail-then-fix — a pre-seeded
     `SPECIFICATION.md` containing a mixed-case `Must` (trips
     `bcp14-keyword-wellformedness`); (c) for prune-history
@@ -1388,7 +1543,10 @@ Each entry uses this shape:
   **Pytest suite** at `<repo-root>/tests/e2e/test_*.py`:
   - Parameterized on `LIVESPEC_E2E_HARNESS=mock|real` (env
     var read by a session-scoped fixture that selects
-    between `fake_claude` and `claude_agent_sdk`).
+    between `fake_claude` and `claude_agent_sdk`). Shared tests
+    run in both modes; intentionally mock-only scenarios use
+    pytest marker / `skipif` annotations and are skipped in
+    real mode.
   - Happy path test: `test_happy_path_minimal` — runs
     `/livespec:seed` → `propose-change` → `critique` →
     `revise` → `doctor` → `prune-history` in sequence;
@@ -1396,8 +1554,11 @@ Each entry uses this shape:
     exist/don't exist; schemas valid; exit codes correct).
   - Error-path tests:
     - `test_retry_on_exit_4` — triggers schema-invalid
-      payload; verifies sub-command succeeds within 3
-      attempts.
+      payload in mock mode, then returns well-formed payload on
+      the second attempt; verifies the skill/prompt
+      orchestration treats exit `4` as a retry signal and the
+      sub-command succeeds after exactly one retry. Marked
+      mock-only; skipped in real mode.
     - `test_doctor_fail_then_fix` — pre-seed malformed
       state; run doctor → verify fail Finding; apply fix
       via propose-change --skip-pre-check + revise
@@ -1462,7 +1623,8 @@ Each entry uses this shape:
   Evaluate whether a local-model-backed E2E tier actually
   exercises the same coverage as a live-LLM tier (e.g.,
   does the local model produce JSON payloads that stress
-  the wrapper's schema-validation retry loop the same way?).
+  the wrapper's schema-validation retry-signaling path the same
+  way?).
   If parity is sufficient, replace the real tier. If not,
   add `local` as a third tier and keep `real` available for
   release-gate or on-demand invocation.

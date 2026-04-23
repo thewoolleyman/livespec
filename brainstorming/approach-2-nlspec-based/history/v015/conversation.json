@@ -1,0 +1,140 @@
+{
+  "version": "v015",
+  "produced_from": "v014",
+  "critique_file": "v015/proposed_changes/proposal-critique-v14.md",
+  "revision_file": "v015/proposed_changes/proposal-critique-v14-revision.md",
+  "session_date": "2026-04-23",
+  "author_human": "thewoolleyman",
+  "author_llm": "GPT-5 Codex",
+  "pass_framing": "recreatability-and-cross-doc-consistency cleanup pass surfacing 4 items (O1-O4). O1 and O2 repaired stale generic path and snapshot prose that no longer matched v009 I7 `spec_root` parameterization plus v014 N1's `minimal` built-in template. O3 was widened during interview from a `critique`-local naming ambiguity into the broader question of topic canonicalization ownership for direct `propose-change` callers vs internal delegation. O4 was reshaped from a flaky real-tier retry-path test question into a cleaner return-code-driven retry contract: remove exact retry counts, keep exit 4 as malformed-payload signal, let SKILL/prompt orchestration decide retries, and make deterministic retry-path E2E coverage mock-only with real-mode pytest skips. 3 careful-review passes + 1 dedicated deferred-items-consistency pass caught 6 inconsistencies cumulatively (1 + 5 + 0 + 0).",
+  "turns": [
+    {
+      "role": "user",
+      "content": "Run /data/projects/livespec/brainstorming/approach-2-nlspec-based/critique-interview-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Ran the critique-interview workflow against v014 materials, produced `proposed_changes/v015-proposed-change-proposal-critique-v14.md`, and began item-by-item interview starting with O1."
+    },
+    {
+      "role": "user",
+      "content": "You need to be verbose like claude, and explain exactly why you are proposing a change, with background context, and defend your change in light of prior decisions"
+    },
+    {
+      "role": "assistant",
+      "summary": "Adjusted interview style to include explicit background context, why each item matters, and how each recommendation aligns with prior settled decisions instead of presenting terse option lists."
+    },
+    {
+      "role": "assistant",
+      "summary": "O1 interview: explained that v009 I7 `spec_root` parameterization plus v014 N1 `minimal` made template-controlled placement first-class, while generic lifecycle prose still hardcoded `SPECIFICATION/...`. Recommended O1-A: parameterize generic operational paths as `<spec-root>/...` and keep literal `SPECIFICATION/...` only in `livespec`-template-specific sections."
+    },
+    {
+      "role": "user",
+      "content": "a"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked O1 to A and moved to O2. Explained that seed's generic `history/v001` wording still required a per-version README even though `minimal` explicitly says no such file exists. Recommended O2-A: seed snapshots the active template's versioned surface and only copies a per-version README when that template actually defines one."
+    },
+    {
+      "role": "user",
+      "content": "a"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked O2 to A and opened O3 as a topic-identity ambiguity. Initial framing recommended `critique`-side slugification before delegation."
+    },
+    {
+      "role": "user",
+      "content": "what if someone calls propose-change directly with something that results in a slug with spaces in it?  Is this not possible?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Clarified that a true slug cannot contain spaces, but the real unresolved issue is what `propose-change` does with direct non-kebab-case topic input. Reframed O3 from a `critique` naming edge case into the broader question of topic canonicalization ownership."
+    },
+    {
+      "role": "user",
+      "content": "We are just talking about the skill executables, right?  These still always have the prompts wrapped around them which can be responsible for slugification?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Explained that prompt-only slugification is insufficient because the proposal explicitly allows direct structured callers of `bin/propose_change.py` and `critique` already delegates into Python logic. Argued that artifact identity belongs at the deterministic wrapper boundary, not only in template prompt prose."
+    },
+    {
+      "role": "user",
+      "content": "isn't shared canonicalization the most user friendly?  We don't want to blow up if LLM or humans pass some topic with spaces."
+    },
+    {
+      "role": "assistant",
+      "summary": "Accepted the broader framing and changed the recommendation to O3-B: `propose-change` centrally canonicalizes inbound topic hints, using the canonicalized topic for filename, front-matter `topic`, and collision handling across direct callers and `critique`."
+    },
+    {
+      "role": "user",
+      "content": "b"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked O3 to B and opened O4 around retry semantics and the new v014 E2E retry-path requirement. Initial recommendation favored deterministic triggering in both mock and real tiers."
+    },
+    {
+      "role": "user",
+      "content": "what is a \"harness owned trigger\"?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Explained that a harness-owned trigger means deterministic test infrastructure forces the first attempt down the exit-4 malformed-payload path instead of waiting for a live model to misformat JSON by chance."
+    },
+    {
+      "role": "user",
+      "content": "How are we even tracking the number of retries?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Identified a second gap: the proposal specified a retry budget but never clearly specified where retry state lived. Explained that the current architecture implies caller-side, ephemeral retry tracking, but that this was still under-specified."
+    },
+    {
+      "role": "user",
+      "content": "What if we just removed retry altogether?  What is the data loss risk of LLM failure of any kind?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Analyzed the tradeoff: removing retry poses low direct repository-corruption risk if wrappers validate before write, but it increases transient workflow-state loss, especially for `revise`. Outlined the difference between on-disk data loss and in-session work loss."
+    },
+    {
+      "role": "user",
+      "content": "if we keep it one place we might as well keep it everywhere.  And isn't this a responsibility of the custom template prompts anyway?  THere's nothing hardcoded in the skill other than the malformed exit code right?  In that case, we can go with the approach of just having the fake e2e do the retry, and only retry once (first malformed, second well-formed), and omit the test for real e2e. We can use some annotation in the common test suite to mark \"skip in real e2e\" , howeever pytest does it.\n\nWhich also means we don't specify exact retries.  Just describe the mechanism by which prompts SHOULD implement retry, and that is by looking at return codes.\n\nAll make sense?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Accepted the reshaped O4 direction with one tightening: retry is a skill/prompt orchestration contract driven by wrapper return codes, not purely template-local behavior. Locked modified O4-B: remove exact retry counts, keep exit 4 as malformed-payload signal, say SKILL/prompt orchestration SHOULD retry based on return codes, keep deterministic retry-path E2E coverage mock-only, and skip it in real mode via pytest markers / `skipif`."
+    },
+    {
+      "role": "user",
+      "content": "do it, and make sure you update all references that are relevant"
+    },
+    {
+      "role": "assistant",
+      "summary": "Applied O1-O4 into `PROPOSAL.md`, `deferred-items.md`, and `python-skill-script-style-requirements.md`. Working-doc changes included template-aware `<spec-root>/...` path parameterization, template-aware seed/history README behavior, centralized topic canonicalization in `propose-change`, removal of fixed retry budgets, and mock-only deterministic retry-path E2E coverage with real-mode skips."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 1 caught 1 load-bearing fix cluster: generic lifecycle prose outside the sub-command sections still had stale hardcoded operational paths that needed O1-style `<spec-root>/...` parameterization."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 2 caught 5 more stale generic-path references: `Versioning`, `Pruning history`, `Revision file format`, the doctor output example, and the self-application seed path still needed template-aware wording or explicit `livespec`-template scoping."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 3 landed no additional load-bearing fixes."
+    },
+    {
+      "role": "assistant",
+      "summary": "Dedicated deferred-items-consistency pass confirmed that the widened deferred entries for O3 and O4 were aligned with the working docs and found 0 additional drift."
+    },
+    {
+      "role": "assistant",
+      "summary": "Finalized v015 history: updated the revision file with the review-pass outcome, created `history/v015/conversation.json`, copied the working `PROPOSAL.md` to `history/v015/PROPOSAL.md` byte-identically, moved the critique into `history/v015/proposed_changes/proposal-critique-v14.md`, and updated `history/README.md` with the v015 entry and pointer."
+    }
+  ]
+}

@@ -314,7 +314,7 @@ Concrete per-sub-command SKILL.md bodies are deferred to
 - **CLI argument parsing MUST happen in `livespec/io/cli.py`**, not
   in `livespec/commands/<cmd>/main()`. `argparse.ArgumentParser.parse_args`
   raises `SystemExit` on usage errors and `--help`; the wrapper's
-  6-statement shape leaves no room for argparse; and
+  6-line shape leaves no room for argparse; and
   `check-supervisor-discipline` forbids `SystemExit` outside
   `bin/*.py`. `io/cli.py` exposes `@impure_safe`-wrapped argparse
   calls with `exit_on_error=False`, returning
@@ -338,10 +338,8 @@ Concrete per-sub-command SKILL.md bodies are deferred to
 
 #### Shebang-wrapper contract
 
-Each `bin/<cmd>.py` MUST consist of exactly the following shape,
-comprising 6 statements (no other statements, and no other lines
-beyond the optional single blank line between the import block and
-the `raise SystemExit(main())` statement):
+Each `bin/<cmd>.py` MUST consist of exactly the following 6-line
+shape (no other lines, no other statements):
 
 ```python
 #!/usr/bin/env python3
@@ -1427,39 +1425,27 @@ responsibilities.)
 - **Pre-seed template selection (v014 N1).** When
   `.livespec.jsonc` is absent (the normal pre-seed state),
   seed's SKILL.md prose MUST prompt the user for template
-  choice in dialogue BEFORE invoking the wrapper. Options
-  presented: `livespec` (multi-file, recommended default),
-  `minimal` (single-file `SPECIFICATION.md` at repo root), or
-  a custom template path. The user-chosen value is passed
-  into the wrapper via the seed-input payload's required
-  top-level `template` field (see payload schema below); the
-  wrapper uses that value to locate `prompts/seed.md` for
-  content generation AND to bootstrap `.livespec.jsonc`. When
-  `.livespec.jsonc` IS present, the wrapper reuses its
-  existing `template` value (no dialogue is needed; SKILL.md
-  prose MAY skip the prompt entirely and proceed with
-  `bin/resolve_template.py`-style resolution). The pre-seed
-  dialogue is the only SKILL.md-prose special case for
-  handling an absent `.livespec.jsonc`; every non-seed
-  sub-command's SKILL.md invokes `bin/resolve_template.py`
-  normally and gets exit 3 on a missing config (which is the
-  correct behavior because non-seed sub-commands cannot
-  usefully run without a seeded project).
-- **`.livespec.jsonc` is wrapper-owned (v016 P2).** The
-  wrapper writes `.livespec.jsonc` as part of its
-  deterministic file-shaping work, from a full commented
-  schema skeleton with the `template` value taken from the
-  seed-input payload's top-level `template` field. The
-  wrapper writes `.livespec.jsonc` BEFORE post-step
-  doctor-static runs, so post-step inspects a
-  fully-bootstrapped project tree. `.livespec.jsonc` is NOT
-  a template-declared target file. If the file is already
-  present and valid before the wrapper runs (an unusual but
-  legal state), the wrapper reuses it without modification
-  (validating against the config schema first) and the
-  payload's `template` value MUST match the on-disk
-  `template` value or the wrapper exits `2` with a
-  `UsageError` describing the conflict.
+  choice in dialogue BEFORE invoking `bin/resolve_template.py`.
+  Options presented: `livespec` (multi-file, recommended
+  default), `minimal` (single-file `SPECIFICATION.md` at repo
+  root), or a custom template path. After the user selects,
+  seed uses that template's `prompts/seed.md` for content
+  generation and writes `.livespec.jsonc` at the end of the
+  seed flow with `template: "<chosen-value>"`. When
+  `.livespec.jsonc` IS present, seed invokes
+  `bin/resolve_template.py` like any other sub-command and uses
+  the configured template (no dialogue). The pre-seed dialogue
+  is the only SKILL.md-prose special case for handling an
+  absent `.livespec.jsonc`; every non-seed sub-command's
+  SKILL.md invokes `bin/resolve_template.py` normally and gets
+  exit 3 on a missing config (which is the correct behavior
+  because non-seed sub-commands cannot usefully run without a
+  seeded project).
+- Creates `.livespec.jsonc` with full commented defaults if
+  absent, using the user-chosen `template` value from the
+  pre-seed dialogue. `.livespec.jsonc` is NOT a template-declared
+  target file; if present and valid, `seed` reuses it without
+  modification (validating against the schema first).
 - The LLM (per `seed/SKILL.md`) invokes the active template's
   `prompts/seed.md` with `<intent>` and the template's
   `specification-template/` starter content as input. The prompt
@@ -1467,21 +1453,16 @@ responsibilities.)
   `.claude-plugin/scripts/livespec/schemas/seed_input.schema.json`:
   ```json
   {
-    "template": "<chosen-template-name-or-path>",
     "files": [
       {"path": "<template-declared spec file path>", "content": "..."}
     ],
     "intent": "<verbatim user intent>"
   }
   ```
-  The top-level `template` field is required and carries the
-  user-chosen template value from the pre-seed SKILL.md-prose
-  dialogue (one of `livespec`, `minimal`, or a custom template
-  path). Under the built-in `livespec` template, a representative
-  `files[].path` is `SPECIFICATION/spec.md`; under the built-in
-  `minimal` template, the representative path is
-  `SPECIFICATION.md`. The schema is template-agnostic; the
-  `template` field controls the concrete path set.
+  Under the built-in `livespec` template, a representative path is
+  `SPECIFICATION/spec.md`; under the built-in `minimal` template,
+  the representative path is `SPECIFICATION.md`. The schema is
+  template-agnostic; the template controls the concrete path set.
   The LLM writes this JSON to a temp file and invokes
   `bin/seed.py --seed-json <tempfile>`. The wrapper validates
   the payload against the schema internally; on validation
@@ -1492,29 +1473,16 @@ responsibilities.)
   layer." The exact retry count is intentionally unspecified in
   v1.
 - `bin/seed.py --seed-json <path>` is the sole wrapper entry
-  point. The wrapper performs its deterministic file-shaping work
-  in the following order, all BEFORE post-step doctor-static
-  runs:
-  1. Write `.livespec.jsonc` at repo root with the full commented
-     schema skeleton, using the payload's top-level `template`
-     field value.
-  2. Write each `files[]` entry to its specified path.
-  3. Create `<spec-root>/history/v001/` (including the initial
-     versioned spec files, a `proposed_changes/` subdir, and,
-     for templates whose versioned surface includes one, a
-     per-version README copy). Under the built-in `minimal`
-     template, no `<spec-root>/history/v001/README.md` is
-     written because the template's versioned surface has no
-     separate README file.
-  4. Auto-capture the seed itself as a proposed-change (see
-     auto-generated-file details below).
-
-  Seed is exempt from pre-step doctor-static (see §"Sub-command
-  lifecycle orchestration"); post-step runs normally after the
-  wrapper's deterministic work completes, and it now validates a
-  fully-bootstrapped project tree (including `.livespec.jsonc`
-  itself, which is inspected by `livespec-jsonc-valid` and
-  `template-exists`).
+  point. The wrapper reads the JSON, writes each file to its
+  specified path, creates `<spec-root>/history/v001/` (including
+  the initial versioned spec files, a `proposed_changes/` subdir,
+  and, for templates whose versioned surface includes one, a
+  per-version README copy), and auto-captures the seed itself as
+  a proposed-change. Under the built-in `minimal` template, no
+  `<spec-root>/history/v001/README.md` is written because the template's
+  versioned surface has no separate README file. Seed is exempt
+  from pre-step doctor static (see §"Sub-command lifecycle
+  orchestration"); post-step runs normally after file creation.
 - **Auto-generated `<spec-root>/history/v001/proposed_changes/seed.md`
   content:** the wrapper writes a proposed-change file
   conforming to the format defined in §"Proposed-change file
@@ -1609,26 +1577,6 @@ body structure for the split.)
   the proposed-change front-matter `topic` field, and the
   collision-disambiguation namespace. This applies to direct
   callers and to internal delegates such as `critique`.
-- **Reserve-suffix canonicalization (v016 P3).**
-  `bin/propose_change.py` accepts an optional
-  `--reserve-suffix <text>` flag (also exposed as a keyword-only
-  parameter on the Python internal API path used by `critique`'s
-  internal delegation). When supplied, the 64-character
-  truncation step is applied to the non-suffix portion only so
-  that a caller-supplied trailing suffix survives intact:
-  canonicalization steps 1-3 (lowercase, non-`[a-z0-9]` → single
-  hyphen, strip leading/trailing hyphens) apply to the full
-  inbound topic hint AND separately to the supplied
-  `<suffix>` string; step 4 truncates the non-suffix portion
-  of the canonicalized hint to `64 − len(<canonicalized-suffix>)`
-  characters; the canonicalized suffix is then re-appended
-  verbatim. The resulting topic is at most 64 characters and
-  the suffix is preserved intact. When `--reserve-suffix` is
-  NOT supplied, canonicalization behaves exactly as v015 O3
-  defined. The empty-after-canonicalization `UsageError` (exit
-  2) continues to apply to the final composed result. The exact
-  algorithm is codified in `deferred-items.md`'s
-  `static-check-semantics` entry.
 - **Author identifier resolution.** The file-level `author` field
   in the resulting proposed-change front-matter is resolved by
   the unified precedence used across all three LLM-driven wrappers
@@ -1739,26 +1687,16 @@ body structure for the split.)
   4. Literal `"unknown-llm"` fallback.
   The resolved author value is used both as the front-matter
   `author` field on the resulting proposed-change file and as
-  the raw author stem supplied to `propose_change`'s internal
-  canonicalization along with the reserve-suffix parameter
-  `"-critique"` (v016 P3; see next bullet).
+  the raw topic stem from which critique's topic hint is
+  derived.
 - `bin/critique.py` delegates internally to `propose_change`'s
-  Python logic with topic hint `<resolved-author>` (the
-  author stem only, without the `-critique` suffix) plus the
-  reserve-suffix parameter set to `"-critique"` (v016 P3),
-  and the structured findings as input. `propose_change` then
-  canonicalizes per its reserve-suffix topic-canonicalization
-  rule above: steps 1-3 apply to both the author stem and the
-  `"-critique"` suffix; step 4 truncates the author-stem
-  portion to `64 − len("-critique")` characters; the
-  canonicalized `-critique` suffix is re-appended verbatim
-  (e.g., `Claude Opus 4.7` + `-critique` →
-  `claude-opus-4-7-critique`; a near-boundary 60-character
-  author slug is truncated to 55 characters with the
-  `-critique` suffix preserved). The resulting canonicalized
-  topic is used for filename, front-matter `topic`, and
-  collision handling. Internal delegation skips the inner
-  pre/post doctor cycle since the outer `critique`
+  Python logic with topic hint `<resolved-author>-critique` and
+  the structured findings as input. `propose_change` then
+  canonicalizes that topic hint per its topic-canonicalization
+  rule above (e.g., `Claude Opus 4.7-critique` →
+  `claude-opus-4-7-critique`) before filename, front-matter
+  `topic`, and collision handling. Internal delegation skips the
+  inner pre/post doctor cycle since the outer `critique`
   invocation's wrapper ROP chain already covers the whole
   operation.
 - **Collision disambiguation (v014 N6).** If a file with topic
@@ -1958,7 +1896,7 @@ discipline (domain-meaningful failures → `IOSuccess(Finding
 bootstrap-critical inputs. The same discipline applies to
 `template.json` → `template-exists`.
 
-`DoctorContext` (see `python-skill-script-style-requirements.md`
+`DoctorContext` (see `python-skill-script-script-style-requirements.md`
 §"Context dataclasses") gains two corresponding fields:
 
 - `config_load_status: Literal["ok", "absent", "malformed",
@@ -2075,13 +2013,10 @@ that cannot arise inside doctor-static). See
   `"SPECIFICATION/"`) and contain their skill-owned `README.md`.
 - **`version-directories-complete`** — Every `<spec-root>/history/vNNN/`
   directory that is not the pruned-marker directory contains the
-  full set of template-required files, a `proposed_changes/`
-  subdir, and — when the active template declares a versioned
-  per-version `README.md` — a matching `README.md` (the built-in
-  `livespec` template declares one; the built-in `minimal`
-  template does not, per v014 N1 / v015 O2). The pruned-marker
-  directory (the oldest surviving, when `PRUNED_HISTORY.json` is
-  present) contains ONLY `PRUNED_HISTORY.json`.
+  full set of template-required files, a `README.md`, and a
+  `proposed_changes/` subdir. The pruned-marker directory (the
+  oldest surviving, when `PRUNED_HISTORY.json` is present)
+  contains ONLY `PRUNED_HISTORY.json`.
 - **`version-contiguity`** — Version numbers in
   `<spec-root>/history/` are contiguous from `pruned_range.end + 1`
   (if `PRUNED_HISTORY.json` exists at the oldest surviving `vN-1`
@@ -2151,41 +2086,20 @@ that cannot arise inside doctor-static). See
   steps MUST NOT be present. Prose outside scenario blocks is
   unaffected. Fenced-block detection follows GFM conventions
   (triple-backtick or triple-tilde delimiters).
-- **`anchor-reference-resolution`** — All Markdown links with
-  anchor references resolve to existing headings in the
-  referenced files. The walk set is the active template's
-  declared spec file set, NOT an arbitrary `<spec-root>/`
-  recursive glob. Specifically, the check inspects:
-  - every template-declared spec file (resolved from the active
-    template's `specification-template/` walk + the spec-root-
-    relative paths),
-  - the spec-root `README.md` when the template declares one
-    (the built-in `livespec` template declares one; the built-in
-    `minimal` template does not),
-  - every file under `<spec-root>/proposed_changes/**`,
-  - every file under `<spec-root>/history/**/proposed_changes/**`,
-  - every per-version copy of each template-declared spec file
-    under `<spec-root>/history/**/<spec-file>`.
-
-  This scoping is deliberate: under the built-in `minimal`
-  template's `spec_root: "./"`, the check does NOT walk the
-  project's top-level `README.md`, `CONTRIBUTING.md`, source
-  trees, `.github/`, or any other markdown that is not a
-  template-declared spec artifact. The same walk-set semantic
-  applies to any future doctor-static check that walks
-  `<spec-root>/` recursively.
-
-  Anchors are generated per GitHub-flavored Markdown (GFM)
-  slug rules: the heading text is lowercased; internal
-  whitespace is replaced with single hyphens; punctuation is
-  stripped except `-` and `_`; multiple consecutive hyphens
-  collapse to one. Headings inside fenced code blocks
-  (`` ``` `` or `~~~`) are NOT considered headings. Explicit
-  `{#custom-id}` syntax is NOT supported in v1. Edge-case
-  details (case variations, non-ASCII headings, duplicate-
-  heading disambiguation suffixes) and the exact walk
-  algorithm are codified in `deferred-items.md`'s
-  `static-check-semantics` entry.
+- **`anchor-reference-resolution`** — All Markdown links in all
+  files under `<spec-root>/` (spec files, READMEs,
+  proposed-change files, revision files) with anchor references
+  resolve to existing headings in the referenced files. Anchors
+  are generated per GitHub-flavored Markdown (GFM) slug rules:
+  the heading text is lowercased; internal whitespace is replaced
+  with single hyphens; punctuation is stripped except `-` and
+  `_`; multiple consecutive hyphens collapse to one. Headings
+  inside fenced code blocks (`` ``` `` or `~~~`) are NOT
+  considered headings. Explicit `{#custom-id}` syntax is NOT
+  supported in v1. Edge-case details (case variations, non-ASCII
+  headings, duplicate-heading disambiguation suffixes) are
+  deferred to `deferred-items.md`'s `static-check-semantics`
+  entry.
 
 #### Static-phase exit codes
 
@@ -2323,25 +2237,7 @@ A proposed-change file MUST contain, in order:
 
    The `topic` value is the wrapper-canonicalized kebab-case form
    of the inbound topic hint supplied to `propose-change`
-   directly, delegated by `critique` (with reserve-suffix
-   `"-critique"` per v016 P3), or assigned by a skill-auto-
-   generated path (e.g., `seed` auto-capture uses `topic: seed`
-   per §"seed"; `doctor-out-of-band-edits` backfill assigns a
-   canonical value of its own choosing).
-
-   **Single-canonicalization invariant (v016 P4).** The `topic`
-   field's value MUST be derived via the same canonicalization
-   rule across ALL creation paths — user-invoked
-   `propose-change`, `critique`'s internal delegation (which
-   adds the `-critique` reserve-suffix; see v016 P3), and
-   skill-auto-generated artifacts (`seed` auto-capture,
-   `doctor-out-of-band-edits` backfill). Implementations MUST
-   route every `topic` derivation through a single shared
-   canonicalization so two livespec implementations cannot
-   diverge on the `topic` value for semantically-identical
-   inputs. This is an architecture-level requirement on the
-   interface; the exact code-path mechanism (single helper
-   function vs. anything else) is an implementation choice.
+   directly or delegated by `critique`.
 
    **Author-identifier namespace convention:** identifiers with
    the prefix `livespec-` (e.g., `livespec-seed`,
@@ -2502,7 +2398,7 @@ tests/
 ├── fixtures/                                 (explicit test fixtures; MUST NOT be mutated by tests)
 ├── bin/                                      (mirrors scripts/bin/)
 │   ├── test_bootstrap.py                     (covers bin/_bootstrap.py)
-│   ├── test_wrappers.py                      (meta-test: all wrappers match the 6-statement shape)
+│   ├── test_wrappers.py                      (meta-test: all wrappers match the 6-line shape)
 │   ├── test_seed.py                          (per-wrapper coverage via pytest.raises(SystemExit) + monkeypatch of main)
 │   ├── test_propose_change.py
 │   ├── test_critique.py
