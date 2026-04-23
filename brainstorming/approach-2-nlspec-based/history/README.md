@@ -754,9 +754,209 @@ entries keep their original naming (immutable history).
   `task-runner-and-ci-config`); 0 new entries added; 0 removed.
   Full decision record is in
   `v011/proposed_changes/proposal-critique-v10-revision.md`.
+- **v012** — revise driven by
+  `proposed_changes/proposal-critique-v11.md` and its revision.
+  An **agent-guardrail-focused incompleteness pass** producing
+  15 items (L1–L15) labelled with the NLSpec failure-mode
+  framework. The pass was driven by the v005+ "strongest-
+  possible guardrails for agent-authored Python" memory and
+  informed by 2026 Python tooling research (pyright strict-plus
+  options, ruff rule-set expansion, Hypothesis property-based
+  testing, mutmut mutation testing, Import-Linter declarative
+  architecture enforcement, basedpyright). Two items were
+  revised mid-interview based on user pushback (L5: dropped
+  the `@final` mandate as redundant with the AST check; L6:
+  switched from a dedicated `check-no-abc` AST check to TID
+  banned-imports reuse). One item split into two (L15a / L15b)
+  after the user noted dev-tooling and bundle-vendoring were
+  conflated. Major structural changes:
+  **`reportUnusedCallResult` enabled in pyright** — L1: closes
+  the largest single ROP-discipline hole (silently-discarded
+  `Result` / `IOResult` values become type errors). One-line
+  `[tool.pyright]` config addition.
+  **Six pyright strict-plus diagnostics enabled** — L2:
+  `reportImplicitOverride`, `reportUninitializedInstanceVariable`,
+  `reportUnnecessaryTypeIgnoreComment`, `reportUnnecessaryCast`,
+  `reportUnnecessaryIsInstance`, `reportImplicitStringConcatenation`.
+  Open dependency follow-up: `typing_extensions` for `@override`
+  on Python 3.10 (verify transitive vendoring via
+  dry-python/returns OR add direct mise-pin OR bump floor).
+  **16 ruff rule categories added** — L3 + L10 + L11:
+  `TRY FBT PIE SLF LOG G TID ERA ARG RSE PT FURB SLOT ISC` (L3)
+  plus `T20` (L10) plus `S` (L11). Total v012 selection: 27
+  categories above v011's 11.
+  **Strict-dataclass triple completed** — L4: K4's
+  `frozen=True, kw_only=True` rule extended to require
+  `slots=True` as well. The existing `check-keyword-only-args`
+  AST walker extends to verify all three. Pure win for livespec
+  (no `__weakref__` use; no multiple inheritance per L5).
+  **`check-no-inheritance` AST check** — L5 (revised): forbids
+  `class X(Y):` outside the allowlist `{Exception,
+  BaseException, LivespecError, Protocol, NamedTuple,
+  TypedDict}` or LivespecError subclasses. Codifies flat-
+  composition direction. `LivespecError` itself remains an open
+  base for new domain-error subclasses; leaf domain errors are
+  closed-by-allowlist. `@final` decorator OPTIONAL throughout
+  livespec; AST check is the source of truth (revised from
+  originally-recommended "both" after user noted `@final`
+  redundancy).
+  **`abc.*` banned via TID** — L6 (revised): `abc.ABC`,
+  `abc.ABCMeta`, `abc.abstractmethod` added to the v011 K4
+  / v012 L11 TID banned-imports list. Reuses ruff TID
+  infrastructure rather than a dedicated AST check.
+  **`assert_never` exhaustiveness mandated** — L7: every
+  `match` statement in `livespec/**` MUST terminate with
+  `case _: assert_never(<subject>)`. Conservative scope (every
+  match, regardless of subject type). Adding a new variant
+  becomes a type error at every unhandled dispatch site.
+  Open dependency follow-up: `typing_extensions` on Python
+  3.10 (shared with L2).
+  **NewType domain primitives** — L8: new `livespec/types.py`
+  module declaring 8 NewType aliases (`CheckId`, `RunId`,
+  `TopicSlug`, `SpecRoot`, `SchemaId`, `TemplateName`,
+  `Author`, `VersionTag`). AST check
+  `check-newtype-domain-primitives` verifies field annotations
+  matching canonical field names use the corresponding
+  NewType. Eliminates the cross-wiring class of bug.
+  **Per-module `__all__` mandated** — L9: every module under
+  `livespec/**` declares module-top `__all__: list[str]`.
+  `check-public-api-result-typed` rescoped to use `__all__`
+  for public-API detection rather than the underscore
+  convention.
+  **`check-no-write-direct` + ruff `T20`** — L10: bans
+  `print` / `pprint` (T20) and `sys.stdout.write` /
+  `sys.stderr.write` (custom AST check) outside three
+  documented exemptions: `bin/_bootstrap.py` (pre-import
+  stderr), supervisor `main()` in `commands/**.py`
+  (HelpRequested stdout per K7), `doctor/run_static.py::main()`
+  (findings JSON stdout). All other output via structlog.
+  **Forbidden imports (security)** — L11: ruff `S` enabled;
+  `pickle`, `marshal`, `shelve` added to TID banned-imports.
+  **Hypothesis PBT mandated for pure modules** — L12:
+  `hypothesis` (MPL-2.0) + `hypothesis-jsonschema` (MIT)
+  mise-pinned (NOT vendored — test-only deps follow the v011
+  test-dep packaging convention). Each test module under
+  `tests/livespec/parse/**` and `tests/livespec/validate/**`
+  MUST declare ≥1 `@given(...)`-decorated test. AST check
+  `check-pbt-coverage-pure-modules`.
+  **Mutation testing as release-gate** — L13: `mutmut` (MIT)
+  mise-pinned. New `just check-mutation` target runs against
+  `livespec/parse/` and `livespec/validate/` on a release-tag
+  CI workflow only (NOT in `just check`; NOT per-commit).
+  Threshold: ≥80% mutation kill rate (tunable on first real
+  measurement).
+  **Import-Linter at dev-tooling layer** — L15a: `import-
+  linter` (BSD-2) mise-pinned. New `[tool.importlinter]`
+  configuration in `pyproject.toml` declares three contracts
+  replacing the planned hand-written `check-purity` +
+  `check-import-graph` + import-surface portion of
+  `check-no-raise-outside-io`. Single new
+  `check-imports-architecture` target replaces those three
+  in the canonical target list. Raise-site portion of
+  `check-no-raise-outside-io` remains hand-written and
+  narrower.
+  **User-provided extensions get minimal requirements** —
+  L15b + new governing principle: PROPOSAL.md's
+  `doctor_static_check_modules` section explicitly states
+  that extension modules carry NO architecture / library /
+  pattern expectations beyond the calling-API contract.
+  livespec's enforcement suite does NOT scope to extension
+  code. Import-Linter is NOT vendored in the bundle (would
+  set a precedent of vendoring libraries livespec OFFERS to
+  extension authors rather than libraries livespec NEEDS).
+  Style doc §"Scope" extended with the matching extension-
+  exemption clause. Recorded as a new feedback memory
+  (`feedback_user_extensions_minimal_requirements.md`).
+  **basedpyright deferred** — L14: stay on pyright; new
+  standalone `basedpyright-vs-pyright` deferred-items entry
+  to revisit later.
+  **Deferred-items updates:** 4 existing entries scope-widened
+  (`enforcement-check-scripts`, `static-check-semantics`,
+  `task-runner-and-ci-config`, plus the static-check-semantics
+  semantic catalogue extended with v012 check semantics);
+  1 new entry added (`basedpyright-vs-pyright`); 0 removed.
+  **Careful-review pass (first)** caught and fixed 10
+  inconsistencies before the history write: example dataclasses
+  updated to the strict triple; example match statement updated
+  with `assert_never` terminator; `check-no-write-direct`
+  exemption list expanded to include supervisor stdout surfaces
+  (HelpRequested + findings JSON); ruff category count corrected
+  from 28 to 27; canonical role-name list corrected to use
+  actual field names (`topic` not `topic_slug`;
+  `author` / `author_human` / `author_llm` for Author);
+  `livespec/types.py` added to package-layout tree and DoD;
+  underscore-convention public-API references updated to point
+  to `__all__`; deferred-items AST-check enumeration updated to
+  drop replaced `check-purity` / `check-import-graph` and add
+  v012 new checks; style doc Purity-and-IO-isolation enforcement
+  reference updated from `check-purity` to
+  `check-imports-architecture`; revision-file ruff-count
+  arithmetic reconciled.
+  **Careful-review pass (second)** caught 6 additional issues:
+  DoD #10 + #12 not updated for v012 L12 / L13 / mise-pin
+  additions / pyright strict-plus / ruff selection / TID
+  banned-imports / Import-Linter contracts / release-tag CI
+  workflow; PROPOSAL.md §Coverage section missing scripts/bin/**
+  scope (v010 J8 / v011 K3 oversight); Self-application step 5
+  not mentioning new `basedpyright-vs-pyright` deferred entry;
+  L10's check-no-write-direct exemption #2 too narrow (only
+  HelpRequested.text; should also cover `bin/resolve_template.py`
+  resolved-path stdout per K2 and any future supervisor-owned
+  stdout contracts); style doc §Code coverage line 948-949
+  contradicting line 962-973 ('wrapper bodies pragma-excluded'
+  vs 'NOT pragma-excluded' — v011 K3 oversight). All 6 fixed;
+  PROPOSAL.md re-copied to history/v012/PROPOSAL.md
+  (byte-identical verified).
+  **Careful-review pass (third)** caught 6 more issues: deferred-
+  items.md item-schema example version range stopped at v011 (now
+  includes v012); wrapper-input-schemas + front-matter-parser
+  entries didn't reflect v012 L4 strict-dataclass triple or L8
+  NewType usage on their dataclasses (scope-widened both with
+  explicit dataclass-by-dataclass NewType mappings); PROPOSAL.md
+  dev-tooling/checks/ package-layout still listed `purity.py`
+  and `import_graph.py` (which v012 L15a replaces with Import-
+  Linter contracts) AND was missing all v011 K4 + v012
+  L5/L7/L8/L9/L10/L12 added check scripts (replaced layout block
+  with the v012-accurate inventory); claude-md-prose deferred-
+  entry source line was stale at "v006 (carried forward to v008)"
+  (now v006 carried-forward-through-every-version-since) and
+  didn't list v012 per-directory CLAUDE.md notes for parse/ +
+  validate/ (L12 PBT) / types.py (L8 location) / io/ (L10
+  supervisor exemption scope); stale cross-reference at style
+  doc line 1211 to non-existent §"HelpRequested disposition"
+  subsection (fixed to point at the actual HelpRequested class
+  definition in §Exit code contract + HelpRequested example in
+  §Structural pattern matching). All 6 fixed; PROPOSAL.md
+  re-copied to history/v012/PROPOSAL.md (byte-identical
+  verified).
+  **Careful-review pass (fourth)** focused on the v012 revision
+  file's self-consistency vs the working deferred-items.md
+  state. Caught 5 issues: revision-file 'Carried forward
+  unchanged from v011' list still listed front-matter-parser /
+  wrapper-input-schemas / claude-md-prose entries as carried
+  forward — but pass 3 had widened them; moved to 'Scope-widened
+  in v012' with full per-entry detail; revision-file 'Outstanding
+  follow-ups' count said '4 existing entries' but actual count
+  after pass 3 is 6 (original 3 + pass 3 widened 3); revision-
+  file L10 summary-table row still said '(with `_bootstrap.py`
+  exemption)' from pre-pass-2 wording, but L10 actually has 3
+  documented exemptions; revision-file line 837 still said '17
+  categories' instead of '16 categories above v011's 11 (27
+  total)' — earlier replace_all hadn't caught this; L8 canonical
+  NewType mapping cited field name `template_name` →
+  `TemplateName` but the actual `.livespec.jsonc` schema field
+  is `template` (LivespecConfig dataclass field is `template`
+  per schema-dataclass-pairing) — fixed across style doc +
+  deferred-items + revision file with disambiguation note about
+  `template_root: Path` being a different field that uses raw
+  `Path`. PROPOSAL.md NOT edited in this pass (no re-copy
+  needed). **Cumulative across 4 review passes: 27
+  inconsistencies caught and fixed (10 + 6 + 6 + 5).**
+  Full decision record is in
+  `v012/proposed_changes/proposal-critique-v11-revision.md`.
 
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v011/PROPOSAL.md` until the next revise.
+byte-identical to `history/v012/PROPOSAL.md` until the next revise.

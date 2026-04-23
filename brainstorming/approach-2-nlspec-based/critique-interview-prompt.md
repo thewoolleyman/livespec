@@ -145,8 +145,92 @@ PROPOSAL, its critique(s), its revision, and its `conversation.json`
      capturing per-item decisions (accept / modify / reject +
      rationale).
    - Rewrite top-level `PROPOSAL.md` to v{NEXT} incorporating all
-     decisions.
-   - Create `history/v{NEXT}/PROPOSAL.md` as a byte-identical copy.
+     decisions. Apply matching edits to every other working
+     companion doc the decisions touch (typically
+     `python-skill-script-style-requirements.md` and
+     `deferred-items.md`).
+   - **Run multiple careful-review passes BEFORE the byte-identical
+     history copy.** A single pass is insufficient — v012's
+     experience surfaced 22 inconsistencies across 3 passes
+     (10 + 6 + 6). Diminishing returns are visible but not zero
+     until at least pass 2 lands no non-cosmetic findings.
+     **Minimum 2 passes; continue passes until a pass lands no
+     load-bearing fixes.** Each pass MUST:
+     - Re-read all working docs (PROPOSAL.md + companion docs)
+       end-to-end after the previous pass's edits.
+     - Look for places where the new decisions need ripple
+       effects elsewhere (cross-doc references, examples,
+       package-layout trees, DoD checklist entries).
+     - Look for stale references to concepts the new decisions
+       superseded (renamed targets, replaced enforcement checks,
+       removed features).
+     - Look for inconsistencies between the working docs (e.g.,
+       counts, role names, file lists, cross-references to
+       sections that don't exist).
+     - Look for v012-style discoveries: examples that don't yet
+       reflect the new conventions (e.g., a `match` statement
+       missing the new `assert_never` terminator); existing rules
+       that contradict each other after the new decision lands;
+       AST checks whose exemption lists need broadening to cover
+       newly-documented surfaces.
+     - **Re-check the revision file against the post-pass
+       working state.** The revision file is written FIRST (in
+       the lifecycle's first sub-step) but its claims about the
+       working docs become stale as later passes amend the
+       working state. Each pass MUST verify the revision file's
+       Summary-of-dispositions table, Self-consistency-check
+       section, Deferred-items-inventory section, and
+       Outstanding-follow-ups counts still match the working
+       deferred-items.md state and PROPOSAL.md state after the
+       pass's edits. v012's fourth pass surfaced this drift
+       class (revision-file inventory listed entries as "carried
+       forward" that pass 3 had widened; entry-touch counts
+       stale; summary-table row text stale). Update the revision
+       file in lock-step with each pass's findings.
+     - **Pass record-keeping.** Each pass MUST be recorded
+       distinctly: in the `conversation.json` final assistant
+       turns AND in the `history/README.md` v{NEXT} entry. The
+       cumulative finding count across all passes is also
+       recorded.
+   - **Run a dedicated deferred-items-consistency pass.** This is
+     a SPECIFIC review pass — distinct from the general careful-
+     review passes above — that walks every deferred-items entry
+     and verifies its source line + body fully reflect every
+     decision that touched it across every prior version. v012's
+     third pass found multi-version drift in
+     `enforcement-check-scripts` (PROPOSAL.md's
+     `dev-tooling/checks/` layout had not been updated since v005
+     and was missing v011 K4 + v012 L5/L7/L8/L9/L10/L12 added
+     check scripts) and `claude-md-prose` (source line stale at
+     "v006 carried forward to v008" through v009-v012). Required
+     checks for this pass:
+     - **Source-line drift.** For every deferred-items entry,
+       does its `Source:` line record every prior-version
+       widening that touched it? Cross-reference against every
+       `history/vNNN/proposed_changes/*-revision.md` revision
+       file's "Deferred-items inventory" section to find missing
+       widening notations.
+     - **Layout-tree drift.** For every package-layout tree
+       in PROPOSAL.md (e.g., `dev-tooling/checks/`,
+       `livespec/**`, `tests/**`), does the tree match what the
+       cumulative K/L decisions produce? List every item in the
+       tree and verify each is still introduced/extant per
+       current decisions; list every artifact the cumulative
+       decisions introduce and verify each appears in the tree.
+     - **Cross-reference validity.** For every `§"..."`
+       cross-reference in any working doc, verify the target
+       subsection / section actually exists. Stale references
+       to renamed or removed sections are common drift artifacts.
+     - **Example-vs-rule alignment.** For every code example in
+       any working doc, verify it follows the current rules
+       (e.g., dataclass examples use the current strict-triple
+       form; match-statement examples include the current
+       exhaustiveness terminator; wrapper examples reflect the
+       current bin/_bootstrap.py contract).
+   - Create `history/v{NEXT}/PROPOSAL.md` as a byte-identical
+     copy of the working `PROPOSAL.md`. (If any review pass
+     edited PROPOSAL.md after a prior copy, RE-COPY and verify
+     byte-identical via `diff -q`.)
    - Move the critique from `proposed_changes/` to
      `history/v{NEXT}/proposed_changes/proposal-critique-v{CRITIQUE}.md`.
    - If a pre-interview draft of the critique exists, also move it
@@ -155,9 +239,17 @@ PROPOSAL, its critique(s), its revision, and its `conversation.json`
    - Update `history/README.md` to add a v{NEXT} entry summarizing
      the major structural changes and pointing at the revision file;
      update its final "Pointer" paragraph to reference v{NEXT}.
+     The v{NEXT} entry MUST record the careful-review-pass
+     findings distinctly per pass (count of issues caught;
+     summary of the most load-bearing fixes), and MUST record
+     the dedicated deferred-items-consistency pass's findings
+     separately.
    - Capture the session's turns into
      `history/v{NEXT}/conversation.json` (user verbatim, assistant
      summaries) — same schema as prior `conversation.json` files.
+     Each careful-review pass + the dedicated deferred-items
+     pass MUST appear as distinct assistant turns recording what
+     the pass caught.
 
 ## Known constraints to honor
 

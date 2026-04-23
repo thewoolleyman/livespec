@@ -52,6 +52,17 @@ This section uses BCP 14 / RFC 2119 / RFC 8174 keywords (`MUST`,
   `.claude-plugin/scripts/_vendor/**` — vendored libs ship at pinned
   upstream versions and are not subjected to livespec's own style
   rules. See "Vendored third-party libraries" below.
+- **Exempt:** user-provided Python modules loaded via custom-template
+  extension hooks (e.g., `template.json`'s
+  `doctor_static_check_modules`). Extension code is the extension
+  author's responsibility; livespec's enforcement suite does NOT
+  scope to it. The only obligation extension authors carry is the
+  calling-API contract (the `TEMPLATE_CHECKS` export shape, the
+  `CheckRunFn` signature, the `Finding` payload shape — all defined
+  inside `livespec/`). Inside an extension module, the author has
+  full freedom over library usage, architecture, and patterns;
+  livespec imposes no requirements beyond invocability per the
+  contract.
 
 Tests under `<repo-root>/tests/` MUST comply unless a test explicitly
 exercises a non-conforming input, in which case the non-conformance MUST
@@ -242,12 +253,15 @@ Per sub-package conventions:
 ### Dataclass authorship
 
 Each JSON Schema under `schemas/*.schema.json` has a paired
-hand-authored `@dataclass(frozen=True)` at
-`schemas/dataclasses/<name>.py`. The dataclass and the schema are
-co-authoritative: the schema is the wire contract (validated at
-boundary by `fastjsonschema`); the dataclass is the Python type
-threaded through the railway (`Result[<Dataclass>,
+hand-authored `@dataclass(frozen=True, kw_only=True, slots=True)`
+at `schemas/dataclasses/<name>.py`. The dataclass and the schema
+are co-authoritative: the schema is the wire contract (validated
+at boundary by `fastjsonschema`); the dataclass is the Python
+type threaded through the railway (`Result[<Dataclass>,
 ValidationError]` from each validator per the factory shape).
+Domain-meaningful field types use the canonical NewType aliases
+from `livespec/types.py` (see §"Type safety — Domain primitives
+via `NewType`").
 
 - The file name matches the `$id`-derived snake_case dataclass
   name (`LivespecConfig` → `livespec_config.py`).
@@ -260,48 +274,52 @@ ValidationError]` from each validator per the factory shape).
 
 ### Context dataclasses
 
-Every context dataclass MUST be `@dataclass(frozen=True)` and carry
+Every context dataclass MUST be
+`@dataclass(frozen=True, kw_only=True, slots=True)` and carry
 exactly the fields below at minimum. Sub-command contexts embed
 `DoctorContext` rather than inheriting so the type checker can
-narrow each sub-command's payload independently.
+narrow each sub-command's payload independently. Domain-meaningful
+fields use NewType aliases from `livespec/types.py`.
 
 ```python
 from dataclasses import dataclass
 from pathlib import Path
 
-@dataclass(frozen=True)
+from livespec.types import Author, RunId, SpecRoot, TopicSlug
+
+@dataclass(frozen=True, kw_only=True, slots=True)
 class DoctorContext:
     project_root: Path          # repo root containing the spec tree
-    spec_root: Path             # resolved template.json spec_root, repo-relative (default: Path("SPECIFICATION/"))
+    spec_root: SpecRoot         # resolved template.json spec_root (default: Path("SPECIFICATION/"))
     config: LivespecConfig      # parsed .livespec.jsonc (dataclass; see validate/livespec_config.py)
     template_root: Path         # resolved template directory (built-in path or custom)
-    run_id: str                 # uuid4 string bound at wrapper startup
+    run_id: RunId               # uuid4 string bound at wrapper startup
     git_head_available: bool    # false when not a git repo or no HEAD commit
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class SeedContext:
     doctor: DoctorContext
     seed_input: SeedInput       # parsed seed_input.schema.json payload
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ProposeChangeContext:
     doctor: DoctorContext
     findings: ProposalFindings  # parsed proposal_findings.schema.json payload
-    topic: str
+    topic: TopicSlug
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class CritiqueContext:
     doctor: DoctorContext
     findings: ProposalFindings
-    author: str
+    author: Author
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class ReviseContext:
     doctor: DoctorContext
     revise_input: ReviseInput   # parsed revise_input.schema.json payload
     steering_intent: str | None
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PruneHistoryContext:
     doctor: DoctorContext
 ```
@@ -533,8 +551,10 @@ and passed in by the caller. `fastjsonschema.compile` is cached via
 `functools.lru_cache` keyed on the schema's `$id`. This separates
 "reading" (impure) from "checking" (pure).
 
-Enforced by `check-purity` (AST walker over `parse/` and `validate/`
-imports).
+Enforced by `check-imports-architecture` (Import-Linter `forbidden`
+contract over `parse/` and `validate/` imports; see §"Enforcement
+suite" for the full target list and the v012 L15a Import-Linter
+adoption that replaces v011's planned hand-written `check-purity`).
 
 ---
 
@@ -546,9 +566,45 @@ imports).
   `useLibraryCodeForTypes = true` so vendored libs' inferable types
   reach the type checker. Enforced by `just check-types` — any pyright
   diagnostic in non-vendored code fails the gate.
-- Every public function and every dataclass field MUST have type
-  annotations. Private (single-leading-underscore) helpers SHOULD be
-  annotated.
+- **Pyright strict-plus diagnostics MUST be enabled in
+  `[tool.pyright]`.** These six diagnostics are above the strict
+  baseline; each closes a documented LLM-authored-code failure
+  pattern with a one-line config change:
+  - `reportUnusedCallResult = "error"` — every call to a function
+    whose return type is non-`None` MUST be bound or passed on; the
+    rare legitimate fire-and-forget pattern uses
+    `_ = do_something(ctx)` explicit-discard binding. **This is
+    the load-bearing diagnostic for the ROP discipline:** without
+    it, an LLM can write `do_something(ctx)` and silently discard
+    the entire `Result` / `IOResult` failure track.
+  - `reportImplicitOverride = "error"` — every method override MUST
+    carry `@override` (from `typing` 3.11+ or `typing_extensions`
+    3.10). Renaming a base-class method without `@override`
+    silently strands the override; this catches it.
+  - `reportUninitializedInstanceVariable = "error"` — every
+    instance attribute MUST be initialized in `__init__` or have a
+    class-level default.
+  - `reportUnnecessaryTypeIgnoreComment = "error"` — flags
+    `# type: ignore` comments that no longer suppress any
+    diagnostic.
+  - `reportUnnecessaryCast = "error"` — flags `cast(X, value)`
+    where `value` is already typed `X`.
+  - `reportUnnecessaryIsInstance = "error"` — flags
+    `isinstance(x, T)` when the type checker already knows `x: T`.
+  - `reportImplicitStringConcatenation = "error"` — catches
+    `["foo" "bar"]` (missing comma) bugs in lists / sets / tuples.
+
+  **Open dependency follow-up:** `@override` (and `assert_never`
+  per §"Exhaustiveness" below) requires `typing_extensions` on
+  Python 3.10. Verify whether `typing_extensions` is transitively
+  vendored via `dry-python/returns` or whether it must be added as
+  a direct mise-pinned dev-only dep. Tracked in `task-runner-and-
+  ci-config` deferred-items entry.
+
+- Every public function (per the `__all__` declaration; see
+  §"Module API surface" below) and every dataclass field MUST have
+  type annotations. Private helpers (single-leading-underscore prefix
+  or simply not listed in `__all__`) SHOULD be annotated.
 - Every public function's return annotation MUST be `Result[_, _]` or
   `IOResult[_, _]`, UNLESS the function is:
   - a supervisor at a deliberate side-effect boundary (e.g.,
@@ -562,7 +618,10 @@ imports).
   documented in the `static-check-semantics` deferred item
   (`check-public-api-result-typed` exempts functions named `main`
   in `commands/**.py` and `doctor/run_static.py`, PLUS functions
-  named `build_parser` in `commands/**.py`).
+  named `build_parser` in `commands/**.py`). The check scopes its
+  "public function" detection to names listed in `__all__` (see
+  §"Module API surface" below) rather than to the leading-
+  underscore convention.
 - **`Any` is forbidden outside `io/` boundary wrappers and vendored-lib
   facades.** The thin facades under `livespec/io/<lib>_facade.py` are
   the ONLY place `Any` may appear, and they exist precisely to confine
@@ -575,6 +634,118 @@ imports).
 - Implicit `Optional` via `None` default without `| None` annotation is
   forbidden (pyright strict flags this).
 - mypy is not used; there is no mypy configuration file.
+
+### Module API surface
+
+Every module in `livespec/**` MUST declare a module-top
+`__all__: list[str]` listing the public API names. Public functions,
+public classes, and public NewType aliases belong in `__all__`;
+private helpers (single-leading-underscore prefix) MUST NOT appear in
+`__all__`. The `check-public-api-result-typed` rule scopes its
+public-function detection to names listed in `__all__` rather than
+to the leading-underscore convention.
+
+`__init__.py` files MAY declare `__all__` for re-export composition;
+the same rule applies (every name listed must resolve in the module's
+namespace, including imported names).
+
+Enforced by AST check `check-all-declared`: walks every module under
+`livespec/**`; verifies a module-level `__all__: list[str]`
+assignment exists; verifies every name in `__all__` is actually
+defined in the module (catches stale entries after a rename).
+
+### Domain primitives via `NewType`
+
+Domain identifiers in `livespec/**` MUST use a `typing.NewType` alias
+from the canonical declarations in `livespec/types.py`. `NewType`
+creates a zero-runtime-cost type alias that pyright treats as
+distinct from the underlying primitive — passing a `RunId` where
+a `CheckId` is expected becomes a type error. This eliminates the
+classic "right shape, wrong meaning" bug class for raw-string and
+raw-`Path` fields.
+
+Canonical roles → NewType mapping (field-name → NewType inferred
+by the AST check):
+
+| Field name | NewType | Underlying | Concept |
+|---|---|---|---|
+| `check_id` | `CheckId` | `str` | doctor-static check slug |
+| `run_id` | `RunId` | `str` | per-invocation UUID |
+| `topic` | `TopicSlug` | `str` | proposed-change topic (note: field name is `topic`; NewType name uses `Slug` suffix to disambiguate) |
+| `spec_root` | `SpecRoot` | `Path` | resolved spec-root path |
+| `schema_id` | `SchemaId` | `str` | JSON Schema `$id` |
+| `template` | `TemplateName` | `str` | `.livespec.jsonc` `template` field (the user's template selection — built-in name or path-as-string); NewType name uses `Name` suffix to disambiguate from the `template_root: Path` field, which is the resolved directory and uses raw `Path` |
+| `author` / `author_human` / `author_llm` | `Author` | `str` | author identifier (per K7 rename) |
+| `version_tag` | `VersionTag` | `str` | `vNNN` version identifier |
+
+Dataclass fields and function signatures handling these concepts
+MUST use the NewType, not the underlying primitive. Construction
+uses the NewType as a callable: `CheckId("doctor-out-of-band-edits")`.
+
+Additions to the canonical list are first-class deferred-items work
+(one-line update to `livespec/types.py` plus per-call-site
+migrations).
+
+Enforced by AST check `check-newtype-domain-primitives`: walks
+`livespec/schemas/dataclasses/*.py` and `livespec/**.py` function
+signatures; verifies field annotations matching the listed roles
+use the corresponding NewType. The role-to-field-name mapping is
+enumerated explicitly in the check source; partial mismatches
+(right NewType wrong field name; or right field name wrong
+NewType) both fail.
+
+### Inheritance and structural typing
+
+Class inheritance in `livespec/**`, `bin/**`, and `dev-tooling/**`
+is RESTRICTED. The AST check `check-no-inheritance` rejects any
+`class X(Y):` definition where `Y` is not in the allowlist
+`{Exception, BaseException, LivespecError, Protocol, NamedTuple,
+TypedDict}` or a `LivespecError` subclass.
+
+This codifies the documented design direction: flat composition
+over inheritance; structural typing via `typing.Protocol`; sum-type
+dispatch via tagged dataclasses + structural pattern matching. The
+`LivespecError` hierarchy itself remains an open extension point —
+adding a new domain-error subclass (e.g., a future
+`RateLimitError(LivespecError)`) is permitted by the rule. What is
+NOT permitted is multi-level inheritance below a `LivespecError`
+leaf or any inheritance from a non-allowlisted concrete class.
+
+Structural interfaces in `livespec/**` MUST be declared via
+`typing.Protocol`. `abc.ABC`, `abc.ABCMeta`, and
+`abc.abstractmethod` imports are banned via the TID rule
+configuration; see §"Linter and formatter."
+
+The `@final` decorator (from `typing` 3.11+ or `typing_extensions`
+3.10) is OPTIONAL throughout livespec; the AST check is the source
+of truth. Authors MAY use `@final` as documentation-by-decorator for
+clarity but it is not required.
+
+### Exhaustiveness
+
+Every `match` statement in `livespec/**`, `bin/**`, and
+`dev-tooling/**` MUST terminate with `case _: assert_never(<subject>)`
+regardless of subject type. `assert_never` is from `typing`
+(3.11+) or `typing_extensions` (3.10).
+
+Rationale: `assert_never(x)` requires `x` to have type `Never`. When
+all variants of a closed-union subject are handled by preceding `case`
+arms, the residual type at the default arm is `Never` and pyright
+accepts the call. When a new variant is added without updating the
+dispatch site, the residual type narrows to the unhandled variant
+and `assert_never(x)` becomes a type error at the unhandled dispatch
+site. This converts "I added a new variant and forgot to handle it
+somewhere" from a silent runtime bug into a compile-time error at
+every unhandled site.
+
+The conservative scope (every `match`, regardless of subject type) is
+preferred over a precise scope (only closed-union subjects) because
+false positives are cheap (just add the line) and the simpler check
+is more maintainable.
+
+Enforced by AST check `check-assert-never-exhaustiveness`: walks
+every `ast.Match` node in scope; verifies the final case arm is
+`case _:` and its body is exactly `assert_never(<subject-name>)`.
 
 ### Vendored-lib type-safety integration
 
@@ -611,11 +782,54 @@ and complexity checker. Pinned via mise.
 - `pyproject.toml`'s `[tool.ruff]` configures:
   - `target-version = "py310"`.
   - `line-length = 100`.
-  - Rule selection: `E F I B UP SIM C90 N RUF PL PTH`.
+  - **Rule selection** (27 categories total):
+    `E F I B UP SIM C90 N RUF PL PTH` (the v011 baseline; 11
+    categories) PLUS
+    `TRY FBT PIE SLF LOG G TID ERA ARG RSE PT FURB SLOT ISC T20 S`
+    (16 categories added in v012). Per-category meaning:
+    - `TRY` (tryceratops) — exception-handling discipline; pairs
+      with the v011 K10 domain-vs-bugs split.
+    - `FBT` — boolean-trap (forbids boolean POSITIONAL arguments);
+      reinforces the K4 keyword-only discipline.
+    - `PIE` — miscellaneous anti-patterns.
+    - `SLF` — forbids accessing `_`-prefixed attributes from outside
+      the defining class.
+    - `LOG` + `G` — logging discipline (no f-strings in log calls;
+      kwargs only); reinforces §"Structured logging".
+    - `TID` — tidy imports (no relative imports; supports banning
+      specific modules; see banned-imports config below).
+    - `ERA` — eradicate commented-out code (a frequent LLM
+      artifact).
+    - `ARG` — unused function arguments.
+    - `RSE` — `raise X` over `raise X()`; enforces `raise ... from
+      ...` discipline.
+    - `PT` — pytest-style anti-patterns.
+    - `FURB` (Refurb) — modern-Python refactor hints.
+    - `SLOT` — `__slots__` discipline on tuple/str subclasses.
+    - `ISC` — implicit string concatenation (lint-level; complements
+      `reportImplicitStringConcatenation`).
+    - `T20` (flake8-print) — bans `print` and `pprint` (paired with
+      §"Structured logging" and the AST check
+      `check-no-write-direct` for `sys.stdout/stderr.write`).
+    - `S` (flake8-bandit) — security anti-patterns; catches
+      `pickle.loads`, `subprocess` with `shell=True`, `eval`,
+      `exec`, etc.
+
+    Note on category arithmetic: 11 (v011 baseline) + 16 (v012
+    additions: TRY FBT PIE SLF LOG G TID ERA ARG RSE PT FURB
+    SLOT ISC T20 S) = 27 total categories.
   - `[tool.ruff.lint.pylint]` sets `max-args = 6`,
     `max-positional-args = 6`, `max-branches = 10`,
     `max-statements = 30`. Both arg-count gates are enforced; see
     "Complexity thresholds".
+  - `[tool.ruff.lint.flake8-tidy-imports]` sets
+    `ban-relative-imports = "all"` and a banned-imports list:
+    - `abc.ABC`, `abc.ABCMeta`, `abc.abstractmethod` — structural
+      interfaces use `typing.Protocol` instead; see §"Type safety —
+      Inheritance and structural typing."
+    - `pickle`, `marshal`, `shelve` — arbitrary-code-execution
+      surface on `load()`; livespec uses JSON / JSONC for all
+      serialization.
 - `just check-lint` runs `ruff check .`. Any finding fails the gate.
 - `just check-format` runs `ruff format --check .`. Any diff fails.
 - Mutating targets for developers: `just fmt` (`ruff format`),
@@ -667,6 +881,59 @@ Rules:
   `scripts/bin/*.py` wrapper (excluding `_bootstrap.py`) matches the
   exact 6-line shape (see "Shebang-wrapper contract" below).
 
+### Property-based testing for pure modules
+
+Pure Result-returning modules (`livespec/parse/` and
+`livespec/validate/`) are mandatory targets for property-based
+testing via `hypothesis` (HypothesisWorks/hypothesis, MPL-2.0;
+mise-pinned, NOT vendored). PBT generates many input shapes and
+checks invariants the test author may not have imagined; coverage
+verifies execution but PBT verifies behavior.
+
+Rules:
+
+- `hypothesis` and `hypothesis-jsonschema` (MIT) are mise-pinned
+  in `.mise.toml` as test-time deps (same packaging convention as
+  `pytest`, `pytest-cov`, `pytest-icdiff`). They are NOT vendored
+  in `_vendor/` because they are not imported by `livespec/**` at
+  user-runtime.
+- Each test module under `tests/livespec/parse/` and
+  `tests/livespec/validate/` MUST declare at least one
+  `@given(...)`-decorated test function.
+- For schema-driven validators, `hypothesis-jsonschema` provides
+  auto-generated strategies from the schema's JSON Schema
+  definition; tests SHOULD use this rather than hand-authoring
+  `@composite` strategies.
+- Hand-authored `@composite` strategies are permitted where the
+  schema doesn't fully express the input space (e.g., free-form
+  text fields).
+
+Enforced by AST check `check-pbt-coverage-pure-modules`: walks
+every test module under `tests/livespec/parse/` and
+`tests/livespec/validate/`; verifies at least one function in the
+module is decorated with `@given(...)` (from `hypothesis`).
+
+### Mutation testing as release-gate
+
+Mutation testing via `mutmut` (MIT; mise-pinned, NOT vendored)
+runs on a release-gate schedule (CI release branch only; not
+per-commit; not part of the `just check` aggregator).
+
+Rules:
+
+- `mutmut` is mise-pinned in `.mise.toml` as a release-gate dep.
+- `just check-mutation` runs `mutmut run` against
+  `livespec/parse/` and `livespec/validate/` (the pure modules
+  where mutation testing is most informative); reports kill rate.
+- **Threshold:** ≥80% mutation kill rate on `livespec/parse/`
+  and `livespec/validate/`. The 80% figure is initial guidance;
+  first real measurement against shipping code may surface a
+  different appropriate value, in which case the threshold is
+  adjusted via a new propose-change cycle.
+- Per-commit CI does NOT invoke `just check-mutation` (too slow);
+  a dedicated release-tag CI workflow runs it on tagged commits.
+- The `just check` aggregator does NOT include `check-mutation`.
+
 ---
 
 ## Code coverage
@@ -677,9 +944,13 @@ Coverage is measured by `coverage.py` via `pytest-cov`:
   surface in `scripts/livespec/**`, `scripts/bin/**`, and
   `<repo-root>/dev-tooling/**`. No tier split. `_vendor/` is excluded.
   `scripts/bin/` is included because `_bootstrap.py` carries real logic
-  (Python-version check + sys.path setup) that warrants enforcement;
-  the 6-line wrapper bodies are pragma-excluded per the rules below
-  (trivial pass-throughs covered by the wrapper-shape meta-test).
+  (Python-version check + sys.path setup) AND the 6-line wrapper bodies
+  themselves carry the `bootstrap()` call + the `raise SystemExit(main())`
+  dispatch, all of which are real executable lines that v011 K3 brings
+  under the same 100% gate via dedicated `tests/bin/test_<cmd>.py`
+  files (see "Wrapper coverage" rule below). NO `# pragma: no cover`
+  is applied to wrapper bodies; NO `[tool.coverage.run] omit` for
+  `scripts/bin/`.
 - `pyproject.toml`'s `[tool.coverage.run]` sets `source` to include
   both the `livespec` package and the `bin/` directory (the exact path
   form is implementer choice; e.g., an additional `source` entry for
@@ -721,8 +992,21 @@ Rules:
 - Every `def` MUST place a lone `*` as its first parameter (or,
   for methods, immediately after `self` / `cls`) so that every
   subsequent parameter is in `kwonlyargs`.
-- Every `@dataclass` decorator MUST include `kw_only=True`
-  (Python 3.10+). The generated `__init__` is keyword-only.
+- Every `@dataclass` decorator MUST include the full strict-dataclass
+  triple: `frozen=True, kw_only=True, slots=True` (Python 3.10+).
+  - `frozen=True` — prevents reassigning attributes after
+    construction.
+  - `kw_only=True` — generated `__init__` is keyword-only; no
+    positional construction ambiguity.
+  - `slots=True` — uses `__slots__` storage instead of `__dict__`;
+    attribute-name typos at access time raise `AttributeError`
+    rather than silently creating new attributes; ~30% per-instance
+    memory savings.
+
+  No livespec design relies on `__weakref__` (broken by
+  `slots=True`) or multiple inheritance with non-slots classes
+  (forbidden by §"Type safety — Inheritance and structural typing").
+  The triple is therefore a pure win for livespec.
 - Callers MUST pass arguments by keyword wherever the callee
   permits it. Positional invocation is allowed only where the
   callee cannot be changed (stdlib, third-party, dunder methods
@@ -746,7 +1030,8 @@ Rules:
 Enforced by `just check-keyword-only-args` (AST): every
 `ast.FunctionDef` and `ast.AsyncFunctionDef` under scope MUST have
 `args.args` empty after `self` / `cls` (all declared parameters in
-`args.kwonlyargs`); every `@dataclass` MUST carry `kw_only=True`.
+`args.kwonlyargs`); every `@dataclass` decorator MUST carry
+`frozen=True`, `kw_only=True`, AND `slots=True` keyword arguments.
 
 ## Structural pattern matching
 
@@ -780,6 +1065,8 @@ bind via `kwd_patterns`, not `patterns`.
 supervisor's three-way match dispatch reads:
 
 ```python
+from typing import assert_never  # Python 3.11+; on 3.10 use typing_extensions
+
 match result:
     case IOFailure(HelpRequested(text=text)):
         sys.stdout.write(text)
@@ -790,12 +1077,21 @@ match result:
     case IOSuccess(report):
         # ... handle success per sub-command
         return 0
+    case _:
+        assert_never(result)
 ```
 
 The outer `IOFailure(...)` uses positional destructure (permitted —
 `IOFailure` is from `dry-python/returns`). The inner
 `HelpRequested(text=text)` uses keyword destructure. `HelpRequested`
-declares no `__match_args__`.
+declares no `__match_args__`. The trailing `case _: assert_never(result)`
+is mandatory per §"Type safety — Exhaustiveness"; if a future variant
+of `result` is added but no `case` arm handles it, the
+`assert_never` call becomes a type error at this dispatch site.
+
+The `sys.stdout.write(text)` call in the `HelpRequested` arm is
+permitted per the `check-no-write-direct` exemption for supervisor
+`main()` functions in `livespec/commands/**.py`.
 
 ---
 
@@ -848,8 +1144,31 @@ Logging uses vendored **`structlog`**. Configuration:
     a stable literal.
   - **Errors include structured fields** — `LivespecError` subclass
     name and structured context dict, not just `str(exc)`.
-  - **stdout is reserved** for the structured-findings contract (per
-    PROPOSAL.md's doctor static-phase stdout contract).
+  - **stdout is reserved** for documented contracts (the doctor
+    static-phase findings JSON per PROPOSAL.md; the
+    `HelpRequested` text path per K7 / J7). Mechanical
+    enforcement: ruff `T20` (flake8-print) bans `print` and
+    `pprint`; AST check `check-no-write-direct` bans
+    `sys.stdout.write` and `sys.stderr.write` everywhere
+    EXCEPT three designated surfaces:
+    1. `bin/_bootstrap.py` — pre-livespec-import version-check
+       error message (the only legitimate `sys.stderr.write`
+       site outside supervisor scope; structlog has not yet
+       been configured at this point).
+    2. Supervisor `main()` functions in `livespec/commands/**.py`
+       — `sys.stdout.write` permitted for documented stdout
+       contracts: `HelpRequested.text` per K7 / J7;
+       `bin/resolve_template.py`'s resolved-path single-line
+       output per K2; any future supervisor-owned stdout
+       contract. The exemption is per-supervisor (the
+       function named `main` at module top-level), NOT per-
+       helper inside commands/**.
+    3. `livespec/doctor/run_static.py::main()` — write the
+       `{"findings": [...]}` JSON to stdout per the doctor
+       static-phase output contract.
+
+    All other output goes through structlog (which writes JSON
+    to stderr).
 
 ### Bootstrap
 
@@ -889,7 +1208,7 @@ preserved from v005/v006:
 
 | Code | Meaning |
 |---|---|
-| `0` | Success. Also covers intentional `--help` output: a `-h` / `--help` request is not an error and exits with `0` via the `HelpRequested` supervisor pattern-match path (see §"HelpRequested disposition" below). |
+| `0` | Success. Also covers intentional `--help` output: a `-h` / `--help` request is not an error and exits with `0` via the `HelpRequested` supervisor pattern-match path (see the `HelpRequested` class definition later in this §"Exit code contract" section, and §"Structural pattern matching" → "HelpRequested example" for the supervisor's match form). |
 | `1` | Script-internal failure (unexpected runtime error; likely a bug). |
 | `2` | Usage error: bad flag, wrong argument count, malformed invocation. |
 | `3` | Input or precondition failed: referenced file/path/value missing, malformed, or in an incompatible state. |
@@ -1142,24 +1461,36 @@ specific native code works). No Windows support.
 | `just check-format` | `ruff format --check .` |
 | `just check-types` | `pyright` (strict, with `_vendor/` excluded). |
 | `just check-complexity` | ruff C901 + PLR + file-LLOC custom check. |
-| `just check-purity` | AST: `parse/` + `validate/` don't import `io/` or effectful APIs. |
+| `just check-imports-architecture` | Import-Linter: declarative `[tool.importlinter]` contracts in `pyproject.toml` express purity (`parse/` + `validate/` don't import `io/` or effectful APIs), layered architecture (no circular imports), and import-surface raise-discipline (no import of `LivespecError` subclasses outside `io/**` and `errors.py` for raising). Replaces v011's planned `check-purity` + `check-import-graph` + the import-surface portion of `check-no-raise-outside-io`. |
 | `just check-private-calls` | AST: no cross-module calls to `_`-prefixed functions defined elsewhere. |
-| `just check-import-graph` | AST: no circular imports in `livespec/**`. |
 | `just check-global-writes` | AST: no module-level mutable state writes from functions. |
 | `just check-supervisor-discipline` | AST: `sys.exit` / `raise SystemExit` only in `bin/*.py` (incl. `_bootstrap.py`). |
-| `just check-no-raise-outside-io` | AST: raising of `LivespecError` subclasses (domain errors) restricted to `io/**` and `errors.py`. Raising bug-class exceptions (TypeError, NotImplementedError, AssertionError, etc.) permitted anywhere. |
+| `just check-no-raise-outside-io` | AST (raise-site portion only): raising of `LivespecError` subclasses (domain errors) at runtime restricted to `io/**` and `errors.py`. Raising bug-class exceptions (TypeError, NotImplementedError, AssertionError, etc.) permitted anywhere. The import-surface portion is delegated to `check-imports-architecture`. |
 | `just check-no-except-outside-io` | AST: catching exceptions outside `io/**` permitted only in supervisor bug-catchers (top-level `try/except Exception` in `main()` of `commands/*.py` and `doctor/run_static.py`). |
-| `just check-public-api-result-typed` | AST: every public function returns `Result` or `IOResult` per annotation, except supervisors at the side-effect boundary (`main()` in `commands/**.py` and `doctor/run_static.py`). |
+| `just check-public-api-result-typed` | AST: every public function (per `__all__` declaration; see `check-all-declared`) returns `Result` or `IOResult` per annotation, except supervisors at the side-effect boundary (`main()` in `commands/**.py` and `doctor/run_static.py`) and the `build_parser` factory in `commands/**.py`. |
 | `just check-schema-dataclass-pairing` | AST: every `schemas/*.schema.json` has a paired dataclass at `schemas/dataclasses/<name>.py` with the `$id`-derived name and every listed field in matching Python type; and vice versa. Drift in either direction fails. |
 | `just check-main-guard` | AST: no `if __name__ == "__main__":` in `livespec/**`. |
 | `just check-wrapper-shape` | AST-lite: `bin/*.py` (except `_bootstrap.py`) conforms to the 6-line shebang-wrapper contract. |
-| `just check-keyword-only-args` | AST: every `def` in livespec scope uses `*` as first separator (all params keyword-only); every `@dataclass` declares `kw_only=True`. Exempts Python-mandated dunder signatures and `__init__` of Exception subclasses that forward to `super().__init__(msg)`. |
+| `just check-keyword-only-args` | AST: every `def` in livespec scope uses `*` as first separator (all params keyword-only); every `@dataclass` declares the strict-dataclass triple `frozen=True, kw_only=True, slots=True`. Exempts Python-mandated dunder signatures and `__init__` of Exception subclasses that forward to `super().__init__(msg)`. |
 | `just check-match-keyword-only` | AST: every `match` statement's class pattern resolving to a livespec-authored class binds via keyword sub-patterns (`Foo(x=x)`), not positional (`Foo(x)`). Third-party library class destructures (`returns`-package types) are permitted positionally. |
+| `just check-no-inheritance` | AST: forbids `class X(Y):` in `livespec/**` where `Y` is not in the allowlist `{Exception, BaseException, LivespecError, Protocol, NamedTuple, TypedDict}` or a `LivespecError` subclass. Codifies flat-composition direction; LivespecError extension point preserved. |
+| `just check-assert-never-exhaustiveness` | AST: every `match` statement in scope MUST terminate with `case _: assert_never(<subject>)`. Conservative scope (every match, regardless of subject type). |
+| `just check-newtype-domain-primitives` | AST: walks `schemas/dataclasses/*.py` and function signatures; verifies field annotations matching canonical field names (`check_id`, `run_id`, `topic`, `spec_root`, `schema_id`, `template`, `author` / `author_human` / `author_llm`, `version_tag`) use the corresponding `livespec/types.py` NewType (`CheckId`, `RunId`, `TopicSlug`, `SpecRoot`, `SchemaId`, `TemplateName`, `Author`, `VersionTag`). Note: the `template_root` field in DoctorContext is the resolved-directory `Path` and uses raw `Path`, NOT `TemplateName` — the L8 mapping is field-name keyed, and `template_root` doesn't match `template`. |
+| `just check-all-declared` | AST: every module under `livespec/**` declares a module-top `__all__: list[str]`; every name in `__all__` is defined in the module. |
+| `just check-no-write-direct` | AST: bans `sys.stdout.write` and `sys.stderr.write` calls in `livespec/**`, `bin/**`, `dev-tooling/**`. Three exemptions: `bin/_bootstrap.py` (pre-import version-check stderr); supervisor `main()` functions in `livespec/commands/**.py` (any documented stdout contract — HelpRequested per K7, resolve_template path per K2, etc.); `livespec/doctor/run_static.py::main()` (findings JSON stdout). Pairs with ruff `T20` which bans `print` / `pprint`. |
+| `just check-pbt-coverage-pure-modules` | AST: each test module under `tests/livespec/parse/` and `tests/livespec/validate/` declares at least one `@given(...)`-decorated test function. |
 | `just check-claude-md-coverage` | Every directory under `scripts/` (excluding `_vendor/` subtree), `tests/`, and `dev-tooling/` contains a `CLAUDE.md`. |
 | `just check-no-direct-tool-invocation` | grep: `lefthook.yml` and `.github/workflows/*.yml` only invoke `just <target>`. |
 | `just check-tools` | Verify every mise-pinned tool is installed at the pinned version. |
 | `just check-tests` | `pytest`. |
 | `just check-coverage` | `pytest --cov` with 100% line+branch threshold. |
+
+Release-gate targets (run on release-tag CI workflow only; NOT
+included in `just check`; NOT run per-commit):
+
+| Target | Purpose |
+|---|---|
+| `just check-mutation` | `mutmut` mutation testing against `livespec/parse/` and `livespec/validate/`. Threshold: ≥80% mutation kill rate. Threshold tunable on first real measurement via a new propose-change cycle. |
 
 Mutating targets (opt-in, not run in CI):
 

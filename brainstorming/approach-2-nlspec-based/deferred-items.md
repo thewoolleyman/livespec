@@ -29,7 +29,7 @@ Each entry uses this shape:
 ### <id>
 
 - **Source:** <which version surfaced this item, e.g. v002 / v003 /
-  v004 / v005 / v006 / v007 / v008 / v009 / v010 / v011>
+  v004 / v005 / v006 / v007 / v008 / v009 / v010 / v011 / v012>
 - **Target spec file(s):** <repo-root-relative path(s)>
 - **How to resolve:** <one paragraph describing what the eventual
   propose-change must produce>
@@ -90,31 +90,81 @@ Each entry uses this shape:
 
 ### enforcement-check-scripts
 
-- **Source:** v005 (carried forward; scope widened in v011 per K4)
+- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a)
 - **Target spec file(s):** `SPECIFICATION/constraints.md` +
-  `<repo-root>/dev-tooling/checks/`
+  `<repo-root>/dev-tooling/checks/` + `<repo-root>/pyproject.toml`
+  (`[tool.importlinter]` section per v012 L15a)
 - **How to resolve:** Author each enforcement-check Python script
   per the canonical `just` target list in
-  `python-skill-script-style-requirements.md` (`check-purity`,
-  `check-private-calls`, `check-import-graph`, `check-global-writes`,
-  `check-supervisor-discipline`, `check-no-raise-outside-io`,
-  `check-no-except-outside-io`, `check-public-api-result-typed`,
-  `check-main-guard`, `check-wrapper-shape`,
-  `check-schema-dataclass-pairing`, `check-claude-md-coverage`,
-  `check-no-direct-tool-invocation`, `file_lloc`,
-  `check-keyword-only-args` (v011 K4; AST: every livespec-scoped
-  `def` has `*` as first separator after self/cls; every
-  `@dataclass` declares `kw_only=True`; exempts Python-mandated
-  dunder signatures and `Exception.__init__`-forwarding cases),
-  `check-match-keyword-only` (v011 K4; AST: every `match`-statement
-  class pattern resolving to a livespec-authored class binds via
-  keyword sub-patterns; third-party-lib destructures exempt)).
-  Includes: test fixtures, edge-case parameterizations, exit-code
-  mapping.
+  `python-skill-script-style-requirements.md`. The v012 list
+  reflects L15a's adoption of Import-Linter at the dev-tooling
+  layer (replacing v011's planned `check-purity`,
+  `check-import-graph`, and the import-surface portion of
+  `check-no-raise-outside-io`):
+  - **Hand-written AST checks (still required in v012):**
+    `check-private-calls`, `check-global-writes`,
+    `check-supervisor-discipline`,
+    `check-no-raise-outside-io` (raise-site portion only;
+    import-surface portion delegated to
+    `check-imports-architecture`),
+    `check-no-except-outside-io`,
+    `check-public-api-result-typed` (rescoped per L9 to use
+    `__all__`-based public detection rather than underscore
+    convention),
+    `check-main-guard`, `check-wrapper-shape`,
+    `check-schema-dataclass-pairing`,
+    `check-claude-md-coverage`,
+    `check-no-direct-tool-invocation`, `file_lloc`,
+    `check-keyword-only-args` (v011 K4 + v012 L4: AST-walks
+    `@dataclass` decorators; verifies `frozen=True`,
+    `kw_only=True`, AND `slots=True` are all present; verifies
+    every `def` has `*` separator),
+    `check-match-keyword-only` (v011 K4).
+  - **New AST checks (v012):**
+    - `check-no-inheritance` (L5; AST: rejects `class X(Y):`
+      where `Y` not in allowlist).
+    - `check-assert-never-exhaustiveness` (L7; AST: every
+      `match` ends in `case _: assert_never(<subject>)`;
+      conservative scope).
+    - `check-newtype-domain-primitives` (L8; AST: walks
+      `schemas/dataclasses/*.py` and function signatures;
+      verifies role-named fields use the corresponding
+      `livespec/types.py` NewType).
+    - `check-all-declared` (L9; AST: every module under
+      `livespec/**` declares module-top `__all__: list[str]`;
+      verifies every name in `__all__` resolves in the module).
+    - `check-no-write-direct` (L10; AST: bans
+      `sys.stdout.write` and `sys.stderr.write` calls outside
+      `bin/_bootstrap.py`).
+    - `check-pbt-coverage-pure-modules` (L12; AST: every test
+      module under `tests/livespec/parse/` and
+      `tests/livespec/validate/` declares ≥1 `@given(...)`-
+      decorated test).
+  - **Import-Linter target (v012 L15a):**
+    `check-imports-architecture` invokes `lint-imports` against
+    declarative `[tool.importlinter]` contracts in
+    `pyproject.toml`. Three contracts replace the planned
+    hand-written checks:
+    - `forbidden` contract for `parse/` + `validate/` (no
+      imports from `io/` or effectful APIs) — replaces planned
+      `check-purity`.
+    - `layers` contract (no circular imports; layered
+      architecture) — replaces planned `check-import-graph`.
+    - `forbidden` contract for `LivespecError` subclass imports
+      outside `io/**` and `errors.py` (raise-discipline import
+      surface) — replaces import-surface portion of planned
+      `check-no-raise-outside-io`. Raise-site AST portion
+      remains hand-written.
+  - **Release-gate target (v012 L13):** `check-mutation`
+    invokes `mutmut run` against `livespec/parse/` and
+    `livespec/validate/`; threshold ≥80% kill rate; NOT in
+    `just check`; runs only on release-tag CI workflow.
+  - Includes: test fixtures, edge-case parameterizations,
+    exit-code mapping.
 
 ### claude-md-prose
 
-- **Source:** v006 (carried forward to v008)
+- **Source:** v006 (carried forward through every version since)
 - **Target spec file(s):** `<bundle>/scripts/**/CLAUDE.md`,
   `<repo-root>/tests/**/CLAUDE.md` (with `tests/fixtures/` excluded
   per H15),
@@ -124,10 +174,20 @@ Each entry uses this shape:
   directory-local constraints an agent working there must satisfy.
   Concise (typically <50 lines); links to
   `python-skill-script-style-requirements.md` for global rules.
+  v012-relevant directory-local notes worth including:
+  `livespec/parse/CLAUDE.md` and `livespec/validate/CLAUDE.md`
+  note the L12 Hypothesis PBT requirement (each test module
+  here MUST have ≥1 `@given(...)`-decorated function);
+  `livespec/types.py` (single file; no CLAUDE.md required) is
+  the canonical NewType-aliases location per L8;
+  `livespec/io/CLAUDE.md` notes that supervisor-stdout-write
+  exemptions (per L10) apply to `commands/<cmd>.py::main()`
+  and `doctor/run_static.py::main()` only, not to `io/`
+  helpers.
 
 ### task-runner-and-ci-config
 
-- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4)
+- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a)
 - **Target spec file(s):** `<repo-root>/justfile`,
   `<repo-root>/lefthook.yml`,
   `<repo-root>/.github/workflows/ci.yml`,
@@ -166,12 +226,65 @@ Each entry uses this shape:
   omit for wrapper files. If the pyproject-generating recipe writes
   any per-wrapper pragma application, remove it.
 
+  **v012 additions:**
+  - **`[tool.pyright]` strict-plus diagnostics (L1 + L2):**
+    set `reportUnusedCallResult = "error"`,
+    `reportImplicitOverride = "error"`,
+    `reportUninitializedInstanceVariable = "error"`,
+    `reportUnnecessaryTypeIgnoreComment = "error"`,
+    `reportUnnecessaryCast = "error"`,
+    `reportUnnecessaryIsInstance = "error"`,
+    `reportImplicitStringConcatenation = "error"`.
+  - **`typing_extensions` availability follow-up (L2 + L7):**
+    `@override` and `assert_never` are in `typing` from Python
+    3.11; on Python 3.10 they live in `typing_extensions`.
+    Resolution path: (a) verify transitive vendoring via
+    `dry-python/returns`, OR (b) add `typing_extensions` as a
+    direct mise-pinned dev-only dep, OR (c) bump Python floor
+    to 3.11 in `.mise.toml` (out of scope for v012; would
+    require its own pass). Document the chosen resolution in
+    the `.mise.toml` comments.
+  - **Ruff rule selection expansion (L3 + L10 + L11):** the
+    v012 selection is `E F I B UP SIM C90 N RUF PL PTH TRY FBT
+    PIE SLF LOG G TID ERA ARG RSE PT FURB SLOT ISC T20 S` (16
+    categories added above v011's 11; 27 total). Per-category
+    configuration tuning is implementer choice.
+  - **TID banned-imports config (L6 + L11):**
+    `[tool.ruff.lint.flake8-tidy-imports]` sets
+    `ban-relative-imports = "all"` and a banned-imports list
+    containing `abc.ABC`, `abc.ABCMeta`, `abc.abstractmethod`,
+    `pickle`, `marshal`, `shelve`.
+  - **Hypothesis + hypothesis-jsonschema mise pins (L12):**
+    `.mise.toml` adds `hypothesis` (HypothesisWorks/hypothesis,
+    MPL-2.0) and `hypothesis-jsonschema` (MIT) as test-time
+    dev deps. NOT vendored in bundle; mise-pinned only. The
+    MPL-2.0 license-policy expansion is NOT needed (vendored-
+    libs license policy applies only to bundle-vendored libs).
+  - **mutmut mise pin + release-gate workflow (L13):**
+    `.mise.toml` adds `mutmut` (MIT). `just check-mutation`
+    target added; release-tag CI workflow runs it; per-commit
+    CI does NOT.
+  - **Import-Linter mise pin + pyproject config (L15a):**
+    `.mise.toml` adds `import-linter` (BSD-2).
+    `pyproject.toml` adds `[tool.importlinter]` section with
+    three contracts (`forbidden` for purity; `layers` for
+    architecture; `forbidden` for raise-discipline imports).
+    `just check-imports-architecture` target added; replaces
+    planned `check-purity` + `check-import-graph` + import-
+    surface portion of `check-no-raise-outside-io`.
+  - **L15b principle (no bundle vendoring of dev tools).**
+    Hypothesis, hypothesis-jsonschema, mutmut, and Import-
+    Linter are mise-pinned only. The bundle's vendored libs
+    (returns, fastjsonschema, structlog, jsoncomment) are
+    unchanged in v012.
+
 ### static-check-semantics
 
 - **Source:** v007 (renamed in v008 from `ast-check-semantics`;
   scope widened per H3, H11, H13, H14; scope widened in v009 per
   I1, I4, I5, I7, I10, I3; scope widened in v010 per J4, J5, J7,
-  J10, J11, J14; scope widened in v011 per K3, K4, K5, K10)
+  J10, J11, J14; scope widened in v011 per K3, K4, K5, K10;
+  scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -185,12 +298,24 @@ Each entry uses this shape:
     imports inside function bodies, `__all__` re-exports,
     `assert` statements, `raise StopIteration` in generators,
     `raise X from None` re-raises, `if TYPE_CHECKING:` guards,
-    `# noqa` interactions) for each of `check-purity`,
-    `check-private-calls`, `check-import-graph`,
-    `check-global-writes`, `check-supervisor-discipline`,
-    `check-no-raise-outside-io`, `check-no-except-outside-io`,
-    `check-public-api-result-typed`, `check-main-guard`,
-    `check-wrapper-shape`, `check-schema-dataclass-pairing`.
+    `# noqa` interactions) for each of the hand-written AST
+    checks: `check-private-calls`, `check-global-writes`,
+    `check-supervisor-discipline`, `check-no-raise-outside-io`
+    (raise-site portion only per v012 L15a; import-surface
+    portion delegated to `check-imports-architecture`),
+    `check-no-except-outside-io`, `check-public-api-result-typed`
+    (rescoped per v012 L9 to use `__all__` rather than
+    underscore convention), `check-main-guard`,
+    `check-wrapper-shape`, `check-schema-dataclass-pairing`,
+    `check-no-inheritance` (v012 L5),
+    `check-assert-never-exhaustiveness` (v012 L7),
+    `check-newtype-domain-primitives` (v012 L8),
+    `check-all-declared` (v012 L9),
+    `check-no-write-direct` (v012 L10),
+    `check-pbt-coverage-pure-modules` (v012 L12). The v011-
+    planned `check-purity` and `check-import-graph` are NOT
+    in this list — they were replaced in v012 L15a by the
+    Import-Linter `check-imports-architecture` target.
   - **Narrowed raise / except discipline** (v009 I10):
     `check-no-raise-outside-io` accepts raising of bug-class
     exceptions (`TypeError`, `NotImplementedError`,
@@ -368,7 +493,153 @@ Each entry uses this shape:
     `CHECKS`). Template-extension checks compose after skill-baked
     checks in the ROP chain; SLUGs MUST NOT collide with skill-
     baked SLUGs (the orchestrator rejects duplicates at registry-
-    assembly time with an IOFailure).
+    assembly time with an IOFailure). **Extension-loaded modules
+    are out of scope for the enforcement suite** per v012's user-
+    provided-extensions principle (no pyright / ruff / AST-check /
+    Import-Linter / Hypothesis / mutmut application to them; only
+    the `TEMPLATE_CHECKS` export shape and `CheckRunFn` /
+    `Finding` contract apply).
+  - **Extended `check-keyword-only-args` semantics**
+    (v012 L4): walker additionally verifies each `@dataclass`
+    decorator's call expression includes ALL THREE keyword
+    arguments `frozen=True`, `kw_only=True`, AND `slots=True`.
+    Missing any one fails. Existing v011 K4 exemptions
+    (Python-mandated dunders; Exception `__init__` forwarding;
+    `__post_init__`) still apply at the function-signature
+    layer; do not apply to the dataclass decorator.
+  - **`check-no-inheritance` semantics**
+    (v012 L5): AST walker over `livespec/**`, `bin/**`,
+    `dev-tooling/**`. For every `ast.ClassDef` with non-empty
+    `bases`, inspect each base; reject unless base name resolves
+    (by AST-level name resolution; imports walked) to one of
+    `{Exception, BaseException, LivespecError, Protocol,
+    NamedTuple, TypedDict}` OR to a `LivespecError` subclass
+    (transitively; check examines the base's MRO). The
+    `LivespecError` subclass detection examines whether the base
+    class is defined in `livespec/errors.py` AND has
+    `LivespecError` in its base list. Exemptions: vendored libs
+    (out of scope by §"Scope"); `_vendor/**` (excluded).
+  - **`check-assert-never-exhaustiveness` semantics**
+    (v012 L7): AST walker over every `ast.Match` node in scope.
+    The final `case_block` MUST have its pattern be
+    `MatchAs(pattern=None, name=None)` (the bare `case _:` form)
+    AND its body MUST consist of exactly one statement: an
+    `ast.Expr` containing an `ast.Call` whose function name
+    resolves to `assert_never` (from `typing` 3.11+ or
+    `typing_extensions` 3.10) AND whose single argument is an
+    `ast.Name` matching the match-statement's subject name. Any
+    deviation fails. Conservative scope (every `match`,
+    regardless of subject type) is the load-bearing decision per
+    v012 L7's recommendation.
+  - **`check-newtype-domain-primitives` semantics**
+    (v012 L8): AST walker over
+    `livespec/schemas/dataclasses/*.py` and `livespec/**.py`
+    function signatures. The check source enumerates the
+    canonical field-name → NewType mapping. The mapping accepts
+    the field names actually used in PROPOSAL.md / context
+    dataclasses (which precede v012 L8 and don't all match the
+    NewType base name): `check_id` → `CheckId`, `run_id` →
+    `RunId`, `topic` → `TopicSlug` (note: field name is `topic`
+    not `topic_slug`; NewType name carries the disambiguating
+    suffix), `spec_root` → `SpecRoot`, `schema_id` → `SchemaId`,
+    `template` → `TemplateName` (note: field name is `template`,
+    matching `.livespec.jsonc`'s `template` field; NewType name
+    uses `Name` suffix to disambiguate from the
+    `template_root: Path` field which uses raw `Path`),
+    `author` / `author_human` / `author_llm` → `Author` (per
+    K7 rename; all three field-name variants map to the same
+    NewType), `version_tag` → `VersionTag`. For every dataclass
+    field
+    whose name matches a canonical mapping entry, the
+    annotation MUST resolve to the corresponding NewType
+    (imported from `livespec.types`). For every function
+    parameter whose name matches a canonical entry, the
+    annotation MUST resolve to the corresponding NewType.
+    Mismatches in either direction (right NewType wrong field
+    name; right field name wrong NewType; right field name no
+    annotation) fail with the expected vs actual NewType name
+    in the error.
+  - **`check-all-declared` semantics**
+    (v012 L9): AST walker over every `*.py` module under
+    `livespec/**`. The module-top must contain an
+    `ast.Assign(targets=[Name(id='__all__')],
+    value=List(elts=[Constant(str), ...]))` statement (a
+    module-level `__all__: list[str] = [...]` assignment).
+    Each name in the list MUST resolve in the module's
+    namespace (defined via `def`, `class`, top-level
+    assignment, `NewType(...)` call, or imported via
+    `from ... import`). Stale entries (in `__all__` but no
+    matching definition) fail. The
+    `check-public-api-result-typed` rule is rescoped: instead
+    of inferring "public" from underscore convention, it
+    inspects each name listed in `__all__` and verifies its
+    return annotation is `Result[_, _]` or `IOResult[_, _]`
+    per the existing exemption list. `__init__.py` files MAY
+    declare `__all__` for re-exports; the check applies the
+    same rule (every listed name resolves in the namespace).
+  - **`check-no-write-direct` semantics**
+    (v012 L10): AST walker over `livespec/**`, `bin/**`,
+    `dev-tooling/**`. For every `ast.Call` whose function is an
+    `ast.Attribute` resolving to `sys.stdout.write` or
+    `sys.stderr.write` (after walking imports for `import sys` /
+    `from sys import stdout, stderr` / aliases), reject —
+    EXCEPT in three documented surfaces:
+    1. File `bin/_bootstrap.py` — pre-livespec-import version-
+       check stderr (structlog has not been configured at this
+       point; the only legitimate `sys.stderr.write` site).
+    2. Supervisor `main()` functions in
+       `livespec/commands/**.py` — `sys.stdout.write` permitted
+       for any documented stdout contract owned by the
+       supervisor (`HelpRequested.text` per K7 / J7;
+       `bin/resolve_template.py`'s single-line resolved-path
+       output per K2; any future supervisor-owned stdout
+       contract added to PROPOSAL.md). The exemption is
+       function-scoped (only the `main` function at module
+       top-level), NOT module-scoped (helpers inside the
+       same `commands/<cmd>.py` module are NOT exempt).
+    3. `livespec/doctor/run_static.py::main()` —
+       `sys.stdout.write` of the `{"findings": [...]}` JSON
+       per the doctor static-phase output contract.
+    The exemption is determined by file path AND function name
+    (the supervisor exemption applies only inside the
+    function named `main` at module top-level, not in
+    helpers). Pairs with ruff `T20` (which bans `print` /
+    `pprint`); together they cover the stdout-discipline
+    surface.
+  - **`check-pbt-coverage-pure-modules` semantics**
+    (v012 L12): AST walker over `tests/livespec/parse/*.py`
+    and `tests/livespec/validate/*.py`. For each test module,
+    inspect every `ast.FunctionDef` decorator list; the module
+    PASSES if at least one function in the module is decorated
+    with `@given(...)` (where `given` resolves to
+    `hypothesis.given`). Modules with zero `@given(...)`
+    decorations fail. Test modules outside `tests/livespec/
+    parse/` and `tests/livespec/validate/` are out of scope.
+  - **Import-Linter contract semantics** (v012 L15a):
+    `pyproject.toml`'s `[tool.importlinter]` section declares
+    three contracts:
+    - **Purity contract** (`type = "forbidden"`): forbid imports
+      from `livespec.parse.*` and `livespec.validate.*` to
+      `livespec.io.*`, `subprocess`, filesystem APIs (`open`,
+      `pathlib.Path.read_text` etc.), `returns.io.*`, `socket`,
+      `http.*`, `urllib.*`. Replaces planned `check-purity`.
+    - **Layered architecture contract** (`type = "layers"`):
+      ordered package layers (e.g., `livespec.parse` <
+      `livespec.validate` < `livespec.io` <
+      `livespec.commands`); higher layers may import lower but
+      not vice-versa. Replaces planned `check-import-graph`
+      (no circular imports follows by construction).
+    - **Raise-discipline import contract** (`type =
+      "forbidden"`): forbid `from livespec.errors import
+      LivespecError | <subclass>` outside `livespec.io.*` and
+      `livespec.errors`. Catches the import-side surface.
+      Raise-site AST discipline (the actual `raise` statements)
+      remains the responsibility of hand-written
+      `check-no-raise-outside-io`, which now covers ONLY the
+      raise-site portion and is correspondingly narrower.
+    Configuration tuning (root packages, includes/excludes,
+    contract names) is implementer choice during the
+    `enforcement-check-scripts` deferred entry's resolution.
 
 ### returns-pyright-plugin-disposition
 
@@ -384,9 +655,42 @@ Each entry uses this shape:
   pattern from G10 doesn't apply uniformly to returns; this item
   resolves the gap.
 
+### basedpyright-vs-pyright
+
+- **Source:** v012 (L14; new)
+- **Target spec file(s):** `SPECIFICATION/constraints.md`
+  (`python-skill-script-style-requirements.md` companion);
+  `<repo-root>/.mise.toml`; `<repo-root>/pyproject.toml`
+- **How to resolve:** Determine whether to switch from `pyright`
+  to `basedpyright` (DetachHead/basedpyright, a community fork
+  of pyright with ~30 stricter diagnostics enabled by default).
+  basedpyright is drop-in compatible with pyright (same CLI, same
+  config); switching would let several v012 L1 + L2 manual flag
+  selections collapse into "use defaults," and would unlock the
+  baselining system for incremental adoption.
+
+  Tradeoffs to evaluate:
+  - **+** L1's `reportUnusedCallResult` and most of L2's strict-
+    plus diagnostics become defaults; less manual flag config
+    in `[tool.pyright]`.
+  - **+** Baselining system accepts current diagnostics as a
+    baseline; only fails on regressions. Useful during initial
+    adoption.
+  - **−** Smaller maintainer pool than upstream pyright (a
+    community fork of a Microsoft project).
+  - **−** Diagnostic semantics could drift from upstream over
+    time.
+  - **−** v012 already accepted L1 + L2 as manual flag config;
+    the marginal value of switching now is reduced.
+
+  This is a STANDALONE deferred entry (NOT bundled with
+  `returns-pyright-plugin-disposition`, which is a separate
+  concern about the dry-python/returns pyright plugin's
+  vendoring + configuration).
+
 ### front-matter-parser
 
-- **Source:** v007 (carried forward; scope widened in v009 per I9/I12; scope widened in v011 per K7 and K9)
+- **Source:** v007 (carried forward; scope widened in v009 per I9/I12; scope widened in v011 per K7 and K9; scope widened in v012 per L4 and L8)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/parse/front_matter.py`,
   `<bundle>/scripts/livespec/schemas/proposed_change_front_matter.schema.json`,
@@ -410,7 +714,11 @@ Each entry uses this shape:
   Validators in `validate/` consume the parsed dict via the
   factory shape, routed through the dataclass pairing
   (`ProposedChangeFrontMatter`, `RevisionFrontMatter` dataclasses
-  with correspondingly renamed fields).
+  with correspondingly renamed fields). **Both dataclasses use
+  the v012 L4 strict triple `@dataclass(frozen=True, kw_only=True,
+  slots=True)`** and **the v012 L8 NewType aliases** for
+  `topic` (`TopicSlug`) and `author_human` / `author_llm`
+  (`Author`).
 
 ### skill-md-prose-authoring
 
@@ -486,7 +794,7 @@ Each entry uses this shape:
 
 ### wrapper-input-schemas
 
-- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7)
+- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/schemas/proposal_findings.schema.json`
   (renamed from `critique_findings.schema.json`),
@@ -544,8 +852,18 @@ Each entry uses this shape:
   `ReviseInput`, `TemplateConfig` (v011 K5 new), and
   `LivespecConfig`. Each dataclass lives at
   `scripts/livespec/schemas/dataclasses/<name>.py` with fields
-  matching the schema. `check-schema-dataclass-pairing`
-  enforces drift-free pairing in both directions.
+  matching the schema. **All dataclasses use the v012 L4 strict
+  triple `@dataclass(frozen=True, kw_only=True, slots=True)`**
+  (extension of K4's pre-v012 `frozen=True, kw_only=True`
+  pair). **Domain-meaningful fields use the v012 L8 NewType
+  aliases from `livespec/types.py`** — relevant to these
+  dataclasses: `topic` → `TopicSlug`, `author` /
+  `author_human` / `author_llm` → `Author`, `template`
+  → `TemplateName`, `check_id` → `CheckId`. Other fields use
+  underlying primitives. `check-schema-dataclass-pairing`
+  enforces drift-free pairing in both directions;
+  `check-newtype-domain-primitives` (v012 L8) enforces the
+  NewType usage at the field-annotation layer.
 
   Validators in `scripts/livespec/validate/<name>.py` return
   `Result[<Dataclass>, ValidationError]` from the factory
