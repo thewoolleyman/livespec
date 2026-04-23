@@ -1,0 +1,256 @@
+{
+  "version": "v014",
+  "produced_from": "v013",
+  "critique_file": "v014/proposed_changes/proposal-critique-v13.md",
+  "revision_file": "v014/proposed_changes/proposal-critique-v13-revision.md",
+  "session_date": "2026-04-23",
+  "author_human": "thewoolleyman",
+  "author_llm": "Claude Opus 4.7 (1M context)",
+  "pass_framing": "recreatability-and-integration-gap cleanup pass surfacing 11 items (N1-N8 major/significant + C1-C3 smaller cleanup) plus one new item N9 added mid-interview after N1's resolution surfaced the need for an end-to-end integration test. Major gap N1 (.livespec.jsonc absence vs resolve_template.py exit-3 contradiction; reshaped mid-interview to bring `minimal` template into v1 scope + seed SKILL.md prose prompts for template choice pre-seed). Significant gaps N2-N8: finding.schema.json standalone REQUIRED (N2); doctor-static orchestrator bootstrap lenience + DoctorContext config_load_status / template_load_status fields (N3); template-exists widening to verify template.json-declared paths (N4); author identifier → filename slug transformation (N5); topic collision suffix as monotonic counter from -2 (N6; user-supplied); seed post-step-failure recovery via existing --skip-pre-check (N7; reshaped); prune-history wording fix (N8). N9 (mid-interview add): end-to-end harness-level integration test — dual mock/real targets, Agent SDK for real, API-compatible pass-through mock with delimiter comments in minimal template's prompts, CI triggers merge_group + push-to-master + workflow_dispatch. 6 careful-review passes + 1 dedicated deferred-items-consistency pass caught 11 inconsistencies cumulatively (3 + 3 + 1 + 2 + 2 + 0 + 0; deferred-items-consistency pass findings merged into pass 4's count).",
+  "turns": [
+    {
+      "role": "user",
+      "content": "run brainstorming/approach-2-nlspec-based/critique-interview-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Read critique-interview-prompt.md. Version knobs: N=013, NEXT=014, CRITIQUE=13. Loaded all required files: PROPOSAL.md (2533 lines v013), livespec-nlspec-spec.md, prior-art/nlspec-spec.md, python-skill-script-style-requirements.md (v013), deferred-items.md (v013), history/README.md (chronological summary of v001-v013), history/v013/proposed_changes/proposal-critique-v12-revision.md (authoritative most-recent-settled), companion docs (goals-and-non-goals, prior-art, subdomains-and-unsolved-routing, four 2026-04-19 lifecycle docs). Composed 11-item critique (N prefix continues G/H/I/J/K/L/M sequence) and saved to proposed_changes/v014-proposed-change-proposal-critique-v13.md. Items: N1 major (.livespec.jsonc absence vs resolve_template.py malformation) + N2-N8 significant + C1-C3 smaller cleanup. Began interview with N1."
+    },
+    {
+      "role": "assistant",
+      "summary": "N1 (malformation): .livespec.jsonc absence behavior vs resolve_template.py exit-3 contradiction. Options A (resolve_template falls back), B (seed skip if absent), C (seed wrapper special-cases). Recommended A."
+    },
+    {
+      "role": "user",
+      "content": "Clarification: 'It seems like Seed should just skip the resolve template, but only if the config file does not yet exist. That seems like it makes the most sense to me, doesn't it to you? But first, confirm what exactly creates the JSON file. Is anything created, or is it never created? If it doesn't exist, the defaults are always assumed.'"
+    },
+    {
+      "role": "assistant",
+      "summary": "Confirmed: seed creates .livespec.jsonc with full commented defaults on first run (PROPOSAL.md lines 870, 890, 1284). Post-seed it exists on disk. Absence-behavior rule (line 888) means missing → treat as defaults. Re-framed options around user's proposal (Option B'). Re-asked with B' as recommended."
+    },
+    {
+      "role": "user",
+      "content": "Clarification: 'What defaults does seed even need to have if the file doesn't exist yet? Isn't that its purpose? Why are you talking about seed having to duplicate defaults?'"
+    },
+    {
+      "role": "assistant",
+      "summary": "Corrected framing: seed doesn't duplicate defaults; pre-seed it just needs to know 'which template' and the default is built-in livespec. Re-presented options without the 'defaults' confusion: A (resolve_template falls back uniformly; recommended for cleaner one-rule fix) vs B' (seed SKILL.md prose special-cases pre-seed)."
+    },
+    {
+      "role": "user",
+      "content": "Clarification: pointed out that with only one built-in (livespec), the 'silent default on absence' masquerades as solved; the real question is 'how does the user pick a non-default template?' Proposed bringing a second built-in `minimal` (single-file SPECIFICATION.md at repo root) into scope to make the template-selection affordance concrete. Asked how much scope that adds."
+    },
+    {
+      "role": "assistant",
+      "summary": "Confirmed scope of minimal: ~6 files (template.json, 4 prompts, 1 starter SPECIFICATION.md) mostly deferred to template-prompt-authoring. Reframed N1 resolution with three integrated options: (1) Yes — add minimal + seed SKILL.md prompts for template choice dialogue (recommended); (2) No — keep single built-in + Option A; (3) No — keep single built-in + Option B'. Re-asked."
+    },
+    {
+      "role": "user",
+      "content": "Yes, we'll definitely bring it into scope. And this gives us a concrete target in the specification to target for the top of the testing pyramid, end-to-end integration test. There should be a required passing integration test that runs all of the targeted harnesses (starting with claude code) in a test sandbox/fixture git repo created in a temporary directory, and then runs the entire happy path workflow through using the minimal template, exercising all important areas of functionality. Does the proposal currently have any requirements like this around the top of the testing pyramid and end-to-end testing?"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked in N1 disposition: bring `minimal` template into v1 scope + seed SKILL.md prose prompts for template choice pre-seed. Answered E2E-testing question: NO, current PROPOSAL.md has no top-of-pyramid/end-to-end/harness-level integration test requirement; existing testing is per-module + per-spec-file + property-based + mutation. Identified this as a significant new gap coupled to N1's minimal template decision. Offered N9 as a new mid-interview critique item. User accepted."
+    },
+    {
+      "role": "assistant",
+      "summary": "Appended N9 to critique document (end-to-end harness-level integration test; four design dimensions: D1 LLM determinism, D2 harness scope, D3 cadence, D4 coverage surface). Began N9-D1 interview with D1-c hybrid stub/replay + live-LLM recommended."
+    },
+    {
+      "role": "user",
+      "content": "use live llm always. Expect that claude code is always configured with proper credentials. Introduces contract that CI must provide an anthropic LLM key. Add future deferred requirement to use a local/bundled model."
+    },
+    {
+      "role": "assistant",
+      "summary": "N9-D1 disposition: live LLM always for real tier + deterministic mock tier (mock is API-compatible pass-through, not stub of LLM); CI requires ANTHROPIC_API_KEY; new deferred entry for future local/bundled-model. Asked N9-D2 (harness scope: Claude Code only for v1 vs generic interface)."
+    },
+    {
+      "role": "user",
+      "content": "D2-a: Claude Code only for v1 (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "N9-D2 settled. Asked N9-D3 (cadence): D3-b release-gate only (recommended) vs D3-a per-commit vs D3-c hybrid smoke+full."
+    },
+    {
+      "role": "user",
+      "content": "Clarification: 'On per-commit, will it really be that much LLM cost and slowness? If a minimal seed is passed - e.g. a bash hello world script, how many total LLM total sessions and total turns are we actually talking about? Give me a rough estimate.'"
+    },
+    {
+      "role": "assistant",
+      "summary": "Worked out estimate: ~25-40 turns total in one Claude Code session across the 6-command happy path against minimal template. Cost estimates: Haiku 4.5 ~$0.08-$0.15 per run; Sonnet 4.6 ~$0.25-$0.50; Opus 4.7 ~$1.50-$3.00. Wall-clock ~3-8 minutes. Annualized at 50 PRs/month with Haiku: ~$150-$270/year. Re-asked D3 with the cost context."
+    },
+    {
+      "role": "user",
+      "content": "Clarification: 'How are we planning to control this interactive terminal CLI test? Via tmux?'"
+    },
+    {
+      "role": "assistant",
+      "summary": "Spawned claude-code-guide agent to research current Claude Code programmatic invocation surface. Agent confirmed: tmux NOT needed; Claude Code supports -p/--print mode, --bare mode, and Claude Agent SDK (Python/TypeScript). SDK is the cleanest path — loads plugins via `plugins=[{'type': 'local', 'path': '...'}]`; can chain query() calls in one session; auto-approves tools via can_use_tool callback or --permission-mode acceptEdits; ANTHROPIC_API_KEY env var for auth. With single-session prompt caching, cost estimate revised to ~$0.05-$0.15 per run on Haiku. Re-asked D3."
+    },
+    {
+      "role": "user",
+      "content": "Lets do both. We will have two targets in justfile for each supported harness for running e2e test - one with fake harness, one with real. 1. just e2e-test-claude-code-mock: has a API-compatible pass-thru mock executable of the claude SDK... 2. just e2e-test-claude-code-real: Uses real `claude` SDK. These should use exactly the same test suite - the only difference is which executable is used, mock or real, which can be specified via an ENV var."
+    },
+    {
+      "role": "assistant",
+      "summary": "N9-D3 settled with user-supplied dual-target approach: `just e2e-test-claude-code-mock` (deterministic pass-through mock) and `just e2e-test-claude-code-real` (real claude-agent-sdk); shared pytest suite; env var LIVESPEC_E2E_HARNESS=mock|real selects executable. Identified new downstream implication: minimal template's prompts must carry hardcoded delimiter comments for mock-tier parsing. Asked cadence confirmation: mock in just check (per-commit) + real release-gate only (recommended) vs alternatives."
+    },
+    {
+      "role": "user",
+      "content": "mock always (part of just check, runs on everything that calls just check), real one only per commit, via CI on PRs, via a pre-merge check (not every commit, only pre-merge), and also on every master commit (merged or pushed directly). This should be possible via github actions. real e2e Can also be directly invoked locally via just task if desired."
+    },
+    {
+      "role": "assistant",
+      "summary": "N9-D3 cadence confirmed: mock always in `just check` (per-commit, local + CI). Real NOT in just check; CI triggers via (1) pre-merge check on PRs (not every commit, only pre-merge) and (2) every master-branch commit (merged PRs or direct pushes). Real locally invokable. Moved to N9-D4 (coverage surface): D4-b happy path + 3 error paths (retry-on-exit-4, doctor fail-then-fix, prune-history no-op) recommended."
+    },
+    {
+      "role": "user",
+      "content": "D4-b: happy path + key error paths (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "N9 fully settled across all 4 (later 5) dimensions. Moved to N2 (finding.py vs three-way pairing malformation). Recommended Option A: close implementer choice; require standalone finding.schema.json + validate/finding.py."
+    },
+    {
+      "role": "user",
+      "content": "A: close implementer choice; require standalone (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "N2 settled → A. Moved to N3 (doctor-static bootstrap on malformed .livespec.jsonc). Recommended Option A: lenient bootstrap with config_load_status / template_load_status fields."
+    },
+    {
+      "role": "user",
+      "content": "A: lenient bootstrap with config_load_status field (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "N3 settled → A. Moved to N4 (template-exists widening). Recommended Option A: widen to check required prompt files + template.json-declared paths."
+    },
+    {
+      "role": "user",
+      "content": "A: widen template-exists (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "N4 settled → A. Moved to N5 (author identifier form/sanitization). Recommended Option A: slug transformation + preserve original."
+    },
+    {
+      "role": "user",
+      "content": "A: slug transformation + preserve original (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "N5 settled → A. Moved to N6 (topic collision suffix form). Recommended Option A' (always-appended UTC-timestamp)."
+    },
+    {
+      "role": "user",
+      "content": "Clarification: 'Is the suffix always appended or only on conflicts?'"
+    },
+    {
+      "role": "assistant",
+      "summary": "Separated the two axes (format: timestamp vs counter; when: always vs only-on-conflict). Re-presented as A (only on conflict + v013 wording) vs A' (always appended; uniform)."
+    },
+    {
+      "role": "user",
+      "content": "Only on conflict, but use a monotonic number, which starts at `-2`. Can grow to larger than 1 digit with no 0 padding, alphanumeric sorting doesn't matter since that's an extreme edge case."
+    },
+    {
+      "role": "assistant",
+      "summary": "N6 settled (user-supplied): only on conflict; monotonic integer from -2; no zero-padding; alphanumeric sort ordering accepted as extreme edge case; starting at -2 makes the 'second-file-named-X' relationship explicit. Moved to N7 (seed post-step recovery). Reshaped options: Option A-revised uses existing --skip-pre-check flag pair (v010 J10) as the recovery mechanism; reshaped from original options A/B/C by recognizing that the emergency-recovery flag pair already exists for this purpose."
+    },
+    {
+      "role": "user",
+      "content": "A: document recovery via --skip-pre-check (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "N7 settled → A-revised. Moved to N8 (prune-history wording fix). Recommended Option A: update line 1543 to match pre-step flag pair."
+    },
+    {
+      "role": "user",
+      "content": "A: update wording to match flag pair (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "N8 settled → A. Moved to smaller cleanup C1 (residual scripts/_vendor/ paths)."
+    },
+    {
+      "role": "user",
+      "content": "A: sweep-replace at lines 880, 2051, 2501 (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "C1 settled → A. Moved to C2 (sub-command heading parentheticals). Recommended Option A: keep user-facing headings + add one-sentence parenthetical."
+    },
+    {
+      "role": "user",
+      "content": "A: keep headings + add one-sentence parenthetical (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "C2 settled → A. Moved to C3 (template-extension module load failure routing). Recommended Option A: all three modes route through PreconditionError → exit 3."
+    },
+    {
+      "role": "user",
+      "content": "A: all three route to exit 3 via PreconditionError (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "C3 settled → A. All 12 items (N1-N8 + N9 + C1-C3) settled. Interview phase complete. Began dogfood lifecycle apply: wrote revision file at history/v014/proposed_changes/proposal-critique-v13-revision.md."
+    },
+    {
+      "role": "user",
+      "content": "Do very careful passes of the new changes around e2e test to ensure we don't end up with many more rounds of revisions around those edits. Pop back into interview mode if anything is ambiguous or needs decision."
+    },
+    {
+      "role": "assistant",
+      "summary": "Popped back into interview mode for 2 architectural ambiguities on N9: (1) mock executable scope (does mock replace only SDK / LLM layer, or may it also stub wrappers?); (2) pre-merge CI trigger mechanism (merge_group / GitHub merge queue vs pull_request-with-label vs every commit). Settled a third ambiguity (delimiter-comment format) as fully deferred to template-prompt-authoring + end-to-end-integration-test joint resolution per architecture-vs-mechanism discipline (v009 I0)."
+    },
+    {
+      "role": "user",
+      "content": "N9-ambiguity-1 answer: A: mock replaces only the Agent SDK / LLM layer (Recommended)"
+    },
+    {
+      "role": "user",
+      "content": "N9-ambiguity-2 answer: X, but there should also be a job to optionally manually invoke the job at any time on a PR."
+    },
+    {
+      "role": "assistant",
+      "summary": "N9 ambiguities settled. Mock replaces only Agent SDK layer; wrappers always run for real in both tiers. CI triggers for real tier: merge_group (pre-merge via merge queue; requires merge queue enabled in branch-protection settings) + push to master + workflow_dispatch (manual any-branch invocation via GitHub Actions UI). Updated revision file + PROPOSAL.md §\"Testing approach\" with these clarifications. Continued dogfood apply phase: PROPOSAL.md edits (all N1-N9 + C1-C3 applied), python-skill-script-style-requirements.md edits (DoctorContext new fields, validate/finding.py note, canonical target list extended), deferred-items.md edits (widened 5 entries, added 2 new: end-to-end-integration-test and local-bundled-model-e2e)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 1: caught 3 load-bearing fixes: (1) stale v010 J11 'Implementer choice whether finding.schema.json is standalone OR embedded' language in pre-existing static-check-semantics deferred entry (updated to note v014 N2 closure); (2) missing SPECIFICATION directory structure subsection for minimal template (added as §\"SPECIFICATION directory structure (minimal template, v014 N1)\"); (3) DoD #2 cross-ref needed to mention new N3 config_load_status + template_load_status fields."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 2: caught 3 load-bearing fixes: (1) missing tests/e2e/ subtree in PROPOSAL.md's test tree example AND stale test_purity.py reference (purity check replaced by Import-Linter per v012 L15a); fixed both; (2) CLAUDE.md-coverage exclusion rule in style doc needed to widen `fixtures/` subtree exclusion to cover `tests/e2e/fixtures/` per N9; (3) DoD item 13 (same rule in PROPOSAL.md) needed same widening."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 3: caught 1 load-bearing fix: revision file's Outstanding follow-ups section said 'touched 7 existing entries' but only 6 were listed; corrected count."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 4: caught 2 load-bearing fixes (overlapping with dedicated deferred-items-consistency walk): (1) enforcement-check-scripts source line incorrectly claimed widening by N2 and N4, but those items actually affect sibling entries (wrapper-input-schemas and static-check-semantics); updated source line to note sibling effect explicitly; (2) revision file's deferred-items inventory moved `enforcement-check-scripts` from Scope-widened category to Carried-forward-unchanged category with explanatory note; Outstanding follow-ups count updated 6 → 5."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 5: caught 2 load-bearing fixes: (1) duplicate `front-matter-parser` entry in revision file's deferred-items inventory (listed both in Carried-forward and in standalone bullet); removed duplicate; (2) revision file's C3 row cross-reference updated from §\"Template-extension doctor-static check loading\" to the more specific §\"Template-extension doctor-static check loading — failure routing\" (v014 addition following the v011 K5 subsection)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 6: landed no load-bearing fixes. Pass sequence complete (per the 'continue until a pass lands no load-bearing fixes' rule)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Dedicated deferred-items-consistency pass: walked every deferred-items.md entry and verified source-line + body fully reflects every v001-v014 decision. Findings overlapped with pass 4's enforcement-check-scripts source-line correction; walked confirmation identified 0 additional drift. Cumulative total findings across all 6 careful-review passes + 1 deferred-items-consistency pass: 11 inconsistencies caught and fixed (3 + 3 + 1 + 2 + 2 + 0 + 0; deferred-items-consistency findings merged into pass 4's count)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Finalized v014 history: copied PROPOSAL.md to history/v014/PROPOSAL.md byte-identical (verified via diff -q); moved critique from proposed_changes/ to history/v014/proposed_changes/proposal-critique-v13.md; updated history/README.md with v014 entry + Pointer paragraph (now referencing history/v014/PROPOSAL.md); captured this conversation.json."
+    }
+  ]
+}

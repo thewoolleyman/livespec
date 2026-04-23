@@ -29,7 +29,8 @@ Each entry uses this shape:
 ### <id>
 
 - **Source:** <which version surfaced this item, e.g. v002 / v003 /
-  v004 / v005 / v006 / v007 / v008 / v009 / v010 / v011 / v012>
+  v004 / v005 / v006 / v007 / v008 / v009 / v010 / v011 / v012 /
+  v013 / v014>
 - **Target spec file(s):** <repo-root-relative path(s)>
 - **How to resolve:** <one paragraph describing what the eventual
   propose-change must produce>
@@ -39,10 +40,12 @@ Each entry uses this shape:
 
 ### template-prompt-authoring
 
-- **Source:** v001 (carried forward through every version; scope widened in v011 per K5)
+- **Source:** v001 (carried forward through every version; scope widened in v011 per K5; scope widened in v014 per N1 and N9)
 - **Target spec file(s):** `SPECIFICATION/spec.md`,
   `SPECIFICATION/contracts.md` (skill↔template I/O contracts),
-  `specification-templates/livespec/prompts/*.md`
+  `specification-templates/livespec/prompts/*.md`,
+  `specification-templates/minimal/**` (v014 N1 new built-in
+  template)
 - **How to resolve:** Author each template prompt's input/output
   JSON Schemas (in `.claude-plugin/scripts/livespec/schemas/`) and the prompt
   bodies themselves under
@@ -65,6 +68,46 @@ Each entry uses this shape:
   that v010 had as skill-baked "subjective checks"). The
   doctor-subjective prompt MUST Read `../livespec-nlspec-spec.md`
   template-internally.
+
+  **v014 N1 additions** (new `minimal` built-in template):
+  - Author `specification-templates/minimal/template.json` with
+    `template_format_version: 1` and `spec_root: "./"` (repo-root
+    placement).
+  - Author `specification-templates/minimal/prompts/{seed,
+    propose-change,revise,critique}.md` — four REQUIRED prompts;
+    minimal shape (single-file output; no Gherkin scenario
+    conventions; no NLSpec-conformance Read; `minimal` does NOT
+    ship `livespec-nlspec-spec.md` at its template root).
+  - Author `specification-templates/minimal/specification-template/
+    SPECIFICATION.md` — the single starter file.
+  - `doctor_llm_{objective,subjective}_checks_prompt` in
+    minimal's `template.json` MAY be null (OPTIONAL; omitting
+    leaves the LLM-driven doctor phase running only the
+    skill-baked checks).
+
+  **v014 N9 delimiter-comment requirement** (minimal template
+  prompts ONLY):
+  - Each of `prompts/{seed,propose-change,revise,critique}.md`
+    in minimal MUST include **hardcoded delimiter comments** that
+    identify the wrapper invocations the v014 N9 mock harness
+    performs. The real LLM treats these as inert markdown
+    comments (they do not affect natural-language prompt
+    interpretation); the mock parses them as directive contracts
+    and invokes the wrappers deterministically.
+  - The exact format (HTML comment syntax, key=value,
+    JSON-in-comment, etc.) is implementer choice settled JOINTLY
+    with the `end-to-end-integration-test` deferred entry. Both
+    entries MUST agree on a single format.
+  - Format considerations when choosing:
+    - Must be invisible / inert to the real LLM (a comment
+      form the LLM treats as a literal markdown comment).
+    - Must be trivially parseable by the mock (simple regex
+      or structured extraction).
+    - Must accommodate the wrapper-call shapes needed by the
+      happy path + 3 error paths in N9-D4.
+  - The `livespec` template's prompts are NOT required to
+    include delimiter comments — the mock tier doesn't run
+    against the `livespec` template.
 
 ### python-style-doc-into-constraints
 
@@ -90,7 +133,7 @@ Each entry uses this shape:
 
 ### enforcement-check-scripts
 
-- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6)
+- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6; v014 N2 and N4 affect sibling entries — `wrapper-input-schemas` and `static-check-semantics` — not this entry's scope)
 - **Target spec file(s):** `SPECIFICATION/constraints.md` +
   `<repo-root>/dev-tooling/checks/` + `<repo-root>/pyproject.toml`
   (`[tool.importlinter]` section per v012 L15a)
@@ -195,7 +238,7 @@ Each entry uses this shape:
 
 ### task-runner-and-ci-config
 
-- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a; widened v013 per M1, M3, M7, M8)
+- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a; widened v013 per M1, M3, M7, M8; widened v014 per N9)
 - **Target spec file(s):** `<repo-root>/justfile`,
   `<repo-root>/lefthook.yml`,
   `<repo-root>/.github/workflows/ci.yml`,
@@ -324,6 +367,51 @@ Each entry uses this shape:
     per-commit. Livespec-repo-internal enforcement; NOT
     shipped in the `.claude-plugin/` bundle.
 
+  **v014 additions:**
+  - **Two new just targets for E2E integration test (N9).**
+    `just e2e-test-claude-code-mock` — part of `just check`,
+    per-commit cadence. Shared pytest suite; env var
+    `LIVESPEC_E2E_HARNESS=mock` selects the livespec-
+    authored API-compatible pass-through mock at
+    `<repo-root>/tests/e2e/fake_claude.py`.
+    `just e2e-test-claude-code-real` — NOT in `just check`;
+    uses `LIVESPEC_E2E_HARNESS=real` to select the real
+    `claude-agent-sdk`. Requires `ANTHROPIC_API_KEY`.
+    Locally invokable.
+  - **Two new GitHub Actions workflows for the real
+    E2E target (N9-D3):**
+    - `<repo-root>/.github/workflows/e2e-real.yml` (or
+      similar name; implementer choice) triggered by THREE
+      events:
+      - `on: merge_group` — pre-merge check via GitHub
+        merge queue. Requires merge queue enabled in
+        branch-protection settings for the repo.
+      - `on: push` with `branches: [master]` — every
+        master-branch commit (covers merged PRs and
+        direct pushes).
+      - `on: workflow_dispatch` — manual invocation on
+        any branch via the GitHub Actions UI (useful for
+        developers validating a WIP PR before merging).
+    The per-commit CI workflow (existing
+    `ci.yml`) runs `just check` which includes the mock
+    E2E target; no change required to per-commit CI
+    structure.
+  - **`claude-agent-sdk` mise-pin (N9-D5).** `.mise.toml`
+    pins `claude-agent-sdk` as a test-time dev dep (for
+    the real E2E tier). Mise-pinned only; NOT vendored
+    (per the v015 L15b test-dep packaging convention).
+  - **`ANTHROPIC_API_KEY` env var contract.** CI's real
+    E2E workflows mount `ANTHROPIC_API_KEY` from GitHub
+    secrets. The mock E2E target does NOT require the
+    env var. See `end-to-end-integration-test` deferred
+    entry for fixture and assertion details.
+  - **Coverage scope clarification.** `tests/e2e/` is
+    NOT subject to the 100% line+branch coverage mandate
+    (existing rule already excludes `tests/`). The mock
+    executable at `tests/e2e/fake_claude.py` is test
+    infrastructure, not shipped Python; existing
+    coverage carve-out for `tests/` applies.
+
 ### static-check-semantics
 
 - **Source:** v007 (renamed in v008 from `ast-check-semantics`;
@@ -331,7 +419,8 @@ Each entry uses this shape:
   I1, I4, I5, I7, I10, I3; scope widened in v010 per J4, J5, J7,
   J10, J11, J14; scope widened in v011 per K3, K4, K5, K10;
   scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a;
-  scope widened in v013 per M1, M4, M5, M6, M7)
+  scope widened in v013 per M1, M4, M5, M6, M7; scope widened in
+  v014 per N2, N3, N4, N5, N6, C3)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -476,18 +565,21 @@ Each entry uses this shape:
     BOTH flags (supersedes v009 I14's "rejects
     `--skip-pre-check`" — now rejects both).
   - **`check-schema-dataclass-pairing` walker scope**
-    (v010 J11; widened to three-way in v013 M6): walks
-    `.claude-plugin/scripts/livespec/schemas/*.schema.json`,
+    (v010 J11; widened to three-way in v013 M6; v014 N2
+    closes the implementer-choice on `finding.schema.json`):
+    walks `.claude-plugin/scripts/livespec/schemas/*.schema.json`,
     `.claude-plugin/scripts/livespec/schemas/dataclasses/*.py`,
     AND `.claude-plugin/scripts/livespec/validate/*.py`.
     `Finding` moved from `doctor/finding.py` to
     `schemas/dataclasses/finding.py` so both `Finding` and
-    `DoctorFindings` live in the pairing-walked tree.
-    Implementer choice whether `finding.schema.json` is a
-    standalone schema OR the `Finding` shape is embedded as
-    the `items` schema of `doctor_findings.schema.json`'s
-    `findings` array (either is acceptable; check must pass
-    either way).
+    `DoctorFindings` live in the pairing-walked tree. **Per
+    v014 N2, `finding.schema.json` is REQUIRED as a standalone
+    schema; the v010 J11 implementer-choice language
+    ("standalone schema OR embedded as items of
+    doctor_findings.schema.json's findings array") is CLOSED.
+    Standalone is the single v1 form.** Paired validator at
+    `validate/finding.py` is likewise REQUIRED. Three-way
+    symmetry is uniform; no by-name exemption for `Finding`.
   - **`prune-history` already-pruned precondition**
     (v010 J14): `prune-history` detects the
     "oldest-surviving-is-already-`PRUNED_HISTORY.json`"
@@ -711,6 +803,165 @@ Each entry uses this shape:
     style doc) are enforced. Configuration tuning (root
     packages, includes/excludes) is implementer choice during
     the `enforcement-check-scripts` deferred entry's resolution.
+  - **`check-schema-dataclass-pairing` v014 N2 tightening:**
+    the v010 J11 implementer-choice language — "Implementer
+    choice whether `finding.schema.json` is a standalone
+    schema OR the `Finding` shape is embedded as the `items`
+    schema of `doctor_findings.schema.json`'s `findings` array
+    (either is acceptable; check must pass either way)" — is
+    CLOSED in v014 N2. Standalone `finding.schema.json` is
+    REQUIRED in v1. The three-way pairing check's symmetry
+    stays strict: every dataclass pairs with a schema AND a
+    validator; `finding.py` is no exception. The `Finding`
+    dataclass at `schemas/dataclasses/finding.py`, the schema
+    at `schemas/finding.schema.json`, and the validator at
+    `validate/finding.py` all pair together. Closes the
+    malformation between J11's implementer choice and M6's
+    strict three-way symmetry.
+  - **Orchestrator bootstrap lenience** (v014 N3):
+    `bin/doctor_static.py` MUST construct `DoctorContext` with
+    best-effort defaults when `.livespec.jsonc` is absent,
+    malformed, or schema-invalid. `DoctorContext` (see style
+    doc §"Context dataclasses") carries two status fields:
+    - `config_load_status: Literal["ok", "absent", "malformed",
+      "schema_invalid"]`.
+    - `template_load_status: Literal["ok", "absent",
+      "malformed", "schema_invalid"]`.
+    Semantics:
+    - `"ok"`: file parsed and schema-validated successfully;
+      corresponding check emits pass Finding.
+    - `"absent"`: file not found at expected path; corresponding
+      check emits skipped Finding with message noting the
+      fallback to defaults.
+    - `"malformed"`: file found but JSONC parse failed;
+      corresponding check emits fail Finding citing the parse
+      error (line, column, offending token if available). For
+      `.livespec.jsonc`, the orchestrator falls back to
+      `LivespecConfig` defaults. For `template.json`, the
+      orchestrator falls back to `TemplateConfig` defaults.
+    - `"schema_invalid"`: file parsed but schema validation
+      failed; corresponding check emits fail Finding citing the
+      failing schema path and offending field value. The
+      orchestrator falls back to best-effort-partial-parse
+      values (fields that validated individually populate;
+      others fall to defaults).
+    The K10 fail-Finding discipline applies uniformly: the
+    `livespec-jsonc-valid` and `template-exists` checks map
+    domain-meaningful failures to fail Findings, NOT
+    `IOFailure(err)`; `bin/doctor_static.py`'s "never emits
+    exit 4" invariant is preserved. The lenient bootstrap
+    discipline is doctor-static-only; non-doctor wrappers
+    continue to fail-fast on malformed `.livespec.jsonc` (exit
+    3 via `PreconditionError`).
+  - **`template-exists` widening** (v014 N4): the check's
+    existing layout-presence verification (`template.json`,
+    `prompts/`, `specification-template/`) plus
+    `template_format_version` matching is EXTENDED to verify:
+    - All four REQUIRED prompt files exist as files under
+      `prompts/`: `seed.md`, `propose-change.md`, `revise.md`,
+      `critique.md`.
+    - When `template.json` declares
+      `doctor_llm_objective_checks_prompt` or
+      `doctor_llm_subjective_checks_prompt` as non-null, the
+      declared path (resolved relative to the template root)
+      exists as a file.
+    - When `template.json` declares non-empty
+      `doctor_static_check_modules`, each listed path exists
+      as a file at the template-root-relative path. (Deeper
+      module-load validity — module-loads-cleanly and exports
+      `TEMPLATE_CHECKS` — is checked at doctor-static
+      orchestrator load-time per the C3 routing below.)
+    Every missing-file case emits a fail Finding citing the
+    offending `template.json` field (or "REQUIRED prompt
+    file"), its value, and the resolved template path.
+  - **Author identifier → filename slug transformation**
+    (v014 N5): the unified author-resolution precedence
+    (CLI `--author` → env var `LIVESPEC_AUTHOR_LLM` → LLM
+    self-declared `author` field → `"unknown-llm"` fallback)
+    produces an UNCONSTRAINED string (no schema pattern or
+    runtime validator applies at the author-field level).
+    When the resolved value is used as a filename component
+    (the `<resolved-author>-critique.md` topic suffix in
+    `critique`; similar positions in future invocations), the
+    wrapper transforms the value via this rule:
+    1. lowercase.
+    2. replace every run of one or more non-[a-z0-9]
+       characters with a single hyphen.
+    3. strip leading and trailing hyphens.
+    4. truncate to 64 characters.
+    5. if the result is empty (pathological case: the input
+       contained only non-[a-z0-9] characters), fall back to
+       the literal `"unknown-llm"`.
+    The slug form is used as the filename component; the
+    ORIGINAL un-slugged value is preserved in the YAML
+    front-matter `author` / `author_human` / `author_llm`
+    fields for audit-trail fidelity. The rule matches the GFM
+    slug algorithm already used by
+    `anchor-reference-resolution`, preserving monotonicity
+    across livespec's slug conventions. Applies uniformly
+    across `propose-change`, `critique`, and `revise`.
+  - **Collision-suffix semantics** (v014 N6): when
+    `propose-change` or `critique` would write a file at a
+    topic whose filename already exists, the wrapper
+    auto-disambiguates by appending a hyphen-separated
+    monotonic integer suffix **starting at `2`**:
+    - First write at topic `foo`: `foo.md` (no suffix).
+    - First collision: `foo-2.md`.
+    - Second collision: `foo-3.md`.
+    - Nth collision: `foo-<N+1>.md` (no zero-padding).
+    Determination: the wrapper enumerates files named
+    `<topic>.md` and `<topic>-<N>.md` in the target directory;
+    picks the lowest integer ≥ 2 such that no file with that
+    suffix exists. Race: livespec is single-process; no lock
+    needed. Alphanumeric sort misordering past 9 duplicates
+    (e.g., `foo-10.md` sorts before `foo-2.md` lexically) is
+    accepted as an extreme edge case; `revise`'s per-file
+    processing already uses `created_at` YAML front-matter as
+    the primary ordering, with lexicographic filename as
+    tie-breaker only. Scope: this convention applies to
+    `propose-change` and `critique` filenames only. The
+    `out-of-band-edit-<UTC-seconds>.md` filename form used by
+    `doctor-out-of-band-edits` is a SEPARATE always-appended
+    UTC-timestamp convention (each backfill is a distinct
+    timed event); the two conventions are not unified.
+  - **Template-extension doctor-static check loading —
+    failure routing** (v014 C3): after the `template-exists`
+    widening (v014 N4) catches missing-file at static-check
+    time, three remaining failure modes during
+    `importlib.util.spec_from_file_location(...)` +
+    `module_from_spec(...)` + `loader.exec_module(...)` in
+    `livespec/doctor/run_static.py` route as follows:
+    - **Syntax error** in the extension module (the file
+      exists but contains malformed Python): wrapped as
+      `IOFailure(PreconditionError)` → exit 3 with error
+      message citing the template path, extension module
+      path, and the `SyntaxError` location (line, offset,
+      message).
+    - **Import error** (the extension module's own imports
+      fail, e.g., it imports a package the user's system
+      lacks): `IOFailure(PreconditionError)` → exit 3 with
+      error message citing the template path, extension
+      module path, and the `ImportError` target (module
+      name attempted).
+    - **Missing `TEMPLATE_CHECKS` export** (the module loads
+      cleanly but does not define or exports the required
+      symbol): `IOFailure(PreconditionError)` → exit 3 with
+      error message citing the template path, extension
+      module path, and the expected export shape
+      (`TEMPLATE_CHECKS: list[tuple[str, CheckRunFn]]`).
+    All three route through the domain-error track because
+    from livespec's I/O-boundary perspective, an extension
+    author's malformed module is a domain-meaningful failure
+    (fixing the extension resolves it; a retry would succeed).
+    Bug-class exit 1 remains reserved for livespec's own
+    uncaught exceptions via the supervisor bug-catcher.
+    Implementation: the `importlib.util` calls are wrapped
+    with `@impure_safe(exceptions=(SyntaxError, ImportError,
+    AttributeError))` at the `livespec/io/` boundary (the
+    extension-loader helper lives in `livespec/io/` per the
+    purity/impure split); the exception-type-to-
+    `PreconditionError`-message-form mapping lives in
+    `livespec/doctor/run_static.py`'s extension-loader path.
 
 ### returns-pyright-plugin-disposition
 
@@ -798,7 +1049,7 @@ Each entry uses this shape:
 
 ### skill-md-prose-authoring
 
-- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4)
+- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4; widened v014 per N1 and N7)
 - **Target spec file(s):**
   `.claude-plugin/skills/<sub-command>/SKILL.md` (one per
   sub-command: `seed`, `propose-change`, `critique`, `revise`,
@@ -870,9 +1121,58 @@ Each entry uses this shape:
   them) as additional Read-then-invoke steps during the LLM-
   driven phases.
 
+  **v014 additions:**
+  - **Seed pre-seed template-choice dialogue** (v014 N1).
+    Seed's SKILL.md prose (`seed/SKILL.md` body Steps
+    section) MUST handle the pre-seed state specially:
+    BEFORE invoking `bin/resolve_template.py`, check
+    whether `.livespec.jsonc` exists at the project root.
+    If absent, prompt the user in dialogue for template
+    choice with these options:
+    - `livespec` (default, multi-file SPECIFICATION/ layout
+      with `spec.md` + `contracts.md` + `constraints.md` +
+      `scenarios.md`). Recommended.
+    - `minimal` (single-file `SPECIFICATION.md` at repo
+      root; smaller initial surface).
+    - custom path (user provides a relative-path-to-
+      template-directory; the chosen path must contain a
+      valid `template.json`).
+    After the user selects, seed uses the chosen template's
+    `prompts/seed.md` for content generation and writes
+    `.livespec.jsonc` at the end of the seed flow with
+    `template: "<chosen-value>"`. When `.livespec.jsonc` IS
+    present, seed invokes `bin/resolve_template.py` like
+    any other sub-command (no dialogue). Only seed's
+    SKILL.md prose has this special-case; every non-seed
+    sub-command's SKILL.md invokes `bin/resolve_template.py`
+    normally.
+  - **Seed post-step-failure recovery narration** (v014 N7).
+    Seed's SKILL.md prose (`seed/SKILL.md` body Failure
+    handling section, exit-3 row) MUST surface the
+    recovery path concretely when post-step doctor-static
+    emits fail Findings:
+    > On exit 3 after seed's sub-command logic completed
+    > (post-step fail): the specification and history
+    > files are on disk but doctor-static rejected them.
+    > To correct WITHOUT re-seeding (seed's idempotency
+    > blocks re-seed):
+    >
+    > 1. Review the fail Findings surfaced in stderr /
+    >    skill-prose narration.
+    > 2. Run `/livespec:propose-change --skip-pre-check
+    >    <topic> "<fix description>"` to file a fix
+    >    proposal. `--skip-pre-check` bypasses the
+    >    pre-step that would trip the same findings.
+    > 3. Run `/livespec:revise --skip-pre-check` to cut
+    >    `v002` with the corrections.
+    No new flags are introduced for this recovery; the
+    existing `--skip-pre-check` / `--run-pre-check` flag
+    pair (v010 J10) was designed for exactly this emergency-
+    recovery case.
+
 ### wrapper-input-schemas
 
-- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8; widened v013 per M6)
+- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8; widened v013 per M6; widened v014 per N2 and N5)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/schemas/proposal_findings.schema.json`
   (renamed from `critique_findings.schema.json`),
@@ -958,6 +1258,34 @@ Each entry uses this shape:
   validator drift (missing validator file, rename, stale
   signature) symmetrically with dataclass drift.
 
+  **v014 additions:**
+  - **`finding.schema.json` REQUIRED as standalone schema**
+    (v014 N2). Added to the target-spec-file list:
+    `<bundle>/scripts/livespec/schemas/finding.schema.json`
+    paired with `schemas/dataclasses/finding.py` (existing)
+    AND `validate/finding.py` (NEW). Fields: `check_id`,
+    `status` (one of `pass`/`fail`/`skipped`), `message`,
+    `path`, `line`. The `Finding` dataclass (paired) uses
+    the v012 L4 strict triple and v012 L8 NewType aliases
+    (`check_id: CheckId`). The paired validator `validate/
+    finding.py` returns `Result[Finding, ValidationError]`.
+    `check-schema-dataclass-pairing`'s three-way walker
+    enforces drift-free pairing (v014 N2 closes the v010
+    J11 implementer-choice between standalone and
+    embedded; standalone is now REQUIRED).
+  - **Author field unconstrained** (v014 N5 note). The
+    optional file-level `author` field in
+    `proposal_findings.schema.json` and
+    `revise_input.schema.json` accepts unconstrained
+    strings (no `pattern` constraint beyond type). The
+    v014 N5 author→slug transformation applies
+    post-validation at the wrapper layer (see
+    `static-check-semantics` §"Author identifier →
+    filename slug transformation"). This separation keeps
+    the schema-validation layer simple and the slug rule
+    application consistent across `propose-change`,
+    `critique`, and `revise` wrappers.
+
 ### user-hosted-custom-templates
 
 - **Source:** v010 (J3; new)
@@ -969,8 +1297,9 @@ Each entry uses this shape:
 - **How to resolve:** Codify in v2 scope (post-v1) that
   `bin/resolve_template.py` is the extensibility seam for
   future template-discovery mechanisms. v1 accepts only built-in
-  names (`"livespec"`) or project-root-relative directory paths
-  for `.livespec.jsonc`'s `template` field. v2+ may extend the
+  names (`"livespec"` or `"minimal"` per v014 N1) or
+  project-root-relative directory paths for `.livespec.jsonc`'s
+  `template` field. v2+ may extend the
   resolution algorithm to support additional sources without
   breaking the wrapper's output contract (stdout = resolved
   absolute template directory path; exit 0 on success; exit 3
@@ -991,3 +1320,154 @@ Each entry uses this shape:
   extensions land as additive functionality. The
   `template-exists` doctor check continues to validate the
   resolved path regardless of its source.
+
+### end-to-end-integration-test
+
+- **Source:** v014 (N9; new)
+- **Target spec file(s):**
+  - `<repo-root>/tests/e2e/` — fixture tree, mock executable,
+    pytest suite.
+  - `<repo-root>/justfile` — two new recipes:
+    `e2e-test-claude-code-mock` (in `just check`) and
+    `e2e-test-claude-code-real` (NOT in `just check`).
+  - `<repo-root>/.github/workflows/e2e-real.yml` (or
+    equivalent name; implementer choice) — real-tier CI
+    workflow with three triggers: `merge_group`, `push` to
+    `master`, `workflow_dispatch`.
+  - `<repo-root>/.mise.toml` — mise-pin `claude-agent-sdk`.
+  - `<repo-root>/pyproject.toml` — if needed for pytest
+    configuration of the E2E suite (e.g., a `[tool.pytest.ini_options]`
+    marker for E2E tests).
+- **How to resolve:** Author the full E2E integration test
+  surface per PROPOSAL.md §"Testing approach — End-to-end
+  harness-level integration test":
+
+  **Fixture tree** at `<repo-root>/tests/e2e/fixtures/`:
+  - A `minimal`-template-shaped fresh-project fixture:
+    empty repo root, no `.livespec.jsonc`, no
+    `SPECIFICATION.md`. The E2E test copies this into
+    `tmp_path`, initializes a git repo there, and drives
+    the sub-commands.
+  - Pre-seeded fixtures for the three error-path tests (N9
+    D4-b): (a) for retry-on-exit-4 — a fixture that triggers
+    a schema-invalid LLM payload in the mock tier via a
+    specific delimiter comment directive (real tier relies
+    on LLM nondeterminism to occasionally trigger); (b) for
+    doctor-static fail-then-fix — a pre-seeded
+    `SPECIFICATION.md` containing a mixed-case `Must` (trips
+    `bcp14-keyword-wellformedness`); (c) for prune-history
+    no-op — a pre-seeded tree with only `v001` in history.
+
+  **Mock executable** at `<repo-root>/tests/e2e/
+  fake_claude.py`:
+  - API-compatible with the subset of `claude-agent-sdk`'s
+    query interface livespec uses (`query(...)` returning
+    an async iterator of SDK message types; `ClaudeAgentOptions`;
+    plugin loading via `plugins=[{"type": "local", "path":
+    "..."}]`).
+  - Reads the `minimal` template's prompts; extracts
+    hardcoded delimiter-comment directives identifying
+    wrapper invocations; invokes `bin/<cmd>.py` wrappers
+    for real (mock does NOT stub wrappers); synthesizes
+    SDK-compatible message objects for the test to assert on.
+  - The delimiter-comment format is set JOINTLY with the
+    `template-prompt-authoring` deferred entry (which
+    authors the prompts that carry the delimiters). Both
+    entries MUST agree on a single format. Format
+    considerations: inert to the real LLM (markdown comment
+    form); trivially parseable; accommodates the wrapper-
+    call shapes needed by happy path + 3 error paths.
+  - Hard-fails (raises a test-harness error) if delimiter
+    comments in minimal's prompts are missing or malformed.
+  - Mock scope: replaces ONLY the Claude Agent SDK / LLM
+    layer. Wrappers always run for real. Doctor-static's
+    LLM-driven phase is handled by the mock (LLM-driven by
+    construction); doctor-static's Python phase runs for
+    real.
+
+  **Pytest suite** at `<repo-root>/tests/e2e/test_*.py`:
+  - Parameterized on `LIVESPEC_E2E_HARNESS=mock|real` (env
+    var read by a session-scoped fixture that selects
+    between `fake_claude` and `claude_agent_sdk`).
+  - Happy path test: `test_happy_path_minimal` — runs
+    `/livespec:seed` → `propose-change` → `critique` →
+    `revise` → `doctor` → `prune-history` in sequence;
+    asserts on filesystem state at each step (files
+    exist/don't exist; schemas valid; exit codes correct).
+  - Error-path tests:
+    - `test_retry_on_exit_4` — triggers schema-invalid
+      payload; verifies sub-command succeeds within 3
+      attempts.
+    - `test_doctor_fail_then_fix` — pre-seed malformed
+      state; run doctor → verify fail Finding; apply fix
+      via propose-change --skip-pre-check + revise
+      --skip-pre-check; verify post-revise doctor-static
+      passes.
+    - `test_prune_history_noop` — v001-only state; verify
+      skipped Finding; verify filesystem unchanged.
+
+  **CI workflows** at `<repo-root>/.github/workflows/`:
+  - `e2e-real.yml` (or equivalent) triggered by
+    `on: merge_group` + `on: push` with
+    `branches: [master]` + `on: workflow_dispatch`.
+    Workflow steps: `mise install` → `just bootstrap` →
+    `just e2e-test-claude-code-real` (env:
+    `ANTHROPIC_API_KEY` mounted from GitHub secrets).
+  - Per-commit CI (`ci.yml`) already runs `just check`
+    which includes `just e2e-test-claude-code-mock`; no
+    change to per-commit CI structure needed.
+
+  **Rate-limiting / retry behavior.** Real tier uses the
+  SDK's default retry-on-transient-error behavior; the test
+  treats persistent API failures as hard failures (no custom
+  retry wrapper). Implementer may add a single at-test-
+  fixture-level retry if flakiness becomes operationally
+  problematic; not codified in v014.
+
+  **Coverage scope.** `tests/e2e/` is NOT subject to the
+  100% line+branch coverage mandate (existing rule already
+  excludes `tests/`). The mock executable at
+  `tests/e2e/fake_claude.py` is test infrastructure; no
+  coverage requirement applies to it.
+
+### local-bundled-model-e2e
+
+- **Source:** v014 (N9-D1 future-scope; new)
+- **Target spec file(s):**
+  - `<repo-root>/.github/workflows/` — modifications to
+    remove the `ANTHROPIC_API_KEY` dependency.
+  - `<repo-root>/.mise.toml` — potentially new pins for the
+    chosen local-model tooling (e.g., `ollama`, `llama-cpp`).
+  - Possibly `<repo-root>/tests/e2e/` — a third harness mode
+    (`LIVESPEC_E2E_HARNESS=local`) selecting a local-model-
+    backed Claude-Code-API-compatible wrapper.
+- **How to resolve:** Investigate replacing the
+  `ANTHROPIC_API_KEY`-dependent real E2E tier with a
+  local/bundled-model setup that preserves mock↔real parity.
+  Candidate approaches:
+  - **Ollama + small coding model** (e.g., qwen2.5-coder,
+    code-llama). Pros: single binary to install; simple
+    integration. Cons: model weights ~2-8 GB; CI startup
+    overhead; model-quality ceiling lower than Anthropic's
+    frontier models (may produce prompt-authoring-level
+    regressions that a Sonnet/Opus would catch).
+  - **llama.cpp + GGUF model** bundled or fetched at
+    CI-start. Pros: portable, self-contained. Cons: CI
+    bandwidth to fetch weights; model-quality ceiling.
+  - **MLX + small model on Apple Silicon CI** (if available
+    at GitHub Actions' macOS runners). Pros: potentially
+    fastest on Apple hardware. Cons: Linux runners can't
+    use it; requires dual CI path.
+
+  Evaluate whether a local-model-backed E2E tier actually
+  exercises the same coverage as a live-LLM tier (e.g.,
+  does the local model produce JSON payloads that stress
+  the wrapper's schema-validation retry loop the same way?).
+  If parity is sufficient, replace the real tier. If not,
+  add `local` as a third tier and keep `real` available for
+  release-gate or on-demand invocation.
+
+  Scope: v2+. v014 preserves the live-Anthropic-API contract
+  for the `real` tier; this entry captures the follow-up
+  option to eliminate the API-key CI dependency without
+  sacrificing harness-level integration coverage.

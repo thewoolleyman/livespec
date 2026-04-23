@@ -1094,8 +1094,181 @@ entries keep their original naming (immutable history).
   Full decision record is in
   `v013/proposed_changes/proposal-critique-v12-revision.md`.
 
+- **v014** — revise driven by
+  `proposed_changes/proposal-critique-v13.md` and its
+  revision. A **recreatability-and-integration-gap cleanup
+  pass** surfacing 11 items (N1-N8 major/significant +
+  C1-C3 smaller cleanup) plus one new item N9 added
+  mid-interview after N1's resolution surfaced the need for
+  an end-to-end integration test. Each item labelled with
+  the NLSpec failure-mode framework (ambiguity /
+  malformation / incompleteness / incorrectness). Two items
+  moved from recommended to alternate option based on user
+  input: N6 (monotonic counter from `-2` instead of
+  always-appended UTC-timestamp) and N9-D1 (live-LLM always
+  for real tier + deterministic API-compatible pass-through
+  mock; no stub/replay blending). Two items were reshaped
+  mid-interview: N1 (originally narrow resolve_template
+  contradiction; reshaped to bring `minimal` template into
+  v1 scope + seed SKILL.md pre-seed dialogue) and N7
+  (original three recovery options refined during apply
+  phase to reuse existing `--skip-pre-check` flag pair).
+  One new item (N9) was added mid-interview. Major
+  structural changes:
+  **`minimal` template added as second built-in** — N1:
+  single-file `SPECIFICATION.md` at repo root
+  (`spec_root: "./"`); four required prompts + starter
+  `SPECIFICATION.md`; `.claude-plugin/
+  specification-templates/minimal/` layout codified in
+  PROPOSAL.md. Seed's SKILL.md prose prompts the user for
+  template choice in dialogue when `.livespec.jsonc` is
+  absent (pre-seed); writes config with chosen template at
+  end of seed flow. `resolve_template.py` keeps its strict
+  exit-3-on-missing contract for non-seed sub-commands.
+  **End-to-end harness-level integration test** — N9:
+  `minimal` template is the canonical E2E fixture shape.
+  Two `just` targets share the same pytest suite with env
+  var `LIVESPEC_E2E_HARNESS=mock|real` selecting the
+  executable. `just e2e-test-claude-code-mock` (in
+  `just check`; per-commit): livespec-authored API-
+  compatible pass-through mock at `<repo-root>/tests/e2e/
+  fake_claude.py` reads `minimal`'s prompts with
+  hardcoded delimiter comments and invokes wrappers
+  deterministically. `just e2e-test-claude-code-real`
+  (NOT in `just check`): real `claude-agent-sdk` against
+  live Anthropic API via `ANTHROPIC_API_KEY`. CI triggers
+  for real tier: `merge_group` (pre-merge via GitHub merge
+  queue), `push` to `master` (every master commit),
+  `workflow_dispatch` (manual any-branch invocation).
+  Mock scope: replaces ONLY the Claude Agent SDK / LLM
+  layer (wrappers always run for real). Coverage: happy
+  path (seed → propose-change → critique → revise →
+  doctor → prune-history) plus three error paths (retry-
+  on-exit-4; doctor fail-then-fix; prune-history no-op).
+  **`finding.schema.json` + `validate/finding.py`
+  REQUIRED** — N2: the v010 J11 implementer-choice between
+  standalone-schema and embedded-in-doctor_findings is
+  CLOSED; standalone required. Three-way
+  `check-schema-dataclass-pairing` symmetry holds strictly
+  without a by-name exemption.
+  **Doctor-static orchestrator bootstrap lenience** — N3:
+  `DoctorContext` gains `config_load_status` and
+  `template_load_status` Literal fields; orchestrator
+  builds context with best-effort defaults on malformed /
+  absent `.livespec.jsonc` or `template.json`;
+  `livespec-jsonc-valid` and `template-exists` emit fail
+  Findings (preserving K10 fail-Finding discipline)
+  rather than aborting without findings.
+  **`template-exists` widening** — N4: the check now also
+  verifies the four REQUIRED prompt files exist under
+  `prompts/` AND any `template.json`-declared
+  `doctor_llm_*_checks_prompt` paths AND all
+  `doctor_static_check_modules` paths exist.
+  **Author identifier → filename slug transformation** —
+  N5: wrapper transforms resolved `author` value via GFM
+  slug algorithm (lowercase; non-[a-z0-9] → hyphen;
+  trim/collapse/truncate-64; empty fallback to
+  `"unknown-llm"`) for use as filename component; original
+  un-slugged value preserved in YAML front-matter for
+  audit. Applies uniformly across propose-change,
+  critique, revise.
+  **Topic collision disambiguation codified** — N6:
+  monotonic integer suffix starting at `-2`; no
+  zero-padding; only on conflict (not always-appended);
+  scope: propose-change and critique filenames only
+  (out-of-band-edit-* uses separate UTC-timestamp
+  convention).
+  **Seed post-step-failure recovery path** — N7: documents
+  existing `--skip-pre-check` reuse as the recovery
+  mechanism (propose-change --skip-pre-check + revise
+  --skip-pre-check); no new flags; seed idempotency stays
+  strict.
+  **prune-history wording fix** — N8: line 1543 updated
+  from "Accepts no arguments in v1" to explicit listing of
+  the mutually-exclusive `--skip-pre-check` /
+  `--run-pre-check` flag pair per §"Pre-step skip control".
+  **Template-extension module load failure routing** — C3:
+  syntax error / import error / missing `TEMPLATE_CHECKS`
+  export all route through `IOFailure(PreconditionError)`
+  → exit 3 at livespec's I/O boundary; preserves domain-
+  error/bug split; bug-class exit 1 reserved for livespec's
+  own code.
+  **Smaller cleanups:** C1 (sweep-replace residual short-
+  form `scripts/_vendor/` → `.claude-plugin/scripts/_vendor/`
+  at PROPOSAL.md lines 880, 2051, 2501); C2 (one-sentence
+  parentheticals on seed / propose-change / revise
+  sub-command headings explicitly noting LLM-vs-wrapper
+  split).
+  **Deferred-items updates:** 5 existing entries
+  scope-widened (`template-prompt-authoring`,
+  `static-check-semantics`, `task-runner-and-ci-config`,
+  `skill-md-prose-authoring`, `wrapper-input-schemas`);
+  `enforcement-check-scripts` was initially included but
+  reclassified to carried-forward-unchanged during the
+  dedicated deferred-items-consistency pass (N2 and N4
+  affect sibling entries, not enforcement-check-scripts's
+  scope). 2 new entries added:
+  `end-to-end-integration-test` (v014 N9) and
+  `local-bundled-model-e2e` (v014 N9-D1; v2+ future
+  scope to eliminate the `ANTHROPIC_API_KEY` CI
+  dependency). 0 entries removed.
+  **Careful-review pass (first)** caught 3 load-bearing
+  fixes: stale v010 J11 implementer-choice language inside
+  the pre-existing static-check-semantics deferred entry
+  (updated to note v014 N2 closure); missing SPECIFICATION
+  directory structure section for minimal template
+  (added); DoctorContext cross-ref in DoD needed to
+  mention new N3 fields.
+  **Careful-review pass (second)** caught 3 load-bearing
+  fixes: missing `tests/e2e/` subtree in PROPOSAL.md's test
+  tree example (added) plus stale `test_purity.py`
+  reference (replaced by Import-Linter per v012 L15a);
+  CLAUDE.md-coverage exclusion rule needed to widen
+  `fixtures/` subtree-exclusion to cover `tests/e2e/
+  fixtures/` per N9 (updated in both style doc and
+  PROPOSAL.md DoD).
+  **Careful-review pass (third)** caught 1 load-bearing
+  fix: revision file "Outstanding follow-ups" said
+  "touched 7 existing entries" but only 6 were listed;
+  corrected to 6.
+  **Careful-review pass (fourth)** caught 2 load-bearing
+  fixes (overlapping with the dedicated deferred-items-
+  consistency pass): `enforcement-check-scripts` source
+  line incorrectly claimed v014 N2/N4 widening but those
+  items affect sibling entries (`wrapper-input-schemas`
+  and `static-check-semantics`); revision file's
+  deferred-items inventory moved `enforcement-check-
+  scripts` from Scope-widened to Carried-forward-unchanged
+  category with explanatory note; Outstanding follow-ups
+  count updated from 6 to 5.
+  **Careful-review pass (fifth)** caught 2 load-bearing
+  fixes: duplicate `front-matter-parser` entry in the
+  revision file's deferred-items inventory removed;
+  revision file's C3 row cross-ref updated from §"Template-
+  extension doctor-static check loading" to the more
+  specific §"Template-extension doctor-static check
+  loading — failure routing" (v014 addition following the
+  v011 K5 subsection).
+  **Careful-review pass (sixth)** landed no load-bearing
+  fixes (pass 6 was intentionally the final pass per the
+  "continue until pass lands no load-bearing fixes" rule).
+  **Dedicated deferred-items-consistency pass** walked
+  every deferred-items entry and verified source line +
+  body fully reflects every decision across every prior
+  version. Findings overlapped with pass 4 (the
+  enforcement-check-scripts source-line correction);
+  walked confirmation identified 0 additional drift
+  beyond those already caught.
+  **Cumulative total findings across all 6 careful-review
+  passes + 1 deferred-items-consistency pass: 11
+  inconsistencies caught and fixed (3 + 3 + 1 + 2 + 2 +
+  0 + 0; deferred-items-consistency findings merged into
+  pass 4's count).**
+  Full decision record is in
+  `v014/proposed_changes/proposal-critique-v13-revision.md`.
+
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v013/PROPOSAL.md` until the next revise.
+byte-identical to `history/v014/PROPOSAL.md` until the next revise.

@@ -272,7 +272,12 @@ Per sub-package conventions:
   schema at `schemas/*.schema.json` MUST have a paired validator
   at `validate/<name>.py` in addition to its paired dataclass
   (v013 M6); three-way drift is caught by
-  `check-schema-dataclass-pairing`.**
+  `check-schema-dataclass-pairing`.** Per v014 N2, this includes
+  `validate/finding.py` paired with `schemas/finding.schema.json`
+  and `schemas/dataclasses/finding.py` — the v010 J11 implementer
+  choice (standalone-vs-embedded `finding.schema.json`) is closed
+  in favor of standalone, so the three-way symmetry holds without
+  a by-name exemption.
 - **`schemas/`** — JSON Schema Draft-7 files plus the
   `dataclasses/` subdirectory that holds the paired hand-authored
   dataclasses. Filename matches the dataclass: `LivespecConfig` →
@@ -326,6 +331,7 @@ fields use NewType aliases from `livespec/types.py`.
 ```python
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from livespec.types import Author, RunId, SpecRoot, TopicSlug
 
@@ -334,7 +340,9 @@ class DoctorContext:
     project_root: Path          # repo root containing the spec tree
     spec_root: SpecRoot         # resolved template.json spec_root (default: Path("SPECIFICATION/"))
     config: LivespecConfig      # parsed .livespec.jsonc (dataclass; see validate/livespec_config.py)
+    config_load_status: Literal["ok", "absent", "malformed", "schema_invalid"]  # v014 N3: bootstrap-lenience status for livespec-jsonc-valid check
     template_root: Path         # resolved template directory (built-in path or custom)
+    template_load_status: Literal["ok", "absent", "malformed", "schema_invalid"]  # v014 N3: bootstrap-lenience status for template-exists check
     run_id: RunId               # uuid4 string bound at wrapper startup
     git_head_available: bool    # false when not a git repo or no HEAD commit
 
@@ -1680,6 +1688,13 @@ specific native code works). No Windows support.
 | `just check-tools` | Verify every mise-pinned tool is installed at the pinned version. |
 | `just check-tests` | `pytest`. |
 | `just check-coverage` | `pytest --cov` with 100% line+branch threshold. |
+| `just e2e-test-claude-code-mock` | v014 N9: E2E integration test against the `minimal` template via the livespec-authored mock at `<repo-root>/tests/e2e/fake_claude.py`. Deterministic; mock replaces only the Claude Agent SDK / LLM layer (wrappers always run for real). Part of `just check`. |
+
+Alternate-cadence targets (NOT in `just check`):
+
+| Target | Purpose |
+|---|---|
+| `just e2e-test-claude-code-real` | v014 N9: E2E integration test against the `minimal` template via the real `claude-agent-sdk`. Requires `ANTHROPIC_API_KEY`. Shared pytest suite with the mock target; env var `LIVESPEC_E2E_HARNESS=mock\|real` selects the executable. CI triggers: `merge_group` (pre-merge via merge queue), `push` to `master` (every master commit), `workflow_dispatch` (manual). Locally invokable. |
 
 Release-gate targets (run on release-tag CI workflow only; NOT
 included in `just check`; NOT run per-commit):
@@ -1720,15 +1735,19 @@ Every directory under:
 - `.claude-plugin/scripts/` (with the entire `_vendor/` subtree
   explicitly excluded), AND
 - `<repo-root>/tests/` (with the entire `fixtures/` subtree
-  explicitly excluded), AND
+  explicitly excluded; the exclusion extends to any `fixtures/`
+  subtree at any depth under `tests/` — e.g., `tests/fixtures/`
+  AND `tests/e2e/fixtures/` per v014 N9 both fall under this
+  rule), AND
 - `<repo-root>/dev-tooling/`
 
 MUST contain a `CLAUDE.md` file describing the local constraints an
 agent working in that directory must satisfy. One optional
-`tests/fixtures/CLAUDE.md` at the fixtures root is permitted (it
-can explain the read-only discipline) but is not required, and
-subdirectories under `tests/fixtures/` are never required to carry
-`CLAUDE.md`.
+`tests/fixtures/CLAUDE.md` at the fixtures root (and similarly
+one optional `tests/e2e/fixtures/CLAUDE.md` per v014 N9) is
+permitted (they can explain the read-only discipline) but not
+required, and subdirectories under any `fixtures/` tree are
+never required to carry `CLAUDE.md`.
 
 Each `CLAUDE.md`:
 
