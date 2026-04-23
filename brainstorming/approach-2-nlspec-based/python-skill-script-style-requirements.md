@@ -98,7 +98,7 @@ be declared in a docstring at the top of the fixture.
 - The shared `bin/_bootstrap.py:bootstrap()` function asserts
   `sys.version_info >= (3, 10)` and exits `127` with an actionable
   install instruction if older. `bin/_bootstrap.py` is the canonical
-  location for the version check; `scripts/livespec/__init__.py` does
+  location for the version check; `.claude-plugin/scripts/livespec/__init__.py` does
   NOT raise (it cannot — see "Railway-Oriented Programming" below).
 - The `.mise.toml` at the repo root pins the developer and CI Python
   version to an exact 3.10+ release; developers use `mise install` to
@@ -127,12 +127,14 @@ The bundle ships a curated set of pure-Python third-party libraries
 under `.claude-plugin/scripts/_vendor/<lib>/`. All vendored libs MUST be:
 
 - Pure Python (no compiled wheels; no C / Rust extensions).
-- Permissively licensed (MIT, BSD-2-Clause, BSD-3-Clause, or
-  Apache-2.0).
+- Permissively licensed (MIT, BSD-2-Clause, BSD-3-Clause,
+  Apache-2.0, or PSF-2.0). PSF-2.0 added in v013 M1 to admit
+  `typing_extensions`; the narrow extension is deliberate and
+  does not generalize to other licenses.
 - Actively maintained by a reputable upstream.
 - Zero-transitive-dep or all-transitive-deps-also-vendored.
 
-Locked vendored libs for v008 (each pinned to an exact upstream ref
+Locked vendored libs (each pinned to an exact upstream ref
 recorded in `<repo-root>/.vendor.jsonc`):
 
 - **`returns`** (dry-python/returns, BSD-2) — ROP primitives: `Result`,
@@ -148,6 +150,21 @@ recorded in `<repo-root>/.vendor.jsonc`):
   comment-stripping pre-pass over stdlib `json.loads`; used by
   `livespec/parse/jsonc.py` for `.livespec.jsonc` parsing and any
   other JSONC input.
+- **`typing_extensions`** (python/typing_extensions, PSF-2.0) —
+  **vendored as a minimal shim** per v013 M1. The shim file at
+  `.claude-plugin/scripts/_vendor/typing_extensions/__init__.py`
+  exports exactly `override` (no-op decorator per PEP 698) and
+  `assert_never` (raises `AssertionError` at runtime, `Never`-typed
+  parameter for pyright narrowing). The module name
+  `typing_extensions` is retained so pyright's
+  `reportImplicitOverride` diagnostic (v012 L2) and the
+  `check-assert-never-exhaustiveness` check (v012 L7) recognize
+  the import path. The shim preserves upstream attribution and
+  ships the PSF-2.0 `LICENSE` file verbatim. Future livespec
+  revisions MAY widen the shim to re-export additional symbols
+  (each addition is a one-line edit) or re-vendor the full
+  upstream library; both paths are scope-widening decisions, not
+  v013 defaults.
 
 Each vendored lib's `LICENSE` file MUST be preserved at
 `_vendor/<lib>/LICENSE`. A `NOTICES.md` at the repo root MUST list every
@@ -170,13 +187,28 @@ would not find them on `import`.
   drift; code review and git diff visibility are the catching
   mechanisms.
 - **Re-vendoring goes through `just vendor-update <lib>`** — the only
-  blessed mutation path. The recipe fetches the upstream ref, copies
-  it under `_vendor/<lib>/`, preserves `LICENSE`, and updates
-  `.vendor.jsonc`'s recorded ref.
+  blessed mutation path for upstream-sourced libs (`returns`,
+  `fastjsonschema`, `structlog`, `jsoncomment`). The recipe
+  fetches the upstream ref, copies it under `_vendor/<lib>/`,
+  preserves `LICENSE`, and updates `.vendor.jsonc`'s recorded
+  ref.
+- **Shim libraries are livespec-authored** (v013 M1).
+  `_vendor/typing_extensions/` is a ~15-line shim module (not
+  a verbatim upstream copy) exporting `override` and
+  `assert_never` only. It is NOT re-vendored via
+  `just vendor-update`; instead it is widened (one-line edit
+  per added symbol) or replaced with a full upstream vendoring
+  via a new propose-change cycle. `.vendor.jsonc` records the
+  shim's upstream attribution ref (for provenance) and its
+  `shim: true` flag. Shim updates go through normal
+  code-review; the "never edit `_vendor/`" rule above applies
+  only to upstream-sourced libs.
 - **`.vendor.jsonc`** records `{upstream_url, upstream_ref, vendored_at}`
-  per lib. No hashes; no automated drift-detection check (`check-
-  vendor-audit` was removed in v007 as over-engineered for the threat
-  model).
+  per lib; for shims, records the additional flag `shim: true`
+  and the provenance ref from which the shim's LICENSE was
+  copied. No hashes; no automated drift-detection check
+  (`check-vendor-audit` was removed in v007 as over-engineered
+  for the threat model).
 - `_vendor/` is **excluded** from livespec's own style rules, type
   checking strictness, coverage measurement, and CLAUDE.md coverage
   enforcement.
@@ -227,21 +259,30 @@ Per sub-package conventions:
   and returns `Result[T, ParseError]`. Includes the restricted-YAML
   parser at `parse/front_matter.py`.
 - **`validate/`** — pure validators using the **factory shape**: each
-  validator takes `(payload: dict, schema: dict)` and returns
-  `Result[T, ValidationError]`. Callers in `commands/` or `doctor/`
-  read schemas from disk via `io/` wrappers and pass the parsed dict.
-  Validators invoke `livespec.io.fastjsonschema_facade.compile_schema`
-  for the actual compile; the facade owns the compile cache (see
-  "Vendored-lib type-safety integration" below). `validate/` stays
-  strictly pure (no module-level mutable state, no filesystem I/O).
+  validator at `validate/<name>.py` exports a function
+  `validate_<name>(payload: dict, schema: dict) ->
+  Result[<Dataclass>, ValidationError]` where `<Dataclass>` is the
+  paired dataclass at `schemas/dataclasses/<name>.py`. Callers in
+  `commands/` or `doctor/` read schemas from disk via `io/`
+  wrappers and pass the parsed dict. Validators invoke
+  `livespec.io.fastjsonschema_facade.compile_schema` for the actual
+  compile; the facade owns the compile cache (see "Vendored-lib
+  type-safety integration" below). `validate/` stays strictly pure
+  (no module-level mutable state, no filesystem I/O). **Every
+  schema at `schemas/*.schema.json` MUST have a paired validator
+  at `validate/<name>.py` in addition to its paired dataclass
+  (v013 M6); three-way drift is caught by
+  `check-schema-dataclass-pairing`.**
 - **`schemas/`** — JSON Schema Draft-7 files plus the
   `dataclasses/` subdirectory that holds the paired hand-authored
   dataclasses. Filename matches the dataclass: `LivespecConfig` →
   `livespec_config.schema.json` paired with
-  `schemas/dataclasses/livespec_config.py`. `check-schema-dataclass-
-  pairing` enforces drift-free pairing in both directions (every
-  schema has a matching dataclass; every dataclass has a matching
-  schema). See "Dataclass authorship" below.
+  `schemas/dataclasses/livespec_config.py` AND
+  `validate/livespec_config.py`. `check-schema-dataclass-pairing`
+  enforces drift-free pairing in all three directions (v013 M6):
+  every schema has matching dataclass + validator; every dataclass
+  has matching schema + validator; every validator has matching
+  schema + dataclass. See "Dataclass authorship" below.
 - **`context.py`** — immutable context dataclasses (`DoctorContext`,
   `SeedContext`, etc.) — the railway payload. See "Context
   dataclasses" below for field sets.
@@ -268,9 +309,10 @@ via `NewType`").
 - Fields MUST match the schema one-to-one in name and Python type.
 - `schemas/__init__.py` re-exports every dataclass name for
   convenient import.
-- No codegen toolchain. No generator. Drift between schema and
-  dataclass is caught mechanically by
-  `check-schema-dataclass-pairing` (AST walker over both sides).
+- No codegen toolchain. No generator. Drift between schema,
+  dataclass, and validator is caught mechanically by
+  `check-schema-dataclass-pairing` (three-way AST walker per
+  v013 M6: schema ↔ dataclass ↔ validator).
 
 ### Context dataclasses
 
@@ -373,7 +415,7 @@ Contract:
   - Uncaught exception (bug): supervisor's top-level
     `try/except Exception` logs via structlog with traceback and
     returns `1`.
-- `check-supervisor-discipline` scope: `livespec/**` is in scope;
+- `check-supervisor-discipline` scope: `.claude-plugin/scripts/livespec/**` is in scope;
   `bin/*.py` (including `_bootstrap.py`) is the sole exempt
   subtree. `argparse`'s `SystemExit` path is impossible under
   `exit_on_error=False`; the AST check has no special case for it.
@@ -434,7 +476,7 @@ the underlying principle):
   `AssertionError` is a bug; it propagates to the supervisor
   bug-catcher.
 - **`sys.exit` and `raise SystemExit`** appear ONLY in `bin/*.py`
-  files (including `bin/_bootstrap.py`). Not in any `livespec/**`
+  files (including `bin/_bootstrap.py`). Not in any `.claude-plugin/scripts/livespec/**`
   module. Enforced by `check-supervisor-discipline`.
 
 Every public function's `return` annotation MUST be `Result[_, _]` or
@@ -554,7 +596,78 @@ and passed in by the caller. `fastjsonschema.compile` is cached via
 Enforced by `check-imports-architecture` (Import-Linter `forbidden`
 contract over `parse/` and `validate/` imports; see §"Enforcement
 suite" for the full target list and the v012 L15a Import-Linter
-adoption that replaces v011's planned hand-written `check-purity`).
+adoption that replaces v011's planned hand-written `check-purity`;
+see §"Import-Linter contracts (minimum configuration)" below for
+the minimum concrete `[tool.importlinter]` shape per v013 M7).
+
+### Import-Linter contracts (minimum configuration)
+
+Per v013 M7, the three v012 L15a contracts in `pyproject.toml`'s
+`[tool.importlinter]` section MUST collectively enforce purity,
+layered architecture, and raise-discipline import surface. The
+minimum concrete configuration below is **illustrative** of the
+canonical shape; contract names, layer names, and ignore-import
+globs MAY be restructured so long as the three English-language
+rules below are enforced.
+
+```toml
+[tool.importlinter]
+root_packages = ["livespec"]
+
+[[tool.importlinter.contracts]]
+name = "parse-and-validate-are-pure"
+type = "forbidden"
+source_modules = ["livespec.parse", "livespec.validate"]
+forbidden_modules = [
+    "livespec.io",
+    "subprocess",
+    "returns.io",
+    "socket",
+    "http",
+    "urllib",
+    "pathlib",
+]
+
+[[tool.importlinter.contracts]]
+name = "layered-architecture"
+type = "layers"
+layers = [
+    "livespec.commands | livespec.doctor",
+    "livespec.io",
+    "livespec.validate",
+    "livespec.parse",
+]
+
+[[tool.importlinter.contracts]]
+name = "livespec-errors-raise-discipline-imports"
+type = "forbidden"
+source_modules = ["livespec"]
+forbidden_modules = ["livespec.errors"]
+ignore_imports = [
+    "livespec.io.* -> livespec.errors",
+    "livespec.errors.* -> livespec.errors",
+]
+```
+
+The authoritative rules (enforced by ANY valid Import-Linter
+configuration satisfying these three statements):
+
+1. Modules in `livespec.parse` and `livespec.validate` MUST NOT
+   import `livespec.io`, `subprocess`, filesystem APIs
+   (`pathlib`, `open`), `returns.io`, `socket`, `http`, `urllib`.
+2. Higher layers MAY import lower layers but not vice-versa; the
+   layer stack is `parse` < `validate` < `io` <
+   `commands` | `doctor`. No circular imports follow by
+   construction.
+3. `livespec.errors.LivespecError` (and any of its subclasses)
+   MAY be imported only from `livespec.io.*` and
+   `livespec.errors` itself. Other modules must not import
+   `LivespecError` subclasses for raising.
+
+Architecture-vs-mechanism principle (see
+`livespec-nlspec-spec.md` §"Architecture-Level Constraints"):
+the three rules above are the contract; the TOML is one valid
+way to express them.
 
 ---
 
@@ -578,9 +691,10 @@ adoption that replaces v011's planned hand-written `check-purity`).
     it, an LLM can write `do_something(ctx)` and silently discard
     the entire `Result` / `IOResult` failure track.
   - `reportImplicitOverride = "error"` — every method override MUST
-    carry `@override` (from `typing` 3.11+ or `typing_extensions`
-    3.10). Renaming a base-class method without `@override`
-    silently strands the override; this catches it.
+    carry `@override` (imported from `typing_extensions` per v013 M1
+    uniform-import discipline; see below). Renaming a base-class
+    method without `@override` silently strands the override; this
+    catches it.
   - `reportUninitializedInstanceVariable = "error"` — every
     instance attribute MUST be initialized in `__init__` or have a
     class-level default.
@@ -593,13 +707,6 @@ adoption that replaces v011's planned hand-written `check-purity`).
     `isinstance(x, T)` when the type checker already knows `x: T`.
   - `reportImplicitStringConcatenation = "error"` — catches
     `["foo" "bar"]` (missing comma) bugs in lists / sets / tuples.
-
-  **Open dependency follow-up:** `@override` (and `assert_never`
-  per §"Exhaustiveness" below) requires `typing_extensions` on
-  Python 3.10. Verify whether `typing_extensions` is transitively
-  vendored via `dry-python/returns` or whether it must be added as
-  a direct mise-pinned dev-only dep. Tracked in `task-runner-and-
-  ci-config` deferred-items entry.
 
 - Every public function (per the `__all__` declaration; see
   §"Module API surface" below) and every dataclass field MUST have
@@ -635,9 +742,26 @@ adoption that replaces v011's planned hand-written `check-purity`).
   forbidden (pyright strict flags this).
 - mypy is not used; there is no mypy configuration file.
 
+### `@override` and `assert_never` import source
+
+Both symbols MUST be imported uniformly from `typing_extensions`,
+not from stdlib `typing`, regardless of Python version.
+`typing_extensions` is **vendored as a minimal shim** at
+`.claude-plugin/scripts/_vendor/typing_extensions/__init__.py`
+(v013 M1); the shim exports exactly `override` and `assert_never`
+and retains the `typing_extensions` module name so pyright's
+`reportImplicitOverride` recognizes the import path and
+`check-assert-never-exhaustiveness` recognizes the
+`Never`-narrowing signature. See §"Vendored third-party
+libraries" above for the shim's license + attribution. Uniform
+import discipline (`from typing_extensions import override,
+assert_never`) eliminates per-version conditionals and survives
+a future widening of the shim or re-vendoring of the full
+upstream library.
+
 ### Module API surface
 
-Every module in `livespec/**` MUST declare a module-top
+Every module in `.claude-plugin/scripts/livespec/**` MUST declare a module-top
 `__all__: list[str]` listing the public API names. Public functions,
 public classes, and public NewType aliases belong in `__all__`;
 private helpers (single-leading-underscore prefix) MUST NOT appear in
@@ -650,13 +774,13 @@ the same rule applies (every name listed must resolve in the module's
 namespace, including imported names).
 
 Enforced by AST check `check-all-declared`: walks every module under
-`livespec/**`; verifies a module-level `__all__: list[str]`
+`.claude-plugin/scripts/livespec/**`; verifies a module-level `__all__: list[str]`
 assignment exists; verifies every name in `__all__` is actually
 defined in the module (catches stale entries after a rename).
 
 ### Domain primitives via `NewType`
 
-Domain identifiers in `livespec/**` MUST use a `typing.NewType` alias
+Domain identifiers in `.claude-plugin/scripts/livespec/**` MUST use a `typing.NewType` alias
 from the canonical declarations in `livespec/types.py`. `NewType`
 creates a zero-runtime-cost type alias that pyright treats as
 distinct from the underlying primitive — passing a `RunId` where
@@ -686,6 +810,16 @@ Additions to the canonical list are first-class deferred-items work
 (one-line update to `livespec/types.py` plus per-call-site
 migrations).
 
+**Note on module name (v013 C4).** The module name `livespec.types`
+intentionally echoes the stdlib `types` module name. The TID rule
+`ban-relative-imports = "all"` (see §"Linter and formatter") and
+absolute-import discipline throughout `.claude-plugin/scripts/livespec/**` preclude any
+import-resolution conflict between
+`from livespec.types import Author` and
+`from types import ModuleType`. Readers encountering the name
+re-use for the first time can verify this by grep; no rename is
+planned.
+
 Enforced by AST check `check-newtype-domain-primitives`: walks
 `livespec/schemas/dataclasses/*.py` and `livespec/**.py` function
 signatures; verifies field annotations matching the listed roles
@@ -696,37 +830,51 @@ NewType) both fail.
 
 ### Inheritance and structural typing
 
-Class inheritance in `livespec/**`, `bin/**`, and `dev-tooling/**`
+Class inheritance in `.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/bin/**`, and `<repo-root>/dev-tooling/**`
 is RESTRICTED. The AST check `check-no-inheritance` rejects any
-`class X(Y):` definition where `Y` is not in the allowlist
+`class X(Y):` definition where `Y` is not in the **direct-parent
+allowlist**:
 `{Exception, BaseException, LivespecError, Protocol, NamedTuple,
-TypedDict}` or a `LivespecError` subclass.
+TypedDict}`. The rule is DIRECT-PARENT only; `LivespecError`
+subclasses (e.g., `UsageError`, `ValidationError`) are NOT
+acceptable bases for further subclassing (v013 M5). This
+tightening enforces the v012 revision-file leaf-closed intent
+mechanically — an LLM writing `class RateLimitError(UsageError):`
+is now rejected at check time, where the v012-era transitive
+reading would have accepted it.
 
 This codifies the documented design direction: flat composition
 over inheritance; structural typing via `typing.Protocol`; sum-type
-dispatch via tagged dataclasses + structural pattern matching. The
-`LivespecError` hierarchy itself remains an open extension point —
-adding a new domain-error subclass (e.g., a future
-`RateLimitError(LivespecError)`) is permitted by the rule. What is
-NOT permitted is multi-level inheritance below a `LivespecError`
-leaf or any inheritance from a non-allowlisted concrete class.
+dispatch via tagged dataclasses + structural pattern matching.
+The `LivespecError` hierarchy is intentionally ONE level deep
+below the open base `LivespecError`. Adding a new domain-error
+subclass `class RateLimitError(LivespecError):` is permitted by
+the rule; `class RateLimitError(UsageError):` is NOT. Authors
+who want rate-limit-like-usage-error semantics set
+`RateLimitError.exit_code = 2` explicitly on the direct-from-
+LivespecError subclass.
 
-Structural interfaces in `livespec/**` MUST be declared via
+Structural interfaces in `.claude-plugin/scripts/livespec/**` MUST be declared via
 `typing.Protocol`. `abc.ABC`, `abc.ABCMeta`, and
 `abc.abstractmethod` imports are banned via the TID rule
 configuration; see §"Linter and formatter."
 
-The `@final` decorator (from `typing` 3.11+ or `typing_extensions`
-3.10) is OPTIONAL throughout livespec; the AST check is the source
-of truth. Authors MAY use `@final` as documentation-by-decorator for
-clarity but it is not required.
+The `@final` decorator (imported from `typing_extensions` per the
+v013 M1 uniform-import discipline) is OPTIONAL throughout
+livespec; the AST check is the source of truth. Authors MAY use
+`@final` as documentation-by-decorator for clarity but it is not
+required. If used, extend the shim at
+`_vendor/typing_extensions/__init__.py` to export `final` as well
+(one-line addition).
 
 ### Exhaustiveness
 
-Every `match` statement in `livespec/**`, `bin/**`, and
-`dev-tooling/**` MUST terminate with `case _: assert_never(<subject>)`
-regardless of subject type. `assert_never` is from `typing`
-(3.11+) or `typing_extensions` (3.10).
+Every `match` statement in `.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/bin/**`, and
+`<repo-root>/dev-tooling/**` MUST terminate with `case _: assert_never(<subject>)`
+regardless of subject type. `assert_never` is imported from
+`typing_extensions` per the v013 M1 uniform-import discipline
+(see §"Type safety — `@override` and `assert_never` import
+source").
 
 Rationale: `assert_never(x)` requires `x` to have type `Never`. When
 all variants of a closed-union subject are handled by preceding `case`
@@ -846,7 +994,7 @@ Tests use **`pytest`** with mandatory plugins `pytest-cov` and
 `pytest-icdiff`. Pinned via mise.
 
 See **PROPOSAL.md §"Testing approach"** for the canonical test-tree
-layout (mirroring `scripts/livespec/`, `scripts/bin/`, and
+layout (mirroring `.claude-plugin/scripts/livespec/`, `.claude-plugin/scripts/bin/`, and
 `<repo-root>/dev-tooling/` one-to-one, plus per-spec-file rule-
 coverage tests and `heading-coverage.json`). This document does
 not duplicate the tree — the layout is maintained in exactly one
@@ -878,7 +1026,7 @@ Rules:
   least one corresponding per-spec-file test case in
   `heading-coverage.json`.
 - The meta-test `tests/bin/test_wrappers.py` verifies every
-  `scripts/bin/*.py` wrapper (excluding `_bootstrap.py`) matches the
+  `.claude-plugin/scripts/bin/*.py` wrapper (excluding `_bootstrap.py`) matches the
   exact 6-line shape (see "Shebang-wrapper contract" below).
 
 ### Property-based testing for pure modules
@@ -895,7 +1043,7 @@ Rules:
 - `hypothesis` and `hypothesis-jsonschema` (MIT) are mise-pinned
   in `.mise.toml` as test-time deps (same packaging convention as
   `pytest`, `pytest-cov`, `pytest-icdiff`). They are NOT vendored
-  in `_vendor/` because they are not imported by `livespec/**` at
+  in `_vendor/` because they are not imported by `.claude-plugin/scripts/livespec/**` at
   user-runtime.
 - Each test module under `tests/livespec/parse/` and
   `tests/livespec/validate/` MUST declare at least one
@@ -934,6 +1082,50 @@ Rules:
   a dedicated release-tag CI workflow runs it on tagged commits.
 - The `just check` aggregator does NOT include `check-mutation`.
 
+**Bootstrap discipline (v013 M3).** Before first release-tag run,
+a `.mutmut-baseline.json` file is committed at the repo root
+recording the mutation-kill-rate measurement at initial adoption.
+Shape:
+
+```json
+{
+  "measured_at": "<UTC ISO-8601 seconds>",
+  "kill_rate_percent": <float>,
+  "mutants_surviving": <int>,
+  "mutants_total": <int>,
+  "baseline_reason": "<one-line explanation of the initial measurement context>"
+}
+```
+
+`pyproject.toml`'s `[tool.mutmut]` `threshold` is set to 80;
+each subsequent release-tag run compares the measured rate
+against `min(baseline.kill_rate_percent - 5, 80)` — i.e., the
+ratchet accepts at most a 5-point regression relative to
+baseline while also enforcing the absolute 80% ceiling once
+baseline exceeds it. Once a release-tag run measures sustained
+≥80% kill rate, a new propose-change cycle deprecates
+`.mutmut-baseline.json` (content retained for history); the
+effective threshold collapses to the static 80%.
+
+**Failure output (v013 M3).** `just check-mutation` MUST emit
+to stderr a structured JSON summary when the threshold fails,
+containing:
+
+```json
+{
+  "threshold_percent": <float>,
+  "kill_rate_percent": <float>,
+  "surviving_mutants": [
+    {"file": "livespec/parse/jsonc.py", "line": 42, "mutation_kind": "BinOp_replacement"},
+    {"...": "..."}
+  ]
+}
+```
+
+The implementation mechanism inside the `just` recipe (mutmut
+CLI invocation, output parsing, JSON emission) is implementer
+choice under the architecture-level constraints.
+
 ---
 
 ## Code coverage
@@ -941,16 +1133,16 @@ Rules:
 Coverage is measured by `coverage.py` via `pytest-cov`:
 
 - **100% line + branch coverage** is mandatory across the whole Python
-  surface in `scripts/livespec/**`, `scripts/bin/**`, and
+  surface in `.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/bin/**`, and
   `<repo-root>/dev-tooling/**`. No tier split. `_vendor/` is excluded.
-  `scripts/bin/` is included because `_bootstrap.py` carries real logic
+  `.claude-plugin/scripts/bin/` is included because `_bootstrap.py` carries real logic
   (Python-version check + sys.path setup) AND the 6-line wrapper bodies
   themselves carry the `bootstrap()` call + the `raise SystemExit(main())`
   dispatch, all of which are real executable lines that v011 K3 brings
   under the same 100% gate via dedicated `tests/bin/test_<cmd>.py`
   files (see "Wrapper coverage" rule below). NO `# pragma: no cover`
   is applied to wrapper bodies; NO `[tool.coverage.run] omit` for
-  `scripts/bin/`.
+  `.claude-plugin/scripts/bin/`.
 - `pyproject.toml`'s `[tool.coverage.run]` sets `source` to include
   both the `livespec` package and the `bin/` directory (the exact path
   form is implementer choice; e.g., an additional `source` entry for
@@ -980,8 +1172,8 @@ Coverage is measured by `coverage.py` via `pytest-cov`:
 
 ## Keyword-only arguments
 
-All user-defined callables in livespec's scope (`scripts/livespec/**`,
-`scripts/bin/**`, `<repo-root>/dev-tooling/**`) MUST accept every
+All user-defined callables in livespec's scope (`.claude-plugin/scripts/livespec/**`,
+`.claude-plugin/scripts/bin/**`, `<repo-root>/dev-tooling/**`) MUST accept every
 parameter as keyword-only. Call-site ambiguity over positional
 order is eliminated by construction: reading `foo(name="alice",
 age=30)` unambiguously tells the reader which value is which,
@@ -1044,8 +1236,8 @@ reading directly from the instance's `.x` / `.y`.
 
 Rules:
 
-- Livespec-authored classes (anything under `scripts/livespec/**`,
-  `dev-tooling/**`, or `scripts/bin/**`) MUST NOT declare
+- Livespec-authored classes (anything under `.claude-plugin/scripts/livespec/**`,
+  `<repo-root>/dev-tooling/**`, or `.claude-plugin/scripts/bin/**`) MUST NOT declare
   `__match_args__` at class scope.
 - Class patterns in `match` statements whose class resolves to a
   livespec-authored class MUST use keyword sub-patterns.
@@ -1065,7 +1257,7 @@ bind via `kwd_patterns`, not `patterns`.
 supervisor's three-way match dispatch reads:
 
 ```python
-from typing import assert_never  # Python 3.11+; on 3.10 use typing_extensions
+from typing_extensions import assert_never  # per v013 M1 uniform-import discipline
 
 match result:
     case IOFailure(HelpRequested(text=text)):
@@ -1172,7 +1364,7 @@ Logging uses vendored **`structlog`**. Configuration:
 
 ### Bootstrap
 
-`scripts/livespec/__init__.py` calls `structlog.configure(...)` exactly
+`.claude-plugin/scripts/livespec/__init__.py` calls `structlog.configure(...)` exactly
 once and then binds `run_id` (UUID) via
 `structlog.contextvars.bind_contextvars(run_id=str(uuid.uuid4()))` in
 the same block. This happens on first import, which is per-process
@@ -1212,7 +1404,7 @@ preserved from v005/v006:
 | `1` | Script-internal failure (unexpected runtime error; likely a bug). |
 | `2` | Usage error: bad flag, wrong argument count, malformed invocation. |
 | `3` | Input or precondition failed: referenced file/path/value missing, malformed, or in an incompatible state. |
-| `4` | Schema validation failed (retryable): LLM-provided JSON payload does not conform to the wrapper's input schema. Per-sub-command SKILL.md prose retries the template prompt with error context, up to 3 retries. Distinct from exit `3` (precondition failure) so the LLM can classify failures deterministically without parsing stderr. |
+| `4` | Schema validation failed (retryable): LLM-provided JSON payload does not conform to the wrapper's input schema. Per-sub-command SKILL.md prose retries the template prompt with error context, up to 2 retries (3 attempts total). Distinct from exit `3` (precondition failure) so the LLM can classify failures deterministically without parsing stderr. |
 | `126` | Permission denied: a required file exists but is not executable/readable/writable. |
 | `127` | Required external tool not on PATH, or Python version too old. |
 
@@ -1247,10 +1439,11 @@ Implementation:
       """Schema validation failure on LLM-provided JSON payload.
 
       Retryable: the sub-command's SKILL.md prose re-invokes the
-      template prompt with error context and retries (up to 3).
-      Exit code 4 (distinct from PreconditionError's exit 3) so the
-      LLM can deterministically classify retryable vs non-retryable
-      exit-3-class failures without parsing stderr.
+      template prompt with error context, up to 2 retries
+      (3 attempts total). Exit code 4 (distinct from
+      PreconditionError's exit 3) so the LLM can deterministically
+      classify retryable vs non-retryable exit-3-class failures
+      without parsing stderr.
       """
       exit_code: ClassVar[int] = 4
 
@@ -1333,7 +1526,7 @@ Enforced by `check-supervisor-discipline` (AST).
   `"doctor-out-of-band-edits"`) and in PROPOSAL.md prose
   (`propose-change` sub-command name).
 - The slug↔module-name mapping for doctor-static checks is recorded
-  literally in `scripts/livespec/doctor/static/__init__.py`'s static
+  literally in `.claude-plugin/scripts/livespec/doctor/static/__init__.py`'s static
   registry. JSON slug `out-of-band-edits` ↔ module filename
   `out_of_band_edits.py` ↔ check_id `doctor-out-of-band-edits`. There
   is no conversion loop; the registry's import statements name both
@@ -1420,8 +1613,11 @@ dev-tooling invocation.
   `run:` field is `just <target>`; no direct tool invocations.
 - `.github/workflows/*.yml` owns CI triggers and parallelism. Every
   step's `run:` field is `just <target>`; no direct tool invocations.
-- `.mise.toml` pins tool versions (Python, just, lefthook, pyright,
-  ruff, pytest, pytest-cov, pytest-icdiff).
+- `.mise.toml` pins every dev tool listed in PROPOSAL.md
+  §"Runtime dependencies — Developer-time dependencies."
+  Single source of truth lives in PROPOSAL.md (v013 C2); this
+  document does NOT duplicate the enumeration to eliminate
+  drift risk.
 
 This eliminates drift across invocation surfaces. A developer
 reproduces CI locally by running `just check`.
@@ -1468,16 +1664,16 @@ specific native code works). No Windows support.
 | `just check-no-raise-outside-io` | AST (raise-site portion only): raising of `LivespecError` subclasses (domain errors) at runtime restricted to `io/**` and `errors.py`. Raising bug-class exceptions (TypeError, NotImplementedError, AssertionError, etc.) permitted anywhere. The import-surface portion is delegated to `check-imports-architecture`. |
 | `just check-no-except-outside-io` | AST: catching exceptions outside `io/**` permitted only in supervisor bug-catchers (top-level `try/except Exception` in `main()` of `commands/*.py` and `doctor/run_static.py`). |
 | `just check-public-api-result-typed` | AST: every public function (per `__all__` declaration; see `check-all-declared`) returns `Result` or `IOResult` per annotation, except supervisors at the side-effect boundary (`main()` in `commands/**.py` and `doctor/run_static.py`) and the `build_parser` factory in `commands/**.py`. |
-| `just check-schema-dataclass-pairing` | AST: every `schemas/*.schema.json` has a paired dataclass at `schemas/dataclasses/<name>.py` with the `$id`-derived name and every listed field in matching Python type; and vice versa. Drift in either direction fails. |
-| `just check-main-guard` | AST: no `if __name__ == "__main__":` in `livespec/**`. |
+| `just check-schema-dataclass-pairing` | AST (three-way walker per v013 M6): for every `schemas/*.schema.json`, verifies a paired dataclass at `schemas/dataclasses/<name>.py` (the `$id`-derived name) AND a paired validator at `validate/<name>.py` exists; every listed schema field matches the dataclass's Python type; vice versa in all three walks. Drift in any direction fails. |
+| `just check-main-guard` | AST: no `if __name__ == "__main__":` in `.claude-plugin/scripts/livespec/**`. |
 | `just check-wrapper-shape` | AST-lite: `bin/*.py` (except `_bootstrap.py`) conforms to the 6-line shebang-wrapper contract. |
 | `just check-keyword-only-args` | AST: every `def` in livespec scope uses `*` as first separator (all params keyword-only); every `@dataclass` declares the strict-dataclass triple `frozen=True, kw_only=True, slots=True`. Exempts Python-mandated dunder signatures and `__init__` of Exception subclasses that forward to `super().__init__(msg)`. |
 | `just check-match-keyword-only` | AST: every `match` statement's class pattern resolving to a livespec-authored class binds via keyword sub-patterns (`Foo(x=x)`), not positional (`Foo(x)`). Third-party library class destructures (`returns`-package types) are permitted positionally. |
-| `just check-no-inheritance` | AST: forbids `class X(Y):` in `livespec/**` where `Y` is not in the allowlist `{Exception, BaseException, LivespecError, Protocol, NamedTuple, TypedDict}` or a `LivespecError` subclass. Codifies flat-composition direction; LivespecError extension point preserved. |
+| `just check-no-inheritance` | AST: forbids `class X(Y):` in `.claude-plugin/scripts/livespec/**` where `Y` is not in the **direct-parent allowlist** `{Exception, BaseException, LivespecError, Protocol, NamedTuple, TypedDict}`. `LivespecError` subclasses are NOT acceptable bases (v013 M5 tightening enforces leaf-closed intent); `class RateLimitError(UsageError):` is rejected even though `UsageError` is itself a `LivespecError` subclass. Codifies flat-composition direction; `LivespecError` itself remains an open extension point. |
 | `just check-assert-never-exhaustiveness` | AST: every `match` statement in scope MUST terminate with `case _: assert_never(<subject>)`. Conservative scope (every match, regardless of subject type). |
 | `just check-newtype-domain-primitives` | AST: walks `schemas/dataclasses/*.py` and function signatures; verifies field annotations matching canonical field names (`check_id`, `run_id`, `topic`, `spec_root`, `schema_id`, `template`, `author` / `author_human` / `author_llm`, `version_tag`) use the corresponding `livespec/types.py` NewType (`CheckId`, `RunId`, `TopicSlug`, `SpecRoot`, `SchemaId`, `TemplateName`, `Author`, `VersionTag`). Note: the `template_root` field in DoctorContext is the resolved-directory `Path` and uses raw `Path`, NOT `TemplateName` — the L8 mapping is field-name keyed, and `template_root` doesn't match `template`. |
-| `just check-all-declared` | AST: every module under `livespec/**` declares a module-top `__all__: list[str]`; every name in `__all__` is defined in the module. |
-| `just check-no-write-direct` | AST: bans `sys.stdout.write` and `sys.stderr.write` calls in `livespec/**`, `bin/**`, `dev-tooling/**`. Three exemptions: `bin/_bootstrap.py` (pre-import version-check stderr); supervisor `main()` functions in `livespec/commands/**.py` (any documented stdout contract — HelpRequested per K7, resolve_template path per K2, etc.); `livespec/doctor/run_static.py::main()` (findings JSON stdout). Pairs with ruff `T20` which bans `print` / `pprint`. |
+| `just check-all-declared` | AST: every module under `.claude-plugin/scripts/livespec/**` declares a module-top `__all__: list[str]`; every name in `__all__` is defined in the module. |
+| `just check-no-write-direct` | AST: bans `sys.stdout.write` and `sys.stderr.write` calls in `.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/bin/**`, `<repo-root>/dev-tooling/**`. Three exemptions: `bin/_bootstrap.py` (pre-import version-check stderr); supervisor `main()` functions in `livespec/commands/**.py` (any documented stdout contract — HelpRequested per K7, resolve_template path per K2, etc.); `livespec/doctor/run_static.py::main()` (findings JSON stdout). Pairs with ruff `T20` which bans `print` / `pprint`. |
 | `just check-pbt-coverage-pure-modules` | AST: each test module under `tests/livespec/parse/` and `tests/livespec/validate/` declares at least one `@given(...)`-decorated test function. |
 | `just check-claude-md-coverage` | Every directory under `scripts/` (excluding `_vendor/` subtree), `tests/`, and `dev-tooling/` contains a `CLAUDE.md`. |
 | `just check-no-direct-tool-invocation` | grep: `lefthook.yml` and `.github/workflows/*.yml` only invoke `just <target>`. |
@@ -1490,7 +1686,8 @@ included in `just check`; NOT run per-commit):
 
 | Target | Purpose |
 |---|---|
-| `just check-mutation` | `mutmut` mutation testing against `livespec/parse/` and `livespec/validate/`. Threshold: ≥80% mutation kill rate. Threshold tunable on first real measurement via a new propose-change cycle. |
+| `just check-mutation` | `mutmut` mutation testing against `livespec/parse/` and `livespec/validate/`. Threshold: ratchet against `.mutmut-baseline.json` (v013 M3) bounded by absolute 80% ceiling; emits structured JSON surviving-mutants report on failure. |
+| `just check-no-todo-registry` | Rejects any `test: "TODO"` entry in `tests/heading-coverage.json` (v013 M8). Release-gate only; paired with `check-mutation` on release-tag CI workflow. Ensures every release ships with full rule-test coverage. |
 
 Mutating targets (opt-in, not run in CI):
 

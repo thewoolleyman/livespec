@@ -955,8 +955,147 @@ entries keep their original naming (immutable history).
   Full decision record is in
   `v012/proposed_changes/proposal-critique-v11-revision.md`.
 
+- **v013** — revise driven by
+  `proposed_changes/proposal-critique-v12.md` and its revision.
+  A **recreatability-and-integration-gap cleanup pass**
+  surfacing 13 items (M1-M7 major/significant + C1-C6
+  smaller cleanup) plus one new item M8 added mid-interview
+  after user clarification. Each item labelled with the NLSpec
+  failure-mode framework (ambiguity / malformation /
+  incompleteness / incorrectness). Three items moved from
+  recommended to alternate option based on user input: M4
+  (retry count — 3 total attempts instead of 3 retries after
+  initial); M5 (check-no-inheritance — tighten to direct-
+  parent-only instead of accepting transitive-MRO); C5 (scope
+  wording — full `.claude-plugin/scripts/...` form throughout
+  instead of short form with shortcut note). Two items were
+  reshaped mid-interview (M2 split into format-only + new M8
+  for lifecycle; M8 options re-framed when user surfaced the
+  shipped-vs-not-shipped architectural distinction). One item
+  (M1) underwent a mid-lifecycle correction (interview picked
+  Option A "mise-pin typing_extensions"; assistant caught
+  during apply phase that mise-pinning can't make the symbols
+  available at user runtime; re-interview chose A''' "vendor
+  as ~15-line shim at `_vendor/typing_extensions/`" after
+  user noted size disproportionality vs upstream). Major
+  structural changes:
+  **`typing_extensions` vendored as minimal shim** — M1: the
+  largest recreatability blocker (L2's `reportImplicitOverride`
+  + L7's `assert_never` require typing_extensions on the 3.10
+  floor). Resolution: `_vendor/typing_extensions/__init__.py`
+  exports `override` + `assert_never` keeping the
+  `typing_extensions` module name for pyright recognition; the
+  shim ships upstream PSF-2.0 LICENSE verbatim with attribution.
+  License policy extended from `MIT, BSD-2, BSD-3, Apache-2.0`
+  to include `PSF-2.0` narrowly. Future shim widening is a
+  one-line edit.
+  **Heading-coverage registry format extended** — M2 + M8:
+  `tests/heading-coverage.json` extended from `{heading, test}`
+  to `{spec_file, heading, test}` to disambiguate heading-text
+  collisions across spec files; scenario-block headings
+  excluded from meta-test scope; new optional `reason` field
+  required when `test: "TODO"`. The meta-test tolerates
+  `"TODO"` with non-empty reason at `just check` time; new
+  release-gate `check-no-todo-registry` (paired with
+  `check-mutation` on release-tag CI only) rejects any TODO
+  entry regardless of reason. Livespec-repo-internal
+  enforcement; NOT shipped in the `.claude-plugin/` bundle.
+  **Mutation testing bootstrap discipline** — M3:
+  `.mutmut-baseline.json` recorded at repo root; release-gate
+  ratchet compares against `min(baseline - 5%, 80%)` until
+  sustained 80%; `just check-mutation` emits structured JSON
+  with surviving-mutant file+line+kind per v013 M3.
+  **Retry count disambiguated** — M4: rename from "3 retries"
+  to "up to 2 retries (3 attempts total)" across PROPOSAL.md +
+  style doc + deferred-items.
+  **`check-no-inheritance` tightened** — M5: AST check now
+  direct-parent-only; `LivespecError` subclasses (`UsageError`,
+  etc.) are NOT acceptable bases. Enforces v012 revision-file
+  leaf-closed intent mechanically.
+  **Three-way schema↔dataclass↔validator pairing** — M6:
+  `check-schema-dataclass-pairing` widened to walk validators
+  too; v1 validators enumerated in PROPOSAL.md layout tree.
+  **Import-Linter minimum concrete example** — M7: style doc
+  §"Import-Linter contracts (minimum configuration)" adds a
+  25-line `[tool.importlinter]` TOML example with illustrative
+  caveat anchoring the load-bearing architectural outcomes
+  while preserving architecture-vs-mechanism discipline.
+  **Typo + drift cleanups** — C1 (`python-skill-script-script-
+  style-requirements.md` double-"script" typo at PROPOSAL.md
+  line 392); C2 (style doc dev-dep list references PROPOSAL.md
+  as single source); C3 (test-filename rule for leading-
+  underscore source modules); C4 (`livespec/types.py` stdlib-
+  shadow acknowledgement note); C5 (scope canonicalization on
+  full-path `.claude-plugin/scripts/...` throughout style doc);
+  C6 ("unconditionally" wording at PROPOSAL.md §"Environment
+  variables" replaced with precedence-matching phrasing).
+  **Deferred-items updates:** 6 existing entries scope-widened
+  (`enforcement-check-scripts`, `static-check-semantics`,
+  `task-runner-and-ci-config`, `skill-md-prose-authoring`,
+  `wrapper-input-schemas`, `front-matter-parser`); the v012
+  `typing_extensions` availability follow-up under
+  `task-runner-and-ci-config` CLOSED per M1; 0 new entries;
+  0 removed.
+  **Careful-review passes.** 4 general careful-review passes
+  plus 1 dedicated deferred-items-consistency pass. Pass 1
+  caught 5 load-bearing fixes: revision-file M1 section still
+  described mise-pinning `typing_extensions` (rewrote to
+  A'''-vendored-shim); style doc §"Dataclass authorship"
+  said "AST walker over both sides" for
+  `check-schema-dataclass-pairing` (updated to three-way);
+  deferred-items `check-assert-never-exhaustiveness`
+  semantics subsection still referenced "typing_extensions
+  3.10" (updated to uniform import source); DoD item 10
+  missed M3 baseline + M8 check-no-todo-registry + M8 reason
+  tolerance; dev-tooling layout tree missed
+  `.mutmut-baseline.json`. Pass 2 caught 3 load-bearing
+  fixes: added shim-libraries distinction to style doc
+  §"Vendoring discipline" (shims are livespec-authored, not
+  upstream-sourced; `.vendor.jsonc` carries `shim: true`);
+  PROPOSAL.md §"Vendored pure-Python libraries" noted
+  `just vendor-update` applies only to upstream-sourced
+  libs; heading-coverage.json example extended with TODO-
+  with-reason illustrative row. Pass 3 caught 4 load-
+  bearing fixes: fixed 2 stale Source lines in deferred-
+  items.md (`python-style-doc-into-constraints` and
+  `returns-pyright-plugin-disposition` both said "carried
+  forward to v008" instead of "carried forward through
+  every version since" — same drift pattern v012's pass 3
+  caught for `claude-md-prose`); fixed out-of-chronological-
+  order widening list in `static-check-semantics` Source
+  line (moved v013 to end); added M1 to
+  `static-check-semantics` v013 widenings in revision file
+  (the `check-assert-never-exhaustiveness` import-source
+  tightening counts as M1's reach). Pass 4 landed no load-
+  bearing fixes (pass 4 was intentionally the final pass
+  per the "continue until pass lands no load-bearing
+  fixes" rule). **Cumulative across 4 careful-review
+  passes: 12 inconsistencies caught and fixed (5 + 3 + 4
+  + 0).**
+  **Dedicated deferred-items-consistency pass.** Walks
+  every deferred-items entry and verifies source line +
+  body fully reflects every decision across every prior
+  version. Caught 4 load-bearing fixes: `no_todo_registry.py`
+  missing from `dev-tooling/checks/` layout tree (added
+  per M8 follow-through); `check-no-todo-registry` bullet
+  missing from `enforcement-check-scripts` deferred entry
+  body (added); `template_config.schema.json` +
+  `template_config.py` missing from PROPOSAL.md's schemas/
+  and schemas/dataclasses/ layout trees (pre-existing
+  v011 K5 drift that v012 careful-review passes missed);
+  `§"Type safety — @override and assert_never import
+  source"` cross-reference pointed at a bolded inline
+  paragraph rather than a proper `###` subsection heading
+  (promoted the paragraph to a subsection at style doc
+  line 745 so the cross-ref resolves).
+  **Cumulative total findings across all 5 passes (4
+  careful-review + 1 deferred-items-consistency): 16
+  inconsistencies caught and fixed (5 + 3 + 4 + 0 + 4).**
+  Full decision record is in
+  `v013/proposed_changes/proposal-critique-v12-revision.md`.
+
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v012/PROPOSAL.md` until the next revise.
+byte-identical to `history/v013/PROPOSAL.md` until the next revise.

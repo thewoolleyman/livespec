@@ -44,7 +44,7 @@ Each entry uses this shape:
   `SPECIFICATION/contracts.md` (skill↔template I/O contracts),
   `specification-templates/livespec/prompts/*.md`
 - **How to resolve:** Author each template prompt's input/output
-  JSON Schemas (in `scripts/livespec/schemas/`) and the prompt
+  JSON Schemas (in `.claude-plugin/scripts/livespec/schemas/`) and the prompt
   bodies themselves under
   `specification-templates/livespec/prompts/{seed,propose-change,
   revise,critique}.md`. Cover: variables the skill provides as
@@ -68,7 +68,7 @@ Each entry uses this shape:
 
 ### python-style-doc-into-constraints
 
-- **Source:** v005 (carried forward to v008)
+- **Source:** v005 (carried forward through every version since)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
 - **How to resolve:** Migrate
   `python-skill-script-style-requirements.md` into
@@ -90,7 +90,7 @@ Each entry uses this shape:
 
 ### enforcement-check-scripts
 
-- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a)
+- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6)
 - **Target spec file(s):** `SPECIFICATION/constraints.md` +
   `<repo-root>/dev-tooling/checks/` + `<repo-root>/pyproject.toml`
   (`[tool.importlinter]` section per v012 L15a)
@@ -112,7 +112,9 @@ Each entry uses this shape:
     `__all__`-based public detection rather than underscore
     convention),
     `check-main-guard`, `check-wrapper-shape`,
-    `check-schema-dataclass-pairing`,
+    `check-schema-dataclass-pairing` (widened to three-way
+    walker per v013 M6 — validates schema ↔ dataclass ↔
+    validator),
     `check-claude-md-coverage`,
     `check-no-direct-tool-invocation`, `file_lloc`,
     `check-keyword-only-args` (v011 K4 + v012 L4: AST-walks
@@ -140,6 +142,12 @@ Each entry uses this shape:
       module under `tests/livespec/parse/` and
       `tests/livespec/validate/` declares ≥1 `@given(...)`-
       decorated test).
+  - **New AST / grep-level checks (v013):**
+    - `check-no-todo-registry` (M8; grep-level:
+      `dev-tooling/checks/no_todo_registry.py` walks
+      `tests/heading-coverage.json` and rejects any
+      `test: "TODO"` entry regardless of `reason`;
+      release-gate only, NOT included in `just check`).
   - **Import-Linter target (v012 L15a):**
     `check-imports-architecture` invokes `lint-imports` against
     declarative `[tool.importlinter]` contracts in
@@ -187,7 +195,7 @@ Each entry uses this shape:
 
 ### task-runner-and-ci-config
 
-- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a)
+- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a; widened v013 per M1, M3, M7, M8)
 - **Target spec file(s):** `<repo-root>/justfile`,
   `<repo-root>/lefthook.yml`,
   `<repo-root>/.github/workflows/ci.yml`,
@@ -206,7 +214,7 @@ Each entry uses this shape:
   with `fail-fast: false`, pinned tool versions,
   ruff/pyright/pytest/coverage configuration (including
   `max-args=6` + `max-positional-args=6` per H5, AND coverage
-  `source` extended to include `scripts/bin/` per v010 J8 so
+  `source` extended to include `.claude-plugin/scripts/bin/` per v010 J8 so
   `_bootstrap.py` lands in the 100% line+branch surface), the
   recorded vendored-lib versions (including `jsoncomment` per
   H2), AND the new `check-schema-dataclass-pairing` target (I3).
@@ -222,7 +230,7 @@ Each entry uses this shape:
   omit` entry for `bin/*.py` wrapper bodies per v011 K3 (wrappers
   are now covered by per-wrapper tests at `tests/bin/test_<cmd>.py`
   rather than pragma-excluded). `pyproject.toml`'s coverage
-  `source` list covers `scripts/bin/**` uniformly; no special-case
+  `source` list covers `.claude-plugin/scripts/bin/**` uniformly; no special-case
   omit for wrapper files. If the pyproject-generating recipe writes
   any per-wrapper pragma application, remove it.
 
@@ -235,15 +243,23 @@ Each entry uses this shape:
     `reportUnnecessaryCast = "error"`,
     `reportUnnecessaryIsInstance = "error"`,
     `reportImplicitStringConcatenation = "error"`.
-  - **`typing_extensions` availability follow-up (L2 + L7):**
-    `@override` and `assert_never` are in `typing` from Python
-    3.11; on Python 3.10 they live in `typing_extensions`.
-    Resolution path: (a) verify transitive vendoring via
-    `dry-python/returns`, OR (b) add `typing_extensions` as a
-    direct mise-pinned dev-only dep, OR (c) bump Python floor
-    to 3.11 in `.mise.toml` (out of scope for v012; would
-    require its own pass). Document the chosen resolution in
-    the `.mise.toml` comments.
+  - **`typing_extensions` resolution (v013 M1 CLOSED):** the
+    v012-era open follow-up is closed. `typing_extensions` is
+    vendored as a minimal shim at
+    `.claude-plugin/scripts/_vendor/typing_extensions/__init__.py`
+    exporting exactly `override` and `assert_never`, retaining
+    the `typing_extensions` module name so pyright's
+    `reportImplicitOverride` (L2) and
+    `check-assert-never-exhaustiveness` (L7) recognize the
+    import path. Vendored-libs license policy extended to admit
+    PSF-2.0 narrowly for this one library (see style doc
+    §"Vendored third-party libraries"). Uniform import
+    discipline: `from typing_extensions import override,
+    assert_never` everywhere in `livespec/**`. Future widening
+    of the shim to re-export additional symbols is a one-line
+    edit; re-vendoring full upstream is a scope-widening
+    decision. NO mise-pinning of `typing_extensions` (it's
+    vendored, not dev-only).
   - **Ruff rule selection expansion (L3 + L10 + L11):** the
     v012 selection is `E F I B UP SIM C90 N RUF PL PTH TRY FBT
     PIE SLF LOG G TID ERA ARG RSE PT FURB SLOT ISC T20 S` (16
@@ -278,13 +294,44 @@ Each entry uses this shape:
     (returns, fastjsonschema, structlog, jsoncomment) are
     unchanged in v012.
 
+  **v013 additions:**
+  - **`typing_extensions` vendored as minimal shim (M1).**
+    `.claude-plugin/scripts/_vendor/typing_extensions/__init__.py`
+    exports `override` + `assert_never` with upstream attribution
+    and PSF-2.0 `LICENSE` copied verbatim. `.mise.toml` does NOT
+    pin `typing_extensions` (it's vendored, not dev-only).
+    Vendored-libs license policy extended to admit PSF-2.0
+    (style doc §"Vendored third-party libraries").
+  - **`.mutmut-baseline.json` tracked at repo root (M3).** New
+    tracked file recording initial mutation-kill-rate
+    measurement; ratchet comparison bounded by absolute 80%
+    ceiling. `just check-mutation` emits structured JSON
+    surviving-mutants report on failure. See style doc
+    §"Mutation testing as release-gate" for the schema and
+    ratchet rule.
+  - **Import-Linter minimum concrete configuration (M7).**
+    Style doc §"Import-Linter contracts (minimum configuration)"
+    codifies a canonical 25-line `[tool.importlinter]` TOML
+    example with three contracts + architecture-vs-mechanism
+    illustrative caveat. Deferred-entry `static-check-semantics`
+    subsection now references the style-doc codified example
+    rather than re-describing the three contracts.
+  - **`check-no-todo-registry` release-gate target (M8).**
+    New `just check-no-todo-registry` target rejects any
+    `test: "TODO"` entry in `tests/heading-coverage.json`.
+    Release-tag CI workflow runs it alongside `just
+    check-mutation`; NOT included in `just check`; NOT run
+    per-commit. Livespec-repo-internal enforcement; NOT
+    shipped in the `.claude-plugin/` bundle.
+
 ### static-check-semantics
 
 - **Source:** v007 (renamed in v008 from `ast-check-semantics`;
   scope widened per H3, H11, H13, H14; scope widened in v009 per
   I1, I4, I5, I7, I10, I3; scope widened in v010 per J4, J5, J7,
   J10, J11, J14; scope widened in v011 per K3, K4, K5, K10;
-  scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a)
+  scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a;
+  scope widened in v013 per M1, M4, M5, M6, M7)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -340,13 +387,21 @@ Each entry uses this shape:
     `doctor/run_static.py`) from the Result/IOResult return
     requirement; supervisors may return `int` or `None`
     per style doc §"Type safety."
-  - **`check-schema-dataclass-pairing` semantics** (v009 I3):
-    walks `scripts/livespec/schemas/*.schema.json` and
-    `scripts/livespec/schemas/dataclasses/*.py`; for each
-    schema, asserts a paired dataclass exists (by
-    `$id`-derived name) with every listed field in matching
-    Python type; and vice versa. Drift in either direction
-    fails.
+  - **`check-schema-dataclass-pairing` semantics** (v009 I3;
+    widened to three-way in v013 M6):
+    walks `.claude-plugin/scripts/livespec/schemas/*.schema.json`,
+    `.claude-plugin/scripts/livespec/schemas/dataclasses/*.py`,
+    AND `.claude-plugin/scripts/livespec/validate/*.py`. For
+    each schema, asserts a paired dataclass exists at
+    `schemas/dataclasses/<name>.py` (by `$id`-derived name)
+    with every listed field in matching Python type, AND a
+    paired validator exists at `validate/<name>.py` exporting
+    `validate_<name>(payload: dict, schema: dict) ->
+    Result[<Dataclass>, ValidationError]`. The walker checks
+    drift in all three directions: schema without dataclass
+    or validator; dataclass without schema or validator;
+    validator without schema or dataclass. Any direction of
+    drift fails.
   - **`check-global-writes` exemption list** (v007 G14 +
     v008 H9): `structlog.configure` in `__init__.py`,
     `structlog.contextvars.bind_contextvars` in `__init__.py`,
@@ -421,9 +476,11 @@ Each entry uses this shape:
     BOTH flags (supersedes v009 I14's "rejects
     `--skip-pre-check`" — now rejects both).
   - **`check-schema-dataclass-pairing` walker scope**
-    (v010 J11): still walks only
-    `scripts/livespec/schemas/dataclasses/*.py`. `Finding`
-    moved from `doctor/finding.py` to
+    (v010 J11; widened to three-way in v013 M6): walks
+    `.claude-plugin/scripts/livespec/schemas/*.schema.json`,
+    `.claude-plugin/scripts/livespec/schemas/dataclasses/*.py`,
+    AND `.claude-plugin/scripts/livespec/validate/*.py`.
+    `Finding` moved from `doctor/finding.py` to
     `schemas/dataclasses/finding.py` so both `Finding` and
     `DoctorFindings` live in the pairing-walked tree.
     Implementer choice whether `finding.schema.json` is a
@@ -448,8 +505,8 @@ Each entry uses this shape:
     meta-test verify shape in parallel to per-wrapper coverage
     tests.
   - **`check-keyword-only-args` semantics**
-    (v011 K4): AST walker over `scripts/livespec/**`,
-    `scripts/bin/**`, and `<repo-root>/dev-tooling/**`. For every
+    (v011 K4): AST walker over `.claude-plugin/scripts/livespec/**`,
+    `.claude-plugin/scripts/bin/**`, and `<repo-root>/dev-tooling/**`. For every
     `ast.FunctionDef` / `ast.AsyncFunctionDef`, `args.args` MUST
     be empty after `self`/`cls` (all declared params in
     `args.kwonlyargs`). For every `@dataclass` decorator, the
@@ -508,16 +565,22 @@ Each entry uses this shape:
     `__post_init__`) still apply at the function-signature
     layer; do not apply to the dataclass decorator.
   - **`check-no-inheritance` semantics**
-    (v012 L5): AST walker over `livespec/**`, `bin/**`,
-    `dev-tooling/**`. For every `ast.ClassDef` with non-empty
-    `bases`, inspect each base; reject unless base name resolves
-    (by AST-level name resolution; imports walked) to one of
+    (v012 L5; TIGHTENED in v013 M5): AST walker over
+    `.claude-plugin/scripts/livespec/**`,
+    `.claude-plugin/scripts/bin/**`,
+    `<repo-root>/dev-tooling/**`. For every `ast.ClassDef`
+    with non-empty `bases`, inspect each base; reject unless
+    base name resolves (by AST-level name resolution; imports
+    walked) to a class in the **direct-parent allowlist**:
     `{Exception, BaseException, LivespecError, Protocol,
-    NamedTuple, TypedDict}` OR to a `LivespecError` subclass
-    (transitively; check examines the base's MRO). The
-    `LivespecError` subclass detection examines whether the base
-    class is defined in `livespec/errors.py` AND has
-    `LivespecError` in its base list. Exemptions: vendored libs
+    NamedTuple, TypedDict}`. The v013 M5 tightening removes
+    the v012-era transitive-subclass acceptance: `LivespecError`
+    subclasses (`UsageError`, `ValidationError`, etc.) are NOT
+    acceptable bases. `class RateLimitError(UsageError):` is
+    rejected even though `UsageError` is itself a
+    `LivespecError` subclass; `class RateLimitError(LivespecError):`
+    is accepted. This enforces the v012 revision-file leaf-
+    closed intent mechanically. Exemptions: vendored libs
     (out of scope by §"Scope"); `_vendor/**` (excluded).
   - **`check-assert-never-exhaustiveness` semantics**
     (v012 L7): AST walker over every `ast.Match` node in scope.
@@ -525,12 +588,15 @@ Each entry uses this shape:
     `MatchAs(pattern=None, name=None)` (the bare `case _:` form)
     AND its body MUST consist of exactly one statement: an
     `ast.Expr` containing an `ast.Call` whose function name
-    resolves to `assert_never` (from `typing` 3.11+ or
-    `typing_extensions` 3.10) AND whose single argument is an
-    `ast.Name` matching the match-statement's subject name. Any
-    deviation fails. Conservative scope (every `match`,
-    regardless of subject type) is the load-bearing decision per
-    v012 L7's recommendation.
+    resolves to `assert_never` imported from `typing_extensions`
+    (per v013 M1 uniform-import discipline; the check MUST
+    match the `typing_extensions` module-named import path
+    specifically so a stray `from typing import assert_never`
+    is itself a failure at this check). The call's single
+    argument is an `ast.Name` matching the match-statement's
+    subject name. Any deviation fails. Conservative scope
+    (every `match`, regardless of subject type) is the
+    load-bearing decision per v012 L7's recommendation.
   - **`check-newtype-domain-primitives` semantics**
     (v012 L8): AST walker over
     `livespec/schemas/dataclasses/*.py` and `livespec/**.py`
@@ -615,35 +681,40 @@ Each entry uses this shape:
     `hypothesis.given`). Modules with zero `@given(...)`
     decorations fail. Test modules outside `tests/livespec/
     parse/` and `tests/livespec/validate/` are out of scope.
-  - **Import-Linter contract semantics** (v012 L15a):
-    `pyproject.toml`'s `[tool.importlinter]` section declares
-    three contracts:
-    - **Purity contract** (`type = "forbidden"`): forbid imports
-      from `livespec.parse.*` and `livespec.validate.*` to
-      `livespec.io.*`, `subprocess`, filesystem APIs (`open`,
-      `pathlib.Path.read_text` etc.), `returns.io.*`, `socket`,
-      `http.*`, `urllib.*`. Replaces planned `check-purity`.
+  - **Import-Linter contract semantics** (v012 L15a; minimum
+    concrete configuration codified in v013 M7): see style doc
+    §"Import-Linter contracts (minimum configuration)" for the
+    canonical `[tool.importlinter]` TOML example with three
+    contracts:
+    - **Purity contract** (`type = "forbidden"`): forbids
+      imports from `livespec.parse.*` and `livespec.validate.*`
+      to `livespec.io`, `subprocess`, filesystem APIs
+      (`pathlib`, `open`), `returns.io`, `socket`, `http`,
+      `urllib`. Replaces planned `check-purity`.
     - **Layered architecture contract** (`type = "layers"`):
-      ordered package layers (e.g., `livespec.parse` <
-      `livespec.validate` < `livespec.io` <
-      `livespec.commands`); higher layers may import lower but
-      not vice-versa. Replaces planned `check-import-graph`
-      (no circular imports follows by construction).
+      layer stack `livespec.parse` < `livespec.validate` <
+      `livespec.io` < `livespec.commands | livespec.doctor`.
+      Replaces planned `check-import-graph` (no circular
+      imports follows by construction).
     - **Raise-discipline import contract** (`type =
-      "forbidden"`): forbid `from livespec.errors import
+      "forbidden"`): forbids `from livespec.errors import
       LivespecError | <subclass>` outside `livespec.io.*` and
       `livespec.errors`. Catches the import-side surface.
       Raise-site AST discipline (the actual `raise` statements)
       remains the responsibility of hand-written
       `check-no-raise-outside-io`, which now covers ONLY the
       raise-site portion and is correspondingly narrower.
-    Configuration tuning (root packages, includes/excludes,
-    contract names) is implementer choice during the
-    `enforcement-check-scripts` deferred entry's resolution.
+    Architecture-vs-mechanism caveat (v009 I0): the minimum
+    example in the style doc is illustrative; contract names,
+    layer names, and ignore-import globs MAY be restructured so
+    long as the three English-language rules (codified in the
+    style doc) are enforced. Configuration tuning (root
+    packages, includes/excludes) is implementer choice during
+    the `enforcement-check-scripts` deferred entry's resolution.
 
 ### returns-pyright-plugin-disposition
 
-- **Source:** v007 (carried forward to v008)
+- **Source:** v007 (carried forward through every version since)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion)
 - **How to resolve:** Determine and document whether the
@@ -690,7 +761,7 @@ Each entry uses this shape:
 
 ### front-matter-parser
 
-- **Source:** v007 (carried forward; scope widened in v009 per I9/I12; scope widened in v011 per K7 and K9; scope widened in v012 per L4 and L8)
+- **Source:** v007 (carried forward; scope widened in v009 per I9/I12; scope widened in v011 per K7 and K9; scope widened in v012 per L4 and L8; scope widened in v013 per M6)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/parse/front_matter.py`,
   `<bundle>/scripts/livespec/schemas/proposed_change_front_matter.schema.json`,
@@ -714,15 +785,20 @@ Each entry uses this shape:
   Validators in `validate/` consume the parsed dict via the
   factory shape, routed through the dataclass pairing
   (`ProposedChangeFrontMatter`, `RevisionFrontMatter` dataclasses
-  with correspondingly renamed fields). **Both dataclasses use
-  the v012 L4 strict triple `@dataclass(frozen=True, kw_only=True,
-  slots=True)`** and **the v012 L8 NewType aliases** for
-  `topic` (`TopicSlug`) and `author_human` / `author_llm`
+  with correspondingly renamed fields). Per v013 M6, paired
+  validators at `validate/proposed_change_front_matter.py` and
+  `validate/revision_front_matter.py` are mandatory; the
+  three-way `check-schema-dataclass-pairing` walker catches
+  validator drift symmetrically with dataclass drift. **Both
+  dataclasses use the v012 L4 strict triple
+  `@dataclass(frozen=True, kw_only=True, slots=True)`** and
+  **the v012 L8 NewType aliases** for `topic` (`TopicSlug`)
+  and `author_human` / `author_llm`
   (`Author`).
 
 ### skill-md-prose-authoring
 
-- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7)
+- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4)
 - **Target spec file(s):**
   `.claude-plugin/skills/<sub-command>/SKILL.md` (one per
   sub-command: `seed`, `propose-change`, `critique`, `revise`,
@@ -741,12 +817,14 @@ Each entry uses this shape:
     Replaces v009's literal `@`-reference approach; works
     uniformly for built-in and custom templates;
   - **retry-on-wrapper-exit-4** prose (v010 J4; renamed from
-    v009 I8's retry-on-exit-3): on exit 4 re-invoke the
-    template prompt with error context from stderr and retry,
-    up to 3 retries; exit 3 is NOT retryable (pre-step /
-    precondition failure — surface findings and abort);
-    wrappers validate internally; no separate validator CLI
-    wrappers;
+    v009 I8's retry-on-exit-3; count semantics updated v013 M4):
+    on exit 4 re-invoke the template prompt with error context
+    from stderr and re-assemble the JSON payload, up to 2
+    retries (3 attempts total: 1 initial invocation + 2
+    retries). Abort on the third failing attempt. Exit 3 is
+    NOT retryable (pre-step / precondition failure — surface
+    findings and abort); wrappers validate internally; no
+    separate validator CLI wrappers;
   - **exit 0 on `--help`** (v010 J7): help text goes to stdout
     via the `HelpRequested` supervisor path; not an error;
   - per-proposal confirmation dialogue (`revise` only);
@@ -794,7 +872,7 @@ Each entry uses this shape:
 
 ### wrapper-input-schemas
 
-- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8)
+- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8; widened v013 per M6)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/schemas/proposal_findings.schema.json`
   (renamed from `critique_findings.schema.json`),
@@ -851,7 +929,7 @@ Each entry uses this shape:
   `ProposalFindings`, `DoctorFindings`, `SeedInput`,
   `ReviseInput`, `TemplateConfig` (v011 K5 new), and
   `LivespecConfig`. Each dataclass lives at
-  `scripts/livespec/schemas/dataclasses/<name>.py` with fields
+  `.claude-plugin/scripts/livespec/schemas/dataclasses/<name>.py` with fields
   matching the schema. **All dataclasses use the v012 L4 strict
   triple `@dataclass(frozen=True, kw_only=True, slots=True)`**
   (extension of K4's pre-v012 `frozen=True, kw_only=True`
@@ -861,13 +939,24 @@ Each entry uses this shape:
   `author_human` / `author_llm` → `Author`, `template`
   → `TemplateName`, `check_id` → `CheckId`. Other fields use
   underlying primitives. `check-schema-dataclass-pairing`
-  enforces drift-free pairing in both directions;
+  (widened to three-way in v013 M6) enforces drift-free pairing
+  in all three directions (schema ↔ dataclass ↔ validator);
   `check-newtype-domain-primitives` (v012 L8) enforces the
   NewType usage at the field-annotation layer.
 
-  Validators in `scripts/livespec/validate/<name>.py` return
+  Validators in `.claude-plugin/scripts/livespec/validate/<name>.py` return
   `Result[<Dataclass>, ValidationError]` from the factory
-  shape per v007 G4.
+  shape per v007 G4. Per v013 M6, every schema listed above
+  MUST have a paired validator at `validate/<name>.py`:
+  `validate/proposal_findings.py`,
+  `validate/doctor_findings.py`,
+  `validate/seed_input.py`,
+  `validate/revise_input.py`,
+  `validate/template_config.py`,
+  `validate/livespec_config.py`.
+  `check-schema-dataclass-pairing`'s three-way walker catches
+  validator drift (missing validator file, rename, stale
+  signature) symmetrically with dataclass drift.
 
 ### user-hosted-custom-templates
 

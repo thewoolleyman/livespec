@@ -1,0 +1,189 @@
+{
+  "version": "v013",
+  "produced_from": "v012",
+  "critique_file": "v013/proposed_changes/proposal-critique-v12.md",
+  "revision_file": "v013/proposed_changes/proposal-critique-v12-revision.md",
+  "session_date": "2026-04-23",
+  "author_human": "thewoolleyman",
+  "author_llm": "Claude Opus 4.7 (1M context)",
+  "pass_framing": "recreatability-and-integration-gap cleanup pass surfacing 13 items (M1-M7 major/significant + C1-C6 smaller cleanup) plus one new item M8 added mid-interview. Major gap M1 (typing_extensions disposition recreatability-blocking for L2+L7) + significant gaps M2-M7 (heading-coverage format; mutation bootstrap; retry count; check-no-inheritance leaf-closed; validate/ three-way pairing; Import-Linter minimum example). M2 reshaped mid-interview (split format / lifecycle → M2 + new M8); M8 options re-framed after user surfaced the shipped-vs-not-shipped architectural distinction. M1 corrected mid-lifecycle (interview picked mise-pin Option A which was self-contradictory; re-interview chose A''' vendored minimal shim). 4 careful-review passes + 1 deferred-items-consistency pass caught 16 inconsistencies cumulatively (5 + 3 + 4 + 0 + 4).",
+  "turns": [
+    {
+      "role": "user",
+      "content": "run brainstorming/approach-2-nlspec-based/critique-interview-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Read critique-interview-prompt.md. Version knobs: N=012, NEXT=013, CRITIQUE=12. Loaded all required files: PROPOSAL.md (2428 lines), livespec-nlspec-spec.md, python-skill-script-style-requirements.md, deferred-items.md, history/README.md (comprehensive chronological summary of v001-v012), history/v012/proposed_changes/proposal-critique-v11-revision.md (authoritative most-recent-settled), companion docs (goals-and-non-goals, prior-art, subdomains-and-unsolved-routing). Ran Explore agent to verify no material decisions in v003-v011 revision files beyond the README chronology. Composed 13-item critique (M prefix continues G/H/I/J/K/L sequence) and saved to proposed_changes/v013-proposed-change-proposal-critique-v12.md. Items: M1 major (typing_extensions disposition) + M2-M7 significant (heading-coverage format; mutation bootstrap; retry count; check-no-inheritance leaf-closed; validate/ three-way pairing; Import-Linter minimum example) + C1-C6 smaller cleanups. Began interview with M1."
+    },
+    {
+      "role": "assistant",
+      "summary": "M1 (incompleteness): typing_extensions disposition blocks L2+L7 on Python 3.10 floor. Options: A mise-pin typing_extensions (recommended); B bump Python floor to 3.11; C verify transitive via dry-python/returns. Recommended A."
+    },
+    { "role": "user", "content": "M1 → A: Mise-pin typing_extensions (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "M1 → A (later corrected mid-lifecycle). M2 (incompleteness): heading-coverage.json registry format. Options: A {spec_file, heading, test} + scenario exclusion; B enforce unique heading text across all files; C leave unspecified. Recommended A."
+    },
+    { "role": "user", "content": "User wants to clarify M2 — asked: Where does the heading coverage file live? When is this update cycle? When does it get committed? How do we ensure it stays as a source of truth?" },
+    {
+      "role": "assistant",
+      "summary": "Explained: file lives at tests/heading-coverage.json (repo-root). PROPOSAL.md line 2118-2119 explicitly defers 'workflow is implementation concern, not specified here'. Meta-test catches drift at check time; update mechanism not codified. The clarification question surfaced a separate lifecycle concern distinct from M2's format question. Offered 3 options: (1) reformulate M2 to format only + file separate M8 for lifecycle; (2) bundle format+lifecycle in M2; (3) drop format in favor of lifecycle. User chose option 1."
+    },
+    { "role": "user", "content": "1" },
+    {
+      "role": "assistant",
+      "summary": "Re-asked M2 with format-only scope. User chose A: {spec_file, heading, test} + Scenario: exclusion (Recommended)."
+    },
+    { "role": "user", "content": "M2 → A: {spec_file, heading, test} + Scenario: exclusion (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "M2 → A. Introduced new M8 (lifecycle). Initial options A (spec-author responsibility + meta-test drift catch); B (revise wrapper auto-writes placeholders); C (doctor-static backfill). Recommended A."
+    },
+    { "role": "user", "content": "User wants to clarify M8 (no answer given yet)." },
+    {
+      "role": "assistant",
+      "summary": "Asked what to clarify."
+    },
+    { "role": "user", "content": "You need to elaborate on A. What gets updated, and who actually writes the test?" },
+    {
+      "role": "assistant",
+      "summary": "Elaborated: updates flow to registry entry + the actual test file. Two sub-options within A: A1 (LLM writes real test same commit — tight coupling); A2 (LLM writes TODO placeholder + real test in follow-up — preserves spec-leads-or-keeps-pace separation). Offered 4-way question: A1, A2, B, C."
+    },
+    { "role": "user", "content": "But option A2 is just going to break CI as soon as we push the commit with a to-do entry, right?" },
+    {
+      "role": "assistant",
+      "summary": "Acknowledged correct concern. Reframed: A1 tight coupling (writes real test with xfail if implementation not ready); A2' TODO-with-required-reason tolerated at `just check` but release-gate rejects; B or C wrapper/doctor write placeholder. Offered 3-way re-ask."
+    },
+    { "role": "user", "content": "A1 is a nonstarter too. It's putting logic that is specific to live spec into the revise command to apply to all users." },
+    {
+      "role": "assistant",
+      "summary": "Acknowledged critical architectural point. heading-coverage.json is livespec-repo-internal (tests/ tree is for testing the skill itself per PROPOSAL.md line 1986-1988). Any skill-level mechanism leaks livespec-specific machinery to all users. Offered 3 options: withdraw M8; narrowly reframe (move lifecycle into livespec's own constraints via python-style-doc-into-constraints deferred entry); keep open but defer."
+    },
+    { "role": "user", "content": "Explain exactly what you mean here: [narrow reframe option]. When exactly are the boundaries of files on disk or sections of files that you are using to segregate these different areas that you are referring to? Everything is going in the proposal now, right?" },
+    {
+      "role": "assistant",
+      "summary": "Clarified file-on-disk boundaries: today, everything is in brainstorming/approach-2-nlspec-based/*.md (PROPOSAL.md, style doc, deferred-items.md). After seed, python-skill-script-style-requirements.md migrates to SPECIFICATION/constraints.md per python-style-doc-into-constraints deferred entry. 'Definition of Done' is a section within PROPOSAL.md. Sloppy gesture at 'move to livespec's own DoD' was really about editing a section of PROPOSAL.md. User's pushback correct: everything is in the brainstorming set."
+    },
+    { "role": "user", "content": "Where are all the other specifications about dev tooling that we have discussed? All of the ones that are not part of the skill but live under the dev tooling directory." },
+    {
+      "role": "assistant",
+      "summary": "Traced: PROPOSAL.md §'Developer tooling layout' (lines 2127-2214) describes repo-root dev-tooling tree + justfile + lefthook.yml + CI + .mise.toml + .vendor.jsonc + pyproject.toml + NOTICES.md. These are livespec-repo-only artifacts, already specified in PROPOSAL.md without being shipped in .claude-plugin/. User's point: heading-coverage.json is structurally identical to dev-tooling/checks/file_lloc.py — a livespec-repo-only artifact that CAN be specified in PROPOSAL.md. Correct distinction is shipped vs. not-shipped, not PROPOSAL.md vs. not-PROPOSAL.md. M8 options reframed as livespec-repo-internal mechanisms (A2'-repo / C-repo / A1-repo / Withdraw). Recommended A2'-repo."
+    },
+    { "role": "user", "content": "M8 → A2'-repo: Registry supports test: TODO + reason; release-gate rejects TODO (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "M8 → A2'-repo. Moved to M3 (mutation bootstrap). Options: A baseline file + ratchet + structured JSON output; B advisory mode until promoted; C leave gap. Recommended A."
+    },
+    { "role": "user", "content": "M3 → A: Baseline file + ratchet + structured mutant output (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "M3 → A. M4 (ambiguity, retry count): 3 retries after initial (4 total) vs 3 total invocations (initial + 2 retries). Options: A 3 retries after initial (4 total); B 3 total attempts; C leave ambiguity. Recommended A."
+    },
+    { "role": "user", "content": "M4 → B: 3 total invocations (initial + 2 retries max)" },
+    {
+      "role": "assistant",
+      "summary": "M4 → B (revised from recommended A). User chose tighter bound; rename 'retries' → 'attempts' across PROPOSAL.md + style doc + deferred-items. M5 (malformation): check-no-inheritance revision-file leaf-closed intent contradicts codified AST transitive-MRO semantics. Options: A accept transitive as authoritative; B tighten check to direct-parent-only; C leave contradiction. Recommended A."
+    },
+    { "role": "user", "content": "M5 → B: Tighten AST check to direct-parent-only (leaf-closed)" },
+    {
+      "role": "assistant",
+      "summary": "M5 → B (revised from recommended A). Tighter guardrail enforces v012 revision-file leaf-closed intent mechanically. M6 (incompleteness, validate/ per-schema pairing): A three-way check + enumerate validators; B enumerate only; C leave gap. Recommended A."
+    },
+    { "role": "user", "content": "M6 → A: Three-way pairing check + enumerate validators in PROPOSAL.md (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "M6 → A. M7 (incompleteness, Import-Linter minimum example): A concrete minimum pyproject.toml example + illustrative caveat; B prose-only; C leave 'implementer choice'. Recommended A."
+    },
+    { "role": "user", "content": "M7 → A: Concrete minimum pyproject.toml example + illustrative caveat (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "M7 → A. Moved to smaller cleanup items C1-C6. C1 (incorrectness, typo): fix python-skill-script-script-style-requirements.md → single 'script'. Options: A fix; C leave. Recommended A."
+    },
+    { "role": "user", "content": "C1 → A: Fix (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "C1 → A. C2 (malformation, deps list drift): A sync enumeration; B style doc references PROPOSAL.md as single source (aligns with K8 discipline); C leave drift. Recommended B."
+    },
+    { "role": "user", "content": "C2 → B: Style doc references PROPOSAL.md as single source of truth (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "C2 → B. C3 (ambiguity, test-naming for leading-underscore source modules): A codify strip-leading-underscore rule; B rename _bootstrap.py to bootstrap.py; C leave. Recommended A."
+    },
+    { "role": "user", "content": "C3 → A: One-sentence rule; strip leading underscore in test filename (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "C3 → A. C4 (ambiguity, types.py stdlib shadow): A keep + one-sentence note; B rename to primitives.py; C leave unacknowledged. Recommended A."
+    },
+    { "role": "user", "content": "C4 → A: Keep + one-sentence note in style doc (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "C4 → A. C5 (ambiguity, scope wording inconsistency): A canonicalize on short livespec/** + note; B canonicalize on full .claude-plugin/scripts/livespec/** (verbose); C leave. Recommended A."
+    },
+    { "role": "user", "content": "C5 → B: Canonicalize on .claude-plugin/scripts/livespec/** (full path)" },
+    {
+      "role": "assistant",
+      "summary": "C5 → B (revised from recommended A). User preferred verbose-but-maximally-explicit form. C6 (ambiguity, 'unconditionally' env var wording): A replace with precedence-matching phrasing + cross-reference; B keep + parenthetical; C leave. Recommended A."
+    },
+    { "role": "user", "content": "C6 → A: Replace with precedence-matching phrasing + cross-reference (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "C6 → A. All 14 items (13 original + M8 added mid-interview) resolved. Interview complete. Summary: M1 A (later corrected); M2 A; M3 A; M4 B (revised); M5 B (revised); M6 A; M7 A; M8 A2'-repo; C1 A; C2 B; C3 A; C4 A; C5 B (revised); C6 A."
+    },
+    { "role": "user", "content": "do another careful review of the entire docs in the current versions to make sure you didn't miss anything before you write it to history. Look for inconsistencies or missing things that will be caught in a future revision. Especially for things that we changed in this revision" },
+    {
+      "role": "assistant",
+      "summary": "Performed pre-edit sweep via grep across PROPOSAL.md + style doc + deferred-items.md for ripple effects of M1-M8 + C1-C6. Found: M4 rename cascades to 13 locations; M1 typing_extensions cascade to style doc + deferred-items; M5 check-no-inheritance rewrites to 3 style-doc locations + deferred-items AST-semantics; M6 validate/ enumeration + three-way pairing cascade; M7 Import-Linter contract example location; M2+M8 heading-coverage format+lifecycle in PROPOSAL.md §Testing approach; C5 sweep ~20 occurrences in style doc. Confirmed pre-edit plan was comprehensive; proceeded to revision file + working-doc edits."
+    },
+    {
+      "role": "assistant",
+      "summary": "Wrote history/v013/proposed_changes/proposal-critique-v12-revision.md with per-item decisions, governing principles, disposition by item, deferred-items inventory (6 existing entries scope-widened; 0 new; 0 removed), self-consistency check, outstanding follow-ups, what was rejected. Applied v013 edits to PROPOSAL.md: C1 typo fix; M1 vendored shim (initially wrongly described as mise-pin — corrected in apply phase); M4 rename retries → attempts (6 locations); M2+M8 heading-coverage format+lifecycle; C3 test-naming rule; C6 'unconditionally' wording fix; M6 enumerate validators + DoD updates; C5 full-path canonicalization sweep; M3 + M8 + M1 references in DoD item 12; new `.mutmut-baseline.json` + updated .mise.toml annotation in dev-tooling layout tree."
+    },
+    {
+      "role": "assistant",
+      "summary": "Apply-phase correction: caught that M1 Option A ('mise-pin typing_extensions as dev-only dep') is self-contradictory — mise makes a tool available to developers only at their shell, but livespec/** imports @override + assert_never at USER runtime. Paused to re-interview with corrected framing."
+    },
+    {
+      "role": "assistant",
+      "summary": "Re-interview options: A' vendor full ~150 KB upstream typing_extensions + extend license policy to PSF-2.0; A'' self-implement ~10-line livespec/_typing_compat.py (NO license extension needed, but pyright's reportImplicitOverride may not recognize custom decorator by fully-qualified name); B bump Python floor to 3.11."
+    },
+    { "role": "user", "content": "You're saying the library is 15K, but we will replace it with only ten lines of code?" },
+    {
+      "role": "assistant",
+      "summary": "Corrected size (actual typing_extensions.py is ~150KB / ~3700 lines). Flagged pyright-recognition risk for A'' (reportImplicitOverride uses fully-qualified-name matching; custom livespec._typing_compat.override may not trigger). Offered new third option A''' — vendor a ~15-line shim at _vendor/typing_extensions/__init__.py retaining the `typing_extensions` module name so pyright recognizes the import path but without the 150 KB of unused upstream surface. Re-asked 3-way: A' full vendor; A''' shim; B bump floor."
+    },
+    { "role": "user", "content": "M1 (corrected) → A''': Vendor a ~15-line shim at _vendor/typing_extensions/__init__.py (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "M1 → A''' (corrected mid-lifecycle). Reverted the mise-pin edits in PROPOSAL.md; added typing_extensions to the vendored-libs section with shim + PSF-2.0 license-policy extension + module-name preservation for pyright recognition. Updated style doc §'Vendored third-party libraries' license policy to include PSF-2.0 narrowly. Updated revision file's M1 section to reflect A''' not A. Updated the disposition table, governing-principles reinforcement paragraph, deferred-items inventory section, what-was-rejected section, and self-consistency check."
+    },
+    {
+      "role": "assistant",
+      "summary": "Continued applying edits: M3 mutation-testing bootstrap (added .mutmut-baseline.json ratchet + structured JSON mutant report to style doc §'Mutation testing as release-gate'). M4 'retries' → 'attempts' renames in style doc (exit code table + ValidationError docstring). M5 check-no-inheritance direct-parent-only tightening in style doc §Inheritance and structural typing + canonical target list + deferred-items AST semantics. M6 validate/ factory-shape + three-way pairing in style doc + PROPOSAL.md + deferred-items. M7 Import-Linter minimum concrete pyproject.toml example (25 lines) + illustrative caveat in style doc. C2 dev-dep list in style doc references PROPOSAL.md as single source. C4 types.py shadow acknowledgement note in style doc §Domain primitives via NewType. C5 full-path canonicalization sweep across style doc AND PROPOSAL.md (~30 occurrences via sed). Added check-no-todo-registry release-gate target to canonical target list. Updated deferred-items Source lines for all 6 widened entries (enforcement-check-scripts, static-check-semantics, task-runner-and-ci-config, skill-md-prose-authoring, wrapper-input-schemas, front-matter-parser). Updated deferred-items body content for M4 retry wording in skill-md-prose-authoring; M5 AST semantics in static-check-semantics; M6 three-way pairing semantics in static-check-semantics (2 locations) + wrapper-input-schemas + front-matter-parser; M7 Import-Linter contract semantics cross-reference; M8 release-gate target in task-runner-and-ci-config."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 1: caught 5 load-bearing fixes. (1) Revision-file M1 section still described 'mise-pin typing_extensions' (rewrote to A'''-vendored-shim). (2) Style doc §'Dataclass authorship' said 'AST walker over both sides' for check-schema-dataclass-pairing (updated to three-way walker per M6). (3) Deferred-items check-assert-never-exhaustiveness semantics subsection referenced 'typing_extensions 3.10' per-version qualifier (updated to uniform typing_extensions import source per v013 M1). (4) DoD item 10 missed M3 baseline + M8 check-no-todo-registry + M8 TODO-with-reason tolerance (updated). (5) Dev-tooling layout tree missed .mutmut-baseline.json (added). Also: updated DoD item 12 dev-tooling description with v013 M1/M3/M7/M8 references. Updated revision file's governing-principles, summary-of-dispositions, deferred-items inventory, and self-consistency check to reflect M1 A''' corrected disposition."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 2: caught 3 load-bearing fixes. (1) Style doc §'Vendoring discipline' didn't distinguish between upstream-sourced vendored libs (eligible for `just vendor-update`) and the new typing_extensions shim (livespec-authored; widened manually via code review). Added shim distinction + `.vendor.jsonc` `shim: true` flag. (2) PROPOSAL.md §'Vendored pure-Python libraries' noted that `just vendor-update` applies only to upstream-sourced libs; added cross-reference to style doc §'Vendoring discipline'. (3) PROPOSAL.md heading-coverage.json example only showed the 3 required fields; extended with a TODO-with-reason illustrative row so the full format (including the M8 reason field) is visible."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 3: caught 4 load-bearing fixes. (1) deferred-items.md `python-style-doc-into-constraints` Source line said 'carried forward to v008' — stale since it's carried forward through every version since (same drift pattern v012's pass 3 caught for claude-md-prose). Fixed to 'carried forward through every version since'. (2) deferred-items.md `returns-pyright-plugin-disposition` Source line had the same stale 'v008' pattern. Fixed. (3) deferred-items.md `static-check-semantics` Source line had v013 widening out of chronological order (v013 appeared BEFORE v008-v012 widenings). Moved v013 widening to the end of the chronological list. (4) Revision file's static-check-semantics v013-additions inventory didn't mention M1 (the check-assert-never-exhaustiveness import-source tightening is an M1 effect on static-check-semantics). Added M1 entry."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 4: landed NO load-bearing fixes. Pass 4 re-read all three working docs + revision file end-to-end; verified all M1-M8 + C1-C6 fixes cascaded correctly; verified .mutmut-baseline.json cross-references, check-no-todo-registry cross-references, Source-line consistency, layout-tree consistency, cross-reference targets, deferred-items inventory counts. Per the 'continue until pass lands no load-bearing fixes' rule, pass 4 was the final general careful-review pass."
+    },
+    {
+      "role": "assistant",
+      "summary": "Dedicated deferred-items-consistency pass: walked every deferred-items entry and verified source line + body fully reflect every decision across every prior version. Caught 4 load-bearing fixes. (1) `no_todo_registry.py` missing from PROPOSAL.md's `dev-tooling/checks/` layout tree (M8 follow-through); added. (2) `check-no-todo-registry` bullet missing from `enforcement-check-scripts` deferred entry body; added (under 'New AST / grep-level checks (v013)' subsection). (3) `template_config.schema.json` + `template_config.py` missing from PROPOSAL.md's `schemas/` tree AND `schemas/dataclasses/` tree (pre-existing v011 K5 drift that v012's 4 careful-review passes missed); both added. (4) Cross-reference `§'Type safety — @override and assert_never import source'` pointed at a bolded inline paragraph inside the pyright strict-plus bullet list, not a proper `###` subsection heading; promoted the paragraph to a standalone `### @override and assert_never import source` subsection within §'Type safety'. Cumulative total findings across all 5 passes: 16 (5 + 3 + 4 + 0 + 4)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Final lifecycle completion: byte-identical copy of PROPOSAL.md to history/v013/PROPOSAL.md (verified via diff -q). Moved critique from proposed_changes/v013-proposed-change-proposal-critique-v12.md to history/v013/proposed_changes/proposal-critique-v12.md. Updated history/README.md with v013 entry recording per-pass findings distinctly + cumulative 16-fix total across 5 passes + deferred-items-consistency pass findings separately. Updated history/README.md Pointer paragraph to reference v013. Captured this conversation.json with user verbatim + assistant summaries + distinct assistant turns for each careful-review pass + the dedicated deferred-items-consistency pass."
+    }
+  ]
+}
