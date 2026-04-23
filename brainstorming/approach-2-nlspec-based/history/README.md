@@ -615,8 +615,148 @@ entries keep their original naming (immutable history).
   removed. Full decision record is in
   `v010/proposed_changes/proposal-critique-v09-revision.md`.
 
+- **v011** — revise driven by
+  `proposed_changes/proposal-critique-v10.md` and its revision.
+  A **recreatability defect cleanup + discipline-expansion pass**
+  surfacing 11 items (K1–K11) labelled with the NLSpec failure-mode
+  framework (ambiguity / malformation / incompleteness /
+  incorrectness). Three items moved from recommended disposition
+  to alternate option based on user input; two items expanded
+  mid-interview from localized documentation fixes into broader
+  project-level discipline decisions. Major structural changes:
+  **Orphaned `commands/doctor.py` removed** — K1: layout tree no
+  longer lists the unreferenced `commands/doctor.py`; doctor's
+  Python entry lives uniformly at `livespec/doctor/run_static.py`
+  (per the v007 "no `bin/doctor.py`" discipline).
+  **`bin/resolve_template.py` wrapper contract codified** — K2:
+  six invariants added to a new §"Template resolution contract"
+  subsection: zero-positional-args + `--project-root` flag,
+  one-line absolute-POSIX-path stdout contract, built-in vs user-
+  provided path resolution, lifecycle exemption (no pre/post
+  doctor static), exit-code set (0/2/3/127), v2+ extensibility
+  shield preserving the stdout contract shape.
+  **Wrapper coverage via per-wrapper tests** — K3: 100% coverage
+  of `scripts/bin/**` achieved by dedicated `tests/bin/test_<cmd>.py`
+  files that import each wrapper and catch `SystemExit` via
+  `pytest.raises` + `monkeypatch` of `main`. No `# pragma: no
+  cover` applied to wrapper bodies; no coverage-config `omit`.
+  Wrapper-shape 6-line rule preserved unchanged;
+  `check-wrapper-shape` + `test_wrappers.py` meta-test continue
+  in parallel. Dissolves the v010 conflict between 6-line rule,
+  coverage mandate, and 3-pragma-line cap.
+  **Keyword-only arguments + keyword-only match patterns** —
+  K4: new project-wide Python discipline. Every `def` in
+  livespec scope (`scripts/livespec/**`, `scripts/bin/**`,
+  `<repo-root>/dev-tooling/**`) MUST use `*` as its first
+  parameter separator so all params are keyword-only. Every
+  `@dataclass` MUST declare `kw_only=True` (Python 3.10+).
+  `match` statements destructuring livespec-authored classes
+  MUST use keyword sub-patterns (`case Foo(x=x)`); positional
+  destructure permitted only for third-party library types
+  (`dry-python/returns`'s `IOFailure`/`IOSuccess`/etc.). Exempts
+  Python-mandated dunder signatures and `Exception.__init__`
+  forwarding. Two new AST checks:
+  `check-keyword-only-args` and `check-match-keyword-only`.
+  Consequence: no livespec-authored class declares
+  `__match_args__`; `HelpRequested` uses
+  `def __init__(self, *, text: str)` and supervisor matches via
+  `case IOFailure(HelpRequested(text=text))`.
+  **Skill decoupled from `livespec-nlspec-spec.md`** — K5 part 1:
+  every runtime-layer reference to the discipline doc removed from
+  the skill. The skill no longer names, reads, or injects
+  `livespec-nlspec-spec.md` at any layer. Built-in `livespec`
+  template ships it at its template root; the template's own
+  prompts (`seed.md`, `propose-change.md`, `critique.md`,
+  `revise.md`, and the new `doctor-llm-subjective-checks.md`)
+  Read it template-internally. Custom templates are not required
+  to have the file. Changes: generic template-layout diagram
+  loses the "OPTIONAL: discipline doc the skill injects" line;
+  the "skill concatenates" paragraph deleted; the "skill injects"
+  paragraph in the Built-in template section rewritten to
+  template-internal; §"NLSpec conformance" section deleted in
+  full; DoD item 8 rewritten to drop the "loads discipline doc"
+  clause.
+  **Three-category doctor extensibility** — K5 part 2: doctor's
+  LLM-driven phase restructured into three categories (python-
+  driven static, LLM-driven objective, LLM-driven subjective), all
+  three extensible via new `template.json` fields:
+  `doctor_static_check_modules: list[string]` (template-shipped
+  Python modules loaded via `importlib.util.spec_from_file_location`;
+  each exports `TEMPLATE_CHECKS: list[tuple[str, CheckRunFn]]`),
+  `doctor_llm_objective_checks_prompt: string | null`, and
+  `doctor_llm_subjective_checks_prompt: string | null` (paths
+  relative to template root). Two new symmetric flag pairs
+  replacing v010's single `--skip-subjective-checks`:
+  `--skip-doctor-llm-objective-checks` /
+  `--run-doctor-llm-objective-checks` and
+  `--skip-doctor-llm-subjective-checks` /
+  `--run-doctor-llm-subjective-checks`. Corresponding config keys:
+  `post_step_skip_doctor_llm_objective_checks`,
+  `post_step_skip_doctor_llm_subjective_checks`. All LLM-layer
+  only (never passed to Python wrappers); CLI → config → default
+  precedence (default `false`). Pre-step/post-step lifecycle
+  applicability list adds `resolve_template` to the "no pre-step,
+  no post-step" exemption alongside `help` and `doctor`.
+  **`--run-*` narration symmetry accepted as intentional** —
+  K6: the asymmetry between warn-on-silent-skip and neutral-on-
+  CLI-override is documented as intentional; same rule extends
+  to the K5 flag pairs. Explicit CLI flag use is self-evident;
+  structlog records provide structured visibility for machine
+  consumers.
+  **Domain-term rename `reviser` → `author`** — K7:
+  `LIVESPEC_REVISER_LLM` → `LIVESPEC_AUTHOR_LLM` (env var);
+  `reviser_llm` → `author` (wrapper payload fields on critique
+  and revise, matching propose-change's existing `author` field);
+  `reviser_human` / `reviser_llm` → `author_human` / `author_llm`
+  (revision-file front-matter fields). Uniform `--author <id>`
+  CLI flag across all three LLM-driven wrappers (`propose-change`,
+  `critique`, `revise`). Critique's v010 positional `<author>`
+  replaced with `--author` flag; topic still derived as
+  `<resolved-author>-critique`. Unified precedence across all
+  three: CLI → env → payload → `"unknown-llm"` fallback.
+  **Style-doc layout-tree duplication removed** — K8: both the
+  package-layout tree and the tests tree in the Python style doc
+  deleted; PROPOSAL.md is sole source of truth for directory
+  layouts. Per-directory convention notes (rules, not layouts)
+  retained in the style doc.
+  **`livespec-` prefix demoted to convention-only** — K9: the
+  v009 I9 "reserved prefix" is now a SHOULD-NOT convention with
+  no mechanical enforcement. Schemas no longer pattern-validate
+  `^livespec-`; wrappers no longer reject user-supplied
+  `livespec-` values from CLI / env / payload. The prefix is
+  retained in PROPOSAL.md prose as a convention for visual
+  audit-trail disambiguation between skill-auto artifacts
+  (`livespec-seed`, `livespec-doctor`) and user/LLM authorship;
+  no code branches on it. Resolves the v010 cross-document
+  contradiction between "schema pattern-validates" and "format
+  layer rejects, not schema layer" by eliminating the enforcement
+  machinery.
+  **Doctor-static domain-failure-to-fail-Finding discipline** —
+  K10: new opening paragraph in §"Static-phase checks" stating
+  that doctor-static checks MUST map domain-meaningful failure
+  modes to `IOSuccess(Finding(status="fail", ...))`, not
+  `IOFailure(err)`. `IOFailure` reserved for boundary errors
+  where the check cannot continue. Preserves the invariant that
+  `bin/doctor_static.py` never emits exit 4 (which is reserved
+  for schema-validation retries on LLM-provided JSON payloads,
+  not doctor-static output).
+  **Tests-tree example adds `schemas/dataclasses/`** — K11:
+  `tests/livespec/schemas/dataclasses/test_finding.py` +
+  `test_doctor_findings.py` + `...` added to PROPOSAL.md's
+  test-tree example. Mirror rule already universal; example
+  made consistent with the rule. Per K8 the style doc's tests
+  tree is removed entirely, so PROPOSAL.md is the sole example
+  location.
+  **Deferred-items updates:** 6 existing entries scope-widened
+  (`template-prompt-authoring`, `enforcement-check-scripts`,
+  `static-check-semantics`, `front-matter-parser`,
+  `wrapper-input-schemas`, `skill-md-prose-authoring`,
+  `task-runner-and-ci-config`); 0 new entries added; 0 removed.
+  Full decision record is in
+  `v011/proposed_changes/proposal-critique-v10-revision.md`.
+
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v010/PROPOSAL.md` until the next revise.
+byte-identical to `history/v011/PROPOSAL.md` until the next revise.

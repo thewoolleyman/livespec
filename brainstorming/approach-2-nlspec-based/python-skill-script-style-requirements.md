@@ -174,62 +174,11 @@ would not find them on `import`.
 
 ## Package layout
 
-The shipped bundle organizes Python code as:
-
-```
-.claude-plugin/scripts/
-├── bin/                                   # shebang-wrapper executables
-│   ├── _bootstrap.py                      # SHARED: sys.path setup + Python version check
-│   ├── seed.py
-│   ├── propose_change.py
-│   ├── critique.py
-│   ├── revise.py
-│   ├── doctor_static.py
-│   └── prune_history.py
-├── _vendor/
-│   ├── returns/
-│   ├── fastjsonschema/
-│   ├── structlog/
-│   └── jsoncomment/
-└── livespec/
-    ├── __init__.py                       # configures structlog + binds run_id (no version check, no raise)
-    ├── commands/                         # one module per sub-command
-    ├── doctor/
-    │   ├── run_static.py                 # orchestrator (single ROP chain)
-    │   └── static/                       # per-check modules + static registry
-    │       ├── __init__.py               # static registry: imports each check by name, exports (SLUG, run) tuples
-    │       └── <check>.py                # one module per check
-    ├── io/                               # impure boundary wrappers + vendored-lib facades
-    │   ├── fs.py
-    │   ├── git.py                        # git reads: get_git_user (user.name/user.email) + out-of-band-edits reads
-    │   ├── cli.py                        # argparse wrappers (@impure_safe, exit_on_error=False)
-    │   ├── fastjsonschema_facade.py      # typed wrapper + compile-cache; only place Any from fastjsonschema is allowed
-    │   ├── structlog_facade.py           # typed wrapper; only place Any from structlog is allowed
-    │   └── returns_facade.py             # (typed re-exports if needed; see returns-pyright-plugin-disposition)
-    ├── parse/                            # pure parsers (Result-returning)
-    │   ├── jsonc.py                      # thin wrapper over vendored jsoncomment
-    │   └── front_matter.py               # restricted-YAML parser (deferred; see deferred-items.md)
-    ├── validate/                         # pure validators (factory shape: schema as parameter)
-    ├── schemas/                          # JSON Schema Draft-7 files + paired dataclasses
-    │   ├── dataclasses/                             # paired hand-authored dataclasses (see below)
-    │   │   ├── livespec_config.py
-    │   │   ├── seed_input.py
-    │   │   ├── revise_input.py
-    │   │   ├── proposal_findings.py
-    │   │   ├── doctor_findings.py
-    │   │   ├── finding.py                           # Finding dataclass + pass_finding / fail_finding constructors (moved from doctor/finding.py per v010 J11)
-    │   │   ├── proposed_change_front_matter.py
-    │   │   └── revision_front_matter.py
-    │   ├── doctor_findings.schema.json             # doctor static-phase output contract
-    │   ├── proposal_findings.schema.json           # propose-change / critique template output
-    │   ├── seed_input.schema.json                  # seed wrapper input (deferred; see deferred-items.md)
-    │   ├── revise_input.schema.json                # revise wrapper input (deferred; see deferred-items.md)
-    │   ├── livespec_config.schema.json             # .livespec.jsonc schema
-    │   ├── proposed_change_front_matter.schema.json  # (deferred; see deferred-items.md)
-    │   └── revision_front_matter.schema.json         # (deferred; see deferred-items.md)
-    ├── context.py                        # Context dataclasses
-    └── errors.py                         # LivespecError hierarchy (expected-failure classes only)
-```
+See **PROPOSAL.md §"Skill layout inside the plugin"** for the
+canonical directory tree (`.claude-plugin/scripts/bin/`,
+`.claude-plugin/scripts/_vendor/`, `.claude-plugin/scripts/livespec/`
+and every subpackage within it). This document does not duplicate
+the tree — the layout is maintained in exactly one place.
 
 - **`bin/`** — executable shebang-wrappers + the shared `_bootstrap.py`.
   Each wrapper file is exactly 6 lines matching the shape below. No
@@ -539,9 +488,13 @@ Applicability and flags:
   `bin/doctor_static.py` rejects BOTH flags (exit 2 via
   `IOFailure(UsageError)`); it IS the static phase and has no
   pre/post wrap.
-- **`--skip-subjective-checks`** is an LLM-layer flag that never
-  reaches Python — it gates the post-step LLM-driven phase,
-  which is skill prose.
+- The two LLM-driven flag pairs
+  (`--skip-doctor-llm-objective-checks` /
+  `--run-doctor-llm-objective-checks` and
+  `--skip-doctor-llm-subjective-checks` /
+  `--run-doctor-llm-subjective-checks`) are LLM-layer only —
+  they gate the two post-step LLM-driven phases (both skill prose)
+  and never reach Python wrappers.
 
 Python composition mechanism for the lifecycle chain is implementer
 choice under the architecture-level constraints (see §"Railway-
@@ -678,29 +631,12 @@ and complexity checker. Pinned via mise.
 Tests use **`pytest`** with mandatory plugins `pytest-cov` and
 `pytest-icdiff`. Pinned via mise.
 
-Test-tree layout mirrors the implementation tree:
-
-```
-tests/
-├── CLAUDE.md
-├── heading-coverage.json
-├── fixtures/
-├── livespec/                          # mirrors scripts/livespec/
-│   ├── commands/test_seed.py
-│   ├── doctor/test_run_static.py
-│   ├── doctor/static/test_livespec_jsonc_valid.py
-│   ├── io/test_fs.py
-│   ├── parse/test_jsonc.py
-│   ├── parse/test_front_matter.py
-│   ├── validate/test_livespec_config.py
-│   └── ...
-├── bin/                               # mirrors scripts/bin/
-│   ├── test_bootstrap.py              # covers bin/_bootstrap.py
-│   └── test_wrappers.py               # meta-test: all wrappers match the 6-line shape
-├── dev-tooling/                       # mirrors <repo-root>/dev-tooling/
-│   └── checks/test_purity.py
-└── test_*.py                          # per-spec-file rule-coverage tests
-```
+See **PROPOSAL.md §"Testing approach"** for the canonical test-tree
+layout (mirroring `scripts/livespec/`, `scripts/bin/`, and
+`<repo-root>/dev-tooling/` one-to-one, plus per-spec-file rule-
+coverage tests and `heading-coverage.json`). This document does
+not duplicate the tree — the layout is maintained in exactly one
+place.
 
 Rules:
 
@@ -753,10 +689,113 @@ Coverage is measured by `coverage.py` via `pytest-cov`:
 - Enforced by `just check-coverage`.
 - **Escape hatch:** `# pragma: no cover — <reason>` on a single line or
   a bounded block; cap ≤ 3 pragma-lines per file. Bare `# pragma: no cover`
-  without a reason is rejected by a targeted regex check. Common
-  legitimate uses: `if TYPE_CHECKING:` guards, `sys.version_info` gates
-  in `bin/_bootstrap.py`, the `bin/*.py` wrapper bodies (each is a
-  trivial 6-line pass-through covered by the wrapper-shape meta-test).
+  without a reason is rejected by a targeted regex check. Legitimate
+  uses: `if TYPE_CHECKING:` guards; `sys.version_info` gates in
+  `bin/_bootstrap.py`.
+- **Wrapper coverage (`bin/*.py` except `_bootstrap.py`).** Wrapper
+  bodies are NOT pragma-excluded. Each wrapper has a matching
+  `tests/bin/test_<cmd>.py` that imports the wrapper and catches
+  `SystemExit` via `pytest.raises`, with `monkeypatch` stubbing
+  `livespec.commands.<cmd>.main` (or the relevant module's `main`)
+  to a no-op returning exit `0`. The import triggers the 6-line
+  wrapper body (version check via `_bootstrap.bootstrap()`, package
+  import, `raise SystemExit(main())`) under coverage.py's tracer,
+  registering every line as covered. The wrapper-shape 6-line rule
+  is preserved unchanged; the meta-test `tests/bin/test_wrappers.py`
+  continues to verify that shape in parallel to the per-wrapper
+  coverage tests.
+
+---
+
+## Keyword-only arguments
+
+All user-defined callables in livespec's scope (`scripts/livespec/**`,
+`scripts/bin/**`, `<repo-root>/dev-tooling/**`) MUST accept every
+parameter as keyword-only. Call-site ambiguity over positional
+order is eliminated by construction: reading `foo(name="alice",
+age=30)` unambiguously tells the reader which value is which,
+without cross-referencing the function signature.
+
+Rules:
+
+- Every `def` MUST place a lone `*` as its first parameter (or,
+  for methods, immediately after `self` / `cls`) so that every
+  subsequent parameter is in `kwonlyargs`.
+- Every `@dataclass` decorator MUST include `kw_only=True`
+  (Python 3.10+). The generated `__init__` is keyword-only.
+- Callers MUST pass arguments by keyword wherever the callee
+  permits it. Positional invocation is allowed only where the
+  callee cannot be changed (stdlib, third-party, dunder methods
+  with Python-mandated signatures).
+- **Exempt from the `*`-separator rule:**
+  - Dunder methods whose signatures are fixed by Python
+    (`__eq__(self, other)`, `__hash__(self)`, `__getitem__(self,
+    key)`, `__iter__(self)`, `__next__(self)`, etc.).
+  - `__init__` of `Exception` subclasses when the only positional
+    argument is the message forwarded to `super().__init__(msg)`;
+    downstream callers of such classes SHOULD use keyword-only
+    form (`MyError(text="...")` with `__match_args__` not
+    required for livespec code per §"Structural pattern matching").
+  - `__post_init__(self)` on dataclasses.
+  - Call-sites into stdlib / third-party / vendored-lib APIs that
+    require positional arguments (e.g., `super().__init__(msg)`,
+    `Path("/some/path")`, `sys.exit(code)`). These are call-sites,
+    not livespec-authored function definitions; the rule binds
+    only definitions.
+
+Enforced by `just check-keyword-only-args` (AST): every
+`ast.FunctionDef` and `ast.AsyncFunctionDef` under scope MUST have
+`args.args` empty after `self` / `cls` (all declared parameters in
+`args.kwonlyargs`); every `@dataclass` MUST carry `kw_only=True`.
+
+## Structural pattern matching
+
+`match` statements destructuring livespec-authored classes MUST
+use keyword patterns, not positional patterns. Concrete form:
+`case Foo(x=x, y=y)` (keyword) rather than `case Foo(x, y)`
+(positional). This eliminates the need for `__match_args__` on
+any livespec class — the class pattern binds attributes by name,
+reading directly from the instance's `.x` / `.y`.
+
+Rules:
+
+- Livespec-authored classes (anything under `scripts/livespec/**`,
+  `dev-tooling/**`, or `scripts/bin/**`) MUST NOT declare
+  `__match_args__` at class scope.
+- Class patterns in `match` statements whose class resolves to a
+  livespec-authored class MUST use keyword sub-patterns.
+- Class patterns resolving to third-party types (e.g.,
+  `dry-python/returns`'s `IOFailure`, `IOSuccess`, `Result.Success`,
+  `Result.Failure`) MAY use positional destructure, because those
+  libraries define `__match_args__` idiomatically for sum-type
+  wrappers and keyword-only patterns would be unnecessarily
+  verbose at the library boundary.
+
+Enforced by `just check-match-keyword-only` (AST): every
+`ast.Match` with an `ast.MatchClass` whose name resolves (by AST
+name resolution; imports walked) to a livespec-authored class MUST
+bind via `kwd_patterns`, not `patterns`.
+
+**HelpRequested example.** Under the keyword-only rules, the
+supervisor's three-way match dispatch reads:
+
+```python
+match result:
+    case IOFailure(HelpRequested(text=text)):
+        sys.stdout.write(text)
+        return 0
+    case IOFailure(err):
+        log.error("livespec failed", error=err)
+        return err.exit_code
+    case IOSuccess(report):
+        # ... handle success per sub-command
+        return 0
+```
+
+The outer `IOFailure(...)` uses positional destructure (permitted —
+`IOFailure` is from `dry-python/returns`). The inner
+`HelpRequested(text=text)` uses keyword destructure. `HelpRequested`
+declares no `__match_args__`.
 
 ---
 
@@ -912,10 +951,15 @@ Implementation:
       A HelpRequested is an informational early-exit category — not a
       domain error (no retry / fix improves it) and not a bug (user
       asked for help). Does not subclass LivespecError. The supervisor
-      pattern-matches HelpRequested separately from LivespecError and
-      returns exit 0 after emitting the help text to stdout.
+      pattern-matches HelpRequested via keyword destructure (per
+      §"Structural pattern matching") and returns exit 0 after
+      emitting the help text to stdout.
       """
       exit_code: ClassVar[int] = 0
+
+      def __init__(self, *, text: str) -> None:
+          super().__init__(text)
+          self.text = text
   ```
 - `IOFailure(err)` payloads are `LivespecError` subclasses. Doctor
   static check signatures are `run(ctx) -> IOResult[Finding, E]`
@@ -994,10 +1038,15 @@ from livespec.<module>.<submodule> import main
 raise SystemExit(main())
 ```
 
-`# pragma: no cover` is applied to each wrapper file's body to
-acknowledge these are trivial pass-throughs (the shape is verified
-by the `test_wrappers.py` meta-test). Enforced by
-`check-wrapper-shape` (AST-lite).
+Each wrapper is covered by a dedicated per-wrapper test at
+`tests/bin/test_<cmd>.py` that imports the wrapper and catches
+`SystemExit` via `pytest.raises`, with `monkeypatch` stubbing the
+target `main` to a no-op (see §"Code coverage — Wrapper coverage").
+Coverage.py's tracer records every line of the 6-line body as
+covered without any `# pragma: no cover` application; the wrapper-
+shape 6-line rule is preserved strictly. Shape conformance is
+enforced by `check-wrapper-shape` (AST-lite) and verified in parallel
+by the `test_wrappers.py` meta-test.
 
 ### `bin/_bootstrap.py` contract
 
@@ -1104,6 +1153,8 @@ specific native code works). No Windows support.
 | `just check-schema-dataclass-pairing` | AST: every `schemas/*.schema.json` has a paired dataclass at `schemas/dataclasses/<name>.py` with the `$id`-derived name and every listed field in matching Python type; and vice versa. Drift in either direction fails. |
 | `just check-main-guard` | AST: no `if __name__ == "__main__":` in `livespec/**`. |
 | `just check-wrapper-shape` | AST-lite: `bin/*.py` (except `_bootstrap.py`) conforms to the 6-line shebang-wrapper contract. |
+| `just check-keyword-only-args` | AST: every `def` in livespec scope uses `*` as first separator (all params keyword-only); every `@dataclass` declares `kw_only=True`. Exempts Python-mandated dunder signatures and `__init__` of Exception subclasses that forward to `super().__init__(msg)`. |
+| `just check-match-keyword-only` | AST: every `match` statement's class pattern resolving to a livespec-authored class binds via keyword sub-patterns (`Foo(x=x)`), not positional (`Foo(x)`). Third-party library class destructures (`returns`-package types) are permitted positionally. |
 | `just check-claude-md-coverage` | Every directory under `scripts/` (excluding `_vendor/` subtree), `tests/`, and `dev-tooling/` contains a `CLAUDE.md`. |
 | `just check-no-direct-tool-invocation` | grep: `lefthook.yml` and `.github/workflows/*.yml` only invoke `just <target>`. |
 | `just check-tools` | Verify every mise-pinned tool is installed at the pinned version. |

@@ -1,0 +1,147 @@
+{
+  "version": "v011",
+  "produced_from": "v010",
+  "critique_file": "v011/proposed_changes/proposal-critique-v10.md",
+  "revision_file": "v011/proposed_changes/proposal-critique-v10-revision.md",
+  "session_date": "2026-04-23",
+  "author_human": "thewoolleyman",
+  "author_llm": "Claude Opus 4.7 (1M context)",
+  "pass_framing": "recreatability defect cleanup + discipline expansion: orphaned commands/doctor.py removed; resolve_template.py contract codified; wrapper coverage via per-wrapper tests (pragma machinery retired); project-wide keyword-only args + keyword-only match patterns mandated; skill fully decoupled from livespec-nlspec-spec.md; three-category doctor extensibility (static/LLM-objective/LLM-subjective) via template.json hooks; two symmetric skip/run flag pairs replace single subjective-checks flag; domain-term rename reviser → author everywhere; layout-tree duplication eliminated from style doc; livespec- prefix demoted to convention-only; doctor-static domain-failure-to-fail-Finding discipline codified; tests-tree example covers schemas/dataclasses/",
+  "turns": [
+    {
+      "role": "user",
+      "content": "read and follow /data/projects/livespec/brainstorming/approach-2-nlspec-based/critique-interview-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Loaded all required files: PROPOSAL.md v010, livespec-nlspec-spec.md, python-skill-script-style-requirements.md v010, deferred-items.md v010, companion brainstorming docs (goals-and-non-goals, subdomains-and-unsolved-routing, prior-art, four 2026-04-19 lifecycle/terminology docs), upstream nlspec-spec.md, history/README.md with every version's summary v001-v010, v010 critique + revision + conversation.json. Produced 11-item critique (K1-K11; 3 major, 4 significant, 4 cleanup) saved to proposed_changes/v011-proposed-change-proposal-critique-v10.md covering: commands/doctor.py layout orphan, resolve_template.py contract under-spec, wrapper-shape × coverage-pragma conflict, HelpRequested match-destructure __match_args__ requirement, livespec-nlspec-spec.md injection mechanism unspecified, --run-pre-check narration symmetry, critique/revise author-flag asymmetry, style doc bin/ tree missing resolve_template.py, livespec- prefix enforcement wording contradiction, doctor-static Finding vs IOFailure ambiguity, tests-tree schemas/dataclasses/ silence. Began interview with K1."
+    },
+    {
+      "role": "assistant",
+      "summary": "K1 (malformation): commands/doctor.py in layout but unreferenced. Options: A remove; B re-export shim; C rename run_static.py → commands/doctor.py. Recommended A."
+    },
+    { "role": "user", "content": "I am confused. Isn't the doctor subcommand on the skill is going to invoke this executable directly?" },
+    {
+      "role": "assistant",
+      "summary": "Clarified the call chain: /livespec:doctor → doctor/SKILL.md prose → Bash → bin/doctor_static.py → imports from livespec.doctor.run_static (NOT from livespec.commands.doctor). commands/doctor.py is the orphan — in layout but no importer. Re-issued K1 options."
+    },
+    { "role": "user", "content": "I understand now. Go ahead and remove all references to the unused executable." },
+    {
+      "role": "assistant",
+      "summary": "K1 → A. Proceeded to K2 (incompleteness): bin/resolve_template.py contract under-specified; six invariants (CLI shape, project-root resolution, stdout shape, lifecycle applicability, built-in path resolution, exit codes). Options: A codify in PROPOSAL.md now; B defer to skill-md-prose-authoring; C collapse to single-step get_template_prompt.py. Recommended A."
+    },
+    { "role": "user", "content": "A: Codify six invariants in PROPOSAL.md now (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "K2 → A. K3 (malformation): wrapper-shape 6-line rule + 100%-coverage mandate + 3-pragma-line cap form unsatisfiable triangle. Options: A omit from coverage; B relax to 6-or-7 lines; C rely on coverage.py incidental SystemExit behavior."
+    },
+    { "role": "user", "content": "Why did we decide that the wrapper bodies don't need coverage? Why can't they just have coverage like all the other Python files?" },
+    {
+      "role": "assistant",
+      "summary": "Explained rationale for pragma-exclusion (wrappers are trivial 6-line pass-throughs; mechanically verified by test_wrappers.py shape check) and what direct coverage would require (~60-90 lines of pytest.raises(SystemExit) + monkeypatch tests). Reformulated K3 options: A (new) cover wrappers directly via tests; B omit from coverage config; C relax 6-or-7 shape."
+    },
+    { "role": "user", "content": "A: Just cover the wrappers directly (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "K3 → A (cover wrappers directly). K4 (ambiguity): HelpRequested(text) positional match-destructure requires __match_args__. Options: A add __match_args__ + __init__; B attribute access + isinstance guard; C @dataclass(frozen=True)."
+    },
+    { "role": "user", "content": "what is __match_args__?" },
+    {
+      "role": "assistant",
+      "summary": "Explained __match_args__ (Python 3.10 PEP 634 protocol hook for positional match destructure); showed the three option-fixes in full Python. User pushed back that explanation was too brief."
+    },
+    { "role": "user", "content": "Your explanation is way too brief. I don't know Python. You need to explain this to me in more detail. For example, what is `pass`? Stop omitting code so I can actually see the structure." },
+    {
+      "role": "assistant",
+      "summary": "Saved user-memory 'User is not a Python developer' — explain Python basics thoroughly (class, pass, __init__, self, super, decorators, dunder methods, match statements); never elide code with '...' or partial bodies. Wrote full walkthrough: class/pass/inheritance, __init__/self/instance, super().__init__ for Exception, match/case structural pattern matching, __match_args__ protocol, positional vs keyword patterns, @dataclass mixing with Exception gotcha. Re-issued K4 options with full code bodies."
+    },
+    { "role": "user", "content": "Why don't we force the keyword pattern to be used everywhere? Via some lunch or roll or something. I don't care if it's more verbose if it is more type-safe. This is what I prefer in Ruby. All arguments should be keyword arguments so that they have semantic meaning and there's no ambiguity over position possible. Is there any Python reason that we shouldn't lock this down? And if we do, does that help with our problem here?" },
+    {
+      "role": "assistant",
+      "summary": "Explained Python's keyword-only support (PEP 3102: `*` separator in function signatures; `@dataclass(kw_only=True)` for dataclasses Python 3.10+). Yes mechanical enforcement possible via custom AST check. Yes resolves K4 entirely (keyword match patterns obviate __match_args__). Proposed two new style-doc rules: 'Keyword-only arguments' (def signatures, @dataclass kw_only=True; exemptions for dunder signatures and Exception.__init__ forwarding) and 'Structural pattern matching' (livespec-authored classes use keyword sub-patterns in match; third-party-lib destructures exempt). Two new AST checks: check-keyword-only-args and check-match-keyword-only. Offered K4 options A+ (new; global rule) vs A/B/C (narrow per-class). Recommended A+."
+    },
+    { "role": "user", "content": "A+: Mandate keyword-only args + keyword-only match patterns for livespec code (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "K4 → A+. Saved feedback memory 'Keyword-only args + keyword-only match patterns for livespec Python'. Proceeded to K5 (incompleteness): livespec-nlspec-spec.md injection mechanism unspecified. Options: A new SKILL.md body-structure step; B rule in NLSpec conformance section; C extend resolve_template.py to emit context manifest. Recommended A."
+    },
+    { "role": "user", "content": "the livespec-nlspec-spec.md is just part of the default livespec template. It should only be referenced by prompts/instructions within that template. We should not be coupling it to the skill level scripts at all, because then that breaks the ability to be agnostic to the shape of the custom templates. If this coupling currently exists, we should remove it. Search for that carefully, and then discuss what you propose." },
+    {
+      "role": "assistant",
+      "summary": "Grepped every reference across PROPOSAL.md, livespec-nlspec-spec.md, style doc, deferred-items.md. Categorized into: (1) skill-level runtime coupling (needs removal — lines 867, 897-899, 977-980, 1777-1790, 2055 of PROPOSAL.md); (2) brainstorming-doc citations (keep — style doc lines 23/249/436/548/865 cite livespec-nlspec-spec.md as normative authority for livespec's own implementation disciplines; not runtime coupling). Flagged the doctor LLM-driven phase edge case: 'NLSpec conformance evaluation beyond hard rules' is a subjective check that would need skill-level injection to work. Three options for doctor: A drop from subjective scope; B new prompts/doctor-subjective.md template prompt; C keep as narrow exception. Recommended A."
+    },
+    { "role": "user", "content": "I like option B, because it establishes a precedent for a hook that any custom template can hook into the doctor. But I'm not sure about the subjective terminology. It's really more of a generic extension point from the perspective of the template implementer and the doctor's script itself. Give me your thoughts." },
+    {
+      "role": "assistant",
+      "summary": "Proposed dropping objective/subjective split entirely in favor of a single-phase template-extension hook. Presented two-phase model: skill-owned checks (baked) + template-extension checks (template.json hook to prompts/doctor.md). Offered category-name options: 'Template-extension checks' (recommended), 'Template-defined', 'Template-owned', 'Template doctor hook'. Recommended 'Template-extension checks'."
+    },
+    { "role": "user", "content": "I think you are being naive about dropping the objective-subjective split. It is an important framing. I am thinking of it as a Venn diagram. [describes axes: objective vs subjective as non-overlapping circles; static as sub-circle of objective; both objective and subjective LLM-driven as non-deterministic]. If that makes sense, then you should create a mermaid diagram which captures it, and put it in the directory. Or if you can easily do it in mermaid, just make it an ASCII diagram and Markdown. Tell me the file name you dump it to." },
+    {
+      "role": "assistant",
+      "summary": "Created /data/projects/livespec/brainstorming/approach-2-nlspec-based/2026-04-23-doctor-check-taxonomy-venn.md with ASCII Venn (static ⊂ objective; subjective disjoint) + Mermaid flowchart of same nested structure + paragraph on axes (outcome ambiguity vs implementation determinism) and consequences for skill/template contract."
+    },
+    { "role": "user", "content": "Yes, that helped me think about it more clearly, and I've changed my mind again. Lose the Venn Diagram concept. That doesn't matter. You can delete the file that you generated. What we really have are three separate categories: 1. python-driven static checks (have no ambiguity, deterministic becuase they can only fail due to bug in python or dependencies it calls) 2. llm-driven objective checks (have no ambiguity, non-deterministic because LLM processing can always fail for any reason) 3. llm-driven subjective checks (have ambiguity, non-deterministic because LLMs can fail, but may also fail due to LLM misinterpreting the subjectivity) And all three of these categories should be extensible via template. [details: static via python file path in template.json or known location; llm-objective via doctor-llm-objective-checks.md in known location; llm-subjective via doctor-llm-subjective-checks.md in known location. Two skip flags --skip-doctor-llm-objective-checks and --skip-doctor-llm-subjective-checks]. All clear?" },
+    {
+      "role": "assistant",
+      "summary": "Deleted Venn file. Restated three-category shape. Asked K5a (where does template's Python static-check extension file live / how loaded?) with options: A known-filename at template root; B declared in template.json; C known directory. Asked K5b (where do the two LLM-driven extension markdown files live?) options: A in prompts/; B at template root. Recommended A for both. Also answered user's meta-question about relationship between CLI flags and .livespec.jsonc config entries: they are two layers of the same setting — CLI → config → hardcoded default precedence."
+    },
+    { "role": "user", "content": "[K5a] 2. Provides granularity and control over which checks to call, and iteration over adding new checks as they evolve. [K5b] put it in the template JSON too for consistency and control" },
+    {
+      "role": "assistant",
+      "summary": "K5a → declared in template.json (as list of Python module paths). K5b → declared in template.json (as single-string paths). Confirmed template.json shape with three new fields: doctor_static_check_modules (list), doctor_llm_objective_checks_prompt (string|null), doctor_llm_subjective_checks_prompt (string|null). Asked K5c about symmetric --run-* inverse flags paralleling J10 pattern."
+    },
+    { "role": "user", "content": "[K5c] Add symmetric --run-* inverse flags (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "K5c → A (symmetric inverse flags). K5 fully resolved: strip livespec-nlspec-spec.md skill coupling + three-category doctor extensibility via template.json + two symmetric flag pairs. Proceeded to K6 (ambiguity): --run-pre-check narration symmetry. Options: B accept asymmetry (recommended; warn only on silent skips); A add symmetric narration; C drop inverse flags."
+    },
+    { "role": "user", "content": "B: Accept documented asymmetry; warn only on silent skips (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "K6 → B. Same rule extends to K5 flag pairs. Proceeded to K7 (ambiguity): critique/revise CLI author-flag asymmetry vs propose-change. Options: A document intentional asymmetry; B add --reviser-llm to critique/revise; C remove --author from propose-change."
+    },
+    { "role": "user", "content": "Why this mismatch on env var, shouldn't it be LIVESPEC_AUTHOR_LLM: ` propose-change │ --author <id> (J6)                 │ LIVESPEC_REVISER_LLM │ author field      │ \"unknown-llm\"`" },
+    {
+      "role": "assistant",
+      "summary": "Confirmed the semantic mismatch. Traced history: v009 I9 scoped LIVESPEC_REVISER_LLM to revise/critique (consistent with reviser_llm revision front-matter field); v010 J6 widened to propose-change without renaming. Also flagged second mismatch: critique's wrapper-payload field is `reviser_llm` despite critique not being a revise operation. Proposed K7 subquestion K7a (rename env var + critique payload field → author)."
+    },
+    { "role": "user", "content": "Yes, rename the domain term to author everywhere consistently, and also make the CLI override consistent across all of them, for `--author <author>`. Make sense?" },
+    {
+      "role": "assistant",
+      "summary": "K7 locked in full: LIVESPEC_REVISER_LLM → LIVESPEC_AUTHOR_LLM; critique payload reviser_llm → author; revise payload reviser_llm → author; revision-file reviser_human → author_human, reviser_llm → author_llm; critique positional <author> → --author flag; revise wrapper gains --author flag; unified precedence (CLI → env → payload → unknown-llm) across all three LLM-driven wrappers."
+    },
+    {
+      "role": "assistant",
+      "summary": "K8 (malformation): style doc bin/ tree missing resolve_template.py. Options: A one-line insertion; B remove layout-tree duplication from style doc entirely. Recommended A."
+    },
+    { "role": "user", "content": "B: Remove layout-tree duplication from style doc entirely" },
+    {
+      "role": "assistant",
+      "summary": "K8 → B. Applied consistently to both the package-layout tree and the tests tree — both removed from the style doc; PROPOSAL.md is sole source of truth for directory layouts. Per-sub-package convention notes retained. K11 simplifies: schemas/dataclasses/ addition happens only in PROPOSAL.md's tests tree."
+    },
+    {
+      "role": "assistant",
+      "summary": "K9 (ambiguity): livespec- prefix enforcement wording contradicts between schema-layer and format-layer. Options: A state two-layer mechanism explicitly; B collapse to format only; C collapse to schema only."
+    },
+    { "role": "user", "content": "Why do we care about having this namespace prefix? What problem was it originally solving?" },
+    {
+      "role": "assistant",
+      "summary": "Traced the v009 I9 origin: provenance disambiguation in audit trail for skill-auto-generated artifacts (seed auto-capture, doctor out-of-band-edits backfill). Observed no code branches on the reservation — pure convention. Offered four paths: 1 convention-only drop enforcement; 2 explicit provenance field (skill_authored bool or enum); 3 expand K7 three-slot with author_tool; 4 keep reservation with clean two-layer docs. Recommended Path 1."
+    },
+    { "role": "user", "content": "Path 1: Convention-only; drop mechanical enforcement (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "K9 → Path 1. Drop schema pattern, drop wrapper rejection; replace MUST NOT with SHOULD NOT in PROPOSAL.md prose; update front-matter-parser deferred entry. K10 (ambiguity): doctor-static Finding vs IOFailure path choice. Options: A discipline: domain failures → fail-Finding, IOFailure → boundary errors; B supervisor context-rewrites; C per-check taxonomy tags."
+    },
+    { "role": "user", "content": "A: Doctor-static checks MUST map domain failures to fail-Finding; IOFailure reserved for boundary errors (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "K10 → A. Added to PROPOSAL.md §Static-phase checks opening; static-check-semantics deferred entry references the discipline. K11 (incompleteness): tests-tree example missing schemas/dataclasses/. Options: A add to PROPOSAL.md's tests tree; B amend mirror rule to exempt pure-data modules. Recommended A."
+    },
+    { "role": "user", "content": "A: Add `schemas/dataclasses/` to PROPOSAL.md's tests tree example (Recommended)" },
+    {
+      "role": "assistant",
+      "summary": "K11 → A. All 11 items resolved. Executed the dogfood apply. Wrote /history/v011/proposed_changes/proposal-critique-v10-revision.md capturing per-item dispositions (K1-K11). Applied edits to PROPOSAL.md: K1 removed commands/doctor.py from layout; K2 added §Template resolution contract subsection with six invariants; K3 updated wrapper coverage language + tests/bin/ tree examples to include per-wrapper tests; K5 stripped livespec-nlspec-spec.md skill coupling (generic-layout line, paragraph, built-in-template paragraph, entire §NLSpec conformance section, DoD 8) and rewrote §LLM-driven phase into three categories (skill-baked + template-extension via template.json) with two symmetric flag pairs, new config keys, narration rule; K7 renamed LIVESPEC_REVISER_LLM → LIVESPEC_AUTHOR_LLM throughout and added uniform --author CLI flag precedence; critique positional <author> replaced with --author; revise gains --author; revision-file fields renamed author_human/author_llm; seed auto-capture revision updated; K9 demoted MUST NOT to SHOULD NOT + removed contradictory passage; K10 added doctor-static domain-failure-to-fail-Finding discipline paragraph; K11 added schemas/dataclasses/ to tests tree; K5 also added resolve_template to lifecycle-exempt list. Applied edits to python-skill-script-style-requirements.md: K8 removed both layout trees (package layout + tests tree), referencing PROPOSAL.md; K3 removed pragma-exclusion + per-wrapper coverage language added; K4 added new §Keyword-only arguments and §Structural pattern matching sections, updated HelpRequested definition to keyword-only __init__ with no __match_args__, added check-keyword-only-args and check-match-keyword-only to canonical target list; K5 updated flag pair references. Applied edits to deferred-items.md: widened template-prompt-authoring (K5), enforcement-check-scripts (K4), static-check-semantics (K3 K4 K5 K10), front-matter-parser (K7 K9), wrapper-input-schemas (K2 K5 K7), skill-md-prose-authoring (K5 K6 K7), task-runner-and-ci-config (K3 K4); added new TemplateConfig schema entry. Copied PROPOSAL.md to history/v011/PROPOSAL.md (byte-identical). Moved critique from proposed_changes/ to history/v011/proposed_changes/. Updated history/README.md with v011 entry and repointed Pointer paragraph. Captured this conversation.json."
+    }
+  ]
+}

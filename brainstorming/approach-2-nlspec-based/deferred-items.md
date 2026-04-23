@@ -29,7 +29,7 @@ Each entry uses this shape:
 ### <id>
 
 - **Source:** <which version surfaced this item, e.g. v002 / v003 /
-  v004 / v005 / v006 / v007 / v008 / v009 / v010>
+  v004 / v005 / v006 / v007 / v008 / v009 / v010 / v011>
 - **Target spec file(s):** <repo-root-relative path(s)>
 - **How to resolve:** <one paragraph describing what the eventual
   propose-change must produce>
@@ -39,16 +39,32 @@ Each entry uses this shape:
 
 ### template-prompt-authoring
 
-- **Source:** v001 (carried forward through every version)
+- **Source:** v001 (carried forward through every version; scope widened in v011 per K5)
 - **Target spec file(s):** `SPECIFICATION/spec.md`,
-  `SPECIFICATION/contracts.md` (skill↔template I/O contracts)
+  `SPECIFICATION/contracts.md` (skill↔template I/O contracts),
+  `specification-templates/livespec/prompts/*.md`
 - **How to resolve:** Author each template prompt's input/output
   JSON Schemas (in `scripts/livespec/schemas/`) and the prompt
   bodies themselves under
   `specification-templates/livespec/prompts/{seed,propose-change,
   revise,critique}.md`. Cover: variables the skill provides as
   input, the JSON contract the prompt MUST emit, retry semantics
-  on schema-validation failure.
+  on schema-validation failure. Each `livespec`-template prompt
+  MUST Read `../livespec-nlspec-spec.md` (template-root-relative)
+  at the start of its execution as NLSpec reference context; this
+  is template-internal (the skill no longer injects it per v011 K5).
+  v011 K5 adds two more prompts for the built-in livespec template:
+  `specification-templates/livespec/prompts/doctor-llm-objective-checks.md`
+  (skill-configurable via `doctor_llm_objective_checks_prompt` in
+  `template.json`; OPTIONAL — livespec template MAY leave it unset
+  in v1) and
+  `specification-templates/livespec/prompts/doctor-llm-subjective-checks.md`
+  (skill-configurable via `doctor_llm_subjective_checks_prompt`;
+  REQUIRED for the built-in template because it hosts the NLSpec-
+  conformance evaluation + template-compliance semantic judgments
+  that v010 had as skill-baked "subjective checks"). The
+  doctor-subjective prompt MUST Read `../livespec-nlspec-spec.md`
+  template-internally.
 
 ### python-style-doc-into-constraints
 
@@ -74,7 +90,7 @@ Each entry uses this shape:
 
 ### enforcement-check-scripts
 
-- **Source:** v005 (carried forward to v008)
+- **Source:** v005 (carried forward; scope widened in v011 per K4)
 - **Target spec file(s):** `SPECIFICATION/constraints.md` +
   `<repo-root>/dev-tooling/checks/`
 - **How to resolve:** Author each enforcement-check Python script
@@ -82,10 +98,19 @@ Each entry uses this shape:
   `python-skill-script-style-requirements.md` (`check-purity`,
   `check-private-calls`, `check-import-graph`, `check-global-writes`,
   `check-supervisor-discipline`, `check-no-raise-outside-io`,
-  `check-public-api-result-typed`, `check-main-guard`,
-  `check-wrapper-shape`, `check-claude-md-coverage`,
-  `check-no-direct-tool-invocation`, `file_lloc`). Includes:
-  test fixtures, edge-case parameterizations, exit-code mapping.
+  `check-no-except-outside-io`, `check-public-api-result-typed`,
+  `check-main-guard`, `check-wrapper-shape`,
+  `check-schema-dataclass-pairing`, `check-claude-md-coverage`,
+  `check-no-direct-tool-invocation`, `file_lloc`,
+  `check-keyword-only-args` (v011 K4; AST: every livespec-scoped
+  `def` has `*` as first separator after self/cls; every
+  `@dataclass` declares `kw_only=True`; exempts Python-mandated
+  dunder signatures and `Exception.__init__`-forwarding cases),
+  `check-match-keyword-only` (v011 K4; AST: every `match`-statement
+  class pattern resolving to a livespec-authored class binds via
+  keyword sub-patterns; third-party-lib destructures exempt)).
+  Includes: test fixtures, edge-case parameterizations, exit-code
+  mapping.
 
 ### claude-md-prose
 
@@ -102,7 +127,7 @@ Each entry uses this shape:
 
 ### task-runner-and-ci-config
 
-- **Source:** v006 (carried forward to v010; scope widened in v009 per I3; scope widened in v010 per J8, J9, J10)
+- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4)
 - **Target spec file(s):** `<repo-root>/justfile`,
   `<repo-root>/lefthook.yml`,
   `<repo-root>/.github/workflows/ci.yml`,
@@ -131,14 +156,22 @@ Each entry uses this shape:
   pair in pre-step-having sub-command wrappers per v010 J10
   (lefthook pre-commit/pre-push hook invocations of those
   sub-commands must pass one of the two flags OR neither,
-  defaulting to the config value).
+  defaulting to the config value), AND the new
+  `check-keyword-only-args` + `check-match-keyword-only` just
+  targets per v011 K4, AND the removal of any `[tool.coverage.run]
+  omit` entry for `bin/*.py` wrapper bodies per v011 K3 (wrappers
+  are now covered by per-wrapper tests at `tests/bin/test_<cmd>.py`
+  rather than pragma-excluded). `pyproject.toml`'s coverage
+  `source` list covers `scripts/bin/**` uniformly; no special-case
+  omit for wrapper files. If the pyproject-generating recipe writes
+  any per-wrapper pragma application, remove it.
 
 ### static-check-semantics
 
 - **Source:** v007 (renamed in v008 from `ast-check-semantics`;
   scope widened per H3, H11, H13, H14; scope widened in v009 per
   I1, I4, I5, I7, I10, I3; scope widened in v010 per J4, J5, J7,
-  J10, J11, J14)
+  J10, J11, J14; scope widened in v011 per K3, K4, K5, K10)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -279,6 +312,63 @@ Each entry uses this shape:
     state before step 4 and short-circuits with an
     informational `status: "skipped"` finding; no marker
     re-write.
+  - **Wrapper coverage via per-wrapper tests**
+    (v011 K3): No `# pragma: no cover` is applied to any
+    `bin/*.py` wrapper body. Each wrapper has
+    `tests/bin/test_<cmd>.py` that imports it and catches
+    `SystemExit` via `pytest.raises`, with `monkeypatch` stubbing
+    the target `main` to a no-op. Coverage.py's tracer registers
+    every line of the 6-line body under test. Wrapper-shape rule
+    preserved unchanged; `check-wrapper-shape` + `test_wrappers.py`
+    meta-test verify shape in parallel to per-wrapper coverage
+    tests.
+  - **`check-keyword-only-args` semantics**
+    (v011 K4): AST walker over `scripts/livespec/**`,
+    `scripts/bin/**`, and `<repo-root>/dev-tooling/**`. For every
+    `ast.FunctionDef` / `ast.AsyncFunctionDef`, `args.args` MUST
+    be empty after `self`/`cls` (all declared params in
+    `args.kwonlyargs`). For every `@dataclass` decorator, the
+    invocation MUST include `kw_only=True` as a keyword arg.
+    **Exemptions:** dunder methods with Python-mandated positional
+    signatures (`__eq__(self, other)`, `__hash__(self)`,
+    `__getitem__(self, key)`, `__iter__(self)`, `__next__(self)`,
+    `__contains__(self, item)`, etc.; enumeration codified in
+    this deferred entry); `__init__` of Exception subclasses when
+    the body does `super().__init__(<single-positional>)` and no
+    other effects; `__post_init__(self)` on dataclasses.
+  - **`check-match-keyword-only` semantics**
+    (v011 K4): AST walker over every `ast.Match` statement in
+    livespec scope. Each `ast.MatchClass` whose class name
+    resolves (by AST-level name resolution, walking `import` /
+    `from ... import` statements in the containing module) to
+    a livespec-authored class MUST bind attributes via
+    `kwd_patterns` (keyword sub-patterns). `patterns` (positional
+    sub-patterns) MUST be empty for livespec-authored classes.
+    **Exemption:** classes whose resolution names come from
+    third-party libraries (notably `dry-python/returns`'s
+    `IOFailure`, `IOSuccess`, `Result.Success`, `Result.Failure`)
+    — positional destructure permitted since those libraries
+    define `__match_args__` idiomatically.
+  - **Doctor-static domain-failure-to-fail-Finding discipline**
+    (v011 K10): doctor-static checks MUST map domain-meaningful
+    failure modes to `IOSuccess(Finding(status="fail", ...))`, not
+    `IOFailure(err)`. `IOFailure` reserved for boundary errors
+    where the check cannot continue (I/O read failure on the
+    target file itself, not validation-against-content). Preserves
+    the invariant "`bin/doctor_static.py` never emits exit 4."
+  - **Template-extension doctor-static check loading**
+    (v011 K5): `template.json`'s
+    `doctor_static_check_modules: list[str]` names paths relative
+    to the template root. `livespec/doctor/run_static.py` loads
+    each via `importlib.util.spec_from_file_location(...)` +
+    `module_from_spec(...)` + `loader.exec_module(...)`. Each
+    loaded module MUST export
+    `TEMPLATE_CHECKS: list[tuple[str, CheckRunFn]]`
+    (same shape as the skill-internal static registry's exported
+    `CHECKS`). Template-extension checks compose after skill-baked
+    checks in the ROP chain; SLUGs MUST NOT collide with skill-
+    baked SLUGs (the orchestrator rejects duplicates at registry-
+    assembly time with an IOFailure).
 
 ### returns-pyright-plugin-disposition
 
@@ -296,7 +386,7 @@ Each entry uses this shape:
 
 ### front-matter-parser
 
-- **Source:** v007 (carried forward to v009; scope widened in v009 per I9 and I12)
+- **Source:** v007 (carried forward; scope widened in v009 per I9/I12; scope widened in v011 per K7 and K9)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/parse/front_matter.py`,
   `<bundle>/scripts/livespec/schemas/proposed_change_front_matter.schema.json`,
@@ -304,27 +394,27 @@ Each entry uses this shape:
 - **How to resolve:** Implement the restricted-YAML parser per the
   format restrictions codified in PROPOSAL.md "Proposed-change file
   format" and "Revision file format" (scalar-only,
-  JSON-compatible, no nesting). Author two distinct JSON Schemas
-  (I12): `proposed_change_front_matter.schema.json` (fields:
+  JSON-compatible, no nesting). Author two distinct JSON Schemas:
+  `proposed_change_front_matter.schema.json` (fields:
   `topic`, `author`, `created_at`) and
   `revision_front_matter.schema.json` (fields: `proposal`,
-  `decision`, `revised_at`, `reviser_human`, `reviser_llm`). Each
-  schema pattern-validates the reserved `livespec-` prefix
-  namespace convention from I9: identifiers matching the
-  `^livespec-` pattern are reserved for automated skill-tool
-  authorship (e.g., `livespec-seed`, `livespec-doctor`); fields
-  accepting human-or-LLM identifiers MUST NOT accept
-  user-supplied `livespec-`-prefixed values from non-skill
-  callers (enforced at parse time on the proposed-change /
-  revision file format, not at the front-matter schema layer).
+  `decision`, `revised_at`, `author_human`, `author_llm` — fields
+  renamed in v011 K7 from `reviser_human` / `reviser_llm` to
+  eliminate the domain-term mismatch; the revision front-matter
+  captures authorship of the revision decision, and propose-change
+  / critique payload field names also unified to `author`).
+  **No `^livespec-` pattern validation on author fields** — the
+  `livespec-` prefix is a SHOULD-NOT convention per v011 K9, not
+  a mechanical reservation. Schemas do not reject `livespec-`-
+  prefixed user-supplied values; wrappers also do not reject them.
   Validators in `validate/` consume the parsed dict via the
-  factory shape from G4, routed through the dataclass pairing
-  from I3 (`ProposedChangeFrontMatter`, `RevisionFrontMatter`
-  dataclasses).
+  factory shape, routed through the dataclass pairing
+  (`ProposedChangeFrontMatter`, `RevisionFrontMatter` dataclasses
+  with correspondingly renamed fields).
 
 ### skill-md-prose-authoring
 
-- **Source:** v008 (H4; carried forward to v010 with I8 reshape; scope widened in v010 per J3, J4, J7, J10)
+- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7)
 - **Target spec file(s):**
   `.claude-plugin/skills/<sub-command>/SKILL.md` (one per
   sub-command: `seed`, `propose-change`, `critique`, `revise`,
@@ -358,36 +448,67 @@ Each entry uses this shape:
     (skip warning when `--skip-pre-check` is set or config
     default is skip=true; neutral when `--run-pre-check`
     overrides config default skip=true);
-    `--skip-subjective-checks` (LLM-layer only; never passed
-    to Python) handling;
+  - **two symmetric LLM-driven flag pairs** (v011 K5 +
+    K6): `--skip-doctor-llm-objective-checks` /
+    `--run-doctor-llm-objective-checks` and
+    `--skip-doctor-llm-subjective-checks` /
+    `--run-doctor-llm-subjective-checks`; both pairs LLM-layer
+    only (never passed to Python wrappers); mutually exclusive
+    within each pair (both set → argparse usage error exit 2);
+    narration rule identical to pre-step (warn on silent skips
+    only; explicit flag → self-evident, no narration). Replaces
+    the v010 single `--skip-subjective-checks` flag.
+  - **uniform `--author <id>` CLI flag** (v011 K7) listed
+    in Inputs section of propose-change, critique, and revise
+    bodies (identical precedence across all three:
+    CLI → env var `LIVESPEC_AUTHOR_LLM` → payload `author` field
+    → `"unknown-llm"` fallback). Critique body changes from
+    v010's positional `<author>` to `--author` flag; topic
+    still derived as `<resolved-author>-critique`.
   - exit-code narration (exit 0 on help; exit 2 on usage error
     including both-flags-set; exit 3 on precondition /
     doctor-static; exit 4 on schema validation; exit 1 on
     bug / unexpected exception; exit 126 / 127 on permission /
     missing tool).
 
+- **Strictly NO skill-level injection of `livespec-nlspec-spec.md`**
+  (v011 K5): SKILL.md prose MUST NOT name `livespec-nlspec-spec.md`
+  or any other template-internal reference file. Template
+  prompts handle their own discipline-doc injection internally
+  (see `template-prompt-authoring`). Skill-level template
+  interaction is limited to: reading `template.json` via
+  `bin/resolve_template.py`, reading `prompts/<name>.md` via the
+  two-step Bash+Read dispatch (v010 J3), reading
+  `specification-template/` at seed time, and reading the two
+  `doctor_llm_*_checks_prompt` paths (if `template.json` declares
+  them) as additional Read-then-invoke steps during the LLM-
+  driven phases.
+
 ### wrapper-input-schemas
 
-- **Source:** v008 (H6 + H10; carried forward to v010 with I3 widening; scope widened in v010 per J6)
+- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/schemas/proposal_findings.schema.json`
   (renamed from `critique_findings.schema.json`),
   `<bundle>/scripts/livespec/schemas/doctor_findings.schema.json`,
   `<bundle>/scripts/livespec/schemas/seed_input.schema.json`,
   `<bundle>/scripts/livespec/schemas/revise_input.schema.json`,
+  `<bundle>/scripts/livespec/schemas/template_config.schema.json`
+  (NEW per v011 K5 — validates `template.json` fields including
+  the three new `doctor_*_checks*` extension fields),
   AND the paired hand-authored dataclasses under
   `<bundle>/scripts/livespec/schemas/dataclasses/*.py` per I3.
-- **How to resolve:** Author the four JSON Schema Draft-7 files:
+- **How to resolve:** Author the five JSON Schema Draft-7 files:
   - `proposal_findings.schema.json` — propose-change / critique
     template-prompt output. Each finding has `name`,
     `target_spec_files[]`, `summary`, `motivation`,
-    `proposed_changes`. v010 J6 adds an optional file-level
-    `author` field (string) so the LLM can self-declare the
-    propose-change author per the precedence rule documented
-    in PROPOSAL.md §"propose-change → Author identifier
-    resolution" (CLI `--author` → env var
-    `LIVESPEC_REVISER_LLM` → payload `author` field →
-    `"unknown-llm"` fallback).
+    `proposed_changes`. Optional file-level `author` field
+    (string) so the LLM can self-declare the author per the
+    unified precedence (CLI `--author` → env var
+    `LIVESPEC_AUTHOR_LLM` → payload `author` field →
+    `"unknown-llm"` fallback; v011 K7 rename of env var from
+    `LIVESPEC_REVISER_LLM`). No `^livespec-` pattern on the
+    `author` field (v011 K9 — convention-only, not enforced).
   - `doctor_findings.schema.json` — doctor static-phase JSON
     output. Each finding has `check_id`, `status` (one of
     `pass`/`fail`/`skipped`), `message`, `path`, `line`.
@@ -395,22 +516,36 @@ Each entry uses this shape:
     `{files: [{path, content}], intent}`.
   - `revise_input.schema.json` — revise wrapper input. Shape:
     `{decisions: [{proposal_topic, decision, rationale,
-    modifications, resulting_files: [{path, content}], reviser_llm}]}`.
-    Note: optional `reviser_llm` field carries the LLM's
-    best-effort self-identification per I13 precedence.
+    modifications, resulting_files: [{path, content}]}],
+    author}`. File-level optional `author` field (renamed from
+    `reviser_llm` per v011 K7) carries the LLM's best-effort
+    self-identification; the resolved author value becomes the
+    `author_llm` field on the generated revision front-matter.
+  - `template_config.schema.json` (v011 K5 NEW) — validates the
+    `template.json` file shipped by every template. Fields:
+    `template_format_version: integer (const: 1 in v1)`,
+    `spec_root: string (OPTIONAL, default "SPECIFICATION/")`,
+    `doctor_static_check_modules: list[string] (OPTIONAL,
+    default [])`,
+    `doctor_llm_objective_checks_prompt: string | null
+    (OPTIONAL, default null)`,
+    `doctor_llm_subjective_checks_prompt: string | null
+    (OPTIONAL, default null)`. Loaded by the `template-exists`
+    doctor-static check and by `bin/resolve_template.py` (v011 K2).
+
+  `bin/resolve_template.py` does NOT take a JSON input payload — it
+  accepts only `--project-root <path>` (optional; default
+  `Path.cwd()`) and emits the resolved template absolute POSIX
+  path to stdout per the v011 K2 wrapper contract in PROPOSAL.md
+  §"Template resolution contract."
 
   Also author the paired hand-authored dataclasses per I3:
   `ProposalFindings`, `DoctorFindings`, `SeedInput`,
-  `ReviseInput`, and `LivespecConfig` (for `.livespec.jsonc`).
-  Each dataclass lives at
+  `ReviseInput`, `TemplateConfig` (v011 K5 new), and
+  `LivespecConfig`. Each dataclass lives at
   `scripts/livespec/schemas/dataclasses/<name>.py` with fields
   matching the schema. `check-schema-dataclass-pairing`
-  enforces drift-free pairing in both directions (every schema
-  has a dataclass; every dataclass has a schema).
-
-  Also: rename every reference to the old
-  `critique_findings.schema.json` → `proposal_findings.schema.json`
-  in PROPOSAL.md, the style doc, and any layout diagrams.
+  enforces drift-free pairing in both directions.
 
   Validators in `scripts/livespec/validate/<name>.py` return
   `Result[<Dataclass>, ValidationError]` from the factory
