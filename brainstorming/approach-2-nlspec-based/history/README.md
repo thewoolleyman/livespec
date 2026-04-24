@@ -1450,8 +1450,200 @@ entries keep their original naming (immutable history).
   Full decision record is in
   `v016/proposed_changes/proposal-critique-v15-revision.md`.
 
+- **v017** — revise driven by
+  `proposed_changes/proposal-critique-v16.md` and its revision.
+  A **recreatability-and-cross-doc-consistency cleanup pass**
+  surfacing 10 items (Q1-Q10 originally; Q5-original retracted
+  mid-interview as a false alarm, renumbering to 9 items
+  Q1-Q9). All items accepted at option A. Major structural
+  changes:
+  **Reserve-suffix canonicalization delegated to deferred-
+  items.md** — Q1: PROPOSAL.md §"propose-change → Reserve-
+  suffix canonicalization" trimmed to invariants-only (≤64
+  chars; suffix preserved intact regardless of pre-attachment
+  or truncation-clip; empty → UsageError). The full algorithm
+  (pre-strip + truncate-and-hyphen-trim + re-append) lives
+  solely in `deferred-items.md`'s `static-check-semantics`
+  entry. PROPOSAL.md's prior sketch was strictly smaller than
+  the algorithm and would have caused doubled suffixes for
+  pre-attached inputs; the sole-source-of-truth move
+  eliminates drift risk by construction.
+  **Pre-seed template resolution via `--template` flag** —
+  Q2: `bin/resolve_template.py` gains an optional
+  `--template <value>` flag (alongside the existing
+  `--project-root <path>`) that, when supplied, bypasses
+  `.livespec.jsonc` lookup and resolves the value directly
+  (built-in names → `<bundle-root>/specification-templates/
+  <name>/`; other values → relative to `--project-root`).
+  `seed/SKILL.md` pre-seed dialogue uses
+  `bin/resolve_template.py --project-root . --template
+  <chosen>` to resolve the chosen template's `prompts/seed.md`
+  before the wrapper has written `.livespec.jsonc`. The v011
+  K2 v2+-extensibility shield is extended to cover both the
+  stdout contract AND the flag shape (`--project-root`,
+  `--template`); v2+ extensions MUST extend the flag set,
+  not replace it. Closes the previously-undocumented pre-seed
+  template-resolution gap that v014 N1 left open.
+  **Import-Linter raise-discipline contract retracted** —
+  Q3: v012 L15a's third Import-Linter contract (forbidden
+  imports of `livespec.errors` outside `io/**` and
+  `errors.py`) is dropped from the illustrative TOML and
+  from the authoritative English rules. Rationale:
+  Import-Linter cannot distinguish import-for-raising from
+  import-for-annotating; blanket-forbidding the imports
+  blocks legitimate type-annotation and match-pattern uses
+  in `commands/`, `doctor/`, and `validate/` modules. The
+  hand-written `check-no-raise-outside-io` covers the
+  raise-discipline fully (raise-site enforcement only).
+  v012 L15a's claim that Import-Linter "replaces the
+  import-surface portion of check-no-raise-outside-io" is
+  retracted. The style doc's minimum configuration now has
+  two contracts (purity + layered architecture).
+  **Seed post-step recovery narration contract expanded** —
+  Q4: PROPOSAL.md §"seed → Post-step doctor-static failure
+  recovery" adds an explicit narration contract for
+  propose-change's expected exit-3 during recovery (its
+  post-step trips the same findings that tripped seed's
+  post-step; the proposed-change file IS on disk per the
+  partial-state-commit pattern). Adds the explicit
+  git-commit step between propose-change and revise (so
+  `doctor-out-of-band-edits` doesn't trip its pre-backfill
+  guard on the next invocation). propose-change's SKILL.md
+  prose narrates the exit-3 path distinctly when
+  seed-recovery-in-progress is detectable (heuristic: no
+  vNNN beyond v001 AND pre-check was skipped).
+  **Seed wrapper present-but-invalid `.livespec.jsonc`
+  handling** — Q5: PROPOSAL.md §"seed" codifies a third
+  branch alongside the v016 P2 absent + present-valid
+  branches. Present-but-invalid (JSONC parse failure or
+  schema-invalid) → exit 3 with `PreconditionError`
+  citing the parse error or schema-violation path.
+  Preserves the existing non-doctor fail-fast rule
+  (§"Doctor → Bootstrap lenience") and never silently
+  overwrites a user's manual edit.
+  **Payload-vs-config template mismatch exit code** — Q6:
+  the v016 P2 mismatch clause updated from exit 2
+  (UsageError) to exit 3 (PreconditionError). The payload
+  is a wire-format input (validated against
+  `seed_input.schema.json`), not a CLI-argument surface; a
+  mismatch between two validated inputs is the
+  "incompatible state" category covered by exit 3.
+  **Revision-pairing walks filename stems** — Q7:
+  PROPOSAL.md §"revise", §"Proposed-change file format",
+  and §"doctor → Static-phase checks →
+  `revision-to-proposed-change-pairing`" clarify that
+  collision-suffix lives in the filename stem
+  (`foo-2.md`, `foo-3.md`), distinct from the front-matter
+  `topic` field (which carries ONLY the canonical topic
+  without the `-N` suffix). Revision-pairing walks
+  filename stems — every `<stem>-revision.md` pairs with
+  `<stem>.md` — not front-matter `topic` values. Closes
+  v014 N6 + v016 P4 interaction ambiguity.
+  **Grammar fix at PROPOSAL.md line 853** — Q8: "The
+  every doctor-static check's path references parameterize"
+  → "Every doctor-static check's path references are
+  parameterized". Trivial cleanup.
+  **Uniform `--project-root` contract across every
+  wrapper** — Q9: PROPOSAL.md §"Sub-command dispatch and
+  invocation chain" codifies that every wrapper operating
+  on project state (`bin/seed.py`, `bin/propose_change.py`,
+  `bin/critique.py`, `bin/revise.py`,
+  `bin/prune_history.py`, `bin/doctor_static.py`,
+  `bin/resolve_template.py`) accepts
+  `--project-root <path>` with default `Path.cwd()`.
+  Upward-walk logic to find `.livespec.jsonc` lives in
+  `livespec.io.fs` as a shared helper reused by every
+  wrapper and by `livespec.doctor.run_static`.
+  **Q5-original retracted** — a proposal claiming that
+  `tests/e2e/fake_claude.py` needed style-rule exemptions
+  (`check-no-inheritance`, strict-dataclass triple, etc.)
+  to be SDK-compatible was retracted mid-interview on
+  user pushback. The mock is hand-rolled test
+  infrastructure that handles input/output streams and
+  invokes subprocesses; it complies with every livespec
+  Python rule by construction. A feedback memory was
+  saved so future sessions don't surface this class of
+  false alarm again. The critique file and revision file
+  record the retraction; 9 items (Q1-Q9) are the
+  finalized set.
+  **Deferred-items updates:** 5 existing entries
+  scope-widened (`static-check-semantics` for Q1/Q3/Q7/Q9;
+  `skill-md-prose-authoring` for Q2/Q4;
+  `task-runner-and-ci-config` for Q3;
+  `enforcement-check-scripts` for Q3;
+  `template-prompt-authoring` for Q2). Two additional
+  note-only Source-line widenings from the dedicated
+  deferred-items-consistency pass: `user-hosted-custom-
+  templates` (Q2 flag-surface freeze) and `claude-md-prose`
+  (Q9 `livespec/io/CLAUDE.md` helper mention). 0 new
+  entries; 0 removed.
+  **Careful-review pass (first)** caught 4 load-bearing
+  fixes: revision-file "touched N entries" off-by-one
+  (Q5 affects seed wrapper, not schemas); PROPOSAL.md
+  §"critique" still duplicated the reserve-suffix
+  algorithm despite Q1's invariants-only trim;
+  `deferred-items.md` item-schema version range stopped
+  at v014 (drift pattern v012 pass 3 caught for other
+  entries); revision-file inventory removed the spurious
+  `wrapper-input-schemas` entry.
+  **Careful-review pass (second)** caught 3 load-bearing
+  fixes: PROPOSAL.md §"Per-sub-command SKILL.md body
+  structure" step 4 didn't mention Q2's pre-seed
+  `--template` flag path; `deferred-items.md`'s
+  `static-check-semantics` AST-checks list described
+  `check-no-raise-outside-io` with the stale
+  v012 L15a import-surface-delegation wording;
+  `deferred-items.md`'s `task-runner-and-ci-config` body
+  paragraph on Import-Linter mise-pin still described
+  three contracts.
+  **Careful-review pass (third)** caught 3 interlocking
+  fixes for `task-runner-and-ci-config`: Source line
+  needed v017 Q3 widening notation (its body had been
+  edited in pass 2); revision-file "Carried forward
+  unchanged from v016" list included it but pass 2 had
+  widened its body; revision-file "touched 4 existing
+  entries" claim was now incorrect (5 entries).
+  **Careful-review pass (fourth)** caught 3 load-bearing
+  fixes: `deferred-items.md`'s `task-runner-and-ci-config`
+  v013 M7 subsection still said "three contracts";
+  PROPOSAL.md's `dev-tooling/checks/` layout tree
+  annotation still claimed Import-Linter "replaced" the
+  import-surface portion of `no_raise_outside_io`;
+  PROPOSAL.md DoD item 12 said "Import-Linter contracts
+  per L15a + v013 M7 minimum-configuration example"
+  without the v017 Q3 narrowing; PROPOSAL.md's
+  `pyproject.toml` layout entry also updated.
+  **Careful-review pass (fifth)** landed 0 load-bearing
+  fixes (final pass per the "continue until pass lands no
+  load-bearing fixes" rule).
+  **Dedicated deferred-items-consistency pass** landed 3
+  load-bearing findings distinct from the careful-review
+  passes: `template-prompt-authoring`'s v017 Q2 Source-
+  line note was "note-only" but the minimal template's
+  `prompts/seed.md` delimiter comments must now cover a
+  new `bin/resolve_template.py --template` pre-seed
+  invocation — rewrote to mark Q2 as a substantive
+  widening; `user-hosted-custom-templates` body didn't
+  mention the CLI flag surface in the v2+ shield —
+  added an explicit paragraph noting that `--project-root`
+  + `--template` flag shape is v1-frozen; `claude-md-prose`
+  had no mention of the v017 Q9 shared upward-walk helper
+  — added a Source-line note covering the
+  `livespec/io/CLAUDE.md` obligation.
+  Layout-tree drift check: no new files introduced by
+  v017. Cross-reference validity: all new Q# cross-
+  references resolve to existing headings. Example-vs-
+  rule alignment: reserve-suffix worked examples pass the
+  arithmetic; PROPOSAL.md §"critique" informal description
+  consistent with the full algorithm in deferred-items.
+  **Cumulative total findings across all 5 careful-review
+  passes + 1 deferred-items-consistency pass: 16
+  inconsistencies caught and fixed (4 + 3 + 3 + 3 + 0 + 3).**
+  Full decision record is in
+  `v017/proposed_changes/proposal-critique-v16-revision.md`.
+
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v016/PROPOSAL.md` until the next revise.
+byte-identical to `history/v017/PROPOSAL.md` until the next revise.

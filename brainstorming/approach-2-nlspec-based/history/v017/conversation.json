@@ -1,0 +1,136 @@
+{
+  "version": "v017",
+  "produced_from": "v016",
+  "critique_file": "v017/proposed_changes/proposal-critique-v16.md",
+  "revision_file": "v017/proposed_changes/proposal-critique-v16-revision.md",
+  "session_date": "2026-04-24",
+  "author_human": "thewoolleyman",
+  "author_llm": "Claude Opus 4.7 (1M context)",
+  "pass_framing": "recreatability-and-cross-doc-consistency cleanup pass surfacing 10 items originally (Q1-Q10); one item (original Q5 — fake_claude.py vs check-no-inheritance) was retracted mid-interview as a false alarm on user pushback (hand-rolled mocks comply with livespec Python rules by construction), renumbering to 9 finalized items (Q1-Q9). Q1 eliminated a PROPOSAL.md-vs-deferred-items.md divergence on the reserve-suffix algorithm by trimming PROPOSAL.md to invariants-only. Q2 closed the pre-seed template-resolution gap by extending `bin/resolve_template.py` with a `--template <value>` flag. Q3 retracted v012 L15a's Import-Linter raise-discipline contract (the English rule was self-contradictory and Import-Linter cannot distinguish import-for-raising from import-for-annotating); hand-written `check-no-raise-outside-io` is now the sole raise-discipline enforcement point. Q4 extended the v014 N7 seed-recovery flow with an explicit narration contract for propose-change's expected exit-3 and the previously-implicit git-commit step. Q5 added explicit present-but-invalid `.livespec.jsonc` handling for seed (exit 3 with PreconditionError). Q6 corrected the exit code for payload-vs-config `template` mismatch from 2 (UsageError) to 3 (PreconditionError). Q7 clarified that revision-pairing walks filename stems (distinct from front-matter `topic` values) under collision disambiguation. Q8 fixed a grammar typo at line 853. Q9 added a uniform `--project-root` contract across every wrapper operating on project state. 5 careful-review passes + 1 dedicated deferred-items-consistency pass caught 16 inconsistencies cumulatively (4 + 3 + 3 + 3 + 0 + 3).",
+  "turns": [
+    {
+      "role": "user",
+      "content": "Run /data/projects/livespec/brainstorming/approach-2-nlspec-based/critique-interview-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Determined N=16, NEXT=17, CRITIQUE=16. Loaded the required context (PROPOSAL.md, livespec-nlspec-spec.md, deferred-items.md, python-skill-script-style-requirements.md, goals-and-non-goals.md, prior-art.md, and the v016 revision file as authoritative latest settlement). Produced a 10-item critique document at proposed_changes/v017-proposed-change-proposal-critique-v16.md (3 major Q1-Q3; 3 significant Q4-Q6; 4 smaller cleanups Q7-Q10)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Q1 interview: PROPOSAL.md §'propose-change → Reserve-suffix canonicalization' describes an algorithmically smaller procedure than deferred-items.md's `static-check-semantics` entry. Deferred-items's worked example `'Claude Opus 4.7-critique' + '-critique' → 'claude-opus-4-7-critique'` only produces that output under deferred-items's pre-strip step (absent from PROPOSAL.md). An implementer reading PROPOSAL.md alone would produce doubled suffixes. Recommended Q1-A: trim PROPOSAL.md to invariants-only (≤64 chars, suffix intact, empty → UsageError) and delegate the algorithm to deferred-items.md's entry."
+    },
+    {
+      "role": "user",
+      "content": "A: Trim PROPOSAL.md to invariants-only (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q1 to A. Moved to Q2: explained that `bin/resolve_template.py` requires `.livespec.jsonc` to exist (walks upward), but v014 N1's pre-seed dialogue requires the LLM to Read `prompts/seed.md` from the chosen template BEFORE the wrapper has written the config. No mechanism is documented. Recommended Q2-A: extend `bin/resolve_template.py` with an optional `--template <value>` flag that bypasses the config lookup and resolves the value directly (built-in names → bundle path; other values → relative to `--project-root`)."
+    },
+    {
+      "role": "user",
+      "content": "A: Extend resolve_template.py with --template flag (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q2 to A. Moved to Q3: explained that v012 L15a's third Import-Linter contract's English rule is internally contradictory (first sentence: absolute import restriction on `livespec.errors`; second sentence: restriction only for raising). The illustrative TOML enforces the absolute reading and would block legitimate type-annotation and match-pattern imports in commands/, doctor/, and validate/ modules. Recommended Q3-A: drop the third contract from the illustrative TOML; retract the L15a 'replaces the import-surface portion' claim; keep `check-no-raise-outside-io` as the sole raise-discipline enforcement point (raise-site only)."
+    },
+    {
+      "role": "user",
+      "content": "A: Drop Import-Linter raise-discipline contract; rely on hand-written raise-site check (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q3 to A. Moved to Q4: explained that v014 N7's recovery flow uses `--skip-pre-check` on both propose-change and revise, but `--skip-pre-check` only skips pre-step. Propose-change's post-step will trip the same findings that tripped seed's post-step, so propose-change also exits 3 (but the proposed-change file IS on disk). The user needs to commit the partial state before running revise, or `doctor-out-of-band-edits`'s pre-backfill guard will block the next invocation. The current documentation doesn't spell any of this out. Recommended Q4-A: extend §'seed → Post-step doctor-static failure recovery' with an explicit narration contract for propose-change's expected exit-3 and the git-commit step."
+    },
+    {
+      "role": "user",
+      "content": "A: Explicit recovery-flow narration contract + git-commit step (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q4 to A. Moved to Q5 (originally about fake_claude.py vs check-no-inheritance): explained that the E2E mock is livespec-authored under tests/e2e/ and subject to style-doc rules including check-no-inheritance, check-keyword-only-args, the strict-dataclass triple, and FBT. To be API-compatible with the Claude Agent SDK, the mock needs either SDK-type subclassing (forbidden) or structural Protocol compatibility (unknown whether the SDK exposes Protocols). Recommended Q5-A: file-scoped exemption for fake_claude.py in the style doc's §'Scope'."
+    },
+    {
+      "role": "user",
+      "content": "What makes you so convinced that the mock implementation is going to have to violate any of our existing rules? It should be written to comply with all of our existing Python rules, just like any other hand-rolled mock. We're not writing a real SDK; we're just writing something that handles input and output streams and invokes subprocesses."
+    },
+    {
+      "role": "assistant",
+      "summary": "User pushback accepted. Reconsidered: the mock's job per PROPOSAL.md line 2545 is to handle input/output streams, invoke subprocesses, and return livespec-authored message-shaped objects for tests to assert on. Tests are livespec-authored and can assert via attribute access on our own dataclasses, not via `isinstance(msg, SDKBaseClass)`. No inheritance needed. No strict-dataclass-triple violation (we author them frozen/kw_only/slots). No keyword-only violation (we control the mock's call-site). The caller-side SDK invocation in real mode is a third-party call site, which the existing positional-arg exemption already covers. Q5 RETRACTED as a false alarm. Saved feedback memory so future sessions don't surface this class of false alarm. Removed Q5 from the critique file; renumbered Q6-Q10 to Q5-Q9. New counts: 3 major, 2 significant, 4 smaller. Continuing with the new Q5 (was Q6)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Q5 (new; was Q6): explained that v016 P2 codified two branches (absent → write fresh; present-and-valid → reuse + consistency check), but the third case (present-but-invalid) is unhandled. The non-doctor fail-fast rule at §'Bootstrap lenience' lines ~1980-1985 is directly authoritative but buried in doctor's section. Recommended Q5-A: add explicit third-branch handling in PROPOSAL.md §'seed' (exit 3 with PreconditionError citing the specific parse error or schema-violation path)."
+    },
+    {
+      "role": "user",
+      "content": "A: Fail-fast exit 3 with PreconditionError (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q5 to A. Moved to Q6 (new; was Q7): explained that the v016 P2 payload-vs-on-disk-config template mismatch clause specifies exit 2 (UsageError), but the failure is semantically a precondition conflict (exit 3). The payload is a wire-format input validated against seed_input.schema.json, not a CLI-argument surface; mismatch is the 'incompatible state' category covered by exit 3. Recommended Q6-A: change to exit 3 / PreconditionError."
+    },
+    {
+      "role": "user",
+      "content": "A: Change to exit 3 / PreconditionError (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q6 to A. Moved to Q7 (new; was Q8): explained that under v014 N6 collision disambiguation, proposed-change filenames carry a `-N` suffix (foo.md, foo-2.md, foo-3.md), but v015 O3 + v016 P4's front-matter `topic` field carries the canonical topic WITHOUT the suffix. §'revise''s `<topic>-revision.md` pairing language is ambiguous: is `<topic>` the filename stem or the front-matter value? The filename-stem reading is the only workable one but isn't explicitly stated. The `revision-to-proposed-change-pairing` check's 'with the same topic' language also uses 'topic' ambiguously. Recommended Q7-A: clarify in PROPOSAL.md §'revise' and §'Proposed-change file format' that pairing walks filename stems; widen `static-check-semantics` for the algorithm."
+    },
+    {
+      "role": "user",
+      "content": "A: Clarify that pairing uses filename stem (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q7 to A. Moved to Q8 (new; was Q9): grammar typo at PROPOSAL.md line 853 ('The every doctor-static...'). Recommended Q8-A: rewrite as 'Every doctor-static check's path references are parameterized against `DoctorContext.spec_root`...'."
+    },
+    {
+      "role": "user",
+      "content": "A: Fix grammar (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q8 to A. Moved to Q9 (new; was Q10): `bin/resolve_template.py` documents `--project-root <path>`, but no other wrapper does. Implicitly they use Path.cwd() with upward walk, but unspecified. Two implementers will diverge. Recommended Q9-A: add a uniform project-root detection contract to §'Sub-command dispatch and invocation chain' — every wrapper operating on project state accepts `--project-root <path>` with default `Path.cwd()`; upward-walk logic lives in `livespec.io.fs` as a shared helper."
+    },
+    {
+      "role": "user",
+      "content": "A: Uniform --project-root flag on every wrapper (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q9 to A. All 9 items dispositioned. Wrote the revision file at history/v017/proposed_changes/proposal-critique-v16-revision.md. Applied edits to the working PROPOSAL.md (Q1 reserve-suffix trim; Q2 `--template` flag contract; Q4 recovery-flow narration + git-commit step; Q5 seed present-but-invalid third branch; Q6 mismatch exit code 3; Q7 filename-stem vs. front-matter topic clarification; Q8 grammar fix; Q9 uniform --project-root contract). Applied edits to the style doc (Q3 drop third Import-Linter contract; rewrite rule 3 to scope raise-discipline to raise-site; update `check-no-raise-outside-io` and `check-imports-architecture` target descriptions; retract v012 L15a 'replaces the import-surface portion' claim). Applied edits to deferred-items.md (Source-line widenings for static-check-semantics, skill-md-prose-authoring, template-prompt-authoring, enforcement-check-scripts; body updates in enforcement-check-scripts and task-runner-and-ci-config Import-Linter subsections; new subsections in static-check-semantics for Q7 revision-pairing and Q9 project-root helper)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 1 (4 findings, all landed): revision-file 'touched 5 existing entries' off-by-one (Q5 affects seed wrapper, not schemas) — corrected to 4 initially (then re-revised to 5 in pass 3); PROPOSAL.md §'critique' still duplicated the reserve-suffix algorithm (steps 1-3, truncation math, worked examples) — rewrote to reference deferred-items.md for the algorithm and keep only informal summary; deferred-items.md item-schema version range stopped at v014 — extended through v017; revision-file deferred-items inventory removed the spurious wrapper-input-schemas entry (no widening in v017)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 2 (3 findings, all landed): PROPOSAL.md §'Per-sub-command SKILL.md body structure' step 4 didn't mention Q2's pre-seed `--template` flag path — updated the two-step dispatch description; deferred-items.md's static-check-semantics AST-checks list described check-no-raise-outside-io with the stale v012 L15a import-surface-delegation wording — rewrote to note the v017 Q3 retraction; deferred-items.md's task-runner-and-ci-config Import-Linter mise-pin paragraph still described three contracts — rewrote to two contracts with the v017 Q3 retraction note."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 3 (3 interlocking findings for task-runner-and-ci-config, all landed): Source line hadn't been updated with a v017 Q3 widening notation despite its body having been edited in pass 2 — added the widening note; revision-file 'Carried forward unchanged from v016' list included it but pass 2 had widened its body — moved to 'Scope-widened in v017'; revision-file 'touched 4 existing entries' claim was now incorrect (5 entries) — re-revised."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 4 (3 findings, all landed): deferred-items.md's task-runner-and-ci-config v013 M7 subsection still said 'three contracts' — rewrote to 'two contracts' with v017 Q3 narrowing note; PROPOSAL.md's `dev-tooling/checks/` layout tree annotation still claimed Import-Linter 'replaced' the import-surface portion of no_raise_outside_io — rewrote to note the v017 Q3 retraction and the sole-enforcement-point status of the hand-written check; PROPOSAL.md DoD item 12 and the `pyproject.toml` layout entry also updated to reflect the v017 Q3 two-contract narrowing."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 5 (0 load-bearing findings): end-to-end re-read confirms all working docs are self-consistent. Every 'three contracts' mention is accompanied by its v017 Q3 narrowing note; every v017 Q# marker is in place; the revision-file inventory arithmetic matches the deferred-items.md Source-line widenings; PROPOSAL.md's reserve-suffix section is invariants-only; the filename-stem vs. front-matter topic distinction is consistent across PROPOSAL.md §'revise', §'Proposed-change file format', and §'doctor → Static-phase checks'. Pass 5 is the final general careful-review pass per the 'continue until pass lands no load-bearing fixes' rule."
+    },
+    {
+      "role": "assistant",
+      "summary": "Dedicated deferred-items-consistency pass (3 findings, all landed): walked every deferred-items entry and verified Source line + body against every v017 decision and every prior-version decision. Finding 1 — template-prompt-authoring's v017 Q2 Source-line note was 'note-only', but Q2's pre-seed `bin/resolve_template.py --template <chosen>` invocation is a new wrapper call the minimal template's prompts/seed.md delimiter comments must cover (per v014 N9); rewrote to mark Q2 as a substantive widening. Finding 2 — user-hosted-custom-templates body stated the v2+ shield covers 'the wrapper's output contract' but didn't mention the CLI flag surface; added explicit 'v017 Q2 addition' paragraph noting both the stdout contract and the flag shape (--project-root + --template) are v1-frozen; Source line updated with v017 Q2 note-only widening. Finding 3 — claude-md-prose had no mention of the v017 Q9 shared upward-walk helper in livespec.io.fs; added Source-line note covering the livespec/io/CLAUDE.md obligation. Layout-tree drift check: no new files introduced by v017. Cross-reference validity: all new Q# cross-references resolve. Example-vs-rule alignment: reserve-suffix worked examples pass arithmetic. Cumulative total across 5 careful-review passes + 1 deferred-items-consistency pass: 16 inconsistencies caught and fixed (4 + 3 + 3 + 3 + 0 + 3)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Finalized v017 history: byte-identical copy PROPOSAL.md → history/v017/PROPOSAL.md (verified via `diff -q`); moved the critique from the working proposed_changes/ directory to history/v017/proposed_changes/proposal-critique-v16.md (stripping the v017- prefix per the post-v003 naming convention); updated history/README.md with a comprehensive v017 entry summarizing all 9 accepted items, the 5 careful-review passes, and the dedicated deferred-items-consistency pass; updated the final Pointer paragraph to reference v017."
+    }
+  ]
+}

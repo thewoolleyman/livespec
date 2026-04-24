@@ -607,17 +607,24 @@ contract over `parse/` and `validate/` imports; see §"Enforcement
 suite" for the full target list and the v012 L15a Import-Linter
 adoption that replaces v011's planned hand-written `check-purity`;
 see §"Import-Linter contracts (minimum configuration)" below for
-the minimum concrete `[tool.importlinter]` shape per v013 M7).
+the minimum concrete `[tool.importlinter]` shape per v013 M7, as
+narrowed in v017 Q3 to two contracts — purity and layered
+architecture — with raise-discipline now raise-site-only via
+`check-no-raise-outside-io`).
 
 ### Import-Linter contracts (minimum configuration)
 
-Per v013 M7, the three v012 L15a contracts in `pyproject.toml`'s
-`[tool.importlinter]` section MUST collectively enforce purity,
-layered architecture, and raise-discipline import surface. The
+Per v013 M7 (scope narrowed in v017 Q3), the Import-Linter
+contracts in `pyproject.toml`'s `[tool.importlinter]` section
+MUST collectively enforce purity and layered architecture. The
 minimum concrete configuration below is **illustrative** of the
 canonical shape; contract names, layer names, and ignore-import
-globs MAY be restructured so long as the three English-language
-rules below are enforced.
+globs MAY be restructured so long as the two English-language
+rules below are enforced. (v012 L15a's third contract covering
+the raise-discipline import surface was retracted in v017 Q3;
+see §"Exit code contract" and `check-no-raise-outside-io`'s
+target description below — raise-site enforcement is the
+single enforcement point.)
 
 ```toml
 [tool.importlinter]
@@ -646,20 +653,10 @@ layers = [
     "livespec.validate",
     "livespec.parse",
 ]
-
-[[tool.importlinter.contracts]]
-name = "livespec-errors-raise-discipline-imports"
-type = "forbidden"
-source_modules = ["livespec"]
-forbidden_modules = ["livespec.errors"]
-ignore_imports = [
-    "livespec.io.* -> livespec.errors",
-    "livespec.errors.* -> livespec.errors",
-]
 ```
 
 The authoritative rules (enforced by ANY valid Import-Linter
-configuration satisfying these three statements):
+configuration satisfying these two statements):
 
 1. Modules in `livespec.parse` and `livespec.validate` MUST NOT
    import `livespec.io`, `subprocess`, filesystem APIs
@@ -668,14 +665,25 @@ configuration satisfying these three statements):
    layer stack is `parse` < `validate` < `io` <
    `commands` | `doctor`. No circular imports follow by
    construction.
-3. `livespec.errors.LivespecError` (and any of its subclasses)
-   MAY be imported only from `livespec.io.*` and
-   `livespec.errors` itself. Other modules must not import
-   `LivespecError` subclasses for raising.
+
+**Raise-discipline is NOT an Import-Linter concern (v017 Q3).**
+`LivespecError` raise-sites are restricted to `livespec.io.*`
+and `livespec.errors` (enforced by the hand-written
+`check-no-raise-outside-io` raise-site check; see §"Enforcement
+suite" target list below and §"Exit code contract" for the
+domain-error/bug-class distinction). `livespec.errors` MAY be
+imported from any module that needs to reference
+`LivespecError` or a subclass in a type annotation, `match`
+pattern, or attribute access (e.g., `err.exit_code`). The v012
+L15a claim that Import-Linter "replaces the import-surface
+portion of `check-no-raise-outside-io`" is retracted: Import-
+Linter operates on import statements and cannot distinguish
+import-for-raising from import-for-annotating, so the
+discipline collapses to raise-site enforcement only.
 
 Architecture-vs-mechanism principle (see
 `livespec-nlspec-spec.md` §"Architecture-Level Constraints"):
-the three rules above are the contract; the TOML is one valid
+the two rules above are the contract; the TOML is one valid
 way to express them.
 
 ---
@@ -1686,11 +1694,11 @@ specific native code works). No Windows support.
 | `just check-format` | `ruff format --check .` |
 | `just check-types` | `pyright` (strict, with `_vendor/` excluded). |
 | `just check-complexity` | ruff C901 + PLR + file-LLOC custom check. |
-| `just check-imports-architecture` | Import-Linter: declarative `[tool.importlinter]` contracts in `pyproject.toml` express purity (`parse/` + `validate/` don't import `io/` or effectful APIs), layered architecture (no circular imports), and import-surface raise-discipline (no import of `LivespecError` subclasses outside `io/**` and `errors.py` for raising). Replaces v011's planned `check-purity` + `check-import-graph` + the import-surface portion of `check-no-raise-outside-io`. |
+| `just check-imports-architecture` | Import-Linter: declarative `[tool.importlinter]` contracts in `pyproject.toml` express purity (`parse/` + `validate/` don't import `io/` or effectful APIs) and layered architecture (no circular imports). Replaces v011's planned `check-purity` + `check-import-graph`. The third v012 L15a contract (raise-discipline import surface) was retracted in v017 Q3; raise-discipline is raise-site-enforced only by `check-no-raise-outside-io` below. |
 | `just check-private-calls` | AST: no cross-module calls to `_`-prefixed functions defined elsewhere. |
 | `just check-global-writes` | AST: no module-level mutable state writes from functions. |
 | `just check-supervisor-discipline` | AST: `sys.exit` / `raise SystemExit` only in `bin/*.py` (incl. `_bootstrap.py`). |
-| `just check-no-raise-outside-io` | AST (raise-site portion only): raising of `LivespecError` subclasses (domain errors) at runtime restricted to `io/**` and `errors.py`. Raising bug-class exceptions (TypeError, NotImplementedError, AssertionError, etc.) permitted anywhere. The import-surface portion is delegated to `check-imports-architecture`. |
+| `just check-no-raise-outside-io` | AST: raising of `LivespecError` subclasses (domain errors) at runtime restricted to `io/**` and `errors.py`. Raising bug-class exceptions (TypeError, NotImplementedError, AssertionError, etc.) permitted anywhere. **Raise-site enforcement is the sole enforcement point for the raise-discipline (v017 Q3 retraction of the v012 L15a import-surface delegation).** Import-Linter does NOT cover the import surface for `livespec.errors`; type-annotation and `match`-pattern imports of `LivespecError` subclasses are permitted anywhere they are referenced. |
 | `just check-no-except-outside-io` | AST: catching exceptions outside `io/**` permitted only in supervisor bug-catchers (top-level `try/except Exception` in `main()` of `commands/*.py` and `doctor/run_static.py`). |
 | `just check-public-api-result-typed` | AST: every public function (per `__all__` declaration; see `check-all-declared`) returns `Result` or `IOResult` per annotation, except supervisors at the side-effect boundary (`main()` in `commands/**.py` and `doctor/run_static.py`) and the `build_parser` factory in `commands/**.py`. |
 | `just check-schema-dataclass-pairing` | AST (three-way walker per v013 M6): for every `schemas/*.schema.json`, verifies a paired dataclass at `schemas/dataclasses/<name>.py` (the `$id`-derived name) AND a paired validator at `validate/<name>.py` exists; every listed schema field matches the dataclass's Python type; vice versa in all three walks. Drift in any direction fails. |

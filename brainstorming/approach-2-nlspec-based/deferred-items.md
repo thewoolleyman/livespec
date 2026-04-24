@@ -30,7 +30,7 @@ Each entry uses this shape:
 
 - **Source:** <which version surfaced this item, e.g. v002 / v003 /
   v004 / v005 / v006 / v007 / v008 / v009 / v010 / v011 / v012 /
-  v013 / v014>
+  v013 / v014 / v015 / v016 / v017>
 - **Target spec file(s):** <repo-root-relative path(s)>
 - **How to resolve:** <one paragraph describing what the eventual
   propose-change must produce>
@@ -40,7 +40,7 @@ Each entry uses this shape:
 
 ### template-prompt-authoring
 
-- **Source:** v001 (carried forward through every version; scope widened in v011 per K5; scope widened in v014 per N1 and N9; scope widened in v015 per O4; scope widened in v016 per P2 — seed prompts for every template MUST emit the new top-level `template` field in their JSON output)
+- **Source:** v001 (carried forward through every version; scope widened in v011 per K5; scope widened in v014 per N1 and N9; scope widened in v015 per O4; scope widened in v016 per P2 — seed prompts for every template MUST emit the new top-level `template` field in their JSON output; scope widened in v017 per Q2 — the pre-seed template-resolution path is now `bin/resolve_template.py --template <chosen>`, so the built-in `minimal` template's `prompts/seed.md` delimiter comments — per v014 N9 — MUST include the pre-seed `resolve_template.py --template` invocation alongside the `bin/seed.py --seed-json` invocation; other templates' prompt-authoring obligations are unchanged)
 - **Target spec file(s):** `SPECIFICATION/spec.md`,
   `SPECIFICATION/contracts.md` (skill↔template I/O contracts),
   `specification-templates/livespec/prompts/*.md`,
@@ -133,7 +133,7 @@ Each entry uses this shape:
 
 ### enforcement-check-scripts
 
-- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6; v014 N2 and N4 affect sibling entries — `wrapper-input-schemas` and `static-check-semantics` — not this entry's scope; v016 P5 widens `check_wrapper_shape.py`'s algorithm to permit the optional blank line per the `static-check-semantics` subsection; v016 P1 and P3 likewise affect `static-check-semantics` sibling subsections without adding a new check script)
+- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6; v014 N2 and N4 affect sibling entries — `wrapper-input-schemas` and `static-check-semantics` — not this entry's scope; v016 P5 widens `check_wrapper_shape.py`'s algorithm to permit the optional blank line per the `static-check-semantics` subsection; v016 P1 and P3 likewise affect `static-check-semantics` sibling subsections without adding a new check script; scope widened in v017 per Q3 — `check-no-raise-outside-io`'s scope expands back to cover the raise-discipline fully (raise-site enforcement is the sole enforcement point; the v012 L15a import-surface delegation to Import-Linter is retracted))
 - **Target spec file(s):** `SPECIFICATION/constraints.md` +
   `<repo-root>/dev-tooling/checks/` + `<repo-root>/pyproject.toml`
   (`[tool.importlinter]` section per v012 L15a)
@@ -144,12 +144,17 @@ Each entry uses this shape:
   layer (replacing v011's planned `check-purity`,
   `check-import-graph`, and the import-surface portion of
   `check-no-raise-outside-io`):
-  - **Hand-written AST checks (still required in v012):**
+  - **Hand-written AST checks (still required in v012; v017 Q3
+    restores `check-no-raise-outside-io` to raise-site-only
+    full scope for the raise-discipline):**
     `check-private-calls`, `check-global-writes`,
     `check-supervisor-discipline`,
-    `check-no-raise-outside-io` (raise-site portion only;
-    import-surface portion delegated to
-    `check-imports-architecture`),
+    `check-no-raise-outside-io` (v017 Q3: raise-site
+    enforcement is the SOLE enforcement point for the raise-
+    discipline; the v012 L15a import-surface delegation to
+    `check-imports-architecture` is retracted because
+    Import-Linter cannot distinguish import-for-raising from
+    import-for-annotating),
     `check-no-except-outside-io`,
     `check-public-api-result-typed` (rescoped per L9 to use
     `__all__`-based public detection rather than underscore
@@ -191,21 +196,27 @@ Each entry uses this shape:
       `tests/heading-coverage.json` and rejects any
       `test: "TODO"` entry regardless of `reason`;
       release-gate only, NOT included in `just check`).
-  - **Import-Linter target (v012 L15a):**
+  - **Import-Linter target (v012 L15a; narrowed in v017 Q3):**
     `check-imports-architecture` invokes `lint-imports` against
     declarative `[tool.importlinter]` contracts in
-    `pyproject.toml`. Three contracts replace the planned
-    hand-written checks:
+    `pyproject.toml`. Two contracts (v017 Q3: retracted the
+    third) replace a subset of the planned hand-written
+    checks:
     - `forbidden` contract for `parse/` + `validate/` (no
       imports from `io/` or effectful APIs) — replaces planned
       `check-purity`.
     - `layers` contract (no circular imports; layered
       architecture) — replaces planned `check-import-graph`.
-    - `forbidden` contract for `LivespecError` subclass imports
-      outside `io/**` and `errors.py` (raise-discipline import
-      surface) — replaces import-surface portion of planned
-      `check-no-raise-outside-io`. Raise-site AST portion
-      remains hand-written.
+    **Retracted (v017 Q3):** the third contract (`forbidden`
+    for `LivespecError` subclass imports outside `io/**` and
+    `errors.py`) is NOT included because Import-Linter cannot
+    distinguish import-for-raising from import-for-annotating,
+    and blanket-forbidding the imports would block legitimate
+    type-annotation and `match`-pattern uses of error types in
+    `commands/`, `doctor/`, and `validate/` modules. The full
+    raise-discipline lives in hand-written
+    `check-no-raise-outside-io` (raise-site only); no import-
+    surface Import-Linter contract is defined.
   - **Release-gate target (v012 L13):** `check-mutation`
     invokes `mutmut run` against `livespec/parse/` and
     `livespec/validate/`; threshold ≥80% kill rate; NOT in
@@ -215,7 +226,7 @@ Each entry uses this shape:
 
 ### claude-md-prose
 
-- **Source:** v006 (carried forward through every version since)
+- **Source:** v006 (carried forward through every version since; note-only widening in v017 per Q9 — `livespec/io/CLAUDE.md` SHOULD note the shared `upward-walk` helper for `.livespec.jsonc` location lives under `livespec.io.fs`, reused by every wrapper and by `livespec.doctor.run_static`)
 - **Target spec file(s):** `<bundle>/scripts/**/CLAUDE.md`,
   `<repo-root>/tests/**/CLAUDE.md` (with `tests/fixtures/` excluded
   per H15),
@@ -238,7 +249,7 @@ Each entry uses this shape:
 
 ### task-runner-and-ci-config
 
-- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a; widened v013 per M1, M3, M7, M8; widened v014 per N9)
+- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a; widened v013 per M1, M3, M7, M8; widened v014 per N9; widened v017 per Q3 — pyproject.toml `[tool.importlinter]` narrows from three contracts to two; the third L15a-proposed contract covering the raise-discipline import surface is retracted)
 - **Target spec file(s):** `<repo-root>/justfile`,
   `<repo-root>/lefthook.yml`,
   `<repo-root>/.github/workflows/ci.yml`,
@@ -323,14 +334,21 @@ Each entry uses this shape:
     `.mise.toml` adds `mutmut` (MIT). `just check-mutation`
     target added; release-tag CI workflow runs it; per-commit
     CI does NOT.
-  - **Import-Linter mise pin + pyproject config (L15a):**
+  - **Import-Linter mise pin + pyproject config (L15a;
+    narrowed in v017 Q3):**
     `.mise.toml` adds `import-linter` (BSD-2).
     `pyproject.toml` adds `[tool.importlinter]` section with
-    three contracts (`forbidden` for purity; `layers` for
-    architecture; `forbidden` for raise-discipline imports).
+    two contracts (`forbidden` for purity; `layers` for
+    architecture). The third L15a-proposed contract
+    (`forbidden` for raise-discipline imports) is retracted
+    in v017 Q3 — see `static-check-semantics` for rationale.
     `just check-imports-architecture` target added; replaces
-    planned `check-purity` + `check-import-graph` + import-
-    surface portion of `check-no-raise-outside-io`.
+    planned `check-purity` + `check-import-graph`. The
+    import-surface portion of `check-no-raise-outside-io`
+    is NOT replaced (v017 Q3 retracted the claim);
+    `check-no-raise-outside-io` remains hand-written and
+    covers the raise-discipline fully via raise-site
+    enforcement.
   - **L15b principle (no bundle vendoring of dev tools).**
     Hypothesis, hypothesis-jsonschema, mutmut, and Import-
     Linter are mise-pinned only. The bundle's vendored libs
@@ -352,13 +370,17 @@ Each entry uses this shape:
     surviving-mutants report on failure. See style doc
     §"Mutation testing as release-gate" for the schema and
     ratchet rule.
-  - **Import-Linter minimum concrete configuration (M7).**
+  - **Import-Linter minimum concrete configuration (M7;
+    narrowed in v017 Q3 from three contracts to two).**
     Style doc §"Import-Linter contracts (minimum configuration)"
-    codifies a canonical 25-line `[tool.importlinter]` TOML
-    example with three contracts + architecture-vs-mechanism
-    illustrative caveat. Deferred-entry `static-check-semantics`
+    codifies a canonical `[tool.importlinter]` TOML example
+    with two contracts + architecture-vs-mechanism illustrative
+    caveat (v013 M7's original configuration was a three-contract
+    example; v017 Q3 retracted the third — the raise-discipline
+    import-surface contract — leaving purity and layered
+    architecture only). Deferred-entry `static-check-semantics`
     subsection now references the style-doc codified example
-    rather than re-describing the three contracts.
+    rather than re-describing the contracts.
   - **`check-no-todo-registry` release-gate target (M8).**
     New `just check-no-todo-registry` target rejects any
     `test: "TODO"` entry in `tests/heading-coverage.json`.
@@ -421,7 +443,15 @@ Each entry uses this shape:
   scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a;
   scope widened in v013 per M1, M4, M5, M6, M7; scope widened in
   v014 per N2, N3, N4, N5, N6, C3; scope widened in v015 per O3;
-  scope widened in v016 per P1, P3, P5)
+  scope widened in v016 per P1, P3, P5; scope widened in v017
+  per Q1, Q3, Q7, Q9 — Q1 makes this entry the sole source-of-
+  truth for the reserve-suffix algorithm; Q3 narrows the
+  Import-Linter contract enumeration to two contracts and
+  drops the raise-discipline import-surface contract; Q7
+  codifies `revision-to-proposed-change-pairing` as a
+  filename-stem walk distinct from the front-matter `topic`
+  field; Q9 cross-references the uniform `--project-root`
+  helper in `livespec.io.fs`)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -438,8 +468,14 @@ Each entry uses this shape:
     `# noqa` interactions) for each of the hand-written AST
     checks: `check-private-calls`, `check-global-writes`,
     `check-supervisor-discipline`, `check-no-raise-outside-io`
-    (raise-site portion only per v012 L15a; import-surface
-    portion delegated to `check-imports-architecture`),
+    (v012 L15a delegated the import-surface portion to
+    `check-imports-architecture`; v017 Q3 retracted that
+    delegation because Import-Linter cannot distinguish
+    import-for-raising from import-for-annotating, so
+    `check-no-raise-outside-io` covers the raise-site only
+    AND is the sole enforcement point for the raise-
+    discipline — `livespec.errors` MAY be imported anywhere
+    it is referenced),
     `check-no-except-outside-io`, `check-public-api-result-typed`
     (rescoped per v012 L9 to use `__all__` rather than
     underscore convention), `check-main-guard`,
@@ -822,9 +858,10 @@ Each entry uses this shape:
     decorations fail. Test modules outside `tests/livespec/
     parse/` and `tests/livespec/validate/` are out of scope.
   - **Import-Linter contract semantics** (v012 L15a; minimum
-    concrete configuration codified in v013 M7): see style doc
+    concrete configuration codified in v013 M7; narrowed in
+    v017 Q3 from three contracts to two): see style doc
     §"Import-Linter contracts (minimum configuration)" for the
-    canonical `[tool.importlinter]` TOML example with three
+    canonical `[tool.importlinter]` TOML example with two
     contracts:
     - **Purity contract** (`type = "forbidden"`): forbids
       imports from `livespec.parse.*` and `livespec.validate.*`
@@ -836,18 +873,29 @@ Each entry uses this shape:
       `livespec.io` < `livespec.commands | livespec.doctor`.
       Replaces planned `check-import-graph` (no circular
       imports follows by construction).
-    - **Raise-discipline import contract** (`type =
-      "forbidden"`): forbids `from livespec.errors import
-      LivespecError | <subclass>` outside `livespec.io.*` and
-      `livespec.errors`. Catches the import-side surface.
-      Raise-site AST discipline (the actual `raise` statements)
-      remains the responsibility of hand-written
-      `check-no-raise-outside-io`, which now covers ONLY the
-      raise-site portion and is correspondingly narrower.
+    **Retracted (v017 Q3):** the third contract that v012 L15a
+    proposed (`forbidden` for `LivespecError` subclass imports
+    outside `io/**` and `errors.py`, covering the raise-
+    discipline import surface) is NOT part of the
+    Import-Linter configuration. Import-Linter operates on
+    import statements and cannot distinguish import-for-
+    raising from import-for-annotating, so a forbidden-import
+    contract on `livespec.errors` would block legitimate
+    type-annotation and `match`-pattern uses of `LivespecError`
+    subclasses in `commands/`, `doctor/`, and `validate/` modules
+    (e.g., `IOResult[Finding, LivespecError]` return
+    annotations; `case IOFailure(UsageError(...))` match
+    patterns; `err.exit_code` attribute access). The v012 L15a
+    claim that Import-Linter "replaces the import-surface
+    portion of `check-no-raise-outside-io`" is retracted. The
+    full raise-discipline is enforced by hand-written
+    `check-no-raise-outside-io` (raise-site only; see below);
+    `livespec.errors` MAY be imported from any livespec module
+    that needs to reference its types.
     Architecture-vs-mechanism caveat (v009 I0): the minimum
     example in the style doc is illustrative; contract names,
     layer names, and ignore-import globs MAY be restructured so
-    long as the three English-language rules (codified in the
+    long as the two English-language rules (codified in the
     style doc) are enforced. Configuration tuning (root
     packages, includes/excludes) is implementer choice during
     the `enforcement-check-scripts` deferred entry's resolution.
@@ -1035,6 +1083,58 @@ Each entry uses this shape:
     `doctor-out-of-band-edits` is a SEPARATE always-appended
     UTC-timestamp convention (each backfill is a distinct
     timed event); the two conventions are not unified.
+  - **`revision-to-proposed-change-pairing` walks filename
+    stems, not front-matter `topic`** (v017 Q7): for every
+    `<stem>-revision.md` under
+    `<spec-root>/history/vNNN/proposed_changes/`, the check
+    verifies `<stem>.md` exists in the same directory.
+    `<stem>` is the filename stem of the proposed-change file
+    as it was written (including any v014 N6 collision `-N`
+    suffix). The front-matter `topic` field is NOT walked for
+    pairing because under v014 N6 + v016 P4, multiple files
+    may share the same canonical `topic` value, disambiguated
+    only at the filename level (`foo.md`, `foo-2.md`,
+    `foo-3.md` all carry `topic: foo` in their front-matter).
+    Pair failures the check detects: orphan revision
+    (revision file with no matching proposed-change stem);
+    orphan proposed-change (proposed-change with no matching
+    `<stem>-revision.md`). The pairing predicate is a
+    literal file-name equality (stem of the revision file
+    minus `-revision` suffix equals stem of the proposed-
+    change file).
+
+  - **Uniform `--project-root` contract across every wrapper**
+    (v017 Q9): every wrapper operating on project state
+    (`bin/seed.py`, `bin/propose_change.py`, `bin/critique.py`,
+    `bin/revise.py`, `bin/prune_history.py`,
+    `bin/doctor_static.py`, `bin/resolve_template.py`) accepts
+    `--project-root <path>` with default `Path.cwd()`.
+    Upward-walk logic for `.livespec.jsonc` lives as a
+    shared helper in `livespec.io.fs` (`@impure_safe` per
+    the purity discipline); both the wrapper supervisors and
+    `livespec.doctor.run_static` invoke this helper rather
+    than re-implementing the upward-walk. `bin/seed.py` is
+    the one wrapper that does NOT invoke the upward-walk
+    helper for `.livespec.jsonc` location — seed runs
+    before `.livespec.jsonc` exists on disk (the normal
+    pre-seed case) and the wrapper writes the config itself
+    (v016 P2; v017 Q5/Q6 refine the present-but-invalid /
+    mismatch branches). `seed`'s `--project-root` therefore
+    anchors only the target-file write paths, not an
+    existing-config lookup.
+
+  - **Reserve-suffix canonicalization is this entry's sole
+    source-of-truth** (v017 Q1 note): PROPOSAL.md §"propose-
+    change → Reserve-suffix canonicalization" was trimmed in
+    v017 Q1 to invariants-only (≤64 chars, suffix preserved
+    intact regardless of pre-attachment or truncation-clip,
+    empty → UsageError). The pre-strip + truncate-and-
+    hyphen-trim + re-append algorithm defined above (v016 P3
+    subsection) remains the only documented algorithm.
+    Implementations MUST follow this subsection's steps; the
+    PROPOSAL.md bullet is a contract summary, not an
+    algorithm specification.
+
   - **Template-extension doctor-static check loading —
     failure routing** (v014 C3): after the `template-exists`
     widening (v014 N4) catches missing-file at static-check
@@ -1160,7 +1260,7 @@ Each entry uses this shape:
 
 ### skill-md-prose-authoring
 
-- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4; widened v014 per N1 and N7; widened v015 per O3 and O4; widened v016 per P2 and P3)
+- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4; widened v014 per N1 and N7; widened v015 per O3 and O4; widened v016 per P2 and P3; widened v017 per Q2 and Q4 — Q2 pins the seed pre-seed dialogue's template-resolution step to `bin/resolve_template.py --template <chosen>`; Q4 extends the recovery-flow narration contract to cover propose-change's expected exit-3 during seed-recovery plus the explicit git-commit step)
 - **Target spec file(s):**
   `.claude-plugin/skills/<sub-command>/SKILL.md` (one per
   sub-command: `seed`, `propose-change`, `critique`, `revise`,
@@ -1240,12 +1340,13 @@ Each entry uses this shape:
 
   **v014 additions:**
   - **Seed pre-seed template-choice dialogue** (v014 N1;
-    updated by v016 P2). Seed's SKILL.md prose
-    (`seed/SKILL.md` body Steps section) MUST handle the
-    pre-seed state specially: BEFORE invoking the wrapper,
-    check whether `.livespec.jsonc` exists at the project
-    root. If absent, prompt the user in dialogue for
-    template choice with these options:
+    updated by v016 P2; resolution mechanism pinned in v017
+    Q2). Seed's SKILL.md prose (`seed/SKILL.md` body Steps
+    section) MUST handle the pre-seed state specially:
+    BEFORE invoking the wrapper, check whether
+    `.livespec.jsonc` exists at the project root. If absent,
+    prompt the user in dialogue for template choice with
+    these options:
     - `livespec` (default, multi-file SPECIFICATION/ layout
       with `spec.md` + `contracts.md` + `constraints.md` +
       `scenarios.md`). Recommended.
@@ -1254,26 +1355,38 @@ Each entry uses this shape:
     - custom path (user provides a relative-path-to-
       template-directory; the chosen path must contain a
       valid `template.json`).
-    After the user selects, the SKILL.md prose MUST include
-    the chosen value in the seed-input JSON payload's
-    required top-level `template` field (v016 P2); the
-    wrapper consumes the `template` field both to bootstrap
-    `.livespec.jsonc` (see PROPOSAL.md §"seed" bullet
-    "`.livespec.jsonc` is wrapper-owned") and to locate
-    `prompts/seed.md` for content generation. When
-    `.livespec.jsonc` IS present, seed's SKILL.md prose MAY
-    skip the pre-seed dialogue and instead read the
-    existing `template` value (e.g., via a brief Bash
-    invocation of `bin/resolve_template.py`) to populate
-    the payload — but the wrapper's `template` ↔ on-disk
-    consistency check (v016 P2) catches any mismatch. The
-    SKILL.md prose MUST NOT write `.livespec.jsonc` via the
-    Write tool; wrapper-owned file-shaping is the single
-    source of truth for this file.
-  - **Seed post-step-failure recovery narration** (v014 N7).
-    Seed's SKILL.md prose (`seed/SKILL.md` body Failure
-    handling section, exit-3 row) MUST surface the
-    recovery path concretely when post-step doctor-static
+    After the user selects, the SKILL.md prose MUST resolve
+    the chosen template's directory by invoking
+    `bin/resolve_template.py --project-root . --template
+    <chosen>` via Bash (per v017 Q2's addition to the
+    template-resolution contract — the `--template` flag
+    bypasses `.livespec.jsonc` lookup, letting the
+    resolution happen BEFORE the wrapper writes the config).
+    The wrapper's stdout is the absolute template directory
+    path; the SKILL.md prose uses that path with the Read
+    tool to fetch `<path>/prompts/seed.md` and proceeds with
+    the normal seed template-prompt dispatch. The SKILL.md
+    prose MUST ALSO include the chosen value in the seed-
+    input JSON payload's required top-level `template`
+    field (v016 P2); the wrapper consumes the `template`
+    field to bootstrap `.livespec.jsonc` (see PROPOSAL.md
+    §"seed" bullet "`.livespec.jsonc` is wrapper-owned").
+    When `.livespec.jsonc` IS present, seed's SKILL.md
+    prose MAY skip the pre-seed dialogue and instead invoke
+    `bin/resolve_template.py --project-root .` WITHOUT
+    `--template` (the wrapper walks upward for the
+    existing config) to read the existing `template` value;
+    the wrapper's `template` ↔ on-disk consistency check
+    (v016 P2; exit code refined to 3 per v017 Q6) catches
+    any mismatch. The SKILL.md prose MUST NOT write
+    `.livespec.jsonc` via the Write tool; wrapper-owned
+    file-shaping is the single source of truth for this
+    file.
+  - **Seed post-step-failure recovery narration** (v014 N7;
+    expanded for exit-3-during-recovery + explicit git-commit
+    step in v017 Q4). Seed's SKILL.md prose (`seed/SKILL.md`
+    body Failure handling section, exit-3 row) MUST surface
+    the recovery path concretely when post-step doctor-static
     emits fail Findings:
     > On exit 3 after seed's sub-command logic completed
     > (post-step fail): the specification and history
@@ -1286,13 +1399,34 @@ Each entry uses this shape:
     > 2. Run `/livespec:propose-change --skip-pre-check
     >    <topic> "<fix description>"` to file a fix
     >    proposal. `--skip-pre-check` bypasses the
-    >    pre-step that would trip the same findings.
-    > 3. Run `/livespec:revise --skip-pre-check` to cut
-    >    `v002` with the corrections.
+    >    pre-step. **Expect propose-change to ALSO exit 3**
+    >    (its own post-step doctor-static trips the same
+    >    findings), but the proposed-change file IS on
+    >    disk (per §"Wrapper-side: deterministic lifecycle").
+    > 3. `git commit` the partial state (the seed-written
+    >    files plus the new proposed-change file). This is
+    >    required before running revise, otherwise the
+    >    next invocation's `doctor-out-of-band-edits`
+    >    check will trip its pre-backfill guard.
+    > 4. Run `/livespec:revise --skip-pre-check` to cut
+    >    `v002` with the corrections. Revise's post-step
+    >    runs against the now-fixed state and passes.
     No new flags are introduced for this recovery; the
     existing `--skip-pre-check` / `--run-pre-check` flag
     pair (v010 J10) was designed for exactly this emergency-
     recovery case.
+    **Propose-change exit-3 narration contract** (v017 Q4):
+    `propose-change/SKILL.md` prose MUST narrate the exit-3
+    path distinctly when the narrator can detect the
+    seed-recovery-in-progress state (heuristic: no `vNNN`
+    beyond `v001` exists AND pre-check was skipped). In
+    that case, narration says "this exit 3 is expected
+    during seed recovery; the proposed-change file is on
+    disk; commit the partial state and run
+    `/livespec:revise --skip-pre-check`." Otherwise, the
+    generic exit-3 narration applies and the user is
+    expected to recognize the recovery path from seed's
+    earlier narration.
 
 ### wrapper-input-schemas
 
@@ -1441,7 +1575,7 @@ Each entry uses this shape:
 
 ### user-hosted-custom-templates
 
-- **Source:** v010 (J3; new)
+- **Source:** v010 (J3; new; note-only widening in v017 per Q2 — `bin/resolve_template.py`'s v1 surface now includes a `--template <value>` flag alongside `--project-root`; the v2+ extensibility shield covers BOTH the stdout contract AND the flag shape)
 - **Target spec file(s):** `SPECIFICATION/spec.md` (v2+ scope
   note and future template-discovery section); potentially
   `SPECIFICATION/contracts.md` (for the resolved-template-path
@@ -1472,7 +1606,14 @@ Each entry uses this shape:
   The v1 wrapper MUST keep its output contract stable so v2
   extensions land as additive functionality. The
   `template-exists` doctor check continues to validate the
-  resolved path regardless of its source.
+  resolved path regardless of its source. **v017 Q2
+  addition**: the `--template <value>` flag (added to support
+  the pre-seed template-resolution path; see PROPOSAL.md
+  §"Template resolution contract") is part of the v1 frozen
+  flag surface. Future v2+ template-discovery extensions MUST
+  extend — not replace — the v1 flag set (`--project-root`,
+  `--template`), so existing SKILL.md prose and pre-seed
+  invocations continue to work unchanged.
 
 ### end-to-end-integration-test
 
