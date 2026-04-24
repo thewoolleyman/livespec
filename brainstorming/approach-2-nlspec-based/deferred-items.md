@@ -30,7 +30,7 @@ Each entry uses this shape:
 
 - **Source:** <which version surfaced this item, e.g. v002 / v003 /
   v004 / v005 / v006 / v007 / v008 / v009 / v010 / v011 / v012 /
-  v013 / v014 / v015 / v016 / v017>
+  v013 / v014 / v015 / v016 / v017 / v018>
 - **Target spec file(s):** <repo-root-relative path(s)>
 - **How to resolve:** <one paragraph describing what the eventual
   propose-change must produce>
@@ -40,74 +40,27 @@ Each entry uses this shape:
 
 ### template-prompt-authoring
 
-- **Source:** v001 (carried forward through every version; scope widened in v011 per K5; scope widened in v014 per N1 and N9; scope widened in v015 per O4; scope widened in v016 per P2 — seed prompts for every template MUST emit the new top-level `template` field in their JSON output; scope widened in v017 per Q2 — the pre-seed template-resolution path is now `bin/resolve_template.py --template <chosen>`, so the built-in `minimal` template's `prompts/seed.md` delimiter comments — per v014 N9 — MUST include the pre-seed `resolve_template.py --template` invocation alongside the `bin/seed.py --seed-json` invocation; other templates' prompt-authoring obligations are unchanged)
-- **Target spec file(s):** `SPECIFICATION/spec.md`,
-  `SPECIFICATION/contracts.md` (skill↔template I/O contracts),
-  `specification-templates/livespec/prompts/*.md`,
-  `specification-templates/minimal/**` (v014 N1 new built-in
-  template)
-- **How to resolve:** Author each template prompt's input/output
-  JSON Schemas (in `.claude-plugin/scripts/livespec/schemas/`) and the prompt
-  bodies themselves under
-  `specification-templates/livespec/prompts/{seed,propose-change,
-  revise,critique}.md`. Cover: variables the skill provides as
-  input, the JSON contract the prompt MUST emit, retry semantics
-  on schema-validation failure. Each `livespec`-template prompt
-  MUST Read `../livespec-nlspec-spec.md` (template-root-relative)
-  at the start of its execution as NLSpec reference context; this
-  is template-internal (the skill no longer injects it per v011 K5).
-  v011 K5 adds two more prompts for the built-in livespec template:
-  `specification-templates/livespec/prompts/doctor-llm-objective-checks.md`
-  (skill-configurable via `doctor_llm_objective_checks_prompt` in
-  `template.json`; OPTIONAL — livespec template MAY leave it unset
-  in v1) and
-  `specification-templates/livespec/prompts/doctor-llm-subjective-checks.md`
-  (skill-configurable via `doctor_llm_subjective_checks_prompt`;
-  REQUIRED for the built-in template because it hosts the NLSpec-
-  conformance evaluation + template-compliance semantic judgments
-  that v010 had as skill-baked "subjective checks"). The
-  doctor-subjective prompt MUST Read `../livespec-nlspec-spec.md`
-  template-internally.
-
-  **v014 N1 additions** (new `minimal` built-in template):
-  - Author `specification-templates/minimal/template.json` with
-    `template_format_version: 1` and `spec_root: "./"` (repo-root
-    placement).
-  - Author `specification-templates/minimal/prompts/{seed,
-    propose-change,revise,critique}.md` — four REQUIRED prompts;
-    minimal shape (single-file output; no Gherkin scenario
-    conventions; no NLSpec-conformance Read; `minimal` does NOT
-    ship `livespec-nlspec-spec.md` at its template root).
-  - Author `specification-templates/minimal/specification-template/
-    SPECIFICATION.md` — the single starter file.
-  - `doctor_llm_{objective,subjective}_checks_prompt` in
-    minimal's `template.json` MAY be null (OPTIONAL; omitting
-    leaves the LLM-driven doctor phase running only the
-    skill-baked checks).
-
-  **v014 N9 delimiter-comment requirement** (minimal template
-  prompts ONLY):
-  - Each of `prompts/{seed,propose-change,revise,critique}.md`
-    in minimal MUST include **hardcoded delimiter comments** that
-    identify the wrapper invocations the v014 N9 mock harness
-    performs. The real LLM treats these as inert markdown
-    comments (they do not affect natural-language prompt
-    interpretation); the mock parses them as directive contracts
-    and invokes the wrappers deterministically.
-  - The exact format (HTML comment syntax, key=value,
-    JSON-in-comment, etc.) is implementer choice settled JOINTLY
-    with the `end-to-end-integration-test` deferred entry. Both
-    entries MUST agree on a single format.
-  - Format considerations when choosing:
-    - Must be invisible / inert to the real LLM (a comment
-      form the LLM treats as a literal markdown comment).
-    - Must be trivially parseable by the mock (simple regex
-      or structured extraction).
-    - Must accommodate the wrapper-call shapes needed by the
-      happy path + 3 error paths in N9-D4.
-  - The `livespec` template's prompts are NOT required to
-    include delimiter comments — the mock tier doesn't run
-    against the `livespec` template.
+- **Source:** v001 (carried forward through v017; CLOSED in v018 per Q1)
+- **Target spec file(s):** N/A (CLOSED)
+- **Status: CLOSED in v018 (Q1).** The mechanism for specifying
+  built-in template content — prompt interview flows,
+  starter-content policies, NLSpec-discipline internalization,
+  delimiter-comment formats, critique/revise prompt output
+  structures — is now the template sub-specification tree
+  under `SPECIFICATION/templates/<name>/` per v018 Q1-Option-A.
+  See PROPOSAL.md §"SPECIFICATION directory structure —
+  Template sub-specifications" for the sub-spec mechanism;
+  see the new `sub-spec-structural-formalization` deferred
+  entry for the implementation formalization work. Template
+  content (prompts, starter content, delimiter comments) is
+  agent-generated from each built-in template's sub-spec in
+  Phase 7 of the bootstrap plan via
+  `propose-change --spec-target SPECIFICATION/templates/<name>`
+  → `revise --spec-target ...` cycles, not hand-authored.
+  The v014 N9 delimiter-comment requirement for the `minimal`
+  template's prompts remains; the format is codified in the
+  `minimal` sub-spec's `contracts.md` under a "Template↔mock
+  delimiter-comment format" section.
 
 ### python-style-doc-into-constraints
 
@@ -120,20 +73,22 @@ Each entry uses this shape:
 
 ### companion-docs-mapping
 
-- **Source:** v001 (carried forward through every version)
-- **Target spec file(s):** various within `SPECIFICATION/`
-- **How to resolve:** Map brainstorming-folder companion documents
-  to their destinations in the seeded spec:
-  - `subdomains-and-unsolved-routing.md` → spec.md "Non-goals"
-    appendix or similar.
-  - `prior-art.md` → spec.md "Prior Art" appendix.
-  - `goals-and-non-goals.md` → spec.md introduction + non-goals.
-  - The four 2026-04-19 lifecycle / terminology docs → spec.md
-    "Lifecycle" section + diagram references.
+- **Source:** v001 (carried forward through every version; scope tightened in v018 per Q6 — "or similar" hedging replaced with categorical migration-class policy + per-doc assignment table; this entry's body becomes a pointer to PROPOSAL.md §"Companion documents and migration classes")
+- **Target spec file(s):** various within `SPECIFICATION/` (per the PROPOSAL.md assignment table)
+- **How to resolve:** Process each companion doc per its
+  assigned migration class (MIGRATED-to-SPEC-file /
+  SUPERSEDED-by-section / ARCHIVE-ONLY) and destination
+  recorded in PROPOSAL.md §"Companion documents and migration
+  classes". Each Phase-8 propose-change targets one companion
+  doc; the paired revise records the migration outcome (what
+  was migrated, into which section, or why the doc is
+  ARCHIVE-ONLY). The per-doc resolution history accumulates
+  across Phase-8 revisions under
+  `SPECIFICATION/history/vNNN/proposed_changes/`.
 
 ### enforcement-check-scripts
 
-- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6; v014 N2 and N4 affect sibling entries — `wrapper-input-schemas` and `static-check-semantics` — not this entry's scope; v016 P5 widens `check_wrapper_shape.py`'s algorithm to permit the optional blank line per the `static-check-semantics` subsection; v016 P1 and P3 likewise affect `static-check-semantics` sibling subsections without adding a new check script; scope widened in v017 per Q3 — `check-no-raise-outside-io`'s scope expands back to cover the raise-discipline fully (raise-site enforcement is the sole enforcement point; the v012 L15a import-surface delegation to Import-Linter is retracted))
+- **Source:** v005 (carried forward; scope widened in v011 per K4; scope widened in v012 per L4, L5, L7, L8, L9, L10, L12, L15a; scope widened in v013 per M6; v014 N2 and N4 affect sibling entries — `wrapper-input-schemas` and `static-check-semantics` — not this entry's scope; v016 P5 widens `check_wrapper_shape.py`'s algorithm to permit the optional blank line per the `static-check-semantics` subsection; v016 P1 and P3 likewise affect `static-check-semantics` sibling subsections without adding a new check script; scope widened in v017 per Q3 — `check-no-raise-outside-io`'s scope expands back to cover the raise-discipline fully (raise-site enforcement is the sole enforcement point; the v012 L15a import-surface delegation to Import-Linter is retracted); scope widened in v018 per Q4 and Q5 — Q4 adds a new `pyproject.toml` `[tool.pyright]` `pluginPaths` entry pointing at the sixth vendored lib `returns_pyright_plugin` (no new check script; `just check-types` becomes the effective gate for plugin-recognized `Result` / `IOResult` inference); Q5 adds a new `just check-prompts` recipe running the `tests/prompts/` suite and included in `just check` aggregation)
 - **Target spec file(s):** `SPECIFICATION/constraints.md` +
   `<repo-root>/dev-tooling/checks/` + `<repo-root>/pyproject.toml`
   (`[tool.importlinter]` section per v012 L15a)
@@ -226,7 +181,7 @@ Each entry uses this shape:
 
 ### claude-md-prose
 
-- **Source:** v006 (carried forward through every version since; note-only widening in v017 per Q9 — `livespec/io/CLAUDE.md` SHOULD note the shared `upward-walk` helper for `.livespec.jsonc` location lives under `livespec.io.fs`, reused by every wrapper and by `livespec.doctor.run_static`)
+- **Source:** v006 (carried forward through every version since; note-only widening in v017 per Q9 — `livespec/io/CLAUDE.md` SHOULD note the shared `upward-walk` helper for `.livespec.jsonc` location lives under `livespec.io.fs`, reused by every wrapper and by `livespec.doctor.run_static`; note-only widening in v018 per Q5 — `tests/prompts/CLAUDE.md` (new directory, per v018 Q5 prompt-QA tier) MUST document the harness conventions (distinct from `tests/e2e/fake_claude.py`), the fixture format, and the schema-level-vs-semantic-level assertion split; per-template subdirectory `CLAUDE.md` under `tests/prompts/<template>/` MAY exist if template-specific conventions diverge, but is not required)
 - **Target spec file(s):** `<bundle>/scripts/**/CLAUDE.md`,
   `<repo-root>/tests/**/CLAUDE.md` (with `tests/fixtures/` excluded
   per H15),
@@ -249,7 +204,7 @@ Each entry uses this shape:
 
 ### task-runner-and-ci-config
 
-- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a; widened v013 per M1, M3, M7, M8; widened v014 per N9; widened v017 per Q3 — pyproject.toml `[tool.importlinter]` narrows from three contracts to two; the third L15a-proposed contract covering the raise-discipline import surface is retracted)
+- **Source:** v006 (widened v009 I3; widened v010 per J8, J9, J10; widened v011 per K3, K4; widened v012 per L1, L2, L3, L6, L10, L11, L12, L13, L15a; widened v013 per M1, M3, M7, M8; widened v014 per N9; widened v017 per Q3 — pyproject.toml `[tool.importlinter]` narrows from three contracts to two; the third L15a-proposed contract covering the raise-discipline import surface is retracted; widened v018 per Q3, Q4, Q5 — Q3 adds `returns_pyright_plugin` to `.vendor.jsonc` (sixth vendored lib); Q3 also codifies the one-time initial-vendoring manual procedure (distinct from the blessed `just vendor-update` path) as a `.vendor.jsonc`-provenance-recording discipline applied at Phase 2; Q4 adds `pluginPaths = ["_vendor/returns_pyright_plugin"]` to `pyproject.toml`'s `[tool.pyright]` section plus rationale comments naming both the returns-plugin and the pyright-vs-basedpyright decisions; Q5 adds `just check-prompts` to the `justfile` canonical target list and to `just check` aggregation; `.mise.toml` pinning is unchanged for v018 — no new mise-pinned tool)
 - **Target spec file(s):** `<repo-root>/justfile`,
   `<repo-root>/lefthook.yml`,
   `<repo-root>/.github/workflows/ci.yml`,
@@ -451,7 +406,17 @@ Each entry uses this shape:
   codifies `revision-to-proposed-change-pairing` as a
   filename-stem walk distinct from the front-matter `topic`
   field; Q9 cross-references the uniform `--project-root`
-  helper in `livespec.io.fs`)
+  helper in `livespec.io.fs`; scope widened in v018 per Q1 and
+  Q5 — Q1 codifies per-tree iteration semantics for every
+  doctor-static check under the v018 sub-spec mechanism
+  (`run_static.py` enumerates main + sub-spec trees;
+  per-tree applicability dispatch for
+  `gherkin-blank-line-format` / `template-exists` /
+  `template-files-present`; findings carry `spec_root`
+  discriminator); Q5 introduces the prompt-QA-harness
+  deterministic replay semantics that this entry's
+  per-prompt semantic-property catalogue will be asserted
+  against in Phase 7+)
 - **Target spec file(s):** `SPECIFICATION/constraints.md`
   (`python-skill-script-style-requirements.md` companion) and
   `SPECIFICATION/spec.md` (doctor static-check sections)
@@ -1176,50 +1141,43 @@ Each entry uses this shape:
 
 ### returns-pyright-plugin-disposition
 
-- **Source:** v007 (carried forward through every version since)
-- **Target spec file(s):** `SPECIFICATION/constraints.md`
-  (`python-skill-script-style-requirements.md` companion)
-- **How to resolve:** Determine and document whether the
-  `dry-python/returns` pyright plugin is vendored alongside the
-  library (and how it's configured in `pyrightconfig.json` or
-  `[tool.pyright]`), or whether returns' own native types are
-  sufficient for livespec's usage. Because `Result` and `IOResult`
-  are used pervasively (not just at boundaries), the typed-facade
-  pattern from G10 doesn't apply uniformly to returns; this item
-  resolves the gap.
+- **Source:** v007 (carried forward through v017; CLOSED in v018 per Q4)
+- **Target spec file(s):** N/A (CLOSED)
+- **Status: CLOSED in v018 (Q4).** The `dry-python/returns`
+  pyright plugin is vendored alongside the library at
+  `.claude-plugin/scripts/_vendor/returns_pyright_plugin/`
+  (sixth vendored lib; BSD-2; upstream LICENSE preserved).
+  `pyproject.toml`'s `[tool.pyright]` section declares
+  `pluginPaths = ["_vendor/returns_pyright_plugin"]` pointing
+  at the vendored plugin directory. Rationale captured in
+  PROPOSAL.md §"Dependencies — Vendored pure-Python libraries"
+  and in a leading comment block in `pyproject.toml` per the
+  bootstrap plan's Phase 1 convention. The plugin is a
+  livespec-wide load-bearing guardrail for `Result` / `IOResult`
+  strict-mode inference, not an optional tool; without it,
+  pervasive two-track composition forces routine
+  `# type: ignore` usage, contradicting the style doc's
+  narrow-justification rule.
 
 ### basedpyright-vs-pyright
 
-- **Source:** v012 (L14; new)
-- **Target spec file(s):** `SPECIFICATION/constraints.md`
-  (`python-skill-script-style-requirements.md` companion);
-  `<repo-root>/.mise.toml`; `<repo-root>/pyproject.toml`
-- **How to resolve:** Determine whether to switch from `pyright`
-  to `basedpyright` (DetachHead/basedpyright, a community fork
-  of pyright with ~30 stricter diagnostics enabled by default).
-  basedpyright is drop-in compatible with pyright (same CLI, same
-  config); switching would let several v012 L1 + L2 manual flag
-  selections collapse into "use defaults," and would unlock the
-  baselining system for incremental adoption.
-
-  Tradeoffs to evaluate:
-  - **+** L1's `reportUnusedCallResult` and most of L2's strict-
-    plus diagnostics become defaults; less manual flag config
-    in `[tool.pyright]`.
-  - **+** Baselining system accepts current diagnostics as a
-    baseline; only fails on regressions. Useful during initial
-    adoption.
-  - **−** Smaller maintainer pool than upstream pyright (a
-    community fork of a Microsoft project).
-  - **−** Diagnostic semantics could drift from upstream over
-    time.
-  - **−** v012 already accepted L1 + L2 as manual flag config;
-    the marginal value of switching now is reduced.
-
-  This is a STANDALONE deferred entry (NOT bundled with
-  `returns-pyright-plugin-disposition`, which is a separate
-  concern about the dry-python/returns pyright plugin's
-  vendoring + configuration).
+- **Source:** v012 (L14; new; CLOSED in v018 per Q4)
+- **Target spec file(s):** N/A (CLOSED)
+- **Status: CLOSED in v018 (Q4).** Livespec uses `pyright`
+  (microsoft/pyright), NOT `basedpyright`. Rationale: the
+  v012 L1 + L2 strict-plus diagnostics are manually enabled
+  in `[tool.pyright]`; pyright strict-plus provides the
+  load-bearing guardrails against agent-authored-code failure
+  patterns. basedpyright's defaults-are-stricter advantage is
+  marginal given livespec's v012 manual strict-plus
+  configuration already enables every diagnostic that matters;
+  basedpyright's baselining system is valuable for legacy-code
+  adoption but livespec starts strict from Phase 2 (no legacy
+  baseline). Community-fork maintainer-pool risk (smaller pool
+  than upstream; semantic-drift potential over time) outweighs
+  the incremental defaults-simplification benefit. Decision
+  captured in PROPOSAL.md §"Dependencies — Developer-time
+  dependencies" (paragraph "Typechecker decision (v018 Q4)").
 
 ### front-matter-parser
 
@@ -1260,7 +1218,7 @@ Each entry uses this shape:
 
 ### skill-md-prose-authoring
 
-- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4; widened v014 per N1 and N7; widened v015 per O3 and O4; widened v016 per P2 and P3; widened v017 per Q2 and Q4 — Q2 pins the seed pre-seed dialogue's template-resolution step to `bin/resolve_template.py --template <chosen>`; Q4 extends the recovery-flow narration contract to cover propose-change's expected exit-3 during seed-recovery plus the explicit git-commit step)
+- **Source:** v008 (H4; widened v009 I8; widened v010 per J3, J4, J7, J10; widened v011 per K5, K6, K7; widened v013 per M4; widened v014 per N1 and N7; widened v015 per O3 and O4; widened v016 per P2 and P3; widened v017 per Q2 and Q4 — Q2 pins the seed pre-seed dialogue's template-resolution step to `bin/resolve_template.py --template <chosen>`; Q4 extends the recovery-flow narration contract to cover propose-change's expected exit-3 during seed-recovery plus the explicit git-commit step; widened v018 per Q1 — seed's SKILL.md prose narrates the multi-tree atomic seed dispatch (main + each built-in template's sub-spec); propose-change / critique / revise SKILL.md prose covers the `--spec-target <path>` flag surface and the sub-spec-targeting narration when the flag routes the proposal to a sub-spec tree; the LLM-driven per-proposal confirmation flow in revise presents sub-spec-targeting clearly to the user)
 - **Target spec file(s):**
   `.claude-plugin/skills/<sub-command>/SKILL.md` (one per
   sub-command: `seed`, `propose-change`, `critique`, `revise`,
@@ -1329,7 +1287,11 @@ Each entry uses this shape:
   (v011 K5): SKILL.md prose MUST NOT name `livespec-nlspec-spec.md`
   or any other template-internal reference file. Template
   prompts handle their own discipline-doc injection internally
-  (see `template-prompt-authoring`). Skill-level template
+  (specified per-template in each built-in template's
+  sub-specification tree under
+  `SPECIFICATION/templates/<name>/` per v018 Q1 —
+  `template-prompt-authoring` is CLOSED; see
+  `sub-spec-structural-formalization`). Skill-level template
   interaction is limited to: reading `template.json` via
   `bin/resolve_template.py`, reading `prompts/<name>.md` via the
   two-step Bash+Read dispatch (v010 J3), reading
@@ -1430,7 +1392,7 @@ Each entry uses this shape:
 
 ### wrapper-input-schemas
 
-- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8; widened v013 per M6; widened v014 per N2 and N5; widened v016 per P2)
+- **Source:** v008 (H6 + H10; widened v009 per I3; widened v010 per J6; widened v011 per K2 and K7; widened v012 per L4 and L8; widened v013 per M6; widened v014 per N2 and N5; widened v016 per P2; widened v018 per Q1 — `seed_input.schema.json` widens with a new top-level `sub_specs: list[SubSpecPayload]` field carrying sub-spec tree payloads; new `SubSpecPayload` schema authored at `.claude-plugin/scripts/livespec/schemas/sub_spec_payload.schema.json`; paired `SubSpecPayload` dataclass authored at `.claude-plugin/scripts/livespec/schemas/dataclasses/sub_spec_payload.py` using the v012 L4 strict triple; paired validator at `.claude-plugin/scripts/livespec/validate/sub_spec_payload.py` returning `Result[SubSpecPayload, ValidationError]`; `check-schema-dataclass-pairing` three-way walker enforces drift-free pairing symmetrically across schema, dataclass, and validator)
 - **Target spec file(s):**
   `<bundle>/scripts/livespec/schemas/proposal_findings.schema.json`
   (renamed from `critique_findings.schema.json`),
@@ -1575,7 +1537,7 @@ Each entry uses this shape:
 
 ### user-hosted-custom-templates
 
-- **Source:** v010 (J3; new; note-only widening in v017 per Q2 — `bin/resolve_template.py`'s v1 surface now includes a `--template <value>` flag alongside `--project-root`; the v2+ extensibility shield covers BOTH the stdout contract AND the flag shape)
+- **Source:** v010 (J3; new; note-only widening in v017 per Q2 — `bin/resolve_template.py`'s v1 surface now includes a `--template <value>` flag alongside `--project-root`; the v2+ extensibility shield covers BOTH the stdout contract AND the flag shape; note-only widening in v018 per Q1 — sub-spec mechanism extension notes: v2+ template-discovery extensions MAY declare their own sub-spec structure under `<discovered-template-root>/...`; the `--spec-target` flag surface on propose-change / critique / revise is v1-frozen and extends uniformly; v2+ template-discovery MUST NOT break the existing flag set)
 - **Target spec file(s):** `SPECIFICATION/spec.md` (v2+ scope
   note and future template-discovery section); potentially
   `SPECIFICATION/contracts.md` (for the resolved-template-path
@@ -1617,7 +1579,7 @@ Each entry uses this shape:
 
 ### end-to-end-integration-test
 
-- **Source:** v014 (N9; new; widened in v015 per O4)
+- **Source:** v014 (N9; new; widened in v015 per O4; widened v018 per Q5 — cross-reference with the new `prompt-qa-harness` entry. The E2E harness at `tests/e2e/fake_claude.py` and the prompt-QA harness at `tests/prompts/` are structurally distinct tiers (E2E drives wrappers end-to-end via the Claude Agent SDK surface; prompt-QA replays prompt-response pairs for schema + semantic-property assertions). Both harnesses SHOULD share fixture conventions where practical (JSON envelope shape; replay semantics) to minimize maintainer cognitive load; separate implementation is OK if conventions legitimately diverge. The `prompt-qa-harness` joint-resolution noted in this entry captures the coordination point.)
 - **Target spec file(s):**
   - `<repo-root>/tests/e2e/` — fixture tree, mock executable,
     pytest suite.
@@ -1666,13 +1628,19 @@ Each entry uses this shape:
     wrapper invocations; invokes `bin/<cmd>.py` wrappers
     for real (mock does NOT stub wrappers); synthesizes
     SDK-compatible message objects for the test to assert on.
-  - The delimiter-comment format is set JOINTLY with the
-    `template-prompt-authoring` deferred entry (which
-    authors the prompts that carry the delimiters). Both
-    entries MUST agree on a single format. Format
-    considerations: inert to the real LLM (markdown comment
-    form); trivially parseable; accommodates the wrapper-
-    call shapes needed by happy path + 3 error paths.
+  - The delimiter-comment format is codified in the `minimal`
+    template's sub-specification tree at
+    `SPECIFICATION/templates/minimal/contracts.md` under a
+    "Template↔mock delimiter-comment format" section (v018
+    Q1 supersedes the v014 N9 joint-resolution model between
+    this entry and the now-CLOSED `template-prompt-
+    authoring`; the format is authored during Phase 7 of
+    the bootstrap plan via `propose-change --spec-target
+    SPECIFICATION/templates/minimal` → `revise
+    --spec-target ...`). Format considerations: inert to the
+    real LLM (markdown comment form); trivially parseable;
+    accommodates the wrapper-call shapes needed by happy
+    path + 3 error paths.
   - Hard-fails (raises a test-harness error) if delimiter
     comments in minimal's prompts are missing or malformed.
   - Mock scope: replaces ONLY the Claude Agent SDK / LLM
@@ -1774,3 +1742,173 @@ Each entry uses this shape:
   for the `real` tier; this entry captures the follow-up
   option to eliminate the API-key CI dependency without
   sacrificing harness-level integration coverage.
+
+### sub-spec-structural-formalization
+
+- **Source:** v018 (Q1; new)
+- **Target spec file(s):**
+  - `.claude-plugin/scripts/livespec/doctor/run_static.py`
+    (per-tree iteration orchestration)
+  - `.claude-plugin/scripts/livespec/commands/propose_change.py`,
+    `.claude-plugin/scripts/livespec/commands/critique.py`,
+    `.claude-plugin/scripts/livespec/commands/revise.py`
+    (`--spec-target <path>` flag implementation)
+  - `.claude-plugin/scripts/livespec/commands/seed.py`
+    (multi-tree atomic creation)
+  - `.claude-plugin/scripts/livespec/schemas/seed_input.schema.json`
+    + paired dataclass + validator (`sub_specs` field;
+    `SubSpecPayload` shape)
+  - `<repo-root>/tests/heading-coverage.json`
+    (`spec_root` field extension)
+  - `<repo-root>/tests/test_meta_section_drift_prevention.py`
+    (per-tree walking)
+  - `SPECIFICATION/templates/livespec/contracts.md` (sub-spec-
+    internal contracts for the `livespec` template)
+  - `SPECIFICATION/templates/minimal/contracts.md` (sub-spec-
+    internal contracts for the `minimal` template, including
+    the "Template↔mock delimiter-comment format" section
+    that replaces the v014 N9 joint-resolution placeholder)
+- **How to resolve:** Implement the sub-spec mechanism per
+  PROPOSAL.md §"SPECIFICATION directory structure — Template
+  sub-specifications" and §"Sub-command dispatch and
+  invocation chain — Spec-target selection contract".
+  Covers:
+  - **Doctor per-tree iteration.** `run_static.py` enumerates
+    `(spec_root, template_name)` pairs at startup (main tree
+    + each sub-spec under
+    `<main-spec-root>/templates/<sub-name>/`), builds a
+    per-tree `DoctorContext` (with new `template_scope:
+    Literal["main", "sub-spec"]` field), runs the applicable
+    check subset per pair. Per-tree applicability dispatch
+    rules (v018 Q1): `gherkin-blank-line-format` conditional
+    per template; `template-exists` and
+    `template-files-present` main-tree only; all other
+    checks per-tree uniformly. Findings carry a `spec_root`
+    field.
+  - **`--spec-target` flag across propose-change / critique /
+    revise.** Default resolves to the main spec root via
+    the shared upward-walk helper. Supplied value is
+    validated: MUST name a directory with the main-spec
+    structural layout (`proposed_changes/`, `history/`, at
+    least one template-declared spec file). `critique`'s
+    internal delegation forwards `--spec-target` verbatim.
+  - **Seed multi-tree atomic output.** Extend seed wrapper's
+    deterministic file-shaping work to write sub-spec trees
+    atomically with the main tree (rollback on any
+    sub-spec write failure). Extend `seed_input.schema.json`
+    with `sub_specs: list[SubSpecPayload]`; author
+    `SubSpecPayload` dataclass + paired validator per v013
+    M6 three-way pairing.
+  - **Heading-coverage `spec_root` field.** Extend the
+    registry entry schema to `{spec_root, spec_file,
+    heading, test, reason?}`; update the meta-test to walk
+    every spec tree. Existing main-spec entries default to
+    `spec_root: "SPECIFICATION"`.
+  - **Sub-spec contracts.md authoring.** Each built-in
+    template's sub-spec contracts.md codifies the
+    template-internal JSON contracts AND (for the `minimal`
+    template) the delimiter-comment format the v014 N9 mock
+    harness parses. The delimiter-comment format is chosen
+    during Phase 7 (the first propose-change against the
+    `minimal` sub-spec) and codified in the sub-spec's
+    contracts.md under a "Template↔mock delimiter-comment
+    format" section; Phase 9's `fake_claude.py` parses
+    against that section, not against an implicit
+    implementer convention.
+  - **v1 scope boundary.** Sub-specs ship ONLY for the two
+    built-in templates (`livespec`, `minimal`); custom
+    templates MAY carry their own sub-spec but livespec
+    imposes no sub-spec requirement (consistent with the
+    user-provided-extensions minimal-requirements
+    principle). `doctor-static` iterates only over
+    sub-spec trees discovered under
+    `<main-spec-root>/templates/<name>/`; custom-template-
+    shipped sub-specs hosted at arbitrary locations are
+    out of v1 scope (tracked separately in
+    `user-hosted-custom-templates`).
+  - **v1 scope carve-out: `prune-history`.** `prune-history`
+    prunes ONLY the main spec tree in v1; per-sub-spec
+    pruning is a v2+ extension. Rationale: v1 sub-spec
+    trees are small (2 trees × the `livespec` template's
+    file set or the `minimal` template's single file); they
+    do not accumulate enough version history to warrant
+    pruning in v1. The `prune-history` wrapper does NOT
+    accept `--spec-target` in v1 (only the main tree is
+    prunable).
+
+### prompt-qa-harness
+
+- **Source:** v018 (Q5; new; joint-resolved with
+  `template-prompt-authoring` — CLOSED per v018 Q1, content
+  authoring now via each template's sub-spec — and
+  `end-to-end-integration-test`)
+- **Target spec file(s):**
+  - `<repo-root>/tests/prompts/<template>/` (one subdirectory
+    per built-in template)
+  - `<repo-root>/tests/prompts/CLAUDE.md` (harness conventions
+    + assertion-type split documentation)
+  - `<repo-root>/justfile` (new `just check-prompts` recipe,
+    included in `just check`)
+  - Potentially `<repo-root>/tests/prompts/fake_claude.py`
+    (prompt-QA-specific replay harness, scope-distinct from
+    `tests/e2e/fake_claude.py`)
+- **How to resolve:** Implement the prompt-QA tier per
+  PROPOSAL.md §"Testing approach — Prompt-QA tier (per-prompt
+  verification)":
+  - **Harness implementation.** Small deterministic
+    prompt-response replay mechanism; scope-distinct from
+    `tests/e2e/fake_claude.py` (which drives wrappers
+    end-to-end via the Claude Agent SDK surface). The
+    prompt-QA harness takes a prompt file + an input
+    context, replays a fixture-specified response, and
+    returns the structured output for the test to assert
+    on. Implementation choice between (a) reusing a
+    stripped-down `fake_claude.py` variant and (b) a
+    dedicated helper module is implementer choice under the
+    architecture-level constraints; both pass the
+    contract if they preserve deterministic replay and
+    structured-output assertion.
+  - **Fixture format.** Each prompt-QA test case ships
+    under `tests/prompts/<template>/<prompt>/<case>.json`
+    (or equivalent shape — format is implementer choice
+    but MUST be schema-validated at load time and
+    human-reviewable). A case carries: `input_context`
+    (the variables the skill would pass to the prompt),
+    `replayed_response` (the fixture's canned LLM output),
+    `expected_schema_valid: bool`, `expected_semantic_properties:
+    list[string]` (per-prompt semantic assertions — e.g.,
+    "top-level headings derived from intent nouns" for a
+    seed prompt; "resulting_files paths match
+    template-declared spec file set" for a revise prompt).
+  - **Per-prompt semantic-property catalogue.** Per v018
+    Q5's scope, each built-in template's sub-spec carries
+    (in its `scenarios.md` or `contracts.md` per sub-spec
+    convention) the per-prompt semantic-property catalogue
+    — i.e., what properties the sub-spec's authors
+    committed the prompt to satisfy. Prompt-QA tests
+    assert against this catalogue; authoring the catalogue
+    is Phase-7 work (part of the sub-spec agent-generation
+    cycle).
+  - **Coverage boundary.** Every built-in template MUST
+    ship ≥ 1 prompt-QA test per REQUIRED prompt (4 prompts
+    × 2 templates = 8 minimum test cases). Custom
+    templates MAY ship their own tests; no livespec
+    requirement.
+  - **Just-target integration.** `just check-prompts` runs
+    the tier; included in `just check` aggregation.
+    Distinct from `just e2e-test-claude-code-mock` (which
+    drives wrapper integration via delimiter comments) and
+    `just e2e-test-claude-code-real` (which exercises real
+    LLM round-trips).
+  - **Joint resolution.** The harness implementation and
+    fixture format decisions are joint between this entry,
+    `template-prompt-authoring`-CLOSED-pointer-to-
+    `sub-spec-structural-formalization` (which authors the
+    prompts being tested), and
+    `end-to-end-integration-test` (which owns the distinct
+    E2E harness). Both the prompt-QA harness and the E2E
+    mock harness SHOULD share fixture conventions where
+    practical (JSON envelope shape; replay semantics) to
+    minimize maintainer cognitive load; separate
+    implementation is OK if the conventions diverge
+    legitimately.

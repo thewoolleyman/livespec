@@ -139,9 +139,27 @@ recorded in `<repo-root>/.vendor.jsonc`):
 
 - **`returns`** (dry-python/returns, BSD-2) — ROP primitives: `Result`,
   `IOResult`, `@safe`, `@impure_safe`, `flow`, `bind`, `Fold.collect`,
-  `lash`. Whether to vendor returns' pyright plugin is a deferred
-  decision tracked in `deferred-items.md` (`returns-pyright-plugin-
-  disposition`).
+  `lash`. The dry-python/returns pyright plugin is vendored
+  alongside the library per v018 Q4 (see
+  `returns_pyright_plugin` below); this closes the prior
+  `returns-pyright-plugin-disposition` deferred item.
+- **`returns_pyright_plugin`** (dry-python/returns pyright
+  plugin, BSD-2; v018 Q4) — vendored alongside the `returns`
+  library at
+  `.claude-plugin/scripts/_vendor/returns_pyright_plugin/` with
+  upstream LICENSE preserved verbatim. `pyproject.toml`'s
+  `[tool.pyright]` section declares `pluginPaths =
+  ["_vendor/returns_pyright_plugin"]` so pyright strict-mode
+  recognizes the plugin for `Result` / `IOResult` inference.
+  Rationale: `Result` and `IOResult` are used pervasively
+  (every public function returns one or the other per the
+  architecture-level constraint); without the plugin,
+  strict-mode inference of the two-track composition forces
+  routine `# type: ignore` usage, contradicting the "no
+  # type: ignore without narrow justification" rule and the
+  "Strongest-possible guardrails for agent-authored Python"
+  principle. The plugin is a livespec-wide load-bearing
+  guardrail, not an optional tool.
 - **`fastjsonschema`** (horejsek/python-fastjsonschema, MIT) — JSON
   Schema Draft-7 validator.
 - **`structlog`** (hynek/structlog, BSD-2 / MIT dual) — structured JSON
@@ -188,10 +206,36 @@ would not find them on `import`.
   mechanisms.
 - **Re-vendoring goes through `just vendor-update <lib>`** — the only
   blessed mutation path for upstream-sourced libs (`returns`,
-  `fastjsonschema`, `structlog`, `jsoncomment`). The recipe
-  fetches the upstream ref, copies it under `_vendor/<lib>/`,
-  preserves `LICENSE`, and updates `.vendor.jsonc`'s recorded
-  ref.
+  `returns_pyright_plugin`, `fastjsonschema`, `structlog`,
+  `jsoncomment`). The recipe fetches the upstream ref, copies
+  it under `_vendor/<lib>/`, preserves `LICENSE`, and updates
+  `.vendor.jsonc`'s recorded ref.
+- **Initial-vendoring exception (one-time, v018 Q3).** The
+  first population of every upstream-sourced vendored lib
+  (`returns`, `returns_pyright_plugin`, `fastjsonschema`,
+  `structlog`, `jsoncomment`) is a one-time MANUAL procedure,
+  distinct from the blessed `just vendor-update` path above:
+  `git clone` the upstream repo at a working ref into a
+  throwaway directory; `git checkout <ref>` matching the
+  `upstream_ref` recorded in `.vendor.jsonc`; copy the
+  library's source tree under
+  `.claude-plugin/scripts/_vendor/<lib>/`; copy the upstream
+  `LICENSE` file verbatim to
+  `.claude-plugin/scripts/_vendor/<lib>/LICENSE`; record the
+  lib's provenance in `.vendor.jsonc` (`upstream_url`,
+  `upstream_ref`, `vendored_at` ISO-8601 UTC); delete the
+  throwaway clone; smoke-test that the wrapper bootstrap
+  imports the vendored lib successfully. Once `jsoncomment`
+  is initially vendored, `just vendor-update <lib>` becomes
+  the only permitted path for subsequent re-vendoring. The
+  initial procedure applies ONCE per livespec repo, at Phase
+  2 of the bootstrap plan; thereafter all upstream-sourced-
+  lib mutations flow through the blessed recipe. The
+  circularity the exception resolves: `just vendor-update
+  <lib>` invokes Python through `livespec.parse.jsonc` to
+  read/write `.vendor.jsonc`, and `livespec.parse.jsonc`
+  imports the vendored `jsoncomment`; the recipe cannot run
+  before `jsoncomment` is already vendored.
 - **Shim libraries are livespec-authored** (v013 M1).
   `_vendor/typing_extensions/` is a ~15-line shim module (not
   a verbatim upstream copy) exporting `override` and
@@ -690,12 +734,23 @@ way to express them.
 
 ## Type safety
 
-- **pyright strict mode** is mandatory. `pyproject.toml`'s
-  `[tool.pyright]` sets `typeCheckingMode = "strict"` and excludes
-  `_vendor/**` from strict scope while keeping
-  `useLibraryCodeForTypes = true` so vendored libs' inferable types
-  reach the type checker. Enforced by `just check-types` — any pyright
-  diagnostic in non-vendored code fails the gate.
+- **pyright strict mode** is mandatory. Livespec uses
+  `pyright` (microsoft/pyright), NOT `basedpyright` (per v018
+  Q4; the `basedpyright-vs-pyright` deferred item is closed
+  in favor of pyright — the v012 L1 + L2 manual strict-plus
+  configuration already enables every diagnostic that
+  matters, and community-fork maintainer-pool risk outweighs
+  basedpyright's incremental defaults-simplification
+  benefit). `pyproject.toml`'s `[tool.pyright]` sets
+  `typeCheckingMode = "strict"`, excludes `_vendor/**` from
+  strict scope while keeping `useLibraryCodeForTypes = true`
+  so vendored libs' inferable types reach the type checker,
+  AND (per v018 Q4) declares `pluginPaths =
+  ["_vendor/returns_pyright_plugin"]` pointing at the
+  vendored dry-python/returns pyright plugin so strict-mode
+  `Result` / `IOResult` inference works without routine
+  `# type: ignore`. Enforced by `just check-types` — any
+  pyright diagnostic in non-vendored code fails the gate.
 - **Pyright strict-plus diagnostics MUST be enabled in
   `[tool.pyright]`.** These six diagnostics are above the strict
   baseline; each closes a documented LLM-authored-code failure
@@ -1718,6 +1773,7 @@ specific native code works). No Windows support.
 | `just check-tests` | `pytest`. |
 | `just check-coverage` | `pytest --cov` with 100% line+branch threshold. |
 | `just e2e-test-claude-code-mock` | v014 N9: E2E integration test against the `minimal` template via the livespec-authored mock at `<repo-root>/tests/e2e/fake_claude.py`. Deterministic; mock replaces only the Claude Agent SDK / LLM layer (wrappers always run for real). Runs the common pytest suite in mock mode, including the intentionally mock-only deterministic retry-on-exit-4 scenario. Part of `just check`. |
+| `just check-prompts` | v018 Q5: per-prompt verification tier. Runs tests under `<repo-root>/tests/prompts/<template>/` using a small deterministic prompt-QA harness scope-distinct from `tests/e2e/fake_claude.py`. Each test case provides a prompt-response pair; harness replays the response; test asserts on structured output at the corresponding input-schema boundary (`seed_input.schema.json`, `proposal_findings.schema.json`, `revise_input.schema.json`) PLUS declared semantic properties per the `prompt-qa-harness` deferred entry. Every built-in template's four REQUIRED prompts ship ≥ 1 prompt-QA test. Part of `just check`. |
 
 Alternate-cadence targets (NOT in `just check`):
 

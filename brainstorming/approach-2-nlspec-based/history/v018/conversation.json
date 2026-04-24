@@ -1,0 +1,132 @@
+{
+  "version": "v018",
+  "produced_from": "v017",
+  "critique_file": "v018/proposed_changes/proposal-critique-v17.md",
+  "revision_file": "v018/proposed_changes/proposal-critique-v17-revision.md",
+  "session_date": "2026-04-24",
+  "author_human": "thewoolleyman",
+  "author_llm": "Claude Opus 4.7 (1M context)",
+  "pass_framing": "recreatability-and-integration-gap cleanup pass surfacing 6 items (Q1-Q6) labelled with the NLSpec failure-mode framework. Q1 (major gap — built-in templates lack sufficient specifications for agentic regeneration) was captured in a prior session before the continuation; Q2-Q6 were surfaced during a bootstrap-plan review against PROPOSAL.md v017 and user-driven triage from a candidate-items list of ten in the continuation session. User triaged the candidate list down to the recommended set (C-1, C-2, C-3, H-2, H-3 — skipping H-1, M-1, M-2, L-1, L-2 per rationale documented in the session summary). All six items accepted at Option A. Q1 extends SPECIFICATION/ to admit nested sub-specifications under SPECIFICATION/templates/<name>/ (closes template-prompt-authoring; opens sub-spec-structural-formalization; does NOT re-open the Multi-specification per project non-goal). Q2 codifies an explicit bootstrap-exception clause naming first seed as the boundary. Q3 adds a one-time 7-step manual initial-vendoring procedure resolving the jsoncomment-self-dependency circularity. Q4 closes both returns-pyright-plugin-disposition (vendor the plugin as sixth vendored lib) and basedpyright-vs-pyright (stay on pyright) at spec level with concrete choices + rationale. Q5 adds a dedicated prompt-QA tier at tests/prompts/<template>/ distinct from the E2E harness; opens prompt-qa-harness deferred entry. Q6 formalizes the companion-doc migration policy with three classes (MIGRATED-to-SPEC-file / SUPERSEDED-by-section / ARCHIVE-ONLY) + per-doc assignment table. 4 careful-review passes + 1 dedicated deferred-items-consistency pass caught 10 inconsistencies cumulatively (6 + 1 + 2 + 0 + 1). Plan file (PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md) updated for Q2-Q6 plan-side implications (Q1 plan alignment was already in place from the prior session).",
+  "turns": [
+    {
+      "role": "user",
+      "content": "Run brainstorming/approach-2-nlspec-based/v018-critique-continuation-prompt.md"
+    },
+    {
+      "role": "assistant",
+      "summary": "Read the continuation prompt. Verified via diff -q that PROPOSAL.md is byte-identical to history/v017/PROPOSAL.md. Loaded required reading (PROPOSAL.md v017, livespec-nlspec-spec.md, deferred-items.md, python-skill-script-style-requirements.md, goals-and-non-goals.md, subdomains-and-unsolved-routing.md, prior-art.md, 2026-04-19-nlspec-terminology-and-structure-summary.md, history/README.md, the v017 revision file, the PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md, and the in-progress critique file with Q1 captured). Created 11 tracking tasks for the full dogfood lifecycle."
+    },
+    {
+      "role": "assistant",
+      "summary": "Summarized current state to user: Q1 is already captured with Option A (template sub-specifications) as recommended disposition; bootstrap plan is already Q1-Option-A aligned; 10 candidate items from the bootstrap-plan-review were presented with per-item assessment. Recommended promoting C-1 (self-application bootstrap exception), C-2 (initial-vendoring mechanism), C-3 (typechecker + returns-plugin closure), H-2 (seed-prompt LLM round-trip verification), and H-3 (companion-doc migration policy) as Q2-Q6; recommended skipping H-1, M-1, M-2, L-1, L-2 per documented rationale (H-1 is already documented as a commit convention; M-1 is handled by mise; M-2 is intentional deferral to external authority; L-1 is arguably out of scope for a skill-bundle contract; L-2 is handled mechanically by Phase 0 freeze)."
+    },
+    {
+      "role": "user",
+      "content": "My recommended set (Recommended): Promote C-1, C-2, C-3, H-2, H-3 as Q2-Q6 (in that order). Skip H-1, M-1, M-2, L-1, L-2 per my rationale above."
+    },
+    {
+      "role": "user",
+      "content": "No, proceed with Q2-Q6 only (Recommended)"
+    },
+    {
+      "role": "assistant",
+      "summary": "Confirmed the promotion set. Appended Q2-Q6 as ## Proposal sections to the in-progress critique file at proposed_changes/v018-proposed-change-proposal-critique-v17.md, updating the opening summary and failure-mode tally (Q1 major gap; Q2-Q4 critical execution-blocking; Q5-Q6 high quality/rework risk). Each proposal section carries target-spec-files, failure-mode-labeled summary, motivation, and proposed changes with Option A (Recommended), B, C, and occasionally a closing rationale for the recommendation."
+    },
+    {
+      "role": "assistant",
+      "summary": "Q1 interview: restated the built-in templates' under-specification (prompt interview flow, NLSpec-discipline internalization, heading taxonomy, delimiter-comment format, etc. are all implementer-choice today); restated the three options (A nested sub-specifications; B lift Multi-specification non-goal wholesale for livespec repo; C expand main spec.md/contracts.md). Recommended Q1-A — matches livespec self-application, narrow scope expansion, keeps governed-loop invariant. Bootstrap plan is already Q1-Option-A aligned."
+    },
+    {
+      "role": "user",
+      "content": "Accept A (Recommended): Extend SPECIFICATION/ to admit nested sub-specifications under SPECIFICATION/templates/<name>/."
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q1 to A. Moved to Q2: PROPOSAL.md §'Self-application' mandates dogfooding but the first landing of propose-change/revise themselves has nowhere to flow through; the bootstrap plan's steps 2 and 4 imply an imperative bootstrap exception but it's unstated. Recommended Q2-A: add explicit bootstrap-exception clause naming first seed as the boundary; applies ONCE per repo at initial bootstrap; does NOT apply to v2+ releases."
+    },
+    {
+      "role": "user",
+      "content": "Accept A (Recommended): Add explicit bootstrap-exception clause to PROPOSAL.md Self-application naming first seed as the boundary."
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q2 to A. Moved to Q3: `just vendor-update <lib>` depends on `livespec.parse.jsonc` which imports the vendored `jsoncomment`; first-time vendoring of `jsoncomment` has no documented path. Recommended Q3-A: 7-step one-time manual initial-vendoring procedure (git clone + checkout + copy source + copy LICENSE + record in .vendor.jsonc + delete clone + smoke-test import) applied ONCE at Phase 2 of bootstrap plan; post-bootstrap all upstream-sourced-lib mutations flow through `just vendor-update`; shims continue the separate 'widen manually via code review' rule."
+    },
+    {
+      "role": "user",
+      "content": "Accept A (Recommended): Add 7-step one-time manual initial-vendoring procedure to PROPOSAL.md Vendoring discipline (and mirror in style doc)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q3 to A. Moved to Q4: both `returns-pyright-plugin-disposition` (v007) and `basedpyright-vs-pyright` (v012) are deferred with tradeoffs but no objective closure criteria; the recently-revised bootstrap plan (commit b041d19) pushed both to Phase 1 but PROPOSAL.md didn't reflect this. Recommended Q4-A: decide both at v018 spec level — vendor the dry-python/returns pyright plugin alongside the library at `_vendor/returns_pyright_plugin/` with `[tool.pyright]` pluginPaths; stay on pyright (not basedpyright) because v012 L1+L2 manual strict-plus already covers every diagnostic and community-fork risk outweighs defaults-simplification. Close both deferred items; PROPOSAL.md + style doc + pyproject.toml carry the decisions with rationale. Matches 'Specify architecture, not mechanism' — typechecker-plus-plugin IS architecture (affects public-API type guarantees pervasively)."
+    },
+    {
+      "role": "user",
+      "content": "Accept A (Recommended): Vendor the returns pyright plugin; stay on pyright. Close both deferred items in v018."
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q4 to A. Moved to Q5: the `livespec` template's prompts (more authoring complexity than minimal's) have no verification mechanism before the real-tier E2E test runs; under Q1-Option-A, Phase 7's agent-generation step consumes prompt output that has no automatic regression test. Recommended Q5-A: add a dedicated prompt-QA tier at tests/prompts/<template>/ with a small deterministic harness scope-distinct from tests/e2e/fake_claude.py; replays prompt-response pairs; asserts on structured output at the input-schema boundary PLUS declared semantic properties. Every built-in template ships ≥1 prompt-QA test per REQUIRED prompt. Runs per-commit in `just check`. Opens new `prompt-qa-harness` deferred entry joint-resolved with `sub-spec-structural-formalization` (supersedes closed `template-prompt-authoring` for prompt authoring) and `end-to-end-integration-test`."
+    },
+    {
+      "role": "user",
+      "content": "Accept A (Recommended): Add dedicated prompt-QA tier at tests/prompts/ with its own small deterministic harness."
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q5 to A. Moved to Q6: `companion-docs-mapping` deferred entry uses 'or similar' hedging for destinations; two implementers produce non-identical seeded specs; Phase 8 auditability requires per-doc precision before the cycle starts. Recommended Q6-A: formalize migration-class policy (MIGRATED-to-SPEC-file / SUPERSEDED-by-section / ARCHIVE-ONLY) + per-doc assignment table in PROPOSAL.md §'Self-application'. Table covers every companion doc with class + destination + target phase annotation."
+    },
+    {
+      "role": "user",
+      "content": "Accept A (Recommended): Formalize migration-class policy (MIGRATED / SUPERSEDED / ARCHIVE-ONLY) + table assigning every companion doc to class + destination in PROPOSAL.md."
+    },
+    {
+      "role": "assistant",
+      "summary": "Locked Q6 to A. Interview complete — all six items accepted at Option A. Proceeded to the dogfood lifecycle apply."
+    },
+    {
+      "role": "assistant",
+      "summary": "Wrote history/v018/proposed_changes/proposal-critique-v17-revision.md capturing per-item dispositions, pass framing, governing principles, summary-of-dispositions table, per-item detailed dispositions, deferred-items inventory (carried-forward + scope-widened + new + removed), self-consistency check placeholder, outstanding follow-ups, and rejection notes for every non-selected option."
+    },
+    {
+      "role": "assistant",
+      "summary": "Rewrote PROPOSAL.md to v018. Q1 edits: new §'Template sub-specifications (v018 Q1)' subsection with ASCII sub-spec tree layout; extended §'seed' with sub_specs payload field and wrapper-step additions for atomic multi-tree file shaping; extended §'Sub-command dispatch and invocation chain' with the `--spec-target <path>` flag contract; extended §'doctor → Static-phase structure' with per-tree iteration; extended §'Testing approach → Coverage registry' with spec_root field + meta-test per-tree walking; extended DoD items 3, 6, 10, 14 for sub-specs. Q2 edits: added explicit bootstrap-exception clause to §'Self-application'. Q3 edits: added one-time initial-vendoring clause to §'Vendoring discipline' with 7-step procedure. Q4 edits: added returns_pyright_plugin to _vendor/ tree AND Vendored-libs list; added 'Typechecker decision (v018 Q4)' paragraph to §'Developer-time dependencies'; updated DoD item 12 with pluginPaths + decision rationale. Q5 edits: added new §'Prompt-QA tier (per-prompt verification, v018 Q5)' subsection; updated DoD item 10. Q6 edits: added §'Companion documents and migration classes (v018 Q6)' subsection with per-doc migration table. Also clarified both §'Multi-specification per project' locations (subsection + non-goal) that Q1's sub-specs do NOT re-open the non-goal."
+    },
+    {
+      "role": "assistant",
+      "summary": "Updated deferred-items.md: extended item-schema version range to v018; CLOSED template-prompt-authoring (rewritten body), returns-pyright-plugin-disposition (rewritten body), basedpyright-vs-pyright (rewritten body); rewrote companion-docs-mapping body to a pointer to PROPOSAL.md; widened Source lines on static-check-semantics (Q1+Q5), skill-md-prose-authoring (Q1), enforcement-check-scripts (Q4+Q5), task-runner-and-ci-config (Q3+Q4+Q5), wrapper-input-schemas (Q1), end-to-end-integration-test (Q5), user-hosted-custom-templates (Q1), claude-md-prose (Q5); added 2 new entries sub-spec-structural-formalization (Q1) and prompt-qa-harness (Q5) at the end of the file."
+    },
+    {
+      "role": "assistant",
+      "summary": "Updated python-skill-script-style-requirements.md: added returns_pyright_plugin to Vendored third-party libraries section (sixth vendored lib); updated returns entry to reference the Q4 closure; mirrored the Q3 initial-vendoring clause in §'Vendoring discipline'; updated §'Type safety' to name pyright (not basedpyright) with v018 Q4 closure rationale + pluginPaths cross-ref; added `just check-prompts` to the Enforcement suite canonical target list."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 1 (6 load-bearing findings, all landed): (1) PROPOSAL.md §'Skill↔template communication layer' referenced the now-closed template-prompt-authoring entry — rewrote to reference wrapper-input-schemas + sub-spec mechanism; (2) §'Built-in template: minimal (v014 N1)' delimiter-comment format still cited template-prompt-authoring+end-to-end-integration-test joint resolution — rewrote to reference the v018 Q1 codification in minimal sub-spec's contracts.md; (3) §'Prompt-QA tier' closing paragraph had the same stale joint-resolution reference — rewrote; (4) §'End-to-end harness-level integration test' delimiter-comment paragraph likewise — rewrote; (5) DoD item 14 (dogfooding) didn't mention sub-spec trees — extended; (6) §'Multi-specification per project' subsection + non-goal both needed clarifying notes distinguishing 'unrelated independent specs' (still out of scope) from 'hierarchical sub-specs' (now in scope per Q1). Plus 2 deferred-items.md follow-on fixes at lines 1290 and 1627-1628 redirecting template-prompt-authoring cross-refs to sub-spec-structural-formalization or to the minimal sub-spec's contracts.md."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 2 (1 load-bearing finding, landed): PROPOSAL.md §'seed' wrapper step 5 (sub-spec history/v001 creation) had slightly inconsistent 'same multi-file convention as main livespec template' phrasing — rewrote to say each sub-spec follows its OWN template's convention (livespec sub-spec has README+versioned README; minimal sub-spec has neither). Added clarification that skill-owned proposed_changes/README.md + history/README.md paragraphs are written per-tree with identical content across trees."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 3 (2 load-bearing findings, landed — both revision-file drift): (1) 'Carried forward unchanged from v017' list omitted python-style-doc-into-constraints — added; (2) 'Scope-widened in v018' list incorrectly included template-prompt-authoring (which is CLOSED, not widened) — removed from scope-widened; remains only in 'Removed / closed in v018'. The Outstanding follow-ups count of 9 widened entries was already correct."
+    },
+    {
+      "role": "assistant",
+      "summary": "Careful-review pass 4 (0 load-bearing findings): end-to-end re-read confirms all working docs self-consistent. Cross-doc references align; sub-spec mechanism applies uniformly across file-shaping, --spec-target, per-tree doctor iteration, heading-coverage, DoD items. Pass 4 is the final general careful-review pass per the 'continue until a pass lands no load-bearing fixes' rule. Cumulative across 4 passes: 9 inconsistencies caught and fixed (6 + 1 + 2 + 0)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Dedicated deferred-items-consistency pass (1 load-bearing finding, landed): walked every deferred-items entry verifying Source line + body against every v018 decision. Source-line drift: all 9 scope-widened entries carry v018 widening notations; 3 closed entries carry 'CLOSED in v018' notations + closure pointers; 2 new entries carry proper 'v018 (Qn; new)' lines; 3 carried-forward-unchanged entries have no v018 touch. Layout-tree drift: PROPOSAL.md `.claude-plugin/` tree correctly extended with returns_pyright_plugin/; PROPOSAL.md `tests/` tree was MISSING the tests/prompts/ subtree that v018 Q5 introduces — ADDED with per-template subdirectories (livespec/, minimal/) each with test_{seed,propose_change,revise,critique}.py + a CLAUDE.md at tests/prompts/. dev-tooling/ tree unchanged (Q1-Q6 introduce no new enforcement scripts). Cross-reference validity: all new Q# cross-references resolve to existing headings. Example-vs-rule alignment: heading-coverage JSON example includes spec_root; seed_input JSON example shows sub_specs; sub-spec ASCII tree correctly distinguishes livespec sub-spec's optional README from minimal sub-spec's no-README. Cumulative total across all 4 careful-review passes + 1 deferred-items-consistency pass: 10 inconsistencies caught and fixed (6 + 1 + 2 + 0 + 1)."
+    },
+    {
+      "role": "assistant",
+      "summary": "Applied plan-file updates for Q2-Q6 to PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md. Version-basis paragraph updated to note v018 basis. Preconditions paragraph updated to name the six accepted decisions. Cutover principle cross-references the v018 Q2 bootstrap-exception clause. Phase 1's pyproject.toml bullet extended with pluginPaths + v018 Q4 closures cross-reference. Phase 2's _vendor/ bullet references the v018 Q3 initial-vendoring procedure and adds returns_pyright_plugin as the sixth vendored lib. Phase 5's test-suite phase adds tests/prompts/ skeleton per v018 Q5. Phase 8's companion-docs-mapping item references PROPOSAL.md §'Companion documents and migration classes' table per v018 Q6. Phase 8's canonical deferred-items list widened to 17 entries (15 pre-v018 + 2 new — sub-spec-structural-formalization, prompt-qa-harness); 3 closed entries (template-prompt-authoring, returns-pyright-plugin-disposition, basedpyright-vs-pyright) land as bookkeeping revisions."
+    },
+    {
+      "role": "assistant",
+      "summary": "Created history/v018/ directory. Copied working PROPOSAL.md to history/v018/PROPOSAL.md; verified byte-identical via diff -q. Moved critique file from brainstorming/approach-2-nlspec-based/proposed_changes/v018-proposed-change-proposal-critique-v17.md to history/v018/proposed_changes/proposal-critique-v17.md. Updated history/README.md with a v018 entry recording the six Q-decisions, the per-pass careful-review findings, the dedicated deferred-items-consistency pass findings, and the cumulative total of 10 inconsistencies. Updated the Pointer paragraph to reference v018. Wrote this conversation.json capturing the session's turns."
+    }
+  ]
+}

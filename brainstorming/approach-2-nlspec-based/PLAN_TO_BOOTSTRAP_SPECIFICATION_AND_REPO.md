@@ -1,10 +1,32 @@
 # Plan: Bootstrap the `livespec` specification and repo
 
 **Status:** Pre-execution. This document captures everything required
-to exit the brainstorming phase (current version **v017**) and stand
-up a working `livespec` repo whose own `SPECIFICATION/` is seeded
-from the brainstorming artifacts and whose skill bundle implements
-the PROPOSAL.
+to exit the brainstorming phase and stand up a working `livespec`
+repo whose own `SPECIFICATION/` tree is seeded from the brainstorming
+artifacts and whose skill bundle implements the PROPOSAL.
+
+**Version basis.** The plan body below is written against
+PROPOSAL.md v018, which has now been produced by the
+continuation interview pass that landed Q1-Option-A (template
+sub-specifications) alongside Q2-Q6:
+- Q2: explicit bootstrap-exception clause in §"Self-
+  application" (the loop becomes operable from first seed
+  onward).
+- Q3: one-time initial-vendoring procedure in §"Vendoring
+  discipline" (applies at Phase 2 of this plan).
+- Q4: closures for `returns-pyright-plugin-disposition`
+  (vendor the plugin as sixth vendored lib) and
+  `basedpyright-vs-pyright` (stay on pyright). Both land at
+  Phase 1 via `pyproject.toml` pinning per the
+  post-commit-b041d19 plan revision.
+- Q5: new prompt-QA tier at `tests/prompts/<template>/` +
+  `just check-prompts` recipe in Phase 5 test-suite phase.
+- Q6: Companion-documents migration-class policy + per-doc
+  assignment table in PROPOSAL.md §"Self-application"
+  (Phase 6 / Phase 8 consumption).
+
+PROPOSAL.md v018 is now the frozen basis for every phase
+below; Phase 0 freezes at v018.
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -20,7 +42,8 @@ restate their content.
 
 Working proposal + embedded grounding:
 
-- `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (v017)
+- `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (frozen at
+  the latest post-interview version; see "Version basis" above)
 - `brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md`
 - `prior-art/nlspec-spec.md`
 
@@ -40,9 +63,10 @@ Companion documents (all under
 History:
 
 - `brainstorming/approach-2-nlspec-based/history/README.md`
-- `brainstorming/approach-2-nlspec-based/history/v001/` …
-  `history/v017/` (every `PROPOSAL.md`, `proposed_changes/`,
-  `conversation.json`, `retired-documents/`)
+- `brainstorming/approach-2-nlspec-based/history/v001/` through
+  the latest `history/vNNN/` directory (every `PROPOSAL.md`,
+  `proposed_changes/`, `conversation.json`,
+  `retired-documents/`)
 
 Anything NOT in the list above MUST NOT influence the plan's
 output. Files under `history/vNNN/retired-documents/` are
@@ -61,25 +85,60 @@ reference-only.
 - `brainstorming/` and `prior-art/` persist AS-IS — they are
   historical reference material and are not rewritten or moved by
   this plan.
-- PROPOSAL.md v017 is treated as frozen. No further brainstorming
-  revisions are produced; all subsequent refinement happens inside
-  the seeded `SPECIFICATION/` via `propose-change` / `revise`.
+- The brainstorming interview pass producing v018 HAS RUN and
+  been frozen. Its revision file (at
+  `brainstorming/approach-2-nlspec-based/history/v018/
+  proposed_changes/proposal-critique-v17-revision.md`) records
+  six accepted decisions (Q1-Q6 all accepted at option A):
+  Q1-Option-A (template sub-specifications under
+  `SPECIFICATION/templates/<name>/`), Q2 (bootstrap-exception
+  clause), Q3 (initial-vendoring procedure), Q4 (returns
+  pyright plugin vendored + pyright stays), Q5 (prompt-QA
+  tier at `tests/prompts/`), Q6 (companion-documents migration-
+  class policy + assignment table). The resulting frozen
+  `PROPOSAL.md` v018, plus touched companion docs
+  (`deferred-items.md`;
+  `python-skill-script-style-requirements.md`), is the
+  authority for Phases 0-10 below.
+- PROPOSAL.md is treated as frozen from Phase 0 onward. No
+  further brainstorming revisions are produced; all subsequent
+  refinement happens inside the seeded `SPECIFICATION/` via
+  `propose-change` / `revise`.
 
 ---
 
 ## 3. Cutover principle
 
 Brainstorming artifacts → immutable. The first real
-`SPECIFICATION/` is produced by `livespec seed` run against this
-repo; from that moment on, every change flows through the governed
-loop (propose-change → critique → revise). The brainstorming folder
-becomes archival.
+`SPECIFICATION/` tree is produced by `livespec seed` run against
+this repo; from that moment on, every change flows through the
+governed loop (propose-change → critique → revise). The
+brainstorming folder becomes archival.
 
 The skill implementation is bootstrapped by hand only to the
 minimum shape required to run `seed` against this repo; the
 remaining scope lands through `propose-change` / `revise` cycles
 authored by the skill itself (dogfooding, per PROPOSAL.md
-§"Self-application").
+§"Self-application"). **PROPOSAL.md v018 Q2 codifies the
+bootstrap exception**: the bootstrap ordering in §"Self-
+application" steps 1-4 (this plan's Phases 0-5, up through
+the first seed in Phase 6) lands imperatively; the governed
+loop becomes MANDATORY from Phase 6 onward. Hand-editing any
+file under any spec tree or under
+`.claude-plugin/specification-templates/<name>/` after Phase 6
+is a bug in execution per that clause.
+
+The SPECIFICATION tree is NOT flat: it contains the main spec
+files AND a nested sub-spec per built-in template under
+`SPECIFICATION/templates/<name>/` (per v018 Q1-Option-A). Each
+sub-spec is a first-class livespec-managed spec tree with its
+own `proposed_changes/` and `history/`. `seed` produces main +
+two template sub-specs atomically; later `propose-change` /
+`revise` invocations target a specific spec tree via
+`--spec-target <path>`. The agentic generation of each built-in
+template's shipped content (its `template.json`,
+`prompts/*.md`, and `specification-template/`) flows from
+that template's sub-spec.
 
 ---
 
@@ -91,11 +150,12 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to
-   `history/v017/PROPOSAL.md` (the authoritative v017 snapshot).
+   byte-identical to the latest `history/vNNN/PROPOSAL.md`
+   snapshot (the version that adopts Q1-Option-A per the
+   Preconditions section).
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v017. Further evolution happens in
+   > **Status:** Frozen at vNNN. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -103,7 +163,7 @@ sub-steps within a phase MAY run in parallel where noted.
    passes).
 4. Nothing else in `brainstorming/` is modified.
 
-**Exit criterion:** a single commit `freeze: v017 brainstorming`
+**Exit criterion:** a single commit `freeze: vNNN brainstorming`
 containing only the header-note addition and `tmp/` removal.
 
 ### Phase 1 — Repo-root developer tooling
@@ -125,15 +185,22 @@ style doc §"Dev tooling and task runner":
     `reportUninitializedInstanceVariable`,
     `reportUnnecessaryTypeIgnoreComment`,
     `reportUnnecessaryCast`, `reportUnnecessaryIsInstance`,
-    `reportImplicitStringConcatenation`). The
+    `reportImplicitStringConcatenation`), plus (per v018 Q4)
+    `pluginPaths = ["_vendor/returns_pyright_plugin"]` pointing
+    at the sixth vendored lib that Phase 2 will land. The
     `returns-pyright-plugin-disposition` and
-    `basedpyright-vs-pyright` deferred items are DECIDED here
-    (not deferred to Phase 8): the chosen typechecker + plugin
-    config is pinned in `pyproject.toml` with rationale captured
-    in a leading `#` comment block. Phase 6 migrates the
-    rationale into `SPECIFICATION/constraints.md`; Phase 8
-    items 8 and 9 become bookkeeping closes pointing at the
-    Phase-1 commit.
+    `basedpyright-vs-pyright` deferred items are CLOSED in
+    v018 with concrete decisions: **returns pyright plugin is
+    vendored alongside the library** (PROPOSAL.md §"Runtime
+    dependencies — Vendored pure-Python libraries"); **pyright
+    is the chosen typechecker, NOT basedpyright** (PROPOSAL.md
+    §"Runtime dependencies — Developer-time dependencies →
+    Typechecker decision (v018 Q4)"). Rationale is captured
+    in a leading `#` comment block in `pyproject.toml`
+    cross-referencing those PROPOSAL.md sections. Phase 6
+    migrates the rationale into
+    `SPECIFICATION/constraints.md`; Phase 8 items 8 and 9
+    become bookkeeping closes pointing at the Phase-1 commit.
   - `[tool.pytest.ini_options]` wiring `pytest-cov` +
     `pytest-icdiff`.
   - `[tool.coverage.run]` / `[tool.coverage.report]` with
@@ -231,14 +298,28 @@ PROPOSAL.md §"Skill layout inside the plugin":
   - `chmod +x` applied to every wrapper.
 - `.claude-plugin/scripts/_vendor/<lib>/` — vendored pure-Python
   libraries, each with its upstream `LICENSE`, at the exact
-  upstream ref recorded in `.vendor.jsonc`:
+  upstream ref recorded in `.vendor.jsonc`. **Per v018 Q3, the
+  initial population of each upstream-sourced lib follows the
+  one-time manual procedure documented in PROPOSAL.md
+  §"Vendoring discipline — Initial-vendoring exception"**
+  (git clone + checkout + cp + LICENSE capture + record in
+  `.vendor.jsonc` + smoke-test import); after `jsoncomment` is
+  in place, subsequent re-vendoring of any upstream-sourced lib
+  flows through `just vendor-update <lib>`.
   - `returns/` (dry-python/returns, BSD-2)
+  - `returns_pyright_plugin/` (dry-python/returns pyright
+    plugin, BSD-2; v018 Q4 — configures pyright strict-mode
+    `Result` / `IOResult` inference; referenced via
+    `[tool.pyright]`'s `pluginPaths` entry added to
+    `pyproject.toml` in Phase 1)
   - `fastjsonschema/` (MIT)
   - `structlog/` (BSD-2 / MIT dual)
   - `jsoncomment/` (MIT)
   - `typing_extensions/` — the ~15-line shim per v013 M1
     exporting exactly `override` and `assert_never`, with a
-    verbatim PSF-2.0 `LICENSE`.
+    verbatim PSF-2.0 `LICENSE`. (Initial-vendoring exception
+    does NOT apply to shim libraries — shims are livespec-
+    authored by hand per v013 M1.)
 - `.claude-plugin/scripts/livespec/` — Python package with the
   subdirectories enumerated in the PROPOSAL tree
   (§"Skill layout"): `commands/`, `doctor/` (with
@@ -248,16 +329,31 @@ PROPOSAL.md §"Skill layout inside the plugin":
   `types.py`, `errors.py`, `__init__.py`.
 - `.claude-plugin/specification-templates/livespec/` and
   `.claude-plugin/specification-templates/minimal/` — both
-  built-in templates. Each has `template.json`,
-  `prompts/{seed,propose-change,revise,critique}.md`, and
-  `specification-template/…`. The `livespec` template also
-  ships `livespec-nlspec-spec.md` at its root (copied
-  verbatim from
+  built-in templates, at **bootstrap-minimum scaffolding
+  only** (per v018 Q1-Option-A). Each has:
+  - `template.json` with required fields
+    (`template_format_version: 1`, `spec_root`, optional
+    doctor-hook paths populated per PROPOSAL.md's template
+    schema).
+  - `prompts/{seed,propose-change,revise,critique}.md` each
+    authored at a minimum-viable level — just enough for the
+    Phase 3 / Phase 6 bootstrap seed to succeed against this
+    repo. Their full authoring lands in Phase 7 as agent-
+    generated output against each template's sub-spec (which
+    itself is seeded in Phase 6).
+  - `specification-template/…` as an empty skeleton
+    (directory tree only, no starter content files). Starter
+    content is generated agentically in Phase 7 from the
+    template's sub-spec.
+  The `livespec` template also ships `livespec-nlspec-spec.md`
+  at its root (copied verbatim from
   `brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md`)
-  and carries the optional
-  `prompts/doctor-llm-subjective-checks.md`. The `minimal`
-  template's prompts carry the hardcoded delimiter comments
-  per v014 N9.
+  and carries a stub `prompts/doctor-llm-subjective-checks.md`.
+  The `minimal` template's stub prompts carry placeholder
+  delimiter-comment markers; the final delimiter-comment
+  format and its codification in the `minimal` template
+  sub-spec (`SPECIFICATION/templates/minimal/contracts.md`)
+  are Phase 7 work.
 
 All code in this phase is stub-level EXCEPT the wrapper shapes,
 `_bootstrap.py`, and `livespec/__init__.py` (structlog
@@ -354,7 +450,18 @@ Required implementation surface (everything else stays stubbed):
   PROPOSAL.md §"`seed`": `--seed-json` intake, pre-seed
   `.livespec.jsonc` bootstrap per v016 P2 + v017 Q5/Q6,
   idempotency refusal, v001 history materialization,
-  auto-capture of `seed.md` proposed-change + `seed-revision.md`.
+  auto-capture of `seed.md` proposed-change +
+  `seed-revision.md`. Per v018 Q1-Option-A, the
+  implementation ALSO produces the two template sub-spec
+  trees under `SPECIFICATION/templates/<name>/` atomically
+  with the main tree — each sub-spec gets its own
+  `spec.md`/`contracts.md`/`constraints.md`/`scenarios.md`,
+  its own `proposed_changes/` with `README.md`, and its own
+  `history/v001/` materialized from the payload.
+  `seed_input.schema.json` widens to carry a
+  `sub_specs: list[SubSpecPayload]` field; Phase 3 authors
+  the schema + dataclass + validator triple for
+  `SubSpecPayload`.
 - `livespec/doctor/run_static.py` — orchestrator per PROPOSAL.md
   §"Static-phase structure" + v014 N3 bootstrap lenience.
 - `livespec/doctor/static/__init__.py` — static registry.
@@ -380,11 +487,19 @@ Required implementation surface (everything else stays stubbed):
   (enough to run the LLM-driven phase orchestration during
   Phase 6). Phase 7 brings both to final alongside the four
   remaining SKILL.md bodies.
-- Both built-in templates' `prompts/seed.md` — full authoring so
-  the seed LLM round-trip produces a schema-valid
-  `seed_input.schema.json` payload. Other prompts (`propose-change`,
-  `revise`, `critique`) may still be stubs at this phase; they're
-  authored in Phase 7.
+- The `livespec` template's `prompts/seed.md` — **bootstrap-
+  minimum authoring** sufficient for the Phase 6 seed LLM
+  round-trip to produce a schema-valid
+  `seed_input.schema.json` payload covering the main spec AND
+  the two template sub-specs (per v018 Q1-Option-A). This is
+  intentionally narrower than the full template-controlled
+  seed interview; the full `prompts/seed.md` is regenerated
+  from the `livespec` template's sub-spec in Phase 7.
+  The `minimal` template's `prompts/seed.md` stays stubbed at
+  this phase — Phase 6 uses only the `livespec` template. All
+  four `minimal`-template prompts and the three remaining
+  `livespec`-template prompts (`propose-change`, `revise`,
+  `critique`) are Phase 7 work.
 
 **Exit criterion (narrow Phase-3 gate).** `just check-lint`,
 `just check-wrapper-shape`, `just check-main-guard`, and
@@ -454,11 +569,28 @@ Build out the test tree per PROPOSAL.md §"Testing approach":
 - `tests/e2e/` — skeleton directory, `CLAUDE.md`, placeholder
   `fake_claude.py`. Real E2E content is fleshed out in Phase 8
   (tied to the `end-to-end-integration-test` deferred item).
+- `tests/prompts/` — (v018 Q5) skeleton directory with
+  `CLAUDE.md` describing the prompt-QA harness conventions
+  (distinct from `tests/e2e/fake_claude.py`), plus
+  `tests/prompts/<template>/` subdirectories for each
+  built-in template (`livespec`, `minimal`) with placeholder
+  `test_{seed,propose_change,revise,critique}.py` per
+  PROPOSAL.md §"Testing approach — Prompt-QA tier". Real
+  prompt-QA content (harness + fixtures + semantic-property
+  assertions) is fleshed out in Phase 7 (as part of each
+  built-in template's sub-spec-driven content generation)
+  and closed by Phase 8's `prompt-qa-harness` deferred-items
+  revision. `just check-prompts` is added to the `justfile`
+  during Phase 1 (or when Phase 4's check scripts land, if
+  the recipe needs pytest invocation) and runs the populated
+  suite from Phase 7 onward.
 - `tests/fixtures/` — empty at this phase; grows through Phases
   6–9.
 - `tests/heading-coverage.json` — initially empty array `[]`
   (populated alongside the seeded spec in Phase 6 and after each
-  deferred-item-driven revise).
+  deferred-item-driven revise). Entry shape per v018
+  Q1-Option-A carries a `spec_root` field discriminating the
+  main spec from each template sub-spec tree.
 - `tests/test_meta_section_drift_prevention.py` — covers the
   registry.
 - Every `tests/` directory (with `fixtures/` subtrees excluded at
@@ -473,11 +605,13 @@ and `check-claude-md-coverage`.
 ### Phase 6 — First self-application seed
 
 Run `/livespec:seed` against `/data/projects/livespec` itself,
-producing the real `SPECIFICATION/` tree.
+producing the real `SPECIFICATION/` tree — main spec + the two
+built-in-template sub-specs atomically, per v018 Q1-Option-A.
 
-Seed scope is deliberately NARROW: Phase 6 seeds from
-PROPOSAL.md + `goals-and-non-goals.md` ONLY. The companion
-docs (`python-skill-script-style-requirements.md`,
+Seed scope is deliberately NARROW for the MAIN spec: Phase 6
+seeds the main spec from PROPOSAL.md + `goals-and-non-goals.md`
+ONLY. The companion docs
+(`python-skill-script-style-requirements.md`,
 `livespec-nlspec-spec.md`, `subdomains-and-unsolved-routing.md`,
 lifecycle/terminology docs, prior-art survey) are migrated
 individually in Phase 8 via dedicated propose-change/revise
@@ -487,23 +621,36 @@ migration be auditable as its own revision, rather than relying
 on a single 295KB-context seed pass that risks lossy
 compression.
 
+For the two TEMPLATE SUB-SPECS, Phase 6 seeds from the
+PROPOSAL.md sections describing each built-in template plus
+the `livespec-nlspec-spec.md` shipped alongside the `livespec`
+template. The sub-specs land bootstrap-minimum at this phase;
+they are widened in Phase 7 via propose-change/revise when the
+full template content (prompts, starter content, delimiter-
+comment format) is authored.
+
 Seed intent fed to the prompt:
 
-> Seed this project's `SPECIFICATION/` from the frozen v017
+> Seed this project's `SPECIFICATION/` tree from the frozen
 > `PROPOSAL.md` and `goals-and-non-goals.md` in
 > `brainstorming/approach-2-nlspec-based/`. Use the `livespec`
 > built-in template (multi-file). The
 > `livespec-nlspec-spec.md` the template's prompts use at
 > seed-time comes from the template's own copy, NOT from the
 > brainstorming folder.
+>
+> MAIN SPEC:
 > `spec.md` carries the core PROPOSAL material (runtime and
 > packaging, specification model, sub-command lifecycle,
 > versioning, pruning, sub-commands, proposed-change /
 > revision file formats, testing approach, developer-tooling
 > layout, Definition of Done, non-goals, self-application).
 > `contracts.md` carries the skill↔template JSON contracts
-> (input/output schemas; wrapper CLI shapes) and the
-> lifecycle exit-code table.
+> (input/output schemas; wrapper CLI shapes), the
+> lifecycle exit-code table, and the sub-spec structural
+> mechanism (propose-change/revise `--spec-target` flag;
+> `seed_input.schema.json`'s `sub_specs` field; per-sub-spec
+> doctor parameterization).
 > `constraints.md` carries the architecture-level
 > constraints PROPOSAL.md states directly (Python 3.10+ pin,
 > vendored-lib discipline, pure/IO boundary, ROP composition,
@@ -515,33 +662,75 @@ Seed intent fed to the prompt:
 > revise/doctor scenario plus the three error paths v014 N9
 > enumerates and the recovery paths from §"seed", §"doctor",
 > and §"Pruning history" in PROPOSAL.md.
+>
+> TEMPLATE SUB-SPEC `SPECIFICATION/templates/livespec/`:
+> `spec.md` carries the `livespec` template's user-visible
+> behavior: the seed interview flow's intent, the
+> propose-change/revise/critique prompt interview intents,
+> how `livespec-nlspec-spec.md` is internalized by each
+> prompt, and the starter-content policy (what headings get
+> derived, what BCP14 placement looks like, the scenarios.md
+> literal stub).
+> `contracts.md` carries the template-internal JSON contracts
+> (what `seed_input.schema.json` payload fields this template
+> populates, what `proposal_findings.schema.json` fields the
+> critique prompt populates).
+> `constraints.md` carries the NLSpec discipline constraints
+> (Gherkin blank-line convention, BCP14 keyword well-
+> formedness, heading taxonomy conventions).
+> `scenarios.md` carries a happy-path seed-interview scenario
+> plus one edge-case per prompt.
+>
+> TEMPLATE SUB-SPEC `SPECIFICATION/templates/minimal/`:
+> `spec.md` carries the `minimal` template's single-file
+> positioning (reference-minimum for custom-template authors;
+> canonical fixture for the end-to-end integration test) and
+> its prompt interview intents (reduced vs. `livespec`).
+> `contracts.md` carries the delimiter-comment format
+> contract (format is itself Phase 7 work; at Phase 6 this
+> section is a placeholder with a "TBD in Phase 7" note).
+> `constraints.md` carries the single-file-only constraint,
+> the `spec_root: "./"` convention, and the
+> `gherkin-blank-line-format` doctor-check exemption.
+> `scenarios.md` carries the end-to-end-integration-test
+> scenarios' structural outline (retry-on-exit-4, doctor-
+> static-fail-then-fix, prune-history-no-op).
 
 After seed, the working tree contains:
 
 - `.livespec.jsonc` at repo root.
-- `SPECIFICATION/{README.md, spec.md, contracts.md,
+- Main spec: `SPECIFICATION/{README.md, spec.md, contracts.md,
   constraints.md, scenarios.md}`.
-- `SPECIFICATION/proposed_changes/` containing only the
+- Main `SPECIFICATION/proposed_changes/` containing only the
   skill-owned `README.md`.
-- `SPECIFICATION/history/v001/` containing frozen copies of every
-  spec file + `proposed_changes/seed.md` +
+- Main `SPECIFICATION/history/v001/` containing frozen copies
+  of every main-spec file + `proposed_changes/seed.md` +
   `proposed_changes/seed-revision.md`.
+- Template sub-specs:
+  `SPECIFICATION/templates/livespec/{README.md, spec.md,
+  contracts.md, constraints.md, scenarios.md,
+  proposed_changes/README.md, history/v001/...}` and
+  `SPECIFICATION/templates/minimal/{...}` — structurally
+  identical to the main spec, with v001 frozen.
 
 Running `/livespec:doctor` against this newly-seeded state
-passes. (LLM-driven subjective checks may surface suggestions;
-they are recorded in
-`SPECIFICATION/proposed_changes/` as `critique`-authored
-proposals for the next revise, they do NOT block the exit
-criterion.)
+passes. Doctor runs per-tree (main + each sub-spec) and
+surfaces findings per-tree. LLM-driven subjective checks may
+surface suggestions; they are recorded in the appropriate
+tree's `proposed_changes/` as `critique`-authored proposals
+for the next revise, they do NOT block the exit criterion.
 
-Every `##` heading in the seeded spec files gets a corresponding
-entry in `tests/heading-coverage.json` (entries with `test: "TODO"`
-+ non-empty `reason` are acceptable at this point; Phase 7–8 work
-replaces TODOs with real test IDs).
+Every `##` heading in every seeded spec file (main + both
+sub-specs) gets a corresponding entry in
+`tests/heading-coverage.json` (each entry carries a
+`spec_root` field naming its tree; entries with
+`test: "TODO"` + non-empty `reason` are acceptable at this
+point; Phase 7–8 work replaces TODOs with real test IDs).
 
-**Exit criterion:** `just check` passes; `/livespec:doctor` runs
-cleanly (static phase `0`; LLM-driven phases report only
-advisory findings, no hard failures).
+**Exit criterion:** `just check` passes; `/livespec:doctor`
+runs cleanly against every spec tree (static phase `0` for
+each; LLM-driven phases report only advisory findings, no
+hard failures).
 
 ### Phase 7 — Remaining sub-commands + full doctor coverage
 
@@ -560,14 +749,18 @@ against the seeded `SPECIFICATION/`):
   including topic canonicalization (v015 O3), reserve-suffix
   canonicalization (v016 P3; v017 Q1), unified author precedence,
   schema validation, collision disambiguation (v014 N6), single-
-  canonicalization invariant routing (v016 P4).
+  canonicalization invariant routing (v016 P4), AND the
+  `--spec-target <path>` flag selecting which spec tree's
+  `proposed_changes/` is written to (per v018 Q1-Option-A).
 - `livespec/commands/critique.py` — full implementation with
   internal delegation to `propose_change` via `-critique`
-  reserve-suffix.
+  reserve-suffix; accepts `--spec-target` and routes
+  delegation with the same target.
 - `livespec/commands/revise.py` — full implementation including
   per-proposal LLM decision flow (skill-prose-side), delegation
   toggle, version cut, history materialization, rejection flow
-  preserving audit trail.
+  preserving audit trail, AND `--spec-target <path>` targeting
+  per v018 Q1-Option-A.
 - `livespec/commands/prune_history.py` — full pruning logic with
   `PRUNED_HISTORY.json` marker, no-op short-circuit, numeric
   contiguity.
@@ -578,25 +771,45 @@ against the seeded `SPECIFICATION/`):
   §"Static-phase checks" and codified in the
   `static-check-semantics` deferred item. `out_of_band_edits`
   honors the pre-backfill guard + auto-backfill semantics
-  including author identifier `livespec-doctor`.
+  including author identifier `livespec-doctor`. All doctor-
+  static checks are parameterized per-spec-tree per v018
+  Q1-Option-A: `run_static.py` iterates over the main spec
+  root + each sub-spec root discovered under
+  `<main-spec-root>/templates/<name>/`, running the
+  appropriate check subset per tree (e.g.,
+  `gherkin_blank_line_format` applies to the main spec and
+  the `livespec` sub-spec but NOT the `minimal` sub-spec).
 - `livespec/doctor/` — LLM-driven phase orchestration in
   `doctor/SKILL.md` including both objective and subjective
   checks + template-extension hooks.
 - `parse/front_matter.py` — restricted-YAML parser (tracked by
   the `front-matter-parser` deferred item).
-- All four non-seed prompts in the `livespec` template:
-  `prompts/{propose-change,revise,critique,doctor-llm-subjective-checks}.md`
-  (plus the optional `doctor-llm-objective-checks.md` if
-  livespec-template wants one).
-- All four non-seed prompts in the `minimal` template with
-  delimiter comments per v014 N9. The delimiter-comment format
-  is CHOSEN here (not at Phase 9), and the same propose-change
-  that lands the prompts also codifies the format in
-  `SPECIFICATION/contracts.md` under a "Template↔mock
-  delimiter-comment format" section. Phase 9's `fake_claude.py`
-  parses against that codified contract; future custom-template
-  authors can replicate the mock harness without reading the
-  parser source.
+- The full `livespec` template content — its
+  `prompts/seed.md` (replacing the Phase 3 bootstrap-minimum
+  version), `prompts/propose-change.md`,
+  `prompts/revise.md`, `prompts/critique.md`,
+  `prompts/doctor-llm-subjective-checks.md` (plus optional
+  `doctor-llm-objective-checks.md`), and the
+  `specification-template/SPECIFICATION/` starter content —
+  is **agent-generated from
+  `SPECIFICATION/templates/livespec/`** (the sub-spec seeded
+  in Phase 6). Each prompt's authoring lands via a
+  `propose-change --spec-target SPECIFICATION/templates/livespec`
+  → `revise --spec-target ...` cycle against that sub-spec,
+  and the generated template files are committed alongside
+  the sub-spec revision. No hand-authoring.
+- The full `minimal` template content — its four prompts
+  with their delimiter comments and its single-file starter
+  `specification-template/SPECIFICATION.md` — is
+  agent-generated from
+  `SPECIFICATION/templates/minimal/` sub-spec via the same
+  `--spec-target` mechanism. The delimiter-comment format
+  is CHOSEN here (not at Phase 9); the choice is codified in
+  `SPECIFICATION/templates/minimal/contracts.md` under a
+  "Template↔mock delimiter-comment format" section, and THAT
+  is what Phase 9's `fake_claude.py` parses against. Future
+  custom-template authors can replicate the mock harness
+  without reading the parser source.
 - All seven SKILL.md prose bodies brought to final per the
   deferred item `skill-md-prose-authoring` — including
   replacing the Phase-3 bootstrap prose for `seed`, `doctor`,
@@ -620,20 +833,41 @@ case) or explains why the entry is superseded / moot / deferred
 further (secondary case, with a paired revision explaining the
 deferral).
 
-Canonical deferred items — 15 items (the `### <id>`
+Canonical deferred items — 17 items after v018 (the `### <id>`
 schema-example heading at `deferred-items.md` line 29 is not an
-item):
+item): 15 carried forward from v017 plus 2 new in v018
+(`sub-spec-structural-formalization`, `prompt-qa-harness`); 3
+closed in v018 (`template-prompt-authoring`,
+`returns-pyright-plugin-disposition`,
+`basedpyright-vs-pyright`) land as bookkeeping revisions
+pointing at PROPOSAL.md / Phase-1 / Phase-7 decisions:
 
-1. `template-prompt-authoring` — content already landed in
-   Phase 7 prompts, and the Phase-7 propose-change that landed
-   the minimal template's delimiter comments also codified the
-   delimiter-comment format contract in
-   `SPECIFICATION/contracts.md`. Phase 8's revise records the
-   closure, pointing at that Phase-7 revision.
+1. `template-prompt-authoring` — CLOSED in v018 Q1. Content
+   already landed in Phase 7, generated agentically from
+   each template's sub-spec under
+   `SPECIFICATION/templates/<name>/` per v018 Q1-Option-A.
+   The Phase-7 propose-change that landed the `minimal`
+   template's delimiter comments also codified the delimiter-
+   comment format contract in
+   `SPECIFICATION/templates/minimal/contracts.md` (under a
+   "Template↔mock delimiter-comment format" section).
+   Phase 8's revise records the closure, pointing at the
+   relevant Phase-7 sub-spec revisions and PROPOSAL.md
+   §"SPECIFICATION directory structure — Template
+   sub-specifications".
 2. `python-style-doc-into-constraints` — verifies the style-doc
    migration into `constraints.md` happened cleanly in Phase 6.
-3. `companion-docs-mapping` — verifies every companion doc has
-   a mapped home in `SPECIFICATION/`.
+3. `companion-docs-mapping` — (v018 Q6) processes every
+   companion doc according to its pre-assigned migration class
+   (MIGRATED-to-SPEC-file / SUPERSEDED-by-section /
+   ARCHIVE-ONLY) per PROPOSAL.md §"Companion documents and
+   migration classes". The deferred entry's body is a pointer
+   to that section; each Phase-8 propose-change targets one
+   companion doc; the paired revise records the migration
+   outcome (what was migrated, into which section, or why the
+   doc is ARCHIVE-ONLY). Phase 6 has already migrated
+   `goals-and-non-goals.md`; Phase 8 processes the remaining
+   assignments.
 4. `enforcement-check-scripts` — verifies every Phase-4 check
    script matches the canonical list and that `pyproject.toml`'s
    `[tool.importlinter]` carries the narrowed-to-two contracts
@@ -650,25 +884,58 @@ item):
    v006–v017 widenings (bootstrap lenience, GFM anchor rules,
    reserve-suffix algorithm, wrapper-shape blank-line tolerance,
    etc.) into `constraints.md` or `spec.md` as appropriate.
-8. `returns-pyright-plugin-disposition` — already decided in
-   Phase 1 (pinned in `pyproject.toml` with rationale
-   comments, migrated to `SPECIFICATION/constraints.md` in
-   Phase 6). Bookkeeping close pointing at the Phase-1 commit.
-9. `basedpyright-vs-pyright` — already decided in Phase 1
-   (same mechanism as item 8). Bookkeeping close pointing at
-   the Phase-1 commit.
+8. `returns-pyright-plugin-disposition` — CLOSED in v018 Q4.
+   Plugin vendored at
+   `.claude-plugin/scripts/_vendor/returns_pyright_plugin/`
+   in Phase 2; `pluginPaths` pinned in `pyproject.toml` in
+   Phase 1; rationale migrated to
+   `SPECIFICATION/constraints.md` in Phase 6. Bookkeeping
+   close pointing at PROPOSAL.md §"Runtime dependencies —
+   Vendored pure-Python libraries".
+9. `basedpyright-vs-pyright` — CLOSED in v018 Q4. pyright is
+   the chosen typechecker; basedpyright is NOT used.
+   Rationale in PROPOSAL.md §"Runtime dependencies —
+   Developer-time dependencies → Typechecker decision
+   (v018 Q4)"; migrated to `SPECIFICATION/constraints.md` in
+   Phase 6. Bookkeeping close pointing at the Phase-1 commit.
 10. `front-matter-parser` — landed in Phase 7.
 11. `skill-md-prose-authoring` — landed in Phase 7.
 12. `wrapper-input-schemas` — every input schema authored
-    (`seed_input`, `proposal_findings`, `revise_input`,
-    `proposed_change_front_matter`, `revision_front_matter`,
-    plus `doctor_findings`, `livespec_config`, `template_config`,
-    `finding` as already done).
+    (`seed_input` including v018 Q1's `sub_specs: list[
+    SubSpecPayload]` field; new standalone
+    `sub_spec_payload.schema.json` + paired dataclass +
+    validator per v018 Q1; `proposal_findings`,
+    `revise_input`, `proposed_change_front_matter`,
+    `revision_front_matter`, plus `doctor_findings`,
+    `livespec_config`, `template_config`, `finding` as
+    already done).
 13. `user-hosted-custom-templates` — documented as v2 scope;
-    revise closes the entry with a pointer to the v2 tracking.
+    revise closes the entry with a pointer to the v2 tracking
+    (extended in v018 Q1 with the sub-spec-mechanism note —
+    v2+ template-discovery extensions MAY declare their own
+    sub-spec structure; the `--spec-target` flag surface is
+    v1-frozen).
 14. `end-to-end-integration-test` — see Phase 9.
 15. `local-bundled-model-e2e` — documented as v2 scope; revise
     closes.
+16. `sub-spec-structural-formalization` — (v018 Q1 NEW)
+    materialized across Phase 3 (seed's multi-tree
+    file-shaping work; `--spec-target` flag implementation on
+    propose-change / critique / revise; `SubSpecPayload`
+    schema + dataclass + validator; `DoctorContext`
+    `template_scope` field), Phase 6 (sub-spec tree seeding
+    atomically with main tree), Phase 7 (each built-in
+    template's sub-spec contents authored via
+    `propose-change --spec-target` cycles), and confirmed
+    clean by Phase 8. Bookkeeping close pointing at the
+    relevant phase commits.
+17. `prompt-qa-harness` — (v018 Q5 NEW) materialized in
+    Phase 5 (`tests/prompts/` skeleton), Phase 7 (per-prompt
+    test content + harness implementation + fixture format —
+    joint-resolved with `sub-spec-structural-formalization`
+    for the per-prompt semantic-property catalogue authored
+    in each sub-spec's `scenarios.md` or `contracts.md`),
+    and confirmed green by Phase 8. Bookkeeping close.
 
 **Exit criterion:** every deferred-item entry has a paired
 revision under `SPECIFICATION/history/vNNN/proposed_changes/`.
@@ -757,6 +1024,19 @@ both pass.
   + manual dispatch. A future deferred item
   (`local-bundled-model-e2e`) tracks removing the API-key
   dependency.
+- **Under-specified template sub-specs at Phase 6 seed time.**
+  The Phase 6 seed intent for each template sub-spec is the
+  only input shaping that template's eventual prompt interview
+  flow and starter-content policies. A shallow sub-spec seed
+  produces a sub-spec that passes doctor-static but gives
+  Phase 7's agent-generation step weak guidance, yielding
+  templates whose prompt behavior is inconsistent or thin.
+  Mitigation: the Phase 6 seed intent enumerates every
+  sub-spec file's required content explicitly (see the
+  intent block in Phase 6); Phase 7's first propose-change
+  against each sub-spec is a critique-driven widening pass
+  that exposes and fills under-specified sections before any
+  template content generation happens.
 
 ---
 
@@ -778,7 +1058,10 @@ Execute the livespec bootstrap plan documented at
 Load every file listed in that plan's §1 "Inputs (authoritative
 sources)" section before doing any work:
 
-- `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (frozen at v017)
+- `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (frozen at
+  the latest history/vNNN snapshot — per the plan's "Version
+  basis" note, this is the post-v017 version that adopts
+  Q1-Option-A for template sub-specifications)
 - `brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md`
 - `brainstorming/approach-2-nlspec-based/python-skill-script-style-requirements.md`
 - `brainstorming/approach-2-nlspec-based/deferred-items.md`
@@ -816,11 +1099,19 @@ execution. Those are frozen.
    edit under `brainstorming/` is a bug in execution; stop and
    ask.
 
-4. From Phase 6 onward, every change to `SPECIFICATION/` MUST
-   flow through `propose-change` → `revise` (use the skill
+4. From Phase 6 onward, every change to any spec tree —
+   main `SPECIFICATION/` OR any template sub-spec under
+   `SPECIFICATION/templates/<name>/` — MUST flow through
+   `propose-change` → `revise` against the specific tree,
+   selected via the `--spec-target <path>` flag (use the skill
    bundle's own sub-commands; dogfooding is mandatory per
    PROPOSAL.md §"Self-application"). Do not hand-edit
-   `SPECIFICATION/*.md` after Phase 6.
+   any `.md` file under any spec tree after Phase 6. Template
+   content files (`.claude-plugin/specification-templates/
+   <name>/prompts/*.md`, `template.json`,
+   `specification-template/`) are ALSO not hand-edited after
+   Phase 6: they are agent-generated alongside the
+   corresponding sub-spec revision.
 
 5. Confirm with the user before:
    - Adding a dependency not already listed in the authority
