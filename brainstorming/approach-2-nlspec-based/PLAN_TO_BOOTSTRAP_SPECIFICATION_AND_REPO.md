@@ -6,13 +6,20 @@ repo whose own `SPECIFICATION/` tree is seeded from the brainstorming
 artifacts and whose skill bundle implements the PROPOSAL.
 
 **Version basis.** The plan body below is written against
-PROPOSAL.md v019, which has now been produced by:
+PROPOSAL.md v020, which has now been produced by:
 1. the continuation interview pass that landed v018
    Q1-Option-A (template sub-specifications) alongside v018
-   Q2-Q6, AND
+   Q2-Q6,
 2. a fast-track single-issue revise (v019 Q1) that resolved
    a logical contradiction in v018 §"Self-application" steps
-   2/4 + the Q2 bootstrap-exception clause.
+   2/4 + the Q2 bootstrap-exception clause, AND
+3. a four-issue critique pass (v020 Q1-Q4) closing two
+   shipped-contract defects in the v018 Q1 template-sub-
+   specification mechanism (Q1 — `minimal` sub-spec
+   structural contradiction; Q2 — `livespec` template's seed
+   prompt unconditionally emitted `sub_specs[]`) plus two
+   plan-level quality fixes (Q3 — Phase 3 sub-spec routing
+   smoke check; Q4 — Phase 3 four-prompt widening).
 
 v018 decisions still in force:
 - v018 Q2: explicit bootstrap-exception clause in §"Self-
@@ -45,8 +52,44 @@ v019 decision:
   step 2's widening lands minimum-viable sub-commands BEFORE
   the seed (inside the imperative window).
 
-PROPOSAL.md v019 is now the frozen basis for every phase
-below; Phase 0 freezes at v019.
+v020 decisions:
+- v020 Q1: Sub-specs are reframed as livespec-internal
+  artifacts using the multi-file livespec layout uniformly,
+  decoupled from the end-user-facing convention of the
+  template the sub-spec describes. The `minimal` sub-spec
+  gains a sub-spec-root `README.md` and a per-version
+  `README.md` snapshot it did not have in v019. PROPOSAL.md
+  §"Template sub-specifications" framing line + `minimal`
+  diagram + §"`seed`" wrapper file-shaping item 5 amended
+  accordingly. Plan Phase 6 per-tree description for the
+  `minimal` sub-spec is amended uniformly with the `livespec`
+  sub-spec.
+- v020 Q2: Sub-spec emission becomes opt-in via a new
+  pre-seed dialogue question ("Does this project ship its own
+  livespec templates that should be governed by sub-spec
+  trees? — default: no"). The shipped `livespec` template's
+  seed prompt no longer hard-codes sub_specs[] emission;
+  end-user projects get `sub_specs: []` by default.
+  PROPOSAL.md §"`seed`" pre-seed-template-selection paragraph
+  + sub_specs-payload paragraph amended. Plan Phase 2
+  (livespec template's `prompts/seed.md` minimum-viable scope
+  includes the dialogue question), Phase 3 (bootstrap-minimum
+  widening handles both dialogue branches rigorously), and
+  Phase 6 (seed intent block answers "yes" and names the two
+  built-ins) updated accordingly.
+- v020 Q3: Phase 3 exit criterion grows by one propose-
+  change/revise smoke cycle targeting the sub-spec tree
+  (`<tmp>/SPECIFICATION/templates/livespec`). PROPOSAL.md
+  unchanged.
+- v020 Q4: Phase 3 widens all four `livespec`-template
+  prompts (`seed`, `propose-change`, `revise`, `critique`)
+  to bootstrap-minimum, mirroring v019's existing seed.md
+  widening pattern. Resolves the quality risk where Phase 7's
+  heaviest semantic work would otherwise run through Phase
+  2-minimum prompts. PROPOSAL.md unchanged.
+
+PROPOSAL.md v020 is now the frozen basis for every phase
+below; Phase 0 freezes at v020.
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -105,8 +148,8 @@ reference-only.
 - `brainstorming/` and `prior-art/` persist AS-IS — they are
   historical reference material and are not rewritten or moved by
   this plan.
-- The brainstorming interview passes producing v018 and v019
-  HAVE RUN and been frozen. The v018 revision file (at
+- The brainstorming interview passes producing v018, v019, and
+  v020 HAVE RUN and been frozen. The v018 revision file (at
   `brainstorming/approach-2-nlspec-based/history/v018/proposed_changes/proposal-critique-v17-revision.md`)
   records six accepted decisions (Q1-Q6 all accepted at
   option A): Q1-Option-A (template sub-specifications under
@@ -121,11 +164,23 @@ reference-only.
   §"Self-application" step 2 widened to include minimum-viable
   `propose-change`/`critique`/`revise` alongside seed; step 4
   re-narrated as pure widening + remaining-sub-command
-  implementation via dogfood; Q2 boundary unmoved. The
-  resulting frozen `PROPOSAL.md` v019, plus touched companion
-  docs (`deferred-items.md`;
+  implementation via dogfood; Q2 boundary unmoved. The v020
+  revision file (at
+  `brainstorming/approach-2-nlspec-based/history/v020/proposed_changes/proposal-critique-v19-revision.md`)
+  records four accepted decisions (Q1-Q4 all accepted at
+  Option A): Q1 (sub-specs reframed as livespec-internal,
+  uniformly multi-file with sub-spec-root + per-version
+  README; `minimal` sub-spec structural contradiction
+  resolved), Q2 (sub-spec emission becomes user-driven via
+  pre-seed dialogue question; shipped seed prompt no longer
+  hard-codes per-template emission), Q3 (Phase 3 exit
+  criterion grows by sub-spec-targeted propose-change/revise
+  smoke cycle), Q4 (Phase 3 widens all four livespec-template
+  prompts to bootstrap-minimum). The resulting frozen
+  `PROPOSAL.md` v020, plus touched companion docs
+  (`deferred-items.md`;
   `python-skill-script-style-requirements.md` — both unchanged
-  by v019), is the authority for Phases 0-10 below.
+  by v019 and v020), is the authority for Phases 0-10 below.
 - PROPOSAL.md is treated as frozen from Phase 0 onward. No
   further brainstorming revisions are produced; all subsequent
   refinement happens inside the seeded `SPECIFICATION/` via
@@ -184,12 +239,12 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v019/PROPOSAL.md` (the v019
-   snapshot — adopting v018 Q1-Option-A through Q6 plus v019
-   Q1 per the Preconditions section).
+   byte-identical to `history/v020/PROPOSAL.md` (the v020
+   snapshot — adopting v018 Q1-Option-A through Q6, v019
+   Q1, plus v020 Q1-Q4 per the Preconditions section).
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v019. Further evolution happens in
+   > **Status:** Frozen at v020. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -197,7 +252,7 @@ sub-steps within a phase MAY run in parallel where noted.
    passes).
 4. Nothing else in `brainstorming/` is modified.
 
-**Exit criterion:** a single commit `freeze: v019 brainstorming`
+**Exit criterion:** a single commit `freeze: v020 brainstorming`
 containing only the header-note addition and `tmp/` removal.
 
 ### Phase 1 — Repo-root developer tooling
@@ -405,7 +460,14 @@ PROPOSAL.md §"Skill layout inside the plugin":
   - `prompts/{seed,propose-change,revise,critique}.md` each
     authored at a minimum-viable level — just enough for the
     Phase 3 / Phase 6 bootstrap seed to succeed against this
-    repo. Their full authoring lands in Phase 7 as agent-
+    repo. Per v020 Q2, the `livespec` template's
+    `prompts/seed.md` minimum-viable scaffold MUST include the
+    new pre-seed dialogue question ("Does this project ship
+    its own livespec templates...?") and a stub branch for
+    each answer ("yes" → enumerate templates and emit
+    sub_specs[]; "no" → emit `sub_specs: []`); rigorous
+    handling of the dialogue branches is the Phase 3 widening
+    target. Their full authoring lands in Phase 7 as agent-
     generated output against each template's sub-spec (which
     itself is seeded in Phase 6).
   - `specification-template/…` as an empty skeleton
@@ -655,35 +717,92 @@ Required implementation surface (everything else stays stubbed):
   ONLY and explicitly does NOT invoke an LLM-driven phase;
   Phase 7 adds LLM-phase orchestration per
   `skill-md-prose-authoring`).
-- The `livespec` template's `prompts/seed.md` — **bootstrap-
-  minimum authoring** sufficient for the Phase 6 seed LLM
-  round-trip to produce a schema-valid
-  `seed_input.schema.json` payload covering the main spec AND
-  the two template sub-specs (per v018 Q1-Option-A). This is
-  intentionally narrower than the full template-controlled
-  seed interview; the full `prompts/seed.md` is regenerated
-  from the `livespec` template's sub-spec in Phase 7.
-  The `minimal` template's `prompts/seed.md` stays stubbed at
-  this phase — Phase 6 uses only the `livespec` template. All
-  four `minimal`-template prompts and the three remaining
-  `livespec`-template prompts (`propose-change`, `revise`,
-  `critique`) are Phase 7 work.
+- The `livespec` template's prompts — **bootstrap-minimum
+  authoring per prompt (v020 Q4 four-prompt widening)**. v019
+  widened only `prompts/seed.md`; v020 Q4 widens all four
+  livespec-template prompts at this phase, mirroring the
+  existing seed.md widening pattern, to remove the quality
+  risk where Phase 7's heaviest semantic work would otherwise
+  run through Phase-2-minimum prompts:
+
+  - `prompts/seed.md` — bootstrap-minimum authoring sufficient
+    for the Phase 6 seed LLM round-trip to produce a schema-
+    valid `seed_input.schema.json` payload covering the main
+    spec AND, when the user answers "yes" to the pre-seed
+    "ships own livespec templates" question per v020 Q2 (Phase
+    6 does), one `sub_specs[]` entry per named template. The
+    prompt handles BOTH dialogue branches rigorously: "yes" →
+    enumerate the named templates and emit `sub_specs[]`; "no"
+    → emit `sub_specs: []`. (Q2 + Q4 joint widening.) This is
+    intentionally narrower than the full template-controlled
+    seed interview; the full `prompts/seed.md` is regenerated
+    from the `livespec` template's sub-spec in Phase 7.
+  - `prompts/propose-change.md` — bootstrap-minimum authoring
+    sufficient for Phase 7's first dogfooded cycle to file
+    full-fidelity propose-change files: full front-matter
+    authoring, sub-spec routing via `--spec-target`, reserve-
+    suffix awareness for `-critique` etc. The prompt MUST
+    produce propose-change content of sufficient quality to
+    drive the Phase 7 widening cycles for the propose-change
+    command itself.
+  - `prompts/revise.md` — bootstrap-minimum authoring
+    sufficient for Phase 7's first dogfooded cycle to drive
+    per-proposal decisions, write paired revision files with
+    full audit trails, and trigger version cuts. The prompt
+    MUST produce revision content of sufficient quality to
+    drive the Phase 7 widening cycles for the revise command
+    itself (including the cycles that author the final
+    revise.md prompt).
+  - `prompts/critique.md` — bootstrap-minimum authoring
+    sufficient for Phase 7's first dogfooded cycle to invoke
+    critique-as-internal-delegation against either a main-spec
+    or sub-spec target via `--spec-target`. The prompt MUST
+    produce critique-driven propose-change content of
+    sufficient quality to drive the Phase 7 widening cycles
+    for the critique command itself.
+
+  The `minimal` template's prompts stay stubbed at this phase
+  — Phase 6 uses only the `livespec` template. All four
+  `minimal`-template prompts are Phase 7 work.
 
 **Exit criterion (narrow Phase-3 gate).** `just check-lint`,
 `just check-wrapper-shape`, `just check-main-guard`, and
 `just check-schema-dataclass-pairing` all succeed. Running
-`/livespec:seed` against a throwaway `tmp_path` fixture
-produces a valid `.livespec.jsonc`, the main spec tree with
-`history/v001/`, AND both template sub-spec trees under
-`<tmp>/SPECIFICATION/templates/{livespec,minimal}/` each with
-their own `history/v001/` — all three trees materialized
-atomically by the single seed invocation (M5; v018 Q1).
-Following the seed, the throwaway-fixture round-trip ALSO
-files a propose-change against the main tree via
+`/livespec:seed` against a throwaway `tmp_path` fixture (with
+the seed dialogue answering "yes" to v020 Q2's "ships own
+livespec templates" question and naming `livespec` and
+`minimal`) produces a valid `.livespec.jsonc`, the main spec
+tree with `history/v001/`, AND both template sub-spec trees
+under `<tmp>/SPECIFICATION/templates/{livespec,minimal}/` each
+with their own `history/v001/` (each sub-spec tree carrying
+the uniform multi-file livespec layout per v020 Q1: spec.md,
+contracts.md, constraints.md, scenarios.md, sub-spec-root
+README.md, plus per-version README in history/v001/) — all
+three trees materialized atomically by the single seed
+invocation (M5; v018 Q1; v020 Q1 uniform README). Following
+the seed, the throwaway-fixture round-trip ALSO files a
+propose-change against the main tree via
 `/livespec:propose-change --spec-target <tmp>/SPECIFICATION`
 and revises it via `/livespec:revise --spec-target
 <tmp>/SPECIFICATION`, demonstrating that Phase 6's first
 dogfooded cycle is mechanically achievable (v019 Q1).
+
+**v020 Q3 — sub-spec routing smoke cycle.** After the
+main-tree propose-change/revise cycle, the smoke test files a
+SECOND propose-change/revise cycle targeting the sub-spec tree:
+
+  /livespec:propose-change --spec-target <tmp>/SPECIFICATION/templates/livespec
+  /livespec:revise         --spec-target <tmp>/SPECIFICATION/templates/livespec
+
+Confirm `<tmp>/SPECIFICATION/templates/livespec/history/v002/`
+materializes with the expected `proposed_changes/` subdir
+contents (the propose-change file + its paired revision
+record). Same code path as the main-tree smoke; different
+`--spec-target` argument. Catches `--spec-target` sub-spec
+routing bugs at the Phase 3 boundary, where recovery is
+imperative-landing (cheap), instead of Phase 7's dogfood
+boundary where recovery would require the broken governed
+loop.
 
 Full `just check` is NOT a Phase-3 gate. The following targets
 are deliberately deferred to Phase 5's exit criterion, once
@@ -873,6 +992,19 @@ Seed intent fed to the prompt:
 > seed-time comes from the template's own copy, NOT from the
 > brainstorming folder.
 >
+> **Pre-seed dialogue answers (v020 Q2).** Answer the
+> template-selection question with `livespec`. Answer the new
+> "Does this project ship its own livespec templates that
+> should be governed by sub-spec trees under
+> `SPECIFICATION/templates/<name>/`?" question with **YES**.
+> When the dialogue follows up asking which template directory
+> names should receive sub-spec trees, name **two**:
+> `livespec` and `minimal` (the two v1 built-ins shipped under
+> `.claude-plugin/specification-templates/`). The seed prompt
+> emits one `sub_specs[]` entry per name; the wrapper
+> materializes both sub-spec trees atomically with the main
+> tree (per v018 Q1 + v020 Q1 uniform-multi-file structure).
+>
 > MAIN SPEC:
 > `spec.md` carries the core PROPOSAL material (runtime and
 > packaging, specification model, sub-command lifecycle,
@@ -898,6 +1030,13 @@ Seed intent fed to the prompt:
 > and §"Pruning history" in PROPOSAL.md.
 >
 > TEMPLATE SUB-SPEC `SPECIFICATION/templates/livespec/`:
+> `README.md` is a one-paragraph orientation: "This sub-spec
+> governs the `livespec` built-in template's prompt interview
+> flows, starter content, NLSpec-discipline injection, and
+> template-internal contracts. Sub-spec layout follows
+> livespec's internal multi-file convention per v020 Q1 and
+> is decoupled from the `livespec` template's end-user
+> conventions for end-user spec layout."
 > `spec.md` carries the `livespec` template's user-visible
 > behavior: the seed interview flow's intent, the
 > propose-change/revise/critique prompt interview intents,
@@ -905,13 +1044,18 @@ Seed intent fed to the prompt:
 > prompt, and the starter-content policy (what headings get
 > derived, what BCP14 placement looks like, the scenarios.md
 > literal stub). **`spec.md` MUST also explicitly specify
-> that the `livespec` template's `prompts/seed.md` emits the
-> full `seed_input.schema.json` payload INCLUDING
-> `sub_specs: list[SubSpecPayload]` entries for every v1
-> built-in template's sub-spec tree (`livespec` AND
-> `minimal`)** — this is what makes the multi-tree atomic
-> seed (per v018 Q1) work; the seed prompt regenerated from
-> this sub-spec in Phase 7 must preserve this behavior.
+> that the `livespec` template's `prompts/seed.md` implements
+> the v020 Q2 sub-spec-emission contract: the prompt asks the
+> pre-seed question "Does this project ship its own livespec
+> templates that should be governed by sub-spec trees under
+> `SPECIFICATION/templates/<name>/`?"; on "yes" it enumerates
+> the user-named templates and emits one `sub_specs[]` entry
+> per name per `seed_input.schema.json`'s `SubSpecPayload`
+> shape; on "no" (the default) it emits `sub_specs: []`.** The
+> seed prompt regenerated from this sub-spec in Phase 7 MUST
+> preserve this user-answer-driven behavior; Phase 7's revise
+> step rejects regenerated prompts that hard-code emission
+> per v019's now-superseded contract.
 > `contracts.md` carries the template-internal JSON contracts
 > (what `seed_input.schema.json` payload fields this template
 > populates, what `proposal_findings.schema.json` fields the
@@ -921,21 +1065,36 @@ Seed intent fed to the prompt:
 > (`seed`, `propose-change`, `revise`, `critique`) — at
 > Phase 6 this is bootstrap-minimum (1-2 properties per
 > prompt; e.g., for `seed`: "MUST derive top-level headings
-> from intent nouns, not from a fixed taxonomy"); Phase 7's
-> first propose-change against this sub-spec widens the
-> catalogue to the full assertion surface that the v018 Q5
-> prompt-QA harness asserts against.
+> from intent nouns, not from a fixed taxonomy"; "MUST ask
+> the v020 Q2 sub-spec-emission question and route emission
+> by the user's answer"); Phase 7's first propose-change
+> against this sub-spec widens the catalogue to the full
+> assertion surface that the v018 Q5 prompt-QA harness
+> asserts against.
 > `constraints.md` carries the NLSpec discipline constraints
 > (Gherkin blank-line convention, BCP14 keyword well-
 > formedness, heading taxonomy conventions).
 > `scenarios.md` carries a happy-path seed-interview scenario
-> plus one edge-case per prompt.
+> (covering both the "yes" and "no" branches of the v020 Q2
+> sub-spec-emission question) plus one edge-case per prompt.
 >
 > TEMPLATE SUB-SPEC `SPECIFICATION/templates/minimal/`:
+> `README.md` is a one-paragraph orientation: "This sub-spec
+> governs the `minimal` built-in template's prompt interview
+> flows, starter content, delimiter-comment format, and
+> template-internal contracts. Sub-spec layout follows
+> livespec's internal multi-file convention per v020 Q1 and
+> is decoupled from the `minimal` template's end-user
+> single-file convention — sub-specs are livespec-internal
+> artifacts governing template behavior, not exemplars of
+> end-user template usage."
 > `spec.md` carries the `minimal` template's single-file
 > positioning (reference-minimum for custom-template authors;
 > canonical fixture for the end-to-end integration test) and
-> its prompt interview intents (reduced vs. `livespec`).
+> its prompt interview intents (reduced vs. `livespec`; the
+> `minimal` template's seed prompt does NOT implement the
+> v020 Q2 sub-spec-emission capability — `minimal`-rooted
+> projects always get `sub_specs: []`).
 > `contracts.md` carries the delimiter-comment format
 > contract (format is itself Phase 7 work; at Phase 6 this
 > section is a placeholder with a "TBD in Phase 7" note) AND
@@ -943,9 +1102,12 @@ Seed intent fed to the prompt:
 > bootstrap-minimum the same way the `livespec` sub-spec's
 > contracts.md is, scoped to `minimal`'s reduced prompt
 > contracts.
-> `constraints.md` carries the single-file-only constraint,
-> the `spec_root: "./"` convention, and the
-> `gherkin-blank-line-format` doctor-check exemption.
+> `constraints.md` carries the single-file-only constraint
+> (for end-user output of the `minimal` template; this is
+> NOT a constraint on the sub-spec's own structure, which is
+> uniformly multi-file per v020 Q1), the `spec_root: "./"`
+> convention, and the `gherkin-blank-line-format` doctor-
+> check exemption.
 > `scenarios.md` carries the end-to-end-integration-test
 > scenarios' structural outline (retry-on-exit-4, doctor-
 > static-fail-then-fix, prune-history-no-op).
@@ -967,9 +1129,8 @@ After seed, the working tree contains:
     `contracts.md`, `constraints.md`, `scenarios.md`) +
     `proposed_changes/seed.md` +
     `proposed_changes/seed-revision.md`.
-- **`livespec` template sub-spec** (follows the `livespec`
-  template's own convention — multi-file with sub-spec-root
-  README and per-version README):
+- **`livespec` template sub-spec** (uniform livespec-internal
+  multi-file layout per v020 Q1):
   - `SPECIFICATION/templates/livespec/{README.md, spec.md,
     contracts.md, constraints.md, scenarios.md}`.
   - `SPECIFICATION/templates/livespec/proposed_changes/`
@@ -983,29 +1144,34 @@ After seed, the working tree contains:
     (sub-specs do NOT receive auto-captured seed proposals
     per v018 Q1 — the main-spec `seed.md` + `seed-revision.md`
     documents the whole multi-tree creation).
-- **`minimal` template sub-spec** (follows the `minimal`
-  template's own convention — multi-file but with no
-  sub-spec-root README and no per-version README):
-  - `SPECIFICATION/templates/minimal/{spec.md, contracts.md,
-    constraints.md, scenarios.md}` — note: NO top-level
-    `README.md` for this sub-spec.
+- **`minimal` template sub-spec** (uniform livespec-internal
+  multi-file layout per v020 Q1; structurally identical to
+  the `livespec` sub-spec; sub-spec layout is decoupled from
+  the minimal template's end-user single-file convention
+  because sub-specs are livespec-internal artifacts governing
+  template behavior, not exemplars of end-user template
+  usage):
+  - `SPECIFICATION/templates/minimal/{README.md, spec.md,
+    contracts.md, constraints.md, scenarios.md}`.
   - `SPECIFICATION/templates/minimal/proposed_changes/`
     containing only the skill-owned `README.md`.
   - `SPECIFICATION/templates/minimal/history/README.md`
     (skill-owned).
   - `SPECIFICATION/templates/minimal/history/v001/`
     containing frozen copies of every sub-spec file
-    (`spec.md`, `contracts.md`, `constraints.md`,
-    `scenarios.md` — no `README.md`) + an EMPTY
-    `proposed_changes/` subdir.
+    (`README.md`, `spec.md`, `contracts.md`, `constraints.md`,
+    `scenarios.md`) + an EMPTY `proposed_changes/` subdir
+    (sub-specs do NOT receive auto-captured seed proposals
+    per v018 Q1).
 
 The seed wrapper writes the skill-owned `proposed_changes/
 README.md` AND `history/README.md` per-tree (same content
-across trees; only the `<spec-root>/` base differs). The
-asymmetry between sub-spec README presence (`livespec`
-sub-spec has top-level + per-version README; `minimal`
-sub-spec has neither) follows each sub-spec's OWN template
-convention, NOT the main-spec template's convention.
+across trees; only the `<spec-root>/` base differs). Per v020
+Q1, sub-spec README presence is uniform across all sub-spec
+trees (sub-spec-root README + per-version README); the v019
+asymmetry that mirrored each sub-spec's described template
+convention is superseded — sub-specs are livespec-internal
+spec trees and use the multi-file livespec layout uniformly.
 
 Running `/livespec:doctor` against this newly-seeded state
 passes its STATIC phase per-tree (main + each sub-spec).
@@ -1113,16 +1279,22 @@ against the seeded `SPECIFICATION/`):
   → `revise --spec-target ...` cycle against that sub-spec,
   and the generated template files are committed alongside
   the sub-spec revision. No hand-authoring.
-  **Verification (v018 Q1).** The regenerated
-  `prompts/seed.md` MUST emit the full
-  `seed_input.schema.json` payload INCLUDING
-  `sub_specs: list[SubSpecPayload]` entries for every v1
-  built-in template's sub-spec tree. Phase 7's revise step
+  **Verification (v018 Q1; v020 Q2 user-answer-driven).** The
+  regenerated `prompts/seed.md` MUST implement the v020 Q2
+  sub-spec-emission contract: ask the pre-seed "Does this
+  project ship its own livespec templates...?" question; on
+  "yes", enumerate the user-named templates and emit one
+  `sub_specs[]` entry per name conforming to
+  `seed_input.schema.json`'s `SubSpecPayload` shape; on "no"
+  (the default), emit `sub_specs: []`. Phase 7's revise step
   for `prompts/seed.md` MUST run a smoke-check against the
-  regenerated prompt that exercises this behavior (the
-  prompt-QA harness from v018 Q5 covers this in tests/prompts/livespec/test_seed.py).
-  If the regenerated prompt omits sub_specs[] emission,
-  Phase 7's revise rejects the modification.
+  regenerated prompt that exercises BOTH branches (the
+  prompt-QA harness from v018 Q5 covers this in
+  tests/prompts/livespec/test_seed.py; the harness fixtures
+  include both a "yes" answer with named templates and a "no"
+  answer). If the regenerated prompt hard-codes emission per
+  v019's now-superseded contract OR omits the user-driven
+  dialogue question, Phase 7's revise rejects the modification.
 - The full `minimal` template content — its four prompts
   with their delimiter comments and its single-file starter
   `specification-template/SPECIFICATION.md` — is
@@ -1454,14 +1626,23 @@ sources)" section before doing any work:
 
 - `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (frozen
   at the latest history/vNNN snapshot — per the plan's
-  "Version basis" note, this is v019, which adopts v018
-  Q1-Option-A through v018 Q6 plus v019 Q1: template
-  sub-specifications, bootstrap exception, initial-vendoring
-  exception, returns-pyright-plugin vendored + pyright stays,
-  prompt-QA tier, companion-doc migration classes, AND v019
-  Q1's resolution of the §"Self-application" step-2/step-4
-  bootstrap chicken-and-egg via widening step 2 to include
-  minimum-viable propose-change/critique/revise)
+  "Version basis" note, this is v020, which adopts v018
+  Q1-Option-A through v018 Q6, v019 Q1, plus v020 Q1-Q4:
+  template sub-specifications, bootstrap exception, initial-
+  vendoring exception, returns-pyright-plugin vendored +
+  pyright stays, prompt-QA tier, companion-doc migration
+  classes, v019 Q1's resolution of the §"Self-application"
+  step-2/step-4 bootstrap chicken-and-egg via widening step 2
+  to include minimum-viable propose-change/critique/revise,
+  AND v020's two PROPOSAL-level fixes — Q1 (sub-specs reframed
+  as livespec-internal artifacts uniformly using the
+  multi-file livespec layout with sub-spec-root + per-version
+  README; minimal sub-spec structural contradiction resolved)
+  and Q2 (sub-spec emission becomes opt-in via a new pre-seed
+  dialogue question; shipped seed prompt no longer hard-codes
+  per-template emission) — plus two PLAN-level quality fixes
+  (Q3 Phase 3 sub-spec routing smoke + Q4 Phase 3 four-prompt
+  widening))
 - `brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md`
 - `brainstorming/approach-2-nlspec-based/python-skill-script-style-requirements.md`
 - `brainstorming/approach-2-nlspec-based/deferred-items.md`
@@ -1477,7 +1658,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v019 as authoritative. Do not propose any
+Treat PROPOSAL.md v020 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.

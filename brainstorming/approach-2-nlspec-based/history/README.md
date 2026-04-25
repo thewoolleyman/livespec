@@ -1867,9 +1867,71 @@ entries keep their original naming (immutable history).
   v019, Phase 3 widens to mirror v019's step 2 scope, Phase 7
   re-narrates as pure dogfood. Full decision record is in
   `v019/proposed_changes/proposal-critique-v18-revision.md`.
+- **v020** — four-issue critique-revise driven by
+  `proposed_changes/proposal-critique-v19.md` and its revision.
+  Closes two shipped-contract defects in the v018 Q1 template-
+  sub-specification mechanism plus two plan-level quality
+  fixes:
+  - **Q1** (PROPOSAL.md, critical) — the `minimal` template's
+    sub-spec was described as multi-file (spec.md / contracts.md
+    / constraints.md / scenarios.md) under a framing that
+    claimed sub-specs are "structurally identical to a main
+    spec tree per the template's own conventions" — a claim
+    that held for the `livespec` sub-spec but contradicted the
+    `minimal` template's own single-file convention. v020 Q1
+    reframes sub-specs as livespec-internal artifacts that use
+    the multi-file livespec layout uniformly, decoupled from
+    the end-user-facing convention of the template the sub-spec
+    describes. The `minimal` sub-spec gains a sub-spec-root
+    `README.md` and a per-version `README.md` snapshot it did
+    not have in v019; both v1 sub-specs become structurally
+    identical.
+  - **Q2** (PROPOSAL.md, critical) — the `livespec` template's
+    seed prompt unconditionally emitted `sub_specs[]` for both
+    built-in templates whenever the active main-spec template
+    was `livespec`, even though end-user projects that pick
+    the `livespec` template don't ship templates of their own
+    and have no use for those trees. v020 Q2 makes sub-spec
+    emission opt-in via a new pre-seed dialogue question
+    ("Does this project ship its own livespec templates?
+    default: no"); on "yes", the prompt enumerates user-named
+    templates and emits one `sub_specs[]` entry per name; on
+    "no" (the default), it emits `sub_specs: []`. The shipped
+    seed prompt's behavior becomes uniform across templates;
+    livespec-the-project's own bootstrap answers "yes" naming
+    the two built-ins.
+  - **Q3** (PLAN, medium) — Phase 3's exit-criterion smoke
+    test exercised `--spec-target SPECIFICATION` (main tree)
+    only, so sub-spec routing escaped the Phase 3 gate and
+    only manifested at Phase 7's dogfooded cycles. v020 Q3
+    extends the smoke with a second propose-change/revise
+    cycle targeting `--spec-target SPECIFICATION/templates/
+    livespec`, catching sub-spec routing bugs at the Phase 3
+    boundary where recovery is imperative-landing.
+  - **Q4** (PLAN, medium) — v019's Phase 3 widened only
+    `prompts/seed.md` to "bootstrap-minimum"; the other three
+    `livespec`-template prompts stayed at Phase-2 minimum-
+    viable level, but Phase 7 then used them to author the
+    full final prompt content (its heaviest semantic work,
+    including recursively authoring the very prompts being
+    used). v020 Q4 widens all four `livespec`-template prompts
+    at Phase 3, mirroring the existing seed.md widening
+    pattern.
+  All four Q1-Q4 accepted at Option A. No deferred-items
+  entries open or close. No companion docs touched. Plan-file
+  ripple: `PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md`
+  re-freezes at v020 — Version basis paragraph extended,
+  Phase 0 freeze-target updated, Phase 2 (livespec template's
+  minimum-viable `prompts/seed.md` includes the new dialogue
+  question scaffold), Phase 3 (Q3 + Q4 amendments), Phase 6
+  (Q1 minimal sub-spec uniformity + Q2 explicit "yes" answer
+  in seed intent block + sub-spec-emission verification at
+  Phase 7's revise step), execution prompt re-pointed at
+  v020. Full decision record is in
+  `v020/proposed_changes/proposal-critique-v19-revision.md`.
 
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v019/PROPOSAL.md` until the next revise.
+byte-identical to `history/v020/PROPOSAL.md` until the next revise.
