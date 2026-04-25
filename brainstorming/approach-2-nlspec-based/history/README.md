@@ -1846,9 +1846,30 @@ entries keep their original naming (immutable history).
   canonical list widened to 17 entries (15 + 2 new).
   Full decision record is in
   `v018/proposed_changes/proposal-critique-v17-revision.md`.
+- **v019** — fast-track single-issue revise driven by
+  `proposed_changes/proposal-critique-v18.md` and its revision.
+  Resolves a self-contained logical contradiction in v018
+  §"Self-application": steps 2/4 + the Q2 bootstrap-exception
+  clause encoded a chicken-and-egg in which step 4 was required
+  to implement `propose-change` / `revise` using `propose-change`
+  / `revise`, but the imperative-landing window had already closed
+  at the end of step 3. v019 Q1 widens step 2 to include
+  minimum-viable `propose-change`, `critique`, `revise`
+  implementations alongside the seed surface (placing them
+  BEFORE the seed, inside the imperative window); step 4 is
+  re-narrated as pure widening + remaining-sub-command
+  implementation via dogfooded propose-change/revise cycles. The
+  Q2 bootstrap-exception clause's "imperative window ends at
+  first seed" boundary is unmoved; one acknowledgment sentence is
+  appended. No deferred-items entries open or close. No companion
+  docs touched. Plan-file ripple:
+  `PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md` re-freezes at
+  v019, Phase 3 widens to mirror v019's step 2 scope, Phase 7
+  re-narrates as pure dogfood. Full decision record is in
+  `v019/proposed_changes/proposal-critique-v18-revision.md`.
 
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v018/PROPOSAL.md` until the next revise.
+byte-identical to `history/v019/PROPOSAL.md` until the next revise.
