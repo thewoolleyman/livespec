@@ -18,25 +18,26 @@ Until bootstrap completes, the production layout — `.claude-plugin/`,
 |---|---|
 | `brainstorming/` | Frozen design and process artifacts (PROPOSAL.md v022, the bootstrap plan, companion docs, version history). |
 | `prior-art/` | External-source reference material with permalinks. |
-| `bootstrap/` | Throwaway scaffolding driving plan execution (state files + Claude Code skill + marketplace manifest). |
-| `.claude/settings.json` | Registers `bootstrap/.claude-plugin/` as a local marketplace and pre-enables the bootstrap plugin. |
+| `bootstrap/` | Throwaway scaffolding state files (`STATUS.md`, `open-issues.md`, `decisions.md`, `AGENTS.md`). |
+| `.claude-plugin/marketplace.json` | Repo-root marketplace manifest declaring the `livespec-bootstrap` plugin. Auto-discovered by Claude Code. |
+| `.claude/plugins/livespec-bootstrap/` | The bootstrap plugin contents (`.claude-plugin/plugin.json` + `skills/bootstrap/SKILL.md`). |
 | `tmp/` | Empty working directory from earlier passes; deleted by Phase 0. |
 
 ## How to make progress
 
 ### One-time setup per machine (~30 seconds)
 
-Claude Code does NOT auto-install plugins from a committed
-marketplace; it requires explicit consent + an install command.
-Run these once per machine you bootstrap from:
+Claude Code auto-discovers the marketplace at
+`.claude-plugin/marketplace.json` (repo root) on workspace trust.
+Run:
 
-1. Open Claude Code in the repo. When prompted to trust the
-   workspace and add the local marketplace, accept.
-2. Run:
+1. Open Claude Code in the repo. Trust the workspace if prompted.
+2. Run `/reload-plugins` (or restart Claude Code).
+3. If `/livespec-bootstrap:bootstrap` doesn't appear, run:
    ```
    /plugin install livespec-bootstrap@livespec-marketplace
    ```
-3. Run `/reload-plugins` (or restart Claude Code).
+   then `/reload-plugins` again.
 
 ### Then invoke the bootstrap skill
 
@@ -58,9 +59,9 @@ restarting the session.
 
 If `/livespec-bootstrap:bootstrap` is not in your menu after the
 one-time setup above, fall back to plain language: "Follow the
-skill at `bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` to
-drive bootstrap execution." The skill prose is self-contained and
-will work without slash-command discovery.
+skill at `.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md`
+to drive bootstrap execution." The skill prose is self-contained
+and will work without slash-command discovery.
 
 ## Hard rules during bootstrap
 
@@ -89,7 +90,7 @@ will work without slash-command discovery.
 | Current bootstrap status | `bootstrap/STATUS.md` |
 | Open drift logged across sessions | `bootstrap/open-issues.md` |
 | Executor judgment-call log | `bootstrap/decisions.md` |
-| Bootstrap skill prose | `bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` |
+| Bootstrap skill prose | `.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md` |
 | Per-version PROPOSAL.md snapshots | `brainstorming/approach-2-nlspec-based/history/vNNN/` |
 
 ## After bootstrap completes
@@ -97,9 +98,9 @@ will work without slash-command discovery.
 Phase 11 (cleanup) of the plan removes:
 
 - This `AGENTS.md` file at repo root
-- The `livespec-marketplace` and
-  `livespec-bootstrap@livespec-marketplace` keys from
-  `.claude/settings.json` (or the whole file if empty after edit)
+- The `.claude/plugins/livespec-bootstrap/` directory (and the
+  `.claude/plugins/` parent if empty)
+- The `.claude-plugin/marketplace.json` file
 
 The `bootstrap/` and `brainstorming/` directories themselves stay in
 place as historical reference, but nothing in the production app

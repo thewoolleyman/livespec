@@ -226,26 +226,34 @@ reference-only.
 
 - Repo root is `/data/projects/livespec/` with `master` branch
   clean.
-- No `.claude-plugin/`, `.mise.toml`, `justfile`, `lefthook.yml`,
-  `pyproject.toml`, `dev-tooling/`, `tests/`, `SPECIFICATION/`,
-  `SPECIFICATION.md`, `NOTICES.md`, or `.vendor.jsonc` exist yet at
-  repo root.
-- `.claude/` MAY exist at repo root, BUT only with the
-  bootstrap-scaffolding contents (`.claude/settings.json`
-  registering the local marketplace at `bootstrap/.claude-plugin/`
-  and pre-enabling the bootstrap plugin). The
-  `.claude/settings.local.json` file (machine-local permissions)
-  is gitignored. No other entries under `.claude/` are permitted
-  before Phase 2. Phase 2 creates `.claude/skills/` as a directory-
-  level symlink to `../.claude-plugin/skills/`; that symlink
-  coexists with the pre-existing `.claude/settings.json`. Phase 11
-  removes the bootstrap-related entries from `.claude/settings.json`
-  (or removes the file entirely if no other settings have been
-  added by then) at cleanup.
+- No `.mise.toml`, `justfile`, `lefthook.yml`, `pyproject.toml`,
+  `dev-tooling/`, `tests/`, `SPECIFICATION/`, `SPECIFICATION.md`,
+  `NOTICES.md`, or `.vendor.jsonc` exist yet at repo root.
+- `.claude-plugin/` MAY exist at repo root, BUT only with
+  `marketplace.json` (the bootstrap-marketplace manifest declaring
+  the `livespec-bootstrap` plugin's location). Phase 2 adds
+  `plugin.json` to the same `.claude-plugin/` directory for the
+  production livespec plugin; `marketplace.json` and `plugin.json`
+  coexist there until Phase 11 removes `marketplace.json`.
+- `.claude/` MAY exist at repo root, BUT only with the bootstrap-
+  scaffolding contents (`.claude/plugins/livespec-bootstrap/`
+  containing the plugin manifest at
+  `.claude/plugins/livespec-bootstrap/.claude-plugin/plugin.json`
+  and the skill at `.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md`).
+  The `.claude/settings.local.json` file (machine-local
+  permissions) is gitignored. Phase 2 creates `.claude/skills/`
+  as a directory-level symlink to `../.claude-plugin/skills/`;
+  that symlink coexists with the pre-existing
+  `.claude/plugins/livespec-bootstrap/` directory. Phase 11
+  removes `.claude/plugins/livespec-bootstrap/` (and
+  `.claude/plugins/` if empty) at cleanup.
 - `bootstrap/` MAY exist at repo root as the execution-scaffolding
-  directory described in §8 below. The bootstrap-authoring commit
-  creates it; the directory itself stays in place after Phase 11
-  (only the `.claude/plugins/livespec-bootstrap/` symlink and the
+  directory described in §8 below. After this layout fix it
+  contains only the state files (`STATUS.md`, `open-issues.md`,
+  `decisions.md`, `AGENTS.md`) — the plugin contents now live
+  under `.claude/plugins/livespec-bootstrap/`. The bootstrap-
+  authoring commit creates it; the directory itself stays in
+  place after Phase 11 (only the plugin location and the
   repo-root `AGENTS.md` are removed at Phase 11 cleanup).
 - `AGENTS.md` MAY exist at repo root as the orientation file for
   fresh AI sessions during bootstrap (per §8 below). Removed by
@@ -1862,20 +1870,22 @@ references to the bootstrap scaffolding. The `bootstrap/` and
 reference; only the references that make them production-active
 are removed.
 
-1. **Remove the bootstrap marketplace registration.** Edit
-   `.claude/settings.json` to remove the
-   `extraKnownMarketplaces.livespec-marketplace` key and the
-   `enabledPlugins["livespec-bootstrap@livespec-marketplace"]`
-   key. If `.claude/settings.json` becomes empty (no other
-   keys added by intervening phases), delete the file:
-   ```
-   rm .claude/settings.json   # only if empty after edits
-   ```
+1. **Remove the bootstrap plugin and its marketplace.** Three
+   removals, gated by AskUserQuestion since these are committed
+   files:
+   - `rm -r .claude/plugins/livespec-bootstrap` (the plugin
+     contents)
+   - `rmdir .claude/plugins` (only if empty)
+   - `rm .claude-plugin/marketplace.json` (the marketplace
+     manifest at repo root)
+
    Do NOT remove `.claude/skills/` — that is the production
    plugin's symlink, established in Phase 2 and required by
    `/livespec:*` slash commands. Do NOT remove
-   `.claude/settings.local.json` if present (it's machine-local
-   and gitignored anyway).
+   `.claude-plugin/plugin.json` — that is the production plugin's
+   manifest, also from Phase 2. Do NOT remove
+   `.claude/settings.local.json` if present (machine-local,
+   gitignored anyway).
 
    Optional follow-up the user runs in Claude Code to clean up
    the locally-installed plugin state:
@@ -1914,11 +1924,10 @@ are removed.
    complete; the next invocation of `/livespec-bootstrap:bootstrap`
    would fail anyway (the symlink is gone), and that is intentional.
 
-**Exit criterion:** `.claude/settings.json` no longer contains
-`livespec-marketplace` or `livespec-bootstrap@livespec-marketplace`
-keys (or the file is removed entirely if empty); repo-root
-`AGENTS.md` does not exist; the grep in step 3 produces no
-output; Phase 11 commit landed.
+**Exit criterion:** `.claude/plugins/livespec-bootstrap/` does
+not exist; `.claude-plugin/marketplace.json` does not exist;
+repo-root `AGENTS.md` does not exist; the grep in step 3
+produces no output; Phase 11 commit landed.
 
 After Phase 11, the bootstrap is fully wound down. The `bootstrap/`
 and `brainstorming/` directories remain as historical reference,
@@ -2124,58 +2133,76 @@ during execution, and archived or deleted at Phase 10 exit.
 
 ### Directory shape
 
+The bootstrap scaffolding spans three locations in the repo —
+matching Claude Code's expected plugin layout (verified against a
+working reference at `~/workspace/openbrain/`):
+
 ```
-bootstrap/
-├── .claude-plugin/
-│   ├── plugin.json
-│   └── skills/
-│       └── bootstrap/
-│           └── SKILL.md
-├── AGENTS.md                   # bootstrap-directory orientation
-├── STATUS.md                   # current phase / sub-step / next action
-├── open-issues.md              # append-only-with-status-mutation drift log
-└── decisions.md                # append-only judgment-call log
+bootstrap/                             # state files only
+├── AGENTS.md                          # bootstrap-directory orientation
+├── STATUS.md                          # current phase / sub-step / next action
+├── open-issues.md                     # append-only-with-status-mutation drift log
+└── decisions.md                       # append-only judgment-call log
+
+.claude-plugin/
+└── marketplace.json                   # marketplace manifest at repo root (auto-discovered)
+
+.claude/
+└── plugins/
+    └── livespec-bootstrap/            # the plugin Claude Code loads
+        ├── .claude-plugin/
+        │   └── plugin.json            # plugin manifest
+        └── skills/
+            └── bootstrap/
+                └── SKILL.md           # the skill prose
 ```
 
-### Skill discovery via local marketplace + `.claude/settings.json`
+### Skill discovery via repo-root marketplace
 
-Claude Code's plugin loader does NOT discover plugins via symlinks
-under `.claude/plugins/`; that path is for already-installed
-plugins. The supported mechanism for project-local plugins is a
-**local marketplace** registered in committed
-`.claude/settings.json`. Two files coordinate this:
+Claude Code auto-discovers a `marketplace.json` at
+`.claude-plugin/marketplace.json` (repo root) without any
+`.claude/settings.json` registration. The marketplace's `plugins[]`
+entries reference plugin directories by path (string-typed
+`source` field, relative to `marketplace.json`'s directory).
 
-- `bootstrap/.claude-plugin/marketplace.json` — declares the
-  `livespec-marketplace` and lists the `livespec-bootstrap`
-  plugin as a directory-source plugin at the marketplace root
-  (`.`, i.e., `bootstrap/.claude-plugin/`).
-- `.claude/settings.json` (committed) — registers the marketplace
-  via `extraKnownMarketplaces` (path:
-  `./bootstrap/.claude-plugin`) and pre-enables the plugin via
-  `enabledPlugins["livespec-bootstrap@livespec-marketplace"]:
-  true`.
+For the bootstrap plugin:
 
-`.claude/settings.local.json` (machine-local permissions, NOT
-committed) is in `.gitignore`.
+- **`.claude-plugin/marketplace.json`** declares the
+  `livespec-marketplace` (top-level `name` + `owner` + `metadata`)
+  and lists one plugin (`livespec-bootstrap`) with
+  `source: "./.claude/plugins/livespec-bootstrap"` (path relative
+  to `.claude-plugin/`).
+- **`.claude/plugins/livespec-bootstrap/.claude-plugin/plugin.json`**
+  is the plugin manifest. Plugin name = `livespec-bootstrap`.
+- **`.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md`**
+  is the skill. Skill name = `bootstrap`. Slash command =
+  `/livespec-bootstrap:bootstrap`.
+
+Critical: the `source` field in `marketplace.json` is a
+**string** path, not an object. Tried `{"type": "directory",
+"path": "."}` initially; that shape produces a "Plugin not found
+in marketplace" error. Tried symlinks under `.claude/plugins/`;
+Claude Code's plugin loader does not follow them. The pattern
+above is the supported one.
 
 **One-time setup per machine.** On a fresh clone, opening Claude
-Code in the repo prompts the user to trust the workspace and add
-the local marketplace. The user must then run `/plugin install
-livespec-bootstrap@livespec-marketplace` once to install the
-plugin into their local Claude Code state. After that,
-`/livespec-bootstrap:bootstrap` appears in the slash-command menu
-and `/reload-plugins` picks up SKILL.md edits without restart.
+Code in the repo prompts the user to trust the workspace. After
+that, `/reload-plugins` (or restart) loads the marketplace and
+the plugin. Whether `/plugin install` is also required depends on
+the Claude Code version's auto-install behavior; if
+`/livespec-bootstrap:bootstrap` does not appear after
+`/reload-plugins`, run:
 
-This is a documented Claude Code limitation: marketplace
-registration prompts users for consent, and `/plugin install` is
-required at least once per machine. The `enabledPlugins` field
-keeps the plugin enabled across sessions once installed.
+```
+/plugin install livespec-bootstrap@livespec-marketplace
+```
 
-Phase 1 preconditions explicitly carve `.claude/` out of the
-"no `.claude/` exists yet" rule for these files (see §2 above).
-Phase 2 adds `.claude/skills/` as a sibling symlink under
-`.claude/`; it coexists with `.claude/settings.json` until
-Phase 11 cleanup.
+Phase 1 preconditions explicitly carve `.claude/` and
+`.claude-plugin/` out of the "no such directory exists yet" rule
+(see §2 above). Phase 2 adds `.claude/skills/` (sibling under
+`.claude/`) and `.claude-plugin/plugin.json` (sibling under
+`.claude-plugin/`) as Phase 2 work; both coexist with the
+bootstrap entries until Phase 11 cleanup.
 
 ### Per-directory `AGENTS.md` orientation files
 

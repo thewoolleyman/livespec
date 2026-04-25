@@ -1,61 +1,70 @@
 # bootstrap/ orientation
 
 Throwaway scaffolding for executing the livespec bootstrap plan. The
-production app does not depend on anything in this directory; Phase 11
-cleanup removes the symlink that exposes the bootstrap skill, but the
-directory itself stays in place as historical reference.
+production app does not depend on anything in this directory.
 
-## Files
+After the layout fix in commit history (the marketplace+plugin
+content moved out of `bootstrap/`), this directory contains ONLY the
+state files plus this orientation. The plugin contents themselves
+live at `.claude/plugins/livespec-bootstrap/`; the marketplace
+manifest lives at `.claude-plugin/marketplace.json` (repo root).
+Phase 11 cleanup removes those two locations; this directory stays
+in place as historical reference.
+
+## Files (in this directory)
 
 | File | Purpose |
 |---|---|
-| `.claude-plugin/plugin.json` | Plugin manifest for the bootstrap skill. |
-| `.claude-plugin/marketplace.json` | Local marketplace manifest declaring this plugin to Claude Code's discovery mechanism. |
-| `.claude-plugin/skills/bootstrap/SKILL.md` | Skill prose driving plan execution. The full behavior contract — phase loop, drift-correction sub-flows, state-file formats — lives here. |
 | `STATUS.md` | Current phase, sub-step, last completed exit criterion, next action, last commit. |
 | `open-issues.md` | Append-only-with-status-mutation log of plan / PROPOSAL drift. |
 | `decisions.md` | Append-only log of executor judgment calls during phase work. |
 | `AGENTS.md` | This file. |
 
+## Related files (outside this directory)
+
+| Path | Purpose |
+|---|---|
+| `.claude-plugin/marketplace.json` | Repo-root marketplace manifest declaring the `livespec-bootstrap` plugin. Auto-discovered by Claude Code. |
+| `.claude/plugins/livespec-bootstrap/.claude-plugin/plugin.json` | Plugin manifest. |
+| `.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md` | Skill prose driving plan execution. The full behavior contract — phase loop, drift-correction sub-flows, state-file formats — lives here. |
+
 ## How the skill is exposed to Claude Code
 
-Two committed files coordinate plugin discovery:
+Claude Code auto-discovers `marketplace.json` at the standard
+repo-root location `.claude-plugin/marketplace.json`. The
+marketplace's `plugins[]` entry uses a string-typed `source`
+field pointing at `./.claude/plugins/livespec-bootstrap` (the
+plugin's directory). The plugin's manifest lives at
+`.claude/plugins/livespec-bootstrap/.claude-plugin/plugin.json`;
+its skill at
+`.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md`.
+This layout matches the working reference at
+`~/workspace/openbrain/.claude-plugin/marketplace.json` +
+`~/workspace/openbrain/.claude/plugins/openbrain/`.
 
-- `bootstrap/.claude-plugin/marketplace.json` declares
-  `livespec-marketplace` containing the `livespec-bootstrap`
-  plugin (a directory-source plugin at the marketplace root).
-- `.claude/settings.json` registers
-  `extraKnownMarketplaces.livespec-marketplace` pointing at
-  `./bootstrap/.claude-plugin` and pre-enables the plugin via
-  `enabledPlugins["livespec-bootstrap@livespec-marketplace"]:
-  true`.
+Earlier attempts at symlinks under `.claude/plugins/` and at a
+non-default marketplace path with `extraKnownMarketplaces` in
+`.claude/settings.json` both failed; the openbrain-style layout is
+what works.
 
-**One-time setup per machine.** Claude Code prompts the user to
-trust the workspace and add the marketplace on a fresh clone; the
-user must then run
-`/plugin install livespec-bootstrap@livespec-marketplace` once
-to install the plugin into local Claude Code state. After that,
-`/reload-plugins` refreshes after SKILL.md edits without
-re-installing.
-
-Symlinks under `.claude/plugins/` were tried in an earlier commit
-and **do not work** — Claude Code's plugin loader does not follow
-symlinks for project-local discovery. The marketplace mechanism
-above is the documented supported approach.
+**One-time setup per machine.** On workspace trust, Claude Code
+auto-loads the marketplace; `/reload-plugins` (or restart) makes
+the plugin available. If `/livespec-bootstrap:bootstrap` doesn't
+appear after `/reload-plugins`, run
+`/plugin install livespec-bootstrap@livespec-marketplace` then
+`/reload-plugins` again.
 
 ## Don't
 
-- **Hand-edit `STATUS.md`, `open-issues.md`, or `decisions.md`.** The
-  bootstrap skill is the only writer; manual edits get overwritten
-  on the next invocation. If you need to record something, invoke
-  the skill and use the "Report an issue first" or "Record a
-  decision first" branch.
-- **Add new files beyond the six above** without amending the skill's
-  state-file contract.
+- **Hand-edit `STATUS.md`, `open-issues.md`, or `decisions.md`.**
+  The bootstrap skill is the only writer; manual edits get
+  overwritten on the next invocation. If you need to record
+  something, invoke the skill and use the "Report an issue first"
+  or "Record a decision first" branch.
 - **Reference anything in `bootstrap/` from production code paths**
-  (`.claude-plugin/`, `dev-tooling/`, `tests/`, `SPECIFICATION/`).
-  The bootstrap scaffolding is a closed system removed from the
-  production app at Phase 11.
+  (`.claude-plugin/plugin.json`, `dev-tooling/`, `tests/`,
+  `SPECIFICATION/`). The bootstrap scaffolding is a closed system
+  removed from the production app at Phase 11.
 
 ## Do
 
@@ -68,10 +77,8 @@ above is the documented supported approach.
 
 ## After bootstrap completes
 
-Phase 11 removes the `livespec-marketplace` and
-`livespec-bootstrap@livespec-marketplace` keys from
-`.claude/settings.json` (or the whole file if no other settings
-exist by then). This directory itself stays as historical
-reference. The skill's slash command stops working once the
-marketplace registration is gone; that's intentional — the
-production app uses its own `/livespec:*` slash commands instead.
+Phase 11 removes `.claude/plugins/livespec-bootstrap/` and
+`.claude-plugin/marketplace.json`. This directory itself stays in
+place as historical reference. The skill's slash command stops
+working once those are gone; that's intentional — the production
+app uses its own `/livespec:*` slash commands instead.
