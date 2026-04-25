@@ -2185,17 +2185,24 @@ in marketplace" error. Tried symlinks under `.claude/plugins/`;
 Claude Code's plugin loader does not follow them. The pattern
 above is the supported one.
 
-**One-time setup per machine.** On a fresh clone, opening Claude
-Code in the repo prompts the user to trust the workspace. After
-that, `/reload-plugins` (or restart) loads the marketplace and
-the plugin. Whether `/plugin install` is also required depends on
-the Claude Code version's auto-install behavior; if
-`/livespec-bootstrap:bootstrap` does not appear after
-`/reload-plugins`, run:
+**One-time setup per machine.** Claude Code does NOT auto-register
+a local marketplace from a committed `marketplace.json`; the user
+must add it explicitly. Run these four commands once per machine:
 
 ```
+/plugin marketplace add ./.claude-plugin/marketplace.json
+/plugin marketplace update livespec-marketplace
 /plugin install livespec-bootstrap@livespec-marketplace
+/reload-plugins
 ```
+
+When `/plugin install` asks where to install, choose
+**repo-scoped (project scope)** — the plugin is throwaway
+scaffolding specific to this repo, removed at Phase 11 cleanup.
+
+After this setup, `/livespec-bootstrap:bootstrap` appears in the
+slash-command menu and future `/reload-plugins` invocations pick
+up SKILL.md edits without re-installing.
 
 Phase 1 preconditions explicitly carve `.claude/` and
 `.claude-plugin/` out of the "no such directory exists yet" rule

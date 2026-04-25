@@ -27,17 +27,23 @@ Until bootstrap completes, the production layout — `.claude-plugin/`,
 
 ### One-time setup per machine (~30 seconds)
 
-Claude Code auto-discovers the marketplace at
-`.claude-plugin/marketplace.json` (repo root) on workspace trust.
-Run:
+Claude Code does not auto-register a local marketplace from a
+committed `marketplace.json`; it has to be added explicitly. Run
+these four commands once per machine:
 
-1. Open Claude Code in the repo. Trust the workspace if prompted.
-2. Run `/reload-plugins` (or restart Claude Code).
-3. If `/livespec-bootstrap:bootstrap` doesn't appear, run:
-   ```
-   /plugin install livespec-bootstrap@livespec-marketplace
-   ```
-   then `/reload-plugins` again.
+```
+/plugin marketplace add ./.claude-plugin/marketplace.json
+/plugin marketplace update livespec-marketplace
+/plugin install livespec-bootstrap@livespec-marketplace
+/reload-plugins
+```
+
+When `/plugin install` asks where to install, choose
+**repo-scoped (project scope)** — the plugin is throwaway scaffolding
+specific to this repo and is removed at Phase 11 cleanup.
+
+After this setup, future `/reload-plugins` invocations pick up
+SKILL.md edits without re-installing.
 
 ### Then invoke the bootstrap skill
 

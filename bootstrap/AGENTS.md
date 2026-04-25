@@ -47,12 +47,20 @@ non-default marketplace path with `extraKnownMarketplaces` in
 `.claude/settings.json` both failed; the openbrain-style layout is
 what works.
 
-**One-time setup per machine.** On workspace trust, Claude Code
-auto-loads the marketplace; `/reload-plugins` (or restart) makes
-the plugin available. If `/livespec-bootstrap:bootstrap` doesn't
-appear after `/reload-plugins`, run
-`/plugin install livespec-bootstrap@livespec-marketplace` then
-`/reload-plugins` again.
+**One-time setup per machine.** Claude Code does not auto-register
+a local marketplace from a committed `marketplace.json`; it has to
+be added explicitly. Run these four commands once:
+
+```
+/plugin marketplace add ./.claude-plugin/marketplace.json
+/plugin marketplace update livespec-marketplace
+/plugin install livespec-bootstrap@livespec-marketplace
+/reload-plugins
+```
+
+When `/plugin install` asks where to install, choose
+**repo-scoped (project scope)** — the plugin is throwaway
+scaffolding specific to this repo, removed at Phase 11 cleanup.
 
 ## Don't
 
