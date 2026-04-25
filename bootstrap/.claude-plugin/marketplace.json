@@ -1,0 +1,14 @@
+{
+  "name": "livespec-marketplace",
+  "description": "Local marketplace exposing the throwaway livespec-bootstrap plugin during repo bootstrap. Removed at Phase 11 cleanup.",
+  "plugins": [
+    {
+      "name": "livespec-bootstrap",
+      "description": "Walks the executor agent through the livespec bootstrap plan one sub-step at a time, with persistent state and active drift-correction checkpoints.",
+      "source": {
+        "type": "directory",
+        "path": "."
+      }
+    }
+  ]
+}

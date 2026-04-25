@@ -1,5 +1,6 @@
 ### Project ignores
 tmp/
+.claude/settings.local.json
 
 ### macOS template
 # General

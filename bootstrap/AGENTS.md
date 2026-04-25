@@ -10,6 +10,7 @@ directory itself stays in place as historical reference.
 | File | Purpose |
 |---|---|
 | `.claude-plugin/plugin.json` | Plugin manifest for the bootstrap skill. |
+| `.claude-plugin/marketplace.json` | Local marketplace manifest declaring this plugin to Claude Code's discovery mechanism. |
 | `.claude-plugin/skills/bootstrap/SKILL.md` | Skill prose driving plan execution. The full behavior contract — phase loop, drift-correction sub-flows, state-file formats — lives here. |
 | `STATUS.md` | Current phase, sub-step, last completed exit criterion, next action, last commit. |
 | `open-issues.md` | Append-only-with-status-mutation log of plan / PROPOSAL drift. |
@@ -18,9 +19,29 @@ directory itself stays in place as historical reference.
 
 ## How the skill is exposed to Claude Code
 
-The repo-root symlink `.claude/plugins/livespec-bootstrap/` points at
-`bootstrap/.claude-plugin/`. Claude Code auto-discovers the plugin
-through that path; `/reload-plugins` refreshes after SKILL.md edits.
+Two committed files coordinate plugin discovery:
+
+- `bootstrap/.claude-plugin/marketplace.json` declares
+  `livespec-marketplace` containing the `livespec-bootstrap`
+  plugin (a directory-source plugin at the marketplace root).
+- `.claude/settings.json` registers
+  `extraKnownMarketplaces.livespec-marketplace` pointing at
+  `./bootstrap/.claude-plugin` and pre-enables the plugin via
+  `enabledPlugins["livespec-bootstrap@livespec-marketplace"]:
+  true`.
+
+**One-time setup per machine.** Claude Code prompts the user to
+trust the workspace and add the marketplace on a fresh clone; the
+user must then run
+`/plugin install livespec-bootstrap@livespec-marketplace` once
+to install the plugin into local Claude Code state. After that,
+`/reload-plugins` refreshes after SKILL.md edits without
+re-installing.
+
+Symlinks under `.claude/plugins/` were tried in an earlier commit
+and **do not work** — Claude Code's plugin loader does not follow
+symlinks for project-local discovery. The marketplace mechanism
+above is the documented supported approach.
 
 ## Don't
 
@@ -47,8 +68,10 @@ through that path; `/reload-plugins` refreshes after SKILL.md edits.
 
 ## After bootstrap completes
 
-Phase 11 removes the `.claude/plugins/livespec-bootstrap/` symlink
-(and `.claude/plugins/` if empty). This directory itself stays as
-historical reference. The skill's slash command stops working once
-the symlink is gone; that's intentional — the production app uses
-its own `/livespec:*` slash commands instead.
+Phase 11 removes the `livespec-marketplace` and
+`livespec-bootstrap@livespec-marketplace` keys from
+`.claude/settings.json` (or the whole file if no other settings
+exist by then). This directory itself stays as historical
+reference. The skill's slash command stops working once the
+marketplace registration is gone; that's intentional — the
+production app uses its own `/livespec:*` slash commands instead.

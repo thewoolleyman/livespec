@@ -18,13 +18,27 @@ Until bootstrap completes, the production layout — `.claude-plugin/`,
 |---|---|
 | `brainstorming/` | Frozen design and process artifacts (PROPOSAL.md v022, the bootstrap plan, companion docs, version history). |
 | `prior-art/` | External-source reference material with permalinks. |
-| `bootstrap/` | Throwaway scaffolding driving plan execution (state files + Claude Code skill). |
-| `.claude/plugins/livespec-bootstrap/` | Symlink to `bootstrap/.claude-plugin/`; makes the bootstrap skill auto-discoverable to Claude Code. |
+| `bootstrap/` | Throwaway scaffolding driving plan execution (state files + Claude Code skill + marketplace manifest). |
+| `.claude/settings.json` | Registers `bootstrap/.claude-plugin/` as a local marketplace and pre-enables the bootstrap plugin. |
 | `tmp/` | Empty working directory from earlier passes; deleted by Phase 0. |
 
 ## How to make progress
 
-Invoke the bootstrap skill:
+### One-time setup per machine (~30 seconds)
+
+Claude Code does NOT auto-install plugins from a committed
+marketplace; it requires explicit consent + an install command.
+Run these once per machine you bootstrap from:
+
+1. Open Claude Code in the repo. When prompted to trust the
+   workspace and add the local marketplace, accept.
+2. Run:
+   ```
+   /plugin install livespec-bootstrap@livespec-marketplace
+   ```
+3. Run `/reload-plugins` (or restart Claude Code).
+
+### Then invoke the bootstrap skill
 
 ```
 /livespec-bootstrap:bootstrap
@@ -37,13 +51,16 @@ sub-flows (halt-and-revise for pre-Phase-6 PROPOSAL changes;
 propose-change for post-Phase-6 SPECIFICATION changes) so you do not
 need to remember the revision procedure manually.
 
-If the slash command is not in your menu, run `/reload-plugins` to
-pick up the symlinked plugin. If that does not help, fall back to
-plain language: "Follow the skill at
-`bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` to drive bootstrap
-execution."
+After modifying SKILL.md, run `/reload-plugins` to refresh without
+restarting the session.
 
-After modifying SKILL.md, run `/reload-plugins` to refresh.
+### Fallback if plugin discovery is still failing
+
+If `/livespec-bootstrap:bootstrap` is not in your menu after the
+one-time setup above, fall back to plain language: "Follow the
+skill at `bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` to
+drive bootstrap execution." The skill prose is self-contained and
+will work without slash-command discovery.
 
 ## Hard rules during bootstrap
 
@@ -80,10 +97,16 @@ After modifying SKILL.md, run `/reload-plugins` to refresh.
 Phase 11 (cleanup) of the plan removes:
 
 - This `AGENTS.md` file at repo root
-- The `.claude/plugins/livespec-bootstrap/` symlink (and the
-  `.claude/plugins/` parent directory if empty)
+- The `livespec-marketplace` and
+  `livespec-bootstrap@livespec-marketplace` keys from
+  `.claude/settings.json` (or the whole file if empty after edit)
 
 The `bootstrap/` and `brainstorming/` directories themselves stay in
 place as historical reference, but nothing in the production app
 (`.claude-plugin/`, `SPECIFICATION/`, `dev-tooling/`, `tests/`,
 `pyproject.toml`, `justfile`, `lefthook.yml`, etc.) references them.
+
+After Phase 11, optionally run
+`/plugin uninstall livespec-bootstrap@livespec-marketplace` in
+Claude Code to remove the locally-installed plugin state too (not
+strictly required, since the marketplace registration is gone).

@@ -226,14 +226,26 @@ back to step 1.
 Phase 11 is bookkeeping that removes the production-facing
 references to the bootstrap scaffolding. Sub-steps:
 
-1. **Remove the bootstrap-skill symlink.** Confirm with
-   AskUserQuestion before each `rm` since the symlink is a
-   committed file:
-   - `rm .claude/plugins/livespec-bootstrap`
-   - If `.claude/plugins/` is now empty: `rmdir .claude/plugins`
-   - Do NOT remove `.claude/skills/` (production plugin's symlink)
-     or `.claude/` itself (still has the production symlink as a
-     child).
+1. **Remove the bootstrap marketplace registration.** Edit
+   `.claude/settings.json` to remove the
+   `extraKnownMarketplaces.livespec-marketplace` key and the
+   `enabledPlugins["livespec-bootstrap@livespec-marketplace"]`
+   key. Confirm with AskUserQuestion before each edit since
+   `.claude/settings.json` is a committed file. If the file
+   becomes empty (no other keys added by intervening phases),
+   `rm .claude/settings.json`. Do NOT remove `.claude/skills/`
+   (production plugin's symlink) or `.claude/` itself (still has
+   the production symlink as a child). Do NOT touch
+   `.claude/settings.local.json` (machine-local, gitignored).
+
+   After committing, optionally suggest the user run in Claude
+   Code:
+   ```
+   /plugin uninstall livespec-bootstrap@livespec-marketplace
+   ```
+   (cleans up the local installed-plugin state; not required for
+   the cleanup to be complete, since the marketplace registration
+   is gone).
 
 2. **Remove the repo-root orientation file:** `rm AGENTS.md`. The
    per-directory `AGENTS.md` files inside `bootstrap/` and

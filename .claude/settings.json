@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "livespec-marketplace": {
+      "source": {
+        "source": "directory",
+        "path": "./bootstrap/.claude-plugin"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "livespec-bootstrap@livespec-marketplace": true
+  }
+}
