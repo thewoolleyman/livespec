@@ -6,7 +6,7 @@ repo whose own `SPECIFICATION/` tree is seeded from the brainstorming
 artifacts and whose skill bundle implements the PROPOSAL.
 
 **Version basis.** The plan body below is written against
-PROPOSAL.md v021, which has now been produced by:
+PROPOSAL.md v022, which has now been produced by:
 1. the continuation interview pass that landed v018
    Q1-Option-A (template sub-specifications) alongside v018
    Q2-Q6,
@@ -135,8 +135,46 @@ v021 decisions:
   test data file population is outside the wrapper's
   scope).
 
-PROPOSAL.md v021 is now the frozen basis for every phase
-below; Phase 0 freezes at v021.
+PROPOSAL.md v022 is now the frozen basis for every phase
+below; Phase 0 freezes at v022.
+
+v022 decisions (direct critique-fix overlay; see
+`history/v022/proposed_changes/critique-fix-v021-revision.md`):
+- v022 D1: PROPOSAL §"Built-in template: `livespec`" names a
+  new template-root file class **template-bundled prompt-
+  reference materials**, with `livespec-nlspec-spec.md` as the
+  v1 instance — exempt from the Plan §3 cutover hand-edit ban,
+  not sub-spec-governed, not Phase-7 agent-regenerated.
+- v022 D2: PROPOSAL §"Template resolution contract — Deferred
+  future feature" extends the new file class to custom
+  templates.
+- v022 D3: PROPOSAL §"Companion documents and migration classes"
+  table row for `livespec-nlspec-spec.md` reclassified to
+  `ARCHIVE-ONLY + TEMPLATE-BUNDLED-PROMPT-REFERENCE` with
+  refined destination column.
+- v022 D4 (plan-level): Plan §3 cutover principle carves out
+  the new file class.
+- v022 D5 (plan-level): Plan Phase 8 item 2 rewritten as
+  per-section split (one propose-change/revise per top-level
+  section of the source style doc).
+- v022 D6 (plan-level): Plan Phase 8 item 14 replaces "see
+  Phase 9" pointer with explicit forward-pointing
+  bookkeeping-closure mechanism.
+- v022 D7 (plan-level): Plan Phase 3 stub policy switches to
+  narrowed-registry (Phase 3 registers only the 8 implemented
+  doctor-static checks; Phase 7 adds the remaining four
+  alongside their implementations).
+- v022 D8 (plan-level): Plan Phase 7 ordering preamble
+  promotes §6 Risk #5 mitigation language into the work-item
+  list (sub-spec widening before regeneration; harness before
+  regen-cycle verification).
+- v022 D9 (plan-level): Plan Phase 5 line 980 typo
+  ("Phase 8" → "Phase 9").
+- v022 D10 (plan-level): Plan §8 added describing the
+  `bootstrap/` execution-scaffolding directory and the
+  bootstrap skill; Phase 0 sub-step list grows by one item;
+  Phase 1 preconditions explicitly mention `bootstrap/`;
+  Phase 10 exit picks up `bootstrap/` archive-or-delete.
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -192,6 +230,10 @@ reference-only.
   `lefthook.yml`, `pyproject.toml`, `dev-tooling/`, `tests/`,
   `SPECIFICATION/`, `SPECIFICATION.md`, `NOTICES.md`, or
   `.vendor.jsonc` exist yet at repo root.
+- `bootstrap/` MAY exist at repo root as the execution-scaffolding
+  directory described in §8 below. Phase 0 creates it if absent;
+  Phase 10 archives or deletes it. Its presence is expected from
+  Phase 0 onward and is NOT on the forbidden list above.
 - `brainstorming/` and `prior-art/` persist AS-IS — they are
   historical reference material and are not rewritten or moved by
   this plan.
@@ -316,21 +358,31 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v021/PROPOSAL.md` (the v021
+   byte-identical to `history/v022/PROPOSAL.md` (the v022
    snapshot — adopting v018 Q1-Option-A through Q6, v019
-   Q1, v020 Q1-Q4, plus v021 Q1-Q3 per the Preconditions
-   section).
+   Q1, v020 Q1-Q4, v021 Q1-Q3, plus v022's prompt-reference-
+   metadata file class and four plan-level corrections per the
+   Preconditions section). v022's snapshot was created in the
+   bootstrap-authoring commit; see
+   `history/v022/proposed_changes/critique-fix-v021-revision.md`
+   for the decision provenance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v021. Further evolution happens in
+   > **Status:** Frozen at v022. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
 3. `tmp/` is deleted (empty; was working directory for earlier
    passes).
 4. Nothing else in `brainstorming/` is modified.
+5. Confirm `bootstrap/` exists at repo root with the execution-
+   scaffolding skill and state files described in §8 below
+   (`bootstrap/.claude-plugin/`, `bootstrap/STATUS.md`,
+   `bootstrap/open-issues.md`, `bootstrap/decisions.md`). If
+   missing, the bootstrap-authoring commit was skipped — halt
+   and request the scaffolding be created before continuing.
 
-**Exit criterion:** a single commit `freeze: v021 brainstorming`
+**Exit criterion:** a single commit `freeze: v022 brainstorming`
 containing only the header-note addition and `tmp/` removal.
 
 ### Phase 1 — Repo-root developer tooling
@@ -1781,6 +1833,15 @@ runs `just check-mutation` (first real baseline captured in
 `.mutmut-baseline.json`) and `just check-no-todo-registry`;
 both pass.
 
+After the exit criterion above passes, the bootstrap skill at
+`bootstrap/.claude-plugin/skills/bootstrap/` runs its Phase 10
+post-step (per §8): asks the user whether to archive `bootstrap/`
+to `brainstorming/bootstrap-archive/` (recommended), delete it
+entirely, or leave it in place; performs the chosen action; and
+commits with message `bootstrap: archive scaffolding after
+v1.0.0` (or `bootstrap: remove scaffolding after v1.0.0`). The
+post-step is bookkeeping, not part of the v1.0.0 release gate.
+
 ---
 
 ## 5. Out of scope for this plan
@@ -1856,33 +1917,18 @@ sources)" section before doing any work:
 
 - `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (frozen
   at the latest history/vNNN snapshot — per the plan's
-  "Version basis" note, this is v021, which adopts v018
-  Q1-Option-A through v018 Q6, v019 Q1, v020 Q1-Q4, plus
-  v021 Q1-Q3: template sub-specifications, bootstrap
-  exception, initial-vendoring exception, returns-pyright-
-  plugin vendored + pyright stays, prompt-QA tier, companion-
-  doc migration classes, v019 Q1's resolution of the
-  §"Self-application" step-2/step-4 bootstrap chicken-and-egg
-  via widening step 2 to include minimum-viable
-  propose-change/critique/revise, v020's two PROPOSAL-level
-  fixes — Q1 (sub-specs reframed as livespec-internal
-  artifacts uniformly using the multi-file livespec layout
-  with sub-spec-root + per-version README; minimal sub-spec
-  structural contradiction resolved) and Q2 (sub-spec
-  emission becomes opt-in via a new pre-seed dialogue
-  question; shipped seed prompt no longer hard-codes
-  per-template emission) — plus two PLAN-level quality
-  fixes (Q3 Phase 3 sub-spec routing smoke + Q4 Phase 3
-  four-prompt widening), AND v021's one PROPOSAL-level fix
-  Q1 (orchestrator-only doctor static-check applicability
-  dispatch; `DoctorContext.template_scope` replaced by
-  `template_name`; per-check `APPLIES_TO` constants and
-  `gherkin_blank_line_format` runtime-skip removed) plus
-  two PLAN-level under-specifications closed (Q2 Phase 3
-  `seed/SKILL.md` enumerates the v020 Q2 three-question
-  pre-seed dialogue explicitly + Q3 Phase 6 names an
-  explicit imperative one-time `tests/heading-coverage.json`
-  population sub-step))
+  "Version basis" note, this is v022, which adopts every prior
+  decision (v018 Q1-Q6, v019 Q1, v020 Q1-Q4, v021 Q1-Q3) plus
+  the v022 critique-fix overlay (D1-D10) introducing the
+  template-bundled prompt-reference-metadata file class, the
+  Plan §3 cutover carve-out, the per-section split for the
+  Phase 8 style-doc migration, the Phase 8 item 14
+  forward-pointing closure, the Phase 3 narrowed-registry stub
+  policy, the Phase 7 ordering preamble, the Phase 5 wording
+  fix, and the §8 execution-scaffolding section. See the
+  plan's "Version basis" section for the full decision summary
+  and `history/v022/proposed_changes/critique-fix-v021-revision.md`
+  for v022 decision provenance.)
 - `brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md`
 - `brainstorming/approach-2-nlspec-based/python-skill-script-style-requirements.md`
 - `brainstorming/approach-2-nlspec-based/deferred-items.md`
@@ -1898,10 +1944,20 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v021 as authoritative. Do not propose any
+Treat PROPOSAL.md v022 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
+
+**Use the `bootstrap` skill at
+`bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` to drive
+execution.** Invocation: `/livespec-bootstrap:bootstrap`. The
+skill reads `bootstrap/STATUS.md` to find your current phase and
+sub-step, presents the next action, and gates every advance on
+explicit confirmation. See plan §8 for the full scaffolding
+contract. Do NOT run phases ad-hoc; route every sub-step through
+the skill so progress, decisions, and discovered issues land in
+the persistent log files.
 
 ## Execution rules
 
@@ -1968,5 +2024,129 @@ the work; do not narrate internal deliberation.
 
 Start at Phase 0. Proceed when I say "go".
 ```
+
+---
+
+## 8. Execution scaffolding (the `bootstrap/` directory)
+
+The plan is the oracle for what to do. The `bootstrap/` directory
+at repo root is the scaffolding for tracking what HAS been done
+and what's next, across sessions. It is throwaway — created in the
+bootstrap-authoring commit (alongside this section), populated
+during execution, and archived or deleted at Phase 10 exit.
+
+### Directory shape
+
+```
+bootstrap/
+├── .claude-plugin/
+│   ├── plugin.json
+│   └── skills/
+│       └── bootstrap/
+│           └── SKILL.md
+├── STATUS.md
+├── open-issues.md
+└── decisions.md
+```
+
+### The `bootstrap` skill
+
+`bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` is a Claude
+Code skill that drives plan execution. Invocation:
+
+```
+/livespec-bootstrap:bootstrap
+```
+
+(or the user MAY ask in plain language: "continue the bootstrap",
+"where am I in the bootstrap?", etc.) The skill is shallow — it
+reads `STATUS.md`, opens the relevant phase section of THIS plan
+file, presents the next sub-step, and gates every advancement on
+explicit user confirmation via AskUserQuestion. It does not
+encode plan content; every invocation re-reads the plan, so plan
+corrections flow into execution naturally.
+
+The skill's full behavior contract lives in its SKILL.md prose;
+this section documents the contract at the plan level.
+
+#### Skill-driven loop
+
+1. **Read state.** `bootstrap/STATUS.md` (current phase, sub-step,
+   last completed exit criterion, next action, last-updated
+   timestamp, last-commit sha). Initialize on first invocation.
+2. **Present current state.** One paragraph stating where the
+   user is and what's next.
+3. **Gate with AskUserQuestion.** Five options (single-select):
+   *proceed with the next sub-step* (recommended), *pause for
+   now*, *report an issue first* (writes to
+   `bootstrap/open-issues.md`), *record a decision first* (writes
+   to `bootstrap/decisions.md`), or *something else* (free-form
+   redirect).
+4. **Execute the sub-step** when the user selects proceed.
+   Updates STATUS on success.
+5. **At phase exit.** Run the phase's exit-criterion check
+   verbatim from this plan; show result; gate advancement on a
+   second AskUserQuestion confirmation.
+6. **At Phase 10 exit.** Ask the user whether to archive
+   `bootstrap/` to `brainstorming/bootstrap-archive/`
+   (recommended), delete it, or leave it in place.
+
+#### State files
+
+- `bootstrap/STATUS.md` — overwritten on every update; contract:
+  six fields (`Current phase`, `Current sub-step`, `Last
+  completed exit criterion`, `Next action`, `Last updated`,
+  `Last commit`).
+- `bootstrap/open-issues.md` — append-only log of plan / PROPOSAL
+  drift discovered during execution. Three severities (`blocking`,
+  `non-blocking-pre-phase-6`, `non-blocking-post-phase-6`); three
+  dispositions (`halt-and-revise-brainstorming`,
+  `defer-to-spec-propose-change`, `resolved-in-session`).
+- `bootstrap/decisions.md` — append-only log of executor judgment
+  calls during phase work that weren't pre-decided here.
+
+The skill is the only writer for these files. Hand-editing them
+is permitted but unusual; the skill rewrites STATUS on every
+update and treats unknown-shape entries as opaque pass-through.
+
+### Plan-correction discipline during execution
+
+When the executor encounters drift between the plan as written
+and what's actually achievable / sensible, three paths apply:
+
+| Severity | Action | Cost |
+|---|---|---|
+| **Blocking** (executor cannot satisfy a phase exit criterion as written) | Halt; open a formal `vNNN/` revision in `brainstorming/`; re-freeze; resume | High |
+| **Non-blocking, pre-Phase-6** | Append to `bootstrap/open-issues.md` with disposition `defer-to-spec-propose-change`; carry the executor's interpretation forward | Low |
+| **Non-blocking, post-Phase-6** | File a propose-change against `SPECIFICATION/` immediately (the dogfooded mechanism is now live) | Native plan mechanism |
+
+The deferral row is the steady-state mechanism for plan
+corrections during execution. Most discovered drift is non-
+blocking. Drain `bootstrap/open-issues.md` post-Phase-6 by
+filing one propose-change per entry against the seeded
+`SPECIFICATION/`, marking each entry resolved in the log as
+its propose-change lands.
+
+### Why a skill and not just files
+
+The skill keeps the user from having to track which phase they're
+on, which sub-step is next, and what the exit-criterion check
+command is. It also enforces the never-auto-advance gate at
+phase boundaries — by virtue of being an AskUserQuestion in the
+loop, it cannot be silently skipped. Hand-managing the same
+state across multi-week, multi-session bootstrap execution would
+work in principle but reliably bleeds context every session
+boundary. The skill is the cheapest way to keep state and
+discipline coherent.
+
+### Why throwaway
+
+After Phase 10 lands `v1.0.0`, the entire `bootstrap/` directory
+is archived (recommended: `brainstorming/bootstrap-archive/`) or
+deleted. The production livespec plugin under `.claude-plugin/`
+does NOT depend on the bootstrap skill, and the bootstrap skill
+does NOT export anything reusable. Once livespec is dogfooding
+itself via its own SPECIFICATION/-driven loop, the scaffolding
+has no further role.
 
 ---
