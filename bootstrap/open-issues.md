@@ -33,4 +33,10 @@ appends:
 **Resolved:** <UTC ISO 8601> — <one-line resolution summary>
 ```
 
-(no entries yet)
+## 2026-04-25T23:33:20Z — phase 0 — non-blocking-pre-phase-6 — resolved-in-session
+
+**Status:** resolved
+
+**Description:** Plan Phase 0 step 3 directs deleting `tmp/` on the premise that it is empty stale scaffolding from earlier brainstorming passes. User reports `tmp/` is in active use as personal scratch space and must not be deleted. Convention adopted: any future bootstrap-owned scratch goes under `tmp/bootstrap/` (creatable on demand, freely deletable by the bootstrap); `tmp/` root is user-owned and off-limits. `tmp/` is git-untracked, so the Phase 0 exit-criterion commit (only header-note addition + `tmp/` removal) is naturally satisfied since the deletion would be git-invisible.
+
+**Resolved:** 2026-04-25T23:33:20Z — convention established (`tmp/bootstrap/` for bootstrap scratch, `tmp/` root user-owned); sub-step 3 no-op since no bootstrap scratch exists to delete.
