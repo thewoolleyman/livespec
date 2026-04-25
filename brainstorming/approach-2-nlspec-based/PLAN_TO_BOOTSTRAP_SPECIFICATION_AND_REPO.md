@@ -6,20 +6,31 @@ repo whose own `SPECIFICATION/` tree is seeded from the brainstorming
 artifacts and whose skill bundle implements the PROPOSAL.
 
 **Version basis.** The plan body below is written against
-PROPOSAL.md v020, which has now been produced by:
+PROPOSAL.md v021, which has now been produced by:
 1. the continuation interview pass that landed v018
    Q1-Option-A (template sub-specifications) alongside v018
    Q2-Q6,
 2. a fast-track single-issue revise (v019 Q1) that resolved
    a logical contradiction in v018 §"Self-application" steps
-   2/4 + the Q2 bootstrap-exception clause, AND
+   2/4 + the Q2 bootstrap-exception clause,
 3. a four-issue critique pass (v020 Q1-Q4) closing two
    shipped-contract defects in the v018 Q1 template-sub-
    specification mechanism (Q1 — `minimal` sub-spec
    structural contradiction; Q2 — `livespec` template's seed
    prompt unconditionally emitted `sub_specs[]`) plus two
    plan-level quality fixes (Q3 — Phase 3 sub-spec routing
-   smoke check; Q4 — Phase 3 four-prompt widening).
+   smoke check; Q4 — Phase 3 four-prompt widening), AND
+4. a three-issue critique pass (v021 Q1-Q3) closing one
+   PROPOSAL ↔ PLAN consistency defect in the v018 Q1 doctor
+   static-check applicability mechanism (Q1 — orchestrator-
+   only dispatch; `template_scope` field on `DoctorContext`
+   replaced by `template_name`; per-check `APPLIES_TO`
+   constants and `gherkin_blank_line_format` runtime-skip
+   removed) plus two plan-level under-specifications (Q2 —
+   Phase 3 `seed/SKILL.md` enumerates the v020 Q2 three-
+   question pre-seed dialogue explicitly; Q3 — Phase 6
+   names an explicit imperative one-time
+   `tests/heading-coverage.json` population sub-step).
 
 v018 decisions still in force:
 - v018 Q2: explicit bootstrap-exception clause in §"Self-
@@ -88,8 +99,44 @@ v020 decisions:
   heaviest semantic work would otherwise run through Phase
   2-minimum prompts. PROPOSAL.md unchanged.
 
-PROPOSAL.md v020 is now the frozen basis for every phase
-below; Phase 0 freezes at v020.
+v021 decisions:
+- v021 Q1: Doctor static-check applicability dispatch is
+  collapsed to a single source at the orchestrator level.
+  PROPOSAL.md §"doctor → Static-phase orchestrator" — the
+  `DoctorContext` field added under v018 Q1 is finalized as
+  `template_name: str` (replacing the binary
+  `template_scope: Literal["main", "sub-spec"]`). The
+  per-check `APPLIES_TO: frozenset[Literal["main",
+  "sub-spec"]]` constant introduced in the prior plan
+  revision is dropped; the registry shape reverts to
+  `(SLUG, run)` pairs. The `gherkin_blank_line_format`
+  runtime-skip-via-Finding mechanism for the `minimal`
+  sub-spec is removed; applicability is decided by the
+  orchestrator-owned table per (template_name, check_slug).
+  PROPOSAL.md §"Per-tree check applicability" (existing
+  prose) is now the authoritative table. PLAN Phase 3
+  context.py + run_static.py + static/__init__.py +
+  static/ per-check bullets amended; Phase 8 item 16's
+  `template_scope` reference swapped to `template_name`.
+- v021 Q2: PLAN Phase 3 `seed/SKILL.md` bullet enumerates
+  the v020 Q2 three-question pre-seed dialogue explicitly:
+  (1) template-selection question; (2) sub-spec-emission
+  question with default "no"; (3) on "yes", template-name
+  follow-up. PROPOSAL.md unchanged (already explicit at
+  §"`seed`" lines 1717-1759).
+- v021 Q3: PLAN Phase 6 names an explicit imperative
+  one-time `tests/heading-coverage.json` population sub-step
+  performed by the executor agent after the seed wrapper
+  succeeds and before Phase 6's exit criterion is asserted.
+  Justified under the v018 Q2 / v019 Q1 bootstrap-exception
+  clause (Phase 6 is the imperative window's closing step).
+  PROPOSAL.md unchanged (the seed wrapper's file-shaping
+  contract at §"`seed`" items 1-6 is unchanged; the meta-
+  test data file population is outside the wrapper's
+  scope).
+
+PROPOSAL.md v021 is now the frozen basis for every phase
+below; Phase 0 freezes at v021.
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -148,8 +195,9 @@ reference-only.
 - `brainstorming/` and `prior-art/` persist AS-IS — they are
   historical reference material and are not rewritten or moved by
   this plan.
-- The brainstorming interview passes producing v018, v019, and
-  v020 HAVE RUN and been frozen. The v018 revision file (at
+- The brainstorming interview passes producing v018, v019,
+  v020, and v021 HAVE RUN and been frozen. The v018 revision
+  file (at
   `brainstorming/approach-2-nlspec-based/history/v018/proposed_changes/proposal-critique-v17-revision.md`)
   records six accepted decisions (Q1-Q6 all accepted at
   option A): Q1-Option-A (template sub-specifications under
@@ -176,11 +224,24 @@ reference-only.
   hard-codes per-template emission), Q3 (Phase 3 exit
   criterion grows by sub-spec-targeted propose-change/revise
   smoke cycle), Q4 (Phase 3 widens all four livespec-template
-  prompts to bootstrap-minimum). The resulting frozen
-  `PROPOSAL.md` v020, plus touched companion docs
-  (`deferred-items.md`;
+  prompts to bootstrap-minimum). The v021 revision file (at
+  `brainstorming/approach-2-nlspec-based/history/v021/proposed_changes/proposal-critique-v20-revision.md`)
+  records three accepted decisions (Q1-Q3 all accepted at
+  Option A): Q1 (orchestrator-only doctor static-check
+  applicability dispatch; `DoctorContext.template_scope`
+  replaced by `template_name`; per-check `APPLIES_TO`
+  constants and `gherkin_blank_line_format` runtime-skip
+  removed; PROPOSAL.md §"doctor → Static-phase orchestrator"
+  amended), Q2 (Phase 3 `seed/SKILL.md` bullet enumerates
+  the v020 Q2 three-question pre-seed dialogue explicitly),
+  Q3 (Phase 6 names an explicit imperative one-time
+  `tests/heading-coverage.json` population sub-step under
+  the v018 Q2 / v019 Q1 bootstrap-exception clause). The
+  resulting frozen `PROPOSAL.md` v021, plus touched
+  companion docs (`deferred-items.md`;
   `python-skill-script-style-requirements.md` — both unchanged
-  by v019 and v020), is the authority for Phases 0-10 below.
+  by v019, v020, and v021), is the authority for Phases
+  0-10 below.
 - PROPOSAL.md is treated as frozen from Phase 0 onward. No
   further brainstorming revisions are produced; all subsequent
   refinement happens inside the seeded `SPECIFICATION/` via
@@ -239,12 +300,13 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v020/PROPOSAL.md` (the v020
+   byte-identical to `history/v021/PROPOSAL.md` (the v021
    snapshot — adopting v018 Q1-Option-A through Q6, v019
-   Q1, plus v020 Q1-Q4 per the Preconditions section).
+   Q1, v020 Q1-Q4, plus v021 Q1-Q3 per the Preconditions
+   section).
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v020. Further evolution happens in
+   > **Status:** Frozen at v021. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -252,7 +314,7 @@ sub-steps within a phase MAY run in parallel where noted.
    passes).
 4. Nothing else in `brainstorming/` is modified.
 
-**Exit criterion:** a single commit `freeze: v020 brainstorming`
+**Exit criterion:** a single commit `freeze: v021 brainstorming`
 containing only the header-note addition and `tmp/` removal.
 
 ### Phase 1 — Repo-root developer tooling
@@ -572,10 +634,13 @@ Required implementation surface (everything else stays stubbed):
   the other context dataclasses with the exact fields named in
   the style doc §"Context dataclasses", including v014 N3's
   `config_load_status` / `template_load_status` AND v018 Q1's
-  `template_scope: Literal["main", "sub-spec"]` (used by
-  `run_static.py` for per-tree applicability dispatch — see the
-  `APPLIES_TO` constant rule below in this phase's
-  `livespec/doctor/static/` enumeration).
+  `template_name: str` (`"main"` sentinel for the main spec
+  tree, or the sub-spec directory name for each sub-spec tree;
+  consumed by `run_static.py`'s orchestrator-owned applicability
+  table — see the orchestrator bullet below in this phase's
+  `livespec/doctor/run_static.py` enumeration; the field-name
+  was finalized in v021 Q1, replacing the prior binary
+  `template_scope: Literal["main", "sub-spec"]`).
 - `livespec/io/`:
   - `fs.py` — `@impure_safe` filesystem primitives; shared
     upward-walk helper per v017 Q9.
@@ -659,34 +724,46 @@ Required implementation surface (everything else stays stubbed):
   the simplest "decision: reject" front-matter line.
 - `livespec/doctor/run_static.py` — orchestrator per PROPOSAL.md
   §"Static-phase structure" + v014 N3 bootstrap lenience + v018
-  Q1 per-tree iteration. The orchestrator enumerates
+  Q1 per-tree iteration (applicability dispatch finalized in
+  v021 Q1). The orchestrator enumerates
   `(spec_root, template_name)` pairs at startup (main tree
-  first; then each sub-spec tree under
-  `<main-spec-root>/templates/<sub-name>/`); per pair it builds
-  a per-tree `DoctorContext` (with `template_scope` set
-  appropriately) and runs the applicable check subset.
-- `livespec/doctor/static/__init__.py` — static registry. Per
-  v018 Q1, each entry exposes the triple `(SLUG, run, APPLIES_TO)`
-  (extending the prior `(SLUG, run)` shape).
-- `livespec/doctor/static/` — each check module declares an
-  `APPLIES_TO: frozenset[Literal["main", "sub-spec"]]`
-  module-top constant alongside `SLUG` and `run`. The
-  orchestrator inspects this constant per-tree to decide
-  whether to invoke the check. Default value: `frozenset({
-  "main", "sub-spec"})` (the check runs on every tree). The
-  three v1 narrowings:
-  - `template_exists`: `APPLIES_TO = frozenset({"main"})`
-    (sub-spec trees are spec trees, not template payloads).
-  - `template_files_present`: `APPLIES_TO = frozenset({
-    "main"})` (same reason).
-  - `gherkin_blank_line_format`: `APPLIES_TO = frozenset({
-    "main", "sub-spec"})` BUT the check itself emits a
-    `status: "skipped"` Finding when the tree's template
-    convention is the `minimal` template's no-Gherkin
-    convention (the conditional applicability is content-
-    aware; runtime skip is cleaner than a more elaborate
-    constant). The exact dispatch is codified in
-    `static-check-semantics`.
+  first with template-name sentinel `"main"`; then each
+  sub-spec tree under `<main-spec-root>/templates/<sub-name>/`
+  with template-name set to the sub-spec directory name); per
+  pair it builds a per-tree `DoctorContext` (with `template_name`
+  set appropriately) and runs the applicable check subset
+  decided by the orchestrator-owned applicability table:
+  - `template_exists` and `template_files_present` invoked
+    only when `template_name == "main"` (sub-spec trees are
+    spec trees, not template payloads).
+  - `gherkin_blank_line_format` invoked when (`template_name
+    == "main"` AND main `.livespec.jsonc.template ==
+    "livespec"`) OR `template_name == "livespec"`; never
+    invoked when `template_name == "minimal"` (matches
+    PROPOSAL.md §"Per-tree check applicability"; the
+    `minimal` sub-spec's `scenarios.md` follows the minimal
+    template's no-Gherkin convention).
+  - All other checks invoked uniformly per tree.
+
+  The orchestrator never asks a check whether it applies; the
+  table is the single source. Checks themselves emit no
+  applicability-driven `skipped` Findings (skipped status is
+  reserved for the v014 N3 bootstrap-lenience checks and
+  semantically equivalent content-aware skips codified in the
+  `static-check-semantics` deferred entry).
+- `livespec/doctor/static/__init__.py` — static registry. Each
+  entry exposes the pair `(SLUG, run)` (the v018 Q1 triple
+  shape with `APPLIES_TO` is reverted in v021 Q1; the
+  orchestrator now owns the applicability table).
+- `livespec/doctor/static/` — each check module exposes
+  `SLUG` and `run` only (no `APPLIES_TO` constant per v021
+  Q1 — applicability is the orchestrator's responsibility,
+  not the check's). The v1 applicability narrowings are
+  documented at the orchestrator level above; checks
+  themselves remain template-name-agnostic. Bootstrap-
+  lenience semantics (v014 N3) and any other content-aware
+  `skipped` semantics remain inside individual check modules
+  per the `static-check-semantics` deferred entry.
   Phase-3 minimum subset of checks the seed post-step
   exercises: `livespec_jsonc_valid`, `template_exists`,
   `template_files_present`, `proposed_changes_and_history_dirs`,
@@ -698,12 +775,35 @@ Required implementation surface (everything else stays stubbed):
   stubbed to return a `skipped` finding with message
   "not-yet-implemented"; they're fleshed out in Phase 7.)
 - `seed/SKILL.md` — **bootstrap prose** covering the pre-seed
-  template dialogue, the two-step `resolve_template.py` →
+  dialogue, the two-step `resolve_template.py` →
   Read(`prompts/seed.md`) dispatch, payload assembly, wrapper
   invocation, post-wrapper narration, and exit-code handling
-  with retry-on-4. This is intentionally narrower than the full
-  per-sub-command body structure in PROPOSAL.md; Phase 7 brings
-  it to final per `skill-md-prose-authoring`.
+  with retry-on-4. The pre-seed dialogue per PROPOSAL.md
+  §"`seed`" lines 1717-1759 has THREE questions when the
+  selected template is `livespec`, all of which the bootstrap
+  prose MUST author (v021 Q2):
+
+  1. **Template-selection question** (v014 N1 / v017 Q2) —
+     options: `livespec` (multi-file recommended default),
+     `minimal` (single-file `SPECIFICATION.md`), or a custom
+     template path.
+  2. **(v020 Q2) Sub-spec-emission question** (asked only
+     when the selected template's seed prompt declares
+     sub-spec-emission capability — the `livespec` built-in
+     is the v1 example): "Does this project ship its own
+     livespec templates that should be governed by sub-spec
+     trees under `SPECIFICATION/templates/<name>/`?
+     (default: no)"
+  3. **(v020 Q2) Template-name follow-up** (asked only on a
+     "yes" answer to question 2): the user provides the list
+     of template directory names under
+     `.claude-plugin/specification-templates/` (or equivalent
+     project-specific location) that should each receive a
+     sub-spec tree.
+
+  This is intentionally narrower than the full per-sub-command
+  body structure in PROPOSAL.md; Phase 7 brings it to final per
+  `skill-md-prose-authoring`.
 - `propose-change/SKILL.md`, `critique/SKILL.md`,
   `revise/SKILL.md` — **bootstrap prose per v019 Q1**: just
   enough to (a) accept an inline authored propose-change file
@@ -1186,12 +1286,29 @@ the surfaced findings can then be acted on (or not) via separate
 require `critique` to function — they're independent
 sub-commands.
 
-Every `##` heading in every seeded spec file (main + both
-sub-specs) gets a corresponding entry in
-`tests/heading-coverage.json` (each entry carries a
-`spec_root` field naming its tree; entries with
-`test: "TODO"` + non-empty `reason` are acceptable at this
-point; Phase 7–8 work replaces TODOs with real test IDs).
+**Imperative one-time heading-coverage population (v021 Q3).**
+After the seed wrapper completes successfully and BEFORE
+Phase 6's exit criterion is asserted, the executor agent
+performs one additional imperative step: walk every `##`
+heading in every seeded spec file (main + both sub-specs)
+and write a corresponding entry to
+`tests/heading-coverage.json`. Each entry carries a
+`spec_root` field naming its tree; entries land with
+`test: "TODO"` + non-empty `reason` placeholders at this
+point (Phase 7–8 work replaces TODOs with real test IDs via
+the governed loop). The file is committed alongside the
+Phase 6 seed commit.
+
+This step is permitted under PROPOSAL.md §"Self-application"
+Bootstrap exception (v018 Q2; v019 Q1 clarification) — Phase
+6 is the imperative window's closing step, and meta-test
+data file population is a one-time bootstrap side-effect
+that does not belong in the seed wrapper's deterministic
+file-shaping contract (PROPOSAL.md §"`seed`" wrapper
+file-shaping work items 1-6 are unchanged). From Phase 7
+onward, every propose-change/revise that adds / changes /
+removes `##` headings updates `tests/heading-coverage.json`
+via the governed loop's `resulting_files[]` mechanism.
 
 **Exit criterion:** `just check` passes (now including
 `check-heading-coverage` against the populated
@@ -1481,9 +1598,9 @@ pointing at PROPOSAL.md / Phase-1 / Phase-7 decisions:
     file-shaping work; `--spec-target` flag implementation on
     propose-change / critique / revise; `SubSpecPayload`
     schema + dataclass + validator; `DoctorContext`
-    `template_scope` field), Phase 6 (sub-spec tree seeding
-    atomically with main tree), Phase 7 (each built-in
-    template's sub-spec contents authored via
+    `template_name` field per v021 Q1), Phase 6 (sub-spec
+    tree seeding atomically with main tree), Phase 7 (each
+    built-in template's sub-spec contents authored via
     `propose-change --spec-target` cycles), and confirmed
     clean by Phase 8. Bookkeeping close pointing at the
     relevant phase commits.
@@ -1626,23 +1743,33 @@ sources)" section before doing any work:
 
 - `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (frozen
   at the latest history/vNNN snapshot — per the plan's
-  "Version basis" note, this is v020, which adopts v018
-  Q1-Option-A through v018 Q6, v019 Q1, plus v020 Q1-Q4:
-  template sub-specifications, bootstrap exception, initial-
-  vendoring exception, returns-pyright-plugin vendored +
-  pyright stays, prompt-QA tier, companion-doc migration
-  classes, v019 Q1's resolution of the §"Self-application"
-  step-2/step-4 bootstrap chicken-and-egg via widening step 2
-  to include minimum-viable propose-change/critique/revise,
-  AND v020's two PROPOSAL-level fixes — Q1 (sub-specs reframed
-  as livespec-internal artifacts uniformly using the
-  multi-file livespec layout with sub-spec-root + per-version
-  README; minimal sub-spec structural contradiction resolved)
-  and Q2 (sub-spec emission becomes opt-in via a new pre-seed
-  dialogue question; shipped seed prompt no longer hard-codes
-  per-template emission) — plus two PLAN-level quality fixes
-  (Q3 Phase 3 sub-spec routing smoke + Q4 Phase 3 four-prompt
-  widening))
+  "Version basis" note, this is v021, which adopts v018
+  Q1-Option-A through v018 Q6, v019 Q1, v020 Q1-Q4, plus
+  v021 Q1-Q3: template sub-specifications, bootstrap
+  exception, initial-vendoring exception, returns-pyright-
+  plugin vendored + pyright stays, prompt-QA tier, companion-
+  doc migration classes, v019 Q1's resolution of the
+  §"Self-application" step-2/step-4 bootstrap chicken-and-egg
+  via widening step 2 to include minimum-viable
+  propose-change/critique/revise, v020's two PROPOSAL-level
+  fixes — Q1 (sub-specs reframed as livespec-internal
+  artifacts uniformly using the multi-file livespec layout
+  with sub-spec-root + per-version README; minimal sub-spec
+  structural contradiction resolved) and Q2 (sub-spec
+  emission becomes opt-in via a new pre-seed dialogue
+  question; shipped seed prompt no longer hard-codes
+  per-template emission) — plus two PLAN-level quality
+  fixes (Q3 Phase 3 sub-spec routing smoke + Q4 Phase 3
+  four-prompt widening), AND v021's one PROPOSAL-level fix
+  Q1 (orchestrator-only doctor static-check applicability
+  dispatch; `DoctorContext.template_scope` replaced by
+  `template_name`; per-check `APPLIES_TO` constants and
+  `gherkin_blank_line_format` runtime-skip removed) plus
+  two PLAN-level under-specifications closed (Q2 Phase 3
+  `seed/SKILL.md` enumerates the v020 Q2 three-question
+  pre-seed dialogue explicitly + Q3 Phase 6 names an
+  explicit imperative one-time `tests/heading-coverage.json`
+  population sub-step))
 - `brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md`
 - `brainstorming/approach-2-nlspec-based/python-skill-script-style-requirements.md`
 - `brainstorming/approach-2-nlspec-based/deferred-items.md`
@@ -1658,7 +1785,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v020 as authoritative. Do not propose any
+Treat PROPOSAL.md v021 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.

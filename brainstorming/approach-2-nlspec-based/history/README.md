@@ -1929,9 +1929,96 @@ entries keep their original naming (immutable history).
   Phase 7's revise step), execution prompt re-pointed at
   v020. Full decision record is in
   `v020/proposed_changes/proposal-critique-v19-revision.md`.
+- **v021** — three-issue critique-revise driven by
+  `proposed_changes/proposal-critique-v20.md` and its revision.
+  Closes one PROPOSAL ↔ PLAN consistency defect in the v018 Q1
+  doctor static-check applicability mechanism plus two
+  PLAN-level under-specifications surfaced when the plan is
+  read literally against PROPOSAL.md's already-explicit
+  contracts:
+  - **Q1** (PROPOSAL.md + PLAN, blocking) — v018 Q1
+    introduced two competing mechanisms for per-tree doctor-
+    static-check applicability dispatch: PROPOSAL.md
+    described orchestrator-level dispatch with `(spec_root,
+    template_name)` enumeration pairs, while the PLAN
+    described per-check `APPLIES_TO: frozenset[Literal[
+    "main", "sub-spec"]]` constants plus a runtime-skip-via-
+    Finding inside `gherkin_blank_line_format` for the
+    `minimal` sub-spec. The PLAN's runtime-skip approach
+    additionally required the check to know it was in the
+    `minimal` sub-spec specifically, but `DoctorContext`
+    only carried a binary `template_scope: Literal["main",
+    "sub-spec"]` field — there was no `template_name` field,
+    so the runtime-skip could not actually discriminate
+    `livespec` sub-spec from `minimal` sub-spec. v021 Q1
+    collapses to ONE mechanism (orchestrator-level
+    dispatch, PROPOSAL-aligned). The `DoctorContext` field
+    is finalized as `template_name: str` (replacing the
+    binary `template_scope`); the per-check `APPLIES_TO`
+    constant is dropped; the registry shape reverts to
+    `(SLUG, run)` pairs; the runtime-skip-via-Finding
+    mechanism is removed. The orchestrator owns a single
+    applicability table indexed by (template_name,
+    check_slug) derived from PROPOSAL.md §"Per-tree check
+    applicability" rules. PROPOSAL.md amendments: §"doctor
+    → Static-phase orchestrator" lines 2391-2401
+    (`template_name` field replaces `template_scope`) and
+    lines 2453-2467 (DoctorContext field-set extended with
+    `template_name`). PROPOSAL.md §"Per-tree check
+    applicability" prose (lines 2402-2416) is unchanged
+    (already orchestrator-level).
+  - **Q2** (PLAN, blocking) — Phase 3's `seed/SKILL.md`
+    bootstrap-prose bullet was described as covering "the
+    pre-seed template dialogue" (singular). Per PROPOSAL.md
+    §"`seed`" lines 1717-1759 (v014 N1 / v017 Q2 plus v020
+    Q2), the pre-seed dialogue is a composite of THREE
+    questions when the active template is `livespec`: (1)
+    template-selection question; (2) v020 Q2 sub-spec-
+    emission question with default "no"; (3) on "yes", the
+    template-name follow-up. Phase 6's seed intent block
+    already presumed all three were wired up ("Answer with
+    YES" / "name two: livespec and minimal"). v021 Q2 makes
+    the Phase 3 SKILL.md bullet enumerate the three
+    dialogue steps explicitly so a literal Phase 3
+    implementer authors all three. PROPOSAL.md unchanged.
+  - **Q3** (PLAN, ambiguous) — Phase 6 said
+    `tests/heading-coverage.json` "gets populated alongside
+    the seeded spec" but did not specify the mechanism. The
+    seed wrapper's deterministic file-shaping contract at
+    PROPOSAL.md §"`seed`" items 1-6 does not include
+    test-tree writes; coupling the wrapper to a meta-test
+    data file would require a PROPOSAL.md amendment and
+    break the wrapper's separation of concerns. v021 Q3
+    names an explicit imperative one-time executor step:
+    after the seed wrapper completes successfully and
+    BEFORE Phase 6's exit criterion is asserted, the
+    executor agent walks every `##` heading in main + both
+    sub-specs, writes entries to `tests/heading-coverage.json`
+    (each carrying `spec_root` per tree + `test: "TODO"`
+    + non-empty `reason` placeholders), and commits the
+    file alongside the Phase 6 seed commit. Permitted under
+    the v018 Q2 / v019 Q1 bootstrap-exception clause —
+    Phase 6 is the imperative window's closing step.
+    PROPOSAL.md unchanged.
+  All three Q1-Q3 accepted at Option A (the recommended
+  disposition). No deferred-items entries open or close
+  (the `sub-spec-structural-formalization` body remains
+  accurate under the v021 mechanism choice — the field-name
+  finalization is below the entry's mechanism description
+  level). No companion docs touched. Plan-file ripple:
+  `PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md` re-freezes
+  at v021 — Version basis paragraph extended, Phase 0
+  freeze-target updated, Phase 3 (Q1 four-bullet alignment
+  to orchestrator-owned applicability table; Q2 explicit
+  three-question dialogue enumeration), Phase 6 (Q3
+  explicit imperative heading-coverage population sub-step),
+  Phase 8 item 16 (Q1 `template_scope` → `template_name`
+  reference swap), execution prompt re-pointed at v021.
+  Full decision record is in
+  `v021/proposed_changes/proposal-critique-v20-revision.md`.
 
 ## Pointer
 
 The current working `PROPOSAL.md` lives at the parent directory
 (`brainstorming/approach-2-nlspec-based/PROPOSAL.md`). It is
-byte-identical to `history/v020/PROPOSAL.md` until the next revise.
+byte-identical to `history/v021/PROPOSAL.md` until the next revise.
