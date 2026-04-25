@@ -226,14 +226,28 @@ reference-only.
 
 - Repo root is `/data/projects/livespec/` with `master` branch
   clean.
-- No `.claude-plugin/`, `.claude/`, `.mise.toml`, `justfile`,
-  `lefthook.yml`, `pyproject.toml`, `dev-tooling/`, `tests/`,
-  `SPECIFICATION/`, `SPECIFICATION.md`, `NOTICES.md`, or
-  `.vendor.jsonc` exist yet at repo root.
+- No `.claude-plugin/`, `.mise.toml`, `justfile`, `lefthook.yml`,
+  `pyproject.toml`, `dev-tooling/`, `tests/`, `SPECIFICATION/`,
+  `SPECIFICATION.md`, `NOTICES.md`, or `.vendor.jsonc` exist yet at
+  repo root.
+- `.claude/` MAY exist at repo root, BUT only with the bootstrap-
+  scaffolding contents (`.claude/plugins/livespec-bootstrap/`
+  symlink to `bootstrap/.claude-plugin/`). No other entries under
+  `.claude/` are permitted before Phase 2. Phase 2 creates
+  `.claude/skills/` as a directory-level symlink to
+  `../.claude-plugin/skills/`; that symlink coexists with the
+  pre-existing `.claude/plugins/livespec-bootstrap/` symlink under
+  `.claude/`. Phase 11 removes the bootstrap symlink at cleanup.
 - `bootstrap/` MAY exist at repo root as the execution-scaffolding
-  directory described in §8 below. Phase 0 creates it if absent;
-  Phase 10 archives or deletes it. Its presence is expected from
-  Phase 0 onward and is NOT on the forbidden list above.
+  directory described in §8 below. The bootstrap-authoring commit
+  creates it; the directory itself stays in place after Phase 11
+  (only the `.claude/plugins/livespec-bootstrap/` symlink and the
+  repo-root `AGENTS.md` are removed at Phase 11 cleanup).
+- `AGENTS.md` MAY exist at repo root as the orientation file for
+  fresh AI sessions during bootstrap (per §8 below). Removed by
+  Phase 11. Per-directory `AGENTS.md` files inside `bootstrap/`
+  and `brainstorming/` stay in place after Phase 11 since those
+  directories themselves stay.
 - `brainstorming/` and `prior-art/` persist AS-IS — they are
   historical reference material and are not rewritten or moved by
   this plan.
@@ -1833,14 +1847,68 @@ runs `just check-mutation` (first real baseline captured in
 `.mutmut-baseline.json`) and `just check-no-todo-registry`;
 both pass.
 
-After the exit criterion above passes, the bootstrap skill at
-`bootstrap/.claude-plugin/skills/bootstrap/` runs its Phase 10
-post-step (per §8): asks the user whether to archive `bootstrap/`
-to `brainstorming/bootstrap-archive/` (recommended), delete it
-entirely, or leave it in place; performs the chosen action; and
-commits with message `bootstrap: archive scaffolding after
-v1.0.0` (or `bootstrap: remove scaffolding after v1.0.0`). The
-post-step is bookkeeping, not part of the v1.0.0 release gate.
+Phase 11 (cleanup) follows Phase 10. It is bookkeeping — not part
+of the v1.0.0 release gate.
+
+### Phase 11 — Cleanup of bootstrap scaffolding
+
+After Phase 10's `v1.0.0` tag lands, remove the production-facing
+references to the bootstrap scaffolding. The `bootstrap/` and
+`brainstorming/` directories themselves stay in place as historical
+reference; only the references that make them production-active
+are removed.
+
+1. **Remove the bootstrap-skill symlink:**
+   ```
+   rm .claude/plugins/livespec-bootstrap
+   rmdir .claude/plugins   # only if empty
+   ```
+   Do NOT remove `.claude/skills/` — that is the production plugin's
+   symlink, established in Phase 2 and required by `/livespec:*`
+   slash commands.
+
+2. **Remove the repo-root orientation file:**
+   ```
+   rm AGENTS.md
+   ```
+   The per-directory `AGENTS.md` files inside `bootstrap/` and
+   `brainstorming/` stay in place — they describe directories that
+   themselves stay.
+
+3. **Verify isolation:** confirm nothing in production code paths
+   references `bootstrap/` or `brainstorming/`. Mechanical check:
+
+   ```
+   grep -rn "bootstrap/\|brainstorming/" \
+     .claude-plugin/ dev-tooling/ tests/ SPECIFICATION/ \
+     pyproject.toml justfile lefthook.yml .mise.toml \
+     .github/ NOTICES.md .vendor.jsonc 2>/dev/null \
+     | grep -v _vendor
+   ```
+
+   Expected output: empty. If any references surface, file an
+   issue and resolve before committing the Phase 11 commit.
+
+4. **Commit and push:** the bootstrap skill walks through the
+   commit (per §8). Suggested message:
+   `phase-11: remove bootstrap-skill symlink and root AGENTS.md`.
+   Push only on user confirmation.
+
+5. **Update the bootstrap skill's STATUS.md** to reflect cleanup
+   complete; the next invocation of `/livespec-bootstrap:bootstrap`
+   would fail anyway (the symlink is gone), and that is intentional.
+
+**Exit criterion:** `.claude/plugins/livespec-bootstrap/` does not
+exist; repo-root `AGENTS.md` does not exist; the grep in step 3
+produces no output; Phase 11 commit landed.
+
+After Phase 11, the bootstrap is fully wound down. The `bootstrap/`
+and `brainstorming/` directories remain as historical reference,
+but the production app — `.claude-plugin/`, `SPECIFICATION/`,
+`dev-tooling/`, `tests/`, `pyproject.toml`, `justfile`,
+`lefthook.yml`, etc. — does not reference them, and the
+`/livespec-bootstrap:bootstrap` slash command is no longer
+available.
 
 ---
 
@@ -1961,11 +2029,12 @@ the persistent log files.
 
 ## Execution rules
 
-1. Work phase by phase, in order: Phase 0 → Phase 10. Do not
+1. Work phase by phase, in order: Phase 0 → Phase 11. Do not
    skip forward. Each phase's exit criterion MUST be demonstrably
    met before starting the next. Demonstrate the exit criterion
    by running the relevant `just` target or the explicit check
-   the plan names.
+   the plan names. (Phase 11 is bookkeeping cleanup of the
+   bootstrap scaffolding; it follows the v1.0.0 tag from Phase 10.)
 
 2. Every phase of work lands as one or more git commits. Commit
    messages follow the form `<phase>: <summary>` (e.g.,
@@ -2044,10 +2113,54 @@ bootstrap/
 │   └── skills/
 │       └── bootstrap/
 │           └── SKILL.md
-├── STATUS.md
-├── open-issues.md
-└── decisions.md
+├── AGENTS.md                   # bootstrap-directory orientation
+├── STATUS.md                   # current phase / sub-step / next action
+├── open-issues.md              # append-only-with-status-mutation drift log
+└── decisions.md                # append-only judgment-call log
 ```
+
+### Skill discovery via `.claude/plugins/` symlink
+
+For Claude Code to auto-discover the bootstrap skill (so
+`/livespec-bootstrap:bootstrap` appears in the slash-command menu
+and `/reload-plugins` picks up SKILL.md edits), the bootstrap-
+authoring commit creates a relative symlink at repo root:
+
+```
+.claude/plugins/livespec-bootstrap → ../../bootstrap/.claude-plugin
+```
+
+The symlink is committed as a tracked symlink. Phase 1 preconditions
+explicitly carve `.claude/` out of the "no `.claude/` exists yet"
+rule for this case (see §2 above). Phase 2 adds `.claude/skills/`
+as a sibling symlink under `.claude/`; the two coexist until
+Phase 11 cleanup removes the bootstrap symlink.
+
+After modifying `bootstrap/.claude-plugin/skills/bootstrap/SKILL.md`,
+run `/reload-plugins` in Claude Code to refresh the loaded skill
+without restarting the session.
+
+### Per-directory `AGENTS.md` orientation files
+
+Fresh AI sessions need to find their bearings without the user
+having to brief them every time. Six `AGENTS.md` files at strategic
+locations cover this:
+
+| Path | Purpose | Lifecycle |
+|---|---|---|
+| `AGENTS.md` (repo root) | High-level orientation: bootstrap mode, where to look, hard rules | Removed by Phase 11 |
+| `bootstrap/AGENTS.md` | Bootstrap-directory orientation: file roles, don't/do, symlink mechanism | Stays after Phase 11 |
+| `brainstorming/AGENTS.md` | Brainstorming-tree orientation: which approaches are active vs abandoned | Stays after Phase 11 |
+| `brainstorming/approach-2-nlspec-based/AGENTS.md` | Active-approach orientation: key files, how the bootstrap consumes them, editing rules | Stays after Phase 11 |
+| `brainstorming/approach-2-nlspec-based/history/AGENTS.md` | History-tree orientation: structure, latest version, immutability | Stays after Phase 11 |
+| `brainstorming/approach-1-openspec-inspired/AGENTS.md` | Abandoned-approach orientation | Stays after Phase 11 |
+
+The repo-root `AGENTS.md` is the one that points at bootstrap
+scaffolding; it becomes stale after Phase 11 (the scaffolding it
+references is removed) and is therefore deleted at cleanup. The
+per-directory files inside `bootstrap/` and `brainstorming/`
+describe directories that themselves persist as historical
+reference, so they stay.
 
 ### The `bootstrap` skill
 

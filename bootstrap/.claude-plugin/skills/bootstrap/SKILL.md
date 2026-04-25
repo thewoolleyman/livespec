@@ -213,18 +213,61 @@ to step 1.
 
 ### 6. At Phase 10 exit
 
-After Phase 10's exit criterion passes and the `v1.0.0` tag lands:
+When Phase 10's exit criterion passes and the `v1.0.0` tag lands,
+the bootstrap is functionally complete but Phase 11 (cleanup) is
+still ahead. Update STATUS to `current_phase: 11`,
+`current_sub_step: 1`,
+`last_completed_exit_criterion: phase 10`. Print "Phase 10
+complete; v1.0.0 tag landed. Phase 11 (cleanup) is next." Loop
+back to step 1.
 
-1. AskUserQuestion: "Bootstrap complete. What should happen to
-   `bootstrap/`?" — options:
-   - Archive to `brainstorming/bootstrap-archive/` (Recommended)
-   - Delete entirely
-   - Leave in place
-2. On archive: `git mv bootstrap brainstorming/bootstrap-archive`;
-   commit `bootstrap: archive scaffolding after v1.0.0`.
-3. On delete: `git rm -r bootstrap`; commit
-   `bootstrap: remove scaffolding after v1.0.0`.
-4. Either way, print a final "bootstrap complete" message and stop.
+### 7. Phase 11 — Cleanup
+
+Phase 11 is bookkeeping that removes the production-facing
+references to the bootstrap scaffolding. Sub-steps:
+
+1. **Remove the bootstrap-skill symlink.** Confirm with
+   AskUserQuestion before each `rm` since the symlink is a
+   committed file:
+   - `rm .claude/plugins/livespec-bootstrap`
+   - If `.claude/plugins/` is now empty: `rmdir .claude/plugins`
+   - Do NOT remove `.claude/skills/` (production plugin's symlink)
+     or `.claude/` itself (still has the production symlink as a
+     child).
+
+2. **Remove the repo-root orientation file:** `rm AGENTS.md`. The
+   per-directory `AGENTS.md` files inside `bootstrap/` and
+   `brainstorming/` stay — they describe directories that
+   themselves stay.
+
+3. **Verify isolation.** Run the grep from Plan Phase 11 step 3:
+
+   ```
+   grep -rn "bootstrap/\|brainstorming/" \
+     .claude-plugin/ dev-tooling/ tests/ SPECIFICATION/ \
+     pyproject.toml justfile lefthook.yml .mise.toml \
+     .github/ NOTICES.md .vendor.jsonc 2>/dev/null \
+     | grep -v _vendor
+   ```
+
+   Expected output: empty. If any output: route through the
+   "Report an issue first" gate to file a blocking issue; the
+   skill's halt-and-revise sub-flow handles the fix before the
+   Phase 11 commit lands.
+
+4. **Commit and push.** Suggested message:
+   `phase-11: remove bootstrap-skill symlink and root AGENTS.md`.
+   Gate the push on AskUserQuestion confirmation.
+
+5. **Update STATUS one last time** with the cleanup commit sha.
+   Print the final "bootstrap complete; livespec is now
+   self-governing via /livespec:* commands" message and stop.
+
+The next invocation of `/livespec-bootstrap:bootstrap` after
+Phase 11 will fail to find the slash command (its symlink is
+gone). That is intentional — the production app uses
+`/livespec:*` slash commands for its own operations; the
+bootstrap scaffolding has finished its job.
 
 ## Drift-correction sub-flows
 
