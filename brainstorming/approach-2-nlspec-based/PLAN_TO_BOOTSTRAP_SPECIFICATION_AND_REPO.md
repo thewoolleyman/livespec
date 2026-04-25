@@ -2079,17 +2079,59 @@ this section documents the contract at the plan level.
 3. **Gate with AskUserQuestion.** Five options (single-select):
    *proceed with the next sub-step* (recommended), *pause for
    now*, *report an issue first* (writes to
-   `bootstrap/open-issues.md`), *record a decision first* (writes
-   to `bootstrap/decisions.md`), or *something else* (free-form
-   redirect).
+   `bootstrap/open-issues.md`; on `blocking` severity, routes to
+   the halt-on-blocking sub-flow described below — does NOT loop
+   back to the main loop until resolved), *record a decision
+   first* (writes to `bootstrap/decisions.md`), or *something
+   else* (free-form redirect).
 4. **Execute the sub-step** when the user selects proceed.
    Updates STATUS on success.
-5. **At phase exit.** Run the phase's exit-criterion check
-   verbatim from this plan; show result; gate advancement on a
-   second AskUserQuestion confirmation.
+5. **At phase exit (two-gate).** Phase boundaries always require
+   two distinct gates in this order:
+   - **5a. Drift-review checkpoint.** Read
+     `bootstrap/open-issues.md`, filter to entries with the
+     current phase number AND `Status: open`, summarize by
+     severity. Show the user. If any blocking entries remain
+     unresolved, the skill MUST NOT proceed to 5b — it offers
+     the halt-and-revise walkthrough or the propose-change
+     walkthrough (whichever applies), or pause. Non-blocking
+     entries can be deferred to the post-Phase-6 drain or
+     carried forward as-is via user choice.
+   - **5b. Exit-criterion check + advance gate.** Run the
+     phase's exit-criterion check verbatim from this plan;
+     show result; gate advancement on a second AskUserQuestion
+     confirmation. Advance only on explicit user confirm.
 6. **At Phase 10 exit.** Ask the user whether to archive
    `bootstrap/` to `brainstorming/bootstrap-archive/`
    (recommended), delete it, or leave it in place.
+
+#### Drift-correction sub-flows
+
+The skill carries two explicit sub-flows for closing blocking
+drift discovered mid-execution. They are entered from step 3's
+halt-on-blocking branch or step 5a's drift-review checkpoint;
+never from the main-loop step 3 directly.
+
+- **Halt-and-revise walkthrough (pre-Phase-6 path).** Drives a
+  formal `vNNN/` revision against PROPOSAL.md, mirroring v018-v022.
+  Skill computes next vNNN, asks for revision shape (direct
+  overlay vs full critique-and-revise), walks the user through
+  authoring revision file(s), applies edits to PROPOSAL.md,
+  snapshots to `history/vNNN/`, surgical-edits the plan's
+  Version basis + Phase 0 + execution prompt, marks the
+  originating open-issues entry resolved, commits, and (on user
+  confirm) pushes. The full step list lives in the skill's
+  SKILL.md prose; this entry documents the contract at the plan
+  level.
+- **Propose-change walkthrough (post-Phase-6 path).** Drives a
+  dogfooded `propose-change` → `revise` cycle against the seeded
+  `SPECIFICATION/`. Skill asks for the target spec tree (main /
+  `livespec` sub-spec / `minimal` sub-spec / other), walks the
+  user through composing the propose-change content, invokes
+  `/livespec:propose-change` via the Skill tool with the right
+  `--spec-target`, then `/livespec:revise` with the same target,
+  marks the originating open-issues entry resolved, and resumes.
+  Only valid when STATUS shows `current_phase >= 6`.
 
 #### State files
 
