@@ -181,7 +181,7 @@ Each entry uses this shape:
 
 ### claude-md-prose
 
-- **Source:** v006 (carried forward through every version since; note-only widening in v017 per Q9 — `livespec/io/CLAUDE.md` SHOULD note the shared `upward-walk` helper for `.livespec.jsonc` location lives under `livespec.io.fs`, reused by every wrapper and by `livespec.doctor.run_static`; note-only widening in v018 per Q5 — `tests/prompts/CLAUDE.md` (new directory, per v018 Q5 prompt-QA tier) MUST document the harness conventions (distinct from `tests/e2e/fake_claude.py`), the fixture format, and the schema-level-vs-semantic-level assertion split; per-template subdirectory `CLAUDE.md` under `tests/prompts/<template>/` MAY exist if template-specific conventions diverge, but is not required)
+- **Source:** v006 (carried forward through every version since; note-only widening in v017 per Q9 — `livespec/io/CLAUDE.md` SHOULD note the shared `upward-walk` helper for `.livespec.jsonc` location lives under `livespec.io.fs`, reused by every wrapper and by `livespec.doctor.run_static`; note-only widening in v018 per Q5 — `tests/prompts/CLAUDE.md` (new directory, per v018 Q5 prompt-QA tier) MUST document the harness conventions (distinct from `tests/e2e/fake_claude.py`), the fixture format, and the schema-level-vs-semantic-level assertion split; per-template subdirectory `CLAUDE.md` under `tests/prompts/<template>/` MUST also exist per the strict DoD-13 "every directory under `tests/` carries a `CLAUDE.md`" rule, but MAY be a brief one-paragraph cross-reference to `tests/prompts/CLAUDE.md` when conventions don't diverge from the parent; per-template `CLAUDE.md` is the place to record any template-specific divergence — e.g., per-prompt fixture conventions unique to that template)
 - **Target spec file(s):** `<bundle>/scripts/**/CLAUDE.md`,
   `<repo-root>/tests/**/CLAUDE.md` (with `tests/fixtures/` excluded
   per H15),
@@ -588,6 +588,46 @@ Each entry uses this shape:
     state before step 4 and short-circuits with an
     informational `status: "skipped"` finding; no marker
     re-write.
+  - **`version-directories-complete` empty-`proposed_changes/`
+    permission for sub-spec v001** (v018 Q1): under v018 Q1,
+    sub-spec trees do NOT receive auto-captured seed
+    proposals — only the main spec does. Sub-spec
+    `history/v001/proposed_changes/` is therefore an EMPTY
+    subdir at seed time. The `version-directories-complete`
+    check accepts an empty `proposed_changes/` subdir as
+    valid (the rule "contains a `proposed_changes/` subdir"
+    is satisfied; emptiness is permitted). The same
+    permission generalizes: any `<spec-root>/history/vNNN/
+    proposed_changes/` MAY be empty when the revise that
+    cut version `vNNN` processed zero proposals (cannot
+    happen for normal revise per PROPOSAL.md's "MUST fail
+    hard when proposed_changes/ contains no proposal files"
+    rule, but happens for sub-spec v001 because sub-spec
+    v001 is created by seed without a paired proposal).
+  - **Per-tree check applicability via `APPLIES_TO`
+    constant** (v018 Q1): each doctor-static check module
+    declares an `APPLIES_TO: frozenset[Literal["main",
+    "sub-spec"]]` module-top constant alongside `SLUG` and
+    `run`. The orchestrator inspects this constant per-tree
+    and skips checks whose `APPLIES_TO` doesn't include
+    the tree's `template_scope`. Default value is
+    `frozenset({"main", "sub-spec"})` (the check runs on
+    every tree). Three v1 narrowings:
+    `template-exists` and `template-files-present` declare
+    `APPLIES_TO = frozenset({"main"})` (sub-spec trees are
+    spec trees, not template payloads); these checks are
+    main-tree-only. `gherkin-blank-line-format` declares
+    `APPLIES_TO = frozenset({"main", "sub-spec"})` BUT the
+    check itself emits a `status: "skipped"` Finding when
+    the tree's template convention is the `minimal`
+    template's no-Gherkin convention (the conditional
+    applicability is content-aware; runtime skip in the
+    check is cleaner than encoding template-aware logic in
+    a constant). All other checks rely on the default.
+    The `APPLIES_TO` rule is enforced by the static
+    registry (v018 Q1 widens registry tuples from
+    `(SLUG, run)` to `(SLUG, run, APPLIES_TO)`; pyright
+    strict type-checks every entry).
   - **Wrapper coverage via per-wrapper tests**
     (v011 K3): No `# pragma: no cover` is applied to any
     `bin/*.py` wrapper body. Each wrapper has
