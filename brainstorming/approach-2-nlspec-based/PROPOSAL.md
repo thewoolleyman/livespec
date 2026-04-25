@@ -1437,7 +1437,15 @@ consumers.
   extensions (remote URLs, registries, plugin-path hints,
   per-environment overrides) will land without breaking the
   wrapper's output contract. See `deferred-items.md`'s
-  `user-hosted-custom-templates` entry.
+  `user-hosted-custom-templates` entry. Custom templates MAY ship
+  analogous **template-bundled prompt-reference materials** at
+  their template root (the file class introduced for the built-in
+  `livespec` template's `livespec-nlspec-spec.md`; see
+  §"Built-in template: `livespec`"). Such files are governed
+  identically: LLM-time read-only references the custom template's
+  prompts cite, not parsed by the skill, not subject to sub-spec
+  governance even when the custom template ships its own
+  sub-spec, and edited directly under PR review post-bootstrap.
 
 ### Skill↔template communication layer
 
@@ -1521,6 +1529,29 @@ template's prompts (`prompts/seed.md`, `prompts/propose-change.md`,
 (via `../livespec-nlspec-spec.md`) where NLSpec discipline is
 needed. This is a template-internal convention; the skill is not
 aware of the file.
+
+`livespec-nlspec-spec.md` is the v1 instance of a distinct file
+class shipped at template root: **template-bundled prompt-reference
+materials**. Inclusion criteria: LLM-time read-only references the
+template's prompts cite at runtime; no skill-side parsing or
+behavioral contract; no doctor-static check operates on the file;
+the skill's Python is unaware of it. This class is structurally
+distinct from `template.json` (skill-side config), `prompts/`
+(LLM-time interview/check prompts), and `specification-template/`
+(seed-time starter content). Unlike those three classes,
+prompt-reference materials are **not governed by the template's
+sub-spec at `SPECIFICATION/templates/<name>/`** and are **not
+agent-generated in Phase 7 of the bootstrap plan**: the sub-spec
+scopes to template *behavior* (interview flow intents, contracts
+the prompts produce, constraints the template imposes); rubric
+content the prompts cite is upstream input to that behavior, not
+output of it. Post-bootstrap evolution of prompt-reference materials
+is via direct edit of the bundled file at the template path under
+ordinary PR review, exempt from the Plan §3 cutover-principle ban
+on hand-editing files under `.claude-plugin/specification-templates/
+<name>/`. The carve-out is bounded: the cutover ban continues to
+apply to `template.json`, anything under `prompts/`, and anything
+under `specification-template/` post-Phase-6.
 
 #### Built-in template: `minimal` (v014 N1)
 
@@ -3871,7 +3902,7 @@ plan):
 | `2026-04-19-nlspec-lifecycle-diagram-detailed.md` | SUPERSEDED-by-section | `SPECIFICATION/spec.md` "Lifecycle" section (subordinate to preceding entry) | 8 |
 | `2026-04-19-nlspec-lifecycle-legend.md` | SUPERSEDED-by-section | `SPECIFICATION/spec.md` "Lifecycle" section (subordinate) | 8 |
 | `2026-04-19-nlspec-terminology-and-structure-summary.md` | SUPERSEDED-by-section | `SPECIFICATION/spec.md` "Lifecycle" section (subordinate) | 8 |
-| `livespec-nlspec-spec.md` | ARCHIVE-ONLY + TEMPLATE-BUNDLED | Archived in `brainstorming/`; shipped as-is at `.claude-plugin/specification-templates/livespec/livespec-nlspec-spec.md` | N/A (already shipped per §"Built-in template: `livespec`") |
+| `livespec-nlspec-spec.md` | ARCHIVE-ONLY + TEMPLATE-BUNDLED-PROMPT-REFERENCE | Brainstorming copy archived in `brainstorming/`; initial bundled copy lands at `.claude-plugin/specification-templates/livespec/livespec-nlspec-spec.md` in Phase 2; post-bootstrap evolution is via direct edit of the bundled file under ordinary PR review, exempt from Plan §3's cutover hand-edit ban under the prompt-reference-metadata carve-out (see §"Built-in template: `livespec`"). Not sub-spec-governed and not agent-regenerated in Phase 7. | N/A (already shipped per §"Built-in template: `livespec`") |
 | `deferred-items.md` | ARCHIVE-ONLY | Archived in `brainstorming/`; items processed as Phase 8 propose-changes per step 5 above | 8 (items) / N/A (doc itself) |
 | `critique-interview-prompt.md` | ARCHIVE-ONLY | Archived in `brainstorming/`; brainstorming-process artifact, not part of shipped livespec | N/A |
 | `PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md` | ARCHIVE-ONLY | Archived in `brainstorming/` after bootstrap completes; execution artifact, not spec content | N/A (bootstrap-only) |

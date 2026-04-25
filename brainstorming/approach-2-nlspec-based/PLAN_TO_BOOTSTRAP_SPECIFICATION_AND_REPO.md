@@ -278,6 +278,22 @@ is a bug in execution per that clause; Phase 7 widens the
 minimum-viable sub-commands to full feature parity exclusively
 through dogfooded cycles.
 
+**Carve-out for template-bundled prompt-reference materials.**
+The hand-edit ban under
+`.claude-plugin/specification-templates/<name>/` is bounded to
+the three governed file classes: `template.json`, anything
+under `prompts/`, and anything under `specification-template/`.
+Template-bundled prompt-reference materials shipped at template
+root (the file class introduced in PROPOSAL.md §"Built-in
+template: `livespec`"; v1 instance is the `livespec` template's
+`livespec-nlspec-spec.md`) are EXEMPT from the ban. Such files
+are not sub-spec-governed and are not agent-regenerated in
+Phase 7; they evolve post-bootstrap via direct edit of the
+bundled file under ordinary PR review. The carve-out applies
+uniformly to custom templates that ship their own prompt-
+reference materials at template root (see PROPOSAL.md §"Template
+resolution contract — Deferred future feature").
+
 The SPECIFICATION tree is NOT flat: it contains the main spec
 files AND a nested sub-spec per built-in template under
 `SPECIFICATION/templates/<name>/` (per v018 Q1-Option-A). Each
@@ -769,11 +785,22 @@ Required implementation surface (everything else stays stubbed):
   `template_files_present`, `proposed_changes_and_history_dirs`,
   `version_directories_complete`, `version_contiguity`,
   `revision_to_proposed_change_pairing`,
-  `proposed_change_topic_format`. (Remaining checks —
-  `out_of_band_edits`, `bcp14_keyword_wellformedness`,
-  `gherkin_blank_line_format`, `anchor_reference_resolution` —
-  stubbed to return a `skipped` finding with message
-  "not-yet-implemented"; they're fleshed out in Phase 7.)
+  `proposed_change_topic_format`. **Phase 3 registers ONLY
+  these 8 implemented checks in `static/__init__.py`.** The
+  remaining four checks (`out_of_band_edits`,
+  `bcp14_keyword_wellformedness`, `gherkin_blank_line_format`,
+  `anchor_reference_resolution`) are not yet present in the
+  codebase at Phase 3 — neither as modules nor as registry
+  entries. Phase 7 lands their implementations and adds them
+  to `static/__init__.py` as a single explicit registry edit
+  alongside the implementations (PROPOSAL.md §"doctor → Static-
+  phase orchestrator" already permits the registry to grow
+  via explicit edits). This avoids overloading the
+  `skipped` Finding status — which is reserved for v014 N3
+  bootstrap-lenience and content-aware skips per the
+  applicability rules above — with a third "transitional
+  not-yet-implemented" semantic, and keeps Phase 6's exit
+  criterion ("all marked `pass`") literally satisfiable.
 - `seed/SKILL.md` — **bootstrap prose** covering the pre-seed
   dialogue, the two-step `resolve_template.py` →
   Read(`prompts/seed.md`) dispatch, payload assembly, wrapper
@@ -977,8 +1004,11 @@ Build out the test tree per PROPOSAL.md §"Testing approach":
   are forbidden by v011 K3, so branch coverage of the
   exit-127 path is achieved exclusively through monkeypatching.
 - `tests/e2e/` — skeleton directory, `CLAUDE.md`, placeholder
-  `fake_claude.py`. Real E2E content is fleshed out in Phase 8
-  (tied to the `end-to-end-integration-test` deferred item).
+  `fake_claude.py`. Real E2E content is fleshed out in Phase 9
+  (Phase 8 only files the forward-pointing closure for the
+  `end-to-end-integration-test` deferred item per Phase 8 item
+  14; the actual `fake_claude.py`, fixtures, and pytest suite
+  land as Phase 9 propose-changes against `SPECIFICATION/`).
 - `tests/prompts/` — (v018 Q5) skeleton directory with
   `CLAUDE.md` describing the prompt-QA harness conventions
   (distinct from `tests/e2e/fake_claude.py`), plus
@@ -1336,6 +1366,41 @@ implementation land atomically per the dogfooding rule.
 PROPOSAL.md stays frozen — from Phase 6 onward, SPECIFICATION/
 is the living oracle.
 
+**Ordering inside Phase 7.** The work items below are not all
+parallel; two dependency edges constrain execution:
+
+1. **Sub-spec widening before dependent regeneration.** Each
+   sub-spec (`SPECIFICATION/templates/livespec/`,
+   `SPECIFICATION/templates/minimal/`) lands at Phase 6 with
+   bootstrap-minimum content and (for `minimal`) explicit
+   "TBD in Phase 7" markers — most notably the delimiter-
+   comment format in `SPECIFICATION/templates/minimal/
+   contracts.md`'s "Template↔mock delimiter-comment format"
+   section, which all four `minimal` prompts depend on.
+   Shared-dependency sections like that one are widened in a
+   dedicated prior propose-change/revise cycle (no template
+   regeneration in the same revise) before any dependent
+   prompt or starter-content regeneration runs. Per-prompt
+   semantic-property-catalogue widening (in
+   `SPECIFICATION/templates/<name>/contracts.md`) happens
+   **in-line** with each prompt's regeneration cycle: one
+   revise updates both the catalogue subsection for that
+   prompt and the regenerated `prompts/<prompt>.md` file
+   atomically. This also delivers §6 Risk #5's mitigation
+   (catching under-specified sub-spec content via critique-
+   driven widening before any template content generation).
+2. **Prompt-QA harness before dependent prompt regeneration.**
+   The prompt-QA harness work item below (template-agnostic
+   `tests/prompts/_harness.py` + per-template fixtures) MUST
+   land before any per-prompt regeneration cycle that
+   verifies the regenerated prompt against the harness — most
+   notably the v018 Q5 / v020 Q2 smoke-check on the
+   regenerated `prompts/seed.md` that exercises both
+   sub-spec-emission dialogue branches. Listing order in this
+   document is by topic, not execution order; the executor
+   agent sequences the harness implementation cycle before the
+   first prompt regeneration cycle that depends on it.
+
 Work items (each is one or more propose-change files filed
 against the seeded `SPECIFICATION/`):
 
@@ -1369,10 +1434,17 @@ against the seeded `SPECIFICATION/`):
   §"Static-phase checks" and codified in the
   `static-check-semantics` deferred item. `out_of_band_edits`
   honors the pre-backfill guard + auto-backfill semantics
-  including author identifier `livespec-doctor`. All doctor-
-  static checks are parameterized per-spec-tree per v018
-  Q1-Option-A: `run_static.py` iterates over the main spec
-  root + each sub-spec root discovered under
+  including author identifier `livespec-doctor`. **Registry
+  edit:** the same propose-change/revise cycle (or one
+  per-check cycle, executor's choice) that lands each
+  implementation also adds the corresponding `(SLUG, run)`
+  entry to `livespec/doctor/static/__init__.py` — the four
+  checks are not present in the registry at Phase 3 per the
+  Phase-3 narrowed-registry policy and are introduced into
+  the registry exactly when their implementations land. All
+  doctor-static checks are parameterized per-spec-tree per
+  v018 Q1-Option-A: `run_static.py` iterates over the main
+  spec root + each sub-spec root discovered under
   `<main-spec-root>/templates/<name>/`, running the
   appropriate check subset per tree (e.g.,
   `gherkin_blank_line_format` applies to the main spec and
@@ -1513,18 +1585,43 @@ pointing at PROPOSAL.md / Phase-1 / Phase-7 decisions:
    sub-specifications".
 2. `python-style-doc-into-constraints` — **performs** the
    migration of `python-skill-script-style-requirements.md`
-   into `SPECIFICATION/constraints.md`, restructured for the
-   spec's heading conventions and BCP 14 requirement language.
-   The paired revise's body acknowledges the deviation from
-   `deferred-items.md` §`python-style-doc-into-constraints`'s
-   "at seed time" guidance (per Phase 6's documented reason:
-   audit granularity beats single-pass seed compression risk),
-   and records the now-spec-resident migration as the
-   authoritative location for style-doc discipline going
-   forward. After this Phase-8 revise lands, the brainstorming
-   `python-skill-script-style-requirements.md` is reference-only
-   (frozen), and `SPECIFICATION/constraints.md` is the living
-   oracle for all style-doc rules.
+   (≈92KB) into `SPECIFICATION/constraints.md`, restructured for
+   the spec's heading conventions and BCP 14 requirement
+   language. **Per-section split (one propose-change/revise per
+   top-level source-doc section).** The migration is NOT a
+   single revise cycle. The source style doc decomposes into
+   roughly 15-25 top-level sections (e.g., Linter and formatter,
+   Type discipline, Domain primitives via `NewType`,
+   `Result`/`IOResult` discipline, Wrappers, Context dataclasses,
+   Dev tooling and task runner, Enforcement suite, etc.). Each
+   section becomes its own propose-change topic against
+   `SPECIFICATION/`, paired with its own revise that lands a
+   bounded chunk of restructured-for-BCP14 content into
+   `SPECIFICATION/constraints.md` (or `SPECIFICATION/spec.md`
+   when the destination heading taxonomy fits better — chosen
+   per propose-change). The split matches the granularity Phase
+   8 item 3 (`companion-docs-mapping`) already uses for
+   companion docs, and applies the same audit-granularity
+   rationale Phase 6 invokes for the seed scope ("audit
+   granularity beats single-pass seed compression risk"): each
+   section's revision is human-reviewable in isolation, and
+   later need to revisit a particular style rule does not have
+   to contend with a single 92KB historical revision.
+
+   Sequencing within item 2: the executor selects a section
+   ordering (e.g., source-doc reading order) and files each
+   propose-change in that order. Each revise lands its own
+   `history/vNNN/` snapshot. The first cycle's paired revise
+   body acknowledges the deviation from `deferred-items.md`
+   §`python-style-doc-into-constraints`'s "at seed time"
+   guidance (per Phase 6's documented reason); subsequent
+   cycles cross-reference the first. The last cycle's revise
+   records the deferred entry as fully closed: every
+   source-doc section has a paired revision; the brainstorming
+   `python-skill-script-style-requirements.md` is reference-
+   only (frozen); `SPECIFICATION/constraints.md` (plus
+   `spec.md` where chosen) is the living oracle for all style-
+   doc rules going forward.
 3. `companion-docs-mapping` — (v018 Q6) processes every
    companion doc according to its pre-assigned migration class
    (MIGRATED-to-SPEC-file / SUPERSEDED-by-section /
@@ -1590,7 +1687,23 @@ pointing at PROPOSAL.md / Phase-1 / Phase-7 decisions:
     v2+ template-discovery extensions MAY declare their own
     sub-spec structure; the `--spec-target` flag surface is
     v1-frozen).
-14. `end-to-end-integration-test` — see Phase 9.
+14. `end-to-end-integration-test` — Phase 8 files a
+    forward-pointing **bookkeeping closure** (one propose-
+    change/revise cycle against `SPECIFICATION/` whose
+    revise body records: "Item 14 will be materialized in
+    Phase 9 via the e2e harness work; this revise is the
+    deferred-item closure record, not the implementation").
+    The actual `tests/e2e/fake_claude.py`, fixtures, and
+    pytest suite then land in Phase 9 as ordinary Phase 9
+    propose-changes against `SPECIFICATION/`, NOT as
+    additional deferred-item closures. This pattern matches
+    how items 1, 8, 9, 10, 11, 13, 15, 16, and 17 are
+    handled (forward- or backward-pointing bookkeeping
+    closures) and lets Phase 8's exit criterion ("every
+    deferred-item entry has a paired revision") be cleanly
+    met by end of Phase 8 without leaking the Phase 8/9
+    boundary. See Phase 9 for the implementation work
+    itself.
 15. `local-bundled-model-e2e` — documented as v2 scope; revise
     closes.
 16. `sub-spec-structural-formalization` — (v018 Q1 NEW)
