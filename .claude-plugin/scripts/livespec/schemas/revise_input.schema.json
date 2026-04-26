@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "revise_input.schema.json",
+  "title": "revise_input",
+  "description": "Schema for the JSON payload that the active template's prompts/revise.md produces and that bin/revise.py consumes via --revise-json. Per PROPOSAL §'revise' lines 2365-2400.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decisions"
+  ],
+  "properties": {
+    "author": {
+      "type": "string",
+      "description": "LLM's best-effort self-identification. Resolved author follows the unified precedence: --author CLI → LIVESPEC_AUTHOR_LLM env → this field → 'unknown-llm'."
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "proposal_topic",
+          "decision",
+          "rationale"
+        ],
+        "properties": {
+          "proposal_topic": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["accept", "modify", "reject"]
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "modifications": {
+            "type": "string",
+            "description": "Required when decision == 'modify'; the LLM's drafted modifications. Ignored otherwise."
+          },
+          "resulting_files": {
+            "type": "array",
+            "description": "When decision == 'accept' or 'modify', the spec files to update + their new content. Empty / omitted when decision == 'reject'.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "content"],
+              "properties": {
+                "path": {"type": "string"},
+                "content": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

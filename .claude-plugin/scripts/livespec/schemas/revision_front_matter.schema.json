@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "revision_front_matter.schema.json",
+  "title": "revision_front_matter",
+  "description": "Schema for the YAML front-matter at the top of a revision file at <spec-root>/history/vNNN/proposed_changes/<topic>-revision.md. Per PROPOSAL §'Revision file format' lines 3027-3050.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proposal",
+    "decision",
+    "revised_at",
+    "author_human",
+    "author_llm"
+  ],
+  "properties": {
+    "proposal": {
+      "type": "string",
+      "description": "Filename of the paired proposed-change file (e.g., 'foo.md'). Pairs by stem with revision-to-proposed-change-pairing.",
+      "pattern": "^[a-z][a-z0-9-]*(-[0-9]+)?\\.md$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["accept", "modify", "reject"],
+      "description": "Per-proposal acceptance decision."
+    },
+    "revised_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Decision timestamp in UTC ISO-8601 seconds."
+    },
+    "author_human": {
+      "type": "string",
+      "description": "Human author from `git config --get user.name` and `user.email`, or 'unknown' fallback per io/git.get_git_user."
+    },
+    "author_llm": {
+      "type": "string",
+      "description": "Resolved LLM author per the unified precedence: --author CLI → LIVESPEC_AUTHOR_LLM env → payload field → 'unknown-llm' fallback. May also be a livespec-<tool> reserved value for skill-auto artifacts."
+    }
+  }
+}

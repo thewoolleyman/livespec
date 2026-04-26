@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "proposed_change_front_matter.schema.json",
+  "title": "proposed_change_front_matter",
+  "description": "Schema for the YAML front-matter at the top of a proposed-change file at <spec-root>/proposed_changes/<topic>.md. Per PROPOSAL §'Proposed-change file format' lines 2933-2989.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "topic",
+    "author",
+    "created_at"
+  ],
+  "properties": {
+    "topic": {
+      "type": "string",
+      "description": "Wrapper-canonicalized kebab-case topic (no -N suffix; -N is filename-level disambiguation only per v017 Q7).",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author identifier — LLM identifier, human handle, or reserved livespec-<tool> for skill-auto artifacts. The livespec- prefix is convention-only, not mechanically enforced."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp in UTC ISO-8601 seconds (e.g., '2026-04-26T09:30:00Z')."
+    }
+  }
+}
