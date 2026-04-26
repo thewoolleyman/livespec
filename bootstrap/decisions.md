@@ -569,3 +569,34 @@ intended use of the integration test per plan line 1390-1395
 boundary, where recovery is imperative-landing (cheap), instead
 of Phase 7's dogfood boundary where recovery would require the
 broken governed loop.").
+
+## 2026-04-26T21:23:48Z — phase 4 sub-step 1 (plan vendor_manifest description fix)
+
+**Decision:** Edit plan line 1443-1444's `vendor_manifest.py`
+description to swap `typing_extensions` → `jsoncomment` as the
+shim entry (post-v026 D1 + v027 D1 reclassifications). Old text:
+"the `shim: true` flag is present on `typing_extensions` and
+absent on every other entry." Corrected: "the `shim: true` flag
+is present on `jsoncomment` (the v026 D1 hand-authored shim) and
+absent on every other entry (post-v027 D1 `typing_extensions` is
+upstream-sourced, NOT a shim)." Same shape as the style-doc line
+1820 drift already deferred at decisions.md 2026-04-26T08:33:35Z.
+Case-B plan-only fix per the bootstrap skill's drift-handling rule
+(PROPOSAL.md unaffected — its v026/v027 reclassifications already
+land jsoncomment as the shim and typing_extensions as
+upstream-sourced; actual `.vendor.jsonc` correctly carries
+`"shim": true` on jsoncomment). Gate confirmed via AskUserQuestion
+2026-04-26 (option: "Apply the plan correction (Recommended)").
+
+**Rationale:** Sub-step 1 of Phase 4 is the start of the
+dev-tooling enforcement scripts. The first script that consumes
+this plan-text guidance is `vendor_manifest.py` itself: if the
+executor implements the validator per the plan's literal stale
+text, the script would VALIDATE THAT typing_extensions has
+`shim: true`, which is wrong post-v027 D1 and would fail against
+the actual `.vendor.jsonc`. Surfacing and fixing the drift now
+unblocks Phase 4 implementation cleanly. The style-doc line 1820
+companion-doc drift remains deferred (per the established
+companion-doc-overlay precedent) — a separate companion-doc
+overlay round can sweep it whenever the next substantive
+PROPOSAL revision lands.

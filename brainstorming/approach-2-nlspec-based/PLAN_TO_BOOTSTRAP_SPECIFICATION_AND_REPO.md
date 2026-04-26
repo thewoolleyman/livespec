@@ -1441,8 +1441,9 @@ code (`just check` includes `dev-tooling/**` in scope). Scripts:
   schema that forbids placeholder strings — every entry has
   a non-empty `upstream_url`, a non-empty `upstream_ref`, a
   parseable-ISO `vendored_at`, and the `shim: true` flag is
-  present on `typing_extensions` and absent on every other
-  entry).
+  present on `jsoncomment` (the v026 D1 hand-authored shim)
+  and absent on every other entry (post-v027 D1
+  `typing_extensions` is upstream-sourced, NOT a shim)).
 
 Each script has a paired `tests/dev-tooling/checks/test_<name>.py`.
 
