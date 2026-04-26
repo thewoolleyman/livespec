@@ -169,10 +169,23 @@ recorded in `<repo-root>/.vendor.jsonc`):
   Schema Draft-7 validator.
 - **`structlog`** (hynek/structlog, BSD-2 / MIT dual) — structured JSON
   logging.
-- **`jsoncomment`** (MIT) — JSONC (JSON-with-comments) parser. A
-  comment-stripping pre-pass over stdlib `json.loads`; used by
-  `livespec/parse/jsonc.py` for `.livespec.jsonc` parsing and any
-  other JSONC input.
+- **`jsoncomment`** (MIT, derivative work) — **vendored as a
+  minimal shim** per v026 D1. The shim file at
+  `.claude-plugin/scripts/_vendor/jsoncomment/__init__.py`
+  faithfully replicates jsoncomment 0.4.2's `//` line-comment and
+  `/* */` block-comment stripping semantics; multi-line strings
+  and trailing-commas support are OPTIONAL (implemented only if
+  `livespec/parse/jsonc.py` requires them). Module-named
+  `jsoncomment` so existing `import jsoncomment` statements work
+  unchanged. The shim's `LICENSE` carries verbatim MIT attribution
+  to Gaspare Iengo (citing jsoncomment 0.4.2's `COPYING` file as
+  the derivative-work source). Used by `livespec/parse/jsonc.py`
+  as a comment-stripping pre-pass over stdlib `json.loads` for
+  `.livespec.jsonc` parsing and any other JSONC input. The
+  canonical upstream (`bitbucket.org/Dando_Real_ITA/json-comment`)
+  was sunset by Atlassian and no live git mirror exists; the PyPI
+  sdist is the only surviving source-of-record, and the v018 Q3
+  git-based initial-vendoring procedure does not apply.
 - **`typing_extensions`** (python/typing_extensions, PSF-2.0) —
   **vendored as a minimal shim** per v013 M1. The shim file at
   `.claude-plugin/scripts/_vendor/typing_extensions/__init__.py`
@@ -211,49 +224,61 @@ would not find them on `import`.
   mechanisms.
 - **Re-vendoring goes through `just vendor-update <lib>`** — the only
   blessed mutation path for upstream-sourced libs (`returns`,
-  `fastjsonschema`, `structlog`, `jsoncomment`). The recipe
-  fetches the upstream ref, copies it under `_vendor/<lib>/`,
-  preserves `LICENSE`, and updates `.vendor.jsonc`'s recorded
-  ref. (The v018 Q4 sixth lib `returns_pyright_plugin` was
-  dropped in v025 D1 — see PROPOSAL.md §"Runtime dependencies
-  — Vendored pure-Python libraries".)
+  `fastjsonschema`, `structlog`). The recipe fetches the
+  upstream ref, copies it under `_vendor/<lib>/`, preserves
+  `LICENSE`, and updates `.vendor.jsonc`'s recorded ref. (The
+  v018 Q4 sixth lib `returns_pyright_plugin` was dropped in
+  v025 D1; `jsoncomment` was reclassified from upstream-sourced
+  lib to hand-authored shim in v026 D1 — see PROPOSAL.md
+  §"Runtime dependencies — Vendored pure-Python libraries".)
 - **Initial-vendoring exception (one-time, v018 Q3).** The
   first population of every upstream-sourced vendored lib
-  (`returns`, `fastjsonschema`, `structlog`, `jsoncomment`)
-  is a one-time MANUAL procedure,
-  distinct from the blessed `just vendor-update` path above:
-  `git clone` the upstream repo at a working ref into a
-  throwaway directory; `git checkout <ref>` matching the
-  `upstream_ref` recorded in `.vendor.jsonc`; copy the
-  library's source tree under
+  (`returns`, `fastjsonschema`, `structlog`) is a one-time
+  MANUAL procedure, distinct from the blessed
+  `just vendor-update` path above: `git clone` the upstream
+  repo at a working ref into a throwaway directory;
+  `git checkout <ref>` matching the `upstream_ref` recorded
+  in `.vendor.jsonc`; copy the library's source tree under
   `.claude-plugin/scripts/_vendor/<lib>/`; copy the upstream
   `LICENSE` file verbatim to
   `.claude-plugin/scripts/_vendor/<lib>/LICENSE`; record the
   lib's provenance in `.vendor.jsonc` (`upstream_url`,
   `upstream_ref`, `vendored_at` ISO-8601 UTC); delete the
   throwaway clone; smoke-test that the wrapper bootstrap
-  imports the vendored lib successfully. Once `jsoncomment`
-  is initially vendored, `just vendor-update <lib>` becomes
-  the only permitted path for subsequent re-vendoring. The
-  initial procedure applies ONCE per livespec repo, at Phase
-  2 of the bootstrap plan; thereafter all upstream-sourced-
-  lib mutations flow through the blessed recipe. The
-  circularity the exception resolves: `just vendor-update
-  <lib>` invokes Python through `livespec.parse.jsonc` to
-  read/write `.vendor.jsonc`, and `livespec.parse.jsonc`
-  imports the vendored `jsoncomment`; the recipe cannot run
-  before `jsoncomment` is already vendored.
-- **Shim libraries are livespec-authored** (v013 M1).
+  imports the vendored lib successfully. Once the
+  `jsoncomment` shim is hand-authored at Phase 2 of the
+  bootstrap plan, `just vendor-update <lib>` becomes the only
+  permitted path for subsequent re-vendoring of upstream-
+  sourced libs. The initial procedure applies ONCE per
+  livespec repo, at Phase 2 of the bootstrap plan; thereafter
+  all upstream-sourced-lib mutations flow through the blessed
+  recipe. The circularity the exception resolves:
+  `just vendor-update <lib>` invokes Python through
+  `livespec.parse.jsonc` to read/write `.vendor.jsonc`, and
+  `livespec.parse.jsonc` imports `jsoncomment`; the recipe
+  cannot run before `jsoncomment` exists. Pre-v026 the
+  satisfying mechanism was "git-clone-and-copy of upstream";
+  post-v026 it is "hand-author the shim at Phase 2".
+- **Shim libraries are livespec-authored** (v013 M1, v026 D1).
   `_vendor/typing_extensions/` is a ~15-line shim module (not
   a verbatim upstream copy) exporting `override` and
-  `assert_never` only. It is NOT re-vendored via
-  `just vendor-update`; instead it is widened (one-line edit
-  per added symbol) or replaced with a full upstream vendoring
-  via a new propose-change cycle. `.vendor.jsonc` records the
+  `assert_never` only. `_vendor/jsoncomment/` is a JSONC
+  parser shim per v026 D1, faithfully replicating jsoncomment
+  0.4.2's `//` and `/* */` comment-stripping semantics.
+  Neither shim is re-vendored via `just vendor-update`;
+  instead each is widened (one-line edit per added symbol /
+  feature) or replaced with a full upstream vendoring via a
+  new propose-change cycle. `.vendor.jsonc` records each
   shim's upstream attribution ref (for provenance) and its
-  `shim: true` flag. Shim updates go through normal
-  code-review; the "never edit `_vendor/`" rule above applies
-  only to upstream-sourced libs.
+  `shim: true` flag. The shim's `LICENSE` is either a verbatim
+  copy of the upstream license (for shims that re-implement
+  upstream APIs at upstream's terms — `typing_extensions`
+  under PSF-2.0) or a derivative-work LICENSE with attribution
+  (for shims that replicate an external library's algorithm
+  — `jsoncomment` under MIT with attribution to Gaspare
+  Iengo). Shim updates go through normal code-review; the
+  "never edit `_vendor/`" rule above applies only to
+  upstream-sourced libs.
 - **`.vendor.jsonc`** records `{upstream_url, upstream_ref, vendored_at}`
   per lib; for shims, records the additional flag `shim: true`
   and the provenance ref from which the shim's LICENSE was
