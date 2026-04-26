@@ -4,62 +4,61 @@
 // Vendored pure-Python libraries" (five entries per v025; the
 // v018 Q4 sixth entry returns_pyright_plugin was dropped in
 // v025 D1; jsoncomment was reclassified from upstream-sourced
-// lib to hand-authored shim per v026 D1, so the breakdown is
-// 3 upstream-sourced + 2 shims).
+// lib to hand-authored shim per v026 D1; typing_extensions was
+// reclassified from hand-authored shim to upstream-sourced lib
+// per v027 D1, so the breakdown is 4 upstream-sourced + 1 shim).
 //
 // Phase 1 deferral: upstream_ref and vendored_at carry
-// placeholder values at this phase for the 3 upstream-sourced
-// libs (returns, fastjsonschema, structlog). Phase 2's
-// initial-vendoring procedure (per v018 Q3) replaces them with
-// the real values during the manual git-clone-and-copy step
-// that lands the libraries into .claude-plugin/scripts/_vendor/.
-// The 2 shims (typing_extensions per v013 M1, jsoncomment per
-// v026 D1) carry real upstream_ref values from authoring time
-// since the v018 Q3 procedure does not apply to shims.
+// placeholder values at this phase for the 4 upstream-sourced
+// libs (returns, fastjsonschema, structlog, typing_extensions).
+// Phase 2's initial-vendoring procedure (per v018 Q3) replaces
+// them with the real values during the manual git-clone-and-copy
+// step that lands the libraries into .claude-plugin/scripts/_vendor/.
+// The 1 shim (jsoncomment per v026 D1) carries real upstream_ref
+// values from authoring time since the v018 Q3 procedure does
+// not apply to shims.
 //
 // Validated by `just check-vendor-manifest` (Phase 4) — the
 // schema forbids placeholder strings: every entry must have a
 // non-empty upstream_url, a non-empty upstream_ref, a parseable-
-// ISO vendored_at; shim: true is required on typing_extensions
-// and jsoncomment, and forbidden on every other entry. The
-// placeholders below are intentionally non-empty so the schema
-// gate fails cleanly (with a "placeholder still present" error)
-// rather than with a "field empty" error if Phase 2 forgets to
-// populate them.
+// ISO vendored_at; shim: true is required on jsoncomment and
+// forbidden on every other entry. The placeholders below are
+// intentionally non-empty so the schema gate fails cleanly (with
+// a "placeholder still present" error) rather than with a
+// "field empty" error if Phase 2 forgets to populate them.
 
 {
   "libraries": [
     {
       "name": "returns",
       "upstream_url": "https://github.com/dry-python/returns",
-      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
-      "vendored_at": "0000-00-00T00:00:00Z"
+      "upstream_ref": "0.25.0",
+      "vendored_at": "2026-04-26T06:05:33Z"
     },
     {
       "name": "fastjsonschema",
       "upstream_url": "https://github.com/horejsek/python-fastjsonschema",
-      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
-      "vendored_at": "0000-00-00T00:00:00Z"
+      "upstream_ref": "v2.21.2",
+      "vendored_at": "2026-04-26T06:05:33Z"
     },
     {
       "name": "structlog",
       "upstream_url": "https://github.com/hynek/structlog",
-      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
-      "vendored_at": "0000-00-00T00:00:00Z"
+      "upstream_ref": "25.5.0",
+      "vendored_at": "2026-04-26T06:05:33Z"
     },
     {
       "name": "jsoncomment",
       "upstream_url": "https://pypi.org/project/jsoncomment/",
       "upstream_ref": "0.4.2",
-      "vendored_at": "0000-00-00T00:00:00Z",
+      "vendored_at": "2026-04-26T06:05:33Z",
       "shim": true
     },
     {
       "name": "typing_extensions",
       "upstream_url": "https://github.com/python/typing_extensions",
       "upstream_ref": "4.12.2",
-      "vendored_at": "0000-00-00T00:00:00Z",
-      "shim": true
+      "vendored_at": "2026-04-26T06:05:33Z"
     }
   ]
 }

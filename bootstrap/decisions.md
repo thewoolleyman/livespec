@@ -184,6 +184,87 @@ enumeration aligns the plan with its own exit criterion. Two
 commits: (1) plan-fix on the enumeration; (2) sub-step 12
 commit on .gitignore (already authored to include .venv/).
 
+## 2026-04-26T10:05:00Z — phase 2 sub-step 5 (typing_extensions widening + v027 path)
+
+**Decision:** During sub-step 5 vendoring, the v013 M1
+typing_extensions hand-authored minimal-shim approach was widened
+in-band per the explicit "MAY widen" clause to add 6 symbols
+(Never, ParamSpec, Self, TypeVarTuple, TypedDict, Unpack) needed
+by the vendored returns + structlog + fastjsonschema sources.
+The widened shim worked on Python 3.13 (system) but failed on
+Python 3.10.16 (the pinned dev env per .python-version) at
+`from returns.io import IOResult` because returns/primitives/
+hkt.py uses `Generic[..., Unpack[TypeVarTuple(...)]]` — variadic
+generics that 3.10 stdlib lacks and a hand-authored shim cannot
+synthesize (3.10's Generic.__class_getitem__ rejects non-TypeVar
+arguments regardless of subscriptable stubs). Routed via the
+bootstrap skill's Case-A halt-on-blocking flow to v027 D1, which
+exercises PROPOSAL.md's pre-planned "scope-widening decision" path:
+vendor full upstream typing_extensions verbatim at tag 4.12.2.
+Post-v027 the typing_extensions content at
+`.claude-plugin/scripts/_vendor/typing_extensions/__init__.py`
+is the verbatim upstream `typing_extensions/src/typing_extensions.py`
+(3641 lines), reclassified from shim to upstream-sourced.
+
+**Rationale.** PROPOSAL.md v013 M1 explicitly anticipated this
+exact path ("re-vendoring the full upstream is a future option
+tracked as a scope-widening decision, not a v013 default"). The
+in-band widening attempt was the right first move — minimal
+PROPOSAL change, exercises an existing v013 M1 allowance — but
+the variadic-generics dependency on 3.10 made full upstream
+vendoring the correct architectural answer. The PSF-2.0 LICENSE
+already authored verbatim during the hand-authored shim work
+stays in place unchanged. v027 D1 exercises the scope-widening
+decision PROPOSAL.md anticipated; the user-facing Python minimum
+(3.10+) is preserved because upstream typing_extensions handles
+the 3.10 backports internally. Smoke test post-v027 passes on
+both Python 3.10.16 (uv venv) and Python 3.13.7 (system).
+
+## 2026-04-26T09:30:00Z — phase 2 sub-step 5 (cosmetic license-label findings, deferred)
+
+**Decision:** During sub-step 5 vendoring, discovered two cosmetic
+license-label drifts in PROPOSAL.md vs actual upstream LICENSE
+files: (1) fastjsonschema labeled `MIT` but upstream LICENSE is
+`BSD-3-Clause` (3-clause BSD with the "Neither the name" clause);
+(2) structlog labeled `BSD-2 / MIT dual` but upstream is
+`MIT OR Apache-2.0` per `pyproject.toml`'s
+`SPDX-License-Identifier: MIT OR Apache-2.0` and the `LICENSE-MIT`
++ `LICENSE-APACHE` + `COPYRIGHT` files. Both libs remain in policy
+per the style-doc allow-list (line 133-134: `MIT`, `BSD-2-Clause`,
+`BSD-3-Clause`, `Apache-2.0`, `PSF-2.0`); the labels are
+cosmetically wrong but architecturally fine. Per the bootstrap
+skill's "Severity judgment over rule-following on PROPOSAL drift"
+rule, cosmetic drift rides along with the next substantive
+revision and never opens its own blocking gate.
+
+Scope of the fix in this sub-step 5 commit: NOTICES.md `structlog`
+block updated from `Dual-licensed BSD-2-Clause / MIT` to
+`Dual-licensed MIT OR Apache-2.0` so it accurately describes the
+LICENSE file actually shipped (combined LICENSE-MIT + LICENSE-APACHE
++ COPYRIGHT). Deferred to next substantive PROPOSAL.md revision:
+- PROPOSAL.md vendored-libs directory tree (line ~100): fastjsonschema
+  `(MIT)` → `(BSD-3-Clause)`; structlog `(BSD-2 / MIT dual)` →
+  `(MIT or Apache-2.0 dual)`.
+- PROPOSAL.md vendored-libs bullet (line ~480-481): same labels.
+- python-skill-script-style-requirements.md vendored-libs section
+  (line ~168, 170): same labels.
+- NOTICES.md fastjsonschema block already correctly says
+  `BSD-3-Clause` (no fix needed there).
+
+**Rationale.** The shipped LICENSE files are the source of truth
+(verbatim upstream content, license terms binding regardless of
+spec labels). The spec labels are descriptive metadata that lag
+the actual content; correcting them is a cosmetic ride-along, not
+a structural change. Doing a v027 cosmetic-only halt-and-revise
+now would be ceremony for label-only metadata when (a) the libs
+are in policy, (b) the LICENSE files are accurate, (c) the next
+substantive revision will sweep them mechanically. The single
+exception applied in this commit is the structlog NOTICES.md
+block: the LICENSE file shipped (combined MIT-or-Apache) cannot
+coherently coexist with a NOTICES.md description that calls it
+"BSD-2/MIT". Anyone reading both would see the file-level
+mismatch immediately.
+
 ## 2026-04-26T08:10:00Z — phase 2 sub-step 5 (pre-execution scan, fast-forward mode)
 
 **Decision:** Fix two leftover "six" → "five" references in

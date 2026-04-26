@@ -135,8 +135,8 @@ v021 decisions:
   test data file population is outside the wrapper's
   scope).
 
-PROPOSAL.md v026 is now the frozen basis for every phase
-below; Phase 0 freezes at v026. (v023 is a critique-fix
+PROPOSAL.md v027 is now the frozen basis for every phase
+below; Phase 0 freezes at v027. (v023 is a critique-fix
 overlay against v022 with no PROPOSAL.md substance change;
 v024 is a critique-fix overlay against v023 WITH PROPOSAL.md
 substance change — the UV-toolchain decision; v025 is a
@@ -150,9 +150,17 @@ WITH PROPOSAL.md substance change — reclassifies
 shim (per the v013 M1 pattern) because the canonical upstream
 (`bitbucket.org/Dando_Real_ITA/json-comment`) was sunset by
 Atlassian and no live git mirror exists, so the v018 Q3
-git-based initial-vendoring procedure cannot apply; see the
-v023, v024, v025, and v026 decision blocks below for
-provenance.)
+git-based initial-vendoring procedure cannot apply; v027 is
+a critique-fix overlay against v026 WITH PROPOSAL.md
+substance change — reclassifies `typing_extensions` from
+hand-authored shim (v013 M1) to upstream-sourced lib
+(vendored full upstream verbatim at tag `4.12.2`) because
+the v013 M1 minimal-shim approach cannot satisfy variadic-
+generics usage (`Generic[..., Unpack[TypeVarTuple(...)]]`)
+inside the vendored returns lib on Python 3.10; PROPOSAL.md
+v013 M1 explicitly anticipated this scope-widening path; see
+the v023, v024, v025, v026, and v027 decision blocks below
+for provenance.)
 
 v022 decisions (direct critique-fix overlay; see
 `history/v022/proposed_changes/critique-fix-v021-revision.md`):
@@ -349,6 +357,50 @@ v026 decisions (direct critique-fix overlay; see
   step 2 frozen-status header literal bumps to "Frozen at
   v026". Plan Execution-prompt block authoritative-version
   line bumps to v026.
+
+v027 decisions (direct critique-fix overlay; see
+`history/v027/proposed_changes/critique-fix-v026-revision.md`):
+- v027 D1: PROPOSAL §"Runtime dependencies — Vendored
+  pure-Python libraries" reclassifies `typing_extensions` from
+  hand-authored shim (per v013 M1) to upstream-sourced lib
+  (vendored full upstream verbatim at tag `4.12.2`). Lib count
+  stays at five; the breakdown shifts to 4 upstream-sourced
+  (`returns`, `fastjsonschema`, `structlog`,
+  `typing_extensions`) + 1 shim (`jsoncomment` per v026 D1).
+  PROPOSAL §"Vendoring discipline — Initial-vendoring
+  exception" adds `typing_extensions` to the v018 Q3 git-based
+  procedure's domain. The "shim libraries" sentence narrows
+  to one entry (jsoncomment only). Triggered during Phase 2
+  sub-step 5 of the in-flight bootstrap when the smoke test on
+  Python 3.10.16 (the pinned dev-env per `.python-version`)
+  failed at `from returns.io import IOResult` because
+  `returns/primitives/hkt.py` uses
+  `Generic[..., Unpack[TypeVarTuple(...)]]` — variadic-
+  generics support that 3.10 stdlib lacks and a hand-authored
+  minimal shim cannot synthesize on 3.10. PROPOSAL.md v013 M1
+  explicitly anticipated this scope-widening path
+  ("re-vendoring the full upstream is a future option tracked
+  as a scope-widening decision, not a v013 default"); v027 D1
+  exercises that decision.
+- v027 D2 (plan-level): Plan Phase 1 sub-step 9
+  (`.vendor.jsonc`) — `typing_extensions` entry no longer
+  carries `"shim": true`. Phase 2's placeholder-replacement
+  note widens to cover the 4 upstream-sourced entries;
+  `jsoncomment` remains the sole shim with its real
+  `upstream_ref` carried from v026 D1.
+- v027 D3 (plan-level): Plan Phase 1 sub-step 11
+  (`NOTICES.md`) — update typing_extensions block to
+  upstream-sourced framing (no longer marked as shim).
+- v027 D4 (plan-level): Plan Phase 2 sub-step 5
+  (`.claude-plugin/scripts/_vendor/`) moves
+  `typing_extensions/` from the shim sub-list to the
+  upstream-sourced sub-list. Now 4 upstream-sourced
+  + 1 shim (jsoncomment).
+- v027 D5 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v027/PROPOSAL.md`. Plan Phase 0
+  step 2 frozen-status header literal bumps to "Frozen at
+  v027". Plan Execution-prompt block authoritative-version
+  line bumps to v027.
 - Triggered during Phase 2 sub-step 5 of the in-flight
   bootstrap when the executor cloned `dry-python/returns` at
   v0.25.0 to vendor the pyright plugin and discovered the
@@ -569,12 +621,17 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v026/PROPOSAL.md` (the v026
-   snapshot — v025 substance with `jsoncomment` reclassified
-   from upstream-sourced lib to hand-authored shim per
-   `history/v026/proposed_changes/critique-fix-v025-revision.md`,
+   byte-identical to `history/v027/PROPOSAL.md` (the v027
+   snapshot — v026 substance with `typing_extensions`
+   reclassified from hand-authored shim to upstream-sourced lib
+   per
+   `history/v027/proposed_changes/critique-fix-v026-revision.md`,
    and the Phase 0 sub-step 2 frozen-status header bumped to
-   "Frozen at v026"; v025 substance is v024 substance with the
+   "Frozen at v027"; v026 substance is v025 substance with
+   `jsoncomment` reclassified from upstream-sourced lib to
+   hand-authored shim per
+   `history/v026/proposed_changes/critique-fix-v025-revision.md`;
+   v025 substance is v024 substance with the
    `returns_pyright_plugin` vendoring removed and the `returns`
    license corrected to BSD-3-Clause per
    `history/v025/proposed_changes/critique-fix-v024-revision.md`;
@@ -586,10 +643,12 @@ sub-steps within a phase MAY run in parallel where noted.
    Q1-Option-A through Q6, v019 Q1, v020 Q1-Q4, v021 Q1-Q3,
    plus v022's prompt-reference-metadata file class and four
    plan-level corrections per the Preconditions section).
-   v026's snapshot was created during a halt-and-revise in
+   v027's snapshot was created during a halt-and-revise in
    Phase 2 sub-step 5 of the in-flight bootstrap; see
+   `history/v027/proposed_changes/critique-fix-v026-revision.md`
+   for the v027 decision provenance,
    `history/v026/proposed_changes/critique-fix-v025-revision.md`
-   for the v026 decision provenance,
+   for v026's,
    `history/v025/proposed_changes/critique-fix-v024-revision.md`
    for v025's,
    `history/v024/proposed_changes/critique-fix-v023-revision.md`
@@ -600,7 +659,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v026. Further evolution happens in
+   > **Status:** Frozen at v027. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -746,27 +805,26 @@ style doc §"Dev tooling and task runner":
   (`returns`, `fastjsonschema`, `structlog`, `jsoncomment`,
   `typing_extensions` — five entries total per v025 D4; the
   v018 Q4 sixth entry `returns_pyright_plugin` was dropped
-  in v025). Per v026 D2, the breakdown is 3 upstream-sourced
-  (`returns`, `fastjsonschema`, `structlog`) + 2 shims
-  (`typing_extensions` per v013 M1, `jsoncomment` per v026
-  D1). Each entry records `upstream_url`, `upstream_ref`,
-  `vendored_at`; both `typing_extensions` and `jsoncomment`
-  also record `shim: true`. For each shim, `upstream_ref` is
-  the upstream release whose semantics the shim faithfully
-  replicates — `"4.12.2"` for `typing_extensions`'s `override`
-  / `assert_never`; `"0.4.2"` for `jsoncomment`'s `//` and
-  `/* */` comment-stripping — giving reviewers a concrete
-  comparison target. For `jsoncomment` specifically,
-  `upstream_url` is the canonical surviving source-of-record
-  on PyPI (`https://pypi.org/project/jsoncomment/`); the
-  bitbucket homepage URL is dead. Widening a shim later
+  in v025). Per v027 D2, the breakdown is 4 upstream-sourced
+  (`returns`, `fastjsonschema`, `structlog`,
+  `typing_extensions`) + 1 shim (`jsoncomment` per v026 D1
+  + v027 D1 reclassification of typing_extensions to
+  upstream-sourced). Each entry records `upstream_url`,
+  `upstream_ref`, `vendored_at`; only `jsoncomment` records
+  `shim: true`. For the `jsoncomment` shim, `upstream_ref` is
+  the upstream release whose comment-stripping semantics the
+  shim faithfully replicates (`"0.4.2"`), giving reviewers a
+  concrete comparison target; `upstream_url` is the canonical
+  surviving source-of-record on PyPI
+  (`https://pypi.org/project/jsoncomment/`) since the bitbucket
+  homepage URL is dead. Widening the jsoncomment shim later
   updates `upstream_ref` to the then-matching upstream
   version. Phase 1 authors all five entries with placeholder
-  `upstream_ref` and `vendored_at` values for the 3 upstream-
-  sourced libs (the 2 shims have real `upstream_ref` values
+  `upstream_ref` and `vendored_at` values for the 4 upstream-
+  sourced libs (the 1 shim has its real `upstream_ref` value
   from authoring time, since shims do not depend on the v018
   Q3 git-clone-and-copy step); Phase 2's initial-vendoring
-  procedure (per v018 Q3) populates the real values for the 3
+  procedure (per v018 Q3) populates the real values for the 4
   upstream-sourced libs during the manual git-clone-and-copy
   step.
 - `.mutmut-baseline.json` — placeholder recording
@@ -819,29 +877,33 @@ PROPOSAL.md §"Skill layout inside the plugin":
   - `chmod +x` applied to every wrapper.
 - `.claude-plugin/scripts/_vendor/<lib>/` — vendored pure-Python
   libraries, each with its `LICENSE` (verbatim upstream copy
-  for upstream-sourced libs and `typing_extensions`-style
-  shims; derivative-work attribution for `jsoncomment`-style
-  shims), at the exact upstream ref recorded in
-  `.vendor.jsonc`. **Per v018 Q3, the initial population of
-  each upstream-sourced lib follows the one-time manual
+  for upstream-sourced libs; derivative-work attribution for
+  the `jsoncomment` shim), at the exact upstream ref recorded
+  in `.vendor.jsonc`. **Per v018 Q3, the initial population
+  of each upstream-sourced lib follows the one-time manual
   procedure documented in PROPOSAL.md §"Vendoring discipline
   — Initial-vendoring exception"** (git clone + checkout +
   cp + LICENSE capture + record in `.vendor.jsonc` +
   smoke-test import); after the `jsoncomment` shim is hand-
   authored at this phase, subsequent re-vendoring of any
   upstream-sourced lib flows through `just vendor-update
-  <lib>`. Per v026 D4, the upstream-sourced sub-list is 3
-  libs and the shim sub-list is 2 libs.
+  <lib>`. Per v027 D4, the upstream-sourced sub-list is 4
+  libs and the shim sub-list is 1 lib.
   - Upstream-sourced (v018 Q3 git-based procedure applies):
     - `returns/` (dry-python/returns, BSD-3-Clause; license
       corrected from BSD-2 in v025 D2)
     - `fastjsonschema/` (MIT)
     - `structlog/` (BSD-2 / MIT dual)
-  - Shims (livespec-authored by hand; v018 Q3 procedure does
+    - `typing_extensions/` (PSF-2.0) — full upstream
+      vendored at tag `4.12.2` per v027 D1 (was the v013 M1
+      hand-authored shim pre-v027). Provides the variadic-
+      generics + Self + Never + TypedDict + ParamSpec +
+      TypeVarTuple + Unpack symbols that the vendored returns
+      + structlog + fastjsonschema sources transitively
+      require, plus livespec's own `override` + `assert_never`
+      canonical-import-path needs.
+  - Shim (livespec-authored by hand; v018 Q3 procedure does
     NOT apply):
-    - `typing_extensions/` — the ~15-line shim per v013 M1
-      exporting exactly `override` and `assert_never`, with
-      a verbatim PSF-2.0 `LICENSE`.
     - `jsoncomment/` — the JSONC parser shim per v026 D1,
       faithfully replicating jsoncomment 0.4.2's `//` line-
       comment and `/* */` block-comment stripping semantics
@@ -2314,7 +2376,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v026 as authoritative. Do not propose any
+Treat PROPOSAL.md v027 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.

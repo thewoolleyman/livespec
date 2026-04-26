@@ -5,25 +5,21 @@ This project vendors the following third-party libraries into
 is preserved alongside its source at
 `.claude-plugin/scripts/_vendor/<name>/LICENSE` (per
 python-skill-script-style-requirements.md §"Vendored third-party
-libraries"). For the 3 upstream-sourced libs (`returns`,
-`fastjsonschema`, `structlog`), the `LICENSE` is a verbatim copy
-of the upstream `LICENSE`. For the 2 shims (`typing_extensions`,
-`jsoncomment`), the `LICENSE` is either a verbatim copy of
-upstream's license (when the shim faithfully re-implements
-upstream APIs at upstream's terms — `typing_extensions` under
-PSF-2.0) or a derivative-work LICENSE with attribution to the
-upstream author (when the shim replicates an external library's
-algorithm — `jsoncomment` under MIT with attribution to Gaspare
-Iengo). Phase 2's initial-vendoring procedure (per v018 Q3)
+libraries"). For the 4 upstream-sourced libs (`returns`,
+`fastjsonschema`, `structlog`, `typing_extensions`), the
+`LICENSE` is a verbatim copy of the upstream `LICENSE`. For the
+1 shim (`jsoncomment`), the `LICENSE` is a derivative-work
+LICENSE with attribution to the upstream author (Gaspare Iengo,
+MIT). Phase 2's initial-vendoring procedure (per v018 Q3)
 copies the upstream-sourced libraries and their `LICENSE` files
-in place; the 2 shims are hand-authored at Phase 2. Until Phase
+in place; the 1 shim is hand-authored at Phase 2. Until Phase
 2 lands, the per-library `LICENSE` paths referenced below do not
 yet exist.
 
 The library list and license metadata below are authoritative
 per PROPOSAL.md §"Runtime dependencies — Vendored pure-Python
-libraries" (five entries per v025; 3 upstream-sourced + 2 shims
-per v026; the v018 Q4 sixth entry `returns_pyright_plugin` was
+libraries" (five entries per v025; 4 upstream-sourced + 1 shim
+per v027; the v018 Q4 sixth entry `returns_pyright_plugin` was
 dropped in v025 D1 — pyright has no plugin system and no
 upstream artifact existed, see
 `brainstorming/approach-2-nlspec-based/history/v025/proposed_changes/critique-fix-v024-revision.md`;
@@ -31,7 +27,13 @@ upstream artifact existed, see
 hand-authored shim in v026 D1 because its canonical upstream
 (`bitbucket.org/Dando_Real_ITA/json-comment`) was sunset and no
 live git mirror exists, see
-`brainstorming/approach-2-nlspec-based/history/v026/proposed_changes/critique-fix-v025-revision.md`).
+`brainstorming/approach-2-nlspec-based/history/v026/proposed_changes/critique-fix-v025-revision.md`;
+`typing_extensions` was reclassified from hand-authored shim to
+upstream-sourced lib in v027 D1 because vendored libs'
+transitive use of variadic generics required full upstream
+typing_extensions backports that a minimal shim cannot
+synthesize on Python 3.10, see
+`brainstorming/approach-2-nlspec-based/history/v027/proposed_changes/critique-fix-v026-revision.md`).
 
 ---
 
@@ -61,9 +63,10 @@ fast validation. See PROPOSAL.md §"Schemas and dataclasses".
 ## `structlog`
 
 - **Upstream:** hynek/structlog (https://github.com/hynek/structlog)
-- **License:** Dual-licensed BSD-2-Clause / MIT (consumer's choice)
+- **License:** Dual-licensed MIT OR Apache-2.0 (consumer's choice)
 - **Verbatim license file:** `.claude-plugin/scripts/_vendor/structlog/LICENSE`
-  (preserves both license texts as shipped upstream)
+  (preserves both license texts as shipped upstream, prefixed by the
+  upstream `COPYRIGHT` notice)
 
 Structured JSON logging. See python-skill-script-style-requirements.md
 §"Structured logging".
@@ -99,19 +102,25 @@ files that benefit from inline comments.
 
 ---
 
-## `typing_extensions` (shim)
+## `typing_extensions`
 
 - **Upstream:** python/typing_extensions
   (https://github.com/python/typing_extensions)
 - **License:** Python Software Foundation License (PSF-2.0)
 - **Verbatim license file:** `.claude-plugin/scripts/_vendor/typing_extensions/LICENSE`
 
-Shim re-exporting `override` and `assert_never` from the
-standard library equivalents available in Python 3.10+. Per
-v013 M1: livespec uses `from typing_extensions import override,
-assert_never` uniformly so pyright's `reportImplicitOverride`
-diagnostic and `check-assert-never-exhaustiveness` recognize a
-single canonical import path. The shim's `upstream_ref` (in
-`.vendor.jsonc`) records the upstream `typing_extensions`
-release whose `override` / `assert_never` semantics the shim
-faithfully replicates.
+Python typing-system backports. Vendored full upstream verbatim
+at tag `4.12.2` per v027 D1 (was the v013 M1 hand-authored
+minimal shim pre-v027). Provides the variadic-generics + Self +
+Never + TypedDict + ParamSpec + TypeVarTuple + Unpack symbols
+that the vendored returns + structlog + fastjsonschema sources
+transitively require at import time, plus livespec's own
+canonical-import-path needs (`override` for pyright's
+`reportImplicitOverride` per style-doc L2; `assert_never` for
+the Never-narrowing exhaustiveness check per style-doc L7).
+v027 D1 reclassified typing_extensions from shim to
+upstream-sourced because the v013 M1 minimal-shim approach
+cannot satisfy `Generic[..., Unpack[TypeVarTuple(...)]]`
+variadic-generics usage on Python 3.10 (the dev-env minimum) —
+PROPOSAL.md v013 M1 explicitly anticipated this scope-widening
+path.

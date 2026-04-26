@@ -187,20 +187,25 @@ recorded in `<repo-root>/.vendor.jsonc`):
   sdist is the only surviving source-of-record, and the v018 Q3
   git-based initial-vendoring procedure does not apply.
 - **`typing_extensions`** (python/typing_extensions, PSF-2.0) —
-  **vendored as a minimal shim** per v013 M1. The shim file at
+  **vendored full upstream verbatim** at tag `4.12.2` per v027
+  D1 (was the v013 M1 hand-authored minimal shim pre-v027). The
+  upstream lib at
   `.claude-plugin/scripts/_vendor/typing_extensions/__init__.py`
-  exports exactly `override` (no-op decorator per PEP 698) and
-  `assert_never` (raises `AssertionError` at runtime, `Never`-typed
-  parameter for pyright narrowing). The module name
-  `typing_extensions` is retained so pyright's
-  `reportImplicitOverride` diagnostic (v012 L2) and the
-  `check-assert-never-exhaustiveness` check (v012 L7) recognize
-  the import path. The shim preserves upstream attribution and
-  ships the PSF-2.0 `LICENSE` file verbatim. Future livespec
-  revisions MAY widen the shim to re-export additional symbols
-  (each addition is a one-line edit) or re-vendor the full
-  upstream library; both paths are scope-widening decisions, not
-  v013 defaults.
+  provides full Python typing-system backports: `override` +
+  `assert_never` for livespec's own canonical-import-path needs
+  (pyright's `reportImplicitOverride` diagnostic v012 L2 and the
+  `check-assert-never-exhaustiveness` check v012 L7), plus the
+  variadic-generics + Self + Never + TypedDict + ParamSpec +
+  TypeVarTuple + Unpack symbols that the vendored returns +
+  structlog + fastjsonschema sources transitively require at
+  import time. The module name `typing_extensions` is the
+  upstream-canonical path. The verbatim PSF-2.0 `LICENSE` is
+  shipped at `_vendor/typing_extensions/LICENSE`. v027 D1
+  reclassified typing_extensions from shim to upstream-sourced
+  because the v013 M1 minimal-shim approach cannot satisfy
+  `Generic[..., Unpack[TypeVarTuple(...)]]` variadic-generics
+  usage on Python 3.10 (the dev-env minimum); PROPOSAL.md v013
+  M1 explicitly anticipated this scope-widening path.
 
 Each vendored lib's `LICENSE` file MUST be preserved at
 `_vendor/<lib>/LICENSE`. A `NOTICES.md` at the repo root MUST list every
@@ -224,17 +229,20 @@ would not find them on `import`.
   mechanisms.
 - **Re-vendoring goes through `just vendor-update <lib>`** — the only
   blessed mutation path for upstream-sourced libs (`returns`,
-  `fastjsonschema`, `structlog`). The recipe fetches the
-  upstream ref, copies it under `_vendor/<lib>/`, preserves
-  `LICENSE`, and updates `.vendor.jsonc`'s recorded ref. (The
-  v018 Q4 sixth lib `returns_pyright_plugin` was dropped in
-  v025 D1; `jsoncomment` was reclassified from upstream-sourced
-  lib to hand-authored shim in v026 D1 — see PROPOSAL.md
+  `fastjsonschema`, `structlog`, `typing_extensions`). The recipe
+  fetches the upstream ref, copies it under `_vendor/<lib>/`,
+  preserves `LICENSE`, and updates `.vendor.jsonc`'s recorded
+  ref. (The v018 Q4 sixth lib `returns_pyright_plugin` was
+  dropped in v025 D1; `jsoncomment` was reclassified from
+  upstream-sourced lib to hand-authored shim in v026 D1;
+  `typing_extensions` was reclassified from hand-authored shim
+  to upstream-sourced lib in v027 D1 — see PROPOSAL.md
   §"Runtime dependencies — Vendored pure-Python libraries".)
 - **Initial-vendoring exception (one-time, v018 Q3).** The
   first population of every upstream-sourced vendored lib
-  (`returns`, `fastjsonschema`, `structlog`) is a one-time
-  MANUAL procedure, distinct from the blessed
+  (`returns`, `fastjsonschema`, `structlog`,
+  `typing_extensions`) is a one-time MANUAL procedure,
+  distinct from the blessed
   `just vendor-update` path above: `git clone` the upstream
   repo at a working ref into a throwaway directory;
   `git checkout <ref>` matching the `upstream_ref` recorded
@@ -259,26 +267,24 @@ would not find them on `import`.
   cannot run before `jsoncomment` exists. Pre-v026 the
   satisfying mechanism was "git-clone-and-copy of upstream";
   post-v026 it is "hand-author the shim at Phase 2".
-- **Shim libraries are livespec-authored** (v013 M1, v026 D1).
-  `_vendor/typing_extensions/` is a ~15-line shim module (not
-  a verbatim upstream copy) exporting `override` and
-  `assert_never` only. `_vendor/jsoncomment/` is a JSONC
+- **Shim libraries are livespec-authored** (v026 D1).
+  `_vendor/jsoncomment/` is the only shim post-v027: a JSONC
   parser shim per v026 D1, faithfully replicating jsoncomment
-  0.4.2's `//` and `/* */` comment-stripping semantics.
-  Neither shim is re-vendored via `just vendor-update`;
-  instead each is widened (one-line edit per added symbol /
-  feature) or replaced with a full upstream vendoring via a
-  new propose-change cycle. `.vendor.jsonc` records each
-  shim's upstream attribution ref (for provenance) and its
-  `shim: true` flag. The shim's `LICENSE` is either a verbatim
-  copy of the upstream license (for shims that re-implement
-  upstream APIs at upstream's terms — `typing_extensions`
-  under PSF-2.0) or a derivative-work LICENSE with attribution
-  (for shims that replicate an external library's algorithm
-  — `jsoncomment` under MIT with attribution to Gaspare
-  Iengo). Shim updates go through normal code-review; the
-  "never edit `_vendor/`" rule above applies only to
-  upstream-sourced libs.
+  0.4.2's `//` and `/* */` comment-stripping semantics. The
+  shim is not re-vendored via `just vendor-update`; instead it
+  is widened (one-line edit per added feature) or replaced
+  with a full upstream vendoring via a new propose-change
+  cycle. `.vendor.jsonc` records the shim's upstream
+  attribution ref (for provenance) and its `shim: true` flag.
+  The shim's `LICENSE` is a derivative-work LICENSE with
+  attribution to the upstream author (Gaspare Iengo, MIT).
+  Shim updates go through normal code-review; the "never edit
+  `_vendor/`" rule above applies only to upstream-sourced
+  libs. (Pre-v027, `_vendor/typing_extensions/` was also a
+  shim per v013 M1; v027 D1 reclassified it to upstream-sourced
+  because vendored-lib transitive use of variadic generics
+  required full upstream typing_extensions backports that a
+  minimal shim cannot synthesize on Python 3.10.)
 - **`.vendor.jsonc`** records `{upstream_url, upstream_ref, vendored_at}`
   per lib; for shims, records the additional flag `shim: true`
   and the provenance ref from which the shim's LICENSE was
@@ -853,18 +859,17 @@ way to express them.
 
 Both symbols MUST be imported uniformly from `typing_extensions`,
 not from stdlib `typing`, regardless of Python version.
-`typing_extensions` is **vendored as a minimal shim** at
+`typing_extensions` is **vendored full upstream verbatim** at
+tag `4.12.2` per v027 D1, at
 `.claude-plugin/scripts/_vendor/typing_extensions/__init__.py`
-(v013 M1); the shim exports exactly `override` and `assert_never`
-and retains the `typing_extensions` module name so pyright's
-`reportImplicitOverride` recognizes the import path and
-`check-assert-never-exhaustiveness` recognizes the
+(was the v013 M1 hand-authored minimal shim pre-v027). The
+upstream-canonical `typing_extensions` module name is retained
+so pyright's `reportImplicitOverride` recognizes the import
+path and `check-assert-never-exhaustiveness` recognizes the
 `Never`-narrowing signature. See §"Vendored third-party
-libraries" above for the shim's license + attribution. Uniform
+libraries" above for the lib's license + attribution. Uniform
 import discipline (`from typing_extensions import override,
-assert_never`) eliminates per-version conditionals and survives
-a future widening of the shim or re-vendoring of the full
-upstream library.
+assert_never`) eliminates per-version conditionals.
 
 ### Module API surface
 
