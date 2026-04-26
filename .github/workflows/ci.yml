@@ -1,0 +1,82 @@
+# CI workflow — per-target matrix with fail-fast: false.
+#
+# Authoritative source: PROPOSAL.md §"Dev tooling and task runner"
+# and python-skill-script-style-requirements.md §"Enforcement
+# suite — Invocation surfaces": one job per check via a matrix
+# strategy with fail-fast: false, each calling `just <target>`.
+# The jdx/mise-action@v2 step installs the mise-pinned binaries
+# (uv, just, lefthook); `uv sync --all-groups` installs the
+# Python dev deps from pyproject.toml [dependency-groups.dev]
+# per v024.
+#
+# Targets in the matrix mirror python-skill-script-style-requirements.md
+# §"Enforcement suite — Canonical target list" (the targets that
+# are part of `just check`). Release-gate targets
+# (check-mutation, check-no-todo-registry) live in
+# release-tag.yml. The real-claude E2E target lives in
+# e2e-real.yml.
+#
+# Direct tool invocations (`ruff`, `pyright`, `pytest`, `python3`)
+# in `run:` lines are forbidden by check-no-direct-tool-invocation
+# (Phase 4 grep-level enforcement); every step delegates to
+# `just <target>`.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  merge_group:
+
+jobs:
+  check:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - check-lint
+          - check-format
+          - check-types
+          - check-complexity
+          - check-imports-architecture
+          - check-private-calls
+          - check-global-writes
+          - check-supervisor-discipline
+          - check-no-raise-outside-io
+          - check-no-except-outside-io
+          - check-public-api-result-typed
+          - check-schema-dataclass-pairing
+          - check-main-guard
+          - check-wrapper-shape
+          - check-keyword-only-args
+          - check-match-keyword-only
+          - check-no-inheritance
+          - check-assert-never-exhaustiveness
+          - check-newtype-domain-primitives
+          - check-all-declared
+          - check-no-write-direct
+          - check-pbt-coverage-pure-modules
+          - check-claude-md-coverage
+          - check-heading-coverage
+          - check-vendor-manifest
+          - check-no-direct-tool-invocation
+          - check-tools
+          - check-tests
+          - check-coverage
+          - e2e-test-claude-code-mock
+          - check-prompts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pinned binaries via mise
+        uses: jdx/mise-action@v2
+
+      - name: Install Python dev deps via uv
+        run: uv sync --all-groups
+
+      - name: just ${{ matrix.target }}
+        run: just ${{ matrix.target }}
