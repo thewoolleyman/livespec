@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "finding.schema.json",
+  "title": "finding",
+  "description": "Schema for a single doctor-static check Finding (v014 N2 standalone). Each check produces one Finding per tree; the orchestrator collects them into a doctor_findings payload. status='pass' is success; status='fail' triggers exit 3; status='skipped' is bootstrap-lenience or content-aware skip.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "check_id",
+    "status",
+    "message",
+    "path",
+    "line",
+    "spec_root"
+  ],
+  "properties": {
+    "check_id": {
+      "type": "string",
+      "description": "Hyphenated check slug, prefixed with 'doctor-' (e.g., 'doctor-version-contiguity').",
+      "pattern": "^doctor-[a-z0-9-]+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "fail", "skipped"],
+      "description": "Outcome. 'pass' = check ran and asserted invariant holds; 'fail' = check ran and detected a violation (triggers exit 3); 'skipped' = bootstrap-lenience (v014 N3) or content-aware skip per the static-check-semantics deferred entry."
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable description of the outcome. For 'fail', should name the specific violation; for 'skipped', should name the reason."
+    },
+    "path": {
+      "type": ["string", "null"],
+      "description": "Optional spec_root-relative file path implicated in the finding. null when the check has no path-level locality (e.g., orchestrator-level findings)."
+    },
+    "line": {
+      "type": ["integer", "null"],
+      "description": "Optional 1-based line number within `path`. null when `path` is null or the check has no line-level locality."
+    },
+    "spec_root": {
+      "type": "string",
+      "description": "The spec-root path the check ran against (per v018 Q1). Discriminates per-tree origin — the main spec tree vs each sub-spec tree."
+    }
+  }
+}
