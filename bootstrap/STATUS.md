@@ -1,8 +1,8 @@
 # Bootstrap status
 
 **Current phase:** 1
-**Current sub-step:** 7
+**Current sub-step:** 8
 **Last completed exit criterion:** phase 0
-**Next action:** Phase 1 sub-step 7 — author `.github/workflows/release-tag.yml` per the plan: runs `just check-mutation` and `just check-no-todo-registry` on tag push.
-**Last updated:** 2026-04-26T06:16:00Z
-**Last commit:** e60683b
+**Next action:** Phase 1 sub-step 8 — author `.github/workflows/e2e-real.yml` per the plan: invokes `just e2e-test-claude-code-real` on `merge_group`, `push` to `master`, and `workflow_dispatch`; gated on `ANTHROPIC_API_KEY`.
+**Last updated:** 2026-04-26T06:18:00Z
+**Last commit:** 66e087f
