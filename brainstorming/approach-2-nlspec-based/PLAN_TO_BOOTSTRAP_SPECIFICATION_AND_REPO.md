@@ -135,8 +135,8 @@ v021 decisions:
   test data file population is outside the wrapper's
   scope).
 
-PROPOSAL.md v027 is now the frozen basis for every phase
-below; Phase 0 freezes at v027. (v023 is a critique-fix
+PROPOSAL.md v028 is now the frozen basis for every phase
+below; Phase 0 freezes at v028. (v023 is a critique-fix
 overlay against v022 with no PROPOSAL.md substance change;
 v024 is a critique-fix overlay against v023 WITH PROPOSAL.md
 substance change — the UV-toolchain decision; v025 is a
@@ -158,9 +158,19 @@ hand-authored shim (v013 M1) to upstream-sourced lib
 the v013 M1 minimal-shim approach cannot satisfy variadic-
 generics usage (`Generic[..., Unpack[TypeVarTuple(...)]]`)
 inside the vendored returns lib on Python 3.10; PROPOSAL.md
-v013 M1 explicitly anticipated this scope-widening path; see
-the v023, v024, v025, v026, and v027 decision blocks below
-for provenance.)
+v013 M1 explicitly anticipated this scope-widening path;
+v028 is a critique-fix overlay against v027 WITH PROPOSAL.md
+substance change — corrects the bundle-root derivation
+formula at PROPOSAL §"Template resolution contract" line
+1466, replacing the off-by-one
+`Path(__file__).resolve().parent.parent` (which resolves
+to `.claude-plugin/scripts/`) with the correct
+`Path(__file__).resolve().parents[3]` from the
+`livespec/commands/resolve_template.py` implementation file
+(which resolves to `.claude-plugin/`, where
+`specification-templates/` actually lives); see the v023,
+v024, v025, v026, v027, and v028 decision blocks below for
+provenance.)
 
 v022 decisions (direct critique-fix overlay; see
 `history/v022/proposed_changes/critique-fix-v021-revision.md`):
@@ -411,6 +421,40 @@ v027 decisions (direct critique-fix overlay; see
   Case-A PROPOSAL-drift rule (auto-blocking; halt-and-revise
   required).
 
+v028 decisions (direct critique-fix overlay; see
+`history/v028/proposed_changes/critique-fix-v027-revision.md`):
+- v028 D1: PROPOSAL §"Template resolution contract" line 1466
+  bundle-root derivation formula corrected from
+  `Path(__file__).resolve().parent.parent` (which resolves to
+  `.claude-plugin/scripts/` — wrong; that's `<scripts-root>`,
+  not `<bundle-root>`) to the verbal description "the
+  `.claude-plugin/` directory of the installed plugin (the
+  parent of the `scripts/` subtree)" plus the concrete formula
+  `Path(__file__).resolve().parents[3]` anchored to the
+  `livespec/commands/resolve_template.py` implementation file
+  where `parents[0]` is `commands/`, `parents[1]` is
+  `livespec/`, `parents[2]` is `scripts/`, and `parents[3]` is
+  `.claude-plugin/`. The shebang wrapper at
+  `bin/resolve_template.py` has no room for path-computation
+  logic per the wrapper-shape contract, so the path derivation
+  happens in the `commands/` implementation, not the
+  shebang wrapper. The directory tree at PROPOSAL lines 88 +
+  172 was always correct (`specification-templates/` is a
+  sibling of `scripts/` under `.claude-plugin/`); only the
+  formula derived from the tree was wrong.
+- v028 D2 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v028/PROPOSAL.md`. Plan Phase 0
+  step 2 frozen-status header literal bumps to "Frozen at
+  v028". Plan Execution-prompt block authoritative-version
+  line bumps to v028.
+- Triggered during Phase 3 sub-step 12 of the in-flight
+  bootstrap when the executor began `livespec/commands/
+  resolve_template.py` implementation work and traced the
+  PROPOSAL line 1466 formula against the actual on-disk
+  layout. Routed via the bootstrap skill's Case-A
+  PROPOSAL-drift rule (auto-blocking; halt-and-revise
+  required).
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -621,13 +665,18 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v027/PROPOSAL.md` (the v027
-   snapshot — v026 substance with `typing_extensions`
-   reclassified from hand-authored shim to upstream-sourced lib
-   per
-   `history/v027/proposed_changes/critique-fix-v026-revision.md`,
+   byte-identical to `history/v028/PROPOSAL.md` (the v028
+   snapshot — v027 substance with the bundle-root derivation
+   formula at PROPOSAL §"Template resolution contract" line
+   1466 corrected from `Path(__file__).resolve().parent.parent`
+   to `Path(__file__).resolve().parents[3]` per
+   `history/v028/proposed_changes/critique-fix-v027-revision.md`,
    and the Phase 0 sub-step 2 frozen-status header bumped to
-   "Frozen at v027"; v026 substance is v025 substance with
+   "Frozen at v028"; v027 substance is v026 substance with
+   `typing_extensions` reclassified from hand-authored shim to
+   upstream-sourced lib per
+   `history/v027/proposed_changes/critique-fix-v026-revision.md`;
+   v026 substance is v025 substance with
    `jsoncomment` reclassified from upstream-sourced lib to
    hand-authored shim per
    `history/v026/proposed_changes/critique-fix-v025-revision.md`;
@@ -643,10 +692,12 @@ sub-steps within a phase MAY run in parallel where noted.
    Q1-Option-A through Q6, v019 Q1, v020 Q1-Q4, v021 Q1-Q3,
    plus v022's prompt-reference-metadata file class and four
    plan-level corrections per the Preconditions section).
-   v027's snapshot was created during a halt-and-revise in
-   Phase 2 sub-step 5 of the in-flight bootstrap; see
+   v028's snapshot was created during a halt-and-revise in
+   Phase 3 sub-step 12 of the in-flight bootstrap; see
+   `history/v028/proposed_changes/critique-fix-v027-revision.md`
+   for the v028 decision provenance,
    `history/v027/proposed_changes/critique-fix-v026-revision.md`
-   for the v027 decision provenance,
+   for v027's,
    `history/v026/proposed_changes/critique-fix-v025-revision.md`
    for v026's,
    `history/v025/proposed_changes/critique-fix-v024-revision.md`
@@ -659,7 +710,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v027. Further evolution happens in
+   > **Status:** Frozen at v028. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -2383,7 +2434,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v027 as authoritative. Do not propose any
+Treat PROPOSAL.md v028 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
