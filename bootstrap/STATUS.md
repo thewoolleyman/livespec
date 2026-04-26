@@ -1,8 +1,8 @@
 # Bootstrap status
 
 **Current phase:** 3
-**Current sub-step:** 2
+**Current sub-step:** 3
 **Last completed exit criterion:** phase 2
-**Next action:** Phase 3 sub-step 2 — expand `livespec/types.py` from its Phase 2 placeholder to author all 8 canonical NewType aliases enumerated in style doc §"Domain primitives via `NewType`": `CheckId` (str), `RunId` (str), `TopicSlug` (str), `SpecRoot` (Path), `SchemaId` (str), `TemplateName` (str), `Author` (str), `VersionTag` (str). Sub-step 1 (errors.py verification) closed: traced every Phase-3 implementation surface (resolve_template, seed, propose_change/critique/revise, doctor static, validate/, parse/, io/) against the Phase 2 errors.py — every failure path maps to an existing class (collisions/idempotency/missing-template → PreconditionError; non-canonical topic / malformed payload / schema validation → ValidationError; argparse failures → UsageError; -h → HelpRequested; git absence → GitUnavailableError). No widening required; errors.py stays as authored at Phase 2.
-**Last updated:** 2026-04-26T08:56:26Z
-**Last commit:** 268ae05
+**Next action:** Phase 3 sub-step 3 — expand `livespec/context.py` to author the context dataclasses with the exact fields named in style doc §"Context dataclasses": `DoctorContext`, `SeedContext`, plus the other context dataclasses, including v014 N3's `config_load_status` / `template_load_status` AND v018 Q1's `template_name: str` field (`"main"` sentinel for the main spec tree, or the sub-spec directory name for each sub-spec tree). Sub-step 2 closed: authored 8 canonical NewType aliases in types.py (`Author`, `CheckId`, `RunId`, `SchemaId`, `SpecRoot`, `TemplateName`, `TopicSlug`, `VersionTag`) verbatim per the style doc §"Domain primitives via `NewType`" mapping table; ruff clean.
+**Last updated:** 2026-04-26T08:57:29Z
+**Last commit:** d876b3c
