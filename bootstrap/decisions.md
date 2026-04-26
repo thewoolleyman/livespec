@@ -415,3 +415,42 @@ that the next real revision will sweep mechanically. Implementation
 already includes the field; downstream Phase 3 work consuming
 `ctx.template_name` (run_static.py orchestrator at sub-step 18) is
 unblocked.
+
+## 2026-04-26T09:07:28Z — phase 3 sub-step 4 (pyproject.toml ruff TRY003 per-file-ignore)
+
+**Decision:** Add per-file-ignore for `TRY003` (tryceratops:
+"Avoid specifying long messages outside the exception class")
+scoped to `.claude-plugin/scripts/livespec/io/**.py`. Discovered
+during Phase 3 sub-step 4 while authoring `livespec/io/fs.py`:
+`raise PreconditionError(f"file not found: {path}")` and 14 sibling
+raise-sites all triggered TRY003 because the messages embed runtime
+context as f-strings rather than living inside per-context
+exception subclasses. Same precedent as sub-step 9's pyproject.toml
+ruff config fix at the Phase 2 exit-criterion check: pure
+implementation bug fix in pyproject.toml (no PROPOSAL revision and
+no plan edit required) when the spec mandates a configuration that
+the initial pyproject.toml authoring at Phase 1 sub-step 3 missed.
+
+**Rationale:** v013 M5 mandates a flat one-level `LivespecError`
+hierarchy: `UsageError`, `PreconditionError`, `ValidationError`,
+`GitUnavailableError`, `PermissionDeniedError`, `ToolMissingError`
+all subclass `LivespecError` directly; further subclassing is
+forbidden (`check-no-inheritance` enforces direct-parent
+allowlist). `LivespecError` raise-sites are restricted to
+`livespec/io/**` (`check-no-raise-outside-io`). Domain-meaningful
+messages MUST embed runtime context (which path/value/operation
+failed) so the operator can act on them, but with the flat
+hierarchy mandated by M5, that context can ONLY be embedded at
+the raise-site as an f-string argument to the existing
+`PreconditionError` / `PermissionDeniedError` / etc. constructors
+— there is no per-context subclass to put the message template
+in. TRY003 wants raise-sites to look like `raise FileNotFound(path)`
+where `FileNotFound` embeds the message template; v013 M5 forbids
+authoring such a class. The two rules are architecturally
+incompatible at the io/ raise-site location, so per-file-ignoring
+TRY003 in that exact subtree is the minimal reconciliation. The
+TRY family's other rules (TRY002, TRY004, TRY200, TRY201, TRY300,
+TRY301, TRY400, TRY401) remain active everywhere — only TRY003 is
+ignored, and only in the one subtree where it conflicts. The
+pyproject.toml comment block documents the rationale for future
+readers per the established companion-doc-overlay precedent.

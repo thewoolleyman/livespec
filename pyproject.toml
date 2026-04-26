@@ -158,6 +158,19 @@ ban-relative-imports = "all"
 # would mark this dead code because target-version = "py310", but
 # the check is the bootstrap mechanism itself — it MUST remain.
 ".claude-plugin/scripts/bin/_bootstrap.py" = ["UP036"]
+# v013 M5 mandates a flat one-level LivespecError hierarchy
+# (UsageError, PreconditionError, ValidationError, etc. all
+# subclass LivespecError directly; further subclassing forbidden).
+# `LivespecError` raise-sites are restricted to `livespec/io/**`
+# (check-no-raise-outside-io). Domain-meaningful messages MUST
+# embed runtime context (which path/value/operation failed), so
+# the messages are constructed at the raise-site as f-strings:
+# `raise PreconditionError(f"file not found: {path}")`. TRY003
+# (tryceratops: "Avoid specifying long messages outside the
+# exception class") would force per-context exception subclasses,
+# which v013 M5 forbids. Per-file-ignore scoped to the only place
+# LivespecError is raised.
+".claude-plugin/scripts/livespec/io/**.py" = ["TRY003"]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.
