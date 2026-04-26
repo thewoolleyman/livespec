@@ -8,12 +8,11 @@
 # invocation; lefthook.yml and .github/workflows/*.yml only
 # call `just <target>`.
 #
-# Phase 1 deferrals (per PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md):
-#   - `just bootstrap` is a placeholder echo at this phase. The
-#     `lefthook install` step is added at Phase 5's exit. The
-#     `.claude/skills -> ../.claude-plugin/skills` symlink-
-#     recreation step is added by Phase 2 (after the target
-#     directory exists).
+# Phase deferrals (per PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md):
+#   - `just bootstrap` recreates the `.claude/skills ->
+#     ../.claude-plugin/skills` symlink (added at Phase 2 sub-step
+#     8 once the target directory exists). The `lefthook install`
+#     step is added at Phase 5's exit.
 #   - Most check-* recipes delegate to dev-tooling/checks/<name>.py
 #     scripts authored in Phase 4. They will fail until Phase 4
 #     lands them; this is expected during Phases 1-3.
@@ -31,7 +30,7 @@ default:
 # ---------------------------------------------------------------
 
 bootstrap:
-    @echo "bootstrap: nothing to do until Phase 5"
+    ln -sfn ../.claude-plugin/skills .claude/skills
 
 # ---------------------------------------------------------------
 # Aggregate check — runs every check below sequentially. Continues
