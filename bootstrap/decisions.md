@@ -31,3 +31,33 @@ decision to make about which path is correct. Producing a v024
 snapshot with an unchanged PROPOSAL.md would be ceremony, not
 verification. The skill carve-out preserves halt-and-revise as
 the default for any non-mechanical drift.
+
+## 2026-04-26T01:35:16Z — phase 0 sub-step 5 (rule reformulation)
+
+**Decision:** Supersedes the rationale of the 2026-04-26T00:35:48Z
+entry above. Refactored the bootstrap skill's drift-handling rule
+into a two-case structure classified by which file the drift is
+in: PROPOSAL.md drift is auto-blocking and routes to the formal
+halt-and-revise walkthrough; plan-only drift is fixed directly
+via a user-gated AskUserQuestion + edit + commit + decisions.md
+entry, never entering open-issues.md. Removed the previously-
+written "Carve-out: plan-internal text-correction drift" section
+(executor-discretion conditions on whether the fix was "purely
+mechanical" — too much AI judgment, too easy to abuse). Updated
+plan §"Plan-correction discipline during execution" → §"Drift-
+handling discipline during execution" with a four-row table
+matching the new skill rule.
+
+**Rationale:** User principle (verbatim): "PROPOSAL.md is
+versioned, so it needs to go through a formal process. The plan
+can be directly fixed because it is not versioned." The asymmetry
+between PROPOSAL.md and the plan comes from versioning, not from
+how mechanical the fix is. PROPOSAL.md has `history/vNNN/PROPOSAL.md`
+snapshots from v018+ and is frozen at the latest vNNN; any change
+must produce a new vNNN snapshot. The plan has no `history/vNNN/
+PLAN_*.md` analog and is throwaway scaffolding deleted at Phase
+11; plan changes don't need a snapshot. The new rule classifies
+on file-affected (a check the executor can do mechanically), not
+on a fuzzy "is this purely mechanical?" judgment. The user gates
+plan edits via AskUserQuestion so the executor never modifies the
+plan silently.

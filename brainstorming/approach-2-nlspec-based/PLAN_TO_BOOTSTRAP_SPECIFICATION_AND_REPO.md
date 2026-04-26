@@ -2377,23 +2377,29 @@ The skill is the only writer for these files. Hand-editing them
 is permitted but unusual; the skill rewrites STATUS on every
 update and treats unknown-shape entries as opaque pass-through.
 
-### Plan-correction discipline during execution
+### Drift-handling discipline during execution
 
-When the executor encounters drift between the plan as written
-and what's actually achievable / sensible, three paths apply:
+When the executor encounters drift between the plan or PROPOSAL
+as written and what's actually achievable / sensible, four paths
+apply, classified first by which file the drift is in (PROPOSAL.md
+is versioned; the plan is not), then by blocking vs non-blocking:
 
-| Severity | Action | Cost |
+| Drift kind | Action | Cost |
 |---|---|---|
-| **Blocking** (executor cannot satisfy a phase exit criterion as written) | Halt; open a formal `vNNN/` revision in `brainstorming/`; re-freeze; resume | High |
-| **Non-blocking, pre-Phase-6** | Append to `bootstrap/open-issues.md` with disposition `defer-to-spec-propose-change`; carry the executor's interpretation forward | Low |
+| **PROPOSAL.md drift** (PROPOSAL.md text must change to match reality / decisions) | Halt; open a formal `vNNN/` revision via the bootstrap skill's halt-and-revise walkthrough; re-freeze; resume | High |
+| **Plan-only drift** (PROPOSAL.md is unaffected; plan text needs correction) | Bootstrap skill's Case-B direct-fix gate: present finding to user via AskUserQuestion, edit + commit + `decisions.md` entry. Never enters `open-issues.md` | Low |
+| **Non-blocking, pre-Phase-6** (drift in executor interpretation, neither plan nor PROPOSAL.md text needs changing yet) | Append to `bootstrap/open-issues.md` with disposition `defer-to-spec-propose-change`; carry the executor's interpretation forward | Low |
 | **Non-blocking, post-Phase-6** | File a propose-change against `SPECIFICATION/` immediately (the dogfooded mechanism is now live) | Native plan mechanism |
 
-The deferral row is the steady-state mechanism for plan
-corrections during execution. Most discovered drift is non-
-blocking. Drain `bootstrap/open-issues.md` post-Phase-6 by
-filing one propose-change per entry against the seeded
-`SPECIFICATION/`, marking each entry resolved in the log as
-its propose-change lands.
+The deferral row is the steady-state mechanism for executor-
+interpretation drift during execution. PROPOSAL.md drift is
+always blocking and produces a vNNN snapshot; plan-only drift is
+always direct-fixed via the user-gated Case-B flow; only
+executor-interpretation drift accumulates in
+`bootstrap/open-issues.md`. Drain `bootstrap/open-issues.md`
+post-Phase-6 by filing one propose-change per entry against the
+seeded `SPECIFICATION/`, marking each entry resolved in the log
+as its propose-change lands.
 
 ### Why a skill and not just files
 
