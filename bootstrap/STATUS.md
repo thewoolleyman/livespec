@@ -1,8 +1,8 @@
 # Bootstrap status
 
 **Current phase:** 2
-**Current sub-step:** 6
+**Current sub-step:** 7
 **Last completed exit criterion:** phase 1
-**Next action:** Begin Phase 2 sub-step 6 — author the `.claude-plugin/scripts/livespec/` Python package per PROPOSAL.md §"Skill layout": create subdirectories (`commands/`, `doctor/` with `run_static.py` + `static/__init__.py` registry + per-check modules, `io/`, `parse/`, `validate/`, `schemas/` plus `schemas/dataclasses/`), `context.py`, `types.py`, `__init__.py` (full — structlog configuration + `run_id` bind), and `errors.py` (full — `LivespecError` hierarchy + `HelpRequested` per the style doc §"Exit code contract"). All other modules are stubs returning `IOFailure(<DomainError>("<module>: not yet implemented"))` or `Failure(...)`. Every directory under `.claude-plugin/scripts/` (excluding `_vendor/` subtree) carries a `CLAUDE.md`. Sub-step 5 vendoring complete: 5 libs vendored (returns 0.25.0, fastjsonschema v2.21.2, structlog 25.5.0, typing_extensions 4.12.2 verbatim upstream, jsoncomment 0.4.2 shim) with LICENSEs; smoke-test imports pass on Python 3.10.16 and 3.13.7.
-**Last updated:** 2026-04-26T10:15:00Z
-**Last commit:** 6281c31
+**Next action:** Begin Phase 2 sub-step 7 — author the `.claude-plugin/specification-templates/` built-in templates (`livespec/` and `minimal/`) at bootstrap-minimum scaffolding only per v018 Q1-Option-A. Each template carries `template.json` (required fields), `prompts/{seed,propose-change,revise,critique}.md` at minimum-viable level, and an empty `specification-template/` skeleton. The `livespec` template additionally ships `livespec-nlspec-spec.md` (copied verbatim from `brainstorming/`) and a stub `prompts/doctor-llm-subjective-checks.md`. The `minimal` template's stub prompts carry placeholder delimiter-comment markers (final delimiter format is Phase 7 work). Sub-step 6 complete (commit `554a17d`): livespec/ Python package skeleton authored — 48 .py files (full `__init__.py` + `errors.py`; placeholder `types.py` + `context.py`; function stubs across `commands/`, `doctor/`, `doctor/static/`; empty placeholders across `io/`, `parse/`, `validate/`, `schemas/`, `schemas/dataclasses/`) + 11 CLAUDE.md files; ruff clean; smoke test passes on Python 3.10.16. Plan-fix commit `b8cc5f8` landed alongside: Phase 2 exit-criterion paragraph rewritten to remove three dev-tooling-backed checks deferred to Phase 5 per Phase 3's existing deferral list.
+**Last updated:** 2026-04-26T11:15:00Z
+**Last commit:** b8cc5f8
