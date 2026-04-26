@@ -135,8 +135,10 @@ v021 decisions:
   test data file population is outside the wrapper's
   scope).
 
-PROPOSAL.md v022 is now the frozen basis for every phase
-below; Phase 0 freezes at v022.
+PROPOSAL.md v023 is now the frozen basis for every phase
+below; Phase 0 freezes at v023. (v023 is a critique-fix
+overlay against v022 with no PROPOSAL.md substance change;
+see the v023 decision block below for provenance.)
 
 v022 decisions (direct critique-fix overlay; see
 `history/v022/proposed_changes/critique-fix-v021-revision.md`):
@@ -175,6 +177,23 @@ v022 decisions (direct critique-fix overlay; see
   bootstrap skill; Phase 0 sub-step list grows by one item;
   Phase 1 preconditions explicitly mention `bootstrap/`;
   Phase 10 exit picks up `bootstrap/` archive-or-delete.
+
+v023 decisions (direct critique-fix overlay; see
+`history/v023/proposed_changes/critique-fix-v022-revision.md`):
+- v023 D1 (plan-level): Plan Phase 0 step 3 (was: "`tmp/` is
+  deleted") replaced with the `tmp/bootstrap/` ownership
+  convention — the repo-root `tmp/` is git-untracked
+  user-owned scratch and must NOT be deleted; bootstrap-owned
+  scratch goes under `tmp/bootstrap/`. Plan Phase 0
+  exit-criterion text drops the "`tmp/` removal" clause and
+  bumps the freeze commit message label to `freeze: v023
+  brainstorming`. Plan Phase 0 step 1 byte-identity reference
+  bumps to `history/v023/PROPOSAL.md`. Plan Phase 0 step 2
+  frozen-status header literal bumps to "Frozen at v023".
+  Plan Execution-prompt block authoritative-version line bumps
+  to v023. PROPOSAL.md substance unchanged. Triggered during
+  Phase 0 of the in-flight bootstrap by the bootstrap skill's
+  cascading-impact scan (skill commit `398bfa8`).
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -384,22 +403,29 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v022/PROPOSAL.md` (the v022
-   snapshot — adopting v018 Q1-Option-A through Q6, v019
-   Q1, v020 Q1-Q4, v021 Q1-Q3, plus v022's prompt-reference-
-   metadata file class and four plan-level corrections per the
-   Preconditions section). v022's snapshot was created in the
-   bootstrap-authoring commit; see
+   byte-identical to `history/v023/PROPOSAL.md` (the v023
+   snapshot — v022 substance plus the Phase 0 sub-step 2
+   frozen-status header bumped to "Frozen at v023"; v022's
+   substance carries v018 Q1-Option-A through Q6, v019 Q1, v020
+   Q1-Q4, v021 Q1-Q3, plus v022's prompt-reference-metadata file
+   class and four plan-level corrections per the Preconditions
+   section). v023's snapshot was created during a halt-and-revise
+   in Phase 0 of the in-flight bootstrap; see
+   `history/v023/proposed_changes/critique-fix-v022-revision.md`
+   for the v023 decision provenance, and
    `history/v022/proposed_changes/critique-fix-v021-revision.md`
-   for the decision provenance.
+   for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v022. Further evolution happens in
+   > **Status:** Frozen at v023. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
-3. `tmp/` is deleted (empty; was working directory for earlier
-   passes).
+3. `tmp/` is left untouched. The repo-root `tmp/` is git-untracked
+   user-owned scratch space; the bootstrap MUST NOT delete or
+   modify it. Any bootstrap-owned scratch needs go under
+   `tmp/bootstrap/` (creatable on demand, freely deletable by the
+   bootstrap).
 4. Nothing else in `brainstorming/` is modified.
 5. Confirm `bootstrap/` exists at repo root with the execution-
    scaffolding skill and state files described in §8 below
@@ -408,8 +434,16 @@ sub-steps within a phase MAY run in parallel where noted.
    missing, the bootstrap-authoring commit was skipped — halt
    and request the scaffolding be created before continuing.
 
-**Exit criterion:** a single commit `freeze: v022 brainstorming`
-containing only the header-note addition and `tmp/` removal.
+**Exit criterion:** PROPOSAL.md carries the frozen-status
+header in its committed state; the latest history/vNNN snapshot
+is byte-identical to live PROPOSAL.md; the plan's active
+version pointers reference the latest snapshot. Originally
+planned as a single `freeze: v022 brainstorming` commit; v023's
+halt-and-revise broadened this to "the v023 revision commit"
+(which lands the frozen-status header on PROPOSAL.md alongside
+the v023 history snapshot, revision file, and paired plan-text
+edits). Future halt-and-revises during execution may produce
+additional snapshots v024+ via the same mechanism.
 
 ### Phase 1 — Repo-root developer tooling
 
@@ -2012,18 +2046,23 @@ sources)" section before doing any work:
 
 - `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (frozen
   at the latest history/vNNN snapshot — per the plan's
-  "Version basis" note, this is v022, which adopts every prior
-  decision (v018 Q1-Q6, v019 Q1, v020 Q1-Q4, v021 Q1-Q3) plus
-  the v022 critique-fix overlay (D1-D10) introducing the
-  template-bundled prompt-reference-metadata file class, the
-  Plan §3 cutover carve-out, the per-section split for the
-  Phase 8 style-doc migration, the Phase 8 item 14
-  forward-pointing closure, the Phase 3 narrowed-registry stub
-  policy, the Phase 7 ordering preamble, the Phase 5 wording
-  fix, and the §8 execution-scaffolding section. See the
-  plan's "Version basis" section for the full decision summary
-  and `history/v022/proposed_changes/critique-fix-v021-revision.md`
-  for v022 decision provenance.)
+  "Version basis" note, this is v023 (a critique-fix overlay
+  against v022 introducing the `tmp/bootstrap/` ownership
+  convention; PROPOSAL.md substance unchanged from v022). v022
+  adopts every prior decision (v018 Q1-Q6, v019 Q1, v020 Q1-Q4,
+  v021 Q1-Q3) plus the v022 critique-fix overlay (D1-D10)
+  introducing the template-bundled prompt-reference-metadata
+  file class, the Plan §3 cutover carve-out, the per-section
+  split for the Phase 8 style-doc migration, the Phase 8 item
+  14 forward-pointing closure, the Phase 3 narrowed-registry
+  stub policy, the Phase 7 ordering preamble, the Phase 5
+  wording fix, and the §8 execution-scaffolding section. See
+  the plan's "Version basis" section for the full decision
+  summary;
+  `history/v022/proposed_changes/critique-fix-v021-revision.md`
+  for v022 decision provenance; and
+  `history/v023/proposed_changes/critique-fix-v022-revision.md`
+  for v023 decision provenance.)
 - `brainstorming/approach-2-nlspec-based/livespec-nlspec-spec.md`
 - `brainstorming/approach-2-nlspec-based/python-skill-script-style-requirements.md`
 - `brainstorming/approach-2-nlspec-based/deferred-items.md`
@@ -2039,7 +2078,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v022 as authoritative. Do not propose any
+Treat PROPOSAL.md v023 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
@@ -2297,7 +2336,9 @@ halt-on-blocking branch or step 5a's drift-review checkpoint;
 never from the main-loop step 3 directly.
 
 - **Halt-and-revise walkthrough (pre-Phase-6 path).** Drives a
-  formal `vNNN/` revision against PROPOSAL.md, mirroring v018-v022.
+  formal `vNNN/` revision against PROPOSAL.md, mirroring
+  v018-v023 (v023 was the first instance executed live during
+  the bootstrap via this walkthrough).
   Skill computes next vNNN, asks for revision shape (direct
   overlay vs full critique-and-revise), walks the user through
   authoring revision file(s), applies edits to PROPOSAL.md,
