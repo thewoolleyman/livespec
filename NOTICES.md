@@ -12,31 +12,21 @@ yet exist.
 
 The library list and license metadata below are authoritative
 per PROPOSAL.md §"Runtime dependencies — Vendored pure-Python
-libraries" (six entries per v018 Q4).
+libraries" (five entries per v025; the v018 Q4 sixth entry
+`returns_pyright_plugin` was dropped in v025 D1 — pyright has
+no plugin system and no upstream artifact existed; see
+`brainstorming/approach-2-nlspec-based/history/v025/proposed_changes/critique-fix-v024-revision.md`).
 
 ---
 
 ## `returns`
 
 - **Upstream:** dry-python/returns (https://github.com/dry-python/returns)
-- **License:** BSD-2-Clause
+- **License:** BSD-3-Clause
 - **Verbatim license file:** `.claude-plugin/scripts/_vendor/returns/LICENSE`
 
 ROP primitives: `Result`, `IOResult`, `bind`, `map`, `Success`,
 `Failure`. See PROPOSAL.md §"Railway-Oriented Programming (ROP)".
-
----
-
-## `returns_pyright_plugin`
-
-- **Upstream:** dry-python/returns (https://github.com/dry-python/returns)
-- **License:** BSD-2-Clause (same upstream project as `returns`)
-- **Verbatim license file:** `.claude-plugin/scripts/_vendor/returns_pyright_plugin/LICENSE`
-
-The pyright plugin packaged alongside the `returns` library.
-Loaded via `pyproject.toml`'s
-`[tool.pyright]` `pluginPaths = ["_vendor/returns_pyright_plugin"]`
-entry. Per v018 Q4.
 
 ---
 

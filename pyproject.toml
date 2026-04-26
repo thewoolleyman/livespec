@@ -7,9 +7,13 @@
 #     only)" — uv-managed dev deps per v024 (mise pins only the
 #     non-Python binaries `uv`, `just`, `lefthook`).
 #   - PROPOSAL.md §"Runtime dependencies — Vendored pure-Python
-#     libraries" — returns + returns_pyright_plugin vendoring
-#     (per v018 Q4 the pyright plugin is vendored alongside the
-#     library; see [tool.pyright].pluginPaths below).
+#     libraries" — returns vendoring (BSD-3-Clause). NO
+#     `returns_pyright_plugin` vendored: per v025 D1, pyright
+#     has no plugin system (microsoft/pyright#607) and no such
+#     upstream artifact exists — the v018 Q4 closure of
+#     `returns-pyright-plugin-disposition` was rescinded and
+#     re-closed in v025. See `[tool.pyright]` below: NO
+#     `pluginPaths` entry.
 #   - PROPOSAL.md §"Runtime dependencies — Developer-time
 #     dependencies → Typechecker decision (v018 Q4)" — pyright
 #     (NOT basedpyright); rationale = the seven strict-plus
@@ -154,14 +158,24 @@ reportUnnecessaryCast = "error"
 reportUnnecessaryIsInstance = "error"
 reportImplicitStringConcatenation = "error"
 
-# Returns ROP plugin path (v018 Q4): pyright loads the vendored
-# returns plugin to type-check Result / IOResult containers
-# correctly. Phase 2 lands the actual .claude-plugin/scripts/_vendor/
-# directory including returns_pyright_plugin/ alongside the
-# returns/ runtime library. Path string per PROPOSAL.md line 456,
-# style doc line 752, and plan line 529 (literal value
-# "_vendor/returns_pyright_plugin").
-pluginPaths = ["_vendor/returns_pyright_plugin"]
+# NO pluginPaths entry: per v025 D1, pyright has no plugin
+# system (microsoft/pyright#607: maintainer rejected plugin
+# support in 2020, formalized 2021, reaffirmed 2024) and no
+# `returns_pyright_plugin` exists upstream (dry-python/returns
+# ships mypy/pytest/hypothesis plugins but not pyright; issue
+# dry-python/returns#1513 closed 2022 explicitly stating
+# pyright support is not possible). The v018 Q4 closure of
+# `returns-pyright-plugin-disposition` was rescinded and
+# re-closed in v025 with the revised disposition: no plugin
+# vendored. The seven strict-plus diagnostics above remain the
+# load-bearing guardrails against silent Result / IOResult
+# discards. Pyright still type-checks Result[T, E] generic
+# parameters via standard generic inference; flow-narrowing
+# through bind chains is lossier than under mypy-with-plugin,
+# requiring occasional explicit annotations or cast() calls
+# at combinator boundaries. Unnecessary casts get caught by
+# reportUnnecessaryCast (above) so the friction surfaces at
+# call sites rather than hiding in opaque type-ignores.
 
 # ---------------------------------------------------------------------------
 # Pytest — pytest-cov + pytest-icdiff wiring.

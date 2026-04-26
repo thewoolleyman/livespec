@@ -53,9 +53,11 @@ appends:
 
 ## 2026-04-26T07:05:00Z — phase 2 — blocking — halt-and-revise-brainstorming
 
-**Status:** open
+**Status:** resolved
 
 **Description:** PROPOSAL.md §"Runtime dependencies — Vendored pure-Python libraries" lists `returns_pyright_plugin` as the sixth vendored lib (v018 Q4 decision: "vendor the returns pyright plugin alongside the library at `.claude-plugin/scripts/_vendor/returns_pyright_plugin/`"). Verified against upstream dry-python/returns at v0.25.0 (latest tag): the repo ships `returns/contrib/{mypy,pytest,hypothesis}/` plugins but NO pyright plugin. Zero references to "pyright" in the entire codebase. The v018 Q4 decision was based on the mistaken premise that a returns pyright plugin existed upstream. References in: PROPOSAL.md (line 100 directory tree, line 453-456 vendoring section, line 3700-3708 typechecker section), PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md (line 529, 614, 686-691), python-skill-script-style-requirements.md (line 145-155 vendored libs section, line 750-752 pyright config section, line 212/218 vendor list), .vendor.jsonc (entry at sub-step 9), NOTICES.md (entry from sub-step 11), pyproject.toml (pluginPaths value from sub-step 3). Resolution requires v025 PROPOSAL.md snapshot dropping the entry from the canonical six-lib list (or replacing with another mechanism for `Result`/`IOResult` strict-mode inference).
+
+**Resolved:** 2026-04-26T07:55:00Z — codified in v025 D1; see `history/v025/proposed_changes/critique-fix-v024-revision.md`. Sub-agent investigation (preserved in conversation transcript) confirmed pyright has no plugin system by design (microsoft/pyright#607) and dry-python/returns explicitly does not support pyright (dry-python/returns#1513), so option (a) — drop the plugin entry, stay on pyright with the seven strict-plus diagnostics — was the only viable resolution. The cosmetic BSD-2 → BSD-3-Clause license correction (paired entry 2026-04-26T07:05:01Z, superseded) rode along as v025 D2. Companion-doc + repo-state files (style doc, NOTICES.md, .vendor.jsonc, pyproject.toml) were updated in the same v025 commit.
 
 ## 2026-04-26T07:05:01Z — phase 2 — blocking — halt-and-revise-brainstorming
 

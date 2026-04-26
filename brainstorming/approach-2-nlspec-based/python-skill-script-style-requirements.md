@@ -140,29 +140,31 @@ under `.claude-plugin/scripts/_vendor/<lib>/`. All vendored libs MUST be:
 Locked vendored libs (each pinned to an exact upstream ref
 recorded in `<repo-root>/.vendor.jsonc`):
 
-- **`returns`** (dry-python/returns, BSD-2) — ROP primitives: `Result`,
-  `IOResult`, `@safe`, `@impure_safe`, `flow`, `bind`, `Fold.collect`,
-  `lash`. The dry-python/returns pyright plugin is vendored
-  alongside the library per v018 Q4 (see
-  `returns_pyright_plugin` below); this closes the prior
-  `returns-pyright-plugin-disposition` deferred item.
-- **`returns_pyright_plugin`** (dry-python/returns pyright
-  plugin, BSD-2; v018 Q4) — vendored alongside the `returns`
-  library at
-  `.claude-plugin/scripts/_vendor/returns_pyright_plugin/` with
-  upstream LICENSE preserved verbatim. `pyproject.toml`'s
-  `[tool.pyright]` section declares `pluginPaths =
-  ["_vendor/returns_pyright_plugin"]` so pyright strict-mode
-  recognizes the plugin for `Result` / `IOResult` inference.
-  Rationale: `Result` and `IOResult` are used pervasively
-  (every public function returns one or the other per the
-  architecture-level constraint); without the plugin,
-  strict-mode inference of the two-track composition forces
-  routine `# type: ignore` usage, contradicting the "no
-  # type: ignore without narrow justification" rule and the
-  "Strongest-possible guardrails for agent-authored Python"
-  principle. The plugin is a livespec-wide load-bearing
-  guardrail, not an optional tool.
+- **`returns`** (dry-python/returns, BSD-3-Clause) — ROP
+  primitives: `Result`, `IOResult`, `@safe`, `@impure_safe`,
+  `flow`, `bind`, `Fold.collect`, `lash`. NO pyright plugin
+  is vendored: per v025, pyright has no plugin system
+  (microsoft/pyright#607: maintainer rejected plugin support
+  in 2020, formalized 2021, reaffirmed 2024) and dry-python/
+  returns explicitly does not support pyright (dry-python/
+  returns#1513: closed by maintainer 2022). The
+  `returns-pyright-plugin-disposition` deferred item was
+  originally closed in v018 Q4 by vendoring a hypothetical
+  pyright plugin; the closure was rescinded and re-closed in
+  v025 D1 with the revised disposition: no plugin vendored.
+  The seven strict-plus diagnostics in `[tool.pyright]`
+  (especially `reportUnusedCallResult = "error"`) remain the
+  load-bearing guardrails against silent `Result` /
+  `IOResult` discards. Pyright still type-checks
+  `Result[T, E]` generic parameters via standard generic
+  inference; flow-narrowing through `bind` chains is lossier
+  than under mypy-with-plugin, requiring occasional explicit
+  annotations or `cast()` calls at combinator boundaries.
+  Unnecessary casts are caught by `reportUnnecessaryCast`
+  and unnecessary type-ignores by
+  `reportUnnecessaryTypeIgnoreComment` (both enabled), so
+  the friction surfaces at call sites rather than hiding in
+  opaque `# type: ignore` debt.
 - **`fastjsonschema`** (horejsek/python-fastjsonschema, MIT) — JSON
   Schema Draft-7 validator.
 - **`structlog`** (hynek/structlog, BSD-2 / MIT dual) — structured JSON
@@ -209,14 +211,16 @@ would not find them on `import`.
   mechanisms.
 - **Re-vendoring goes through `just vendor-update <lib>`** — the only
   blessed mutation path for upstream-sourced libs (`returns`,
-  `returns_pyright_plugin`, `fastjsonschema`, `structlog`,
-  `jsoncomment`). The recipe fetches the upstream ref, copies
-  it under `_vendor/<lib>/`, preserves `LICENSE`, and updates
-  `.vendor.jsonc`'s recorded ref.
+  `fastjsonschema`, `structlog`, `jsoncomment`). The recipe
+  fetches the upstream ref, copies it under `_vendor/<lib>/`,
+  preserves `LICENSE`, and updates `.vendor.jsonc`'s recorded
+  ref. (The v018 Q4 sixth lib `returns_pyright_plugin` was
+  dropped in v025 D1 — see PROPOSAL.md §"Runtime dependencies
+  — Vendored pure-Python libraries".)
 - **Initial-vendoring exception (one-time, v018 Q3).** The
   first population of every upstream-sourced vendored lib
-  (`returns`, `returns_pyright_plugin`, `fastjsonschema`,
-  `structlog`, `jsoncomment`) is a one-time MANUAL procedure,
+  (`returns`, `fastjsonschema`, `structlog`, `jsoncomment`)
+  is a one-time MANUAL procedure,
   distinct from the blessed `just vendor-update` path above:
   `git clone` the upstream repo at a working ref into a
   throwaway directory; `git checkout <ref>` matching the
@@ -745,15 +749,18 @@ way to express them.
   matters, and community-fork maintainer-pool risk outweighs
   basedpyright's incremental defaults-simplification
   benefit). `pyproject.toml`'s `[tool.pyright]` sets
-  `typeCheckingMode = "strict"`, excludes `_vendor/**` from
-  strict scope while keeping `useLibraryCodeForTypes = true`
-  so vendored libs' inferable types reach the type checker,
-  AND (per v018 Q4) declares `pluginPaths =
-  ["_vendor/returns_pyright_plugin"]` pointing at the
-  vendored dry-python/returns pyright plugin so strict-mode
-  `Result` / `IOResult` inference works without routine
-  `# type: ignore`. Enforced by `just check-types` — any
-  pyright diagnostic in non-vendored code fails the gate.
+  `typeCheckingMode = "strict"` and excludes `_vendor/**`
+  from strict scope while keeping `useLibraryCodeForTypes =
+  true` so vendored libs' inferable types reach the type
+  checker. NO `pluginPaths` entry: per v025 D1, pyright has
+  no plugin system (microsoft/pyright#607) and no upstream
+  `returns_pyright_plugin` exists; the v018 Q4 closure of
+  `returns-pyright-plugin-disposition` was rescinded and
+  re-closed with the revised disposition (no plugin
+  vendored). The seven strict-plus diagnostics below remain
+  the load-bearing guardrails. Enforced by `just check-types`
+  — any pyright diagnostic in non-vendored code fails the
+  gate.
 - **Pyright strict-plus diagnostics MUST be enabled in
   `[tool.pyright]`.** These seven diagnostics are above the strict
   baseline; each closes a documented LLM-authored-code failure

@@ -135,12 +135,17 @@ v021 decisions:
   test data file population is outside the wrapper's
   scope).
 
-PROPOSAL.md v024 is now the frozen basis for every phase
-below; Phase 0 freezes at v024. (v023 is a critique-fix
+PROPOSAL.md v025 is now the frozen basis for every phase
+below; Phase 0 freezes at v025. (v023 is a critique-fix
 overlay against v022 with no PROPOSAL.md substance change;
 v024 is a critique-fix overlay against v023 WITH PROPOSAL.md
-substance change — the UV-toolchain decision; see the v023
-and v024 decision blocks below for provenance.)
+substance change — the UV-toolchain decision; v025 is a
+critique-fix overlay against v024 WITH PROPOSAL.md substance
+change — drops the non-existent `returns_pyright_plugin`
+vendoring (pyright has no plugin system; no upstream artifact
+exists) and corrects the `returns` license label to
+BSD-3-Clause; see the v023, v024, and v025 decision blocks
+below for provenance.)
 
 v022 decisions (direct critique-fix overlay; see
 `history/v022/proposed_changes/critique-fix-v021-revision.md`):
@@ -242,6 +247,65 @@ v024 decisions (direct critique-fix overlay; see
   UV-as-Python-toolchain principle. Routed via the bootstrap
   skill's Case-A PROPOSAL-drift rule (auto-blocking;
   halt-and-revise required).
+
+v025 decisions (direct critique-fix overlay; see
+`history/v025/proposed_changes/critique-fix-v024-revision.md`):
+- v025 D1: PROPOSAL §"Runtime dependencies — Vendored
+  pure-Python libraries" drops `returns_pyright_plugin` from
+  the canonical vendored-libs list (now five entries:
+  `returns`, `fastjsonschema`, `structlog`, `jsoncomment`,
+  `typing_extensions`). PROPOSAL §"Developer-time dependencies
+  → Typechecker decision" strikes the `pluginPaths =
+  ["_vendor/returns_pyright_plugin"]` claim from
+  `[tool.pyright]`. The v018 Q4 closure of the
+  `returns-pyright-plugin-disposition` deferred item is
+  rescinded and re-closed in v025 with the revised
+  disposition: **no pyright plugin is vendored, because no
+  such plugin exists upstream and pyright does not support
+  plugins by design.** The seven strict-plus diagnostics
+  (`reportUnusedCallResult` in particular) remain the
+  load-bearing guardrails against silent `Result` /
+  `IOResult` discards. The pyright-over-basedpyright decision
+  from v018 Q4 is preserved.
+- v025 D2 (cosmetic): PROPOSAL.md `returns` license label
+  corrected from `BSD-2` to `BSD-3-Clause` to match upstream
+  `dry-python/returns` v0.25.0 `pyproject.toml`. Library is
+  in policy at either license per style-doc allowed-list (no
+  architectural implication; cosmetic ride-along).
+- v025 D3 (plan-level): Plan Phase 1 sub-step 3
+  (`pyproject.toml`) bullet on `[tool.pyright]` strikes the
+  `pluginPaths = ["_vendor/returns_pyright_plugin"]` clause
+  and the rationale paragraph that referenced the plugin;
+  retains the seven strict-plus diagnostics enumeration and
+  the pyright-over-basedpyright closure.
+- v025 D4 (plan-level): Plan Phase 1 sub-step 9
+  (`.vendor.jsonc`) bullet drops `returns_pyright_plugin`
+  from the six-entry enumeration (now five entries: `returns`,
+  `fastjsonschema`, `structlog`, `jsoncomment`,
+  `typing_extensions`). Plan Phase 2's placeholder-
+  replacement note updated correspondingly.
+- v025 D5 (plan-level): Plan Phase 1 sub-step 11
+  (`NOTICES.md`) bullet drops `returns_pyright_plugin` from
+  the six-library enumeration (now five). Plan also corrects
+  the `returns` license citation to BSD-3-Clause.
+- v025 D6 (plan-level): Plan Phase 2 sub-step 5
+  (`.claude-plugin/scripts/_vendor/`) drops the
+  `returns_pyright_plugin/` bullet from the vendoring sub-list
+  (now five upstream-sourced libs).
+- v025 D7 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v025/PROPOSAL.md`. Plan Phase 0
+  step 2 frozen-status header literal bumps to "Frozen at
+  v025". Plan Execution-prompt block authoritative-version
+  line bumps to v025.
+- Triggered during Phase 2 sub-step 5 of the in-flight
+  bootstrap when the executor cloned `dry-python/returns` at
+  v0.25.0 to vendor the pyright plugin and discovered the
+  source artifact does not exist. Sub-agent investigation
+  confirmed pyright has no plugin system (microsoft/pyright#607)
+  and dry-python explicitly will not support pyright
+  (dry-python/returns#1513). Routed via the bootstrap skill's
+  Case-A PROPOSAL-drift rule (auto-blocking; halt-and-revise
+  required).
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -453,26 +517,33 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v024/PROPOSAL.md` (the v024
-   snapshot — v023 substance plus v024's UV-toolchain decision
-   per `history/v024/proposed_changes/critique-fix-v023-revision.md`,
+   byte-identical to `history/v025/PROPOSAL.md` (the v025
+   snapshot — v024 substance with the
+   `returns_pyright_plugin` vendoring removed and the `returns`
+   license corrected to BSD-3-Clause per
+   `history/v025/proposed_changes/critique-fix-v024-revision.md`,
    and the Phase 0 sub-step 2 frozen-status header bumped to
-   "Frozen at v024"; v023 substance is v022 substance plus the
-   `tmp/bootstrap/` ownership convention; v022's substance carries
-   v018 Q1-Option-A through Q6, v019 Q1, v020 Q1-Q4, v021 Q1-Q3,
+   "Frozen at v025"; v024 substance is v023 substance plus
+   v024's UV-toolchain decision per
+   `history/v024/proposed_changes/critique-fix-v023-revision.md`;
+   v023 substance is v022 substance plus the `tmp/bootstrap/`
+   ownership convention; v022's substance carries v018
+   Q1-Option-A through Q6, v019 Q1, v020 Q1-Q4, v021 Q1-Q3,
    plus v022's prompt-reference-metadata file class and four
-   plan-level corrections per the Preconditions section). v024's
-   snapshot was created during a halt-and-revise in Phase 1
-   sub-step 1 of the in-flight bootstrap; see
+   plan-level corrections per the Preconditions section).
+   v025's snapshot was created during a halt-and-revise in
+   Phase 2 sub-step 5 of the in-flight bootstrap; see
+   `history/v025/proposed_changes/critique-fix-v024-revision.md`
+   for the v025 decision provenance,
    `history/v024/proposed_changes/critique-fix-v023-revision.md`
-   for the v024 decision provenance,
+   for v024's,
    `history/v023/proposed_changes/critique-fix-v022-revision.md`
    for v023's, and
    `history/v022/proposed_changes/critique-fix-v021-revision.md`
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v024. Further evolution happens in
+   > **Status:** Frozen at v025. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -525,22 +596,26 @@ style doc §"Dev tooling and task runner":
     `reportUninitializedInstanceVariable`,
     `reportUnnecessaryTypeIgnoreComment`,
     `reportUnnecessaryCast`, `reportUnnecessaryIsInstance`,
-    `reportImplicitStringConcatenation`), plus (per v018 Q4)
-    `pluginPaths = ["_vendor/returns_pyright_plugin"]` pointing
-    at the sixth vendored lib that Phase 2 will land. The
-    `returns-pyright-plugin-disposition` and
-    `basedpyright-vs-pyright` deferred items are CLOSED in
-    v018 with concrete decisions: **returns pyright plugin is
-    vendored alongside the library** (PROPOSAL.md §"Runtime
-    dependencies — Vendored pure-Python libraries"); **pyright
-    is the chosen typechecker, NOT basedpyright** (PROPOSAL.md
-    §"Runtime dependencies — Developer-time dependencies →
-    Typechecker decision (v018 Q4)"). Rationale is captured
-    in a leading `#` comment block in `pyproject.toml`
-    cross-referencing those PROPOSAL.md sections. Phase 6
+    `reportImplicitStringConcatenation`). NO `pluginPaths`
+    entry: per v025, pyright has no plugin system and no
+    upstream `returns_pyright_plugin` exists (the v018 Q4
+    closure of `returns-pyright-plugin-disposition` was
+    re-opened and re-closed in v025 — see
+    `history/v025/proposed_changes/critique-fix-v024-revision.md`
+    decision D1). The `basedpyright-vs-pyright` deferred item
+    remains CLOSED in v018 Q4 with the original decision:
+    **pyright is the chosen typechecker, NOT basedpyright**
+    (PROPOSAL.md §"Runtime dependencies — Developer-time
+    dependencies → Typechecker decision (v018 Q4)").
+    Rationale is captured in a leading `#` comment block in
+    `pyproject.toml` cross-referencing those PROPOSAL.md
+    sections plus the v025 plugin-removal context. Phase 6
     migrates the rationale into
-    `SPECIFICATION/constraints.md`; Phase 8 items 8 and 9
-    become bookkeeping closes pointing at the Phase-1 commit.
+    `SPECIFICATION/constraints.md`; Phase 8 item 9
+    (basedpyright-vs-pyright) becomes a bookkeeping close
+    pointing at the Phase-1 commit; Phase 8 item 8
+    (returns-pyright-plugin-disposition) is similarly closed
+    pointing at the v025 revision.
   - `[tool.pytest.ini_options]` wiring `pytest-cov` +
     `pytest-icdiff`.
   - `[tool.coverage.run]` / `[tool.coverage.report]` with
@@ -611,9 +686,10 @@ style doc §"Dev tooling and task runner":
   `master`, and `workflow_dispatch`; gated on
   `ANTHROPIC_API_KEY`.
 - `.vendor.jsonc` — JSONC with an entry per vendored library
-  (`returns`, `returns_pyright_plugin` per v018 Q4,
-  `fastjsonschema`, `structlog`, `jsoncomment`,
-  `typing_extensions` — six entries total). Each entry records
+  (`returns`, `fastjsonschema`, `structlog`, `jsoncomment`,
+  `typing_extensions` — five entries total per v025 D4; the
+  v018 Q4 sixth entry `returns_pyright_plugin` was dropped
+  in v025). Each entry records
   `upstream_url`, `upstream_ref`, `vendored_at`;
   `typing_extensions` also records `shim: true`. For the shim,
   `upstream_ref` is the upstream `typing_extensions` release
@@ -683,12 +759,8 @@ PROPOSAL.md §"Skill layout inside the plugin":
   `.vendor.jsonc` + smoke-test import); after `jsoncomment` is
   in place, subsequent re-vendoring of any upstream-sourced lib
   flows through `just vendor-update <lib>`.
-  - `returns/` (dry-python/returns, BSD-2)
-  - `returns_pyright_plugin/` (dry-python/returns pyright
-    plugin, BSD-2; v018 Q4 — configures pyright strict-mode
-    `Result` / `IOResult` inference; referenced via
-    `[tool.pyright]`'s `pluginPaths` entry added to
-    `pyproject.toml` in Phase 1)
+  - `returns/` (dry-python/returns, BSD-3-Clause; license
+    corrected from BSD-2 in v025 D2)
   - `fastjsonschema/` (MIT)
   - `structlog/` (BSD-2 / MIT dual)
   - `jsoncomment/` (MIT)
@@ -1843,14 +1915,19 @@ pointing at PROPOSAL.md / Phase-1 / Phase-7 decisions:
    v006–v017 widenings (bootstrap lenience, GFM anchor rules,
    reserve-suffix algorithm, wrapper-shape blank-line tolerance,
    etc.) into `constraints.md` or `spec.md` as appropriate.
-8. `returns-pyright-plugin-disposition` — CLOSED in v018 Q4.
-   Plugin vendored at
-   `.claude-plugin/scripts/_vendor/returns_pyright_plugin/`
-   in Phase 2; `pluginPaths` pinned in `pyproject.toml` in
-   Phase 1; rationale migrated to
-   `SPECIFICATION/constraints.md` in Phase 6. Bookkeeping
-   close pointing at PROPOSAL.md §"Runtime dependencies —
-   Vendored pure-Python libraries".
+8. `returns-pyright-plugin-disposition` — Originally CLOSED
+   in v018 Q4 (vendor a pyright plugin alongside the library).
+   RE-OPENED and RE-CLOSED in v025 D1 with the revised
+   disposition: **no pyright plugin is vendored, because no
+   such plugin exists upstream and pyright does not support
+   plugins by design** (microsoft/pyright#607,
+   dry-python/returns#1513). The `[tool.pyright]` config in
+   `pyproject.toml` (Phase 1) carries no `pluginPaths` entry;
+   `.claude-plugin/scripts/_vendor/` (Phase 2) carries no
+   `returns_pyright_plugin/` directory. Rationale migrated
+   to `SPECIFICATION/constraints.md` in Phase 6. Bookkeeping
+   close pointing at the v025 revision and PROPOSAL.md
+   §"Runtime dependencies — Vendored pure-Python libraries".
 9. `basedpyright-vs-pyright` — CLOSED in v018 Q4. pyright is
    the chosen typechecker; basedpyright is NOT used.
    Rationale in PROPOSAL.md §"Runtime dependencies —
@@ -2153,7 +2230,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v024 as authoritative. Do not propose any
+Treat PROPOSAL.md v025 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.

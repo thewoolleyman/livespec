@@ -27,12 +27,6 @@
       "vendored_at": "0000-00-00T00:00:00Z"
     },
     {
-      "name": "returns_pyright_plugin",
-      "upstream_url": "https://github.com/dry-python/returns",
-      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
-      "vendored_at": "0000-00-00T00:00:00Z"
-    },
-    {
       "name": "fastjsonschema",
       "upstream_url": "https://github.com/horejsek/python-fastjsonschema",
       "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
