@@ -1,0 +1,7 @@
+{
+  "template_format_version": 1,
+  "spec_root": "./",
+  "doctor_static_check_modules": [],
+  "doctor_llm_objective_checks_prompt": null,
+  "doctor_llm_subjective_checks_prompt": null
+}
