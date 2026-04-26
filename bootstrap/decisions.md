@@ -570,6 +570,38 @@ boundary, where recovery is imperative-landing (cheap), instead
 of Phase 7's dogfood boundary where recovery would require the
 broken governed loop.").
 
+## 2026-04-26T21:32:08Z — phase 4 sub-step 2 (pyproject.toml fixes surfaced by first pytest run)
+
+**Decision:** Two pyproject.toml fixes landed alongside the
+first dev-tooling script + paired test:
+
+1. **Add `tests/**.py = ["S101"]` per-file-ignore.** S101
+   (flake8-bandit "use of `assert` detected") flags every
+   bare `assert` in tests, but pytest's idiomatic pattern is
+   bare `assert`. The S discipline applies to shipped code,
+   not test-time assertions. Per-file-ignore scoped to
+   `tests/**.py`.
+2. **Remove `--icdiff` from `[tool.pytest.ini_options].addopts`.**
+   pytest-icdiff registers as the `icdiff` pytest11 plugin via
+   entry_points.txt and produces nicer diffs by default — it
+   does NOT add a `--icdiff` flag. The plugin's only two flags
+   are `--icdiff-cols` and `--icdiff-show-all-spaces` for
+   tuning. The `--icdiff` line in addopts caused
+   `pytest: error: unrecognized arguments: --icdiff` on every
+   pytest run. Phase 1 pyproject.toml authoring bug surfaced by
+   the first actual pytest invocation in Phase 4 sub-step 2.
+
+**Rationale:** Same precedent as decisions.md 2026-04-26T08:33:35Z
+(pyproject.toml ruff config fix at Phase 2 exit-criterion) and
+2026-04-26T09:07:28Z (TRY003 per-file-ignore at Phase 3 sub-step
+4): pure pyproject.toml bug fixes; no PROPOSAL revision required;
+no plan edit required. Both fixes surfaced when Phase 4's first
+script test attempted to actually run pytest, exercising config
+that Phase 1's authoring had not yet been validated against. The
+S101 per-file-ignore matches the standard pytest convention
+across the Python ecosystem; the `--icdiff` removal aligns the
+config with pytest-icdiff's actual API surface.
+
 ## 2026-04-26T21:23:48Z — phase 4 sub-step 1 (plan vendor_manifest description fix)
 
 **Decision:** Edit plan line 1443-1444's `vendor_manifest.py`

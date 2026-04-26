@@ -171,6 +171,10 @@ ban-relative-imports = "all"
 # which v013 M5 forbids. Per-file-ignore scoped to the only place
 # LivespecError is raised.
 ".claude-plugin/scripts/livespec/io/**.py" = ["TRY003"]
+# pytest convention: tests use bare `assert` for assertions.
+# S101 (flake8-bandit "use of assert detected") flags every test;
+# the discipline applies to shipped code, not test-time assertions.
+"tests/**.py" = ["S101"]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.
@@ -220,10 +224,13 @@ reportImplicitStringConcatenation = "error"
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+# pytest-icdiff is auto-loaded via its entry_points.txt (registers
+# as the `icdiff` pytest11 plugin) and produces nicer diffs by
+# default; no `--icdiff` flag is needed (the plugin only adds
+# `--icdiff-cols` and `--icdiff-show-all-spaces` for tuning).
 addopts = [
     "--strict-markers",
     "--strict-config",
-    "--icdiff",
 ]
 
 # ---------------------------------------------------------------------------
