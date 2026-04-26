@@ -1,8 +1,8 @@
 # Bootstrap status
 
 **Current phase:** 3
-**Current sub-step:** 3
+**Current sub-step:** 4
 **Last completed exit criterion:** phase 2
-**Next action:** Phase 3 sub-step 3 — expand `livespec/context.py` to author the context dataclasses with the exact fields named in style doc §"Context dataclasses": `DoctorContext`, `SeedContext`, plus the other context dataclasses, including v014 N3's `config_load_status` / `template_load_status` AND v018 Q1's `template_name: str` field (`"main"` sentinel for the main spec tree, or the sub-spec directory name for each sub-spec tree). Sub-step 2 closed: authored 8 canonical NewType aliases in types.py (`Author`, `CheckId`, `RunId`, `SchemaId`, `SpecRoot`, `TemplateName`, `TopicSlug`, `VersionTag`) verbatim per the style doc §"Domain primitives via `NewType`" mapping table; ruff clean.
-**Last updated:** 2026-04-26T08:57:29Z
-**Last commit:** d876b3c
+**Next action:** Phase 3 sub-step 4 — author `livespec/io/fs.py`. `@impure_safe`-decorated filesystem primitives + the shared upward-walk helper per v017 Q9, returning `IOResult[<value>, <LivespecError-subclass>]` per the railway discipline. Source from PROPOSAL.md §"Filesystem helpers" and style doc §"Skill layout". Sub-step 3 closed: authored `livespec/context.py` with all six context dataclasses (DoctorContext, SeedContext, ProposeChangeContext, CritiqueContext, ReviseContext, PruneHistoryContext), strict-triple `frozen=True, kw_only=True, slots=True`, embedding pattern (sub-command contexts embed DoctorContext, no inheritance), forward-referenced schema-generated dataclasses via `from __future__ import annotations` + TYPE_CHECKING block; ruff clean. Side observation deferred: style-doc DoctorContext snippet (line 422-430) is missing `template_name: str` per PROPOSAL line 2574 — companion-doc gap rides along with next substantive PROPOSAL revision (decisions.md 2026-04-26T08:59:00Z).
+**Last updated:** 2026-04-26T09:02:01Z
+**Last commit:** 1ed443b

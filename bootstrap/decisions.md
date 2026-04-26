@@ -387,3 +387,31 @@ shape, not against this stale table row. Rides along with the next
 substantive PROPOSAL revision per the bootstrap skill's "Severity
 judgment over rule-following on PROPOSAL drift" rule and the
 established companion-doc-overlay precedent (v024 round 1-4).
+
+## 2026-04-26T08:59:00Z — phase 3 sub-step 3 (companion-doc gap, deferred)
+
+**Decision:** Author `livespec/context.py` per the plan's explicit
+directive (line 1059-1071), which includes `template_name: str` on
+`DoctorContext`. Note the companion-doc gap on
+`python-skill-script-style-requirements.md` §"Context dataclasses"
+(line 422-430): the canonical `DoctorContext` code snippet has 8
+fields and is missing `template_name`. PROPOSAL.md line 2574 and
+plan Phase 3 sub-step 3 both carry the field, so the implementation
+matches PROPOSAL/plan; only the style-doc snippet lags. Defer the
+style-doc reconciliation as a companion-doc overlay item to ride
+along with the next substantive PROPOSAL revision (per the
+established precedent: v024 rounds 1-4 and the 2026-04-26T08:33:35Z
+side-observation pattern). No vNNN snapshot opened for this gap
+alone.
+
+**Rationale:** Style-doc snippet drift is documentation-only;
+PROPOSAL is correct, the plan is correct, the implementation is
+correct. The "Severity judgment over rule-following on PROPOSAL
+drift" feedback rule applies: cosmetic drift never blocks on its
+own and rides along with whatever revision happens for substantive
+reasons. Opening a v028 overlay round purely to add one missing
+field to a code snippet would be ceremony for documentation lag
+that the next real revision will sweep mechanically. Implementation
+already includes the field; downstream Phase 3 work consuming
+`ctx.template_name` (run_static.py orchestrator at sub-step 18) is
+unblocked.
