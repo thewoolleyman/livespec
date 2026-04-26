@@ -65,6 +65,15 @@ class Logger(Protocol):
     def error(self, message: str, **kwargs: object) -> None:
         """Log at ERROR level."""
 
+    def exception(self, message: str, **kwargs: object) -> None:
+        """Log at ERROR level with exception traceback attached.
+
+        Equivalent to `error(message, exc_info=True, **kwargs)` —
+        structlog auto-captures the active exception from
+        `sys.exc_info()` when called inside an `except` block. Use
+        this in supervisor bug-catchers to record the full
+        traceback alongside structured fields."""
+
     def critical(self, message: str, **kwargs: object) -> None:
         """Log at CRITICAL level."""
 
