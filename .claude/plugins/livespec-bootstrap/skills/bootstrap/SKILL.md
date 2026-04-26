@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Walk the user through executing the livespec bootstrap plan one sub-step at a time, with confirmation gates at every step and persistent state across sessions. Invoked when the user types /livespec-bootstrap:bootstrap, /bootstrap, asks to "start the bootstrap", "continue the bootstrap", "resume bootstrap", or asks where they are in the bootstrap process.
+description: Walk the user through executing the livespec bootstrap plan one sub-step at a time, with confirmation gates at every step and persistent state across sessions. Pass `--ff` to fast-forward through the current phase without per-sub-step gates (still halts on blocking drift and at phase boundaries). Invoked when the user types /livespec-bootstrap:bootstrap, /bootstrap, /livespec-bootstrap:bootstrap --ff, /bootstrap --ff, asks to "start the bootstrap", "continue the bootstrap", "resume bootstrap", "fast-forward the bootstrap", or asks where they are in the bootstrap process.
 allowed-tools: Read, Write, Edit, Bash, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
 ---
 
@@ -15,6 +15,63 @@ read state, find the current sub-step in the plan, present it, ask for
 confirmation, execute, update state, loop. The skill does NOT encode
 plan content — every invocation re-reads the plan, so plan corrections
 flow into execution naturally.
+
+## Fast-forward mode (`--ff`)
+
+The skill accepts an optional `--ff` flag in its invocation
+arguments (e.g., `/livespec-bootstrap:bootstrap --ff`,
+`/bootstrap --ff`). Detect it by inspecting the args string for
+the literal token `--ff` (whitespace-delimited). The flag is
+**per-invocation**: it is NOT persisted to `STATUS.md` and does
+NOT carry across invocations. Each phase requires re-passing
+`--ff` if the user wants to fast-forward it again — phase
+advancement always ends fast-forward by definition.
+
+When `--ff` is active:
+
+- **Skip the main-loop step 3 gate** (the standard "Proceed
+  with the next sub-step?" AskUserQuestion). After step 2's
+  status line, proceed directly to step 4.
+- **Condense step 2's status paragraph to a single line** per
+  sub-step (e.g., "Phase N sub-step M: <one-sentence
+  summary>") so progress is visible without the full
+  present-state prose. Open issues count is still mentioned if
+  non-zero, but is not framed as a question.
+- **Keep all safety scans.** Step 1's consistency scan and
+  step 4's cascading-impact scan still run unchanged. `--ff`
+  suppresses *gating questions*, not *correctness checks*.
+- **Stop and prompt the user only on:**
+  - Blocking drift detected by either scan (route through the
+    halt-on-blocking sub-flow normally — these gates are NOT
+    suppressible by `--ff`).
+  - Genuine ambiguity that requires user judgment — a real
+    architectural decision, not a trivial wording or
+    version-number choice the executor can pick sensibly and
+    let the user correct later.
+  - Destructive operations the user has not pre-authorized
+    (`git push --force`, `git reset --hard`, `rm -r`,
+    `branch -D`, `commit --amend`, etc.).
+  - Phase-boundary advancement — step 5's gates (5a drift
+    review, 5b exit-criterion check, 5c advance gate) ALWAYS
+    run and ALWAYS gate the user, regardless of `--ff`.
+    `--ff` fast-forwards *within* a phase; it never authorizes
+    advancing to the next phase.
+- **Continue committing per the established pattern** — don't
+  change the audit-trail shape just because gating is
+  suppressed. Each sub-step's normal commit cadence still
+  applies.
+- **Resume in `--ff` mode after a forced stop.** When the
+  executor stops for blocking drift or genuine ambiguity and
+  the user resolves it, continue in `--ff` mode for the
+  remainder of the phase. The flag persists across
+  intra-invocation gates; it is dropped only by phase
+  advancement (which ends fast-forward by definition) or by
+  an explicit "Pause for now" choice (which ends the
+  invocation).
+
+When `--ff` is not active, the standard per-sub-step gate at
+step 3 applies — every sub-step requires explicit user
+confirmation.
 
 ## Loop on every invocation
 
@@ -71,8 +128,13 @@ directly.
 
 ### 3. Gate with AskUserQuestion
 
-Always ask. Five mutually-exclusive options, single-select. Make
-"proceed" the first option (Recommended) per the standard convention:
+Always ask, **unless `--ff` is active** (see §"Fast-forward mode
+(`--ff`)" above — when fast-forwarding, the executor proceeds
+directly to step 4 without presenting this gate, except for the
+blocking-drift / genuine-ambiguity / destructive-op routing
+exceptions enumerated there). Five mutually-exclusive options,
+single-select. Make "proceed" the first option (Recommended)
+per the standard convention:
 
 | Option | What it does |
 |---|---|
@@ -82,9 +144,11 @@ Always ask. Five mutually-exclusive options, single-select. Make
 | Record a decision first | Open AskUserQuestion to capture decision text + rationale; append to `bootstrap/decisions.md`; loop back to step 2. |
 | Something else | Open-text input; act on free-form direction (e.g., "show me the open issues", "back up to the prior sub-step", "run the exit-criterion check without advancing", "skip to phase N", etc.). |
 
-Never auto-proceed. The "proceed" branch is gated by the user's
-explicit selection in this question — never by inference from prior
-context.
+When `--ff` is not active, never auto-proceed. The "proceed"
+branch is gated by the user's explicit selection in this question
+— never by inference from prior context. When `--ff` is active,
+"proceed" is the implicit default per §"Fast-forward mode
+(`--ff`)" and this gate is skipped entirely.
 
 #### "Report an issue first" branch
 
@@ -632,7 +696,14 @@ weren't pre-decided in the plan. Same append-only discipline.
   `branch -D`, `commit --amend`) without explicit user confirmation
   via AskUserQuestion.
 - Never advance a phase without the user explicitly confirming via
-  step 5's gate.
+  step 5's gate. The `--ff` flag does NOT authorize phase
+  advancement; it fast-forwards only *within* the current phase.
+- The `--ff` flag suppresses ONLY the per-sub-step proceed gate
+  at step 3. It does NOT suppress: step 1's consistency scan,
+  step 4's cascading-impact scan, blocking-drift halts,
+  destructive-op confirmations, genuine-ambiguity questions, or
+  any of step 5's phase-boundary gates. See §"Fast-forward mode
+  (`--ff`)" for the full contract.
 - This skill is throwaway. It lives at
   `bootstrap/.claude-plugin/skills/bootstrap/` and is removed or
   archived at Phase 10 exit. Do not reference it from anything
