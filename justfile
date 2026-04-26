@@ -1,0 +1,230 @@
+# justfile — livespec dev-tooling task runner.
+#
+# Authoritative source: python-skill-script-style-requirements.md
+# §"Enforcement suite — Canonical target list". All recipes
+# delegate to their underlying tool or to a dev-tooling check
+# script. Per PROPOSAL.md §"Dev tooling and task runner",
+# `just` is the single source of truth for every dev-tooling
+# invocation; lefthook.yml and .github/workflows/*.yml only
+# call `just <target>`.
+#
+# Phase 1 deferrals (per PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md):
+#   - `just bootstrap` is a placeholder echo at this phase. The
+#     `lefthook install` step is added at Phase 5's exit. The
+#     `.claude/skills -> ../.claude-plugin/skills` symlink-
+#     recreation step is added by Phase 2 (after the target
+#     directory exists).
+#   - Most check-* recipes delegate to dev-tooling/checks/<name>.py
+#     scripts authored in Phase 4. They will fail until Phase 4
+#     lands them; this is expected during Phases 1-3.
+#   - The lefthook hook is NOT installed into .git/hooks/ until
+#     `just bootstrap` is fleshed out at Phase 5 exit. Pre-commit
+#     `just check` invocations therefore do not block commits
+#     during Phases 2-4.
+
+# Default to listing targets when no recipe is invoked.
+default:
+    @just --list
+
+# ---------------------------------------------------------------
+# First-time setup.
+# ---------------------------------------------------------------
+
+bootstrap:
+    @echo "bootstrap: nothing to do until Phase 5"
+
+# ---------------------------------------------------------------
+# Aggregate check — runs every check below sequentially. Continues
+# on failure (matches CI fail-fast: false behavior); exits non-zero
+# if any target failed and prints the failure list.
+# ---------------------------------------------------------------
+
+check:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    targets=(
+        check-lint
+        check-format
+        check-types
+        check-complexity
+        check-imports-architecture
+        check-private-calls
+        check-global-writes
+        check-supervisor-discipline
+        check-no-raise-outside-io
+        check-no-except-outside-io
+        check-public-api-result-typed
+        check-schema-dataclass-pairing
+        check-main-guard
+        check-wrapper-shape
+        check-keyword-only-args
+        check-match-keyword-only
+        check-no-inheritance
+        check-assert-never-exhaustiveness
+        check-newtype-domain-primitives
+        check-all-declared
+        check-no-write-direct
+        check-pbt-coverage-pure-modules
+        check-claude-md-coverage
+        check-heading-coverage
+        check-vendor-manifest
+        check-no-direct-tool-invocation
+        check-tools
+        check-tests
+        check-coverage
+        e2e-test-claude-code-mock
+        check-prompts
+    )
+    failed=()
+    for t in "${targets[@]}"; do
+        printf '\n::: just %s\n' "$t"
+        if ! just "$t"; then
+            failed+=("$t")
+        fi
+    done
+    if [[ ${#failed[@]} -gt 0 ]]; then
+        printf '\nFailed targets (%d):\n' "${#failed[@]}"
+        printf '  - %s\n' "${failed[@]}"
+        exit 1
+    fi
+    printf '\nAll %d targets passed.\n' "${#targets[@]}"
+
+# ---------------------------------------------------------------
+# Tool-backed checks.
+# ---------------------------------------------------------------
+
+check-lint:
+    ruff check .
+
+check-format:
+    ruff format --check .
+
+check-types:
+    pyright
+
+check-complexity:
+    ruff check --select C90,PLR .
+
+check-imports-architecture:
+    lint-imports
+
+check-tests:
+    pytest
+
+check-coverage:
+    pytest --cov --cov-report=term-missing
+
+# ---------------------------------------------------------------
+# AST / grep / hand-written checks. Each delegates to a script
+# under dev-tooling/checks/ authored in Phase 4.
+# ---------------------------------------------------------------
+
+check-private-calls:
+    python3 dev-tooling/checks/private_calls.py
+
+check-global-writes:
+    python3 dev-tooling/checks/global_writes.py
+
+check-supervisor-discipline:
+    python3 dev-tooling/checks/supervisor_discipline.py
+
+check-no-raise-outside-io:
+    python3 dev-tooling/checks/no_raise_outside_io.py
+
+check-no-except-outside-io:
+    python3 dev-tooling/checks/no_except_outside_io.py
+
+check-public-api-result-typed:
+    python3 dev-tooling/checks/public_api_result_typed.py
+
+check-schema-dataclass-pairing:
+    python3 dev-tooling/checks/schema_dataclass_pairing.py
+
+check-main-guard:
+    python3 dev-tooling/checks/main_guard.py
+
+check-wrapper-shape:
+    python3 dev-tooling/checks/wrapper_shape.py
+
+check-keyword-only-args:
+    python3 dev-tooling/checks/keyword_only_args.py
+
+check-match-keyword-only:
+    python3 dev-tooling/checks/match_keyword_only.py
+
+check-no-inheritance:
+    python3 dev-tooling/checks/no_inheritance.py
+
+check-assert-never-exhaustiveness:
+    python3 dev-tooling/checks/assert_never_exhaustiveness.py
+
+check-newtype-domain-primitives:
+    python3 dev-tooling/checks/newtype_domain_primitives.py
+
+check-all-declared:
+    python3 dev-tooling/checks/all_declared.py
+
+check-no-write-direct:
+    python3 dev-tooling/checks/no_write_direct.py
+
+check-pbt-coverage-pure-modules:
+    python3 dev-tooling/checks/pbt_coverage_pure_modules.py
+
+check-claude-md-coverage:
+    python3 dev-tooling/checks/claude_md_coverage.py
+
+check-heading-coverage:
+    python3 dev-tooling/checks/heading_coverage.py
+
+check-vendor-manifest:
+    python3 dev-tooling/checks/vendor_manifest.py
+
+check-no-direct-tool-invocation:
+    python3 dev-tooling/checks/no_direct_tool_invocation.py
+
+check-tools:
+    python3 dev-tooling/checks/check_tools.py
+
+# ---------------------------------------------------------------
+# E2E + prompt verification (part of `just check`).
+# ---------------------------------------------------------------
+
+e2e-test-claude-code-mock:
+    LIVESPEC_E2E_HARNESS=mock pytest tests/e2e/
+
+check-prompts:
+    pytest tests/prompts/
+
+# ---------------------------------------------------------------
+# Alternate-cadence target (NOT in `just check`).
+# ---------------------------------------------------------------
+
+e2e-test-claude-code-real:
+    LIVESPEC_E2E_HARNESS=real pytest tests/e2e/
+
+# ---------------------------------------------------------------
+# Release-gate targets (NOT in `just check`; run on release-tag CI
+# workflow only). Per python-skill-script-style-requirements.md
+# §"Mutation testing as release-gate" the threshold semantics
+# live HERE in the recipe (ratchet-with-ceiling against
+# .mutmut-baseline.json, capped at 80%), NOT in pyproject.toml.
+# ---------------------------------------------------------------
+
+check-mutation:
+    python3 dev-tooling/checks/check_mutation.py
+
+check-no-todo-registry:
+    python3 dev-tooling/checks/no_todo_registry.py
+
+# ---------------------------------------------------------------
+# Mutating targets (opt-in; not run in CI).
+# ---------------------------------------------------------------
+
+fmt:
+    ruff format .
+
+lint-fix:
+    ruff check --fix .
+
+vendor-update lib:
+    python3 dev-tooling/vendor_update.py {{lib}}
