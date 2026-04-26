@@ -1,0 +1,45 @@
+# Release-tag workflow — runs the release-gate targets on tag push.
+#
+# Authoritative source: PROPOSAL.md and
+# python-skill-script-style-requirements.md §"Enforcement suite —
+# Release-gate targets". The targets in this workflow are NOT
+# part of `just check` (they are not run per-commit); they fire
+# only on tag push to gate releases.
+#
+#   - check-mutation: mutmut against livespec/parse/ + validate/.
+#     Threshold = ratchet against .mutmut-baseline.json (v013 M3)
+#     bounded by absolute 80% ceiling. The ratchet logic lives in
+#     the recipe, NOT in pyproject.toml's [tool.mutmut].
+#   - check-no-todo-registry: rejects any test: "TODO" entry in
+#     tests/heading-coverage.json (v013 M8). Ensures every release
+#     ships with full rule-test coverage.
+
+name: Release tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release-gate:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - check-mutation
+          - check-no-todo-registry
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pinned binaries via mise
+        uses: jdx/mise-action@v2
+
+      - name: Install Python dev deps via uv
+        run: uv sync --all-groups
+
+      - name: just ${{ matrix.target }}
+        run: just ${{ matrix.target }}
