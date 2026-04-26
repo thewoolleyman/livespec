@@ -1,0 +1,58 @@
+# E2E real-claude workflow — runs the real-claude E2E target
+# against the minimal template via the live claude-agent-sdk.
+#
+# Authoritative source: PROPOSAL.md and
+# python-skill-script-style-requirements.md §"Enforcement suite —
+# Canonical target list" → e2e-test-claude-code-real (alternate-
+# cadence target NOT in `just check`).
+#
+# Triggers per plan:
+#   - merge_group (pre-merge via merge queue)
+#   - push to master (every master commit)
+#   - workflow_dispatch (manual)
+#
+# Gated on the ANTHROPIC_API_KEY repo secret. The job no-ops if
+# the secret is absent (forks, fresh clones without the secret
+# configured), so that PRs from forks do not fail the workflow
+# on a missing-secret error.
+
+name: E2E (real Claude)
+
+on:
+  push:
+    branches: [master]
+  merge_group:
+  workflow_dispatch:
+
+jobs:
+  e2e-real:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Skip if ANTHROPIC_API_KEY is unset
+        id: gate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "${ANTHROPIC_API_KEY}" ]; then
+            echo "ANTHROPIC_API_KEY unset; skipping e2e-test-claude-code-real."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install pinned binaries via mise
+        if: steps.gate.outputs.should_run == 'true'
+        uses: jdx/mise-action@v2
+
+      - name: Install Python dev deps via uv
+        if: steps.gate.outputs.should_run == 'true'
+        run: uv sync --all-groups
+
+      - name: just e2e-test-claude-code-real
+        if: steps.gate.outputs.should_run == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: just e2e-test-claude-code-real
