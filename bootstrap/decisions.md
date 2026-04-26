@@ -183,3 +183,34 @@ is an implicit requirement; making it explicit in the
 enumeration aligns the plan with its own exit criterion. Two
 commits: (1) plan-fix on the enumeration; (2) sub-step 12
 commit on .gitignore (already authored to include .venv/).
+
+## 2026-04-26T08:10:00Z — phase 2 sub-step 5 (pre-execution scan, fast-forward mode)
+
+**Decision:** Fix two leftover "six" → "five" references in
+plan describing the post-v025 vendored-libs count. Plan line
+700 ("Phase 1 authors all six entries with placeholder") and
+line 862 ("with real values for all six vendored entries")
+both refer to the present-state count of `.vendor.jsonc`
+entries, which v025 D1/D4/D6 reduced from six to five by
+dropping `returns_pyright_plugin`. The neighboring v025
+history note at lines 270-299 and the canonical .vendor.jsonc
+bullet at line 690 ("five entries total per v025 D4")
+already say five; these two sentences were missed in the
+v025 D4 plan-text edits. PROPOSAL.md verified clean of any
+six/five vendored-count references. Line 41 (v018 Q4
+historical decision summary) stays as-is — it documents the
+v018 closure that v025 then revised. Single commit
+(`phase-2: fix leftover 'six' → 'five' vendored-libs count
+in plan`). Gate confirmed via AskUserQuestion 2026-04-26
+(option: "Apply the plan correction (Recommended)").
+
+**Rationale:** Case-B plan-only drift per the bootstrap
+skill's drift-handling rule: PROPOSAL.md is unaffected
+(versioned doc unchanged), so direct plan edits + commit +
+decisions.md entry is the correct path; no new vNNN
+snapshot needed. The drift is a consistency miss — v025's
+D4 plan-edit line spec changed only the .vendor.jsonc
+bullet itself, missing the two downstream sentences that
+also describe the count. Surfacing it now keeps Phase 2
+sub-step 5's vendoring work aligned with the plan it
+references.

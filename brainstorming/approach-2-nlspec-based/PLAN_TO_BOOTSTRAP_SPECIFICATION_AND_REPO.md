@@ -697,7 +697,7 @@ style doc §"Dev tooling and task runner":
   faithfully replicates (e.g., `"4.12.2"`) — giving reviewers
   a concrete comparison target. Widening the shim later
   updates `upstream_ref` to the then-matching upstream
-  version. Phase 1 authors all six entries with placeholder
+  version. Phase 1 authors all five entries with placeholder
   `upstream_ref` and `vendored_at` values; Phase 2's
   initial-vendoring procedure (per v018 Q3) populates the
   real values during the manual git-clone-and-copy step.
@@ -859,7 +859,7 @@ is NOT yet part of `just bootstrap` — that step lands at Phase
 
 Phase 2 ALSO replaces the placeholder `upstream_ref` and
 `vendored_at` fields in `.vendor.jsonc` (authored in Phase 1)
-with real values for all six vendored entries. The
+with real values for all five vendored entries. The
 initial-vendoring procedure (per v018 Q3) populates these
 during the manual git-clone-and-copy step. Phase 2's exit
 explicitly asserts that no `.vendor.jsonc` entry retains a
