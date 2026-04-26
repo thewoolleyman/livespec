@@ -374,3 +374,84 @@ The follow-up commit is squashed-style: a single commit
 `Revise proposal to v024 (cont): companion-doc UV reconciliation`
 that lands the three companion-doc files plus the appended
 section in this overlay file.
+
+## v024 companion-doc reconciliation (round 2)
+
+After the round-1 follow-up commit (`04272ef`) landed, the
+bootstrap skill's mandatory consistency scan at the start of
+Phase 1 sub-step 3 found five additional pre-v024 "mise-pinned"
+framing slips in `python-skill-script-style-requirements.md`
+that the round-1 sweep missed. Per the user's "halt-and-revise
+on any inconsistency" principle (v024 origin) and the round-1
+precedent, v024's scope expands again to land a round-2
+companion-doc reconciliation, gated via AskUserQuestion
+2026-04-26 (option: "Extend v024 with a second cont follow-up
+(Recommended)"). Like round 1, these edits do NOT change v024's
+substantive decisions (D1-D7) — they propagate the "uv-managed"
+framing into supporting material so PROPOSAL.md and its
+companions remain internally consistent at the v024 logical
+version.
+
+Files touched in the round-2 follow-up commit:
+
+- **`python-skill-script-style-requirements.md`** lines 103-105
+  (§"Interpreter and Python version") — the bullet "The
+  `.mise.toml` at the repo root pins the developer and CI Python
+  version to an exact 3.10+ release; developers use `mise install`
+  to match" rewrites to "`​.python-version` at the repo root pins
+  the developer and CI Python version to an exact 3.10.x release,
+  managed by `uv python pin` per v024. `pyproject.toml`'s
+  `[project.requires-python]` declares the same constraint.
+  `.mise.toml` pins only the non-Python binaries (`uv`, `just`,
+  `lefthook`); developers run `mise install` then `uv sync
+  --all-groups` to match." Per v024 D1-D2.
+
+- **`python-skill-script-style-requirements.md`** line 1000
+  (§"Linter and formatter" intro) — "`ruff` ... Pinned via mise."
+  rewrites to "`ruff` ... Uv-managed per v024 via `pyproject.toml`
+  `[dependency-groups.dev]`." Per v024 D4.
+
+- **`python-skill-script-style-requirements.md`** line 1066
+  (§"Testing" intro) — "Tests use **`pytest`** with mandatory
+  plugins `pytest-cov` and `pytest-icdiff`. Pinned via mise."
+  rewrites to "Tests use **`pytest`** with mandatory plugins
+  `pytest-cov` and `pytest-icdiff`. Uv-managed per v024 via
+  `pyproject.toml` `[dependency-groups.dev]`." Per v024 D4.
+
+- **`python-skill-script-style-requirements.md`** lines
+  1710-1714 (§"Dev tooling and task runner" bullet list) —
+  "`.mise.toml` pins every dev tool listed in PROPOSAL.md
+  §'Runtime dependencies — Developer-time dependencies.' Single
+  source of truth lives in PROPOSAL.md (v013 C2); this document
+  does NOT duplicate the enumeration to eliminate drift risk."
+  rewrites to "`.mise.toml` pins the non-Python binaries (`uv`,
+  `just`, `lefthook`) listed in PROPOSAL.md §'Runtime
+  dependencies — Developer-time dependencies.' Per v024, the
+  Python dev packages in that same PROPOSAL.md section are
+  uv-managed via `pyproject.toml` `[dependency-groups.dev]`
+  (single source of truth still lives in PROPOSAL.md per v013
+  C2; this document does NOT duplicate the enumeration to
+  eliminate drift risk)." Per v024 D4 + the mise/uv split
+  established in D1-D2.
+
+- **`python-skill-script-style-requirements.md`** lines
+  1724-1727 (§"Dev tooling and task runner" → "First-time
+  bootstrap" paragraph) — "**First-time bootstrap:** `mise
+  install` then `just bootstrap`." rewrites to "**First-time
+  bootstrap:** `mise install`, then `uv sync --all-groups` (per
+  v024; resolves Python dev deps into a project-local `.venv`
+  and commits `uv.lock`), then `just bootstrap`." Per v024 D5
+  (uv.lock committed; project-local `.venv`).
+
+The v024 PROPOSAL.md snapshot at `history/v024/PROPOSAL.md`
+remains byte-identical (PROPOSAL.md was not re-touched). No
+paired plan edits needed: the plan's Phase 1 entries already
+cite v024 explicitly and the canonical bootstrap order
+(`mise install` then `uv sync --all-groups` then
+`just bootstrap`) is already accurate in Phase 1's exit
+criterion.
+
+The round-2 follow-up commit is squashed-style: a single commit
+`Revise proposal to v024 (cont 2): companion-doc UV reconciliation (round 2)`
+that lands the style-doc edits plus the appended section in
+this overlay file.

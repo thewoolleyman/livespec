@@ -100,9 +100,12 @@ be declared in a docstring at the top of the fixture.
   install instruction if older. `bin/_bootstrap.py` is the canonical
   location for the version check; `.claude-plugin/scripts/livespec/__init__.py` does
   NOT raise (it cannot — see "Railway-Oriented Programming" below).
-- The `.mise.toml` at the repo root pins the developer and CI Python
-  version to an exact 3.10+ release; developers use `mise install` to
-  match.
+- `.python-version` at the repo root pins the developer and CI Python
+  version to an exact 3.10.x release, managed by `uv python pin` per
+  v024. `pyproject.toml`'s `[project.requires-python]` declares the
+  same constraint. `.mise.toml` pins only the non-Python binaries
+  (`uv`, `just`, `lefthook`); developers run `mise install` then
+  `uv sync --all-groups` to match.
 - Features from Python 3.11+ (e.g., `Self`, `tomllib`, `ExceptionGroup`)
   MUST NOT be used.
 
@@ -997,7 +1000,8 @@ every `ast.Match` node in scope; verifies the final case arm is
 ## Linter and formatter
 
 `ruff` (astral-sh/ruff) is the sole linter, formatter, import-sorter,
-and complexity checker. Pinned via mise.
+and complexity checker. Uv-managed per v024 via `pyproject.toml`
+`[dependency-groups.dev]`.
 
 - `pyproject.toml`'s `[tool.ruff]` configures:
   - `target-version = "py310"`.
@@ -1063,7 +1067,8 @@ and complexity checker. Pinned via mise.
 ## Testing
 
 Tests use **`pytest`** with mandatory plugins `pytest-cov` and
-`pytest-icdiff`. Pinned via mise.
+`pytest-icdiff`. Uv-managed per v024 via `pyproject.toml`
+`[dependency-groups.dev]`.
 
 See **PROPOSAL.md §"Testing approach"** for the canonical test-tree
 layout (mirroring `.claude-plugin/scripts/livespec/`, `.claude-plugin/scripts/bin/`, and
@@ -1707,11 +1712,13 @@ dev-tooling invocation.
   `run:` field is `just <target>`; no direct tool invocations.
 - `.github/workflows/*.yml` owns CI triggers and parallelism. Every
   step's `run:` field is `just <target>`; no direct tool invocations.
-- `.mise.toml` pins every dev tool listed in PROPOSAL.md
-  §"Runtime dependencies — Developer-time dependencies."
-  Single source of truth lives in PROPOSAL.md (v013 C2); this
-  document does NOT duplicate the enumeration to eliminate
-  drift risk.
+- `.mise.toml` pins the non-Python binaries (`uv`, `just`,
+  `lefthook`) listed in PROPOSAL.md §"Runtime dependencies —
+  Developer-time dependencies." Per v024, the Python dev packages
+  in that same PROPOSAL.md section are uv-managed via
+  `pyproject.toml` `[dependency-groups.dev]` (single source of
+  truth still lives in PROPOSAL.md per v013 C2; this document
+  does NOT duplicate the enumeration to eliminate drift risk).
 
 This eliminates drift across invocation surfaces. A developer
 reproduces CI locally by running `just check`.
@@ -1721,10 +1728,12 @@ failure**, and exits non-zero if any target failed (listing which
 targets failed at the end). This matches CI's `fail-fast: false`
 matrix; one local run reproduces full CI feedback.
 
-**First-time bootstrap:** `mise install` then `just bootstrap`. The
-`bootstrap` target runs `lefthook install` (registers the pre-commit
-and pre-push hooks with git) and any other one-time setup. Without
-`just bootstrap`, lefthook hooks do not fire on commit.
+**First-time bootstrap:** `mise install`, then `uv sync --all-groups`
+(per v024; resolves Python dev deps into a project-local `.venv` and
+commits `uv.lock`), then `just bootstrap`. The `bootstrap` target
+runs `lefthook install` (registers the pre-commit and pre-push hooks
+with git) and any other one-time setup. Without `just bootstrap`,
+lefthook hooks do not fire on commit.
 
 Enforced by `check-no-direct-tool-invocation` (grep-level): any
 `ruff`/`pytest`/`pyright`/`python3` in `lefthook.yml` or any

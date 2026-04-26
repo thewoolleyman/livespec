@@ -61,3 +61,41 @@ on file-affected (a check the executor can do mechanically), not
 on a fuzzy "is this purely mechanical?" judgment. The user gates
 plan edits via AskUserQuestion so the executor never modifies the
 plan silently.
+
+## 2026-04-26T05:30:00Z — phase 1 sub-step 3 (pre-execution scan)
+
+**Decision:** Apply v024 companion-doc reconciliation round 2 to
+`python-skill-script-style-requirements.md`. Five additional
+pre-v024 "mise-pinned" framing slips found at lines 103-105,
+1000, 1066, 1710-1714, and 1724-1727 — surfaced by the bootstrap
+skill's mandatory consistency scan at the start of Phase 1
+sub-step 3 (which loads the style doc to source the `[tool.ruff]`
+and `[tool.pytest]` config the plan defers to). Edits land via
+the same overlay-extension pattern as the round-1 follow-up
+(commit `04272ef`): surgical Edit on the 5 passages, plus a new
+"## v024 companion-doc reconciliation (round 2)" section
+appended to `history/v024/proposed_changes/critique-fix-v023-revision.md`
+documenting them. PROPOSAL.md snapshot at `history/v024/PROPOSAL.md`
+remains byte-identical; no plan edits needed (Phase 1's
+canonical bootstrap order already cites `mise install` then
+`uv sync --all-groups` then `just bootstrap` correctly). Single
+commit message: `Revise proposal to v024 (cont 2): companion-doc
+UV reconciliation (round 2)`. Gate confirmed via AskUserQuestion
+2026-04-26 (option: "Extend v024 with a second cont follow-up
+(Recommended)").
+
+**Rationale:** Companion-doc drift falls outside the bootstrap
+skill's literal two-case rule (Case A = PROPOSAL.md, Case B =
+plan), but the user's "halt-and-revise on any inconsistency"
+principle (origin of v024) and the v024 round-1 precedent both
+established that companion-doc inconsistencies must be
+reconciled to keep PROPOSAL.md and its companion docs internally
+consistent at the v024 logical version. The round-1 sweep missed
+these 5 passages because it grepped only for the specific terms
+the round-1 reviewer was looking at; the bootstrap skill's
+consistency scan is the systematic fallback that catches
+straggling drift at sub-step boundaries. Treating this as a v024
+overlay extension (not a new vNNN) preserves the principle that
+new vNNN snapshots are reserved for substantive PROPOSAL.md
+changes; pure framing reconciliation lives as overlay rounds on
+the existing critique-fix file.
