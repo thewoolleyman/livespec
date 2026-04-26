@@ -1,0 +1,26 @@
+# lefthook.yml — git hook configuration for the livespec repo.
+#
+# Authoritative source: python-skill-script-style-requirements.md
+# §"Enforcement suite — Invocation surfaces" and §"Dev tooling and
+# task runner" — every `run:` field is `just <target>`; no direct
+# tool invocations (this is enforced by check-no-direct-tool-invocation
+# at grep level once Phase 4 lands the script).
+#
+# Phase 1 deferral: this file LANDS in Phase 1 as part of the
+# repo-tooling layout, but lefthook's actual installation into
+# .git/hooks/ is deferred until Phase 5's exit, when the full
+# `just check` suite first passes. Until then, `just bootstrap`
+# is a placeholder echo and does NOT run `lefthook install`, so
+# pre-commit `just check` invocations during Phases 2-4 do not
+# block commits on targets whose backing content (tests,
+# dev-tooling scripts) does not yet exist.
+
+pre-commit:
+  commands:
+    check:
+      run: just check
+
+pre-push:
+  commands:
+    check:
+      run: just check
