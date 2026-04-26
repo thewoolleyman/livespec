@@ -279,19 +279,24 @@ Each entry uses this shape:
     `ban-relative-imports = "all"` and a banned-imports list
     containing `abc.ABC`, `abc.ABCMeta`, `abc.abstractmethod`,
     `pickle`, `marshal`, `shelve`.
-  - **Hypothesis + hypothesis-jsonschema mise pins (L12):**
-    `.mise.toml` adds `hypothesis` (HypothesisWorks/hypothesis,
-    MPL-2.0) and `hypothesis-jsonschema` (MIT) as test-time
-    dev deps. NOT vendored in bundle; mise-pinned only. The
-    MPL-2.0 license-policy expansion is NOT needed (vendored-
-    libs license policy applies only to bundle-vendored libs).
-  - **mutmut mise pin + release-gate workflow (L13):**
-    `.mise.toml` adds `mutmut` (MIT). `just check-mutation`
-    target added; release-tag CI workflow runs it; per-commit
-    CI does NOT.
-  - **Import-Linter mise pin + pyproject config (L15a;
-    narrowed in v017 Q3):**
-    `.mise.toml` adds `import-linter` (BSD-2).
+  - **Hypothesis + hypothesis-jsonschema dev pins (L12;
+    uv-managed per v024):**
+    `pyproject.toml` `[dependency-groups.dev]` adds
+    `hypothesis` (HypothesisWorks/hypothesis, MPL-2.0) and
+    `hypothesis-jsonschema` (MIT) as test-time dev deps. NOT
+    vendored in bundle; uv-managed only (per v024; pre-v024
+    framing was mise-pinned). The MPL-2.0 license-policy
+    expansion is NOT needed (vendored-libs license policy
+    applies only to bundle-vendored libs).
+  - **mutmut dev pin + release-gate workflow (L13;
+    uv-managed per v024):**
+    `pyproject.toml` `[dependency-groups.dev]` adds `mutmut`
+    (MIT). `just check-mutation` target added; release-tag CI
+    workflow runs it; per-commit CI does NOT.
+  - **Import-Linter dev pin + pyproject config (L15a;
+    narrowed in v017 Q3; uv-managed per v024):**
+    `pyproject.toml` `[dependency-groups.dev]` adds
+    `import-linter` (BSD-2).
     `pyproject.toml` adds `[tool.importlinter]` section with
     two contracts (`forbidden` for purity; `layers` for
     architecture). The third L15a-proposed contract
@@ -306,9 +311,10 @@ Each entry uses this shape:
     enforcement.
   - **L15b principle (no bundle vendoring of dev tools).**
     Hypothesis, hypothesis-jsonschema, mutmut, and Import-
-    Linter are mise-pinned only. The bundle's vendored libs
-    (returns, fastjsonschema, structlog, jsoncomment) are
-    unchanged in v012.
+    Linter are uv-managed only (per v024; pre-v024 framing was
+    mise-pinned). The bundle's vendored libs (returns,
+    fastjsonschema, structlog, jsoncomment) are unchanged in
+    v012.
 
   **v013 additions:**
   - **`typing_extensions` vendored as minimal shim (M1).**

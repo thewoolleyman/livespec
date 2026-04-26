@@ -299,3 +299,78 @@ cycle to consider alternatives the user has already excluded
 would be ceremonial overhead disproportionate to scope. The
 disciplined version-snapshot lives at `history/v024/PROPOSAL.md`;
 this file documents the decision provenance.
+
+## v024 companion-doc reconciliation (follow-up)
+
+After the initial v024 commit (`351aa67`) landed, a sweep of
+the live brainstorming/ tree found three companion-doc files
+still using the pre-v024 "mise-pinned" framing for the dev
+packages that v024 moved to uv-managed. Per the user's
+"halt-and-revise on any inconsistency" principle, v024's scope
+expanded to include companion-doc reconciliation, gated via
+AskUserQuestion 2026-04-26 (option: "Expand v024 to also fix
+companion docs"). The companion-doc edits do NOT change v024's
+substantive decisions (D1-D7) — they propagate the "uv-managed"
+framing into supporting material so PROPOSAL.md and its
+companions are internally consistent at the v024 logical
+version.
+
+Files touched in the follow-up commit:
+
+- **`deferred-items.md`** lines 282-311 — three bullet entries
+  under §"task-runner-and-ci-config" → "v012 additions"
+  describing hypothesis / hypothesis-jsonschema / mutmut /
+  Import-Linter:
+  - "Hypothesis + hypothesis-jsonschema mise pins (L12)" →
+    "Hypothesis + hypothesis-jsonschema dev pins (L12;
+    uv-managed per v024)"; body "`.mise.toml` adds ... NOT
+    vendored in bundle; mise-pinned only" rewrites to
+    "`pyproject.toml` `[dependency-groups.dev]` adds ... NOT
+    vendored in bundle; uv-managed only (per v024; pre-v024
+    framing was mise-pinned)".
+  - "mutmut mise pin + release-gate workflow (L13)" →
+    "mutmut dev pin + release-gate workflow (L13; uv-managed
+    per v024)"; body updated analogously.
+  - "Import-Linter mise pin + pyproject config" →
+    "Import-Linter dev pin + pyproject config (...; uv-managed
+    per v024)"; body updated analogously.
+  - L15b-principle bullet "are mise-pinned only" →
+    "are uv-managed only (per v024; pre-v024 framing was
+    mise-pinned)".
+  - Line 207's parenthetical "no new mise-pinned tool" is left
+    unchanged — historical commentary about v018's scope, not
+    a current claim about the system.
+
+- **`python-skill-script-style-requirements.md`** lines
+  1107-1145 — three §-blocks describing PBT and mutation
+  testing:
+  - §"Property-based testing for pure modules" intro
+    paragraph "MPL-2.0; mise-pinned, NOT vendored" →
+    "MPL-2.0; uv-managed per v024, NOT vendored"; first rule
+    bullet "are mise-pinned in `.mise.toml` as test-time deps"
+    → "are uv-managed (per v024) via `pyproject.toml`
+    `[dependency-groups.dev]` as test-time deps".
+  - §"Mutation testing as release-gate" intro "(MIT;
+    mise-pinned, NOT vendored)" →
+    "(MIT; uv-managed per v024, NOT vendored)"; first rule
+    bullet "is mise-pinned in `.mise.toml` as a release-gate
+    dep" → "is uv-managed (per v024) via `pyproject.toml`
+    `[dependency-groups.dev]` as a release-gate dep".
+
+- **`python-skill-script-style-requirements.md`** line 1774
+  (canonical justfile target table) — `just check-tools` row
+  description "Verify every mise-pinned tool" →
+  "Verify every pinned tool ... — both mise-pinned binaries
+  (`uv`, `just`, `lefthook`) and uv-managed Python deps from
+  `pyproject.toml` `[dependency-groups.dev]` per v024".
+
+The v024 PROPOSAL.md snapshot at `history/v024/PROPOSAL.md`
+is unchanged by these edits (PROPOSAL.md was not re-touched in
+the follow-up; the snapshot stays byte-identical to live
+PROPOSAL.md). No paired plan edits needed: the plan does not
+reference these specific companion-doc passages.
+
+The follow-up commit is squashed-style: a single commit
+`Revise proposal to v024 (cont): companion-doc UV reconciliation`
+that lands the three companion-doc files plus the appended
+section in this overlay file.

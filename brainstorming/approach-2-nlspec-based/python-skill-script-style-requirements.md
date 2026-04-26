@@ -1107,17 +1107,18 @@ Rules:
 Pure Result-returning modules (`livespec/parse/` and
 `livespec/validate/`) are mandatory targets for property-based
 testing via `hypothesis` (HypothesisWorks/hypothesis, MPL-2.0;
-mise-pinned, NOT vendored). PBT generates many input shapes and
-checks invariants the test author may not have imagined; coverage
-verifies execution but PBT verifies behavior.
+uv-managed per v024, NOT vendored). PBT generates many input
+shapes and checks invariants the test author may not have
+imagined; coverage verifies execution but PBT verifies behavior.
 
 Rules:
 
-- `hypothesis` and `hypothesis-jsonschema` (MIT) are mise-pinned
-  in `.mise.toml` as test-time deps (same packaging convention as
-  `pytest`, `pytest-cov`, `pytest-icdiff`). They are NOT vendored
-  in `_vendor/` because they are not imported by `.claude-plugin/scripts/livespec/**` at
-  user-runtime.
+- `hypothesis` and `hypothesis-jsonschema` (MIT) are uv-managed
+  (per v024) via `pyproject.toml` `[dependency-groups.dev]` as
+  test-time deps (same packaging convention as `pytest`,
+  `pytest-cov`, `pytest-icdiff`). They are NOT vendored in
+  `_vendor/` because they are not imported by
+  `.claude-plugin/scripts/livespec/**` at user-runtime.
 - Each test module under `tests/livespec/parse/` and
   `tests/livespec/validate/` MUST declare at least one
   `@given(...)`-decorated test function.
@@ -1136,13 +1137,14 @@ module is decorated with `@given(...)` (from `hypothesis`).
 
 ### Mutation testing as release-gate
 
-Mutation testing via `mutmut` (MIT; mise-pinned, NOT vendored)
-runs on a release-gate schedule (CI release branch only; not
-per-commit; not part of the `just check` aggregator).
+Mutation testing via `mutmut` (MIT; uv-managed per v024, NOT
+vendored) runs on a release-gate schedule (CI release branch
+only; not per-commit; not part of the `just check` aggregator).
 
 Rules:
 
-- `mutmut` is mise-pinned in `.mise.toml` as a release-gate dep.
+- `mutmut` is uv-managed (per v024) via `pyproject.toml`
+  `[dependency-groups.dev]` as a release-gate dep.
 - `just check-mutation` runs `mutmut run` against
   `livespec/parse/` and `livespec/validate/` (the pure modules
   where mutation testing is most informative); reports kill rate.
@@ -1769,7 +1771,7 @@ specific native code works). No Windows support.
 | `just check-pbt-coverage-pure-modules` | AST: each test module under `tests/livespec/parse/` and `tests/livespec/validate/` declares at least one `@given(...)`-decorated test function. |
 | `just check-claude-md-coverage` | Every directory under `scripts/` (excluding `_vendor/` subtree), `tests/`, and `dev-tooling/` contains a `CLAUDE.md`. |
 | `just check-no-direct-tool-invocation` | grep: `lefthook.yml` and `.github/workflows/*.yml` only invoke `just <target>`. |
-| `just check-tools` | Verify every mise-pinned tool is installed at the pinned version. |
+| `just check-tools` | Verify every pinned tool is installed at the pinned version — both mise-pinned binaries (`uv`, `just`, `lefthook`) and uv-managed Python deps from `pyproject.toml` `[dependency-groups.dev]` per v024. |
 | `just check-tests` | `pytest`. |
 | `just check-coverage` | `pytest --cov` with 100% line+branch threshold. |
 | `just e2e-test-claude-code-mock` | v014 N9: E2E integration test against the `minimal` template via the livespec-authored mock at `<repo-root>/tests/e2e/fake_claude.py`. Deterministic; mock replaces only the Claude Agent SDK / LLM layer (wrappers always run for real). Runs the common pytest suite in mock mode, including the intentionally mock-only deterministic retry-on-exit-4 scenario. Part of `just check`. |
