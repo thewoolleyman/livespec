@@ -157,3 +157,29 @@ established; the count word is the slip. Two-commit split
 preserves the audit-trail asymmetry that PROPOSAL.md is
 versioned and the plan is not (plan edits never enter v024's
 overlay record; companion-doc edits do).
+
+## 2026-04-26T06:35:00Z — phase 1 sub-step 12 (pre-execution scan, fast-forward mode)
+
+**Decision:** Add `.venv/` to plan Phase 1 sub-step 12's
+gitignore enumeration. Plan line 636-640 enumerated 7
+gitignore entries (`__pycache__/`, `.pytest_cache/`,
+`.coverage`, `.ruff_cache/`, `.pyright/`, `.mutmut-cache/`,
+`htmlcov/`) but omitted `.venv/`, even though the same phase's
+exit criterion (line 643-644) explicitly references the
+"project-local `.venv`" that `uv sync --all-groups` creates.
+The omission appears to be a v024 plan-update miss: when v024
+introduced uv-managed deps, the gitignore enumeration wasn't
+extended to match. PROPOSAL.md doesn't enumerate gitignore
+entries (no PROPOSAL.md drift). Case-B plan-fix per the
+established rule: edit the plan enumeration directly with a
+brief justification noting v024. My already-written .gitignore
+includes `.venv/` and matches the corrected enumeration.
+
+**Rationale:** Without `.venv/` gitignored, `uv sync` would
+add hundreds of MB of binary artifacts to the working tree
+that git would track as untracked. The plan's exit criterion
+explicitly assumes `.venv` exists post-sync, so gitignoring it
+is an implicit requirement; making it explicit in the
+enumeration aligns the plan with its own exit criterion. Two
+commits: (1) plan-fix on the enumeration; (2) sub-step 12
+commit on .gitignore (already authored to include .venv/).

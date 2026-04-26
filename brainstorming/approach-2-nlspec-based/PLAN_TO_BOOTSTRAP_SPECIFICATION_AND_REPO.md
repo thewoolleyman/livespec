@@ -635,9 +635,10 @@ style doc §"Dev tooling and task runner":
   reference.
 - `.gitignore` amendments (ignore `__pycache__/`, `.pytest_cache/`,
   `.coverage`, `.ruff_cache/`, `.pyright/`, `.mutmut-cache/`,
-  `htmlcov/`). `.mypy_cache/` is intentionally NOT listed:
-  mypy compatibility is a style-doc non-goal, so its cache
-  path is not a tolerated artifact.
+  `htmlcov/`, `.venv/` per v024 — uv sync produces a project-
+  local `.venv` that must not be committed). `.mypy_cache/` is
+  intentionally NOT listed: mypy compatibility is a style-doc
+  non-goal, so its cache path is not a tolerated artifact.
 
 **Exit criterion:** `mise install` succeeds; `uv sync
 --all-groups` succeeds and produces a project-local `.venv` with
