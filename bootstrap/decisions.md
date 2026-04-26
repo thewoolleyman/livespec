@@ -491,3 +491,39 @@ PROPOSAL revision via overlay extension on the appropriate
 critique-fix file (precedent: v024 rounds 1-4); the implementation
 matches the import-linter contract and the CLAUDE.md hint, both of
 which align with the pure-validate architectural intent.
+
+## 2026-04-26T20:18:52Z — phase 3 sub-step 23 (Phase-3 exit-criterion correction)
+
+**Decision:** Drop `just check-wrapper-shape`,
+`just check-main-guard`, and `just check-schema-dataclass-pairing`
+from plan Phase 3's exit-criterion sentence (lines 1358-1360).
+The corrected sentence keeps `just check-lint` (the only
+tool-backed gate available at Phase 3) plus the manual
+tmp_path round-trip test (main + sub-spec routing per v019 Q1
++ v020 Q3) and adds an explicit pointer at Phase 3's existing
+deferral list (lines 1397-1405) noting the dropped checks are
+deferred to Phase 5. PROPOSAL.md verified unaffected — it
+references `check-wrapper-shape` and `check-schema-dataclass-pairing`
+only in passing (lines 418, 3607), not in any phase-exit-criterion
+context. Single Edit on Phase 3's exit-criterion paragraph; no
+other plan sections needed amendment. Gate confirmed via
+AskUserQuestion 2026-04-26 (option: "Apply the plan correction
+(Recommended)").
+
+**Rationale:** Plan-internal contradiction discovered at the
+Phase 3 → Phase 4 advance gate. Phase 3 line 1358 listed three
+checks as exit gates whose backing scripts (`wrapper_shape.py`,
+`main_guard.py`, `schema_dataclass_pairing.py`) are authored at
+Phase 4 (plan §"Phase 4"). Phase 3 line 1397-1405 explicitly
+defers "every target backed by a Phase-4 `dev-tooling/checks/*.py`
+script" to Phase 5's exit. The Phase 3 → Phase 4 advance gate
+would have failed because `python3 dev-tooling/checks/<name>.py`
+returns no-such-file: `dev-tooling/` does not exist as of this
+sub-step. Case-B plan-only fix per the bootstrap skill's
+drift-handling rule (PROPOSAL.md unaffected; plan is unversioned
+throwaway scaffolding deleted at Phase 11). Same shape as the
+Phase 2 sub-step 6 fix (decisions.md 2026-04-26T11:00:00Z) which
+made the same correction for Phase 2's exit criterion. The
+corrected exit criterion is enforceable today (`ruff check`
+clean) plus the tmp_path round-trip exercise (sub-step 23
+itself).

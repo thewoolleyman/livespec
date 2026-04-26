@@ -1355,10 +1355,14 @@ Required implementation surface (everything else stays stubbed):
   — Phase 6 uses only the `livespec` template. All four
   `minimal`-template prompts are Phase 7 work.
 
-**Exit criterion (narrow Phase-3 gate).** `just check-lint`,
-`just check-wrapper-shape`, `just check-main-guard`, and
-`just check-schema-dataclass-pairing` all succeed. Running
-`/livespec:seed` against a throwaway `tmp_path` fixture (with
+**Exit criterion (narrow Phase-3 gate).** `just check-lint`
+succeeds (the only tool-backed gate available at Phase 3 — the
+dev-tooling-backed checks `check-wrapper-shape`,
+`check-main-guard`, and `check-schema-dataclass-pairing` are
+deferred to Phase 5 per the deferral list below, since their
+backing `dev-tooling/checks/*.py` scripts are Phase 4 work).
+Running `/livespec:seed` against a throwaway `tmp_path` fixture
+(with
 the seed dialogue answering "yes" to v020 Q2's "ships own
 livespec templates" question and naming `livespec` and
 `minimal`) produces a valid `.livespec.jsonc`, the main spec
