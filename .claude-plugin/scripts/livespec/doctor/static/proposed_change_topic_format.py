@@ -109,11 +109,14 @@ def _scan_dir(
 
 
 def _extract_topic(*, path: Path) -> str | None:
-    """Tiny front-matter scanner: returns the `topic:` value or None."""
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return None
+    """Tiny front-matter scanner: returns the `topic:` value or None.
+
+    `_scan_dir` filters to `entry.is_file()` before calling here, so any
+    OSError reading the file is a bug and propagates to the supervisor's
+    bug-catcher (per `check-no-except-outside-io`: no explicit `except`
+    outside io/** except the supervisor catch-all).
+    """
+    text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
         return None
