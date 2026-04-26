@@ -135,10 +135,12 @@ v021 decisions:
   test data file population is outside the wrapper's
   scope).
 
-PROPOSAL.md v023 is now the frozen basis for every phase
-below; Phase 0 freezes at v023. (v023 is a critique-fix
+PROPOSAL.md v024 is now the frozen basis for every phase
+below; Phase 0 freezes at v024. (v023 is a critique-fix
 overlay against v022 with no PROPOSAL.md substance change;
-see the v023 decision block below for provenance.)
+v024 is a critique-fix overlay against v023 WITH PROPOSAL.md
+substance change — the UV-toolchain decision; see the v023
+and v024 decision blocks below for provenance.)
 
 v022 decisions (direct critique-fix overlay; see
 `history/v022/proposed_changes/critique-fix-v021-revision.md`):
@@ -195,6 +197,52 @@ v023 decisions (direct critique-fix overlay; see
   Phase 0 of the in-flight bootstrap by the bootstrap skill's
   cascading-impact scan (skill commit `398bfa8`).
 
+v024 decisions (direct critique-fix overlay; see
+`history/v024/proposed_changes/critique-fix-v023-revision.md`):
+- v024 D1: PROPOSAL §"Developer-time dependencies (livespec
+  repo only)" rewritten to name UV (astral-sh/uv) as the Python
+  toolchain manager. UV manages the interpreter version and
+  every Python package the enforcement suite requires (`ruff`,
+  `pyright`, `pytest`, `pytest-cov`, `pytest-icdiff`,
+  `hypothesis`, `hypothesis-jsonschema`, `mutmut`,
+  `import-linter`).
+- v024 D2: Mise's role narrows to non-Python binaries only —
+  `.mise.toml` pins `uv`, `just`, `lefthook`. `python` no
+  longer appears in `.mise.toml`.
+- v024 D3: Python pin moves from `.mise.toml` to
+  `pyproject.toml` `[project.requires-python]` plus a
+  committed `.python-version` (managed by `uv python pin`).
+  Python dev deps move to `pyproject.toml`
+  `[dependency-groups.dev]`, resolved into a committed
+  `uv.lock` and installed by `uv sync --all-groups`.
+- v024 D4: First-time bootstrap sequence becomes three steps:
+  `mise install` → `uv sync --all-groups` → `just bootstrap`.
+  `just bootstrap` continues to handle `lefthook install` and
+  any other one-time setup.
+- v024 D5 (plan-level): Plan Phase 1 first bullet rewritten —
+  `.mise.toml` pins `uv`, `just`, `lefthook` only. New plan
+  bullet adds `.python-version` + `pyproject.toml`
+  `[project.requires-python]` for the Python pin. The
+  `pyproject.toml` bullet gains a `[project]` /
+  `[dependency-groups.dev]` sub-bullet listing the nine
+  Python dev tools. Plan Phase 1 exit criterion adds
+  `uv sync --all-groups` between `mise install` and
+  `just bootstrap`.
+- v024 D6 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v024/PROPOSAL.md`. Plan Phase 0
+  step 2 frozen-status header literal bumps to "Frozen at
+  v024". Plan Execution-prompt block authoritative-version
+  line bumps to v024.
+- v024 D7 (plan-level): Plan §"Preconditions" extends the
+  must-not-yet-exist file list with `.python-version` and
+  `uv.lock`.
+- Triggered during Phase 1 sub-step 1 of the in-flight
+  bootstrap when the executor reflex-defaulted to `pipx:` for
+  the Python dev-tool backend; user corrected with the
+  UV-as-Python-toolchain principle. Routed via the bootstrap
+  skill's Case-A PROPOSAL-drift rule (auto-blocking;
+  halt-and-revise required).
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -245,9 +293,11 @@ reference-only.
 
 - Repo root is `/data/projects/livespec/` with `master` branch
   clean.
-- No `.mise.toml`, `justfile`, `lefthook.yml`, `pyproject.toml`,
-  `dev-tooling/`, `tests/`, `SPECIFICATION/`, `SPECIFICATION.md`,
-  `NOTICES.md`, or `.vendor.jsonc` exist yet at repo root.
+- No `.mise.toml`, `.python-version`, `uv.lock`, `justfile`,
+  `lefthook.yml`, `pyproject.toml`, `dev-tooling/`, `tests/`,
+  `SPECIFICATION/`, `SPECIFICATION.md`, `NOTICES.md`, or
+  `.vendor.jsonc` exist yet at repo root. (`.python-version` and
+  `uv.lock` are added per v024.)
 - `.claude-plugin/` MAY exist at repo root, BUT only with
   `marketplace.json` (the bootstrap-marketplace manifest declaring
   the `livespec-bootstrap` plugin's location). Phase 2 adds
@@ -403,21 +453,26 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v023/PROPOSAL.md` (the v023
-   snapshot — v022 substance plus the Phase 0 sub-step 2
-   frozen-status header bumped to "Frozen at v023"; v022's
-   substance carries v018 Q1-Option-A through Q6, v019 Q1, v020
-   Q1-Q4, v021 Q1-Q3, plus v022's prompt-reference-metadata file
-   class and four plan-level corrections per the Preconditions
-   section). v023's snapshot was created during a halt-and-revise
-   in Phase 0 of the in-flight bootstrap; see
+   byte-identical to `history/v024/PROPOSAL.md` (the v024
+   snapshot — v023 substance plus v024's UV-toolchain decision
+   per `history/v024/proposed_changes/critique-fix-v023-revision.md`,
+   and the Phase 0 sub-step 2 frozen-status header bumped to
+   "Frozen at v024"; v023 substance is v022 substance plus the
+   `tmp/bootstrap/` ownership convention; v022's substance carries
+   v018 Q1-Option-A through Q6, v019 Q1, v020 Q1-Q4, v021 Q1-Q3,
+   plus v022's prompt-reference-metadata file class and four
+   plan-level corrections per the Preconditions section). v024's
+   snapshot was created during a halt-and-revise in Phase 1
+   sub-step 1 of the in-flight bootstrap; see
+   `history/v024/proposed_changes/critique-fix-v023-revision.md`
+   for the v024 decision provenance,
    `history/v023/proposed_changes/critique-fix-v022-revision.md`
-   for the v023 decision provenance, and
+   for v023's, and
    `history/v022/proposed_changes/critique-fix-v021-revision.md`
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v023. Further evolution happens in
+   > **Status:** Frozen at v024. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -443,8 +498,10 @@ planned as a single `freeze: v022 brainstorming` commit; v023's
 halt-and-revise broadened this to "the v023 revision commit"
 (which lands the frozen-status header on PROPOSAL.md alongside
 the v023 history snapshot, revision file, and paired plan-text
-edits). Future halt-and-revises during execution may produce
-additional snapshots v024+ via the same mechanism.
+edits). v024's halt-and-revise during Phase 1 sub-step 1 added
+the UV-toolchain decision; future halt-and-revises during
+execution may produce additional snapshots v025+ via the same
+mechanism.
 
 ### Phase 1 — Repo-root developer tooling
 
@@ -452,11 +509,14 @@ Create at repo root (outside the plugin bundle), exactly as
 specified in PROPOSAL.md §"Developer tooling layout" and the
 style doc §"Dev tooling and task runner":
 
-- `.mise.toml` pinning `python@3.10.x`, `just`, `lefthook`,
-  `ruff`, `pyright`, `pytest`, `pytest-cov`, `pytest-icdiff`,
-  `hypothesis`, `hypothesis-jsonschema`, `mutmut`,
-  `import-linter` to exact versions. (`typing_extensions` is
-  vendored, NOT mise-pinned.)
+- `.mise.toml` pinning `uv`, `just`, `lefthook` to exact
+  versions — non-Python binaries only, per v024. Python and
+  every Python dev dependency are managed by `uv` via
+  `pyproject.toml` (see next bullet). (`typing_extensions` is
+  vendored per v013 M1, NOT mise-pinned and NOT uv-managed.)
+- `.python-version` recording the exact Python 3.10.x patch,
+  managed by `uv python pin` per v024. `pyproject.toml`'s
+  `[project.requires-python]` declares the same constraint.
 - `pyproject.toml` containing:
   - `[tool.ruff]` per style doc §"Linter and formatter"
     (27 categories; pylint thresholds; TID banned imports).
@@ -502,6 +562,17 @@ style doc §"Dev tooling and task runner":
     pyproject would misstate the spec (DoD 10).
   - NO build-system section (livespec is not a published PyPI
     package; it ships via Claude Code plugin bundling).
+  - `[project]` table per v024 with `name = "livespec"`,
+    `version = "0.0.0"` (placeholder; livespec is not
+    published), and `requires-python = ">=3.10,<3.11"`. NO
+    `[project.dependencies]` (livespec ships nothing as a
+    runtime dep — the bundle's `_vendor/` is the runtime).
+  - `[dependency-groups]` per v024 with a `dev` group listing
+    `ruff`, `pyright`, `pytest`, `pytest-cov`, `pytest-icdiff`,
+    `hypothesis`, `hypothesis-jsonschema`, `mutmut`,
+    `import-linter` to exact versions. UV resolves and installs
+    these into a project-local `.venv` via `uv sync
+    --all-groups`, producing a committed `uv.lock`.
 - `justfile` with the canonical target list from the style doc
   §"Enforcement suite — Canonical target list". All recipes
   delegate to their underlying tool or to
@@ -568,10 +639,12 @@ style doc §"Dev tooling and task runner":
   mypy compatibility is a style-doc non-goal, so its cache
   path is not a tolerated artifact.
 
-**Exit criterion:** `mise install` succeeds; `just bootstrap`
-(which at this stage is a placeholder no-op per the deferral
-above) succeeds; `just --list` shows every target from the
-canonical table. Lefthook is NOT yet installed into
+**Exit criterion:** `mise install` succeeds; `uv sync
+--all-groups` succeeds and produces a project-local `.venv` with
+the dev-dep set plus a committed `uv.lock` (per v024);
+`just bootstrap` (placeholder no-op at this stage per the
+deferral above) succeeds; `just --list` shows every target from
+the canonical table. Lefthook is NOT yet installed into
 `.git/hooks/`; that lands in Phase 5.
 
 ### Phase 2 — Plugin bundle skeleton
@@ -2079,7 +2152,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v023 as authoritative. Do not propose any
+Treat PROPOSAL.md v024 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.

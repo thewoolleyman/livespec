@@ -42,3 +42,11 @@ appends:
 **Resolved:** 2026-04-25T23:33:20Z — convention established (`tmp/bootstrap/` for bootstrap scratch, `tmp/` root user-owned); sub-step 3 no-op since no bootstrap scratch exists to delete.
 
 **Resolved:** 2026-04-25T23:52:51Z — codified in v023; see `history/v023/proposed_changes/critique-fix-v022-revision.md` (decision D1) and the paired plan-text edits at Phase 0 step 3 + exit criterion.
+
+## 2026-04-26T01:52:47Z — phase 1 — blocking — halt-and-revise-brainstorming
+
+**Status:** resolved
+
+**Description:** PROPOSAL.md §"Developer-time dependencies (livespec repo only)" (lines 534-545) and §3437's directory-shape diagram say developer tooling is "managed via `mise`" with `.mise.toml` pinning the 12 dev tools, but neither PROPOSAL nor the plan specifies the underlying Python toolchain manager. User-established convention 2026-04-26: UV (astral-sh/uv) is the Python toolchain manager; mise's role narrows to pinning non-Python binaries only (`uv` itself, `just`, `lefthook`); UV manages Python via `uv python pin` and all Python packages via `pyproject.toml` `[dependency-groups.dev]` + `uv sync`. PROPOSAL.md and plan must be revised to codify UV explicitly so the executor doesn't reflex-default to pipx or pip. Picking UV-managed-Python with mise-pins-binaries-only architecture (gated via AskUserQuestion 2026-04-26).
+
+**Resolved:** 2026-04-26T04:34:25Z — codified in v024; see `history/v024/proposed_changes/critique-fix-v023-revision.md` (decisions D1-D4) and the paired plan-text edits at Phase 1 first bullet, new `.python-version` bullet, `pyproject.toml` `[project]` + `[dependency-groups.dev]` sub-bullets, Phase 1 exit criterion, Phase 0 byte-identity references, and Preconditions file list.
