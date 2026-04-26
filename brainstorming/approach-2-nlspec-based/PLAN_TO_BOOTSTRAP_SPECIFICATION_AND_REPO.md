@@ -520,7 +520,7 @@ style doc §"Dev tooling and task runner":
 - `pyproject.toml` containing:
   - `[tool.ruff]` per style doc §"Linter and formatter"
     (27 categories; pylint thresholds; TID banned imports).
-  - `[tool.pyright]` strict + the six strict-plus diagnostics
+  - `[tool.pyright]` strict + the seven strict-plus diagnostics
     (`reportUnusedCallResult`, `reportImplicitOverride`,
     `reportUninitializedInstanceVariable`,
     `reportUnnecessaryTypeIgnoreComment`,
