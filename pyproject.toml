@@ -1,0 +1,248 @@
+# pyproject.toml — livespec dev tooling configuration.
+#
+# Authoritative sources (DO NOT diverge from these without
+# producing a new PROPOSAL.md vNNN snapshot first):
+#
+#   - PROPOSAL.md §"Developer-time dependencies (livespec repo
+#     only)" — uv-managed dev deps per v024 (mise pins only the
+#     non-Python binaries `uv`, `just`, `lefthook`).
+#   - PROPOSAL.md §"Runtime dependencies — Vendored pure-Python
+#     libraries" — returns + returns_pyright_plugin vendoring
+#     (per v018 Q4 the pyright plugin is vendored alongside the
+#     library; see [tool.pyright].pluginPaths below).
+#   - PROPOSAL.md §"Runtime dependencies — Developer-time
+#     dependencies → Typechecker decision (v018 Q4)" — pyright
+#     (NOT basedpyright); rationale = the seven strict-plus
+#     diagnostics manually enabled below provide the load-bearing
+#     guardrails against agent-authored-code failure patterns.
+#   - python-skill-script-style-requirements.md §"Linter and
+#     formatter" — ruff 27-category config + pylint thresholds
+#     + TID banned imports.
+#   - python-skill-script-style-requirements.md §"Type safety"
+#     — pyright strict + the seven strict-plus diagnostics.
+#   - python-skill-script-style-requirements.md §"Code coverage"
+#     — 100% line+branch threshold.
+#   - python-skill-script-style-requirements.md §"Import-Linter
+#     contracts (minimum configuration)" — two contracts
+#     (parse-and-validate-are-pure forbidden + layered-architecture
+#     layers); per v017 Q3 the v012 L15a third contract was
+#     retracted (raise-discipline is raise-site-enforced only by
+#     check-no-raise-outside-io).
+#   - python-skill-script-style-requirements.md §"Mutation
+#     testing as release-gate" — mutmut runtime config only;
+#     NO `threshold` key here (the ratchet-with-ceiling
+#     semantics live in `just check-mutation`, which reads
+#     .mutmut-baseline.json and computes the floor; a static
+#     threshold = 80 here would misstate the spec, see
+#     PROPOSAL.md DoD 10).
+#
+# NO [build-system] section: livespec is not a published PyPI
+# package; it ships via Claude Code plugin bundling.
+#
+# Phase 6 migrates this rationale into SPECIFICATION/constraints.md;
+# Phase 8 items 8 and 9 become bookkeeping closes pointing at the
+# Phase-1 commit that established this file.
+
+[project]
+name = "livespec"
+version = "0.0.0"
+requires-python = ">=3.10,<3.11"
+
+# Per v024: NO [project.dependencies] table. livespec ships nothing
+# as a runtime dep — the bundle's _vendor/ tree IS the runtime
+# (see PROPOSAL.md §"Runtime dependencies — Vendored pure-Python
+# libraries"). End users install nothing beyond Python 3.10+.
+
+[dependency-groups]
+# Per v024: every Python dev tool is uv-managed via this table
+# (resolved into uv.lock; installed into a project-local .venv via
+# `uv sync --all-groups`). Mise pins only the non-Python binaries
+# in .mise.toml. typing_extensions is intentionally NOT here: it
+# is vendored at scripts/_vendor/typing_extensions/ per v013 M1.
+dev = [
+    "ruff==0.8.6",
+    "pyright==1.1.391",
+    "pytest==8.3.4",
+    "pytest-cov==6.0.0",
+    "pytest-icdiff==0.9",
+    "hypothesis==6.122.3",
+    "hypothesis-jsonschema==0.23.1",
+    "mutmut==3.2.3",
+    "import-linter==2.1",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — sole linter, formatter, import-sorter, complexity checker.
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+# 27 categories total. v011 baseline (11) + v012 additions (16).
+# Per python-skill-script-style-requirements.md §"Linter and
+# formatter".
+select = [
+    # ----- v011 baseline (11 categories) -----
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "UP",    # pyupgrade
+    "SIM",   # flake8-simplify
+    "C90",   # mccabe complexity
+    "N",     # pep8-naming
+    "RUF",   # ruff-specific
+    "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
+    # ----- v012 additions (16 categories) -----
+    "TRY",   # tryceratops — pairs with v011 K10 domain-vs-bugs split
+    "FBT",   # flake8-boolean-trap — reinforces K4 keyword-only discipline
+    "PIE",   # flake8-pie — miscellaneous anti-patterns
+    "SLF",   # flake8-self — bans cross-class _-prefixed access
+    "LOG",   # flake8-logging — logging discipline
+    "G",     # flake8-logging-format — kwargs-only in log calls
+    "TID",   # flake8-tidy-imports — no relative imports + banned-imports
+    "ERA",   # eradicate — bans commented-out code (LLM artifact)
+    "ARG",   # flake8-unused-arguments
+    "RSE",   # flake8-raise — `raise X` over `raise X()`; raise...from discipline
+    "PT",    # flake8-pytest-style
+    "FURB",  # refurb — modern-Python refactor hints
+    "SLOT",  # flake8-slots
+    "ISC",   # flake8-implicit-str-concat — complements pyright's diagnostic
+    "T20",   # flake8-print — bans print/pprint (pairs with check-no-write-direct)
+    "S",     # flake8-bandit — security anti-patterns
+]
+
+[tool.ruff.lint.pylint]
+max-args = 6
+max-positional-args = 6
+max-branches = 10
+max-statements = 30
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"abc.ABC" = { msg = "use typing.Protocol; see python-skill-script-style-requirements.md §'Type safety — Inheritance and structural typing'" }
+"abc.ABCMeta" = { msg = "use typing.Protocol; see python-skill-script-style-requirements.md §'Type safety — Inheritance and structural typing'" }
+"abc.abstractmethod" = { msg = "use typing.Protocol; see python-skill-script-style-requirements.md §'Type safety — Inheritance and structural typing'" }
+"pickle" = { msg = "arbitrary-code-execution surface on load(); livespec uses JSON / JSONC for all serialization" }
+"marshal" = { msg = "arbitrary-code-execution surface on load(); livespec uses JSON / JSONC for all serialization" }
+"shelve" = { msg = "arbitrary-code-execution surface on load(); livespec uses JSON / JSONC for all serialization" }
+
+# ---------------------------------------------------------------------------
+# Pyright — strict + seven strict-plus diagnostics + returns plugin.
+# ---------------------------------------------------------------------------
+
+[tool.pyright]
+include = [".claude-plugin/scripts", "dev-tooling"]
+exclude = ["**/_vendor/**", "**/__pycache__/**"]
+pythonVersion = "3.10"
+typeCheckingMode = "strict"
+
+# Seven strict-plus diagnostics (v012 L1 + L2). Each closes a
+# documented LLM-authored-code failure pattern with a one-line
+# config change. See python-skill-script-style-requirements.md
+# §"Type safety" for per-diagnostic rationale.
+reportUnusedCallResult = "error"
+reportImplicitOverride = "error"
+reportUninitializedInstanceVariable = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportUnnecessaryCast = "error"
+reportUnnecessaryIsInstance = "error"
+reportImplicitStringConcatenation = "error"
+
+# Returns ROP plugin path (v018 Q4): pyright loads the vendored
+# returns plugin to type-check Result / IOResult containers
+# correctly. Phase 2 lands the actual .claude-plugin/scripts/_vendor/
+# directory including returns_pyright_plugin/ alongside the
+# returns/ runtime library. Path string per PROPOSAL.md line 456,
+# style doc line 752, and plan line 529 (literal value
+# "_vendor/returns_pyright_plugin").
+pluginPaths = ["_vendor/returns_pyright_plugin"]
+
+# ---------------------------------------------------------------------------
+# Pytest — pytest-cov + pytest-icdiff wiring.
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--icdiff",
+]
+
+# ---------------------------------------------------------------------------
+# Coverage — 100% line + branch (per python-skill-script-style-requirements.md
+# §"Code coverage" and PROPOSAL.md DoD).
+# ---------------------------------------------------------------------------
+
+[tool.coverage.run]
+branch = true
+source = [
+    ".claude-plugin/scripts/livespec",
+    ".claude-plugin/scripts/bin",
+    "dev-tooling",
+]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = false
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+]
+
+# ---------------------------------------------------------------------------
+# Import-Linter — two authoritative contracts (v013 M7, narrowed by v017 Q3).
+# ---------------------------------------------------------------------------
+
+[tool.importlinter]
+root_packages = ["livespec"]
+
+[[tool.importlinter.contracts]]
+name = "parse-and-validate-are-pure"
+type = "forbidden"
+source_modules = ["livespec.parse", "livespec.validate"]
+forbidden_modules = [
+    "livespec.io",
+    "subprocess",
+    "returns.io",
+    "socket",
+    "http",
+    "urllib",
+    "pathlib",
+]
+
+[[tool.importlinter.contracts]]
+name = "layered-architecture"
+type = "layers"
+layers = [
+    "livespec.commands | livespec.doctor",
+    "livespec.io",
+    "livespec.validate",
+    "livespec.parse",
+]
+
+# ---------------------------------------------------------------------------
+# Mutmut — runtime config ONLY. Per python-skill-script-style-requirements.md
+# §"Mutation testing as release-gate": NO threshold key here. The
+# ratchet-with-ceiling semantics (floor = baseline_kill_rate, capped at 80%)
+# live entirely in `just check-mutation`, which reads .mutmut-baseline.json
+# and computes the floor at runtime. A static threshold = 80 here would
+# misstate the spec (PROPOSAL.md DoD 10).
+# ---------------------------------------------------------------------------
+
+[tool.mutmut]
+paths_to_mutate = [
+    ".claude-plugin/scripts/livespec/parse",
+    ".claude-plugin/scripts/livespec/validate",
+]
+runner = "python -m pytest -x -q"
+tests_dir = "tests"
