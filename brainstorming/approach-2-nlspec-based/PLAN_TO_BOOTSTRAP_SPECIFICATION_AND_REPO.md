@@ -159,17 +159,26 @@ the v013 M1 minimal-shim approach cannot satisfy variadic-
 generics usage (`Generic[..., Unpack[TypeVarTuple(...)]]`)
 inside the vendored returns lib on Python 3.10; PROPOSAL.md
 v013 M1 explicitly anticipated this scope-widening path;
-v028 is a critique-fix overlay against v027 WITH PROPOSAL.md
-substance change — corrects the bundle-root derivation
-formula at PROPOSAL §"Template resolution contract" line
-1466, replacing the off-by-one
+v029 is a critique-fix overlay against v028 WITH PROPOSAL.md
+substance change — re-aligns the `dev-tooling/checks/`
+directory listing (PROPOSAL lines 3496-3520) with the
+authored / planned check set (adds `rop_pipeline_shape.py`,
+`heading_coverage.py`, `vendor_manifest.py`, `check_tools.py`,
+`check_mutation.py` to the listing) and corrects the
+`keyword_only_args.py` annotation to enumerate the full
+strict-dataclass triple (`frozen=True + kw_only=True +
+slots=True`); see the v029 decision block below for
+provenance. v028 is a critique-fix overlay against v027 WITH
+PROPOSAL.md substance change — corrects the bundle-root
+derivation formula at PROPOSAL §"Template resolution
+contract" line 1466, replacing the off-by-one
 `Path(__file__).resolve().parent.parent` (which resolves
 to `.claude-plugin/scripts/`) with the correct
 `Path(__file__).resolve().parents[3]` from the
 `livespec/commands/resolve_template.py` implementation file
 (which resolves to `.claude-plugin/`, where
 `specification-templates/` actually lives); see the v023,
-v024, v025, v026, v027, and v028 decision blocks below for
+v024, v025, v026, v027, v028, and v029 decision blocks below for
 provenance.)
 
 v022 decisions (direct critique-fix overlay; see
@@ -455,6 +464,37 @@ v028 decisions (direct critique-fix overlay; see
   PROPOSAL-drift rule (auto-blocking; halt-and-revise
   required).
 
+v029 decisions (direct critique-fix overlay; see
+`history/v029/proposed_changes/critique-fix-v028-revision.md`):
+- v029 D1: PROPOSAL `dev-tooling/checks/` directory listing
+  (lines 3496-3520) re-aligned with the authored / planned
+  check set. Five filenames added: `rop_pipeline_shape.py`
+  (newly authored at Phase 4 sub-step 13 to enforce single-
+  public-method on `@rop_pipeline`-decorated classes,
+  encoding the Command / Use Case Interactor lineage at the
+  class level), plus `heading_coverage.py`, `vendor_manifest.py`,
+  `check_tools.py`, `check_mutation.py` — all of which already
+  exist in the justfile and the Phase 4 plan but were absent
+  from the PROPOSAL listing. Additionally, the
+  `keyword_only_args.py` annotation is updated from "frozen=True
+  + slots=True" (two-of-three subset) to "frozen=True +
+  kw_only=True + slots=True" (the full strict-dataclass triple
+  per style doc lines 1311-1320 + the actual implementation in
+  `dev-tooling/checks/keyword_only_args.py`).
+- v029 D2 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v029/PROPOSAL.md`. Plan Phase 0
+  step 2 frozen-status header literal bumps to "Frozen at
+  v029". Plan Execution-prompt block authoritative-version
+  line bumps to v029. Plan Phase 4 enforcement-script
+  enumeration (line 1419) carries `rop_pipeline_shape.py`
+  adjacent to `supervisor_discipline.py` to match PROPOSAL.
+- Triggered during Phase 4 sub-step 13 of the in-flight
+  bootstrap when the executor authored
+  `dev-tooling/checks/rop_pipeline_shape.py` and the cascading-
+  impact scan flagged the missing PROPOSAL listing entries.
+  Routed via the bootstrap skill's Case-A PROPOSAL-drift rule
+  (auto-blocking; halt-and-revise required).
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -672,7 +712,13 @@ sub-steps within a phase MAY run in parallel where noted.
    to `Path(__file__).resolve().parents[3]` per
    `history/v028/proposed_changes/critique-fix-v027-revision.md`,
    and the Phase 0 sub-step 2 frozen-status header bumped to
-   "Frozen at v028"; v027 substance is v026 substance with
+   "Frozen at v029"; v029 substance is v028 substance plus the
+   `dev-tooling/checks/` directory-listing realignment + the
+   `keyword_only_args.py` triple-annotation fix per
+   `history/v029/proposed_changes/critique-fix-v028-revision.md`;
+   v028 substance is v027 substance with the bundle-root
+   formula correction noted above; v027 substance is v026
+   substance with
    `typing_extensions` reclassified from hand-authored shim to
    upstream-sourced lib per
    `history/v027/proposed_changes/critique-fix-v026-revision.md`;
@@ -694,6 +740,8 @@ sub-steps within a phase MAY run in parallel where noted.
    plan-level corrections per the Preconditions section).
    v028's snapshot was created during a halt-and-revise in
    Phase 3 sub-step 12 of the in-flight bootstrap; see
+   `history/v029/proposed_changes/critique-fix-v028-revision.md`
+   for the v029 decision provenance,
    `history/v028/proposed_changes/critique-fix-v027-revision.md`
    for the v028 decision provenance,
    `history/v027/proposed_changes/critique-fix-v026-revision.md`
@@ -710,7 +758,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v028. Further evolution happens in
+   > **Status:** Frozen at v029. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -1417,7 +1465,9 @@ code (`just check` includes `dev-tooling/**` in scope). Scripts:
 
 - `file_lloc.py` — file ≤ 200 logical lines.
 - `private_calls.py`, `global_writes.py`,
-  `supervisor_discipline.py`, `no_raise_outside_io.py` (raise-site
+  `supervisor_discipline.py`, `rop_pipeline_shape.py` (v029 D1:
+  single public method per `@rop_pipeline`-decorated class),
+  `no_raise_outside_io.py` (raise-site
   only per v017 Q3), `no_except_outside_io.py`,
   `public_api_result_typed.py` (`__all__`-based per v012 L9),
   `main_guard.py`, `wrapper_shape.py` (permits the optional blank
@@ -2439,7 +2489,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v028 as authoritative. Do not propose any
+Treat PROPOSAL.md v029 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
