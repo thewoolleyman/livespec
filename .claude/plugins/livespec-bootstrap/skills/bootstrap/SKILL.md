@@ -42,11 +42,16 @@ flow into execution naturally.
    earlier turns of the current conversation.
    For each match, assess whether the plan-text is consistent with
    the recorded entry / convention. If ANY inconsistency is found,
-   immediately auto-log a `blocking` open-issues entry per the
-   §"Plan/PROPOSAL drift is automatically blocking" rule in step 3,
-   then route directly to the halt-on-blocking sub-flow (skip the
-   main-loop gate of step 3). Do NOT present "Proceed" as an option
-   when a known plan/PROPOSAL contradiction exists.
+   route per the §"Drift handling depends on which file is affected"
+   rule in step 3:
+   - PROPOSAL.md inconsistency: auto-log a `blocking` open-issues
+     entry and route directly to the halt-on-blocking sub-flow
+     (skip the main-loop gate of step 3).
+   - Plan-only inconsistency: do NOT log to open-issues; route
+     directly to the Case-B direct-fix gate (skip the main-loop
+     gate of step 3, but DO present the Case-B AskUserQuestion).
+   In either case, do NOT present "Proceed with the next sub-step"
+   as an option until the drift is resolved.
 
 ### 2. Present current state
 
@@ -86,42 +91,58 @@ context.
 When the user selects this option (or when step 1's consistency
 scan / step 4's cascading-impact scan auto-routes here):
 
-**Plan/PROPOSAL drift is automatically blocking.** Any drift whose
-description references text in
-`brainstorming/approach-2-nlspec-based/PROPOSAL.md` or in
-`brainstorming/approach-2-nlspec-based/PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md`
-is automatically severity `blocking` and disposition
-`halt-and-revise-brainstorming`. The executor MUST NOT present
-`non-blocking-*` severities or `defer-to-spec-propose-change`
-disposition for these entries — skip the severity / disposition
-AskUserQuestions and write those fields directly. Rationale: the
-plan is throwaway scaffolding deleted at Phase 11; PROPOSAL.md is
-frozen at v022. Neither has a post-Phase-6 codification target in
-`SPECIFICATION/`. Plan/PROPOSAL inconsistencies have no escape
-valve — halt-and-revise is the only resolution path, and the
-bootstrap MUST NOT advance until the plan/PROPOSAL is internally
-consistent.
+**Drift handling depends on which file is affected. PROPOSAL.md is
+versioned; the plan is not.** Two cases, classified by the file the
+drift lives in:
 
-**Carve-out: plan-internal text-correction drift.** When the
-detected drift is entirely within the plan (PROPOSAL.md is
-unchanged) AND consists of stale text references that contradict
-an authoritative table or diagram elsewhere in the plan (e.g.,
-§8's directory-shape diagram), AND the correction is purely
-mechanical (rewriting the stale references to match the
-authoritative source, with no decision to make), the executor
-MAY fix the references directly in a regular commit instead of
-running halt-and-revise. The bootstrap is still gated on a
-clean plan, but the resolution path is a direct edit + commit
-rather than a vNNN snapshot. Required steps for this carve-out:
-(a) confirm PROPOSAL.md has zero matches for the stale terms;
-(b) confirm an authoritative diagram/table inside the plan
-unambiguously shows the correct text; (c) record a decisions.md
-entry naming the stale references, the authoritative source,
-and the chosen correction; (d) apply the edits and commit
-(commit message starts with `phase-N: align stale plan ...` or
-similar). If ANY of (a)-(c) cannot be satisfied — including any
-ambiguity about which version is authoritative — fall back to
-the standard halt-and-revise walkthrough.
+**Case A — PROPOSAL.md drift is auto-blocking.** Any drift whose
+description references text in
+`brainstorming/approach-2-nlspec-based/PROPOSAL.md` is automatically
+severity `blocking` and disposition `halt-and-revise-brainstorming`.
+The executor MUST NOT present `non-blocking-*` severities or
+`defer-to-spec-propose-change` disposition for these entries — skip
+the severity / disposition AskUserQuestions and write those fields
+directly, then route to the halt-on-blocking sub-flow. Rationale:
+PROPOSAL.md is versioned via
+`brainstorming/approach-2-nlspec-based/history/vNNN/PROPOSAL.md`
+snapshots (v018+) and frozen at the latest vNNN. Any change MUST
+produce a new vNNN snapshot via the formal halt-and-revise
+walkthrough; there is no escape valve.
+
+**Case B — plan-only drift is fixed directly.** When the detected
+drift is entirely within
+`brainstorming/approach-2-nlspec-based/PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md`
+and PROPOSAL.md is unaffected, the executor proposes a direct plan
+edit instead of routing to halt-and-revise. Rationale: the plan is
+NOT versioned (no `history/vNNN/PLAN_*.md` snapshots exist) and is
+throwaway scaffolding deleted at Phase 11. Plan corrections don't
+carry the audit-trail weight of PROPOSAL changes. Procedure:
+
+1. Confirm PROPOSAL.md is unaffected: grep PROPOSAL.md for the
+   relevant terms and confirm zero matches OR confirm any matches
+   are consistent with both the current and proposed plan text.
+   If PROPOSAL.md is also affected, route to Case A.
+2. Show the user what was found: which lines, current text, and
+   the proposed correction.
+3. AskUserQuestion gate (always — the executor never edits the
+   plan silently). Three options:
+   - **Apply the plan correction** (Recommended when PROPOSAL.md
+     is genuinely unaffected and the correction is well-scoped).
+   - **Halt and discuss first** — pause without editing; user
+     wants to think through implications before committing.
+   - **Reclassify as PROPOSAL drift** — if on review the
+     correction would actually require a PROPOSAL.md change,
+     route to Case A.
+4. On "Apply": apply the edits via `Edit`; record a `decisions.md`
+   entry naming the drift, the proposed fix, and the user's gate
+   confirmation; commit (message starts with `phase-N: ...` or
+   similar). Do NOT write to `open-issues.md` — that file is for
+   PROPOSAL-blocking entries only. Loop back to main step 1.
+
+Plan drift entries never enter `open-issues.md` under this rule.
+If a single drift touches BOTH plan and PROPOSAL.md, route to Case
+A — the halt-and-revise walkthrough's plan-text-edits step covers
+the paired plan changes.
 
 For all other drift kinds:
 
@@ -129,8 +150,9 @@ For all other drift kinds:
    - `blocking` — executor cannot satisfy the current phase's exit
      criterion, OR continuing would knowingly produce wrong output.
    - `non-blocking-pre-phase-6` — drift discovered before the seed,
-     and the drift is NOT in plan/PROPOSAL text (those are
-     auto-blocking per the rule above); executor can carry an
+     and the drift is NOT in PROPOSAL.md text (PROPOSAL drift is
+     auto-blocking per Case A above; plan-only drift never enters
+     open-issues at all per Case B); executor can carry an
      interpretation forward; codification happens via post-Phase-6
      propose-change against `SPECIFICATION/`.
    - `non-blocking-post-phase-6` — drift discovered after the seed;
@@ -149,10 +171,9 @@ the halt-on-blocking sub-flow:
 - Print: "This issue is flagged blocking. The bootstrap will not
   advance until it is resolved."
 - AskUserQuestion: "How do you want to proceed?" — options:
-  1. **Open the halt-and-revise walkthrough** (Recommended when
-     `current_phase < 6` or when a PROPOSAL.md change is needed).
-     Routes to the §"Halt-and-revise walkthrough (pre-Phase-6)"
-     sub-flow below.
+  1. **Open the halt-and-revise walkthrough** (Recommended; required
+     for any blocking PROPOSAL.md drift). Routes to the
+     §"Halt-and-revise walkthrough (pre-Phase-6)" sub-flow below.
   2. **Open the propose-change walkthrough** (only valid when
      `current_phase >= 6` and the change targets a `SPECIFICATION/`
      tree). Routes to the §"Propose-change walkthrough
@@ -161,11 +182,12 @@ the halt-on-blocking sub-flow:
      issue isn't blocking after all. Capture the reconsideration
      rationale to `bootstrap/decisions.md`; mutate the open-issues
      entry's severity field; resume the main loop at step 2.
-     **NOT VALID for plan/PROPOSAL drift entries** — those have no
-     non-blocking severity by rule. If a plan/PROPOSAL drift entry
-     is in error (the contradiction was misread), supersede the
-     entry by appending a new entry that points back at it, rather
-     than downgrading.
+     **NOT VALID for PROPOSAL.md drift entries** — those have no
+     non-blocking severity by rule. If a PROPOSAL drift entry is in
+     error (the contradiction was misread), supersede the entry by
+     appending a new entry that points back at it, rather than
+     downgrading. (Plan-only drift never lands in open-issues at
+     all per Case B, so this option is moot for plan drift.)
   4. **Pause for now** — clean STATUS update; print resume
      message; stop. The blocking entry remains open and will gate
      advancement until resolved on a later invocation.
@@ -197,15 +219,18 @@ Only when the user selects "proceed":
    for terms relevant to the established change (the noun, path,
    tool name, file name, or concept at issue). For every match,
    assess whether the plan/PROPOSAL text is consistent with the
-   established change. If ANY match is inconsistent, immediately
-   auto-log a `blocking` open-issues entry per the §"Plan/PROPOSAL
-   drift is automatically blocking" rule in step 3, then route
-   directly to the halt-on-blocking sub-flow BEFORE returning to
-   step 1. The bootstrap MUST NOT advance past a known
-   plan/PROPOSAL contradiction. Skip this scan only when the
-   executed sub-step was purely mechanical with no convention or
-   interpretation established (e.g., a verbatim file move from the
-   plan).
+   established change. If ANY match is inconsistent, route per the
+   §"Drift handling depends on which file is affected" rule in
+   step 3 BEFORE returning to step 1:
+   - PROPOSAL.md inconsistency: auto-log a `blocking` open-issues
+     entry and route directly to the halt-on-blocking sub-flow.
+   - Plan-only inconsistency: route directly to the Case-B
+     direct-fix gate (no open-issues entry; user gates the fix).
+   The bootstrap MUST NOT advance past a known PROPOSAL.md
+   contradiction or unresolved plan contradiction. Skip this scan
+   only when the executed sub-step was purely mechanical with no
+   convention or interpretation established (e.g., a verbatim
+   file move from the plan).
 3. After successful execution (and after the cascading-impact scan
    is clean):
    - Update `bootstrap/STATUS.md`: increment `current_sub_step` (or
@@ -257,12 +282,12 @@ Run BEFORE the exit-criterion check.
      mutates each non-blocking entry's disposition to
      `defer-to-spec-propose-change` if not already set).
    - **Carry forward as-is** (only valid if zero blocking entries
-     remain AND no remaining entries reference plan or PROPOSAL
-     text; plan/PROPOSAL drift can never be carried forward — by
-     the §"Plan/PROPOSAL drift is automatically blocking" rule it
-     is auto-`blocking` and must be halt-and-revised in this
-     session before phase exit; non-plan-non-PROPOSAL entries
-     persist; skill warns again at the next phase exit).
+     remain AND no remaining entries reference PROPOSAL.md text;
+     PROPOSAL drift can never be carried forward — by Case A of
+     the §"Drift handling depends on which file is affected" rule
+     it is auto-`blocking` and must be halt-and-revised in this
+     session before phase exit; non-PROPOSAL entries persist;
+     skill warns again at the next phase exit).
 
 5. **Gate condition.** Do NOT proceed to 5b until zero blocking
    entries remain unresolved. If the user pauses or routes to a
@@ -566,15 +591,21 @@ weren't pre-decided in the plan. Same append-only discipline.
   you discover the plan or PROPOSAL.md is wrong (literal text
   contradicts an established convention, the current repo state, a
   prior open-issues entry, or a session-established interpretation),
-  the only resolution path is halt-and-revise. There is no
-  defer-to-post-phase-6-spec-propose-change path for plan/PROPOSAL
-  drift: the plan is throwaway scaffolding deleted at Phase 11 and
-  PROPOSAL.md is frozen at v022 with no `SPECIFICATION/` analog. The
-  bootstrap MUST NOT advance past a known plan/PROPOSAL
+  resolution depends on which file is affected per the §"Drift
+  handling depends on which file is affected" rule:
+  - PROPOSAL.md drift: halt-and-revise is the only resolution path
+    (PROPOSAL is versioned; any change requires a new vNNN
+    snapshot). There is no defer-to-post-phase-6-spec-propose-change
+    path: PROPOSAL.md has no `SPECIFICATION/` analog.
+  - Plan-only drift: fix the plan directly via the Case-B
+    user-gated direct-fix flow. The plan is unversioned throwaway
+    scaffolding deleted at Phase 11. NEVER modify the plan
+    silently — always present the proposed fix to the user via
+    AskUserQuestion before editing.
+  The bootstrap MUST NOT advance past a known plan or PROPOSAL.md
   inconsistency. Step 1's consistency scan and step 4's
   cascading-impact scan are the executor's two mandatory detection
-  hooks. Do NOT modify the plan ad-hoc — always go through the
-  halt-and-revise walkthrough.
+  hooks.
 - Never skip phases. Sub-step ordering within a phase is the plan's
   authority.
 - Never run destructive git commands (`push --force`, `reset --hard`,
