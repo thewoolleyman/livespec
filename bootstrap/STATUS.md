@@ -1,8 +1,8 @@
 # Bootstrap status
 
 **Current phase:** 3
-**Current sub-step:** 5
+**Current sub-step:** 6
 **Last completed exit criterion:** phase 2
-**Next action:** Phase 3 sub-step 5 — author `livespec/io/git.py` with `get_git_user() -> IOResult[str, GitUnavailableError]` and the three-branch semantics from PROPOSAL.md §"Git" (full success / partial / absent). Sub-step 4 closed: authored `livespec/io/fs.py` with 6 `@impure_safe`-decorated primitives — `read_text`, `write_text`, `path_exists`, `mkdir_p`, `list_dir`, `find_upward` (the v017 Q9 shared upward-walk helper) — each with explicit exception enumeration mapping low-level OSError-family exceptions to `LivespecError` subclasses (`PreconditionError`, `PermissionDeniedError`). Surfaced ruff TRY003 incompatibility between v013 M5's flat one-level hierarchy and tryceratops' "no long messages outside exception class" rule; added per-file-ignore for `livespec/io/**.py` in pyproject.toml with rationale comment, matching the sub-step 9 precedent for pyproject.toml ruff fixes (no PROPOSAL revision; no plan edit). Full ruff check clean.
-**Last updated:** 2026-04-26T09:07:28Z
-**Last commit:** f928a7d
+**Next action:** Phase 3 sub-step 6 — author `livespec/io/cli.py` per style doc §"CLI argument parsing seam": `@impure_safe`-wrapped argparse functions with `exit_on_error=False`, returning `IOResult[Namespace, UsageError | HelpRequested]`. `-h`/`--help` is detected explicitly before `parse_args` runs; on detection, the function returns `IOFailure(HelpRequested("<help text>"))` (not `UsageError`). Sub-step 5 closed: authored `livespec/io/git.py` with `get_git_user(*, project_root: Path | None = None) -> IOResult[str, GitUnavailableError]` implementing the three-branch semantics from PROPOSAL §"Git" (`"<name> <email>"` on success / `"unknown"` sentinel when git is present but config is incomplete / `IOFailure(GitUnavailableError)` when git is absent from PATH). Inline noqas for S603 (subprocess hard-coded argv) and S607 (PATH-based git lookup); ruff clean.
+**Last updated:** 2026-04-26T09:09:43Z
+**Last commit:** 719a61c
