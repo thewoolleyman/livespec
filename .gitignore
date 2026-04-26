@@ -2,6 +2,24 @@
 tmp/
 .claude/settings.local.json
 
+### Python toolchain artifacts (per Phase 1 sub-step 12)
+# Note: .mypy_cache/ is intentionally NOT listed. Mypy
+# compatibility is a python-skill-script-style-requirements.md
+# non-goal (livespec uses pyright); its cache path is therefore
+# not a tolerated artifact. If .mypy_cache/ appears, something
+# unexpected ran mypy and that should be investigated rather
+# than ignored.
+__pycache__/
+.pytest_cache/
+.coverage
+.ruff_cache/
+.pyright/
+.mutmut-cache/
+htmlcov/
+
+### UV / lefthook local state
+.venv/
+
 ### macOS template
 # General
 .DS_Store
