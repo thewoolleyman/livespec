@@ -1,0 +1,61 @@
+// .vendor.jsonc — vendored library manifest.
+//
+// Authoritative source: PROPOSAL.md §"Runtime dependencies —
+// Vendored pure-Python libraries" (six entries per v018 Q4).
+//
+// Phase 1 deferral: upstream_ref and vendored_at carry
+// placeholder values at this phase. Phase 2's initial-vendoring
+// procedure (per v018 Q3) replaces them with the real values
+// during the manual git-clone-and-copy step that lands the
+// libraries into .claude-plugin/scripts/_vendor/.
+//
+// Validated by `just check-vendor-manifest` (Phase 4) — the
+// schema forbids placeholder strings: every entry must have a
+// non-empty upstream_url, a non-empty upstream_ref, a parseable-
+// ISO vendored_at; shim: true is required on typing_extensions
+// and forbidden on every other entry. The placeholders below
+// are intentionally non-empty so the schema gate fails cleanly
+// (with a "placeholder still present" error) rather than with a
+// "field empty" error if Phase 2 forgets to populate them.
+
+{
+  "libraries": [
+    {
+      "name": "returns",
+      "upstream_url": "https://github.com/dry-python/returns",
+      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
+      "vendored_at": "0000-00-00T00:00:00Z"
+    },
+    {
+      "name": "returns_pyright_plugin",
+      "upstream_url": "https://github.com/dry-python/returns",
+      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
+      "vendored_at": "0000-00-00T00:00:00Z"
+    },
+    {
+      "name": "fastjsonschema",
+      "upstream_url": "https://github.com/horejsek/python-fastjsonschema",
+      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
+      "vendored_at": "0000-00-00T00:00:00Z"
+    },
+    {
+      "name": "structlog",
+      "upstream_url": "https://github.com/hynek/structlog",
+      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
+      "vendored_at": "0000-00-00T00:00:00Z"
+    },
+    {
+      "name": "jsoncomment",
+      "upstream_url": "https://github.com/Dmitry-Me/JsonComment",
+      "upstream_ref": "PLACEHOLDER-phase-2-vendoring",
+      "vendored_at": "0000-00-00T00:00:00Z"
+    },
+    {
+      "name": "typing_extensions",
+      "upstream_url": "https://github.com/python/typing_extensions",
+      "upstream_ref": "4.12.2",
+      "vendored_at": "0000-00-00T00:00:00Z",
+      "shim": true
+    }
+  ]
+}
