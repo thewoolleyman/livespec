@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "livespec_config.schema.json",
+  "title": "livespec_config",
+  "description": "Schema for the project's `.livespec.jsonc` configuration file. All fields are optional; absence of the file or any field is equivalent to its documented default.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "template": {
+      "type": "string",
+      "description": "Active template — built-in name (e.g. 'livespec', 'minimal') or path-as-string to a custom template directory relative to the project root.",
+      "default": "livespec"
+    },
+    "template_format_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Expected template format version. Doctor's `template-version-matches` check validates that the template's own `template_format_version` equals this value.",
+      "default": 1
+    },
+    "post_step_skip_doctor_llm_objective_checks": {
+      "type": "boolean",
+      "description": "When true, post-step doctor (run automatically after seed/propose-change/critique/revise) skips the LLM-driven objective-checks phase.",
+      "default": false
+    },
+    "post_step_skip_doctor_llm_subjective_checks": {
+      "type": "boolean",
+      "description": "When true, post-step doctor skips the LLM-driven subjective-checks phase.",
+      "default": false
+    },
+    "pre_step_skip_static_checks": {
+      "type": "boolean",
+      "description": "When true, sub-commands skip the pre-step static check. Intended for emergency recovery only; the skill MUST narrate a warning every time pre-step is skipped.",
+      "default": false
+    }
+  }
+}

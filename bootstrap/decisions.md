@@ -454,3 +454,40 @@ TRY301, TRY400, TRY401) remain active everywhere — only TRY003 is
 ignored, and only in the one subtree where it conflicts. The
 pyproject.toml comment block documents the rationale for future
 readers per the established companion-doc-overlay precedent.
+
+## 2026-04-26T09:23:07Z — phase 3 sub-step 11 (validate/ make_validator factory shape)
+
+**Decision:** The `make_validator()` factory in
+`livespec/validate/<name>.py` accepts a pre-compiled fastjsonschema
+validator (typed `Callable[[dict[str, Any]], Result[dict[str,
+Any], ValidationError]]`) as its keyword-only argument, NOT the
+schema dict. The compile happens upstream in
+`commands/<cmd>.py` or `doctor/run_static.py` via
+`livespec.io.fastjsonschema_facade.compile_schema`; the validate/
+closure captures the compiled validator and adds dataclass
+construction on top.
+
+**Rationale:** The style doc has an internal contradiction
+between two of its sections:
+
+- §"Skill layout" lines 343-352 state "Validators invoke
+  `livespec.io.fastjsonschema_facade.compile_schema` for the
+  actual compile" — implying validate/ imports from io/.
+- §"Import-Linter contracts (minimum configuration)" lines
+  715-727 declare a `forbidden` contract on
+  `livespec.parse, livespec.validate` that lists `livespec.io`
+  as a forbidden import target.
+
+The two rules cannot both be satisfied if make_validator imports
+compile_schema. The CLAUDE.md hint at
+`livespec/validate/CLAUDE.md` describes the factory as "with the
+fastjsonschema-compiled validator captured" — pre-compiled, not
+compiled-internally. Choosing the import-linter-compatible
+interpretation (CLAUDE.md-aligned): validate/ stays strictly pure,
+imports zero io modules, and the compiled validator is passed in
+by the caller. The contradicting style-doc text at lines 346-348
+is a companion-doc gap to be reconciled at the next substantive
+PROPOSAL revision via overlay extension on the appropriate
+critique-fix file (precedent: v024 rounds 1-4); the implementation
+matches the import-linter contract and the CLAUDE.md hint, both of
+which align with the pure-validate architectural intent.
