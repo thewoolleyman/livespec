@@ -99,3 +99,32 @@ overlay extension (not a new vNNN) preserves the principle that
 new vNNN snapshots are reserved for substantive PROPOSAL.md
 changes; pure framing reconciliation lives as overlay rounds on
 the existing critique-fix file.
+
+## 2026-04-26T05:50:00Z — phase 1 sub-step 4 (pre-execution scan, fast-forward mode)
+
+**Decision:** Apply v024 companion-doc reconciliation round 3 to
+`python-skill-script-style-requirements.md`. Style doc canonical
+target table at §"Enforcement suite — Canonical target list" was
+missing two rows that plan Phase 1 sub-step 4 calls out by name
+(`just check-heading-coverage`, `just check-vendor-manifest`)
+and that plan Phase 4 enumerates as substantive scripts
+(`heading_coverage.py`, `vendor_manifest.py`). Inserted the two
+new rows between `check-claude-md-coverage` and
+`check-no-direct-tool-invocation` with bodies sourced verbatim
+from plan Phase 4. Appended a "round 3" section to
+`history/v024/proposed_changes/critique-fix-v023-revision.md`
+documenting the gap and fix. PROPOSAL.md snapshot at
+`history/v024/PROPOSAL.md` remains byte-identical. Single commit
+message: `Revise proposal to v024 (cont 3): companion-doc UV
+reconciliation (round 3)`. Gate confirmed via AskUserQuestion
+2026-04-26 (option: "Extend v024 with round 3: add 2 rows to
+style-doc table (Recommended)") — user is in fast-forward mode
+and approved the round-3 extension as the resolution path.
+
+**Rationale:** Same precedent as round 2: companion-doc drift
+gets reconciled via overlay extension on the existing v024
+critique-fix file rather than via a new vNNN snapshot, because
+PROPOSAL.md is unchanged. Fast-forward mode does not authorize
+silent fixes for previously-unseen drift categories; the
+round-2 gate established the pattern, so round-3 still gates
+but the user can approve quickly to keep fast-forward moving.

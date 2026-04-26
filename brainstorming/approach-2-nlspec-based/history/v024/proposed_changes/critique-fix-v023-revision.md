@@ -455,3 +455,58 @@ The round-2 follow-up commit is squashed-style: a single commit
 `Revise proposal to v024 (cont 2): companion-doc UV reconciliation (round 2)`
 that lands the style-doc edits plus the appended section in
 this overlay file.
+
+## v024 companion-doc reconciliation (round 3)
+
+Round 2 surfaced UV-framing slips. Round 3 surfaces an unrelated
+companion-doc gap caught by the bootstrap skill's pre-execution
+scan at the start of Phase 1 sub-step 4 (justfile authoring):
+the style doc's canonical target table at §"Enforcement suite —
+Canonical target list" is missing two rows that the plan calls
+out by name. Plan Phase 1 sub-step 4 enumerates `just
+check-heading-coverage` and `just check-vendor-manifest` as part
+of the canonical target list, and plan Phase 4 enumerates the
+underlying enforcement scripts (`heading_coverage.py` and
+`vendor_manifest.py`) with substantive bodies. The style doc
+table lists every other check the plan calls for but missed
+these two. Per the user's "halt-and-revise on any inconsistency"
+principle and the rounds 1-2 precedent, the style doc gets
+two new rows to bring the table back into sync with the plan.
+PROPOSAL.md is unaffected (no PROPOSAL.md text references either
+target). Gated via AskUserQuestion 2026-04-26 (option: "Extend
+v024 with round 3").
+
+Files touched in the round-3 follow-up commit:
+
+- **`python-skill-script-style-requirements.md`** §"Enforcement
+  suite" → "Canonical target list" — two new rows inserted
+  between the existing `check-claude-md-coverage` and
+  `check-no-direct-tool-invocation` rows. Row bodies sourced
+  verbatim from plan Phase 4's enumeration of
+  `heading_coverage.py` and `vendor_manifest.py`:
+
+  - `just check-heading-coverage` — "Validates that every `##`
+    heading in every spec tree — main + each sub-spec under
+    `SPECIFICATION/templates/<name>/` — has a corresponding
+    entry in `tests/heading-coverage.json` whose `spec_root`
+    field matches the heading's tree. Tolerates an empty `[]`
+    array pre-Phase-6, before any spec tree exists; from Phase
+    6 onward emptiness is a failure if any spec tree exists."
+
+  - `just check-vendor-manifest` — "Validates `.vendor.jsonc`
+    against a schema that forbids placeholder strings — every
+    entry has a non-empty `upstream_url`, a non-empty
+    `upstream_ref`, a parseable-ISO `vendored_at`, and the
+    `shim: true` flag is present on `typing_extensions` and
+    absent on every other entry."
+
+The v024 PROPOSAL.md snapshot at `history/v024/PROPOSAL.md`
+remains byte-identical (PROPOSAL.md was not re-touched). No
+paired plan edits needed: the plan's enumeration of these
+targets in Phase 1 sub-step 4 and Phase 4 already correctly
+references them — the style doc table was the lagging artifact.
+
+The round-3 follow-up commit is squashed-style: a single commit
+`Revise proposal to v024 (cont 3): companion-doc UV reconciliation (round 3)`
+that lands the style-doc edits plus the appended section in
+this overlay file.
