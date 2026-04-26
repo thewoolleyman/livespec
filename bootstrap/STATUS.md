@@ -1,8 +1,8 @@
 # Bootstrap status
 
 **Current phase:** 2
-**Current sub-step:** 5
+**Current sub-step:** 6
 **Last completed exit criterion:** phase 1
-**Next action:** Resume Phase 2 sub-step 5 — vendor 5 pure-Python libraries into `.claude-plugin/scripts/_vendor/<lib>/`. Per v026 D1/D4, the breakdown is 3 upstream-sourced libs (`returns` BSD-3-Clause, `fastjsonschema` MIT, `structlog` BSD-2/MIT dual) handled by the v018 Q3 git-clone-and-copy procedure, plus 2 hand-authored shims (`typing_extensions` ~15-line PSF-2.0 shim per v013 M1; `jsoncomment` JSONC parser shim per v026 D1, faithfully replicating jsoncomment 0.4.2's `//` + `/* */` comment-stripping with derivative-work MIT attribution to Gaspare Iengo). A scratch clone of dry-python/returns at v0.25.0 is at `tmp/bootstrap/vendoring/returns/` (gitignored) — can be reused.
-**Last updated:** 2026-04-26T09:05:00Z
-**Last commit:** e9259e6
+**Next action:** Begin Phase 2 sub-step 6 — author the `.claude-plugin/scripts/livespec/` Python package per PROPOSAL.md §"Skill layout": create subdirectories (`commands/`, `doctor/` with `run_static.py` + `static/__init__.py` registry + per-check modules, `io/`, `parse/`, `validate/`, `schemas/` plus `schemas/dataclasses/`), `context.py`, `types.py`, `__init__.py` (full — structlog configuration + `run_id` bind), and `errors.py` (full — `LivespecError` hierarchy + `HelpRequested` per the style doc §"Exit code contract"). All other modules are stubs returning `IOFailure(<DomainError>("<module>: not yet implemented"))` or `Failure(...)`. Every directory under `.claude-plugin/scripts/` (excluding `_vendor/` subtree) carries a `CLAUDE.md`. Sub-step 5 vendoring complete: 5 libs vendored (returns 0.25.0, fastjsonschema v2.21.2, structlog 25.5.0, typing_extensions 4.12.2 verbatim upstream, jsoncomment 0.4.2 shim) with LICENSEs; smoke-test imports pass on Python 3.10.16 and 3.13.7.
+**Last updated:** 2026-04-26T10:15:00Z
+**Last commit:** 6281c31
