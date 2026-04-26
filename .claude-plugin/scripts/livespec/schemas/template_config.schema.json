@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "template_config.schema.json",
+  "title": "template_config",
+  "description": "Schema for a template's `template.json` (v011 K5). Templates declare their format version, spec_root location, optional doctor extensibility hooks, and optional LLM-prompt paths. v1 livespec supports only template_format_version: 1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "template_format_version"
+  ],
+  "properties": {
+    "template_format_version": {
+      "type": "integer",
+      "enum": [1],
+      "description": "Template format version. v1 livespec supports only 1."
+    },
+    "spec_root": {
+      "type": "string",
+      "description": "Directory under the repo root containing the spec files, proposed_changes/, and history/. Templates that place spec files directly at the repo root set './'.",
+      "default": "SPECIFICATION/"
+    },
+    "doctor_static_check_modules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Paths relative to the template root naming Python modules that contribute additional doctor-static checks via TEMPLATE_CHECKS export.",
+      "default": []
+    },
+    "doctor_llm_objective_checks_prompt": {
+      "type": ["string", "null"],
+      "description": "Path relative to the template root naming a Markdown prompt for the LLM-driven objective-checks phase. null disables this template's contribution.",
+      "default": null
+    },
+    "doctor_llm_subjective_checks_prompt": {
+      "type": ["string", "null"],
+      "description": "Path relative to the template root naming a Markdown prompt for the LLM-driven subjective-checks phase. null disables this template's contribution.",
+      "default": null
+    }
+  }
+}
