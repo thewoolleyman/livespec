@@ -1,8 +1,8 @@
 # Bootstrap status
 
 **Current phase:** 1
-**Current sub-step:** 3
+**Current sub-step:** 4
 **Last completed exit criterion:** phase 0
-**Next action:** Phase 1 sub-step 3 — create `pyproject.toml` containing `[tool.ruff]`, `[tool.pyright]` (strict + 6 strict-plus diagnostics + returns plugin path), `[tool.pytest.ini_options]`, `[tool.coverage.run]`/`[tool.coverage.report]` (100% line+branch), `[tool.importlinter]` (2 contracts), `[tool.mutmut]`, `[project]` (name/version/requires-python per v024), `[dependency-groups.dev]` (9 Python dev tools per v024). Note: this is the most substantial Phase 1 sub-step. (Pre-execution scan landed v024 round-2 companion-doc reconciliation in commit `fa6e51f` — style doc no longer carries pre-v024 "mise-pinned" framing.)
-**Last updated:** 2026-04-26T05:35:00Z
-**Last commit:** fa6e51f
+**Next action:** Phase 1 sub-step 4 — author `justfile` at repo root with the canonical target list from python-skill-script-style-requirements.md §"Enforcement suite — Canonical target list" (now including the round-3 additions `check-heading-coverage` and `check-vendor-manifest`). All recipes delegate to underlying tools or `python3 dev-tooling/checks/<name>.py`. `just bootstrap` is a placeholder echo at this phase (lefthook install deferred to Phase 5; .claude/skills symlink deferred to Phase 2).
+**Last updated:** 2026-04-26T06:05:00Z
+**Last commit:** a04ccfe
