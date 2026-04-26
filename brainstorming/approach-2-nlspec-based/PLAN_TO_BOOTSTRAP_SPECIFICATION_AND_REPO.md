@@ -427,12 +427,13 @@ sub-steps within a phase MAY run in parallel where noted.
    `tmp/bootstrap/` (creatable on demand, freely deletable by the
    bootstrap).
 4. Nothing else in `brainstorming/` is modified.
-5. Confirm `bootstrap/` exists at repo root with the execution-
-   scaffolding skill and state files described in §8 below
-   (`bootstrap/.claude-plugin/`, `bootstrap/STATUS.md`,
-   `bootstrap/open-issues.md`, `bootstrap/decisions.md`). If
-   missing, the bootstrap-authoring commit was skipped — halt
-   and request the scaffolding be created before continuing.
+5. Confirm the bootstrap scaffolding exists per §8 below:
+   `bootstrap/STATUS.md`, `bootstrap/open-issues.md`,
+   `bootstrap/decisions.md`, `bootstrap/AGENTS.md`,
+   `.claude-plugin/marketplace.json`, and
+   `.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md`.
+   If any are missing, the bootstrap-authoring commit was skipped —
+   halt and request the scaffolding be created before continuing.
 
 **Exit criterion:** PROPOSAL.md carries the frozen-status
 header in its committed state; the latest history/vNNN snapshot
@@ -2084,8 +2085,8 @@ or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
 
 **Use the `bootstrap` skill at
-`bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` to drive
-execution.** Invocation: `/livespec-bootstrap:bootstrap`. The
+`.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md` to
+drive execution.** Invocation: `/livespec-bootstrap:bootstrap`. The
 skill reads `bootstrap/STATUS.md` to find your current phase and
 sub-step, presents the next action, and gates every advance on
 explicit confirmation. See plan §8 for the full scaffolding
@@ -2274,8 +2275,8 @@ reference, so they stay.
 
 ### The `bootstrap` skill
 
-`bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` is a Claude
-Code skill that drives plan execution. Invocation:
+`.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md` is a
+Claude Code skill that drives plan execution. Invocation:
 
 ```
 /livespec-bootstrap:bootstrap

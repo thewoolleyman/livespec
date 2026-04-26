@@ -102,6 +102,27 @@ valve — halt-and-revise is the only resolution path, and the
 bootstrap MUST NOT advance until the plan/PROPOSAL is internally
 consistent.
 
+**Carve-out: plan-internal text-correction drift.** When the
+detected drift is entirely within the plan (PROPOSAL.md is
+unchanged) AND consists of stale text references that contradict
+an authoritative table or diagram elsewhere in the plan (e.g.,
+§8's directory-shape diagram), AND the correction is purely
+mechanical (rewriting the stale references to match the
+authoritative source, with no decision to make), the executor
+MAY fix the references directly in a regular commit instead of
+running halt-and-revise. The bootstrap is still gated on a
+clean plan, but the resolution path is a direct edit + commit
+rather than a vNNN snapshot. Required steps for this carve-out:
+(a) confirm PROPOSAL.md has zero matches for the stale terms;
+(b) confirm an authoritative diagram/table inside the plan
+unambiguously shows the correct text; (c) record a decisions.md
+entry naming the stale references, the authoritative source,
+and the chosen correction; (d) apply the edits and commit
+(commit message starts with `phase-N: align stale plan ...` or
+similar). If ANY of (a)-(c) cannot be satisfied — including any
+ambiguity about which version is authoritative — fall back to
+the standard halt-and-revise walkthrough.
+
 For all other drift kinds:
 
 1. Open AskUserQuestion to capture **severity**:
