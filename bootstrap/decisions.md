@@ -527,3 +527,45 @@ made the same correction for Phase 2's exit criterion. The
 corrected exit criterion is enforceable today (`ruff check`
 clean) plus the tmp_path round-trip exercise (sub-step 23
 itself).
+
+## 2026-04-26T20:25:13Z — phase 3 sub-step 23 (revise.py path-resolution bugfix at exit-criterion check)
+
+**Decision:** Fix a path-resolution bug in
+`livespec/commands/revise.py::_apply_resulting_files`. The helper
+was using `spec_target.parent / rf.path` as the base for
+resolving `resulting_files[].path` — which works coincidentally
+for the main spec tree (where `spec_target.parent == project_root`
+under the v1 built-in livespec template) but produces a doubled
+path for sub-spec trees (where `spec_target.parent ==
+project_root/SPECIFICATION/templates`, and the prepended
+`SPECIFICATION/templates/<name>/<file>` rf.path produces
+`project_root/SPECIFICATION/templates/SPECIFICATION/templates/<name>/<file>`).
+Fix: thread `project_root` through `_process_with_vnnn` →
+`_shape_history` → `_apply_resulting_files`, and resolve via
+`project_root / rf.path` directly. Per the prompt convention
+(prompts/revise.md), `resulting_files[].path` values are
+project-root-relative regardless of `--spec-target`.
+
+**Rationale:** Implementation drift surfaced by the v020 Q3
+sub-spec routing smoke-cycle test at the Phase 3 exit-criterion
+check (sub-step 23 itself). Same precedent as decisions.md
+2026-04-26T08:33:35Z (pyproject.toml ruff config fix at the
+Phase 2 exit-criterion check): pure implementation bug fix; no
+PROPOSAL revision required; no plan edit required. The bug was
+masked by the main-tree happy path because, for the v1 built-in
+livespec template, `spec_target.parent` happens to equal
+`project_root` — the bug is only visible when `--spec-target`
+points at a sub-spec tree. Test fixture under
+`tmp/bootstrap/phase3-test/` confirms the fix: 4 successful
+round-trips (seed → propose-change/main → revise/main →
+propose-change/sub-spec → revise/sub-spec), no misdirected files
+under `SPECIFICATION/templates/SPECIFICATION/...`. The earlier
+Phase 3 sub-step 16 commit's `_apply_resulting_files`
+implementation passed ruff but contained the latent bug; only the
+Phase 3 sub-step 23 integration test surfaces the divergence
+between main-tree and sub-spec-tree resolution semantics — the
+intended use of the integration test per plan line 1390-1395
+("Catches `--spec-target` sub-spec routing bugs at the Phase 3
+boundary, where recovery is imperative-landing (cheap), instead
+of Phase 7's dogfood boundary where recovery would require the
+broken governed loop.").

@@ -415,6 +415,7 @@ def _process_with_vnnn(
     return get_git_user(project_root=project_root).bind(
         lambda git_user: _shape_history(
             payload=payload,
+            project_root=project_root,
             spec_target=spec_target,
             vnnn=vnnn,
             git_user=git_user,
@@ -423,6 +424,7 @@ def _process_with_vnnn(
     ).lash(
         lambda _err: _shape_history(
             payload=payload,
+            project_root=project_root,
             spec_target=spec_target,
             vnnn=vnnn,
             git_user=GIT_USER_UNKNOWN,
@@ -434,6 +436,7 @@ def _process_with_vnnn(
 def _shape_history(
     *,
     payload: ReviseInput,
+    project_root: Path,
     spec_target: Path,
     vnnn: str,
     git_user: str,
@@ -456,7 +459,7 @@ def _shape_history(
     return mkdir_p(path=history_pc).bind(
         lambda _: _apply_resulting_files(
             decisions=payload.decisions,
-            spec_target=spec_target,
+            project_root=project_root,
         ),
     ).bind(
         lambda _: _walk_decisions(
@@ -476,18 +479,22 @@ def _shape_history(
 def _apply_resulting_files(
     *,
     decisions: list[ProposalDecision],
-    spec_target: Path,
+    project_root: Path,
 ) -> IOResult[None, LivespecError]:
     """Walk all decisions, write each `resulting_files` entry to its target path.
 
-    Phase 3 minimum-viable: writes flat list across all decisions; no
-    conflict detection between decisions touching the same file.
+    Per the prompt convention (prompts/revise.md), `resulting_files[].path`
+    values are project-root-relative regardless of `--spec-target` —
+    the same convention seed.py's payload uses. Resolve via
+    `project_root / rf.path`. Phase 3 minimum-viable: writes flat list
+    across all decisions; no conflict detection between decisions
+    touching the same file.
     """
     targets: list[tuple[Path, str]] = []
     for decision in decisions:
         if decision.decision in ("accept", "modify"):
             for rf in decision.resulting_files:
-                targets.append((spec_target.parent / rf.path, rf.content))
+                targets.append((project_root / rf.path, rf.content))
     return _walk_writes(targets=targets, index=0)
 
 
