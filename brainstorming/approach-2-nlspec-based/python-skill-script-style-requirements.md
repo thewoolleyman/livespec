@@ -1342,12 +1342,50 @@ Rules:
     `Path("/some/path")`, `sys.exit(code)`). These are call-sites,
     not livespec-authored function definitions; the rule binds
     only definitions.
+  - **ROP-chain DSL callbacks.** Functions whose name appears as a
+    positional argument to a Railway-Oriented-Programming chain
+    method (`.bind`, `.map`, `.alt`, `.lash`, `.apply`,
+    `.bind_result`, `.bind_ioresult`) of a `dry-python/returns`
+    container are exempt from the `*`-separator rule. The library
+    invokes these callbacks positionally with the unwrapped
+    `Success` / `Failure` value, and ROP composition is treated as
+    a small DSL: callbacks receive exactly one positional value
+    (the unwrapped track payload), so positional-order ambiguity
+    — the rule's stated motivation — does not arise. Functions
+    qualify only when their name is referenced as an `ast.Name`
+    positional argument to one of these methods within the same
+    file as the def-site; lambda expressions are unaffected
+    (they're not `def`s). The dataclass-triple rule (`frozen=True,
+    kw_only=True, slots=True`) stays strict for every dataclass,
+    including any used inside a ROP chain.
+  - **Protocol method definitions.** Methods declared inside a
+    class whose direct-parent base is `Protocol` are exempt from
+    the `*`-separator rule. A `Protocol` class is a structural
+    type-system surface — it documents the shape of an external
+    API (typically third-party) so livespec call-sites can
+    type-check against it. The actual implementor is rarely a
+    livespec-authored function; `cast("MyProtocol", third_party_obj)`
+    is the standard construction pattern. Constraining the
+    Protocol's method signatures to keyword-only would force
+    livespec call-sites to use kwarg form for parameters whose
+    names are dictated by the third-party implementation
+    (e.g., structlog's `BoundLogger.<level>` accepts the message
+    as the positional `event` parameter; renaming to a livespec-
+    chosen kwarg name would break runtime behavior). The exemption
+    applies ONLY to methods defined inside `class X(Protocol):`
+    (or `class X(Protocol[T])` parametric Protocols); it does NOT
+    extend to subclasses of livespec-defined Protocols, helper
+    `def`s adjacent to a Protocol class, or factory functions that
+    return a Protocol instance.
 
 Enforced by `just check-keyword-only-args` (AST): every
 `ast.FunctionDef` and `ast.AsyncFunctionDef` under scope MUST have
 `args.args` empty after `self` / `cls` (all declared parameters in
-`args.kwonlyargs`); every `@dataclass` decorator MUST carry
-`frozen=True`, `kw_only=True`, AND `slots=True` keyword arguments.
+`args.kwonlyargs`), with the per-file ROP-DSL exemption applied to
+defs referenced positionally in `.bind` / `.map` / `.alt` /
+`.lash` / `.apply` / `.bind_result` / `.bind_ioresult` calls;
+every `@dataclass` decorator MUST carry `frozen=True`,
+`kw_only=True`, AND `slots=True` keyword arguments.
 
 ## Structural pattern matching
 

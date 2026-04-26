@@ -247,7 +247,7 @@ def _compile_revise_validator(
             validator = validate_revise_input.make_validator(
                 fast_validator=fast_validator,
             )
-            validated = validator(payload)
+            validated = validator(payload=payload)
             match validated:
                 case Failure(err):
                     return IOFailure(err)
@@ -331,7 +331,7 @@ def _validate_jsonc(
             validator = validate_livespec_config.make_validator(
                 fast_validator=fast_validator,
             )
-            validated = validator(jsonc_dict)
+            validated = validator(payload=jsonc_dict)
             match validated:
                 case Failure(err):
                     return IOFailure(err)
@@ -654,7 +654,7 @@ def _walk_snapshot(
 def main(*, argv: Sequence[str] | None = None) -> int:
     """Supervisor: bug-catcher + railway dispatch inline (sys.stdout.write
     exemption per style doc lines 1474-1481 is per-`main()`, NOT per-helper)."""
-    log = get_logger(__name__)
+    log = get_logger(name=__name__)
     actual_argv: Sequence[str] = list(argv) if argv is not None else sys.argv[1:]
     try:
         result = run(argv=actual_argv)
@@ -673,7 +673,7 @@ def main(*, argv: Sequence[str] | None = None) -> int:
                 )
                 return type(err).exit_code
             case _ as unreachable:
-                _unreachable(unreachable)
+                _unreachable(value=unreachable)
     except Exception as exc:
         log.exception(
             "revise internal error",
@@ -683,7 +683,7 @@ def main(*, argv: Sequence[str] | None = None) -> int:
         return 1
 
 
-def _unreachable(value: object) -> NoReturn:
+def _unreachable(*, value: object) -> NoReturn:
     assert_never(value)  # type: ignore[arg-type]
 
 

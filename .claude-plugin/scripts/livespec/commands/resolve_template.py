@@ -222,7 +222,7 @@ def _compile_and_validate(
             validator = validate_livespec_config.make_validator(
                 fast_validator=fast_validator,
             )
-            validated = validator(payload)
+            validated = validator(payload=payload)
             match validated:
                 case Failure(err):
                     return IOFailure(err)
@@ -304,7 +304,7 @@ def main(*, argv: Sequence[str] | None = None) -> int:
     is per-supervisor "the function named `main` at module
     top-level", NOT per-helper.
     """
-    log = get_logger(__name__)
+    log = get_logger(name=__name__)
     actual_argv: Sequence[str] = list(argv) if argv is not None else sys.argv[1:]
     try:
         result = run(argv=actual_argv)
@@ -322,9 +322,9 @@ def main(*, argv: Sequence[str] | None = None) -> int:
                     error_type=type(err).__name__,
                     error_message=str(err),
                 )
-                return _exit_code_of(err)
+                return _exit_code_of(err=err)
             case _ as unreachable:
-                _unreachable(unreachable)
+                _unreachable(value=unreachable)
     except Exception as exc:
         log.exception(
             "resolve_template internal error",
@@ -334,12 +334,12 @@ def main(*, argv: Sequence[str] | None = None) -> int:
         return 1
 
 
-def _exit_code_of(err: LivespecError) -> int:
+def _exit_code_of(*, err: LivespecError) -> int:
     """Pull the per-class exit_code from a LivespecError instance."""
     return type(err).exit_code
 
 
-def _unreachable(value: object) -> NoReturn:
+def _unreachable(*, value: object) -> NoReturn:
     """Raise on supposedly-unreachable values; bug-catcher converts to exit 1.
 
     `assert_never` from typing_extensions narrows pyright's type

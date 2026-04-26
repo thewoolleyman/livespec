@@ -23,6 +23,10 @@ _FORBIDDEN_LIVESPEC_SUBCLASS = (
     '"""docstring"""\nclass MyError(UsageError):\n    pass\n'
 )
 _ATTRIBUTE_BASE = '"""docstring"""\nimport typing\nclass MyIface(typing.Protocol):\n    pass\n'
+_PARAMETRIC_PROTOCOL_OK = (
+    '"""docstring"""\nfrom typing import Protocol, TypeVar\n'
+    "T = TypeVar('T')\nclass MyGeneric(Protocol[T]):\n    pass\n"
+)
 
 
 def test_no_inheritance_passes(*, tmp_path: Path) -> None:
@@ -74,6 +78,13 @@ def test_attribute_base_fails(*, tmp_path: Path) -> None:
     violations = no_inheritance.check_file(path=target)
     assert len(violations) == 1
     assert "non-name base" in violations[0]
+
+
+def test_parametric_protocol_passes(*, tmp_path: Path) -> None:
+    """`class X(Protocol[T]):` is permitted; the base resolves to `Protocol`."""
+    target = tmp_path / "param_proto.py"
+    target.write_text(_PARAMETRIC_PROTOCOL_OK, encoding="utf-8")
+    assert no_inheritance.check_file(path=target) == []
 
 
 def test_main_passes_against_real_repo(*, monkeypatch: pytest.MonkeyPatch) -> None:

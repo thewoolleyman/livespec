@@ -102,19 +102,19 @@ def check_file(*, path: Path) -> list[str]:
         )
         return violations
 
-    if not _is_from_import(statements[0], module="_bootstrap", name="bootstrap"):
+    if not _is_from_import(node=statements[0], module="_bootstrap", name="bootstrap"):
         violations.append("statement 3 must be `from _bootstrap import bootstrap`")
-    if not _is_call_expr(statements[1], func_name="bootstrap"):
+    if not _is_call_expr(node=statements[1], func_name="bootstrap"):
         violations.append("statement 4 must be `bootstrap()`")
-    if not _is_from_import_livespec_main(statements[2]):
+    if not _is_from_import_livespec_main(node=statements[2]):
         violations.append("statement 5 must be `from livespec.<...> import main`")
-    if not _is_raise_systemexit_main_call(statements[3]):
+    if not _is_raise_systemexit_main_call(node=statements[3]):
         violations.append("statement 6 must be `raise SystemExit(main())`")
 
     return violations
 
 
-def _is_from_import(node: ast.stmt, *, module: str, name: str) -> bool:
+def _is_from_import(*, node: ast.stmt, module: str, name: str) -> bool:
     if not isinstance(node, ast.ImportFrom):
         return False
     if node.module != module:
@@ -124,7 +124,7 @@ def _is_from_import(node: ast.stmt, *, module: str, name: str) -> bool:
     return node.names[0].asname is None
 
 
-def _is_call_expr(node: ast.stmt, *, func_name: str) -> bool:
+def _is_call_expr(*, node: ast.stmt, func_name: str) -> bool:
     if not isinstance(node, ast.Expr):
         return False
     if not isinstance(node.value, ast.Call):
@@ -136,7 +136,7 @@ def _is_call_expr(node: ast.stmt, *, func_name: str) -> bool:
     return not (node.value.args or node.value.keywords)
 
 
-def _is_from_import_livespec_main(node: ast.stmt) -> bool:
+def _is_from_import_livespec_main(*, node: ast.stmt) -> bool:
     if not isinstance(node, ast.ImportFrom):
         return False
     if node.module is None or not node.module.startswith("livespec."):
@@ -146,7 +146,7 @@ def _is_from_import_livespec_main(node: ast.stmt) -> bool:
     return node.names[0].asname is None
 
 
-def _is_raise_systemexit_main_call(node: ast.stmt) -> bool:
+def _is_raise_systemexit_main_call(*, node: ast.stmt) -> bool:
     return (
         isinstance(node, ast.Raise)
         and isinstance(node.exc, ast.Call)

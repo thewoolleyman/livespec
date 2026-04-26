@@ -15,34 +15,29 @@ doctor/).
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 from returns.result import Result
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.template_config import TemplateConfig
+from livespec.types import TypedValidator
 
 __all__: list[str] = [
     "make_validator",
 ]
 
 
-_FastValidator = Callable[
-    [dict[str, Any]],
-    Result[dict[str, Any], ValidationError],
-]
-
 
 def make_validator(
     *,
-    fast_validator: _FastValidator,
-) -> Callable[[dict[str, Any]], Result[TemplateConfig, ValidationError]]:
+    fast_validator: TypedValidator[dict[str, Any]],
+) -> TypedValidator[TemplateConfig]:
     """Compose `fast_validator` with `TemplateConfig` dataclass construction.
 
     The returned closure:
 
-    - Calls `fast_validator(payload)` to schema-validate the dict.
+    - Calls `fast_validator(payload=payload)` to schema-validate the dict.
     - On `Success(data)`, constructs `TemplateConfig(**data_with_defaults)`
       and returns `Success(config)`.
     - On `Failure(ValidationError(...))`, propagates the failure
@@ -50,9 +45,10 @@ def make_validator(
     """
 
     def validator(
+        *,
         payload: dict[str, Any],
     ) -> Result[TemplateConfig, ValidationError]:
-        return fast_validator(payload).map(_to_dataclass)
+        return fast_validator(payload=payload).map(_to_dataclass)
 
     return validator
 

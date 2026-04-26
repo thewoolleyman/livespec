@@ -91,8 +91,8 @@ def parse(*, text: str) -> Result[dict[str, Any], PreconditionError]:
                 ),
             )
         case _ as unreachable:
-            _unreachable(unreachable)
+            _unreachable(value=unreachable)
 
 
-def _unreachable(value: object) -> NoReturn:
+def _unreachable(*, value: object) -> NoReturn:
     assert_never(value)  # type: ignore[arg-type]

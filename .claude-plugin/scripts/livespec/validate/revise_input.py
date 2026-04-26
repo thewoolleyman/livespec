@@ -10,7 +10,6 @@ factory-shape rationale.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any, cast
 
 from returns.result import Result
@@ -22,29 +21,25 @@ from livespec.schemas.dataclasses.revise_input import (
     ResultingFile,
     ReviseInput,
 )
-from livespec.types import Author, TopicSlug
+from livespec.types import Author, TopicSlug, TypedValidator
 
 __all__: list[str] = [
     "make_validator",
 ]
 
 
-_FastValidator = Callable[
-    [dict[str, Any]],
-    Result[dict[str, Any], ValidationError],
-]
-
 
 def make_validator(
     *,
-    fast_validator: _FastValidator,
-) -> Callable[[dict[str, Any]], Result[ReviseInput, ValidationError]]:
+    fast_validator: TypedValidator[dict[str, Any]],
+) -> TypedValidator[ReviseInput]:
     """Compose `fast_validator` with `ReviseInput`."""
 
     def validator(
+        *,
         payload: dict[str, Any],
     ) -> Result[ReviseInput, ValidationError]:
-        return fast_validator(payload).map(_to_dataclass)
+        return fast_validator(payload=payload).map(_to_dataclass)
 
     return validator
 
@@ -53,11 +48,11 @@ def _to_dataclass(data: dict[str, Any]) -> ReviseInput:
     raw_author = data.get("author")
     return ReviseInput(
         author=Author(raw_author) if raw_author else None,
-        decisions=[_decision(entry) for entry in data["decisions"]],
+        decisions=[_decision(entry=entry) for entry in data["decisions"]],
     )
 
 
-def _decision(entry: dict[str, Any]) -> ProposalDecision:
+def _decision(*, entry: dict[str, Any]) -> ProposalDecision:
     return ProposalDecision(
         proposal_topic=TopicSlug(entry["proposal_topic"]),
         decision=cast("Decision", entry["decision"]),

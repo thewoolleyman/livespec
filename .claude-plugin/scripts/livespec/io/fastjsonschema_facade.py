@@ -38,6 +38,7 @@ import fastjsonschema
 from returns.result import Failure, Result, Success
 
 from livespec.errors import ValidationError
+from livespec.types import TypedValidator
 
 __all__: list[str] = [
     "Validator",
@@ -45,13 +46,10 @@ __all__: list[str] = [
 ]
 
 
-Validator: TypeAlias = Callable[
-    [dict[str, Any]],
-    Result[dict[str, Any], ValidationError],
-]
-"""A compiled JSON Schema validator.
+Validator: TypeAlias = TypedValidator[dict[str, Any]]
+"""A compiled JSON Schema validator (keyword-only call surface).
 
-Calling a validator with a JSON object (top-level dict) returns:
+Calling `validator(payload=<dict>)` returns:
 
 - `Success(data)` when the object conforms to the schema (the
   validator returns the same dict the caller passed in; the
@@ -65,7 +63,12 @@ Calling a validator with a JSON object (top-level dict) returns:
 The validator does NOT raise for schema-non-conformance; it ships
 the failure through `Failure`. This keeps validation pure (no
 exception flow) and keeps `LivespecError` raise-sites confined to
-the rest of `io/**`."""
+the rest of `io/**`.
+
+Type alias for `TypedValidator[dict[str, Any]]` from
+`livespec.types` — Protocol-based keyword-only callable, required
+because `Callable[[X], Y]` cannot express keyword-only call
+shapes under pyright strict mode."""
 
 
 _COMPILED: dict[str, Validator] = {}
@@ -99,17 +102,18 @@ def compile_schema(
     raw: Callable[[Any], Any] = fastjsonschema.compile(dict(schema))
 
     def validator(
-        data: dict[str, Any],
+        *,
+        payload: dict[str, Any],
     ) -> Result[dict[str, Any], ValidationError]:
         try:
-            raw(data)
+            raw(payload)
         except fastjsonschema.JsonSchemaException as e:
             return Failure(
                 ValidationError(
                     f"schema {schema_id} validation failed: {e.message}",
                 ),
             )
-        return Success(data)
+        return Success(payload)
 
     _COMPILED[schema_id] = validator
     return validator

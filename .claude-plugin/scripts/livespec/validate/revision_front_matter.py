@@ -11,7 +11,6 @@ factory-shape rationale.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any, cast
 
 from returns.result import Result
@@ -21,29 +20,25 @@ from livespec.schemas.dataclasses.revision_front_matter import (
     Decision,
     RevisionFrontMatter,
 )
-from livespec.types import Author
+from livespec.types import Author, TypedValidator
 
 __all__: list[str] = [
     "make_validator",
 ]
 
 
-_FastValidator = Callable[
-    [dict[str, Any]],
-    Result[dict[str, Any], ValidationError],
-]
-
 
 def make_validator(
     *,
-    fast_validator: _FastValidator,
-) -> Callable[[dict[str, Any]], Result[RevisionFrontMatter, ValidationError]]:
+    fast_validator: TypedValidator[dict[str, Any]],
+) -> TypedValidator[RevisionFrontMatter]:
     """Compose `fast_validator` with `RevisionFrontMatter`."""
 
     def validator(
+        *,
         payload: dict[str, Any],
     ) -> Result[RevisionFrontMatter, ValidationError]:
-        return fast_validator(payload).map(_to_dataclass)
+        return fast_validator(payload=payload).map(_to_dataclass)
 
     return validator
 

@@ -111,16 +111,23 @@ def check_file(*, path: Path) -> list[str]:
 
 
 def _base_name(*, base: ast.expr) -> str | None:
-    """Return the base-class name as a string if it's a simple `Name`,
-    otherwise None.
+    """Return the base-class name as a string if it's a simple `Name`
+    or a parametric `Name[...]` (`ast.Subscript`), otherwise None.
 
     For `class X(typing.Protocol):` the base is an `ast.Attribute`;
     we don't unwrap that — the spec uses bare-name imports
     (`from typing import Protocol`), so `class X(Protocol):` is the
     canonical form. Attribute-style bases are flagged for review.
+
+    Parametric Protocols (`class X(Protocol[T]):`) are recognized
+    because Python's generic-Protocol surface uses subscript syntax;
+    rejecting them would force a `# type: ignore` workaround for
+    every generic Protocol the codebase declares.
     """
     if isinstance(base, ast.Name):
         return base.id
+    if isinstance(base, ast.Subscript) and isinstance(base.value, ast.Name):
+        return base.value.id
     return None
 
 

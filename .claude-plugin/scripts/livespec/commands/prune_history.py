@@ -22,7 +22,7 @@ def run() -> IOResult[Any, PreconditionError]:
 
 def main() -> int:
     """Supervisor: bug-catcher wrap per supervisor-discipline rule."""
-    log = get_logger(__name__)
+    log = get_logger(name=__name__)
     try:
         return PreconditionError.exit_code
     except Exception as exc:

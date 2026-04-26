@@ -36,7 +36,11 @@ conflict between `from livespec.types import Author` and `from types
 import ModuleType`.
 """
 from pathlib import Path
-from typing import NewType
+from typing import Any, NewType, Protocol, TypeVar
+
+from returns.result import Result
+
+from livespec.errors import ValidationError
 
 __all__: list[str] = [
     "Author",
@@ -46,8 +50,41 @@ __all__: list[str] = [
     "SpecRoot",
     "TemplateName",
     "TopicSlug",
+    "TypedValidator",
     "VersionTag",
 ]
+
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+
+class TypedValidator(Protocol[_T_co]):
+    """Generic Protocol for keyword-only validators.
+
+    A `TypedValidator[T]` is a callable that takes a JSON object as
+    `payload` (kw-only) and returns
+    `Result[T, ValidationError]`. This Protocol expresses the
+    keyword-only call shape that `Callable[[X], Y]` cannot — pyright
+    in strict mode rejects assigning a kw-only function to a
+    positional `Callable` annotation, so the validator factories in
+    `livespec/io/fastjsonschema_facade.py` and
+    `livespec/validate/<name>.py` use this Protocol as their return
+    type and `fast_validator` parameter type.
+
+    The kw-only call shape (`validator(payload=...)`) is required by
+    the `keyword-only-args` enforcement: every livespec-defined
+    `def` must place a `*` separator as its first parameter.
+    Validator closures returned from `make_validator(...)` factories
+    are not ROP-DSL callbacks, so they are NOT covered by the
+    ROP-DSL exemption — they must be kw-only at def-site, which
+    cascades into Protocol-typed annotations here.
+    """
+
+    def __call__(
+        self,
+        *,
+        payload: dict[str, Any],
+    ) -> Result[_T_co, ValidationError]: ...
 
 
 CheckId = NewType("CheckId", str)

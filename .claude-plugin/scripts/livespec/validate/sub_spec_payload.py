@@ -12,7 +12,6 @@ factory-shape rationale.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 from returns.result import Result
@@ -22,28 +21,25 @@ from livespec.schemas.dataclasses.sub_spec_payload import (
     SubSpecFile,
     SubSpecPayload,
 )
+from livespec.types import TypedValidator
 
 __all__: list[str] = [
     "make_validator",
 ]
 
 
-_FastValidator = Callable[
-    [dict[str, Any]],
-    Result[dict[str, Any], ValidationError],
-]
-
 
 def make_validator(
     *,
-    fast_validator: _FastValidator,
-) -> Callable[[dict[str, Any]], Result[SubSpecPayload, ValidationError]]:
+    fast_validator: TypedValidator[dict[str, Any]],
+) -> TypedValidator[SubSpecPayload]:
     """Compose `fast_validator` with `SubSpecPayload` dataclass construction."""
 
     def validator(
+        *,
         payload: dict[str, Any],
     ) -> Result[SubSpecPayload, ValidationError]:
-        return fast_validator(payload).map(_to_dataclass)
+        return fast_validator(payload=payload).map(_to_dataclass)
 
     return validator
 

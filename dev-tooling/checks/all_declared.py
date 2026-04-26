@@ -94,13 +94,13 @@ def _find_all_assignment(*, tree: ast.Module) -> ast.AnnAssign | None:
             isinstance(node, ast.AnnAssign)
             and isinstance(node.target, ast.Name)
             and node.target.id == "__all__"
-            and _is_list_str_annotation(node.annotation)
+            and _is_list_str_annotation(annotation=node.annotation)
         ):
             return node
     return None
 
 
-def _is_list_str_annotation(annotation: ast.expr) -> bool:
+def _is_list_str_annotation(*, annotation: ast.expr) -> bool:
     """True iff `annotation` is `list[str]` syntactically."""
     return (
         isinstance(annotation, ast.Subscript)

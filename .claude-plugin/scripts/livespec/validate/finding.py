@@ -12,36 +12,31 @@ factory-shape rationale.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any, cast
 
 from returns.result import Result
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.finding import Finding, FindingStatus
-from livespec.types import CheckId
+from livespec.types import CheckId, TypedValidator
 
 __all__: list[str] = [
     "make_validator",
 ]
 
 
-_FastValidator = Callable[
-    [dict[str, Any]],
-    Result[dict[str, Any], ValidationError],
-]
-
 
 def make_validator(
     *,
-    fast_validator: _FastValidator,
-) -> Callable[[dict[str, Any]], Result[Finding, ValidationError]]:
+    fast_validator: TypedValidator[dict[str, Any]],
+) -> TypedValidator[Finding]:
     """Compose `fast_validator` with `Finding` dataclass construction."""
 
     def validator(
+        *,
         payload: dict[str, Any],
     ) -> Result[Finding, ValidationError]:
-        return fast_validator(payload).map(_to_dataclass)
+        return fast_validator(payload=payload).map(_to_dataclass)
 
     return validator
 

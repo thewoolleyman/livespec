@@ -78,7 +78,7 @@ class Logger(Protocol):
         """Log at CRITICAL level."""
 
 
-def get_logger(name: str) -> Logger:
+def get_logger(*, name: str) -> Logger:
     """Return a typed `Logger` bound to `name` (typically `__name__`).
 
     Thin wrapper over `structlog.get_logger(name)` that casts the

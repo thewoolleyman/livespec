@@ -120,8 +120,8 @@ def _walk(
     module-top-level helper `def` (sibling of main) does NOT inherit
     the exemption.
     """
-    if isinstance(node, ast.Call) and not inside_main and _is_sys_write_call(node):
-        attr_chain = _attr_chain(node.func)
+    if isinstance(node, ast.Call) and not inside_main and _is_sys_write_call(node=node):
+        attr_chain = _attr_chain(func=node.func)
         violations.append(
             f"line {node.lineno}: {attr_chain}() forbidden outside designated surfaces",
         )
@@ -141,7 +141,7 @@ def _walk(
         )
 
 
-def _is_sys_write_call(node: ast.Call) -> bool:
+def _is_sys_write_call(*, node: ast.Call) -> bool:
     """True iff `node` is `sys.stdout.write(...)` or `sys.stderr.write(...)`."""
     func = node.func
     if not isinstance(func, ast.Attribute) or func.attr != "write":
@@ -153,7 +153,7 @@ def _is_sys_write_call(node: ast.Call) -> bool:
     return isinstance(grandparent, ast.Name) and grandparent.id == "sys"
 
 
-def _attr_chain(func: ast.expr) -> str:
+def _attr_chain(*, func: ast.expr) -> str:
     """Render `sys.stdout.write` etc. as a string for diagnostic messages."""
     parts: list[str] = []
     cur: ast.expr = func

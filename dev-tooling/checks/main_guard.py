@@ -68,14 +68,14 @@ def check_file(*, path: Path) -> list[str]:
         return [f"syntax error: {e.msg}"]
     violations: list[str] = []
     for node in tree.body:
-        if _is_main_guard(node):
+        if _is_main_guard(node=node):
             violations.append(
                 f'line {node.lineno}: `if __name__ == "__main__":` block forbidden in livespec/**',
             )
     return violations
 
 
-def _is_main_guard(node: ast.stmt) -> bool:
+def _is_main_guard(*, node: ast.stmt) -> bool:
     """True if `node` is a top-level `if __name__ == "__main__":` statement."""
     if not isinstance(node, ast.If):
         return False

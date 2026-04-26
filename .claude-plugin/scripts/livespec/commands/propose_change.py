@@ -159,7 +159,7 @@ def _orchestrate(namespace: argparse.Namespace) -> IOResult[Path, LivespecError]
         else Path.cwd()
     )
     topic: str = namespace.topic
-    if not _is_canonical_topic(topic):
+    if not _is_canonical_topic(topic=topic):
         return IOFailure(
             ValidationError(
                 f"topic not canonical (Phase 3 minimum-viable): {topic!r}; "
@@ -180,7 +180,7 @@ def _orchestrate(namespace: argparse.Namespace) -> IOResult[Path, LivespecError]
     )
 
 
-def _is_canonical_topic(topic: str) -> bool:
+def _is_canonical_topic(*, topic: str) -> bool:
     if len(topic) == 0 or len(topic) > _TOPIC_MAX_LEN:
         return False
     return bool(_CANONICAL_TOPIC_RE.match(topic))
@@ -228,7 +228,7 @@ def _compile_findings_validator(
             validator = validate_proposal_findings.make_validator(
                 fast_validator=fast_validator,
             )
-            validated = validator(payload)
+            validated = validator(payload=payload)
             match validated:
                 case Failure(err):
                     return IOFailure(err)
@@ -315,7 +315,7 @@ def _validate_jsonc_against_schema(
             validator = validate_livespec_config.make_validator(
                 fast_validator=fast_validator,
             )
-            validated = validator(jsonc_dict)
+            validated = validator(payload=jsonc_dict)
             match validated:
                 case Failure(err):
                     return IOFailure(err)
@@ -386,7 +386,7 @@ def _render_proposed_change(
     findings: ProposalFindings,
     created_at: str,
 ) -> str:
-    proposals_block = "\n\n".join(_render_proposal(f) for f in findings.findings)
+    proposals_block = "\n\n".join(_render_proposal(finding=f) for f in findings.findings)
     return (
         f"---\n"
         f"topic: {topic}\n"
@@ -398,7 +398,7 @@ def _render_proposed_change(
     )
 
 
-def _render_proposal(finding: ProposalFinding) -> str:
+def _render_proposal(*, finding: ProposalFinding) -> str:
     targets_block = "\n".join(f"- {p}" for p in finding.target_spec_files)
     return (
         f"## Proposal: {finding.name}\n"
@@ -424,7 +424,7 @@ def _render_proposal(finding: ProposalFinding) -> str:
 def main(*, argv: Sequence[str] | None = None) -> int:
     """Supervisor: bug-catcher + railway dispatch inline (sys.stdout.write
     exemption per style doc lines 1474-1481 is per-`main()`, NOT per-helper)."""
-    log = get_logger(__name__)
+    log = get_logger(name=__name__)
     actual_argv: Sequence[str] = list(argv) if argv is not None else sys.argv[1:]
     try:
         result = run(argv=actual_argv)
@@ -443,7 +443,7 @@ def main(*, argv: Sequence[str] | None = None) -> int:
                 )
                 return type(err).exit_code
             case _ as unreachable:
-                _unreachable(unreachable)
+                _unreachable(value=unreachable)
     except Exception as exc:
         log.exception(
             "propose_change internal error",
@@ -453,5 +453,5 @@ def main(*, argv: Sequence[str] | None = None) -> int:
         return 1
 
 
-def _unreachable(value: object) -> NoReturn:
+def _unreachable(*, value: object) -> NoReturn:
     assert_never(value)  # type: ignore[arg-type]

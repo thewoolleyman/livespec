@@ -21,24 +21,18 @@ without touching io/ directly. (See bootstrap/decisions.md
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 from returns.result import Result
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.livespec_config import LivespecConfig
-from livespec.types import TemplateName
+from livespec.types import TemplateName, TypedValidator
 
 __all__: list[str] = [
     "make_validator",
 ]
 
-
-_FastValidator = Callable[
-    [dict[str, Any]],
-    Result[dict[str, Any], ValidationError],
-]
 """Local type alias matching `livespec.io.fastjsonschema_facade.Validator`.
 Re-declared here (not imported from io/) to keep `validate/` strictly
 pure under the import-linter `parse-and-validate-are-pure` contract."""
@@ -46,13 +40,13 @@ pure under the import-linter `parse-and-validate-are-pure` contract."""
 
 def make_validator(
     *,
-    fast_validator: _FastValidator,
-) -> Callable[[dict[str, Any]], Result[LivespecConfig, ValidationError]]:
+    fast_validator: TypedValidator[dict[str, Any]],
+) -> TypedValidator[LivespecConfig]:
     """Compose `fast_validator` with `LivespecConfig` dataclass construction.
 
     The returned closure:
 
-    - Calls `fast_validator(payload)` to schema-validate the dict.
+    - Calls `fast_validator(payload=payload)` to schema-validate the dict.
     - On `Success(data)`, constructs `LivespecConfig(**data_with_defaults)`
       and returns `Success(config)`.
     - On `Failure(ValidationError(...))`, propagates the failure
@@ -65,9 +59,10 @@ def make_validator(
     """
 
     def validator(
+        *,
         payload: dict[str, Any],
     ) -> Result[LivespecConfig, ValidationError]:
-        return fast_validator(payload).map(_to_dataclass)
+        return fast_validator(payload=payload).map(_to_dataclass)
 
     return validator
 

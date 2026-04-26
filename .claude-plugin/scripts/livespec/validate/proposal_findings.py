@@ -10,7 +10,6 @@ factory-shape rationale.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 from returns.result import Result
@@ -20,39 +19,36 @@ from livespec.schemas.dataclasses.proposal_findings import (
     ProposalFinding,
     ProposalFindings,
 )
+from livespec.types import TypedValidator
 
 __all__: list[str] = [
     "make_validator",
 ]
 
 
-_FastValidator = Callable[
-    [dict[str, Any]],
-    Result[dict[str, Any], ValidationError],
-]
-
 
 def make_validator(
     *,
-    fast_validator: _FastValidator,
-) -> Callable[[dict[str, Any]], Result[ProposalFindings, ValidationError]]:
+    fast_validator: TypedValidator[dict[str, Any]],
+) -> TypedValidator[ProposalFindings]:
     """Compose `fast_validator` with `ProposalFindings`."""
 
     def validator(
+        *,
         payload: dict[str, Any],
     ) -> Result[ProposalFindings, ValidationError]:
-        return fast_validator(payload).map(_to_dataclass)
+        return fast_validator(payload=payload).map(_to_dataclass)
 
     return validator
 
 
 def _to_dataclass(data: dict[str, Any]) -> ProposalFindings:
     return ProposalFindings(
-        findings=[_finding(entry) for entry in data["findings"]],
+        findings=[_finding(entry=entry) for entry in data["findings"]],
     )
 
 
-def _finding(entry: dict[str, Any]) -> ProposalFinding:
+def _finding(*, entry: dict[str, Any]) -> ProposalFinding:
     return ProposalFinding(
         name=entry["name"],
         target_spec_files=list(entry["target_spec_files"]),
