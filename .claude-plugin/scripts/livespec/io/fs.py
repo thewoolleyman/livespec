@@ -40,6 +40,7 @@ __all__: list[str] = [
     "mkdir_p",
     "path_exists",
     "read_text",
+    "remove_file",
     "write_text",
 ]
 
@@ -131,6 +132,25 @@ def list_dir(*, path: Path) -> list[Path]:
         raise PreconditionError(f"path is not a directory: {path}") from e
     except PermissionError as e:
         raise PermissionDeniedError(f"permission denied listing: {path}") from e
+
+
+@impure_safe(exceptions=(PermissionDeniedError, PreconditionError))
+def remove_file(*, path: Path) -> None:
+    """Remove the file at `path`.
+
+    Maps FileNotFoundError → PreconditionError (exit 3),
+    PermissionError → PermissionDeniedError (exit 126),
+    IsADirectoryError → PreconditionError (exit 3). Use
+    `mkdir_p` for directory removal (none in v1).
+    """
+    try:
+        path.unlink()
+    except FileNotFoundError as e:
+        raise PreconditionError(f"file not found: {path}") from e
+    except IsADirectoryError as e:
+        raise PreconditionError(f"path is a directory, not a file: {path}") from e
+    except PermissionError as e:
+        raise PermissionDeniedError(f"permission denied removing: {path}") from e
 
 
 @impure_safe(exceptions=(PermissionDeniedError, PreconditionError))
