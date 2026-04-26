@@ -43,7 +43,7 @@ import sys
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any
 
 from returns.io import IOFailure, IOResult, IOSuccess
 from returns.result import Failure, Success
@@ -442,8 +442,8 @@ def main(*, argv: Sequence[str] | None = None) -> int:
                     error_message=str(err),
                 )
                 return type(err).exit_code
-            case _ as unreachable:
-                _unreachable(value=unreachable)
+            case _:
+                assert_never(inner)
     except Exception as exc:
         log.exception(
             "propose_change internal error",
@@ -452,6 +452,3 @@ def main(*, argv: Sequence[str] | None = None) -> int:
         )
         return 1
 
-
-def _unreachable(*, value: object) -> NoReturn:
-    assert_never(value)  # type: ignore[arg-type]

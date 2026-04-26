@@ -40,7 +40,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any
 
 from returns.io import IOFailure, IOResult, IOSuccess
 from returns.result import Failure, Success
@@ -323,8 +323,8 @@ def main(*, argv: Sequence[str] | None = None) -> int:
                     error_message=str(err),
                 )
                 return _exit_code_of(err=err)
-            case _ as unreachable:
-                _unreachable(value=unreachable)
+            case _:
+                assert_never(inner)
     except Exception as exc:
         log.exception(
             "resolve_template internal error",
@@ -338,13 +338,3 @@ def _exit_code_of(*, err: LivespecError) -> int:
     """Pull the per-class exit_code from a LivespecError instance."""
     return type(err).exit_code
 
-
-def _unreachable(*, value: object) -> NoReturn:
-    """Raise on supposedly-unreachable values; bug-catcher converts to exit 1.
-
-    `assert_never` from typing_extensions narrows pyright's type
-    knowledge but raises `AssertionError` at runtime if reached.
-    Wrapped here so the supervisor's bug-catcher gets a NoReturn
-    function rather than an inline assert_never call.
-    """
-    assert_never(value)  # type: ignore[arg-type]

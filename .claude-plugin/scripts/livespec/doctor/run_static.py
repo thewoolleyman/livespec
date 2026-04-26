@@ -50,7 +50,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, NoReturn, cast
+from typing import Any, Literal, cast
 
 from returns.io import IOResult, IOSuccess
 from returns.result import Failure, Success
@@ -528,8 +528,8 @@ def main(*, argv: Sequence[str] | None = None) -> int:
                     error_message=str(err),
                 )
                 return type(err).exit_code
-            case _ as unreachable:
-                _unreachable(value=unreachable)
+            case _:
+                assert_never(inner)
     except Exception as exc:
         log.exception(
             "doctor-static internal error",
@@ -538,9 +538,6 @@ def main(*, argv: Sequence[str] | None = None) -> int:
         )
         return 1
 
-
-def _unreachable(*, value: object) -> NoReturn:
-    assert_never(value)  # type: ignore[arg-type]
 
 
 # `_VNNN_RE` is exported for downstream use by the few callers that need

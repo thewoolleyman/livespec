@@ -27,7 +27,7 @@ need.
 from __future__ import annotations
 
 import json
-from typing import Any, NoReturn
+from typing import Any
 
 import jsoncomment
 from returns.result import Failure, Result, Success, safe
@@ -90,9 +90,6 @@ def parse(*, text: str) -> Result[dict[str, Any], PreconditionError]:
                     f"column {exc.colno}: {exc.msg}",
                 ),
             )
-        case _ as unreachable:
-            _unreachable(value=unreachable)
+        case _:
+            assert_never(raw_result)
 
-
-def _unreachable(*, value: object) -> NoReturn:
-    assert_never(value)  # type: ignore[arg-type]

@@ -66,7 +66,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, NoReturn, cast
+from typing import Any, cast
 
 from returns.io import IOFailure, IOResult, IOSuccess
 from returns.result import Failure, Success
@@ -672,8 +672,8 @@ def main(*, argv: Sequence[str] | None = None) -> int:
                     error_message=str(err),
                 )
                 return type(err).exit_code
-            case _ as unreachable:
-                _unreachable(value=unreachable)
+            case _:
+                assert_never(inner)
     except Exception as exc:
         log.exception(
             "revise internal error",
@@ -682,9 +682,6 @@ def main(*, argv: Sequence[str] | None = None) -> int:
         )
         return 1
 
-
-def _unreachable(*, value: object) -> NoReturn:
-    assert_never(value)  # type: ignore[arg-type]
 
 
 # Keep `Decision` referenced so the import isn't pruned by F401 — used in
