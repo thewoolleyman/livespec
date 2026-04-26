@@ -578,6 +578,45 @@ returning `None`). The rule exempts only such supervisors. Enforced
 by `check-public-api-result-typed` (AST); the exemption scope is
 documented in the `static-check-semantics` deferred item.
 
+### ROP pipeline shape
+
+A class decorated with `@rop_pipeline` MUST carry exactly ONE
+public method (the entry point). Every other method MUST be
+`_`-prefixed (private). Dunder methods (`__init__`, `__call__`,
+etc., name matches `^__.+__$`) are not counted toward the
+public-method quota — they are Python-mandated structural
+surfaces.
+
+The decorator itself is a runtime no-op (returns the decorated
+class unchanged) declared in `livespec.types`. AST enforcement
+lives in `dev-tooling/checks/rop_pipeline_shape.py`. The decorator
+exists primarily as an AST marker for the static check, plus as
+documentation at the def-site.
+
+Rationale: the rule encodes the Command / Use Case Interactor /
+Trailblazer Operation lineage. Each pipeline class encapsulates
+one cohesive railway chain; the single public method is the entry
+point; internal steps are bounded by the class body. Statically
+enforcing the shape prevents the public surface from drifting as
+new chain steps are added — agent-authored code that grows a
+second public method gets caught at check time, not at review.
+Helpers stay private (`_`-prefixed) and intra-class, so the
+`check-private-calls` cross-module-import rule is moot for them.
+
+Helper classes and helper modules (anything NOT carrying the
+`@rop_pipeline` decorator) are exempt from this rule and may
+export multiple public names.
+
+The marker is a decorator rather than a base class because the
+`check-no-inheritance` direct-parent allowlist is intentionally
+small (`{Exception, BaseException, LivespecError, Protocol,
+NamedTuple, TypedDict}`) and adding `RopPipeline` to the allowlist
+would expand the open-extension-point set for an application
+pattern. The decorator approach achieves the same "marker" effect
+without inheritance.
+
+Enforced by `just check-rop-pipeline-shape`.
+
 ### Supervisor discipline (bug-catcher)
 
 Every supervisor (the outermost entry-point function that owns
@@ -1838,6 +1877,7 @@ specific native code works). No Windows support.
 | `just check-imports-architecture` | Import-Linter: declarative `[tool.importlinter]` contracts in `pyproject.toml` express purity (`parse/` + `validate/` don't import `io/` or effectful APIs) and layered architecture (no circular imports). Replaces v011's planned `check-purity` + `check-import-graph`. The third v012 L15a contract (raise-discipline import surface) was retracted in v017 Q3; raise-discipline is raise-site-enforced only by `check-no-raise-outside-io` below. |
 | `just check-private-calls` | AST: no cross-module calls to `_`-prefixed functions defined elsewhere. |
 | `just check-global-writes` | AST: no module-level mutable state writes from functions. |
+| `just check-rop-pipeline-shape` | AST: every class decorated with `@rop_pipeline` carries exactly one public method (the entry point); other methods are `_`-prefixed; dunders aren't counted. Enforces the Command / Use Case Interactor pattern at the class level. |
 | `just check-supervisor-discipline` | AST: `sys.exit` / `raise SystemExit` only in `bin/*.py` (incl. `_bootstrap.py`). |
 | `just check-no-raise-outside-io` | AST: raising of `LivespecError` subclasses (domain errors) at runtime restricted to `io/**` and `errors.py`. Raising bug-class exceptions (TypeError, NotImplementedError, AssertionError, etc.) permitted anywhere. **Raise-site enforcement is the sole enforcement point for the raise-discipline (v017 Q3 retraction of the v012 L15a import-surface delegation).** Import-Linter does NOT cover the import surface for `livespec.errors`; type-annotation and `match`-pattern imports of `LivespecError` subclasses are permitted anywhere they are referenced. |
 | `just check-no-except-outside-io` | AST: catching exceptions outside `io/**` permitted only in supervisor bug-catchers (top-level `try/except Exception` in `main()` of `commands/*.py` and `doctor/run_static.py`). |

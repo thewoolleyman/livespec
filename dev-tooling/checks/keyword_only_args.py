@@ -153,7 +153,13 @@ def _has_protocol_base(*, class_def: ast.ClassDef) -> bool:
 
 
 def _rop_callback_names(*, tree: ast.Module) -> frozenset[str]:
-    """Collect names referenced positionally to ROP-chain methods in this file."""
+    """Collect names referenced positionally to ROP-chain methods in this file.
+
+    Recognizes both bare-name callbacks (`.bind(_orchestrate)`) and
+    bound-method callbacks (`.bind(self._orchestrate)`). The latter
+    is the canonical form inside `@rop_pipeline`-decorated classes,
+    where chain steps are private methods on the pipeline class.
+    """
     names: set[str] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -165,6 +171,8 @@ def _rop_callback_names(*, tree: ast.Module) -> frozenset[str]:
         for arg in node.args:
             if isinstance(arg, ast.Name):
                 names.add(arg.id)
+            elif isinstance(arg, ast.Attribute):
+                names.add(arg.attr)
     return frozenset(names)
 
 

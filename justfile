@@ -49,6 +49,7 @@ check:
         check-imports-architecture
         check-private-calls
         check-global-writes
+        check-rop-pipeline-shape
         check-supervisor-discipline
         check-no-raise-outside-io
         check-no-except-outside-io
@@ -123,6 +124,9 @@ check-private-calls:
 
 check-global-writes:
     python3 dev-tooling/checks/global_writes.py
+
+check-rop-pipeline-shape:
+    python3 dev-tooling/checks/rop_pipeline_shape.py
 
 check-supervisor-discipline:
     python3 dev-tooling/checks/supervisor_discipline.py

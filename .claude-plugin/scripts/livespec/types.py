@@ -52,7 +52,42 @@ __all__: list[str] = [
     "TopicSlug",
     "TypedValidator",
     "VersionTag",
+    "rop_pipeline",
 ]
+
+
+def rop_pipeline(cls: type) -> type:
+    """Marker decorator for Railway-Oriented-Programming pipeline classes.
+
+    A class decorated with `@rop_pipeline` MUST carry exactly ONE
+    public method (the entry point); every other method MUST be
+    `_`-prefixed (private to the class). Dunder methods (`__init__`,
+    `__call__`, etc.) are not counted toward the public-method
+    quota — they are Python-mandated structural surfaces.
+
+    The decorator is a runtime no-op (returns `cls` unchanged); AST
+    enforcement lives in `dev-tooling/checks/rop_pipeline_shape.py`,
+    which walks every `@rop_pipeline`-decorated `ClassDef` and
+    asserts the one-public-method invariant.
+
+    Helper classes and helper modules (anything NOT carrying this
+    decorator) are exempt from the rule and may export multiple
+    public names. The pattern follows the established Command /
+    Use Case Interactor / Trailblazer Operation lineage:
+
+    - Each pipeline encapsulates one cohesive railway chain.
+    - The single public method is the entry point.
+    - Internal steps are private methods, structurally bounded by
+      the class body.
+
+    Note on the `cls` parameter: class decorators in Python receive
+    the decorated class positionally — Python's decorator protocol
+    passes it as the first argument. Naming the parameter `cls`
+    aligns with the `@classmethod` convention and is recognized by
+    `check-keyword-only-args` (which skips a leading `self` or
+    `cls` parameter without requiring a `*` separator).
+    """
+    return cls
 
 
 _T_co = TypeVar("_T_co", covariant=True)
