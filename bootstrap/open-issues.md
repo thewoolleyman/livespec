@@ -59,6 +59,8 @@ appends:
 
 ## 2026-04-26T07:05:01Z — phase 2 — blocking — halt-and-revise-brainstorming
 
-**Status:** open
+**Status:** superseded
 
 **Description:** PROPOSAL.md §"Runtime dependencies — Vendored pure-Python libraries" line 99-100 (and downstream NOTICES.md, .vendor.jsonc) declare the `returns` library license as BSD-2. Verified against upstream dry-python/returns v0.25.0 `pyproject.toml`: the upstream-declared license is `BSD-3-Clause`. Drift is a license misclassification across PROPOSAL.md, plan Phase 2 vendoring sub-step (line 686), python-skill-script-style-requirements.md vendored-libs section (line 143), NOTICES.md (sub-step 11 entry). Resolution requires v025 PROPOSAL.md snapshot fixing the license to BSD-3-Clause (and removing the parallel BSD-2 reference for `returns_pyright_plugin` if that entry is dropped per the paired blocking entry above).
+
+**Superseded:** 2026-04-26T07:25:00Z — should not have been logged as a separate blocking entry per the bootstrap skill's new "one-finding-per-gate discipline" (added 2026-04-26 in the same session as this entry). This is a cosmetic license-label correction with zero architectural implications: style doc line 133 explicitly allows both BSD-2-Clause and BSD-3-Clause. The library is in policy at either license; the spec just mislabels it. The fix rides along with whatever PROPOSAL revision happens for the paired pyright-plugin blocker (2026-04-26T07:05:00Z), or as a small overlay reconciliation if that blocker resolves without a PROPOSAL revision. Captured here so the BSD-2 → BSD-3-Clause sweep is not forgotten when the substantive revision lands.

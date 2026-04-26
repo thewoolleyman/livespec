@@ -91,6 +91,26 @@ context.
 When the user selects this option (or when step 1's consistency
 scan / step 4's cascading-impact scan auto-routes here):
 
+**One-finding-per-gate discipline (mandatory).** When a sub-step's
+investigation surfaces multiple findings, separate the finding that
+blocks the current sub-step from incidental side observations.
+Only the blocking finding gates the user via the halt-on-blocking
+flow. Incidental findings (e.g., a license-label typo noticed
+while looking for a missing artifact, a wording slip noticed
+while checking for an architectural contradiction) get a brief
+`decisions.md` note OR a single-line follow-up to be swept by the
+eventual revision — they do NOT get peer-status open-issues
+entries and do NOT appear in the same AskUserQuestion as the real
+blocker. The "in the same file/repo/log" coincidence is not a
+reason to batch — only "load-bearing for the current decision"
+is. Cosmetic drift (label/typo with zero architectural
+implication, e.g., the spec says BSD-2 but the policy allows
+both BSD-2 and BSD-3) is never a blocker on its own; it rides
+along with whatever revision happens for substantive reasons,
+or lands as a small overlay reconciliation if no substantive
+revision is needed. **Never bundle unrelated drifts into one
+AskUserQuestion or one open-issues batch.**
+
 **Drift handling depends on which file is affected. PROPOSAL.md is
 versioned; the plan is not.** Two cases, classified by the file the
 drift lives in:
