@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "seed_input.schema.json",
+  "title": "seed_input",
+  "description": "Schema for the JSON payload produced by the active template's prompts/seed.md and consumed by bin/seed.py via --seed-json. Per v018 Q1 + v020 Q2, the payload carries main-spec files plus an optional sub_specs[] array of per-template SubSpecPayload entries for atomic multi-tree seed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "template",
+    "files",
+    "intent",
+    "sub_specs"
+  ],
+  "properties": {
+    "template": {
+      "type": "string",
+      "description": "User-chosen template value from the pre-seed dialogue: a built-in name ('livespec', 'minimal') or a path to a custom template directory."
+    },
+    "intent": {
+      "type": "string",
+      "description": "Verbatim user intent text from the pre-seed dialogue's seed-intent question. Captured into the auto-emitted history/v001/proposed_changes/seed.md proposed-change file."
+    },
+    "files": {
+      "type": "array",
+      "description": "Main-spec files to write. Each entry's path is relative to the project root and must be one of the active template's declared spec-file paths.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "content"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative path under the project root."
+          },
+          "content": {
+            "type": "string",
+            "description": "Initial file content."
+          }
+        }
+      }
+    },
+    "sub_specs": {
+      "type": "array",
+      "description": "Sub-spec trees to emit atomically alongside the main spec. Empty list when the user answered 'no' to the pre-seed 'ships own livespec templates' question (the default), or when the active template does not declare sub-spec-emission capability.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["template_name", "files"],
+        "properties": {
+          "template_name": {
+            "type": "string",
+            "description": "Sub-spec directory name under .claude-plugin/specification-templates/<template_name>/ — 'livespec', 'minimal', or any user-shipped template name."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "content"],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Relative path under the project root, conventionally SPECIFICATION/templates/<template_name>/<spec-file>."
+                },
+                "content": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sub_spec_payload.schema.json",
+  "title": "sub_spec_payload",
+  "description": "Schema for a single SubSpecPayload entry inside seed_input's sub_specs[] array (v018 Q1 / v020 Q2). Each entry carries the sub-spec's template_name marker and the sub-spec's spec-file content for atomic emission alongside the main spec tree.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "template_name",
+    "files"
+  ],
+  "properties": {
+    "template_name": {
+      "type": "string",
+      "description": "Sub-spec directory name under .claude-plugin/specification-templates/<template_name>/. 'livespec', 'minimal', or any user-shipped template name. Used by doctor-static's per-tree applicability dispatch."
+    },
+    "files": {
+      "type": "array",
+      "description": "Sub-spec spec-file content. Each entry's path is conventionally SPECIFICATION/templates/<template_name>/<spec-file>; uniformly multi-file (README.md, spec.md, contracts.md, constraints.md, scenarios.md) per v020 Q1.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "content"],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
