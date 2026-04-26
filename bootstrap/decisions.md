@@ -128,3 +128,32 @@ PROPOSAL.md is unchanged. Fast-forward mode does not authorize
 silent fixes for previously-unseen drift categories; the
 round-2 gate established the pattern, so round-3 still gates
 but the user can approve quickly to keep fast-forward moving.
+
+## 2026-04-26T05:55:00Z — phase 1 sub-step 3 (pre-execution scan, fast-forward mode)
+
+**Decision:** Fix off-by-one count word "six" → "seven" in
+coordinated text describing pyright strict-plus diagnostics.
+Plan line 523 ("the six strict-plus diagnostics") and style
+doc line 758 ("These six diagnostics are above the strict
+baseline") both say "six" but enumerate seven names
+(reportUnusedCallResult, reportImplicitOverride,
+reportUninitializedInstanceVariable,
+reportUnnecessaryTypeIgnoreComment, reportUnnecessaryCast,
+reportUnnecessaryIsInstance, reportImplicitStringConcatenation).
+PROPOSAL.md carries no count and is unaffected. Two commits per
+the drift handling rule: (1) Case-B plan-fix on the plan
+(`phase-1: fix 'six' → 'seven' in pyright strict-plus diagnostic
+count`); (2) v024 round-4 overlay extension on the style doc
+(`Revise proposal to v024 (cont 4): companion-doc strict-plus
+count fix (round 4)`). Then write pyproject.toml with all 7
+diagnostics. Gate confirmed via AskUserQuestion 2026-04-26
+(option: "List of 7 is authoritative; fix the count to 'seven'
+(Recommended)").
+
+**Rationale:** Substantive enumeration in both docs lists 7
+diagnostics with rationale per each. Trimming to 6 would
+require dropping a diagnostic that v012 L1+L2 explicitly
+established; the count word is the slip. Two-commit split
+preserves the audit-trail asymmetry that PROPOSAL.md is
+versioned and the plan is not (plan edits never enter v024's
+overlay record; companion-doc edits do).

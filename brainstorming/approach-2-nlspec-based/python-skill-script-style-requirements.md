@@ -755,7 +755,7 @@ way to express them.
   `# type: ignore`. Enforced by `just check-types` — any
   pyright diagnostic in non-vendored code fails the gate.
 - **Pyright strict-plus diagnostics MUST be enabled in
-  `[tool.pyright]`.** These six diagnostics are above the strict
+  `[tool.pyright]`.** These seven diagnostics are above the strict
   baseline; each closes a documented LLM-authored-code failure
   pattern with a one-line config change:
   - `reportUnusedCallResult = "error"` — every call to a function

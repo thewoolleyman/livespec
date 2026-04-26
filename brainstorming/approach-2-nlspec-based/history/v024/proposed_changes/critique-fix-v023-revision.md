@@ -510,3 +510,45 @@ The round-3 follow-up commit is squashed-style: a single commit
 `Revise proposal to v024 (cont 3): companion-doc UV reconciliation (round 3)`
 that lands the style-doc edits plus the appended section in
 this overlay file.
+
+## v024 companion-doc reconciliation (round 4)
+
+Round 4 surfaces an off-by-one count slip in coordinated text
+between the plan and the style doc, caught by the bootstrap
+skill's pre-execution scan at the start of Phase 1 sub-step 3
+(pyproject.toml authoring) when sourcing the `[tool.pyright]`
+strict-plus diagnostic list. Plan line 523 says "the six
+strict-plus diagnostics" but enumerates seven; style doc line
+758 likewise says "These six diagnostics are above the strict
+baseline" but enumerates seven below at lines 761-784. The
+list-of-seven is the substantive enumeration in both docs;
+"six" is a count word slip in both. PROPOSAL.md does not
+carry a count (only references "v012 L1 + L2 strict-plus
+diagnostics manually enabled"), so PROPOSAL.md is unaffected.
+Gated via AskUserQuestion 2026-04-26 (option: "List of 7 is
+authoritative; fix the count to 'seven' (Recommended)").
+
+Files touched in the round-4 follow-up commit:
+
+- **`python-skill-script-style-requirements.md`** line 758
+  (§"Type safety" intro to the strict-plus diagnostic list) —
+  "These six diagnostics are above the strict baseline" rewrites
+  to "These seven diagnostics are above the strict baseline".
+  No body changes; the seven enumerated bullets at lines
+  761-784 remain unchanged.
+
+The paired plan edit at
+`PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md` line 523 ("the
+six strict-plus diagnostics" → "the seven strict-plus
+diagnostics") lands as a separate Case-B plan-fix commit
+(plan is unversioned per the v018-rule-refactor decision; plan
+edits do not enter v024's overlay record). The two commits
+together resolve the count slip across both docs.
+
+The v024 PROPOSAL.md snapshot at `history/v024/PROPOSAL.md`
+remains byte-identical (PROPOSAL.md was not re-touched).
+
+The round-4 follow-up commit is squashed-style: a single commit
+`Revise proposal to v024 (cont 4): companion-doc strict-plus count fix (round 4)`
+that lands the style-doc edit plus the appended section in this
+overlay file.
