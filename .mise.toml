@@ -1,0 +1,20 @@
+# Livespec developer-tooling pins — non-Python binaries only.
+#
+# Authority: PROPOSAL.md §"Developer-time dependencies (livespec
+# repo only)" (v024) and PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md
+# Phase 1.
+#
+# Per v024, mise pins `uv`, `just`, `lefthook` only. Python and
+# every Python dev package are managed by uv via pyproject.toml's
+# [project.requires-python] (Python interpreter pin) and
+# [dependency-groups.dev] (dev packages); uv produces a committed
+# uv.lock and installs into a project-local .venv via
+# `uv sync --all-groups`.
+#
+# `typing_extensions` is intentionally NOT listed: it is vendored
+# in `_vendor/typing_extensions/` per PROPOSAL.md v013 M1.
+
+[tools]
+uv       = "0.5.20"
+just     = "1.36.0"
+lefthook = "1.10.10"
