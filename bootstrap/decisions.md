@@ -333,3 +333,57 @@ throwaway scaffolding deleted at Phase 11). The corrected exit
 criterion is enforceable today (`ruff check` is the only
 non-deferred mechanical check at Phase 2; plugin-loading smoke
 check is manual; file-existence verification is `find`/`ls`).
+
+## 2026-04-26T08:33:35Z — phase 2 sub-step 9 (pyproject.toml ruff config fix at exit-criterion check)
+
+**Decision:** Add the missing ruff configuration to pyproject.toml
+that the spec already mandates: (1) `[tool.ruff].extend-exclude =
+["**/_vendor/**", "**/__pycache__/**"]` per
+`python-skill-script-style-requirements.md` line 294-296 ("`_vendor/`
+is **excluded** from livespec's own style rules, type checking
+strictness, coverage measurement, and CLAUDE.md coverage
+enforcement"); (2) `[tool.ruff.lint.per-file-ignores]` for
+`.claude-plugin/scripts/bin/*.py = ["I001", "E402", "E501"]` per
+the wrapper-shape contract (style doc lines 1664-1668: each wrapper
+MUST be the 6-statement shape `shebang → docstring → from _bootstrap
+import bootstrap → bootstrap() → from livespec.<...> import main →
+raise SystemExit(main())` — the post-`bootstrap()` import is
+structurally I001/E402, and the docstring template overflows 100
+chars for longer module names triggering E501); (3) per-file-ignores
+for `.claude-plugin/scripts/bin/_bootstrap.py = ["UP036"]` per the
+bootstrap mechanism (style doc lines 1697-1700: the `if
+sys.version_info < (3, 10): raise SystemExit(127)` check is the
+canonical bootstrap-time version assertion even though
+`target-version = "py310"`). Discovered during the Phase 2 exit-
+criterion check at sub-step 9: `uv run ruff check .` returned 1151
+errors (1132 in `_vendor/`, 19 in `bin/*.py`); after fix, returns
+"All checks passed!". Sub-step 6's STATUS-asserted "ruff clean"
+was scoped to `livespec/` only, never validated against the broader
+repo-wide scope mandated by the exit criterion. Fix gated via
+AskUserQuestion 2026-04-26 (option: "Hold here; add sub-step 9 to
+fix pyproject.toml (Recommended)").
+
+**Rationale:** Implementation drift in pyproject.toml — Phase 1
+sub-step 3 authored the ruff config without the spec-mandated
+`_vendor` exclude or wrapper-shape per-file-ignores. The spec is
+correct (style doc explicitly mandates both); pyproject.toml just
+missed them. Not PROPOSAL.md drift (no PROPOSAL change needed) and
+not plan drift (plan is silent on per-file-ignore specifics —
+appropriately, per the "specify architecture, not mechanism"
+principle). Pure implementation bug fix; no v028 PROPOSAL
+revision and no plan edit required. The companion-doc precedent
+for "spec-says-X-but-config-says-Y" is to fix the config to match
+the spec, not to add overlay extensions to the spec.
+
+**Side observation (deferred for sweep at next substantive PROPOSAL
+revision).** `python-skill-script-style-requirements.md` line 1820
+(`check-vendor-manifest` row of the canonical-target table) carries
+stale wording: "the `shim: true` flag is present on `typing_extensions`
+and absent on every other entry". Post-v026 D1 + v027 D1
+reclassifications, the shim is `jsoncomment` (NOT `typing_extensions`).
+Cosmetic label drift only; the `check-vendor-manifest` script
+authored at Phase 4 will validate against `.vendor.jsonc`'s actual
+shape, not against this stale table row. Rides along with the next
+substantive PROPOSAL revision per the bootstrap skill's "Severity
+judgment over rule-following on PROPOSAL drift" rule and the
+established companion-doc-overlay precedent (v024 round 1-4).

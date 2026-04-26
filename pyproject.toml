@@ -82,6 +82,10 @@ dev = [
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+# Vendored third-party libraries are exempt from livespec's own style
+# rules per python-skill-script-style-requirements.md line 294-296.
+# `__pycache__/` mirrors `[tool.pyright].exclude`.
+extend-exclude = ["**/_vendor/**", "**/__pycache__/**"]
 
 [tool.ruff.lint]
 # 27 categories total. v011 baseline (11) + v012 additions (16).
@@ -135,6 +139,25 @@ ban-relative-imports = "all"
 "pickle" = { msg = "arbitrary-code-execution surface on load(); livespec uses JSON / JSONC for all serialization" }
 "marshal" = { msg = "arbitrary-code-execution surface on load(); livespec uses JSON / JSONC for all serialization" }
 "shelve" = { msg = "arbitrary-code-execution surface on load(); livespec uses JSON / JSONC for all serialization" }
+
+[tool.ruff.lint.per-file-ignores]
+# Shebang-wrapper contract (python-skill-script-style-requirements.md
+# lines 1664-1668) mandates exactly: shebang → docstring → `from
+# _bootstrap import bootstrap` → `bootstrap()` → `from livespec.<...>
+# import main` → `raise SystemExit(main())`. The post-`bootstrap()`
+# import structurally violates I001 (un-sorted imports) and E402
+# (module-level import not at top); the docstring's
+# `Shebang wrapper for <name>. No logic; see livespec.<...> for
+# implementation.` template overflows 100 chars for longer module
+# names (E501). All three are spec-mandated patterns, exempted only
+# for the wrapper subtree.
+".claude-plugin/scripts/bin/*.py" = ["I001", "E402", "E501"]
+# `_bootstrap.py` carries the canonical Python-version check per
+# python-skill-script-style-requirements.md lines 1697-1700:
+# `if sys.version_info < (3, 10): raise SystemExit(127)`. UP036
+# would mark this dead code because target-version = "py310", but
+# the check is the bootstrap mechanism itself — it MUST remain.
+".claude-plugin/scripts/bin/_bootstrap.py" = ["UP036"]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.
