@@ -570,6 +570,44 @@ boundary, where recovery is imperative-landing (cheap), instead
 of Phase 7's dogfood boundary where recovery would require the
 broken governed loop.").
 
+## 2026-04-27T22:04:27Z — phase 4 sub-step 4 (supervisor refactor — inline _dispatch into main())
+
+**Decision:** Refactor the 5 `livespec/commands/*.py` supervisors
++ `livespec/doctor/run_static.py` to inline their `_dispatch`
+helper into `main()` directly. The style doc's `sys.stdout.write`
+exemption (lines 1474-1481) is per-supervisor "the function named
+`main` at module top-level", explicitly NOT per-helper inside
+commands/**. My Phase 3 supervisor pattern split the bug-catcher
+(in `main()`) from the dispatch logic (in `_dispatch()`), placing
+`sys.stdout.write` calls in a non-exempted helper. The refactor
+folds them back into `main()`, so the exemption applies.
+
+Surfaced by Phase 4 sub-step 4's authoring of
+`dev-tooling/checks/no_write_direct.py`, which detected 8
+violations across the 6 affected files. After the refactor, the
+check passes against the shipped repo.
+
+Side outcome: `no_write_direct.py` itself originally inherited
+from `ast.NodeVisitor`, which the no_inheritance check correctly
+flags (v013 M5 direct-parent allowlist excludes `ast.NodeVisitor`).
+Refactored to a plain recursive `_walk` function that threads the
+`inside_main` boolean through the AST traversal — no class
+inheritance.
+
+**Rationale:** Same precedent as decisions.md 2026-04-26T20:25:13Z
+(revise.py path-resolution bug surfaced by Phase 3 exit-criterion
+smoke): Phase 3 implementation drift caught by Phase 4 enforcement
+work. Pure code refactor; no PROPOSAL revision; no plan edit. The
+inlined supervisor is structurally identical to the prior
+`main() → _dispatch()` split — same try/except bug-catcher, same
+match dispatch, same return values. The split was an unnecessary
+helper introduction that conflicted with a pre-existing style-doc
+rule. Phase 3 exit-criterion tmp_path round-trip re-run
+post-refactor confirms identical end-to-end behavior (seed →
+propose-change → revise → propose-change-subspec → revise-subspec
+→ resolve_template, all exit 0 with correct file shaping and
+stdout output).
+
 ## 2026-04-26T21:32:08Z — phase 4 sub-step 2 (pyproject.toml fixes surfaced by first pytest run)
 
 **Decision:** Two pyproject.toml fixes landed alongside the

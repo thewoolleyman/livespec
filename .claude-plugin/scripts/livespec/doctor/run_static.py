@@ -507,10 +507,29 @@ def _has_fail_finding(*, doctor_findings: DoctorFindings) -> bool:
 
 
 def main(*, argv: Sequence[str] | None = None) -> int:
+    """Supervisor: bug-catcher + railway dispatch inline (sys.stdout.write
+    exemption per style doc lines 1474-1481 is per-`main()`, NOT per-helper)."""
     log = get_logger(__name__)
     actual_argv: Sequence[str] = list(argv) if argv is not None else sys.argv[1:]
     try:
-        return _dispatch(actual_argv=actual_argv)
+        result = run(argv=actual_argv)
+        inner = unsafe_perform_io(result)
+        match inner:
+            case Success(doctor_findings):
+                sys.stdout.write(_findings_to_json(doctor_findings=doctor_findings))
+                return 3 if _has_fail_finding(doctor_findings=doctor_findings) else 0
+            case Failure(HelpRequested(text=text)):
+                sys.stdout.write(text)
+                return 0
+            case Failure(err):
+                log.error(
+                    "doctor-static failed",
+                    error_type=type(err).__name__,
+                    error_message=str(err),
+                )
+                return type(err).exit_code
+            case _ as unreachable:
+                _unreachable(unreachable)
     except Exception as exc:
         log.exception(
             "doctor-static internal error",
@@ -518,28 +537,6 @@ def main(*, argv: Sequence[str] | None = None) -> int:
             exception_repr=repr(exc),
         )
         return 1
-
-
-def _dispatch(*, actual_argv: Sequence[str]) -> int:
-    log = get_logger(__name__)
-    result = run(argv=actual_argv)
-    inner = unsafe_perform_io(result)
-    match inner:
-        case Success(doctor_findings):
-            sys.stdout.write(_findings_to_json(doctor_findings=doctor_findings))
-            return 3 if _has_fail_finding(doctor_findings=doctor_findings) else 0
-        case Failure(HelpRequested(text=text)):
-            sys.stdout.write(text)
-            return 0
-        case Failure(err):
-            log.error(
-                "doctor-static failed",
-                error_type=type(err).__name__,
-                error_message=str(err),
-            )
-            return type(err).exit_code
-        case _ as unreachable:
-            _unreachable(unreachable)
 
 
 def _unreachable(value: object) -> NoReturn:
