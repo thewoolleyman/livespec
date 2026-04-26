@@ -295,3 +295,41 @@ bullet itself, missing the two downstream sentences that
 also describe the count. Surfacing it now keeps Phase 2
 sub-step 5's vendoring work aligned with the plan it
 references.
+
+## 2026-04-26T11:00:00Z — phase 2 sub-step 6 (Phase-2 exit-criterion correction)
+
+**Decision:** Remove the three dev-tooling-backed checks
+(`check-wrapper-shape`, `check-main-guard`,
+`check-claude-md-coverage`) from plan Phase 2's exit-criterion
+sentence (lines 1020-1031). Replace with: `ruff check` only, plus
+an explicit pointer at Phase 3's existing deferral list ("every
+target backed by a Phase-4 `dev-tooling/checks/*.py` script"),
+plus a manual file-existence verification block (CLAUDE.md
+coverage, `.vendor.jsonc` placeholder absence, `__all__`
+declaration in every `livespec/**` module). Plugin-loading smoke
+check stays verbatim. Single Edit on Phase 2's exit-criterion
+paragraph; no other plan sections needed amendment (Phase 3's
+deferral already correctly includes these targets; Phase 4's
+authoring list owns the backing scripts; Phase 5's exit criterion
+already implies full `just check` passes once the scripts land).
+PROPOSAL.md verified unaffected — it references
+`check-wrapper-shape` and `check-claude-md-coverage` only in
+passing (lines 418, 3796), not in any phase-exit-criterion
+context. Gate confirmed via AskUserQuestion 2026-04-26 (option:
+"Apply the plan correction (Recommended)").
+
+**Rationale:** Plan-internal contradiction discovered during
+Phase 2 sub-step 6 work. Phase 2 line 1020 listed three checks as
+exit gates whose backing scripts (`wrapper_shape.py`,
+`main_guard.py`, `claude_md_coverage.py`) are authored at Phase 4
+(plan line 1361, 1369). Phase 3 line 1339-1346 explicitly defers
+"every target backed by a Phase-4 `dev-tooling/checks/*.py`
+script" to Phase 5's exit. The Phase 2 → Phase 3 advance gate
+would have failed because `python3 dev-tooling/checks/<name>.py`
+returns no-such-file: `dev-tooling/` does not exist as of this
+sub-step. Case-B plan-only fix per the bootstrap skill's
+drift-handling rule (PROPOSAL.md unaffected; plan is unversioned
+throwaway scaffolding deleted at Phase 11). The corrected exit
+criterion is enforceable today (`ruff check` is the only
+non-deferred mechanical check at Phase 2; plugin-loading smoke
+check is manual; file-existence verification is `find`/`ls`).

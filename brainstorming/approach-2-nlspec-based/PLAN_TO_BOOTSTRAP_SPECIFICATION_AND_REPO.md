@@ -1017,18 +1017,25 @@ Every directory under `.claude-plugin/scripts/` (excluding the
 entire `_vendor/` subtree) MUST carry a `CLAUDE.md` describing
 its local constraints.
 
-**Exit criterion:** `just check-wrapper-shape`,
-`just check-claude-md-coverage`, `just check-main-guard`, and
-`ruff check` all pass on the skeleton. `pyright` may still
-report errors against the stub bodies (acceptable at this phase;
-`check-types` is a Phase-5 gate). **Plugin-loading smoke
-check**: `readlink .claude/skills` resolves to
-`../.claude-plugin/skills`; `ls .claude/skills/` enumerates
-exactly the seven sub-command directories (`help`, `seed`,
-`propose-change`, `critique`, `revise`, `doctor`,
-`prune-history`); and a fresh `claude` session rooted at the
-repo lists seven `/livespec:*` slash commands in its autocomplete
-menu.
+**Exit criterion:** `ruff check` passes on the skeleton.
+`check-wrapper-shape`, `check-main-guard`, and
+`check-claude-md-coverage` are deferred to Phase 5's exit per Phase
+3's deferral list ("every target backed by a Phase-4
+`dev-tooling/checks/*.py` script"); their backing scripts are
+authored at Phase 4. `pyright` may still report errors against the
+stub bodies (acceptable at this phase; `check-types` is a Phase-5
+gate). **Plugin-loading smoke check**: `readlink .claude/skills`
+resolves to `../.claude-plugin/skills`; `ls .claude/skills/`
+enumerates exactly the seven sub-command directories (`help`,
+`seed`, `propose-change`, `critique`, `revise`, `doctor`,
+`prune-history`); and a fresh `claude` session rooted at the repo
+lists seven `/livespec:*` slash commands in its autocomplete menu.
+**Manual file-existence verification**: every directory under
+`.claude-plugin/scripts/` (excluding `_vendor/`) carries a
+`CLAUDE.md`; `.vendor.jsonc` retains no placeholder strings; every
+module in `livespec/**` has a top-level `__all__: list[str]`. These
+manual checks are mechanically enforced once Phase 4's scripts land
+and Phase 5 wires them into `just check`.
 
 ### Phase 3 — Minimum viable `livespec seed` + minimum-viable propose-change/critique/revise
 
