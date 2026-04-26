@@ -1,8 +1,8 @@
 # Bootstrap status
 
 **Current phase:** 3
-**Current sub-step:** 9
+**Current sub-step:** 10
 **Last completed exit criterion:** phase 2
-**Next action:** Phase 3 sub-step 9 — author `livespec/io/returns_facade.py`: typed re-exports of dry-python/returns primitives (`Result`, `IOResult`, `Success`, `Failure`, `IOSuccess`, `IOFailure`, `@safe`, `@impure_safe`) per style doc lines 1026-1033. Post-v025 D1 the returns pyright plugin is NOT vendored; the facade MAY hold typed re-exports as Phase 5 strict-mode pyright will surface what's needed for `Result` / `IOResult` inference. Sub-step 8 closed: authored `livespec/io/structlog_facade.py` with the `Logger: Protocol` defining typed `debug`/`info`/`warning`/`error`/`critical` method signatures (`message: str, **kwargs: object) -> None`) and a `get_logger(name: str) -> Logger` accessor cast over `structlog.get_logger`. Per-method docstrings serve as Protocol bodies (no `...` or `pass`). ruff clean.
-**Last updated:** 2026-04-26T09:16:55Z
-**Last commit:** 7264d73
+**Next action:** Phase 3 sub-step 10 — author `livespec/parse/jsonc.py`: thin pure wrapper over the vendored `jsoncomment` (post-v026 D1 the canonical JSONC parser is the hand-authored shim per the v013 M1 pattern, drop-in named `jsoncomment` so `import jsoncomment` resolves to the vendored shim). Returns `Result[dict[str, Any], ValidationError]` per the pure-validate convention; no I/O. Sub-step 9 closed: authored `livespec/io/returns_facade.py` re-exporting `Result`, `Success`, `Failure`, `ResultE`, `IOResult`, `IOSuccess`, `IOFailure`, `IOResultE`, `safe`, `impure_safe` from `returns.{io,result}`. Plain re-exports per Phase 3 minimum-viable scope; cast/narrowing wrappers (if any) land at Phase 5 when pyright strict surfaces gaps. ruff clean.
+**Last updated:** 2026-04-26T09:17:57Z
+**Last commit:** 72c7382
