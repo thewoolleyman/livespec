@@ -224,6 +224,17 @@ reportImplicitStringConcatenation = "error"
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+# `_bootstrap.bootstrap()` sets up sys.path at runtime for the
+# shebang wrappers (adds .claude-plugin/scripts and
+# .claude-plugin/scripts/_vendor). Pytest needs the same paths
+# during collection so `import livespec` and the vendored libs
+# resolve. The wrapper-coverage tests under tests/bin/ stub
+# these imports via sys.modules and don't depend on pythonpath;
+# everything else does.
+pythonpath = [
+    ".claude-plugin/scripts",
+    ".claude-plugin/scripts/_vendor",
+]
 # pytest-icdiff is auto-loaded via its entry_points.txt (registers
 # as the `icdiff` pytest11 plugin) and produces nicer diffs by
 # default; no `--icdiff` flag is needed (the plugin only adds

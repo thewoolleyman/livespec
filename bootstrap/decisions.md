@@ -877,6 +877,41 @@ the drift now keeps Phase 5's actual work aligned against the
 plan it references and pre-empts a phase-exit gate failure
 that would otherwise surface only at the very end of Phase 5.
 
+## 2026-04-27T09:30:00Z — phase 5 sub-step 3 (pyproject.toml pythonpath fix surfaced by first livespec import test)
+
+**Decision:** Add `pythonpath = [".claude-plugin/scripts",
+".claude-plugin/scripts/_vendor"]` to pyproject.toml's
+`[tool.pytest.ini_options]`. Discovered during Phase 5 sub-step 3
+authoring `tests/livespec/test_init.py`: pytest collection failed
+with `ModuleNotFoundError: No module named 'livespec'` because
+the wrappers' `_bootstrap.bootstrap()` only manipulates sys.path
+at runtime — pytest doesn't go through that path. The wrapper-
+coverage tests under `tests/bin/` work without pythonpath because
+they stub `sys.modules['_bootstrap']` and `sys.modules['livespec.<>']`
+explicitly; everything else needs the same paths the runtime
+bootstrap installs.
+
+Same precedent as decisions.md 2026-04-26T08:33:35Z (ruff config
+fix at Phase 2 exit), 2026-04-26T09:07:28Z (TRY003 per-file-ignore),
+2026-04-26T21:32:08Z (S101 + --icdiff fixes at first pytest run):
+pure pyproject.toml bug fix (no PROPOSAL revision and no plan edit
+required) — Phase 1 sub-step 3's pyproject.toml authoring missed
+configuration the spec implicitly requires, surfaced by the first
+sub-step that exercises it.
+
+**Rationale:** PROPOSAL.md §"Vendoring discipline" + the wrapper
+contract together imply that `livespec` and the vendored libs are
+on sys.path during execution. Pytest collection IS execution.
+Adding the pythonpath aligns pytest's import mechanism with the
+runtime mechanism `_bootstrap.bootstrap()` provides, without
+requiring tests to redundantly do their own sys.path manipulation
+(which would be duplicated boilerplate across every tests/livespec/**
+test file). The bin-coverage stubbing pattern stays as-is — those
+tests verify the wrapper's plumbing without needing the real
+`livespec` package on sys.path.
+
+## 2026-04-27T08:50:00Z — phase 5 sub-step 1 (pre-execution scan) — cascading-scan follow-up
+
 **Cascading-scan follow-up (same finding).** Post-commit
 cascading-impact scan surfaced two more plan-text references to
 `check-types` as a Phase-5 gate that needed to align with the
