@@ -4,11 +4,19 @@ Mirrors `.claude-plugin/scripts/livespec/`,
 `.claude-plugin/scripts/bin/`, and `<repo-root>/dev-tooling/`
 one-to-one (per plan §"Phase 5 — Test suite" line 1460-1462).
 
-Test scope at Phase 4 (the current bootstrap phase): only
-`tests/dev-tooling/checks/` is populated, holding the paired
-test files for each enforcement script in `dev-tooling/checks/`.
-The full mirroring (tests/livespec/, tests/bin/, tests/e2e/,
-tests/prompts/, tests/fixtures/) lands at Phase 5.
+Test scope at Phase 5 (the current bootstrap phase): the full
+mirror tree is populated. `tests/dev-tooling/checks/` (Phase 4)
+holds paired tests for each enforcement script.
+`tests/livespec/` mirrors the package one-to-one.
+`tests/bin/` covers the shebang wrappers (meta-test for the
+6-statement shape, per-wrapper coverage via monkeypatched
+`main`, and `_bootstrap.bootstrap()` coverage via
+`sys.version_info` monkeypatch). `tests/e2e/` carries the
+skeleton + placeholder `fake_claude.py` (real e2e content
+lands at Phase 9). `tests/prompts/<template>/` carries
+per-template placeholder prompt-QA tests (real content lands
+at Phase 7). `tests/fixtures/` is empty (grows through
+Phases 6–9).
 
 Conventions:
 
