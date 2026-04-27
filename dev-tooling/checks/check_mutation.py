@@ -117,7 +117,7 @@ def check_repo(
     baseline: MutationResult,
     threshold: float,
 ) -> int:
-    """Emit structured JSON to stderr on failure; return 0/1."""
+    """Emit structured JSON via log.error (which writes to stderr); return 0/1."""
     if measured.kill_rate_percent >= threshold:
         return 0
     summary = {
@@ -127,7 +127,7 @@ def check_repo(
         "mutants_surviving": measured.mutants_surviving,
         "mutants_total": measured.mutants_total,
     }
-    sys.stderr.write(json.dumps(summary, indent=2) + "\n")
+    log.error("%s", json.dumps(summary))
     return 1
 
 
