@@ -191,7 +191,7 @@ check-no-direct-tool-invocation:
     python3 dev-tooling/checks/no_direct_tool_invocation.py
 
 check-tools:
-    python3 dev-tooling/checks/check_tools.py
+    uv run python3 dev-tooling/checks/check_tools.py
 
 # ---------------------------------------------------------------
 # E2E + prompt verification (part of `just check`).
