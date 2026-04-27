@@ -670,3 +670,41 @@ companion-doc drift remains deferred (per the established
 companion-doc-overlay precedent) — a separate companion-doc
 overlay round can sweep it whenever the next substantive
 PROPOSAL revision lands.
+
+## 2026-04-27T00:26:40Z — phase 4 sub-step 15
+
+**Decision:** Apply Case-B direct-fix to the style-doc canonical
+target list line 1884 (`just check-public-api-result-typed`)
+rather than halt-and-revise to v030. Expand the line to capture
+four implementation-level realities surfaced while authoring
+`dev-tooling/checks/public_api_result_typed.py`: (1) `@impure_safe`
+/ `@safe` decorator recognition (the source-level annotation
+shows the inner type but the runtime return is the wrapped
+carrier); (2) four additional name-based factory exemptions
+(`make_validator` in `validate/**`, `get_logger` in
+`io/structlog_facade.py`, `compile_schema` in
+`io/fastjsonschema_facade.py`, `rop_pipeline` in `types.py`); (3)
+`build_parser` exemption widened to include `doctor/run_static.py`
+(matching the supervisor-discipline pattern that already covers
+both scopes); (4) package-private helper modules (`_*.py` filename)
+are skipped — applies to `commands/_seed_helpers.py` and
+`commands/_revise_helpers.py` introduced at sub-step 14a/14b.
+Initial open-issues entry at `2026-04-27T00:26:40Z` mis-classified
+this as PROPOSAL.md drift; superseded with a backref pointer
+since the actual divergence is purely in the style doc and
+PROPOSAL.md line 3503's parenthetical describes the public-API
+detection mechanism (still `__all__`-based) rather than the
+exemption set.
+
+**Rationale:** v029 D1's revision file explicitly codified the
+convention: "style doc edits ride freely with the implementation
+— not gated by halt-and-revise per the established style-doc-
+drift convention". That convention applied at sub-step 13 when
+the new ROP pipeline shape rule was added to the style doc
+without a halt-and-revise (the v029 bump was for an unrelated
+PROPOSAL.md directory-listing drift). The same convention applies
+here: the canonical target list rule wording is style-doc text,
+not PROPOSAL.md text. Halt-and-revise to v030 with a byte-
+identical PROPOSAL.md snapshot would be ceremony without spec
+movement. User confirmed via AskUserQuestion gate after pushback
+on my initial Case-A recommendation.
