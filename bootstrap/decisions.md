@@ -829,3 +829,50 @@ bump). Verified via `just check-imports-architecture`: both
 contracts (`parse-and-validate-are-pure` and
 `layered-architecture`) now KEEP cleanly against the current
 codebase.
+
+## 2026-04-27T08:50:00Z — phase 5 sub-step 1 (pre-execution scan)
+
+**Decision:** Apply Case-B plan-only correction to align Phase 5's
+exit criterion with the Phase 4 → Phase 5 deferral-handoff
+convention established by the Phase 4 sub-step 26 cleanup
+(decisions.md 2026-04-27T03:23:13Z). Two paired edits to
+`PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md`:
+
+1. **Phase 4 deferral list (lines 1509-1527).** Removed the
+   internal contradiction in the `check-types` bullet ("activates
+   at Phase 5 alongside the test suite, once livespec/** stubs
+   widen toward their Phase-7 implementations" — the widening
+   happens at Phase 7, not Phase 5). Restructured each deferred
+   target to enumerate its actual reactivation phase: `check-tests`
+   and `check-coverage` and `check-prompts` activate at Phase 5;
+   `check-types` activates at **Phase 7**; `e2e-test-claude-code-mock`
+   activates at **Phase 9**.
+
+2. **Phase 5 exit criterion (lines 1604-1610).** Replaced the
+   non-exhaustive "passes end-to-end including <subset>"
+   formulation with the explicit Phase 3 / Phase 4 pattern:
+   targets active at Phase 5 exit are enumerated; targets still
+   deferred at Phase 5 exit (`check-types` to Phase 7,
+   `e2e-test-claude-code-mock` to Phase 9) are enumerated
+   immediately after.
+
+PROPOSAL.md verified unaffected (grep on `check-types` /
+`e2e-test-claude-code-mock` / `Phase 5` / `exit criterion`
+returns only descriptive references to what each target does,
+never phase-exit-criterion phasing semantics — phasing is plan
+scaffolding only). Gate confirmed via AskUserQuestion 2026-04-27
+(option: "Apply the plan correction (Recommended)").
+
+**Rationale:** Same precedent as the Phase 2 sub-step 6 fix
+(decisions.md 2026-04-26T11:00:00Z), the Phase 3 sub-step 23 fix
+(decisions.md 2026-04-26T20:18:52Z), and the Phase 4 sub-step 26
+fix (decisions.md 2026-04-27T03:23:13Z): plan-text drift in
+phase-exit-criterion phasing semantics gets the lighter Case-B
+direct-fix path because PROPOSAL.md doesn't carry phase-exit
+phasing (the plan owns phasing, the spec owns target identity
++ behavior). The drift was caught by the bootstrap skill's
+mandatory consistency scan at the start of Phase 5 sub-step 1
+before any test-suite authoring landed; surfacing and fixing
+the drift now keeps Phase 5's actual work aligned against the
+plan it references and pre-empts a phase-exit gate failure
+that would otherwise surface only at the very end of Phase 5.

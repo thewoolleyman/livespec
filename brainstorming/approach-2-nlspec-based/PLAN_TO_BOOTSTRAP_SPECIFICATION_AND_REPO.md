@@ -1507,23 +1507,29 @@ canonical table is invokable and non-trivial (tests cover both
 pass and fail cases).
 
 The following `just check` targets remain deferred at Phase 4
-exit and become active at Phase 5 (see Phase 5's exit criterion):
+exit. Each target's reactivation phase is enumerated below; the
+target becomes a Phase-N exit gate at the phase where its backing
+content lands:
 
-- `check-tests` and `check-coverage` — require the Phase 5 test
-  suite (per-wrapper coverage via monkeypatched `main`,
-  `_bootstrap.bootstrap()` coverage via `sys.version_info`
-  monkeypatch, 100% line+branch across `livespec/**`, `bin/**`,
-  and `dev-tooling/**`).
-- `check-types` (pyright strict against the Phase-2/3 stubs in
-  `livespec/**`) — Phase 4 dev-tooling code conforms to the same
-  style rules by convention (the rules are unchanged); the
-  automated gate activates at Phase 5 alongside the test suite,
-  once livespec/** stubs widen toward their Phase-7
-  implementations.
-- `e2e-test-claude-code-mock` — requires `tests/e2e/`, created
-  as a Phase 5 skeleton and fleshed out in Phase 9.
-- `check-prompts` — requires `tests/prompts/`, created as a
-  Phase 5 skeleton and fleshed out in Phase 7.
+- `check-tests` and `check-coverage` — activate at Phase 5;
+  require the Phase 5 test suite (per-wrapper coverage via
+  monkeypatched `main`, `_bootstrap.bootstrap()` coverage via
+  `sys.version_info` monkeypatch, 100% line+branch across
+  `livespec/**`, `bin/**`, and `dev-tooling/**`).
+- `check-prompts` — activates at Phase 5 against placeholder
+  test files that pass trivially; `tests/prompts/` is created
+  as a Phase 5 skeleton and fleshed out in Phase 7.
+- `check-types` (pyright strict against the `livespec/**`
+  surface) — activates at **Phase 7**, once `livespec/**` stubs
+  widen toward their full implementations. Phase 4 dev-tooling
+  code conforms to the style rules by convention (the rules are
+  unchanged); the automated gate cannot pass at Phase 5 because
+  the Phase-2/3 stubs do not yet satisfy strict pyright against
+  their wider implementation contracts.
+- `e2e-test-claude-code-mock` — activates at **Phase 9**, once
+  `tests/e2e/fake_claude.py` is fleshed out per the Phase 9
+  end-to-end integration test work. Phase 5 creates only the
+  `tests/e2e/` skeleton + placeholder `fake_claude.py`.
 
 Targets explicitly active at Phase 4 exit (must pass): every
 `dev-tooling/checks/*.py`-backed target in the canonical list,
@@ -1601,13 +1607,32 @@ ln -sfn ../.claude-plugin/skills .claude/skills`. Running
 that every commit from Phase 6 onward triggers `just check`
 on the now-passing enforcement suite.
 
-**Exit criterion:** `just check` passes end-to-end including
-`check-tests`, `check-coverage`, `check-pbt-coverage-pure-modules`,
+**Exit criterion:** `just check` passes for every target except
+those still deferred to later phases (carrying forward Phase 4's
+deferral list, less the targets satisfied by this phase). Targets
+explicitly active at Phase 5 exit (must pass): `check-tests`,
+`check-coverage` (100% line+branch across `livespec/**`, `bin/**`,
+and `dev-tooling/**`), `check-pbt-coverage-pure-modules`,
 `check-claude-md-coverage`, `check-heading-coverage` (against the
 empty-array baseline; full enforcement begins in Phase 6),
-`check-vendor-manifest`, and `check-prompts` (against placeholder
-test files that pass trivially). `just bootstrap` has been run
-and lefthook is installed.
+`check-vendor-manifest`, `check-prompts` (against placeholder
+test files that pass trivially), plus every target already passing
+at Phase 4 exit (`check-lint`, `check-format`, `check-complexity`,
+`check-imports-architecture`, `check-tools`, and every
+`dev-tooling/checks/*.py`-backed target in the canonical list).
+`just bootstrap` has been run and lefthook is installed.
+
+The following `just check` targets remain deferred at Phase 5
+exit and activate at later phases:
+
+- `check-types` — activates at **Phase 7**, once `livespec/**`
+  stubs widen toward their full implementations. The Phase-2/3
+  stubs in `livespec/**` do not yet satisfy strict pyright
+  against their wider implementation contracts.
+- `e2e-test-claude-code-mock` — activates at **Phase 9**, once
+  `tests/e2e/fake_claude.py` is fleshed out per the Phase 9
+  end-to-end integration test work. Phase 5 creates only the
+  skeleton + placeholder.
 
 ### Phase 6 — First self-application seed
 
