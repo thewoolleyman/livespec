@@ -748,3 +748,38 @@ catches the violations naturally; a dedicated cleanup sub-step
 lands the fixes with a focused commit message. The
 `test_main_passes_against_real_repo` omission is documented in
 the test file's module docstring with a backref to this entry.
+
+## 2026-04-27T03:23:13Z — phase 4 sub-step 26 (plan exit-criterion drift)
+
+**Decision:** Apply Case-B plan-only correction to Phase 4's
+exit criterion. The plan text "`just check` passes against the
+current code base" is incompatible with the by-design fact that
+several `just check` targets cannot pass at Phase 4 exit:
+`check-coverage` (requires Phase 5 test suite to reach 100%),
+`check-tests` (requires Phase 5 test infrastructure), `check-types`
+(pyright strict against the Phase-2/3 stubs in `livespec/**`,
+explicitly deferred by Phase 3), `e2e-test-claude-code-mock`
+(requires `tests/e2e/`, Phase 5 skeleton + Phase 9 content), and
+`check-prompts` (requires `tests/prompts/`, Phase 5 skeleton +
+Phase 7 content). Phase 3 already enumerates its deferred
+targets explicitly; Phase 4's exit criterion is now updated to
+mirror that pattern, carrying forward the still-deferred targets
+and explicitly enumerating the active-at-Phase-4 targets that
+sub-step 26 must make pass: `check-lint`, `check-format`,
+`check-complexity`, `check-imports-architecture`, `check-tools`,
+and every `dev-tooling/checks/*.py`-backed canonical target.
+
+**Rationale:** PROPOSAL.md is unaffected (verified via grep:
+PROPOSAL specifies what targets EXIST and what each does, never
+when each must pass at which bootstrap-plan phase — phasing is
+plan scaffolding only). The drift is entirely within
+`brainstorming/approach-2-nlspec-based/PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md`
+Phase 4 §"Exit criterion" (lines 1502-1504). Routed through the
+Case-B direct-fix path with explicit user gate confirmation.
+The fix mirrors Phase 3's existing deferral pattern (lines
+1449-1457) and Phase 5's "now including" enumeration (lines
+1577-1583), bringing Phase 4 into alignment with the rest of
+the plan's phasing semantics. STATUS.md's prior-session
+interpretation ("every canonical-list target green
+simultaneously") is now codified in plan text. No companion-doc
+or PROPOSAL.md impact; no v030 PROPOSAL bump required.

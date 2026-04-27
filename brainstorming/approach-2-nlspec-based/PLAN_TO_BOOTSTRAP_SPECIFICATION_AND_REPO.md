@@ -1500,8 +1500,35 @@ Each script has a paired `tests/dev-tooling/checks/test_<name>.py`.
 Every `dev-tooling/` directory carries a `CLAUDE.md`.
 
 **Exit criterion:** `just check` passes against the current code
-base. Every check listed in the canonical table is invokable and
-non-trivial (tests cover both pass and fail cases).
+base for every target except those still deferred to Phase 5's
+exit criterion (carrying forward Phase 3's deferral list, less
+the targets satisfied by this phase). Every check listed in the
+canonical table is invokable and non-trivial (tests cover both
+pass and fail cases).
+
+The following `just check` targets remain deferred at Phase 4
+exit and become active at Phase 5 (see Phase 5's exit criterion):
+
+- `check-tests` and `check-coverage` — require the Phase 5 test
+  suite (per-wrapper coverage via monkeypatched `main`,
+  `_bootstrap.bootstrap()` coverage via `sys.version_info`
+  monkeypatch, 100% line+branch across `livespec/**`, `bin/**`,
+  and `dev-tooling/**`).
+- `check-types` (pyright strict against the Phase-2/3 stubs in
+  `livespec/**`) — Phase 4 dev-tooling code conforms to the same
+  style rules by convention (the rules are unchanged); the
+  automated gate activates at Phase 5 alongside the test suite,
+  once livespec/** stubs widen toward their Phase-7
+  implementations.
+- `e2e-test-claude-code-mock` — requires `tests/e2e/`, created
+  as a Phase 5 skeleton and fleshed out in Phase 9.
+- `check-prompts` — requires `tests/prompts/`, created as a
+  Phase 5 skeleton and fleshed out in Phase 7.
+
+Targets explicitly active at Phase 4 exit (must pass): every
+`dev-tooling/checks/*.py`-backed target in the canonical list,
+plus `check-lint`, `check-format`, `check-complexity`,
+`check-imports-architecture`, and `check-tools`.
 
 ### Phase 5 — Test suite
 
