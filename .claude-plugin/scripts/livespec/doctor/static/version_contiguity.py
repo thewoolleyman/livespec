@@ -4,6 +4,7 @@ Verifies `<spec_root>/history/v<N>/` directory names form a
 contiguous sequence starting at v001 with no gaps. Detects manual
 deletion of intermediate versions.
 """
+
 from __future__ import annotations
 
 import re

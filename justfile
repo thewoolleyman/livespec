@@ -111,7 +111,7 @@ check-complexity:
     exit $rc
 
 check-imports-architecture:
-    lint-imports
+    PYTHONPATH=.claude-plugin/scripts lint-imports
 
 check-tests:
     pytest

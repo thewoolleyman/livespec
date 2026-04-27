@@ -27,6 +27,7 @@ Rejected:
 - `class X(SomeOtherClass):`     — generic inheritance forbidden.
 - `class X(SomeABC):` (when SomeABC is `abc.ABC`) — banned via TID.
 """
+
 from __future__ import annotations
 
 import ast
@@ -50,14 +51,16 @@ _SCOPE_DIRS: tuple[Path, ...] = (
 _VENDOR_SUBSTR = "_vendor"
 _PYCACHE_SUBSTR = "__pycache__"
 
-_ALLOWLIST: frozenset[str] = frozenset({
-    "BaseException",
-    "Exception",
-    "LivespecError",
-    "NamedTuple",
-    "Protocol",
-    "TypedDict",
-})
+_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "BaseException",
+        "Exception",
+        "LivespecError",
+        "NamedTuple",
+        "Protocol",
+        "TypedDict",
+    }
+)
 
 
 def main() -> int:

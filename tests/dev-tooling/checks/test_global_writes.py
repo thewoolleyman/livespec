@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/global_writes.py."""
+
 from __future__ import annotations
 
 import sys

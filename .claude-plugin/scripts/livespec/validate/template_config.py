@@ -13,6 +13,7 @@ import-linter parse-and-validate-are-pure contract; the compiled
 validator is provided by the caller upstream in commands/ or
 doctor/).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -26,7 +27,6 @@ from livespec.types import TypedValidator
 __all__: list[str] = [
     "make_validator",
 ]
-
 
 
 def make_validator(

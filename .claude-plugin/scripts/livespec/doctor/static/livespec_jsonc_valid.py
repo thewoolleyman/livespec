@@ -13,6 +13,7 @@ Per PROPOSAL §"Bootstrap lenience (v014 N3)" lines 2554-2592:
 - "malformed"      → fail (parse error; user fixes manually)
 - "schema_invalid" → fail (schema violation; user fixes)
 """
+
 from __future__ import annotations
 
 from returns.io import IOResult, IOSuccess

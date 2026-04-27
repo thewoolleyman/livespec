@@ -29,6 +29,7 @@ validator it returns is fully pure: it returns `Result` (not
 them via `Failure(...)` without raising (LivespecError raise
 sites stay confined to the rest of `io/**`).
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
@@ -38,7 +39,7 @@ import fastjsonschema
 from returns.result import Failure, Result, Success
 
 from livespec.errors import ValidationError
-from livespec.types import TypedValidator
+from livespec.types import SchemaId, TypedValidator
 
 __all__: list[str] = [
     "Validator",
@@ -81,7 +82,7 @@ Mutation in `compile_schema` is explicitly exempt from
 
 def compile_schema(
     *,
-    schema_id: str,
+    schema_id: SchemaId,
     schema: Mapping[str, Any],
 ) -> Validator:
     """Compile `schema` to a typed validator (cached on `schema_id`).

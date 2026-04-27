@@ -37,6 +37,7 @@ Implementation:
 Scope: `.claude-plugin/scripts/livespec/**`,
 `.claude-plugin/scripts/bin/**`, `<repo-root>/dev-tooling/**`.
 """
+
 from __future__ import annotations
 
 import ast

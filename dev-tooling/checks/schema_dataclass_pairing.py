@@ -73,10 +73,13 @@ _NEWTYPE_STRING_ALLOWLIST: frozenset[str] = frozenset(
         "VersionTag",
     }
 )
+# Path-underlying NewTypes serialize as strings on the wire; the JSON
+# schema field type is "string" (no path primitive). Allowed wherever
+# a string-typed schema field appears.
 _NEWTYPE_PATH_ALLOWLIST: frozenset[str] = frozenset({"SpecRoot"})
 
 _SCHEMA_TO_PYTHON: dict[str, frozenset[str]] = {
-    "string": frozenset({"str"}) | _NEWTYPE_STRING_ALLOWLIST,
+    "string": frozenset({"str"}) | _NEWTYPE_STRING_ALLOWLIST | _NEWTYPE_PATH_ALLOWLIST,
     "integer": frozenset({"int"}),
     "boolean": frozenset({"bool"}),
     "number": frozenset({"int", "float"}),

@@ -21,6 +21,7 @@ This wrapper is sufficient for the Phase 6 first dogfooded
 cycle, where critique-via-propose-change-delegation is the
 contract the SKILL.md prose layer can rely on.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -141,4 +142,3 @@ def main(*, argv: Sequence[str] | None = None) -> int:
             exception_repr=repr(exc),
         )
         return 1
-

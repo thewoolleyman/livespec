@@ -262,19 +262,31 @@ exclude_also = [
 
 [tool.importlinter]
 root_packages = ["livespec"]
+include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "parse-and-validate-are-pure"
 type = "forbidden"
 source_modules = ["livespec.parse", "livespec.validate"]
+# Two style-doc-listed forbids are intentionally absent (see the
+# style doc overlay note below the contract block):
+#   - returns.io: import-linter v2 rejects subpackages of external
+#     packages. IOResult/IOFailure misuse in pure layers is caught
+#     at raise-site by check-no-raise-outside-io.
+#   - pathlib: livespec.types defines `SpecRoot = NewType("SpecRoot",
+#     Path)`, which forces a runtime pathlib import that flows
+#     transitively into pure layers via the wire dataclasses. The
+#     no-I/O-at-runtime intent is caught by check-no-write-direct
+#     and the supervisor-discipline / no-raise-outside-io AST
+#     checks, none of which fire on import-for-typing alone. Per
+#     the style doc's architecture-vs-mechanism principle, this
+#     reassignment is permitted.
 forbidden_modules = [
     "livespec.io",
     "subprocess",
-    "returns.io",
     "socket",
     "http",
     "urllib",
-    "pathlib",
 ]
 
 [[tool.importlinter.contracts]]

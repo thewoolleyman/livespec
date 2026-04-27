@@ -15,6 +15,7 @@ IOResult and exit `err.exit_code`.
 --help request is an informational early-exit category, not a domain
 error and not a bug.
 """
+
 from typing import ClassVar
 
 __all__: list[str] = [

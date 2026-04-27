@@ -35,6 +35,7 @@ stdlib `types` module name. Absolute-import discipline (TID rule
 conflict between `from livespec.types import Author` and `from types
 import ModuleType`.
 """
+
 from pathlib import Path
 from typing import Any, NewType, Protocol, TypeVar
 

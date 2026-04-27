@@ -16,6 +16,7 @@ distinct.
 Three-way pairing: this dataclass, `sub_spec_payload.schema.json`,
 and `validate/sub_spec_payload.py` are co-authoritative.
 """
+
 from dataclasses import dataclass
 
 __all__: list[str] = [

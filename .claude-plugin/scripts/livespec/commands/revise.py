@@ -88,7 +88,7 @@ from livespec.schemas.dataclasses.revise_input import (
     ProposalDecision,
     ReviseInput,
 )
-from livespec.types import rop_pipeline
+from livespec.types import Author, rop_pipeline
 from livespec.validate import revise_input as validate_revise_input
 
 __all__: list[str] = [
@@ -111,7 +111,7 @@ class _RevisionContext:
     history_pc: Path
     timestamp: str
     git_user: str
-    author_llm: str
+    author_llm: Author
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -154,15 +154,15 @@ def _schema_path(*, name: str) -> Path:
     return Path(__file__).resolve().parent.parent / "schemas" / f"{name}.schema.json"
 
 
-def _resolve_author_llm(*, cli_author: str | None, payload_author: str | None) -> str:
+def _resolve_author_llm(*, cli_author: str | None, payload_author: str | None) -> Author:
     if cli_author:
-        return cli_author
+        return Author(cli_author)
     env_value = os.environ.get(_AUTHOR_ENV)
     if env_value:
-        return env_value
+        return Author(env_value)
     if payload_author:
-        return payload_author
-    return AUTHOR_FALLBACK
+        return Author(payload_author)
+    return Author(AUTHOR_FALLBACK)
 
 
 @rop_pipeline
@@ -297,7 +297,7 @@ class RevisePipeline:
         spec_target: Path,
         vnnn: str,
         git_user: str,
-        author_llm: str,
+        author_llm: Author,
     ) -> IOResult[Path, LivespecError]:
         any_accept = any(d.decision in ("accept", "modify") for d in self._payload.decisions)
         history_vnnn = spec_target / "history" / vnnn

@@ -16,6 +16,7 @@ the corresponding edit to the orchestrator-owned applicability
 table in `livespec/doctor/run_static.py` (when the new check has
 non-uniform applicability).
 """
+
 from collections.abc import Callable
 from typing import Final
 

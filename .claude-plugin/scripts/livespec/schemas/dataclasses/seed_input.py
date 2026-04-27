@@ -20,6 +20,7 @@ v018 Q1 / v020 Q2.
 Three-way pairing: this dataclass, `seed_input.schema.json`, and
 `validate/seed_input.py` are co-authoritative.
 """
+
 from dataclasses import dataclass
 
 from livespec.schemas.dataclasses.sub_spec_payload import SubSpecPayload

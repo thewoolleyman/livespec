@@ -5,6 +5,7 @@ per PROPOSAL.md §"Static-phase checks".
 
 Phase 2 stub.
 """
+
 from typing import Any
 
 from returns.io import IOFailure, IOResult

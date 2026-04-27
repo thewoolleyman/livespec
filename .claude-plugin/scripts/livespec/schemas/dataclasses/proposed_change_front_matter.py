@@ -8,6 +8,7 @@ Three-way pairing: this dataclass,
 `proposed_change_front_matter.schema.json`, and
 `validate/proposed_change_front_matter.py` are co-authoritative.
 """
+
 from dataclasses import dataclass
 
 from livespec.types import Author, TopicSlug

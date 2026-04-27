@@ -21,6 +21,7 @@ wrapper-shape-mandated cross-module import per style doc lines
 to signal "pre-livespec-import bootstrap" but is whitelisted here
 because the wrapper shape requires it.
 """
+
 from __future__ import annotations
 
 import ast
@@ -120,9 +121,7 @@ def _is_private_name(*, name: str) -> bool:
 def _is_exempted(*, module: str, imported: str, is_bin_wrapper: bool) -> bool:
     """Check the wrapper-shape `from _bootstrap import bootstrap` exemption."""
     return (
-        is_bin_wrapper
-        and module == _BOOTSTRAP_EXEMPTION[0]
-        and imported == _BOOTSTRAP_EXEMPTION[1]
+        is_bin_wrapper and module == _BOOTSTRAP_EXEMPTION[0] and imported == _BOOTSTRAP_EXEMPTION[1]
     )
 
 

@@ -49,6 +49,11 @@ _PYPROJECT_PATH = Path("pyproject.toml")
 _PIN_LINE_RE = re.compile(r'^\s*([A-Za-z0-9_-]+)\s*=\s*"([^"]+)"\s*$')
 _DEP_RE = re.compile(r'"\s*([A-Za-z0-9_.-]+)\s*==\s*([^"]+)"')
 
+# Most binaries accept `--version`; lefthook uses a `version` subcommand.
+_VERSION_ARGS_OVERRIDE: dict[str, list[str]] = {
+    "lefthook": ["version"],
+}
+
 
 def main() -> int:
     repo_root = Path.cwd()
@@ -82,9 +87,10 @@ def check_repo(*, repo_root: Path) -> list[str]:
 
 
 def _check_binary(*, tool: str, pinned_version: str) -> str | None:
+    version_args = _VERSION_ARGS_OVERRIDE.get(tool, ["--version"])
     try:
         completed = subprocess.run(  # noqa: S603 — tool name from trusted .mise.toml
-            [tool, "--version"],
+            [tool, *version_args],
             capture_output=True,
             text=True,
             timeout=10,
@@ -94,9 +100,10 @@ def _check_binary(*, tool: str, pinned_version: str) -> str | None:
         return f"binary `{tool}` not on PATH (pinned to {pinned_version})"
     output = (completed.stdout or "") + (completed.stderr or "")
     if pinned_version not in output:
+        invocation = " ".join([tool, *version_args])
         return (
             f"binary `{tool}` version mismatch — pinned to {pinned_version}, "
-            f"`{tool} --version` produced: {output.strip()[:200]!r}"
+            f"`{invocation}` produced: {output.strip()[:200]!r}"
         )
     return None
 

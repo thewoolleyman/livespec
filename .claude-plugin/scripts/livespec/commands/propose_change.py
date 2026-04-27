@@ -34,6 +34,7 @@ author precedence (payload-author lookup), collision
 disambiguation prompts, single-canonicalization invariant
 routing — all Phase 7.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -71,6 +72,7 @@ from livespec.schemas.dataclasses.proposal_findings import (
     ProposalFinding,
     ProposalFindings,
 )
+from livespec.types import Author, TemplateName, TopicSlug
 from livespec.validate import livespec_config as validate_livespec_config
 from livespec.validate import proposal_findings as validate_proposal_findings
 
@@ -137,14 +139,14 @@ def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _resolve_author(*, cli_author: str | None) -> str:
+def _resolve_author(*, cli_author: str | None) -> Author:
     """Phase 3 minimum-viable two-source precedence: CLI -> env -> fallback."""
     if cli_author:
-        return cli_author
+        return Author(cli_author)
     env_value = os.environ.get(_AUTHOR_ENV)
     if env_value:
-        return env_value
-    return _AUTHOR_FALLBACK
+        return Author(env_value)
+    return Author(_AUTHOR_FALLBACK)
 
 
 def run(*, argv: Sequence[str]) -> IOResult[Path, LivespecError]:
@@ -154,36 +156,37 @@ def run(*, argv: Sequence[str]) -> IOResult[Path, LivespecError]:
 
 def _orchestrate(namespace: argparse.Namespace) -> IOResult[Path, LivespecError]:
     project_root: Path = (
-        namespace.project_root
-        if namespace.project_root is not None
-        else Path.cwd()
+        namespace.project_root if namespace.project_root is not None else Path.cwd()
     )
-    topic: str = namespace.topic
-    if not _is_canonical_topic(topic=topic):
+    topic_raw: str = namespace.topic
+    if not _is_canonical_topic(candidate=topic_raw):
         return IOFailure(
             ValidationError(
-                f"topic not canonical (Phase 3 minimum-viable): {topic!r}; "
+                f"topic not canonical (Phase 3 minimum-viable): {topic_raw!r}; "
                 f"expected lowercase kebab-case, length <= {_TOPIC_MAX_LEN}",
             ),
         )
+    topic = TopicSlug(topic_raw)
     author = _resolve_author(cli_author=namespace.author)
     return (
         read_text(path=namespace.findings_json)
         .bind(_parse_and_validate_findings)
-        .bind(lambda findings: _resolve_target_then_write(
-            namespace=namespace,
-            project_root=project_root,
-            topic=topic,
-            author=author,
-            findings=findings,
-        ))
+        .bind(
+            lambda findings: _resolve_target_then_write(
+                namespace=namespace,
+                project_root=project_root,
+                topic=topic,
+                author=author,
+                findings=findings,
+            )
+        )
     )
 
 
-def _is_canonical_topic(*, topic: str) -> bool:
-    if len(topic) == 0 or len(topic) > _TOPIC_MAX_LEN:
+def _is_canonical_topic(*, candidate: str) -> bool:
+    if len(candidate) == 0 or len(candidate) > _TOPIC_MAX_LEN:
         return False
-    return bool(_CANONICAL_TOPIC_RE.match(topic))
+    return bool(_CANONICAL_TOPIC_RE.match(candidate))
 
 
 def _parse_and_validate_findings(
@@ -244,8 +247,8 @@ def _resolve_target_then_write(
     *,
     namespace: argparse.Namespace,
     project_root: Path,
-    topic: str,
-    author: str,
+    topic: TopicSlug,
+    author: Author,
     findings: ProposalFindings,
 ) -> IOResult[Path, LivespecError]:
     if namespace.spec_target is not None:
@@ -275,10 +278,12 @@ def _resolve_default_spec_target(
         find_upward(start=project_root, name=_LIVESPEC_JSONC)
         .bind(lambda jsonc_path: read_text(path=jsonc_path))
         .bind(_parse_and_validate_jsonc)
-        .map(lambda config: _spec_root_for_template(
-            template=config.template,
-            project_root=project_root,
-        ))
+        .map(
+            lambda config: _spec_root_for_template(
+                template=config.template,
+                project_root=project_root,
+            )
+        )
     )
 
 
@@ -327,7 +332,7 @@ def _validate_jsonc_against_schema(
             assert_never(schema_parsed)
 
 
-def _spec_root_for_template(*, template: str, project_root: Path) -> Path:
+def _spec_root_for_template(*, template: TemplateName, project_root: Path) -> Path:
     """Phase 3 minimum-viable: hardcoded for v1 built-ins (matches seed.py)."""
     if template == "minimal":
         return project_root
@@ -337,8 +342,8 @@ def _spec_root_for_template(*, template: str, project_root: Path) -> Path:
 def _check_collision_then_write(
     *,
     spec_target: Path,
-    topic: str,
-    author: str,
+    topic: TopicSlug,
+    author: Author,
     findings: ProposalFindings,
 ) -> IOResult[Path, LivespecError]:
     target_path = spec_target / "proposed_changes" / f"{topic}.md"
@@ -357,8 +362,8 @@ def _write_proposed_change(
     *,
     target_path: Path,
     exists: bool,
-    topic: str,
-    author: str,
+    topic: TopicSlug,
+    author: Author,
     findings: ProposalFindings,
 ) -> IOResult[Path, LivespecError]:
     if exists:
@@ -374,15 +379,19 @@ def _write_proposed_change(
         findings=findings,
         created_at=_now_iso(),
     )
-    return mkdir_p(path=target_path.parent).bind(
-        lambda _: write_text(path=target_path, content=content),
-    ).map(lambda _: target_path)
+    return (
+        mkdir_p(path=target_path.parent)
+        .bind(
+            lambda _: write_text(path=target_path, content=content),
+        )
+        .map(lambda _: target_path)
+    )
 
 
 def _render_proposed_change(
     *,
-    topic: str,
-    author: str,
+    topic: TopicSlug,
+    author: Author,
     findings: ProposalFindings,
     created_at: str,
 ) -> str:
@@ -451,4 +460,3 @@ def main(*, argv: Sequence[str] | None = None) -> int:
             exception_repr=repr(exc),
         )
         return 1
-

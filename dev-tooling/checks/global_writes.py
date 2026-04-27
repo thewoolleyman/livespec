@@ -29,6 +29,7 @@ Phase 4 minimum-viable: detects subscript and attribute writes
 inside function bodies. The `global` statement detection is
 included but rare in livespec code.
 """
+
 from __future__ import annotations
 
 import ast

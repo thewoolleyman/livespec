@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/no_inheritance.py."""
+
 from __future__ import annotations
 
 import sys
@@ -19,9 +20,7 @@ _EXCEPTION_OK = '"""docstring"""\nclass MyErr(Exception):\n    pass\n'
 _LIVESPEC_ERROR_OK = '"""docstring"""\nclass MyDomain(LivespecError):\n    pass\n'
 _PROTOCOL_OK = '"""docstring"""\nclass MyIface(Protocol):\n    pass\n'
 _FORBIDDEN_BASE = '"""docstring"""\nclass MyThing(SomeUserClass):\n    pass\n'
-_FORBIDDEN_LIVESPEC_SUBCLASS = (
-    '"""docstring"""\nclass MyError(UsageError):\n    pass\n'
-)
+_FORBIDDEN_LIVESPEC_SUBCLASS = '"""docstring"""\nclass MyError(UsageError):\n    pass\n'
 _ATTRIBUTE_BASE = '"""docstring"""\nimport typing\nclass MyIface(typing.Protocol):\n    pass\n'
 _PARAMETRIC_PROTOCOL_OK = (
     '"""docstring"""\nfrom typing import Protocol, TypeVar\n'

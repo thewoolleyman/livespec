@@ -19,6 +19,7 @@ contract; the validate/ closure captures the compiled validator
 without touching io/ directly. (See bootstrap/decisions.md
 2026-04-26T09:23:07Z for the factory-shape rationale.)
 """
+
 from __future__ import annotations
 
 from typing import Any

@@ -31,6 +31,7 @@ from livespec.io.fastjsonschema_facade import compile_schema
 from livespec.io.fs import find_upward, mkdir_p, read_text, write_text
 from livespec.parse.jsonc import parse as parse_jsonc
 from livespec.schemas.dataclasses.revise_input import ProposalDecision
+from livespec.types import Author, TemplateName
 from livespec.validate import livespec_config as validate_livespec_config
 
 __all__: list[str] = [
@@ -64,7 +65,7 @@ def compute_next_vnnn(*, entries: list[Path]) -> str:
     return f"v{max_n + 1:03d}"
 
 
-def spec_root_for_template(*, template: str, project_root: Path) -> Path:
+def spec_root_for_template(*, template: TemplateName, project_root: Path) -> Path:
     """Phase 3 minimum-viable mapping (matches seed.py + propose_change.py)."""
     if template == "minimal":
         return project_root
@@ -140,7 +141,7 @@ def render_revision(
     decision: ProposalDecision,
     timestamp: str,
     git_user: str,
-    author_llm: str,
+    author_llm: Author,
 ) -> str:
     """Render <topic>-revision.md per PROPOSAL §"Revision file format" lines 3027-3050."""
     body_sections = f"## Decision and Rationale\n\n{decision.rationale}\n"

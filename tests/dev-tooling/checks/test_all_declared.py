@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/all_declared.py."""
+
 from __future__ import annotations
 
 import sys
@@ -22,24 +23,18 @@ _GOOD_MODULE = (
     "\n"
     "class Bar: pass\n"
 )
-_MISSING_ALL = (
-    '"""docstring"""\n'
-    "def foo() -> None: pass\n"
-)
+_MISSING_ALL = '"""docstring"""\ndef foo() -> None: pass\n'
 _UNTYPED_ALL = (
     '"""docstring"""\n'
-    '__all__ = ["foo"]\n'  # missing list[str] annotation
+    # missing list[str] annotation
+    '__all__ = ["foo"]\n'
     "def foo() -> None: pass\n"
 )
 _UNDEFINED_NAME = (
-    '"""docstring"""\n'
-    '__all__: list[str] = ["foo", "missing"]\n'
-    "def foo() -> None: pass\n"
+    '"""docstring"""\n__all__: list[str] = ["foo", "missing"]\ndef foo() -> None: pass\n'
 )
-_NON_LIST_VALUE = (
-    '"""docstring"""\n'
-    '__all__: list[str] = "foo"\n'  # value is a string, not a list
-)
+# value is a string, not a list
+_NON_LIST_VALUE = '"""docstring"""\n__all__: list[str] = "foo"\n'
 
 
 def test_good_module_passes(*, tmp_path: Path) -> None:

@@ -29,6 +29,7 @@ The check enumerates supervisor `main()` definitions per file and
 matches each `ExceptHandler` against the supervisor scope + catch-all
 shape.
 """
+
 from __future__ import annotations
 
 import ast
@@ -122,7 +123,8 @@ def _permitted_handler_ids(
     if supervisor is None:
         return set()
     return {
-        id(n) for n in ast.walk(supervisor)
+        id(n)
+        for n in ast.walk(supervisor)
         if isinstance(n, ast.ExceptHandler) and _is_catchall_handler(handler=n)
     }
 
@@ -130,9 +132,10 @@ def _permitted_handler_ids(
 def _is_catchall_handler(*, handler: ast.ExceptHandler) -> bool:
     if handler.type is None:
         return True
-    if isinstance(handler.type, ast.Name) and handler.type.id in {"Exception", "BaseException"}:
-        return True
-    return False
+    return isinstance(handler.type, ast.Name) and handler.type.id in {
+        "Exception",
+        "BaseException",
+    }
 
 
 def _is_under_io(*, relative: Path) -> bool:

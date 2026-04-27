@@ -20,6 +20,7 @@ Rule 2 — supervisor catch-all bug-catcher:
     integer exit code (any `return <int-literal>` is acceptable;
     the convention is `return 1` for the bug-class exit code).
 """
+
 from __future__ import annotations
 
 import ast
@@ -137,7 +138,8 @@ def _check_supervisor_body(
     violations: list[str],
 ) -> None:
     catchalls = [
-        n for n in ast.walk(supervisor)
+        n
+        for n in ast.walk(supervisor)
         if isinstance(n, ast.ExceptHandler) and _is_catchall_handler(handler=n)
     ]
     if not catchalls:
@@ -188,7 +190,8 @@ def _catchall_ids_inside(
     if supervisor is None:
         return set()
     return {
-        id(n) for n in ast.walk(supervisor)
+        id(n)
+        for n in ast.walk(supervisor)
         if isinstance(n, ast.ExceptHandler) and _is_catchall_handler(handler=n)
     }
 
@@ -197,9 +200,10 @@ def _is_catchall_handler(*, handler: ast.ExceptHandler) -> bool:
     """A catch-all is `except:` (no type), `except Exception:`, or `except BaseException:`."""
     if handler.type is None:
         return True
-    if isinstance(handler.type, ast.Name) and handler.type.id in {"Exception", "BaseException"}:
-        return True
-    return False
+    return isinstance(handler.type, ast.Name) and handler.type.id in {
+        "Exception",
+        "BaseException",
+    }
 
 
 def _has_logging_call(*, handler: ast.ExceptHandler) -> bool:
@@ -214,7 +218,11 @@ def _has_logging_call(*, handler: ast.ExceptHandler) -> bool:
 
 def _has_int_return(*, handler: ast.ExceptHandler) -> bool:
     for node in ast.walk(handler):
-        if isinstance(node, ast.Return) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, int):
+        if (
+            isinstance(node, ast.Return)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, int)
+        ):
             return True
     return False
 
@@ -234,9 +242,9 @@ def _is_system_exit_raise(*, node: ast.Raise) -> bool:
         return False
     if isinstance(exc, ast.Name) and exc.id == "SystemExit":
         return True
-    if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name) and exc.func.id == "SystemExit":
-        return True
-    return False
+    return (
+        isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name) and exc.func.id == "SystemExit"
+    )
 
 
 def _is_under(*, relative: Path, scope: Path) -> bool:

@@ -25,6 +25,7 @@ wrapper except `bin/seed.py` reuses it to locate `.livespec.jsonc`
 from `--project-root`. `livespec.doctor.run_static` also uses it
 for the same purpose.
 """
+
 from pathlib import Path
 
 from returns.io import impure_safe

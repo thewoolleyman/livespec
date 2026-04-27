@@ -807,6 +807,36 @@ Architecture-vs-mechanism principle (see
 the two rules above are the contract; the TOML is one valid
 way to express them.
 
+**Implementation overlay (Phase 4 sub-step 26 reconciliation).**
+Two of the seven items listed in rule 1 — `returns.io` and
+`pathlib` — are intentionally absent from the realized
+`pyproject.toml` `forbidden_modules` list. The architecture-
+vs-mechanism principle above licenses this reassignment:
+
+- `returns.io` is a subpackage of an external (`returns`)
+  package; Import-Linter v2 rejects subpackage forbids on
+  externals. The `IOResult` / `IOFailure` ban in pure layers
+  is enforced at raise-site by `check-no-raise-outside-io`,
+  which catches every site where pure code would actually
+  raise into the IO track.
+- `pathlib` is required by `livespec.types` (the canonical
+  module for `NewType` aliases) because `SpecRoot =
+  NewType("SpecRoot", Path)` forces a runtime `pathlib`
+  import. That import flows transitively into pure layers
+  through the wire dataclasses under
+  `livespec.schemas.dataclasses/`. Importing the `Path`
+  *class* is not I/O; only its method calls are. The
+  no-I/O-at-runtime intent is caught by
+  `check-no-write-direct`, `check-supervisor-discipline`,
+  and `check-no-raise-outside-io`, none of which fire on
+  import-for-typing.
+
+Phase 5+ may revisit this overlay (e.g., split
+`livespec.types` into pure + Path-dependent halves with a
+location-based exemption in `check-newtype-domain-primitives`)
+when the stub-to-implementation widening provides richer
+context for choosing among the available IoC patterns.
+
 ---
 
 ## Type safety

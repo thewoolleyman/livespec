@@ -20,6 +20,7 @@ in `deferred-items.md`'s `static-check-semantics` entry (`io/
 git.get_git_user()` semantics); this module implements the
 documented three-branch v1 contract.
 """
+
 import subprocess
 from pathlib import Path
 

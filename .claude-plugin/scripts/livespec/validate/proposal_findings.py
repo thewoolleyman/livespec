@@ -8,6 +8,7 @@ that threads schema validation through dataclass construction.
 See bootstrap/decisions.md 2026-04-26T09:23:07Z for the
 factory-shape rationale.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -24,7 +25,6 @@ from livespec.types import TypedValidator
 __all__: list[str] = [
     "make_validator",
 ]
-
 
 
 def make_validator(

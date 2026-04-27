@@ -17,6 +17,7 @@ lenience):
 Main-spec-tree-only (orchestrator-owned applicability table per
 PROPOSAL line 2534-2538). Sub-spec trees skip this check.
 """
+
 from __future__ import annotations
 
 from returns.io import IOResult, IOSuccess

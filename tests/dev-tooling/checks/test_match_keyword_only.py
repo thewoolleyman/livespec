@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/match_keyword_only.py."""
+
 from __future__ import annotations
 
 import sys

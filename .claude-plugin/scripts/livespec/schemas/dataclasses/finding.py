@@ -18,10 +18,11 @@ appropriate `status` literal — Phase 3 minimum-viable).
 Three-way pairing: this dataclass, `finding.schema.json`, and
 `validate/finding.py` are co-authoritative.
 """
+
 from dataclasses import dataclass
 from typing import Literal
 
-from livespec.types import CheckId
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = [
     "Finding",
@@ -41,4 +42,4 @@ class Finding:
     message: str
     path: str | None
     line: int | None
-    spec_root: str
+    spec_root: SpecRoot

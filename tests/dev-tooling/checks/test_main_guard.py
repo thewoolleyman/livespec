@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/main_guard.py."""
+
 from __future__ import annotations
 
 import sys
@@ -15,11 +16,7 @@ __all__: list[str] = []
 
 
 _NO_GUARD = '"""docstring"""\n__all__: list[str] = []\n'
-_WITH_GUARD = (
-    '"""docstring"""\n'
-    'if __name__ == "__main__":\n'
-    "    pass\n"
-)
+_WITH_GUARD = '"""docstring"""\nif __name__ == "__main__":\n    pass\n'
 _NESTED_NOT_FLAGGED = (
     '"""docstring"""\n'
     "def main() -> None:\n"

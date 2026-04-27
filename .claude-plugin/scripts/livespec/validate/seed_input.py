@@ -11,6 +11,7 @@ construction. Per v018 Q1 + v020 Q2, the dataclass carries
 See bootstrap/decisions.md 2026-04-26T09:23:07Z for the
 factory-shape rationale.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -28,7 +29,6 @@ from livespec.types import TemplateName, TypedValidator
 __all__: list[str] = [
     "make_validator",
 ]
-
 
 
 def make_validator(
@@ -61,10 +61,7 @@ def _to_dataclass(data: dict[str, Any]) -> SeedInput:
     return SeedInput(
         template=TemplateName(data["template"]),
         intent=data["intent"],
-        files=[
-            SeedFile(path=entry["path"], content=entry["content"])
-            for entry in data["files"]
-        ],
+        files=[SeedFile(path=entry["path"], content=entry["content"]) for entry in data["files"]],
         sub_specs=[
             SubSpecPayload(
                 template_name=sub["template_name"],

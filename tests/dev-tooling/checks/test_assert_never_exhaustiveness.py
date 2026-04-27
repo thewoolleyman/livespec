@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/assert_never_exhaustiveness.py."""
+
 from __future__ import annotations
 
 import sys

@@ -14,6 +14,7 @@ per PROPOSAL §"Proposed-change file format" lines 2990-2995).
 Skips paired `<stem>-revision.md` files (those have `proposal:` /
 `decision:` front-matter, not `topic:`).
 """
+
 from __future__ import annotations
 
 import re

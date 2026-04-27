@@ -40,6 +40,7 @@ Phase 3 minimum-viable: hardcoded mapping for the v1 built-in
 templates (livespec → SPECIFICATION/, minimal → repo root).
 Phase 7 widens to read template_config's spec_root field.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -138,14 +139,14 @@ def _schema_path(*, name: str) -> Path:
     return Path(__file__).resolve().parent.parent / "schemas" / f"{name}.schema.json"
 
 
-def _spec_root_for_template(*, template: str, project_root: Path) -> Path:
+def _spec_root_for_template(*, template: TemplateName, project_root: Path) -> Path:
     """Phase 3 minimum-viable mapping (matches commands/seed.py and friends)."""
     if template == "minimal":
         return project_root
     return project_root / "SPECIFICATION"
 
 
-def _template_root_for_value(*, template: str, project_root: Path) -> Path:
+def _template_root_for_value(*, template: TemplateName, project_root: Path) -> Path:
     if template in _BUILT_IN_TEMPLATES:
         return _bundle_root() / "specification-templates" / template
     return (project_root / template).resolve()
@@ -161,9 +162,7 @@ def _orchestrate(
     namespace: argparse.Namespace,
 ) -> IOResult[DoctorFindings, LivespecError]:
     project_root: Path = (
-        namespace.project_root
-        if namespace.project_root is not None
-        else Path.cwd()
+        namespace.project_root if namespace.project_root is not None else Path.cwd()
     )
     return _resolve_config(project_root=project_root).bind(
         lambda config_res: _resolve_template_then_iterate(
@@ -178,10 +177,15 @@ def _resolve_config(
     project_root: Path,
 ) -> IOResult[_ConfigResolution, LivespecError]:
     """Bootstrap lenience: returns a _ConfigResolution even when the file is absent/malformed."""
-    return find_upward(start=project_root, name=_LIVESPEC_JSONC).bind(
-        lambda jsonc_path: read_text(path=jsonc_path),
-    ).bind(_parse_then_validate_config).lash(
-        lambda _err: IOSuccess(_default_config_resolution(status="absent")),
+    return (
+        find_upward(start=project_root, name=_LIVESPEC_JSONC)
+        .bind(
+            lambda jsonc_path: read_text(path=jsonc_path),
+        )
+        .bind(_parse_then_validate_config)
+        .lash(
+            lambda _err: IOSuccess(_default_config_resolution(status="absent")),
+        )
     )
 
 
@@ -255,17 +259,21 @@ def _resolve_template_then_iterate(
         template=config_res.config.template,
         project_root=project_root,
     )
-    return path_exists(path=template_root).bind(
-        lambda exists: _check_template_status(
-            template_root=template_root,
-            exists=exists,
-        ),
-    ).bind(
-        lambda template_res: _iterate_trees(
-            project_root=project_root,
-            config_res=config_res,
-            template_res=template_res,
-        ),
+    return (
+        path_exists(path=template_root)
+        .bind(
+            lambda exists: _check_template_status(
+                template_root=template_root,
+                exists=exists,
+            ),
+        )
+        .bind(
+            lambda template_res: _iterate_trees(
+                project_root=project_root,
+                config_res=config_res,
+                template_res=template_res,
+            ),
+        )
     )
 
 
@@ -371,14 +379,18 @@ def _run_all_trees(
         template_res=template_res,
         run_id=run_id,
     )
-    return _run_checks_for_tree(ctx=main_ctx).bind(
-        lambda main_findings: _walk_sub_specs(
-            findings_so_far=main_findings,
-            sub_specs=sub_specs,
-            index=0,
-            orch_ctx=orch_ctx,
-        ),
-    ).map(lambda findings: DoctorFindings(findings=findings))
+    return (
+        _run_checks_for_tree(ctx=main_ctx)
+        .bind(
+            lambda main_findings: _walk_sub_specs(
+                findings_so_far=main_findings,
+                sub_specs=sub_specs,
+                index=0,
+                orch_ctx=orch_ctx,
+            ),
+        )
+        .map(lambda findings: DoctorFindings(findings=findings))
+    )
 
 
 def _walk_sub_specs(
@@ -412,7 +424,7 @@ def _walk_sub_specs(
 def _build_doctor_context(
     *,
     project_root: Path,
-    spec_root: Path,
+    spec_root: SpecRoot,
     config_res: _ConfigResolution,
     template_res: _TemplateResolution,
     template_name: str,
@@ -537,7 +549,6 @@ def main(*, argv: Sequence[str] | None = None) -> int:
             exception_repr=repr(exc),
         )
         return 1
-
 
 
 # `_VNNN_RE` is exported for downstream use by the few callers that need

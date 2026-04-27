@@ -42,6 +42,7 @@ sub-spec tree (PROPOSAL.md §"Static-phase orchestrator"; v018 Q1;
 field name finalized in v021 Q1, replacing the prior binary
 `template_scope: Literal["main", "sub-spec"]`).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

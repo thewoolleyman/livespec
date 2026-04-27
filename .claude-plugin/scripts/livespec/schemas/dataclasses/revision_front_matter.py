@@ -7,6 +7,7 @@ Per PROPOSAL.md §"Revision file format" lines 3027-3050.
 Three-way pairing with `revision_front_matter.schema.json` and
 `validate/revision_front_matter.py`.
 """
+
 from dataclasses import dataclass
 from typing import Literal
 
@@ -28,5 +29,5 @@ class RevisionFrontMatter:
     proposal: str
     decision: Decision
     revised_at: str
-    author_human: str
+    author_human: Author
     author_llm: Author

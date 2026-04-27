@@ -21,6 +21,7 @@ scopes. The exemption is per-supervisor `main()` at module
 top-level — NOT per-helper inside commands/** (style doc lines
 1478-1481).
 """
+
 from __future__ import annotations
 
 import ast

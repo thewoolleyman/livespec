@@ -36,6 +36,7 @@ Implementation:
 Scope: `.claude-plugin/scripts/livespec/**`,
 `.claude-plugin/scripts/bin/**`, `<repo-root>/dev-tooling/**`.
 """
+
 from __future__ import annotations
 
 import ast
@@ -129,8 +130,11 @@ def _public_method_names(*, class_def: ast.ClassDef) -> list[str]:
     return names
 
 
+_DUNDER_MIN_LEN = 4
+
+
 def _is_dunder(*, name: str) -> bool:
-    return len(name) >= 4 and name.startswith("__") and name.endswith("__")
+    return len(name) >= _DUNDER_MIN_LEN and name.startswith("__") and name.endswith("__")
 
 
 if __name__ == "__main__":

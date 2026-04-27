@@ -24,6 +24,7 @@ but not by the v026 D1 shim — are NOT exposed here; widen the
 shim one feature at a time if a future caller surfaces the
 need.
 """
+
 from __future__ import annotations
 
 import json
@@ -79,17 +80,14 @@ def parse(*, text: str) -> Result[dict[str, Any], PreconditionError]:
                 return Success(parsed)
             return Failure(
                 PreconditionError(
-                    f"JSONC top-level value must be an object; "
-                    f"got {type(parsed).__name__}",
+                    f"JSONC top-level value must be an object; got {type(parsed).__name__}",
                 ),
             )
         case Failure(exc):
             return Failure(
                 PreconditionError(
-                    f"JSONC parse failure at line {exc.lineno}, "
-                    f"column {exc.colno}: {exc.msg}",
+                    f"JSONC parse failure at line {exc.lineno}, column {exc.colno}: {exc.msg}",
                 ),
             )
         case _:
             assert_never(raw_result)
-

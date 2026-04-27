@@ -4,6 +4,7 @@ Phase 2 stub. Destructive; the SKILL.md frontmatter sets
 `disable-model-invocation: true` so user invocation is required. Real
 implementation lands in Phase 7+.
 """
+
 from typing import Any
 
 from returns.io import IOFailure, IOResult

@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/private_calls.py."""
+
 from __future__ import annotations
 
 import sys

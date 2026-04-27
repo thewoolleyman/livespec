@@ -42,6 +42,7 @@ Exemptions from Rule 1:
 Scope: `.claude-plugin/scripts/livespec/**`,
 `.claude-plugin/scripts/bin/**`, `<repo-root>/dev-tooling/**`.
 """
+
 from __future__ import annotations
 
 import ast
@@ -65,15 +66,17 @@ _SCOPE_DIRS: tuple[Path, ...] = (
 _VENDOR_SUBSTR = "_vendor"
 _PYCACHE_SUBSTR = "__pycache__"
 
-_ROP_METHODS: frozenset[str] = frozenset({
-    "alt",
-    "apply",
-    "bind",
-    "bind_ioresult",
-    "bind_result",
-    "lash",
-    "map",
-})
+_ROP_METHODS: frozenset[str] = frozenset(
+    {
+        "alt",
+        "apply",
+        "bind",
+        "bind_ioresult",
+        "bind_result",
+        "lash",
+        "map",
+    }
+)
 
 _DATACLASS_TRIPLE: frozenset[str] = frozenset({"frozen", "kw_only", "slots"})
 
@@ -219,8 +222,11 @@ def _check_class_decorators(
             )
 
 
+_DUNDER_MIN_LEN = 4
+
+
 def _is_dunder(*, name: str) -> bool:
-    return len(name) >= 4 and name.startswith("__") and name.endswith("__")
+    return len(name) >= _DUNDER_MIN_LEN and name.startswith("__") and name.endswith("__")
 
 
 def _is_bare_dataclass(*, decorator: ast.expr) -> bool:

@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/no_except_outside_io.py."""
+
 from __future__ import annotations
 
 import sys
@@ -130,10 +131,13 @@ def test_doctor_static_except_fails(*, tmp_path: Path) -> None:
 def test_doctor_run_static_supervisor_catchall_passes(*, tmp_path: Path) -> None:
     target = tmp_path / "run_static.py"
     target.write_text(_SUPERVISOR_CATCHALL_OK, encoding="utf-8")
-    assert no_except_outside_io.check_file(
-        path=target,
-        relative=_DOCTOR_RUN_STATIC_REL,
-    ) == []
+    assert (
+        no_except_outside_io.check_file(
+            path=target,
+            relative=_DOCTOR_RUN_STATIC_REL,
+        )
+        == []
+    )
 
 
 def test_main_passes_against_real_repo(*, monkeypatch: pytest.MonkeyPatch) -> None:

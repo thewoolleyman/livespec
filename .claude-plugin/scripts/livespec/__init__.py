@@ -18,6 +18,7 @@ The two side-effecting calls below (`structlog.configure`,
 style doc §"Bootstrap" — they configure third-party library state,
 not livespec module-level state.
 """
+
 import logging
 import os
 import sys

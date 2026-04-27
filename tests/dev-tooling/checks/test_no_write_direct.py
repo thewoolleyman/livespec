@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/no_write_direct.py."""
+
 from __future__ import annotations
 
 import sys
@@ -17,10 +18,7 @@ __all__: list[str] = []
 _NO_WRITE = '"""docstring"""\n__all__: list[str] = []\n'
 
 _HELPER_WITH_WRITE = (
-    '"""docstring"""\n'
-    "import sys\n"
-    "def helper() -> None:\n"
-    '    sys.stdout.write("hi")\n'
+    '"""docstring"""\nimport sys\ndef helper() -> None:\n    sys.stdout.write("hi")\n'
 )
 
 _MAIN_WITH_WRITE = (

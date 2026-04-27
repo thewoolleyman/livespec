@@ -19,6 +19,7 @@ Exemption: `bin/_bootstrap.py` carries the pre-livespec sys.path
 setup + Python version check; it does NOT match the 6-statement
 shape. Skipped by this check.
 """
+
 from __future__ import annotations
 
 import ast
@@ -85,7 +86,9 @@ def check_file(*, path: Path) -> list[str]:
     body = tree.body
     docstring_node = (
         body[0]
-        if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant)
+        if body
+        and isinstance(body[0], ast.Expr)
+        and isinstance(body[0].value, ast.Constant)
         and isinstance(body[0].value.value, str)
         else None
     )

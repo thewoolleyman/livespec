@@ -2,6 +2,7 @@
 
 Covers BOTH pass and fail cases per Phase 4 plan line 1452-1453.
 """
+
 from __future__ import annotations
 
 import sys

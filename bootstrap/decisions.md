@@ -783,3 +783,49 @@ the plan's phasing semantics. STATUS.md's prior-session
 interpretation ("every canonical-list target green
 simultaneously") is now codified in plan text. No companion-doc
 or PROPOSAL.md impact; no v030 PROPOSAL bump required.
+
+## 2026-04-27T06:43:45Z — phase 4 sub-step 26 (import-linter contract overlay)
+
+**Decision:** Drop `returns.io` and `pathlib` from the realized
+`[tool.importlinter]` `parse-and-validate-are-pure` contract's
+`forbidden_modules` list, with explanatory comments in
+`pyproject.toml` and a paired implementation-overlay section
+appended to
+`brainstorming/approach-2-nlspec-based/python-skill-script-style-requirements.md`
+§"Import-Linter contracts (minimum configuration)". Both forbids
+are unenforceable as written by Import-Linter v2:
+
+- `returns.io` — Import-Linter v2 rejects subpackages of external
+  packages. The IOResult / IOFailure ban in pure layers is
+  enforced at raise-site by `check-no-raise-outside-io`.
+- `pathlib` — `livespec.types` defines `SpecRoot = NewType(
+  "SpecRoot", Path)`, forcing a runtime pathlib import that
+  flows transitively into pure layers via the wire dataclasses
+  under `livespec.schemas.dataclasses/`. Importing the `Path`
+  class is not I/O; method calls are. The no-I/O-at-runtime
+  intent is caught by `check-no-write-direct`,
+  `check-supervisor-discipline`, and `check-no-raise-outside-io`,
+  which fire on actual misuse rather than on type-only imports.
+
+Five reasonable resolutions were evaluated (drop both with
+overlay [chosen]; split `livespec.types` into pure +
+Path-dependent halves; defer the entire `check-imports-architecture`
+target to Phase 5; PathLike Protocol in pure types; PROPOSAL
+revision). The chosen path is the smallest reversible change
+that preserves the runtime safety guarantee and lets Phase 5/7
+revisit with full context once stub-to-implementation widening
+provides better signal for choosing among the IoC patterns.
+
+**Rationale:** Per the style doc's architecture-vs-mechanism
+principle (lines 805-808): "the two rules above are the
+contract; the TOML is one valid way to express them." When
+the TOML cannot express the rule cleanly, alternative
+mechanisms (here: AST-level checks) are licensed. PROPOSAL.md
+is unaffected (Import-Linter contract module enumeration is
+companion-doc material, not PROPOSAL-versioned). The companion-
+doc edit follows the v028 D1 / 2026-04-26T08:33:35Z precedent
+(style doc edits ride freely with implementation; no PROPOSAL
+bump). Verified via `just check-imports-architecture`: both
+contracts (`parse-and-validate-are-pure` and
+`layered-architecture`) now KEEP cleanly against the current
+codebase.

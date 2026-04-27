@@ -3,6 +3,7 @@ the blank-line discipline in the spec.
 
 Phase 2 stub.
 """
+
 from typing import Any
 
 from returns.io import IOFailure, IOResult

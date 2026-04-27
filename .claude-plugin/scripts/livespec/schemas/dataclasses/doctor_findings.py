@@ -7,6 +7,7 @@ propose-change / critique LLM-output schema).
 Three-way pairing: this dataclass, `doctor_findings.schema.json`,
 and `validate/doctor_findings.py` are co-authoritative.
 """
+
 from dataclasses import dataclass
 
 from livespec.schemas.dataclasses.finding import Finding

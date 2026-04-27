@@ -34,6 +34,7 @@ Bundle-root derivation (v028 D1): `Path(__file__).resolve().parents[3]`
 per the wrapper-shape contract; the path derivation happens here
 in the implementation.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,6 +59,7 @@ from livespec.io.fs import find_upward, path_exists, read_text
 from livespec.io.structlog_facade import get_logger
 from livespec.parse.jsonc import parse as parse_jsonc
 from livespec.schemas.dataclasses.livespec_config import LivespecConfig
+from livespec.types import TemplateName
 from livespec.validate import livespec_config as validate_livespec_config
 
 __all__: list[str] = [
@@ -140,15 +142,13 @@ def _resolve_from_namespace(
 ) -> IOResult[Path, LivespecError]:
     """Branch on `--template`; resolve to candidate; validate."""
     project_root: Path = (
-        namespace.project_root
-        if namespace.project_root is not None
-        else Path.cwd()
+        namespace.project_root if namespace.project_root is not None else Path.cwd()
     )
-    template_override: str | None = namespace.template
+    template_override_raw: str | None = namespace.template
 
-    if template_override is not None:
+    if template_override_raw is not None:
         return _resolve_value(
-            template=template_override,
+            template=TemplateName(template_override_raw),
             project_root=project_root,
         )
 
@@ -195,12 +195,11 @@ def _load_schema_and_validate(
     payload: dict[str, Any],
 ) -> IOResult[LivespecConfig, LivespecError]:
     """Read livespec_config.schema.json from the bundle, compile, validate payload."""
-    return (
-        read_text(path=_schema_path())
-        .bind(lambda schema_text: _compile_and_validate(
+    return read_text(path=_schema_path()).bind(
+        lambda schema_text: _compile_and_validate(
             schema_text=schema_text,
             payload=payload,
-        ))
+        )
     )
 
 
@@ -236,7 +235,7 @@ def _compile_and_validate(
 
 def _resolve_value(
     *,
-    template: str,
+    template: TemplateName,
     project_root: Path,
 ) -> IOResult[Path, LivespecError]:
     """Map a template value (built-in name or path) to a validated absolute Path."""
@@ -337,4 +336,3 @@ def main(*, argv: Sequence[str] | None = None) -> int:
 def _exit_code_of(*, err: LivespecError) -> int:
     """Pull the per-class exit_code from a LivespecError instance."""
     return type(err).exit_code
-

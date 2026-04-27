@@ -13,6 +13,7 @@ template.json's corresponding fields are non-null.
 Main-spec-tree-only (orchestrator-owned applicability — same as
 template_exists).
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -49,9 +50,7 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
             Finding(
                 check_id=SLUG,
                 status="skipped",
-                message=(
-                    f"skipped: template not loaded (status={ctx.template_load_status})"
-                ),
+                message=(f"skipped: template not loaded (status={ctx.template_load_status})"),
                 path=None,
                 line=None,
                 spec_root=spec_root_str,

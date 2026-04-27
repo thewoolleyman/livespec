@@ -7,6 +7,7 @@ directory. Phase 7 widens to also verify the active template's
 versioned spec files are present (per template_config's
 versioned-surface declaration).
 """
+
 from __future__ import annotations
 
 import re

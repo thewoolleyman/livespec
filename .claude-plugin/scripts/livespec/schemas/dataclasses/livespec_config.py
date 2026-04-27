@@ -9,6 +9,7 @@ Three-way pairing: this dataclass, `schemas/livespec_config.schema.json`,
 and `validate/livespec_config.py` are co-authoritative. Drift is
 detected by `check-schema-dataclass-pairing` (v013 M6).
 """
+
 from dataclasses import dataclass
 
 from livespec.types import TemplateName

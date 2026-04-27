@@ -1,4 +1,5 @@
 """Tests for dev-tooling/checks/rop_pipeline_shape.py."""
+
 from __future__ import annotations
 
 import sys
@@ -139,7 +140,12 @@ def test_two_public_methods_fails(*, tmp_path: Path) -> None:
 
 
 def test_dunders_not_counted(*, tmp_path: Path) -> None:
-    """`__init__` + `__call__` aren't counted; `__call__` IS the public entry here, but as a dunder it's exempt — there's no non-dunder public method, so this fails count-of-1."""
+    """Dunder-only class fails count-of-1.
+
+    `__init__` + `__call__` aren't counted; `__call__` IS the public entry here,
+    but as a dunder it's exempt — there's no non-dunder public method, so this
+    fails the count-of-1 check.
+    """
     target = tmp_path / "f.py"
     target.write_text(_DUNDERS_NOT_COUNTED_OK, encoding="utf-8")
     violations = rop_pipeline_shape.check_file(path=target)

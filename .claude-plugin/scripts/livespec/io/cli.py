@@ -28,6 +28,7 @@ in `livespec/commands/<cmd>.py` (verified by
 `check-build-parser-purity`). This module's job is the impure
 invocation; parser construction stays pure.
 """
+
 from __future__ import annotations
 
 import argparse

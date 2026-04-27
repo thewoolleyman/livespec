@@ -16,6 +16,7 @@ Two violation types:
 - "undefined name 'X'": a name listed in `__all__` doesn't appear
   as a module-top binding (def, class, assign, or import).
 """
+
 from __future__ import annotations
 
 import ast

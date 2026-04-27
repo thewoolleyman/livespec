@@ -35,6 +35,7 @@ positional-vs-keyword doesn't apply.
 Scope: `.claude-plugin/scripts/livespec/**`,
 `.claude-plugin/scripts/bin/**`, `<repo-root>/dev-tooling/**`.
 """
+
 from __future__ import annotations
 
 import ast
@@ -123,56 +124,44 @@ def _walk_pattern(
     violations: list[str],
 ) -> None:
     """Recurse through pattern, flagging livespec-class positional destructures."""
+    subpatterns = _subpatterns_of(pattern=pattern)
     if isinstance(pattern, ast.MatchClass):
-        cls_name = _match_class_name(pattern=pattern)
-        if cls_name is not None and cls_name in livespec_names and pattern.patterns:
-            violations.append(
-                f"line {pattern.lineno}: `case {cls_name}(...)` uses positional "
-                f"sub-patterns; livespec-authored classes require keyword form "
-                f"`{cls_name}(field=field, ...)`",
-            )
-        for sub in pattern.patterns:
-            _walk_pattern(
-                pattern=sub,
-                livespec_names=livespec_names,
-                violations=violations,
-            )
-        for sub in pattern.kwd_patterns:
-            _walk_pattern(
-                pattern=sub,
-                livespec_names=livespec_names,
-                violations=violations,
-            )
-        return
-    if isinstance(pattern, ast.MatchSequence):
-        for sub in pattern.patterns:
-            _walk_pattern(
-                pattern=sub,
-                livespec_names=livespec_names,
-                violations=violations,
-            )
-        return
-    if isinstance(pattern, ast.MatchMapping):
-        for sub in pattern.patterns:
-            _walk_pattern(
-                pattern=sub,
-                livespec_names=livespec_names,
-                violations=violations,
-            )
-        return
-    if isinstance(pattern, ast.MatchOr):
-        for sub in pattern.patterns:
-            _walk_pattern(
-                pattern=sub,
-                livespec_names=livespec_names,
-                violations=violations,
-            )
-        return
-    if isinstance(pattern, ast.MatchAs) and pattern.pattern is not None:
-        _walk_pattern(
-            pattern=pattern.pattern,
+        _check_match_class(
+            pattern=pattern,
             livespec_names=livespec_names,
             violations=violations,
+        )
+    for sub in subpatterns:
+        _walk_pattern(
+            pattern=sub,
+            livespec_names=livespec_names,
+            violations=violations,
+        )
+
+
+def _subpatterns_of(*, pattern: ast.pattern) -> list[ast.pattern]:
+    """Return the list of nested sub-patterns to recurse into."""
+    if isinstance(pattern, ast.MatchClass):
+        return [*pattern.patterns, *pattern.kwd_patterns]
+    if isinstance(pattern, ast.MatchSequence | ast.MatchMapping | ast.MatchOr):
+        return list(pattern.patterns)
+    if isinstance(pattern, ast.MatchAs) and pattern.pattern is not None:
+        return [pattern.pattern]
+    return []
+
+
+def _check_match_class(
+    *,
+    pattern: ast.MatchClass,
+    livespec_names: frozenset[str],
+    violations: list[str],
+) -> None:
+    cls_name = _match_class_name(pattern=pattern)
+    if cls_name is not None and cls_name in livespec_names and pattern.patterns:
+        violations.append(
+            f"line {pattern.lineno}: `case {cls_name}(...)` uses positional "
+            f"sub-patterns; livespec-authored classes require keyword form "
+            f"`{cls_name}(field=field, ...)`",
         )
 
 

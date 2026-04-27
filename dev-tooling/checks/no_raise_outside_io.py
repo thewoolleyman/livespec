@@ -25,6 +25,7 @@ Permitted raise locations:
 Forbidden everywhere else inside
 `.claude-plugin/scripts/livespec/**`.
 """
+
 from __future__ import annotations
 
 import ast

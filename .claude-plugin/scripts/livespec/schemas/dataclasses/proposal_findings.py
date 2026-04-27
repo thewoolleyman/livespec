@@ -10,6 +10,7 @@ PROPOSAL.md §"doctor → Static-phase orchestrator" line 2624.
 Three-way pairing with `proposal_findings.schema.json` and
 `validate/proposal_findings.py`.
 """
+
 from dataclasses import dataclass
 
 __all__: list[str] = [

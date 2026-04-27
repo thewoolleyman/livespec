@@ -12,6 +12,7 @@ is detected by `check-schema-dataclass-pairing`.
 Three-way pairing with `revise_input.schema.json` and
 `validate/revise_input.py`.
 """
+
 from dataclasses import dataclass, field
 from typing import Literal
 

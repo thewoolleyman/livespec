@@ -25,6 +25,7 @@ The kwargs-only call-site discipline is enforced separately by
 ruff `LOG`/`G` categories (flake8-logging / flake8-logging-format)
 on the call sites; the facade just provides the typed surface.
 """
+
 from __future__ import annotations
 
 from typing import Protocol, cast

@@ -17,6 +17,7 @@ This check applies ONLY to `livespec/**`. The `bin/*.py` wrappers
 and `dev-tooling/**` scripts are not in scope (the latter need
 `if __name__ ==` to be runnable as standalone scripts).
 """
+
 from __future__ import annotations
 
 import ast
@@ -89,11 +90,7 @@ def _is_main_guard(*, node: ast.stmt) -> bool:
     if len(test.comparators) != 1:
         return False
     rhs = test.comparators[0]
-    return (
-        isinstance(rhs, ast.Constant)
-        and isinstance(rhs.value, str)
-        and rhs.value == "__main__"
-    )
+    return isinstance(rhs, ast.Constant) and isinstance(rhs.value, str) and rhs.value == "__main__"
 
 
 if __name__ == "__main__":

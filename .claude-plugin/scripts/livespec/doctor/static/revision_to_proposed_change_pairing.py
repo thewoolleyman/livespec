@@ -7,6 +7,7 @@ the check walks filename stems (NOT front-matter `topic` values),
 because v014 N6 collision-disambiguation puts a `-N` suffix on
 the filename stem but keeps the front-matter `topic` canonical.
 """
+
 from __future__ import annotations
 
 import re
@@ -61,10 +62,7 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
             Finding(
                 check_id=SLUG,
                 status="fail",
-                message=(
-                    f"orphan revision files (missing paired <stem>.md): "
-                    f"{', '.join(orphans)}"
-                ),
+                message=f"orphan revision files (missing paired <stem>.md): {', '.join(orphans)}",
                 path=None,
                 line=None,
                 spec_root=spec_root_str,
