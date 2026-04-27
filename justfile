@@ -103,7 +103,12 @@ check-types:
     pyright
 
 check-complexity:
-    ruff check --select C90,PLR .
+    #!/usr/bin/env bash
+    set -uo pipefail
+    rc=0
+    ruff check --select C90,PLR . || rc=$?
+    python3 dev-tooling/checks/file_lloc.py || rc=$?
+    exit $rc
 
 check-imports-architecture:
     lint-imports
