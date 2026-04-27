@@ -1122,8 +1122,9 @@ its local constraints.
 3's deferral list ("every target backed by a Phase-4
 `dev-tooling/checks/*.py` script"); their backing scripts are
 authored at Phase 4. `pyright` may still report errors against the
-stub bodies (acceptable at this phase; `check-types` is a Phase-5
-gate). **Plugin-loading smoke check**: `readlink .claude/skills`
+stub bodies (acceptable at this phase; `check-types` is a Phase-7
+gate, once `livespec/**` stubs widen toward their full
+implementations). **Plugin-loading smoke check**: `readlink .claude/skills`
 resolves to `../.claude-plugin/skills`; `ls .claude/skills/`
 enumerates exactly the seven sub-command directories (`help`,
 `seed`, `propose-change`, `critique`, `revise`, `doctor`,
@@ -1447,14 +1448,21 @@ boundary where recovery would require the broken governed
 loop.
 
 Full `just check` is NOT a Phase-3 gate. The following targets
-are deliberately deferred to Phase 5's exit criterion, once
-tests and remaining enforcement scripts exist: `check-tests`,
-`check-coverage`, `check-pbt-coverage-pure-modules`,
-`check-claude-md-coverage` (tests/ branch), `check-types`
-(pyright strict against Phase-2/3 stubs), and every target
-backed by a Phase-4 `dev-tooling/checks/*.py` script. Phase-2/3
-stubs conform to the Phase-2 stub contract so they pass Phase-5
-gates without refactor.
+are deliberately deferred and reactivate at the phases where
+their backing content lands: `check-tests`, `check-coverage`,
+`check-pbt-coverage-pure-modules`, `check-claude-md-coverage`
+(tests/ branch), and every target backed by a Phase-4
+`dev-tooling/checks/*.py` script reactivate at Phase 4 or
+Phase 5 exit per the Phase 4 / Phase 5 deferral lists.
+`check-types` (pyright strict against `livespec/**`) reactivates
+at **Phase 7**, once stubs widen toward their full implementations
+— not Phase 5, because Phase-2/3 stubs do not yet satisfy strict
+pyright against their wider implementation contracts.
+`e2e-test-claude-code-mock` reactivates at **Phase 9**, once
+`tests/e2e/fake_claude.py` is fleshed out. Phase-2/3 stubs
+conform to the Phase-2 stub contract so they pass Phase-5
+gates without refactor; the strict-pyright gate against the
+widened implementations is what activates at Phase 7.
 
 ### Phase 4 — Developer tooling enforcement scripts
 

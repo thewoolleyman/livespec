@@ -876,3 +876,24 @@ before any test-suite authoring landed; surfacing and fixing
 the drift now keeps Phase 5's actual work aligned against the
 plan it references and pre-empts a phase-exit gate failure
 that would otherwise surface only at the very end of Phase 5.
+
+**Cascading-scan follow-up (same finding).** Post-commit
+cascading-impact scan surfaced two more plan-text references to
+`check-types` as a Phase-5 gate that needed to align with the
+Phase 7 reactivation:
+
+- Phase 2 exit criterion (line ~1125): "`check-types` is a
+  Phase-5 gate" → "Phase-7 gate, once `livespec/**` stubs widen
+  toward their full implementations".
+- Phase 3 deferral list (lines ~1449-1457): full restructure to
+  enumerate per-target reactivation phases (Phase 4/5 for
+  dev-tooling-backed targets and the test-suite gates;
+  **Phase 7** for `check-types`; **Phase 9** for
+  `e2e-test-claude-code-mock`).
+
+Both edits are part of the same Case-B finding (the Phase 4 →
+Phase 5 deferral-handoff convention not propagating across all
+phase-exit-criterion / deferral-list references in the plan).
+PROPOSAL.md remains unaffected. Landed as a follow-up commit
+since the originating commit had already shipped before the
+cascading scan ran; same Case-B audit trail.
