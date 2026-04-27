@@ -63,6 +63,7 @@ _SPECIFICATION_DIR = Path("SPECIFICATION")
 _TEMPLATES_SUBDIR = Path("templates")
 _COVERAGE_JSON = Path("tests/heading-coverage.json")
 _HEADING_PREFIX = "## "
+_SUBSPEC_MIN_PARTS = 2
 
 
 def main() -> int:
@@ -158,7 +159,7 @@ def _is_inside_subspec(*, file_path: Path, tree_root: Path) -> bool:
     except ValueError:
         return False
     parts = relative.parts
-    return len(parts) >= 2 and parts[0] == _TEMPLATES_SUBDIR.name
+    return len(parts) >= _SUBSPEC_MIN_PARTS and parts[0] == _TEMPLATES_SUBDIR.name
 
 
 def _load_coverage_pairs(*, coverage_path: Path) -> set[tuple[str, str]] | None:
