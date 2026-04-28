@@ -1314,6 +1314,140 @@ choice under the architecture-level constraints.
 
 ---
 
+## Test-Driven Development discipline
+
+PROPOSAL.md §"Test-Driven Development discipline" is the
+canonical reference. This section is the operational
+companion: how the discipline is applied at the keyboard,
+day to day, in Python.
+
+### Authoring rhythm vs. commit boundaries (operational)
+
+Red and Green happen in the editor; only the cohesive unit
+of value (Red+Green together for a feature/bugfix; or a
+behavior-preserving structural change for a refactor)
+commits. The mechanical consequence: there is no useful
+"commit just the failing test, fix it next" workflow —
+`just check` runs as the pre-commit hook and the failing
+test rejects the commit. The discipline aligns with that:
+keep the Red phase in the editor, run it, observe it fail
+for the right reason, then write Green and commit the pair.
+
+### Running a Red test in isolation
+
+Use pytest's `-k` or test-id syntax to run exactly the new
+test:
+
+```sh
+uv run pytest tests/livespec/<area>/test_<module>.py::<test_name>
+```
+
+Read the failure output. Confirm the failure message names
+the missing behavior. Useful Reds look like:
+
+```
+AssertionError: expected Result.Success(_), got
+  Result.Failure(PreconditionError('schema unknown'))
+```
+
+(The implementation does not yet handle the case the test
+specifies.) Unhelpful Reds — these need fixing BEFORE
+proceeding to Green:
+
+```
+ImportError: cannot import name 'parse_jsonc' from
+  'livespec.parse'                          # missing module/symbol
+ModuleNotFoundError: No module named 'foo'  # path / typo
+NameError: name 'expected_value' is not
+  defined                                   # typo in test
+TypeError: f() missing 1 required positional
+  argument: 'payload'                       # call shape mismatch
+```
+
+When the failure mode is one of these, fix the test until
+it executes end-to-end and the assertion is what fails.
+Then proceed to Green.
+
+### Writing Green: the minimum that turns Red green
+
+`livespec`'s ROP / Result style narrows what "minimum"
+means in practice: a stub that returns `Failure(<error>)`
+for the specific inputs the test exercises — and nothing
+more — is often enough. Resist anticipating downstream
+tests. Each test pressures one behavior; let the next test
+pressure the next. Once Green:
+
+```sh
+just check-tests          # full suite, no regression
+just check-coverage       # 100% line+branch, anchored at unit layer
+```
+
+Both green and the implementation is complete enough to
+commit alongside the test as the feature/bugfix unit of
+value.
+
+### Refactor cycle (independent, structure-only)
+
+A refactor commit is reviewable on its own terms. The
+operational shape:
+
+1. Confirm the suite is green pre-refactor
+   (`just check-tests`). If it is not, the refactor cannot
+   safely begin — fix or skip the failing tests first.
+2. Identify any coverage gaps in the area you are about to
+   restructure. If gaps exist, author characterization
+   tests that pin down current behavior:
+
+   ```python
+   def test_existing_behavior_pins(*, tmp_path: Path) -> None:
+       # Capture what the code DOES today; not what it SHOULD do.
+       result = current_function(input=fixture)
+       assert result == observed_pre_refactor_value
+   ```
+
+   Run them: they MUST PASS against the pre-refactor code.
+   They are NOT Red — current code already does the thing
+   the test asserts. (If a characterization test fails
+   pre-refactor, the existing behavior is already broken
+   and the situation is a Red-Green-driven bugfix, not a
+   refactor.)
+3. Apply the structural change. Run `just check` after
+   each meaningful step. Tests stay green throughout.
+4. Commit with a refactor-shaped message
+   (`refactor: <one-line description of the structural
+   change>`).
+
+If a test goes red mid-refactor, behavior changed
+(deliberately or accidentally). Stop. Either revert and
+reapply the change as a Red-Green-driven feature, or scope
+the characterization-test backfill more carefully and
+restart.
+
+### Exception-clause specifics
+
+The exception list in PROPOSAL.md §"Legitimate exceptions
+to test-first" is exhaustive. Operational examples:
+
+| Change | Exception category | Why exempt |
+|---|---|---|
+| Rename `livespec/foo/bar.py` → `livespec/foo/baz.py` via grep | Mechanical migration | No behavior change; existing tests follow |
+| Add `# noqa: E501` to a long line | Configuration-only (in-file ruff annotation) | No runtime change |
+| Add `__all__: list[str] = []` to a module | Type-only / convention | No runtime call shape change |
+| Update `CLAUDE.md` text | Documentation-only | No code change |
+| Bump `pytest` minor version in `pyproject.toml` | Configuration-only (version pin) | No runtime semantic change* |
+| Introduce `NewType("TopicSlug", str)` and propagate annotations | Type-only | No runtime behavior change |
+| Extract a helper function with no behavior change | Pure refactor | Structure-only; refactor workflow applies |
+
+\* If a config bump surfaces a new lint violation in covered
+code, the violation IS a behavior change in the enforcement
+surface and reapplies test-first — the failing-rule output
+is the Red signal that drives the follow-up fix as Green.
+
+"I couldn't think of a failing test smaller than the
+implementation" is NOT an exception. Take a smaller step.
+
+---
+
 ## Code coverage
 
 Coverage is measured by `coverage.py` via `pytest-cov`:
@@ -1336,11 +1470,28 @@ Coverage is measured by `coverage.py` via `pytest-cov`:
 - `[tool.coverage.report]` sets `fail_under = 100`, `show_missing = true`,
   `skip_covered = false`.
 - Enforced by `just check-coverage`.
-- **Escape hatch:** `# pragma: no cover — <reason>` on a single line or
-  a bounded block; cap ≤ 3 pragma-lines per file. Bare `# pragma: no cover`
-  without a reason is rejected by a targeted regex check. Legitimate
-  uses: `if TYPE_CHECKING:` guards; `sys.version_info` gates in
-  `bin/_bootstrap.py`.
+- **No line-level pragma escape hatch.** `# pragma: no cover`
+  comments are forbidden anywhere in
+  `.claude-plugin/scripts/livespec/**`,
+  `.claude-plugin/scripts/bin/**`, and
+  `<repo-root>/dev-tooling/**`. The only coverage exclusions
+  permitted are the structural patterns in
+  `[tool.coverage.report].exclude_also` (`if TYPE_CHECKING:`,
+  `raise NotImplementedError`, `@overload`), which are
+  block-level patterns recognized by coverage.py without
+  per-instance annotation. The two prior legitimate per-line
+  uses are now both addressable structurally:
+  - `if TYPE_CHECKING:` guards are matched by the
+    `exclude_also` pattern; no pragma needed.
+  - `sys.version_info` gates in `bin/_bootstrap.py` are
+    covered by dedicated `tests/bin/test_bootstrap.py` tests
+    that monkeypatch `sys.version_info` to exercise both
+    branches (per v011 K3); no pragma needed.
+  A targeted regex check (`# pragma: no cover` literal match)
+  in `dev-tooling/checks/` rejects any commit that introduces
+  the comment in covered code; the check treats *any*
+  occurrence in covered trees as a violation rather than
+  gating on a count.
 - **Wrapper coverage (`bin/*.py` except `_bootstrap.py`).** Wrapper
   bodies are NOT pragma-excluded. Each wrapper has a matching
   `tests/bin/test_<cmd>.py` that imports the wrapper and catches

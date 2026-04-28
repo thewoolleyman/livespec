@@ -494,6 +494,66 @@ v029 decisions (direct critique-fix overlay; see
   impact scan flagged the missing PROPOSAL listing entries.
   Routed via the bootstrap skill's Case-A PROPOSAL-drift rule
   (auto-blocking; halt-and-revise required).
+- v030 D1 (PROPOSAL.md): adds a new top-level section
+  §"Test-Driven Development discipline" before §"Testing
+  approach", codifying Beck-style test-first authoring (Red
+  → Green) as the authoring rhythm for any new behavior, and
+  refactor as an independent unit of value (no new failing
+  test; existing tests stay green). Authoring rhythm vs.
+  commit boundaries: commits represent cohesive units of
+  user-facing value, NOT phases of an internal RGR cycle.
+  Plus the "fail for the right reason" clause, the
+  five-category exhaustive exception list, the rationale
+  ("why not just the coverage gate"), and the test pyramid
+  framing (the 100% gate is anchored at the unit-test layer
+  under `tests/livespec/`, `tests/bin/`,
+  `tests/dev-tooling/checks/` — integration and prompt-QA
+  layers do not contribute to the gate).
+- v030 D2 (PROPOSAL.md + style doc): eliminates the
+  per-line `# pragma: no cover` escape hatch. The "≤ 3
+  pragma-lines per file with reason" allowance from style
+  doc lines 1339-1343 is replaced by an outright
+  prohibition; the only structural exclusions are
+  `if TYPE_CHECKING:`, `raise NotImplementedError`, and
+  `@overload` blocks via
+  `[tool.coverage.report].exclude_also`. Both prior
+  legitimate pragma uses are now addressed structurally
+  (TYPE_CHECKING via `exclude_also`; `_bootstrap.py`
+  version gate via dedicated `tests/bin/test_bootstrap.py`
+  monkeypatched tests, authored Phase 5 sub-step 2 commit
+  a2b4f5d). PROPOSAL.md §"Testing approach" coverage
+  paragraph gains the matching "no pragma" sentence.
+- v030 D3 (PROPOSAL.md): adds an explicit "Activation"
+  paragraph to §"Testing approach" stating that the
+  hard-constraint pre-commit gate becomes binding at the
+  Phase 5 `just bootstrap` promotion sub-step (when
+  `lefthook install` runs); pre-Phase-5 commits are
+  grandfathered.
+- v030 D4 (PROPOSAL.md): adds a one-sentence cross-reference
+  at the top of §"Testing approach" coverage paragraph
+  pointing readers at §"Test-Driven Development discipline"
+  as the methodology framing.
+- v030 D5 (companion-doc, style doc): paired §"Test-Driven
+  Development discipline" section authored as a sibling to
+  §"Code coverage", carrying operational specifics (running
+  Red tests in isolation, useful-vs-unhelpful Red examples,
+  refactor-cycle operational shape, exception-clause
+  examples). Style-doc edit per the established
+  style-doc-drift convention.
+- v030 D6 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v030/PROPOSAL.md`. Plan Phase
+  0 step 2 frozen-status header literal bumps to "Frozen at
+  v030". Plan Execution-prompt block authoritative-version
+  line bumps to v030. Plan Phase 5 §"`just bootstrap`
+  promotion" sub-step gains a one-sentence note that this
+  is the activation point of the hard-constraint per-commit
+  gate per PROPOSAL.md §"Testing approach — Activation".
+- Triggered by user direction during Phase 5 sub-step 3
+  (test-authoring campaign) — explicit ask to codify the
+  TDD discipline + tighten the coverage gate as a hard
+  constraint. Routed via the bootstrap skill's Case-A
+  PROPOSAL extension flow (halt-and-revise; same mechanism
+  as drift-driven snapshots).
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -705,19 +765,22 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v028/PROPOSAL.md` (the v028
-   snapshot — v027 substance with the bundle-root derivation
-   formula at PROPOSAL §"Template resolution contract" line
-   1466 corrected from `Path(__file__).resolve().parent.parent`
-   to `Path(__file__).resolve().parents[3]` per
-   `history/v028/proposed_changes/critique-fix-v027-revision.md`,
-   and the Phase 0 sub-step 2 frozen-status header bumped to
-   "Frozen at v029"; v029 substance is v028 substance plus the
+   byte-identical to `history/v030/PROPOSAL.md` (the v030
+   snapshot — v029 substance plus the §"Test-Driven Development
+   discipline" section, the `# pragma: no cover` escape-hatch
+   removal, the §"Testing approach — Activation" clause, and
+   the cross-reference at the top of the coverage paragraph,
+   per `history/v030/proposed_changes/critique-fix-v029-revision.md`;
+   v029 substance is v028 substance plus the
    `dev-tooling/checks/` directory-listing realignment + the
    `keyword_only_args.py` triple-annotation fix per
    `history/v029/proposed_changes/critique-fix-v028-revision.md`;
    v028 substance is v027 substance with the bundle-root
-   formula correction noted above; v027 substance is v026
+   formula correction at PROPOSAL §"Template resolution
+   contract" line 1466 (`Path(__file__).resolve().parent.parent`
+   → `Path(__file__).resolve().parents[3]`) per
+   `history/v028/proposed_changes/critique-fix-v027-revision.md`;
+   v027 substance is v026
    substance with
    `typing_extensions` reclassified from hand-authored shim to
    upstream-sourced lib per
@@ -740,6 +803,8 @@ sub-steps within a phase MAY run in parallel where noted.
    plan-level corrections per the Preconditions section).
    v028's snapshot was created during a halt-and-revise in
    Phase 3 sub-step 12 of the in-flight bootstrap; see
+   `history/v030/proposed_changes/critique-fix-v029-revision.md`
+   for the v030 decision provenance,
    `history/v029/proposed_changes/critique-fix-v028-revision.md`
    for the v029 decision provenance,
    `history/v028/proposed_changes/critique-fix-v027-revision.md`
@@ -758,7 +823,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v029. Further evolution happens in
+   > **Status:** Frozen at v030. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -1613,7 +1678,11 @@ placeholder to the real recipe: `lefthook install &&
 ln -sfn ../.claude-plugin/skills .claude/skills`. Running
 `just bootstrap` installs lefthook into `.git/hooks/` so
 that every commit from Phase 6 onward triggers `just check`
-on the now-passing enforcement suite.
+on the now-passing enforcement suite. **This is the
+activation point of the hard-constraint per-commit gate per
+PROPOSAL.md §"Testing approach — Activation"**; pre-Phase-5
+commits are grandfathered, and from this commit onward no
+commit lands without passing the per-commit gate.
 
 **Exit criterion:** `just check` passes for every target except
 those still deferred to later phases (carrying forward Phase 4's
@@ -2549,7 +2618,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v029 as authoritative. Do not propose any
+Treat PROPOSAL.md v030 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
