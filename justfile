@@ -30,6 +30,7 @@ default:
 # ---------------------------------------------------------------
 
 bootstrap:
+    uv run lefthook install
     ln -sfn ../.claude-plugin/skills .claude/skills
 
 # ---------------------------------------------------------------
@@ -70,6 +71,7 @@ check:
         check-vendor-manifest
         check-no-direct-tool-invocation
         check-tools
+        check-tests-mirror-pairing
         check-tests
         check-coverage
         e2e-test-claude-code-mock
@@ -117,7 +119,10 @@ check-tests:
     uv run pytest
 
 check-coverage:
+    #!/usr/bin/env bash
+    set -uo pipefail
     uv run pytest --cov --cov-branch --cov-report=term-missing
+    uv run python3 dev-tooling/checks/per_file_coverage.py
 
 # ---------------------------------------------------------------
 # AST / grep / hand-written checks. Each delegates to a script
@@ -224,10 +229,24 @@ check-mutation:
 check-no-todo-registry:
     uv run python3 dev-tooling/checks/no_todo_registry.py
 
-# Phase 4: informational only (always rc=0); Phase 5 exit flips to
-# hard `just check` gate. NOT in the `check` aggregate at Phase 4.
+# v033 D4 hard gate: returns 1 if any redo commit lacks `## Red output`.
+# Lefthook pre-commit only; NOT in `just check` aggregate (the aggregate
+# runs once per `just check` invocation, this gate is intrinsically
+# per-commit and lives in lefthook directly).
 check-red-output-in-commit:
     uv run python3 dev-tooling/checks/red_output_in_commit.py
+
+# v033 D1 mirror-pairing: every covered .py under livespec/, bin/,
+# and dev-tooling/checks/ has a paired tests/<mirror>/test_<name>.py.
+# In `just check` aggregate (per v033 D1).
+check-tests-mirror-pairing:
+    uv run python3 dev-tooling/checks/tests_mirror_pairing.py
+
+# v033 D3 commit-pair gate: every commit touching livespec/**, bin/**,
+# or dev-tooling/checks/** also touches tests/**. Lefthook pre-commit
+# only; NOT in `just check` aggregate (per-commit, not per-tree).
+check-commit-pairs-source-and-test:
+    uv run python3 dev-tooling/checks/commit_pairs_source_and_test.py
 
 # ---------------------------------------------------------------
 # Mutating targets (opt-in; not run in CI).

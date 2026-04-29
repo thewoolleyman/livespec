@@ -3,21 +3,32 @@
 # Authoritative source: python-skill-script-style-requirements.md
 # §"Enforcement suite — Invocation surfaces" and §"Dev tooling and
 # task runner" — every `run:` field is `just <target>`; no direct
-# tool invocations (this is enforced by check-no-direct-tool-invocation
-# at grep level once Phase 4 lands the script).
+# tool invocations (enforced by check-no-direct-tool-invocation).
 #
-# Phase 1 deferral: this file LANDS in Phase 1 as part of the
-# repo-tooling layout, but lefthook's actual installation into
-# .git/hooks/ is deferred until Phase 5's exit, when the full
-# `just check` suite first passes. Until then, `just bootstrap`
-# is a placeholder echo and does NOT run `lefthook install`, so
-# pre-commit `just check` invocations during Phases 2-4 do not
-# block commits on targets whose backing content (tests,
-# dev-tooling scripts) does not yet exist.
+# Activation: per v033 D5a, lefthook is installed at the
+# v033-codification + four-guardrail-script-commits boundary via
+# `just bootstrap` (which executes `uv run lefthook install`).
+# Pre-v033 the file existed as a stub waiting for Phase-5-exit
+# activation; v033 D5a moved activation forward so the four
+# mechanical guardrails (mirror-pairing, per-file 100% coverage,
+# commit-pairs-source-and-test, ## Red output) gate every commit
+# from the second-retroactive-redo onward.
+#
+# pre-commit ordering: cheap per-commit gates first
+# (commit-pairs-source-and-test inspects staged file list;
+# red-output-in-commit walks `git log` for the commit being
+# authored — but neither runs the test suite), then the heavy
+# `just check` aggregate. Fail-fast on the cheap gates so the
+# developer learns about a missing test pair without waiting
+# for pytest.
 
 pre-commit:
   commands:
-    check:
+    01-commit-pairs-source-and-test:
+      run: just check-commit-pairs-source-and-test
+    02-red-output-in-commit:
+      run: just check-red-output-in-commit
+    03-check:
       run: just check
 
 pre-push:
