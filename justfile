@@ -224,6 +224,11 @@ check-mutation:
 check-no-todo-registry:
     python3 dev-tooling/checks/no_todo_registry.py
 
+# Phase 4: informational only (always rc=0); Phase 5 exit flips to
+# hard `just check` gate. NOT in the `check` aggregate at Phase 4.
+check-red-output-in-commit:
+    python3 dev-tooling/checks/red_output_in_commit.py
+
 # ---------------------------------------------------------------
 # Mutating targets (opt-in; not run in CI).
 # ---------------------------------------------------------------
