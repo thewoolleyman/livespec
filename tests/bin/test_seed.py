@@ -28,8 +28,10 @@ setup, and structlog configuration all run for real here.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 __all__: list[str] = []
@@ -340,4 +342,109 @@ def test_seed_writes_history_v001_for_each_sub_spec(*, tmp_path: Path) -> None:
     assert history_proposed_changes.is_dir(), (
         f"sub-spec v001 proposed_changes/ {history_proposed_changes} not a directory; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_seed_writes_auto_captured_seed_proposal_for_main_spec(*, tmp_path: Path) -> None:
+    """`seed.py` auto-captures `<spec-root>/history/v001/proposed_changes/seed.md`.
+
+    Per PROPOSAL.md §"`seed`" lines 2043-2057 (the auto-generated
+    `seed.md` content) and §"Proposed-change file format" (lines
+    2939-3033, the canonical format every proposed-change file
+    conforms to). The wrapper writes a proposed-change file with
+    YAML front-matter (`topic: seed`, `author: livespec-seed`,
+    `created_at: <UTC ISO-8601 seconds>`) followed by one
+    `## Proposal: seed` section with `### Target specification
+    files`, `### Summary` (verbatim "Initial seed of the
+    specification from user-provided intent."), `### Motivation`
+    (verbatim payload `intent`), and `### Proposed Changes`
+    (verbatim payload `intent` again).
+
+    Sub-specs do NOT receive their own auto-captured seed.md per
+    PROPOSAL.md lines 2031-2035 ("the single main-spec seed
+    artifact documents the whole multi-tree creation"). The
+    paired `seed-revision.md` is deferred to the next TDD cycle.
+    """
+    intent_text = "capture this verbatim as motivation"
+    payload: dict[str, object] = {
+        "template": "livespec",
+        "files": [
+            {"path": "SPECIFICATION/spec.md", "content": "stub spec"},
+        ],
+        "intent": intent_text,
+        "sub_specs": [],
+    }
+    payload_path = tmp_path / "seed_input.json"
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(payload_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"seed wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    seed_proposal = tmp_path / "SPECIFICATION" / "history" / "v001" / "proposed_changes" / "seed.md"
+    assert seed_proposal.exists(), (
+        f"auto-captured seed.md {seed_proposal} not written; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    content = seed_proposal.read_text(encoding="utf-8")
+
+    # Front-matter delimiters and required keys.
+    front_matter_match = re.match(r"^---\n(.*?)\n---\n", content, flags=re.DOTALL)
+    assert (
+        front_matter_match is not None
+    ), f"seed.md missing YAML front-matter delimited by `---`; content={content!r}"
+    front_matter = front_matter_match.group(1)
+    assert (
+        "topic: seed" in front_matter
+    ), f"seed.md front-matter missing `topic: seed`; front_matter={front_matter!r}"
+    assert (
+        "author: livespec-seed" in front_matter
+    ), f"seed.md front-matter missing `author: livespec-seed`; front_matter={front_matter!r}"
+    created_at_match = re.search(r"^created_at: (\S+)$", front_matter, flags=re.MULTILINE)
+    assert (
+        created_at_match is not None
+    ), f"seed.md front-matter missing `created_at:`; front_matter={front_matter!r}"
+    # ISO-8601 seconds in UTC: parses cleanly with UTC timezone.
+    parsed_ts = datetime.fromisoformat(created_at_match.group(1).replace("Z", "+00:00"))
+    assert parsed_ts.utcoffset() == timezone.utc.utcoffset(
+        parsed_ts
+    ), f"seed.md created_at not UTC-anchored; created_at={created_at_match.group(1)!r}"
+
+    # Body sections in order: ## Proposal: seed → its sub-headings.
+    assert (
+        "## Proposal: seed" in content
+    ), f"seed.md missing `## Proposal: seed` heading; content={content!r}"
+    assert (
+        "### Target specification files" in content
+    ), f"seed.md missing `### Target specification files` heading; content={content!r}"
+    assert (
+        "SPECIFICATION/spec.md" in content
+    ), f"seed.md does not list SPECIFICATION/spec.md as target; content={content!r}"
+    assert "### Summary" in content, f"seed.md missing `### Summary` heading; content={content!r}"
+    assert (
+        "Initial seed of the specification from user-provided intent." in content
+    ), f"seed.md missing canonical Summary text; content={content!r}"
+    assert (
+        "### Motivation" in content
+    ), f"seed.md missing `### Motivation` heading; content={content!r}"
+    assert (
+        "### Proposed Changes" in content
+    ), f"seed.md missing `### Proposed Changes` heading; content={content!r}"
+    # Verbatim intent appears under both Motivation and Proposed Changes
+    # (one occurrence each — two total).
+    expected_intent_occurrences = 2
+    assert content.count(intent_text) >= expected_intent_occurrences, (
+        f"seed.md does not include verbatim intent under both Motivation and "
+        f"Proposed Changes (expected >={expected_intent_occurrences} occurrences "
+        f"of {intent_text!r}); content={content!r}"
     )
