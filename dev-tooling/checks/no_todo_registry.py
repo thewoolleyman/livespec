@@ -60,7 +60,7 @@ def main() -> int:
         if entry.get("test") != _TODO_LITERAL:
             continue
         log.error(
-            "registry entry has `test: \"TODO\"` (release-gate fail)",
+            'registry entry has `test: "TODO"` (release-gate fail)',
             path=str(registry_file.relative_to(cwd)),
             index=index,
             heading=entry.get("heading"),

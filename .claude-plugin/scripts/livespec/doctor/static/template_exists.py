@@ -64,9 +64,7 @@ def run(*, ctx: DoctorContext) -> Finding:
     config_path = ctx.project_root / ".livespec.jsonc"
     config = json.loads(config_path.read_text(encoding="utf-8"))
     template_value = config["template"]
-    resolved = _resolve_template_path(
-        project_root=ctx.project_root, template_value=template_value
-    )
+    resolved = _resolve_template_path(project_root=ctx.project_root, template_value=template_value)
     if resolved.is_dir():
         return Finding(
             check_id=f"doctor-{SLUG}",
@@ -79,9 +77,7 @@ def run(*, ctx: DoctorContext) -> Finding:
     return Finding(
         check_id=f"doctor-{SLUG}",
         status="fail",
-        message=(
-            f"template '{template_value}' resolved to {resolved} which does not exist"
-        ),
+        message=(f"template '{template_value}' resolved to {resolved} which does not exist"),
         path=None,
         line=None,
         spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),

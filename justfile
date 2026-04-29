@@ -94,24 +94,24 @@ check:
 # ---------------------------------------------------------------
 
 check-lint:
-    ruff check .
+    uv run ruff check .
 
 check-format:
-    ruff format --check .
+    uv run ruff format --check .
 
 check-types:
-    pyright
+    uv run pyright
 
 check-complexity:
     #!/usr/bin/env bash
     set -uo pipefail
     rc=0
-    ruff check --select C90,PLR . || rc=$?
-    python3 dev-tooling/checks/file_lloc.py || rc=$?
+    uv run ruff check --select C90,PLR . || rc=$?
+    uv run python3 dev-tooling/checks/file_lloc.py || rc=$?
     exit $rc
 
 check-imports-architecture:
-    PYTHONPATH=.claude-plugin/scripts lint-imports
+    PYTHONPATH=.claude-plugin/scripts uv run lint-imports
 
 check-tests:
     uv run pytest
@@ -125,70 +125,70 @@ check-coverage:
 # ---------------------------------------------------------------
 
 check-private-calls:
-    python3 dev-tooling/checks/private_calls.py
+    uv run python3 dev-tooling/checks/private_calls.py
 
 check-global-writes:
-    python3 dev-tooling/checks/global_writes.py
+    uv run python3 dev-tooling/checks/global_writes.py
 
 check-rop-pipeline-shape:
-    python3 dev-tooling/checks/rop_pipeline_shape.py
+    uv run python3 dev-tooling/checks/rop_pipeline_shape.py
 
 check-supervisor-discipline:
-    python3 dev-tooling/checks/supervisor_discipline.py
+    uv run python3 dev-tooling/checks/supervisor_discipline.py
 
 check-no-raise-outside-io:
-    python3 dev-tooling/checks/no_raise_outside_io.py
+    uv run python3 dev-tooling/checks/no_raise_outside_io.py
 
 check-no-except-outside-io:
-    python3 dev-tooling/checks/no_except_outside_io.py
+    uv run python3 dev-tooling/checks/no_except_outside_io.py
 
 check-public-api-result-typed:
-    python3 dev-tooling/checks/public_api_result_typed.py
+    uv run python3 dev-tooling/checks/public_api_result_typed.py
 
 check-schema-dataclass-pairing:
-    python3 dev-tooling/checks/schema_dataclass_pairing.py
+    uv run python3 dev-tooling/checks/schema_dataclass_pairing.py
 
 check-main-guard:
-    python3 dev-tooling/checks/main_guard.py
+    uv run python3 dev-tooling/checks/main_guard.py
 
 check-wrapper-shape:
-    python3 dev-tooling/checks/wrapper_shape.py
+    uv run python3 dev-tooling/checks/wrapper_shape.py
 
 check-keyword-only-args:
-    python3 dev-tooling/checks/keyword_only_args.py
+    uv run python3 dev-tooling/checks/keyword_only_args.py
 
 check-match-keyword-only:
-    python3 dev-tooling/checks/match_keyword_only.py
+    uv run python3 dev-tooling/checks/match_keyword_only.py
 
 check-no-inheritance:
-    python3 dev-tooling/checks/no_inheritance.py
+    uv run python3 dev-tooling/checks/no_inheritance.py
 
 check-assert-never-exhaustiveness:
-    python3 dev-tooling/checks/assert_never_exhaustiveness.py
+    uv run python3 dev-tooling/checks/assert_never_exhaustiveness.py
 
 check-newtype-domain-primitives:
-    python3 dev-tooling/checks/newtype_domain_primitives.py
+    uv run python3 dev-tooling/checks/newtype_domain_primitives.py
 
 check-all-declared:
-    python3 dev-tooling/checks/all_declared.py
+    uv run python3 dev-tooling/checks/all_declared.py
 
 check-no-write-direct:
-    python3 dev-tooling/checks/no_write_direct.py
+    uv run python3 dev-tooling/checks/no_write_direct.py
 
 check-pbt-coverage-pure-modules:
-    python3 dev-tooling/checks/pbt_coverage_pure_modules.py
+    uv run python3 dev-tooling/checks/pbt_coverage_pure_modules.py
 
 check-claude-md-coverage:
-    python3 dev-tooling/checks/claude_md_coverage.py
+    uv run python3 dev-tooling/checks/claude_md_coverage.py
 
 check-heading-coverage:
-    python3 dev-tooling/checks/heading_coverage.py
+    uv run python3 dev-tooling/checks/heading_coverage.py
 
 check-vendor-manifest:
-    python3 dev-tooling/checks/vendor_manifest.py
+    uv run python3 dev-tooling/checks/vendor_manifest.py
 
 check-no-direct-tool-invocation:
-    python3 dev-tooling/checks/no_direct_tool_invocation.py
+    uv run python3 dev-tooling/checks/no_direct_tool_invocation.py
 
 check-tools:
     uv run python3 dev-tooling/checks/check_tools.py
@@ -219,25 +219,25 @@ e2e-test-claude-code-real:
 # ---------------------------------------------------------------
 
 check-mutation:
-    python3 dev-tooling/checks/check_mutation.py
+    uv run python3 dev-tooling/checks/check_mutation.py
 
 check-no-todo-registry:
-    python3 dev-tooling/checks/no_todo_registry.py
+    uv run python3 dev-tooling/checks/no_todo_registry.py
 
 # Phase 4: informational only (always rc=0); Phase 5 exit flips to
 # hard `just check` gate. NOT in the `check` aggregate at Phase 4.
 check-red-output-in-commit:
-    python3 dev-tooling/checks/red_output_in_commit.py
+    uv run python3 dev-tooling/checks/red_output_in_commit.py
 
 # ---------------------------------------------------------------
 # Mutating targets (opt-in; not run in CI).
 # ---------------------------------------------------------------
 
 fmt:
-    ruff format .
+    uv run ruff format .
 
 lint-fix:
-    ruff check --fix .
+    uv run ruff check --fix .
 
 vendor-update lib:
-    python3 dev-tooling/vendor_update.py {{lib}}
+    uv run python3 dev-tooling/vendor_update.py {{lib}}

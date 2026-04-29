@@ -66,7 +66,7 @@ def main() -> int:
     for entry in libraries:
         name = entry.get("name")
         upstream_ref = entry.get("upstream_ref")
-        if upstream_ref == _PLACEHOLDER or upstream_ref == "":
+        if upstream_ref in (_PLACEHOLDER, ""):
             log.error(
                 "library entry has placeholder/empty upstream_ref",
                 path=str(manifest_file.relative_to(cwd)),

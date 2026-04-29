@@ -79,7 +79,8 @@ def test_rop_pipeline_shape_rejects_class_with_two_public_methods(*, tmp_path: P
 
 
 def test_rop_pipeline_shape_accepts_class_with_one_public_and_private_helpers(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `@rop_pipeline` class with one public method + private helpers is accepted.
 

@@ -33,7 +33,8 @@ _PUBLIC_API_RESULT_TYPED = _REPO_ROOT / "dev-tooling" / "checks" / "public_api_r
 
 
 def test_public_api_result_typed_rejects_int_returning_public_without_railway(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A public `-> int` function with no railway decorator is rejected.
 
@@ -81,7 +82,8 @@ def test_public_api_result_typed_rejects_int_returning_public_without_railway(
 
 
 def test_public_api_result_typed_accepts_safe_decorated_int_function(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A public `-> int` function decorated with `@safe` is accepted.
 

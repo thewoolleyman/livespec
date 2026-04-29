@@ -40,16 +40,16 @@ def test_vendor_manifest_rejects_placeholder_upstream_ref(*, tmp_path: Path) -> 
     surface the offending library name.
     """
     (tmp_path / ".vendor.jsonc").write_text(
-        '{\n'
+        "{\n"
         '  "libraries": [\n'
-        '    {\n'
+        "    {\n"
         '      "name": "fakelib",\n'
         '      "upstream_url": "https://example.com/fakelib",\n'
         '      "upstream_ref": "REPLACE_ME",\n'
         '      "vendored_at": "2026-04-29T00:00:00Z"\n'
-        '    }\n'
-        '  ]\n'
-        '}\n',
+        "    }\n"
+        "  ]\n"
+        "}\n",
         encoding="utf-8",
     )
 
@@ -83,16 +83,16 @@ def test_vendor_manifest_accepts_non_placeholder_entries(*, tmp_path: Path) -> N
     check must walk and exit 0.
     """
     (tmp_path / ".vendor.jsonc").write_text(
-        '{\n'
+        "{\n"
         '  "libraries": [\n'
-        '    {\n'
+        "    {\n"
         '      "name": "structlog",\n'
         '      "upstream_url": "https://github.com/hynek/structlog",\n'
         '      "upstream_ref": "25.5.0",\n'
         '      "vendored_at": "2026-04-26T06:05:33Z"\n'
-        '    }\n'
-        '  ]\n'
-        '}\n',
+        "    }\n"
+        "  ]\n"
+        "}\n",
         encoding="utf-8",
     )
 

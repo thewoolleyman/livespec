@@ -65,9 +65,7 @@ def run(*, ctx: DoctorContext) -> Finding:
         return Finding(
             check_id=f"doctor-{SLUG}",
             status="pass",
-            message=(
-                "proposed_changes/ and history/ exist with skill-owned README.md"
-            ),
+            message=("proposed_changes/ and history/ exist with skill-owned README.md"),
             path=None,
             line=None,
             spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
@@ -75,10 +73,7 @@ def run(*, ctx: DoctorContext) -> Finding:
     return Finding(
         check_id=f"doctor-{SLUG}",
         status="fail",
-        message=(
-            "missing required artifact(s) under <spec-root>/: "
-            + ", ".join(missing)
-        ),
+        message=("missing required artifact(s) under <spec-root>/: " + ", ".join(missing)),
         path=None,
         line=None,
         spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),

@@ -107,16 +107,12 @@ def run(*, ctx: DoctorContext) -> Finding:
         project_root=ctx.project_root, template_value=template_value
     )
     required_rel_paths = _walk_template_required_paths(template_dir=template_dir)
-    missing = [
-        rel for rel in required_rel_paths if not (ctx.project_root / rel).is_file()
-    ]
+    missing = [rel for rel in required_rel_paths if not (ctx.project_root / rel).is_file()]
     if not missing:
         return Finding(
             check_id=f"doctor-{SLUG}",
             status="pass",
-            message=(
-                f"all {len(required_rel_paths)} template-required files present"
-            ),
+            message=(f"all {len(required_rel_paths)} template-required files present"),
             path=None,
             line=None,
             spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),

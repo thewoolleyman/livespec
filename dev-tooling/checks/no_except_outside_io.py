@@ -55,11 +55,7 @@ def _is_io_path(*, py_file: Path, livespec_root: Path) -> bool:
 def _is_supervisor_path(*, py_file: Path, livespec_root: Path) -> bool:
     relative = py_file.relative_to(livespec_root)
     parts = relative.parts
-    if (
-        parts[:1] == ("commands",)
-        and len(parts) == _COMMANDS_DEPTH
-        and parts[1].endswith(".py")
-    ):
+    if parts[:1] == ("commands",) and len(parts) == _COMMANDS_DEPTH and parts[1].endswith(".py"):
         return True
     return parts == ("doctor", "run_static.py")
 

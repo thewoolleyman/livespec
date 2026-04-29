@@ -68,9 +68,7 @@ from livespec.schemas.dataclasses.finding import Finding
 __all__: list[str] = ["main"]
 
 
-_MAIN_TREE_ONLY_SLUGS: frozenset[str] = frozenset(
-    {"template-exists", "template-files-present"}
-)
+_MAIN_TREE_ONLY_SLUGS: frozenset[str] = frozenset({"template-exists", "template-files-present"})
 """Slugs for checks that run ONLY when `template_name == "main"`
 per PROPOSAL.md lines 2534-2538. All other Phase-3 checks run
 uniformly per tree."""

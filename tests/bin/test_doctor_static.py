@@ -46,9 +46,7 @@ __all__: list[str] = []
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_DOCTOR_STATIC_WRAPPER = (
-    _REPO_ROOT / ".claude-plugin" / "scripts" / "bin" / "doctor_static.py"
-)
+_DOCTOR_STATIC_WRAPPER = _REPO_ROOT / ".claude-plugin" / "scripts" / "bin" / "doctor_static.py"
 _SEED_WRAPPER = _REPO_ROOT / ".claude-plugin" / "scripts" / "bin" / "seed.py"
 
 
@@ -89,9 +87,7 @@ def _seed_minimal_tree(*, tmp_path: Path) -> None:
     )
 
 
-def test_doctor_static_emits_findings_json_against_freshly_seeded_tree(
-    *, tmp_path: Path
-) -> None:
+def test_doctor_static_emits_findings_json_against_freshly_seeded_tree(*, tmp_path: Path) -> None:
     """`doctor_static.py` exits 0 and emits findings JSON against a freshly-seeded tree.
 
     A freshly-seeded `livespec`-template tree (built via `bin/seed.py`
@@ -132,16 +128,16 @@ def test_doctor_static_emits_findings_json_against_freshly_seeded_tree(
     # value is a list.
     stdout = result.stdout
     parsed: object = json.loads(stdout)
-    assert isinstance(parsed, dict), (
-        f"doctor_static stdout must be a JSON object; got {type(parsed).__name__}: {parsed!r}"
-    )
-    assert "findings" in parsed, (
-        f"doctor_static stdout must have a `findings` key; got keys {list(parsed.keys())!r}"
-    )
+    assert isinstance(
+        parsed, dict
+    ), f"doctor_static stdout must be a JSON object; got {type(parsed).__name__}: {parsed!r}"
+    assert (
+        "findings" in parsed
+    ), f"doctor_static stdout must have a `findings` key; got keys {list(parsed.keys())!r}"
     findings = parsed["findings"]
-    assert isinstance(findings, list), (
-        f"`findings` must be a JSON array; got {type(findings).__name__}: {findings!r}"
-    )
+    assert isinstance(
+        findings, list
+    ), f"`findings` must be a JSON array; got {type(findings).__name__}: {findings!r}"
 
 
 def test_doctor_static_emits_pass_finding_for_livespec_jsonc_valid_against_seeded_tree(
@@ -261,9 +257,7 @@ def test_doctor_static_emits_pass_finding_for_template_exists_against_seeded_tre
     findings = parsed["findings"]
     assert isinstance(findings, list)
     template_exists_findings = [
-        f
-        for f in findings
-        if isinstance(f, dict) and f.get("check_id") == "doctor-template-exists"
+        f for f in findings if isinstance(f, dict) and f.get("check_id") == "doctor-template-exists"
     ]
     assert len(template_exists_findings) >= 1, (
         f"expected >=1 finding with check_id 'doctor-template-exists'; "
@@ -419,8 +413,7 @@ def test_doctor_static_emits_pass_finding_for_proposed_changes_and_history_dirs_
     pc_history_findings = [
         f
         for f in findings
-        if isinstance(f, dict)
-        and f.get("check_id") == "doctor-proposed-changes-and-history-dirs"
+        if isinstance(f, dict) and f.get("check_id") == "doctor-proposed-changes-and-history-dirs"
     ]
     assert len(pc_history_findings) >= 1, (
         f"expected >=1 finding with check_id 'doctor-proposed-changes-and-history-dirs'; "
@@ -510,8 +503,7 @@ def test_doctor_static_emits_pass_finding_for_version_directories_complete_again
     vdc_findings = [
         f
         for f in findings
-        if isinstance(f, dict)
-        and f.get("check_id") == "doctor-version-directories-complete"
+        if isinstance(f, dict) and f.get("check_id") == "doctor-version-directories-complete"
     ]
     assert len(vdc_findings) >= 1, (
         f"expected >=1 finding with check_id 'doctor-version-directories-complete'; "
@@ -589,8 +581,7 @@ def test_doctor_static_emits_pass_finding_for_version_contiguity_against_seeded_
     contiguity_findings = [
         f
         for f in findings
-        if isinstance(f, dict)
-        and f.get("check_id") == "doctor-version-contiguity"
+        if isinstance(f, dict) and f.get("check_id") == "doctor-version-contiguity"
     ]
     assert len(contiguity_findings) >= 1, (
         f"expected >=1 finding with check_id 'doctor-version-contiguity'; "
@@ -678,8 +669,7 @@ def test_doctor_static_emits_pass_finding_for_revision_to_proposed_change_pairin
     pairing_findings = [
         f
         for f in findings
-        if isinstance(f, dict)
-        and f.get("check_id") == "doctor-revision-to-proposed-change-pairing"
+        if isinstance(f, dict) and f.get("check_id") == "doctor-revision-to-proposed-change-pairing"
     ]
     assert len(pairing_findings) >= 1, (
         f"expected >=1 finding with check_id 'doctor-revision-to-proposed-change-pairing'; "
@@ -771,8 +761,7 @@ def test_doctor_static_emits_pass_finding_for_proposed_change_topic_format_again
     topic_findings = [
         f
         for f in findings
-        if isinstance(f, dict)
-        and f.get("check_id") == "doctor-proposed-change-topic-format"
+        if isinstance(f, dict) and f.get("check_id") == "doctor-proposed-change-topic-format"
     ]
     assert len(topic_findings) >= 1, (
         f"expected >=1 finding with check_id 'doctor-proposed-change-topic-format'; "
@@ -919,13 +908,9 @@ def test_doctor_static_iterates_main_and_each_sub_spec_tree(*, tmp_path: Path) -
     findings = [f for f in findings_obj if isinstance(f, dict)]
 
     # Findings include both main-tree and sub-spec-tree entries.
-    main_spec_roots = {
-        f["spec_root"] for f in findings if f.get("spec_root") == "SPECIFICATION"
-    }
+    main_spec_roots = {f["spec_root"] for f in findings if f.get("spec_root") == "SPECIFICATION"}
     sub_spec_roots = {
-        f["spec_root"]
-        for f in findings
-        if f.get("spec_root") == "SPECIFICATION/templates/livespec"
+        f["spec_root"] for f in findings if f.get("spec_root") == "SPECIFICATION/templates/livespec"
     }
     assert "SPECIFICATION" in main_spec_roots, (
         f"expected findings with spec_root='SPECIFICATION' (main tree); "
@@ -944,9 +929,7 @@ def test_doctor_static_iterates_main_and_each_sub_spec_tree(*, tmp_path: Path) -
         "doctor-template-files-present",
     }
     for check_id in main_only_check_ids:
-        spec_roots_for_check = {
-            f["spec_root"] for f in findings if f.get("check_id") == check_id
-        }
+        spec_roots_for_check = {f["spec_root"] for f in findings if f.get("check_id") == check_id}
         assert spec_roots_for_check == {"SPECIFICATION"}, (
             f"expected {check_id} to appear ONLY for main spec_root=='SPECIFICATION'; "
             f"got spec_roots={spec_roots_for_check!r}"
@@ -963,9 +946,7 @@ def test_doctor_static_iterates_main_and_each_sub_spec_tree(*, tmp_path: Path) -
         "doctor-proposed-change-topic-format",
     }
     for check_id in uniform_check_ids:
-        spec_roots_for_check = {
-            f["spec_root"] for f in findings if f.get("check_id") == check_id
-        }
+        spec_roots_for_check = {f["spec_root"] for f in findings if f.get("check_id") == check_id}
         assert "SPECIFICATION" in spec_roots_for_check, (
             f"expected {check_id} to appear for main tree; "
             f"got spec_roots={spec_roots_for_check!r}"
@@ -978,7 +959,6 @@ def test_doctor_static_iterates_main_and_each_sub_spec_tree(*, tmp_path: Path) -
     # All findings emitted are pass (the freshly-seeded tree
     # satisfies every applicable check).
     fail_findings = [f for f in findings if f.get("status") == "fail"]
-    assert not fail_findings, (
-        f"expected zero fail findings on freshly-seeded sub-spec tree; "
-        f"got {fail_findings!r}"
-    )
+    assert (
+        not fail_findings
+    ), f"expected zero fail findings on freshly-seeded sub-spec tree; got {fail_findings!r}"

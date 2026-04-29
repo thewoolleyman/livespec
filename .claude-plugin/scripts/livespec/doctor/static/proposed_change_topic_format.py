@@ -94,9 +94,7 @@ _SKILL_OWNED_README = "README.md"
 
 
 def run(*, ctx: DoctorContext) -> Finding:
-    proposed_changes_dir = (
-        ctx.spec_root / "proposed_changes"
-    )
+    proposed_changes_dir = ctx.spec_root / "proposed_changes"
     if not proposed_changes_dir.is_dir():
         return Finding(
             check_id=f"doctor-{SLUG}",

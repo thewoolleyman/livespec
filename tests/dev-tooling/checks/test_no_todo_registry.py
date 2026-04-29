@@ -36,15 +36,15 @@ def test_no_todo_registry_rejects_todo_entry(*, tmp_path: Path) -> None:
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir(parents=True)
     (tests_dir / "heading-coverage.json").write_text(
-        '[\n'
-        '  {\n'
+        "[\n"
+        "  {\n"
         '    "spec_root": "SPECIFICATION",\n'
         '    "spec_file": "spec.md",\n'
         '    "heading": "Foo rule",\n'
         '    "test": "TODO",\n'
         '    "reason": "rule added in v015; test pending"\n'
-        '  }\n'
-        ']\n',
+        "  }\n"
+        "]\n",
         encoding="utf-8",
     )
 
@@ -79,14 +79,14 @@ def test_no_todo_registry_accepts_only_real_test_entries(*, tmp_path: Path) -> N
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir(parents=True)
     (tests_dir / "heading-coverage.json").write_text(
-        '[\n'
-        '  {\n'
+        "[\n"
+        "  {\n"
         '    "spec_root": "SPECIFICATION",\n'
         '    "spec_file": "spec.md",\n'
         '    "heading": "Foo rule",\n'
         '    "test": "tests/test_foo.py::test_foo_rule"\n'
-        '  }\n'
-        ']\n',
+        "  }\n"
+        "]\n",
         encoding="utf-8",
     )
 

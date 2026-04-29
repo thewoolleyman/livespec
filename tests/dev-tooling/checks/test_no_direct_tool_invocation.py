@@ -25,9 +25,7 @@ __all__: list[str] = []
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_NO_DIRECT_TOOL_INVOCATION = (
-    _REPO_ROOT / "dev-tooling" / "checks" / "no_direct_tool_invocation.py"
-)
+_NO_DIRECT_TOOL_INVOCATION = _REPO_ROOT / "dev-tooling" / "checks" / "no_direct_tool_invocation.py"
 
 
 def test_no_direct_tool_invocation_rejects_lefthook_pytest_run(*, tmp_path: Path) -> None:
@@ -39,10 +37,7 @@ def test_no_direct_tool_invocation_rejects_lefthook_pytest_run(*, tmp_path: Path
     and surface the offending file.
     """
     (tmp_path / "lefthook.yml").write_text(
-        "pre-commit:\n"
-        "  commands:\n"
-        "    check:\n"
-        "      run: pytest\n",
+        "pre-commit:\n  commands:\n    check:\n      run: pytest\n",
         encoding="utf-8",
     )
 
@@ -77,10 +72,7 @@ def test_no_direct_tool_invocation_accepts_just_targets_only(*, tmp_path: Path) 
     exclusively to `just check`. The check must walk and exit 0.
     """
     (tmp_path / "lefthook.yml").write_text(
-        "pre-commit:\n"
-        "  commands:\n"
-        "    check:\n"
-        "      run: just check\n",
+        "pre-commit:\n  commands:\n    check:\n      run: just check\n",
         encoding="utf-8",
     )
     workflows_dir = tmp_path / ".github" / "workflows"

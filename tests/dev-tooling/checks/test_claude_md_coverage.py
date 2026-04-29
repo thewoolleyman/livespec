@@ -37,7 +37,7 @@ def test_claude_md_coverage_rejects_scripts_dir_missing_claude_md(*, tmp_path: P
     orphan_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "orphan_dir"
     orphan_dir.mkdir(parents=True)
     (orphan_dir / "code.py").write_text(
-        'from __future__ import annotations\n\n__all__: list[str] = []\n',
+        "from __future__ import annotations\n\n__all__: list[str] = []\n",
         encoding="utf-8",
     )
     # Note: NO CLAUDE.md inside orphan_dir/. That's the violation.

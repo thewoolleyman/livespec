@@ -53,8 +53,11 @@ def _decorator_matches(*, decorator: ast.expr) -> bool:
     return False
 
 
+_DUNDER_MIN_LENGTH = 4
+
+
 def _is_dunder(*, name: str) -> bool:
-    return name.startswith("__") and name.endswith("__") and len(name) >= 4
+    return name.startswith("__") and name.endswith("__") and len(name) >= _DUNDER_MIN_LENGTH
 
 
 def _public_method_names(*, class_node: ast.ClassDef) -> list[str]:

@@ -32,9 +32,7 @@ __all__: list[str] = []
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_NEWTYPE_DOMAIN_PRIMITIVES = (
-    _REPO_ROOT / "dev-tooling" / "checks" / "newtype_domain_primitives.py"
-)
+_NEWTYPE_DOMAIN_PRIMITIVES = _REPO_ROOT / "dev-tooling" / "checks" / "newtype_domain_primitives.py"
 
 
 def test_newtype_domain_primitives_rejects_run_id_annotated_str(*, tmp_path: Path) -> None:
@@ -83,7 +81,8 @@ def test_newtype_domain_primitives_rejects_run_id_annotated_str(*, tmp_path: Pat
 
 
 def test_newtype_domain_primitives_accepts_run_id_annotated_runid(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A function param `run_id: RunId` is accepted.
 

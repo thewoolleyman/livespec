@@ -49,9 +49,7 @@ def _is_carved_out(*, dir_path: Path, root: Path) -> bool:
         return True
     # fixtures is carved at any depth under tests/ (its subtree, not the
     # fixtures dir itself which gets the optional carve-out per spec).
-    if root == _TESTS_ROOT and _FIXTURES_NAME in parts:
-        return True
-    return False
+    return root == _TESTS_ROOT and _FIXTURES_NAME in parts
 
 
 def _iter_required_dirs(*, root: Path) -> list[Path]:

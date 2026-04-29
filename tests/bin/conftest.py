@@ -31,9 +31,7 @@ def _stub_module(*, name: str, **attrs: object) -> types.ModuleType:
 
 
 @pytest.fixture
-def wrapper_runner(
-    *, monkeypatch: pytest.MonkeyPatch
-) -> Callable[[str, str, int], None]:
+def wrapper_runner(*, monkeypatch: pytest.MonkeyPatch) -> Callable[[str, str, int], None]:
     """Return a callable `(wrapper_filename, main_module, expected_exit) -> None`.
 
     Pre-populates `sys.modules['_bootstrap']` with a no-op `bootstrap`

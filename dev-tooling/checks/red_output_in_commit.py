@@ -42,9 +42,10 @@ _GIT_LOG_FORMAT = "%H%x00%B%x00END_OF_COMMIT%x00"
 
 
 def _collect_redo_commits(*, cwd: Path) -> list[tuple[str, str]]:
-    # S603/S607: argv is a fixed list of literal git args; no untrusted input.
-    result = subprocess.run(  # noqa: S603, S607
-        ["git", "log", f"--format={_GIT_LOG_FORMAT}"],
+    # S603/S607: argv is a fixed list of literal git args; bare `git` is
+    # the canonical invocation per system PATH; no untrusted input.
+    result = subprocess.run(  # noqa: S603
+        ["git", "log", f"--format={_GIT_LOG_FORMAT}"],  # noqa: S607
         cwd=str(cwd),
         capture_output=True,
         text=True,

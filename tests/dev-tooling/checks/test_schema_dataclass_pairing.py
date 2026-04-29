@@ -82,7 +82,8 @@ def test_schema_dataclass_pairing_rejects_dataclass_without_schema(*, tmp_path: 
 
 
 def test_schema_dataclass_pairing_accepts_dataclass_with_paired_schema(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A dataclass with a paired schema file is accepted.
 
@@ -107,7 +108,8 @@ def test_schema_dataclass_pairing_accepts_dataclass_with_paired_schema(
         encoding="utf-8",
     )
     (schemas_dir / "widget.schema.json").write_text(
-        '{"$id": "widget", "type": "object"}\n', encoding="utf-8",
+        '{"$id": "widget", "type": "object"}\n',
+        encoding="utf-8",
     )
 
     # S603: argv is a fixed list (sys.executable + repo-controlled

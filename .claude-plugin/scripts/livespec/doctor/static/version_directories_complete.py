@@ -114,8 +114,7 @@ def _list_version_directories(*, history_dir: Path) -> list[Path]:
     if not history_dir.is_dir():
         return []
     return sorted(
-        path for path in history_dir.iterdir()
-        if path.is_dir() and _VERSION_DIR_RE.match(path.name)
+        path for path in history_dir.iterdir() if path.is_dir() and _VERSION_DIR_RE.match(path.name)
     )
 
 
@@ -142,17 +141,13 @@ def run(*, ctx: DoctorContext) -> Finding:
     missing: list[str] = []
     for version_dir in version_dirs:
         missing.extend(
-            _missing_in_version_dir(
-                version_dir=version_dir, required_rel_paths=required_rel_paths
-            )
+            _missing_in_version_dir(version_dir=version_dir, required_rel_paths=required_rel_paths)
         )
     if not missing:
         return Finding(
             check_id=f"doctor-{SLUG}",
             status="pass",
-            message=(
-                f"all {len(version_dirs)} version director(y/ies) complete"
-            ),
+            message=(f"all {len(version_dirs)} version director(y/ies) complete"),
             path=None,
             line=None,
             spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
@@ -161,8 +156,7 @@ def run(*, ctx: DoctorContext) -> Finding:
         check_id=f"doctor-{SLUG}",
         status="fail",
         message=(
-            f"{len(missing)} missing artifact(s) under <spec-root>/history/: "
-            + ", ".join(missing)
+            f"{len(missing)} missing artifact(s) under <spec-root>/history/: " + ", ".join(missing)
         ),
         path=None,
         line=None,

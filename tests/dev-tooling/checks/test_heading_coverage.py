@@ -68,7 +68,8 @@ def test_heading_coverage_rejects_uncovered_heading(*, tmp_path: Path) -> None:
 
 
 def test_heading_coverage_accepts_empty_registry_when_no_spec_tree(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """Empty registry + no spec tree is accepted (pre-Phase-6 baseline).
 

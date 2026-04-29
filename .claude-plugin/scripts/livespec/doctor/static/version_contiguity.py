@@ -123,8 +123,7 @@ def run(*, ctx: DoctorContext) -> Finding:
         check_id=f"doctor-{SLUG}",
         status="fail",
         message=(
-            f"version sequence has gap(s) under <spec-root>/history/: "
-            f"missing {missing_names}"
+            f"version sequence has gap(s) under <spec-root>/history/: missing {missing_names}"
         ),
         path=None,
         line=None,

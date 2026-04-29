@@ -129,10 +129,9 @@ def _seed_main_plus_two_sub_specs(*, tmp_path: Path) -> None:
         argv=[sys.executable, str(_SEED_WRAPPER), "--seed-json", str(seed_input)],
         cwd=tmp_path,
     )
-    assert result.returncode == 0, (
-        f"seed exited {result.returncode}; "
-        f"stdout={result.stdout!r} stderr={result.stderr!r}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"seed exited {result.returncode}; stdout={result.stdout!r} stderr={result.stderr!r}"
 
 
 def _propose_change_in(*, tmp_path: Path, spec_target: str, topic: str) -> None:
@@ -199,10 +198,9 @@ def _revise_in(*, tmp_path: Path, spec_target: str, topic: str) -> None:
         ],
         cwd=tmp_path,
     )
-    assert result.returncode == 0, (
-        f"revise exited {result.returncode}; "
-        f"stdout={result.stdout!r} stderr={result.stderr!r}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"revise exited {result.returncode}; stdout={result.stdout!r} stderr={result.stderr!r}"
 
 
 def test_phase_3_exit_criterion_round_trip_main_and_sub_spec(  # noqa: PLR0915
@@ -231,46 +229,42 @@ def test_phase_3_exit_criterion_round_trip_main_and_sub_spec(  # noqa: PLR0915
     minimal_sub_root = main_root / "templates" / "minimal"
 
     assert livespec_jsonc.is_file(), "expected .livespec.jsonc at repo root"
-    assert (main_root / "history" / "v001" / "spec.md").is_file(), (
-        "expected main history/v001/ snapshot"
-    )
-    assert (livespec_sub_root / "history" / "v001" / "spec.md").is_file(), (
-        "expected livespec sub-spec history/v001/ snapshot"
-    )
-    assert (minimal_sub_root / "history" / "v001" / "spec.md").is_file(), (
-        "expected minimal sub-spec history/v001/ snapshot"
-    )
+    assert (
+        main_root / "history" / "v001" / "spec.md"
+    ).is_file(), "expected main history/v001/ snapshot"
+    assert (
+        livespec_sub_root / "history" / "v001" / "spec.md"
+    ).is_file(), "expected livespec sub-spec history/v001/ snapshot"
+    assert (
+        minimal_sub_root / "history" / "v001" / "spec.md"
+    ).is_file(), "expected minimal sub-spec history/v001/ snapshot"
 
     # Step 2: propose-change against MAIN.
     main_topic = "main-roundtrip-proposal"
-    _propose_change_in(
-        tmp_path=tmp_path, spec_target="SPECIFICATION", topic=main_topic
-    )
+    _propose_change_in(tmp_path=tmp_path, spec_target="SPECIFICATION", topic=main_topic)
     main_in_flight = main_root / "proposed_changes" / f"{main_topic}.md"
-    assert main_in_flight.is_file(), (
-        f"expected in-flight proposal {main_in_flight} after propose-change"
-    )
+    assert (
+        main_in_flight.is_file()
+    ), f"expected in-flight proposal {main_in_flight} after propose-change"
 
     # Step 3: revise main.
     _revise_in(tmp_path=tmp_path, spec_target="SPECIFICATION", topic=main_topic)
     main_v002 = main_root / "history" / "v002"
     assert main_v002.is_dir(), "expected main history/v002/ after revise"
-    assert (main_v002 / "proposed_changes" / f"{main_topic}.md").is_file(), (
-        "expected revise to byte-move proposed_changes/<topic>.md into v002"
-    )
+    assert (
+        main_v002 / "proposed_changes" / f"{main_topic}.md"
+    ).is_file(), "expected revise to byte-move proposed_changes/<topic>.md into v002"
     assert (
         main_v002 / "proposed_changes" / f"{main_topic}-revision.md"
     ).is_file(), "expected revise to write paired <topic>-revision.md into v002"
-    assert not main_in_flight.exists(), (
-        "expected in-flight proposal moved out of working directory after revise"
-    )
+    assert (
+        not main_in_flight.exists()
+    ), "expected in-flight proposal moved out of working directory after revise"
 
     # Step 4 (v020 Q3 smoke): propose-change against LIVESPEC SUB-SPEC.
     sub_spec_target = "SPECIFICATION/templates/livespec"
     sub_topic = "sub-spec-roundtrip-proposal"
-    _propose_change_in(
-        tmp_path=tmp_path, spec_target=sub_spec_target, topic=sub_topic
-    )
+    _propose_change_in(tmp_path=tmp_path, spec_target=sub_spec_target, topic=sub_topic)
     sub_in_flight = livespec_sub_root / "proposed_changes" / f"{sub_topic}.md"
     assert sub_in_flight.is_file(), (
         f"expected sub-spec in-flight proposal {sub_in_flight} after propose-change "
@@ -285,22 +279,18 @@ def test_phase_3_exit_criterion_round_trip_main_and_sub_spec(  # noqa: PLR0915
         f"--spec-target {sub_spec_target}; this is the v020 Q3 sub-spec "
         f"routing smoke ratchet"
     )
-    assert (sub_v002 / "proposed_changes" / f"{sub_topic}.md").is_file(), (
-        "expected sub-spec revise to byte-move proposed_changes/<topic>.md into v002"
-    )
+    assert (
+        sub_v002 / "proposed_changes" / f"{sub_topic}.md"
+    ).is_file(), "expected sub-spec revise to byte-move proposed_changes/<topic>.md into v002"
     assert (
         sub_v002 / "proposed_changes" / f"{sub_topic}-revision.md"
-    ).is_file(), (
-        "expected sub-spec revise to write paired <topic>-revision.md into v002"
-    )
-    assert not sub_in_flight.exists(), (
-        "expected sub-spec in-flight proposal moved out of working directory after revise"
-    )
+    ).is_file(), "expected sub-spec revise to write paired <topic>-revision.md into v002"
+    assert (
+        not sub_in_flight.exists()
+    ), "expected sub-spec in-flight proposal moved out of working directory after revise"
 
     # Step 6: doctor_static — exit 0 + every finding status="pass".
-    result = _run_wrapper(
-        argv=[sys.executable, str(_DOCTOR_STATIC_WRAPPER)], cwd=tmp_path
-    )
+    result = _run_wrapper(argv=[sys.executable, str(_DOCTOR_STATIC_WRAPPER)], cwd=tmp_path)
     assert result.returncode == 0, (
         f"doctor_static exited {result.returncode} on final round-trip state; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
@@ -311,19 +301,18 @@ def test_phase_3_exit_criterion_round_trip_main_and_sub_spec(  # noqa: PLR0915
     assert isinstance(findings_obj, list)
     findings = [f for f in findings_obj if isinstance(f, dict)]
     fail_findings = [f for f in findings if f.get("status") == "fail"]
-    assert not fail_findings, (
-        f"expected zero fail findings on final round-trip state; "
-        f"got {fail_findings!r}"
-    )
+    assert (
+        not fail_findings
+    ), f"expected zero fail findings on final round-trip state; got {fail_findings!r}"
 
     # Per-tree presence: at least one finding for each spec tree.
     spec_roots_seen = {f.get("spec_root") for f in findings}
-    assert "SPECIFICATION" in spec_roots_seen, (
-        f"expected main-tree findings; got spec_roots={spec_roots_seen!r}"
-    )
-    assert "SPECIFICATION/templates/livespec" in spec_roots_seen, (
-        f"expected livespec sub-spec-tree findings; got spec_roots={spec_roots_seen!r}"
-    )
-    assert "SPECIFICATION/templates/minimal" in spec_roots_seen, (
-        f"expected minimal sub-spec-tree findings; got spec_roots={spec_roots_seen!r}"
-    )
+    assert (
+        "SPECIFICATION" in spec_roots_seen
+    ), f"expected main-tree findings; got spec_roots={spec_roots_seen!r}"
+    assert (
+        "SPECIFICATION/templates/livespec" in spec_roots_seen
+    ), f"expected livespec sub-spec-tree findings; got spec_roots={spec_roots_seen!r}"
+    assert (
+        "SPECIFICATION/templates/minimal" in spec_roots_seen
+    ), f"expected minimal sub-spec-tree findings; got spec_roots={spec_roots_seen!r}"

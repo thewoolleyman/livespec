@@ -124,9 +124,7 @@ def run(*, ctx: DoctorContext) -> Finding:
     paired_total = 0
     orphans: list[str] = []
     for proposed_changes_dir in proposed_changes_dirs:
-        paired_count, dir_orphans = _scan_pairings(
-            proposed_changes_dir=proposed_changes_dir
-        )
+        paired_count, dir_orphans = _scan_pairings(proposed_changes_dir=proposed_changes_dir)
         paired_total += paired_count
         orphans.extend(dir_orphans)
     if not orphans:
@@ -144,9 +142,7 @@ def run(*, ctx: DoctorContext) -> Finding:
     return Finding(
         check_id=f"doctor-{SLUG}",
         status="fail",
-        message=(
-            f"{len(orphans)} orphan revision file(s): " + "; ".join(orphans)
-        ),
+        message=(f"{len(orphans)} orphan revision file(s): " + "; ".join(orphans)),
         path=None,
         line=None,
         spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),

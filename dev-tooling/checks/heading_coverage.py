@@ -99,7 +99,8 @@ def main() -> int:
     cwd = Path.cwd()
     registry_file = cwd / _REGISTRY_PATH
     if registry_file.is_file():
-        registry = cast("list[dict[str, object]]", json.loads(registry_file.read_text(encoding="utf-8")))
+        raw = registry_file.read_text(encoding="utf-8")
+        registry = cast("list[dict[str, object]]", json.loads(raw))
     else:
         registry = []
     keys = _registry_keys(registry=registry)

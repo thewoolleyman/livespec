@@ -23,9 +23,7 @@ __all__: list[str] = []
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_PBT_COVERAGE_PURE_MODULES = (
-    _REPO_ROOT / "dev-tooling" / "checks" / "pbt_coverage_pure_modules.py"
-)
+_PBT_COVERAGE_PURE_MODULES = _REPO_ROOT / "dev-tooling" / "checks" / "pbt_coverage_pure_modules.py"
 
 
 def test_pbt_coverage_pure_modules_rejects_test_without_given(*, tmp_path: Path) -> None:
@@ -42,7 +40,7 @@ def test_pbt_coverage_pure_modules_rejects_test_without_given(*, tmp_path: Path)
     (parse_dir / "test_jsonc.py").write_text(
         "from __future__ import annotations\n"
         "\n"
-        '__all__: list[str] = []\n'
+        "__all__: list[str] = []\n"
         "\n"
         "\n"
         "def test_plain() -> None:\n"
@@ -89,7 +87,7 @@ def test_pbt_coverage_pure_modules_accepts_test_with_given(*, tmp_path: Path) ->
         "from hypothesis import given\n"
         "from hypothesis import strategies as st\n"
         "\n"
-        '__all__: list[str] = []\n'
+        "__all__: list[str] = []\n"
         "\n"
         "\n"
         "@given(x=st.integers())\n"

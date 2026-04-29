@@ -34,11 +34,11 @@ _RED_OUTPUT_IN_COMMIT = _REPO_ROOT / "dev-tooling" / "checks" / "red_output_in_c
 
 
 def _git(*, cwd: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
-    full = ["git", *args]
-    # S603: argv is a fixed list (literal git binary + repo-controlled
-    # args); no untrusted shell input.
-    return subprocess.run(  # noqa: S603, S607
-        full,
+    # S603/S607: argv is a fixed list (literal git binary + repo-controlled
+    # args); bare `git` is the canonical invocation per system PATH;
+    # no untrusted shell input.
+    return subprocess.run(  # noqa: S603
+        ["git", *args],  # noqa: S607
         cwd=str(cwd),
         capture_output=True,
         text=True,
@@ -48,7 +48,8 @@ def _git(*, cwd: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def test_red_output_in_commit_warns_but_passes_in_phase4_informational_mode(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A redo commit without `## Red output` warns but exits 0 (Phase 4).
 
