@@ -556,3 +556,82 @@ def test_seed_writes_auto_captured_seed_revision_for_main_spec(*, tmp_path: Path
         f"seed-revision.md does not list SPECIFICATION/spec.md as a resulting change; "
         f"content={content!r}"
     )
+
+
+def test_seed_refuses_when_any_target_file_already_exists(*, tmp_path: Path) -> None:
+    """Re-running `seed.py` against an already-seeded tree refuses with exit 3.
+
+    Per PROPOSAL.md §"`seed`" lines 2065-2071: "if any
+    template-declared target file already exists at its target
+    path, `seed` MUST refuse and list the existing files."
+    Per PROPOSAL.md §"Sub-command lifecycle orchestration" line
+    2128: "Seed's idempotency refusal stays strict; there is no
+    `--force-reseed` flag." Per PROPOSAL.md lines 2839-2843, a
+    `PreconditionError` (which idempotency-refusal is) maps to
+    exit code 3.
+
+    The check happens BEFORE any writes (PROPOSAL.md lines
+    1919-1924: "preserves the non-doctor fail-fast rule ... never
+    silently overwrites a user's manual edit"). This test pins
+    the second seed invocation as exit-3-with-listed-paths; it
+    does NOT pin "the second seed leaves the tree byte-identical
+    to after the first" because that's a stronger no-partial-write
+    guarantee covered separately.
+
+    Template-declared target files per PROPOSAL.md line 1902 are
+    the `payload["files"][].path` (and
+    `payload["sub_specs"][].files[].path`) entries;
+    `.livespec.jsonc` is wrapper-owned, NOT template-declared,
+    and goes through its own three-branch logic (PROPOSAL.md
+    lines 1894-1924). This test relies on at least one
+    template-declared target (`SPECIFICATION/spec.md`) existing
+    post-first-seed to trigger idempotency-refusal.
+    """
+    payload: dict[str, object] = {
+        "template": "livespec",
+        "files": [
+            {"path": "SPECIFICATION/spec.md", "content": "stub spec"},
+        ],
+        "intent": "test seed idempotency refusal",
+        "sub_specs": [],
+    }
+    payload_path = tmp_path / "seed_input.json"
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    # First seed: succeeds.
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    first = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(payload_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert (
+        first.returncode == 0
+    ), f"first seed unexpectedly failed; stdout={first.stdout!r} stderr={first.stderr!r}"
+    assert (tmp_path / ".livespec.jsonc").exists()
+    assert (tmp_path / "SPECIFICATION" / "spec.md").exists()
+
+    # Second seed: must refuse with exit 3 and surface the existing path.
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    second = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(payload_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    expected_precondition_exit_code = 3
+    assert second.returncode == expected_precondition_exit_code, (
+        f"second seed should refuse with exit {expected_precondition_exit_code}; "
+        f"got returncode={second.returncode} "
+        f"stdout={second.stdout!r} stderr={second.stderr!r}"
+    )
+    # Stderr surfaces at least one of the existing template-declared targets
+    # so the user can locate the offending files.
+    assert (
+        "SPECIFICATION/spec.md" in second.stderr
+    ), f"second seed stderr does not list SPECIFICATION/spec.md; stderr={second.stderr!r}"

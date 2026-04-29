@@ -1,5 +1,32 @@
 """livespec.commands.seed — supervisor for `bin/seed.py`.
 
+v032 TDD redo cycle 9: adds the idempotency-refusal pre-check
+per PROPOSAL.md §"`seed`" lines 2065-2071 ("if any
+template-declared target file already exists at its target path,
+`seed` MUST refuse and list the existing files") and §"Sub-command
+lifecycle orchestration" line 2128 ("Seed's idempotency refusal
+stays strict; there is no `--force-reseed` flag"). Before any
+writes, the supervisor collects the project-root-relative paths
+in `payload["files"]` and `payload["sub_specs"][].files`
+(template-declared target files per PROPOSAL.md line 1902 —
+`.livespec.jsonc` is wrapper-owned and goes through its own
+three-branch logic). If any candidate already exists at its
+target path, the supervisor emits a structured-error event via
+`structlog.get_logger().error(...)` (the canonical stderr seam
+per python-skill-script-style-requirements.md §"Logging" /
+§"Output channels" — `sys.stderr.write` is banned in supervisor
+`main()` per the three-designated-surfaces rule, so structlog is
+the only legitimate path) with `existing_files=[...]` kwarg, then
+returns exit code `3` (`PreconditionError` per PROPOSAL.md lines
+2839-2843).
+
+The pre-check runs against fresh-cwd state; partial-write rollback
+on mid-seed failure is a separate behavior covered by a future
+cycle. The check enumerates only template-declared target files;
+auto-captured seed.md + seed-revision.md and history snapshots
+are wrapper-generated artifacts NOT in the strict idempotency
+set per PROPOSAL.md line 1902 wording.
+
 v032 TDD redo cycle 8: completes the auto-captured proposal +
 revision pair at `<spec-root>/history/v001/proposed_changes/`. The
 cycle-7 `seed.md` is now joined by `seed-revision.md` per
@@ -77,8 +104,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
+import structlog
+
 from livespec.io.fs import write_text
 from livespec.io.git import current_user_or_unknown
+
+_PRECONDITION_EXIT_CODE = 3
 
 __all__: list[str] = ["main"]
 
@@ -87,6 +118,17 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="seed", exit_on_error=False)
     parser.add_argument("--seed-json", required=True, type=Path)
     return parser
+
+
+def _existing_target_files(*, cwd: Path, payload: dict[str, object]) -> list[str]:
+    candidates: list[str] = []
+    files = cast("list[dict[str, str]]", payload["files"])
+    candidates.extend(entry["path"] for entry in files)
+    sub_specs = cast("list[dict[str, object]]", payload["sub_specs"])
+    for sub_spec in sub_specs:
+        sub_files = cast("list[dict[str, str]]", sub_spec["files"])
+        candidates.extend(entry["path"] for entry in sub_files)
+    return [path for path in candidates if (cwd / path).exists()]
 
 
 def _write_sub_spec_tree(*, cwd: Path, spec_root: str, sub_spec: dict[str, object]) -> None:
@@ -181,6 +223,15 @@ def main() -> int:
     payload = json.loads(seed_json_path.read_text(encoding="utf-8"))
     cwd = Path.cwd()
     spec_root = "SPECIFICATION"
+    existing = _existing_target_files(cwd=cwd, payload=payload)
+    if existing:
+        structlog.get_logger().error(
+            "seed.idempotency_refusal",
+            error="PreconditionError",
+            message="seed refuses: template-declared target files already exist",
+            existing_files=existing,
+        )
+        return _PRECONDITION_EXIT_CODE
     write_text(path=cwd / ".livespec.jsonc", content="")
     history_v001 = cwd / spec_root / "history" / "v001"
     for entry in payload["files"]:
