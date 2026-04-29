@@ -1,25 +1,27 @@
 """livespec.commands.seed — supervisor for `bin/seed.py`.
 
-v032 TDD redo cycle 5: extends the cycle-4 main-spec materialization
-with `sub_specs[]` working-tree writes per PROPOSAL.md §"`seed`"
-lines 1992-2042 step 3 ("**(v018 Q1)** For each entry in
-`sub_specs[]`, write every `files[]` entry in that sub-spec to its
-`SPECIFICATION/templates/<template_name>/<spec-file>` path"). Each
-`sub_specs[].files[]` entry is written to its declared
-project-root-relative path; `template_name` is currently unused at
-the impl layer because the sub-spec entry already carries the
-fully-qualified path.
+v032 TDD redo cycle 6: extends the cycle-5 sub-spec working-tree
+materialization with the `<sub-spec-root>/history/v001/` snapshot
+per PROPOSAL.md §"`seed`" lines 2014-2028 step 5 ("**(v018 Q1;
+v020 Q1 uniform README)** For each sub-spec tree, create
+`SPECIFICATION/templates/<template_name>/history/v001/` alongside
+the main-spec history — including the sub-spec's own versioned
+spec files and `proposed_changes/` subdir"). For every
+`sub_specs[].files[]` entry whose path is under the sub-spec-root
+(`SPECIFICATION/templates/<template_name>/`), the supervisor
+copies the file to
+`<sub-spec-root>/history/v001/<rel-to-sub-spec-root>` (basename
+per PROPOSAL.md lines 981-986). The empty
+`<sub-spec-root>/history/v001/proposed_changes/` subdir is created
+alongside.
 
-The main-spec write loop and the sub-spec write loop are
-intentionally duplicated rather than extracted to a helper —
-Kent Beck's "tolerate two duplicates; refactor on three" rule
-defers the abstraction until a third consumer (or an outside-in
-failure-path test) forces it. Cycle 6 (sub-spec `history/v001/`
-materialization) likely brings the third consumer.
-
-Cycle 4 behavior preserved: `<spec_root>/history/v001/<rel>` for
-every payload-`files[]` entry under spec_root, plus the empty
-`proposed_changes/` subdir. Sub-spec `history/v001/` is deferred.
+The main-spec and sub-spec write+history loops are intentionally
+duplicated rather than extracted to a helper — Kent Beck's
+"tolerate two duplicates; refactor on three" rule defers the
+abstraction. The next likely third consumer is the auto-captured
+seed proposed-change (PROPOSAL.md lines 2043-2064), which will
+also write a markdown file to `<spec-root>/history/v001/proposed_changes/`
+and so will reuse the same write pattern.
 
 `spec_root` is currently hardcoded to `"SPECIFICATION"` (the
 `livespec` template default per `template_config.schema.json`).
@@ -29,20 +31,25 @@ or a custom-template test forces it.
 
 Smallest-thing-that-could-possibly-work — no validation, no ROP
 plumbing, no per-version README copy (deferred until a content
-assertion forces it), no auto-captured seed proposed-change
-(deferred until that test cycle), parent-directory creation
-inlined here rather than authored as a second `livespec.io.fs`
-primitive (consumer pressure for an `io.fs.mkdir` seam will be
-decided when a second consumer or a `check-no-write-direct` test
-forces it).
+assertion / payload-with-README forces it; PROPOSAL.md lines
+2019-2020 mandate sub-spec README presence but the smallest
+payload exercising the history-v001 path doesn't require one),
+no skill-owned `proposed_changes/README.md` and `history/README.md`
+paragraphs (lines 2025-2028; deferred until a content assertion
+forces them), no auto-captured seed proposed-change (deferred
+until that test cycle), parent-directory creation inlined here
+rather than authored as a second `livespec.io.fs` primitive
+(consumer pressure for an `io.fs.mkdir` seam will be decided when
+a `check-no-write-direct` test forces it).
 
 Refactor toward `.livespec.jsonc` content materialization
 (commented schema skeleton per PROPOSAL.md §"`seed`" lines
-1894-1924), payload validation, sub-spec `history/v001/`
-traversal, auto-captured seed proposed-change/revision (lines
-2043-2064), and ROP-on-the-railway composition will land in
-subsequent cycles when content assertions, failure-path tests, or
-a second `io/fs.py` consumer force them.
+1894-1924), payload validation, auto-captured seed
+proposed-change/revision (lines 2043-2064), per-version README
+snapshots, skill-owned README paragraphs, and ROP-on-the-railway
+composition will land in subsequent cycles when content
+assertions, failure-path tests, or a second `io/fs.py` consumer
+force them.
 """
 
 from __future__ import annotations
@@ -84,8 +91,17 @@ def main() -> int:
             write_text(path=history_path, content=entry["content"])
     (history_v001 / "proposed_changes").mkdir(parents=True, exist_ok=True)
     for sub_spec in payload["sub_specs"]:
+        sub_spec_root_rel = f"{spec_root}/templates/{sub_spec['template_name']}"
+        sub_history_v001 = cwd / sub_spec_root_rel / "history" / "v001"
         for entry in sub_spec["files"]:
-            entry_path = cwd / entry["path"]
+            rel_path = entry["path"]
+            entry_path = cwd / rel_path
             entry_path.parent.mkdir(parents=True, exist_ok=True)
             write_text(path=entry_path, content=entry["content"])
+            if rel_path.startswith(sub_spec_root_rel + "/"):
+                rel_to_sub_root = rel_path[len(sub_spec_root_rel) + 1 :]
+                history_path = sub_history_v001 / rel_to_sub_root
+                history_path.parent.mkdir(parents=True, exist_ok=True)
+                write_text(path=history_path, content=entry["content"])
+        (sub_history_v001 / "proposed_changes").mkdir(parents=True, exist_ok=True)
     return 0

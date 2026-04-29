@@ -260,3 +260,84 @@ def test_seed_writes_sub_spec_files_to_payload_paths(*, tmp_path: Path) -> None:
     )
     assert sub_spec_path.read_text(encoding="utf-8") == "stub livespec sub-spec"
     assert sub_contracts_path.read_text(encoding="utf-8") == "stub contracts"
+
+
+def test_seed_writes_history_v001_for_each_sub_spec(*, tmp_path: Path) -> None:
+    """`seed.py` materializes `<sub-spec-root>/history/v001/` for each sub-spec.
+
+    Per PROPOSAL.md §"`seed`" lines 2014-2028 step 5: "**(v018
+    Q1; v020 Q1 uniform README)** For each sub-spec tree, create
+    `SPECIFICATION/templates/<template_name>/history/v001/`
+    alongside the main-spec history — including the sub-spec's
+    own versioned spec files and `proposed_changes/` subdir."
+    Per PROPOSAL.md lines 981-986, "Historic files under
+    `history/vNNN/` use plain filenames (no `vNNN-` prefix)" and
+    the parallel structure mirrors the active sub-spec-root tree
+    shape. The sub-spec-root for each `sub_specs[]` entry is
+    `SPECIFICATION/templates/<template_name>/`.
+
+    This test pins the v001-snapshot of the sub-spec working-tree
+    files plus the empty `proposed_changes/` subdir. The
+    sub-spec-root README.md and the per-version README snapshot
+    (PROPOSAL.md lines 2019-2020) are deferred until a content
+    assertion (or a payload carrying a README entry) forces them
+    — the skill-owned `proposed_changes/README.md` and
+    `history/README.md` paragraphs (lines 2025-2028) are also
+    deferred until that cycle.
+    """
+    payload: dict[str, object] = {
+        "template": "livespec",
+        "files": [],
+        "intent": "test seed materializes history/v001/ for each sub-spec",
+        "sub_specs": [
+            {
+                "template_name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "stub livespec sub-spec",
+                    },
+                    {
+                        "path": "SPECIFICATION/templates/livespec/contracts.md",
+                        "content": "stub contracts",
+                    },
+                ],
+            },
+        ],
+    }
+    payload_path = tmp_path / "seed_input.json"
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(payload_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"seed wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    sub_spec_root = tmp_path / "SPECIFICATION" / "templates" / "livespec"
+    history_v001 = sub_spec_root / "history" / "v001"
+    history_spec = history_v001 / "spec.md"
+    history_contracts = history_v001 / "contracts.md"
+    history_proposed_changes = history_v001 / "proposed_changes"
+    assert history_spec.exists(), (
+        f"sub-spec v001 snapshot {history_spec} not written; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert history_contracts.exists(), (
+        f"sub-spec v001 snapshot {history_contracts} not written; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert history_spec.read_text(encoding="utf-8") == "stub livespec sub-spec"
+    assert history_contracts.read_text(encoding="utf-8") == "stub contracts"
+    assert history_proposed_changes.is_dir(), (
+        f"sub-spec v001 proposed_changes/ {history_proposed_changes} not a directory; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
