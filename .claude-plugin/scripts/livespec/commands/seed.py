@@ -232,7 +232,7 @@ def main() -> int:
             existing_files=existing,
         )
         return _PRECONDITION_EXIT_CODE
-    write_text(path=cwd / ".livespec.jsonc", content="")
+    write_text(path=cwd / ".livespec.jsonc", content="{}\n")
     history_v001 = cwd / spec_root / "history" / "v001"
     for entry in payload["files"]:
         rel_path = entry["path"]

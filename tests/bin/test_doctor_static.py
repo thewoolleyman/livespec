@@ -142,3 +142,66 @@ def test_doctor_static_emits_findings_json_against_freshly_seeded_tree(
     assert isinstance(findings, list), (
         f"`findings` must be a JSON array; got {type(findings).__name__}: {findings!r}"
     )
+
+
+def test_doctor_static_emits_pass_finding_for_livespec_jsonc_valid_against_seeded_tree(
+    *, tmp_path: Path
+) -> None:
+    """`doctor_static.py` emits a `pass` Finding for the `livespec-jsonc-valid` check.
+
+    Pins the first Phase-3 minimum check into existence: the
+    `livespec_jsonc_valid` static check (PROPOSAL.md §"`doctor` →
+    Static-phase checks", Plan line 1481). Against a freshly-seeded
+    tree, `.livespec.jsonc` is wrapper-owned (PROPOSAL.md §"`seed`"
+    lines 1894-1924) and parses cleanly — the check therefore emits
+    `status: "pass"`. The schema-required `check_id` field carries
+    the `doctor-`-prefixed slug per PROPOSAL.md lines 2625-2628:
+    module filename `livespec_jsonc_valid.py` → SLUG
+    `"livespec-jsonc-valid"` → JSON `check_id`
+    `"doctor-livespec-jsonc-valid"`.
+
+    Cycle-21 scope: just this one check + the registry skeleton +
+    the orchestrator-walks-the-registry behavior + the minimal
+    Finding dataclass + the minimal DoctorContext (with only the
+    field this check consumes). The full eight-check Phase-3 subset,
+    the `(spec_root, template_name)` per-tree iteration, the
+    applicability table, the bootstrap-lenience semantics, and the
+    full `IOResult[Finding, LivespecError]` ROP plumbing all land
+    in subsequent cycles, each driven by a specific test under
+    consumer pressure (same pattern as cycle 8's plain-`str`
+    `current_user_or_unknown` collapse of the IOResult shape).
+    """
+    _seed_minimal_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings = parsed["findings"]
+    assert isinstance(findings, list)
+    livespec_jsonc_findings = [
+        f
+        for f in findings
+        if isinstance(f, dict) and f.get("check_id") == "doctor-livespec-jsonc-valid"
+    ]
+    assert len(livespec_jsonc_findings) >= 1, (
+        f"expected >=1 finding with check_id 'doctor-livespec-jsonc-valid'; "
+        f"got findings={findings!r}"
+    )
+    pass_findings = [f for f in livespec_jsonc_findings if f.get("status") == "pass"]
+    assert len(pass_findings) >= 1, (
+        f"expected at least one livespec-jsonc-valid finding with status='pass'; "
+        f"got {livespec_jsonc_findings!r}"
+    )
