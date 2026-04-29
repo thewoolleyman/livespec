@@ -13,12 +13,14 @@ test-driven pass-Finding pulls it in. Cycle 21 added
 23 added `template_files_present`; cycle 24 added
 `proposed_changes_and_history_dirs`; cycle 25 added
 `version_directories_complete`; cycle 26 added
-`version_contiguity`; cycle 27 adds
-`revision_to_proposed_change_pairing`. Remaining one Phase-3
-minimum check (`proposed_change_topic_format`) lands in the next
-cycle. The v022 D7 narrowed-registry policy (Phase 3: 8
-implemented checks; Phase 7: remaining four) governs the final
-shape.
+`version_contiguity`; cycle 27 added
+`revision_to_proposed_change_pairing`; cycle 28 adds
+`proposed_change_topic_format`, completing the Phase-3 minimum
+8-check subset. The v022 D7 narrowed-registry policy (Phase 3:
+8 implemented checks; Phase 7: remaining four) governs the
+final shape — Phase 7 adds `out_of_band_edits`,
+`bcp14_keyword_wellformedness`, `gherkin_blank_line_format`,
+and `anchor_reference_resolution`.
 
 Slug ↔ module-filename ↔ JSON `check_id` mapping is recorded
 literally per row: module `livespec_jsonc_valid.py` → SLUG
@@ -37,7 +39,10 @@ SLUG `"template-files-present"` → `check_id`
 `check_id` `"doctor-version-contiguity"`; module
 `revision_to_proposed_change_pairing.py` → SLUG
 `"revision-to-proposed-change-pairing"` → `check_id`
-`"doctor-revision-to-proposed-change-pairing"`. There is no
+`"doctor-revision-to-proposed-change-pairing"`; module
+`proposed_change_topic_format.py` → SLUG
+`"proposed-change-topic-format"` → `check_id`
+`"doctor-proposed-change-topic-format"`. There is no
 slug-to-filename conversion loop.
 """
 
@@ -48,6 +53,7 @@ from collections.abc import Callable
 from livespec.context import DoctorContext
 from livespec.doctor.static import (
     livespec_jsonc_valid,
+    proposed_change_topic_format,
     proposed_changes_and_history_dirs,
     revision_to_proposed_change_pairing,
     template_exists,
@@ -95,12 +101,17 @@ CHECKS: tuple[tuple[str, CheckRunFn], ...] = (
         revision_to_proposed_change_pairing.SLUG,
         revision_to_proposed_change_pairing.run,
     ),
+    (
+        proposed_change_topic_format.SLUG,
+        proposed_change_topic_format.run,
+    ),
 )
 """Phase-3 minimum-subset checks. Order is registration order;
 the orchestrator iterates this tuple per spec tree, applying
 the orchestrator-owned applicability table to decide which checks
-run for which `template_name`. Cycle 27 still hardcodes
+run for which `template_name`. Cycle 28 still hardcodes
 unconditional-applicability; the table grows under future consumer
 pressure (e.g., when a sub-spec test exercises the main-only
 restriction on `template-exists` and `template-files-present` per
-PROPOSAL.md lines 2534-2538)."""
+PROPOSAL.md lines 2534-2538). Phase-3 minimum 8-check subset
+complete with cycle 28."""

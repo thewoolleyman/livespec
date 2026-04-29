@@ -690,3 +690,96 @@ def test_doctor_static_emits_pass_finding_for_revision_to_proposed_change_pairin
         f"expected at least one revision-to-proposed-change-pairing finding "
         f"with status='pass'; got {pairing_findings!r}"
     )
+
+
+def test_doctor_static_emits_pass_finding_for_proposed_change_topic_format_against_seeded_tree(
+    *, tmp_path: Path
+) -> None:
+    """`doctor_static.py` emits a `pass` Finding for `proposed-change-topic-format`.
+
+    Pins the eighth (and final) Phase-3 minimum check into
+    existence: the `proposed_change_topic_format` static check
+    (PROPOSAL.md §"`doctor` → Static-phase checks" lines 2721-
+    2723, Plan line 1481). Per PROPOSAL.md, every file in the
+    working `<spec-root>/proposed_changes/` MUST have a name
+    conforming to `<topic>.md` where `<topic>` is the
+    canonicalized kebab-case form per PROPOSAL.md §"Topic
+    canonicalization (v015 O3)" lines 2162-2173: lowercase →
+    `[a-z0-9-]+` with no leading/trailing hyphens → max 64
+    characters → non-empty.
+
+    Per PROPOSAL.md line 2722, the check scope is the **working
+    directory** (`<spec-root>/proposed_changes/`), NOT history.
+    The skill-owned `README.md` (PROPOSAL.md lines 992-994 +
+    line 2452: "the skill-owned `proposed_changes/README.md`
+    persists" after `revise`) is the one fixed-name entity in
+    that directory and is excluded from the topic-format check
+    (the check is about validating *proposed-change* filenames,
+    not the skill-owned readme).
+
+    Against a freshly-seeded tree, the working
+    `<spec-root>/proposed_changes/` contains only the
+    skill-owned `README.md` (cycle 24). The check excludes it
+    and finds zero proposed-change files to validate, so the
+    check emits `status: "pass"` (vacuously). When a
+    `propose-change` invocation populates the working directory
+    with `<topic>.md` files, the check meaningfully validates
+    each filename against the canonical kebab-case format.
+
+    Cycle-28 scope: walk `<spec-root>/proposed_changes/`,
+    exclude `README.md`, validate each remaining filename
+    matches `^[a-z0-9](-?[a-z0-9])*\\.md$` (the canonical
+    topic-format regex enforcing lowercase, hyphen-separator,
+    no-leading-or-trailing-hyphens, non-empty). The 64-char
+    limit is structurally satisfied by the canonicalization
+    pipeline and does not need a separate length check at this
+    cycle (the failure-path test that pins the length-limit
+    branch lands later). Bootstrap lenience and detailed
+    failure-path Findings naming each non-conforming filename
+    defer, same pattern as cycles 21-27.
+
+    Per PROPOSAL.md lines 2625-2628, JSON `check_id` is
+    `doctor-<slug>`; module
+    `proposed_change_topic_format.py` → SLUG
+    `"proposed-change-topic-format"` → JSON `check_id`
+    `"doctor-proposed-change-topic-format"`.
+
+    Uniform across spec trees per PROPOSAL.md §"Per-tree check
+    applicability" — runs unconditionally, no main-tree-only
+    restriction.
+    """
+    _seed_minimal_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings = parsed["findings"]
+    assert isinstance(findings, list)
+    topic_findings = [
+        f
+        for f in findings
+        if isinstance(f, dict)
+        and f.get("check_id") == "doctor-proposed-change-topic-format"
+    ]
+    assert len(topic_findings) >= 1, (
+        f"expected >=1 finding with check_id 'doctor-proposed-change-topic-format'; "
+        f"got findings={findings!r}"
+    )
+    pass_findings = [f for f in topic_findings if f.get("status") == "pass"]
+    assert len(pass_findings) >= 1, (
+        f"expected at least one proposed-change-topic-format finding "
+        f"with status='pass'; got {topic_findings!r}"
+    )
