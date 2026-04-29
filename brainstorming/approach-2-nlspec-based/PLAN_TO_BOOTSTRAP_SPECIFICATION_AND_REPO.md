@@ -1835,8 +1835,14 @@ Red→Green-per-behavior. Procedure:
    scratch dir, runs the metrics, and deletes the extraction
    when done.
 2. **Verify clean state.** `just check-tests` against the
-   stripped tree errors with import failures (intended); the
-   tree is genuinely empty of Phase 3-5 Python.
+   stripped tree runs cleanly but collects ONLY the surviving
+   `tests/bin/test_bootstrap.py` (the preserved Phase-2
+   bootstrap meta-test, paired with the preserved
+   `bin/_bootstrap.py`); zero Phase-3-5 tests survive
+   collection because their imports are now gone. Confirms
+   the tree is genuinely empty of Phase 3-5 Python. Expected
+   pytest summary: a small handful of bootstrap tests pass,
+   nothing else collected.
 3. **Walk the PROPOSAL-prescribed module enumeration in
    dependency order**, re-authoring each module under
    Red→Green-per-behavior. Recommended order, derived from

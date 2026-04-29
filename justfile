@@ -114,10 +114,10 @@ check-imports-architecture:
     PYTHONPATH=.claude-plugin/scripts lint-imports
 
 check-tests:
-    pytest
+    uv run pytest
 
 check-coverage:
-    pytest --cov --cov-report=term-missing
+    uv run pytest --cov --cov-report=term-missing
 
 # ---------------------------------------------------------------
 # AST / grep / hand-written checks. Each delegates to a script
@@ -198,17 +198,17 @@ check-tools:
 # ---------------------------------------------------------------
 
 e2e-test-claude-code-mock:
-    LIVESPEC_E2E_HARNESS=mock pytest tests/e2e/
+    LIVESPEC_E2E_HARNESS=mock uv run pytest tests/e2e/
 
 check-prompts:
-    pytest tests/prompts/
+    uv run pytest tests/prompts/
 
 # ---------------------------------------------------------------
 # Alternate-cadence target (NOT in `just check`).
 # ---------------------------------------------------------------
 
 e2e-test-claude-code-real:
-    LIVESPEC_E2E_HARNESS=real pytest tests/e2e/
+    LIVESPEC_E2E_HARNESS=real uv run pytest tests/e2e/
 
 # ---------------------------------------------------------------
 # Release-gate targets (NOT in `just check`; run on release-tag CI

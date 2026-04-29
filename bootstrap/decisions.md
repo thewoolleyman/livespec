@@ -981,3 +981,44 @@ required. Gate confirmed via AskUserQuestion 2026-04-29 (option:
 "Switch to exclude_also pattern (Recommended)") after the
 parse/test_jsonc.py monkeypatch-trigger pattern shipped at
 addcaac.
+
+## 2026-04-29T07:35:42Z — phase 5 sub-step 2 (v032 retroactive-TDD redo)
+
+**Decision:** Two paired fixes landed during sub-step 2
+verification: (a) justfile config bug — five recipes
+(`check-tests`, `check-coverage`, `e2e-test-claude-code-mock`,
+`check-prompts`, `e2e-test-claude-code-real`) invoked bare
+`pytest` rather than `uv run pytest`. With uv as the canonical
+Python toolchain manager (v024 D1), every Python invocation
+must go through uv; `pytest` isn't on system PATH. Pure config
+fix per PROPOSAL §"Legitimate exceptions to test-first"
+(configuration-only changes to justfile are exempt from
+test-first). (b) plan-only drift (Case B) — Plan §"Retroactive
+TDD redo of Phase 3 + Phase 4 work" sub-step 2 wording (just
+authored at v032 commit time) predicted "errors with import
+failures (intended)" which is not the actual post-deletion
+outcome. With Phase-3-5 tests deleted, only the surviving
+`tests/bin/test_bootstrap.py` collects and passes cleanly
+(3 tests). Wording corrected to match actual outcome:
+"runs cleanly but collects ONLY the surviving
+`tests/bin/test_bootstrap.py`". PROPOSAL.md unaffected (the
+plan section is bounded; PROPOSAL has no Phase-5-redo
+description by reference or otherwise).
+
+**Rationale:** Both fixes surfaced from the same sub-step 2
+verification run; both are blocking the substantive sub-step 2
+completion claim ("tree is empty of Phase 3-5 Python; verified
+via just check-tests"). Without (a), `just check-tests`
+errors with `pytest: not found` and verification can't run.
+Without (b), the plan describes a different outcome than
+reality. Path (a) is config-only, exempt from TDD per
+PROPOSAL.md §"Legitimate exceptions to test-first" lines
+3257-3265. Path (b) is plan-only Case-B drift, gate confirmed
+via AskUserQuestion 2026-04-29 (option: "Fix both, single
+commit (Recommended)"). Side observation NOT addressed in
+this commit: 25+ `python3 dev-tooling/checks/*.py` invocations
+in the justfile use bare `python3` rather than `uv run
+python3` (only `check-tools` at line 194 uses the canonical
+form); this is broader inconsistency that surfaces during the
+dev-tooling/checks redo work and lands as part of that scope,
+not bundled here per "one-finding-per-gate discipline".
