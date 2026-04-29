@@ -14,10 +14,19 @@ per finding via the field-copy mapping at PROPOSAL.md lines
 
 Smallest-thing-that-could-possibly-work scope per the briefing:
 
-- `<spec-root>` is hardcoded to `"SPECIFICATION"` (the `livespec`
-  template default per `template_config.schema.json`). `--spec-target
-  <path>` flag for sub-spec routing is deferred to a later cycle
-  when the test exercises it.
+- `--spec-target <path>` (cycle 14) selects which spec tree the
+  wrapper writes to per PROPOSAL.md §"Spec-target selection
+  contract (v018 Q1)" lines 363-395. Default `"SPECIFICATION"`
+  matches the `livespec` template's main-spec root; supplying
+  `SPECIFICATION/templates/<template_name>` routes the proposal
+  to the named sub-spec tree. Full structural validation
+  (PROPOSAL.md lines 374-380: "MUST name a directory whose
+  structure matches the main-spec layout") is deferred until a
+  failure-path test forces it; the cycle-14 minimum-viable
+  composes the path verbatim. Default-resolution via the
+  shared `.livespec.jsonc` upward-walk helper (PROPOSAL.md line
+  367-369) is also deferred — Phase 3 minimum hardcodes
+  `"SPECIFICATION"` and lets `--spec-target` opt in.
 - Topic regex check `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` per
   `proposed_change_front_matter.schema.json`; rejection with exit 4
   if the topic does not match (PROPOSAL.md lines 2839-2843 maps
@@ -67,6 +76,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="propose-change", exit_on_error=False)
     parser.add_argument("--findings-json", required=True, type=Path)
     parser.add_argument("--author", default=None)
+    parser.add_argument("--spec-target", default="SPECIFICATION")
     parser.add_argument("topic")
     return parser
 
@@ -136,8 +146,8 @@ def main() -> int:
         topic=topic, author=author, created_at=created_at, findings=findings
     )
     cwd = Path.cwd()
-    spec_root = "SPECIFICATION"
-    output_path = cwd / spec_root / "proposed_changes" / f"{topic}.md"
+    spec_target: str = args.spec_target
+    output_path = cwd / spec_target / "proposed_changes" / f"{topic}.md"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_text(path=output_path, content=rendered)
     return 0

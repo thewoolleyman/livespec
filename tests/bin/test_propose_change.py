@@ -128,3 +128,119 @@ def test_propose_change_writes_proposed_change_file_at_spec_target(*, tmp_path: 
         f"proposed-change file {proposed_change_path} not written; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
+
+
+def _seed_tmp_path_with_sub_spec(*, tmp_path: Path) -> None:
+    """Pre-seed tmp_path with main spec + a `livespec` sub-spec tree.
+
+    Drives the cycle-14 `--spec-target` test, which routes a
+    propose-change against the sub-spec at
+    `SPECIFICATION/templates/livespec/`. Per PROPOSAL.md
+    §"`seed`" lines 2014-2028 (cycle 6 behavior), the seed
+    wrapper materializes the sub-spec working tree + sub-spec
+    `history/v001/` atomically with the main tree.
+    """
+    seed_payload: dict[str, object] = {
+        "template": "livespec",
+        "files": [
+            {"path": "SPECIFICATION/spec.md", "content": "stub main spec"},
+        ],
+        "intent": "pre-seed for propose-change --spec-target test",
+        "sub_specs": [
+            {
+                "template_name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "stub sub-spec",
+                    },
+                ],
+            },
+        ],
+    }
+    seed_input = tmp_path / "seed_input.json"
+    seed_input.write_text(json.dumps(seed_payload), encoding="utf-8")
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    seed_result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(seed_input)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert (
+        seed_result.returncode == 0
+    ), f"pre-seed failed; stdout={seed_result.stdout!r} stderr={seed_result.stderr!r}"
+
+
+def test_propose_change_writes_topic_md_under_spec_target_path(*, tmp_path: Path) -> None:
+    """propose_change.py --spec-target <path> writes `<path>/proposed_changes/<topic>.md`.
+
+    Per PROPOSAL.md §"Spec-target selection contract (v018 Q1)"
+    lines 363-395 + §"Template sub-specifications" lines
+    1150-1156: `propose-change` accepts an optional
+    `--spec-target <path>` CLI flag selecting which spec tree the
+    sub-command operates on. Supplying
+    `--spec-target SPECIFICATION/templates/<name>` routes the
+    proposed-change to that built-in template's sub-spec tree.
+    Default (when flag absent) is the main spec root, exercised
+    by the cycle-11 test above.
+
+    Plan lines 1393-1397 confirm Phase-3 minimum-viable scope:
+    the `<spec-target>` path is composed verbatim into
+    `<spec-target>/proposed_changes/<topic>.md`. Full
+    structural validation per PROPOSAL.md lines 374-380 (must
+    name a directory matching the main-spec layout) is deferred
+    to a failure-path test in a later cycle.
+    """
+    _seed_tmp_path_with_sub_spec(tmp_path=tmp_path)
+    findings_payload: dict[str, object] = {
+        "findings": [
+            {
+                "name": "Sub-spec proposal",
+                "target_spec_files": ["SPECIFICATION/templates/livespec/spec.md"],
+                "summary": "Stub sub-spec proposal summary.",
+                "motivation": "Stub motivation paragraph for sub-spec routing.",
+                "proposed_changes": "Stub prose describing sub-spec changes.",
+            },
+        ],
+    }
+    findings_input = tmp_path / "findings.json"
+    findings_input.write_text(json.dumps(findings_payload), encoding="utf-8")
+    topic = "sub-spec-topic"
+    spec_target = "SPECIFICATION/templates/livespec"
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload + literal topic); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            str(_PROPOSE_CHANGE_WRAPPER),
+            "--findings-json",
+            str(findings_input),
+            "--spec-target",
+            spec_target,
+            topic,
+        ],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"propose-change wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    routed_path = tmp_path / spec_target / "proposed_changes" / f"{topic}.md"
+    assert routed_path.exists(), (
+        f"sub-spec proposed-change file {routed_path} not written; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    main_spec_path = tmp_path / "SPECIFICATION" / "proposed_changes" / f"{topic}.md"
+    assert not main_spec_path.exists(), (
+        f"propose-change incorrectly wrote to main spec {main_spec_path} when "
+        f"--spec-target routed to {spec_target!r}; stdout={result.stdout!r} "
+        f"stderr={result.stderr!r}"
+    )
