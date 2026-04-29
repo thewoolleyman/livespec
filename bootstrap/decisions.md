@@ -1160,3 +1160,40 @@ were locked by PROPOSAL when v019 Q1 was originally specified.
 The critique.py paragraph (lines 1405-1413) is NOT affected
 (it correctly describes `critique`-as-internal-delegation to
 `propose_change`, which matches PROPOSAL).
+
+## 2026-04-30T00:00:00Z — phase 5 sub-step D5b step 2
+
+**Decision:** Replace the v033 D5b literal text "git reset
+--hard <pre-cycle-1-baseline-sha> + cherry-pick
+<v033-codification>..<last-D5a-guardrail>" with "stash zip +
+`git rm` cleared paths + commit deletion." End-state in
+working tree is identical to the reset+cherry-pick path; no
+destructive ops are required (no `--force` push); the
+cycles-1-56 + Phase-4-scaffold commits stay in linear history
+as the honest record of the failed first redo. Codified via
+plan-text edit at the v033 D5b sub-section (procedure step 2)
++ the Version basis v033 D5b decision summary block (the
+"Then `git reset --hard`" sentence flips to deletion-via-
+commit). Companion-doc impact verified: PROPOSAL.md is
+unaffected (it references the redo conceptually, not the
+mechanism). Style-doc unaffected. Confirmed via plan-only
+Case-B direct-fix gate selected by user 2026-04-30.
+
+**Rationale:** Reset+cherry-pick had a load-bearing technical
+problem the original v033 spec didn't anticipate: cycle 60
+modified cycle 56's `red_output_in_commit.py` (informational
+→ hard gate). Cherry-picking cycle 60 onto a state where the
+file doesn't exist (post-reset to pre-cycle-1) would conflict
+because the modification's base file is missing. Resolutions
+required either (a) cherry-picking cycle 56 too (re-importing
+the impl-first work the redo is supposed to discard), or (b)
+synthesizing a fresh-authoring commit combining cycles 56+60.
+Both are awkward. The deletion-via-commit alternative
+sidesteps the conflict entirely: cycles 56 + 60 stay in
+linear history; their final post-cycle-60 file content is the
+state the working tree carries forward; no cherry-pick is
+needed because the desired guardrail-script content is
+already in the tree. The plan-text revision preserves v033
+D5b's intent (clean slate for second redo, audit trail in
+zip) while changing the mechanism to one with a clean risk
+profile.

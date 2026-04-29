@@ -699,12 +699,18 @@ v029 decisions (direct critique-fix overlay; see
   authored in cycles 1-56 + the Phase-4 scaffold commit into
   `bootstrap/scratch/pre-second-redo.zip`, committed as a
   binary blob with the same no-`unzip`-during-authoring
-  discipline. Then `git reset --hard` to the
-  pre-cycle-1-baseline sha (the commit that introduced
-  `pre-redo.zip`); cherry-pick the v033-codification +
-  D5a-guardrail commits forward; commit the
-  `pre-second-redo.zip`; restart the redo under hard
-  guardrails. Both zips persist until Phase 11 cleanup.
+  discipline. Working-tree clearing is then done via
+  tracked `git rm` of the same files (commit the deletion),
+  NOT via `git reset --hard` (revised in-flight 2026-04-30
+  per Case-B direct-fix; see `bootstrap/decisions.md` —
+  reset+cherry-pick had a cycle-60-modifies-cycle-56 conflict
+  that required reimporting impl-first work and a destructive
+  `--force` push; the deletion-via-commit alternative
+  achieves the same end-state with strictly less risk and
+  preserves the cycles-1-56 audit trail in linear history as
+  the honest record of "we tried impl-first-during-redo,
+  learned it was inadequate, archived and deleted"). Both
+  zips persist until Phase 11 cleanup.
 - v033 D5c (plan-level): The v032 D3 quality-comparison
   report is preserved with scope expansion — measures the
   post-second-redo tree against BOTH `pre-redo.zip` (the
@@ -2203,25 +2209,28 @@ the audit-trail blob name):
    `pre-redo.zip`). Both zips persist until Phase 11 cleanup
    removes them via `git rm`.
 
-2. **Reset the working tree to the pre-cycle-1 baseline.**
-   Identify the pre-cycle-1 baseline sha — the commit that
-   introduced `bootstrap/scratch/pre-redo.zip`. Identify the
-   v033-codification commit + the D5a-guardrail commits as a
-   contiguous range. Procedure:
-   a. `git log --diff-filter=A --follow --
-      bootstrap/scratch/pre-redo.zip` to find the
-      pre-cycle-1-baseline sha.
-   b. `git reset --hard <pre-cycle-1-baseline-sha>` (gated
-      by AskUserQuestion since destructive).
-   c. `git cherry-pick
-      <v033-codification-commit-sha>..<last-D5a-guardrail-commit-sha>`
-      to bring the new guardrails forward onto the reset
-      working tree.
-   d. Add `bootstrap/scratch/pre-second-redo.zip` to the
-      working tree and commit:
-      `phase-5: stash failed v032 redo as pre-second-redo.zip;
-      reset to pre-cycle-1 baseline; second redo authorized
-      per v033 D5`.
+2. **Clear the working tree of cycles-1-56 + Phase-4-scaffold
+   .py output via tracked deletion.** No `git reset --hard`;
+   no cherry-pick. Procedure (per the 2026-04-30 Case-B
+   direct-fix recorded in `bootstrap/decisions.md`):
+   a. Build `bootstrap/scratch/pre-second-redo.zip` archiving
+      the file set per step 1 above.
+   b. Stage the zip, then `git rm` every `.py` file enumerated
+      in step 1's archive scope (the cycles-1-56 + scaffold
+      output). Carve-outs preserved (NOT deleted): the four
+      v033-D5a guardrail scripts at `dev-tooling/checks/` and
+      their paired tests under `tests/dev-tooling/checks/`,
+      plus `bin/_bootstrap.py`, `tests/bin/test_bootstrap.py`,
+      `tests/bin/conftest.py`, all `__init__.py` files, and
+      all `_vendor/**`.
+   c. Commit:
+      `phase-5: stash cycles 1-56 + scaffold as pre-second-redo.zip; delete cleared paths; second redo authorized per v033 D5b`.
+      Config-only-style commit body; no `## Red output` block
+      (the deletion is not a Red→Green pair).
+   d. Linear history retains cycles 1-56 + scaffold as the
+      honest record of the failed first redo; the working
+      tree post-commit matches what a reset-to-pre-cycle-1
+      would have produced PLUS the v033-D5a guardrail layer.
 
 3. **Restart the redo under the new guardrails.** Each cycle
    from this commit forward is gated by lefthook running
