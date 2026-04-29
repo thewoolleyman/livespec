@@ -932,3 +932,52 @@ phase-exit-criterion / deferral-list references in the plan).
 PROPOSAL.md remains unaffected. Landed as a follow-up commit
 since the originating commit had already shipped before the
 cascading scan ran; same Case-B audit trail.
+
+## 2026-04-29T02:44:18Z — phase 5 sub-step 3 (assert_never coverage strategy)
+
+**Decision:** Add `case _:` to `[tool.coverage.report].exclude_also`
+in `pyproject.toml` and extend the style-doc enumeration of
+structural exclusion patterns from 3 to 4. Coverage.py's
+compound-statement exclusion rule treats the `case _:` line plus
+its indented body as one block, dismissing the
+`assert_never(<subject>)` body in the same sweep. After the
+change, `parse/jsonc.py` drops from 22 stmts / 6 branches at 100%
+to 20 stmts / 4 branches at 100% — the assert-never arm is now
+structurally excluded rather than reached via contrived test
+trigger.
+
+The previously-shipped monkeypatch-trigger test in
+`tests/livespec/parse/test_jsonc.py::test_assert_never_guards_unexpected_raw_load_result`
+stays in place. It is no longer load-bearing for coverage but
+asserts the runtime-guard behavior (an `AssertionError` is raised
+if `_raw_load` is ever refactored to return something other than
+`Success`/`Failure`). Future match-statement-bearing modules
+(io/, commands/, doctor/static/, dev-tooling/checks/) skip the
+contrived monkeypatch test and rely on the structural exclusion.
+
+**Rationale:** The style doc lines 1054-1066 mandate
+`case _: assert_never(<subject>)` as the universal match-statement
+terminator, and `dev-tooling/checks/assert_never_exhaustiveness.py`
+enforces the body shape at AST level. Every `case _:` arm in
+this codebase is the assert-never sentinel — there is no
+authorized non-assert-never use. The 100% line+branch coverage
+gate combined with the v030 D2 prohibition on per-line
+`# pragma: no cover` and the existing 3-pattern `exclude_also`
+enumeration was structurally insolvable for match statements
+without one of: (a) a per-test contrived monkeypatch trigger
+(150-300 lines of test scaffolding across the remaining work);
+(b) a 4th `exclude_also` pattern; (c) abandoning the
+universal-assert_never mandate. Path (b) is the smallest
+spec-aligned edit — it codifies what the existing AST check
+already enforces and removes a recurring test-side tax across
+~15-20 future test modules. PROPOSAL.md verified unaffected
+(grep on `exclude_also` / `assert_never` / `pragma: no cover`
+returns coverage policy under §"Testing approach" referencing
+"structural patterns" without enumerating the specific 3 — the
+enumeration lives entirely in the style doc). Same precedent as
+v028 D1, v024 rounds 1-4, and 2026-04-26T08:33:35Z: companion-doc
+overlay rides freely with implementation; no PROPOSAL revision
+required. Gate confirmed via AskUserQuestion 2026-04-29 (option:
+"Switch to exclude_also pattern (Recommended)") after the
+parse/test_jsonc.py monkeypatch-trigger pattern shipped at
+addcaac.

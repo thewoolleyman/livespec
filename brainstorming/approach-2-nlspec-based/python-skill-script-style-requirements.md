@@ -1477,16 +1477,33 @@ Coverage is measured by `coverage.py` via `pytest-cov`:
   `<repo-root>/dev-tooling/**`. The only coverage exclusions
   permitted are the structural patterns in
   `[tool.coverage.report].exclude_also` (`if TYPE_CHECKING:`,
-  `raise NotImplementedError`, `@overload`), which are
-  block-level patterns recognized by coverage.py without
-  per-instance annotation. The two prior legitimate per-line
-  uses are now both addressable structurally:
+  `raise NotImplementedError`, `@overload`, `case _:`), which
+  are block-level patterns recognized by coverage.py without
+  per-instance annotation. The three prior legitimate per-line
+  uses are now all addressable structurally:
   - `if TYPE_CHECKING:` guards are matched by the
     `exclude_also` pattern; no pragma needed.
   - `sys.version_info` gates in `bin/_bootstrap.py` are
     covered by dedicated `tests/bin/test_bootstrap.py` tests
     that monkeypatch `sys.version_info` to exercise both
     branches (per v011 K3); no pragma needed.
+  - `case _: assert_never(<subject>)` arms are structurally
+    unreachable by the spec mandate at lines 1054-1066 of
+    this document (every `match` MUST terminate with the
+    pattern; `dev-tooling/checks/assert_never_exhaustiveness.py`
+    enforces the body shape). The `case _:` exclude_also
+    pattern catches the entire arm via coverage.py's
+    compound-statement exclusion rule (`case _:` line plus
+    its indented `assert_never(<subject>)` body), so no
+    contrived per-test trigger is needed to satisfy the
+    100% line+branch gate. The pattern is safe in this
+    codebase because `case _:` has no other authorized use:
+    the assert-never check rejects any non-conforming arm
+    at AST level. (Test modules MAY still author a
+    monkeypatch-trigger test for the runtime-guard's
+    behavior — confirming `assert_never` raises
+    `AssertionError` if reached — but the test is no
+    longer load-bearing for coverage.)
   A targeted regex check (`# pragma: no cover` literal match)
   in `dev-tooling/checks/` rejects any commit that introduces
   the comment in covered code; the check treats *any*

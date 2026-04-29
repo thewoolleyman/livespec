@@ -272,6 +272,20 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
     "@overload",
+    # `case _:` arms are structurally unreachable by spec mandate:
+    # python-skill-script-style-requirements.md lines 1054-1066
+    # require every `match` statement to terminate with
+    # `case _: assert_never(<subject>)`, and
+    # `dev-tooling/checks/assert_never_exhaustiveness.py` enforces
+    # the body is `assert_never(<subject>)` and nothing else. The
+    # arm is therefore unreachable when the subject's declared type
+    # is exhaustively handled by the prior arms (the universal
+    # case in this codebase). Excluding the line excludes the
+    # indented body too via coverage.py's compound-statement rule,
+    # which dismisses the `assert_never` line in the same sweep.
+    # Style-doc paired update extends the structural-exclusion
+    # enumeration from 3 patterns to 4.
+    "case _:",
 ]
 
 # ---------------------------------------------------------------------------
