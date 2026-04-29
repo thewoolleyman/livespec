@@ -41,6 +41,18 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SEED_WRAPPER = _REPO_ROOT / ".claude-plugin" / "scripts" / "bin" / "seed.py"
 
 
+def _extract_front_matter(*, content: str) -> str:
+    match = re.match(r"^---\n(.*?)\n---\n", content, flags=re.DOTALL)
+    assert match is not None, f"missing YAML front-matter delimited by `---`; content={content!r}"
+    return match.group(1)
+
+
+def _extract_field(*, front_matter: str, key: str) -> str:
+    match = re.search(rf"^{re.escape(key)}: (.+)$", front_matter, flags=re.MULTILINE)
+    assert match is not None, f"front-matter missing `{key}:`; front_matter={front_matter!r}"
+    return match.group(1).strip()
+
+
 def test_seed_writes_livespec_jsonc_at_repo_root(*, tmp_path: Path) -> None:
     """`seed.py --seed-json <payload>` writes `.livespec.jsonc` at the project root.
 
@@ -447,4 +459,100 @@ def test_seed_writes_auto_captured_seed_proposal_for_main_spec(*, tmp_path: Path
         f"seed.md does not include verbatim intent under both Motivation and "
         f"Proposed Changes (expected >={expected_intent_occurrences} occurrences "
         f"of {intent_text!r}); content={content!r}"
+    )
+
+
+def test_seed_writes_auto_captured_seed_revision_for_main_spec(*, tmp_path: Path) -> None:
+    """`seed.py` auto-captures `<spec-root>/history/v001/proposed_changes/seed-revision.md`.
+
+    Per PROPOSAL.md §"`seed`" lines 2058-2064 (the auto-generated
+    revision pairing) and §"Revision file format" (lines
+    3037-3097, the canonical format every revision file conforms
+    to). The wrapper writes a revision file with YAML
+    front-matter (`proposal: seed.md`, `decision: accept`,
+    `revised_at: <UTC ISO-8601 seconds>` matching the paired
+    seed.md `created_at`, `author_llm: livespec-seed`,
+    `author_human: <git user info or "unknown">`) followed by
+    `## Decision and Rationale` ("auto-accepted during seed") and
+    `## Resulting Changes` (every seed-written file path).
+    """
+    intent_text = "capture this verbatim as motivation"
+    payload: dict[str, object] = {
+        "template": "livespec",
+        "files": [
+            {"path": "SPECIFICATION/spec.md", "content": "stub spec"},
+        ],
+        "intent": intent_text,
+        "sub_specs": [],
+    }
+    payload_path = tmp_path / "seed_input.json"
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(payload_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"seed wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    proposed_changes_dir = tmp_path / "SPECIFICATION" / "history" / "v001" / "proposed_changes"
+    seed_revision = proposed_changes_dir / "seed-revision.md"
+    assert seed_revision.exists(), (
+        f"auto-captured seed-revision.md {seed_revision} not written; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    content = seed_revision.read_text(encoding="utf-8")
+
+    # Front-matter delimiters and required keys.
+    front_matter = _extract_front_matter(content=content)
+    assert (
+        "proposal: seed.md" in front_matter
+    ), f"seed-revision.md missing `proposal: seed.md`; front_matter={front_matter!r}"
+    assert (
+        "decision: accept" in front_matter
+    ), f"seed-revision.md missing `decision: accept`; front_matter={front_matter!r}"
+    assert (
+        "author_llm: livespec-seed" in front_matter
+    ), f"seed-revision.md missing `author_llm: livespec-seed`; front_matter={front_matter!r}"
+    # author_human is either "<name> <email>" (git config populated) or the literal "unknown".
+    # Both are acceptable per PROPOSAL.md §"Git" lines 700-704.
+    author_human_value = _extract_field(front_matter=front_matter, key="author_human")
+    assert (
+        author_human_value != ""
+    ), f"seed-revision.md `author_human:` is empty; front_matter={front_matter!r}"
+    revised_at_value = _extract_field(front_matter=front_matter, key="revised_at")
+    parsed_revised_at = datetime.fromisoformat(revised_at_value.replace("Z", "+00:00"))
+    assert parsed_revised_at.utcoffset() == timezone.utc.utcoffset(
+        parsed_revised_at
+    ), f"seed-revision.md revised_at not UTC-anchored; revised_at={revised_at_value!r}"
+
+    # revised_at MUST match the paired seed.md created_at exactly.
+    seed_content = (proposed_changes_dir / "seed.md").read_text(encoding="utf-8")
+    seed_front_matter = _extract_front_matter(content=seed_content)
+    created_at_value = _extract_field(front_matter=seed_front_matter, key="created_at")
+    assert created_at_value == revised_at_value, (
+        f"seed-revision.md revised_at ({revised_at_value!r}) does not match "
+        f"seed.md created_at ({created_at_value!r})"
+    )
+
+    # Body sections.
+    assert (
+        "## Decision and Rationale" in content
+    ), f"seed-revision.md missing `## Decision and Rationale` heading; content={content!r}"
+    assert (
+        "auto-accepted during seed" in content
+    ), f"seed-revision.md missing 'auto-accepted during seed' text; content={content!r}"
+    assert (
+        "## Resulting Changes" in content
+    ), f"seed-revision.md missing `## Resulting Changes` heading; content={content!r}"
+    assert "SPECIFICATION/spec.md" in content, (
+        f"seed-revision.md does not list SPECIFICATION/spec.md as a resulting change; "
+        f"content={content!r}"
     )
