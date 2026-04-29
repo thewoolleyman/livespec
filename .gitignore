@@ -13,6 +13,7 @@ __pycache__/
 .pytest_cache/
 .hypothesis/
 .coverage
+.coverage.*
 .ruff_cache/
 .pyright/
 .mutmut-cache/
