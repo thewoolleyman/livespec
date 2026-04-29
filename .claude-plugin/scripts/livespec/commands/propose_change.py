@@ -66,7 +66,7 @@ import structlog
 from livespec.io.fs import write_text
 from livespec.io.git import current_user_or_unknown
 
-__all__: list[str] = ["main"]
+__all__: list[str] = ["main", "run_propose_change"]
 
 _VALIDATION_EXIT_CODE = 4
 _TOPIC_PATTERN = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
@@ -123,10 +123,18 @@ def _render_proposal_section(*, finding: dict[str, object]) -> str:
     )
 
 
-def main() -> int:
-    parser = _build_parser()
-    args = parser.parse_args(sys.argv[1:])
-    topic: str = args.topic
+def run_propose_change(
+    *, findings_path: Path, topic: str, author: str | None, spec_target: str
+) -> int:
+    """In-process entry for propose-change, callable by `critique` internal delegation.
+
+    Bypasses argparse so within-skill callers (per PROPOSAL.md
+    line 2252-2255 and §"`critique`" lines 2307-2325) can invoke
+    `propose_change`'s logic directly via Python imports.
+    Behavior matches `main()` exactly: same topic regex check,
+    same author resolution, same field-copy mapping, same write
+    location.
+    """
     if not _TOPIC_PATTERN.match(topic):
         structlog.get_logger().error(
             "propose_change.topic_not_canonical",
@@ -135,19 +143,27 @@ def main() -> int:
             topic=topic,
         )
         return _VALIDATION_EXIT_CODE
-    findings_path: Path = args.findings_json
     payload = json.loads(findings_path.read_text(encoding="utf-8"))
     findings = cast("list[dict[str, object]]", payload["findings"])
-    author = _resolve_author(cli_author=args.author)
+    resolved_author = _resolve_author(cli_author=author)
     created_at = (
         datetime.now(tz=timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
     rendered = _render_proposed_change_md(
-        topic=topic, author=author, created_at=created_at, findings=findings
+        topic=topic, author=resolved_author, created_at=created_at, findings=findings
     )
-    cwd = Path.cwd()
-    spec_target: str = args.spec_target
-    output_path = cwd / spec_target / "proposed_changes" / f"{topic}.md"
+    output_path = Path.cwd() / spec_target / "proposed_changes" / f"{topic}.md"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_text(path=output_path, content=rendered)
     return 0
+
+
+def main() -> int:
+    parser = _build_parser()
+    args = parser.parse_args(sys.argv[1:])
+    return run_propose_change(
+        findings_path=args.findings_json,
+        topic=args.topic,
+        author=args.author,
+        spec_target=args.spec_target,
+    )
