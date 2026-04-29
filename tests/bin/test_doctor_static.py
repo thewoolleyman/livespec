@@ -353,3 +353,81 @@ def test_doctor_static_emits_pass_finding_for_template_files_present_against_see
         f"expected at least one template-files-present finding with status='pass'; "
         f"got {template_files_findings!r}"
     )
+
+
+def test_doctor_static_emits_pass_finding_for_proposed_changes_and_history_dirs_against_seeded_tree(
+    *, tmp_path: Path
+) -> None:
+    """`doctor_static.py` emits a `pass` Finding for `proposed-changes-and-history-dirs`.
+
+    Pins the fourth Phase-3 minimum check into existence: the
+    `proposed_changes_and_history_dirs` static check
+    (PROPOSAL.md §"`doctor` → Static-phase checks" lines
+    2695-2698, Plan line 1481). Per PROPOSAL.md lines 2695-2698,
+    the check verifies that `<spec-root>/proposed_changes/` and
+    `<spec-root>/history/` directories both exist and contain
+    their skill-owned `README.md` files.
+
+    The skill-owned README content is frozen verbatim per
+    PROPOSAL.md lines 992-1024: `proposed_changes/README.md`
+    explains that the directory holds in-flight proposed changes,
+    and `history/README.md` explains that the directory holds
+    versioned snapshots. Per PROPOSAL.md lines 992-994, the
+    READMEs are skill-owned: hard-coded inside the skill (the
+    livespec Python package), written by `seed` only, NOT
+    regenerated on every `revise`. Per PROPOSAL.md lines
+    1065-1068, the README content is template-agnostic
+    (same content for `livespec` and `minimal` templates;
+    only the `<spec-root>/` base differs).
+
+    Cycle-24 scope: the check itself + seed evolves under
+    consumer pressure to materialize `<spec-root>/proposed_changes/`
+    + its README + `<spec-root>/history/README.md` (the directory
+    `<spec-root>/history/` already exists implicitly via
+    `mkdir(parents=True)` for `history/v001/`). Per PROPOSAL.md
+    lines 2025-2028, sub-spec trees ALSO get skill-owned READMEs
+    written per-tree. Cycle 24 covers main-tree only; sub-spec
+    coverage lands in a later cycle that exercises sub-spec
+    iteration.
+
+    Per PROPOSAL.md lines 2625-2628, JSON `check_id` is
+    `doctor-<slug>`; module
+    `proposed_changes_and_history_dirs.py` → SLUG
+    `"proposed-changes-and-history-dirs"` → JSON `check_id`
+    `"doctor-proposed-changes-and-history-dirs"`.
+    """
+    _seed_minimal_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings = parsed["findings"]
+    assert isinstance(findings, list)
+    pc_history_findings = [
+        f
+        for f in findings
+        if isinstance(f, dict)
+        and f.get("check_id") == "doctor-proposed-changes-and-history-dirs"
+    ]
+    assert len(pc_history_findings) >= 1, (
+        f"expected >=1 finding with check_id 'doctor-proposed-changes-and-history-dirs'; "
+        f"got findings={findings!r}"
+    )
+    pass_findings = [f for f in pc_history_findings if f.get("status") == "pass"]
+    assert len(pass_findings) >= 1, (
+        f"expected at least one proposed-changes-and-history-dirs finding "
+        f"with status='pass'; got {pc_history_findings!r}"
+    )

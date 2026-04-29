@@ -10,13 +10,13 @@ this file; no dynamic discovery.
 v032 TDD redo: registry grows one entry per cycle as each check's
 test-driven pass-Finding pulls it in. Cycle 21 added
 `livespec_jsonc_valid`; cycle 22 added `template_exists`; cycle
-23 adds `template_files_present`. Remaining five Phase-3 minimum
-checks (`proposed_changes_and_history_dirs`,
-`version_directories_complete`, `version_contiguity`,
-`revision_to_proposed_change_pairing`, `proposed_change_topic_format`)
-land in subsequent cycles. The v022 D7 narrowed-registry policy
-(Phase 3: 8 implemented checks; Phase 7: remaining four) governs
-the final shape.
+23 added `template_files_present`; cycle 24 adds
+`proposed_changes_and_history_dirs`. Remaining four Phase-3
+minimum checks (`version_directories_complete`,
+`version_contiguity`, `revision_to_proposed_change_pairing`,
+`proposed_change_topic_format`) land in subsequent cycles. The
+v022 D7 narrowed-registry policy (Phase 3: 8 implemented checks;
+Phase 7: remaining four) governs the final shape.
 
 Slug ↔ module-filename ↔ JSON `check_id` mapping is recorded
 literally per row: module `livespec_jsonc_valid.py` → SLUG
@@ -24,8 +24,11 @@ literally per row: module `livespec_jsonc_valid.py` → SLUG
 module `template_exists.py` → SLUG `"template-exists"` → `check_id`
 `"doctor-template-exists"`; module `template_files_present.py` →
 SLUG `"template-files-present"` → `check_id`
-`"doctor-template-files-present"`. There is no slug-to-filename
-conversion loop.
+`"doctor-template-files-present"`; module
+`proposed_changes_and_history_dirs.py` → SLUG
+`"proposed-changes-and-history-dirs"` → `check_id`
+`"doctor-proposed-changes-and-history-dirs"`. There is no
+slug-to-filename conversion loop.
 """
 
 from __future__ import annotations
@@ -35,6 +38,7 @@ from collections.abc import Callable
 from livespec.context import DoctorContext
 from livespec.doctor.static import (
     livespec_jsonc_valid,
+    proposed_changes_and_history_dirs,
     template_exists,
     template_files_present,
 )
@@ -68,11 +72,15 @@ CHECKS: tuple[tuple[str, CheckRunFn], ...] = (
     (livespec_jsonc_valid.SLUG, livespec_jsonc_valid.run),
     (template_exists.SLUG, template_exists.run),
     (template_files_present.SLUG, template_files_present.run),
+    (
+        proposed_changes_and_history_dirs.SLUG,
+        proposed_changes_and_history_dirs.run,
+    ),
 )
 """Phase-3 minimum-subset checks. Order is registration order;
 the orchestrator iterates this tuple per spec tree, applying
 the orchestrator-owned applicability table to decide which checks
-run for which `template_name`. Cycle 23 still hardcodes
+run for which `template_name`. Cycle 24 still hardcodes
 unconditional-applicability; the table grows under future consumer
 pressure (e.g., when a sub-spec test exercises the main-only
 restriction on `template-exists` and `template-files-present` per
