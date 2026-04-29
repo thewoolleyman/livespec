@@ -431,3 +431,94 @@ def test_doctor_static_emits_pass_finding_for_proposed_changes_and_history_dirs_
         f"expected at least one proposed-changes-and-history-dirs finding "
         f"with status='pass'; got {pc_history_findings!r}"
     )
+
+
+def test_doctor_static_emits_pass_finding_for_version_directories_complete_against_seeded_tree(
+    *, tmp_path: Path
+) -> None:
+    """`doctor_static.py` emits a `pass` Finding for `version-directories-complete`.
+
+    Pins the fifth Phase-3 minimum check into existence: the
+    `version_directories_complete` static check (PROPOSAL.md
+    §"`doctor` → Static-phase checks" lines 2699-2707, Plan
+    line 1481). Per PROPOSAL.md, every
+    `<spec-root>/history/vNNN/` directory that is not the
+    pruned-marker directory must contain (a) the full set of
+    template-required files, (b) a `proposed_changes/` subdir,
+    and (c) a per-version `README.md` when the active template
+    declares a versioned per-version README. The pruned-marker
+    directory (when `PRUNED_HISTORY.json` is present) contains
+    ONLY that file.
+
+    Cycle-25 scope: walks every `<spec-root>/history/v???/`
+    directory and validates each against the requirements above.
+    Per PROPOSAL.md lines 1416-1422, the "template-required
+    files" set is derived by walking the active template's
+    `specification-template/` directory. Per Plan §"Phase 2"
+    lines 1211-1214, that directory is currently an "empty
+    skeleton (directory tree only, no starter content files)";
+    only `.gitkeep` is on disk, which the walker excludes (same
+    reasoning as cycle 23's `template-files-present`). The
+    derived requirement set is therefore empty at Phase 3, and
+    the check focuses on the unconditional requirement
+    (`proposed_changes/` subdir exists per version directory)
+    plus the conditional per-version README requirement (which
+    is also derived from the empty `specification-template/`
+    walk, hence vacuously satisfied at Phase 3). When Phase 7
+    populates `specification-template/` with real content, the
+    check meaningfully validates each version directory's
+    snapshot completeness.
+
+    Against a freshly-seeded tree, only `v001` exists and seed
+    has materialized `<spec-root>/history/v001/proposed_changes/`
+    (cycle 4). The check passes.
+
+    Out of cycle-25 scope (deferred): pruned-marker handling
+    (no `PRUNED_HISTORY.json` exists at Phase 3 — drives in when
+    a `prune-history` integration test forces it); per-version
+    README requirement (derived-from-walk vacuously satisfied
+    today; meaningful at Phase 7); failure-path findings
+    (missing-file paths in specific versions); bootstrap
+    lenience; sub-spec iteration.
+
+    Per PROPOSAL.md lines 2625-2628, JSON `check_id` is
+    `doctor-<slug>`; module
+    `version_directories_complete.py` → SLUG
+    `"version-directories-complete"` → JSON `check_id`
+    `"doctor-version-directories-complete"`.
+    """
+    _seed_minimal_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings = parsed["findings"]
+    assert isinstance(findings, list)
+    vdc_findings = [
+        f
+        for f in findings
+        if isinstance(f, dict)
+        and f.get("check_id") == "doctor-version-directories-complete"
+    ]
+    assert len(vdc_findings) >= 1, (
+        f"expected >=1 finding with check_id 'doctor-version-directories-complete'; "
+        f"got findings={findings!r}"
+    )
+    pass_findings = [f for f in vdc_findings if f.get("status") == "pass"]
+    assert len(pass_findings) >= 1, (
+        f"expected at least one version-directories-complete finding "
+        f"with status='pass'; got {vdc_findings!r}"
+    )
