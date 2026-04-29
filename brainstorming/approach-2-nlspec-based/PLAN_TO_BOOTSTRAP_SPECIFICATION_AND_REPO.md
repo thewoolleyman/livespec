@@ -637,6 +637,108 @@ v029 decisions (direct critique-fix overlay; see
   coupling, high cohesion, unnecessary-code elimination,
   good architecture) require Red→Green-per-behavior
   authoring, not impl-first-with-tests-after.
+- v033 D1 (PROPOSAL.md + new dev-tooling check):
+  `dev-tooling/checks/tests_mirror_pairing.py` codified —
+  every covered `.py` under `livespec/`, `bin/`, and
+  `dev-tooling/checks/` has a paired
+  `tests/<mirror>/test_<name>.py` with at least one `def
+  test_*` function. Closed exemption set: `_vendor/**`,
+  `bin/_bootstrap.py`, and empty-init `__init__.py`. Wired
+  into `just check` aggregate. Resolves the v032-redo
+  failure mode where `tests/livespec/**` ended structurally
+  empty of `.py` files despite "Phase 3 + Phase 4 parity"
+  declarations.
+- v033 D2 (PROPOSAL.md + new dev-tooling check):
+  `dev-tooling/checks/per_file_coverage.py` codified —
+  parses the `.coverage` data file emitted by `pytest --cov
+  --cov-branch`, fails the first time any single covered
+  file is below 100% line OR 100% branch. Authoritative gate;
+  the existing `[tool.coverage.report].fail_under = 100`
+  total threshold is preserved as belt-and-braces only. The
+  `--cov-branch` CLI flag is required (in addition to
+  `branch = true` in pyproject.toml) for subprocess-coverage
+  inheritance per pytest-cov 6.0.0 engine.py:118 (`if
+  self.cov_branch:` reads the option, not the config). The
+  `check-coverage` recipe is rewritten accordingly.
+- v033 D3 (PROPOSAL.md + new dev-tooling check):
+  `dev-tooling/checks/commit_pairs_source_and_test.py`
+  codified — every commit modifying any
+  `livespec/**`/`bin/**`/`dev-tooling/checks/**` source file
+  must also modify a `tests/**` file in the same commit, with
+  closed-list carve-outs for refactor commits, config-only
+  commits, docs-only commits, and pure-deletion commits.
+  Lefthook pre-commit only (NOT in `just check` aggregate);
+  per-commit gate. Pre-v033-codification commits
+  grandfathered.
+- v033 D4 (plan-level + check upgrade): The existing
+  `red_output_in_commit.py` is promoted from
+  Phase-4-informational to hard gate at the
+  v033-codification commit (closes the v032 D4 deferral
+  to Phase-5-exit). Same closed carve-out set as D3. Pre-v033-
+  codification commits grandfathered.
+- v033 D5a (plan-level): The "lefthook activation" sub-step
+  moves from Phase 5 exit (the original `just bootstrap`
+  promotion) to **immediately after the v033-codification
+  commit + the four guardrail-script commits land**.
+  Concrete sequence: codify v033 → author D1+D2+D3 scripts
+  with paired tests under TDD discipline → upgrade
+  `red_output_in_commit.py` to hard gate per D4 → update
+  `justfile` (rewrite `bootstrap` recipe to `lefthook install
+  && ln -sfn ../.claude-plugin/skills .claude/skills`; add
+  new check-* recipes; update `check` aggregate; rewrite
+  `check-coverage` per D2) → update `lefthook.yml` to wire
+  pre-commit (commit-pairs-source-and-test +
+  red-output-in-commit + the existing `just check`) → run
+  `just bootstrap` → from this commit onward every commit
+  is gated.
+- v033 D5b (plan-level): Authorize a SECOND retroactive
+  redo of v032's first redo. Plan Phase 5 gains a new
+  §"Retroactive TDD redo of Phase 3 + Phase 4 work — second
+  attempt" sub-section paralleling the v032 D2 sub-section.
+  Stash mechanism mirrors v032 D2: archive every `.py` file
+  authored in cycles 1-56 + the Phase-4 scaffold commit into
+  `bootstrap/scratch/pre-second-redo.zip`, committed as a
+  binary blob with the same no-`unzip`-during-authoring
+  discipline. Then `git reset --hard` to the
+  pre-cycle-1-baseline sha (the commit that introduced
+  `pre-redo.zip`); cherry-pick the v033-codification +
+  D5a-guardrail commits forward; commit the
+  `pre-second-redo.zip`; restart the redo under hard
+  guardrails. Both zips persist until Phase 11 cleanup.
+- v033 D5c (plan-level): The v032 D3 quality-comparison
+  report is preserved with scope expansion — measures the
+  post-second-redo tree against BOTH `pre-redo.zip` (the
+  original impl-first state) AND `pre-second-redo.zip` (the
+  failed-first-redo state). Acceptance: at least three of
+  four dimensions (architecture, coupling, cohesion,
+  unnecessary-code-elimination) show concrete improvement
+  vs both baselines.
+- v033 D6 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v033/PROPOSAL.md`. Plan Phase
+  0 step 2 frozen-status header literal bumps to "Frozen at
+  v033". Plan Execution-prompt block authoritative-version
+  line bumps to v033. The PROPOSAL.md
+  `dev-tooling/checks/` directory listing gains four new
+  filenames: `tests_mirror_pairing.py`, `per_file_coverage.py`,
+  `commit_pairs_source_and_test.py`, and the previously-
+  missing `red_output_in_commit.py` (a v032 drift surfaced
+  during the v033 cascading-impact scan; the check existed
+  in `justfile` since cycle 56 but was never reflected in
+  the PROPOSAL listing).
+- Triggered by user-flagged failure: v032's first redo
+  reached "integration-test-green parity" with 90 tests
+  passing and `just check-coverage` fixed at 64.81% but
+  `tests/livespec/**` remained structurally empty of `.py`
+  files (zero behavior-pinning unit tests for any
+  `livespec/**` module). Five mechanisms compounded — broken
+  coverage signal, no mirror-pairing enforcement, no
+  forced inside-out drop-down from outside-in TDD, halt
+  conditions confused parity with completeness, and parent
+  agent did not spot-check the mirror tree before
+  accepting parity declarations. v033 codifies hard
+  mechanical guardrails that block all five at commit-time
+  and authorizes a second retroactive redo under the
+  guardrails.
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -848,8 +950,16 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v032/PROPOSAL.md` (the v032
-   snapshot — v031 substance plus the §"Test-Driven Development
+   byte-identical to `history/v033/PROPOSAL.md` (the v033
+   snapshot — v032 substance plus the four mechanical guardrails
+   D1-D4 (`tests_mirror_pairing.py`, `per_file_coverage.py`,
+   `commit_pairs_source_and_test.py`, hard-gate promotion of
+   `red_output_in_commit.py`), the lefthook-activation move from
+   Phase 5 exit to v033-codification (D5a), the second
+   retroactive redo authorization (D5b), and the
+   quality-comparison report scope expansion (D5c) per
+   `history/v033/proposed_changes/critique-fix-v032-revision.md`;
+   v032 substance is v031 substance plus the §"Test-Driven Development
    discipline" opening-paragraph rewrite at lines 3103-3110
    striking the "Phase 5 exit onward" temporal carve-out per
    `history/v032/proposed_changes/critique-fix-v031-revision.md`;
@@ -914,7 +1024,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v032. Further evolution happens in
+   > **Status:** Frozen at v033. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -2032,7 +2142,7 @@ on rejection the redo is re-attempted (or the stash is
 restored if the user concludes the redo cannot improve on
 the original).
 
-#### Per-commit Red-output discipline (v032 D4)
+#### Per-commit Red-output discipline (v032 D4 / v033 D4)
 
 Every Red→Green commit authored under v032 D2's retroactive
 redo (and every subsequent feature/bugfix commit from this
@@ -2045,47 +2155,245 @@ first run prior to any implementation. The block confirms
 the failure was at the assertion site (the behavior gap),
 not at parse/import/fixture time.
 
-`tests/dev-tooling/checks/test_red_output_in_commit.py`
-(authored as part of the dev-tooling checks redo) walks
-`git log --grep` against the redo's commit range and rejects
-any feature/bugfix commit that lacks a `## Red output`
-section. The check is informational pre-Phase-5-exit; it
-becomes a hard `just check` gate at Phase 5 exit (lefthook
-+ post-Phase-5-exit commits).
+`dev-tooling/checks/red_output_in_commit.py` walks `git
+log --grep` against the redo's commit range and rejects any
+feature/bugfix commit that lacks a `## Red output` section.
+**v033 D4 promotes the check from informational to hard
+gate at the v033-codification commit** (the v032 D4 framing
+positioned the promotion at Phase-5-exit; v033 D5a
+moves it forward to v033-codification because the lefthook
+activation also moves forward).
 
-`just check-coverage` MUST pass at 100% line+branch.
+#### Retroactive TDD redo of Phase 3 + Phase 4 work — second attempt (v033 D5b)
 
-Phase 5 ALSO promotes `just bootstrap` from its Phase-1
-placeholder to the real recipe: `lefthook install &&
-ln -sfn ../.claude-plugin/skills .claude/skills`. Running
-`just bootstrap` installs lefthook into `.git/hooks/` so
-that every commit from Phase 6 onward triggers `just check`
-on the now-passing enforcement suite. **This is the
-activation point of the hard-constraint per-commit gate per
-PROPOSAL.md §"Testing approach — Activation"**; pre-Phase-5
-commits are grandfathered, and from this commit onward no
-commit lands without passing the per-commit gate.
+v032's first retroactive redo (cycles 1-56 + Phase-4 scaffold
+commit) reached "integration-test-green parity" with 90 tests
+passing but produced **zero unit tests under `tests/livespec/**`**
+— every authored test landed under `tests/bin/` (wrapper
+coverage + a Phase-3 integration round-trip) or
+`tests/dev-tooling/checks/` (paired tests for enforcement
+scripts). The `livespec.commands.*`, `livespec.validate.*`,
+`livespec.io.*`, `livespec.parse.*`, and `livespec.schemas.*`
+packages were exercised only indirectly via the Phase-3
+integration round-trip. v033 D5b authorizes a one-time
+**second retroactive redo** under the four hard guardrails
+codified at v033 D1-D4.
+
+Procedure (mirrors v032 D2 with one mechanical difference —
+the audit-trail blob name):
+
+1. **Stash the current post-redo tree as
+   `bootstrap/scratch/pre-second-redo.zip`.** Archive every
+   `.py` file authored in cycles 1-56 + the Phase-4 scaffold
+   commit (same scope as v032 D2 step 1: every `.py` under
+   `.claude-plugin/scripts/livespec/` excluding `_vendor/**`
+   and `__init__.py` files; every `.py` under
+   `.claude-plugin/scripts/bin/` excluding `_bootstrap.py`;
+   every `.py` under `dev-tooling/checks/` EXCEPT the four
+   v033-D5a guardrail scripts which stay in-tree because they
+   are the gates enforcing the second redo; every `.py` under
+   `tests/livespec/` (currently empty of `.py` files;
+   future-proofing); every `.py` under `tests/bin/` excluding
+   `tests/bin/test_bootstrap.py` and `tests/bin/conftest.py`;
+   every `.py` under `tests/dev-tooling/checks/` EXCEPT the
+   four paired tests for the v033-D5a guardrail scripts). The
+   zip is committed to the repo as a binary blob (under SCM,
+   not source-readable; same `git grep` skips it / `Read`
+   returns garbage / only `unzip` extracts discipline as
+   `pre-redo.zip`). Both zips persist until Phase 11 cleanup
+   removes them via `git rm`.
+
+2. **Reset the working tree to the pre-cycle-1 baseline.**
+   Identify the pre-cycle-1 baseline sha — the commit that
+   introduced `bootstrap/scratch/pre-redo.zip`. Identify the
+   v033-codification commit + the D5a-guardrail commits as a
+   contiguous range. Procedure:
+   a. `git log --diff-filter=A --follow --
+      bootstrap/scratch/pre-redo.zip` to find the
+      pre-cycle-1-baseline sha.
+   b. `git reset --hard <pre-cycle-1-baseline-sha>` (gated
+      by AskUserQuestion since destructive).
+   c. `git cherry-pick
+      <v033-codification-commit-sha>..<last-D5a-guardrail-commit-sha>`
+      to bring the new guardrails forward onto the reset
+      working tree.
+   d. Add `bootstrap/scratch/pre-second-redo.zip` to the
+      working tree and commit:
+      `phase-5: stash failed v032 redo as pre-second-redo.zip;
+      reset to pre-cycle-1 baseline; second redo authorized
+      per v033 D5`.
+
+3. **Restart the redo under the new guardrails.** Each cycle
+   from this commit forward is gated by lefthook running
+   (per v033 D5a's lefthook wiring): `check-tests`,
+   `check-coverage` (per-file 100% line+branch),
+   `check-tests-mirror-pairing`,
+   `check-commit-pairs-source-and-test`,
+   `check-red-output-in-commit`, plus the existing
+   Phase-4-active enforcement scripts. The mechanical
+   failure modes that produced the v032 gap are blocked at
+   commit-time from the very first cycle:
+   - `tests_mirror_pairing.py` blocks any commit that
+     authors a `livespec/foo/bar.py` without a paired
+     `tests/livespec/foo/test_bar.py` containing at least
+     one `def test_*` function.
+   - `per_file_coverage.py` blocks any commit where any
+     covered file's coverage drops below 100% line OR 100%
+     branch — including the file just-authored. The Red→Green
+     pair must achieve 100% per-file coverage in the
+     same commit.
+   - `commit_pairs_source_and_test.py` blocks any commit
+     touching `livespec/**`/`bin/**`/`dev-tooling/checks/**`
+     source without also touching `tests/**`.
+   - `red_output_in_commit.py` blocks any feature/bugfix
+     commit body that lacks a `## Red output` heading +
+     fenced pytest output block.
+
+4. **Outside-in walking with forced inside-out drop-down.**
+   The v032 D2 walking-direction interpretation is
+   strengthened: the integration test for the Phase 3 exit
+   criterion is still the outermost rail, but each cycle
+   that touches a `livespec/**` source module MUST also
+   author a paired unit test at
+   `tests/livespec/<mirror>/test_<name>.py` in the same
+   commit. The mirror-pairing check makes the drop-down
+   mechanical — the executor cannot advance the integration
+   test by adding a new `livespec/**` module without also
+   adding the unit test. This closes the v032-redo failure
+   mode where outside-in TDD advanced the outermost rail
+   cycle after cycle without any unit-test layer pressure.
+
+5. **No re-derivation by inspection.** Both
+   `pre-redo.zip` and `pre-second-redo.zip` MUST NOT be
+   `unzip`-ed during second-redo authoring. Architecture is
+   PROPOSAL-prescribed; implementation must emerge from the
+   failing tests, not be transcribed from prior attempts.
+   The only legitimate extractions are at v033 D5c
+   quality-comparison-report measurement time.
+
+6. **Exit condition.** All Phase 3 / Phase 4 / Phase 5 exit
+   criteria pass against the post-second-redo tree (in
+   particular: `just check-tests`, `just check-coverage` at
+   per-file 100% line+branch across `livespec/**`,
+   `bin/**`, `dev-tooling/**`; `just check-tests-mirror-pairing`
+   passes; `just check-commit-pairs-source-and-test` passes
+   for every commit in the second-redo range;
+   `just check-red-output-in-commit` passes for every
+   feature/bugfix commit; the seed round-trip and the
+   propose-change/revise smoke cycle pass against the
+   second-redo tree). The v033 D5c quality-comparison
+   report passes its acceptance criteria.
+
+The redo is bracketed within Phase 5 because Phase 5 is when
+the test infrastructure becomes operational under the
+mechanical guardrails. The second redo is a one-time event;
+once complete, normal Phase 5-onward work resumes from the
+(new) sub-step that was in-progress at the v033-codification
+boundary.
+
+#### Quality-comparison report — v033 D5c scope expansion
+
+The v032 D3 quality-comparison report mechanism is preserved.
+The v033 D5c expansion: the report measures the
+post-second-redo tree against BOTH `pre-redo.zip` (the
+original impl-first state) AND `pre-second-redo.zip` (the
+failed-first-redo state). Each of the four dimensions
+(architecture, coupling, cohesion, unnecessary-code-
+elimination) is reported with deltas vs both baselines.
+Acceptance: at least three of four dimensions show concrete
+improvement vs both baselines (negative delta on LOC,
+fan-out, public surface, etc., OR positive delta on rule
+compliance). Materially-equivalent measurements across all
+four dimensions vs both baselines indicate the discipline
+lapsed and the second redo failed; user MAY reject and
+demand a re-redo. The behavioral-equivalence audit (Phase 3
+smoke against both pre-zip baselines + the post-second-redo
+tree) MUST pass.
+
+#### Lefthook activation — v033 D5a moves forward
+
+`just check-coverage` MUST pass at per-file 100% line+branch.
+
+v033 D5a moves `just bootstrap` promotion (from the Phase-1
+placeholder to the real `lefthook install && ln -sfn
+../.claude-plugin/skills .claude/skills`) from Phase 5 exit
+to **immediately after the v033-codification commit + the
+four guardrail-script commits land**. Concrete sequence
+(executed once in the v033 D5a-D5b transition):
+
+1. v033 codification commit lands (the present revision —
+   PROPOSAL.md + plan-text + style-doc edits + revision
+   file snapshot under `history/v033/`).
+2. Author the four new guardrail enforcement scripts under
+   TDD discipline (one Red→Green per script + paired test
+   per the v032 cycle pattern):
+   `dev-tooling/checks/tests_mirror_pairing.py` (D1) +
+   `tests/dev-tooling/checks/test_tests_mirror_pairing.py`;
+   `dev-tooling/checks/per_file_coverage.py` (D2) +
+   `tests/dev-tooling/checks/test_per_file_coverage.py`;
+   `dev-tooling/checks/commit_pairs_source_and_test.py`
+   (D3) + paired test;
+   the existing `dev-tooling/checks/red_output_in_commit.py`
+   (D4) is upgraded — its paired test
+   `tests/dev-tooling/checks/test_red_output_in_commit.py`
+   gains a hard-gate-mode assertion.
+3. Update `justfile`: rewrite the `bootstrap` recipe to
+   `lefthook install && ln -sfn ../.claude-plugin/skills
+   .claude/skills`; add `check-tests-mirror-pairing` recipe
+   (in `check` aggregate); rewrite `check-coverage` recipe
+   to invoke `per_file_coverage.py` after `pytest --cov
+   --cov-branch`; add `check-commit-pairs-source-and-test`
+   recipe (NOT in `check` aggregate); update the
+   `check-red-output-in-commit` phase comment from
+   "informational at Phase-4" to "hard gate at v033".
+4. Update `lefthook.yml` to wire the per-commit gate:
+   pre-commit runs `just check-commit-pairs-source-and-test`
+   AND `just check-red-output-in-commit` AND `just check`
+   (in that order — fail-fast on cheap per-commit checks
+   before running the expensive aggregate).
+5. Run `just bootstrap` — installs lefthook into
+   `.git/hooks/`. From this commit onward, every commit
+   gates on the new guardrails plus the existing
+   `just check` aggregate.
+
+**This is the activation point of the hard-constraint
+per-commit gate per PROPOSAL.md §"Testing approach —
+Activation"**; pre-v033-codification commits are
+grandfathered, and from the v033-D5a-completion commit
+onward no commit lands without passing the per-commit
+gate. The v033 D5b second retroactive redo's first cycle
+is the first commit subject to the discipline at full
+mechanical strength.
 
 **Exit criterion:** `just check` passes for every target except
 those still deferred to later phases (carrying forward Phase 4's
 deferral list, less the targets satisfied by this phase). Targets
 explicitly active at Phase 5 exit (must pass): `check-tests`,
-`check-coverage` (100% line+branch across `livespec/**`, `bin/**`,
-and `dev-tooling/**`), `check-pbt-coverage-pure-modules`,
-`check-claude-md-coverage`, `check-heading-coverage` (against the
-empty-array baseline; full enforcement begins in Phase 6),
-`check-vendor-manifest`, `check-prompts` (against placeholder
-test files that pass trivially), plus every target already passing
-at Phase 4 exit (`check-lint`, `check-format`, `check-complexity`,
+`check-coverage` (per-file 100% line+branch per v033 D2 across
+`livespec/**`, `bin/**`, and `dev-tooling/**`),
+`check-tests-mirror-pairing` (per v033 D1 — every covered `.py`
+has a paired test file with at least one `def test_*`),
+`check-pbt-coverage-pure-modules`, `check-claude-md-coverage`,
+`check-heading-coverage` (against the empty-array baseline; full
+enforcement begins in Phase 6), `check-vendor-manifest`,
+`check-prompts` (against placeholder test files that pass
+trivially), plus every target already passing at Phase 4 exit
+(`check-lint`, `check-format`, `check-complexity`,
 `check-imports-architecture`, `check-tools`, and every
 `dev-tooling/checks/*.py`-backed target in the canonical list).
-`just bootstrap` has been run and lefthook is installed. The
-v032 D3 retroactive-TDD quality-comparison report (Plan Phase
-5 §"Quality-comparison report") has been authored and its
-acceptance criteria pass — the redone tree demonstrates
+The lefthook-only checks `check-commit-pairs-source-and-test`
+(per v033 D3) and `check-red-output-in-commit` (per v033 D4) have
+been hard-gating every commit since the v033-codification
+commit. `just bootstrap` has been run and lefthook is installed.
+The v033 D5c retroactive-TDD quality-comparison report (Plan
+Phase 5 §"Quality-comparison report — v033 D5c scope expansion")
+has been authored and its acceptance criteria pass — the
+post-second-redo tree demonstrates
 concrete improvement on architecture, coupling, cohesion,
-and unnecessary-code elimination relative to the
-`bootstrap/scratch/pre-redo.zip` stash.
+and unnecessary-code elimination relative to BOTH
+`bootstrap/scratch/pre-redo.zip` (the original impl-first
+state) AND `bootstrap/scratch/pre-second-redo.zip` (the
+failed-first-redo state).
 
 The following `just check` targets remain deferred at Phase 5
 exit and activate at later phases:
@@ -3006,7 +3314,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v032 as authoritative. Do not propose any
+Treat PROPOSAL.md v033 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
