@@ -191,3 +191,72 @@ def test_seed_writes_history_v001_for_main_spec(*, tmp_path: Path) -> None:
         f"v001 proposed_changes/ {history_proposed_changes} not a directory; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
+
+
+def test_seed_writes_sub_spec_files_to_payload_paths(*, tmp_path: Path) -> None:
+    """`seed.py` materializes every `sub_specs[].files[]` entry to its declared path.
+
+    Per PROPOSAL.md §"`seed`" lines 1992-2042 step 3: "**(v018
+    Q1)** For each entry in `sub_specs[]`, write every `files[]`
+    entry in that sub-spec to its
+    `SPECIFICATION/templates/<template_name>/<spec-file>` path.
+    The sub-spec trees are written alongside the main tree,
+    atomically with it." Per
+    `seed_input.schema.json#/properties/sub_specs/items/properties/files/items/properties/path`,
+    each sub-spec file's `path` is a project-root-relative path,
+    conventionally `SPECIFICATION/templates/<template_name>/<spec-file>`.
+
+    This test pins ONLY the sub-spec working-tree files. The
+    sub-spec `history/v001/` snapshot (PROPOSAL.md lines
+    2014-2028 step 5) is deferred to a later cycle.
+    """
+    payload: dict[str, object] = {
+        "template": "livespec",
+        "files": [],
+        "intent": "test seed materializes sub_specs[].files[] entries",
+        "sub_specs": [
+            {
+                "template_name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "stub livespec sub-spec",
+                    },
+                    {
+                        "path": "SPECIFICATION/templates/livespec/contracts.md",
+                        "content": "stub contracts",
+                    },
+                ],
+            },
+        ],
+    }
+    payload_path = tmp_path / "seed_input.json"
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(payload_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"seed wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    sub_spec_root = tmp_path / "SPECIFICATION" / "templates" / "livespec"
+    sub_spec_path = sub_spec_root / "spec.md"
+    sub_contracts_path = sub_spec_root / "contracts.md"
+    assert sub_spec_path.exists(), (
+        f"sub-spec file {sub_spec_path} not written; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert sub_contracts_path.exists(), (
+        f"sub-spec file {sub_contracts_path} not written; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert sub_spec_path.read_text(encoding="utf-8") == "stub livespec sub-spec"
+    assert sub_contracts_path.read_text(encoding="utf-8") == "stub contracts"
