@@ -11,10 +11,10 @@ v032 TDD redo: registry grows one entry per cycle as each check's
 test-driven pass-Finding pulls it in. Cycle 21 added
 `livespec_jsonc_valid`; cycle 22 added `template_exists`; cycle
 23 added `template_files_present`; cycle 24 added
-`proposed_changes_and_history_dirs`; cycle 25 adds
-`version_directories_complete`. Remaining three Phase-3 minimum
-checks (`version_contiguity`,
-`revision_to_proposed_change_pairing`,
+`proposed_changes_and_history_dirs`; cycle 25 added
+`version_directories_complete`; cycle 26 adds
+`version_contiguity`. Remaining two Phase-3 minimum checks
+(`revision_to_proposed_change_pairing`,
 `proposed_change_topic_format`) land in subsequent cycles. The
 v022 D7 narrowed-registry policy (Phase 3: 8 implemented checks;
 Phase 7: remaining four) governs the final shape.
@@ -31,7 +31,9 @@ SLUG `"template-files-present"` → `check_id`
 `"doctor-proposed-changes-and-history-dirs"`; module
 `version_directories_complete.py` → SLUG
 `"version-directories-complete"` → `check_id`
-`"doctor-version-directories-complete"`. There is no
+`"doctor-version-directories-complete"`; module
+`version_contiguity.py` → SLUG `"version-contiguity"` →
+`check_id` `"doctor-version-contiguity"`. There is no
 slug-to-filename conversion loop.
 """
 
@@ -45,6 +47,7 @@ from livespec.doctor.static import (
     proposed_changes_and_history_dirs,
     template_exists,
     template_files_present,
+    version_contiguity,
     version_directories_complete,
 )
 from livespec.schemas.dataclasses.finding import Finding
@@ -82,11 +85,12 @@ CHECKS: tuple[tuple[str, CheckRunFn], ...] = (
         proposed_changes_and_history_dirs.run,
     ),
     (version_directories_complete.SLUG, version_directories_complete.run),
+    (version_contiguity.SLUG, version_contiguity.run),
 )
 """Phase-3 minimum-subset checks. Order is registration order;
 the orchestrator iterates this tuple per spec tree, applying
 the orchestrator-owned applicability table to decide which checks
-run for which `template_name`. Cycle 25 still hardcodes
+run for which `template_name`. Cycle 26 still hardcodes
 unconditional-applicability; the table grows under future consumer
 pressure (e.g., when a sub-spec test exercises the main-only
 restriction on `template-exists` and `template-files-present` per

@@ -522,3 +522,82 @@ def test_doctor_static_emits_pass_finding_for_version_directories_complete_again
         f"expected at least one version-directories-complete finding "
         f"with status='pass'; got {vdc_findings!r}"
     )
+
+
+def test_doctor_static_emits_pass_finding_for_version_contiguity_against_seeded_tree(
+    *, tmp_path: Path
+) -> None:
+    """`doctor_static.py` emits a `pass` Finding for `version-contiguity`.
+
+    Pins the sixth Phase-3 minimum check into existence: the
+    `version_contiguity` static check (PROPOSAL.md §"`doctor`
+    → Static-phase checks" lines 2708-2711, Plan line 1481).
+    Per PROPOSAL.md, version numbers in `<spec-root>/history/`
+    MUST be contiguous from `pruned_range.end + 1` (when
+    `PRUNED_HISTORY.json` exists at the oldest surviving
+    directory) or from `v001` upward. Numeric parsing applies —
+    not lexical (PROPOSAL.md lines 1718-1720).
+
+    Per PROPOSAL.md lines 1715-1726: version directories are
+    `vNNN` zero-padded to ≥3 digits, mixed widths within
+    `history/` are valid (the v1000+ widening), and version
+    numbers must be parsed and compared numerically.
+
+    Against a freshly-seeded tree, only `v001` exists. A
+    single-version sequence is trivially contiguous; the check
+    emits `status: "pass"`. Multi-version coverage (v001 +
+    v002 after a `revise` invocation) lands when an
+    integration test exercises the post-revise tree shape.
+
+    Cycle-26 scope: directory walk + numeric parsing of `vNNN`
+    suffixes + contiguity assertion against the parsed sequence.
+    Pruned-marker handling (`PRUNED_HISTORY.json` at the
+    oldest surviving directory; pruned range treated as
+    intentional missing history per PROPOSAL.md lines 1781-
+    1784) defers to a `prune-history`-test cycle. Bootstrap
+    lenience defers, same pattern as cycles 21-25.
+
+    Per PROPOSAL.md lines 2625-2628, JSON `check_id` is
+    `doctor-<slug>`; module `version_contiguity.py` → SLUG
+    `"version-contiguity"` → JSON `check_id`
+    `"doctor-version-contiguity"`.
+
+    Uniform across spec trees per PROPOSAL.md §"Per-tree
+    check applicability" — runs unconditionally for every
+    spec tree, no main-tree-only restriction.
+    """
+    _seed_minimal_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings = parsed["findings"]
+    assert isinstance(findings, list)
+    contiguity_findings = [
+        f
+        for f in findings
+        if isinstance(f, dict)
+        and f.get("check_id") == "doctor-version-contiguity"
+    ]
+    assert len(contiguity_findings) >= 1, (
+        f"expected >=1 finding with check_id 'doctor-version-contiguity'; "
+        f"got findings={findings!r}"
+    )
+    pass_findings = [f for f in contiguity_findings if f.get("status") == "pass"]
+    assert len(pass_findings) >= 1, (
+        f"expected at least one version-contiguity finding "
+        f"with status='pass'; got {contiguity_findings!r}"
+    )
