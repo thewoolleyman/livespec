@@ -25,13 +25,11 @@ by a test.
 
 Built-in template names (`livespec`, `minimal`) resolve to
 `<bundle-root>/specification-templates/<name>/` per PROPOSAL.md
-§"Template resolution contract" lines 1424-1503. The
-`<bundle-root>` computation duplicates the `parents[N]` math from
-`livespec/commands/resolve_template.py::_bundle_root` — N differs
-because each module sits at a different depth under
-`.claude-plugin/`. The third consumer of this math will justify
-extracting a shared `livespec/paths.py` helper; cycle-22 keeps the
-duplication explicit.
+§"Template resolution contract" lines 1424-1503. Cycle 23 lifted
+the `<bundle-root>` computation to `livespec.paths.bundle_root`
+(third-strikes-and-refactor: cycles 19 and 22 inlined
+depth-specific `Path(__file__).resolve().parents[N]` math; cycle
+23 collapses all three into the shared helper).
 
 User-provided template paths (anything not in the built-in set)
 are resolved relative to `ctx.project_root`. The
@@ -45,6 +43,7 @@ import json
 from pathlib import Path
 
 from livespec.context import DoctorContext
+from livespec.paths import bundle_root
 from livespec.schemas.dataclasses.finding import Finding
 
 __all__: list[str] = ["SLUG", "run"]
@@ -55,19 +54,9 @@ SLUG: str = "template-exists"
 _BUILTIN_TEMPLATES = frozenset({"livespec", "minimal"})
 
 
-def _bundle_root() -> Path:
-    """Compute `<bundle-root>` (.claude-plugin/) from this module's location.
-
-    From `.claude-plugin/scripts/livespec/doctor/static/template_exists.py`,
-    parents[0]=static/, parents[1]=doctor/, parents[2]=livespec/,
-    parents[3]=scripts/, parents[4]=.claude-plugin/.
-    """
-    return Path(__file__).resolve().parents[4]
-
-
 def _resolve_template_path(*, project_root: Path, template_value: str) -> Path:
     if template_value in _BUILTIN_TEMPLATES:
-        return _bundle_root() / "specification-templates" / template_value
+        return bundle_root() / "specification-templates" / template_value
     return project_root / template_value
 
 

@@ -274,3 +274,82 @@ def test_doctor_static_emits_pass_finding_for_template_exists_against_seeded_tre
         f"expected at least one template-exists finding with status='pass'; "
         f"got {template_exists_findings!r}"
     )
+
+
+def test_doctor_static_emits_pass_finding_for_template_files_present_against_seeded_tree(
+    *, tmp_path: Path
+) -> None:
+    """`doctor_static.py` emits a `pass` Finding for the `template-files-present` check.
+
+    Pins the third Phase-3 minimum check into existence: the
+    `template_files_present` static check (PROPOSAL.md §"`doctor`
+    → Static-phase checks" lines 2691-2694, Plan line 1481).
+    Per PROPOSAL.md lines 2691-2694, the check walks the active
+    template's `specification-template/` directory and asserts each
+    walked file exists at its expected repo-root-relative path
+    (under `<spec-root>/`).
+
+    Per Plan §"Phase 2" lines 1211-1214 the Phase-2 bootstrap
+    state of `<bundle-root>/specification-templates/livespec/
+    specification-template/` is "an empty skeleton (directory tree
+    only, no starter content files). Starter content is generated
+    agentically in Phase 7 from the template's sub-spec." The
+    repo's current state matches that: the only on-disk file is
+    a `.gitkeep` placeholder. `.gitkeep` is git-housekeeping
+    plumbing — not a "starter content file" per Plan line 1212 —
+    so the walker excludes it. With zero template-required files,
+    the check trivially passes.
+
+    Phase 7 will populate `specification-template/` with real
+    content (PROPOSAL.md §"Definition of Done (v1)" line 3902:
+    "full starter content under `specification-template/
+    SPECIFICATION/`"); from then on the check meaningfully
+    validates that seed materialized those files. The Phase-3
+    bootstrap-minimum behavior of trivially-passing on an empty
+    skeleton is the correct stepping stone — it pins the check's
+    plumbing (registry registration, walker, repo-root-resolution,
+    Finding shape) without depending on Phase-7 content.
+
+    Per PROPOSAL.md lines 2625-2628, JSON `check_id` is
+    `doctor-<slug>`; module `template_files_present.py` → SLUG
+    `"template-files-present"` → JSON `check_id`
+    `"doctor-template-files-present"`. Bootstrap lenience and the
+    orchestrator's main-tree-only applicability for this check
+    (PROPOSAL.md lines 2534-2538 — `template-files-present` is a
+    main-tree-only check) defer to subsequent cycles, same
+    pattern as `template-exists`.
+    """
+    _seed_minimal_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings = parsed["findings"]
+    assert isinstance(findings, list)
+    template_files_findings = [
+        f
+        for f in findings
+        if isinstance(f, dict) and f.get("check_id") == "doctor-template-files-present"
+    ]
+    assert len(template_files_findings) >= 1, (
+        f"expected >=1 finding with check_id 'doctor-template-files-present'; "
+        f"got findings={findings!r}"
+    )
+    pass_findings = [f for f in template_files_findings if f.get("status") == "pass"]
+    assert len(pass_findings) >= 1, (
+        f"expected at least one template-files-present finding with status='pass'; "
+        f"got {template_files_findings!r}"
+    )

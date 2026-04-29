@@ -51,6 +51,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from livespec.paths import bundle_root
+
 __all__: list[str] = ["main"]
 
 _BUILTIN_TEMPLATES = frozenset({"livespec", "minimal"})
@@ -63,22 +65,12 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _bundle_root() -> Path:
-    """Compute `<bundle-root>` (.claude-plugin/) from this module's location.
-
-    Per PROPOSAL.md lines 1473-1476: from
-    `.claude-plugin/scripts/livespec/commands/resolve_template.py`,
-    parents[3] is `.claude-plugin/`.
-    """
-    return Path(__file__).resolve().parents[3]
-
-
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args(sys.argv[1:])
     template_value: str | None = args.template
     if template_value in _BUILTIN_TEMPLATES:
-        resolved = _bundle_root() / "specification-templates" / template_value
+        resolved = bundle_root() / "specification-templates" / template_value
         sys.stdout.write(f"{resolved}\n")
         return 0
     return 0
