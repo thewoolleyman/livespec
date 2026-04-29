@@ -1,18 +1,22 @@
-"""red_output_in_commit — every redo feature/bugfix commit has `## Red output`.
+"""red_output_in_commit — every redo feature/bugfix commit has `## Red output` (v033 D4 hard gate).
 
-Per Plan lines 1708-1712 (v032 D4):
+Per the v033 D4 revision file at `brainstorming/approach-2-
+nlspec-based/history/v033/proposed_changes/critique-fix-v032-
+revision.md`, this check is **promoted from Phase-4-informational
+to hard gate at the v033-codification commit**. The original v032
+D4 framing positioned the promotion at Phase-5-exit; v033 D5a
+moved the lefthook activation forward to v033-codification, which
+forced the hard-gate promotion to the same boundary so the
+second retroactive redo's first cycle is mechanically gated.
 
-    walks `git log --grep` against the v032-redo commit range
-    and rejects any feature/bugfix commit lacking a `## Red
-    output` fenced block in its body; activates as a hard
-    `just check` gate at Phase 5 exit, **informational
-    pre-Phase-5-exit**.
-
-Phase 4 = pre-Phase-5-exit, so the check operates in
-**informational mode**: it logs warnings for non-conforming
-commits but always exits 0. The Phase-5-exit transition (one-
-line edit to flip the exit code) lands when the per-commit
-gate is wired into lefthook + CI.
+Behavior: walks `git log` for redo-format commits (subjects
+matching `phase-5: cycle <N> — ...`) and emits one structlog
+ERROR per commit whose body lacks the `## Red output` heading.
+Returns 1 when any offender is found, 0 otherwise. Pre-v033-
+codification commits are grandfathered (they precede the hard
+gate); the lefthook wires this check into pre-commit so the
+gate fires only on commits being authored from the v033-
+codification boundary forward.
 
 The redo commit range is identified by subject prefix:
 `phase-5: cycle <N> — ...`. STATUS / scaffolding commits
@@ -83,16 +87,18 @@ def main() -> int:
     )
     log = structlog.get_logger("red_output_in_commit")
     cwd = Path.cwd()
+    offenders: list[tuple[str, str]] = []
     for sha, message in _collect_redo_commits(cwd=cwd):
         if _RED_OUTPUT_HEADING in message:
             continue
-        log.warning(
-            "redo commit missing `## Red output` block (Phase 4 informational)",
+        subject = message.splitlines()[0]
+        log.error(
+            "redo commit missing `## Red output` block (v033 hard gate)",
             sha=sha,
-            subject=message.splitlines()[0],
+            subject=subject,
         )
-    # Phase 4 is informational mode: always rc=0 regardless of warnings.
-    return 0
+        offenders.append((sha, subject))
+    return 1 if offenders else 0
 
 
 if __name__ == "__main__":

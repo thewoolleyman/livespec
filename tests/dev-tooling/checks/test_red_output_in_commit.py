@@ -47,17 +47,21 @@ def _git(*, cwd: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_red_output_in_commit_warns_but_passes_in_phase4_informational_mode(
+def test_red_output_in_commit_rejects_redo_commit_without_block_v033_hard_gate(
     *,
     tmp_path: Path,
 ) -> None:
-    """A redo commit without `## Red output` warns but exits 0 (Phase 4).
+    """A redo commit without `## Red output` exits non-zero (v033 D4 hard gate).
 
     Fixture: a fresh git repo with one redo-format commit
     (`phase-5: cycle 1 — foo`) whose body has NO `## Red
-    output` block. The check, run from this repo's cwd, must
-    log a warning naming the offending sha but exit 0 because
-    Phase 4 is informational mode.
+    output` block. Per v033 D4 the check is now a hard gate
+    (the v032 D4 framing positioned the promotion at Phase-5-
+    exit; v033 D5a moves the lefthook activation forward to
+    v033-codification, which forces the hard-gate promotion to
+    the same boundary). The check, run from this repo's cwd,
+    must log an ERROR naming the offending sha and exit
+    non-zero so lefthook rejects the commit.
     """
     _git(cwd=tmp_path, args=["init", "-q"])
     _git(cwd=tmp_path, args=["config", "user.email", "test@example.com"])
@@ -85,14 +89,14 @@ def test_red_output_in_commit_warns_but_passes_in_phase4_informational_mode(
         check=False,
     )
 
-    assert result.returncode == 0, (
-        f"red_output_in_commit Phase-4 informational mode must exit 0; "
+    assert result.returncode != 0, (
+        f"red_output_in_commit v033 hard-gate mode must exit non-zero for missing block; "
         f"got returncode={result.returncode} "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
     combined = result.stdout + result.stderr
     assert "Red output" in combined or "red_output" in combined, (
-        f"red_output_in_commit must surface a warning about missing `## Red output`; "
+        f"red_output_in_commit must surface a diagnostic naming the missing `## Red output` block; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
 
