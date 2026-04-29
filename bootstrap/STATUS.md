@@ -1,10 +1,17 @@
 # Bootstrap status
 
 **Current phase:** 5
-**Current sub-step:** Phase 5 §"Retroactive TDD redo of Phase 3 + Phase 4 work" (v032 D2) — sub-step 3 walk continues; coverage recipe now functional, working through the Phase-5-exit target list (100% line+branch coverage gap, missing `tests/e2e/`, `tests/prompts/`, `tests/heading-coverage.json`, `tests/test_meta_section_drift_prevention.py`, `tests/bin/test_wrappers.py`).
+**Current sub-step:** Phase 5 §"Lefthook activation — v033 D5a moves forward" — step 2 (author the four guardrail enforcement scripts under TDD discipline)
 **Last completed exit criterion:** phase 4
-**Next action:** `check-coverage` recipe was buggy at 49212c9 — it ran `pytest --cov` without `--cov-branch`, so pytest-cov (6.0.0 engine.py:118) didn't set `COV_CORE_BRANCH=enabled` in subprocess env, child processes generated line-only data, and `cov.combine()` errored with "Can't combine statement coverage data with branch data". Fixed at c601885 by adding `--cov-branch` to the recipe (PROPOSAL/plan/style-doc unaffected — those docs only reference the policy "100% line+branch coverage", not the CLI flag). Coverage now runs cleanly: total at 64.81%; gap to the 100% Phase-5-exit target. Module-level coverage breakdown: every `dev-tooling/checks/*.py` script sits between 56% and 97% (subprocess-invoked from tests, partial coverage of error/exit paths); every `livespec/doctor/static/*.py` between 68% and 100%; `livespec/io/git.py` at 71%; `livespec/parse/__init__.py` and `livespec/validate/__init__.py` at 0% (stub-only modules); `livespec/commands/*.py` not in the report (0% — no test coverage authored). Multiple Phase 5 §"Test suite" skeleton items still unauthored: `tests/e2e/`, `tests/prompts/<template>/`, `tests/heading-coverage.json` (empty array `[]`), `tests/test_meta_section_drift_prevention.py`, `tests/bin/test_wrappers.py` (the 6-statement-shape meta-test).
+**Next action:** v033 codified at ce171c4 (PROPOSAL.md + plan + style-doc + revision file under `history/v033/` + v032 open-issues entry resolved). `--cov-branch` flag bug fixed at c601885. Per v033 D5a's five-step sequence, the immediate next sub-step is step 2: author the four guardrail enforcement scripts under TDD discipline (one Red→Green per script + paired test):
 
-The committed `bootstrap/scratch/pre-redo.zip` MUST NOT be `unzip`-ed during authoring (only at v032 D3 measurement-time extraction to `tmp/bootstrap/pre-redo-extracted/`). The authoritative PROPOSAL is `history/v032/PROPOSAL.md`. After all Phase 3/4/5 exit criteria pass against the redone tree, author `bootstrap/v032-quality-report.md` covering Architecture/Coupling/Cohesion/Unnecessary-code dimensions with quantitative metrics + behavioral-equivalence audit; report gates Phase 5 advance via AskUserQuestion.
-**Last updated:** 2026-04-29T16:45:00Z
-**Last commit:** c601885
+1. `dev-tooling/checks/tests_mirror_pairing.py` (D1) + `tests/dev-tooling/checks/test_tests_mirror_pairing.py`
+2. `dev-tooling/checks/per_file_coverage.py` (D2) + `tests/dev-tooling/checks/test_per_file_coverage.py`
+3. `dev-tooling/checks/commit_pairs_source_and_test.py` (D3) + paired test
+4. Upgrade `dev-tooling/checks/red_output_in_commit.py` (D4) from informational to hard-gate; corresponding paired-test mode added
+
+Then v033 D5a steps 3-5 (justfile + lefthook.yml + bootstrap recipe rewrites + `just bootstrap` execution to install lefthook). Then v033 D5b (stash post-redo as `bootstrap/scratch/pre-second-redo.zip` + `git reset --hard` to pre-cycle-1 baseline + cherry-pick guardrail commits + restart redo).
+
+Open issues: zero unresolved (v032 entry resolved at 2026-04-29T20:45:00Z by the v033 supersession).
+**Last updated:** 2026-04-29T20:50:00Z
+**Last commit:** ce171c4
