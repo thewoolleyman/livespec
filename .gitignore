@@ -11,6 +11,7 @@ tmp/
 # than ignored.
 __pycache__/
 .pytest_cache/
+.hypothesis/
 .coverage
 .ruff_cache/
 .pyright/

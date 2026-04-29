@@ -242,6 +242,13 @@ pythonpath = [
 addopts = [
     "--strict-markers",
     "--strict-config",
+    # `--import-mode=importlib` lets paired tests share a basename
+    # across mirror trees (e.g., `tests/livespec/schemas/dataclasses/
+    # test_finding.py` and `tests/livespec/validate/test_finding.py`)
+    # without pytest's legacy `prepend` mode triggering same-basename
+    # module collisions. Recommended modern pytest import mode; no
+    # `__init__.py` files needed in the `tests/` tree.
+    "--import-mode=importlib",
 ]
 
 # ---------------------------------------------------------------------------
