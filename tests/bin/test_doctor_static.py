@@ -601,3 +601,92 @@ def test_doctor_static_emits_pass_finding_for_version_contiguity_against_seeded_
         f"expected at least one version-contiguity finding "
         f"with status='pass'; got {contiguity_findings!r}"
     )
+
+
+def test_doctor_static_emits_pass_finding_for_revision_to_proposed_change_pairing_against_seeded_tree(  # noqa: E501
+    *, tmp_path: Path
+) -> None:
+    """`doctor_static.py` emits a `pass` Finding for `revision-to-proposed-change-pairing`.
+
+    Pins the seventh Phase-3 minimum check into existence: the
+    `revision_to_proposed_change_pairing` static check
+    (PROPOSAL.md §"`doctor` → Static-phase checks" lines 2712-
+    2720, Plan line 1481). Per PROPOSAL.md, for every
+    `<stem>-revision.md` in `<spec-root>/history/vNNN/proposed_changes/`,
+    a corresponding `<stem>.md` MUST exist in the same directory.
+    Pairing walks filename stems (NOT front-matter `topic`
+    values); under v014 N6 collision disambiguation, `<stem>` may
+    include a `-N` suffix (e.g., `foo-2-revision.md` pairs with
+    `foo-2.md`). See PROPOSAL.md §"Proposed-change file format"
+    → "Filename stem vs. front-matter `topic` distinction"
+    (lines 2974-2985) for why stem-based pairing is correct.
+
+    Per PROPOSAL.md line 2712-2714, the check scope is the
+    history subtree (`<spec-root>/history/vNNN/proposed_changes/`),
+    NOT the working `<spec-root>/proposed_changes/`. After a
+    successful `revise`, the working directory is empty of
+    in-flight proposals (only the skill-owned README persists);
+    paired `*-revision.md` files exist only in history per the
+    revise lifecycle (PROPOSAL.md lines 2421-2431).
+
+    Against a freshly-seeded tree, seed cycles 7-8 wrote an
+    auto-captured pair at
+    `<spec-root>/history/v001/proposed_changes/`:
+    `seed.md` + `seed-revision.md`. The pair satisfies the
+    check; the check emits `status: "pass"`. Multi-version
+    coverage (additional pairs in v002 after a `revise`) lands
+    when an integration test exercises the post-revise tree.
+
+    Cycle-27 scope: walk every
+    `<spec-root>/history/v???/proposed_changes/` directory and
+    validate stem-based pairing for each `*-revision.md` file.
+    Sub-spec iteration (sub-spec history subtrees), bootstrap
+    lenience (v014 N3), and detailed failure-path Findings
+    naming each orphan revision defer to subsequent cycles,
+    same pattern as cycles 21-26.
+
+    Per PROPOSAL.md lines 2625-2628, JSON `check_id` is
+    `doctor-<slug>`; module
+    `revision_to_proposed_change_pairing.py` → SLUG
+    `"revision-to-proposed-change-pairing"` → JSON `check_id`
+    `"doctor-revision-to-proposed-change-pairing"`.
+
+    Uniform across spec trees per PROPOSAL.md §"Per-tree check
+    applicability" — runs unconditionally, no main-tree-only
+    restriction.
+    """
+    _seed_minimal_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings = parsed["findings"]
+    assert isinstance(findings, list)
+    pairing_findings = [
+        f
+        for f in findings
+        if isinstance(f, dict)
+        and f.get("check_id") == "doctor-revision-to-proposed-change-pairing"
+    ]
+    assert len(pairing_findings) >= 1, (
+        f"expected >=1 finding with check_id 'doctor-revision-to-proposed-change-pairing'; "
+        f"got findings={findings!r}"
+    )
+    pass_findings = [f for f in pairing_findings if f.get("status") == "pass"]
+    assert len(pass_findings) >= 1, (
+        f"expected at least one revision-to-proposed-change-pairing finding "
+        f"with status='pass'; got {pairing_findings!r}"
+    )
