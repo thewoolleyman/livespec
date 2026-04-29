@@ -1022,3 +1022,43 @@ python3` (only `check-tools` at line 194 uses the canonical
 form); this is broader inconsistency that surfaces during the
 dev-tooling/checks redo work and lands as part of that scope,
 not bundled here per "one-finding-per-gate discipline".
+
+## 2026-04-29T07:39:10Z — phase 5 sub-step 3 (v032 retroactive-TDD redo, direction choice)
+
+**Decision:** Adopt **outside-in** TDD walking direction for the
+v032 retroactive redo, instead of the plan's recommended
+bottom-up dependency order. The first Red is the Phase 3
+exit-criterion seed round-trip behavior (`livespec seed` against
+a `tmp_path` fixture, propose-change + revise smoke cycle).
+Each ImportError or failing assertion drives one new module/
+behavior at a time. Modules are pulled into existence by
+consumer pressure rather than authored speculatively.
+
+**Rationale:** The user's stated goal for v032 is to force
+loose coupling, high cohesion, and unnecessary-code
+elimination through strict TDD. Bottom-up TDD (start at
+`types.py`, walk up the dependency graph) is famously weaker on
+all three: each module gets well-tested but speculatively
+designed; consumer pressure that would constrain shape is
+absent. Outside-in TDD makes consumer pressure the design
+forcing function — modules only exist with the contract the
+actual consumer demanded. Plan §"Retroactive TDD redo" sub-step
+3 explicitly permits executor judgment on order ("Order is a
+recommendation, not a contract — Red→Green discipline
+determines the next module by which test the executor wants
+to write next"); outside-in falls within that permission.
+
+Risk acknowledged: outside-in commits may bundle multiple
+"scaffolding" steps (an ImportError-driven Red can require
+creating an empty module + adding one symbol + writing a real
+assertion). Mitigation: commit per smallest test cycle, even
+if "this commit's Red was an ImportError that drove creating
+module X with one symbol"; the per-commit `## Red output`
+block makes the iteration visible. Per PROPOSAL.md lines
+3225-3228, iterating on test setup until the failure mode is
+the behavior gap is itself part of the test-first cycle.
+
+Gate confirmed via AskUserQuestion 2026-04-29 (option:
+"Outside-in TDD, pause for now (Recommended)"). Session paused
+here; next /bootstrap invocation resumes by authoring the
+first failing test (Phase 3 exit-criterion seed round-trip).
