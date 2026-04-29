@@ -554,6 +554,46 @@ v029 decisions (direct critique-fix overlay; see
   constraint. Routed via the bootstrap skill's Case-A
   PROPOSAL extension flow (halt-and-revise; same mechanism
   as drift-driven snapshots).
+- v031 D1 (PROPOSAL.md): extends §"Testing approach" lines
+  3372-3375 from a 3-pattern enumeration of structural
+  coverage exclusions (`if TYPE_CHECKING:`,
+  `raise NotImplementedError`, `@overload`) to 4 patterns by
+  adding `case _:`. The fourth pattern reflects the
+  universal `case _: assert_never(<subject>)` mandate at
+  companion style-doc lines 1054-1066 plus the AST-level
+  enforcement at
+  `dev-tooling/checks/assert_never_exhaustiveness.py`: every
+  `case _:` arm in the codebase is the structurally-
+  unreachable assert-never sentinel. Coverage.py's
+  compound-statement exclusion rule excludes the arm body
+  (`assert_never(<subject>)`) in the same sweep as the
+  `case _:` line, removing the need for contrived
+  per-test triggers across ~15-20 future match-statement-
+  bearing modules in Phase 5 sub-step 3 onward.
+- v031 D2 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v031/PROPOSAL.md`. Plan Phase
+  0 step 2 frozen-status header literal bumps to "Frozen at
+  v031". Plan Execution-prompt block authoritative-version
+  line bumps to v031. No Phase-N body edits required: v031
+  substance is contained in PROPOSAL.md §"Testing approach";
+  phase work references the rule by pointer rather than
+  enumerating patterns.
+- Companion-doc + pyproject edits already shipped at commit
+  `abd0cdd` via the v028-D1-style overlay precedent (style
+  doc + pyproject lead implementation; PROPOSAL revision
+  follows). The v031 revision file documents the
+  PROPOSAL-side reconciliation; the originating
+  open-issues entry (2026-04-29T02:44:18Z) gets
+  `Status: resolved` upon v031 commit landing.
+- Triggered by Phase 5 sub-step 3 test-authoring work for
+  `livespec/parse/jsonc.py`: the `case _: assert_never(
+  raw_result)` arm forced a per-test contrived monkeypatch
+  trigger to satisfy 100% line+branch coverage; user gate
+  authorized the structural-exclusion path for the remaining
+  match-statement-bearing modules. Routed via the bootstrap
+  skill's Case-A PROPOSAL-drift rule (auto-blocking;
+  halt-and-revise required because PROPOSAL.md lines 3372-
+  3375 enumerated only 3 patterns).
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -765,8 +805,12 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v030/PROPOSAL.md` (the v030
-   snapshot — v029 substance plus the §"Test-Driven Development
+   byte-identical to `history/v031/PROPOSAL.md` (the v031
+   snapshot — v030 substance plus the `case _:` 4th
+   structural-coverage-exclusion pattern at §"Testing approach"
+   lines 3372-3375 per
+   `history/v031/proposed_changes/critique-fix-v030-revision.md`;
+   v030 substance is v029 substance plus the §"Test-Driven Development
    discipline" section, the `# pragma: no cover` escape-hatch
    removal, the §"Testing approach — Activation" clause, and
    the cross-reference at the top of the coverage paragraph,
@@ -823,7 +867,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v030. Further evolution happens in
+   > **Status:** Frozen at v031. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -2618,7 +2662,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v030 as authoritative. Do not propose any
+Treat PROPOSAL.md v031 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
