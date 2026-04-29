@@ -205,3 +205,72 @@ def test_doctor_static_emits_pass_finding_for_livespec_jsonc_valid_against_seede
         f"expected at least one livespec-jsonc-valid finding with status='pass'; "
         f"got {livespec_jsonc_findings!r}"
     )
+
+
+def test_doctor_static_emits_pass_finding_for_template_exists_against_seeded_tree(
+    *, tmp_path: Path
+) -> None:
+    """`doctor_static.py` emits a `pass` Finding for the `template-exists` check.
+
+    Pins the second Phase-3 minimum check into existence: the
+    `template_exists` static check (PROPOSAL.md §"`doctor` →
+    Static-phase checks" lines 2672-2690, Plan line 1481). Against
+    a freshly-seeded tree built with `template=livespec`, the
+    bundle's `<bundle-root>/specification-templates/livespec/`
+    directory exists on disk (Phase 2 scaffolding artifact), so
+    the check emits `status: "pass"` after resolving the
+    `template` field from `.livespec.jsonc`. Per PROPOSAL.md lines
+    2625-2628, JSON `check_id` is `doctor-<slug>`; module
+    `template_exists.py` → SLUG `"template-exists"` → JSON
+    `check_id` `"doctor-template-exists"`.
+
+    Cycle-22 scope: just this one check + its registration in
+    `static/__init__.py` + the seed's `template` field flowing
+    into `.livespec.jsonc` (consumer pressure: the check needs to
+    KNOW which template was selected, not hide it behind the
+    schema's default-when-absent fallback). The full
+    `template-exists` semantics from PROPOSAL.md lines 2672-2690
+    (template.json layout, `template_format_version` matching, the
+    four required prompt files, doctor-llm prompt fields,
+    `doctor_static_check_modules` list) all land in subsequent
+    cycles, each driven by a specific failure-path test under
+    consumer pressure. Same applies to bootstrap lenience (v014 N3
+    `template_load_status`) and the orchestrator's applicability
+    table that restricts `template_exists` to `template_name ==
+    "main"` (PROPOSAL.md lines 2534-2538) — generalizes when
+    sub-spec iteration is exercised.
+    """
+    _seed_minimal_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings = parsed["findings"]
+    assert isinstance(findings, list)
+    template_exists_findings = [
+        f
+        for f in findings
+        if isinstance(f, dict) and f.get("check_id") == "doctor-template-exists"
+    ]
+    assert len(template_exists_findings) >= 1, (
+        f"expected >=1 finding with check_id 'doctor-template-exists'; "
+        f"got findings={findings!r}"
+    )
+    pass_findings = [f for f in template_exists_findings if f.get("status") == "pass"]
+    assert len(pass_findings) >= 1, (
+        f"expected at least one template-exists finding with status='pass'; "
+        f"got {template_exists_findings!r}"
+    )
