@@ -4,8 +4,9 @@ Per `python-skill-script-style-requirements.md` §"Complexity
 thresholds" (lines 1689-1711) and Plan Phase 4 line 1677, every
 Python file under the in-scope trees
 (`.claude-plugin/scripts/livespec/**`,
-`.claude-plugin/scripts/bin/**`, `<repo-root>/dev-tooling/**`)
-MUST be ≤ 200 logical lines.
+`.claude-plugin/scripts/bin/**`, `<repo-root>/dev-tooling/**`,
+plus `<repo-root>/tests/**` per spec line 67-69 — "Tests under
+`<repo-root>/tests/` MUST comply") MUST be ≤ 200 logical lines.
 
 A "logical line" is the canonical Python language definition: a
 `tokenize.NEWLINE` token terminates one logical line. Blank lines
@@ -51,6 +52,7 @@ _IN_SCOPE_TREES: tuple[Path, ...] = (
     Path(".claude-plugin") / "scripts" / "livespec",
     Path(".claude-plugin") / "scripts" / "bin",
     Path("dev-tooling"),
+    Path("tests"),
 )
 
 
