@@ -189,3 +189,186 @@ def test_revise_processes_proposed_change_into_history_v002(*, tmp_path: Path) -
         f"PROPOSAL.md lines 2450-2452 require <spec-root>/proposed_changes/ to be empty "
         f"of in-flight files. stdout={result.stdout!r} stderr={result.stderr!r}"
     )
+
+
+def _seed_tmp_path_with_sub_spec(*, tmp_path: Path) -> None:
+    """Pre-seed tmp_path with main spec + a `livespec` sub-spec tree.
+
+    Mirrors the `_seed_tmp_path_with_sub_spec` helper in
+    test_propose_change.py (cycle 14) — when a future test in
+    a third file needs the same pre-condition, hoist to
+    `tests/bin/conftest.py`.
+    """
+    seed_payload: dict[str, object] = {
+        "template": "livespec",
+        "files": [
+            {"path": "SPECIFICATION/spec.md", "content": "stub main spec"},
+        ],
+        "intent": "pre-seed for revise --spec-target test",
+        "sub_specs": [
+            {
+                "template_name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "stub sub-spec",
+                    },
+                ],
+            },
+        ],
+    }
+    seed_input = tmp_path / "seed_input.json"
+    seed_input.write_text(json.dumps(seed_payload), encoding="utf-8")
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    seed_result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(seed_input)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert (
+        seed_result.returncode == 0
+    ), f"pre-seed failed; stdout={seed_result.stdout!r} stderr={seed_result.stderr!r}"
+
+
+def _file_in_flight_proposal_against_spec_target(
+    *, tmp_path: Path, topic: str, spec_target: str
+) -> None:
+    """File a proposed-change at <spec_target>/proposed_changes/<topic>.md via the wrapper.
+
+    Uses the cycle-14 `--spec-target` flag to route the proposal
+    to a sub-spec tree.
+    """
+    findings_payload: dict[str, object] = {
+        "findings": [
+            {
+                "name": "Sub-spec revise-test proposal",
+                "target_spec_files": [f"{spec_target}/spec.md"],
+                "summary": "Proposal under test for revise --spec-target.",
+                "motivation": "Pre-condition for revise sub-spec routing test.",
+                "proposed_changes": "Replace stub sub-spec with revised content.",
+            },
+        ],
+    }
+    findings_input = tmp_path / "findings.json"
+    findings_input.write_text(json.dumps(findings_payload), encoding="utf-8")
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload + literal topic); no untrusted shell input.
+    pc_result = subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            str(_PROPOSE_CHANGE_WRAPPER),
+            "--findings-json",
+            str(findings_input),
+            "--spec-target",
+            spec_target,
+            topic,
+        ],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert pc_result.returncode == 0, (
+        f"propose-change pre-condition failed; "
+        f"stdout={pc_result.stdout!r} stderr={pc_result.stderr!r}"
+    )
+
+
+def test_revise_processes_sub_spec_proposed_change_into_history_v002(*, tmp_path: Path) -> None:
+    """`revise.py --spec-target <path>` cuts vNNN under that sub-spec tree, not main.
+
+    Symmetric to cycle-14's `test_propose_change_writes_topic_md_under_spec_target_path`.
+    Per PROPOSAL.md §"Spec-target selection contract (v018 Q1)"
+    lines 363-395 + Plan lines 1417-1437, `revise` accepts an
+    optional `--spec-target <path>` CLI flag selecting which spec
+    tree the file-shaping work targets. Default (when flag
+    absent) is the main spec root, exercised by the cycle-12/13
+    test above.
+
+    Plan lines 1620-1633 (v020 Q3 sub-spec routing smoke cycle)
+    spell out the symmetric end-to-end behavior:
+        /livespec:propose-change --spec-target <tmp>/SPECIFICATION/templates/livespec
+        /livespec:revise         --spec-target <tmp>/SPECIFICATION/templates/livespec
+    materializes `<tmp>/SPECIFICATION/templates/livespec/history/v002/`
+    with the byte-moved proposal + paired revision; main-spec
+    history MUST NOT be touched.
+    """
+    topic = "sub-spec-revise-topic"
+    spec_target = "SPECIFICATION/templates/livespec"
+    _seed_tmp_path_with_sub_spec(tmp_path=tmp_path)
+    _file_in_flight_proposal_against_spec_target(
+        tmp_path=tmp_path, topic=topic, spec_target=spec_target
+    )
+    in_flight_proposal = tmp_path / spec_target / "proposed_changes" / f"{topic}.md"
+    assert (
+        in_flight_proposal.exists()
+    ), f"pre-condition: in-flight sub-spec proposal {in_flight_proposal} not present"
+
+    revise_payload: dict[str, object] = {
+        "decisions": [
+            {
+                "proposal_topic": topic,
+                "decision": "accept",
+                "rationale": "auto-accepted for sub-spec routing test",
+                "modifications": "",
+                "resulting_files": [
+                    {
+                        "path": f"{spec_target}/spec.md",
+                        "content": "post-revise sub-spec content",
+                    },
+                ],
+            },
+        ],
+    }
+    revise_input = tmp_path / "revise_input.json"
+    revise_input.write_text(json.dumps(revise_payload), encoding="utf-8")
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            str(_REVISE_WRAPPER),
+            "--revise-json",
+            str(revise_input),
+            "--spec-target",
+            spec_target,
+        ],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"revise wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    sub_spec_v002 = tmp_path / spec_target / "history" / "v002"
+    moved_proposal = sub_spec_v002 / "proposed_changes" / f"{topic}.md"
+    paired_revision = sub_spec_v002 / "proposed_changes" / f"{topic}-revision.md"
+    assert sub_spec_v002.is_dir(), (
+        f"sub-spec history/v002/ {sub_spec_v002} not materialized; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert moved_proposal.exists(), (
+        f"byte-moved sub-spec proposal {moved_proposal} not at history/v002/proposed_changes/; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert paired_revision.exists(), (
+        f"paired sub-spec revision {paired_revision} not written; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert not in_flight_proposal.exists(), (
+        f"in-flight sub-spec proposal {in_flight_proposal} still present after revise; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    main_spec_v002 = tmp_path / "SPECIFICATION" / "history" / "v002"
+    assert not main_spec_v002.is_dir(), (
+        f"main-spec history/v002/ {main_spec_v002} incorrectly materialized when "
+        f"--spec-target routed to {spec_target!r}; stdout={result.stdout!r} "
+        f"stderr={result.stderr!r}"
+    )

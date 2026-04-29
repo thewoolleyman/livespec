@@ -39,9 +39,23 @@ supervisor:
 
 Smallest-thing-that-could-possibly-work scope per the briefing:
 
-- `<spec-root>` is hardcoded to `"SPECIFICATION"` (matches seed
-  cycle 4 and propose-change cycle 11). `--spec-target <path>`
-  for sub-spec routing is deferred until a test exercises it.
+- `--spec-target <path>` (cycle 15) selects which spec tree the
+  wrapper operates on per PROPOSAL.md §"Spec-target selection
+  contract (v018 Q1)" lines 363-395. Default `"SPECIFICATION"`
+  matches the `livespec` template's main-spec root; supplying
+  `SPECIFICATION/templates/<template_name>` routes the
+  file-shaping work (working-spec updates from `resulting_files[]`,
+  proposal byte-move, revision write, history vNNN cut, version
+  snapshot) to the named sub-spec tree. The internal
+  `_RevisionContext.spec_root` field name is now slightly
+  misleading (it carries the spec-target path, which can be a
+  sub-spec root) but renaming to `spec_target` is mechanical
+  refactoring deferred from this cycle. Full structural
+  validation per PROPOSAL.md lines 374-380 is deferred until a
+  failure-path test forces it; default-resolution via the
+  shared `.livespec.jsonc` upward-walk helper (PROPOSAL.md line
+  367-369) is also deferred — Phase 3 minimum hardcodes
+  `"SPECIFICATION"` and lets `--spec-target` opt in.
 - Topic-stem-to-filename mapping is identity (no collision
   disambiguation `-N` suffix). PROPOSAL.md lines 2437-2449
   full collision handling is Phase 7 widening.
@@ -104,6 +118,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="revise", exit_on_error=False)
     parser.add_argument("--revise-json", required=True, type=Path)
     parser.add_argument("--author", default=None)
+    parser.add_argument("--spec-target", default="SPECIFICATION")
     return parser
 
 
@@ -201,7 +216,7 @@ def main() -> int:
     decisions = cast("list[dict[str, object]]", payload["decisions"])
     payload_author = cast("str | None", payload.get("author"))
     cwd = Path.cwd()
-    spec_root = "SPECIFICATION"
+    spec_root: str = args.spec_target
     history_dir = cwd / spec_root / "history"
     next_version = _next_version(history_dir=history_dir)
     next_version_dir = history_dir / next_version
