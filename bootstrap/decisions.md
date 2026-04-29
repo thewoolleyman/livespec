@@ -1114,3 +1114,49 @@ v019 Q1 wording but were not re-verified in this gate per
 "one-finding-per-gate discipline"; if the cycle-15-ish revise
 work surfaces matching drift, it'll get its own Case-B fix at
 that time.
+
+## 2026-04-29T08:50:00Z — phase 5 sub-step 3 (Plan §revise minimum-viable description aligned with PROPOSAL --revise-json contract)
+
+**Decision:** Apply Case-B direct-fix to PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md
+lines 1417-1426 — same-pattern drift as the 2026-04-29T08:35:00Z
+propose-change Case-B fix. Plan previously read "accepts a
+per-proposal accept/reject decision via stdin payload" which
+contradicts PROPOSAL.md §"`revise`" lines 2375-2410 (wrapper
+takes `--revise-json <path> [--author <id>]` validated against
+`revise_input.schema.json`; the LLM-driven per-proposal decision
+dialogue is entirely skill-prose-side; the wrapper never invokes
+the LLM or the interactive confirmation flow). Drift surfaced
+during cycle 10 of the v032 TDD redo as a side observation by
+the `tdd-redo` sub-agent (commit 6898991 report); preempted at
+the parent level rather than waiting for cycle 12 to hit it,
+because the root cause is identical to the propose-change
+correction (uniform v019 Q1 wording applied across all three
+LLM-driven wrappers' Phase-3-minimum descriptions; PROPOSAL has
+diverged on input-contract framing across all three but the plan
+retained the older characterization for revise). Rewrote the
+plan bullet to: validates `--revise-json <path>` against
+`revise_input.schema.json`, processes `decisions[]` in payload
+order, moves processed `proposed_changes/<stem>.md` files
+byte-identically into the new history version, etc. The
+"out of Phase-3 scope" deferral list reframed to land delegation-
+toggle work on the SKILL.md-prose side (per PROPOSAL line 2378)
+rather than the wrapper.
+
+PROPOSAL.md verified internally consistent (literal grep on
+`--revise-json` and `revise_input.schema.json` returns
+canonical descriptions in lines 237, 1170, 2375-2410). PROPOSAL
+unaffected; only the plan needed editing. No open-issues entry
+per Case-B rules.
+
+**Rationale:** Same precedent as the four prior plan-only Case-B
+direct-fixes during this bootstrap (decisions.md
+2026-04-26T11:00:00Z, 2026-04-26T20:18:52Z, 2026-04-27T03:23:13Z,
+2026-04-29T07:35:42Z, 2026-04-29T08:35:00Z): plan-only drift on
+plan-internal wording gets the lighter Case-B path; PROPOSAL is
+the audit-versioned source of truth and is correct as-written.
+Per memory `feedback_only_ask_on_genuine_doubt.md`, no
+architectural ambiguity to gate on — the wrapper-CLI invariants
+were locked by PROPOSAL when v019 Q1 was originally specified.
+The critique.py paragraph (lines 1405-1413) is NOT affected
+(it correctly describes `critique`-as-internal-delegation to
+`propose_change`, which matches PROPOSAL).

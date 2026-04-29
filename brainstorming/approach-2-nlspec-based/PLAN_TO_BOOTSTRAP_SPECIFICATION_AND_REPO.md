@@ -1415,15 +1415,26 @@ Required implementation surface (everything else stays stubbed):
   is the wrapper-level mechanic, sufficient for the Phase 6
   first dogfooded cycle.
 - `livespec/commands/revise.py` — **minimum-viable per v019 Q1**:
-  reads every `<spec-target>/proposed_changes/*.md`, accepts a
-  per-proposal accept/reject decision via stdin payload (the
-  full LLM-driven decision flow lives in Phase 7), writes the
-  paired `<topic>-revision.md`, and on accept cuts a new
-  `<spec-target>/history/vNNN/` materialized from the
-  current spec files. Accepts `--spec-target <path>`. **Out of
-  Phase-3 scope**: per-proposal LLM decision flow with
-  delegation toggle, rejection-flow audit trail richness beyond
-  the simplest "decision: reject" front-matter line.
+  validates the inbound `--revise-json <path>` payload against
+  `revise_input.schema.json` (per PROPOSAL.md §"`revise`"
+  lines 2375-2410), processes the per-proposal `decisions[]`
+  in payload order, writes the paired
+  `<stem>-revision.md` per decision, moves each processed
+  `<spec-target>/proposed_changes/<stem>.md` byte-identically
+  into `<spec-target>/history/vNNN/proposed_changes/<stem>.md`,
+  and on any `accept`/`modify` cuts a new
+  `<spec-target>/history/vNNN/` materialized from the active
+  template's versioned spec files (using the payload's
+  `resulting_files[]` to update working-spec files in place).
+  Accepts `--spec-target <path>`. The LLM-driven per-proposal
+  decision dialogue and delegation toggle are SKILL.md-prose
+  responsibilities (the wrapper never invokes the template
+  prompt or the interactive confirmation flow). **Out of
+  Phase-3 scope**: full per-proposal LLM-decision-with-delegation
+  toggle (skill-prose-side; bootstrap-minimum SKILL.md narrates
+  but does not implement the toggle), rejection-flow audit
+  trail richness beyond the simplest "decision: reject"
+  front-matter line.
 - `livespec/doctor/run_static.py` — orchestrator per PROPOSAL.md
   §"Static-phase structure" + v014 N3 bootstrap lenience + v018
   Q1 per-tree iteration (applicability dispatch finalized in
