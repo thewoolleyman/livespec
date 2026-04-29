@@ -117,7 +117,7 @@ check-tests:
     uv run pytest
 
 check-coverage:
-    uv run pytest --cov --cov-report=term-missing
+    uv run pytest --cov --cov-branch --cov-report=term-missing
 
 # ---------------------------------------------------------------
 # AST / grep / hand-written checks. Each delegates to a script
