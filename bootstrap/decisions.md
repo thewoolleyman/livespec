@@ -1062,3 +1062,55 @@ Gate confirmed via AskUserQuestion 2026-04-29 (option:
 "Outside-in TDD, pause for now (Recommended)"). Session paused
 here; next /bootstrap invocation resumes by authoring the
 first failing test (Phase 3 exit-criterion seed round-trip).
+
+## 2026-04-29T08:35:00Z — phase 5 sub-step 3 (Plan §propose-change minimum-viable description aligned with PROPOSAL --findings-json contract)
+
+**Decision:** Apply Case-B direct-fix to PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md
+lines 1389-1404 — the Phase-3 minimum-viable propose-change
+description previously read "parses an inline-authored
+proposed-change file's front-matter against
+`proposed_change_front_matter.schema.json`" which contradicts
+PROPOSAL.md §"`propose-change`" lines 2149-2161 (the wrapper
+takes `--findings-json <path> <topic> [--author <id>]` and
+validates against `proposal_findings.schema.json`, then composes
+the markdown file from the findings via the field-copy mapping
+on lines 2232-2242). Drift surfaced during cycle 10 of the v032
+TDD redo via the `tdd-redo` sub-agent's pre-implementation
+cascading-impact scan; the agent halted before committing
+scaffolding. PROPOSAL.md verified internally consistent (literal
+grep on `--findings-json` and `proposal_findings.schema.json`
+returns the canonical descriptions in lines 237, 1170, 2138,
+2149-2161, 2232-2242, etc.; no PROPOSAL section corroborates
+the plan's "inline-authored markdown" framing). PROPOSAL.md is
+unaffected; only the plan needed editing. Rewrote the plan
+bullet to: "validates the inbound `--findings-json <path>`
+payload against `proposal_findings.schema.json` (per PROPOSAL.md
+lines 2149-2161), composes a proposed-change file from the
+findings (one `## Proposal: <name>` section per finding via the
+field-copy mapping in PROPOSAL.md lines 2232-2242), and writes
+it to `<spec-target>/proposed_changes/<topic>.md`...". The
+"out of Phase-3 scope" deferral list is preserved verbatim (it
+applies equally to either input contract).
+
+**Rationale:** Same precedent as the prior plan-only Case-B
+direct-fixes during this bootstrap (decisions.md
+2026-04-26T11:00:00Z, 2026-04-26T20:18:52Z, 2026-04-27T03:23:13Z,
+2026-04-29T07:35:42Z): plan-only drift on plan-internal
+phasing/wording gets the lighter Case-B path because the plan
+is unversioned throwaway scaffolding deleted at Phase 11, while
+PROPOSAL is the audit-versioned source of truth. PROPOSAL is
+correct as-written; the plan was simply stale on this paragraph.
+Per memory `feedback_only_ask_on_genuine_doubt.md` the executor
+self-resolves wording fixes when there's no architectural
+ambiguity (the architectural call here was already locked in
+PROPOSAL by the original v019 Q1 / v015 O3 / v013 wrapper-CLI
+design); no AskUserQuestion gate. User's standing autonomous-mode
+authorization for the v032 redo session covers Case-B fixes that
+align plan with already-decided PROPOSAL contracts. No
+open-issues entry per Case-B rules (open-issues is
+PROPOSAL-blocking only). Adjacent plan paragraphs for revise.py
+(line 1417-1426) and critique.py (line 1405-1413) show similar
+v019 Q1 wording but were not re-verified in this gate per
+"one-finding-per-gate discipline"; if the cycle-15-ish revise
+work surfaces matching drift, it'll get its own Case-B fix at
+that time.

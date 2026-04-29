@@ -1387,16 +1387,19 @@ Required implementation surface (everything else stays stubbed):
   the schema + dataclass + validator triple for
   `SubSpecPayload`.
 - `livespec/commands/propose_change.py` — **minimum-viable per
-  v019 Q1**: parses an inline-authored proposed-change file's
-  front-matter against `proposed_change_front_matter.schema.json`,
-  writes it to `<spec-target>/proposed_changes/<topic>.md` (the
-  `<spec-target>` is selected via the `--spec-target <path>`
-  flag, defaulting to the project's main spec root), and
-  surfaces collisions as exit-3 domain failures. **Out of
-  Phase-3 scope** (deferred to Phase 7's dogfooded widening):
-  topic canonicalization (v015 O3), reserve-suffix
-  canonicalization (v016 P3; v017 Q1), unified author
-  precedence beyond the simplest two-source rule, collision
+  v019 Q1**: validates the inbound `--findings-json <path>`
+  payload against `proposal_findings.schema.json` (per PROPOSAL.md
+  §"`propose-change`" lines 2149-2161), composes a
+  proposed-change file from the findings (one `## Proposal:
+  <name>` section per finding via the field-copy mapping in
+  PROPOSAL.md lines 2232-2242), and writes it to
+  `<spec-target>/proposed_changes/<topic>.md` (the `<spec-target>`
+  is selected via the `--spec-target <path>` flag, defaulting to
+  the project's main spec root). Collisions surface as exit-3
+  domain failures. **Out of Phase-3 scope** (deferred to Phase 7's
+  dogfooded widening): topic canonicalization (v015 O3),
+  reserve-suffix canonicalization (v016 P3; v017 Q1), unified
+  author precedence beyond the simplest two-source rule, collision
   disambiguation prompts (v014 N6), single-canonicalization
   invariant routing (v016 P4). Phase 3's minimum-viable version
   rejects topics that would require canonicalization rather than
