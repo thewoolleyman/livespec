@@ -75,7 +75,7 @@ _VERSION_DIR_RE = re.compile(r"^v(\d{3,})$")
 
 
 def run(*, ctx: DoctorContext) -> Finding:
-    history_dir = ctx.project_root / "SPECIFICATION" / "history"
+    history_dir = ctx.spec_root / "history"
     if not history_dir.is_dir():
         return Finding(
             check_id=f"doctor-{SLUG}",
@@ -83,7 +83,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             message="no <spec-root>/history/ directory; contiguity vacuously satisfied",
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     version_numbers: list[int] = []
     for path in history_dir.iterdir():
@@ -101,7 +101,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             message="no version directories under <spec-root>/history/; vacuously satisfied",
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     expected = list(range(1, version_numbers[-1] + 1))
     missing = [n for n in expected if n not in version_numbers]
@@ -116,7 +116,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             ),
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     missing_names = ", ".join(f"v{n:03d}" for n in missing)
     return Finding(
@@ -128,5 +128,5 @@ def run(*, ctx: DoctorContext) -> Finding:
         ),
         path=None,
         line=None,
-        spec_root="SPECIFICATION",
+        spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
     )

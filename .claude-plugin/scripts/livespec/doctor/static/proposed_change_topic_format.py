@@ -95,7 +95,7 @@ _SKILL_OWNED_README = "README.md"
 
 def run(*, ctx: DoctorContext) -> Finding:
     proposed_changes_dir = (
-        ctx.project_root / "SPECIFICATION" / "proposed_changes"
+        ctx.spec_root / "proposed_changes"
     )
     if not proposed_changes_dir.is_dir():
         return Finding(
@@ -107,7 +107,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             ),
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     nonconforming: list[str] = []
     validated_count = 0
@@ -130,7 +130,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             ),
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     return Finding(
         check_id=f"doctor-{SLUG}",
@@ -141,5 +141,5 @@ def run(*, ctx: DoctorContext) -> Finding:
         ),
         path=None,
         line=None,
-        spec_root="SPECIFICATION",
+        spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
     )

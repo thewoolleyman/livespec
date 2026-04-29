@@ -48,10 +48,9 @@ SLUG: str = "proposed-changes-and-history-dirs"
 
 
 def run(*, ctx: DoctorContext) -> Finding:
-    spec_root = ctx.project_root / "SPECIFICATION"
-    proposed_changes_dir = spec_root / "proposed_changes"
+    proposed_changes_dir = ctx.spec_root / "proposed_changes"
     proposed_changes_readme = proposed_changes_dir / "README.md"
-    history_dir = spec_root / "history"
+    history_dir = ctx.spec_root / "history"
     history_readme = history_dir / "README.md"
     missing: list[str] = []
     if not proposed_changes_dir.is_dir():
@@ -71,7 +70,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             ),
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     return Finding(
         check_id=f"doctor-{SLUG}",
@@ -82,5 +81,5 @@ def run(*, ctx: DoctorContext) -> Finding:
         ),
         path=None,
         line=None,
-        spec_root="SPECIFICATION",
+        spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
     )

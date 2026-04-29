@@ -137,7 +137,7 @@ def run(*, ctx: DoctorContext) -> Finding:
         project_root=ctx.project_root, template_value=template_value
     )
     required_rel_paths = _walk_template_required_paths(template_dir=template_dir)
-    history_dir = ctx.project_root / "SPECIFICATION" / "history"
+    history_dir = ctx.spec_root / "history"
     version_dirs = _list_version_directories(history_dir=history_dir)
     missing: list[str] = []
     for version_dir in version_dirs:
@@ -155,7 +155,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             ),
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     return Finding(
         check_id=f"doctor-{SLUG}",
@@ -166,5 +166,5 @@ def run(*, ctx: DoctorContext) -> Finding:
         ),
         path=None,
         line=None,
-        spec_root="SPECIFICATION",
+        spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
     )

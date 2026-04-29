@@ -74,7 +74,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             message=f"template '{template_value}' resolved to existing directory",
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     return Finding(
         check_id=f"doctor-{SLUG}",
@@ -84,5 +84,5 @@ def run(*, ctx: DoctorContext) -> Finding:
         ),
         path=None,
         line=None,
-        spec_root="SPECIFICATION",
+        spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
     )

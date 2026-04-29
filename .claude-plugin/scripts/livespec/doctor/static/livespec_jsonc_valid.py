@@ -53,5 +53,5 @@ def run(*, ctx: DoctorContext) -> Finding:
         message=".livespec.jsonc parsed successfully",
         path=None,
         line=None,
-        spec_root="SPECIFICATION",
+        spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
     )

@@ -201,7 +201,8 @@ def _write_skill_owned_readmes(*, spec_root_dir: Path) -> None:
 
 def _write_sub_spec_tree(*, cwd: Path, spec_root: str, sub_spec: dict[str, object]) -> None:
     sub_spec_root_rel = f"{spec_root}/templates/{sub_spec['template_name']}"
-    sub_history_v001 = cwd / sub_spec_root_rel / "history" / "v001"
+    sub_spec_root_dir = cwd / sub_spec_root_rel
+    sub_history_v001 = sub_spec_root_dir / "history" / "v001"
     files = cast("list[dict[str, str]]", sub_spec["files"])
     for entry in files:
         rel_path = entry["path"]
@@ -214,6 +215,7 @@ def _write_sub_spec_tree(*, cwd: Path, spec_root: str, sub_spec: dict[str, objec
             history_path.parent.mkdir(parents=True, exist_ok=True)
             write_text(path=history_path, content=entry["content"])
     (sub_history_v001 / "proposed_changes").mkdir(parents=True, exist_ok=True)
+    _write_skill_owned_readmes(spec_root_dir=sub_spec_root_dir)
 
 
 def _write_auto_captured_seed_pair(*, payload: dict[str, object], history_v001: Path) -> None:

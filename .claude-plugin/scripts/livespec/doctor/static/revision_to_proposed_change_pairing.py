@@ -119,7 +119,7 @@ def _scan_pairings(*, proposed_changes_dir: Path) -> tuple[int, list[str]]:
 
 
 def run(*, ctx: DoctorContext) -> Finding:
-    history_dir = ctx.project_root / "SPECIFICATION" / "history"
+    history_dir = ctx.spec_root / "history"
     proposed_changes_dirs = _list_version_proposed_changes_dirs(history_dir=history_dir)
     paired_total = 0
     orphans: list[str] = []
@@ -139,7 +139,7 @@ def run(*, ctx: DoctorContext) -> Finding:
             ),
             path=None,
             line=None,
-            spec_root="SPECIFICATION",
+            spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
         )
     return Finding(
         check_id=f"doctor-{SLUG}",
@@ -149,5 +149,5 @@ def run(*, ctx: DoctorContext) -> Finding:
         ),
         path=None,
         line=None,
-        spec_root="SPECIFICATION",
+        spec_root=ctx.spec_root.relative_to(ctx.project_root).as_posix(),
     )

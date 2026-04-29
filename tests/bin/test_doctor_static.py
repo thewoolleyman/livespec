@@ -783,3 +783,202 @@ def test_doctor_static_emits_pass_finding_for_proposed_change_topic_format_again
         f"expected at least one proposed-change-topic-format finding "
         f"with status='pass'; got {topic_findings!r}"
     )
+
+
+def _seed_main_plus_livespec_sub_spec_tree(*, tmp_path: Path) -> None:
+    """Seed `tmp_path` with a `livespec`-template main spec + one `livespec` sub-spec.
+
+    Per Plan §"After seed" lines 2280-2311, the post-seed tree
+    carries the main spec at `SPECIFICATION/` plus a sub-spec at
+    `SPECIFICATION/templates/livespec/` with the same multi-file
+    structure (uniform livespec-internal layout per v020 Q1). The
+    sub-spec receives skill-owned READMEs (per PROPOSAL.md lines
+    2025-2028, written per-tree) but does NOT receive an auto-
+    captured seed proposal pair (per PROPOSAL.md lines 2032-2034
+    / v018 Q1, sub-specs do not each get their own seed
+    artifact — the main-spec seed.md documents the whole
+    multi-tree creation).
+    """
+    main_files = [
+        {"path": "SPECIFICATION/spec.md", "content": "main stub spec"},
+        {"path": "SPECIFICATION/contracts.md", "content": "main stub contracts"},
+        {
+            "path": "SPECIFICATION/constraints.md",
+            "content": "main stub constraints",
+        },
+        {"path": "SPECIFICATION/scenarios.md", "content": "main stub scenarios"},
+        {"path": "SPECIFICATION/README.md", "content": "main stub readme"},
+    ]
+    sub_files = [
+        {
+            "path": "SPECIFICATION/templates/livespec/spec.md",
+            "content": "sub-spec stub spec",
+        },
+        {
+            "path": "SPECIFICATION/templates/livespec/contracts.md",
+            "content": "sub-spec stub contracts",
+        },
+        {
+            "path": "SPECIFICATION/templates/livespec/constraints.md",
+            "content": "sub-spec stub constraints",
+        },
+        {
+            "path": "SPECIFICATION/templates/livespec/scenarios.md",
+            "content": "sub-spec stub scenarios",
+        },
+        {
+            "path": "SPECIFICATION/templates/livespec/README.md",
+            "content": "sub-spec stub readme",
+        },
+    ]
+    payload: dict[str, object] = {
+        "template": "livespec",
+        "files": main_files,
+        "intent": "doctor-static sub-spec iteration test fixture",
+        "sub_specs": [
+            {"template_name": "livespec", "files": sub_files},
+        ],
+    }
+    payload_path = tmp_path / "seed_input.json"
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path + tmp_path payload); no untrusted shell input.
+    seed_result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_SEED_WRAPPER), "--seed-json", str(payload_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert seed_result.returncode == 0, (
+        f"seed fixture invocation failed; "
+        f"stdout={seed_result.stdout!r} stderr={seed_result.stderr!r}"
+    )
+
+
+def test_doctor_static_iterates_main_and_each_sub_spec_tree(*, tmp_path: Path) -> None:
+    """`doctor_static.py` runs the applicable check subset against every spec tree.
+
+    Pins the orchestrator's `(spec_root, template_name)` pair
+    iteration (PROPOSAL.md §"`doctor` → Static-phase structure"
+    lines 2513-2542, Plan lines 1438-1466). At startup the
+    orchestrator enumerates pairs: the main spec tree first
+    (template_name sentinel `"main"`), then each sub-spec tree
+    under `<main-spec-root>/templates/<sub-name>/` discovered
+    via directory listing. Per PROPOSAL.md lines 2520-2525, each
+    pair gets a fresh `DoctorContext` with `spec_root` set to
+    that tree's root and `template_name` set to the marker.
+
+    Per the orchestrator-owned applicability table (PROPOSAL.md
+    lines 2526-2540 / v021 Q1):
+
+    - `template-exists` and `template-files-present` are
+      main-tree-only checks. Sub-spec trees do NOT re-run them.
+    - Every other Phase-3 check runs uniformly per tree.
+
+    Each Finding's `spec_root` field discriminates per-tree
+    origin (PROPOSAL.md lines 2549-2551 + finding.schema.json's
+    `spec_root` required field). For a freshly-seeded tree with
+    one `livespec` sub-spec, findings carry either
+    `spec_root == "SPECIFICATION"` (main tree) or
+    `spec_root == "SPECIFICATION/templates/livespec"` (sub-spec
+    tree).
+
+    Cycle-29 scope: orchestrator iteration + applicability
+    table + Finding `spec_root` discrimination + seed evolution
+    to write skill-owned READMEs per sub-spec tree (consumer-
+    pressure step: doctor's per-tree iteration now demands
+    each sub-spec have its `<sub-spec>/proposed_changes/README.md`
+    and `<sub-spec>/history/README.md`, per PROPOSAL.md lines
+    2025-2028). The full PROPOSAL.md
+    `gherkin-blank-line-format` sub-spec applicability rule
+    (PROPOSAL.md lines 2528-2533) defers to Phase 7 when that
+    check is authored. Bootstrap lenience defers, same pattern
+    as cycles 21-28.
+    """
+    _seed_main_plus_livespec_sub_spec_tree(tmp_path=tmp_path)
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled
+    # wrapper path); no untrusted shell input.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_DOCTOR_STATIC_WRAPPER)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"doctor_static wrapper exited {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    parsed: object = json.loads(result.stdout)
+    assert isinstance(parsed, dict)
+    findings_obj = parsed["findings"]
+    assert isinstance(findings_obj, list)
+    findings = [f for f in findings_obj if isinstance(f, dict)]
+
+    # Findings include both main-tree and sub-spec-tree entries.
+    main_spec_roots = {
+        f["spec_root"] for f in findings if f.get("spec_root") == "SPECIFICATION"
+    }
+    sub_spec_roots = {
+        f["spec_root"]
+        for f in findings
+        if f.get("spec_root") == "SPECIFICATION/templates/livespec"
+    }
+    assert "SPECIFICATION" in main_spec_roots, (
+        f"expected findings with spec_root='SPECIFICATION' (main tree); "
+        f"got findings={findings!r}"
+    )
+    assert "SPECIFICATION/templates/livespec" in sub_spec_roots, (
+        f"expected findings with spec_root='SPECIFICATION/templates/livespec' "
+        f"(sub-spec tree); got findings={findings!r}"
+    )
+
+    # Applicability: `template-exists` and `template-files-present`
+    # appear ONLY for the main tree (main-tree-only per
+    # PROPOSAL.md lines 2534-2538).
+    main_only_check_ids = {
+        "doctor-template-exists",
+        "doctor-template-files-present",
+    }
+    for check_id in main_only_check_ids:
+        spec_roots_for_check = {
+            f["spec_root"] for f in findings if f.get("check_id") == check_id
+        }
+        assert spec_roots_for_check == {"SPECIFICATION"}, (
+            f"expected {check_id} to appear ONLY for main spec_root=='SPECIFICATION'; "
+            f"got spec_roots={spec_roots_for_check!r}"
+        )
+
+    # Other Phase-3 checks run uniformly per tree — at least one
+    # uniform check must appear in BOTH spec_roots.
+    uniform_check_ids = {
+        "doctor-livespec-jsonc-valid",
+        "doctor-proposed-changes-and-history-dirs",
+        "doctor-version-directories-complete",
+        "doctor-version-contiguity",
+        "doctor-revision-to-proposed-change-pairing",
+        "doctor-proposed-change-topic-format",
+    }
+    for check_id in uniform_check_ids:
+        spec_roots_for_check = {
+            f["spec_root"] for f in findings if f.get("check_id") == check_id
+        }
+        assert "SPECIFICATION" in spec_roots_for_check, (
+            f"expected {check_id} to appear for main tree; "
+            f"got spec_roots={spec_roots_for_check!r}"
+        )
+        assert "SPECIFICATION/templates/livespec" in spec_roots_for_check, (
+            f"expected {check_id} to appear for sub-spec tree; "
+            f"got spec_roots={spec_roots_for_check!r}"
+        )
+
+    # All findings emitted are pass (the freshly-seeded tree
+    # satisfies every applicable check).
+    fail_findings = [f for f in findings if f.get("status") == "fail"]
+    assert not fail_findings, (
+        f"expected zero fail findings on freshly-seeded sub-spec tree; "
+        f"got {fail_findings!r}"
+    )
