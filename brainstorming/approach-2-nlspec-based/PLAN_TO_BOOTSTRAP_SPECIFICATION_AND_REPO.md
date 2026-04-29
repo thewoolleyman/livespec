@@ -594,6 +594,49 @@ v029 decisions (direct critique-fix overlay; see
   skill's Case-A PROPOSAL-drift rule (auto-blocking;
   halt-and-revise required because PROPOSAL.md lines 3372-
   3375 enumerated only 3 patterns).
+- v032 D1 (PROPOSAL.md): rewrites §"Test-Driven Development
+  discipline" opening paragraph (lines 3103-3110) to strike
+  the "non-negotiable from Phase 5 exit onward" temporal
+  carve-out and clarify that the discipline applies from the
+  first Python module onward; what activates at Phase 5 exit
+  is the mechanical enforcement gate (lefthook + 100%
+  coverage), NOT the discipline itself. References Plan Phase
+  5 §"Retroactive TDD redo of Phase 3 + Phase 4 work" as the
+  one-time mechanism that brings the pre-v032 codebase under
+  the discipline.
+- v032 D2 (plan-level): Plan Phase 3 and Phase 4 each gain a
+  one-paragraph **Authoring discipline** preamble mandating
+  Red→Green-per-behavior. Plan Phase 5 gains a new
+  §"Retroactive TDD redo of Phase 3 + Phase 4 work"
+  sub-section laying out the stash → walk-modules-in-
+  dependency-order → exit-condition procedure. Stash
+  mechanism: `bootstrap/scratch/pre-redo.zip` is a committed
+  binary blob (under SCM, not source-readable; only
+  legitimate `unzip` is at v032 D3 measurement time).
+- v032 D3 (plan-level): Plan Phase 5 gains §"Quality-
+  comparison report" sub-section requiring an explicit
+  before/after report on architecture, coupling, cohesion,
+  and unnecessary-code elimination, with at least one
+  quantitative metric per dimension and a behavioral-
+  equivalence audit. Report is gated by AskUserQuestion
+  before Phase 5 advance.
+- v032 D4 (plan-level + new dev-tooling check): Plan Phase 5
+  gains §"Per-commit Red-output discipline" sub-section
+  mandating a `## Red output` fenced block in every
+  feature/bugfix commit body. New `red_output_in_commit.py`
+  check enumerated in Phase 4's check list; activates as a
+  hard `just check` gate at Phase 5 exit.
+- v032 D5 (plan-level): Plan Phase 0 step 1 byte-identity
+  reference bumps to `history/v032/PROPOSAL.md`. Plan Phase
+  0 step 2 frozen-status header literal bumps to "Frozen at
+  v032". Plan Execution-prompt block authoritative-version
+  line bumps to v032.
+- Triggered by user-flagged design concern: characterization-
+  style backfill at Phase 5 sub-step 3 produces covered code,
+  not designed code; the load-bearing TDD benefits (loose
+  coupling, high cohesion, unnecessary-code elimination,
+  good architecture) require Red→Green-per-behavior
+  authoring, not impl-first-with-tests-after.
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -805,8 +848,12 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v031/PROPOSAL.md` (the v031
-   snapshot — v030 substance plus the `case _:` 4th
+   byte-identical to `history/v032/PROPOSAL.md` (the v032
+   snapshot — v031 substance plus the §"Test-Driven Development
+   discipline" opening-paragraph rewrite at lines 3103-3110
+   striking the "Phase 5 exit onward" temporal carve-out per
+   `history/v032/proposed_changes/critique-fix-v031-revision.md`;
+   v031 substance is v030 substance plus the `case _:` 4th
    structural-coverage-exclusion pattern at §"Testing approach"
    lines 3372-3375 per
    `history/v031/proposed_changes/critique-fix-v030-revision.md`;
@@ -867,7 +914,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v031. Further evolution happens in
+   > **Status:** Frozen at v032. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -1257,6 +1304,21 @@ imperative-landing scope: minimum-viable `propose-change`,
 SPECIFICATION/, so that Phase 7's full-feature widening can
 proceed entirely through the governed loop.
 
+**Authoring discipline (v032 D1).** Every module enumerated
+below is authored under strict Red→Green-per-behavior. The
+enumeration fixes WHICH modules exist and WHAT each owns; it
+does NOT prescribe the order or granularity of the internal
+authoring cycles. For each module: identify a behavior the
+module owes (driven by a specific consumer or invariant);
+write the smallest failing test that names that behavior;
+observe the failure mode is the behavior gap, not a SyntaxError
+/ ImportError / fixture issue; write the minimum
+implementation that turns it Green; commit the Red-Green pair
+atomically with the failing-test output captured in the commit
+body per Plan Phase 5 §"Per-commit Red-output discipline". No
+bulk authoring of an entire module followed by tests-after; no
+characterization-style backfill; no speculative defensive code.
+
 Required implementation surface (everything else stays stubbed):
 
 - `livespec/errors.py` — landed in Phase 2 (full
@@ -1578,7 +1640,25 @@ widened implementations is what activates at Phase 7.
 Author every enforcement check under `dev-tooling/checks/` per
 the canonical `just` target list. Each script is a standalone
 Python module conforming to the same style rules as the shipped
-code (`just check` includes `dev-tooling/**` in scope). Scripts:
+code (`just check` includes `dev-tooling/**` in scope).
+
+**Authoring discipline (v032 D1).** Every check below is
+authored test-first per the same Red→Green-per-behavior
+discipline that applies to `livespec/**`. For each check:
+write the failing test in `tests/dev-tooling/checks/` that
+names ONE failure mode the check exists to catch (a specific
+violation pattern, with input that should be rejected); observe
+the test fail because the check has not yet been written; write
+the minimum check logic that turns it Green; commit the
+Red-Green pair. Repeat per failure mode until the check covers
+every pattern PROPOSAL.md §"Canonical target list" / the style
+doc names for that target. No characterization-style
+backfilling of tests against pre-existing checks; the existing
+Phase 4 check implementations are deleted and re-derived under
+this discipline as part of Plan Phase 5 §"Retroactive TDD redo
+of Phase 3 + Phase 4 work".
+
+Scripts:
 
 - `file_lloc.py` — file ≤ 200 logical lines.
 - `private_calls.py`, `global_writes.py`,
@@ -1610,7 +1690,12 @@ code (`just check` includes `dev-tooling/**` in scope). Scripts:
   parseable-ISO `vendored_at`, and the `shim: true` flag is
   present on `jsoncomment` (the v026 D1 hand-authored shim)
   and absent on every other entry (post-v027 D1
-  `typing_extensions` is upstream-sourced, NOT a shim)).
+  `typing_extensions` is upstream-sourced, NOT a shim)),
+  `red_output_in_commit.py` (v032 D4: walks `git log --grep`
+  against the v032-redo commit range and rejects any
+  feature/bugfix commit lacking a `## Red output` fenced
+  block in its body; activates as a hard `just check` gate
+  at Phase 5 exit, informational pre-Phase-5-exit).
 
 Each script has a paired `tests/dev-tooling/checks/test_<name>.py`.
 
@@ -1715,6 +1800,239 @@ Build out the test tree per PROPOSAL.md §"Testing approach":
 - Every `tests/` directory (with `fixtures/` subtrees excluded at
   any depth) carries a `CLAUDE.md`.
 
+#### Retroactive TDD redo of Phase 3 + Phase 4 work (v032 D2)
+
+Phase 3 and Phase 4 produced impl-first code with tests
+authored afterward. v032 D1 closes the temporal carve-out
+that permitted that mode; this sub-section bridges the gap
+by deleting every Phase 3 / Phase 4 / Phase 5-so-far Python
+artifact and re-authoring each module under strict
+Red→Green-per-behavior. Procedure:
+
+1. **Stash the pre-redo tree as a committed zip archive.**
+   Archive every `.py` file under
+   `.claude-plugin/scripts/livespec/` (excluding
+   `_vendor/**` and `__init__.py` files), every `.py` under
+   `.claude-plugin/scripts/bin/` (excluding `_bootstrap.py`,
+   which has its own meta-test contract and is preserved as
+   the version-gate), every `.py` under
+   `dev-tooling/checks/`, every `.py` under
+   `tests/livespec/`, every `.py` under `tests/bin/`
+   (excluding `tests/bin/test_bootstrap.py` and
+   `tests/bin/conftest.py`), and every `.py` under
+   `tests/dev-tooling/checks/` into
+   `bootstrap/scratch/pre-redo.zip`. The zip is committed to
+   the repo (binary blob, under SCM but not source-readable —
+   `git grep` skips it, `Read` on it returns binary garbage,
+   the only access path is deliberate `unzip`). Then delete
+   the originals. The pre-redo zip preserves the audit trail
+   for the v032 D3 quality-comparison report and survives
+   until Phase 11 cleanup, which removes it via `git rm`. The
+   zip MUST NOT be `unzip`-ed during authoring of the redone
+   modules; the only legitimate `unzip` is the
+   measurement-time extraction at v032 D3 report authoring,
+   which extracts to a `tmp/bootstrap/pre-redo-extracted/`
+   scratch dir, runs the metrics, and deletes the extraction
+   when done.
+2. **Verify clean state.** `just check-tests` against the
+   stripped tree errors with import failures (intended); the
+   tree is genuinely empty of Phase 3-5 Python.
+3. **Walk the PROPOSAL-prescribed module enumeration in
+   dependency order**, re-authoring each module under
+   Red→Green-per-behavior. Recommended order, derived from
+   import dependencies: (a) `livespec/types.py`,
+   `livespec/errors.py`, `livespec/context.py`,
+   `livespec/__init__.py`; (b) `livespec/schemas/dataclasses/`
+   (10 modules); (c) `livespec/parse/` (jsonc, front_matter);
+   (d) `livespec/validate/` (10 modules); (e)
+   `livespec/io/` (cli, fs, git,
+   fastjsonschema_facade, returns_facade, structlog_facade);
+   (f) `livespec/commands/` (resolve_template, seed,
+   propose_change, critique, revise, prune_history, plus
+   `_seed_helpers`, `_revise_helpers`); (g)
+   `livespec/doctor/` (run_static plus the 12 static checks
+   per PROPOSAL.md §"Static-phase structure"); (h)
+   `dev-tooling/checks/` (26 checks); (i)
+   `.claude-plugin/scripts/bin/` wrappers (8 modules; meta-
+   tested via `tests/bin/test_wrappers.py` per the existing
+   wrapper-shape contract). The order is a recommendation,
+   not a contract — Red→Green discipline determines the next
+   module by which test the executor wants to write next.
+4. **Per-module discipline.** Each Red→Green pair lands as
+   one commit. The commit message starts with `phase-5: ...`
+   (since this is Phase 5 execution work) and the commit
+   body MUST include the captured Red output per Plan Phase
+   5 §"Per-commit Red-output discipline" (v032 D4). Refactor
+   commits are separate per PROPOSAL.md §"The independent
+   refactor cycle" — they do NOT include a new failing test
+   and have a `refactor: ...` message prefix.
+5. **No re-derivation by inspection.** The committed
+   `bootstrap/scratch/pre-redo.zip` MUST NOT be `unzip`-ed
+   during redo authoring. The zip is binary-blob committed
+   so the audit trail is solid, but extracting it during
+   module authoring would defeat the discipline. The
+   architecture is PROPOSAL-prescribed; the implementation
+   must emerge from the failing tests, not be transcribed
+   from the prior version. The only legitimate extraction is
+   at D3 quality-comparison report authoring time.
+6. **Exit condition.** All Phase 3 / Phase 4 / Phase 5 exit
+   criteria pass against the redone tree (in particular:
+   `just check-tests`, `just check-coverage` at 100%
+   line+branch across `livespec/**`, `bin/**`,
+   `dev-tooling/**`, the seed round-trip, and the propose-
+   change/revise smoke cycle). The v032 D3 quality-
+   comparison report passes its acceptance criteria.
+
+The redo is bracketed within Phase 5 because Phase 5 is when
+the test infrastructure becomes operational; the pre-redo
+test infrastructure existed but the discipline did not. The
+redo is a one-time event; once complete, normal Phase
+5-onward work resumes from the (new) sub-step that was
+in-progress at v032 commit time.
+
+#### Quality-comparison report (v032 D3)
+
+After the retroactive redo completes and all Phase 3 / Phase
+4 / Phase 5 exit gates pass, the executor authors
+`bootstrap/v032-quality-report.md` (committed alongside the
+zip stash; both removed at Phase 11 via `git rm`). The report
+MUST cover all four dimensions below with concrete
+measurements drawn from a one-time extraction of
+`bootstrap/scratch/pre-redo.zip` (pre) versus the live tree
+(post). Extraction procedure: `unzip
+bootstrap/scratch/pre-redo.zip -d
+tmp/bootstrap/pre-redo-extracted/`; run all metrics against
+the extracted tree; delete `tmp/bootstrap/pre-redo-extracted/`
+when the report is authored. The extraction is the ONLY
+legitimate `unzip` of the stash; it happens once, after the
+redo is complete, with the explicit purpose of measurement.
+Subjective claims are not sufficient — every dimension below
+carries at least one quantitative metric.
+
+**Dimension 1 — Architecture.**
+
+- Module count delta per top-level package
+  (`livespec/commands/`, `livespec/io/`, `livespec/doctor/`,
+  `livespec/validate/`, `livespec/parse/`, `livespec/schemas/`,
+  `dev-tooling/checks/`, `tests/**`). Pre and post counts;
+  delta with sign.
+- Architectural-rule compliance: count of distinct
+  PROPOSAL.md / style-doc rule citations the post-tree
+  implementation satisfies that the pre-tree did not (e.g.,
+  ROP pipeline shape, `@impure_safe` boundaries,
+  `@rop_pipeline` single-public-method, supervisor
+  discipline) — the executor MUST identify any rule the
+  pre-tree was violating that the redo brought into
+  compliance, OR explicitly state "no rule-compliance
+  delta" and explain why the rules were already satisfied.
+- Public-API surface: union of all `__all__` entries across
+  `livespec/**`. Pre count, post count, delta with sign.
+  Reductions are improvements (smaller surface ⇒ tighter
+  contract); growth requires justification per added entry.
+
+**Dimension 2 — Coupling.**
+
+- Per-module import count: for each module under
+  `livespec/**`, count of distinct module-level `import` /
+  `from … import` statements (excluding `_vendor/**`).
+  Report mean and max pre vs post; delta with sign.
+  Reductions are improvements.
+- Cross-package edges: count of import edges that cross
+  package boundaries (`commands/` → `io/`, `doctor/` →
+  `validate/`, etc.). Pre vs post; delta with sign.
+- Cyclic-import / fan-out hotspots: any module with
+  fan-out > 8 in either tree gets called out by name. The
+  report MUST identify whether each hotspot survived the
+  redo (and why) or was eliminated.
+
+**Dimension 3 — Cohesion.**
+
+- LOC per module (logical lines, per
+  `dev-tooling/checks/file_lloc.py`). Pre mean / max / count
+  > 100 LLOC; post mean / max / count > 100 LLOC. Each
+  dimension delta with sign.
+- Public-method count per public class: report mean and max
+  pre vs post. The `@rop_pipeline` single-public-method rule
+  (v029 D1) means classes carrying that decorator have
+  exactly one public method; the report MUST confirm
+  compliance for both trees and surface any
+  multi-public-method classes that survived the redo.
+- Public-function-per-module count: pre vs post mean and
+  max; delta. Higher cohesion typically presents as fewer
+  public functions per module with more focused
+  responsibilities.
+
+**Dimension 4 — Unnecessary-code elimination.**
+
+- Total LOC delta (impl + test, separately): pre LLOC,
+  post LLOC, delta with sign. Pure reductions are the
+  expected primary signal of TDD's "minimum implementation"
+  rule.
+- Defensive / unreachable code count: count of `pragma: no
+  cover` directives (must be zero in both trees per v030
+  D2), count of `raise NotImplementedError` exclusions, count
+  of `case _:` arms (the structurally-unreachable
+  assert-never sentinels — these are expected to survive the
+  redo wherever exhaustive `match` statements remain). Pre
+  vs post; delta with sign.
+- Helper-function reuse: count of helper functions in
+  `_*.py` private-helper modules pre vs post. The redo is
+  expected to *reduce* helper count if Phase 3-4 introduced
+  speculative helpers that no specific test demanded.
+- Behavioral-equivalence audit: the executor MUST run the
+  Phase 3 exit-criterion smoke (seed round-trip + propose-
+  change/revise) against both the pre-redo stash (after
+  temporary restoration to a scratch venv if needed) and
+  the post-redo tree, and confirm output equivalence. Any
+  behavior that changed during the redo is a defect of the
+  redo (TDD redo is supposed to be behavior-preserving at
+  the contract level), not a feature.
+
+**Acceptance criteria.** The report is acceptable iff:
+
+1. Every dimension above is covered with the named
+   quantitative metrics.
+2. At least three of the four dimensions show concrete
+   improvement (negative delta on LOC, fan-out, public
+   surface, etc., or positive delta on rule compliance).
+   Materially-equivalent measurements across all four
+   dimensions ("the redo produced the same code") indicate
+   the discipline lapsed and the redo failed; the user MAY
+   reject the report and demand a re-redo, OR MAY accept
+   it as evidence that the original Phase 3-4 code was
+   already at the design quality TDD would have produced
+   (which is a possible-but-rare outcome the report
+   captures honestly rather than overclaiming).
+3. The behavioral-equivalence audit passes (Phase 3
+   smoke produces equivalent output against both trees).
+
+The report is gated by AskUserQuestion before Phase 5
+advance: the user reads the report, accepts or rejects, and
+on rejection the redo is re-attempted (or the stash is
+restored if the user concludes the redo cannot improve on
+the original).
+
+#### Per-commit Red-output discipline (v032 D4)
+
+Every Red→Green commit authored under v032 D2's retroactive
+redo (and every subsequent feature/bugfix commit from this
+phase onward, per the universal §"Test-Driven Development
+discipline") MUST include the captured failing-test output
+in the commit body. Format: a `## Red output` heading
+followed by a fenced code block containing the literal
+`pytest` output the executor observed when the test was
+first run prior to any implementation. The block confirms
+the failure was at the assertion site (the behavior gap),
+not at parse/import/fixture time.
+
+`tests/dev-tooling/checks/test_red_output_in_commit.py`
+(authored as part of the dev-tooling checks redo) walks
+`git log --grep` against the redo's commit range and rejects
+any feature/bugfix commit that lacks a `## Red output`
+section. The check is informational pre-Phase-5-exit; it
+becomes a hard `just check` gate at Phase 5 exit (lefthook
++ post-Phase-5-exit commits).
+
 `just check-coverage` MUST pass at 100% line+branch.
 
 Phase 5 ALSO promotes `just bootstrap` from its Phase-1
@@ -1741,7 +2059,13 @@ test files that pass trivially), plus every target already passing
 at Phase 4 exit (`check-lint`, `check-format`, `check-complexity`,
 `check-imports-architecture`, `check-tools`, and every
 `dev-tooling/checks/*.py`-backed target in the canonical list).
-`just bootstrap` has been run and lefthook is installed.
+`just bootstrap` has been run and lefthook is installed. The
+v032 D3 retroactive-TDD quality-comparison report (Plan Phase
+5 §"Quality-comparison report") has been authored and its
+acceptance criteria pass — the redone tree demonstrates
+concrete improvement on architecture, coupling, cohesion,
+and unnecessary-code elimination relative to the
+`bootstrap/scratch/pre-redo.zip` stash.
 
 The following `just check` targets remain deferred at Phase 5
 exit and activate at later phases:
@@ -2662,7 +2986,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v031 as authoritative. Do not propose any
+Treat PROPOSAL.md v032 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
