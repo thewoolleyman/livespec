@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Any
 
 from returns.io import IOResult
@@ -27,7 +28,7 @@ from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
 from livespec.errors import LivespecError
-from livespec.io import cli
+from livespec.io import cli, fs
 
 __all__: list[str] = ["build_parser", "main"]
 
@@ -87,5 +88,7 @@ def main(*, argv: list[str] | None = None) -> int:
     parser = build_parser()
     railway: IOResult[Any, LivespecError] = cli.parse_argv(
         parser=parser, argv=resolved_argv,
+    ).bind(
+        lambda namespace: fs.read_text(path=Path(namespace.findings_json)),
     )
     return _pattern_match_io_result(io_result=railway)

@@ -12,6 +12,8 @@ ization is OUT OF SCOPE for Phase 3.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from livespec.commands import propose_change
 
 __all__: list[str] = []
@@ -39,3 +41,19 @@ def test_propose_change_main_returns_usage_exit_code_on_missing_required_flag() 
     """
     exit_code = propose_change.main(argv=[])
     assert exit_code == 2
+
+
+def test_propose_change_main_returns_precondition_exit_code_on_missing_findings_path(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Missing --findings-json file (PreconditionError) returns exit code 3.
+
+    Composes parse_argv -> fs.read_text on the railway. The
+    fs.read_text failure (FileNotFoundError -> PreconditionError)
+    bubbles to the supervisor's pattern-match, which lifts to
+    exit 3 via err.exit_code per style doc §"Exit code contract".
+    """
+    missing = tmp_path / "no-such-findings.json"
+    exit_code = propose_change.main(argv=["--findings-json", str(missing), "topic"])
+    assert exit_code == 3
