@@ -104,3 +104,62 @@ def test_commit_pairs_rejects_staged_source_without_staged_test(*, tmp_path: Pat
         f"`{expected_token}`; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
+
+
+def test_commit_pairs_accepts_staged_source_with_staged_test(*, tmp_path: Path) -> None:
+    """A staged source change paired with a staged tests/ change passes the check.
+
+    Pass-case companion to the rejection test. Fixture: fresh git
+    repo with one baseline commit. A source file under
+    `.claude-plugin/scripts/livespec/foo/bar.py` AND a paired
+    test under `tests/livespec/foo/test_bar.py` are co-staged. The
+    check, invoked with `cwd=tmp_path`, inspects the staged state,
+    finds both a source-tree file AND a tests/-tree file in the
+    same commit, and exits 0 (success).
+
+    Drives the success-path return on line 97 (`return 0`) and
+    closes the load-bearing branch coverage gap: only the
+    rejection arm has been exercised; the accept arm has been
+    silently unreachable from the test suite.
+    """
+    _git(cwd=tmp_path, args=["init", "-q"])
+    _git(cwd=tmp_path, args=["config", "user.email", "test@example.com"])
+    _git(cwd=tmp_path, args=["config", "user.name", "Test"])
+    (tmp_path / "README.md").write_text("baseline\n", encoding="utf-8")
+    _git(cwd=tmp_path, args=["add", "README.md"])
+    _git(cwd=tmp_path, args=["commit", "-m", "baseline"])
+
+    # Stage source AND test together — the canonical Red→Green
+    # pair pattern this gate is designed to enforce.
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "foo"
+    package_dir.mkdir(parents=True)
+    source = package_dir / "bar.py"
+    source.write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\nx = 0\n",
+        encoding="utf-8",
+    )
+    test_dir = tmp_path / "tests" / "livespec" / "foo"
+    test_dir.mkdir(parents=True)
+    test_file = test_dir / "test_bar.py"
+    test_file.write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\n"
+        "def test_bar() -> None:\n    assert True\n",
+        encoding="utf-8",
+    )
+    _git(cwd=tmp_path, args=["add", ".claude-plugin/scripts/livespec/foo/bar.py"])
+    _git(cwd=tmp_path, args=["add", "tests/livespec/foo/test_bar.py"])
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled script path).
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"commit_pairs_source_and_test should accept staged source + paired test "
+        f"with exit 0; got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
