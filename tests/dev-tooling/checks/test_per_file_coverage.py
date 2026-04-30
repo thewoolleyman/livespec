@@ -100,3 +100,95 @@ def test_per_file_coverage_rejects_file_below_100_line_coverage(*, tmp_path: Pat
         f"per_file_coverage diagnostic does not surface offending file `{expected_token}`; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
+
+
+def test_per_file_coverage_rejects_when_no_coverage_data_file_exists(*, tmp_path: Path) -> None:
+    """No `.coverage` file in cwd makes the check exit non-zero with a clear diagnostic.
+
+    Per `per_file_coverage.py` lines 70-72: the helper inspects
+    `cwd / ".coverage"` and, if missing, logs a "no coverage data
+    found" error and returns 1. Drives that early-exit branch:
+    fixture is a fresh tmp_path with no `.coverage` file. The
+    check must exit non-zero and surface the missing path so the
+    developer knows pytest --cov was skipped.
+    """
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_PER_FILE_COVERAGE)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"per_file_coverage should reject missing .coverage file with non-zero exit; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    combined = result.stdout + result.stderr
+    assert "no coverage data found" in combined, (
+        f"per_file_coverage diagnostic does not surface 'no coverage data found' message; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_per_file_coverage_accepts_when_all_files_at_100_percent(*, tmp_path: Path) -> None:
+    """A `.coverage` data file where every measured file is at 100% passes the check.
+
+    Per `per_file_coverage.py` lines 86-98: when the per-file
+    walk finds no offenders, the helper returns 0. Fixture: a
+    synthetic `subject.py` with exactly two executable statements
+    (the import line + the __all__ declaration); the `.coverage`
+    data file records both as covered. The check exits 0.
+
+    Drives the success-path return on line 98 (`return 0`) and the
+    no-offenders branch (86->83 in coverage's report: when the
+    loop body's `if line_pct < 100.0` arm is NOT taken, control
+    returns to the loop header, and on loop exit the empty
+    offenders list short-circuits the if-offenders block,
+    returning 0).
+    """
+    src_file = tmp_path / "subject.py"
+    src_file.write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\n",
+        encoding="utf-8",
+    )
+    data = CoverageData(basename=str(tmp_path / ".coverage"), suffix=False)
+    # Both executable statements covered: the future-import (line 1)
+    # and the __all__ declaration (line 2). Coverage's `add_lines`
+    # records executed lines per file.
+    data.add_lines({str(src_file): [1, 2]})
+    data.write()
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_PER_FILE_COVERAGE)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"per_file_coverage should accept all-100% data with exit 0; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_per_file_coverage_module_importable_without_running_main() -> None:
+    """The check module imports cleanly without invoking main().
+
+    Closes branch 48->51 (`if str(_VENDOR_DIR) not in sys.path`
+    already-present branch — pytest's pythonpath has pre-populated
+    sys.path) and branch 101->exit (`if __name__ == "__main__":`
+    else-arm — module imported, not run as a script).
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "per_file_coverage_for_import_test", str(_PER_FILE_COVERAGE),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert callable(module.main), "main should be importable without invocation"
