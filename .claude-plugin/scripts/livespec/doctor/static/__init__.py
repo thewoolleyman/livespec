@@ -29,6 +29,7 @@ from livespec.doctor.static import (
     proposed_changes_and_history_dirs,
     template_exists,
     template_files_present,
+    version_contiguity,
     version_directories_complete,
 )
 
@@ -41,4 +42,5 @@ STATIC_CHECKS = (
     template_files_present,
     proposed_changes_and_history_dirs,
     version_directories_complete,
+    version_contiguity,
 )
