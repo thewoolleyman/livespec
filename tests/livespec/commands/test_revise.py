@@ -63,16 +63,32 @@ def test_revise_main_returns_zero_when_revise_file_readable(
     *,
     tmp_path: Path,
 ) -> None:
-    """When --revise-json points at a readable file, main returns 0.
+    """When --revise-json points at a readable, valid-JSON payload, main returns 0.
 
     Drives the Success arm of `_pattern_match_io_result`: the
-    parse_argv -> fs.read_text composition reaches IOSuccess, the
-    pattern-match falls into the Success(_) case, and the
-    supervisor returns 0. Subsequent cycles append jsonc.loads,
-    schema validation, and per-decision processing; once those
-    land, this test will need a richer payload to reach success.
+    parse_argv -> fs.read_text -> jsonc.loads composition reaches
+    IOSuccess, the pattern-match falls into the Success(_) case,
+    and the supervisor returns 0. Subsequent cycles append schema
+    validation and per-decision processing.
     """
     revise_path = tmp_path / "revise.json"
     _ = revise_path.write_text("{}", encoding="utf-8")
     exit_code = revise.main(argv=["--revise-json", str(revise_path)])
     assert exit_code == 0
+
+
+def test_revise_main_returns_validation_exit_code_on_malformed_payload(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Malformed JSONC payload (ValidationError) returns exit code 4.
+
+    Composes parse_argv -> fs.read_text -> jsonc.loads on the
+    railway. The pure parse-failure (ValidationError) bubbles via
+    bind chaining; exit 4 per style doc §"Exit code contract".
+    Mirrors critique's cycle-120 stage.
+    """
+    payload = tmp_path / "bad.json"
+    _ = payload.write_text("{not json}", encoding="utf-8")
+    exit_code = revise.main(argv=["--revise-json", str(payload)])
+    assert exit_code == 4

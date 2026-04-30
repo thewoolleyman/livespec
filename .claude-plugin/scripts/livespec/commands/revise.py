@@ -33,6 +33,7 @@ from typing_extensions import assert_never
 
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
+from livespec.parse import jsonc
 
 __all__: list[str] = ["build_parser", "main"]
 
@@ -79,14 +80,18 @@ def main(*, argv: list[str] | None = None) -> int:
     """Revise supervisor entry point. Returns the process exit code.
 
     Cycle 123 wires parse_argv; cycle 124 appends fs.read_text on
-    the --revise-json path so a missing file lifts to exit 3 via
-    PreconditionError. Subsequent cycles append jsonc.loads,
-    schema validation, and per-decision processing.
+    the --revise-json path; cycle 125 lifts the pure jsonc.loads
+    onto the IOResult track so a malformed payload lifts to
+    exit 4 via ValidationError. Subsequent cycles append schema
+    validation and per-decision processing.
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
     parse_result = cli.parse_argv(parser=parser, argv=resolved_argv)
     railway: IOResult[Any, LivespecError] = parse_result.bind(
-        lambda namespace: fs.read_text(path=Path(namespace.revise_json)),
+        lambda namespace: (
+            fs.read_text(path=Path(namespace.revise_json))
+            .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
+        ),
     )
     return _pattern_match_io_result(io_result=railway)
