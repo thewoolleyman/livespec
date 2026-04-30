@@ -142,6 +142,40 @@ def _write_main_spec_files(
     return accumulator
 
 
+def _write_sub_spec_files(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Write each sub-spec entry's `files[]` to project-root-relative paths.
+
+    PROPOSAL.md §"`seed`" step 3 (line ~2000): "For each entry
+    in sub_specs[], write every files[] entry in that sub-spec
+    to its SPECIFICATION/templates/<template_name>/<spec-file>
+    path." Sub-spec trees write atomically alongside the main
+    tree; any failure short-circuits the rest of the seed via
+    the IOResult Failure track (partial-write refusal — the
+    user's recovery path is to fix the underlying cause and
+    re-seed once the existing files are removed).
+    """
+    accumulator: IOResult[SeedInput, LivespecError] = IOResult.from_value(seed_input)
+    for sub_spec in seed_input.sub_specs:
+        files_list = sub_spec["files"]
+        if not isinstance(files_list, list):
+            continue
+        for entry in files_list:
+            if not isinstance(entry, dict):
+                continue
+            target = project_root / str(entry["path"])
+            text = str(entry["content"])
+            accumulator = accumulator.bind(
+                lambda _value, target=target, text=text: fs.write_text(
+                    path=target, text=text,
+                ).map(lambda _: seed_input),
+            )
+    return accumulator
+
+
 def _pattern_match_io_result(
     *,
     io_result: IOResult[Any, LivespecError],
@@ -204,6 +238,12 @@ def main(*, argv: list[str]) -> int:
             )
             .bind(
                 lambda seed_input: _write_main_spec_files(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda seed_input: _write_sub_spec_files(
                     seed_input=seed_input,
                     project_root=_resolve_project_root(namespace=namespace),
                 ),

@@ -16,13 +16,19 @@ from livespec.commands import seed
 __all__: list[str] = []
 
 
-def _write_valid_seed_payload(*, tmp_path: Path) -> Path:
+def _write_valid_seed_payload(
+    *,
+    tmp_path: Path,
+    sub_specs: list[dict[str, object]] | None = None,
+) -> Path:
     """Helper: write a schema-valid seed-input payload to tmp_path.
 
     Used by success-arm tests to satisfy the parse_argv ->
     read_text -> jsonc.loads -> validate_seed_input chain so the
     railway reaches the file-shaping stages without short-
-    circuiting on the earlier failure rails.
+    circuiting on the earlier failure rails. When `sub_specs`
+    is supplied, the payload's sub_specs[] carries those entries
+    (otherwise empty per the v020 Q2 default).
     """
     payload_dict = {
         "template": "livespec",
@@ -30,7 +36,7 @@ def _write_valid_seed_payload(*, tmp_path: Path) -> Path:
         "files": [
             {"path": "SPECIFICATION/spec.md", "content": "# Spec\n"},
         ],
-        "sub_specs": [],
+        "sub_specs": sub_specs if sub_specs is not None else [],
     }
     payload_path = tmp_path / "seed-input.json"
     _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
@@ -173,6 +179,42 @@ def test_seed_main_writes_main_spec_files_at_their_paths(
     spec_path = project_root / "SPECIFICATION" / "spec.md"
     assert spec_path.exists(), f"expected {spec_path} to be written"
     assert spec_path.read_text(encoding="utf-8") == "# Spec\n"
+
+
+def test_seed_main_writes_sub_spec_files_at_their_paths(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful seed writes each sub-spec entry's `files[]` to its path.
+
+    Per PROPOSAL.md §"`seed`" step 3 (line ~2000): "For each
+    entry in `sub_specs[]`, write every `files[]` entry in
+    that sub-spec to its
+    `SPECIFICATION/templates/<template_name>/<spec-file>` path."
+    Sub-spec trees are written alongside the main tree;
+    failure of any sub-spec write rolls back the entire seed
+    (partial-write refusal).
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    sub_specs = [
+        {
+            "template_name": "livespec",
+            "files": [
+                {
+                    "path": "SPECIFICATION/templates/livespec/spec.md",
+                    "content": "# Sub-spec spec\n",
+                },
+            ],
+        },
+    ]
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path, sub_specs=sub_specs)
+    _ = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    sub_spec_path = project_root / "SPECIFICATION/templates/livespec/spec.md"
+    assert sub_spec_path.exists(), f"expected {sub_spec_path} to be written"
+    assert sub_spec_path.read_text(encoding="utf-8") == "# Sub-spec spec\n"
 
 
 def test_seed_main_returns_exit_zero_on_successful_seed(
