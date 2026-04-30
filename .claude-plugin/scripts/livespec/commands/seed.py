@@ -47,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(prog="seed", exit_on_error=False)
     _ = parser.add_argument("--seed-json", required=True)
+    _ = parser.add_argument("--project-root", default=None)
     return parser
 
 

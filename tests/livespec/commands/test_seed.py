@@ -104,3 +104,20 @@ def test_seed_build_parser_accepts_seed_json_flag() -> None:
     parser = seed.build_parser()
     namespace = parser.parse_args(["--seed-json", "/tmp/payload.json"])
     assert namespace.seed_json == "/tmp/payload.json"
+
+
+def test_seed_build_parser_accepts_project_root_flag() -> None:
+    """The argparse factory accepts `--project-root <path>` and binds it.
+
+    Per PROPOSAL.md §"Wrapper CLI surface" (lines 349-356):
+    every wrapper that operates on project state accepts
+    `--project-root <path>` as an optional CLI flag with default
+    `Path.cwd()`. Seed uses this to anchor `.livespec.jsonc`
+    placement (the file is written at `<project-root>/.livespec.jsonc`
+    per §"`seed`" step 1).
+    """
+    parser = seed.build_parser()
+    namespace = parser.parse_args(
+        ["--seed-json", "/tmp/payload.json", "--project-root", "/tmp/proj"],
+    )
+    assert namespace.project_root == "/tmp/proj"
