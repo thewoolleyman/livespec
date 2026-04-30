@@ -398,6 +398,56 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
     assert namespace.project_root == "/tmp/proj"
 
 
+def test_write_sub_spec_history_v001_skips_entries_with_non_list_files_field(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A sub_spec whose `files` is not a list is skipped from history/v001/.
+
+    Per `_write_sub_spec_history_v001` line 348-349 guard: same
+    type-defensive pattern as cycle 108's `_write_sub_spec_files`,
+    but in the sub-spec-history-materialization helper. The
+    dataclass surface still types each sub-spec's `files` value as
+    `object` even though schema validation guarantees a list.
+    Tested by calling the helper directly with a malformed sub-spec
+    (`files` is a string); the IOResult is Success and the
+    well-formed second sub-spec's history copy still lands.
+    """
+    from livespec.commands.seed import _write_sub_spec_history_v001
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[],
+        sub_specs=[
+            {"template_name": "broken", "files": "not-a-list"},
+            {
+                "template_name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _write_sub_spec_history_v001(
+        seed_input=seed_input, project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
+    versioned = (
+        project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
+    )
+    assert versioned.exists(), f"the well-formed sub-spec should still produce v001"
+
+
 def test_write_sub_spec_files_skips_non_dict_entry_inside_files_list(
     *,
     tmp_path: Path,
