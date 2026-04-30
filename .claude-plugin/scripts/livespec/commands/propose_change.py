@@ -30,9 +30,13 @@ from typing_extensions import assert_never
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
+from livespec.validate import proposal_findings as validate_proposal_findings_module
 
 __all__: list[str] = ["build_parser", "main"]
 
+
+_SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
+_PROPOSAL_FINDINGS_SCHEMA_PATH = _SCHEMAS_DIR / "proposal_findings.schema.json"
 
 def build_parser() -> argparse.ArgumentParser:
     """Construct the propose-change argparse parser without parsing.
@@ -91,5 +95,28 @@ def main(*, argv: list[str] | None = None) -> int:
         cli.parse_argv(parser=parser, argv=resolved_argv)
         .bind(lambda namespace: fs.read_text(path=Path(namespace.findings_json)))
         .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
+        .bind(lambda payload: _validate_payload(payload=payload))
     )
     return _pattern_match_io_result(io_result=railway)
+
+
+def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError]:
+    """Read proposal_findings.schema.json and validate the payload.
+
+    Composes fs.read_text(schema) -> jsonc.loads(schema-text) ->
+    validate_proposal_findings(payload, schema-dict). Failures
+    bubble via the IOResult track: schema-file missing ->
+    PreconditionError; schema malformed -> ValidationError;
+    payload schema-violation -> ValidationError.
+    """
+    return (
+        fs.read_text(path=_PROPOSAL_FINDINGS_SCHEMA_PATH)
+        .bind(lambda schema_text: IOResult.from_result(jsonc.loads(text=schema_text)))
+        .bind(
+            lambda schema_dict: IOResult.from_result(
+                validate_proposal_findings_module.validate_proposal_findings(
+                    payload=payload, schema=schema_dict,
+                ),
+            ),
+        )
+    )

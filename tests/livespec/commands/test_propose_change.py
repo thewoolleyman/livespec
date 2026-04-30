@@ -74,3 +74,22 @@ def test_propose_change_main_returns_validation_exit_code_on_malformed_payload(
     _ = payload.write_text("{not json}", encoding="utf-8")
     exit_code = propose_change.main(argv=["--findings-json", str(payload), "topic"])
     assert exit_code == 4
+
+
+def test_propose_change_main_returns_validation_exit_code_on_schema_violation(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Schema-violation payload (well-formed JSON, missing fields) returns exit 4.
+
+    Drives the railway widening to include schema validation:
+    parse_argv -> read_text -> jsonc.loads -> validate against
+    proposal_findings.schema.json. The payload `{}` is valid
+    JSON so jsonc.loads succeeds; it then trips schema
+    validation (missing required `findings` array) which
+    returns Failure(ValidationError) and lifts to exit 4.
+    """
+    payload = tmp_path / "empty.json"
+    _ = payload.write_text("{}", encoding="utf-8")
+    exit_code = propose_change.main(argv=["--findings-json", str(payload), "topic"])
+    assert exit_code == 4
