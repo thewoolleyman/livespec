@@ -27,6 +27,7 @@ from __future__ import annotations
 from livespec.doctor.static import (
     livespec_jsonc_valid,
     proposed_changes_and_history_dirs,
+    revision_to_proposed_change_pairing,
     template_exists,
     template_files_present,
     version_contiguity,
@@ -43,4 +44,5 @@ STATIC_CHECKS = (
     proposed_changes_and_history_dirs,
     version_directories_complete,
     version_contiguity,
+    revision_to_proposed_change_pairing,
 )
