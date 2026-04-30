@@ -95,11 +95,17 @@ def test_revise_main_returns_zero_when_revise_file_readable(
     process_decisions composition reaches IOSuccess, the
     pattern-match falls into the Success(_) case, and the
     supervisor returns 0. Sets up a minimum spec-target with a
-    `history/` directory so the per-decision processing's
-    next-version computation can run.
+    `history/v001/` directory + a pending `proposed_changes/
+    demo.md` so the per-decision processing can move that file
+    into the new history version.
     """
     spec_target = tmp_path / "spec-root"
     (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\nContent.\n", encoding="utf-8",
+    )
     revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
     exit_code = revise.main(
         argv=[
@@ -164,6 +170,11 @@ def test_revise_main_uses_cwd_specification_default_when_no_target_flags(
     assert isinstance(monkeypatch, pytest.MonkeyPatch)
     spec_target = tmp_path / "SPECIFICATION"
     (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\nContent.\n", encoding="utf-8",
+    )
     revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
     monkeypatch.chdir(tmp_path)
     exit_code = revise.main(argv=["--revise-json", str(revise_path)])
@@ -293,3 +304,62 @@ def test_revise_main_writes_paired_revision_for_reject_decision(
     text = revision_md.read_text(encoding="utf-8")
     assert "decision: reject" in text
     assert "Not aligned with current direction." in text
+
+
+def test_revise_main_moves_proposed_change_into_history_for_reject_decision(
+    *,
+    tmp_path: Path,
+) -> None:
+    """For a `reject` decision, the proposed-change file moves into history.
+
+    Per PROPOSAL.md §"`revise`" lines 2422-2429: each processed
+    proposal file is moved byte-identically from
+    `<spec-target>/proposed_changes/<stem>.md` into
+    `<spec-target>/history/vN/proposed_changes/<stem>.md`. The
+    move is byte-identical (same content; same filename stem).
+
+    Asserts both: (a) the original proposed-change file is no
+    longer at `proposed_changes/<stem>.md`; (b) the same content
+    now lives at `history/vN/proposed_changes/<stem>.md`.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_md = proposed_changes / "demo.md"
+    original_content = "## Proposal: demo\nContent.\n"
+    _ = proposed_md.write_text(original_content, encoding="utf-8")
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json", str(payload_path),
+            "--spec-target", str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    moved_md = (
+        spec_target
+        / "history"
+        / "v002"
+        / "proposed_changes"
+        / "demo.md"
+    )
+    assert moved_md.exists(), f"expected {moved_md} to be written"
+    assert moved_md.read_text(encoding="utf-8") == original_content
+    assert not proposed_md.exists(), (
+        f"expected original {proposed_md} to be removed after move"
+    )

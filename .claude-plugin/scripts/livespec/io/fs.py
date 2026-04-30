@@ -21,7 +21,7 @@ from returns.io import IOResult, impure_safe
 
 from livespec.errors import LivespecError, PreconditionError
 
-__all__: list[str] = ["list_dir", "read_text", "write_text"]
+__all__: list[str] = ["list_dir", "move", "read_text", "write_text"]
 
 
 @impure_safe(exceptions=(OSError,))
@@ -96,4 +96,32 @@ def list_dir(*, path: Path) -> IOResult[list[Path], LivespecError]:
     """
     return _raw_list_dir(path=path).alt(
         lambda exc: PreconditionError(f"fs.list_dir: {exc}"),
+    )
+
+
+@impure_safe(exceptions=(OSError,))
+def _raw_move(*, source: Path, target: Path) -> None:
+    """Decorator-lifted byte-identical move via pathlib.Path.rename.
+
+    Parent directories of the target are created on demand
+    (`mkdir(parents=True, exist_ok=True)`) so the revise stage
+    can move into a freshly-cut `history/vNNN/proposed_changes/`
+    without a separate mkdir stage. Path.rename preserves the
+    file content byte-for-byte (atomic on the same filesystem).
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source.rename(target)
+
+
+def move(*, source: Path, target: Path) -> IOResult[None, LivespecError]:
+    """Move `source` to `target` byte-identically; return IOSuccess(None).
+
+    OSError (source missing, cross-device move, permission denied)
+    lifts to PreconditionError (exit 3). Used by revise to move
+    each processed `<spec-target>/proposed_changes/<stem>.md`
+    into `<spec-target>/history/vNNN/proposed_changes/<stem>.md`
+    per PROPOSAL.md §"`revise`" lines 2422-2429.
+    """
+    return _raw_move(source=source, target=target).alt(
+        lambda exc: PreconditionError(f"fs.move: {exc}"),
     )

@@ -229,45 +229,55 @@ def _process_decisions(
     revise_input: RevisionInput,
     spec_target: Path,
 ) -> IOResult[RevisionInput, LivespecError]:
-    """Process each decision in payload order; write paired revisions.
+    """Process each decision in payload order; write paired revisions + move proposals.
 
-    For each decision, compose the `<stem>-revision.md` body and
-    write it under `<spec-target>/history/vNNN/proposed_changes/`
-    (vNNN = max-existing+1). Phase-3 minimum-viable; subsequent
-    cycles append the move of the proposed-change file into the
-    new history directory + the accept/modify version-cut
-    materializing resulting_files in the working spec.
+    For each decision: (1) compose the `<stem>-revision.md` body
+    and write it under `<spec-target>/history/vNNN/proposed_changes/`,
+    and (2) move `<spec-target>/proposed_changes/<stem>.md`
+    byte-identically into `<spec-target>/history/vNNN/proposed_changes/`.
+    Phase-3 minimum-viable; the accept/modify version-cut that
+    materializes resulting_files in the working spec is appended
+    by a subsequent cycle.
     """
     return _next_history_version_dir(spec_target=spec_target).bind(
-        lambda version_dir: _write_revisions(
+        lambda version_dir: _write_and_move_per_decision(
             revise_input=revise_input,
+            spec_target=spec_target,
             version_dir=version_dir,
         ),
     )
 
 
-def _write_revisions(
+def _write_and_move_per_decision(
     *,
     revise_input: RevisionInput,
+    spec_target: Path,
     version_dir: Path,
 ) -> IOResult[RevisionInput, LivespecError]:
-    """Write each decision's `<stem>-revision.md` under version_dir.
+    """For each decision, write `<stem>-revision.md` then move `<stem>.md`.
 
-    Fold-style accumulator: each per-decision write binds onto
-    the previous IOResult so any failure short-circuits the rest
-    via the typed Failure surface. Mirrors seed.py's
-    `_write_main_spec_files` shape.
+    Fold-style accumulator: each per-decision pair (revision-write
+    + proposed-change-move) binds onto the previous IOResult so
+    any failure short-circuits the rest via the typed Failure
+    surface. Mirrors seed.py's `_write_main_spec_files` shape.
     """
     accumulator: IOResult[RevisionInput, LivespecError] = IOResult.from_value(
         revise_input,
     )
     for decision in revise_input.decisions:
         topic = str(decision.get("proposal_topic", ""))
-        target = version_dir / "proposed_changes" / f"{topic}-revision.md"
-        body = _compose_revision_body(decision=decision)
+        revision_target = version_dir / "proposed_changes" / f"{topic}-revision.md"
+        revision_body = _compose_revision_body(decision=decision)
+        proposed_source = spec_target / "proposed_changes" / f"{topic}.md"
+        proposed_target = version_dir / "proposed_changes" / f"{topic}.md"
         accumulator = accumulator.bind(
-            lambda _value, target=target, body=body: fs.write_text(
+            lambda _value, target=revision_target, body=revision_body: fs.write_text(
                 path=target, text=body,
+            ).map(lambda _: revise_input),
+        )
+        accumulator = accumulator.bind(
+            lambda _value, source=proposed_source, target=proposed_target: fs.move(
+                source=source, target=target,
             ).map(lambda _: revise_input),
         )
     return accumulator

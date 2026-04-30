@@ -112,3 +112,47 @@ def test_fs_list_dir_returns_precondition_error_on_missing_path(
             raise AssertionError(
                 f"expected IOFailure(PreconditionError), got {result!r}",
             )
+
+
+def test_fs_move_renames_byte_identically_and_returns_iosuccess(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`move(source, target)` renames the file byte-identically.
+
+    Per cycle-128 consumer pressure from revise: each processed
+    proposed-change file must move byte-identically into
+    `<spec-target>/history/vNNN/proposed_changes/`. The facade
+    creates parent directories on demand.
+    """
+    source = tmp_path / "src.md"
+    target = tmp_path / "subdir" / "dst.md"
+    payload = "## Proposal: demo\nContent.\n"
+    _ = source.write_text(payload, encoding="utf-8")
+    result = fs.move(source=source, target=target)
+    assert result == IOSuccess(None)
+    assert not source.exists()
+    assert target.exists()
+    assert target.read_text(encoding="utf-8") == payload
+
+
+def test_fs_move_returns_precondition_error_on_missing_source(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`move(source=missing, ...)` returns IOFailure(PreconditionError(...)).
+
+    OSError (FileNotFoundError on the rename call) -> PreconditionError
+    per the canonical mapping at the io boundary.
+    """
+    missing = tmp_path / "no-such-file.md"
+    target = tmp_path / "target.md"
+    result = fs.move(source=missing, target=target)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(PreconditionError()):
+            pass
+        case _:
+            raise AssertionError(
+                f"expected IOFailure(PreconditionError), got {result!r}",
+            )
