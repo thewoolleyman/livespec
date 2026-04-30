@@ -116,6 +116,32 @@ def _write_livespec_config(
     return fs.write_text(path=config_path, text=skeleton).map(lambda _: seed_input)
 
 
+def _write_main_spec_files(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Write each main-spec `files[]` entry to its project-root-relative path.
+
+    PROPOSAL.md §"`seed`" step 2 (line ~1999): "Write each
+    main-spec `files[]` entry to its specified path." Each
+    entry's `path` is project-root-relative; `content` goes
+    verbatim. Sequencing across entries is fold-style: each
+    write binds onto the previous IOResult so any failure
+    short-circuits the rest with the typed Failure surface.
+    """
+    accumulator: IOResult[SeedInput, LivespecError] = IOResult.from_value(seed_input)
+    for entry in seed_input.files:
+        target = project_root / entry["path"]
+        text = entry["content"]
+        accumulator = accumulator.bind(
+            lambda _value, target=target, text=text: fs.write_text(
+                path=target, text=text,
+            ).map(lambda _: seed_input),
+        )
+    return accumulator
+
+
 def _pattern_match_io_result(
     *,
     io_result: IOResult[Any, LivespecError],
@@ -172,6 +198,12 @@ def main(*, argv: list[str]) -> int:
             .bind(lambda payload: _validate_payload(payload=payload))
             .bind(
                 lambda seed_input: _write_livespec_config(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda seed_input: _write_main_spec_files(
                     seed_input=seed_input,
                     project_root=_resolve_project_root(namespace=namespace),
                 ),

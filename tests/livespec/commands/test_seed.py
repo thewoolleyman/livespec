@@ -152,6 +152,29 @@ def test_seed_main_writes_livespec_jsonc_at_project_root_on_success(
     assert "livespec" in config_path.read_text(encoding="utf-8")
 
 
+def test_seed_main_writes_main_spec_files_at_their_paths(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful seed writes each main-spec `files[]` entry to its path.
+
+    Per PROPOSAL.md §"`seed`" step 2 (line ~1999): "Write each
+    main-spec `files[]` entry to its specified path." Each
+    entry's `path` is project-root-relative; content goes
+    verbatim. Drives the second deterministic file-shaping
+    stage out of the railway's success arm.
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
+    _ = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    spec_path = project_root / "SPECIFICATION" / "spec.md"
+    assert spec_path.exists(), f"expected {spec_path} to be written"
+    assert spec_path.read_text(encoding="utf-8") == "# Spec\n"
+
+
 def test_seed_main_returns_exit_zero_on_successful_seed(
     *,
     tmp_path: Path,

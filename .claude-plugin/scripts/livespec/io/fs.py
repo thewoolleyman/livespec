@@ -50,11 +50,14 @@ def read_text(*, path: Path) -> IOResult[str, LivespecError]:
 def _raw_write_text(*, path: Path, text: str) -> None:
     """Decorator-lifted call into pathlib's write_text.
 
-    Parent directory creation is the consumer's responsibility
-    (the seed file-shaping helpers create `history/v001/`
-    explicitly via a separate stage). UTF-8 is the project-wide
-    encoding contract.
+    Parent directories are created on demand
+    (`mkdir(parents=True, exist_ok=True)`) so the seed
+    file-shaping stages can write to nested paths
+    (e.g., `<project-root>/SPECIFICATION/spec.md`) without
+    a separate mkdir stage. UTF-8 is the project-wide encoding
+    contract.
     """
+    path.parent.mkdir(parents=True, exist_ok=True)
     _ = path.write_text(text, encoding="utf-8")
 
 
