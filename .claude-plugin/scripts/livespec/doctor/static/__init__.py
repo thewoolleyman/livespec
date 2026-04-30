@@ -29,6 +29,7 @@ from livespec.doctor.static import (
     proposed_changes_and_history_dirs,
     template_exists,
     template_files_present,
+    version_directories_complete,
 )
 
 __all__: list[str] = ["STATIC_CHECKS"]
@@ -39,4 +40,5 @@ STATIC_CHECKS = (
     template_exists,
     template_files_present,
     proposed_changes_and_history_dirs,
+    version_directories_complete,
 )
