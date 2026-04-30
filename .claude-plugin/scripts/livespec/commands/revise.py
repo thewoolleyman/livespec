@@ -254,11 +254,12 @@ def _write_and_move_per_decision(
     spec_target: Path,
     version_dir: Path,
 ) -> IOResult[RevisionInput, LivespecError]:
-    """For each decision, write `<stem>-revision.md` then move `<stem>.md`.
+    """For each decision, write revision + move proposal + materialize resulting_files.
 
-    Fold-style accumulator: each per-decision pair (revision-write
-    + proposed-change-move) binds onto the previous IOResult so
-    any failure short-circuits the rest via the typed Failure
+    Fold-style accumulator: each per-decision triple (revision-
+    write + proposed-change-move + (for accept/modify)
+    resulting-files-materialize) binds onto the previous IOResult
+    so any failure short-circuits the rest via the typed Failure
     surface. Mirrors seed.py's `_write_main_spec_files` shape.
     """
     accumulator: IOResult[RevisionInput, LivespecError] = IOResult.from_value(
@@ -278,6 +279,45 @@ def _write_and_move_per_decision(
         accumulator = accumulator.bind(
             lambda _value, source=proposed_source, target=proposed_target: fs.move(
                 source=source, target=target,
+            ).map(lambda _: revise_input),
+        )
+        accumulator = _bind_resulting_files(
+            accumulator=accumulator,
+            decision=decision,
+            spec_target=spec_target,
+            revise_input=revise_input,
+        )
+    return accumulator
+
+
+def _bind_resulting_files(
+    *,
+    accumulator: IOResult[RevisionInput, LivespecError],
+    decision: dict[str, object],
+    spec_target: Path,
+    revise_input: RevisionInput,
+) -> IOResult[RevisionInput, LivespecError]:
+    """Append resulting_files writes to the accumulator for accept/modify.
+
+    Per PROPOSAL.md §"`revise`" lines 2411-2421: only `accept`
+    and `modify` decisions materialize resulting_files into the
+    working spec; `reject` decisions produce no working-spec
+    changes (just the audit-trail revision file).
+    """
+    decision_value = str(decision.get("decision", ""))
+    if decision_value not in ("accept", "modify"):
+        return accumulator
+    resulting_files = decision.get("resulting_files", [])
+    if not isinstance(resulting_files, list):
+        return accumulator
+    for entry in resulting_files:
+        if not isinstance(entry, dict):
+            continue
+        target = spec_target / str(entry["path"])
+        text = str(entry["content"])
+        accumulator = accumulator.bind(
+            lambda _value, target=target, text=text: fs.write_text(
+                path=target, text=text,
             ).map(lambda _: revise_input),
         )
     return accumulator

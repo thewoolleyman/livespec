@@ -243,6 +243,70 @@ def test_revise_format_next_version_name_skips_v_prefix_with_non_digit_suffix(
     assert revise._format_next_version_name(children=children) == "v002"  # noqa: SLF001
 
 
+def test_revise_bind_resulting_files_skips_non_list_resulting_files(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_bind_resulting_files` skips when resulting_files is not a list.
+
+    Drives the `if not isinstance(resulting_files, list): return accumulator`
+    guard. Schema-validation should prevent malformed types from
+    reaching this helper, but the runtime isinstance-check keeps
+    pyright strict-mode + bug-class drift safe.
+    """
+    from returns.io import IOSuccess
+
+    from livespec.schemas.dataclasses.revise_input import RevisionInput
+
+    revise_input = RevisionInput(author=None, decisions=[])
+    decision: dict[str, object] = {
+        "proposal_topic": "demo",
+        "decision": "accept",
+        "rationale": "Looks good.",
+        "resulting_files": "not-a-list",
+    }
+    initial = IOSuccess(revise_input)
+    result = revise._bind_resulting_files(  # noqa: SLF001
+        accumulator=initial,
+        decision=decision,
+        spec_target=tmp_path,
+        revise_input=revise_input,
+    )
+    assert result == initial
+
+
+def test_revise_bind_resulting_files_skips_non_dict_entry(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_bind_resulting_files` skips per-entry when an entry is not a dict.
+
+    Drives the `if not isinstance(entry, dict): continue` guard.
+    Schema-validation should prevent malformed types from
+    reaching this helper, but the runtime isinstance-check keeps
+    pyright strict-mode + bug-class drift safe.
+    """
+    from returns.io import IOSuccess
+
+    from livespec.schemas.dataclasses.revise_input import RevisionInput
+
+    revise_input = RevisionInput(author=None, decisions=[])
+    decision: dict[str, object] = {
+        "proposal_topic": "demo",
+        "decision": "accept",
+        "rationale": "Looks good.",
+        "resulting_files": ["not-a-dict"],
+    }
+    initial = IOSuccess(revise_input)
+    result = revise._bind_resulting_files(  # noqa: SLF001
+        accumulator=initial,
+        decision=decision,
+        spec_target=tmp_path,
+        revise_input=revise_input,
+    )
+    assert result == initial
+
+
 def test_revise_main_writes_paired_revision_for_reject_decision(
     *,
     tmp_path: Path,
@@ -363,3 +427,52 @@ def test_revise_main_moves_proposed_change_into_history_for_reject_decision(
     assert not proposed_md.exists(), (
         f"expected original {proposed_md} to be removed after move"
     )
+
+
+def test_revise_main_materializes_resulting_files_for_accept_decision(
+    *,
+    tmp_path: Path,
+) -> None:
+    """For an `accept` decision, working-spec files in resulting_files are updated.
+
+    Per PROPOSAL.md §"`revise`" lines 2411-2421: if any decision
+    is `accept` or `modify`, working-spec files named in
+    `resulting_files` are updated in place with the new content.
+    Phase-3 minimum-viable: write each `{path, content}` entry's
+    content to its `<spec-target>/<path>` location verbatim.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    spec_md = spec_target / "spec.md"
+    _ = spec_md.write_text("# Spec v1\nOld content.\n", encoding="utf-8")
+    proposed_md = proposed_changes / "demo.md"
+    _ = proposed_md.write_text("## Proposal: demo\n", encoding="utf-8")
+    payload_path = tmp_path / "revise.json"
+    new_spec_content = "# Spec v2\nNew content.\n"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "accept",
+                        "rationale": "Looks good.",
+                        "resulting_files": [
+                            {"path": "spec.md", "content": new_spec_content},
+                        ],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json", str(payload_path),
+            "--spec-target", str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    assert spec_md.read_text(encoding="utf-8") == new_spec_content
