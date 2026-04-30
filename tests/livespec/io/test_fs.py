@@ -52,3 +52,24 @@ def test_fs_read_text_returns_precondition_error_on_missing_file(*, tmp_path: Pa
             pass
         case _:
             raise AssertionError(f"expected IOFailure(PreconditionError), got {result!r}")
+
+
+def test_fs_write_text_writes_utf8_content_and_returns_iosuccess(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`write_text(path, text)` writes the content to disk and returns IOSuccess(None).
+
+    Smallest behavior: write a UTF-8 text payload to a fresh
+    `tmp_path` location, assert the file contents on disk match
+    the input verbatim, and assert the railway carrier is the
+    IOSuccess(None) shape every seed file-shaping stage composes
+    against. PROPOSAL.md §"`seed`" steps 1-3 (write
+    `.livespec.jsonc`, main-spec files, sub-spec files) all bind
+    against this primitive.
+    """
+    target = tmp_path / "out.txt"
+    payload = "hello, livespec\n"
+    result = fs.write_text(path=target, text=payload)
+    assert result == IOSuccess(None)
+    assert target.read_text(encoding="utf-8") == payload
