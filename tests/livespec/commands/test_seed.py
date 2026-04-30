@@ -398,6 +398,55 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
     assert namespace.project_root == "/tmp/proj"
 
 
+def test_write_sub_spec_history_v001_skips_non_dict_entry_inside_files_list(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A non-dict entry inside a sub_spec's `files` is skipped from history/v001/.
+
+    Per `_write_sub_spec_history_v001` line 351-352 guard: the
+    inner-loop `if not isinstance(entry, dict): continue`. Mirror
+    of cycle 109's pattern in the sub-spec history-materialization
+    helper. Tested by calling the helper directly with a sub-spec
+    whose `files` list mixes a non-dict (None) with a well-formed
+    entry — the IOResult is Success, the well-formed entry's v001
+    snapshot still lands, the None is silently skipped.
+    """
+    from livespec.commands.seed import _write_sub_spec_history_v001
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[],
+        sub_specs=[
+            {
+                "template_name": "livespec",
+                "files": [
+                    None,
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _write_sub_spec_history_v001(
+        seed_input=seed_input, project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
+    versioned = (
+        project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
+    )
+    assert versioned.exists(), f"well-formed entry should still produce v001"
+
+
 def test_write_sub_spec_history_v001_skips_entries_with_non_list_files_field(
     *,
     tmp_path: Path,
