@@ -17,6 +17,14 @@ from __future__ import annotations
 
 import argparse
 
+from returns.io import IOResult
+from returns.result import Failure, Success
+from returns.unsafe import unsafe_perform_io
+from typing_extensions import assert_never
+
+from livespec.errors import LivespecError
+from livespec.io import cli
+
 __all__: list[str] = ["build_parser", "main"]
 
 
@@ -33,13 +41,35 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _pattern_match_io_result(
+    *,
+    io_result: IOResult[argparse.Namespace, LivespecError],
+) -> int:
+    """Pattern-match the parse_argv IOResult onto an exit code.
+
+    The success branch currently returns 1 (not-yet-implemented
+    stub for the seed-flow body); subsequent cycles drive the
+    payload-validation, file-shaping, and post-step pipeline
+    that produces a real success exit (0).
+    """
+    unwrapped = unsafe_perform_io(io_result)
+    match unwrapped:
+        case Success(_):
+            return 1
+        case Failure(LivespecError() as err):
+            return err.exit_code
+        case _:
+            assert_never(unwrapped)
+
+
 def main(*, argv: list[str]) -> int:
     """Seed supervisor entry point. Returns the process exit code.
 
-    Currently a not-yet-implemented stub: returns 1 (the open-
-    base `LivespecError.exit_code`) until the next cycle drives
-    a more specific failure mode (UsageError on missing argv,
-    ValidationError on bad payload, etc.).
+    Threads argv through io/cli.parse_argv. UsageError lifts to
+    exit 2 via the LivespecError.exit_code class attribute.
+    Subsequent cycles compose the payload-validation +
+    file-shaping pipeline on the success branch.
     """
-    del argv
-    return 1
+    parser = build_parser()
+    parsed = cli.parse_argv(parser=parser, argv=argv)
+    return _pattern_match_io_result(io_result=parsed)

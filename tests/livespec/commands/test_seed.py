@@ -21,8 +21,20 @@ def test_seed_main_exists_and_returns_int() -> None:
     supervisor signature. Subsequent cycles widen the body
     behavior-by-behavior.
     """
-    exit_code = seed.main(argv=[])
+    exit_code = seed.main(argv=["--seed-json", "/tmp/x.json"])
     assert isinstance(exit_code, int)
+
+
+def test_seed_main_returns_usage_exit_code_on_missing_required_flag() -> None:
+    """Missing --seed-json (UsageError) returns exit code 2.
+
+    Threads argv through io/cli.parse_argv and pattern-matches
+    the IOFailure(UsageError) onto its err.exit_code per style
+    doc §"Exit code contract". Drives seed.main's first real
+    railway-composition behavior.
+    """
+    exit_code = seed.main(argv=[])
+    assert exit_code == 2
 
 
 def test_seed_build_parser_accepts_seed_json_flag() -> None:
