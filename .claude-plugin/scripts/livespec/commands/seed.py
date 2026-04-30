@@ -142,6 +142,42 @@ def _write_main_spec_files(
     return accumulator
 
 
+def _write_main_spec_history_v001(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Materialize `<spec-root>/history/v001/<spec-file>` for each main-spec entry.
+
+    PROPOSAL.md §"`seed`" step 4 (line ~2007): "Create
+    `<spec-root>/history/v001/` for the main spec (including
+    the initial versioned spec files...)." Per file: the
+    spec_root is derived as the first path component of the
+    file's project-root-relative path (e.g.,
+    `SPECIFICATION/spec.md` -> spec_root `SPECIFICATION/`,
+    file basename `spec.md`); the spec-file remainder beneath
+    spec_root is preserved in the v001 snapshot
+    (e.g., a file at `SPECIFICATION/sub/x.md` lands at
+    `SPECIFICATION/history/v001/sub/x.md`). Content is the
+    payload's verbatim bytes — the v001 baseline.
+    """
+    accumulator: IOResult[SeedInput, LivespecError] = IOResult.from_value(seed_input)
+    for entry in seed_input.files:
+        original_path = Path(entry["path"])
+        if len(original_path.parts) < 2:
+            continue
+        spec_root_name = original_path.parts[0]
+        relative = Path(*original_path.parts[1:])
+        target = project_root / spec_root_name / "history" / "v001" / relative
+        text = entry["content"]
+        accumulator = accumulator.bind(
+            lambda _value, target=target, text=text: fs.write_text(
+                path=target, text=text,
+            ).map(lambda _: seed_input),
+        )
+    return accumulator
+
+
 def _write_sub_spec_files(
     *,
     seed_input: SeedInput,
@@ -244,6 +280,12 @@ def main(*, argv: list[str]) -> int:
             )
             .bind(
                 lambda seed_input: _write_sub_spec_files(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda seed_input: _write_main_spec_history_v001(
                     seed_input=seed_input,
                     project_root=_resolve_project_root(namespace=namespace),
                 ),
