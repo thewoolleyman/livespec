@@ -396,3 +396,34 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
         ["--seed-json", "/tmp/payload.json", "--project-root", "/tmp/proj"],
     )
     assert namespace.project_root == "/tmp/proj"
+
+
+def test_seed_main_defaults_project_root_to_cwd_when_flag_omitted(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Without --project-root, the supervisor defaults to `Path.cwd()`.
+
+    Per PROPOSAL.md §"Wrapper CLI surface" lines 349-356: every
+    wrapper accepts `--project-root <path>` with the default
+    applied at the supervisor edge as `Path.cwd()` (NOT at the
+    parser layer; the parser keeps default=None so the supervisor
+    is the single place the cwd-read happens). Drives
+    `_resolve_project_root`'s cwd-fallback branch (line 404:
+    `if namespace.project_root is None: return Path.cwd()`).
+    `monkeypatch.chdir(project_root)` anchors the cwd at a writable
+    deterministic location so the seed flow's full success arm
+    materializes there.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
+    monkeypatch.chdir(project_root)
+    exit_code = seed.main(argv=["--seed-json", str(payload_path)])
+    assert exit_code == 0
+    config_path = project_root / ".livespec.jsonc"
+    assert config_path.exists(), f"expected {config_path} to be written under cwd"
