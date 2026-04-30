@@ -398,6 +398,55 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
     assert namespace.project_root == "/tmp/proj"
 
 
+def test_seed_main_skips_main_spec_history_for_single_component_paths(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A main-spec `files[]` entry with a single-component path is skipped from history/v001/.
+
+    Per `_write_main_spec_history_v001` line 168-169 guard: when
+    a file's project-root-relative path has fewer than 2
+    components (e.g., `loose-file.md` directly at the project
+    root, with no `<spec-root>/<file>` shape), it cannot be
+    derived to a `<spec-root>/history/v001/<remainder>` path —
+    the spec_root would be the file itself with no remainder
+    inside it. The supervisor's history-materialization stage
+    skips that entry rather than constructing a malformed v001
+    path. The seed still completes successfully (exit 0); only
+    the history copy of that loose file is omitted.
+
+    The fixture writes one file at `loose-file.md` (single-
+    component, triggers the guard) plus the conventional
+    `SPECIFICATION/spec.md` (two components, NOT skipped, lands
+    at SPECIFICATION/history/v001/spec.md). Asserting both shapes
+    pins the guard's selectivity (the guard skips ONLY the
+    offending entry, not the whole history pass).
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_dict = {
+        "template": "livespec",
+        "intent": "Demo intent text.",
+        "files": [
+            {"path": "loose-file.md", "content": "# Loose\n"},
+            {"path": "SPECIFICATION/spec.md", "content": "# Spec\n"},
+        ],
+        "sub_specs": [],
+    }
+    payload_path = tmp_path / "seed-input.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    assert exit_code == 0
+    versioned = project_root / "SPECIFICATION/history/v001/spec.md"
+    assert versioned.exists(), f"expected {versioned} to be written"
+    # The single-component file's history copy is omitted; verify the
+    # plausible-but-incorrect target was NOT materialized.
+    spurious = project_root / "loose-file.md/history/v001"
+    assert not spurious.exists(), f"single-component path should not produce history dir"
+
+
 def test_seed_main_defaults_project_root_to_cwd_when_flag_omitted(
     *,
     tmp_path: Path,
