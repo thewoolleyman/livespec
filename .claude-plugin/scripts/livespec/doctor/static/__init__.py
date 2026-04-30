@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from livespec.doctor.static import (
     livespec_jsonc_valid,
+    proposed_changes_and_history_dirs,
     template_exists,
     template_files_present,
 )
@@ -33,4 +34,9 @@ from livespec.doctor.static import (
 __all__: list[str] = ["STATIC_CHECKS"]
 
 
-STATIC_CHECKS = (livespec_jsonc_valid, template_exists, template_files_present)
+STATIC_CHECKS = (
+    livespec_jsonc_valid,
+    template_exists,
+    template_files_present,
+    proposed_changes_and_history_dirs,
+)
