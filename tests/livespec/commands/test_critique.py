@@ -21,5 +21,19 @@ def test_critique_main_exists_and_returns_int() -> None:
     into existence with the canonical `main(*, argv) -> int`
     supervisor signature.
     """
-    exit_code = critique.main(argv=[])
+    exit_code = critique.main(argv=["--findings-json", "/tmp/x.json"])
     assert isinstance(exit_code, int)
+
+
+def test_critique_main_returns_usage_exit_code_on_missing_required_flag() -> None:
+    """Missing required `--findings-json <path>` returns exit code 2.
+
+    Per PROPOSAL.md §"`critique`" (lines 2287-2293): the wrapper
+    requires `--findings-json <path>` (plus optional `--author
+    <id>`, `--spec-target <path>`, `--project-root <path>`).
+    Drives the first real railway-composition behavior by
+    threading argv through io/cli.parse_argv and pattern-matching
+    the IOFailure(UsageError) onto err.exit_code (= 2).
+    """
+    exit_code = critique.main(argv=[])
+    assert exit_code == 2

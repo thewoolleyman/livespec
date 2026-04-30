@@ -8,25 +8,82 @@ reserve-suffix algorithm lives at Phase 7). Accepts
 `--findings-json <path>` plus the same flags propose_change
 takes; routes the delegation with the same target.
 
-Cycle 96 lands the supervisor stub returning 1; subsequent
-cycles widen under outside-in pressure.
+`build_parser()` is the pure argparse factory per style doc
+§"CLI argument parsing seam"; `main()` is the supervisor that
+threads argv through the railway and pattern-matches the final
+IOResult to derive the exit code. Cycle 118 wires
+build_parser + parse_argv + UsageError exit-code mapping;
+subsequent cycles widen the railway to load the findings
+payload and delegate to propose_change.
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
+from typing import Any
 
-__all__: list[str] = ["main"]
+from returns.io import IOResult
+from returns.result import Failure, Success
+from returns.unsafe import unsafe_perform_io
+from typing_extensions import assert_never
+
+from livespec.errors import LivespecError
+from livespec.io import cli
+
+__all__: list[str] = ["build_parser", "main"]
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Construct the critique argparse parser without parsing.
+
+    Per style doc §"CLI argument parsing seam":
+    `exit_on_error=False` lets argparse signal errors via
+    `argparse.ArgumentError` rather than `SystemExit`. The
+    parser exposes `--findings-json <path>` (required), and the
+    same optional `--author`, `--spec-target`, `--project-root`
+    flags propose_change takes per PROPOSAL.md §"critique".
+    """
+    parser = argparse.ArgumentParser(prog="critique", exit_on_error=False)
+    _ = parser.add_argument("--findings-json", required=True)
+    _ = parser.add_argument("--author", default=None)
+    _ = parser.add_argument("--spec-target", default=None)
+    _ = parser.add_argument("--project-root", default=None)
+    return parser
+
+
+def _pattern_match_io_result(
+    *,
+    io_result: IOResult[Any, LivespecError],
+) -> int:
+    """Pattern-match the final railway IOResult onto an exit code.
+
+    Success(<value>) -> exit 0 per style doc §"Exit code
+    contract". Failure(LivespecError) lifts via err.exit_code;
+    assert_never closes the match.
+    """
+    unwrapped = unsafe_perform_io(io_result)
+    match unwrapped:
+        case Success(_):
+            return 0
+        case Failure(LivespecError() as err):
+            return err.exit_code
+        case _:
+            assert_never(unwrapped)
 
 
 def main(*, argv: list[str] | None = None) -> int:
     """Critique supervisor entry point. Returns the process exit code.
 
-    Cycle 96 stub: returns 1 (generic error sentinel) until
-    subsequent cycles drive the propose_change-delegation
-    railway. The wrapper invokes `main()` per the canonical
-    6-statement shape; argv defaults to sys.argv[1:] when
-    called without args.
+    Cycle 118 wires the parse_argv stage onto the railway: a
+    UsageError (missing required flag, unknown flag) lifts to
+    exit 2; success returns IOSuccess(namespace) which the
+    pattern-match maps to 0 until subsequent cycles append the
+    findings-load + propose_change-delegation stages.
     """
-    _ = sys.argv[1:] if argv is None else argv
-    return 1
+    resolved_argv = sys.argv[1:] if argv is None else argv
+    parser = build_parser()
+    railway: IOResult[Any, LivespecError] = cli.parse_argv(
+        parser=parser, argv=resolved_argv,
+    )
+    return _pattern_match_io_result(io_result=railway)
