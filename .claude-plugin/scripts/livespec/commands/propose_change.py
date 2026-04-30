@@ -9,26 +9,83 @@ minimum-viable per v019 Q1 — topic canonicalization, reserve-
 suffix handling, collision disambiguation, and unified author
 precedence are deferred to Phase 7.
 
-Cycle 89 lands the supervisor stub; subsequent cycles drive
-the railway stages in order: parse_argv -> read --findings-json
--> jsonc.loads -> validate against proposal_findings.schema.json
--> compose proposed-change file -> write to disk.
+`build_parser()` is the pure argparse factory per style doc
+§"CLI argument parsing seam"; `main()` is the supervisor that
+threads argv through the railway and pattern-matches the final
+IOResult to derive the exit code.
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
+from typing import Any
 
-__all__: list[str] = ["main"]
+from returns.io import IOResult
+from returns.result import Failure, Success
+from returns.unsafe import unsafe_perform_io
+from typing_extensions import assert_never
+
+from livespec.errors import LivespecError
+from livespec.io import cli
+
+__all__: list[str] = ["build_parser", "main"]
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Construct the propose-change argparse parser without parsing.
+
+    Per style doc §"CLI argument parsing seam":
+    `exit_on_error=False` lets argparse signal errors via
+    `argparse.ArgumentError` rather than `SystemExit`. The
+    parser exposes `--findings-json <path>` (required), a
+    positional `<topic>`, optional `--author <id>`, and
+    `--spec-target <path>` per PROPOSAL.md §"propose-change".
+    """
+    parser = argparse.ArgumentParser(prog="propose-change", exit_on_error=False)
+    _ = parser.add_argument("--findings-json", required=True)
+    _ = parser.add_argument("topic")
+    _ = parser.add_argument("--author", default=None)
+    _ = parser.add_argument("--spec-target", default=None)
+    _ = parser.add_argument("--project-root", default=None)
+    return parser
+
+
+def _pattern_match_io_result(
+    *,
+    io_result: IOResult[Any, LivespecError],
+) -> int:
+    """Pattern-match the final railway IOResult onto an exit code.
+
+    Success(<value>) -> exit 0 per style doc §"Exit code
+    contract". Failure(LivespecError) lifts via err.exit_code;
+    assert_never closes the match.
+    """
+    unwrapped = unsafe_perform_io(io_result)
+    match unwrapped:
+        case Success(_):
+            return 0
+        case Failure(LivespecError() as err):
+            return err.exit_code
+        case _:
+            assert_never(unwrapped)
 
 
 def main(*, argv: list[str] | None = None) -> int:
     """Propose-change supervisor entry point. Returns the process exit code.
 
-    Cycle 89 stub: returns 1 (generic error sentinel) until the
-    next cycle drives parse_argv onto the railway. The wrapper
-    invokes `main()` per the canonical 6-statement shape; argv
-    defaults to sys.argv[1:] when called without args.
+    When `argv` is None (the wrapper's default invocation), reads
+    sys.argv[1:]. Threads argv through the railway:
+      parse_argv -> (subsequent stages)
+
+    UsageError (parse) -> exit 2. Subsequent cycles widen the
+    railway under outside-in pressure: read --findings-json ->
+    jsonc.loads -> validate against proposal_findings.schema.json
+    -> compose proposed-change file -> write to disk.
     """
-    _ = sys.argv[1:] if argv is None else argv
-    return 1
+    resolved_argv = sys.argv[1:] if argv is None else argv
+    parser = build_parser()
+    railway: IOResult[Any, LivespecError] = cli.parse_argv(
+        parser=parser, argv=resolved_argv,
+    )
+    return _pattern_match_io_result(io_result=railway)
