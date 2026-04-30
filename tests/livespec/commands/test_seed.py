@@ -8,6 +8,8 @@ behavior step-by-step from the supervisor entrypoint
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from livespec.commands import seed
 
 __all__: list[str] = []
@@ -35,6 +37,22 @@ def test_seed_main_returns_usage_exit_code_on_missing_required_flag() -> None:
     """
     exit_code = seed.main(argv=[])
     assert exit_code == 2
+
+
+def test_seed_main_returns_precondition_exit_code_on_missing_seed_json_path(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Missing --seed-json file (PreconditionError) returns exit code 3.
+
+    Composes parse_argv -> fs.read_text on the railway. The
+    fs.read_text failure (FileNotFoundError -> PreconditionError)
+    bubbles to seed.main's pattern-match, which lifts to exit 3
+    via err.exit_code per style doc §"Exit code contract".
+    """
+    missing = tmp_path / "no-such-payload.json"
+    exit_code = seed.main(argv=["--seed-json", str(missing)])
+    assert exit_code == 3
 
 
 def test_seed_build_parser_accepts_seed_json_flag() -> None:
