@@ -63,3 +63,36 @@ def test_livespec_jsonc_valid_run_returns_pass_for_valid_config(
         spec_root=str(spec_root),
     )
     assert livespec_jsonc_valid.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_livespec_jsonc_valid_run_returns_fail_for_missing_config(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) returns IOSuccess(fail-Finding) when .livespec.jsonc is absent.
+
+    Drives the failure arm: when the project root has no
+    `.livespec.jsonc`, the check's railway sees fs.read_text
+    return Failure(PreconditionError); the check maps that to
+    a fail-status Finding (rather than letting the IOFailure
+    bubble) so the orchestrator can render it as a structured
+    finding rather than a check-process error. This is the
+    "check ran and detected a violation" path per
+    finding.schema.json's status enum description.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = livespec_jsonc_valid.run(ctx=ctx)
+    config_path_str = str(project_root / ".livespec.jsonc")
+    expected = Finding(
+        check_id="doctor-livespec-jsonc-valid",
+        status="fail",
+        message="livespec config file is missing or unreadable",
+        path=config_path_str,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)

@@ -7,12 +7,18 @@ First-of-eight in the Phase-3 minimum-subset registry.
 
 The check composes the `fs.read_text` -> `jsonc.loads` railway
 against `<project_root>/.livespec.jsonc`; on success it yields
-`IOSuccess(Finding(status='pass', ...))`. Failure arms are
-added by subsequent cycles under outside-in pressure
-(missing-file -> status='fail', malformed -> status='fail').
+`IOSuccess(Finding(status='pass', ...))`. On expected-domain
+failures (file missing, unreadable, or malformed JSONC) the
+railway's IOFailure track is folded back into IOSuccess
+carrying a fail-status Finding so the orchestrator's stdout
+contract is uniform across pass and fail outcomes (the
+"check ran and detected a violation" semantics in
+finding.schema.json's status enum).
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 from returns.io import IOResult, IOSuccess
 
@@ -29,12 +35,7 @@ SLUG: str = "doctor-livespec-jsonc-valid"
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
-    """Construct the canonical pass-status Finding for this check.
-
-    Held out as a helper so future cycles can add the matching
-    fail-status helpers (missing-file, malformed-JSONC) under
-    one Finding-construction surface per failure mode.
-    """
+    """Construct the canonical pass-status Finding for this check."""
     return Finding(
         check_id=SLUG,
         status="pass",
@@ -45,18 +46,40 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
     )
 
 
+def _missing_finding(*, ctx: DoctorContext, config_path: Path) -> Finding:
+    """Construct the canonical fail-status Finding for a missing/unreadable config.
+
+    Maps fs.read_text's PreconditionError (FileNotFoundError /
+    other OSError) into a fail-status Finding with the config
+    path embedded so the orchestrator's stdout output names the
+    exact file the user must create.
+    """
+    return Finding(
+        check_id=SLUG,
+        status="fail",
+        message="livespec config file is missing or unreadable",
+        path=str(config_path),
+        line=None,
+        spec_root=str(ctx.spec_root),
+    )
+
+
 def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     """Run the livespec-jsonc-valid check against `ctx`.
 
     Reads `<ctx.project_root>/.livespec.jsonc` and parses it as
     JSONC. On success yields `IOSuccess(Finding(status='pass'))`;
-    cycle 131 lands the success arm only — the failure arms
-    (missing config, malformed JSONC) land under outside-in
-    consumer pressure as subsequent cycles add their tests.
+    on missing/unreadable config the IOFailure track is recovered
+    via `.lash(...)` into `IOSuccess(Finding(status='fail'))` so
+    every outcome the check produces is a Finding rather than a
+    railway-level error. Future cycles add the malformed-JSONC
+    failure arm by extending the recovery to discriminate
+    PreconditionError vs ValidationError.
     """
     config_path = ctx.project_root / ".livespec.jsonc"
     return (
         fs.read_text(path=config_path)
         .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
         .bind(lambda _parsed: IOSuccess(_pass_finding(ctx=ctx)))
+        .lash(lambda _err: IOSuccess(_missing_finding(ctx=ctx, config_path=config_path)))
     )
