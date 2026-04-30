@@ -212,6 +212,66 @@ def _write_sub_spec_files(
     return accumulator
 
 
+def _emit_seed_proposed_change(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Auto-emit `<spec-root>/history/v001/proposed_changes/seed.md`.
+
+    PROPOSAL.md §"`seed`" step 6 + "Auto-generated...seed.md
+    content" (lines ~2043-2057): front-matter (topic, author,
+    created_at) + a `## Proposal: seed` section listing target
+    files, summary, motivation (verbatim intent), and proposed
+    changes (verbatim intent). The auto-captured proposed-change
+    lands ONLY in the main spec's history (sub-specs do not each
+    get their own — the single main-spec seed artifact documents
+    the whole multi-tree creation per the spec).
+    """
+    if not seed_input.files:
+        return IOResult.from_value(seed_input)
+    first_path = Path(seed_input.files[0]["path"])
+    if len(first_path.parts) < 2:
+        return IOResult.from_value(seed_input)
+    spec_root_name = first_path.parts[0]
+    target_files_block = "\n".join(
+        f"- {entry['path']}" for entry in seed_input.files
+    )
+    body = (
+        "---\n"
+        "topic: seed\n"
+        "author: livespec-seed\n"
+        "---\n"
+        "\n"
+        "## Proposal: seed\n"
+        "\n"
+        "### Target specification files\n"
+        "\n"
+        f"{target_files_block}\n"
+        "\n"
+        "### Summary\n"
+        "\n"
+        "Initial seed of the specification from user-provided intent.\n"
+        "\n"
+        "### Motivation\n"
+        "\n"
+        f"{seed_input.intent}\n"
+        "\n"
+        "### Proposed Changes\n"
+        "\n"
+        f"{seed_input.intent}\n"
+    )
+    target = (
+        project_root
+        / spec_root_name
+        / "history"
+        / "v001"
+        / "proposed_changes"
+        / "seed.md"
+    )
+    return fs.write_text(path=target, text=body).map(lambda _: seed_input)
+
+
 def _write_sub_spec_history_v001(
     *,
     seed_input: SeedInput,
@@ -336,6 +396,12 @@ def main(*, argv: list[str]) -> int:
             )
             .bind(
                 lambda seed_input: _write_sub_spec_history_v001(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda seed_input: _emit_seed_proposed_change(
                     seed_input=seed_input,
                     project_root=_resolve_project_root(namespace=namespace),
                 ),

@@ -279,6 +279,33 @@ def test_seed_main_creates_sub_spec_history_v001(
     assert versioned.read_text(encoding="utf-8") == "# Sub-spec spec\n"
 
 
+def test_seed_main_emits_auto_captured_seed_proposed_change(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful seed writes `<spec-root>/history/v001/proposed_changes/seed.md`.
+
+    Per PROPOSAL.md §"`seed`" step 6 (line ~2029) and the
+    "Auto-generated...seed.md content" subsection (line ~2043):
+    the wrapper writes a proposed-change file with front-matter
+    `topic: seed`, `author: livespec-seed`, plus a
+    `## Proposal: seed` section. Drives the smallest visible
+    behavior: the file exists with the topic-front-matter line.
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
+    _ = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    seed_md = project_root / "SPECIFICATION/history/v001/proposed_changes/seed.md"
+    assert seed_md.exists(), f"expected {seed_md} to be written"
+    text = seed_md.read_text(encoding="utf-8")
+    assert "topic: seed" in text
+    assert "author: livespec-seed" in text
+    assert "## Proposal: seed" in text
+
+
 def test_seed_main_returns_exit_zero_on_successful_seed(
     *,
     tmp_path: Path,
