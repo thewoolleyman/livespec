@@ -63,16 +63,19 @@ check:
     # target list"). Targets removed here but still defined in
     # this file (recipes intact, just not aggregated) are: every
     # `check-*`-backed dev-tooling/checks/*.py target except the
-    # four v033-D5a guardrails plus
-    # `check-tests-mirror-pairing`/`check-coverage` (deferred
-    # until guardrail-coverage cycles bring them to passing) +
-    # `check-lint`/`check-format`/`check-types` (deferred until
-    # config-tier-fix cycles land) + `check-prompts` /
-    # `e2e-test-claude-code-mock` (Phase 5/9 deferrals
-    # unchanged).
+    # four v033-D5a guardrails plus `check-coverage` (now
+    # rejoined post-cycle-117 — every measured first-party file
+    # is at 100% line+branch) and `check-tests-mirror-pairing`
+    # (still deferred until the docstring-+-`__all__`
+    # __init__.py exemption is wired into the cycle-1 mirror-
+    # pairing script) + `check-lint`/`check-format`/`check-types`
+    # (deferred until config-tier-fix cycles land) +
+    # `check-prompts` / `e2e-test-claude-code-mock` (Phase 5/9
+    # deferrals unchanged).
     targets=(
         check-imports-architecture
         check-tests
+        check-coverage
     )
     failed=()
     for t in "${targets[@]}"; do
