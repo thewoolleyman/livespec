@@ -22,5 +22,19 @@ def test_revise_main_exists_and_returns_int() -> None:
     into existence with the canonical `main(*, argv) -> int`
     supervisor signature.
     """
-    exit_code = revise.main(argv=[])
+    exit_code = revise.main(argv=["--revise-json", "/tmp/x.json"])
     assert isinstance(exit_code, int)
+
+
+def test_revise_main_returns_usage_exit_code_on_missing_required_flag() -> None:
+    """Missing required `--revise-json <path>` returns exit code 2.
+
+    Per PROPOSAL.md §"`revise`" lines 2375-2410: the wrapper
+    requires `--revise-json <path>` (plus optional `--author
+    <id>`, `--spec-target <path>`, `--project-root <path>`).
+    Drives the first real railway-composition behavior by
+    threading argv through io/cli.parse_argv and pattern-matching
+    the IOFailure(UsageError) onto err.exit_code (= 2).
+    """
+    exit_code = revise.main(argv=[])
+    assert exit_code == 2
