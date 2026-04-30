@@ -6,33 +6,50 @@ lives here under `@impure_safe`. `parse_argv` returns
 `IOResult[Namespace, UsageError | HelpRequested]` once those
 failure-track classes are pulled in by consumer pressure.
 
-Cycle 67 lands the success path only — IOSuccess(Namespace) on
-valid argv. Subsequent cycles drive UsageError on argparse
-errors and HelpRequested on `-h`/`--help`.
+Cycles 67-68 land the success path + UsageError mapping for
+argparse's ArgumentError-class failures (type-conversion). The
+SystemExit case (missing required flags / unknown flags) is
+covered by a separate cycle since `exit_on_error=False` does
+not suppress those paths in stdlib argparse. HelpRequested
+(`-h`/`--help`) lands when the supervisor needs it.
 """
 
 from __future__ import annotations
 
 import argparse
 
-from returns.io import impure_safe
+from returns.io import IOResult, impure_safe
+
+from livespec.errors import UsageError
 
 __all__: list[str] = ["parse_argv"]
 
 
 @impure_safe(exceptions=(argparse.ArgumentError,))
-def parse_argv(
+def _raw_parse_argv(
     *,
     parser: argparse.ArgumentParser,
     argv: list[str],
 ) -> argparse.Namespace:
-    """Parse argv against parser, lifting argparse errors onto IOResult.
+    """Decorator-lifted call into argparse. The IOFailure carries the
+    raw ArgumentError; `parse_argv` maps it to UsageError via .alt.
+    """
+    return parser.parse_args(argv)
+
+
+def parse_argv(
+    *,
+    parser: argparse.ArgumentParser,
+    argv: list[str],
+) -> IOResult[argparse.Namespace, UsageError]:
+    """Parse argv, lifting argparse errors onto the IOResult track.
 
     `@impure_safe` converts the explicit `ArgumentError` raise
     path (only possible because `build_parser` sets
-    `exit_on_error=False`) into a Failure carrying the raw
-    exception; subsequent cycles will `.alt(...)` that into a
-    `UsageError` per the canonical pattern in
-    `livespec/parse/jsonc.py`.
+    `exit_on_error=False`) into an IOFailure carrying the raw
+    exception; `.alt(...)` then maps that to a UsageError per
+    the canonical pattern in `livespec/parse/jsonc.py`.
     """
-    return parser.parse_args(argv)
+    return _raw_parse_argv(parser=parser, argv=argv).alt(
+        lambda exc: UsageError(f"argparse: {exc}"),
+    )

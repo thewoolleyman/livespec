@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-__all__: list[str] = ["LivespecError", "ValidationError"]
+__all__: list[str] = ["LivespecError", "UsageError", "ValidationError"]
 
 
 class LivespecError(Exception):
@@ -30,6 +30,18 @@ class LivespecError(Exception):
     """
 
     exit_code: ClassVar[int] = 1
+
+
+class UsageError(LivespecError):
+    """CLI-usage error from argparse (bad flag, wrong arg count).
+
+    Per the style doc §"Exit code contract": exit `2`. Distinct
+    from PreconditionError (exit 3) because usage errors signal
+    "the user invoked the wrapper wrong" rather than "the
+    project state precondition failed."
+    """
+
+    exit_code: ClassVar[int] = 2
 
 
 class ValidationError(LivespecError):
