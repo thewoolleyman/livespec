@@ -272,6 +272,59 @@ def _emit_seed_proposed_change(
     return fs.write_text(path=target, text=body).map(lambda _: seed_input)
 
 
+def _emit_seed_revision(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Auto-emit `<spec-root>/history/v001/proposed_changes/seed-revision.md`.
+
+    PROPOSAL.md §"`seed`" "Auto-generated seed-revision.md"
+    (lines ~2058-2064): front-matter `proposal: seed.md`,
+    `decision: accept`, `author_llm: livespec-seed`, with
+    `## Decision and Rationale` paragraph ("auto-accepted during
+    seed") and `## Resulting Changes` enumerating every seed-
+    written file. revised_at matches the paired seed.md's
+    created_at; author_human resolves to the git user or
+    "unknown" — both deferred to subsequent cycles where the
+    `created_at` timestamp + git-user lookup are formalized.
+    """
+    if not seed_input.files:
+        return IOResult.from_value(seed_input)
+    first_path = Path(seed_input.files[0]["path"])
+    if len(first_path.parts) < 2:
+        return IOResult.from_value(seed_input)
+    spec_root_name = first_path.parts[0]
+    resulting_changes = "\n".join(
+        f"- {entry['path']}" for entry in seed_input.files
+    )
+    body = (
+        "---\n"
+        "proposal: seed.md\n"
+        "decision: accept\n"
+        "author_llm: livespec-seed\n"
+        "author_human: unknown\n"
+        "---\n"
+        "\n"
+        "## Decision and Rationale\n"
+        "\n"
+        "auto-accepted during seed\n"
+        "\n"
+        "## Resulting Changes\n"
+        "\n"
+        f"{resulting_changes}\n"
+    )
+    target = (
+        project_root
+        / spec_root_name
+        / "history"
+        / "v001"
+        / "proposed_changes"
+        / "seed-revision.md"
+    )
+    return fs.write_text(path=target, text=body).map(lambda _: seed_input)
+
+
 def _write_sub_spec_history_v001(
     *,
     seed_input: SeedInput,
@@ -402,6 +455,12 @@ def main(*, argv: list[str]) -> int:
             )
             .bind(
                 lambda seed_input: _emit_seed_proposed_change(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda seed_input: _emit_seed_revision(
                     seed_input=seed_input,
                     project_root=_resolve_project_root(namespace=namespace),
                 ),

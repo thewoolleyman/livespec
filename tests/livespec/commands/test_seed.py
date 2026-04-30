@@ -306,6 +306,39 @@ def test_seed_main_emits_auto_captured_seed_proposed_change(
     assert "## Proposal: seed" in text
 
 
+def test_seed_main_emits_auto_captured_seed_revision(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful seed writes `<spec-root>/history/v001/proposed_changes/seed-revision.md`.
+
+    Per PROPOSAL.md §"`seed`" "Auto-generated...seed-revision.md"
+    (lines ~2058-2064): front-matter `proposal: seed.md`,
+    `decision: accept`, `author_llm: livespec-seed`, with
+    `## Decision and Rationale` paragraph "auto-accepted during
+    seed" and `## Resulting Changes`. Drives the smallest visible
+    behavior: the file exists with the canonical front-matter
+    + section markers.
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
+    _ = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    revision_md = (
+        project_root
+        / "SPECIFICATION/history/v001/proposed_changes/seed-revision.md"
+    )
+    assert revision_md.exists(), f"expected {revision_md} to be written"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "proposal: seed.md" in text
+    assert "decision: accept" in text
+    assert "author_llm: livespec-seed" in text
+    assert "## Decision and Rationale" in text
+    assert "## Resulting Changes" in text
+
+
 def test_seed_main_returns_exit_zero_on_successful_seed(
     *,
     tmp_path: Path,
