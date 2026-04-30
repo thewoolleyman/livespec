@@ -398,6 +398,55 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
     assert namespace.project_root == "/tmp/proj"
 
 
+def test_write_sub_spec_files_skips_non_dict_entry_inside_files_list(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A non-dict entry inside a sub_spec's `files` list is skipped defensively.
+
+    Per `_write_sub_spec_files` line 204-205 guard: inside the
+    per-sub-spec `files` iteration, each entry must be a dict
+    before its `path`/`content` keys can be read. The dataclass
+    surface types each entry as `object` (the inner items live
+    behind the `dict[str, object]` value of the outer sub-spec
+    dict), so pyright strict-mode requires a runtime narrowing
+    check before subscripting. Schema validation guarantees this
+    never fires under the canonical seed flow, so the test calls
+    the helper directly with a sub_spec whose `files` list mixes
+    a non-dict (`None`) with a well-formed entry — the IOResult
+    is Success and only the well-formed entry is written.
+    """
+    from livespec.commands.seed import _write_sub_spec_files
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[],
+        sub_specs=[
+            {
+                "template_name": "livespec",
+                "files": [
+                    None,
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _write_sub_spec_files(seed_input=seed_input, project_root=project_root)
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
+    well_formed = project_root / "SPECIFICATION/templates/livespec/spec.md"
+    assert well_formed.exists(), f"well-formed entry should still be written"
+
+
 def test_write_sub_spec_files_skips_entries_with_non_list_files_field(
     *,
     tmp_path: Path,
