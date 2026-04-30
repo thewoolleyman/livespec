@@ -9,6 +9,8 @@ SKILL.md prose level, not in the wrapper.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from livespec.commands import critique
 
 __all__: list[str] = []
@@ -37,3 +39,39 @@ def test_critique_main_returns_usage_exit_code_on_missing_required_flag() -> Non
     """
     exit_code = critique.main(argv=[])
     assert exit_code == 2
+
+
+def test_critique_main_returns_precondition_exit_code_on_missing_findings_path(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Missing --findings-json file (PreconditionError) returns exit code 3.
+
+    Composes parse_argv -> fs.read_text on the railway. The
+    fs.read_text failure (FileNotFoundError -> PreconditionError)
+    bubbles to the supervisor's pattern-match, which lifts to
+    exit 3 via err.exit_code per style doc §"Exit code contract".
+    Mirrors propose_change's test for the same railway stage.
+    """
+    missing = tmp_path / "no-such-findings.json"
+    exit_code = critique.main(argv=["--findings-json", str(missing)])
+    assert exit_code == 3
+
+
+def test_critique_main_returns_zero_when_findings_file_readable(
+    *,
+    tmp_path: Path,
+) -> None:
+    """When --findings-json points at a readable file, main returns 0.
+
+    Drives the Success arm of `_pattern_match_io_result`: the
+    parse_argv -> fs.read_text composition reaches IOSuccess, the
+    pattern-match falls into the Success(_) case, and the
+    supervisor returns 0. Subsequent cycles append jsonc.loads,
+    schema validation, and propose_change-delegation; once those
+    land, this test will need a richer payload to reach success.
+    """
+    findings_path = tmp_path / "findings.json"
+    _ = findings_path.write_text("{}", encoding="utf-8")
+    exit_code = critique.main(argv=["--findings-json", str(findings_path)])
+    assert exit_code == 0
