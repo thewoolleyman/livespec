@@ -72,6 +72,25 @@ def test_seed_main_returns_validation_exit_code_on_malformed_payload(
     assert exit_code == 4
 
 
+def test_seed_main_returns_validation_exit_code_on_schema_violation(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Schema-violation payload (well-formed JSON, missing fields) returns exit 4.
+
+    Drives seed.main's railway widening to include schema
+    validation: parse_argv -> read_text -> jsonc.loads ->
+    validate_seed_input. The payload `{}` is valid JSON so
+    jsonc.loads succeeds; it then trips schema validation
+    (missing required `template`/`intent`/`files`/`sub_specs`)
+    which returns Failure(ValidationError) and lifts to exit 4.
+    """
+    payload = tmp_path / "empty.json"
+    _ = payload.write_text("{}", encoding="utf-8")
+    exit_code = seed.main(argv=["--seed-json", str(payload)])
+    assert exit_code == 4
+
+
 def test_seed_build_parser_accepts_seed_json_flag() -> None:
     """The pure argparse factory accepts `--seed-json <path>` and binds it.
 

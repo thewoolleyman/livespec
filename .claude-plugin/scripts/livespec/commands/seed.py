@@ -27,8 +27,14 @@ from typing_extensions import assert_never
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
+from livespec.schemas.dataclasses.seed_input import SeedInput
+from livespec.validate import seed_input as validate_seed_input_module
 
 __all__: list[str] = ["build_parser", "main"]
+
+
+_SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
+_SEED_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "seed_input.schema.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -63,6 +69,28 @@ def _parse_payload(*, text: str) -> IOResult[Any, LivespecError]:
     composes against.
     """
     return IOResult.from_result(jsonc.loads(text=text))
+
+
+def _validate_payload(*, payload: dict[str, Any]) -> IOResult[SeedInput, LivespecError]:
+    """Read the seed-input schema and validate the payload against it.
+
+    Composes fs.read_text(schema) -> jsonc.loads(schema-text) ->
+    validate_seed_input(payload, schema-dict). Failures bubble
+    via the IOResult track: schema-file missing ->
+    PreconditionError; schema malformed -> ValidationError;
+    payload schema-violation -> ValidationError.
+    """
+    return (
+        fs.read_text(path=_SEED_INPUT_SCHEMA_PATH)
+        .bind(lambda schema_text: IOResult.from_result(jsonc.loads(text=schema_text)))
+        .bind(
+            lambda schema_dict: IOResult.from_result(
+                validate_seed_input_module.validate_seed_input(
+                    payload=payload, schema=schema_dict,
+                ),
+            ),
+        )
+    )
 
 
 def _pattern_match_io_result(
@@ -101,5 +129,6 @@ def main(*, argv: list[str]) -> int:
         cli.parse_argv(parser=parser, argv=argv)
         .bind(lambda namespace: _load_seed_json(namespace=namespace))
         .bind(lambda text: _parse_payload(text=text))
+        .bind(lambda payload: _validate_payload(payload=payload))
     )
     return _pattern_match_io_result(io_result=railway)
