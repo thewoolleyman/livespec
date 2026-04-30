@@ -398,6 +398,62 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
     assert namespace.project_root == "/tmp/proj"
 
 
+def test_write_sub_spec_files_skips_entries_with_non_list_files_field(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A sub_spec whose `files` is not a list is skipped defensively.
+
+    Per `_write_sub_spec_files` line 201-202 guard: the supervisor
+    is type-defensive against the dataclass's
+    `sub_specs: list[dict[str, object]]` typing, where the inner
+    dict's values are `object`. Schema validation guarantees
+    `files` is a list at runtime, but the static type permits any
+    object — so the helper carries an `isinstance(files_list, list)`
+    runtime check to keep pyright strict-mode happy AND to cope
+    with a hypothetical future caller that bypasses validation.
+    The guard's contract: skip the malformed sub-spec entry, let
+    the rest of the seed flow proceed.
+
+    Tested by calling the helper directly with a hand-built
+    `SeedInput` carrying a sub_spec whose `files` value is a
+    non-list (a string here). The IOResult must succeed
+    (Success(seed_input)) — the sub-spec is silently skipped and
+    the railway keeps composing. Tests the guard's selectivity
+    too: a second well-formed sub-spec entry's files DO get
+    written.
+    """
+    from livespec.commands.seed import _write_sub_spec_files
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.unsafe import unsafe_perform_io
+    from returns.result import Success
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[],
+        sub_specs=[
+            {"template_name": "broken", "files": "not-a-list"},
+            {
+                "template_name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _write_sub_spec_files(seed_input=seed_input, project_root=project_root)
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
+    well_formed = project_root / "SPECIFICATION/templates/livespec/spec.md"
+    assert well_formed.exists(), f"the second sub-spec's file should still be written"
+
+
 def test_seed_main_skips_seed_md_emission_when_files_array_is_empty(
     *,
     tmp_path: Path,
