@@ -3,23 +3,28 @@
 **Current phase:** 5
 **Current sub-step:** Phase 5 §"Retroactive TDD redo of Phase 3 + Phase 4 work — second attempt (v033 D5b)" — about to start cycle 1 of the second redo
 **Last completed exit criterion:** phase 4
-**Next action:** v033 D5a steps 1-5 + D5b steps 1-2 complete. Lefthook installed at e89deff → `just bootstrap` (e89deff is the LAST ungated commit). From the next commit onward, every commit is mechanically gated by lefthook pre-commit:
+**Next action:** v033 D5a + D5b step 1-2 + cycle 61 (git-hook-wrapper Option-3 fix-up) all complete. Lefthook is operational under the wrapper-via-mise dispatch — verified at b6dc24b's push: pre-commit ran `01-commit-pairs-source-and-test ✔️ 02-red-output-in-commit ✔️ 03-check ✔️`, pre-push ran `✔️ check`. The mechanical guardrails fire on every commit and push regardless of shell config.
 
-1. `just check-commit-pairs-source-and-test` (cheap; staged-file inspection) — every feature/bugfix commit touching `livespec/**`/`bin/**`/`dev-tooling/checks/**` MUST also touch `tests/**`.
-2. `just check-red-output-in-commit` (cheap; `git log` walk) — every redo commit (`phase-5: cycle <N> — ...`) MUST contain `## Red output` block in body.
-3. `just check` (thinned aggregate per Path 2) — currently `check-imports-architecture` + `check-tests`. Each second-redo cycle restoring a check brings its target back into the aggregate in the same commit.
+**Activation summary:**
 
-D5b step-1 stash + step-2 deletion landed at 609db8e (82 .py files archived to `bootstrap/scratch/pre-second-redo.zip`, deleted from tree). Working tree state: clean second-redo baseline — all v033-D5a guardrails (4 dev-tooling scripts + 4 paired tests) plus preserved files (_bootstrap.py, tests/bin/test_bootstrap.py, conftest.py, vendored libs, all CLAUDE.md, all `__init__.py` files). 8 tests passing. `just check` (thinned) passes.
+- Cycles 57-60 (a3699b8, b738326, 7ec6332, 480a1f2): four v033 D5a guardrail scripts under TDD discipline.
+- D5a step 3-4 (c9682ad): justfile + lefthook.yml scaffold.
+- Case-B direct-fix (4f63f0b): D5b mechanism revised from `git reset --hard` to `stash + git rm` (no destructive ops; cycles 1-56 preserved in linear history).
+- D5b step 1-2 (609db8e): 82 .py files archived to `bootstrap/scratch/pre-second-redo.zip` + deleted from tree.
+- Path 2 thinning (e89deff): `just check` aggregate thinned to `check-imports-architecture + check-tests` (last ungated commit).
+- STATUS update at lefthook-install (3b1a30f): no-op gate (lefthook-generated hook couldn't find lefthook in zsh).
+- Cycle 61 (b6dc24b): `dev-tooling/git-hook-wrapper.sh` + paired test + `just bootstrap` recipe rewrite. Wrapper invokes `mise exec lefthook -- lefthook run <hook-name>`; basename indirection serves both pre-commit and pre-push. From b6dc24b forward, all gates fire correctly.
 
-Cycles 1-56 + Phase-4-scaffold preserved in linear history (per Case-B direct-fix at 4f63f0b which switched D5b mechanism from `git reset --hard + cherry-pick` to `stash + git rm` — see `bootstrap/decisions.md`).
+**Tree state:** 9 tests passing. `just check` (thinned aggregate) passes. `just check-tests-mirror-pairing`, `just check-coverage`, `just check-lint`, `just check-format`, `just check-types`, plus all the deleted-script-backed targets, are NOT in the aggregate; each second-redo cycle that brings a target to passing also re-adds it to the aggregate in the same commit.
 
-**Next sub-step (D5b cycle 1):** start the second retroactive redo. First Red→Green pair is the v033 D5b plan's "outermost rail": author the Phase-3-exit-criterion seed-round-trip integration test as the outermost test, then drop into a unit test at the layer where the integration test's failure is too coarse to drive design. Each cycle commit:
-- modifies source under livespec/**/bin/**/dev-tooling/checks/** AND its paired test under tests/**
-- carries a `## Red output` fenced block in commit body
-- per-file 100% coverage on the just-authored source (when the cycle re-adds `check-coverage` to the aggregate)
+**Next sub-step (D5b cycle 1):** start the second retroactive redo. The first Red→Green pair is the v033 D5b plan's "outermost rail" per the original v032 D2 outside-in framing: author the Phase-3-exit-criterion seed-round-trip integration test as the outermost test, drop into a unit test at the layer where the integration test's failure is too coarse to drive design. Each cycle commit:
 
-Per v033 D1 mirror-pairing exemption (which the second redo will progressively bring into the aggregate): `_vendor/**`, `bin/_bootstrap.py`, and empty-init `__init__.py` files are exempt. Cycle 66 (or wherever appropriate) will re-add `check-tests-mirror-pairing` to the aggregate after broadening the cycle-1 exemption logic to handle the docstring-+-`__all__` shape of the existing `__init__.py` files.
+- modifies source under `livespec/**`, `bin/**`, or `dev-tooling/checks/**` AND its paired test under `tests/**` (commit-pairs gate)
+- carries a `## Red output` fenced block in commit body (red-output gate)
+- passes `just check` (imports-architecture + tests, plus whatever targets the cycle re-adds)
+- when the cycle authors a new file, the paired test must be authored in the SAME commit (mirror-pairing gate, when re-added to aggregate)
+- per-file 100% coverage on the just-authored source (when `check-coverage` is re-added to aggregate)
 
 Open issues: zero unresolved.
-**Last updated:** 2026-04-30T02:05:00Z
-**Last commit:** e89deff
+**Last updated:** 2026-04-30T02:25:00Z
+**Last commit:** b6dc24b
