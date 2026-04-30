@@ -106,6 +106,45 @@ def test_commit_pairs_rejects_staged_source_without_staged_test(*, tmp_path: Pat
     )
 
 
+def test_commit_pairs_module_importable_without_running_main() -> None:
+    """The check module imports cleanly without invoking main().
+
+    Closes two branch-coverage gaps in
+    `commit_pairs_source_and_test.py`:
+      - 100->exit: when the module is imported (not run as
+        `python3 dev-tooling/checks/commit_pairs_source_and_test.py`),
+        `__name__` is the module-qualified path, NOT `"__main__"`,
+        so the `raise SystemExit(main())` line is skipped — the
+        else-arm of `if __name__ == "__main__":` is taken.
+      - 42->45: the `if str(_VENDOR_DIR) not in sys.path:` guard
+        is taken on second import (the test runner already added
+        _VENDOR_DIR via pytest's pythonpath config), so the body
+        line 43 (`sys.path.insert(...)`) is skipped — the
+        already-present branch is exercised.
+
+    Pins the invocation contract that this script is BOTH usable
+    as a CLI (`python3 dev-tooling/checks/commit_pairs_source_and_test.py`)
+    AND importable for testing without running its main(). Tests
+    of the rejection / accept cases above invoke via subprocess to
+    pin the CLI path; this test pins the import path.
+    """
+    import importlib.util
+
+    module_path = (
+        Path(__file__).resolve().parents[3]
+        / "dev-tooling"
+        / "checks"
+        / "commit_pairs_source_and_test.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "commit_pairs_source_and_test_for_import_test", str(module_path),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert callable(module.main), "main should be importable without invocation"
+
+
 def test_commit_pairs_accepts_staged_source_with_staged_test(*, tmp_path: Path) -> None:
     """A staged source change paired with a staged tests/ change passes the check.
 
