@@ -29,6 +29,7 @@ __all__: list[str] = ["SLUG", "run"]
 
 
 SLUG: str = "doctor-template-exists"
+BUILTIN_TEMPLATES: frozenset[str] = frozenset({"livespec", "minimal"})
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
@@ -43,17 +44,31 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
     )
 
 
+def _fail_finding(*, ctx: DoctorContext, template_value: str) -> Finding:
+    """Construct a fail-status Finding naming the offending template value."""
+    return Finding(
+        check_id=SLUG,
+        status="fail",
+        message=f"template '{template_value}' is neither a builtin nor an existing path",
+        path=None,
+        line=None,
+        spec_root=str(ctx.spec_root),
+    )
+
+
 def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecError]:
     """Evaluate the parsed config against the template-exists rule.
 
-    Cycle 134 lands the smallest possible viable behavior: any
-    parsed config produces a pass-Finding. The built-in
-    allowlist and on-disk path-resolution branches land in
-    subsequent cycles when the failure-arm tests force the
-    discrimination.
+    Cycle 135 splits the evaluation into two arms: the
+    `template` value is checked against BUILTIN_TEMPLATES and
+    yields a pass-Finding on hit; otherwise (unknown name)
+    yields a fail-Finding naming the offending value. The
+    on-disk path-resolution branch lands in a subsequent cycle.
     """
-    _ = parsed
-    return IOSuccess(_pass_finding(ctx=ctx))
+    template_value = parsed.get("template")
+    if template_value in BUILTIN_TEMPLATES:
+        return IOSuccess(_pass_finding(ctx=ctx))
+    return IOSuccess(_fail_finding(ctx=ctx, template_value=str(template_value)))
 
 
 def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:

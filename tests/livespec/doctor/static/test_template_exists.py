@@ -56,3 +56,35 @@ def test_template_exists_run_returns_pass_for_builtin_template(
         spec_root=str(spec_root),
     )
     assert template_exists.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_template_exists_run_returns_fail_for_unknown_name(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) returns IOSuccess(fail-Finding) for an unknown non-path name.
+
+    Drives the unknown-template-name failure arm: when the
+    config's `template` is a bare string that is neither a
+    member of the built-in allowlist nor an on-disk relative
+    path, the check yields a fail-status Finding naming the
+    offending value. The string `unknown-template` is chosen
+    because it has no path separator (so the on-disk branch
+    cannot rescue it) and no match against the built-in set.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    config_text = '{\n  "template": "unknown-template"\n}\n'
+    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = Finding(
+        check_id="doctor-template-exists",
+        status="fail",
+        message="template 'unknown-template' is neither a builtin nor an existing path",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert template_exists.run(ctx=ctx) == IOSuccess(expected)
