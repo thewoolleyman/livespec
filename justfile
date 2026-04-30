@@ -30,7 +30,17 @@ default:
 # ---------------------------------------------------------------
 
 bootstrap:
-    uv run lefthook install
+    # v033 D5a Option-3 (cycle 61): install the repo-tracked
+    # git-hook-wrapper.sh as both .git/hooks/pre-commit and
+    # .git/hooks/pre-push. The wrapper invokes
+    # `mise exec lefthook -- lefthook run <hook-name>` so the
+    # gate fires regardless of the user's shell config (the
+    # vanilla `lefthook install` hook fails in zsh sessions
+    # without `~/.zshrc` mise activation).
+    mkdir -p .git/hooks
+    cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-commit
+    cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-push
+    chmod +x .git/hooks/pre-commit .git/hooks/pre-push
     ln -sfn ../.claude-plugin/skills .claude/skills
 
 # ---------------------------------------------------------------
