@@ -398,6 +398,56 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
     assert namespace.project_root == "/tmp/proj"
 
 
+def test_seed_main_skips_seed_md_emission_when_files_array_is_empty(
+    *,
+    tmp_path: Path,
+) -> None:
+    """An empty `files[]` array short-circuits the seed.md / seed-revision.md emission.
+
+    Per `_emit_seed_proposed_change` line 232-233 + `_emit_seed_revision`
+    line 293-294 guards: when the payload carries no main-spec
+    `files[]`, both auto-captured-proposed-change emission and
+    auto-revision emission early-return with the unchanged
+    seed_input. The body of those files derives a target path
+    from `seed_input.files[0]["path"]` — which would IndexError
+    on an empty list. The guards avoid that IndexError and let
+    the seed flow complete; only the seed.md and seed-revision.md
+    history artifacts are omitted.
+
+    The fixture writes a payload with `files: []` and one sub-
+    spec entry (so the sub-spec stages still execute and the
+    railway runs to completion). Asserts exit 0 plus the negative:
+    no `<spec-root>/history/v001/proposed_changes/seed.md` is
+    written, no `seed-revision.md` is written.
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_dict: dict[str, object] = {
+        "template": "livespec",
+        "intent": "Demo intent text.",
+        "files": [],
+        "sub_specs": [],
+    }
+    payload_path = tmp_path / "seed-input.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    assert exit_code == 0
+    # Negative assertions: with no files[] entries, neither auto-
+    # captured artifact is materialized (no spec_root to anchor
+    # the path against).
+    seed_md_candidates = list(project_root.rglob("seed.md"))
+    revision_md_candidates = list(project_root.rglob("seed-revision.md"))
+    assert seed_md_candidates == [], (
+        f"empty files[] should skip seed.md emission; found {seed_md_candidates}"
+    )
+    assert revision_md_candidates == [], (
+        f"empty files[] should skip seed-revision.md emission; "
+        f"found {revision_md_candidates}"
+    )
+
+
 def test_seed_main_skips_main_spec_history_for_single_component_paths(
     *,
     tmp_path: Path,
