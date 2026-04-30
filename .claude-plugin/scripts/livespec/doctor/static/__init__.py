@@ -24,9 +24,13 @@ constant + a `run(ctx)` function returning
 
 from __future__ import annotations
 
-from livespec.doctor.static import livespec_jsonc_valid, template_exists
+from livespec.doctor.static import (
+    livespec_jsonc_valid,
+    template_exists,
+    template_files_present,
+)
 
 __all__: list[str] = ["STATIC_CHECKS"]
 
 
-STATIC_CHECKS = (livespec_jsonc_valid, template_exists)
+STATIC_CHECKS = (livespec_jsonc_valid, template_exists, template_files_present)
