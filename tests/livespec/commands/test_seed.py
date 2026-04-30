@@ -152,6 +152,28 @@ def test_seed_main_writes_livespec_jsonc_at_project_root_on_success(
     assert "livespec" in config_path.read_text(encoding="utf-8")
 
 
+def test_seed_main_returns_exit_zero_on_successful_seed(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful seed returns exit code 0.
+
+    Per style doc §"Exit code contract": exit 0 is the canonical
+    success exit. Drives the supervisor's pattern-match success
+    branch from the cycle-76 stub `1` to the real `0`. Composes
+    the now-complete success arm: parse_argv -> read_text ->
+    jsonc.loads -> validate_seed_input -> write .livespec.jsonc
+    -> Success(SeedInput) -> exit 0.
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
+    exit_code = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    assert exit_code == 0
+
+
 def test_seed_build_parser_accepts_project_root_flag() -> None:
     """The argparse factory accepts `--project-root <path>` and binds it.
 

@@ -122,15 +122,14 @@ def _pattern_match_io_result(
 ) -> int:
     """Pattern-match the final railway IOResult onto an exit code.
 
-    The success branch currently returns 1 (not-yet-implemented
-    stub for the seed-flow body); subsequent cycles drive the
-    payload-validation, file-shaping, and post-step pipeline
-    that produces a real success exit (0).
+    Success(<value>) -> exit 0 per style doc §"Exit code
+    contract". Failure(LivespecError) lifts via the error's
+    err.exit_code attribute; assert_never closes the match.
     """
     unwrapped = unsafe_perform_io(io_result)
     match unwrapped:
         case Success(_):
-            return 1
+            return 0
         case Failure(LivespecError() as err):
             return err.exit_code
         case _:
