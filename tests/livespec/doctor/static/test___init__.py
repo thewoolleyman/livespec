@@ -41,3 +41,20 @@ def test_static_package_is_importable() -> None:
     from livespec.doctor import static
 
     assert static.__name__ == "livespec.doctor.static"
+
+
+def test_applicability_by_tree_kind_maps_main_to_all_eight_checks() -> None:
+    """APPLICABILITY_BY_TREE_KIND['main'] enumerates every Phase-3 check.
+
+    Per PROPOSAL.md §"`doctor` → Static-phase structure" + Plan
+    Phase 3 line 1596-1602: the applicability table is
+    orchestrator-owned and decides which checks apply to which
+    tree kind. The 'main' entry must include every member of
+    the 8-check minimum subset; the 'sub_spec' entry is a
+    proper subset (no livespec_jsonc_valid or template_exists
+    on sub-spec trees — those are project-root-level concerns,
+    not per-spec-root concerns).
+    """
+    from livespec.doctor.static import APPLICABILITY_BY_TREE_KIND, STATIC_CHECKS
+
+    assert APPLICABILITY_BY_TREE_KIND["main"] == STATIC_CHECKS
