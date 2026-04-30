@@ -16,7 +16,12 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-__all__: list[str] = ["LivespecError", "UsageError", "ValidationError"]
+__all__: list[str] = [
+    "LivespecError",
+    "PreconditionError",
+    "UsageError",
+    "ValidationError",
+]
 
 
 class LivespecError(Exception):
@@ -42,6 +47,19 @@ class UsageError(LivespecError):
     """
 
     exit_code: ClassVar[int] = 2
+
+
+class PreconditionError(LivespecError):
+    """Project-state precondition not met (file missing, malformed
+    config, idempotency conflict, etc.).
+
+    Per the style doc §"Exit code contract": exit `3`. Distinct
+    from UsageError because the user invoked the wrapper
+    correctly but the on-disk state isn't ready for the
+    operation.
+    """
+
+    exit_code: ClassVar[int] = 3
 
 
 class ValidationError(LivespecError):
