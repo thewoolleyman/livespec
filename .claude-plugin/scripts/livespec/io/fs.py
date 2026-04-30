@@ -21,7 +21,7 @@ from returns.io import IOResult, impure_safe
 
 from livespec.errors import LivespecError, PreconditionError
 
-__all__: list[str] = ["read_text", "write_text"]
+__all__: list[str] = ["list_dir", "read_text", "write_text"]
 
 
 @impure_safe(exceptions=(OSError,))
@@ -71,4 +71,29 @@ def write_text(*, path: Path, text: str) -> IOResult[None, LivespecError]:
     """
     return _raw_write_text(path=path, text=text).alt(
         lambda exc: PreconditionError(f"fs.write_text: {exc}"),
+    )
+
+
+@impure_safe(exceptions=(OSError,))
+def _raw_list_dir(*, path: Path) -> list[Path]:
+    """Decorator-lifted call into pathlib's iterdir.
+
+    Returns immediate children of `path` as a list; the order is
+    deterministic-via-sort so callers don't need to re-sort.
+    Missing or non-directory paths lift to PreconditionError via
+    the public seam.
+    """
+    return sorted(path.iterdir())
+
+
+def list_dir(*, path: Path) -> IOResult[list[Path], LivespecError]:
+    """List immediate children of `path` as a sorted list of Paths.
+
+    FileNotFoundError / NotADirectoryError lift to
+    PreconditionError (exit 3). Used by revise to enumerate the
+    existing `<spec-target>/history/v*/` directories so the next
+    `vNNN` can be computed.
+    """
+    return _raw_list_dir(path=path).alt(
+        lambda exc: PreconditionError(f"fs.list_dir: {exc}"),
     )

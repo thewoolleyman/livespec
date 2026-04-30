@@ -10,6 +10,7 @@ validate `--revise-json` payload, process per-proposal
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from livespec.commands import revise
@@ -90,13 +91,22 @@ def test_revise_main_returns_zero_when_revise_file_readable(
     """When --revise-json points at a schema-valid payload, main returns 0.
 
     Drives the Success arm of `_pattern_match_io_result`: the
-    parse_argv -> fs.read_text -> jsonc.loads -> validate
-    composition reaches IOSuccess, the pattern-match falls into
-    the Success(_) case, and the supervisor returns 0. Subsequent
-    cycles append per-decision processing.
+    parse_argv -> fs.read_text -> jsonc.loads -> validate ->
+    process_decisions composition reaches IOSuccess, the
+    pattern-match falls into the Success(_) case, and the
+    supervisor returns 0. Sets up a minimum spec-target with a
+    `history/` directory so the per-decision processing's
+    next-version computation can run.
     """
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
     revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
-    exit_code = revise.main(argv=["--revise-json", str(revise_path)])
+    exit_code = revise.main(
+        argv=[
+            "--revise-json", str(revise_path),
+            "--spec-target", str(spec_target),
+        ],
+    )
     assert exit_code == 0
 
 
@@ -134,3 +144,152 @@ def test_revise_main_returns_validation_exit_code_on_schema_violation(
     _ = payload.write_text("{}", encoding="utf-8")
     exit_code = revise.main(argv=["--revise-json", str(payload)])
     assert exit_code == 4
+
+
+def test_revise_main_uses_cwd_specification_default_when_no_target_flags(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Without --spec-target / --project-root, falls back to `cwd()/SPECIFICATION`.
+
+    Drives `_resolve_spec_target`'s cwd-fallback branch (the
+    `Path.cwd() if namespace.project_root is None` arm). Uses
+    monkeypatch.chdir into a tmp_path that has a writable
+    `SPECIFICATION/history/v001/` precreated, so the per-decision
+    processing can write into the cwd-derived target.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    spec_target = tmp_path / "SPECIFICATION"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
+    monkeypatch.chdir(tmp_path)
+    exit_code = revise.main(argv=["--revise-json", str(revise_path)])
+    assert exit_code == 0
+    revision_md = (
+        spec_target
+        / "history"
+        / "v002"
+        / "proposed_changes"
+        / "demo-revision.md"
+    )
+    assert revision_md.exists(), f"expected {revision_md} to be written"
+
+
+def test_revise_format_next_version_name_skips_non_directory_entries(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_format_next_version_name` skips non-directory children defensively.
+
+    Drives the `if not child.is_dir(): continue` guard branch.
+    The fixture mixes a regular file (skipped) with a v001 dir
+    (counted). The expected next version is `v002`.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    (history / "PRUNED_HISTORY.json").write_text("{}", encoding="utf-8")
+    children = sorted(history.iterdir())
+    assert revise._format_next_version_name(children=children) == "v002"  # noqa: SLF001
+
+
+def test_revise_format_next_version_name_skips_non_v_prefix_dirs(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_format_next_version_name` skips dirs whose name doesn't start with `v`.
+
+    Drives the `if not name.startswith("v"): continue` guard.
+    Fixture: a `proposed_changes/` dir alongside `v001/`; the
+    proposed_changes dir is correctly skipped.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    (history / "proposed_changes").mkdir()
+    children = sorted(history.iterdir())
+    assert revise._format_next_version_name(children=children) == "v002"  # noqa: SLF001
+
+
+def test_revise_format_next_version_name_skips_v_prefix_with_non_digit_suffix(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_format_next_version_name` skips `v<non-digit>` dirs defensively.
+
+    Drives the `if not suffix.isdigit(): continue` guard. Fixture:
+    a `vXXX/` dir alongside `v001/`; the malformed entry is
+    correctly skipped.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    (history / "vXXX").mkdir()
+    children = sorted(history.iterdir())
+    assert revise._format_next_version_name(children=children) == "v002"  # noqa: SLF001
+
+
+def test_revise_main_writes_paired_revision_for_reject_decision(
+    *,
+    tmp_path: Path,
+) -> None:
+    """For a `reject` decision, revise writes `<stem>-revision.md`.
+
+    Per PROPOSAL.md §"`revise`" lines 2422-2436: each processed
+    proposal gets a paired revision at
+    `<spec-root>/history/vN/proposed_changes/<stem>-revision.md`.
+    Phase-3 minimum-viable for `reject`: the revision file's
+    front-matter records `decision: reject` + the rationale; no
+    new version cut (no `accept`/`modify` decision present);
+    the original proposed-change file moves byte-identically into
+    the new history directory.
+
+    This test pins the smallest reject-only behavior: setup a
+    spec-target with a v001/ history (the seed baseline) + one
+    pending proposed-change, run revise with a reject decision,
+    assert that the paired revision file exists in
+    `history/v002/proposed_changes/` with the rationale embedded.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    history_v001 = spec_target / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    proposed_md = proposed_changes / "demo.md"
+    _ = proposed_md.write_text("## Proposal: demo\nContent.\n", encoding="utf-8")
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Not aligned with current direction.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json", str(payload_path),
+            "--spec-target", str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    revision_md = (
+        spec_target
+        / "history"
+        / "v002"
+        / "proposed_changes"
+        / "demo-revision.md"
+    )
+    assert revision_md.exists(), f"expected {revision_md} to be written"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "decision: reject" in text
+    assert "Not aligned with current direction." in text

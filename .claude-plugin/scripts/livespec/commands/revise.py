@@ -34,6 +34,7 @@ from typing_extensions import assert_never
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
+from livespec.schemas.dataclasses.revise_input import RevisionInput
 from livespec.validate import revise_input as validate_revise_input_module
 
 __all__: list[str] = ["build_parser", "main"]
@@ -87,9 +88,13 @@ def main(*, argv: list[str] | None = None) -> int:
     Cycle 123 wires parse_argv; cycle 124 appends fs.read_text on
     the --revise-json path; cycle 125 lifts the pure jsonc.loads
     onto the IOResult track. Cycle 126 appends schema validation
-    against revise_input.schema.json (a schema-violating payload
-    also lifts to exit 4). Subsequent cycles append per-decision
-    processing.
+    against revise_input.schema.json. Cycle 127 appends the
+    per-decision processing stage: for each decision, write the
+    paired `<stem>-revision.md` under `<spec-target>/history/
+    vNNN/proposed_changes/` (where vNNN = max-existing-version+1).
+    Phase-3 minimum-viable; subsequent cycles add the move of the
+    proposed-change file into the new history directory + the
+    accept/modify version-cut materializing resulting_files.
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
@@ -99,6 +104,12 @@ def main(*, argv: list[str] | None = None) -> int:
             fs.read_text(path=Path(namespace.revise_json))
             .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
             .bind(lambda payload: _validate_payload(payload=payload))
+            .bind(
+                lambda revise_input: _process_decisions(
+                    revise_input=revise_input,
+                    spec_target=_resolve_spec_target(namespace=namespace),
+                ),
+            )
         ),
     )
     return _pattern_match_io_result(io_result=railway)
@@ -125,3 +136,138 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
             ),
         )
     )
+
+
+def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
+    """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
+
+    Per Plan Phase 3 (lines 1533-1553) + PROPOSAL.md §"revise":
+    `<spec-target>` is selected via --spec-target, defaulting to
+    the project's main spec root (`<project-root>/SPECIFICATION/`
+    under the built-in livespec template).
+    """
+    if namespace.spec_target is not None:
+        return Path(namespace.spec_target)
+    project_root = (
+        Path.cwd()
+        if namespace.project_root is None
+        else Path(namespace.project_root)
+    )
+    return project_root / "SPECIFICATION"
+
+
+def _next_history_version_dir(
+    *,
+    spec_target: Path,
+) -> IOResult[Path, LivespecError]:
+    """Compute `<spec-target>/history/v(max+1)/` from existing v* dirs.
+
+    Lists the spec-target's `history/` directory, filters for
+    entries matching `v\\d+`, computes the next version number,
+    and returns the path. When `history/` is missing or empty,
+    defaults to v001 (the seed-baseline case never reaches revise
+    because revise requires an in-flight proposed-change which
+    presupposes a v001 already exists, but the bootstrap-friendly
+    default keeps the helper safe).
+    """
+    history_dir = spec_target / "history"
+    return fs.list_dir(path=history_dir).map(
+        lambda children: history_dir / _format_next_version_name(children=children),
+    )
+
+
+def _format_next_version_name(*, children: list[Path]) -> str:
+    """Compute the next `vNNN` directory name from existing children.
+
+    Walks the children list looking for `vNNN` patterns; tracks
+    the maximum N found; returns `v(max+1)` zero-padded to three
+    digits. When no `vNNN` children are present, returns "v001".
+    """
+    max_version = 0
+    for child in children:
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not name.startswith("v"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        version = int(suffix)
+        max_version = max(max_version, version)
+    return f"v{max_version + 1:03d}"
+
+
+def _compose_revision_body(*, decision: dict[str, object]) -> str:
+    """Compose the `<stem>-revision.md` body from a decision dict.
+
+    Per PROPOSAL.md §"Revision file format" (line ~3037): the
+    body has front-matter (proposal, decision, rationale) plus
+    a `## Decision and Rationale` section. Phase-3 minimum-viable
+    keeps the front-matter to the three required keys; richer
+    fields (`author_llm`, `author_human`, `revised_at`) widen
+    under consumer pressure once the doctor's
+    `revision-to-proposed-change-pairing` check pulls them in.
+    """
+    topic = str(decision.get("proposal_topic", ""))
+    decision_value = str(decision.get("decision", ""))
+    rationale = str(decision.get("rationale", ""))
+    return (
+        "---\n"
+        f"proposal: {topic}.md\n"
+        f"decision: {decision_value}\n"
+        "---\n"
+        "\n"
+        "## Decision and Rationale\n"
+        "\n"
+        f"{rationale}\n"
+    )
+
+
+def _process_decisions(
+    *,
+    revise_input: RevisionInput,
+    spec_target: Path,
+) -> IOResult[RevisionInput, LivespecError]:
+    """Process each decision in payload order; write paired revisions.
+
+    For each decision, compose the `<stem>-revision.md` body and
+    write it under `<spec-target>/history/vNNN/proposed_changes/`
+    (vNNN = max-existing+1). Phase-3 minimum-viable; subsequent
+    cycles append the move of the proposed-change file into the
+    new history directory + the accept/modify version-cut
+    materializing resulting_files in the working spec.
+    """
+    return _next_history_version_dir(spec_target=spec_target).bind(
+        lambda version_dir: _write_revisions(
+            revise_input=revise_input,
+            version_dir=version_dir,
+        ),
+    )
+
+
+def _write_revisions(
+    *,
+    revise_input: RevisionInput,
+    version_dir: Path,
+) -> IOResult[RevisionInput, LivespecError]:
+    """Write each decision's `<stem>-revision.md` under version_dir.
+
+    Fold-style accumulator: each per-decision write binds onto
+    the previous IOResult so any failure short-circuits the rest
+    via the typed Failure surface. Mirrors seed.py's
+    `_write_main_spec_files` shape.
+    """
+    accumulator: IOResult[RevisionInput, LivespecError] = IOResult.from_value(
+        revise_input,
+    )
+    for decision in revise_input.decisions:
+        topic = str(decision.get("proposal_topic", ""))
+        target = version_dir / "proposed_changes" / f"{topic}-revision.md"
+        body = _compose_revision_body(decision=decision)
+        accumulator = accumulator.bind(
+            lambda _value, target=target, body=body: fs.write_text(
+                path=target, text=body,
+            ).map(lambda _: revise_input),
+        )
+    return accumulator

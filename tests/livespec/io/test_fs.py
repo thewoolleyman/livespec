@@ -73,3 +73,42 @@ def test_fs_write_text_writes_utf8_content_and_returns_iosuccess(
     result = fs.write_text(path=target, text=payload)
     assert result == IOSuccess(None)
     assert target.read_text(encoding="utf-8") == payload
+
+
+def test_fs_list_dir_returns_iosuccess_with_sorted_children(*, tmp_path: Path) -> None:
+    """`list_dir(path)` returns IOSuccess([...]) with sorted Path children.
+
+    Per the cycle-127 consumer-pressure pull from revise: revise
+    needs to enumerate `<spec-target>/history/v*/` directories
+    to compute the next `vNNN`. The facade returns a sorted list
+    so callers don't need to re-sort.
+    """
+    (tmp_path / "v002").mkdir()
+    (tmp_path / "v001").mkdir()
+    (tmp_path / "v003").mkdir()
+    result = fs.list_dir(path=tmp_path)
+    assert result == IOSuccess(
+        [tmp_path / "v001", tmp_path / "v002", tmp_path / "v003"],
+    )
+
+
+def test_fs_list_dir_returns_precondition_error_on_missing_path(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`list_dir(path=missing)` returns IOFailure(PreconditionError(...)).
+
+    FileNotFoundError -> PreconditionError per the canonical
+    mapping at the io boundary; mirrors read_text's failure-arm
+    treatment.
+    """
+    missing = tmp_path / "does-not-exist"
+    result = fs.list_dir(path=missing)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(PreconditionError()):
+            pass
+        case _:
+            raise AssertionError(
+                f"expected IOFailure(PreconditionError), got {result!r}",
+            )
