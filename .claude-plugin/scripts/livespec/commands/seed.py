@@ -16,6 +16,7 @@ IOResult to derive the exit code.
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -404,20 +405,27 @@ def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
     return Path(namespace.project_root)
 
 
-def main(*, argv: list[str]) -> int:
+def main(*, argv: list[str] | None = None) -> int:
     """Seed supervisor entry point. Returns the process exit code.
+
+    When `argv` is None (the wrapper's default invocation per
+    `raise SystemExit(main())`), defaults to sys.argv[1:] so the
+    canonical 6-statement wrapper shape from style doc §"Wrapper
+    shape" works without further plumbing. Tests pass argv
+    explicitly to bypass sys.argv.
 
     Threads argv through the railway:
       parse_argv -> read --seed-json file -> jsonc.loads ->
-      validate_seed_input -> write .livespec.jsonc
+      validate_seed_input -> write .livespec.jsonc -> ...
 
     UsageError (parse) -> exit 2; PreconditionError (missing
     file) -> exit 3; ValidationError (malformed payload or
-    schema violation) -> exit 4; success path now writes
-    .livespec.jsonc and returns through the success branch.
+    schema violation) -> exit 4; success path materializes the
+    full seed-flow body and returns 0.
     """
+    resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
-    parse_result = cli.parse_argv(parser=parser, argv=argv)
+    parse_result = cli.parse_argv(parser=parser, argv=resolved_argv)
     railway: IOResult[Any, LivespecError] = parse_result.bind(
         lambda namespace: (
             _load_seed_json(namespace=namespace)

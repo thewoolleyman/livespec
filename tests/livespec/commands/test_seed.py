@@ -119,7 +119,27 @@ def test_seed_main_returns_validation_exit_code_on_schema_violation(
     assert exit_code == 4
 
 
-def test_seed_build_parser_accepts_seed_json_flag() -> None:
+def test_seed_main_defaults_argv_to_sys_argv_when_called_without_args(
+    *,
+    monkeypatch: object,
+) -> None:
+    """`main()` (no args) defaults argv to `sys.argv[1:]`.
+
+    The bin/seed.py wrapper invokes `main()` per the canonical
+    6-statement wrapper shape (style doc §"Wrapper shape"). The
+    supervisor must therefore read sys.argv[1:] when no argv
+    is supplied, otherwise the wrapper raises TypeError on
+    missing keyword argument. Drives the default-argv contract
+    that the wrapper depends on.
+    """
+    import sys as _sys
+
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.setattr(_sys, "argv", ["seed.py"])
+    exit_code = seed.main()
+    assert exit_code == 2
     """The pure argparse factory accepts `--seed-json <path>` and binds it.
 
     Per PROPOSAL.md §"`seed`" lines 1937-1942 (`bin/seed.py
