@@ -29,6 +29,7 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec.commands import propose_change
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
@@ -79,6 +80,21 @@ def _pattern_match_io_result(
             assert_never(unwrapped)
 
 
+def _resolve_author(*, namespace: argparse.Namespace) -> str:
+    """Resolve --author to a string, defaulting to "unknown-llm".
+
+    Per PROPOSAL.md §"`critique`" lines 2294-2306, author
+    precedence is CLI --author -> env LIVESPEC_AUTHOR_LLM ->
+    payload-level `author` field -> "unknown-llm". Phase-3
+    minimum-viable supports only the CLI -> fallback steps; env
+    var + payload-level author land under consumer pressure in
+    later phases.
+    """
+    if namespace.author is not None and namespace.author != "":
+        return str(namespace.author)
+    return "unknown-llm"
+
+
 def main(*, argv: list[str] | None = None) -> int:
     """Critique supervisor entry point. Returns the process exit code.
 
@@ -88,8 +104,11 @@ def main(*, argv: list[str] | None = None) -> int:
     onto the IOResult track so a malformed payload lifts to
     exit 4 via ValidationError. Cycle 121 appends schema
     validation against proposal_findings.schema.json (a
-    schema-violating payload also lifts to exit 4). Subsequent
-    cycles append the propose_change-delegation stage.
+    schema-violating payload also lifts to exit 4). Cycle 122
+    delegates to propose_change.main on validation success with
+    topic = `<author>-critique` per PROPOSAL.md §"`critique`"
+    lines 2307-2325 (Phase-3 minimum-viable scope: full
+    reserve-suffix canonicalization is deferred to Phase 7).
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
@@ -101,7 +120,17 @@ def main(*, argv: list[str] | None = None) -> int:
             .bind(lambda payload: _validate_payload(payload=payload))
         ),
     )
-    return _pattern_match_io_result(io_result=railway)
+    pre_delegation_exit = _pattern_match_io_result(io_result=railway)
+    if pre_delegation_exit != 0:
+        return pre_delegation_exit
+    namespace = parser.parse_args(resolved_argv)
+    topic = f"{_resolve_author(namespace=namespace)}-critique"
+    delegated_argv: list[str] = ["--findings-json", str(namespace.findings_json), topic]
+    if namespace.spec_target is not None:
+        delegated_argv.extend(["--spec-target", str(namespace.spec_target)])
+    if namespace.project_root is not None:
+        delegated_argv.extend(["--project-root", str(namespace.project_root)])
+    return propose_change.main(argv=delegated_argv)
 
 
 def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError]:

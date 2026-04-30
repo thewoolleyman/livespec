@@ -133,3 +133,74 @@ def test_critique_main_returns_validation_exit_code_on_schema_violation(
     _ = payload.write_text("{}", encoding="utf-8")
     exit_code = critique.main(argv=["--findings-json", str(payload)])
     assert exit_code == 4
+
+
+def test_critique_main_writes_proposed_change_with_critique_suffix(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful critique writes `<spec-target>/proposed_changes/<author>-critique.md`.
+
+    Per PROPOSAL.md §"`critique`" lines 2307-2325 + Plan Phase 3
+    lines 1524-1532: critique delegates to propose_change with
+    topic hint `<author>` plus the reserve-suffix `"-critique"`.
+    Phase-3 minimum-viable scope: with `--author claude-opus-4-7`
+    (already canonical), the resulting filename is
+    `claude-opus-4-7-critique.md`. The body is the same one-
+    proposal-section-per-finding shape as propose_change's
+    output (per PROPOSAL.md lines 2232-2242, field-copy mapping).
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = critique.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--author",
+            "claude-opus-4-7",
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    out = spec_target / "proposed_changes" / "claude-opus-4-7-critique.md"
+    assert out.exists(), f"expected {out} to be written"
+    text = out.read_text(encoding="utf-8")
+    assert "## Proposal: Sample finding" in text
+    assert "Demo summary." in text
+
+
+def test_critique_main_propagates_project_root_to_delegated_propose_change(
+    *,
+    tmp_path: Path,
+) -> None:
+    """When --project-root is provided, critique forwards it to propose_change.
+
+    Drives the `--project-root` branch of the delegated-argv
+    construction. With no --spec-target, propose_change derives
+    the spec target as `<project-root>/SPECIFICATION/`, so the
+    output file lands at
+    `<project-root>/SPECIFICATION/proposed_changes/unknown-llm-critique.md`.
+    No --author argv passed, so the Phase-3 fallback "unknown-llm"
+    is used.
+    """
+    project_root = tmp_path / "proj"
+    (project_root / "SPECIFICATION").mkdir(parents=True)
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = critique.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--project-root",
+            str(project_root),
+        ],
+    )
+    assert exit_code == 0
+    out = (
+        project_root
+        / "SPECIFICATION"
+        / "proposed_changes"
+        / "unknown-llm-critique.md"
+    )
+    assert out.exists(), f"expected {out} to be written"
