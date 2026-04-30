@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Any
 
 from returns.io import IOResult
 from returns.result import Failure, Success
@@ -25,6 +26,7 @@ from typing_extensions import assert_never
 
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
+from livespec.parse import jsonc
 
 __all__: list[str] = ["build_parser", "main"]
 
@@ -52,9 +54,20 @@ def _load_seed_json(*, namespace: argparse.Namespace) -> IOResult[str, LivespecE
     return fs.read_text(path=Path(namespace.seed_json))
 
 
+def _parse_payload(*, text: str) -> IOResult[Any, LivespecError]:
+    """Lift the pure JSONC parser onto the IOResult track.
+
+    `jsonc.loads` returns `Result[Any, ValidationError]`;
+    `IOResult.from_result(...)` lifts that into the
+    `IOResult[Any, ValidationError]` shape the seed railway
+    composes against.
+    """
+    return IOResult.from_result(jsonc.loads(text=text))
+
+
 def _pattern_match_io_result(
     *,
-    io_result: IOResult[str, LivespecError],
+    io_result: IOResult[Any, LivespecError],
 ) -> int:
     """Pattern-match the final railway IOResult onto an exit code.
 
@@ -84,7 +97,9 @@ def main(*, argv: list[str]) -> int:
     until the next cycle drives payload parsing.
     """
     parser = build_parser()
-    railway = cli.parse_argv(parser=parser, argv=argv).bind(
-        lambda namespace: _load_seed_json(namespace=namespace),
+    railway = (
+        cli.parse_argv(parser=parser, argv=argv)
+        .bind(lambda namespace: _load_seed_json(namespace=namespace))
+        .bind(lambda text: _parse_payload(text=text))
     )
     return _pattern_match_io_result(io_result=railway)
