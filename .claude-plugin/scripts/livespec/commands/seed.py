@@ -94,6 +94,28 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[SeedInput, Livespe
     )
 
 
+def _write_livespec_config(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Write `<project-root>/.livespec.jsonc` from the validated seed input.
+
+    PROPOSAL.md §"`seed`" step 1 (line ~1996): the wrapper writes
+    .livespec.jsonc with the payload's top-level `template` value.
+    The minimum-viable skeleton emitted here carries just the
+    template field; subsequent cycles widen to the full commented
+    schema skeleton under consumer pressure (e.g., when a doctor
+    check or downstream wrapper reads other config keys).
+
+    Returns IOSuccess(seed_input) so the railway chain can keep
+    composing additional file-shaping stages on the value.
+    """
+    skeleton = '{\n  "template": "' + seed_input.template + '"\n}\n'
+    config_path = project_root / ".livespec.jsonc"
+    return fs.write_text(path=config_path, text=skeleton).map(lambda _: seed_input)
+
+
 def _pattern_match_io_result(
     *,
     io_result: IOResult[Any, LivespecError],
@@ -115,21 +137,46 @@ def _pattern_match_io_result(
             assert_never(unwrapped)
 
 
+def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
+    """Resolve --project-root to a Path, defaulting to Path.cwd().
+
+    PROPOSAL.md §"Wrapper CLI surface" lines 349-356: every
+    wrapper that operates on project state accepts
+    --project-root <path> with default Path.cwd(). The default
+    is applied here at the supervisor edge (not at the parser
+    layer) to keep the parser pure-data and the cwd-read inside
+    the supervisor's effectful boundary.
+    """
+    if namespace.project_root is None:
+        return Path.cwd()
+    return Path(namespace.project_root)
+
+
 def main(*, argv: list[str]) -> int:
     """Seed supervisor entry point. Returns the process exit code.
 
     Threads argv through the railway:
-      parse_argv -> read --seed-json file -> (subsequent stages)
+      parse_argv -> read --seed-json file -> jsonc.loads ->
+      validate_seed_input -> write .livespec.jsonc
 
     UsageError (parse) -> exit 2; PreconditionError (missing
-    file) -> exit 3; success branch is still stubbed at exit 1
-    until the next cycle drives payload parsing.
+    file) -> exit 3; ValidationError (malformed payload or
+    schema violation) -> exit 4; success path now writes
+    .livespec.jsonc and returns through the success branch.
     """
     parser = build_parser()
-    railway = (
-        cli.parse_argv(parser=parser, argv=argv)
-        .bind(lambda namespace: _load_seed_json(namespace=namespace))
-        .bind(lambda text: _parse_payload(text=text))
-        .bind(lambda payload: _validate_payload(payload=payload))
+    parse_result = cli.parse_argv(parser=parser, argv=argv)
+    railway: IOResult[Any, LivespecError] = parse_result.bind(
+        lambda namespace: (
+            _load_seed_json(namespace=namespace)
+            .bind(lambda text: _parse_payload(text=text))
+            .bind(lambda payload: _validate_payload(payload=payload))
+            .bind(
+                lambda seed_input: _write_livespec_config(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+        ),
     )
     return _pattern_match_io_result(io_result=railway)

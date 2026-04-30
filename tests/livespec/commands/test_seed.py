@@ -8,11 +8,33 @@ behavior step-by-step from the supervisor entrypoint
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from livespec.commands import seed
 
 __all__: list[str] = []
+
+
+def _write_valid_seed_payload(*, tmp_path: Path) -> Path:
+    """Helper: write a schema-valid seed-input payload to tmp_path.
+
+    Used by success-arm tests to satisfy the parse_argv ->
+    read_text -> jsonc.loads -> validate_seed_input chain so the
+    railway reaches the file-shaping stages without short-
+    circuiting on the earlier failure rails.
+    """
+    payload_dict = {
+        "template": "livespec",
+        "intent": "Demo intent text.",
+        "files": [
+            {"path": "SPECIFICATION/spec.md", "content": "# Spec\n"},
+        ],
+        "sub_specs": [],
+    }
+    payload_path = tmp_path / "seed-input.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    return payload_path
 
 
 def test_seed_main_exists_and_returns_int() -> None:
@@ -104,6 +126,30 @@ def test_seed_build_parser_accepts_seed_json_flag() -> None:
     parser = seed.build_parser()
     namespace = parser.parse_args(["--seed-json", "/tmp/payload.json"])
     assert namespace.seed_json == "/tmp/payload.json"
+
+
+def test_seed_main_writes_livespec_jsonc_at_project_root_on_success(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful seed writes `<project-root>/.livespec.jsonc` with the template.
+
+    Per PROPOSAL.md §"`seed`" step 1 (line ~1996): the wrapper
+    writes `.livespec.jsonc` at repo root using the payload's
+    top-level `template` field value. This is the first
+    deterministic file-shaping stage — drives the success-arm
+    out of the cycle-76 stub-1 return into a real materialized
+    output.
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
+    _ = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    config_path = project_root / ".livespec.jsonc"
+    assert config_path.exists(), f"expected {config_path} to be written"
+    assert "livespec" in config_path.read_text(encoding="utf-8")
 
 
 def test_seed_build_parser_accepts_project_root_flag() -> None:
