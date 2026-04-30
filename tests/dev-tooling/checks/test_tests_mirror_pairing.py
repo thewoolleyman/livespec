@@ -99,3 +99,68 @@ def test_tests_mirror_pairing_rejects_livespec_source_without_paired_test(*, tmp
         f"`{expected_pair}`; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
+
+
+def test_tests_mirror_pairing_accepts_paired_source_and_test(*, tmp_path: Path) -> None:
+    """A source file with a paired test file passes the check (exit 0).
+
+    Pass-case companion to the rejection test. Fixture: a source
+    file at `.claude-plugin/scripts/livespec/foo/bar.py` AND a
+    paired test at `tests/livespec/foo/test_bar.py`. The check,
+    invoked with `cwd=tmp_path`, walks the source tree, finds the
+    expected pair on disk, leaves the offenders list empty, and
+    exits 0.
+
+    Drives the success-path return on line 99 (`return 0`) and
+    the no-offenders branch (87->83 in coverage's branch report:
+    when the loop body's `if not expected_pair.is_file()` arm is
+    NOT taken, control returns to the loop header).
+    """
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "foo"
+    package_dir.mkdir(parents=True)
+    source = package_dir / "bar.py"
+    source.write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\nx = 0\n",
+        encoding="utf-8",
+    )
+    test_dir = tmp_path / "tests" / "livespec" / "foo"
+    test_dir.mkdir(parents=True)
+    test_file = test_dir / "test_bar.py"
+    test_file.write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\n"
+        "def test_bar() -> None:\n    assert True\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_TESTS_MIRROR_PAIRING)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"tests_mirror_pairing should accept paired source+test with exit 0; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_tests_mirror_pairing_module_importable_without_running_main() -> None:
+    """The check module imports cleanly without invoking main().
+
+    Closes branch 37->40 (the `if str(_VENDOR_DIR) not in sys.path`
+    already-present branch — pytest's pythonpath has pre-populated
+    sys.path) and branch 102->exit (`if __name__ == "__main__":`
+    else-arm — module imported, not run as a script).
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "tests_mirror_pairing_for_import_test", str(_TESTS_MIRROR_PAIRING),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert callable(module.main), "main should be importable without invocation"
