@@ -212,6 +212,50 @@ def _write_sub_spec_files(
     return accumulator
 
 
+def _write_sub_spec_history_v001(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Materialize history/v001/ for each sub-spec tree.
+
+    PROPOSAL.md §"`seed`" step 5 (line ~2014-2020): "For each
+    sub-spec tree, create
+    SPECIFICATION/templates/<template_name>/history/v001/
+    alongside the main-spec history — including the sub-spec's
+    own versioned spec files..." Sub-spec spec_root is the
+    first three path components (e.g.,
+    `SPECIFICATION/templates/livespec`); the remainder is the
+    spec-file path beneath it.
+    """
+    accumulator: IOResult[SeedInput, LivespecError] = IOResult.from_value(seed_input)
+    for sub_spec in seed_input.sub_specs:
+        files_list = sub_spec["files"]
+        if not isinstance(files_list, list):
+            continue
+        for entry in files_list:
+            if not isinstance(entry, dict):
+                continue
+            original_path = Path(str(entry["path"]))
+            if len(original_path.parts) < 4:
+                continue
+            spec_root_parts = original_path.parts[:3]
+            relative = Path(*original_path.parts[3:])
+            target = (
+                project_root.joinpath(*spec_root_parts)
+                / "history"
+                / "v001"
+                / relative
+            )
+            text = str(entry["content"])
+            accumulator = accumulator.bind(
+                lambda _value, target=target, text=text: fs.write_text(
+                    path=target, text=text,
+                ).map(lambda _: seed_input),
+            )
+    return accumulator
+
+
 def _pattern_match_io_result(
     *,
     io_result: IOResult[Any, LivespecError],
@@ -286,6 +330,12 @@ def main(*, argv: list[str]) -> int:
             )
             .bind(
                 lambda seed_input: _write_main_spec_history_v001(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda seed_input: _write_sub_spec_history_v001(
                     seed_input=seed_input,
                     project_root=_resolve_project_root(namespace=namespace),
                 ),

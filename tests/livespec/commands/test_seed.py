@@ -242,6 +242,43 @@ def test_seed_main_creates_history_v001_with_versioned_main_spec_files(
     assert versioned.read_text(encoding="utf-8") == "# Spec\n"
 
 
+def test_seed_main_creates_sub_spec_history_v001(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful seed materializes sub-spec history/v001/ for each sub-spec tree.
+
+    Per PROPOSAL.md §"`seed`" step 5 (line ~2014-2020): "For
+    each sub-spec tree, create
+    SPECIFICATION/templates/<template_name>/history/v001/
+    alongside the main-spec history — including the sub-spec's
+    own versioned spec files..." Each sub-spec entry's files
+    get a v001 snapshot beneath the sub-spec's spec_root.
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    sub_specs = [
+        {
+            "template_name": "livespec",
+            "files": [
+                {
+                    "path": "SPECIFICATION/templates/livespec/spec.md",
+                    "content": "# Sub-spec spec\n",
+                },
+            ],
+        },
+    ]
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path, sub_specs=sub_specs)
+    _ = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    versioned = (
+        project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
+    )
+    assert versioned.exists(), f"expected {versioned} to be written"
+    assert versioned.read_text(encoding="utf-8") == "# Sub-spec spec\n"
+
+
 def test_seed_main_returns_exit_zero_on_successful_seed(
     *,
     tmp_path: Path,
