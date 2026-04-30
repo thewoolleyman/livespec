@@ -34,8 +34,13 @@ from typing_extensions import assert_never
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
+from livespec.validate import revise_input as validate_revise_input_module
 
 __all__: list[str] = ["build_parser", "main"]
+
+
+_SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
+_REVISE_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "revise_input.schema.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,9 +86,10 @@ def main(*, argv: list[str] | None = None) -> int:
 
     Cycle 123 wires parse_argv; cycle 124 appends fs.read_text on
     the --revise-json path; cycle 125 lifts the pure jsonc.loads
-    onto the IOResult track so a malformed payload lifts to
-    exit 4 via ValidationError. Subsequent cycles append schema
-    validation and per-decision processing.
+    onto the IOResult track. Cycle 126 appends schema validation
+    against revise_input.schema.json (a schema-violating payload
+    also lifts to exit 4). Subsequent cycles append per-decision
+    processing.
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
@@ -92,6 +98,30 @@ def main(*, argv: list[str] | None = None) -> int:
         lambda namespace: (
             fs.read_text(path=Path(namespace.revise_json))
             .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
+            .bind(lambda payload: _validate_payload(payload=payload))
         ),
     )
     return _pattern_match_io_result(io_result=railway)
+
+
+def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError]:
+    """Read revise_input.schema.json and validate the payload.
+
+    Composes fs.read_text(schema) -> jsonc.loads(schema-text) ->
+    validate_revise_input(payload, schema-dict). Mirrors
+    propose_change/critique's same stage; failures bubble via the
+    IOResult track (schema-file missing -> PreconditionError;
+    schema malformed -> ValidationError; payload schema-violation
+    -> ValidationError).
+    """
+    return (
+        fs.read_text(path=_REVISE_INPUT_SCHEMA_PATH)
+        .bind(lambda schema_text: IOResult.from_result(jsonc.loads(text=schema_text)))
+        .bind(
+            lambda schema_dict: IOResult.from_result(
+                validate_revise_input_module.validate_revise_input(
+                    payload=payload, schema=schema_dict,
+                ),
+            ),
+        )
+    )

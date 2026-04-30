@@ -59,20 +59,43 @@ def test_revise_main_returns_precondition_exit_code_on_missing_revise_path(
     assert exit_code == 3
 
 
+def _write_valid_revise_payload(*, tmp_path: Path) -> Path:
+    """Helper: write a schema-valid revise-input payload to tmp_path.
+
+    Mirrors propose_change/critique helpers: the payload conforms
+    to revise_input.schema.json with one reject-decision so the
+    railway can reach the Success arm without needing the
+    accept/modify file-shaping branches yet.
+    """
+    import json
+
+    payload_dict = {
+        "decisions": [
+            {
+                "proposal_topic": "demo",
+                "decision": "reject",
+                "rationale": "Demo rejection rationale.",
+            },
+        ],
+    }
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    return payload_path
+
+
 def test_revise_main_returns_zero_when_revise_file_readable(
     *,
     tmp_path: Path,
 ) -> None:
-    """When --revise-json points at a readable, valid-JSON payload, main returns 0.
+    """When --revise-json points at a schema-valid payload, main returns 0.
 
     Drives the Success arm of `_pattern_match_io_result`: the
-    parse_argv -> fs.read_text -> jsonc.loads composition reaches
-    IOSuccess, the pattern-match falls into the Success(_) case,
-    and the supervisor returns 0. Subsequent cycles append schema
-    validation and per-decision processing.
+    parse_argv -> fs.read_text -> jsonc.loads -> validate
+    composition reaches IOSuccess, the pattern-match falls into
+    the Success(_) case, and the supervisor returns 0. Subsequent
+    cycles append per-decision processing.
     """
-    revise_path = tmp_path / "revise.json"
-    _ = revise_path.write_text("{}", encoding="utf-8")
+    revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
     exit_code = revise.main(argv=["--revise-json", str(revise_path)])
     assert exit_code == 0
 
@@ -90,5 +113,24 @@ def test_revise_main_returns_validation_exit_code_on_malformed_payload(
     """
     payload = tmp_path / "bad.json"
     _ = payload.write_text("{not json}", encoding="utf-8")
+    exit_code = revise.main(argv=["--revise-json", str(payload)])
+    assert exit_code == 4
+
+
+def test_revise_main_returns_validation_exit_code_on_schema_violation(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Schema-violation payload (well-formed JSON, missing fields) returns exit 4.
+
+    Drives the railway widening to include schema validation
+    against revise_input.schema.json. The payload `{}` is valid
+    JSON so jsonc.loads succeeds; it then trips schema validation
+    (missing required `decisions` array) which returns
+    Failure(ValidationError) and lifts to exit 4. Mirrors
+    critique's cycle-121 stage.
+    """
+    payload = tmp_path / "empty.json"
+    _ = payload.write_text("{}", encoding="utf-8")
     exit_code = revise.main(argv=["--revise-json", str(payload)])
     assert exit_code == 4
