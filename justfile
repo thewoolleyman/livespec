@@ -118,7 +118,14 @@ check-tests:
 check-coverage:
     #!/usr/bin/env bash
     set -uo pipefail
-    uv run pytest --cov --cov-branch --cov-report=term-missing
+    # pytest-cov defaults `--cov-config` to `.coveragerc`, which
+    # bypasses pyproject.toml's `[tool.coverage.run]` (including
+    # the `omit = ["*/_vendor/*"]` carve-out). Pass the config
+    # path explicitly so the vendored-tree exclusion takes effect
+    # under `pytest --cov`. Without this, structlog (transitively
+    # imported by livespec modules) is measured and inflates the
+    # report with sub-100% files that aren't first-party code.
+    uv run pytest --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
     uv run python3 dev-tooling/checks/per_file_coverage.py
 
 # ---------------------------------------------------------------

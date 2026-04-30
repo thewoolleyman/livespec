@@ -258,10 +258,39 @@ addopts = [
 
 [tool.coverage.run]
 branch = true
-source = [
-    ".claude-plugin/scripts/livespec",
-    ".claude-plugin/scripts/bin",
-    "dev-tooling",
+# Coverage uses an `omit`-only blocklist (no `source` allowlist).
+# The dev-tooling/checks/ test suite invokes check scripts via
+# `subprocess.run` with `cwd=tmp_path`; pytest-cov's pth-installed
+# startup hook instruments those children, but a relative `source`
+# list (e.g., `dev-tooling`) resolves against the subprocess's
+# cwd (the tmp_path), which doesn't contain `dev-tooling/`, so
+# the actual `<repo>/dev-tooling/checks/<name>.py` would be
+# silently dropped from the report. Removing `source` entirely
+# lets every imported module be measured, then the `omit` patterns
+# below filter out everything that isn't first-party livespec
+# code:
+#
+#   - `*/_vendor/*` — vendored third-party libs (returns,
+#     structlog, jsonschema, typing_extensions); matches both
+#     relative (`./.claude-plugin/scripts/_vendor/...`) and
+#     absolute (`/abs/path/_vendor/...`) forms via the leading
+#     `*/` prefix. The carve-out matches `[tool.ruff].extend-exclude`
+#     and `[tool.pyright].exclude` above.
+#   - `*/.venv/*` — the project-local venv (uv/pytest-cov
+#     transitive imports under .venv/lib/...).
+#   - `*/site-packages/*` — defense-in-depth for stdlib /
+#     installed-pkg paths in case the venv is named differently.
+#   - `*/__pycache__/*` — bytecode cache (shouldn't appear in
+#     measurement, but matches the pyright/ruff exclude pattern).
+#
+# The `tests/` tree isn't omitted: pytest-cov already excludes
+# test files from measurement by default (it instruments the code
+# under test, not the test code itself).
+omit = [
+    "*/_vendor/*",
+    "*/.venv/*",
+    "*/site-packages/*",
+    "*/__pycache__/*",
 ]
 
 [tool.coverage.report]
