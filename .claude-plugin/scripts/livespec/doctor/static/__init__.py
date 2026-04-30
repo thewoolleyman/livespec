@@ -6,25 +6,27 @@ implemented static-phase check modules. Each check is registered
 explicitly (no dynamic discovery); adding or removing a check is
 one explicit edit to this file.
 
-v033 D5b second-redo cycle 103: stubbed down to the canonical
-no-op preamble. The prior content (cycle 28's eight-check
-registry) referenced check modules and the `livespec.context`
-module that haven't been re-authored under TDD yet, so the file
-couldn't be imported successfully — `from livespec.doctor import
-static` raised ModuleNotFoundError on the first import statement.
-The minimum-viable form here lets the namespace be discovered
-while subsequent consumer-pressure cycles re-author each check
-module + its registry entry as outside-in tests demand them.
+Cycle 131 lands the first registry entry: `livespec_jsonc_valid`,
+the first of the eight Phase-3 minimum-subset checks per Plan
+Phase 3 line 1596-1602. Subsequent cycles append additional
+checks (`template_exists`, `template_files_present`,
+`proposed_changes_and_history_dirs`,
+`version_directories_complete`, `version_contiguity`,
+`revision_to_proposed_change_pairing`,
+`proposed_change_topic_format`) one at a time as outside-in
+consumer pressure pulls them in.
 
-The v033 D1 mirror-pairing-rule's `__init__.py` carve-out exempts
-a file whose body is exactly `from __future__ import annotations`
-+ `__all__: list[str] = []` from requiring a paired non-trivial
-test, but the package itself still warrants an importability test
-under `tests/livespec/doctor/static/test___init__.py` so the
-namespace contract is pinned — this is what the cycle's Red
-captured.
+The registry is a tuple of imported modules so the orchestrator
+can iterate it deterministically; each module exposes a `SLUG`
+constant + a `run(ctx)` function returning
+`IOResult[Finding, LivespecError]`.
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from livespec.doctor.static import livespec_jsonc_valid
+
+__all__: list[str] = ["STATIC_CHECKS"]
+
+
+STATIC_CHECKS = (livespec_jsonc_valid,)
