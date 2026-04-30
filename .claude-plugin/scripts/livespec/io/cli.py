@@ -25,14 +25,23 @@ from livespec.errors import UsageError
 __all__: list[str] = ["parse_argv"]
 
 
-@impure_safe(exceptions=(argparse.ArgumentError,))
+@impure_safe(exceptions=(argparse.ArgumentError, SystemExit))
 def _raw_parse_argv(
     *,
     parser: argparse.ArgumentParser,
     argv: list[str],
 ) -> argparse.Namespace:
     """Decorator-lifted call into argparse. The IOFailure carries the
-    raw ArgumentError; `parse_argv` maps it to UsageError via .alt.
+    raw ArgumentError or SystemExit; `parse_argv` maps both to
+    UsageError via .alt.
+
+    Why catch SystemExit: stdlib argparse's `exit_on_error=False`
+    only suppresses ArgumentError-class failures (type
+    conversion). Missing-required-arg and unknown-flag both
+    route through `parser.error()` -> `parser.exit()` ->
+    `sys.exit(2)`, which `exit_on_error=False` does NOT
+    intercept (Python issue 41255). Catching SystemExit here
+    keeps the railway intact.
     """
     return parser.parse_args(argv)
 

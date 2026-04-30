@@ -55,3 +55,24 @@ def test_cli_parse_argv_maps_argparse_error_to_usage_error() -> None:
             pass
         case _:
             raise AssertionError(f"expected IOFailure(UsageError), got {result!r}")
+
+
+def test_cli_parse_argv_maps_missing_required_to_usage_error() -> None:
+    """Missing required flag (argparse's SystemExit-via-error path) lifts to UsageError.
+
+    `argparse.ArgumentParser(exit_on_error=False)` does not
+    suppress SystemExit on missing-required-argument; argparse
+    routes through `parser.error()` which calls `sys.exit(2)`.
+    parse_argv MUST also catch that path so the supervisor sees
+    a clean IOFailure(UsageError) instead of a propagated
+    SystemExit (which would bypass the railway).
+    """
+    parser = argparse.ArgumentParser(prog="t", exit_on_error=False)
+    _ = parser.add_argument("--required", required=True)
+    result = cli.parse_argv(parser=parser, argv=[])
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(UsageError()):
+            pass
+        case _:
+            raise AssertionError(f"expected IOFailure(UsageError), got {result!r}")
