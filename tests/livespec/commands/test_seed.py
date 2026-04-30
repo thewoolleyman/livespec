@@ -23,3 +23,18 @@ def test_seed_main_exists_and_returns_int() -> None:
     """
     exit_code = seed.main(argv=[])
     assert isinstance(exit_code, int)
+
+
+def test_seed_build_parser_accepts_seed_json_flag() -> None:
+    """The pure argparse factory accepts `--seed-json <path>` and binds it.
+
+    Per PROPOSAL.md §"`seed`" lines 1937-1942 (`bin/seed.py
+    --seed-json <path>` is the sole wrapper entry point) and
+    style doc §"CLI argument parsing seam" (commands/<cmd>.py
+    exposes a pure `build_parser() -> ArgumentParser` factory
+    that constructs but does NOT parse). Constructing-only lets
+    us introspect the parser shape without effectful invocation.
+    """
+    parser = seed.build_parser()
+    namespace = parser.parse_args(["--seed-json", "/tmp/payload.json"])
+    assert namespace.seed_json == "/tmp/payload.json"
