@@ -30,6 +30,7 @@ from typing_extensions import assert_never
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
+from livespec.schemas.dataclasses.proposal_findings import ProposalFindings
 from livespec.validate import proposal_findings as validate_proposal_findings_module
 
 __all__: list[str] = ["build_parser", "main"]
@@ -91,11 +92,19 @@ def main(*, argv: list[str] | None = None) -> int:
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
-    railway: IOResult[Any, LivespecError] = (
-        cli.parse_argv(parser=parser, argv=resolved_argv)
-        .bind(lambda namespace: fs.read_text(path=Path(namespace.findings_json)))
-        .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
-        .bind(lambda payload: _validate_payload(payload=payload))
+    parse_result = cli.parse_argv(parser=parser, argv=resolved_argv)
+    railway: IOResult[Any, LivespecError] = parse_result.bind(
+        lambda namespace: (
+            fs.read_text(path=Path(namespace.findings_json))
+            .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
+            .bind(lambda payload: _validate_payload(payload=payload))
+            .bind(
+                lambda findings: _write_proposed_change(
+                    findings=findings,
+                    namespace=namespace,
+                ),
+            )
+        ),
     )
     return _pattern_match_io_result(io_result=railway)
 
@@ -120,3 +129,68 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
             ),
         )
     )
+
+
+def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
+    """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
+
+    Per Plan Phase 3 (lines 1505-1523): the `<spec-target>` is
+    selected via the --spec-target flag, defaulting to the
+    project's main spec root. With the built-in `livespec`
+    template, that's <project-root>/SPECIFICATION/.
+    """
+    if namespace.spec_target is not None:
+        return Path(namespace.spec_target)
+    project_root = (
+        Path.cwd()
+        if namespace.project_root is None
+        else Path(namespace.project_root)
+    )
+    return project_root / "SPECIFICATION"
+
+
+def _compose_proposed_change_body(*, findings: ProposalFindings) -> str:
+    """Compose the proposed-change file body from validated findings.
+
+    Per PROPOSAL.md lines 2232-2242 (field-copy mapping): each
+    finding becomes one `## Proposal: <name>` section with
+    `### Target specification files`, `### Summary`,
+    `### Motivation`, `### Proposed Changes` subsections
+    populated verbatim from the finding's fields.
+    """
+    sections: list[str] = []
+    for finding in findings.findings:
+        name = str(finding.get("name", ""))
+        target_files = finding.get("target_spec_files", [])
+        target_files_text = "\n".join(
+            f"- {entry}" for entry in target_files if isinstance(entry, str)
+        )
+        summary = str(finding.get("summary", ""))
+        motivation = str(finding.get("motivation", ""))
+        proposed_changes = str(finding.get("proposed_changes", ""))
+        sections.append(
+            f"## Proposal: {name}\n\n"
+            f"### Target specification files\n\n{target_files_text}\n\n"
+            f"### Summary\n\n{summary}\n\n"
+            f"### Motivation\n\n{motivation}\n\n"
+            f"### Proposed Changes\n\n{proposed_changes}\n",
+        )
+    return "\n".join(sections)
+
+
+def _write_proposed_change(
+    *,
+    findings: ProposalFindings,
+    namespace: argparse.Namespace,
+) -> IOResult[ProposalFindings, LivespecError]:
+    """Write the composed proposed-change file to disk.
+
+    Per Plan Phase 3 (lines 1505-1523): writes the composed
+    body to `<spec-target>/proposed_changes/<topic>.md`. The
+    topic is taken verbatim from the namespace per Phase-3
+    minimum-viable scope (canonicalization deferred to Phase 7).
+    """
+    spec_target = _resolve_spec_target(namespace=namespace)
+    target = spec_target / "proposed_changes" / f"{namespace.topic}.md"
+    body = _compose_proposed_change_body(findings=findings)
+    return fs.write_text(path=target, text=body).map(lambda _: findings)

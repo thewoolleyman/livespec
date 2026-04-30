@@ -12,11 +12,35 @@ ization is OUT OF SCOPE for Phase 3.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from livespec.commands import propose_change
 
 __all__: list[str] = []
+
+
+def _write_valid_findings_payload(*, tmp_path: Path) -> Path:
+    """Helper: write a schema-valid proposal-findings payload to tmp_path.
+
+    Used by success-arm tests to satisfy the parse_argv ->
+    read_text -> jsonc.loads -> validate_proposal_findings
+    chain so the railway reaches the file-write stage.
+    """
+    payload_dict = {
+        "findings": [
+            {
+                "name": "Sample finding",
+                "target_spec_files": ["SPECIFICATION/spec.md"],
+                "summary": "Demo summary.",
+                "motivation": "Demo motivation.",
+                "proposed_changes": "Demo changes prose.",
+            },
+        ],
+    }
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    return payload_path
 
 
 def test_propose_change_main_exists_and_returns_int() -> None:
@@ -74,6 +98,40 @@ def test_propose_change_main_returns_validation_exit_code_on_malformed_payload(
     _ = payload.write_text("{not json}", encoding="utf-8")
     exit_code = propose_change.main(argv=["--findings-json", str(payload), "topic"])
     assert exit_code == 4
+
+
+def test_propose_change_main_writes_proposed_change_file_on_success(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Successful propose-change writes `<spec-target>/proposed_changes/<topic>.md`.
+
+    Per PROPOSAL.md §"`propose-change`" lines 2145-2148: the
+    wrapper creates a proposed-change file containing one or
+    more `## Proposal: <name>` sections. With --spec-target
+    explicit, the target is `<spec-target>/proposed_changes/
+    <topic>.md`. The body composes from the findings array via
+    the field-copy mapping in PROPOSAL.md lines 2232-2242.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    _ = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    out = spec_target / "proposed_changes" / "demo-topic.md"
+    assert out.exists(), f"expected {out} to be written"
+    text = out.read_text(encoding="utf-8")
+    assert "## Proposal: Sample finding" in text
+    assert "Demo summary." in text
+    assert "Demo motivation." in text
+    assert "Demo changes prose." in text
 
 
 def test_propose_change_main_returns_validation_exit_code_on_schema_violation(
