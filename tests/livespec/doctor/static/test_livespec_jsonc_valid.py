@@ -96,3 +96,38 @@ def test_livespec_jsonc_valid_run_returns_fail_for_missing_config(
         spec_root=str(spec_root),
     )
     assert result == IOSuccess(expected)
+
+
+def test_livespec_jsonc_valid_run_returns_fail_for_malformed_jsonc(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) returns IOSuccess(fail-Finding) when config is malformed JSONC.
+
+    Drives the second fail arm: when fs.read_text succeeds
+    but jsonc.loads returns Failure(ValidationError) for
+    malformed input (here, an unterminated string literal),
+    the check produces a fail-status Finding with a distinct
+    message naming the parse failure (vs the missing-file
+    message). This forces the .lash recovery to discriminate
+    PreconditionError vs ValidationError rather than collapsing
+    both into a single message.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    config_text = '{\n  "template": "livespec\n}\n'
+    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = livespec_jsonc_valid.run(ctx=ctx)
+    config_path_str = str(project_root / ".livespec.jsonc")
+    expected = Finding(
+        check_id="doctor-livespec-jsonc-valid",
+        status="fail",
+        message="livespec config is not valid JSONC",
+        path=config_path_str,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
