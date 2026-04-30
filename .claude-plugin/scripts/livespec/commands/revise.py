@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Any
 
 from returns.io import IOResult
@@ -31,7 +32,7 @@ from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
 from livespec.errors import LivespecError
-from livespec.io import cli
+from livespec.io import cli, fs
 
 __all__: list[str] = ["build_parser", "main"]
 
@@ -77,16 +78,15 @@ def _pattern_match_io_result(
 def main(*, argv: list[str] | None = None) -> int:
     """Revise supervisor entry point. Returns the process exit code.
 
-    Cycle 123 wires the parse_argv stage onto the railway: a
-    UsageError (missing required flag, unknown flag) lifts to
-    exit 2; success returns IOSuccess(namespace) which the
-    pattern-match maps to 0 until subsequent cycles append the
-    revise-json-load + schema-validate + decisions-processing
-    stages.
+    Cycle 123 wires parse_argv; cycle 124 appends fs.read_text on
+    the --revise-json path so a missing file lifts to exit 3 via
+    PreconditionError. Subsequent cycles append jsonc.loads,
+    schema validation, and per-decision processing.
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
-    railway: IOResult[Any, LivespecError] = cli.parse_argv(
-        parser=parser, argv=resolved_argv,
+    parse_result = cli.parse_argv(parser=parser, argv=resolved_argv)
+    railway: IOResult[Any, LivespecError] = parse_result.bind(
+        lambda namespace: fs.read_text(path=Path(namespace.revise_json)),
     )
     return _pattern_match_io_result(io_result=railway)
