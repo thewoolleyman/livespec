@@ -86,15 +86,27 @@ def _write_valid_findings_payload(*, tmp_path: Path) -> Path:
 def test_critique_main_returns_zero_when_findings_file_readable(
     *,
     tmp_path: Path,
+    monkeypatch: object,
 ) -> None:
     """When --findings-json points at a schema-valid payload, main returns 0.
 
     Drives the Success arm of `_pattern_match_io_result`: the
     parse_argv -> fs.read_text -> jsonc.loads -> validate
     composition reaches IOSuccess, the pattern-match falls into
-    the Success(_) case, and the supervisor returns 0.
+    the Success(_) case, the propose_change-delegation runs with
+    cwd-default project_root, and the supervisor returns 0.
+
+    Uses monkeypatch.chdir(tmp_path) to make the cwd-fallback
+    path writable + isolated; without it, propose_change's
+    `Path.cwd()` default would write into the repo root's
+    `SPECIFICATION/proposed_changes/` and leak across test runs.
     """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    (tmp_path / "SPECIFICATION").mkdir()
     findings_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    monkeypatch.chdir(tmp_path)
     exit_code = critique.main(argv=["--findings-json", str(findings_path)])
     assert exit_code == 0
 
