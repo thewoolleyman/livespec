@@ -398,6 +398,63 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
     assert namespace.project_root == "/tmp/proj"
 
 
+def test_write_sub_spec_history_v001_skips_paths_with_fewer_than_four_components(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A sub_spec file path with fewer than 4 components is skipped from history/v001/.
+
+    Per `_write_sub_spec_history_v001` line 354-355 guard: the
+    canonical sub-spec file shape is
+    `SPECIFICATION/templates/<name>/<spec-file>` (4 path
+    components). A path with fewer components can't be split into
+    `spec_root_parts = parts[:3]` plus a remainder — `parts[3:]`
+    would be empty, producing a malformed v001 target. The guard
+    skips that entry rather than constructing a malformed path.
+    Tested by calling the helper directly with a sub_spec entry
+    whose path is `SPECIFICATION/templates/spec.md` (3 parts —
+    one too few). The IOResult is Success, the malformed entry's
+    history is silently omitted, and a second well-formed entry's
+    v001 snapshot still lands.
+    """
+    from livespec.commands.seed import _write_sub_spec_history_v001
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[],
+        sub_specs=[
+            {
+                "template_name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/spec.md",
+                        "content": "# Too few components\n",
+                    },
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _write_sub_spec_history_v001(
+        seed_input=seed_input, project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
+    versioned = (
+        project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
+    )
+    assert versioned.exists(), f"the well-formed entry should still produce v001"
+
+
 def test_write_sub_spec_history_v001_skips_non_dict_entry_inside_files_list(
     *,
     tmp_path: Path,
