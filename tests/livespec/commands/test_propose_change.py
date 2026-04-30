@@ -57,3 +57,20 @@ def test_propose_change_main_returns_precondition_exit_code_on_missing_findings_
     missing = tmp_path / "no-such-findings.json"
     exit_code = propose_change.main(argv=["--findings-json", str(missing), "topic"])
     assert exit_code == 3
+
+
+def test_propose_change_main_returns_validation_exit_code_on_malformed_payload(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Malformed JSONC payload (ValidationError) returns exit code 4.
+
+    Composes parse_argv -> fs.read_text -> jsonc.loads on the
+    railway. The pure parse-failure (ValidationError) bubbles
+    via bind chaining; exit 4 per style doc §"Exit code
+    contract".
+    """
+    payload = tmp_path / "bad.json"
+    _ = payload.write_text("{not json}", encoding="utf-8")
+    exit_code = propose_change.main(argv=["--findings-json", str(payload), "topic"])
+    assert exit_code == 4

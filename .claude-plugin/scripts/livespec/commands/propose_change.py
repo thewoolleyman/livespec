@@ -29,6 +29,7 @@ from typing_extensions import assert_never
 
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
+from livespec.parse import jsonc
 
 __all__: list[str] = ["build_parser", "main"]
 
@@ -86,9 +87,9 @@ def main(*, argv: list[str] | None = None) -> int:
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
-    railway: IOResult[Any, LivespecError] = cli.parse_argv(
-        parser=parser, argv=resolved_argv,
-    ).bind(
-        lambda namespace: fs.read_text(path=Path(namespace.findings_json)),
+    railway: IOResult[Any, LivespecError] = (
+        cli.parse_argv(parser=parser, argv=resolved_argv)
+        .bind(lambda namespace: fs.read_text(path=Path(namespace.findings_json)))
+        .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
     )
     return _pattern_match_io_result(io_result=railway)
