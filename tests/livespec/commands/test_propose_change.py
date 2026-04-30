@@ -151,3 +151,36 @@ def test_propose_change_main_returns_validation_exit_code_on_schema_violation(
     _ = payload.write_text("{}", encoding="utf-8")
     exit_code = propose_change.main(argv=["--findings-json", str(payload), "topic"])
     assert exit_code == 4
+
+
+def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_flags(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Without --spec-target or --project-root, falls back to `cwd()/SPECIFICATION`.
+
+    Per PROPOSAL.md §"Wrapper CLI surface" lines 349-356 + Plan
+    Phase 3: when neither --spec-target nor --project-root is
+    supplied, project_root defaults to Path.cwd() and the spec
+    target derives as `<cwd>/SPECIFICATION`. Drives
+    `_resolve_spec_target`'s cwd-fallback branch (line 145:
+    `Path.cwd() if namespace.project_root is None`) — the
+    last uncovered code path in the file. Uses monkeypatch to
+    chdir into tmp_path so the cwd-read at the supervisor edge
+    points at a writable, deterministic root rather than the
+    test runner's invocation cwd.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    project_root = tmp_path / "proj"
+    (project_root / "SPECIFICATION").mkdir(parents=True)
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    monkeypatch.chdir(project_root)
+    exit_code = propose_change.main(
+        argv=["--findings-json", str(payload_path), "demo-topic"],
+    )
+    assert exit_code == 0
+    out = project_root / "SPECIFICATION" / "proposed_changes" / "demo-topic.md"
+    assert out.exists(), f"expected {out} to be written"
