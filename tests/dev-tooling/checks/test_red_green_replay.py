@@ -154,6 +154,90 @@ def test_feat_commit_subject_exits_nonzero(*, tmp_path: Path) -> None:
     )
 
 
+def test_feat_in_git_repo_with_no_staged_files_diagnoses_no_mode(*, tmp_path: Path) -> None:
+    """A feat: subject in a git repo with NO staged files cannot enter Red or Green mode.
+
+    Cycle 177 drives the first staged-tree inspection in the hook.
+    Per Plan §"Per-commit Red→Green replay discipline (v034 D2-D3)",
+    Red mode requires staged test files + no staged impl; Green mode
+    requires HEAD~0 Red trailers + staged impl files. With ZERO staged
+    files, neither mode applies; the hook MUST reject with a diagnostic
+    on stderr that mentions "staged" so the developer understands the
+    rejection reason. Pins the True branch of the staged-emptiness
+    check.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"feat: with empty staged tree must reject; "
+        f"got returncode={result.returncode} stderr={result.stderr!r}"
+    )
+    assert "staged" in result.stderr.lower(), (
+        f"expected 'staged' diagnostic in stderr for empty-staged feat:; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
+def test_feat_in_git_repo_with_staged_files_skips_no_staged_diagnostic(
+    *, tmp_path: Path,
+) -> None:
+    """A feat: subject in a git repo WITH staged files skips the no-staged diagnostic.
+
+    Cycle 177 paired test: pins the False branch of the staged-emptiness
+    check. With at least one staged file, the no-staged-files diagnostic
+    MUST NOT fire on stderr; the hook still exits non-zero (the actual
+    Red/Green replay verification logic — pytest invocation + checksum
+    + trailer authoring — is not yet implemented), but the empty-staged
+    rejection path is inactive. This guarantees per-file 100% branch
+    coverage on the new staged-emptiness conditional.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    test_file = tmp_path / "tests" / "test_dummy.py"
+    test_file.write_text(
+        "def test_x() -> None:\n    assert True\n", encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_dummy.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"feat: with staged files still rejects (full replay logic not yet implemented); "
+        f"got returncode={result.returncode}"
+    )
+    assert "no staged files" not in result.stderr.lower(), (
+        f"no-staged-files diagnostic must NOT fire when files ARE staged; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
 def test_red_green_replay_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 

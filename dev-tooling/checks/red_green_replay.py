@@ -15,9 +15,15 @@ Cycles 173-176 implement minimum-viable type discrimination
 with the full v034 D3 exempt set ({chore, docs, build, ci,
 style, test, refactor, perf, revert} — nine config/meta
 types). Non-exempt subjects (feat:, fix:, and any unknown
-type) exit 1. Future cycles drive the Red/Green-mode
-dispatch + checksum + replay logic via additional failing
-tests.
+type) exit 1. Cycle 177 adds the first staged-tree
+inspection: when a non-exempt subject is presented and the
+staged tree is empty (`git diff --cached --name-only`
+returns no paths, including the not-a-git-repo failure
+mode), the hook emits a structured diagnostic to stderr
+identifying the empty-staging rejection reason (neither Red
+nor Green mode is reachable without staged changes). Future
+cycles drive the Red/Green-mode dispatch + checksum + pytest
+invocation + trailer authoring via additional failing tests.
 
 This file is authored under the v033 discipline still in
 force (the replay hook itself is not yet gating; the v033
@@ -25,12 +31,26 @@ force (the replay hook itself is not yet gating; the v033
 replay-hook activation commit replaces the v033 hook with
 this one and authors the initial
 `phase-5-deferred-violations.toml`.
+
+Output discipline: per spec lines 1738-1762, `print` (T20)
+and `sys.stderr.write` (`check-no-write-direct`) are banned
+in dev-tooling/**. Diagnostics flow through structlog (JSON
+to stderr); the vendored copy under `.claude-plugin/scripts/
+_vendor/structlog` is added to `sys.path` at module import
+time.
 """
 
 from __future__ import annotations
 
+import subprocess  # noqa: S404
 import sys
 from pathlib import Path
+
+_VENDOR_DIR = Path(__file__).resolve().parents[2] / ".claude-plugin" / "scripts" / "_vendor"
+if str(_VENDOR_DIR) not in sys.path:
+    sys.path.insert(0, str(_VENDOR_DIR))
+
+import structlog  # noqa: E402  — vendor-path-aware import after sys.path insert.
 
 __all__: list[str] = []
 
@@ -53,6 +73,31 @@ def main() -> int:
     subject = msg_path.read_text(encoding="utf-8").split("\n", 1)[0]
     if subject.startswith(_EXEMPT_TYPE_PREFIXES):
         return 0
+    structlog.configure(
+        processors=[
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.JSONRenderer(),
+        ],
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+    )
+    log = structlog.get_logger("red_green_replay")
+    staged_result = subprocess.run(  # noqa: S603, S607
+        ["git", "diff", "--cached", "--name-only"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    staged_paths = [line for line in staged_result.stdout.splitlines() if line]
+    if not staged_paths:
+        log.error(
+            "no staged files; cannot enter Red or Green mode",
+            check_id="red-green-replay-empty-staged",
+            hint=(
+                "Red mode requires staged tests + no impl; "
+                "Green mode requires staged impl + HEAD~0 Red trailers."
+            ),
+        )
     return 1
 
 
