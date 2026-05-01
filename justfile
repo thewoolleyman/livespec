@@ -79,6 +79,7 @@ check:
         check-main-guard
         check-no-inheritance
         check-all-declared
+        check-no-write-direct
     )
     failed=()
     for t in "${targets[@]}"; do
