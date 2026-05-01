@@ -11,14 +11,13 @@ checksum, pytest invocation, trailer authoring); for other
 Conventional Commit types (chore, docs, build, ci, style,
 test, refactor, perf, revert) it exits 0 immediately.
 
-Cycles 173-175 implement minimum-viable type discrimination
-with two exempt types: `chore:` and `docs:` subjects exit 0;
-non-exempt subjects (feat:, fix:, and any unknown type)
-exit 1. Future cycles extend the exempt list with the
-remaining seven config/meta types (build, ci, style, test,
-refactor, perf, revert) one per cycle and drive the
-Red/Green-mode dispatch + checksum + replay logic via
-additional failing tests.
+Cycles 173-176 implement minimum-viable type discrimination
+with the full v034 D3 exempt set ({chore, docs, build, ci,
+style, test, refactor, perf, revert} — nine config/meta
+types). Non-exempt subjects (feat:, fix:, and any unknown
+type) exit 1. Future cycles drive the Red/Green-mode
+dispatch + checksum + replay logic via additional failing
+tests.
 
 This file is authored under the v033 discipline still in
 force (the replay hook itself is not yet gating; the v033
@@ -36,10 +35,23 @@ from pathlib import Path
 __all__: list[str] = []
 
 
+_EXEMPT_TYPE_PREFIXES = (
+    "chore:",
+    "docs:",
+    "build:",
+    "ci:",
+    "style:",
+    "test:",
+    "refactor:",
+    "perf:",
+    "revert:",
+)
+
+
 def main() -> int:
     msg_path = Path(sys.argv[1])
     subject = msg_path.read_text(encoding="utf-8").split("\n", 1)[0]
-    if subject.startswith(("chore:", "docs:")):
+    if subject.startswith(_EXEMPT_TYPE_PREFIXES):
         return 0
     return 1
 

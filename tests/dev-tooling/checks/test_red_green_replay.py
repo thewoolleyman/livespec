@@ -20,6 +20,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 __all__: list[str] = []
 
 
@@ -77,6 +79,44 @@ def test_docs_commit_subject_exits_zero(*, tmp_path: Path) -> None:
 
     assert result.returncode == 0, (
         f"red_green_replay should exit 0 for docs: subject; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "type_token",
+    ["build", "ci", "style", "test", "refactor", "perf", "revert"],
+)
+def test_remaining_exempt_commit_subjects_exit_zero(
+    *, type_token: str, tmp_path: Path,
+) -> None:
+    """Each remaining v034 D3 exempt Conventional Commit type exits 0.
+
+    Cycle 176 batches the seven types not yet pinned by
+    cycles 173-175 (chore: by 173, docs: by 175). Per v034
+    D3, the full exempt set is {chore, docs, build, ci,
+    style, test, refactor, perf, revert} — config/meta
+    types that produce no test/impl pairing and therefore
+    do not require Red→Green replay verification. The
+    parameterized test pins all seven remaining types in
+    one test function (one Red→Green pair: list-extension
+    is parameter expansion of the cycle-174
+    type-discrimination switch, not new behavior).
+    """
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text(f"{type_token}: minor change\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"red_green_replay should exit 0 for {type_token}: subject; "
         f"got returncode={result.returncode} "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
