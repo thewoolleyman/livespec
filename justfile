@@ -88,6 +88,7 @@ check:
         check-assert-never-exhaustiveness
         check-private-calls
         check-global-writes
+        check-wrapper-shape
     )
     failed=()
     for t in "${targets[@]}"; do
