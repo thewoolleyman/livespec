@@ -55,6 +55,33 @@ def test_chore_commit_subject_exits_zero(*, tmp_path: Path) -> None:
     )
 
 
+def test_docs_commit_subject_exits_zero(*, tmp_path: Path) -> None:
+    """A `docs:` commit subject is exempt from TDD enforcement; hook exits 0.
+
+    Fixture: a tmp_path COMMIT_EDITMSG file containing
+    `docs: clarify proposal`. Per v034 D3, `docs:` is one of
+    the nine exempt Conventional Commit types (chore, docs,
+    build, ci, style, test, refactor, perf, revert). Subsequent
+    cycles add the remaining six exempt types one per cycle.
+    """
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("docs: clarify proposal\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"red_green_replay should exit 0 for docs: subject; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
 def test_feat_commit_subject_exits_nonzero(*, tmp_path: Path) -> None:
     """A `feat:` commit subject is NOT exempt; hook MUST exit non-zero.
 
