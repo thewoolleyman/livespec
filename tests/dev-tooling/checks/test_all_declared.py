@@ -1,0 +1,201 @@
+"""Outside-in test for `dev-tooling/checks/all_declared.py` — `__all__` declaration discipline.
+
+Per `python-skill-script-style-requirements.md` §"Canonical
+target list" (the `check-all-declared` row), every module
+under `.claude-plugin/scripts/livespec/**` MUST declare a
+module-top `__all__: list[str]` (typed annotation, list
+literal). Every name in `__all__` must also be defined in the
+module. Two failure modes:
+
+- Missing `__all__` declaration entirely.
+- Names in `__all__` that are not defined as module-top names
+  (def, class, assignment, import).
+
+Cycle 149 pins the first failure mode (missing `__all__`).
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+__all__: list[str] = []
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_ALL_DECLARED = _REPO_ROOT / "dev-tooling" / "checks" / "all_declared.py"
+
+
+def test_all_declared_rejects_module_missing_all_declaration(*, tmp_path: Path) -> None:
+    """A livespec module without `__all__: list[str] = ...` fails the check.
+
+    Fixture: `.claude-plugin/scripts/livespec/foo.py` contains
+    only `from __future__ import annotations` plus a function
+    definition — no `__all__` declaration. The check, invoked
+    with `cwd=tmp_path`, must walk the livespec subtree, parse
+    the file, detect the missing declaration, exit non-zero,
+    and surface the offending file path.
+    """
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec"
+    package_dir.mkdir(parents=True)
+    source = package_dir / "foo.py"
+    source.write_text(
+        "from __future__ import annotations\n"
+        "\n"
+        "\n"
+        "def main() -> int:\n"
+        "    return 0\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_ALL_DECLARED)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"all_declared should reject module without `__all__` with non-zero exit; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    combined = result.stdout + result.stderr
+    expected_path = ".claude-plugin/scripts/livespec/foo.py"
+    assert expected_path in combined, (
+        f"all_declared diagnostic does not surface offending file `{expected_path}`; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_all_declared_rejects_undefined_name_in_all(*, tmp_path: Path) -> None:
+    """An `__all__` entry not defined in the module fails the check.
+
+    Fixture: `.claude-plugin/scripts/livespec/foo.py` declares
+    `__all__: list[str] = ["bogus"]` but does not define
+    `bogus`. The check exits non-zero and surfaces both the
+    file path and the offending name.
+    """
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec"
+    package_dir.mkdir(parents=True)
+    source = package_dir / "foo.py"
+    source.write_text(
+        "from __future__ import annotations\n"
+        "\n"
+        '__all__: list[str] = ["bogus"]\n'
+        "\n"
+        "\n"
+        "def real_thing() -> int:\n"
+        "    return 0\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_ALL_DECLARED)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"all_declared should reject undefined name in `__all__` with non-zero exit; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    combined = result.stdout + result.stderr
+    assert "bogus" in combined, (
+        f"all_declared diagnostic does not surface undefined name `bogus`; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_all_declared_accepts_module_with_complete_all_declaration(*, tmp_path: Path) -> None:
+    """A livespec module with valid `__all__` listing all defined exports passes (exit 0).
+
+    Pass-case: `__all__: list[str] = ["main"]` and `def main()`
+    is defined. The check walks the file, finds the
+    declaration, verifies every listed name is defined, exits 0.
+    """
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec"
+    package_dir.mkdir(parents=True)
+    source = package_dir / "foo.py"
+    # Pass-case fixture exercises every recognized definition
+    # form: `import os` (`Import`), `from typing import Any`
+    # (`ImportFrom`), `CONST = 1` (`Assign`), `x: int = 0`
+    # (`AnnAssign`), `def fn` (`FunctionDef`), `class Cls`
+    # (`ClassDef`). Exercises every elif arm of
+    # _module_top_defined_names so per-file 100% branch
+    # coverage holds.
+    source.write_text(
+        '"""Module docstring exercises the top-level Expr fall-through arm."""\n'
+        "from __future__ import annotations\n"
+        "\n"
+        "import os\n"
+        "from typing import Any\n"
+        "\n"
+        '__all__: list[str] = ["fn", "Cls", "CONST", "x", "os", "Any"]\n'
+        "\n"
+        "CONST = 1\n"
+        "x: int = 0\n"
+        "# Tuple-unpacking assign exercises the target-not-Name branch.\n"
+        "(a, b) = (1, 2)\n"
+        "\n"
+        "\n"
+        "def fn() -> Any:\n"
+        "    return os.getcwd()\n"
+        "\n"
+        "\n"
+        "class Cls:\n"
+        "    pass\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_ALL_DECLARED)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"all_declared should accept valid module with exit 0; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_all_declared_accepts_tree_without_livespec_directory(*, tmp_path: Path) -> None:
+    """A repo cwd without `.claude-plugin/scripts/livespec/` passes the check (exit 0).
+
+    Closes the `if livespec_root.is_dir():` False arm.
+    """
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_ALL_DECLARED)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"all_declared should accept empty tree with exit 0; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_all_declared_module_importable_without_running_main() -> None:
+    """The check module imports cleanly without invoking main()."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "all_declared_for_import_test", str(_ALL_DECLARED),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert callable(module.main), "main should be importable without invocation"
