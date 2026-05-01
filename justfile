@@ -77,6 +77,7 @@ check:
         check-tests
         check-coverage
         check-main-guard
+        check-no-inheritance
     )
     failed=()
     for t in "${targets[@]}"; do
