@@ -92,6 +92,8 @@ check:
         check-claude-md-coverage
         check-vendor-manifest
         check-no-direct-tool-invocation
+        check-heading-coverage
+        check-rop-pipeline-shape
     )
     failed=()
     for t in "${targets[@]}"; do
