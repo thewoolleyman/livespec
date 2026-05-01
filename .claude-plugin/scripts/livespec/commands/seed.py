@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from returns.io import IOResult
-from returns.result import Failure, Success
+from returns.result import Failure, Success, safe
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
@@ -482,6 +482,24 @@ def _run_post_step_doctor(
     )
 
 
+@safe(exceptions=(ValueError,))
+def _safe_json_loads(*, text: str) -> Any:
+    """Decorator-lifted strict-JSON decode for doctor's stdout contract.
+
+    The `@safe(exceptions=(ValueError,))` decorator from
+    `returns.result` catches `json.JSONDecodeError` (a
+    `ValueError` subclass) inside the wrapper and returns
+    `Failure(<exception>)`; the success path returns
+    `Success(<parsed-value>)`. Per
+    python-skill-script-style-requirements.md
+    §"check-no-except-outside-io" the decorator-lifted form
+    is the canonical replacement for explicit `try/except`
+    in pure layers — the AST has no `Try` node, only a
+    `Decorator` reference.
+    """
+    return _json.loads(text)
+
+
 def _fold_doctor_completed_process(
     *,
     seed_input: SeedInput,
@@ -507,12 +525,14 @@ def _fold_doctor_completed_process(
     PreconditionError — the doctor's contract was violated, and
     seed cannot proceed.
     """
-    try:
-        payload = _json.loads(completed.stdout)
-    except ValueError as exc:
+    parsed = _safe_json_loads(text=completed.stdout)
+    if not isinstance(parsed, Success):
         return IOResult.from_failure(
-            PreconditionError(f"post-step doctor stdout malformed JSON: {exc}"),
+            PreconditionError(
+                f"post-step doctor stdout malformed JSON: {parsed.failure()}",
+            ),
         )
+    payload = parsed.unwrap()
     if not isinstance(payload, dict) or "findings" not in payload:
         return IOResult.from_failure(
             PreconditionError(
