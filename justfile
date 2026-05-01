@@ -91,6 +91,7 @@ check:
         check-wrapper-shape
         check-claude-md-coverage
         check-vendor-manifest
+        check-no-direct-tool-invocation
     )
     failed=()
     for t in "${targets[@]}"; do
