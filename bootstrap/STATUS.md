@@ -1,59 +1,52 @@
 # Bootstrap status
 
 **Current phase:** 5
-**Current sub-step:** Phase 5 §"Retroactive TDD redo of Phase 3 + Phase 4 work — second attempt (v033 D5b)" — batch 4 complete (cycles 131-143); doctor static minimum subset DONE; Phase-3-parity is one small batch away
+**Current sub-step:** Phase 5 §"Retroactive TDD redo of Phase 3 + Phase 4 work — second attempt (v033 D5b)" — **Phase-3-parity REACHED** at HEAD `42e4caa`; ready to begin Phase-4-parity (re-author 25 deleted dev-tooling/checks/*.py scripts + re-add each target to `just check` aggregate)
 **Last completed exit criterion:** phase 4
-**Next action:** Batch 4 landed at HEAD `9442266`. **115 tests passing** (was 100; +15 new). Coverage **100.00%** (2069 stmts + 160 branches; per-file 100% on every measured file). The strict `just check` aggregate held on every commit.
+**Next action:** Batch 5 (cycles 144-146) closed Phase-3-parity in three cycles. **123 tests passing** (was 115; +8 new). Coverage **100.00%** per-file line+branch on every measured file. All commits passed lefthook gates on first attempt.
 
-**Phase-3 doctor static minimum subset COMPLETE** (per briefing halt condition #5):
-
-- All 8 checks in `STATIC_CHECKS` registry
-- `run_static.main` orchestrator dispatches them, collects Findings, emits canonical JSON, derives exit code (0/2/3)
-- `APPLICABILITY_BY_TREE_KIND` table populated explicitly
-- Integration test passes against fully-seeded fixture spec tree
-
-**Cycles 131-143 (13 cycles):**
+**Cycles 144-146:**
 
 | Cycle | Subject | sha |
 |-|-|-|
-| 131 | `livespec_jsonc_valid` pass arm + `Finding` + `DoctorContext` | `674e78e` |
-| 132 | `livespec_jsonc_valid` fail arm for missing config | `a2626ff` |
-| 133 | `livespec_jsonc_valid` fail arm for malformed JSONC | `9d67ee6` |
-| 134 | `template_exists` pass arm + registry entry | `7ef8d63` |
-| 135 | `template_exists` fail arm for unknown name | `8ca75fb` |
-| 136 | `template_files_present` pass arm + registry | `0ed0793` |
-| 137 | `proposed_changes_and_history_dirs` pass arm | `4c70e7b` |
-| 138 | `version_directories_complete` pass arm | `bd8999e` |
-| 139 | `version_contiguity` pass arm + registry | `f80193e` |
-| 140 | `revision_to_proposed_change_pairing` pass arm | `663c67b` |
-| 141 | `proposed_change_topic_format` pass arm + 8/8 registered | `2b47c04` |
-| 142 | `run_static` dispatches all 8 checks + emits JSON | `a2de360` |
-| 143 | explicit `APPLICABILITY_BY_TREE_KIND` table | `9442266` |
+| 144 | `livespec/io/proc.py` `run_subprocess` facade | `fb9925b` |
+| 145 | seed wires post-step doctor via subprocess + skill-owned README | `9a600c9` |
+| 146 | Phase-3 exit-criterion round-trip integration test | `42e4caa` |
 
-**New modules pulled into existence:**
+**Architecture call resolved (Option A):** seed's post-step doctor invokes `bin/doctor_static.py` via subprocess through the new `livespec/io/proc.py` facade, honoring the layered-architecture import-linter contract `livespec.commands | livespec.doctor` (independent siblings). Bin path resolves via `Path(__file__).resolve().parents[2] / "bin" / "doctor_static.py"` (no hardcoded paths). Non-zero child exits stay on the IOSuccess track; OSError lifts to PreconditionError.
 
-- `livespec/context.py` — `DoctorContext(project_root, spec_root)` dataclass (frozen=True, kw_only=True, slots=True; minimal shape; widened by consumer pressure in future cycles).
-- `livespec/schemas/dataclasses/finding.py` — `Finding` dataclass paired with `finding.schema.json` (six fields: check_id, status, message, path, line, spec_root).
-- 8 check modules under `livespec/doctor/static/<name>.py` + paired tests.
-- `livespec/doctor/static/__init__.py` widened: `STATIC_CHECKS` tuple + `APPLICABILITY_BY_TREE_KIND` dict.
-- `livespec/doctor/run_static.py` widened: stub → working orchestrator (`build_parser`, `_resolve_project_root`, `_orchestrate`, `_run_one_check`, `_emit_findings_json`, `_derive_exit_code`, supervisor pattern-match).
+**Phase-3-parity criteria all met:**
 
-**Decisions captured by the sub-agent (informational; no halt-and-revise needed):**
+- ✓ seed (parser + 5-stage railway + 7 file-shaping stages + skill-owned README + post-step doctor)
+- ✓ propose-change (Phase-3 minimum-viable)
+- ✓ critique (delegates to propose-change with `<author>-critique` topic)
+- ✓ revise (per-decision processing; history snapshot)
+- ✓ prune-history (Phase-3 minimum scope; Phase 7 widens)
+- ✓ doctor static minimum subset (8 checks registered + orchestrator + applicability table)
+- ✓ Phase-3 exit-criterion round-trip integration test green
+- ✓ `just check` aggregate green throughout
 
-- **`Finding` shape conformed to `finding.schema.json` literally** (six fields). All checks return `IOResult[Finding, LivespecError]` per the static/CLAUDE.md contract.
-- **`DoctorContext` kept minimal** (project_root + spec_root). Future cycles widen via consumer pressure when sub-spec enumeration / template_resolved_path / parsed-config caching demand it.
-- **`.lash` recovery pattern** folds expected-domain `LivespecError` into fail-status `Finding` so the orchestrator's stdout JSON contract stays uniform across pass/fail outcomes.
-- **6 of 8 checks landed "pass arm only"** — fail arms (e.g., gap-detection in version_contiguity, orphan-detection in revision_to_proposed_change_pairing, slug-regex in proposed_change_topic_format) deferred per "minimum subset" framing. Phase 7 hardening adds them.
-- **Cycle 142 applied `monkeypatch.chdir(tmp_path)`** per the cycle-122 cwd-fallback isolation memory rule — `argv=[]` now exercises the `Path.cwd()` fallback in the orchestrator supervisor.
+**Phase-7 deferrals (not in scope until later phases):**
 
-**Phase-3 work remaining (small):**
+- `version_directories_complete` check should filter `history/` children to directory + `vNNN` shape so seed can also emit `<spec-root>/history/README.md`.
+- Each per-check module's `.lash` recovery should produce typed missing-precondition fail Findings rather than ugly "check process error: fs.list_dir: ..." surface strings.
+- v020 Q3 sub-spec routing smoke (multi-tree round-trip with `--spec-target`).
+- Fail arms for the 6 doctor-static-checks where only the pass arm landed in batch 4.
 
-1. Post-step doctor wiring in `seed.main` per PROPOSAL §"`seed`" (1-2 cycles)
-2. Phase-3 exit-criterion round-trip integration test pinning `seed → propose-change → critique → revise → prune-history` round-trip behavior (1-2 cycles)
-3. Optional Phase-7 pre-fetch: fail arms for the 6 pass-arm-only checks + path-resolution branch for `template_exists` — deferrable but a future batch could opportunistically add them.
+**Phase-4-parity (next batch's scope):** re-author the 25 deleted dev-tooling/checks/*.py scripts + re-add each target to the `just check` aggregate as it lands. Phase-4 is the bulk of the v033 redo's remaining work — the briefing's halt #6 sets parity at "every dev-tooling/checks/*.py per the canonical list authored with paired test, every Phase-4-active target in the aggregate". Estimated ~25-50 cycles depending on per-check narrowness; sub-agent will likely halt at ~30-cycle context budget partway through, requiring 1-2 Phase-4 batches to finish.
 
-After 1-2 above land, **Phase-3-parity is reached**. Then **Phase-4-parity** begins: re-author 25 deleted dev-tooling/checks/*.py scripts + re-add each target to `just check` aggregate (estimated 25-50 cycles).
+The 25 checks to re-author (all under TDD with paired tests; each cycle re-adds its `check-<slug>` target to the `just check` aggregate):
+
+```
+all_declared, assert_never_exhaustiveness, check_tools, claude_md_coverage,
+file_lloc, global_writes, heading_coverage, keyword_only_args, main_guard,
+match_keyword_only, newtype_domain_primitives, no_direct_tool_invocation,
+no_except_outside_io, no_inheritance, no_raise_outside_io, no_todo_registry,
+no_write_direct, pbt_coverage_pure_modules, private_calls,
+public_api_result_typed, rop_pipeline_shape, schema_dataclass_pairing,
+supervisor_discipline, vendor_manifest, wrapper_shape
+```
 
 Open issues: zero unresolved.
-**Last updated:** 2026-04-30T05:30:00Z
-**Last commit:** 9442266
+**Last updated:** 2026-05-01T01:00:00Z
+**Last commit:** 42e4caa
