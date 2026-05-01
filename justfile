@@ -85,6 +85,7 @@ check:
         check-no-except-outside-io
         check-keyword-only-args
         check-match-keyword-only
+        check-assert-never-exhaustiveness
     )
     failed=()
     for t in "${targets[@]}"; do
