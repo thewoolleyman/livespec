@@ -16,6 +16,7 @@ IOResult to derive the exit code.
 from __future__ import annotations
 
 import argparse
+import json as _json
 import sys
 from pathlib import Path
 from typing import Any
@@ -25,8 +26,8 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
-from livespec.errors import LivespecError
-from livespec.io import cli, fs
+from livespec.errors import LivespecError, PreconditionError
+from livespec.io import cli, fs, proc
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.seed_input import SeedInput
 from livespec.validate import seed_input as validate_seed_input_module
@@ -36,6 +37,23 @@ __all__: list[str] = ["build_parser", "main"]
 
 _SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
 _SEED_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "seed_input.schema.json"
+_BIN_DIR = Path(__file__).resolve().parents[2] / "bin"
+_DOCTOR_STATIC_WRAPPER = _BIN_DIR / "doctor_static.py"
+
+
+_PROPOSED_CHANGES_README_TEXT = (
+    "# Proposed Changes\n"
+    "\n"
+    "This directory holds in-flight proposed changes to the\n"
+    "specification. Each file is named `<topic>.md` and contains\n"
+    "one or more `## Proposal: <name>` sections with target\n"
+    "specification files, summary, motivation, and proposed\n"
+    "changes (prose or unified diff). Files are processed by\n"
+    "`livespec revise` in creation-time order (YAML `created_at`\n"
+    "front-matter field) and moved into\n"
+    "`../history/vNNN/proposed_changes/` when revised. After a\n"
+    "successful `revise`, this directory is empty.\n"
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -370,6 +388,158 @@ def _write_sub_spec_history_v001(
     return accumulator
 
 
+def _emit_skill_owned_proposed_changes_readme(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Write `<spec-root>/proposed_changes/README.md` (skill-owned dir marker).
+
+    PROPOSAL.md lines 992-994: "The directory-README files in
+    top-level `proposed_changes/` and `history/` are skill-owned:
+    hard-coded inside the skill, written by `seed` only, not
+    regenerated on every `revise`." Frozen content is in
+    PROPOSAL.md lines 997-1009.
+
+    Phase-3 minimum scope (this cycle): only the
+    `<spec-root>/proposed_changes/README.md` is materialized.
+    The dir's existence is what makes the post-step doctor's
+    `proposed_changes_and_history_dirs` check pass on the
+    minimally-seeded tree. The `<spec-root>/history/README.md`
+    skill-owned README is intentionally deferred to Phase 7
+    hardening: under the current Phase-3 minimum-subset doctor,
+    `version_directories_complete` does not yet filter out
+    non-directory entries when listing `history/`, so writing
+    the README would trip the check on a freshly-seeded tree.
+    Phase 7 widens the check (filter to directory + vNNN
+    pattern) AND adds the `history/README.md` emission here.
+
+    Empty `files[]` short-circuits to an unchanged Success —
+    there's no spec_root to anchor against. Single-component
+    first-file path also short-circuits (mirrors the existing
+    `_emit_seed_proposed_change` guard at line 234-236).
+    """
+    if not seed_input.files:
+        return IOResult.from_value(seed_input)
+    first_path = Path(seed_input.files[0]["path"])
+    if len(first_path.parts) < 2:
+        return IOResult.from_value(seed_input)
+    spec_root_name = first_path.parts[0]
+    proposed_changes_readme = (
+        project_root / spec_root_name / "proposed_changes" / "README.md"
+    )
+    return fs.write_text(
+        path=proposed_changes_readme, text=_PROPOSED_CHANGES_README_TEXT,
+    ).map(lambda _: seed_input)
+
+
+def _run_post_step_doctor(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Invoke `bin/doctor_static.py` as a subprocess; fold fail findings -> Failure.
+
+    Per PROPOSAL.md §"Sub-command lifecycle orchestration" lines
+    767-773: "post-step doctor static" runs after sub-command
+    logic. On any `status: "fail"` finding, the wrapper aborts
+    with exit 3.
+
+    Composition mechanism (cycle 145): subprocess invocation of
+    `bin/doctor_static.py` via `livespec.io.proc.run_subprocess`.
+    Chosen over direct in-process import because the layered-
+    architecture import-linter contract `livespec.commands |
+    livespec.doctor` treats the two layers as independent
+    siblings that cannot import each other. Subprocess
+    invocation respects that boundary while still letting
+    `commands.<cmd>.main()` own the deterministic lifecycle per
+    style doc lines 645-694.
+
+    Pattern-match arms:
+
+    - `proc.run_subprocess` itself fails (e.g., the wrapper file
+      is missing) -> IOFailure(PreconditionError) bubbles up.
+    - The subprocess ran but stdout is malformed JSON ->
+      Failure(PreconditionError) lifted from the json.loads
+      ValueError catch.
+    - Any finding has `status == "fail"` ->
+      Failure(PreconditionError) carries the count for the
+      caller's diagnostic.
+    - All findings pass -> IOSuccess(seed_input) and the
+      supervisor's pattern-match emits exit 0.
+    """
+    return proc.run_subprocess(
+        argv=[
+            sys.executable,
+            str(_DOCTOR_STATIC_WRAPPER),
+            "--project-root",
+            str(project_root),
+        ],
+    ).bind(
+        lambda completed: _fold_doctor_completed_process(
+            seed_input=seed_input, completed=completed,
+        ),
+    )
+
+
+def _fold_doctor_completed_process(
+    *,
+    seed_input: SeedInput,
+    completed: Any,
+) -> IOResult[SeedInput, LivespecError]:
+    """Parse the doctor subprocess's stdout JSON and fold findings into the railway.
+
+    The doctor wrapper's documented stdout contract is a single
+    `{"findings": [...]}` JSON object (per PROPOSAL.md §"`doctor`
+    → Static-phase output contract"). This helper:
+
+    1. Decodes stdout via the standard library `json` module
+       (the doctor's output is strict JSON, not JSONC).
+    2. Inspects each finding's `status` field. Any
+       `status == "fail"` -> Failure(PreconditionError) on the
+       railway, which the supervisor's pattern-match lifts to
+       exit 3 via err.exit_code.
+    3. Otherwise -> IOSuccess(seed_input) so the railway can
+       continue (no more stages after post-step doctor; the
+       supervisor's pattern-match emits exit 0).
+
+    Malformed stdout or a missing `findings` key both lift to
+    PreconditionError — the doctor's contract was violated, and
+    seed cannot proceed.
+    """
+    try:
+        payload = _json.loads(completed.stdout)
+    except ValueError as exc:
+        return IOResult.from_failure(
+            PreconditionError(f"post-step doctor stdout malformed JSON: {exc}"),
+        )
+    if not isinstance(payload, dict) or "findings" not in payload:
+        return IOResult.from_failure(
+            PreconditionError(
+                "post-step doctor stdout missing 'findings' key",
+            ),
+        )
+    findings_value = payload["findings"]
+    if not isinstance(findings_value, list):
+        return IOResult.from_failure(
+            PreconditionError(
+                "post-step doctor 'findings' is not a list",
+            ),
+        )
+    fail_count = sum(
+        1
+        for finding in findings_value
+        if isinstance(finding, dict) and finding.get("status") == "fail"
+    )
+    if fail_count > 0:
+        return IOResult.from_failure(
+            PreconditionError(
+                f"post-step doctor reported {fail_count} fail-status finding(s)",
+            ),
+        )
+    return IOResult.from_value(seed_input)
+
+
 def _pattern_match_io_result(
     *,
     io_result: IOResult[Any, LivespecError],
@@ -469,6 +639,18 @@ def main(*, argv: list[str] | None = None) -> int:
             )
             .bind(
                 lambda seed_input: _emit_seed_revision(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda seed_input: _emit_skill_owned_proposed_changes_readme(
+                    seed_input=seed_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda seed_input: _run_post_step_doctor(
                     seed_input=seed_input,
                     project_root=_resolve_project_root(namespace=namespace),
                 ),

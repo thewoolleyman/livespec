@@ -672,14 +672,19 @@ def test_seed_main_skips_seed_md_emission_when_files_array_is_empty(
     seed_input. The body of those files derives a target path
     from `seed_input.files[0]["path"]` — which would IndexError
     on an empty list. The guards avoid that IndexError and let
-    the seed flow complete; only the seed.md and seed-revision.md
-    history artifacts are omitted.
+    the seed file-shaping flow complete; only the seed.md /
+    seed-revision.md history artifacts are omitted.
 
-    The fixture writes a payload with `files: []` and one sub-
-    spec entry (so the sub-spec stages still execute and the
-    railway runs to completion). Asserts exit 0 plus the negative:
-    no `<spec-root>/history/v001/proposed_changes/seed.md` is
-    written, no `seed-revision.md` is written.
+    With post-step doctor wired (cycle 145), the supervisor exit
+    code is 3 (NOT 0): the empty `files[]` payload produces a
+    skeletal `<project-root>/.livespec.jsonc` with NO spec tree
+    materialized, so the doctor's `template_files_present` check
+    fails when reading `<spec-root>/spec.md`. The defensive
+    guards' contract is preserved (no IndexError, no malformed
+    paths) — the seed-write side-effects all complete BEFORE the
+    post-step doctor short-circuits the supervisor with exit 3.
+    Negative assertions still pin the guard behavior: no
+    seed.md / seed-revision.md emitted.
     """
     project_root = tmp_path / "proj"
     project_root.mkdir()
@@ -694,10 +699,13 @@ def test_seed_main_skips_seed_md_emission_when_files_array_is_empty(
     exit_code = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
     )
-    assert exit_code == 0
+    assert exit_code == 3, (
+        f"expected exit 3 (post-step doctor fail on empty seed tree), got {exit_code}"
+    )
     # Negative assertions: with no files[] entries, neither auto-
     # captured artifact is materialized (no spec_root to anchor
-    # the path against).
+    # the path against). The guards' selectivity is preserved
+    # despite the supervisor's exit-3 short-circuit.
     seed_md_candidates = list(project_root.rglob("seed.md"))
     revision_md_candidates = list(project_root.rglob("seed-revision.md"))
     assert seed_md_candidates == [], (
@@ -723,15 +731,20 @@ def test_seed_main_skips_main_spec_history_for_single_component_paths(
     the spec_root would be the file itself with no remainder
     inside it. The supervisor's history-materialization stage
     skips that entry rather than constructing a malformed v001
-    path. The seed still completes successfully (exit 0); only
-    the history copy of that loose file is omitted.
+    path. Only the history copy of that loose file is omitted
+    (the well-formed entry's history still lands).
 
-    The fixture writes one file at `loose-file.md` (single-
-    component, triggers the guard) plus the conventional
-    `SPECIFICATION/spec.md` (two components, NOT skipped, lands
-    at SPECIFICATION/history/v001/spec.md). Asserting both shapes
-    pins the guard's selectivity (the guard skips ONLY the
-    offending entry, not the whole history pass).
+    With post-step doctor wired (cycle 145), the supervisor exit
+    code is 3 (NOT 0): the skill-owned README emission anchors
+    on `seed_input.files[0]["path"]`, which is the loose
+    single-component file in this fixture, so the README's
+    early-return guard fires and `<spec-root>/proposed_changes/`
+    is never materialized. The doctor's
+    `proposed_changes_and_history_dirs` check therefore fails
+    on the seeded tree. The test still pins the file-shaping
+    guard's selectivity: the well-formed entry's
+    SPECIFICATION/history/v001/spec.md DOES land, and the loose
+    file's spurious history dir does NOT.
     """
     project_root = tmp_path / "proj"
     project_root.mkdir()
@@ -749,13 +762,215 @@ def test_seed_main_skips_main_spec_history_for_single_component_paths(
     exit_code = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
     )
-    assert exit_code == 0
+    assert exit_code == 3, (
+        f"expected exit 3 (post-step doctor fail on incomplete tree), got {exit_code}"
+    )
     versioned = project_root / "SPECIFICATION/history/v001/spec.md"
     assert versioned.exists(), f"expected {versioned} to be written"
     # The single-component file's history copy is omitted; verify the
     # plausible-but-incorrect target was NOT materialized.
     spurious = project_root / "loose-file.md/history/v001"
     assert not spurious.exists(), f"single-component path should not produce history dir"
+
+
+def test_fold_doctor_completed_process_returns_failure_on_malformed_json_stdout(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Malformed-JSON stdout from the doctor subprocess -> Failure(PreconditionError).
+
+    Per `_fold_doctor_completed_process` line 510-515 guard: the
+    doctor wrapper's documented stdout contract is a single
+    `{"findings": [...]}` JSON object (PROPOSAL.md §"`doctor` →
+    Static-phase output contract"). If stdout cannot be decoded
+    by `json.loads`, the doctor's contract was violated and seed
+    cannot proceed — the helper lifts the json.ValueError catch
+    into a Failure(PreconditionError) so the supervisor pattern-
+    matches it onto exit 3 via err.exit_code.
+
+    Tested by calling the helper directly with a hand-built
+    CompletedProcess whose stdout is `not json {`. The IOResult
+    is Failure(PreconditionError); the supervisor's exit-code
+    contract folds it to 3.
+    """
+    import subprocess as _subprocess  # noqa: S404  # test-only import for the dataclass shape
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
+
+    from livespec.commands.seed import _fold_doctor_completed_process
+    from livespec.errors import PreconditionError
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+
+    _ = tmp_path  # fixture present for symmetry; helper does not touch the disk
+    seed_input = SeedInput(
+        template="livespec", intent="x", files=[], sub_specs=[],
+    )
+    completed = _subprocess.CompletedProcess[str](
+        args=["doctor"], returncode=0, stdout="not json {", stderr="",
+    )
+    result = _fold_doctor_completed_process(
+        seed_input=seed_input, completed=completed,
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(PreconditionError()):
+            pass
+        case _:
+            raise AssertionError(
+                f"expected Failure(PreconditionError), got {unwrapped!r}",
+            )
+
+
+def test_fold_doctor_completed_process_returns_failure_on_missing_findings_key(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Doctor stdout JSON without a `findings` key -> Failure(PreconditionError).
+
+    Per `_fold_doctor_completed_process` line 516-521 guard: the
+    payload must be a dict carrying a `findings` key. A non-dict
+    payload (e.g., a JSON array at the root) or a dict missing
+    the `findings` key both signal a contract violation; the
+    helper lifts to Failure(PreconditionError).
+
+    Tested by calling the helper directly with stdout `{}` —
+    valid JSON, decodes to a dict, but lacks the `findings` key.
+    """
+    import subprocess as _subprocess  # noqa: S404
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
+
+    from livespec.commands.seed import _fold_doctor_completed_process
+    from livespec.errors import PreconditionError
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+
+    _ = tmp_path
+    seed_input = SeedInput(
+        template="livespec", intent="x", files=[], sub_specs=[],
+    )
+    completed = _subprocess.CompletedProcess[str](
+        args=["doctor"], returncode=0, stdout="{}", stderr="",
+    )
+    result = _fold_doctor_completed_process(
+        seed_input=seed_input, completed=completed,
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(PreconditionError()):
+            pass
+        case _:
+            raise AssertionError(
+                f"expected Failure(PreconditionError), got {unwrapped!r}",
+            )
+
+
+def test_fold_doctor_completed_process_returns_failure_on_non_list_findings(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Doctor stdout `{"findings": <not-a-list>}` -> Failure(PreconditionError).
+
+    Per `_fold_doctor_completed_process` line 522-528 guard: the
+    `findings` value MUST be a list per the doctor contract.
+    Any other shape (dict, string, number) signals a contract
+    violation; the helper lifts to Failure(PreconditionError).
+
+    Tested by calling the helper directly with stdout
+    `{"findings": "oops"}` — a JSON string at the findings key
+    instead of a list.
+    """
+    import subprocess as _subprocess  # noqa: S404
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
+
+    from livespec.commands.seed import _fold_doctor_completed_process
+    from livespec.errors import PreconditionError
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+
+    _ = tmp_path
+    seed_input = SeedInput(
+        template="livespec", intent="x", files=[], sub_specs=[],
+    )
+    completed = _subprocess.CompletedProcess[str](
+        args=["doctor"], returncode=0, stdout='{"findings": "oops"}', stderr="",
+    )
+    result = _fold_doctor_completed_process(
+        seed_input=seed_input, completed=completed,
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(PreconditionError()):
+            pass
+        case _:
+            raise AssertionError(
+                f"expected Failure(PreconditionError), got {unwrapped!r}",
+            )
+
+
+def test_seed_main_invokes_post_step_doctor_and_returns_exit_three_on_fail_finding(
+    *,
+    tmp_path: Path,
+) -> None:
+    """After seed completes, post-step doctor runs; any fail finding -> exit 3.
+
+    Per PROPOSAL.md §"Sub-command lifecycle orchestration" lines
+    767-773 + §"`seed`" lines 2037-2042: "Seed is exempt from
+    pre-step doctor-static; post-step runs normally after the
+    wrapper's deterministic work completes." On any `status:
+    "fail"` finding from post-step, the wrapper aborts with exit
+    3 after sub-command logic has already mutated on-disk state.
+
+    Composition mechanism (cycle 144 + cycle 145): the supervisor
+    invokes `bin/doctor_static.py` as a subprocess via
+    `livespec.io.proc.run_subprocess` — chosen over direct
+    in-process import because the layered-architecture import-
+    linter contract `livespec.commands | livespec.doctor`
+    treats the two layers as independent siblings that cannot
+    import each other.
+
+    The fixture uses `template: "unknown-template-name"` —
+    schema-valid (the schema's `template` is a free-form string)
+    so the seed-input validation stage doesn't short-circuit, but
+    the doctor's `template_exists` check rejects it (not in
+    BUILTIN_TEMPLATES, not a path on disk) and yields a
+    fail-status Finding. Post-step doctor therefore reports at
+    least one fail-status finding -> seed exits 3.
+
+    Asserts the seed-write side-effects DID happen (sub-command
+    logic ran to completion BEFORE the post-step doctor failure
+    short-circuited the supervisor) — `.livespec.jsonc` and
+    `SPECIFICATION/spec.md` exist on disk. This pins the
+    lifecycle contract: "post-step failure aborts AFTER
+    sub-command logic has mutated state."
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    payload_dict: dict[str, object] = {
+        "template": "unknown-template-name",
+        "intent": "Demo intent text.",
+        "files": [
+            {"path": "SPECIFICATION/spec.md", "content": "# Spec\n"},
+        ],
+        "sub_specs": [],
+    }
+    payload_path = tmp_path / "seed-input.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    assert exit_code == 3, (
+        f"expected exit 3 (post-step doctor fail), got {exit_code}"
+    )
+    config_path = project_root / ".livespec.jsonc"
+    assert config_path.exists(), (
+        "sub-command logic should have written .livespec.jsonc BEFORE "
+        "post-step doctor short-circuited the supervisor"
+    )
+    spec_path = project_root / "SPECIFICATION" / "spec.md"
+    assert spec_path.exists(), (
+        "sub-command logic should have written SPECIFICATION/spec.md "
+        "BEFORE post-step doctor short-circuited the supervisor"
+    )
 
 
 def test_seed_main_defaults_project_root_to_cwd_when_flag_omitted(
