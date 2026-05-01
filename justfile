@@ -90,6 +90,7 @@ check:
         check-global-writes
         check-wrapper-shape
         check-claude-md-coverage
+        check-vendor-manifest
     )
     failed=()
     for t in "${targets[@]}"; do
