@@ -76,6 +76,7 @@ check:
         check-imports-architecture
         check-tests
         check-coverage
+        check-main-guard
     )
     failed=()
     for t in "${targets[@]}"; do
