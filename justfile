@@ -81,6 +81,7 @@ check:
         check-all-declared
         check-no-write-direct
         check-supervisor-discipline
+        check-no-raise-outside-io
     )
     failed=()
     for t in "${targets[@]}"; do
