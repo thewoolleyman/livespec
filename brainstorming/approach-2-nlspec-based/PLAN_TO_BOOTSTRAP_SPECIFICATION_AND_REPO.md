@@ -745,6 +745,129 @@ v029 decisions (direct critique-fix overlay; see
   mechanical guardrails that block all five at commit-time
   and authorizes a second retroactive redo under the
   guardrails.
+- v034 D1 (PROPOSAL.md + plan-level): Adopt Conventional
+  Commits 1.0 + semantic-release-style version derivation.
+  PROPOSAL.md gains a NEW top-level §"Commit conventions and
+  versioning" section between §"Versioning" and §"Pruning
+  history". Post-v034 commits drive changelog generation and
+  version derivation; pre-v034 commits are grandfathered
+  (commitlint excludes ancestor SHAs preceding the
+  v034-codification commit). The codification commit itself is
+  `chore!: codify v034 — TDD-replay, conventional-commits,
+  drain authorization` and is the first commit under the new
+  format. Plan housekeeping flowing from D1: Phase 0 step 1
+  byte-identity reference bumps to `history/v034/PROPOSAL.md`;
+  Phase 0 step 2 frozen-status header literal bumps to
+  "Frozen at v034"; Execution-prompt block authoritative-
+  version line bumps to v034.
+- v034 D2 (PROPOSAL.md + plan-level): Replace the v033 D4
+  honor-system `## Red output` content rule with a structured
+  trailer schema (`TDD-Red-Test`, `TDD-Red-Failure-Reason`,
+  `TDD-Red-Test-File-Checksum`, `TDD-Red-Output-Checksum`,
+  `TDD-Red-Captured-At`, `TDD-Green-Verified-At`,
+  `TDD-Green-Parent-Reflog`) attached to `feat:` and `fix:`
+  commits at the Green amend boundary. The body's `## Red
+  output` fenced pytest block is preserved for human
+  readability; the checksum trailers anchor it
+  cryptographically. Refactor / chore / docs / build / ci /
+  style / test / perf / revert commits skip TDD enforcement.
+- v034 D3 (PROPOSAL.md + plan-level + new dev-tooling check):
+  A new `dev-tooling/checks/red_green_replay.py` mechanically
+  verifies temporal Red→Green order via the amend pattern.
+  Initial commit (Red mode): hook computes test-file SHA-256,
+  runs the listed test, expects fail; writes Red trailers.
+  Amend (Green mode): hook recomputes test-file SHA-256 (must
+  match recorded value); runs test, expects pass; adds Green
+  trailers. Reflog-based anti-cheat: rejects amends whose
+  recorded parent SHA does not appear in the local reflog
+  with matching Red trailers. Replaces v033's
+  `red_output_in_commit.py` (which was content-only honor
+  system).
+- v034 D4 (PROPOSAL.md + plan-level): `refs/notes/commits` is
+  the designated namespace for execution metadata that does
+  NOT belong in commit messages (cached pytest output, mutation
+  scores, hook-run timestamps, CI status snapshots). Notes are
+  **advisory only**; never load-bearing for invariant checks.
+  The `just bootstrap` recipe configures the local repo to
+  fetch notes alongside refs via `git config --add
+  remote.origin.fetch "+refs/notes/*:refs/notes/*"`. The hook
+  does NOT auto-push notes; push remains manual or
+  scheduled.
+- v034 D5 (plan-level + companion-doc): Plan-text and
+  dev-tooling enumeration housekeeping for D1-D4. Phase 4
+  enforcement-script enumeration replaces
+  `red_output_in_commit.py` with `red_green_replay.py`.
+  `lefthook.yml` pre-commit ordering becomes:
+  `check-red-green-replay` (cheap header-parsing + amend-
+  detection), `check-commit-pairs-source-and-test` (cheap
+  staged-file-list inspection), `check` aggregate (expensive).
+  Phase 5 §"Per-commit Red-output discipline (v032 D4 / v033
+  D4)" renamed to §"Per-commit Red→Green replay discipline
+  (v034 D2-D3)" with rewritten body. Companion `python-skill-
+  script-style-requirements.md` §"Canonical target list"
+  renames `check-red-output-in-commit` to
+  `check-red-green-replay`.
+- v034 D6 (PROPOSAL.md + plan-level): Baseline mechanism. A
+  new file at `<repo-root>/phase-5-deferred-violations.toml`
+  enumerates currently-failing violations grandfathered during
+  the v034 D7 drain phase. The local pre-commit hook runs the
+  FULL canonical-target list (not the v033-thinned aggregate);
+  each check loads the baseline and skips violations whose
+  `(target, file, rule, location)` tuple matches an entry. NEW
+  violations fail the hook unconditionally. Drain cycles
+  remove resolved baseline entries in the same commit as the
+  fix. When the file contains zero `[[violation]]` blocks, the
+  cycle that removed the final entry also deletes the file;
+  full-scope-no-grandfather is in effect thereafter. The
+  thinned `just check` aggregate at `justfile:75-99` is
+  replaced with a one-line reference to D6 + the baseline
+  file path.
+- v034 D7 (plan-level): Phase 5 gains a NEW sub-section
+  §"Aggregate-restoration drain" placed AFTER §"Per-commit
+  Red→Green replay discipline (v034 D2-D3)" and BEFORE
+  §"Quality-comparison report — v034 D5c scope" (renamed from
+  v033 D5c with same scope, now measuring against the
+  post-drain tree). Drain bracket: entry condition is the
+  first cycle after the v034 codification commit + the
+  replay-hook authoring sub-cycles complete. Exit condition is
+  `phase-5-deferred-violations.toml` is empty AND deleted.
+  Each drain cycle targets one or more baseline violations,
+  authors fixes under the new D1-D5 discipline (Conventional
+  Commits + TDD-Red/Green trailers + replay verification), and
+  removes the resolved baseline entries in the same commit.
+  Estimated cycles: ~11-15 (1-2 PBT decorators; 2-3 types.py
+  + NewType migration; ~5 schema/dataclass triples; 3-5
+  seed.py refactor + remaining ruff fixes; 2-3 config-tier
+  cleanup of `check-lint`/`check-format`). The drain subsumes
+  what was previously called "Batch 7" in STATUS.md prose;
+  there is no "rest of the redo" beyond the drain — once the
+  baseline empties, only the v034 D5c quality-comparison
+  report and Phase 5 exit gates remain.
+- v034 D8 (PROPOSAL.md + plan-level): Codify a GitHub branch
+  protection rule on `master` requiring (a) all CI matrix
+  jobs pass before merge, (b) linear history (PRs land via
+  squash or rebase), (c) no direct pushes to master.
+  Solo-dev + agent workflow: agent opens PR with auto-merge
+  enabled (`gh pr create --fill && gh pr merge --auto
+  --squash`); GitHub merges automatically when CI is green;
+  user retains manual override. Activation deferred to the
+  FINAL sub-step of Phase 5 (after Phase 5 exit gates 5a/5b/5c
+  pass). Concrete activation sub-step: invoke `gh api -X PUT
+  repos/:owner/:repo/branches/master/protection --input
+  branch-protection.json` + verify direct push is rejected +
+  verify PR + auto-merge path works on a trivial test PR.
+  Phase 6 onward operates under protected master.
+- Triggered by three concurrent issues: (1) broken pushes to
+  master because `just check` aggregate is thinned during the
+  v033 D5b drain; CI matrix runs the full canonical-target
+  list while the local hook runs only the thinned aggregate;
+  (2) v033 D4's `## Red output` rule is honor-system content
+  (cannot mechanically prove temporal Red→Green order); (3)
+  PROPOSAL.md §"Versioning" describes spec versioning but does
+  not describe livespec-the-software's version cadence — the
+  Phase 10 v1.0.0 tag goal needs a machine-parseable commit-
+  format path. v034 closes all three with a coordinated
+  eight-decision revision.
 
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
@@ -956,14 +1079,27 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v033/PROPOSAL.md` (the v033
-   snapshot — v032 substance plus the four mechanical guardrails
-   D1-D4 (`tests_mirror_pairing.py`, `per_file_coverage.py`,
-   `commit_pairs_source_and_test.py`, hard-gate promotion of
-   `red_output_in_commit.py`), the lefthook-activation move from
-   Phase 5 exit to v033-codification (D5a), the second
-   retroactive redo authorization (D5b), and the
-   quality-comparison report scope expansion (D5c) per
+   byte-identical to `history/v034/PROPOSAL.md` (the v034
+   snapshot — v033 substance plus the eight v034 decisions:
+   Conventional Commits + semantic-release adoption (D1),
+   TDD-Red/Green trailer schema (D2), replay-based enforcement
+   contract via `red_green_replay.py` replacing
+   `red_output_in_commit.py` (D3), `refs/notes/commits` as
+   advisory operational cache (D4), plan-text + dev-tooling
+   enumeration housekeeping (D5), baseline mechanism via
+   `phase-5-deferred-violations.toml` replacing the v033 thinned
+   aggregate (D6), Phase 5 §"Aggregate-restoration drain"
+   sub-section (D7), and branch-protection on master with
+   deferred end-of-Phase-5 activation (D8) per
+   `history/v034/proposed_changes/critique-fix-v033-revision.md`;
+   v033 substance is v032 substance plus the four mechanical
+   guardrails D1-D4 (`tests_mirror_pairing.py`,
+   `per_file_coverage.py`, `commit_pairs_source_and_test.py`,
+   hard-gate promotion of `red_output_in_commit.py`), the
+   lefthook-activation move from Phase 5 exit to
+   v033-codification (D5a), the second retroactive redo
+   authorization (D5b), and the quality-comparison report scope
+   expansion (D5c) per
    `history/v033/proposed_changes/critique-fix-v032-revision.md`;
    v032 substance is v031 substance plus the §"Test-Driven Development
    discipline" opening-paragraph rewrite at lines 3103-3110
@@ -1030,7 +1166,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v033. Further evolution happens in
+   > **Status:** Frozen at v034. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -1430,8 +1566,11 @@ write the smallest failing test that names that behavior;
 observe the failure mode is the behavior gap, not a SyntaxError
 / ImportError / fixture issue; write the minimum
 implementation that turns it Green; commit the Red-Green pair
-atomically with the failing-test output captured in the commit
-body per Plan Phase 5 §"Per-commit Red-output discipline". No
+atomically per Plan Phase 5 §"Per-commit Red→Green replay
+discipline (v034 D2-D3)" — failing-test output captured in the
+commit body as a `## Red output` fenced block, structured
+trailers (`TDD-Red-*`, `TDD-Green-*`) added at the Green amend
+boundary. No
 bulk authoring of an entire module followed by tests-after; no
 characterization-style backfill; no speculative defensive code.
 
@@ -1821,11 +1960,17 @@ Scripts:
   present on `jsoncomment` (the v026 D1 hand-authored shim)
   and absent on every other entry (post-v027 D1
   `typing_extensions` is upstream-sourced, NOT a shim)),
-  `red_output_in_commit.py` (v032 D4: walks `git log --grep`
-  against the v032-redo commit range and rejects any
-  feature/bugfix commit lacking a `## Red output` fenced
-  block in its body; activates as a hard `just check` gate
-  at Phase 5 exit, informational pre-Phase-5-exit).
+  `red_green_replay.py` (v034 D2-D3, replacing the v033
+  `red_output_in_commit.py`: mechanically verifies temporal
+  Red→Green order via the amend pattern + test-file SHA-256
+  checksum + reflog inspection; runs the listed test in Red
+  mode expecting fail and Green mode expecting pass; rejects
+  amend if the test file's checksum changed or if the
+  pre-amend HEAD lacks Red trailers; lefthook pre-commit
+  only, NOT in `just check`; activates at the v034
+  replay-hook activation commit per Plan Phase 5 §"v034
+  transition — replay-hook activation + drain authorization
+  (v034 D3 / D5 / D6)").
 
 Each script has a paired `tests/dev-tooling/checks/test_<name>.py`.
 
@@ -2148,27 +2293,94 @@ on rejection the redo is re-attempted (or the stash is
 restored if the user concludes the redo cannot improve on
 the original).
 
-#### Per-commit Red-output discipline (v032 D4 / v033 D4)
+#### Per-commit Red→Green replay discipline (v034 D2-D3)
 
-Every Red→Green commit authored under v032 D2's retroactive
-redo (and every subsequent feature/bugfix commit from this
+Every `feat:` and `fix:` commit authored under the v034 D7
+drain (and every subsequent `feat:`/`fix:` commit from this
 phase onward, per the universal §"Test-Driven Development
-discipline") MUST include the captured failing-test output
-in the commit body. Format: a `## Red output` heading
-followed by a fenced code block containing the literal
-`pytest` output the executor observed when the test was
-first run prior to any implementation. The block confirms
-the failure was at the assertion site (the behavior gap),
-not at parse/import/fixture time.
+discipline") MUST carry the v034 D2 trailer schema in the
+commit message footer:
 
-`dev-tooling/checks/red_output_in_commit.py` walks `git
-log --grep` against the redo's commit range and rejects any
-feature/bugfix commit that lacks a `## Red output` section.
-**v033 D4 promotes the check from informational to hard
-gate at the v033-codification commit** (the v032 D4 framing
-positioned the promotion at Phase-5-exit; v033 D5a
-moves it forward to v033-codification because the lefthook
-activation also moves forward).
+```
+TDD-Red-Test: <pytest-node-id>
+TDD-Red-Failure-Reason: <one-line failure summary>
+TDD-Red-Test-File-Checksum: sha256:<hex>
+TDD-Red-Output-Checksum: sha256:<hex>
+TDD-Red-Captured-At: <UTC ISO 8601>
+TDD-Green-Verified-At: <UTC ISO 8601>
+TDD-Green-Parent-Reflog: <pre-amend SHA>
+```
+
+The captured pytest failure output continues to live in the
+commit body as a fenced `## Red output` block (preserved for
+human readability via `git log`). `TDD-Red-Output-Checksum`
+is the SHA-256 of that block.
+
+`dev-tooling/checks/red_green_replay.py` (v034 D3, replacing
+v033's `red_output_in_commit.py`) is a lefthook pre-commit
+hook that operates in two modes distinguished by inspecting
+`HEAD~0`'s commit message:
+
+1. **Red mode (initial commit).** Triggered when the staged
+   tree carries test files but no implementation files AND
+   the subject line is `feat:` or `fix:`. Hook computes the
+   test file's SHA-256, runs the listed test (extracted
+   from a candidate `TDD-Red-Test:` trailer or from the
+   commit body's `## Red output` block), expects non-zero
+   exit code with the test's pytest node-id appearing in
+   the failure summary. On success, hook writes the Red
+   trailers into the commit message via `git
+   interpret-trailers --in-place` and lets the commit land.
+
+2. **Green mode (amend).** Triggered when `HEAD~0`'s
+   message carries Red trailers and the new staged tree
+   adds implementation files. Hook recomputes the test
+   file's SHA-256 from the staged tree; rejects if it
+   differs from `TDD-Red-Test-File-Checksum`. Runs the
+   listed test; expects exit zero. Adds
+   `TDD-Green-Verified-At:` and
+   `TDD-Green-Parent-Reflog:` trailers (the latter pinning
+   the pre-amend HEAD SHA so the temporal order is
+   reflog-verifiable). On any mismatch — wrong checksum,
+   test still fails, missing parent in reflog — the amend
+   is rejected.
+
+**Failure-mode quality (90% heuristic).** "Test failed for
+the right reason" (assertion vs. ImportError/SyntaxError)
+is hard to mechanize fully. The hook applies a 90%
+heuristic: uses `pytest --collect-only` to detect
+collection-time errors (rejected as "test not at Red — fix
+collection first"); accepts any non-zero pytest exit code
+where the test's node-id appears in the short summary.
+
+**Anti-cheat.** A bad actor could attempt to skip the Red
+moment and produce a single commit with hand-faked
+trailers. The hook rejects this via reflog inspection: if
+`TDD-Green-Parent-Reflog` references a SHA that either
+(a) does not appear in the local reflog, or (b) appears
+but does not carry a Red marker + matching checksum, the
+commit is rejected. Reflog is local-only and not pushed,
+so server-side verification falls back to mutation testing
+(`check-mutation`) as a vacuity check; local enforcement
+is mechanically airtight for any commit authored on a
+development machine running the hook.
+
+**Required-vs-skipped by Conventional Commit type.**
+
+| Type | Trailers required? |
+|---|---|
+| `feat`, `fix` | Yes (full schema mandatory) |
+| `refactor`, `perf` | No (must NOT add new failing tests) |
+| `chore`, `docs`, `build`, `ci`, `style`, `test`, `revert` | No (config / meta) |
+
+**Promotion boundary.** v034 D3 promotes the new check to
+hard-gate status at the **replay-hook activation commit**
+(see §"v034 transition — replay-hook activation + drain
+authorization" below). Pre-v034-codification feature/bugfix
+commits are grandfathered (they used the v033 D4 honor-
+system rule and predate the trailer schema). From the
+replay-hook-activation commit forward, no `feat:`/`fix:`
+commit lands without passing the hook.
 
 #### Retroactive TDD redo of Phase 3 + Phase 4 work — second attempt (v033 D5b)
 
@@ -2300,24 +2512,36 @@ once complete, normal Phase 5-onward work resumes from the
 (new) sub-step that was in-progress at the v033-codification
 boundary.
 
-#### Quality-comparison report — v033 D5c scope expansion
+#### Quality-comparison report — v034 D5c scope (renamed from v033 D5c)
 
 The v032 D3 quality-comparison report mechanism is preserved.
-The v033 D5c expansion: the report measures the
-post-second-redo tree against BOTH `pre-redo.zip` (the
-original impl-first state) AND `pre-second-redo.zip` (the
-failed-first-redo state). Each of the four dimensions
-(architecture, coupling, cohesion, unnecessary-code-
-elimination) is reported with deltas vs both baselines.
-Acceptance: at least three of four dimensions show concrete
-improvement vs both baselines (negative delta on LOC,
-fan-out, public surface, etc., OR positive delta on rule
-compliance). Materially-equivalent measurements across all
-four dimensions vs both baselines indicate the discipline
-lapsed and the second redo failed; user MAY reject and
-demand a re-redo. The behavioral-equivalence audit (Phase 3
-smoke against both pre-zip baselines + the post-second-redo
-tree) MUST pass.
+The v034 D5c rename of the v033 D5c expansion: the report
+measures the **post-drain tree** (after v034 D7 drain
+completion) against BOTH `pre-redo.zip` (the original impl-
+first state) AND `pre-second-redo.zip` (the failed-first-redo
+state). Each of the four dimensions (architecture, coupling,
+cohesion, unnecessary-code-elimination) is reported with
+deltas vs both baselines. Acceptance: at least three of four
+dimensions show concrete improvement vs both baselines
+(negative delta on LOC, fan-out, public surface, etc., OR
+positive delta on rule compliance). Materially-equivalent
+measurements across all four dimensions vs both baselines
+indicate the discipline lapsed and the second redo failed;
+user MAY reject and demand a re-redo. The behavioral-
+equivalence audit (Phase 3 smoke against both pre-zip
+baselines + the post-drain tree) MUST pass.
+
+The post-drain tree is a mixed-discipline artifact: cycles
+1-172 of the v033 D5b second redo were authored under v033
+discipline (`## Red output` honor system; `phase-N: cycle N
+— ...` prefix); the drain cycles (estimated 173-187) were
+authored under v034 discipline (Conventional Commits +
+TDD-Red/Green trailers + replay verification). The report
+acknowledges this discontinuity in its "Methodology"
+section but does NOT attempt to separately measure the two
+discipline regimes — the goal is comparison against the
+pre-redo baselines, not measurement of the discipline
+transition itself.
 
 #### Lefthook activation — v033 D5a moves forward
 
@@ -2374,6 +2598,155 @@ gate. The v033 D5b second retroactive redo's first cycle
 is the first commit subject to the discipline at full
 mechanical strength.
 
+#### v034 transition — replay-hook activation + drain authorization (v034 D3 / D5 / D6)
+
+v034 codification (the present revision) extends the v033
+mechanical-enforcement layer with three new mechanisms:
+the trailer-based Red→Green replay contract (D2-D3) per
+§"Per-commit Red→Green replay discipline (v034 D2-D3)"
+above; the baseline-grandfathered violation file (D6) per
+PROPOSAL §"Baseline-grandfathered violations"; and the
+Conventional Commits format (D1) per PROPOSAL §"Commit
+conventions and versioning". Concrete sequence (executed
+once in the v034 codification → drain transition):
+
+1. **v034 codification commit lands.** The first
+   conventional commit, with subject `chore!: codify v034
+   — TDD-replay, conventional-commits, drain authorization`.
+   Carries the PROPOSAL.md + plan-text + style-doc edits +
+   `history/v034/` snapshot. No TDD trailers required (chore
+   type per D1).
+2. **Author the new replay-hook check under TDD discipline.**
+   `dev-tooling/checks/red_green_replay.py` (D3) +
+   `tests/dev-tooling/checks/test_red_green_replay.py` —
+   one Red→Green pair per behavior under the v033 D4
+   `## Red output` honor-system rule (the replay hook
+   itself isn't gating yet; v033 discipline is in force).
+   Estimated 5-10 cycles for the hook + paired tests.
+3. **Replay-hook activation commit.** Updates `justfile`:
+   renames `check-red-output-in-commit` to
+   `check-red-green-replay`; updates `lefthook.yml`
+   pre-commit ordering: `check-red-green-replay` first
+   (cheap header-parsing + amend-detection), then
+   `check-commit-pairs-source-and-test`, then `check`
+   aggregate. Removes `dev-tooling/checks/red_output_in_commit.py`
+   + `tests/dev-tooling/checks/test_red_output_in_commit.py`
+   (replaced by the v034 D3 pair). Authors the initial
+   `phase-5-deferred-violations.toml` (D6) at the repo root
+   enumerating every currently-failing canonical-target
+   violation. Replaces the thinned `just check` aggregate
+   at `justfile:75-99` with the full canonical-target list
+   + a one-line reference to D6 + the baseline file. The
+   `bootstrap` recipe gains a `git config --add
+   remote.origin.fetch "+refs/notes/*:refs/notes/*"` line
+   (D4). Subject line: `chore!: activate v034 replay hook
+   + baseline-grandfathered violations + conventional-
+   commits enforcement`.
+4. **From this commit forward, every commit gates on
+   the new mechanisms.** `feat:` and `fix:` commits
+   require the trailer schema + amend pattern; the local
+   pre-commit hook runs the FULL canonical-target list
+   against the baseline; commitlint validates Conventional
+   Commit format on every commit subject.
+
+This is the activation point of the **v034 hard-constraint
+per-commit gate** per PROPOSAL.md §"Testing approach —
+Activation" §"v034 D2-D3 Red→Green replay contract".
+Pre-v034-codification commits remain grandfathered
+(commitlint excludes ancestor SHAs preceding the v034
+codification commit; replay-hook check skips commits
+without `feat:`/`fix:` subjects).
+
+#### Aggregate-restoration drain (v034 D7)
+
+The Phase-3-content gaps that produced the unbound
+aggregate targets at v033 D5b cycle 172 are drained under
+the new v034 discipline as the next sub-section of Phase 5.
+
+**Entry condition.** Replay-hook activation commit (per
+the §"v034 transition" section above) has landed AND
+`phase-5-deferred-violations.toml` exists at the repo root
+enumerating the initial set of grandfathered violations.
+
+**Exit condition.** `phase-5-deferred-violations.toml` is
+empty (zero `[[violation]]` blocks) AND the file has been
+deleted from the tree by the cycle that drained the final
+entry. From that commit forward, the local pre-commit hook
+runs the full canonical-target list with no
+grandfathering; any new violation fails the hook.
+
+**Per-cycle workflow.**
+
+1. Pick one or more `[[violation]]` blocks from the
+   baseline.
+2. Author the fix under v034 D1-D5 discipline: pick a
+   Conventional Commit type (`feat:` for new code paths,
+   `fix:` for adjustments to existing code); write the
+   smallest failing test for the fix (Red); commit (Red
+   commit + Red trailers); write the implementation; amend
+   (Green commit + Green trailers).
+3. The same commit (the Green amend) ALSO removes the
+   resolved baseline entries. The `red_green_replay.py`
+   hook verifies: the baseline diff is internally
+   consistent (resolved violations are no longer detected
+   by their checks); new violations are not introduced; if
+   the baseline goes empty, the file is deleted in the
+   same commit.
+
+**Estimated cycle count.** ~11-15 cycles total:
+
+- 1-2 cycles: PBT decorators on the three test modules
+  for `check-pbt-coverage-pure-modules`.
+- 2-3 cycles: `livespec/types.py` creation + NewType
+  migration of the four raw-`str` fields for
+  `check-newtype-domain-primitives`.
+- ~5 cycles: schema/dataclass/validator triples for
+  `check-schema-dataclass-pairing` (one cycle per triple).
+- 3-5 cycles: `seed.py` refactor below 200 LLOC + remaining
+  ruff PLR/C90 fixes for `check-complexity`.
+- 2-3 cycles: config-tier cleanup of `check-lint` and
+  `check-format` (the latter likely zero cycles if
+  formatting has been kept clean during v033 D5b cycles).
+
+The drain subsumes what was previously called "Batch 7"
+in STATUS.md prose. There is no "rest of the redo" beyond
+the drain — once the baseline empties, only the v034 D5c
+quality-comparison report and Phase 5 exit gates remain.
+
+#### D8 activation — branch protection on master (deferred to end-of-Phase-5)
+
+The final sub-step of Phase 5, AFTER the Phase 5 exit
+gates pass (5a drift-review, 5b exit-criterion, 5c
+advance-to-Phase-6 confirmation), authorizes the GitHub
+branch protection rule on `master` per v034 D8.
+
+Concrete activation:
+
+1. Author `branch-protection.json` at repo root containing
+   the rule shape: required CI checks (the full canonical
+   target matrix), `enforce_admins: true`, `required_linear_history: true`,
+   `allow_force_pushes: false`, `allow_deletions: false`.
+2. Invoke `gh api -X PUT
+   repos/:owner/:repo/branches/master/protection --input
+   branch-protection.json` to enable the rule.
+3. Verify direct push is rejected: `git commit --allow-empty
+   -m "chore: verify branch protection rejects direct push"
+   && git push origin master` MUST fail with a permission
+   error from GitHub.
+4. Verify PR + auto-merge path works: `git checkout -b
+   test-branch-protection && git commit --allow-empty -m
+   "chore: verify auto-merge path" && git push origin
+   test-branch-protection && gh pr create --fill && gh pr
+   merge --auto --squash`. Wait for CI; PR should
+   auto-merge when green; master should advance.
+5. Delete the test branch + commit-and-push the
+   verification result as a Phase 5 closing record.
+
+**Phase 6 onward operates under protected master.** The
+agent's normal cycle becomes: branch off master → cycle
+work + commits → push branch → `gh pr create --fill && gh
+pr merge --auto --squash` → CI gates the merge.
+
 **Exit criterion:** `just check` passes for every target except
 those still deferred to later phases (carrying forward Phase 4's
 deferral list, less the targets satisfied by this phase). Targets
@@ -2391,18 +2764,28 @@ trivially), plus every target already passing at Phase 4 exit
 `check-imports-architecture`, `check-tools`, and every
 `dev-tooling/checks/*.py`-backed target in the canonical list).
 The lefthook-only checks `check-commit-pairs-source-and-test`
-(per v033 D3) and `check-red-output-in-commit` (per v033 D4) have
-been hard-gating every commit since the v033-codification
-commit. `just bootstrap` has been run and lefthook is installed.
-The v033 D5c retroactive-TDD quality-comparison report (Plan
-Phase 5 §"Quality-comparison report — v033 D5c scope expansion")
-has been authored and its acceptance criteria pass — the
-post-second-redo tree demonstrates
-concrete improvement on architecture, coupling, cohesion,
-and unnecessary-code elimination relative to BOTH
+(per v033 D3) and `check-red-green-replay` (per v034 D2-D3,
+replacing the v033 `check-red-output-in-commit`) have been
+hard-gating every commit since their respective activation
+commits. `just bootstrap` has been run and lefthook is
+installed. The v034 D6 baseline file
+`phase-5-deferred-violations.toml` has been drained to empty
+and deleted (per v034 D7 drain exit condition); the local
+pre-commit hook now runs the full canonical-target list with
+no grandfathering. The v034 D5c retroactive-TDD quality-
+comparison report (Plan Phase 5 §"Quality-comparison report
+— v034 D5c scope") has been authored and its acceptance
+criteria pass — the post-drain tree demonstrates concrete
+improvement on architecture, coupling, cohesion, and
+unnecessary-code elimination relative to BOTH
 `bootstrap/scratch/pre-redo.zip` (the original impl-first
 state) AND `bootstrap/scratch/pre-second-redo.zip` (the
-failed-first-redo state).
+failed-first-redo state). After the Phase 5 exit gates pass
+(5a drift-review, 5b exit-criterion check, 5c advance-to-
+Phase-6 confirmation), the v034 D8 branch protection rule
+on `master` is activated as the final Phase 5 sub-step per
+§"D8 activation — branch protection on master (deferred to
+end-of-Phase-5)".
 
 The following `just check` targets remain deferred at Phase 5
 exit and activate at later phases:
@@ -3323,7 +3706,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v033 as authoritative. Do not propose any
+Treat PROPOSAL.md v034 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
