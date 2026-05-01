@@ -84,6 +84,7 @@ check:
         check-no-raise-outside-io
         check-no-except-outside-io
         check-keyword-only-args
+        check-match-keyword-only
     )
     failed=()
     for t in "${targets[@]}"; do
