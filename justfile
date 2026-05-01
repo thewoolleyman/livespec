@@ -89,6 +89,7 @@ check:
         check-private-calls
         check-global-writes
         check-wrapper-shape
+        check-claude-md-coverage
     )
     failed=()
     for t in "${targets[@]}"; do
