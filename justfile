@@ -80,6 +80,7 @@ check:
         check-no-inheritance
         check-all-declared
         check-no-write-direct
+        check-supervisor-discipline
     )
     failed=()
     for t in "${targets[@]}"; do
