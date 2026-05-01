@@ -94,6 +94,7 @@ check:
         check-no-direct-tool-invocation
         check-heading-coverage
         check-rop-pipeline-shape
+        check-public-api-result-typed
     )
     failed=()
     for t in "${targets[@]}"; do
