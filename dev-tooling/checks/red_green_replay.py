@@ -11,11 +11,12 @@ checksum, pytest invocation, trailer authoring); for other
 Conventional Commit types (chore, docs, build, ci, style,
 test, refactor, perf, revert) it exits 0 immediately.
 
-Cycle 173 implements minimum-viable: `main()` returns 0
-unconditionally. The paired test pins the chore-exempt
-behavior. Future cycles drive the type-classification +
-Red/Green-mode dispatch + checksum + replay logic via
-additional failing tests.
+Cycles 173-174 implement minimum-viable type discrimination:
+`chore:` subjects exit 0; non-exempt subjects (feat:, fix:,
+and any unknown type) exit 1. Future cycles extend the
+exempt list with the remaining config/meta types and drive
+the type-classification + Red/Green-mode dispatch +
+checksum + replay logic via additional failing tests.
 
 This file is authored under the v033 discipline still in
 force (the replay hook itself is not yet gating; the v033
@@ -27,11 +28,18 @@ this one and authors the initial
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 __all__: list[str] = []
 
 
 def main() -> int:
-    return 0
+    msg_path = Path(sys.argv[1])
+    subject = msg_path.read_text(encoding="utf-8").split("\n", 1)[0]
+    if subject.startswith("chore:"):
+        return 0
+    return 1
 
 
 if __name__ == "__main__":

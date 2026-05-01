@@ -55,6 +55,38 @@ def test_chore_commit_subject_exits_zero(*, tmp_path: Path) -> None:
     )
 
 
+def test_feat_commit_subject_exits_nonzero(*, tmp_path: Path) -> None:
+    """A `feat:` commit subject is NOT exempt; hook MUST exit non-zero.
+
+    Fixture: a tmp_path COMMIT_EDITMSG file containing
+    `feat: add new feature`. Per v034 D3, `feat:` and `fix:`
+    types require Red→Green replay verification — Red mode
+    (test staged + no impl + pytest fails) or Green mode
+    (amend with impl + pytest passes). With nothing to verify
+    (no git repo, no staged tree, no Red-trailer parent), the
+    hook cannot complete verification and MUST reject the
+    commit. This pins the type-discrimination contract:
+    non-exempt subjects do not exit 0. Future cycles refine
+    the rejection diagnostic + add the actual replay logic.
+    """
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"red_green_replay should exit non-zero for feat: subject; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
 def test_red_green_replay_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 
