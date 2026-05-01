@@ -67,7 +67,14 @@ def _parse_mise_tools(*, source: str) -> dict[str, str]:
 
 
 def _verify_tool(*, name: str, expected_version: str) -> str | None:
-    """Return None on pass, an error message on fail."""
+    """Return None on pass, an error message on fail.
+
+    Tries `<bin> --version` first; if that exits non-zero (e.g.,
+    lefthook, which uses subcommand-style `lefthook version`),
+    falls back to `<bin> version`. The fallback is required to
+    cover all three v024 mise-pinned binaries — `uv`, `just`
+    accept `--version`; `lefthook` does not.
+    """
     binary_path = shutil.which(name)
     if binary_path is None:
         return f"{name}: not on PATH"
@@ -78,6 +85,14 @@ def _verify_tool(*, name: str, expected_version: str) -> str | None:
         text=True,
         check=False,
     )
+    if completed.returncode != 0:
+        # Fallback for binaries with subcommand-style version surfaces.
+        completed = subprocess.run(  # noqa: S603
+            [binary_path, "version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
     output = (completed.stdout + completed.stderr).strip()
     if expected_version == "*":
         return None

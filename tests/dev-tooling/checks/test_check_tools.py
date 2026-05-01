@@ -176,6 +176,66 @@ def test_check_tools_rejects_pinned_version_mismatch(*, tmp_path: Path) -> None:
     )
 
 
+def test_check_tools_falls_back_to_subcommand_version_when_dash_dash_version_errors(
+    *, tmp_path: Path,
+) -> None:
+    """Binaries whose `--version` errors but `version` reports the version pass.
+
+    Lefthook is the canonical example: `lefthook --version` returns
+    `Error: unknown flag: --version` (exit 1) but `lefthook version`
+    prints the version cleanly (exit 0). Without a fallback,
+    check-tools rejects every mise-pinned lefthook even when the
+    pinned version IS installed — blocking aggregate-binding for
+    `check-tools` for environment reasons rather than substantive
+    drift.
+
+    Fixture builds a fake binary `foo` in `tmp_path/bin/` that
+    mimics lefthook's argv shape: `foo --version` exits 1 with
+    error, `foo version` prints `1.2.3` and exits 0. PATH is
+    prepended with `tmp_path/bin` so `shutil.which("foo")`
+    resolves there. `.mise.toml` pins `foo = "1.2.3"`. The check
+    must accept the pin (exit 0) by exercising the fallback.
+    """
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "foo"
+    fake.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [[ "$1" == "version" ]]; then\n'
+        '  echo "1.2.3"\n'
+        "  exit 0\n"
+        "fi\n"
+        'echo "Error: unknown flag: $1" >&2\n'
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    fake.chmod(0o755)
+    mise = tmp_path / ".mise.toml"
+    mise.write_text(
+        '[tools]\nfoo = "1.2.3"\n',
+        encoding="utf-8",
+    )
+
+    import os
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_CHECK_TOOLS)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 0, (
+        f"check_tools should fall back to `<bin> version` when "
+        f"`<bin> --version` errors; got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
 def test_check_tools_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main()."""
     import importlib.util
