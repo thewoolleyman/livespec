@@ -146,11 +146,33 @@ check-imports-architecture:
     PYTHONPATH=.claude-plugin/scripts uv run lint-imports
 
 check-tests:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    # Per v036 D1: when invoked under the pre-commit Red-mode-aware
+    # aggregate (`check-pre-commit` sets LIVESPEC_PRECOMMIT_RED_MODE
+    # if the staged tree matches Red mode), skip pytest entirely.
+    # The commit-msg replay hook (`check-red-green-replay`) is the
+    # load-bearing verifier in Red mode — it runs pytest on the
+    # staged test file and expects non-zero exit. Pre-push, CI,
+    # and manual `just check-tests` invocations don't set the env
+    # var and run normally.
+    if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
+        echo ":: check-tests skipped (v036 D1 Red-mode pre-commit; commit-msg replay hook verifies)"
+        exit 0
+    fi
     uv run pytest
 
 check-coverage:
     #!/usr/bin/env bash
     set -uo pipefail
+    # Per v036 D1: same Red-mode-skip semantics as check-tests above.
+    # In Red mode the staged tree has no impl files, so per-file
+    # coverage of the new (non-existent) impl is moot; pre-existing
+    # impl coverage is unchanged and re-validated at the Green amend.
+    if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
+        echo ":: check-coverage skipped (v036 D1 Red-mode pre-commit; verified at Green amend)"
+        exit 0
+    fi
     # pytest-cov defaults `--cov-config` to `.coveragerc`, which
     # bypasses pyproject.toml's `[tool.coverage.run]` (including
     # the `omit = ["*/_vendor/*"]` carve-out). Pass the config
@@ -160,6 +182,37 @@ check-coverage:
     # report with sub-100% files that aren't first-party code.
     uv run pytest --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
     uv run python3 dev-tooling/checks/per_file_coverage.py
+
+# Per v036 D1: Red-mode-aware pre-commit aggregate. Classifies the
+# staged tree shape via `git diff --cached --name-only --diff-filter=A`:
+# Red mode = exactly one test file added under `tests/` AND zero
+# implementation files added under
+# `.claude-plugin/scripts/livespec/**`,
+# `.claude-plugin/scripts/bin/**`, or `dev-tooling/checks/**`.
+# In Red mode, sets LIVESPEC_PRECOMMIT_RED_MODE=1 and runs `just
+# check`; check-tests + check-coverage observe the env var and skip
+# (commit-msg replay hook is the load-bearing test-verifier in Red
+# mode). In all other modes (Green amend, test:/chore:/etc.,
+# non-Red feat:/fix:), runs `just check` unconditionally.
+#
+# Pre-push and CI keep invoking `just check` directly (no Red-mode
+# classifier; full suite always).
+check-pre-commit:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    added=$(git diff --cached --name-only --diff-filter=A)
+    test_added=$(echo "$added" | grep -E '^tests/.*\.py$' || true)
+    impl_added=$(echo "$added" | grep -E '^(\.claude-plugin/scripts/livespec|\.claude-plugin/scripts/bin|dev-tooling/checks)/.*\.py$' || true)
+    test_count=0
+    impl_count=0
+    [[ -n "$test_added" ]] && test_count=$(echo "$test_added" | wc -l)
+    [[ -n "$impl_added" ]] && impl_count=$(echo "$impl_added" | wc -l)
+    if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
+        echo ":: v036 D1 Red-mode shape detected: $test_added"
+        echo ":: skipping check-tests + check-coverage (commit-msg replay hook is the verifier)"
+        export LIVESPEC_PRECOMMIT_RED_MODE=1
+    fi
+    just check
 
 # ---------------------------------------------------------------
 # AST / grep / hand-written checks. Each delegates to a script

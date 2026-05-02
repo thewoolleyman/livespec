@@ -14,5 +14,5 @@
 **Pre-v034 cycle history preserved as-is:** the v033 D5b second-redo cycles 1-172 used the v033 discipline (`## Red output` honor system; `phase-N: cycle N — ...` commit prefix). They are grandfathered: commitlint will exclude pre-v034-codification ancestor SHAs, and the replay-hook will skip commits without `feat:`/`fix:` subjects.
 
 Open issues: zero unresolved.
-**Last updated:** 2026-05-02T10:30:00Z
-**Last commit:** v036 codification pending (chore!: revise proposal to v036 — Red-mode-aware pre-commit aggregate; PROPOSAL §"Activation" rewritten + §"Red mode" gains coexistence sub-paragraph (D1); plan-text + housekeeping (D2); history/v036/PROPOSAL.md snapshot + history/v036/proposed_changes/critique-fix-v035-revision.md; one blocking open-issues entry resolved). Implementation commit follows.
+**Last updated:** 2026-05-02T11:00:00Z
+**Last commit:** v036 implementation pending (chore!: implement v036 D1 check-pre-commit Red-mode-aware aggregate; justfile gains `check-pre-commit` recipe + LIVESPEC_PRECOMMIT_RED_MODE env-var skip in `check-tests` + `check-coverage`; lefthook.yml pre-commit `02-check` → `02-check-pre-commit` invoking `just check-pre-commit`). v036 codification landed at sha 1754534 (chore!: revise proposal to v036).

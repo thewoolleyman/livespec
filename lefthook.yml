@@ -15,9 +15,12 @@
 # from the second-retroactive-redo onward.
 #
 # pre-commit ordering: the cheap commit-pairs gate first (inspects
-# staged file list; doesn't run tests), then the heavy `just check`
-# aggregate. Fail-fast on the cheap gate so the developer learns
-# about a missing test pair without waiting for pytest.
+# staged file list; doesn't run tests), then the heavy
+# `just check-pre-commit` aggregate (per v036 D1: Red-mode-aware,
+# skips check-tests + check-coverage when the staged tree matches
+# the v034 Red commit shape). Fail-fast on the cheap gate so the
+# developer learns about a missing test pair without waiting for
+# pytest.
 #
 # commit-msg stage: the v034 D3 replay hook runs here, NOT at
 # pre-commit. The hook needs the commit-message file path (passed
@@ -31,8 +34,8 @@ pre-commit:
   commands:
     01-commit-pairs-source-and-test:
       run: just check-commit-pairs-source-and-test
-    02-check:
-      run: just check
+    02-check-pre-commit:
+      run: just check-pre-commit
 
 commit-msg:
   commands:
