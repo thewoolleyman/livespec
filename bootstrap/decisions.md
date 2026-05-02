@@ -1197,3 +1197,60 @@ already in the tree. The plan-text revision preserves v033
 D5b's intent (clean slate for second redo, audit trail in
 zip) while changing the mechanism to one with a clean risk
 profile.
+
+## 2026-05-02T06:00:00Z — phase 5 sub-step v034 step 3 (replay-hook activation commit)
+
+**Decision:** Take the slim activation path (Option C of the four
+offered): wire the v034 D3 replay hook at lefthook `commit-msg`
+stage; remove the v033 `red_output_in_commit.py` hook + paired test;
+add notes refspec to `bootstrap` recipe; rename `check-red-output-
+in-commit` to `check-red-green-replay` in justfile. **Defer the
+v034 D6 baseline-grandfathered-violations machinery indefinitely.**
+The thinned `just check` aggregate stays in place; the v034 D7
+drain proceeds against it via the existing v033 D5b pattern (each
+fix-cycle adds its now-passing target to the thinned list). The
+file `phase-5-deferred-violations.toml` is NOT authored at this
+commit; v034 D6 effectively becomes a documented but unimplemented
+PROPOSAL feature (PROPOSAL.md §"Baseline-grandfathered violations
+(v034 D6)" + plan §"Aggregate-restoration drain (v034 D7)" both
+reference the file). User-gated 2026-05-02 via
+AskUserQuestion in fast-forward execution mode.
+
+Also chosen at the same gate: the lefthook stage is `commit-msg`
+(not `pre-commit`), notwithstanding PROPOSAL line 3517's "pre-commit
+hook" wording. The v034 D3 design (writes trailers via
+`git interpret-trailers --in-place`, requires the commit-message
+file path as argv[1], inspects `HEAD~0` to distinguish Red vs
+Green amend) is fundamentally a `commit-msg` stage hook. The
+PROPOSAL terminology fix rides along with the next substantive
+PROPOSAL revision (or as a small post-Phase-6 propose-change).
+
+**Rationale:** Per the AskUserQuestion gate, the user explicitly
+chose pragmatism over plan/PROPOSAL letter. The v034 D6 mechanism
+as specified would require ~22 check-script modifications (each
+script loading the TOML and filtering its own violations against
+`(target, file, rule, location)` tuples) — substantial plumbing
+before the drain can begin. The drain itself only resolves ~6
+violations across ~11-15 cycles; the per-check baseline-loading
+machinery is over-engineered for that scope. The simpler thinned-
+aggregate pattern from v033 D5b has already been proven through
+cycles 1-172 (the second redo). Continuing it through the drain is
+mechanically straight-line: each drain cycle restores its now-passing
+target to the thinned aggregate, the aggregate stays green, and
+once the four currently-unbound targets (check-pbt-coverage-pure-
+modules, check-newtype-domain-primitives, check-schema-dataclass-
+pairing, check-complexity, plus check-lint and check-format
+config-tier cleanup) are bound and passing, the aggregate matches
+the full canonical-target list de facto.
+
+The deferral creates PROPOSAL drift (Case-A by the bootstrap skill's
+strict reading: PROPOSAL.md §"Baseline-grandfathered violations
+(v034 D6)" describes a mechanism that won't exist after this commit).
+The drift is bookmarked here in decisions.md rather than logged as
+a Case-A blocking open-issues entry per the user's explicit gate
+choice — the executor follows the user's authorization. A future
+PROPOSAL revision can either (a) implement v034 D6 as written, or
+(b) revise PROPOSAL to reflect the simpler de-facto mechanism, or
+(c) simply remove §"Baseline-grandfathered violations" from the
+spec as no-longer-relevant once the drain completes and the
+aggregate is fully restored.

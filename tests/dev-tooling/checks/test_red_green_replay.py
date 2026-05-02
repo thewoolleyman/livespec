@@ -887,6 +887,48 @@ def test_feat_green_amend_with_test_still_failing_rejects(
     )
 
 
+@pytest.mark.parametrize(
+    "subject_token",
+    [
+        "chore!: codify v034",
+        "docs!: revise terminology",
+        "chore(deps): bump returns",
+        "chore(deps)!: bump returns major",
+        "refactor(io)!: rename io facades",
+    ],
+)
+def test_conventional_commit_breaking_and_scope_variants_exit_zero(
+    *, subject_token: str, tmp_path: Path,
+) -> None:
+    """Conventional Commits `<type>[(<scope>)][!]:` variants resolve as exempt.
+
+    Discovered at activation time: cycles 173-176 used a literal
+    `subject.startswith(("chore:", ...))` check that fails to match
+    `chore!:` (the `!` breaking-change marker) and `chore(deps):`
+    (the optional scope). The activation commit itself (subject
+    `chore!: ...`) was rejected by the live commit-msg hook on first
+    attempt. The fix replaces the startswith tuple with a regex
+    matching the full Conventional Commits format
+    `^<type>(\\(<scope>\\))?!?:`. Pins the breaking-change marker
+    and scope-notation variants for every exempt type.
+    """
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text(f"{subject_token}\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"Conventional-Commits exempt variant {subject_token!r} should exit 0; "
+        f"got returncode={result.returncode} stderr={result.stderr!r}"
+    )
+
+
 def test_red_green_replay_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 

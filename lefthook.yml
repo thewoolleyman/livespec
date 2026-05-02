@@ -14,22 +14,30 @@
 # commit-pairs-source-and-test, ## Red output) gate every commit
 # from the second-retroactive-redo onward.
 #
-# pre-commit ordering: cheap per-commit gates first
-# (commit-pairs-source-and-test inspects staged file list;
-# red-output-in-commit walks `git log` for the commit being
-# authored — but neither runs the test suite), then the heavy
-# `just check` aggregate. Fail-fast on the cheap gates so the
-# developer learns about a missing test pair without waiting
-# for pytest.
+# pre-commit ordering: the cheap commit-pairs gate first (inspects
+# staged file list; doesn't run tests), then the heavy `just check`
+# aggregate. Fail-fast on the cheap gate so the developer learns
+# about a missing test pair without waiting for pytest.
+#
+# commit-msg stage: the v034 D3 replay hook runs here, NOT at
+# pre-commit. The hook needs the commit-message file path (passed
+# as argv[1] via lefthook's {1} template) so it can write Red /
+# Green trailers via `git interpret-trailers --in-place`. PROPOSAL.md
+# line 3517 says "pre-commit hook" loosely; the actual design is
+# commit-msg. See bootstrap/decisions.md 2026-05-02T06:00:00Z for
+# the architectural-choice provenance.
 
 pre-commit:
   commands:
     01-commit-pairs-source-and-test:
       run: just check-commit-pairs-source-and-test
-    02-red-output-in-commit:
-      run: just check-red-output-in-commit
-    03-check:
+    02-check:
       run: just check
+
+commit-msg:
+  commands:
+    01-red-green-replay:
+      run: just check-red-green-replay {1}
 
 pre-push:
   commands:

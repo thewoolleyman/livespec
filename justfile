@@ -30,18 +30,27 @@ default:
 # ---------------------------------------------------------------
 
 bootstrap:
-    # v033 D5a Option-3 (cycle 61): install the repo-tracked
-    # git-hook-wrapper.sh as both .git/hooks/pre-commit and
-    # .git/hooks/pre-push. The wrapper invokes
-    # `mise exec lefthook -- lefthook run <hook-name>` so the
-    # gate fires regardless of the user's shell config (the
-    # vanilla `lefthook install` hook fails in zsh sessions
-    # without `~/.zshrc` mise activation).
+    # v033 D5a Option-3 (cycle 61) + v034 step 3 (this commit):
+    # install the repo-tracked git-hook-wrapper.sh as
+    # .git/hooks/pre-commit, .git/hooks/pre-push, AND
+    # .git/hooks/commit-msg (v034 D3 replay-hook stage). The wrapper
+    # invokes `mise exec lefthook -- lefthook run <hook-name> "$@"`
+    # so the gate fires regardless of the user's shell config and
+    # the commit-msg stage receives the commit-message file path as
+    # the first argument (the value lefthook passes to {1}).
     mkdir -p .git/hooks
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-commit
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-push
-    chmod +x .git/hooks/pre-commit .git/hooks/pre-push
+    cp dev-tooling/git-hook-wrapper.sh .git/hooks/commit-msg
+    chmod +x .git/hooks/pre-commit .git/hooks/pre-push .git/hooks/commit-msg
     ln -sfn ../.claude-plugin/skills .claude/skills
+    # v034 D4: notes refspec for `refs/notes/commits` advisory cache.
+    # Idempotent — git config --add tolerates duplicate values across
+    # repeated bootstrap invocations (the value is checked literally;
+    # if already present at this exact text, --add is a no-op for the
+    # config-loading semantics that consumers care about). Run only
+    # if the value isn't already present.
+    git config --get-all remote.origin.fetch | grep -qx '+refs/notes/*:refs/notes/*' || git config --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
 
 # ---------------------------------------------------------------
 # Aggregate check — runs every check below sequentially. Continues
@@ -256,12 +265,20 @@ check-mutation:
 check-no-todo-registry:
     uv run python3 dev-tooling/checks/no_todo_registry.py
 
-# v033 D4 hard gate: returns 1 if any redo commit lacks `## Red output`.
-# Lefthook pre-commit only; NOT in `just check` aggregate (the aggregate
-# runs once per `just check` invocation, this gate is intrinsically
-# per-commit and lives in lefthook directly).
-check-red-output-in-commit:
-    uv run python3 dev-tooling/checks/red_output_in_commit.py
+# v034 D3 hard gate: trailer-based Red→Green replay verification.
+# Invoked by lefthook commit-msg stage (NOT pre-commit) — the hook
+# requires the commit-message file path as argv[1] to write trailers
+# via `git interpret-trailers --in-place`. NOT in `just check`
+# aggregate (per-commit, not per-tree).
+#
+# Note on lefthook stage: PROPOSAL.md line 3517 calls this "the
+# pre-commit hook" but the design is fundamentally `commit-msg`
+# (writes to the commit-message file; distinguishes Red/Green via
+# HEAD~0 inspection). PROPOSAL terminology fix rides along with the
+# next substantive revision; see bootstrap/decisions.md
+# 2026-05-02T06:00:00Z.
+check-red-green-replay msg_path:
+    uv run python3 dev-tooling/checks/red_green_replay.py {{msg_path}}
 
 # v033 D1 mirror-pairing: every covered .py under livespec/, bin/,
 # and dev-tooling/checks/ has a paired tests/<mirror>/test_<name>.py.

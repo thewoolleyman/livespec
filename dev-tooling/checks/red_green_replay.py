@@ -72,12 +72,20 @@ into the COMMIT_EDITMSG file before returning 0. From cycle
 183 onward, both Red and Green moments produce successful
 hook exits with the appropriate trailer schema written.
 
-This file is authored under the v033 discipline still in
-force (the replay hook itself is not yet gating; the v033
-`red_output_in_commit.py` is still active). The v034 D5
-replay-hook activation commit replaces the v033 hook with
-this one and authors the initial
-`phase-5-deferred-violations.toml`.
+As of the v034 step-3 activation commit (chore!:
+`activate v034 replay hook + remove v033 hook`), this hook is
+the sole TDD-discipline gate. The v033
+`red_output_in_commit.py` and its paired test are deleted at
+the activation commit; lefthook's `commit-msg` stage now
+invokes `just check-red-green-replay {1}` so the hook
+receives the commit-message file path as argv[1] and can
+write the v034 D2 trailer schema via
+`git interpret-trailers --in-place`. The v034 D6 baseline-
+grandfathered-violations machinery
+(`phase-5-deferred-violations.toml`) is deferred per
+`bootstrap/decisions.md` 2026-05-02T06:00:00Z; the drain
+proceeds against the existing thinned `just check`
+aggregate.
 
 Output discipline: per spec lines 1738-1762, `print` (T20)
 and `sys.stderr.write` (`check-no-write-direct`) are banned
@@ -91,6 +99,7 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import re
 import subprocess  # noqa: S404
 import sys
 from pathlib import Path
@@ -104,16 +113,9 @@ import structlog  # noqa: E402  — vendor-path-aware import after sys.path inse
 __all__: list[str] = []
 
 
-_EXEMPT_TYPE_PREFIXES = (
-    "chore:",
-    "docs:",
-    "build:",
-    "ci:",
-    "style:",
-    "test:",
-    "refactor:",
-    "perf:",
-    "revert:",
+_EXEMPT_TYPE_RE = re.compile(
+    r"^(chore|docs|build|ci|style|test|refactor|perf|revert)"
+    r"(\([^)]+\))?!?:",
 )
 _TESTS_PREFIX = "tests/"
 _IMPL_PREFIXES = ("livespec/", "bin/", "dev-tooling/")
@@ -183,7 +185,7 @@ def _classify_staged(*, paths: list[str]) -> tuple[list[str], list[str]]:
 def main() -> int:
     msg_path = Path(sys.argv[1])
     subject = msg_path.read_text(encoding="utf-8").split("\n", 1)[0]
-    if subject.startswith(_EXEMPT_TYPE_PREFIXES):
+    if _EXEMPT_TYPE_RE.match(subject):
         return 0
     structlog.configure(
         processors=[
