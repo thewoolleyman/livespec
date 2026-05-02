@@ -66,6 +66,15 @@ _FIELD_TO_NEWTYPE: dict[str, str] = {
 
 
 def _annotation_terminal_name(*, annotation: ast.expr) -> str:
+    # Peel `X | None` to X (PEP 604 union shape). The `| None` only
+    # marks the field as optional; whether the inner type is the
+    # required NewType is the actual check.
+    if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
+        left, right = annotation.left, annotation.right
+        if isinstance(right, ast.Constant) and right.value is None:
+            return _annotation_terminal_name(annotation=left)
+        if isinstance(left, ast.Constant) and left.value is None:
+            return _annotation_terminal_name(annotation=right)
     rendered = ast.unparse(annotation)
     head = rendered.split("[", maxsplit=1)[0]
     return head.rsplit(".", maxsplit=1)[-1]

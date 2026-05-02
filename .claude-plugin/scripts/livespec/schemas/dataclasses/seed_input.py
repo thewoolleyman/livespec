@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from livespec.types import TemplateName
+
 __all__: list[str] = ["SeedInput"]
 
 
@@ -21,9 +23,12 @@ class SeedInput:
 
     Mirrors seed_input.schema.json: top-level `template` /
     `intent` / `files` / `sub_specs` (per v018 Q1 + v020 Q2).
+    Per `check-newtype-domain-primitives` (v034 D7 drain
+    cycle 2): `template` uses the `TemplateName` NewType from
+    `livespec.types`.
     """
 
-    template: str
+    template: TemplateName
     intent: str
     files: list[dict[str, str]]
     sub_specs: list[dict[str, object]]

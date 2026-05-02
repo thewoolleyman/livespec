@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from livespec.types import Author
+
 __all__: list[str] = ["RevisionInput"]
 
 
@@ -25,7 +27,11 @@ class RevisionInput:
     "reject"), `rationale`, optional `modifications`, and
     optional `resulting_files` (list of `{path, content}`
     objects).
+
+    Per `check-newtype-domain-primitives` (v034 D7 drain
+    cycle 2): `author` uses the `Author` NewType from
+    `livespec.types`.
     """
 
-    author: str | None
+    author: Author | None
     decisions: list[dict[str, object]]

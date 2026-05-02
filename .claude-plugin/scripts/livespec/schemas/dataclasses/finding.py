@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from livespec.types import CheckId, SpecRoot
+
 __all__: list[str] = ["Finding"]
 
 
@@ -24,11 +26,15 @@ class Finding:
     `path` and `line` are optional file-locality fields (None
     when the check is tree-level rather than file-level);
     `spec_root` discriminates per-tree origin per v018 Q1.
+
+    Per `check-newtype-domain-primitives` (v034 D7 drain
+    cycle 2): `check_id` and `spec_root` use the `CheckId`
+    and `SpecRoot` NewTypes from `livespec.types`.
     """
 
-    check_id: str
+    check_id: CheckId
     status: str
     message: str
     path: str | None
     line: int | None
-    spec_root: str
+    spec_root: SpecRoot

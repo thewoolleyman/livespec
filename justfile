@@ -105,6 +105,7 @@ check:
         check-rop-pipeline-shape
         check-public-api-result-typed
         check-pbt-coverage-pure-modules
+        check-newtype-domain-primitives
         check-tools
     )
     failed=()
