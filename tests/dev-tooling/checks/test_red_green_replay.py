@@ -1006,3 +1006,34 @@ def test_red_green_replay_module_importable_without_running_main() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert callable(module.main), "main should be importable without invocation"
+
+
+def test_red_green_replay_modes_helpers_importable() -> None:
+    """The cycle 4c sibling helper module exposes the expected handlers.
+
+    Cycle 4c (2026-05-02) extracted `_handle_red_mode`,
+    `_handle_green_mode`, plus their git-trailer subprocess
+    helpers into the sibling `_red_green_replay_modes.py` so
+    `red_green_replay.py` stays under the 200-LLOC ceiling.
+    This test pins the public surface of the helper module.
+    """
+    import importlib.util
+
+    helpers_path = (
+        Path(__file__).resolve().parents[3]
+        / "dev-tooling"
+        / "checks"
+        / "_red_green_replay_modes.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "_red_green_replay_modes_for_import_test", str(helpers_path),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert callable(module._handle_red_mode)  # noqa: SLF001
+    assert callable(module._handle_green_mode)  # noqa: SLF001
+    assert callable(module._head_has_red_trailers)  # noqa: SLF001
+    assert callable(module._head_trailer_value)  # noqa: SLF001
+    assert callable(module._current_head_sha)  # noqa: SLF001
+    assert callable(module._write_trailers)  # noqa: SLF001
