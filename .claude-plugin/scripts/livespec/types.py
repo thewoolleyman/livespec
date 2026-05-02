@@ -20,10 +20,11 @@ from __future__ import annotations
 
 from typing import NewType
 
-__all__: list[str] = ["Author", "CheckId", "SpecRoot", "TemplateName"]
+__all__: list[str] = ["Author", "CheckId", "SpecRoot", "TemplateName", "TopicSlug"]
 
 
 CheckId = NewType("CheckId", str)
 SpecRoot = NewType("SpecRoot", str)
 Author = NewType("Author", str)
 TemplateName = NewType("TemplateName", str)
+TopicSlug = NewType("TopicSlug", str)

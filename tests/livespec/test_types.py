@@ -15,7 +15,7 @@ check time.
 
 from __future__ import annotations
 
-from livespec.types import Author, CheckId, SpecRoot, TemplateName
+from livespec.types import Author, CheckId, SpecRoot, TemplateName, TopicSlug
 
 __all__: list[str] = []
 
@@ -46,3 +46,10 @@ def test_template_name_newtype_wraps_str() -> None:
     tn = TemplateName("livespec")
     assert tn == "livespec"
     assert isinstance(tn, str)
+
+
+def test_topic_slug_newtype_wraps_str() -> None:
+    """`TopicSlug(s)` returns `s` and is a `str` instance at runtime."""
+    ts = TopicSlug("switch-auth-middleware")
+    assert ts == "switch-auth-middleware"
+    assert isinstance(ts, str)
