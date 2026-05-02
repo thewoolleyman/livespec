@@ -797,7 +797,7 @@ def test_fold_doctor_completed_process_returns_failure_on_malformed_json_stdout(
     from returns.result import Failure
     from returns.unsafe import unsafe_perform_io
 
-    from livespec.commands.seed import _fold_doctor_completed_process
+    from livespec.commands._seed_railway_emits import _fold_doctor_completed_process
     from livespec.errors import PreconditionError
     from livespec.schemas.dataclasses.seed_input import SeedInput
 
@@ -840,7 +840,7 @@ def test_fold_doctor_completed_process_returns_failure_on_missing_findings_key(
     from returns.result import Failure
     from returns.unsafe import unsafe_perform_io
 
-    from livespec.commands.seed import _fold_doctor_completed_process
+    from livespec.commands._seed_railway_emits import _fold_doctor_completed_process
     from livespec.errors import PreconditionError
     from livespec.schemas.dataclasses.seed_input import SeedInput
 
@@ -883,7 +883,7 @@ def test_fold_doctor_completed_process_returns_failure_on_non_list_findings(
     from returns.result import Failure
     from returns.unsafe import unsafe_perform_io
 
-    from livespec.commands.seed import _fold_doctor_completed_process
+    from livespec.commands._seed_railway_emits import _fold_doctor_completed_process
     from livespec.errors import PreconditionError
     from livespec.schemas.dataclasses.seed_input import SeedInput
 
@@ -1012,6 +1012,14 @@ def test_path_minima_constants_pin_documented_shapes() -> None:
     (≥ 4 parts). This test pins those values in code so a future
     deepening of either layout requires explicit test failure +
     intentional bump.
+
+    Cycle 4e moved the constants into `_seed_railway_writes`
+    (and duplicated `_MIN_PARTS_MAIN_SPEC` into
+    `_seed_railway_emits`) when the heavy stages were
+    extracted to keep `seed.py` under 200 LLOC. This test
+    pins the writes-side helper's values.
     """
-    assert seed._MIN_PARTS_MAIN_SPEC == 2  # noqa: SLF001
-    assert seed._MIN_PARTS_SUB_SPEC == 4  # noqa: SLF001
+    from livespec.commands import _seed_railway_writes  # noqa: PLC0415
+
+    assert _seed_railway_writes._MIN_PARTS_MAIN_SPEC == 2  # noqa: SLF001
+    assert _seed_railway_writes._MIN_PARTS_SUB_SPEC == 4  # noqa: SLF001

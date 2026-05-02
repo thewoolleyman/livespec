@@ -107,6 +107,7 @@ check:
         check-pbt-coverage-pure-modules
         check-newtype-domain-primitives
         check-schema-dataclass-pairing
+        check-complexity
         check-tools
     )
     failed=()
