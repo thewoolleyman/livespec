@@ -1378,3 +1378,52 @@ HEAD (recoverable via reflog if ever needed). The cycle 3a
 artifacts (test_finding.py + validate/finding.py) sit in the
 working tree as untracked files, ready to be re-staged after
 cycle 2.7 lands.
+
+## 2026-05-02T19:40:00Z — phase 5 (drain cycle 2.8)
+
+**Decision:** `dev-tooling/checks/red_green_replay.py`'s
+`_IMPL_PREFIXES` enumeration was missing the production
+`.claude-plugin/scripts/livespec/` and
+`.claude-plugin/scripts/bin/` path prefixes. The original
+list had bare `livespec/` / `bin/` / `dev-tooling/`, which
+didn't match the actual repo layout. Cycle 2.8 keeps the
+legacy short prefixes (for paired-test-fixture compatibility
+in tmp_path-based tests that synthesize bare `livespec/foo.py`
+paths) and ADDS the production prefixes alongside. Production
+has no top-level `livespec/` / `bin/` directories, so the
+legacy prefixes contribute zero false positives in real repos.
+A new unit test in `test_red_green_replay.py` pins
+`_classify_staged`'s recognition of the production prefixes.
+
+**Rationale:** The mismatch was masked through cycle 2 because
+that cycle's Green amend ALSO staged a `dev-tooling/` change
+(the `newtype_domain_primitives.py` X|None fix), which
+provided a non-empty impl_paths bucket and let the Green-mode
+dispatch fire. Cycle 3a's Green amend stages only
+`.claude-plugin/scripts/livespec/validate/finding.py` (and
+STATUS.md, which isn't an impl path). With the original
+`_IMPL_PREFIXES`, the validate path didn't match anything and
+impl_paths came back empty; the Green-mode dispatch's
+guard (`if impl_paths and _head_has_red_trailers():`) failed,
+and the hook fell through to its catch-all `return 1` line —
+silently rejecting the amend with no useful diagnostic.
+
+The catch-all behavior is itself a usability gap (the hook
+should log a structured diagnostic when it falls through to
+"neither Red nor Green"); a follow-up cycle could add that.
+For now, fixing `_IMPL_PREFIXES` resolves the immediate
+blocker without touching the hook's broader logic.
+
+PROPOSAL.md is unaffected. Plan is unaffected (no plan-level
+description of the prefix list exists). Case-B direct-fix per
+the bootstrap skill's discipline. The user's cycle-2.7 gate
+("Fix commit-pairs amend-awareness — Recommended") implicitly
+covers this same shape of script-fix; cycle 2.8 follows the
+same pattern (atomic chore: commit; the v034 D3 replay hook
+exempts chore: subjects, breaking the catch-22 of fixing the
+hook while under the hook's enforcement).
+
+The cycle 3a Red commit (most recent attempt at sha f101987)
+was reset via `git reset --soft HEAD~1` and dropped from
+HEAD pending cycle 2.8. After 2.8 lands, cycle 3a will be
+redone fresh.

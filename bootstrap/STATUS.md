@@ -1,7 +1,7 @@
 # Bootstrap status
 
 **Current phase:** 5
-**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain cycle 2.7 in flight (script-only fix to `dev-tooling/checks/commit_pairs_source_and_test.py` adding v034 D2-D3 amend-mode skip; same shape as v036 D1 conflict but for a different check). Cycle 3a (`livespec/validate/finding.py`) was attempted before 2.7; its Red commit at sha 8038a60 was reset via `git reset --soft HEAD~1` and dropped from HEAD when its Green amend got blocked by commit-pairs. The cycle 3a artifacts (test_finding.py + validate/finding.py) sit in the working tree as untracked files; cycle 3a will be redone fresh after cycle 2.7 lands.
+**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain cycle 2.8 in flight (script-only fix to `dev-tooling/checks/red_green_replay.py`'s `_IMPL_PREFIXES`, adding the production `.claude-plugin/scripts/livespec/` + `.claude-plugin/scripts/bin/` paths alongside the legacy bare prefixes). Cycle 3a's most-recent Red commit attempt (sha f101987) was reset via `git reset --soft HEAD~1` and dropped pending cycle 2.8. The cycle 3a artifacts (test_finding.py + validate/finding.py) sit in /tmp stash, ready to restore after 2.8 lands. Cycle 2.7's commit-pairs amend-skip landed at sha 2435814.
 **Last completed exit criterion:** phase 4
 **Next action:** Redo drain cycle 3a — Red commit (test_finding.py only; the v036 D1 Red-mode classifier skips test execution) → Green amend (validate/finding.py + STATUS update; the v034 D2-D3 amend pattern + the new cycle 2.7 commit-pairs amend-skip lets the amend through both pre-commit gates). After cycle 3a lands, drain sub-cycles 3b-3g for the remaining 5 missing schema/dataclass/validator triples (`doctor_findings`, `livespec_config`, `proposed_change_front_matter`, `revision_front_matter`, `sub_spec_payload`, `template_config`).
 
@@ -14,5 +14,5 @@
 **Pre-v034 cycle history preserved as-is:** the v033 D5b second-redo cycles 1-172 used the v033 discipline (`## Red output` honor system; `phase-N: cycle N — ...` commit prefix). They are grandfathered: commitlint will exclude pre-v034-codification ancestor SHAs, and the replay-hook will skip commits without `feat:`/`fix:` subjects.
 
 Open issues: zero unresolved.
-**Last updated:** 2026-05-02T18:50:00Z
-**Last commit:** drain-cycle-2.7 pending (chore: v034 amend-mode skip in commit-pairs check + 3 paired test cases + decisions.md entry; resolves the catch-22 that blocked drain cycle 3a's Green amend). v036 codification at sha 1754534; v036 implementation at sha 70b0752; drain cycle 2 at sha db73c11.
+**Last updated:** 2026-05-02T19:42:00Z
+**Last commit:** drain-cycle-2.8 pending (chore: red_green_replay.py `_IMPL_PREFIXES` correction + new paired-test pinning the production prefix matches; resolves the impl_paths-empty fall-through that silently rejected drain cycle 3a's Green amend). Prior commits: 2435814 (cycle 2.7 chore: commit-pairs amend-skip), db73c11 (cycle 2 feat:), 70b0752 (v036 impl), 1754534 (v036 codification).

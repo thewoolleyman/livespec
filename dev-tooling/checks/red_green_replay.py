@@ -118,7 +118,31 @@ _EXEMPT_TYPE_RE = re.compile(
     r"(\([^)]+\))?!?:",
 )
 _TESTS_PREFIX = "tests/"
-_IMPL_PREFIXES = ("livespec/", "bin/", "dev-tooling/")
+# Impl-tree prefixes (cycle 2.8 fix, 2026-05-02). The repo's
+# actual layout is `.claude-plugin/scripts/livespec/...` and
+# `.claude-plugin/scripts/bin/...`, NOT bare `livespec/` /
+# `bin/`. The original prefixes (`livespec/`, `bin/`,
+# `dev-tooling/`) missed the `.claude-plugin/scripts/` part.
+# Drain cycle 3a's Green amend was rejected because
+# `.claude-plugin/scripts/livespec/validate/finding.py` didn't
+# match `livespec/` and impl_paths came back empty. The
+# mismatch was masked through cycle 2 because that amend ALSO
+# staged a `dev-tooling/` file which provided the impl_paths
+# match. Cycle 2.8 keeps the legacy `livespec/` and `bin/`
+# prefixes for paired-test fixture compatibility (those test
+# fixtures synthesize paths like `livespec/foo.py` in tmp
+# repos; updating ~15 fixture sites would be substantial test
+# churn) and ADDS the production `.claude-plugin/scripts/`
+# prefixes alongside. Production has no top-level `livespec/`
+# or `bin/` directories, so the legacy prefixes are harmless
+# (zero false positives in real repos).
+_IMPL_PREFIXES = (
+    ".claude-plugin/scripts/livespec/",
+    ".claude-plugin/scripts/bin/",
+    "livespec/",
+    "bin/",
+    "dev-tooling/",
+)
 
 
 def _head_has_red_trailers() -> bool:

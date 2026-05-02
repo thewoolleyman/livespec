@@ -929,6 +929,66 @@ def test_conventional_commit_breaking_and_scope_variants_exit_zero(
     )
 
 
+def test_classify_staged_recognizes_production_claude_plugin_scripts_paths() -> None:
+    """`_classify_staged` buckets `.claude-plugin/scripts/{livespec,bin}/...` paths as impl.
+
+    Cycle 2.8 fix (2026-05-02): the original `_IMPL_PREFIXES`
+    enumeration listed bare `livespec/` and `bin/` prefixes,
+    which don't match the actual repo layout
+    (`.claude-plugin/scripts/livespec/...` and
+    `.claude-plugin/scripts/bin/...`). Drain cycle 3a's Green
+    amend got rejected because impl_paths came back empty —
+    `.claude-plugin/scripts/livespec/validate/finding.py`
+    didn't match `livespec/`. The fix added the production
+    prefixes alongside the legacy ones (the legacy prefixes
+    are kept for paired-test fixture compatibility — the test
+    fixtures synthesize paths like `livespec/foo.py` in tmp
+    repos rather than full production paths). This test pins
+    the new prefix matches.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "red_green_replay_for_classify_test", str(_RED_GREEN_REPLAY),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    paths = [
+        ".claude-plugin/scripts/livespec/validate/finding.py",
+        ".claude-plugin/scripts/bin/seed.py",
+        "dev-tooling/checks/foo.py",
+        "tests/livespec/test_foo.py",
+        "bootstrap/STATUS.md",
+    ]
+    tests_paths, impl_paths = module._classify_staged(paths=paths)  # noqa: SLF001
+    assert ".claude-plugin/scripts/livespec/validate/finding.py" in impl_paths, (
+        f"production `.claude-plugin/scripts/livespec/...` path should be in impl bucket; "
+        f"got impl_paths={impl_paths}"
+    )
+    assert ".claude-plugin/scripts/bin/seed.py" in impl_paths, (
+        f"production `.claude-plugin/scripts/bin/...` path should be in impl bucket; "
+        f"got impl_paths={impl_paths}"
+    )
+    assert "dev-tooling/checks/foo.py" in impl_paths, (
+        f"`dev-tooling/...` path should be in impl bucket; "
+        f"got impl_paths={impl_paths}"
+    )
+    assert "tests/livespec/test_foo.py" in tests_paths, (
+        f"`tests/...` path should be in tests bucket; "
+        f"got tests_paths={tests_paths}"
+    )
+    assert "bootstrap/STATUS.md" not in impl_paths, (
+        f"`bootstrap/...` path should NOT be in impl bucket; "
+        f"got impl_paths={impl_paths}"
+    )
+    assert "bootstrap/STATUS.md" not in tests_paths, (
+        f"`bootstrap/...` path should NOT be in tests bucket; "
+        f"got tests_paths={tests_paths}"
+    )
+
+
 def test_red_green_replay_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 
