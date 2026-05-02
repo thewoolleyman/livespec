@@ -1,9 +1,9 @@
 # Bootstrap status
 
 **Current phase:** 5
-**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain sub-cycle 3f in flight: Red commit at sha 2210e11 (full Red trailers, sub_spec_payload test); Green amend pending stages dataclass + validator + STATUS update. Drain cycle 3 progress: 3a-3e done. 1 sub-cycle remains: 3g for `template_config` + binding `check-schema-dataclass-pairing` to the aggregate.
+**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain sub-cycle 3g in flight (LAST of cycle 3): Red commit at sha 189115a (full Red trailers, template_config test); Green amend pending stages dataclass + validator + justfile aggregate-bind for `check-schema-dataclass-pairing` + STATUS update. After this lands, drain cycle 3 is complete; aggregate goes 25/25 → 26/26. Drain remaining: cycle 4 (`check-complexity` 3-5 cycles), cycle 5 (`check-lint` 0-2 cycles), cycle 6 (`check-format` 0-2 cycles). Then v034 D5c quality-comparison report. Then Phase 5 exit gates.
 **Last completed exit criterion:** phase 4
-**Next action:** Drain sub-cycle 3b — author `schemas/dataclasses/doctor_findings.py` + `validate/doctor_findings.py` + paired tests (per cycle 3a pattern: test-only Red commit → impl Green amend; aggregate-bind for `check-schema-dataclass-pairing` deferred until the LAST sub-cycle since the target only passes once all 6 missing triples are complete).
+**Next action:** After cycle 3g Green amend lands, kick off drain cycle 4 — `check-complexity`. Per plan estimate ~3-5 cycles for `seed.py` refactor below 200 LLOC + remaining ruff PLR/C90 fixes. First step: run `just check-complexity` to see what fails; pick one violation per Red→Green pair under v034 D2-D3 discipline.
 
 **Drain rhythm (per 2026-05-02T09:55:00Z `bootstrap/decisions.md` entry):** drain cycles use the Conventional Commit type that honestly describes the work — `test:` for test-coverage strengthening (cycle 1), `chore:` for residual config-tier cleanup AND for the cycle 2.7 commit-pairs amend-skip fix (atomic test+impl form is required to break the catch-22 of fixing commit-pairs while under commit-pairs enforcement), `feat:`/`fix:` for genuine behavior change with full v034 D2 trailer schema via the replay hook + Red→Green amend pattern (per v036 D1 the Red commit's failing test is allowed by `just check-pre-commit`'s Red-mode classifier; per cycle 2.7 the Green amend's source-only staged tree is allowed when HEAD carries unpaired Red trailers), `refactor:` for pure restructuring.
 
@@ -14,5 +14,5 @@
 **Pre-v034 cycle history preserved as-is:** the v033 D5b second-redo cycles 1-172 used the v033 discipline (`## Red output` honor system; `phase-N: cycle N — ...` commit prefix). They are grandfathered: commitlint will exclude pre-v034-codification ancestor SHAs, and the replay-hook will skip commits without `feat:`/`fix:` subjects.
 
 Open issues: zero unresolved.
-**Last updated:** 2026-05-02T20:42:00Z
-**Last commit:** drain-sub-cycle-3f pending (feat: sub_spec_payload; Red commit pre-amend at sha 2210e11 with full Red trailers). Prior: 7f9ee8e (3e feat: revision_front_matter), 9d291e8 (3d feat: proposed_change_front_matter + TopicSlug), 5d5116b (3c livespec_config), ecee4af (3b doctor_findings), 611e0d8 (3a finding), a9810b4 (2.8), 2435814 (2.7), db73c11 (2), 70b0752 (v036 impl), 1754534 (v036 codification).
+**Last updated:** 2026-05-02T20:50:00Z
+**Last commit:** drain-sub-cycle-3g pending (feat: template_config + bind aggregate; Red commit pre-amend at sha 189115a with full Red trailers). Drain cycle 3 complete after this lands. Prior: 791f1a9 (3f sub_spec_payload), 7f9ee8e (3e revision_front_matter), 9d291e8 (3d proposed_change_front_matter + TopicSlug), 5d5116b (3c livespec_config), ecee4af (3b doctor_findings), 611e0d8 (3a finding), a9810b4 (2.8), 2435814 (2.7), db73c11 (2), 70b0752 (v036 impl), 1754534 (v036 codification).

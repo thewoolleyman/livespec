@@ -106,6 +106,7 @@ check:
         check-public-api-result-typed
         check-pbt-coverage-pure-modules
         check-newtype-domain-primitives
+        check-schema-dataclass-pairing
         check-tools
     )
     failed=()
