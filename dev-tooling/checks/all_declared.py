@@ -44,23 +44,46 @@ __all__: list[str] = []
 _LIVESPEC_TREE = Path(".claude-plugin") / "scripts" / "livespec"
 
 
+def _names_from_def(
+    *,
+    node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+) -> set[str]:
+    return {node.name}
+
+
+def _names_from_assign(*, node: ast.Assign) -> set[str]:
+    return {target.id for target in node.targets if isinstance(target, ast.Name)}
+
+
+def _names_from_annassign(*, node: ast.AnnAssign) -> set[str]:
+    if isinstance(node.target, ast.Name):
+        return {node.target.id}
+    return set()
+
+
+def _names_from_import_from(*, node: ast.ImportFrom) -> set[str]:
+    return {alias.asname or alias.name for alias in node.names}
+
+
+def _names_from_import(*, node: ast.Import) -> set[str]:
+    return {
+        alias.asname or alias.name.split(".", maxsplit=1)[0] for alias in node.names
+    }
+
+
 def _module_top_defined_names(*, tree: ast.Module) -> set[str]:
     out: set[str] = set()
     for node in tree.body:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
-            out.add(node.name)
+            out |= _names_from_def(node=node)
         elif isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    out.add(target.id)
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            out.add(node.target.id)
+            out |= _names_from_assign(node=node)
+        elif isinstance(node, ast.AnnAssign):
+            out |= _names_from_annassign(node=node)
         elif isinstance(node, ast.ImportFrom):
-            for alias in node.names:
-                out.add(alias.asname or alias.name)
+            out |= _names_from_import_from(node=node)
         elif isinstance(node, ast.Import):
-            for alias in node.names:
-                out.add(alias.asname or alias.name.split(".", maxsplit=1)[0])
+            out |= _names_from_import(node=node)
     return out
 
 

@@ -199,3 +199,51 @@ def test_all_declared_module_importable_without_running_main() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert callable(module.main), "main should be importable without invocation"
+
+
+def test_module_top_defined_names_helpers_cover_each_node_kind() -> None:
+    """The five `_names_from_*` helpers each return the expected name set.
+
+    Cycle 4b refactor extracted per-node-kind helpers from
+    `_module_top_defined_names` to bring the dispatcher under
+    ruff's C901 cyclomatic-complexity threshold. This test
+    exercises each helper directly so coverage no longer
+    depends solely on the integration test.
+    """
+    import ast
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "all_declared_for_helpers_test", str(_ALL_DECLARED),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    func_node = ast.parse("def foo() -> None: pass").body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert module._names_from_def(node=func_node) == {"foo"}  # noqa: SLF001
+
+    assign_node = ast.parse("x = 1").body[0]
+    assert isinstance(assign_node, ast.Assign)
+    assert module._names_from_assign(node=assign_node) == {"x"}  # noqa: SLF001
+
+    annassign_node = ast.parse("y: int = 2").body[0]
+    assert isinstance(annassign_node, ast.AnnAssign)
+    assert module._names_from_annassign(node=annassign_node) == {"y"}  # noqa: SLF001
+
+    # AnnAssign whose target is NOT an `ast.Name` (e.g.,
+    # `self.x: int = 1` parses as Attribute target). The
+    # helper returns empty set; this case pins the fall-
+    # through branch so per-file coverage stays at 100%.
+    annassign_attr_node = ast.parse("self.x: int = 1").body[0]
+    assert isinstance(annassign_attr_node, ast.AnnAssign)
+    assert module._names_from_annassign(node=annassign_attr_node) == set()  # noqa: SLF001
+
+    importfrom_node = ast.parse("from os import path").body[0]
+    assert isinstance(importfrom_node, ast.ImportFrom)
+    assert module._names_from_import_from(node=importfrom_node) == {"path"}  # noqa: SLF001
+
+    import_node = ast.parse("import json").body[0]
+    assert isinstance(import_node, ast.Import)
+    assert module._names_from_import(node=import_node) == {"json"}  # noqa: SLF001
