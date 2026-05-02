@@ -1,7 +1,7 @@
 # Bootstrap status
 
 **Current phase:** 5
-**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain sub-cycle 3b in flight: Red commit at sha 9552cb6 (full Red trailers, doctor_findings test); Green amend pending stages new dataclass + validator + STATUS update. Drain cycle 3 progress: 3a done (`finding`, sha 611e0d8). 5 sub-cycles remain: 3c-3g for `livespec_config`, `proposed_change_front_matter`, `revision_front_matter`, `sub_spec_payload`, `template_config`.
+**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain sub-cycle 3c in flight: Red commit at sha 219eb33 (full Red trailers, livespec_config test); Green amend pending stages new dataclass + validator + STATUS update. Drain cycle 3 progress: 3a + 3b done (`finding` + `doctor_findings`). 4 sub-cycles remain: 3d-3g for `proposed_change_front_matter`, `revision_front_matter`, `sub_spec_payload`, `template_config`.
 **Last completed exit criterion:** phase 4
 **Next action:** Drain sub-cycle 3b — author `schemas/dataclasses/doctor_findings.py` + `validate/doctor_findings.py` + paired tests (per cycle 3a pattern: test-only Red commit → impl Green amend; aggregate-bind for `check-schema-dataclass-pairing` deferred until the LAST sub-cycle since the target only passes once all 6 missing triples are complete).
 
@@ -14,5 +14,5 @@
 **Pre-v034 cycle history preserved as-is:** the v033 D5b second-redo cycles 1-172 used the v033 discipline (`## Red output` honor system; `phase-N: cycle N — ...` commit prefix). They are grandfathered: commitlint will exclude pre-v034-codification ancestor SHAs, and the replay-hook will skip commits without `feat:`/`fix:` subjects.
 
 Open issues: zero unresolved.
-**Last updated:** 2026-05-02T20:15:00Z
-**Last commit:** drain-sub-cycle-3b pending (feat: livespec/{schemas/dataclasses,validate}/doctor_findings.py; Red commit pre-amend at sha 9552cb6 with full Red trailers; Green amend stages dataclass + validator + STATUS update). Prior commits: 611e0d8 (cycle 3a feat: validate/finding.py), a9810b4 (cycle 2.8 _IMPL_PREFIXES fix), 2435814 (cycle 2.7 commit-pairs amend-skip), db73c11 (cycle 2 feat:), 70b0752 (v036 impl), 1754534 (v036 codification).
+**Last updated:** 2026-05-02T20:20:00Z
+**Last commit:** drain-sub-cycle-3c pending (feat: livespec/{schemas/dataclasses,validate}/livespec_config.py; Red commit pre-amend at sha 219eb33 with full Red trailers; Green amend stages dataclass + validator + STATUS update). Prior commits: ecee4af (cycle 3b feat: doctor_findings), 611e0d8 (cycle 3a feat: finding), a9810b4 (cycle 2.8 _IMPL_PREFIXES fix), 2435814 (cycle 2.7 commit-pairs amend-skip), db73c11 (cycle 2 feat:), 70b0752 (v036 impl), 1754534 (v036 codification).
