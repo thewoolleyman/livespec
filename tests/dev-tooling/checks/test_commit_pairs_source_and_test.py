@@ -106,6 +106,174 @@ def test_commit_pairs_rejects_staged_source_without_staged_test(*, tmp_path: Pat
     )
 
 
+def test_commit_pairs_skips_when_head_has_unpaired_red_trailers(
+    *, tmp_path: Path,
+) -> None:
+    """A staged source-only commit with HEAD carrying unpaired Red trailers passes the check.
+
+    Per v034 D2-D3 amend-pattern coexistence (cycle 2.7): when
+    HEAD's commit message contains `TDD-Red-Test-File-Checksum:`
+    WITHOUT `TDD-Green-Verified-At:`, the next operation is
+    structurally guaranteed to be `git commit --amend` adding the
+    impl. During that amend, `git diff --cached --name-only`
+    shows only the impl (the Red commit's test is in HEAD,
+    unchanged). The check skips itself; pairing is enforced by
+    v034 D3's replay hook at the commit-msg stage.
+
+    Fixture: fresh git repo with HEAD's commit message carrying a
+    Red trailer (mocking the Red commit's state). A
+    source file is staged WITHOUT a test file. The check, invoked
+    with `cwd=tmp_path`, detects HEAD's amend-pending state and
+    exits 0 (skip).
+    """
+    _git(cwd=tmp_path, args=["init", "-q"])
+    _git(cwd=tmp_path, args=["config", "user.email", "test@example.com"])
+    _git(cwd=tmp_path, args=["config", "user.name", "Test"])
+    # Baseline + a Red commit (its message carries the Red trailer).
+    (tmp_path / "README.md").write_text("baseline\n", encoding="utf-8")
+    _git(cwd=tmp_path, args=["add", "README.md"])
+    _git(cwd=tmp_path, args=["commit", "-m", "baseline"])
+    test_dir = tmp_path / "tests" / "livespec" / "foo"
+    test_dir.mkdir(parents=True)
+    (test_dir / "test_bar.py").write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\n"
+        "def test_bar() -> None:\n    assert True\n",
+        encoding="utf-8",
+    )
+    _git(cwd=tmp_path, args=["add", "tests/livespec/foo/test_bar.py"])
+    red_commit_message = (
+        "feat: foo bar\n\nRed commit body.\n\n"
+        "TDD-Red-Test: tests/livespec/foo/test_bar.py\n"
+        "TDD-Red-Test-File-Checksum: sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
+    )
+    _git(cwd=tmp_path, args=["commit", "-m", red_commit_message])
+
+    # Now stage an impl file (the Green amend's content).
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "foo"
+    package_dir.mkdir(parents=True)
+    (package_dir / "bar.py").write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\nx = 0\n",
+        encoding="utf-8",
+    )
+    _git(cwd=tmp_path, args=["add", ".claude-plugin/scripts/livespec/foo/bar.py"])
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled script path).
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"commit_pairs should skip when HEAD has unpaired Red trailers; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_commit_pairs_applies_when_head_has_paired_red_and_green_trailers(
+    *, tmp_path: Path,
+) -> None:
+    """A staged source-only commit with HEAD carrying Red+Green trailers fails the check.
+
+    After a Green amend lands, HEAD carries BOTH `TDD-Red-*` and
+    `TDD-Green-*` trailers — the "complete" state. The next
+    commit isn't an amend; it's a fresh top-of-branch commit. The
+    check resumes normal enforcement: source-without-paired-test
+    is rejected.
+    """
+    _git(cwd=tmp_path, args=["init", "-q"])
+    _git(cwd=tmp_path, args=["config", "user.email", "test@example.com"])
+    _git(cwd=tmp_path, args=["config", "user.name", "Test"])
+    (tmp_path / "README.md").write_text("baseline\n", encoding="utf-8")
+    _git(cwd=tmp_path, args=["add", "README.md"])
+    _git(cwd=tmp_path, args=["commit", "-m", "baseline"])
+    test_dir = tmp_path / "tests" / "livespec" / "foo"
+    test_dir.mkdir(parents=True)
+    (test_dir / "test_bar.py").write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\n"
+        "def test_bar() -> None:\n    assert True\n",
+        encoding="utf-8",
+    )
+    _git(cwd=tmp_path, args=["add", "tests/livespec/foo/test_bar.py"])
+    paired_commit_message = (
+        "feat: foo bar\n\nRed+Green pair body.\n\n"
+        "TDD-Red-Test: tests/livespec/foo/test_bar.py\n"
+        "TDD-Red-Test-File-Checksum: sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
+        "TDD-Green-Verified-At: 2026-05-02T00:00:00Z\n"
+    )
+    _git(cwd=tmp_path, args=["commit", "-m", paired_commit_message])
+
+    # Now stage a source-only change for a NEW commit (not an amend).
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "foo"
+    package_dir.mkdir(parents=True)
+    (package_dir / "bar.py").write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\nx = 0\n",
+        encoding="utf-8",
+    )
+    _git(cwd=tmp_path, args=["add", ".claude-plugin/scripts/livespec/foo/bar.py"])
+
+    # S603: argv is a fixed list (sys.executable + repo-controlled script path).
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"commit_pairs should reject source-only when HEAD has paired Red+Green trailers; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_commit_pairs_skips_on_empty_repo_with_no_head() -> None:
+    """On a fresh repo with zero commits, the head-message lookup falls back gracefully.
+
+    Drives the `result.returncode != 0` early-return in
+    `_head_has_unpaired_red_trailers` (line 92-ish): `git log -1`
+    exits non-zero on a repo with no commits, the function
+    returns False (no Red trailers), and the check applies its
+    normal source-vs-test enforcement.
+
+    Fixture: fresh git repo with NO commits AND no staged files
+    in the source/test trees. The check exits 0 (no source
+    changes = passes the existing source-vs-test logic).
+    """
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as raw_dir:
+        empty_repo = Path(raw_dir)
+        _git(cwd=empty_repo, args=["init", "-q"])
+        _git(cwd=empty_repo, args=["config", "user.email", "test@example.com"])
+        _git(cwd=empty_repo, args=["config", "user.name", "Test"])
+        # Stage a non-source file so `_staged_files` has something
+        # to enumerate but the source-tree filter returns an empty
+        # list (no rejection).
+        (empty_repo / "README.md").write_text("seed\n", encoding="utf-8")
+        _git(cwd=empty_repo, args=["add", "README.md"])
+
+        # S603: argv is a fixed list (sys.executable + repo-controlled
+        # script path); no untrusted shell input.
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
+            cwd=str(empty_repo),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    assert result.returncode == 0, (
+        f"commit_pairs should accept empty repo with no source changes; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
 def test_commit_pairs_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 

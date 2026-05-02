@@ -1321,3 +1321,60 @@ This is plan-only soft drift — the type-tables already enumerate
 the options, so no plan/PROPOSAL edit is required. The decision
 is recorded here so future cycles + future invocations follow
 the same rhythm.
+
+## 2026-05-02T18:50:00Z — phase 5 (drain cycle 2.7)
+
+**Decision:** `dev-tooling/checks/commit_pairs_source_and_test.py`
+gains a v034 D2-D3 amend-mode skip: when HEAD's commit message
+carries `TDD-Red-Test-File-Checksum:` WITHOUT
+`TDD-Green-Verified-At:` (the canonical "Red commit awaiting
+Green amend" state), the check exits 0 immediately. After the
+Green amend lands, HEAD has both trailers and the check resumes
+normal enforcement. PROPOSAL line 4054's contract ("every
+feat/fix commit ... must also touch tests/**") is unaffected:
+the post-amend commit DOES contain both source (Green amend)
+and test (Red commit) — the contract is satisfied at the
+final form of the commit, just not at the staged-vs-HEAD diff
+during the amend.
+
+**Rationale:** This is the second instance of the same shape
+of conflict v036 D1 fixed. v033 D5a's pre-commit hook stack
+includes commit-pairs (cheap gate) + check (expensive aggregate).
+v036 D1 fixed the check / Red-mode conflict via Red-mode-aware
+classifier. v034's amend pattern requires the Red commit to
+stage a test ONLY (no impl) and the Green amend to add the impl
+(test unchanged); during the amend, `git diff --cached --name-only`
+sees only the impl, so commit-pairs (which expects source AND
+test in the staged tree) rejects.
+
+The detection mechanism — HEAD-has-Red-without-Green — is
+precise: it captures exactly the "amend-pending" state and
+nothing else. After the Green amend (or any subsequent commit),
+HEAD has both trailers and the check applies normally. This
+avoids the false-positive "skip forever" failure mode of
+weaker detection (e.g., "skip if HEAD has Red trailers" would
+skip every commit after the first Green, since Red trailers
+persist in master's history).
+
+PROPOSAL.md is unaffected (line 4054 only describes the
+contract, not the implementation). This is plan-only drift,
+fixed via Case-B direct-fix per the bootstrap skill discipline.
+The user gated this fix via AskUserQuestion 2026-05-02 picking
+"Fix commit-pairs amend-awareness (Recommended)".
+
+The cycle is committed atomically as a `chore:` (Conventional
+Commits "Other changes that don't modify src or test files" is
+strictly inaccurate — the change DOES modify source + test —
+but the chore type is appropriate here because the v034 D3
+replay hook exempts it, allowing the atomic test+impl shape
+needed to break the catch-22 of fixing commit-pairs while
+under commit-pairs enforcement).
+
+The follow-up work after cycle 2.7 lands: redo the v034 D7
+drain cycle 3a (`livespec/validate/finding.py`) under the
+Red→Green amend pattern. The cycle 3a Red commit at sha 8038a60
+was reset via `git reset --soft HEAD~1` and dropped from
+HEAD (recoverable via reflog if ever needed). The cycle 3a
+artifacts (test_finding.py + validate/finding.py) sit in the
+working tree as untracked files, ready to be re-staged after
+cycle 2.7 lands.
