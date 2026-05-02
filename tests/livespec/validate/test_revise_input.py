@@ -17,6 +17,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from hypothesis import given
+from hypothesis import strategies as st
 from returns.result import Failure, Success
 
 from livespec.errors import ValidationError
@@ -110,6 +112,44 @@ def test_validate_revise_input_carries_optional_author_when_present() -> None:
         case Success(value):
             assert isinstance(value, RevisionInput)
             assert value.author == "claude-opus-4-7"
+        case _:
+            msg = f"expected Success(RevisionInput), got {result}"
+            raise AssertionError(msg)
+
+
+@given(
+    rationale=st.text(min_size=1, max_size=200),
+    author=st.text(min_size=1, max_size=80),
+)
+def test_validate_revise_input_round_trips_text_fields_through_success_path(
+    *,
+    rationale: str,
+    author: str,
+) -> None:
+    """For arbitrary `rationale` + `author` strings, the success path preserves them verbatim.
+
+    The validator's job on the success path is a pure projection
+    of the validated payload into the `RevisionInput` dataclass;
+    no normalization, no truncation, no encoding rewrites. This
+    property asserts that contract holds for arbitrary user-
+    provided text within the schema's `type: string` constraint.
+    """
+    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    payload: dict[str, object] = {
+        "author": author,
+        "decisions": [
+            {
+                "proposal_topic": "demo",
+                "decision": "reject",
+                "rationale": rationale,
+            },
+        ],
+    }
+    result = revise_input.validate_revise_input(payload=payload, schema=schema)
+    match result:
+        case Success(value):
+            assert value.author == author
+            assert value.decisions[0]["rationale"] == rationale
         case _:
             msg = f"expected Success(RevisionInput), got {result}"
             raise AssertionError(msg)

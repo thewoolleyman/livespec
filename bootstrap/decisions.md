@@ -1254,3 +1254,70 @@ PROPOSAL revision can either (a) implement v034 D6 as written, or
 (c) simply remove §"Baseline-grandfathered violations" from the
 spec as no-longer-relevant once the drain completes and the
 aggregate is fully restored.
+
+## 2026-05-02T09:55:00Z — phase 5 (v034 D7 drain cycle 1)
+
+**Decision:** Drain cycles use the Conventional Commit type that
+honestly describes the work, not a uniform `feat:`/`fix:` for the
+whole drain:
+
+- `test:` — drain cycles whose work is test-coverage strengthening
+  with no impl change (cycle 1 — `check-pbt-coverage-pure-modules`:
+  added `@given(...)` PBT decorators to
+  `tests/livespec/parse/test_jsonc.py`,
+  `tests/livespec/validate/test_revise_input.py`,
+  `tests/livespec/validate/test_seed_input.py`).
+- `chore:` — drain cycles whose work is config-tier cleanup with
+  no behavior change (likely fits any residual `check-lint` /
+  `check-format` cycles if findings are pure cosmetics).
+- `feat:` / `fix:` — drain cycles whose work is genuine behavior
+  change. Full v034 D2 trailer schema + Red→Green amend pattern
+  enforced by the replay hook at the `commit-msg` stage. Expected
+  to cover `check-newtype-domain-primitives` (creates
+  `livespec/types.py` + migrates four raw-`str` fields),
+  `check-schema-dataclass-pairing` (one triple per cycle), and
+  any `check-complexity` reductions that genuinely change behavior
+  (`refactor:` for pure restructuring).
+- The same commit (Green amend for `feat:`/`fix:`; single commit
+  for `test:`/`chore:`/`refactor:`) ALSO rejoins the now-passing
+  target to the `just check` aggregate's `targets=(...)` list at
+  `justfile:75-99`.
+
+STATUS.md's prior framing ("~11-15 commits with `feat:`/`fix:`
+subjects following the v034 D2 trailer schema") was overstated;
+the actual rhythm is mixed by target.
+
+**Rationale:** PROPOSAL.md §"Required-vs-skipped by commit type"
+(lines 3617-3624) and the matching plan type-table at Phase 5
+§"Per-commit Red→Green replay discipline (v034 D2-D3)" (lines
+2431-2437) both explicitly enumerate `test`, `chore`, `refactor`,
+`docs`, `build`, `ci`, `style`, `revert` as no-trailer-required
+types. The plan's §"Per-cycle workflow" prose
+("`feat:` for new code paths, `fix:` for adjustments to existing
+code") describes the typical behavior-change shape but does not
+prohibit non-behavior types where they honestly describe the
+work. The v032 D1 carve-out closure (which v034 inherits) forbids
+characterization tests authored in `feat:`/`fix:` form without a
+real Red moment — that closure's intent is preserved by routing
+policy-compliance work through the no-trailer types instead of
+fabricating a Red→Green amend for code that already passes its
+existing tests.
+
+Concrete instance: drain cycle 1 (`check-pbt-coverage-pure-modules`)
+adds `@given(...)` property tests to three pure-layer test
+modules whose impls (`livespec/parse/jsonc.py`,
+`livespec/validate/revise_input.py`,
+`livespec/validate/seed_input.py`) already exist and pass their
+existing tests. Authoring as `feat:` would have required either
+(a) designing properties the impls violate (synthetic Red,
+expanding cycle scope to "find and fix real defects in three
+modules" before the drain can advance), or (b) bypassing the
+replay hook with a fake Red moment (breaks v034's airtight-honest
+contract). The `test:` type honestly captures
+"test-coverage strengthening; no behavior change" and the v034
+hook's exempt list accommodates this.
+
+This is plan-only soft drift — the type-tables already enumerate
+the options, so no plan/PROPOSAL edit is required. The decision
+is recorded here so future cycles + future invocations follow
+the same rhythm.

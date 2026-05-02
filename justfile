@@ -104,6 +104,7 @@ check:
         check-heading-coverage
         check-rop-pipeline-shape
         check-public-api-result-typed
+        check-pbt-coverage-pure-modules
         check-tools
     )
     failed=()

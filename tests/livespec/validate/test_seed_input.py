@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from hypothesis import given
+from hypothesis import strategies as st
 from returns.result import Success
 
 from livespec.schemas.dataclasses.seed_input import SeedInput
@@ -55,3 +57,31 @@ def test_validate_seed_input_returns_success_with_dataclass_for_valid_payload() 
         sub_specs=[],
     )
     assert result == Success(expected)
+
+
+@given(intent=st.text(min_size=1, max_size=200))
+def test_validate_seed_input_round_trips_intent_text(*, intent: str) -> None:
+    """For arbitrary `intent` strings, the success path preserves the text verbatim.
+
+    The validator's job on the success path is a pure projection
+    of the validated payload into `SeedInput`; the `intent` field
+    is captured verbatim into the auto-emitted seed proposed-
+    change file, so any silent mutation here would corrupt
+    downstream artifacts. The schema constrains `intent` to
+    `type: string` with no further restrictions, so any string
+    must round-trip unchanged.
+    """
+    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    payload: dict[str, object] = {
+        "template": "livespec",
+        "intent": intent,
+        "files": [{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        "sub_specs": [],
+    }
+    result = seed_input.validate_seed_input(payload=payload, schema=schema)
+    match result:
+        case Success(value):
+            assert value.intent == intent
+        case _:
+            msg = f"expected Success(SeedInput), got {result}"
+            raise AssertionError(msg)
