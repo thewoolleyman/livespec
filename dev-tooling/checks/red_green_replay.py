@@ -45,12 +45,22 @@ the staged test passes — not a valid Red moment — and the
 hook rejects with a structured
 `red-green-replay-test-passed-at-red` error pointing the
 developer at the constraint that Red mode requires the
-staged test to fail. Future cycles wire Red trailer
-authoring via `git interpret-trailers --in-place`, Green-
-mode detection from HEAD~0 trailer inspection, Green-mode
-pytest invocation, Green trailer authoring with
-`TDD-Green-Parent-Reflog:` reflog-verification, and
-anti-cheat reflog inspection.
+staged test to fail. Cycle 181 wires Red trailer authoring:
+once Red moment is confirmed, the hook computes
+`TDD-Red-Output-Checksum` (SHA-256 of pytest output) and
+`TDD-Red-Captured-At` (UTC ISO 8601 now), then invokes
+`git interpret-trailers --in-place --trailer ... <msg_path>`
+adding the full v034 D2 trailer set
+(`TDD-Red-Test`, `TDD-Red-Failure-Reason`,
+`TDD-Red-Test-File-Checksum`, `TDD-Red-Output-Checksum`,
+`TDD-Red-Captured-At`) and **returns 0**, allowing the
+commit to proceed. This is the first non-exempt path that
+exits 0; the prior "always reject for non-exempt" contract
+relaxes to "exit 0 iff Red moment fully verified". Future
+cycles wire Green-mode detection from HEAD~0 trailer
+inspection, Green-mode pytest invocation, Green trailer
+authoring with `TDD-Green-Parent-Reflog:` reflog-
+verification, and anti-cheat reflog inspection.
 
 This file is authored under the v033 discipline still in
 force (the replay hook itself is not yet gating; the v033
@@ -69,6 +79,7 @@ time.
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import subprocess  # noqa: S404
 import sys
@@ -193,6 +204,30 @@ def main() -> int:
             test_file_checksum=test_file_checksum,
             pytest_returncode=pytest_result.returncode,
         )
+        pytest_output = pytest_result.stdout + pytest_result.stderr
+        output_checksum = (
+            f"sha256:{hashlib.sha256(pytest_output.encode('utf-8')).hexdigest()}"
+        )
+        captured_at = datetime.datetime.now(datetime.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ",
+        )
+        failure_reason = " ".join(pytest_output.split())[:200]
+        trailer_args: list[str] = []
+        for key, value in (
+            ("TDD-Red-Test", tests_paths[0]),
+            ("TDD-Red-Failure-Reason", failure_reason),
+            ("TDD-Red-Test-File-Checksum", test_file_checksum),
+            ("TDD-Red-Output-Checksum", output_checksum),
+            ("TDD-Red-Captured-At", captured_at),
+        ):
+            trailer_args.extend(["--trailer", f"{key}: {value}"])
+        subprocess.run(  # noqa: S603, S607
+            ["git", "interpret-trailers", "--in-place", *trailer_args, str(msg_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return 0
     return 1
 
 

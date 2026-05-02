@@ -495,9 +495,9 @@ def test_feat_with_failing_test_staged_emits_red_pytest_result(
         check=False,
     )
 
-    assert result.returncode != 0, (
-        f"hook still rejects until trailer authoring lands; "
-        f"got returncode={result.returncode}"
+    assert result.returncode == 0, (
+        f"after cycle 181, Red-moment-confirmed exits 0 (commit proceeds); "
+        f"got returncode={result.returncode} stderr={result.stderr!r}"
     )
     assert "red-pytest-result" in result.stderr, (
         f"expected 'red-pytest-result' event in stderr for failing test; "
@@ -565,6 +565,76 @@ def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
     assert "red-pytest-result" not in result.stderr, (
         f"red-pytest-result event MUST NOT fire when pytest passes; "
         f"got stderr={result.stderr!r}"
+    )
+
+
+def test_feat_with_failing_test_writes_full_red_trailer_schema(
+    *, tmp_path: Path,
+) -> None:
+    """Red-moment confirmed → COMMIT_EDITMSG gains the v034 D2 trailer schema.
+
+    Cycle 181 wires Red trailer authoring via `git interpret-trailers
+    --in-place`. Per PROPOSAL.md §"Trailer schema", the full set of
+    Red trailers required at the Red commit boundary is:
+
+      TDD-Red-Test: <pytest-node-id>
+      TDD-Red-Failure-Reason: <one-line failure summary>
+      TDD-Red-Test-File-Checksum: sha256:<hex>
+      TDD-Red-Output-Checksum: sha256:<hex>
+      TDD-Red-Captured-At: <UTC ISO 8601>
+
+    This test stages a single failing test, runs the hook, then
+    re-reads the COMMIT_EDITMSG file and asserts each trailer key is
+    present. The hook returns 0 (the new happy-path exit — Red moment
+    fully verified, commit proceeds).
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    test_file = tmp_path / "tests" / "test_red.py"
+    test_file.write_text(
+        "def test_red() -> None:\n"
+        "    assert False, 'red-trailer-test'\n",
+        encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_red.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"Red-moment-confirmed must exit 0 (commit proceeds); "
+        f"got returncode={result.returncode} stderr={result.stderr!r}"
+    )
+
+    final_msg = msg_path.read_text(encoding="utf-8")
+    for trailer_key in (
+        "TDD-Red-Test:",
+        "TDD-Red-Failure-Reason:",
+        "TDD-Red-Test-File-Checksum:",
+        "TDD-Red-Output-Checksum:",
+        "TDD-Red-Captured-At:",
+    ):
+        assert trailer_key in final_msg, (
+            f"expected trailer {trailer_key!r} in COMMIT_EDITMSG; "
+            f"got final_msg={final_msg!r}"
+        )
+    assert "sha256:" in final_msg, (
+        f"expected sha256: prefix in trailers (Test-File-Checksum + Output-Checksum); "
+        f"got final_msg={final_msg!r}"
     )
 
 
