@@ -76,7 +76,7 @@ def _run_wrapper(
     )
 
 
-def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:
+def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: PLR0915
     """Full Phase-3 round-trip: seed -> propose-change -> critique -> revise -> prune-history -> doctor.
 
     Pins the composed behavior the cycles 65-145 ladder authored
@@ -91,6 +91,19 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:
     cycle 30 carried; it lands in Phase 7 hardening for v033
     per the briefing's "Phase-3 minimum subset" framing). Seed's
     payload here exercises only the main `SPECIFICATION/` tree.
+
+    PLR0915 noqa rationale (cycle 4d, 2026-05-02): integration
+    tests of multi-step round-trips inherently exceed ruff's
+    default 30-statement budget — this test has 49 statements
+    across 6 sequential sub-command invocations + their
+    assertions. Extracting each step into a helper function would
+    obscure the round-trip's sequential reading order without
+    materially improving testability (the steps share state via
+    the shared `tmp_path` filesystem and are tested as a
+    composed pipeline, not individually). The noqa is targeted
+    to this single function rather than a tests/**.py-wide
+    PLR0915 exemption (no other test exceeds the 30-statement
+    threshold; widening would mask future test bloat).
     """
     project_root = tmp_path
 
