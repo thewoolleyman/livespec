@@ -869,6 +869,62 @@ v029 decisions (direct critique-fix overlay; see
   format path. v034 closes all three with a coordinated
   eight-decision revision.
 
+- v035 D1 (PROPOSAL.md + plan-level): Defer the v034 D6
+  baseline-grandfathered-violations mechanism indefinitely.
+  The TOML file at `<repo-root>/phase-5-deferred-violations.toml`
+  is NOT authored at the v034 step-3 activation commit (sha
+  `495e5ce`); the per-check baseline-loading machinery is
+  NOT implemented. The thinned `just check` aggregate at
+  `justfile:75-99` is retained; the v034 D7 drain proceeds
+  against it via the v033 D5b grow-as-passing pattern. PROPOSAL
+  §"Baseline-grandfathered violations (v034 D6)" rewritten to
+  mark the mechanism deferred + cross-reference
+  `bootstrap/decisions.md` 2026-05-02T06:00:00Z + describe the
+  actual slim-activation path. Plan §"v034 transition" step 3
+  + §"Aggregate-restoration drain" entry/exit/per-cycle
+  conditions updated to match.
+- v035 D2 (PROPOSAL.md + plan-level): Fix PROPOSAL line 3517
+  wording. The replay hook is `commit-msg`, not `pre-commit`.
+  PROPOSAL line 3517 changes "The pre-commit hook" to "The
+  `commit-msg` hook". Plan §"v034 transition" step 3 changes
+  "lefthook.yml pre-commit ordering" to "lefthook.yml
+  `commit-msg` stage". The two stages are not interchangeable:
+  `commit-msg` is required because the hook writes trailers via
+  `git interpret-trailers --in-place` on the commit-message
+  file (passed as argv[1]) and inspects HEAD~0 to detect
+  Red-vs-Green amend.
+- v035 D3 (PROPOSAL.md + plan-level): Defer the v034 D3
+  §"Anti-cheat" reflog-inspection mechanism to post-v1.0.0
+  hardening. The hook captures the parent SHA via
+  `git rev-parse HEAD` and writes the
+  `TDD-Green-Parent-Reflog` trailer, but does NOT verify the
+  SHA's presence in `.git/logs/HEAD` or inspect its trailers.
+  The local Red→Green amend pattern is mechanically airtight
+  for honest workflows; bad-actor protection is not load-
+  bearing for the v034 D7 drain. PROPOSAL §"Anti-cheat" gains
+  a deferral note pointing to v035 D3.
+- v035 D4 (PROPOSAL.md): Codify the multi-test-file rejection
+  in PROPOSAL §"Red mode (initial commit)". Cycle 179 (sha
+  `446b96b`) implemented per-file enforcement: the hook
+  rejects multi-test-file staged trees with a structured
+  `red-green-replay-multi-test-file` diagnostic, since the
+  v034 D2 `TDD-Red-Test-File-Checksum:` trailer is singular.
+  The v035 D4 PROPOSAL edit adds an explicit "Per-file
+  constraint" sub-paragraph making the implicit constraint
+  explicit.
+- v035 D5 (plan-level): Plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v035/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v035". Execution-prompt
+  block authoritative-version line bumps to v035. Plan
+  §"v034 transition" step 3 + §"Aggregate-restoration drain"
+  body updated per D1-D2 (see those decision entries).
+- Triggered by drift discovered at the v034 step-3 activation
+  commit (sha `495e5ce`). The slim-activation path
+  authorized by the user via AskUserQuestion 2026-05-02
+  diverges from PROPOSAL.md as written; without v035, fresh
+  drain-cycle agents reading the spec would be misled.
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -1079,8 +1135,15 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v034/PROPOSAL.md` (the v034
-   snapshot — v033 substance plus the eight v034 decisions:
+   byte-identical to `history/v035/PROPOSAL.md` (the v035
+   snapshot — v034 substance plus the five v035 decisions:
+   defer v034 D6 baseline-grandfathered mechanism (D1), fix
+   PROPOSAL line 3517 "pre-commit" → "commit-msg" wording
+   (D2), defer v034 D3 anti-cheat reflog inspection (D3),
+   codify multi-test-file rejection in §"Red mode" (D4), and
+   plan-text + housekeeping (D5) per
+   `history/v035/proposed_changes/critique-fix-v034-revision.md`;
+   v034 substance is v033 substance plus the eight v034 decisions:
    Conventional Commits + semantic-release adoption (D1),
    TDD-Red/Green trailer schema (D2), replay-based enforcement
    contract via `red_green_replay.py` replacing
@@ -1166,7 +1229,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v034. Further evolution happens in
+   > **Status:** Frozen at v035. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -2600,15 +2663,15 @@ mechanical strength.
 
 #### v034 transition — replay-hook activation + drain authorization (v034 D3 / D5 / D6)
 
-v034 codification (the present revision) extends the v033
-mechanical-enforcement layer with three new mechanisms:
-the trailer-based Red→Green replay contract (D2-D3) per
+v034 codification extended the v033 mechanical-enforcement
+layer with two new mechanisms (per v035 D1 the third —
+baseline-grandfathered violations — is deferred): the
+trailer-based Red→Green replay contract (D2-D3) per
 §"Per-commit Red→Green replay discipline (v034 D2-D3)"
-above; the baseline-grandfathered violation file (D6) per
-PROPOSAL §"Baseline-grandfathered violations"; and the
-Conventional Commits format (D1) per PROPOSAL §"Commit
-conventions and versioning". Concrete sequence (executed
-once in the v034 codification → drain transition):
+above; and the Conventional Commits format (D1) per
+PROPOSAL §"Commit conventions and versioning". Concrete
+sequence (executed once in the v034 codification → drain
+transition):
 
 1. **v034 codification commit lands.** The first
    conventional commit, with subject `chore!: codify v034
@@ -2623,31 +2686,43 @@ once in the v034 codification → drain transition):
    `## Red output` honor-system rule (the replay hook
    itself isn't gating yet; v033 discipline is in force).
    Estimated 5-10 cycles for the hook + paired tests.
-3. **Replay-hook activation commit.** Updates `justfile`:
-   renames `check-red-output-in-commit` to
-   `check-red-green-replay`; updates `lefthook.yml`
-   pre-commit ordering: `check-red-green-replay` first
-   (cheap header-parsing + amend-detection), then
-   `check-commit-pairs-source-and-test`, then `check`
-   aggregate. Removes `dev-tooling/checks/red_output_in_commit.py`
-   + `tests/dev-tooling/checks/test_red_output_in_commit.py`
-   (replaced by the v034 D3 pair). Authors the initial
-   `phase-5-deferred-violations.toml` (D6) at the repo root
-   enumerating every currently-failing canonical-target
-   violation. Replaces the thinned `just check` aggregate
-   at `justfile:75-99` with the full canonical-target list
-   + a one-line reference to D6 + the baseline file. The
-   `bootstrap` recipe gains a `git config --add
-   remote.origin.fetch "+refs/notes/*:refs/notes/*"` line
-   (D4). Subject line: `chore!: activate v034 replay hook
-   + baseline-grandfathered violations + conventional-
-   commits enforcement`.
+3. **Replay-hook activation commit (slim path per v035 D1).**
+   Updates `justfile`: renames `check-red-output-in-commit`
+   to `check-red-green-replay msg_path` (the renamed recipe
+   takes the commit-message file path as a positional
+   argument). Updates `lefthook.yml`: removes
+   `02-red-output-in-commit` from `pre-commit`; renumbers
+   `03-check` → `02-check`; adds a new `commit-msg` stage
+   with `01-red-green-replay` invoking `just
+   check-red-green-replay {1}` (lefthook's `{1}` template
+   resolves to the commit-message file path git passes to
+   commit-msg hooks; per v035 D2 the replay hook is
+   `commit-msg` stage, NOT `pre-commit` — the design needs
+   the message file as argv[1] and inspects HEAD~0 to
+   distinguish Red vs Green amend). Removes
+   `dev-tooling/checks/red_output_in_commit.py` +
+   `tests/dev-tooling/checks/test_red_output_in_commit.py`
+   (replaced by the v034 D3 pair). The `bootstrap` recipe
+   is extended to also `cp dev-tooling/git-hook-wrapper.sh
+   .git/hooks/commit-msg` and to idempotently
+   `git config --add remote.origin.fetch
+   "+refs/notes/*:refs/notes/*"` (D4 notes refspec).
+   Per v035 D1: the v034 D6 baseline-grandfathered
+   mechanism is deferred indefinitely — no
+   `phase-5-deferred-violations.toml` is authored, and the
+   thinned `just check` aggregate at `justfile:75-99` is
+   retained. The drain proceeds against the thinned
+   aggregate via the v033 D5b grow-as-passing pattern (each
+   drain cycle rejoins its now-passing target).
+   Subject line: `chore!: activate v034 replay hook +
+   remove v033 hook (slim activation; v034 D6 deferred)`.
 4. **From this commit forward, every commit gates on
    the new mechanisms.** `feat:` and `fix:` commits
-   require the trailer schema + amend pattern; the local
-   pre-commit hook runs the FULL canonical-target list
-   against the baseline; commitlint validates Conventional
-   Commit format on every commit subject.
+   require the trailer schema + amend pattern (enforced at
+   `commit-msg` stage by the replay hook); the local
+   `pre-commit` aggregate continues to gate on the thinned
+   `just check` (per v035 D1); commitlint validates
+   Conventional Commit format on every commit subject.
 
 This is the activation point of the **v034 hard-constraint
 per-commit gate** per PROPOSAL.md §"Testing approach —
@@ -2663,35 +2738,42 @@ The Phase-3-content gaps that produced the unbound
 aggregate targets at v033 D5b cycle 172 are drained under
 the new v034 discipline as the next sub-section of Phase 5.
 
-**Entry condition.** Replay-hook activation commit (per
-the §"v034 transition" section above) has landed AND
-`phase-5-deferred-violations.toml` exists at the repo root
-enumerating the initial set of grandfathered violations.
+**Entry condition (v035 D1 slim path).** Replay-hook
+activation commit (per the §"v034 transition" section
+above, sha `495e5ce`) has landed. The thinned
+`just check` aggregate at `justfile:75-99` is retained;
+no `phase-5-deferred-violations.toml` exists (v034 D6
+deferred per v035 D1).
 
-**Exit condition.** `phase-5-deferred-violations.toml` is
-empty (zero `[[violation]]` blocks) AND the file has been
-deleted from the tree by the cycle that drained the final
-entry. From that commit forward, the local pre-commit hook
-runs the full canonical-target list with no
-grandfathering; any new violation fails the hook.
+**Exit condition (v035 D1 slim path).** Every previously-
+unbound canonical target — the four content-gap targets
+(`check-pbt-coverage-pure-modules`,
+`check-newtype-domain-primitives`,
+`check-schema-dataclass-pairing`, `check-complexity`) plus
+the two config-tier targets (`check-lint`, `check-format`)
+— is bound to the `just check` aggregate's `targets=(...)`
+list AND passes. From that commit forward, the local
+`just check` aggregate de facto matches the full
+canonical-target list; any new violation that breaks any
+target fails the local pre-commit gate.
 
 **Per-cycle workflow.**
 
-1. Pick one or more `[[violation]]` blocks from the
-   baseline.
+1. Pick one previously-unbound canonical target from the
+   list above.
 2. Author the fix under v034 D1-D5 discipline: pick a
    Conventional Commit type (`feat:` for new code paths,
    `fix:` for adjustments to existing code); write the
    smallest failing test for the fix (Red); commit (Red
-   commit + Red trailers); write the implementation; amend
-   (Green commit + Green trailers).
-3. The same commit (the Green amend) ALSO removes the
-   resolved baseline entries. The `red_green_replay.py`
-   hook verifies: the baseline diff is internally
-   consistent (resolved violations are no longer detected
-   by their checks); new violations are not introduced; if
-   the baseline goes empty, the file is deleted in the
-   same commit.
+   commit + Red trailers via the v034 D3 replay hook at
+   `commit-msg` stage); write the implementation; amend
+   (Green commit + Green trailers via the same hook).
+3. The same commit (the Green amend) ALSO rejoins the
+   now-passing target to the `just check` aggregate's
+   `targets=(...)` list at `justfile:75-99`. The replay
+   hook verifies the Red→Green pair under the v034 D2
+   trailer schema; the aggregate re-binding is plain
+   `justfile` editing.
 
 **Estimated cycle count.** ~11-15 cycles total:
 
@@ -2768,11 +2850,15 @@ The lefthook-only checks `check-commit-pairs-source-and-test`
 replacing the v033 `check-red-output-in-commit`) have been
 hard-gating every commit since their respective activation
 commits. `just bootstrap` has been run and lefthook is
-installed. The v034 D6 baseline file
-`phase-5-deferred-violations.toml` has been drained to empty
-and deleted (per v034 D7 drain exit condition); the local
-pre-commit hook now runs the full canonical-target list with
-no grandfathering. The v034 D5c retroactive-TDD quality-
+installed (including the v034 D3 commit-msg stage hook per
+v035 D2 + the v034 D4 notes refspec). Per v035 D1, the v034
+D6 baseline-grandfathered mechanism was deferred at the
+slim activation; the v034 D7 drain instead grew the thinned
+`just check` aggregate as each previously-unbound canonical
+target became passing (v033 D5b grow-as-passing pattern).
+At Phase 5 exit the aggregate de facto matches the full
+canonical-target list — every target above is bound and
+passing. The v034 D5c retroactive-TDD quality-
 comparison report (Plan Phase 5 §"Quality-comparison report
 — v034 D5c scope") has been authored and its acceptance
 criteria pass — the post-drain tree demonstrates concrete
@@ -3706,7 +3792,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v034 as authoritative. Do not propose any
+Treat PROPOSAL.md v035 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
