@@ -1,7 +1,7 @@
 # Bootstrap status
 
 **Current phase:** 5
-**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain cycle 2.8 in flight (script-only fix to `dev-tooling/checks/red_green_replay.py`'s `_IMPL_PREFIXES`, adding the production `.claude-plugin/scripts/livespec/` + `.claude-plugin/scripts/bin/` paths alongside the legacy bare prefixes). Cycle 3a's most-recent Red commit attempt (sha f101987) was reset via `git reset --soft HEAD~1` and dropped pending cycle 2.8. The cycle 3a artifacts (test_finding.py + validate/finding.py) sit in /tmp stash, ready to restore after 2.8 lands. Cycle 2.7's commit-pairs amend-skip landed at sha 2435814.
+**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain cycle 3a (third attempt) in flight: Red commit at sha ab4696e (full Red trailers); Green amend pending stages validate/finding.py + STATUS.md. Out-of-band fixes that unblocked 3a: cycle 2.7 commit-pairs amend-skip at sha 2435814; cycle 2.8 replay-hook `_IMPL_PREFIXES` correction at sha a9810b4. After cycle 3a Green amend lands, drain sub-cycles 3b-3g for the 5 remaining missing schema/dataclass/validator triples.
 **Last completed exit criterion:** phase 4
 **Next action:** Redo drain cycle 3a — Red commit (test_finding.py only; the v036 D1 Red-mode classifier skips test execution) → Green amend (validate/finding.py + STATUS update; the v034 D2-D3 amend pattern + the new cycle 2.7 commit-pairs amend-skip lets the amend through both pre-commit gates). After cycle 3a lands, drain sub-cycles 3b-3g for the remaining 5 missing schema/dataclass/validator triples (`doctor_findings`, `livespec_config`, `proposed_change_front_matter`, `revision_front_matter`, `sub_spec_payload`, `template_config`).
 
@@ -14,5 +14,5 @@
 **Pre-v034 cycle history preserved as-is:** the v033 D5b second-redo cycles 1-172 used the v033 discipline (`## Red output` honor system; `phase-N: cycle N — ...` commit prefix). They are grandfathered: commitlint will exclude pre-v034-codification ancestor SHAs, and the replay-hook will skip commits without `feat:`/`fix:` subjects.
 
 Open issues: zero unresolved.
-**Last updated:** 2026-05-02T19:42:00Z
-**Last commit:** drain-cycle-2.8 pending (chore: red_green_replay.py `_IMPL_PREFIXES` correction + new paired-test pinning the production prefix matches; resolves the impl_paths-empty fall-through that silently rejected drain cycle 3a's Green amend). Prior commits: 2435814 (cycle 2.7 chore: commit-pairs amend-skip), db73c11 (cycle 2 feat:), 70b0752 (v036 impl), 1754534 (v036 codification).
+**Last updated:** 2026-05-02T19:52:00Z
+**Last commit:** drain-cycle-3a pending (feat: livespec/validate/finding.py — finding payload validator; Red commit pre-amend at sha ab4696e with full Red trailers; Green amend stages validate/finding.py + STATUS.md). Prior commits: a9810b4 (cycle 2.8 chore: _IMPL_PREFIXES fix), 2435814 (cycle 2.7 chore: commit-pairs amend-skip), db73c11 (cycle 2 feat:), 70b0752 (v036 impl), 1754534 (v036 codification).
