@@ -925,6 +925,57 @@ v029 decisions (direct critique-fix overlay; see
   diverges from PROPOSAL.md as written; without v035, fresh
   drain-cycle agents reading the spec would be misled.
 
+- v036 D1 (PROPOSAL.md + plan-level + implementation):
+  Resolve the structural conflict between PROPOSAL §"Testing
+  approach — Activation" (which says pre-commit gate runs full
+  `just check`) and PROPOSAL §"v034 D2-D3 Red→Green replay
+  contract" §"Red mode (initial commit)" (which says the Red
+  commit stages a failing test). Pre-commit's `just check`
+  invokes pytest via `check-tests` + `check-coverage`; a
+  failing test exits the aggregate non-zero and aborts the
+  commit before the commit-msg replay hook can fire. Cycles
+  173-183 used v033 atomic test+impl rhythm so didn't expose
+  it; drain cycle 1 (sha `25a8033`) used `test:` subject so
+  didn't exercise Red mode. Drain cycle 2 (`feat:`,
+  `livespec/types.py`) is the first attempt and is blocked.
+  Resolution: introduce `just check-pre-commit` aggregate
+  that classifies the staged tree shape (Red mode = exactly
+  one test file added under `tests/` AND zero impl files
+  added under `livespec/**` / `bin/**` /
+  `dev-tooling/checks/**`) and skips `check-tests` +
+  `check-coverage` in that case (deferring verification to
+  the commit-msg replay hook), running full `check` in every
+  other case. Lefthook pre-commit's `02-check` invokes
+  `just check-pre-commit` instead of `just check`. Pre-push +
+  CI + manual `just check` invocations keep using the full
+  unconditional aggregate. PROPOSAL §"Activation" wording
+  rewritten; PROPOSAL §"Red mode" gains a §"Coexistence with
+  the pre-commit gate (v036 D1)" sub-paragraph. Implementation
+  (justfile recipe + lefthook.yml change) lands in a separate
+  follow-up commit per the v035 / v033 D5a spec-then-
+  implementation precedent.
+- v036 D2 (plan-level): Plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v036/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v036". Execution-prompt
+  block authoritative-version line bumps to v036. Plan
+  §"v034 transition" step 3 gains a note that pre-commit's
+  `02-check` invokes `just check-pre-commit` per v036 D1
+  (the v034 step-3 activation commit `495e5ce` predated this;
+  v036's implementation commit corrects it). Plan §"Aggregate-
+  restoration drain" §"Per-cycle workflow" step 2 (the
+  Red→Green amend description) gains a note clarifying that
+  the Red commit's failing test passes through pre-commit
+  because of v036 D1's `check-pre-commit` aggregate's
+  Red-mode classifier. STATUS.md updated.
+- Triggered by drift discovered when authoring drain cycle 2.
+  The v034 D2-D3 amend pattern as codified is unworkable
+  alongside the v033 D5a pre-commit `just check` gate without
+  the v036 D1 classifier; the conflict was latent through
+  v034 → v035 because no `feat:`/`fix:` Red commit had been
+  attempted. v036 makes the workflow mechanically valid for
+  the v034 D7 drain.
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -1135,8 +1186,14 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v035/PROPOSAL.md` (the v035
-   snapshot — v034 substance plus the five v035 decisions:
+   byte-identical to `history/v036/PROPOSAL.md` (the v036
+   snapshot — v035 substance plus the two v036 decisions:
+   Red-mode-aware pre-commit aggregate via
+   `just check-pre-commit` resolving the structural conflict
+   between PROPOSAL §"Activation" and §"Red mode (initial
+   commit)" (D1), and plan-text + housekeeping (D2) per
+   `history/v036/proposed_changes/critique-fix-v035-revision.md`;
+   v035 substance is v034 substance plus the five v035 decisions:
    defer v034 D6 baseline-grandfathered mechanism (D1), fix
    PROPOSAL line 3517 "pre-commit" → "commit-msg" wording
    (D2), defer v034 D3 anti-cheat reflog inspection (D3),
@@ -1229,7 +1286,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v035. Further evolution happens in
+   > **Status:** Frozen at v036. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -2724,6 +2781,19 @@ transition):
    `just check` (per v035 D1); commitlint validates
    Conventional Commit format on every commit subject.
 
+   **v036 D1 correction.** The v034 step-3 activation commit
+   (sha `495e5ce`) wired pre-commit's `02-check` to invoke
+   `just check` directly. Per v036 D1, this is corrected in
+   a follow-up implementation commit so pre-commit invokes
+   `just check-pre-commit` (a Red-mode-aware aggregate that
+   skips `check-tests` + `check-coverage` when the staged
+   tree matches the v034 Red-mode shape, deferring their
+   verification to the commit-msg replay hook). Without the
+   correction, the v034 D2-D3 amend pattern is unworkable
+   because pytest in `just check` rejects the staged failing
+   test before the commit-msg hook can fire. Pre-push and CI
+   keep using `just check` directly (no Red-mode classifier).
+
 This is the activation point of the **v034 hard-constraint
 per-commit gate** per PROPOSAL.md §"Testing approach —
 Activation" §"v034 D2-D3 Red→Green replay contract".
@@ -2761,19 +2831,34 @@ target fails the local pre-commit gate.
 
 1. Pick one previously-unbound canonical target from the
    list above.
-2. Author the fix under v034 D1-D5 discipline: pick a
-   Conventional Commit type (`feat:` for new code paths,
-   `fix:` for adjustments to existing code); write the
-   smallest failing test for the fix (Red); commit (Red
-   commit + Red trailers via the v034 D3 replay hook at
-   `commit-msg` stage); write the implementation; amend
-   (Green commit + Green trailers via the same hook).
-3. The same commit (the Green amend) ALSO rejoins the
-   now-passing target to the `just check` aggregate's
+2. Author the fix under v034 D1-D5 discipline: pick the
+   Conventional Commit type that honestly describes the
+   work — `feat:`/`fix:` for genuine behavior change with
+   the v034 D2-D3 Red→Green amend pattern, `test:` for
+   pure test-coverage strengthening, `chore:` for
+   config-tier cleanup, `refactor:` for pure restructuring
+   (per `bootstrap/decisions.md` 2026-05-02T09:55:00Z).
+   For the `feat:`/`fix:` case: write the smallest failing
+   test (Red); commit (Red commit; the v036 D1
+   `check-pre-commit` aggregate skips `check-tests` +
+   `check-coverage` because the staged tree matches Red
+   mode shape; the commit-msg replay hook runs pytest on
+   the staged test file, expects fail, writes Red
+   trailers); write the implementation; amend (Green
+   commit; pre-commit runs the full `check` aggregate
+   because the staged tree no longer matches Red mode;
+   commit-msg replay hook verifies test now passes, writes
+   Green trailers). For the `test:`/`chore:`/`refactor:`
+   case: single commit, no amend (the commit-msg replay
+   hook exempts these subjects per the v034 D2 type
+   table).
+3. The same commit (Green amend for `feat:`/`fix:`; single
+   commit for `test:`/`chore:`/`refactor:`) ALSO rejoins
+   the now-passing target to the `just check` aggregate's
    `targets=(...)` list at `justfile:75-99`. The replay
    hook verifies the Red→Green pair under the v034 D2
-   trailer schema; the aggregate re-binding is plain
-   `justfile` editing.
+   trailer schema (when applicable); the aggregate
+   re-binding is plain `justfile` editing.
 
 **Estimated cycle count.** ~11-15 cycles total:
 
@@ -3792,7 +3877,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v035 as authoritative. Do not propose any
+Treat PROPOSAL.md v036 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
