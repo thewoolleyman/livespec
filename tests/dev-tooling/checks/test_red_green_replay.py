@@ -16,6 +16,7 @@ contract) and exits 0 without running any test.
 
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import sys
 from pathlib import Path
@@ -332,6 +333,122 @@ def test_feat_with_impl_only_staged_skips_red_mode_candidate(
     )
     assert "red-mode-candidate" not in result.stderr.lower(), (
         f"red-mode-candidate diagnostic must NOT fire when impl is staged; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
+def test_feat_with_single_test_file_staged_emits_sha256_checksum(
+    *, tmp_path: Path,
+) -> None:
+    """A feat: subject with one staged test file surfaces a SHA-256 checksum.
+
+    Cycle 179 wires SHA-256 computation of the staged test file. Per
+    PROPOSAL.md §"Testing approach — Activation §v034 D2-D3 Red→Green
+    replay contract" and the trailer schema (`TDD-Red-Test-File-Checksum:
+    sha256:<hex>`), the Red-mode hook computes the test file's SHA-256
+    so the Green-mode amend can verify the test file is unchanged. This
+    test pins: a tests-only-staged commit with exactly one path under
+    `tests/` carries a `test_file_checksum` field on the
+    red-mode-candidate event whose value is the literal `sha256:` prefix
+    followed by the 64-character lowercase hex digest of the staged
+    file's bytes. The exact hex digest is asserted against
+    `hashlib.sha256(file_bytes).hexdigest()` to make the contract
+    mechanical.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    test_file = tmp_path / "tests" / "test_dummy.py"
+    test_bytes = b"def test_x() -> None:\n    assert True\n"
+    test_file.write_bytes(test_bytes)
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_dummy.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    expected_digest = hashlib.sha256(test_bytes).hexdigest()
+    expected_checksum_token = f"sha256:{expected_digest}"
+
+    assert result.returncode != 0, (
+        f"feat: with single test file staged still rejects "
+        f"(full Red replay not yet implemented); "
+        f"got returncode={result.returncode}"
+    )
+    assert "test_file_checksum" in result.stderr, (
+        f"expected 'test_file_checksum' field in red-mode-candidate event; "
+        f"got stderr={result.stderr!r}"
+    )
+    assert expected_checksum_token in result.stderr, (
+        f"expected sha256:<hex> token {expected_checksum_token!r} in stderr; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
+def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagnostic(
+    *, tmp_path: Path,
+) -> None:
+    """A feat: subject with multiple staged test files is not a valid Red moment.
+
+    Cycle 179 paired test: pins the False branch of the
+    "len(tests_paths) > 1" rejection. Per the v034 D2 trailer schema,
+    `TDD-Red-Test:` and `TDD-Red-Test-File-Checksum:` are singular
+    fields — Red mode is per-file (one staged test file per Red commit),
+    so multi-test-file staged trees must be rejected with a clear
+    `multi-test-file` diagnostic. The hook returns non-zero without
+    emitting a checksum (no single canonical test file to checksum).
+    Together with the True-branch test above, this guarantees per-file
+    100% branch coverage on the new conditional.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_a.py").write_text(
+        "def test_a() -> None:\n    assert True\n", encoding="utf-8",
+    )
+    (tmp_path / "tests" / "test_b.py").write_text(
+        "def test_b() -> None:\n    assert True\n", encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_a.py", "tests/test_b.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"feat: with multiple test files staged must reject; "
+        f"got returncode={result.returncode}"
+    )
+    assert "multi-test-file" in result.stderr.lower(), (
+        f"expected 'multi-test-file' diagnostic in stderr; "
+        f"got stderr={result.stderr!r}"
+    )
+    assert "test_file_checksum" not in result.stderr, (
+        f"checksum field must NOT fire when multiple test files are staged; "
         f"got stderr={result.stderr!r}"
     )
 

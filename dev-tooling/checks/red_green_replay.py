@@ -27,11 +27,18 @@ nor Green mode is reachable without staged changes). Cycle
 under `tests/` only (no entries under `livespec/`, `bin/`,
 or `dev-tooling/`), the hook emits a structured
 `red-mode-candidate` event identifying the commit as a
-prospective Red moment. Future cycles wire SHA-256 checksum
-computation, pytest invocation per mode, Green-mode
-detection from HEAD~0 trailer inspection, trailer authoring
-via `git interpret-trailers --in-place`, and anti-cheat
-reflog inspection.
+prospective Red moment. Cycle 179 wires SHA-256 computation:
+when exactly one test file is staged, the red-mode-candidate
+event carries a `test_file_checksum` field formatted as
+`sha256:<64-char-hex>` (matching the v034 D2
+`TDD-Red-Test-File-Checksum:` trailer format); when multiple
+test files are staged, the hook rejects with a structured
+`red-green-replay-multi-test-file` error and skips the
+checksum (Red mode is per-file per the v034 D2 trailer
+schema). Future cycles wire pytest invocation per mode,
+Green-mode detection from HEAD~0 trailer inspection, trailer
+authoring via `git interpret-trailers --in-place`, and
+anti-cheat reflog inspection.
 
 This file is authored under the v033 discipline still in
 force (the replay hook itself is not yet gating; the v033
@@ -50,6 +57,7 @@ time.
 
 from __future__ import annotations
 
+import hashlib
 import subprocess  # noqa: S404
 import sys
 from pathlib import Path
@@ -125,10 +133,25 @@ def main() -> int:
         return 1
     tests_paths, impl_paths = _classify_staged(paths=staged_paths)
     if tests_paths and not impl_paths:
+        if len(tests_paths) > 1:
+            log.error(
+                "multi-test-file: Red mode is per-file (one test file per commit)",
+                check_id="red-green-replay-multi-test-file",
+                tests_paths=tests_paths,
+                hint=(
+                    "The v034 D2 trailer schema's "
+                    "`TDD-Red-Test-File-Checksum:` is a singular field; "
+                    "stage exactly one test file per Red commit."
+                ),
+            )
+            return 1
+        test_file_bytes = (Path.cwd() / tests_paths[0]).read_bytes()
+        test_file_checksum = f"sha256:{hashlib.sha256(test_file_bytes).hexdigest()}"
         log.info(
             "red-mode-candidate: tests-only staged tree",
             check_id="red-green-replay-red-mode-candidate",
             tests_paths=tests_paths,
+            test_file_checksum=test_file_checksum,
         )
     return 1
 
