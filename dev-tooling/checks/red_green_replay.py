@@ -54,13 +54,23 @@ adding the full v034 D2 trailer set
 (`TDD-Red-Test`, `TDD-Red-Failure-Reason`,
 `TDD-Red-Test-File-Checksum`, `TDD-Red-Output-Checksum`,
 `TDD-Red-Captured-At`) and **returns 0**, allowing the
-commit to proceed. This is the first non-exempt path that
-exits 0; the prior "always reject for non-exempt" contract
-relaxes to "exit 0 iff Red moment fully verified". Future
-cycles wire Green-mode detection from HEAD~0 trailer
-inspection, Green-mode pytest invocation, Green trailer
-authoring with `TDD-Green-Parent-Reflog:` reflog-
-verification, and anti-cheat reflog inspection.
+commit to proceed. Cycle 182 adds Green-mode-candidate
+detection: when impl files are staged AND HEAD~0 carries
+`TDD-Red-Test-File-Checksum:` trailer, the hook emits a
+structured `red-green-replay-green-mode-candidate` event.
+Cycle 183 wires the Green-mode replay verification: extracts
+the recorded test path + checksum from HEAD~0 via
+`git log -1 --pretty=%(trailers:key=KEY,valueonly)`,
+recomputes the test file's SHA-256 from the working tree,
+rejects with `red-green-replay-checksum-mismatch` on
+divergence, runs pytest on the recorded test path expecting
+exit 0 (rejects with `red-green-replay-test-still-failing`
+otherwise), captures `TDD-Green-Parent-Reflog` from
+`git rev-parse HEAD`, and writes
+`TDD-Green-Verified-At` + `TDD-Green-Parent-Reflog` trailers
+into the COMMIT_EDITMSG file before returning 0. From cycle
+183 onward, both Red and Green moments produce successful
+hook exits with the appropriate trailer schema written.
 
 This file is authored under the v033 discipline still in
 force (the replay hook itself is not yet gating; the v033
@@ -127,6 +137,33 @@ def _head_has_red_trailers() -> bool:
         check=False,
     )
     return "TDD-Red-Test-File-Checksum:" in result.stdout
+
+
+def _head_trailer_value(*, key: str) -> str:
+    """Return the value of HEAD~0's named trailer, or empty if absent.
+
+    Uses `git log -1 --pretty=%(trailers:key=KEY,valueonly)` which
+    extracts only the value of a single trailer line. Returns an
+    empty string when the trailer is missing or git fails (no HEAD).
+    """
+    result = subprocess.run(  # noqa: S603, S607
+        ["git", "log", "-1", f"--pretty=%(trailers:key={key},valueonly)"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip()
+
+
+def _current_head_sha() -> str:
+    """Return the current HEAD SHA via `git rev-parse HEAD`, or empty on failure."""
+    result = subprocess.run(  # noqa: S603, S607
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip()
 
 
 def _classify_staged(*, paths: list[str]) -> tuple[list[str], list[str]]:
@@ -254,6 +291,68 @@ def main() -> int:
             check_id="red-green-replay-green-mode-candidate",
             impl_paths=impl_paths,
         )
+        recorded_test = _head_trailer_value(key="TDD-Red-Test")
+        recorded_checksum = _head_trailer_value(key="TDD-Red-Test-File-Checksum")
+        green_test_path = Path.cwd() / recorded_test
+        green_test_bytes = green_test_path.read_bytes()
+        green_test_checksum = (
+            f"sha256:{hashlib.sha256(green_test_bytes).hexdigest()}"
+        )
+        if green_test_checksum != recorded_checksum:
+            log.error(
+                "test-file-checksum-mismatch: test file changed between Red and Green",
+                check_id="red-green-replay-checksum-mismatch",
+                recorded=recorded_checksum,
+                current=green_test_checksum,
+                test_path=recorded_test,
+                hint=(
+                    "The test file referenced by HEAD~0's TDD-Red-Test "
+                    "must be byte-identical at the Green amend; if you "
+                    "needed to change the test, author a new Red commit."
+                ),
+            )
+            return 1
+        green_pytest_result = subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "pytest", str(green_test_path), "--tb=no", "-q"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if green_pytest_result.returncode != 0:
+            log.error(
+                "test-still-failing-at-green: not a valid Green moment",
+                check_id="red-green-replay-test-still-failing",
+                pytest_returncode=green_pytest_result.returncode,
+                test_path=recorded_test,
+                hint=(
+                    "Green mode requires the staged test to pass; "
+                    "the new impl has not yet made the Red test green."
+                ),
+            )
+            return 1
+        green_verified_at = datetime.datetime.now(datetime.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ",
+        )
+        green_parent_reflog = _current_head_sha()
+        green_trailer_args: list[str] = []
+        for key, value in (
+            ("TDD-Green-Verified-At", green_verified_at),
+            ("TDD-Green-Parent-Reflog", green_parent_reflog),
+        ):
+            green_trailer_args.extend(["--trailer", f"{key}: {value}"])
+        subprocess.run(  # noqa: S603, S607
+            [
+                "git",
+                "interpret-trailers",
+                "--in-place",
+                *green_trailer_args,
+                str(msg_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return 0
     return 1
 
 

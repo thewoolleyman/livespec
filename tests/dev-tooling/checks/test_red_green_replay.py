@@ -725,6 +725,168 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
     )
 
 
+def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_trailers(
+    *, tmp_path: Path,
+) -> None:
+    """Full Green-mode replay success: Green trailers written, hook returns 0.
+
+    Cycle 183 wires Green-mode replay verification. Per PROPOSAL.md
+    §"Green mode (amend)" lines 3533-3543, the hook must: recompute
+    test file SHA-256 from working tree (rejects on mismatch), run
+    pytest (expects exit zero), then add `TDD-Green-Verified-At:`
+    and `TDD-Green-Parent-Reflog:` trailers and let the commit land.
+    This test fixtures a Red commit with the REAL SHA-256 of a
+    passing test (cosmetically Red — the body still uses `assert
+    True` since the actual Red→Green author flow is out of scope
+    for this unit), stages an impl file, and verifies returncode==0
+    plus Green trailer presence in COMMIT_EDITMSG.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "config", "user.email", "test@test.test"],
+        cwd=str(tmp_path), check=True,
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "config", "user.name", "Test User"],
+        cwd=str(tmp_path), check=True,
+    )
+
+    (tmp_path / "tests").mkdir()
+    test_bytes = b"def test_x() -> None:\n    assert True\n"
+    test_file = tmp_path / "tests" / "test_x.py"
+    test_file.write_bytes(test_bytes)
+    real_checksum = f"sha256:{hashlib.sha256(test_bytes).hexdigest()}"
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_x.py"],
+        cwd=str(tmp_path), check=True,
+    )
+    red_commit_msg = (
+        "feat: red commit\n"
+        "\n"
+        "TDD-Red-Test: tests/test_x.py\n"
+        "TDD-Red-Failure-Reason: stub-failure-reason\n"
+        f"TDD-Red-Test-File-Checksum: {real_checksum}\n"
+        "TDD-Red-Output-Checksum: sha256:abc\n"
+        "TDD-Red-Captured-At: 2026-05-02T05:00:00Z\n"
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "commit", "-m", red_commit_msg],
+        cwd=str(tmp_path), check=True,
+    )
+
+    (tmp_path / "livespec").mkdir()
+    (tmp_path / "livespec" / "foo.py").write_text(
+        "VALUE: int = 1\n", encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "livespec/foo.py"],
+        cwd=str(tmp_path), check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: green impl\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        f"Green replay confirmed must exit 0; got returncode={result.returncode} "
+        f"stderr={result.stderr!r}"
+    )
+    final_msg = msg_path.read_text(encoding="utf-8")
+    for trailer_key in ("TDD-Green-Verified-At:", "TDD-Green-Parent-Reflog:"):
+        assert trailer_key in final_msg, (
+            f"expected {trailer_key!r} in COMMIT_EDITMSG; got final_msg={final_msg!r}"
+        )
+
+
+def test_feat_green_amend_with_test_still_failing_rejects(
+    *, tmp_path: Path,
+) -> None:
+    """Green-mode replay rejection: pytest still fails at Green moment.
+
+    Cycle 183 paired test for the pytest-fail branch. Fixtures a
+    Red commit with the REAL checksum of a test that asserts False;
+    after staging impl, the hook re-runs pytest, observes a
+    non-zero returncode, and rejects with
+    `red-green-replay-test-still-failing`. Pins the True branch of
+    `green_pytest_result.returncode != 0`.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "config", "user.email", "test@test.test"],
+        cwd=str(tmp_path), check=True,
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "config", "user.name", "Test User"],
+        cwd=str(tmp_path), check=True,
+    )
+
+    (tmp_path / "tests").mkdir()
+    test_bytes = (
+        b"def test_still_failing() -> None:\n"
+        b"    assert False, 'still-failing-at-green'\n"
+    )
+    test_file = tmp_path / "tests" / "test_still_failing.py"
+    test_file.write_bytes(test_bytes)
+    real_checksum = f"sha256:{hashlib.sha256(test_bytes).hexdigest()}"
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_still_failing.py"],
+        cwd=str(tmp_path), check=True,
+    )
+    red_commit_msg = (
+        "feat: red commit\n"
+        "\n"
+        "TDD-Red-Test: tests/test_still_failing.py\n"
+        "TDD-Red-Failure-Reason: stub\n"
+        f"TDD-Red-Test-File-Checksum: {real_checksum}\n"
+        "TDD-Red-Output-Checksum: sha256:abc\n"
+        "TDD-Red-Captured-At: 2026-05-02T05:00:00Z\n"
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "commit", "-m", red_commit_msg],
+        cwd=str(tmp_path), check=True,
+    )
+
+    (tmp_path / "livespec").mkdir()
+    (tmp_path / "livespec" / "foo.py").write_text(
+        "VALUE: int = 1\n", encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "livespec/foo.py"],
+        cwd=str(tmp_path), check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: green impl\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"hook must reject when Green-mode pytest still fails; "
+        f"got returncode={result.returncode}"
+    )
+    assert "test-still-failing-at-green" in result.stderr.lower(), (
+        f"expected 'test-still-failing-at-green' diagnostic in stderr; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
 def test_red_green_replay_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 
