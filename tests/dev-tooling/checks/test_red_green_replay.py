@@ -238,6 +238,104 @@ def test_feat_in_git_repo_with_staged_files_skips_no_staged_diagnostic(
     )
 
 
+def test_feat_with_tests_only_staged_emits_red_mode_candidate(
+    *, tmp_path: Path,
+) -> None:
+    """A feat: subject with tests-only staged is a Red-mode candidate.
+
+    Cycle 178 drives the test/impl classification step. Per Plan
+    §"Per-commit Red→Green replay discipline (v034 D2-D3)", Red mode
+    is triggered when the staged tree carries test files but no
+    implementation files. This test pins the True branch of
+    "tests_paths AND NOT impl_paths" — staging a single file under
+    `tests/` qualifies the commit as a Red-mode candidate; the hook
+    emits a structured `red-mode-candidate` structlog event identifying
+    the discriminator. The hook still exits non-zero (pytest invocation
+    + Red-trailer authoring come in subsequent cycles).
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    test_file = tmp_path / "tests" / "test_dummy.py"
+    test_file.write_text(
+        "def test_x() -> None:\n    assert True\n", encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_dummy.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"feat: with tests-only staged still rejects (full Red replay not yet implemented); "
+        f"got returncode={result.returncode}"
+    )
+    assert "red-mode-candidate" in result.stderr.lower(), (
+        f"expected 'red-mode-candidate' diagnostic in stderr for tests-only feat:; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
+def test_feat_with_impl_only_staged_skips_red_mode_candidate(
+    *, tmp_path: Path,
+) -> None:
+    """A feat: subject with impl-only staged is NOT a Red-mode candidate.
+
+    Cycle 178 paired test: pins the False branch of the
+    "tests_paths AND NOT impl_paths" check. With one file staged under
+    `livespec/` (impl bucket) and zero files under `tests/`, the
+    Red-mode-candidate diagnostic MUST NOT fire. The commit might still
+    qualify for Green mode in a future cycle (HEAD~0 carrying Red
+    trailers), but Red mode is by-construction unreachable without
+    staged tests. Together with the True-branch test above, this
+    guarantees per-file 100% branch coverage on the new conditional.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    impl_dir = tmp_path / "livespec"
+    impl_dir.mkdir()
+    impl_file = impl_dir / "foo.py"
+    impl_file.write_text("VALUE: int = 1\n", encoding="utf-8")
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "livespec/foo.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"feat: with impl-only staged still rejects (Green-mode replay not yet implemented); "
+        f"got returncode={result.returncode}"
+    )
+    assert "red-mode-candidate" not in result.stderr.lower(), (
+        f"red-mode-candidate diagnostic must NOT fire when impl is staged; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
 def test_red_green_replay_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 

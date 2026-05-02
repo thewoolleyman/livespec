@@ -21,9 +21,17 @@ staged tree is empty (`git diff --cached --name-only`
 returns no paths, including the not-a-git-repo failure
 mode), the hook emits a structured diagnostic to stderr
 identifying the empty-staging rejection reason (neither Red
-nor Green mode is reachable without staged changes). Future
-cycles drive the Red/Green-mode dispatch + checksum + pytest
-invocation + trailer authoring via additional failing tests.
+nor Green mode is reachable without staged changes). Cycle
+178 adds test/impl classification of the staged paths via
+`_classify_staged`; when a feat:/fix: commit stages files
+under `tests/` only (no entries under `livespec/`, `bin/`,
+or `dev-tooling/`), the hook emits a structured
+`red-mode-candidate` event identifying the commit as a
+prospective Red moment. Future cycles wire SHA-256 checksum
+computation, pytest invocation per mode, Green-mode
+detection from HEAD~0 trailer inspection, trailer authoring
+via `git interpret-trailers --in-place`, and anti-cheat
+reflog inspection.
 
 This file is authored under the v033 discipline still in
 force (the replay hook itself is not yet gating; the v033
@@ -66,6 +74,22 @@ _EXEMPT_TYPE_PREFIXES = (
     "perf:",
     "revert:",
 )
+_TESTS_PREFIX = "tests/"
+_IMPL_PREFIXES = ("livespec/", "bin/", "dev-tooling/")
+
+
+def _classify_staged(*, paths: list[str]) -> tuple[list[str], list[str]]:
+    """Bucket staged paths into (tests, impl) — other paths are dropped.
+
+    A path is a tests-bucket member iff it starts with `tests/`; an
+    impl-bucket member iff it starts with `livespec/`, `bin/`, or
+    `dev-tooling/`. Any other path (config, docs, top-level scripts,
+    etc.) participates in neither bucket and so cannot trigger
+    Red-mode or Green-mode dispatch.
+    """
+    tests_paths = [p for p in paths if p.startswith(_TESTS_PREFIX)]
+    impl_paths = [p for p in paths if p.startswith(_IMPL_PREFIXES)]
+    return tests_paths, impl_paths
 
 
 def main() -> int:
@@ -97,6 +121,14 @@ def main() -> int:
                 "Red mode requires staged tests + no impl; "
                 "Green mode requires staged impl + HEAD~0 Red trailers."
             ),
+        )
+        return 1
+    tests_paths, impl_paths = _classify_staged(paths=staged_paths)
+    if tests_paths and not impl_paths:
+        log.info(
+            "red-mode-candidate: tests-only staged tree",
+            check_id="red-green-replay-red-mode-candidate",
+            tests_paths=tests_paths,
         )
     return 1
 
