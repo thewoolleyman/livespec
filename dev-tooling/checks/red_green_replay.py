@@ -35,9 +35,21 @@ event carries a `test_file_checksum` field formatted as
 test files are staged, the hook rejects with a structured
 `red-green-replay-multi-test-file` error and skips the
 checksum (Red mode is per-file per the v034 D2 trailer
-schema). Future cycles wire pytest invocation per mode,
-Green-mode detection from HEAD~0 trailer inspection, trailer
-authoring via `git interpret-trailers --in-place`, and
+schema). Cycle 180 invokes pytest on the staged test file
+in Red-mode-candidate flow: `[sys.executable, "-m", "pytest",
+<abs-path>, "--tb=no", "-q"]`. A non-zero pytest returncode
+confirms the Red moment and emits a structured
+`red-green-replay-red-pytest-result` info event carrying
+`pytest_returncode=<int>`. A zero pytest returncode means
+the staged test passes — not a valid Red moment — and the
+hook rejects with a structured
+`red-green-replay-test-passed-at-red` error pointing the
+developer at the constraint that Red mode requires the
+staged test to fail. Future cycles wire Red trailer
+authoring via `git interpret-trailers --in-place`, Green-
+mode detection from HEAD~0 trailer inspection, Green-mode
+pytest invocation, Green trailer authoring with
+`TDD-Green-Parent-Reflog:` reflog-verification, and
 anti-cheat reflog inspection.
 
 This file is authored under the v033 discipline still in
@@ -145,13 +157,41 @@ def main() -> int:
                 ),
             )
             return 1
-        test_file_bytes = (Path.cwd() / tests_paths[0]).read_bytes()
+        test_file_path = Path.cwd() / tests_paths[0]
+        test_file_bytes = test_file_path.read_bytes()
         test_file_checksum = f"sha256:{hashlib.sha256(test_file_bytes).hexdigest()}"
         log.info(
             "red-mode-candidate: tests-only staged tree",
             check_id="red-green-replay-red-mode-candidate",
             tests_paths=tests_paths,
             test_file_checksum=test_file_checksum,
+        )
+        pytest_result = subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "pytest", str(test_file_path), "--tb=no", "-q"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if pytest_result.returncode == 0:
+            log.error(
+                "test-passed-at-red-moment: not a valid Red moment",
+                check_id="red-green-replay-test-passed-at-red",
+                tests_paths=tests_paths,
+                test_file_checksum=test_file_checksum,
+                pytest_returncode=pytest_result.returncode,
+                hint=(
+                    "Red mode requires the staged test to fail; "
+                    "if the test already passes, this is not a Red moment "
+                    "(the subsequent Green amend has nothing to verify)."
+                ),
+            )
+            return 1
+        log.info(
+            "red-pytest-result: test failed at Red moment as required",
+            check_id="red-green-replay-red-pytest-result",
+            tests_paths=tests_paths,
+            test_file_checksum=test_file_checksum,
+            pytest_returncode=pytest_result.returncode,
         )
     return 1
 

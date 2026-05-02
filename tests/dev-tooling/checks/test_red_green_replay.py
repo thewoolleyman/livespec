@@ -453,6 +453,121 @@ def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagn
     )
 
 
+def test_feat_with_failing_test_staged_emits_red_pytest_result(
+    *, tmp_path: Path,
+) -> None:
+    """A feat: subject with a single failing staged test file pins a valid Red moment.
+
+    Cycle 180 invokes pytest on the staged test file. Per Plan
+    §"Per-commit Red→Green replay discipline (v034 D2-D3)", a Red
+    moment requires the staged test to fail (non-zero pytest exit
+    code). This test stages a `tests/test_failing.py` whose body
+    asserts a falsy expression, then invokes the hook; the hook
+    runs pytest, observes a non-zero returncode, and emits a
+    structured `red-green-replay-red-pytest-result` info event
+    carrying `pytest_returncode=<non-zero-int>`. Pins the False
+    branch of `pytest_result.returncode == 0`.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    test_file = tmp_path / "tests" / "test_failing.py"
+    test_file.write_text(
+        "def test_failing() -> None:\n"
+        "    assert False, 'staged red test fails as required'\n",
+        encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_failing.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"hook still rejects until trailer authoring lands; "
+        f"got returncode={result.returncode}"
+    )
+    assert "red-pytest-result" in result.stderr, (
+        f"expected 'red-pytest-result' event in stderr for failing test; "
+        f"got stderr={result.stderr!r}"
+    )
+    assert "pytest_returncode" in result.stderr, (
+        f"expected 'pytest_returncode' field in red-pytest-result event; "
+        f"got stderr={result.stderr!r}"
+    )
+    assert "test-passed-at-red" not in result.stderr, (
+        f"test-passed-at-red rejection MUST NOT fire when pytest fails; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
+def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
+    *, tmp_path: Path,
+) -> None:
+    """A feat: subject with a single passing staged test file is NOT a Red moment.
+
+    Cycle 180 paired test: pins the True branch of
+    `pytest_result.returncode == 0`. If the staged test PASSES when
+    run, the commit is not a valid Red moment (Red mode requires
+    the test to fail so that the subsequent Green amend has
+    something to make pass). The hook MUST reject with a
+    structured `red-green-replay-test-passed-at-red` error and
+    surface a `pytest_returncode=0` field. The
+    `red-green-replay-red-pytest-result` info event MUST NOT
+    fire on this path.
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    test_file = tmp_path / "tests" / "test_passing.py"
+    test_file.write_text(
+        "def test_passing() -> None:\n    assert True\n",
+        encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_passing.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new feature\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"hook must reject when staged test passes; "
+        f"got returncode={result.returncode}"
+    )
+    assert "test-passed-at-red" in result.stderr, (
+        f"expected 'test-passed-at-red' rejection in stderr for passing test; "
+        f"got stderr={result.stderr!r}"
+    )
+    assert "red-pytest-result" not in result.stderr, (
+        f"red-pytest-result event MUST NOT fire when pytest passes; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
 def test_red_green_replay_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 
