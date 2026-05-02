@@ -638,6 +638,93 @@ def test_feat_with_failing_test_writes_full_red_trailer_schema(
     )
 
 
+def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candidate(
+    *, tmp_path: Path,
+) -> None:
+    """Green-mode-candidate detection: HEAD~0 has Red trailers + impl staged.
+
+    Cycle 182 wires the Green-mode dispatch counterpart to Red mode.
+    Per PROPOSAL.md §"Green mode (amend)" lines 3533-3543, Green mode
+    is triggered when the HEAD~0 commit message carries Red trailers
+    AND the new staged tree adds implementation files. This test
+    fixtures a Red commit by manually authoring a commit body with
+    the v034 D2 trailer schema, then stages an impl file under
+    `livespec/`, then invokes the hook. The hook MUST detect the
+    Green-mode-candidate condition and emit a structured
+    `red-green-replay-green-mode-candidate` info event. Returns 1
+    (full Green replay logic — checksum re-verification, pytest
+    invocation, Green trailer authoring — lands in subsequent
+    cycles).
+    """
+    subprocess.run(  # noqa: S603, S607
+        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "config", "user.email", "test@test.test"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "config", "user.name", "Test User"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_red.py").write_text(
+        "def test_red() -> None:\n    assert False\n",
+        encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "tests/test_red.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+    red_commit_msg = (
+        "feat: add new feature\n"
+        "\n"
+        "TDD-Red-Test: tests/test_red.py\n"
+        "TDD-Red-Failure-Reason: AssertionError\n"
+        "TDD-Red-Test-File-Checksum: sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
+        "TDD-Red-Output-Checksum: sha256:1111111111111111111111111111111111111111111111111111111111111111\n"
+        "TDD-Red-Captured-At: 2026-05-02T05:00:00Z\n"
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "commit", "-m", red_commit_msg],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    (tmp_path / "livespec").mkdir()
+    (tmp_path / "livespec" / "foo.py").write_text(
+        "VALUE: int = 1\n", encoding="utf-8",
+    )
+    subprocess.run(  # noqa: S603, S607
+        ["git", "add", "livespec/foo.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add green impl\n", encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"Green-mode-candidate detection still rejects until full Green replay lands; "
+        f"got returncode={result.returncode}"
+    )
+    assert "green-mode-candidate" in result.stderr.lower(), (
+        f"expected 'green-mode-candidate' diagnostic in stderr; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
 def test_red_green_replay_module_importable_without_running_main() -> None:
     """The check module imports cleanly without invoking main().
 

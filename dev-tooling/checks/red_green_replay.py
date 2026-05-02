@@ -109,6 +109,26 @@ _TESTS_PREFIX = "tests/"
 _IMPL_PREFIXES = ("livespec/", "bin/", "dev-tooling/")
 
 
+def _head_has_red_trailers() -> bool:
+    """Return True iff HEAD~0's commit message carries `TDD-Red-*` trailers.
+
+    Used by the v034 D3 Green-mode dispatch: a feat:/fix: amend that
+    stages impl files and whose parent (HEAD~0) carries the Red
+    trailers from a prior Red commit is a Green-mode candidate. The
+    `git log -1 --format=%B` invocation prints HEAD's full commit
+    message; if no HEAD exists (fresh repo, not-a-git-repo), git
+    exits non-zero with empty stdout and the substring check returns
+    False.
+    """
+    result = subprocess.run(  # noqa: S603, S607
+        ["git", "log", "-1", "--format=%B"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return "TDD-Red-Test-File-Checksum:" in result.stdout
+
+
 def _classify_staged(*, paths: list[str]) -> tuple[list[str], list[str]]:
     """Bucket staged paths into (tests, impl) — other paths are dropped.
 
@@ -228,6 +248,12 @@ def main() -> int:
             check=False,
         )
         return 0
+    if impl_paths and _head_has_red_trailers():
+        log.info(
+            "green-mode-candidate: HEAD~0 carries Red trailers + impl staged",
+            check_id="red-green-replay-green-mode-candidate",
+            impl_paths=impl_paths,
+        )
     return 1
 
 

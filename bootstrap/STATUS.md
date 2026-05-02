@@ -12,5 +12,5 @@
 **Pre-v034 cycle history preserved as-is:** the v033 D5b second-redo cycles 1-172 used the v033 discipline (`## Red output` honor system; `phase-N: cycle N — ...` commit prefix). They are grandfathered: commitlint will exclude pre-v034-codification ancestor SHAs, and the replay-hook will skip commits without `feat:`/`fix:` subjects.
 
 Open issues: zero unresolved.
-**Last updated:** 2026-05-02T05:00:00Z
-**Last commit:** cycle 181 pending (red_green_replay.py Red trailer authoring via `git interpret-trailers --in-place`; Red moment confirmed → 5-trailer schema written into COMMIT_EDITMSG + return 0; first non-exempt success path; per-file 100% line+branch coverage; full `just check` aggregate green at 23/23; under v033 discipline; fast-forward mode through drain-entry)
+**Last updated:** 2026-05-02T05:30:00Z
+**Last commit:** cycle 182 pending (red_green_replay.py Green-mode-candidate detection; HEAD~0 has Red trailers + impl staged → `red-green-replay-green-mode-candidate` info event via `_head_has_red_trailers()` helper; full `just check` aggregate green at 23/23; under v033 discipline; fast-forward mode)
