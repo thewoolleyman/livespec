@@ -40,6 +40,15 @@ _SEED_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "seed_input.schema.json"
 _BIN_DIR = Path(__file__).resolve().parents[2] / "bin"
 _DOCTOR_STATIC_WRAPPER = _BIN_DIR / "doctor_static.py"
 
+# Path-shape minima for spec-file path validation. A main-spec path
+# is `<spec_root>/<file>` (≥ 2 parts); a sub-spec path is
+# `<spec_root>/templates/<template_name>/<file>` (≥ 4 parts).
+# Paths shorter than these minima are silently skipped — the seed
+# payload's schema doesn't enforce path-shape, so the supervisor
+# defends against malformed entries here.
+_MIN_PARTS_MAIN_SPEC: int = 2
+_MIN_PARTS_SUB_SPEC: int = 4
+
 
 _PROPOSED_CHANGES_README_TEXT = (
     "# Proposed Changes\n"
@@ -183,7 +192,7 @@ def _write_main_spec_history_v001(
     accumulator: IOResult[SeedInput, LivespecError] = IOResult.from_value(seed_input)
     for entry in seed_input.files:
         original_path = Path(entry["path"])
-        if len(original_path.parts) < 2:
+        if len(original_path.parts) < _MIN_PARTS_MAIN_SPEC:
             continue
         spec_root_name = original_path.parts[0]
         relative = Path(*original_path.parts[1:])
@@ -250,7 +259,7 @@ def _emit_seed_proposed_change(
     if not seed_input.files:
         return IOResult.from_value(seed_input)
     first_path = Path(seed_input.files[0]["path"])
-    if len(first_path.parts) < 2:
+    if len(first_path.parts) < _MIN_PARTS_MAIN_SPEC:
         return IOResult.from_value(seed_input)
     spec_root_name = first_path.parts[0]
     target_files_block = "\n".join(
@@ -311,7 +320,7 @@ def _emit_seed_revision(
     if not seed_input.files:
         return IOResult.from_value(seed_input)
     first_path = Path(seed_input.files[0]["path"])
-    if len(first_path.parts) < 2:
+    if len(first_path.parts) < _MIN_PARTS_MAIN_SPEC:
         return IOResult.from_value(seed_input)
     spec_root_name = first_path.parts[0]
     resulting_changes = "\n".join(
@@ -369,7 +378,7 @@ def _write_sub_spec_history_v001(
             if not isinstance(entry, dict):
                 continue
             original_path = Path(str(entry["path"]))
-            if len(original_path.parts) < 4:
+            if len(original_path.parts) < _MIN_PARTS_SUB_SPEC:
                 continue
             spec_root_parts = original_path.parts[:3]
             relative = Path(*original_path.parts[3:])
@@ -422,7 +431,7 @@ def _emit_skill_owned_proposed_changes_readme(
     if not seed_input.files:
         return IOResult.from_value(seed_input)
     first_path = Path(seed_input.files[0]["path"])
-    if len(first_path.parts) < 2:
+    if len(first_path.parts) < _MIN_PARTS_MAIN_SPEC:
         return IOResult.from_value(seed_input)
     spec_root_name = first_path.parts[0]
     proposed_changes_readme = (

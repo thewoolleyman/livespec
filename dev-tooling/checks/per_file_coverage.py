@@ -55,6 +55,12 @@ from coverage import Coverage  # noqa: E402  — uv-managed dep, available post-
 __all__: list[str] = []
 
 
+# Per v033 D2: every covered file must be at 100% line coverage.
+# The threshold is policy-set at 100.0 (no carveout); this constant
+# names the policy threshold for use in the offender-detection loop.
+_FULL_COVERAGE_PCT: float = 100.0
+
+
 def main() -> int:
     structlog.configure(
         processors=[
@@ -82,8 +88,8 @@ def main() -> int:
     offenders: list[tuple[str, dict[str, object]]] = []
     for fname, file_info in sorted(report["files"].items()):
         summary = file_info["summary"]
-        line_pct = summary.get("percent_covered", 100.0)
-        if line_pct < 100.0:
+        line_pct = summary.get("percent_covered", _FULL_COVERAGE_PCT)
+        if line_pct < _FULL_COVERAGE_PCT:
             offenders.append((fname, summary))
 
     if offenders:

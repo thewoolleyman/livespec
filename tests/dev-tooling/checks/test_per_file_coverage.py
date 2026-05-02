@@ -192,3 +192,22 @@ def test_per_file_coverage_module_importable_without_running_main() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert callable(module.main), "main should be importable without invocation"
+
+
+def test_full_coverage_pct_constant_pins_v033_d2_threshold() -> None:
+    """The `_FULL_COVERAGE_PCT` constant pins the v033 D2 100.0% threshold.
+
+    Per v033 D2: every covered file MUST be at 100% line coverage.
+    The threshold is policy-set with no carveout. This test pins
+    the policy in code so a future loosening of the threshold
+    requires explicit test failure + intentional bump.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "per_file_coverage_for_constant_test", str(_PER_FILE_COVERAGE),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module._FULL_COVERAGE_PCT == 100.0  # noqa: SLF001

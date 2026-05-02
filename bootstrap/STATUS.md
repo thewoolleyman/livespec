@@ -1,7 +1,7 @@
 # Bootstrap status
 
 **Current phase:** 5
-**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain sub-cycle 3g in flight (LAST of cycle 3): Red commit at sha 189115a (full Red trailers, template_config test); Green amend pending stages dataclass + validator + justfile aggregate-bind for `check-schema-dataclass-pairing` + STATUS update. After this lands, drain cycle 3 is complete; aggregate goes 25/25 → 26/26. Drain remaining: cycle 4 (`check-complexity` 3-5 cycles), cycle 5 (`check-lint` 0-2 cycles), cycle 6 (`check-format` 0-2 cycles). Then v034 D5c quality-comparison report. Then Phase 5 exit gates.
+**Current sub-step:** Phase 5 §"Aggregate-restoration drain (v034 D7)" — drain sub-cycle 4a in flight (chore: ruff PLR2004 cleanup): test-tree per-file-ignore extended to include PLR2004 + 7 source-side magic-value constants extracted (seed.py path-shape minima, per_file_coverage.py full-coverage threshold, wrapper_shape.py canonical statement count). Eliminates 37 PLR2004 errors. 5 complexity errors remain for cycles 4b-4e (C901 in all_declared._module_top_defined_names, C901+PLR0911+PLR0915 in red_green_replay.main, PLR0915 in test_phase3_round_trip). LLOC>200 in seed.py (392) and red_green_replay.py (228) handled in 4d-4e. Drain cycle 3 complete at sha b5682d2 (template_config + bind aggregate; aggregate 26/26).
 **Last completed exit criterion:** phase 4
 **Next action:** After cycle 3g Green amend lands, kick off drain cycle 4 — `check-complexity`. Per plan estimate ~3-5 cycles for `seed.py` refactor below 200 LLOC + remaining ruff PLR/C90 fixes. First step: run `just check-complexity` to see what fails; pick one violation per Red→Green pair under v034 D2-D3 discipline.
 
@@ -14,5 +14,5 @@
 **Pre-v034 cycle history preserved as-is:** the v033 D5b second-redo cycles 1-172 used the v033 discipline (`## Red output` honor system; `phase-N: cycle N — ...` commit prefix). They are grandfathered: commitlint will exclude pre-v034-codification ancestor SHAs, and the replay-hook will skip commits without `feat:`/`fix:` subjects.
 
 Open issues: zero unresolved.
-**Last updated:** 2026-05-02T20:50:00Z
-**Last commit:** drain-sub-cycle-3g pending (feat: template_config + bind aggregate; Red commit pre-amend at sha 189115a with full Red trailers). Drain cycle 3 complete after this lands. Prior: 791f1a9 (3f sub_spec_payload), 7f9ee8e (3e revision_front_matter), 9d291e8 (3d proposed_change_front_matter + TopicSlug), 5d5116b (3c livespec_config), ecee4af (3b doctor_findings), 611e0d8 (3a finding), a9810b4 (2.8), 2435814 (2.7), db73c11 (2), 70b0752 (v036 impl), 1754534 (v036 codification).
+**Last updated:** 2026-05-02T21:00:00Z
+**Last commit:** drain-sub-cycle-4a pending (chore: ruff PLR2004 cleanup — tests/**.py per-file-ignore extends to PLR2004; source magic-value constants extracted in seed.py + per_file_coverage.py + wrapper_shape.py). Prior: b5682d2 (3g template_config + aggregate-bind), 791f1a9 (3f sub_spec_payload), 7f9ee8e (3e revision_front_matter), 9d291e8 (3d proposed_change_front_matter + TopicSlug), 5d5116b (3c livespec_config), ecee4af (3b doctor_findings), 611e0d8 (3a finding), a9810b4 (2.8), 2435814 (2.7), db73c11 (2), 70b0752 (v036 impl), 1754534 (v036 codification).

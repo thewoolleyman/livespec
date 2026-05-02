@@ -1002,3 +1002,16 @@ def test_seed_main_defaults_project_root_to_cwd_when_flag_omitted(
     assert exit_code == 0
     config_path = project_root / ".livespec.jsonc"
     assert config_path.exists(), f"expected {config_path} to be written under cwd"
+
+
+def test_path_minima_constants_pin_documented_shapes() -> None:
+    """The `_MIN_PARTS_*` constants pin path-shape minima.
+
+    A main-spec path is `<spec_root>/<file>` (≥ 2 parts); a
+    sub-spec path is `<spec_root>/templates/<template_name>/<file>`
+    (≥ 4 parts). This test pins those values in code so a future
+    deepening of either layout requires explicit test failure +
+    intentional bump.
+    """
+    assert seed._MIN_PARTS_MAIN_SPEC == 2  # noqa: SLF001
+    assert seed._MIN_PARTS_SUB_SPEC == 4  # noqa: SLF001

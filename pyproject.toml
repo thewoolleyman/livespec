@@ -174,7 +174,12 @@ ban-relative-imports = "all"
 # pytest convention: tests use bare `assert` for assertions.
 # S101 (flake8-bandit "use of assert detected") flags every test;
 # the discipline applies to shipped code, not test-time assertions.
-"tests/**.py" = ["S101"]
+# PLR2004 (pylint "magic value used in comparison") flags fixture-
+# integral literals like `assert len(value.files) == 2`; in tests
+# the literal IS the fixture's expected value, so extracting to a
+# named constant adds noise without value. Standard Python testing
+# convention is to allow magic values in test assertions.
+"tests/**.py" = ["S101", "PLR2004"]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.

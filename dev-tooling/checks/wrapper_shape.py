@@ -55,6 +55,13 @@ __all__: list[str] = []
 _BIN_TREE = Path(".claude-plugin") / "scripts" / "bin"
 _EXEMPT_NAMES = frozenset({"_bootstrap.py"})
 
+# Per python-skill-script-style-requirements.md lines 1664-1668:
+# the canonical shebang wrapper has exactly five top-level
+# statements (docstring → bootstrap import → bootstrap() call →
+# main import → SystemExit(main())). This constant names the
+# load-bearing count.
+_CANONICAL_WRAPPER_STMT_COUNT: int = 5
+
 
 def _is_docstring(*, stmt: ast.stmt) -> bool:
     return (
@@ -111,7 +118,7 @@ def _is_raise_systemexit_main(*, stmt: ast.stmt) -> bool:
 def _is_compliant_wrapper(*, source: str) -> bool:
     tree = ast.parse(source)
     body = tree.body
-    if len(body) != 5:
+    if len(body) != _CANONICAL_WRAPPER_STMT_COUNT:
         return False
     return (
         _is_docstring(stmt=body[0])
