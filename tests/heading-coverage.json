@@ -988,5 +988,11 @@
     "spec_root": "SPECIFICATION/history/v002/proposed_changes",
     "test": "TODO",
     "reason": "Phase 7 sub-step 1.b auto-emitted revision-file boilerplate (Phase-3 minimum revise's _compose_revision_body output). Same architectural follow-up as the paired Proposal heading."
+  },
+  {
+    "heading": "## Proposal: Pre-commit auto-fixes ruff issues on staged Python files before running the gate",
+    "spec_root": "SPECIFICATION/proposed_changes",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 2 (mini-track item M1) in-flight propose-change boilerplate; spec_root flips to SPECIFICATION/history/v003/proposed_changes when revise moves the file. Mini-track item M2 (heading-coverage scope narrowing) will prune all proposed_changes/-spec_root entries en masse."
   }
 ]
