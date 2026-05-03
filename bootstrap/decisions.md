@@ -1616,3 +1616,38 @@ complete — STATUS update` bookkeeping commit, mirroring the
 established two-commit pattern from earlier mini-track wraps
 (085a983, da441f1, 6d3b67c).
 
+## 2026-05-03T20:20:10Z — phase 7 post-sub-step-1.c (refactor deferral)
+
+**Decision:** Defer the planned `_resolve_sub_spec_root` extraction
+refactor across cycles 2-3-4 of sub-step 1.c. The three near-
+identical resolver helpers (`_resolve_sub_spec_readme_target`,
+`_resolve_sub_spec_history_readme_target`,
+`_resolve_sub_spec_history_v001_gitkeep_target` in
+`_seed_railway_emits_per_tree.py`) stay duplicated for now (~30
+lines of duplication). The refactor lands when EITHER (a)
+`dev-tooling/checks/commit_pairs_source_and_test.py` gets its
+planned `refactor:` prefix exemption (the check's own docstring
+at line 42 lists this carve-out as planned-but-unimplemented work);
+OR (b) a future feat: cycle naturally absorbs the refactor by also
+modifying the relevant tests. The user gated the deferral via
+AskUserQuestion 2026-05-03T20:20Z (option: "Defer + move to next
+Phase 7 work item").
+
+**Rationale:** The refactor was prepared and committed on a
+working tree, but the lefthook pre-commit blocked it — the
+`commit_pairs_source_and_test` check requires every staged source
+file to have a paired staged test file (per v033 D1 mirror-pairing
++ v033 D3 source-test-pair-within-commit). The check's docstring
+explicitly lists `refactor:` prefix exemption as planned future
+work but the carve-out isn't implemented yet. Three options were
+presented: (1) defer + move on (chosen), (2) implement the
+`refactor:` exemption first as its own feat: Red→Green cycle
+(would cost ~15min lefthook overhead + open new mini-track-
+adjacent scope creep), (3) bundle the refactor into a future
+feat: cycle that touches these files naturally (lower immediate
+cost but unbounded latency). Option 1 minimizes scope creep and
+keeps Phase 7 focus on widening sub-commands per the branch name
+`phase-7-widen-sub-commands`. The duplication is small,
+mechanically verifiable (the three helpers are textually
+near-identical), and won't grow further (sub-step 1.c is closed).
+
