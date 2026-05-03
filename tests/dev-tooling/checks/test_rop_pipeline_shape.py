@@ -110,7 +110,8 @@ def test_rop_pipeline_shape_accepts_class_with_one_public_method(*, tmp_path: Pa
 
 
 def test_rop_pipeline_shape_accepts_bare_decorator_and_class_attributes(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `@rop_pipeline` class with class attributes (not methods) and bare decorator passes.
 
@@ -199,9 +200,9 @@ def test_rop_pipeline_shape_accepts_empty_tree(*, tmp_path: Path) -> None:
         check=False,
     )
 
-    assert result.returncode == 0, (
-        f"rop_pipeline_shape should accept empty tree; got returncode={result.returncode}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"rop_pipeline_shape should accept empty tree; got returncode={result.returncode}"
 
 
 def test_rop_pipeline_shape_module_importable_without_running_main() -> None:
@@ -209,7 +210,8 @@ def test_rop_pipeline_shape_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "rop_pipeline_shape_for_import_test", str(_ROP_PIPELINE_SHAPE),
+        "rop_pipeline_shape_for_import_test",
+        str(_ROP_PIPELINE_SHAPE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

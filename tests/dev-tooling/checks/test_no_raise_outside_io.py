@@ -209,7 +209,8 @@ def test_no_raise_outside_io_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "no_raise_outside_io_for_import_test", str(_NO_RAISE_OUTSIDE_IO),
+        "no_raise_outside_io_for_import_test",
+        str(_NO_RAISE_OUTSIDE_IO),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

@@ -140,19 +140,9 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
     assert (project_root / "SPECIFICATION" / "spec.md").is_file()
     assert (project_root / "SPECIFICATION" / "history" / "v001" / "spec.md").is_file()
     assert (
-        project_root
-        / "SPECIFICATION"
-        / "history"
-        / "v001"
-        / "proposed_changes"
-        / "seed.md"
+        project_root / "SPECIFICATION" / "history" / "v001" / "proposed_changes" / "seed.md"
     ).is_file()
-    assert (
-        project_root
-        / "SPECIFICATION"
-        / "proposed_changes"
-        / "README.md"
-    ).is_file()
+    assert (project_root / "SPECIFICATION" / "proposed_changes" / "README.md").is_file()
 
     # Step 2: propose-change against MAIN.
     main_topic = "main-roundtrip-proposal"
@@ -185,12 +175,10 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
         f"propose-change exited {propose_result.returncode}; "
         f"stdout={propose_result.stdout!r} stderr={propose_result.stderr!r}"
     )
-    main_in_flight = (
-        project_root / "SPECIFICATION" / "proposed_changes" / f"{main_topic}.md"
-    )
-    assert main_in_flight.is_file(), (
-        f"expected in-flight proposal {main_in_flight} after propose-change"
-    )
+    main_in_flight = project_root / "SPECIFICATION" / "proposed_changes" / f"{main_topic}.md"
+    assert (
+        main_in_flight.is_file()
+    ), f"expected in-flight proposal {main_in_flight} after propose-change"
 
     # Step 3: critique (delegates to propose-change with `-critique` suffix).
     critique_findings: dict[str, object] = {
@@ -224,10 +212,7 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
         f"stdout={critique_result.stdout!r} stderr={critique_result.stderr!r}"
     )
     critique_in_flight = (
-        project_root
-        / "SPECIFICATION"
-        / "proposed_changes"
-        / "roundtrip-critic-critique.md"
+        project_root / "SPECIFICATION" / "proposed_changes" / "roundtrip-critic-critique.md"
     )
     assert critique_in_flight.is_file(), (
         f"expected critique in-flight proposal {critique_in_flight} (delegated "
@@ -282,18 +267,17 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
     )
     main_v002 = project_root / "SPECIFICATION" / "history" / "v002"
     assert main_v002.is_dir(), "expected main history/v002/ after revise"
-    assert (main_v002 / "proposed_changes" / f"{main_topic}.md").is_file(), (
-        "expected revise to byte-move proposed_changes/<topic>.md into v002"
-    )
+    assert (
+        main_v002 / "proposed_changes" / f"{main_topic}.md"
+    ).is_file(), "expected revise to byte-move proposed_changes/<topic>.md into v002"
     assert (
         main_v002 / "proposed_changes" / f"{main_topic}-revision.md"
     ).is_file(), "expected revise to write paired <topic>-revision.md into v002"
-    assert not main_in_flight.exists(), (
-        "expected in-flight proposal moved out of working directory after revise"
-    )
+    assert (
+        not main_in_flight.exists()
+    ), "expected in-flight proposal moved out of working directory after revise"
     assert not critique_in_flight.exists(), (
-        "expected critique in-flight proposal moved out of working directory "
-        "after revise"
+        "expected critique in-flight proposal moved out of working directory " "after revise"
     )
 
     # Step 5: prune-history (Phase-3 stub, returns 0).
@@ -327,6 +311,5 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
     findings = [f for f in findings_obj if isinstance(f, dict)]
     fail_findings = [f for f in findings if f.get("status") == "fail"]
     assert not fail_findings, (
-        f"expected zero fail findings on final round-trip state; "
-        f"got {fail_findings!r}"
+        f"expected zero fail findings on final round-trip state; " f"got {fail_findings!r}"
     )

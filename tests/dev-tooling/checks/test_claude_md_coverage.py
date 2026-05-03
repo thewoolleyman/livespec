@@ -171,7 +171,8 @@ def test_claude_md_coverage_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "claude_md_coverage_for_import_test", str(_CLAUDE_MD_COVERAGE),
+        "claude_md_coverage_for_import_test",
+        str(_CLAUDE_MD_COVERAGE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

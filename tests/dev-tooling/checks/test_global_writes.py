@@ -165,7 +165,8 @@ def test_global_writes_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "global_writes_for_import_test", str(_GLOBAL_WRITES),
+        "global_writes_for_import_test",
+        str(_GLOBAL_WRITES),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

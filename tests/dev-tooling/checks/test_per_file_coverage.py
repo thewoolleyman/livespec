@@ -186,7 +186,8 @@ def test_per_file_coverage_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "per_file_coverage_for_import_test", str(_PER_FILE_COVERAGE),
+        "per_file_coverage_for_import_test",
+        str(_PER_FILE_COVERAGE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -205,7 +206,8 @@ def test_full_coverage_pct_constant_pins_v033_d2_threshold() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "per_file_coverage_for_constant_test", str(_PER_FILE_COVERAGE),
+        "per_file_coverage_for_constant_test",
+        str(_PER_FILE_COVERAGE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

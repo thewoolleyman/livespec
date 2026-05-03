@@ -63,9 +63,7 @@ def test_git_hook_wrapper_dispatches_to_mise_with_basename_hook_name(*, tmp_path
     argv_log = tmp_path / "mise_argv.log"
     fake_mise = fake_path_dir / "mise"
     fake_mise.write_text(
-        '#!/bin/sh\n'
-        f'printf "%s\\n" "$@" > "{argv_log}"\n'
-        'exit 0\n',
+        "#!/bin/sh\n" f'printf "%s\\n" "$@" > "{argv_log}"\n' "exit 0\n",
         encoding="utf-8",
     )
     fake_mise.chmod(fake_mise.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)

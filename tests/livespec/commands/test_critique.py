@@ -209,10 +209,5 @@ def test_critique_main_propagates_project_root_to_delegated_propose_change(
         ],
     )
     assert exit_code == 0
-    out = (
-        project_root
-        / "SPECIFICATION"
-        / "proposed_changes"
-        / "unknown-llm-critique.md"
-    )
+    out = project_root / "SPECIFICATION" / "proposed_changes" / "unknown-llm-critique.md"
     assert out.exists(), f"expected {out} to be written"

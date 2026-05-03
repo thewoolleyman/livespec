@@ -43,7 +43,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _TESTS_MIRROR_PAIRING = _REPO_ROOT / "dev-tooling" / "checks" / "tests_mirror_pairing.py"
 
 
-def test_tests_mirror_pairing_rejects_livespec_source_without_paired_test(*, tmp_path: Path) -> None:
+def test_tests_mirror_pairing_rejects_livespec_source_without_paired_test(
+    *, tmp_path: Path
+) -> None:
     """A `livespec/foo/bar.py` source file without `tests/livespec/foo/test_bar.py` fails the check.
 
     The fixture builds a synthetic project root mirroring the real
@@ -62,11 +64,7 @@ def test_tests_mirror_pairing_rejects_livespec_source_without_paired_test(*, tmp
     package_dir.mkdir(parents=True)
     source = package_dir / "bar.py"
     source.write_text(
-        "from __future__ import annotations\n"
-        "\n"
-        "__all__: list[str] = []\n"
-        "\n"
-        "x = 0\n",
+        "from __future__ import annotations\n" "\n" "__all__: list[str] = []\n" "\n" "x = 0\n",
         encoding="utf-8",
     )
 
@@ -158,7 +156,8 @@ def test_tests_mirror_pairing_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "tests_mirror_pairing_for_import_test", str(_TESTS_MIRROR_PAIRING),
+        "tests_mirror_pairing_for_import_test",
+        str(_TESTS_MIRROR_PAIRING),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

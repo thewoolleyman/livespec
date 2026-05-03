@@ -150,7 +150,9 @@ def test_no_except_outside_io_accepts_supervisor_bug_catcher(*, tmp_path: Path) 
     )
 
 
-def test_no_except_outside_io_accepts_supervisor_bug_catcher_in_run_static(*, tmp_path: Path) -> None:
+def test_no_except_outside_io_accepts_supervisor_bug_catcher_in_run_static(
+    *, tmp_path: Path
+) -> None:
     """A `try/except Exception` inside `doctor/run_static.py::main()` passes (exit 0).
 
     Pass-case: the second supervisor bug-catcher surface.
@@ -255,7 +257,8 @@ def test_no_except_outside_io_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "no_except_outside_io_for_import_test", str(_NO_EXCEPT_OUTSIDE_IO),
+        "no_except_outside_io_for_import_test",
+        str(_NO_EXCEPT_OUTSIDE_IO),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

@@ -121,7 +121,8 @@ def test_no_todo_registry_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "no_todo_registry_for_import_test", str(_NO_TODO_REGISTRY),
+        "no_todo_registry_for_import_test",
+        str(_NO_TODO_REGISTRY),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

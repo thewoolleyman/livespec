@@ -119,8 +119,16 @@ select = [
     "FURB",  # refurb — modern-Python refactor hints
     "SLOT",  # flake8-slots
     "ISC",   # flake8-implicit-str-concat — complements pyright's diagnostic
+    # ISC001 (implicit-str-concat on one line) conflicts with the
+    # ruff formatter — the formatter emits `f"..." f"..."` when
+    # joining wraps; ISC001 then flags the result. Disabled per
+    # ruff's documented formatter-conflict guidance. ISC002 and
+    # ISC003 stay active to flag genuine multi-line concats.
     "T20",   # flake8-print — bans print/pprint (pairs with check-no-write-direct)
     "S",     # flake8-bandit — security anti-patterns
+]
+ignore = [
+    "ISC001",  # implicit-str-concat on one line; conflicts with the formatter
 ]
 
 [tool.ruff.lint.pylint]

@@ -90,7 +90,9 @@ def test_docs_commit_subject_exits_zero(*, tmp_path: Path) -> None:
     ["build", "ci", "style", "test", "refactor", "perf", "revert"],
 )
 def test_remaining_exempt_commit_subjects_exit_zero(
-    *, type_token: str, tmp_path: Path,
+    *,
+    type_token: str,
+    tmp_path: Path,
 ) -> None:
     """Each remaining v034 D3 exempt Conventional Commit type exits 0.
 
@@ -168,7 +170,9 @@ def test_feat_in_git_repo_with_no_staged_files_diagnoses_no_mode(*, tmp_path: Pa
     check.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
@@ -192,7 +196,8 @@ def test_feat_in_git_repo_with_no_staged_files_diagnoses_no_mode(*, tmp_path: Pa
 
 
 def test_feat_in_git_repo_with_staged_files_skips_no_staged_diagnostic(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A feat: subject in a git repo WITH staged files skips the no-staged diagnostic.
 
@@ -205,12 +210,15 @@ def test_feat_in_git_repo_with_staged_files_skips_no_staged_diagnostic(
     coverage on the new staged-emptiness conditional.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     (tmp_path / "tests").mkdir()
     test_file = tmp_path / "tests" / "test_dummy.py"
     test_file.write_text(
-        "def test_x() -> None:\n    assert True\n", encoding="utf-8",
+        "def test_x() -> None:\n    assert True\n",
+        encoding="utf-8",
     )
     subprocess.run(
         ["git", "add", "tests/test_dummy.py"],
@@ -240,7 +248,8 @@ def test_feat_in_git_repo_with_staged_files_skips_no_staged_diagnostic(
 
 
 def test_feat_with_tests_only_staged_emits_red_mode_candidate(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A feat: subject with tests-only staged is a Red-mode candidate.
 
@@ -255,12 +264,15 @@ def test_feat_with_tests_only_staged_emits_red_mode_candidate(
     + Red-trailer authoring come in subsequent cycles).
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     (tmp_path / "tests").mkdir()
     test_file = tmp_path / "tests" / "test_dummy.py"
     test_file.write_text(
-        "def test_x() -> None:\n    assert True\n", encoding="utf-8",
+        "def test_x() -> None:\n    assert True\n",
+        encoding="utf-8",
     )
     subprocess.run(
         ["git", "add", "tests/test_dummy.py"],
@@ -290,7 +302,8 @@ def test_feat_with_tests_only_staged_emits_red_mode_candidate(
 
 
 def test_feat_with_impl_only_staged_skips_red_mode_candidate(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A feat: subject with impl-only staged is NOT a Red-mode candidate.
 
@@ -304,7 +317,9 @@ def test_feat_with_impl_only_staged_skips_red_mode_candidate(
     guarantees per-file 100% branch coverage on the new conditional.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     impl_dir = tmp_path / "livespec"
     impl_dir.mkdir()
@@ -338,7 +353,8 @@ def test_feat_with_impl_only_staged_skips_red_mode_candidate(
 
 
 def test_feat_with_single_test_file_staged_emits_sha256_checksum(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A feat: subject with one staged test file surfaces a SHA-256 checksum.
 
@@ -356,7 +372,9 @@ def test_feat_with_single_test_file_staged_emits_sha256_checksum(
     mechanical.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     (tmp_path / "tests").mkdir()
     test_file = tmp_path / "tests" / "test_dummy.py"
@@ -398,7 +416,8 @@ def test_feat_with_single_test_file_staged_emits_sha256_checksum(
 
 
 def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagnostic(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A feat: subject with multiple staged test files is not a valid Red moment.
 
@@ -413,14 +432,18 @@ def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagn
     100% branch coverage on the new conditional.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "test_a.py").write_text(
-        "def test_a() -> None:\n    assert True\n", encoding="utf-8",
+        "def test_a() -> None:\n    assert True\n",
+        encoding="utf-8",
     )
     (tmp_path / "tests" / "test_b.py").write_text(
-        "def test_b() -> None:\n    assert True\n", encoding="utf-8",
+        "def test_b() -> None:\n    assert True\n",
+        encoding="utf-8",
     )
     subprocess.run(
         ["git", "add", "tests/test_a.py", "tests/test_b.py"],
@@ -440,12 +463,10 @@ def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagn
     )
 
     assert result.returncode != 0, (
-        f"feat: with multiple test files staged must reject; "
-        f"got returncode={result.returncode}"
+        f"feat: with multiple test files staged must reject; " f"got returncode={result.returncode}"
     )
     assert "multi-test-file" in result.stderr.lower(), (
-        f"expected 'multi-test-file' diagnostic in stderr; "
-        f"got stderr={result.stderr!r}"
+        f"expected 'multi-test-file' diagnostic in stderr; " f"got stderr={result.stderr!r}"
     )
     assert "test_file_checksum" not in result.stderr, (
         f"checksum field must NOT fire when multiple test files are staged; "
@@ -454,7 +475,8 @@ def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagn
 
 
 def test_feat_with_failing_test_staged_emits_red_pytest_result(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A feat: subject with a single failing staged test file pins a valid Red moment.
 
@@ -469,13 +491,14 @@ def test_feat_with_failing_test_staged_emits_red_pytest_result(
     branch of `pytest_result.returncode == 0`.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     (tmp_path / "tests").mkdir()
     test_file = tmp_path / "tests" / "test_failing.py"
     test_file.write_text(
-        "def test_failing() -> None:\n"
-        "    assert False, 'staged red test fails as required'\n",
+        "def test_failing() -> None:\n" "    assert False, 'staged red test fails as required'\n",
         encoding="utf-8",
     )
     subprocess.run(
@@ -514,7 +537,8 @@ def test_feat_with_failing_test_staged_emits_red_pytest_result(
 
 
 def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A feat: subject with a single passing staged test file is NOT a Red moment.
 
@@ -529,7 +553,9 @@ def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
     fire on this path.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     (tmp_path / "tests").mkdir()
     test_file = tmp_path / "tests" / "test_passing.py"
@@ -555,8 +581,7 @@ def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
     )
 
     assert result.returncode != 0, (
-        f"hook must reject when staged test passes; "
-        f"got returncode={result.returncode}"
+        f"hook must reject when staged test passes; " f"got returncode={result.returncode}"
     )
     assert "test-passed-at-red" in result.stderr, (
         f"expected 'test-passed-at-red' rejection in stderr for passing test; "
@@ -569,7 +594,8 @@ def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
 
 
 def test_feat_with_failing_test_writes_full_red_trailer_schema(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """Red-moment confirmed → COMMIT_EDITMSG gains the v034 D2 trailer schema.
 
@@ -589,13 +615,14 @@ def test_feat_with_failing_test_writes_full_red_trailer_schema(
     fully verified, commit proceeds).
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     (tmp_path / "tests").mkdir()
     test_file = tmp_path / "tests" / "test_red.py"
     test_file.write_text(
-        "def test_red() -> None:\n"
-        "    assert False, 'red-trailer-test'\n",
+        "def test_red() -> None:\n" "    assert False, 'red-trailer-test'\n",
         encoding="utf-8",
     )
     subprocess.run(
@@ -629,8 +656,7 @@ def test_feat_with_failing_test_writes_full_red_trailer_schema(
         "TDD-Red-Captured-At:",
     ):
         assert trailer_key in final_msg, (
-            f"expected trailer {trailer_key!r} in COMMIT_EDITMSG; "
-            f"got final_msg={final_msg!r}"
+            f"expected trailer {trailer_key!r} in COMMIT_EDITMSG; " f"got final_msg={final_msg!r}"
         )
     assert "sha256:" in final_msg, (
         f"expected sha256: prefix in trailers (Test-File-Checksum + Output-Checksum); "
@@ -639,7 +665,8 @@ def test_feat_with_failing_test_writes_full_red_trailer_schema(
 
 
 def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candidate(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """Green-mode-candidate detection: HEAD~0 has Red trailers + impl staged.
 
@@ -657,7 +684,9 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
     cycles).
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     subprocess.run(
         ["git", "config", "user.email", "test@test.test"],
@@ -696,7 +725,8 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
 
     (tmp_path / "livespec").mkdir()
     (tmp_path / "livespec" / "foo.py").write_text(
-        "VALUE: int = 1\n", encoding="utf-8",
+        "VALUE: int = 1\n",
+        encoding="utf-8",
     )
     subprocess.run(
         ["git", "add", "livespec/foo.py"],
@@ -720,13 +750,13 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
         f"got returncode={result.returncode}"
     )
     assert "green-mode-candidate" in result.stderr.lower(), (
-        f"expected 'green-mode-candidate' diagnostic in stderr; "
-        f"got stderr={result.stderr!r}"
+        f"expected 'green-mode-candidate' diagnostic in stderr; " f"got stderr={result.stderr!r}"
     )
 
 
 def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_trailers(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """Full Green-mode replay success: Green trailers written, hook returns 0.
 
@@ -742,15 +772,19 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     plus Green trailer presence in COMMIT_EDITMSG.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     subprocess.run(
         ["git", "config", "user.email", "test@test.test"],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
     subprocess.run(
         ["git", "config", "user.name", "Test User"],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
 
     (tmp_path / "tests").mkdir()
@@ -760,7 +794,8 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     real_checksum = f"sha256:{hashlib.sha256(test_bytes).hexdigest()}"
     subprocess.run(
         ["git", "add", "tests/test_x.py"],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
     red_commit_msg = (
         "feat: red commit\n"
@@ -773,16 +808,19 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     )
     subprocess.run(
         ["git", "commit", "-m", red_commit_msg],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
 
     (tmp_path / "livespec").mkdir()
     (tmp_path / "livespec" / "foo.py").write_text(
-        "VALUE: int = 1\n", encoding="utf-8",
+        "VALUE: int = 1\n",
+        encoding="utf-8",
     )
     subprocess.run(
         ["git", "add", "livespec/foo.py"],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
 
     msg_path = tmp_path / "COMMIT_EDITMSG"
@@ -802,13 +840,14 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     )
     final_msg = msg_path.read_text(encoding="utf-8")
     for trailer_key in ("TDD-Green-Verified-At:", "TDD-Green-Parent-Reflog:"):
-        assert trailer_key in final_msg, (
-            f"expected {trailer_key!r} in COMMIT_EDITMSG; got final_msg={final_msg!r}"
-        )
+        assert (
+            trailer_key in final_msg
+        ), f"expected {trailer_key!r} in COMMIT_EDITMSG; got final_msg={final_msg!r}"
 
 
 def test_feat_green_amend_with_test_still_failing_rejects(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """Green-mode replay rejection: pytest still fails at Green moment.
 
@@ -820,28 +859,32 @@ def test_feat_green_amend_with_test_still_failing_rejects(
     `green_pytest_result.returncode != 0`.
     """
     subprocess.run(
-        ["git", "init", "-q"], cwd=str(tmp_path), check=True,
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
     )
     subprocess.run(
         ["git", "config", "user.email", "test@test.test"],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
     subprocess.run(
         ["git", "config", "user.name", "Test User"],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
 
     (tmp_path / "tests").mkdir()
     test_bytes = (
-        b"def test_still_failing() -> None:\n"
-        b"    assert False, 'still-failing-at-green'\n"
+        b"def test_still_failing() -> None:\n" b"    assert False, 'still-failing-at-green'\n"
     )
     test_file = tmp_path / "tests" / "test_still_failing.py"
     test_file.write_bytes(test_bytes)
     real_checksum = f"sha256:{hashlib.sha256(test_bytes).hexdigest()}"
     subprocess.run(
         ["git", "add", "tests/test_still_failing.py"],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
     red_commit_msg = (
         "feat: red commit\n"
@@ -854,16 +897,19 @@ def test_feat_green_amend_with_test_still_failing_rejects(
     )
     subprocess.run(
         ["git", "commit", "-m", red_commit_msg],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
 
     (tmp_path / "livespec").mkdir()
     (tmp_path / "livespec" / "foo.py").write_text(
-        "VALUE: int = 1\n", encoding="utf-8",
+        "VALUE: int = 1\n",
+        encoding="utf-8",
     )
     subprocess.run(
         ["git", "add", "livespec/foo.py"],
-        cwd=str(tmp_path), check=True,
+        cwd=str(tmp_path),
+        check=True,
     )
 
     msg_path = tmp_path / "COMMIT_EDITMSG"
@@ -898,7 +944,9 @@ def test_feat_green_amend_with_test_still_failing_rejects(
     ],
 )
 def test_conventional_commit_breaking_and_scope_variants_exit_zero(
-    *, subject_token: str, tmp_path: Path,
+    *,
+    subject_token: str,
+    tmp_path: Path,
 ) -> None:
     """Conventional Commits `<type>[(<scope>)][!]:` variants resolve as exempt.
 
@@ -949,7 +997,8 @@ def test_classify_staged_recognizes_production_claude_plugin_scripts_paths() -> 
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "red_green_replay_for_classify_test", str(_RED_GREEN_REPLAY),
+        "red_green_replay_for_classify_test",
+        str(_RED_GREEN_REPLAY),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -972,20 +1021,16 @@ def test_classify_staged_recognizes_production_claude_plugin_scripts_paths() -> 
         f"got impl_paths={impl_paths}"
     )
     assert "dev-tooling/checks/foo.py" in impl_paths, (
-        f"`dev-tooling/...` path should be in impl bucket; "
-        f"got impl_paths={impl_paths}"
+        f"`dev-tooling/...` path should be in impl bucket; " f"got impl_paths={impl_paths}"
     )
     assert "tests/livespec/test_foo.py" in tests_paths, (
-        f"`tests/...` path should be in tests bucket; "
-        f"got tests_paths={tests_paths}"
+        f"`tests/...` path should be in tests bucket; " f"got tests_paths={tests_paths}"
     )
     assert "bootstrap/STATUS.md" not in impl_paths, (
-        f"`bootstrap/...` path should NOT be in impl bucket; "
-        f"got impl_paths={impl_paths}"
+        f"`bootstrap/...` path should NOT be in impl bucket; " f"got impl_paths={impl_paths}"
     )
     assert "bootstrap/STATUS.md" not in tests_paths, (
-        f"`bootstrap/...` path should NOT be in tests bucket; "
-        f"got tests_paths={tests_paths}"
+        f"`bootstrap/...` path should NOT be in tests bucket; " f"got tests_paths={tests_paths}"
     )
 
 
@@ -1000,7 +1045,8 @@ def test_red_green_replay_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "red_green_replay_for_import_test", str(_RED_GREEN_REPLAY),
+        "red_green_replay_for_import_test",
+        str(_RED_GREEN_REPLAY),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -1026,7 +1072,8 @@ def test_red_green_replay_modes_helpers_importable() -> None:
         / "_red_green_replay_modes.py"
     )
     spec = importlib.util.spec_from_file_location(
-        "_red_green_replay_modes_for_import_test", str(helpers_path),
+        "_red_green_replay_modes_for_import_test",
+        str(helpers_path),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

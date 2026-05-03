@@ -43,9 +43,7 @@ __all__: list[str] = []
 _LIVESPEC_TREE = Path(".claude-plugin") / "scripts" / "livespec"
 _IO_TREE = Path(".claude-plugin") / "scripts" / "livespec" / "io"
 _COMMANDS_TREE = Path(".claude-plugin") / "scripts" / "livespec" / "commands"
-_DOCTOR_RUN_STATIC = (
-    Path(".claude-plugin") / "scripts" / "livespec" / "doctor" / "run_static.py"
-)
+_DOCTOR_RUN_STATIC = Path(".claude-plugin") / "scripts" / "livespec" / "doctor" / "run_static.py"
 
 
 def _is_supervisor_main_file(*, rel_path: Path) -> bool:
@@ -99,9 +97,7 @@ def main() -> int:
                 if _is_supervisor_main_file(rel_path=rel)
                 else set()
             )
-            for lineno in _find_offending_try_lines(
-                source=source, exempt_main_try=exempt
-            ):
+            for lineno in _find_offending_try_lines(source=source, exempt_main_try=exempt):
                 offenders.append((rel, lineno))
     if offenders:
         for path, lineno in offenders:

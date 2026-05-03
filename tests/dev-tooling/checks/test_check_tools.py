@@ -81,7 +81,7 @@ def test_check_tools_accepts_mise_pinned_tools_at_pinned_versions(*, tmp_path: P
         "[tools]\n"
         "# inline tools comment\n"
         'uv = "*"\n'
-        'malformed line without equals\n',
+        "malformed line without equals\n",
         encoding="utf-8",
     )
 
@@ -149,8 +149,7 @@ def test_check_tools_rejects_tool_not_on_path(*, tmp_path: Path) -> None:
     )
 
     assert result.returncode != 0, (
-        f"check_tools should reject not-on-path tool; "
-        f"got returncode={result.returncode}"
+        f"check_tools should reject not-on-path tool; " f"got returncode={result.returncode}"
     )
 
 
@@ -171,13 +170,13 @@ def test_check_tools_rejects_pinned_version_mismatch(*, tmp_path: Path) -> None:
     )
 
     assert result.returncode != 0, (
-        f"check_tools should reject version mismatch; "
-        f"got returncode={result.returncode}"
+        f"check_tools should reject version mismatch; " f"got returncode={result.returncode}"
     )
 
 
 def test_check_tools_falls_back_to_subcommand_version_when_dash_dash_version_errors(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """Binaries whose `--version` errors but `version` reports the version pass.
 
@@ -217,6 +216,7 @@ def test_check_tools_falls_back_to_subcommand_version_when_dash_dash_version_err
     )
 
     import os
+
     env = dict(os.environ)
     env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
 
@@ -241,7 +241,8 @@ def test_check_tools_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "check_tools_for_import_test", str(_CHECK_TOOLS),
+        "check_tools_for_import_test",
+        str(_CHECK_TOOLS),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

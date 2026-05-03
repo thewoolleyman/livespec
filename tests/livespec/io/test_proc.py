@@ -80,8 +80,7 @@ def test_proc_run_subprocess_captures_nonzero_exit_on_iosuccess_track() -> None:
             assert completed.returncode == 3
         case _:
             raise AssertionError(
-                f"expected IOSuccess(CompletedProcess) with returncode 3, "
-                f"got {result!r}",
+                f"expected IOSuccess(CompletedProcess) with returncode 3, " f"got {result!r}",
             )
 
 

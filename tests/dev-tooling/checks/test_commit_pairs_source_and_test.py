@@ -107,7 +107,8 @@ def test_commit_pairs_rejects_staged_source_without_staged_test(*, tmp_path: Pat
 
 
 def test_commit_pairs_skips_when_head_has_unpaired_red_trailers(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A staged source-only commit with HEAD carrying unpaired Red trailers passes the check.
 
@@ -174,7 +175,8 @@ def test_commit_pairs_skips_when_head_has_unpaired_red_trailers(
 
 
 def test_commit_pairs_applies_when_head_has_paired_red_and_green_trailers(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A staged source-only commit with HEAD carrying Red+Green trailers fails the check.
 
@@ -305,7 +307,8 @@ def test_commit_pairs_module_importable_without_running_main() -> None:
         / "commit_pairs_source_and_test.py"
     )
     spec = importlib.util.spec_from_file_location(
-        "commit_pairs_source_and_test_for_import_test", str(module_path),
+        "commit_pairs_source_and_test_for_import_test",
+        str(module_path),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

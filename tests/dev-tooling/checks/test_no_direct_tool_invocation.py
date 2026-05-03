@@ -25,10 +25,7 @@ def test_no_direct_tool_invocation_rejects_uv_run_in_lefthook(*, tmp_path: Path)
     """A `lefthook.yml` containing `uv run` fails the check."""
     lefthook = tmp_path / "lefthook.yml"
     lefthook.write_text(
-        "pre-commit:\n"
-        "  commands:\n"
-        "    pytest:\n"
-        "      run: uv run pytest\n",
+        "pre-commit:\n" "  commands:\n" "    pytest:\n" "      run: uv run pytest\n",
         encoding="utf-8",
     )
 
@@ -58,11 +55,7 @@ def test_no_direct_tool_invocation_rejects_pytest_in_workflow(*, tmp_path: Path)
     workflow_dir.mkdir(parents=True)
     workflow = workflow_dir / "ci.yml"
     workflow.write_text(
-        "jobs:\n"
-        "  test:\n"
-        "    runs-on: ubuntu-latest\n"
-        "    steps:\n"
-        "      - run: pytest\n",
+        "jobs:\n" "  test:\n" "    runs-on: ubuntu-latest\n" "    steps:\n" "      - run: pytest\n",
         encoding="utf-8",
     )
 
@@ -135,7 +128,8 @@ def test_no_direct_tool_invocation_module_importable_without_running_main() -> N
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "no_direct_tool_invocation_for_import_test", str(_NO_DIRECT_TOOL),
+        "no_direct_tool_invocation_for_import_test",
+        str(_NO_DIRECT_TOOL),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

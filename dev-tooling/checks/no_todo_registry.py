@@ -61,7 +61,7 @@ def main() -> int:
     if offenders:
         for entry in offenders:
             log.error(
-                "heading-coverage.json entry has `test: \"TODO\"` (release-gate violation)",
+                'heading-coverage.json entry has `test: "TODO"` (release-gate violation)',
                 heading=entry.get("heading"),
                 spec_root=entry.get("spec_root"),
             )

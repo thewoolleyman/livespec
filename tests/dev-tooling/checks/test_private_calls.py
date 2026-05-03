@@ -213,7 +213,8 @@ def test_private_calls_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "private_calls_for_import_test", str(_PRIVATE_CALLS),
+        "private_calls_for_import_test",
+        str(_PRIVATE_CALLS),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

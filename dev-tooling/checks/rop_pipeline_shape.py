@@ -53,10 +53,7 @@ def _is_dunder(*, name: str) -> bool:
 
 
 def _has_rop_pipeline_decorator(*, cls: ast.ClassDef) -> bool:
-    return any(
-        _decorator_terminal_name(decorator=d) == "rop_pipeline"
-        for d in cls.decorator_list
-    )
+    return any(_decorator_terminal_name(decorator=d) == "rop_pipeline" for d in cls.decorator_list)
 
 
 def _count_public_methods(*, cls: ast.ClassDef) -> int:

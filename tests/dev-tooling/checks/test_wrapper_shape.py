@@ -265,7 +265,8 @@ def test_wrapper_shape_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "wrapper_shape_for_import_test", str(_WRAPPER_SHAPE),
+        "wrapper_shape_for_import_test",
+        str(_WRAPPER_SHAPE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -286,7 +287,8 @@ def test_canonical_wrapper_stmt_count_pins_5() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "wrapper_shape_for_constant_test", str(_WRAPPER_SHAPE),
+        "wrapper_shape_for_constant_test",
+        str(_WRAPPER_SHAPE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

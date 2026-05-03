@@ -70,8 +70,7 @@ def _find_offending_match_lines(*, source: str) -> list[int]:
     out: list[int] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Match) and (
-            len(node.cases) == 0
-            or not _is_compliant_terminator(case=node.cases[-1])
+            len(node.cases) == 0 or not _is_compliant_terminator(case=node.cases[-1])
         ):
             out.append(node.lineno)
     return out

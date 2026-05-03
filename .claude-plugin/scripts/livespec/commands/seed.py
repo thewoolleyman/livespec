@@ -88,7 +88,8 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[SeedInput, Livespe
         .bind(
             lambda schema_dict: IOResult.from_result(
                 validate_seed_input_module.validate_seed_input(
-                    payload=payload, schema=schema_dict,
+                    payload=payload,
+                    schema=schema_dict,
                 ),
             ),
         )
@@ -154,47 +155,56 @@ def main(*, argv: list[str] | None = None) -> int:
             .bind(lambda payload: _validate_payload(payload=payload))
             .bind(
                 lambda si: _write_livespec_config(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(
                 lambda si: _write_main_spec_files(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(
                 lambda si: _write_sub_spec_files(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(
                 lambda si: _write_main_spec_history_v001(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(
                 lambda si: _write_sub_spec_history_v001(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(
                 lambda si: _emit_seed_proposed_change(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(
                 lambda si: _emit_seed_revision(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(
                 lambda si: _emit_skill_owned_proposed_changes_readme(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(
                 lambda si: _run_post_step_doctor(
-                    seed_input=si, project_root=_resolve_project_root(namespace=namespace),
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
         ),

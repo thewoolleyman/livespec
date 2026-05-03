@@ -141,9 +141,7 @@ def main() -> int:
         return 0
 
     staged = _staged_files(cwd=cwd)
-    source_changes = [
-        path for path in staged if path.startswith(_SOURCE_TREE_PREFIXES)
-    ]
+    source_changes = [path for path in staged if path.startswith(_SOURCE_TREE_PREFIXES)]
     test_changes = [path for path in staged if path.startswith(_TESTS_TREE_PREFIX)]
 
     if source_changes and not test_changes:

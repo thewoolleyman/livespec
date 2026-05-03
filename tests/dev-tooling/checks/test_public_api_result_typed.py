@@ -25,9 +25,7 @@ __all__: list[str] = []
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_PUBLIC_API_RESULT_TYPED = (
-    _REPO_ROOT / "dev-tooling" / "checks" / "public_api_result_typed.py"
-)
+_PUBLIC_API_RESULT_TYPED = _REPO_ROOT / "dev-tooling" / "checks" / "public_api_result_typed.py"
 
 
 def test_public_api_result_typed_rejects_non_result_public_function(*, tmp_path: Path) -> None:
@@ -246,7 +244,8 @@ def test_public_api_result_typed_accepts_bare_safe_decorator(*, tmp_path: Path) 
 
 
 def test_public_api_result_typed_rejects_function_without_return_annotation(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A public function without a return annotation fails the check.
 
@@ -292,7 +291,7 @@ def test_public_api_result_typed_ignores_private_function(*, tmp_path: Path) -> 
     source.write_text(
         "from __future__ import annotations\n"
         "\n"
-        '__all__: list[str] = []\n'
+        "__all__: list[str] = []\n"
         "\n"
         "\n"
         "def _helper(*, x: int) -> int:\n"
@@ -324,9 +323,9 @@ def test_public_api_result_typed_accepts_empty_tree(*, tmp_path: Path) -> None:
         check=False,
     )
 
-    assert result.returncode == 0, (
-        f"public_api_result_typed should accept empty tree; got returncode={result.returncode}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"public_api_result_typed should accept empty tree; got returncode={result.returncode}"
 
 
 def test_public_api_result_typed_module_importable_without_running_main() -> None:
@@ -334,7 +333,8 @@ def test_public_api_result_typed_module_importable_without_running_main() -> Non
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "public_api_result_typed_for_import_test", str(_PUBLIC_API_RESULT_TYPED),
+        "public_api_result_typed_for_import_test",
+        str(_PUBLIC_API_RESULT_TYPED),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

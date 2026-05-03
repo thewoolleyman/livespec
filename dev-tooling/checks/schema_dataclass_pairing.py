@@ -35,9 +35,7 @@ __all__: list[str] = []
 
 
 _SCHEMAS_DIR = Path(".claude-plugin") / "scripts" / "livespec" / "schemas"
-_DATACLASSES_DIR = (
-    Path(".claude-plugin") / "scripts" / "livespec" / "schemas" / "dataclasses"
-)
+_DATACLASSES_DIR = Path(".claude-plugin") / "scripts" / "livespec" / "schemas" / "dataclasses"
 _VALIDATE_DIR = Path(".claude-plugin") / "scripts" / "livespec" / "validate"
 _SCHEMA_SUFFIX = ".schema.json"
 

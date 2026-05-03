@@ -172,8 +172,7 @@ def test_vendor_manifest_rejects_empty_upstream_url(*, tmp_path: Path) -> None:
     )
 
     assert result.returncode != 0, (
-        f"vendor_manifest should reject empty upstream_url; "
-        f"got returncode={result.returncode}"
+        f"vendor_manifest should reject empty upstream_url; " f"got returncode={result.returncode}"
     )
 
 
@@ -202,8 +201,7 @@ def test_vendor_manifest_rejects_missing_vendored_at_field(*, tmp_path: Path) ->
     )
 
     assert result.returncode != 0, (
-        f"vendor_manifest should reject missing vendored_at; "
-        f"got returncode={result.returncode}"
+        f"vendor_manifest should reject missing vendored_at; " f"got returncode={result.returncode}"
     )
 
 
@@ -230,7 +228,8 @@ def test_vendor_manifest_rejects_non_dict_library_entry(*, tmp_path: Path) -> No
     """A library entry that's not a dict (e.g., a string) fails the check."""
     manifest = tmp_path / ".vendor.jsonc"
     manifest.write_text(
-        '{"libraries": ["bogus_string_entry"]}', encoding="utf-8",
+        '{"libraries": ["bogus_string_entry"]}',
+        encoding="utf-8",
     )
 
     result = subprocess.run(
@@ -242,8 +241,7 @@ def test_vendor_manifest_rejects_non_dict_library_entry(*, tmp_path: Path) -> No
     )
 
     assert result.returncode != 0, (
-        f"vendor_manifest should reject non-dict entry; "
-        f"got returncode={result.returncode}"
+        f"vendor_manifest should reject non-dict entry; " f"got returncode={result.returncode}"
     )
 
 
@@ -307,7 +305,8 @@ def test_vendor_manifest_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "vendor_manifest_for_import_test", str(_VENDOR_MANIFEST),
+        "vendor_manifest_for_import_test",
+        str(_VENDOR_MANIFEST),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

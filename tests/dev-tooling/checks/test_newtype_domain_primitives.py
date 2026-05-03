@@ -22,18 +22,15 @@ __all__: list[str] = []
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_NEWTYPE_DOMAIN_PRIMITIVES = (
-    _REPO_ROOT / "dev-tooling" / "checks" / "newtype_domain_primitives.py"
-)
+_NEWTYPE_DOMAIN_PRIMITIVES = _REPO_ROOT / "dev-tooling" / "checks" / "newtype_domain_primitives.py"
 
 
 def test_newtype_domain_primitives_rejects_canonical_field_with_raw_type(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A dataclass field named `check_id` annotated `str` (not `CheckId`) fails the check."""
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
@@ -70,12 +67,11 @@ def test_newtype_domain_primitives_rejects_canonical_field_with_raw_type(
 
 
 def test_newtype_domain_primitives_accepts_canonical_field_with_newtype(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `check_id: CheckId` field passes the check."""
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
@@ -110,12 +106,11 @@ def test_newtype_domain_primitives_accepts_canonical_field_with_newtype(
 
 
 def test_newtype_domain_primitives_ignores_non_canonical_field_name(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A field with a non-canonical name (e.g., `name: str`) is ignored."""
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
@@ -148,7 +143,8 @@ def test_newtype_domain_primitives_ignores_non_canonical_field_name(
 
 
 def test_newtype_domain_primitives_skips_class_body_methods_and_docstrings(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """Class-body statements that aren't AnnAssign are skipped.
 
@@ -156,9 +152,7 @@ def test_newtype_domain_primitives_skips_class_body_methods_and_docstrings(
     continue` branch. Fixture has a docstring, a method, and
     one valid AnnAssign so the class body has all three.
     """
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
@@ -204,9 +198,7 @@ def test_newtype_domain_primitives_ignores_template_root(*, tmp_path: Path) -> N
     field-name keyed and `template_root` doesn't match
     `template`. So `template_root: Path` is fine.
     """
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
@@ -239,7 +231,8 @@ def test_newtype_domain_primitives_ignores_template_root(*, tmp_path: Path) -> N
 
 
 def test_newtype_domain_primitives_accepts_canonical_field_with_optional_newtype(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `author: Author | None` field passes the check.
 
@@ -247,9 +240,7 @@ def test_newtype_domain_primitives_accepts_canonical_field_with_optional_newtype
     type (`Author`) is the canonical NewType. The check peels
     `X | None` shapes (PEP 604 unions) before comparing.
     """
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
@@ -284,12 +275,11 @@ def test_newtype_domain_primitives_accepts_canonical_field_with_optional_newtype
 
 
 def test_newtype_domain_primitives_accepts_canonical_field_with_optional_newtype_left_none(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `author: None | Author` field also passes (None on the left arm)."""
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
@@ -324,7 +314,8 @@ def test_newtype_domain_primitives_accepts_canonical_field_with_optional_newtype
 
 
 def test_newtype_domain_primitives_rejects_optional_with_raw_type(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `author: str | None` (optional but raw str inner) fails the check.
 
@@ -332,9 +323,7 @@ def test_newtype_domain_primitives_rejects_optional_with_raw_type(
     when X itself is wrong; only `Author | None` (correct inner)
     should pass.
     """
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
@@ -372,7 +361,8 @@ def test_newtype_domain_primitives_rejects_optional_with_raw_type(
 
 
 def test_newtype_domain_primitives_rejects_canonical_field_with_non_optional_union(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `check_id: str | int` (BinOp BitOr but neither arm is None Constant) falls through.
 
@@ -382,9 +372,7 @@ def test_newtype_domain_primitives_rejects_canonical_field_with_non_optional_uni
     rather than being peeled. Result: `str | int` ≠ `CheckId`, so
     the check rejects.
     """
-    package_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(

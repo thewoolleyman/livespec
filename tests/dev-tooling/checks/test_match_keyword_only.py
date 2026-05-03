@@ -29,7 +29,8 @@ _MATCH_KEYWORD_ONLY = _REPO_ROOT / "dev-tooling" / "checks" / "match_keyword_onl
 
 
 def test_match_keyword_only_rejects_positional_class_pattern_for_livespec_class(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `case Foo(x):` (positional) on a livespec class fails the check.
 
@@ -128,7 +129,8 @@ def test_match_keyword_only_accepts_keyword_class_pattern(*, tmp_path: Path) -> 
 
 
 def test_match_keyword_only_accepts_returns_positional_class_pattern(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `case Success(x):` / `case IOSuccess(x):` (positional) is permitted.
 
@@ -201,7 +203,8 @@ def test_match_keyword_only_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "match_keyword_only_for_import_test", str(_MATCH_KEYWORD_ONLY),
+        "match_keyword_only_for_import_test",
+        str(_MATCH_KEYWORD_ONLY),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

@@ -41,11 +41,7 @@ def test_all_declared_rejects_module_missing_all_declaration(*, tmp_path: Path) 
     package_dir.mkdir(parents=True)
     source = package_dir / "foo.py"
     source.write_text(
-        "from __future__ import annotations\n"
-        "\n"
-        "\n"
-        "def main() -> int:\n"
-        "    return 0\n",
+        "from __future__ import annotations\n" "\n" "\n" "def main() -> int:\n" "    return 0\n",
         encoding="utf-8",
     )
 
@@ -193,7 +189,8 @@ def test_all_declared_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "all_declared_for_import_test", str(_ALL_DECLARED),
+        "all_declared_for_import_test",
+        str(_ALL_DECLARED),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -214,7 +211,8 @@ def test_module_top_defined_names_helpers_cover_each_node_kind() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "all_declared_for_helpers_test", str(_ALL_DECLARED),
+        "all_declared_for_helpers_test",
+        str(_ALL_DECLARED),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

@@ -292,9 +292,7 @@ def test_seed_main_creates_sub_spec_history_v001(
     _ = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
     )
-    versioned = (
-        project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
-    )
+    versioned = project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
     assert versioned.exists(), f"expected {versioned} to be written"
     assert versioned.read_text(encoding="utf-8") == "# Sub-spec spec\n"
 
@@ -346,10 +344,7 @@ def test_seed_main_emits_auto_captured_seed_revision(
     _ = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
     )
-    revision_md = (
-        project_root
-        / "SPECIFICATION/history/v001/proposed_changes/seed-revision.md"
-    )
+    revision_md = project_root / "SPECIFICATION/history/v001/proposed_changes/seed-revision.md"
     assert revision_md.exists(), f"expected {revision_md} to be written"
     text = revision_md.read_text(encoding="utf-8")
     assert "proposal: seed.md" in text
@@ -445,13 +440,12 @@ def test_write_sub_spec_history_v001_skips_paths_with_fewer_than_four_components
         ],
     )
     result = _write_sub_spec_history_v001(
-        seed_input=seed_input, project_root=project_root,
+        seed_input=seed_input,
+        project_root=project_root,
     )
     unwrapped = unsafe_perform_io(result)
     assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
-    versioned = (
-        project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
-    )
+    versioned = project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
     assert versioned.exists(), "the well-formed entry should still produce v001"
 
 
@@ -494,13 +488,12 @@ def test_write_sub_spec_history_v001_skips_non_dict_entry_inside_files_list(
         ],
     )
     result = _write_sub_spec_history_v001(
-        seed_input=seed_input, project_root=project_root,
+        seed_input=seed_input,
+        project_root=project_root,
     )
     unwrapped = unsafe_perform_io(result)
     assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
-    versioned = (
-        project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
-    )
+    versioned = project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
     assert versioned.exists(), "well-formed entry should still produce v001"
 
 
@@ -544,13 +537,12 @@ def test_write_sub_spec_history_v001_skips_entries_with_non_list_files_field(
         ],
     )
     result = _write_sub_spec_history_v001(
-        seed_input=seed_input, project_root=project_root,
+        seed_input=seed_input,
+        project_root=project_root,
     )
     unwrapped = unsafe_perform_io(result)
     assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
-    versioned = (
-        project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
-    )
+    versioned = project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
     assert versioned.exists(), "the well-formed sub-spec should still produce v001"
 
 
@@ -699,21 +691,20 @@ def test_seed_main_skips_seed_md_emission_when_files_array_is_empty(
     exit_code = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
     )
-    assert exit_code == 3, (
-        f"expected exit 3 (post-step doctor fail on empty seed tree), got {exit_code}"
-    )
+    assert (
+        exit_code == 3
+    ), f"expected exit 3 (post-step doctor fail on empty seed tree), got {exit_code}"
     # Negative assertions: with no files[] entries, neither auto-
     # captured artifact is materialized (no spec_root to anchor
     # the path against). The guards' selectivity is preserved
     # despite the supervisor's exit-3 short-circuit.
     seed_md_candidates = list(project_root.rglob("seed.md"))
     revision_md_candidates = list(project_root.rglob("seed-revision.md"))
-    assert seed_md_candidates == [], (
-        f"empty files[] should skip seed.md emission; found {seed_md_candidates}"
-    )
+    assert (
+        seed_md_candidates == []
+    ), f"empty files[] should skip seed.md emission; found {seed_md_candidates}"
     assert revision_md_candidates == [], (
-        f"empty files[] should skip seed-revision.md emission; "
-        f"found {revision_md_candidates}"
+        f"empty files[] should skip seed-revision.md emission; " f"found {revision_md_candidates}"
     )
 
 
@@ -762,9 +753,9 @@ def test_seed_main_skips_main_spec_history_for_single_component_paths(
     exit_code = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
     )
-    assert exit_code == 3, (
-        f"expected exit 3 (post-step doctor fail on incomplete tree), got {exit_code}"
-    )
+    assert (
+        exit_code == 3
+    ), f"expected exit 3 (post-step doctor fail on incomplete tree), got {exit_code}"
     versioned = project_root / "SPECIFICATION/history/v001/spec.md"
     assert versioned.exists(), f"expected {versioned} to be written"
     # The single-component file's history copy is omitted; verify the
@@ -803,13 +794,20 @@ def test_fold_doctor_completed_process_returns_failure_on_malformed_json_stdout(
 
     _ = tmp_path  # fixture present for symmetry; helper does not touch the disk
     seed_input = SeedInput(
-        template="livespec", intent="x", files=[], sub_specs=[],
+        template="livespec",
+        intent="x",
+        files=[],
+        sub_specs=[],
     )
     completed = _subprocess.CompletedProcess[str](
-        args=["doctor"], returncode=0, stdout="not json {", stderr="",
+        args=["doctor"],
+        returncode=0,
+        stdout="not json {",
+        stderr="",
     )
     result = _fold_doctor_completed_process(
-        seed_input=seed_input, completed=completed,
+        seed_input=seed_input,
+        completed=completed,
     )
     unwrapped = unsafe_perform_io(result)
     match unwrapped:
@@ -846,13 +844,20 @@ def test_fold_doctor_completed_process_returns_failure_on_missing_findings_key(
 
     _ = tmp_path
     seed_input = SeedInput(
-        template="livespec", intent="x", files=[], sub_specs=[],
+        template="livespec",
+        intent="x",
+        files=[],
+        sub_specs=[],
     )
     completed = _subprocess.CompletedProcess[str](
-        args=["doctor"], returncode=0, stdout="{}", stderr="",
+        args=["doctor"],
+        returncode=0,
+        stdout="{}",
+        stderr="",
     )
     result = _fold_doctor_completed_process(
-        seed_input=seed_input, completed=completed,
+        seed_input=seed_input,
+        completed=completed,
     )
     unwrapped = unsafe_perform_io(result)
     match unwrapped:
@@ -889,13 +894,20 @@ def test_fold_doctor_completed_process_returns_failure_on_non_list_findings(
 
     _ = tmp_path
     seed_input = SeedInput(
-        template="livespec", intent="x", files=[], sub_specs=[],
+        template="livespec",
+        intent="x",
+        files=[],
+        sub_specs=[],
     )
     completed = _subprocess.CompletedProcess[str](
-        args=["doctor"], returncode=0, stdout='{"findings": "oops"}', stderr="",
+        args=["doctor"],
+        returncode=0,
+        stdout='{"findings": "oops"}',
+        stderr="",
     )
     result = _fold_doctor_completed_process(
-        seed_input=seed_input, completed=completed,
+        seed_input=seed_input,
+        completed=completed,
     )
     unwrapped = unsafe_perform_io(result)
     match unwrapped:
@@ -958,9 +970,7 @@ def test_seed_main_invokes_post_step_doctor_and_returns_exit_three_on_fail_findi
     exit_code = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
     )
-    assert exit_code == 3, (
-        f"expected exit 3 (post-step doctor fail), got {exit_code}"
-    )
+    assert exit_code == 3, f"expected exit 3 (post-step doctor fail), got {exit_code}"
     config_path = project_root / ".livespec.jsonc"
     assert config_path.exists(), (
         "sub-command logic should have written .livespec.jsonc BEFORE "

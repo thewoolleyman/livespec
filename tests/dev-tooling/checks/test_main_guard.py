@@ -161,7 +161,8 @@ def test_main_guard_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "main_guard_for_import_test", str(_MAIN_GUARD),
+        "main_guard_for_import_test",
+        str(_MAIN_GUARD),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

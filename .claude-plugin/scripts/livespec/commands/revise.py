@@ -131,7 +131,8 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
         .bind(
             lambda schema_dict: IOResult.from_result(
                 validate_revise_input_module.validate_revise_input(
-                    payload=payload, schema=schema_dict,
+                    payload=payload,
+                    schema=schema_dict,
                 ),
             ),
         )
@@ -148,11 +149,7 @@ def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """
     if namespace.spec_target is not None:
         return Path(namespace.spec_target)
-    project_root = (
-        Path.cwd()
-        if namespace.project_root is None
-        else Path(namespace.project_root)
-    )
+    project_root = Path.cwd() if namespace.project_root is None else Path(namespace.project_root)
     return project_root / "SPECIFICATION"
 
 
@@ -273,12 +270,14 @@ def _write_and_move_per_decision(
         proposed_target = version_dir / "proposed_changes" / f"{topic}.md"
         accumulator = accumulator.bind(
             lambda _value, target=revision_target, body=revision_body: fs.write_text(
-                path=target, text=body,
+                path=target,
+                text=body,
             ).map(lambda _: revise_input),
         )
         accumulator = accumulator.bind(
             lambda _value, source=proposed_source, target=proposed_target: fs.move(
-                source=source, target=target,
+                source=source,
+                target=target,
             ).map(lambda _: revise_input),
         )
         accumulator = _bind_resulting_files(
@@ -317,7 +316,8 @@ def _bind_resulting_files(
         text = str(entry["content"])
         accumulator = accumulator.bind(
             lambda _value, target=target, text=text: fs.write_text(
-                path=target, text=text,
+                path=target,
+                text=text,
             ).map(lambda _: revise_input),
         )
     return accumulator

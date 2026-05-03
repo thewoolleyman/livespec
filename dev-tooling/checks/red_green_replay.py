@@ -59,8 +59,7 @@ __all__: list[str] = []
 
 
 _EXEMPT_TYPE_RE = re.compile(
-    r"^(chore|docs|build|ci|style|test|refactor|perf|revert)"
-    r"(\([^)]+\))?!?:",
+    r"^(chore|docs|build|ci|style|test|refactor|perf|revert)" r"(\([^)]+\))?!?:",
 )
 _TESTS_PREFIX = "tests/"
 # Impl-tree prefixes (cycle 2.8 fix). The repo's actual layout

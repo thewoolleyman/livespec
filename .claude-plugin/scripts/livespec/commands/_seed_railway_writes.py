@@ -50,7 +50,8 @@ def _write_main_spec_files(
         text = entry["content"]
         accumulator = accumulator.bind(
             lambda _value, target=target, text=text: fs.write_text(
-                path=target, text=text,
+                path=target,
+                text=text,
             ).map(lambda _: seed_input),
         )
     return accumulator
@@ -73,7 +74,8 @@ def _write_main_spec_history_v001(
         text = entry["content"]
         accumulator = accumulator.bind(
             lambda _value, target=target, text=text: fs.write_text(
-                path=target, text=text,
+                path=target,
+                text=text,
             ).map(lambda _: seed_input),
         )
     return accumulator
@@ -97,7 +99,8 @@ def _write_sub_spec_files(
             text = str(entry["content"])
             accumulator = accumulator.bind(
                 lambda _value, target=target, text=text: fs.write_text(
-                    path=target, text=text,
+                    path=target,
+                    text=text,
                 ).map(lambda _: seed_input),
             )
     return accumulator
@@ -122,16 +125,12 @@ def _write_sub_spec_history_v001(
                 continue
             spec_root_parts = original_path.parts[:3]
             relative = Path(*original_path.parts[3:])
-            target = (
-                project_root.joinpath(*spec_root_parts)
-                / "history"
-                / "v001"
-                / relative
-            )
+            target = project_root.joinpath(*spec_root_parts) / "history" / "v001" / relative
             text = str(entry["content"])
             accumulator = accumulator.bind(
                 lambda _value, target=target, text=text: fs.write_text(
-                    path=target, text=text,
+                    path=target,
+                    text=text,
                 ).map(lambda _: seed_input),
             )
     return accumulator

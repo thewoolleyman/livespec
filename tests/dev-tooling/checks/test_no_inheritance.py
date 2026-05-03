@@ -154,7 +154,8 @@ def test_no_inheritance_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "no_inheritance_for_import_test", str(_NO_INHERITANCE),
+        "no_inheritance_for_import_test",
+        str(_NO_INHERITANCE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

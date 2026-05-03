@@ -76,6 +76,7 @@ def main(*, argv: list[str] | None = None) -> int:
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
     railway: IOResult[Any, LivespecError] = cli.parse_argv(
-        parser=parser, argv=resolved_argv,
+        parser=parser,
+        argv=resolved_argv,
     )
     return _pattern_match_io_result(io_result=railway)

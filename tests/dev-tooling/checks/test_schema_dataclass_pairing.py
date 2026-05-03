@@ -22,9 +22,7 @@ __all__: list[str] = []
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_SCHEMA_DATACLASS_PAIRING = (
-    _REPO_ROOT / "dev-tooling" / "checks" / "schema_dataclass_pairing.py"
-)
+_SCHEMA_DATACLASS_PAIRING = _REPO_ROOT / "dev-tooling" / "checks" / "schema_dataclass_pairing.py"
 
 
 def test_schema_dataclass_pairing_rejects_missing_dataclass(*, tmp_path: Path) -> None:
@@ -65,9 +63,7 @@ def test_schema_dataclass_pairing_rejects_missing_validator(*, tmp_path: Path) -
     schemas_dir.mkdir(parents=True)
     (schemas_dir / "foo.schema.json").write_text("{}", encoding="utf-8")
     # Dataclass exists but not the validator.
-    dataclass_dir = (
-        tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
-    )
+    dataclass_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec" / "schemas" / "dataclasses"
     dataclass_dir.mkdir(parents=True)
     (dataclass_dir / "foo.py").write_text(
         "from __future__ import annotations\n__all__: list[str] = []\n",
@@ -131,8 +127,7 @@ def test_schema_dataclass_pairing_accepts_empty_tree(*, tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0, (
-        f"schema_dataclass_pairing should accept empty tree; "
-        f"got returncode={result.returncode}"
+        f"schema_dataclass_pairing should accept empty tree; " f"got returncode={result.returncode}"
     )
 
 

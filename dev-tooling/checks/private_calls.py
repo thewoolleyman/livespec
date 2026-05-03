@@ -59,9 +59,7 @@ def _is_offending_attribute_call(*, call: ast.Call) -> bool:
     if not func.attr.startswith("_") or _is_dunder(name=func.attr):
         return False
     receiver = func.value
-    return not (
-        isinstance(receiver, ast.Name) and receiver.id in _INTRA_CLASS_RECEIVERS
-    )
+    return not (isinstance(receiver, ast.Name) and receiver.id in _INTRA_CLASS_RECEIVERS)
 
 
 def _find_offenders(*, source: str) -> list[tuple[int, str]]:

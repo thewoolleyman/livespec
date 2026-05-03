@@ -62,7 +62,8 @@ def _seed_fully_valid_project(*, project_root: Path) -> Path:
     history_v001_pc.mkdir(parents=True)
     _ = (history_v001_pc / "seed.md").write_text("# seed\n", encoding="utf-8")
     _ = (history_v001_pc / "seed-revision.md").write_text(
-        "# revision\n", encoding="utf-8",
+        "# revision\n",
+        encoding="utf-8",
     )
     return spec_root
 

@@ -224,7 +224,7 @@ def test_no_write_direct_accepts_doctor_run_static_file_scope(*, tmp_path: Path)
         "\n"
         "\n"
         "def _emit_findings_json() -> None:\n"
-        '    _ = sys.stdout.write("{\\\"findings\\\": []}\\n")\n'
+        '    _ = sys.stdout.write("{\\"findings\\": []}\\n")\n'
         "\n"
         "\n"
         "def main() -> int:\n"
@@ -319,7 +319,8 @@ def test_no_write_direct_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "no_write_direct_for_import_test", str(_NO_WRITE_DIRECT),
+        "no_write_direct_for_import_test",
+        str(_NO_WRITE_DIRECT),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

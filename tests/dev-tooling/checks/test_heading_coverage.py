@@ -33,7 +33,8 @@ def test_heading_coverage_rejects_uncovered_heading(*, tmp_path: Path) -> None:
     spec_dir = tmp_path / "SPECIFICATION"
     spec_dir.mkdir(parents=True)
     (spec_dir / "main.md").write_text(
-        "# Title\n\n## Foo\n\nbody\n", encoding="utf-8",
+        "# Title\n\n## Foo\n\nbody\n",
+        encoding="utf-8",
     )
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir()
@@ -64,7 +65,8 @@ def test_heading_coverage_accepts_covered_heading(*, tmp_path: Path) -> None:
     spec_dir = tmp_path / "SPECIFICATION"
     spec_dir.mkdir(parents=True)
     (spec_dir / "main.md").write_text(
-        "# Title\n\n## Foo\n\nbody\n", encoding="utf-8",
+        "# Title\n\n## Foo\n\nbody\n",
+        encoding="utf-8",
     )
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir()
@@ -101,7 +103,8 @@ def test_heading_coverage_tolerates_malformed_coverage_entries(*, tmp_path: Path
     spec_dir = tmp_path / "SPECIFICATION"
     spec_dir.mkdir(parents=True)
     (spec_dir / "main.md").write_text(
-        "# Title\n\n## Foo\n\nbody\n", encoding="utf-8",
+        "# Title\n\n## Foo\n\nbody\n",
+        encoding="utf-8",
     )
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir()
@@ -196,7 +199,8 @@ def test_heading_coverage_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "heading_coverage_for_import_test", str(_HEADING_COVERAGE),
+        "heading_coverage_for_import_test",
+        str(_HEADING_COVERAGE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

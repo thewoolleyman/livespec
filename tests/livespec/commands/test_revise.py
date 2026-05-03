@@ -104,13 +104,16 @@ def test_revise_main_returns_zero_when_revise_file_readable(
     proposed_changes = spec_target / "proposed_changes"
     proposed_changes.mkdir()
     _ = (proposed_changes / "demo.md").write_text(
-        "## Proposal: demo\nContent.\n", encoding="utf-8",
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
     )
     revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
     exit_code = revise.main(
         argv=[
-            "--revise-json", str(revise_path),
-            "--spec-target", str(spec_target),
+            "--revise-json",
+            str(revise_path),
+            "--spec-target",
+            str(spec_target),
         ],
     )
     assert exit_code == 0
@@ -173,19 +176,14 @@ def test_revise_main_uses_cwd_specification_default_when_no_target_flags(
     proposed_changes = spec_target / "proposed_changes"
     proposed_changes.mkdir()
     _ = (proposed_changes / "demo.md").write_text(
-        "## Proposal: demo\nContent.\n", encoding="utf-8",
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
     )
     revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
     monkeypatch.chdir(tmp_path)
     exit_code = revise.main(argv=["--revise-json", str(revise_path)])
     assert exit_code == 0
-    revision_md = (
-        spec_target
-        / "history"
-        / "v002"
-        / "proposed_changes"
-        / "demo-revision.md"
-    )
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
     assert revision_md.exists(), f"expected {revision_md} to be written"
 
 
@@ -350,18 +348,14 @@ def test_revise_main_writes_paired_revision_for_reject_decision(
     )
     exit_code = revise.main(
         argv=[
-            "--revise-json", str(payload_path),
-            "--spec-target", str(spec_target),
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
         ],
     )
     assert exit_code == 0
-    revision_md = (
-        spec_target
-        / "history"
-        / "v002"
-        / "proposed_changes"
-        / "demo-revision.md"
-    )
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
     assert revision_md.exists(), f"expected {revision_md} to be written"
     text = revision_md.read_text(encoding="utf-8")
     assert "decision: reject" in text
@@ -408,23 +402,17 @@ def test_revise_main_moves_proposed_change_into_history_for_reject_decision(
     )
     exit_code = revise.main(
         argv=[
-            "--revise-json", str(payload_path),
-            "--spec-target", str(spec_target),
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
         ],
     )
     assert exit_code == 0
-    moved_md = (
-        spec_target
-        / "history"
-        / "v002"
-        / "proposed_changes"
-        / "demo.md"
-    )
+    moved_md = spec_target / "history" / "v002" / "proposed_changes" / "demo.md"
     assert moved_md.exists(), f"expected {moved_md} to be written"
     assert moved_md.read_text(encoding="utf-8") == original_content
-    assert not proposed_md.exists(), (
-        f"expected original {proposed_md} to be removed after move"
-    )
+    assert not proposed_md.exists(), f"expected original {proposed_md} to be removed after move"
 
 
 def test_revise_main_materializes_resulting_files_for_accept_decision(
@@ -468,8 +456,10 @@ def test_revise_main_materializes_resulting_files_for_accept_decision(
     )
     exit_code = revise.main(
         argv=[
-            "--revise-json", str(payload_path),
-            "--spec-target", str(spec_target),
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
         ],
     )
     assert exit_code == 0

@@ -154,9 +154,9 @@ def test_pbt_coverage_accepts_empty_tree(*, tmp_path: Path) -> None:
         check=False,
     )
 
-    assert result.returncode == 0, (
-        f"pbt_coverage should accept empty tree; got returncode={result.returncode}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"pbt_coverage should accept empty tree; got returncode={result.returncode}"
 
 
 def test_pbt_coverage_module_importable_without_running_main() -> None:
@@ -164,7 +164,8 @@ def test_pbt_coverage_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "pbt_coverage_pure_modules_for_import_test", str(_PBT_COVERAGE),
+        "pbt_coverage_pure_modules_for_import_test",
+        str(_PBT_COVERAGE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

@@ -27,7 +27,8 @@ _ASSERT_NEVER_EXHAUSTIVENESS = (
 
 
 def test_assert_never_exhaustiveness_rejects_match_missing_case_underscore(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `match` lacking a final `case _: assert_never(...)` arm fails the check.
 
@@ -76,7 +77,8 @@ def test_assert_never_exhaustiveness_rejects_match_missing_case_underscore(
 
 
 def test_assert_never_exhaustiveness_rejects_case_underscore_with_non_assert_never_body(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A `case _: pass` (or anything other than `assert_never(<subject>)`) fails the check.
 
@@ -118,7 +120,8 @@ def test_assert_never_exhaustiveness_rejects_case_underscore_with_non_assert_nev
 
 
 def test_assert_never_exhaustiveness_accepts_proper_match_terminator(
-    *, tmp_path: Path,
+    *,
+    tmp_path: Path,
 ) -> None:
     """A match ending with `case _: assert_never(val)` passes the check (exit 0).
 

@@ -149,7 +149,8 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
         .bind(
             lambda schema_dict: IOResult.from_result(
                 validate_proposal_findings_module.validate_proposal_findings(
-                    payload=payload, schema=schema_dict,
+                    payload=payload,
+                    schema=schema_dict,
                 ),
             ),
         )

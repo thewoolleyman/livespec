@@ -49,9 +49,7 @@ _SOURCE_TREES_TO_TESTS: dict[Path, Path] = {
 }
 
 
-def _expected_paired_test_path(
-    *, source_path: Path, source_tree: Path, tests_tree: Path
-) -> Path:
+def _expected_paired_test_path(*, source_path: Path, source_tree: Path, tests_tree: Path) -> Path:
     rel = source_path.relative_to(source_tree)
     parent = rel.parent
     name = rel.name
@@ -85,9 +83,7 @@ def main() -> int:
                 source_path=py_file, source_tree=source_tree, tests_tree=tests_tree
             )
             if not expected_pair.is_file():
-                offenders.append(
-                    (py_file.relative_to(cwd), expected_pair.relative_to(cwd))
-                )
+                offenders.append((py_file.relative_to(cwd), expected_pair.relative_to(cwd)))
     if offenders:
         for source_rel, pair_rel in offenders:
             log.error(

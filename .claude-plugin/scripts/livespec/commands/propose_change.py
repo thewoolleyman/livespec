@@ -39,6 +39,7 @@ __all__: list[str] = ["build_parser", "main"]
 _SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
 _PROPOSAL_FINDINGS_SCHEMA_PATH = _SCHEMAS_DIR / "proposal_findings.schema.json"
 
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the propose-change argparse parser without parsing.
 
@@ -124,7 +125,8 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
         .bind(
             lambda schema_dict: IOResult.from_result(
                 validate_proposal_findings_module.validate_proposal_findings(
-                    payload=payload, schema=schema_dict,
+                    payload=payload,
+                    schema=schema_dict,
                 ),
             ),
         )
@@ -141,11 +143,7 @@ def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """
     if namespace.spec_target is not None:
         return Path(namespace.spec_target)
-    project_root = (
-        Path.cwd()
-        if namespace.project_root is None
-        else Path(namespace.project_root)
-    )
+    project_root = Path.cwd() if namespace.project_root is None else Path(namespace.project_root)
     return project_root / "SPECIFICATION"
 
 

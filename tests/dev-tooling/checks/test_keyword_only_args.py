@@ -244,7 +244,8 @@ def test_keyword_only_args_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "keyword_only_args_for_import_test", str(_KEYWORD_ONLY_ARGS),
+        "keyword_only_args_for_import_test",
+        str(_KEYWORD_ONLY_ARGS),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

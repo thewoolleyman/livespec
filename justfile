@@ -109,6 +109,7 @@ check:
         check-schema-dataclass-pairing
         check-complexity
         check-lint
+        check-format
         check-tools
     )
     failed=()

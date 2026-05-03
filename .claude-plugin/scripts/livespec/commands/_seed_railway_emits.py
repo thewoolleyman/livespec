@@ -67,9 +67,7 @@ def _emit_seed_proposed_change(
     if len(first_path.parts) < _MIN_PARTS_MAIN_SPEC:
         return IOResult.from_value(seed_input)
     spec_root_name = first_path.parts[0]
-    target_files_block = "\n".join(
-        f"- {entry['path']}" for entry in seed_input.files
-    )
+    target_files_block = "\n".join(f"- {entry['path']}" for entry in seed_input.files)
     body = (
         "---\n"
         "topic: seed\n"
@@ -94,14 +92,7 @@ def _emit_seed_proposed_change(
         "\n"
         f"{seed_input.intent}\n"
     )
-    target = (
-        project_root
-        / spec_root_name
-        / "history"
-        / "v001"
-        / "proposed_changes"
-        / "seed.md"
-    )
+    target = project_root / spec_root_name / "history" / "v001" / "proposed_changes" / "seed.md"
     return fs.write_text(path=target, text=body).map(lambda _: seed_input)
 
 
@@ -117,9 +108,7 @@ def _emit_seed_revision(
     if len(first_path.parts) < _MIN_PARTS_MAIN_SPEC:
         return IOResult.from_value(seed_input)
     spec_root_name = first_path.parts[0]
-    resulting_changes = "\n".join(
-        f"- {entry['path']}" for entry in seed_input.files
-    )
+    resulting_changes = "\n".join(f"- {entry['path']}" for entry in seed_input.files)
     body = (
         "---\n"
         "proposal: seed.md\n"
@@ -137,12 +126,7 @@ def _emit_seed_revision(
         f"{resulting_changes}\n"
     )
     target = (
-        project_root
-        / spec_root_name
-        / "history"
-        / "v001"
-        / "proposed_changes"
-        / "seed-revision.md"
+        project_root / spec_root_name / "history" / "v001" / "proposed_changes" / "seed-revision.md"
     )
     return fs.write_text(path=target, text=body).map(lambda _: seed_input)
 
@@ -159,11 +143,10 @@ def _emit_skill_owned_proposed_changes_readme(
     if len(first_path.parts) < _MIN_PARTS_MAIN_SPEC:
         return IOResult.from_value(seed_input)
     spec_root_name = first_path.parts[0]
-    proposed_changes_readme = (
-        project_root / spec_root_name / "proposed_changes" / "README.md"
-    )
+    proposed_changes_readme = project_root / spec_root_name / "proposed_changes" / "README.md"
     return fs.write_text(
-        path=proposed_changes_readme, text=_PROPOSED_CHANGES_README_TEXT,
+        path=proposed_changes_readme,
+        text=_PROPOSED_CHANGES_README_TEXT,
     ).map(lambda _: seed_input)
 
 
@@ -225,6 +208,7 @@ def _run_post_step_doctor(
         ],
     ).bind(
         lambda completed: _fold_doctor_completed_process(
-            seed_input=seed_input, completed=completed,
+            seed_input=seed_input,
+            completed=completed,
         ),
     )

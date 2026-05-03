@@ -48,9 +48,7 @@ import structlog  # noqa: E402  — vendor-path-aware import after sys.path inse
 __all__: list[str] = []
 
 
-_DATACLASSES_TREE = (
-    Path(".claude-plugin") / "scripts" / "livespec" / "schemas" / "dataclasses"
-)
+_DATACLASSES_TREE = Path(".claude-plugin") / "scripts" / "livespec" / "schemas" / "dataclasses"
 _FIELD_TO_NEWTYPE: dict[str, str] = {
     "check_id": "CheckId",
     "run_id": "RunId",

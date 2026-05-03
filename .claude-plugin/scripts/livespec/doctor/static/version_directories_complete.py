@@ -78,6 +78,7 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     history_path = ctx.spec_root / "history"
     return fs.list_dir(path=history_path).bind(
         lambda version_paths: _verify_version_dirs(
-            ctx=ctx, version_paths=version_paths,
+            ctx=ctx,
+            version_paths=version_paths,
         ),
     )

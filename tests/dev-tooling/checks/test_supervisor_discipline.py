@@ -220,7 +220,8 @@ def test_supervisor_discipline_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "supervisor_discipline_for_import_test", str(_SUPERVISOR_DISCIPLINE),
+        "supervisor_discipline_for_import_test",
+        str(_SUPERVISOR_DISCIPLINE),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

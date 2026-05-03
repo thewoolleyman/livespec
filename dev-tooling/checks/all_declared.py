@@ -66,9 +66,7 @@ def _names_from_import_from(*, node: ast.ImportFrom) -> set[str]:
 
 
 def _names_from_import(*, node: ast.Import) -> set[str]:
-    return {
-        alias.asname or alias.name.split(".", maxsplit=1)[0] for alias in node.names
-    }
+    return {alias.asname or alias.name.split(".", maxsplit=1)[0] for alias in node.names}
 
 
 def _module_top_defined_names(*, tree: ast.Module) -> set[str]:

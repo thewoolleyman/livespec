@@ -45,9 +45,7 @@ __all__: list[str] = []
 
 
 _LIVESPEC_TREE = Path(".claude-plugin") / "scripts" / "livespec"
-_THIRD_PARTY_POSITIONAL_OK = frozenset(
-    {"Success", "Failure", "IOSuccess", "IOFailure"}
-)
+_THIRD_PARTY_POSITIONAL_OK = frozenset({"Success", "Failure", "IOSuccess", "IOFailure"})
 
 
 def _terminal_class_name(*, cls_node: ast.expr) -> str:

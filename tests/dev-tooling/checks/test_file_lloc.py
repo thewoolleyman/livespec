@@ -166,7 +166,8 @@ def test_file_lloc_module_importable_without_running_main() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "file_lloc_for_import_test", str(_FILE_LLOC),
+        "file_lloc_for_import_test",
+        str(_FILE_LLOC),
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
