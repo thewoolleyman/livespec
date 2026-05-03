@@ -976,6 +976,53 @@ v029 decisions (direct critique-fix overlay; see
   attempted. v036 makes the workflow mechanically valid for
   the v034 D7 drain.
 
+- v037 D1 (PROPOSAL.md + plan-level + implementation):
+  Broaden the v036 D1 Red-mode pre-commit classifier from
+  `git diff --cached --name-only --diff-filter=A` to
+  `--diff-filter=AM` for both the tests bucket and the
+  impl bucket. The semantic claim was always "Red mode =
+  staged test change, no staged impl change"; the v036 D1
+  codification narrowed it to "added" because every
+  cycle on the record (drain cycles 2-6 + the
+  resolve_template gap-fix cycles A and B) happened to
+  author all-new-pair shapes. Phase 6's
+  `version_directories_complete` v* filter Red→Green is
+  the first cycle that EXTENDS pre-existing test+impl
+  mirror-pairs; the Red commit's test edit is M (not A);
+  the classifier returns empty; full `just check` runs;
+  `check-tests` blocks the Red commit. Both buckets must
+  broaden together — keeping impl on `A` while broadening
+  tests would let a Red commit modify an existing impl
+  file undetected. PROPOSAL §"Activation" (lines
+  3492-3508) + §"v034 D2-D3 Red→Green replay contract"
+  §"Red mode (initial commit)" §"Coexistence with the
+  pre-commit gate (v036 D1)" (lines 3558-3572 — both the
+  literal `git` invocation and the surrounding prose)
+  rewrite "added" → "added or modified" / `--diff-filter=A`
+  → `--diff-filter=AM`. Implementation (`justfile`
+  `check-pre-commit` recipe edit) lands in a separate
+  follow-up commit per the v036 / v035 / v033 D5a
+  spec-then-implementation precedent.
+- v037 D2 (plan-level): Plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v037/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v037" (per the
+  established no-op convention since v024 — the literal
+  PROPOSAL.md header line never actually changes; the
+  PLAN's narrative reference is what bumps). Execution-
+  prompt block authoritative-version line bumps to v037.
+  STATUS.md updated.
+- Triggered by drift discovered when authoring cycle (ii)
+  of the Phase 6 gap-fix work (open-issues entry
+  2026-05-03T03:20:23Z). The v036 D1 classifier-too-narrow
+  hole was latent through cycles 2-6 + the resolve_template
+  gap-fix because every prior Red commit authored a
+  brand-new test file. v037 makes the classifier
+  mechanically valid for the natural mirror-pair-extension
+  shape that Phase 6 onward will exercise routinely (every
+  doctor-check fix from this point on extends an existing
+  pair).
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -1186,8 +1233,14 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v036/PROPOSAL.md` (the v036
-   snapshot — v035 substance plus the two v036 decisions:
+   byte-identical to `history/v037/PROPOSAL.md` (the v037
+   snapshot — v036 substance plus the two v037 decisions:
+   broaden the v036 D1 Red-mode classifier from
+   `--diff-filter=A` to `--diff-filter=AM` so cycles that
+   extend pre-existing test+impl mirror-pairs satisfy the
+   Red-mode shape (D1), and plan-text + housekeeping (D2)
+   per `history/v037/proposed_changes/critique-fix-v036-revision.md`;
+   v036 substance is v035 substance plus the two v036 decisions:
    Red-mode-aware pre-commit aggregate via
    `just check-pre-commit` resolving the structural conflict
    between PROPOSAL §"Activation" and §"Red mode (initial
@@ -1286,7 +1339,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v036. Further evolution happens in
+   > **Status:** Frozen at v037. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -3877,7 +3930,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v036 as authoritative. Do not propose any
+Treat PROPOSAL.md v037 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.

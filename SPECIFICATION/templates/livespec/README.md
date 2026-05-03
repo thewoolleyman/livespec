@@ -1,0 +1,3 @@
+# `SPECIFICATION/templates/livespec/`
+
+This sub-spec governs the `livespec` built-in template's prompt interview flows, starter content, NLSpec-discipline injection, and template-internal contracts. Sub-spec layout follows livespec's internal multi-file convention per v020 Q1 and is decoupled from the `livespec` template's end-user conventions for end-user spec layout — sub-specs are livespec-internal artifacts governing template behavior, not exemplars of end-user template usage. All mutations to this tree from v001 onward MUST flow through `/livespec:propose-change --spec-target SPECIFICATION/templates/livespec/` → `/livespec:revise --spec-target SPECIFICATION/templates/livespec/`.

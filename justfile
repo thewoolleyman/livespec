@@ -189,9 +189,11 @@ check-coverage:
     uv run python3 dev-tooling/checks/per_file_coverage.py
 
 # Per v036 D1: Red-mode-aware pre-commit aggregate. Classifies the
-# staged tree shape via `git diff --cached --name-only --diff-filter=A`:
-# Red mode = exactly one test file added under `tests/` AND zero
-# implementation files added under
+# staged tree shape via `git diff --cached --name-only --diff-filter=AM`
+# (broadened from `--diff-filter=A` per v037 D1 — modified test files
+# extending pre-existing mirror-pairs are valid Red commits too):
+# Red mode = exactly one test file added or modified under `tests/`
+# AND zero implementation files added or modified under
 # `.claude-plugin/scripts/livespec/**`,
 # `.claude-plugin/scripts/bin/**`, or `dev-tooling/checks/**`.
 # In Red mode, sets LIVESPEC_PRECOMMIT_RED_MODE=1 and runs `just
@@ -205,15 +207,15 @@ check-coverage:
 check-pre-commit:
     #!/usr/bin/env bash
     set -uo pipefail
-    added=$(git diff --cached --name-only --diff-filter=A)
-    test_added=$(echo "$added" | grep -E '^tests/.*\.py$' || true)
-    impl_added=$(echo "$added" | grep -E '^(\.claude-plugin/scripts/livespec|\.claude-plugin/scripts/bin|dev-tooling/checks)/.*\.py$' || true)
+    staged=$(git diff --cached --name-only --diff-filter=AM)
+    test_staged=$(echo "$staged" | grep -E '^tests/.*\.py$' || true)
+    impl_staged=$(echo "$staged" | grep -E '^(\.claude-plugin/scripts/livespec|\.claude-plugin/scripts/bin|dev-tooling/checks)/.*\.py$' || true)
     test_count=0
     impl_count=0
-    [[ -n "$test_added" ]] && test_count=$(echo "$test_added" | wc -l)
-    [[ -n "$impl_added" ]] && impl_count=$(echo "$impl_added" | wc -l)
+    [[ -n "$test_staged" ]] && test_count=$(echo "$test_staged" | wc -l)
+    [[ -n "$impl_staged" ]] && impl_count=$(echo "$impl_staged" | wc -l)
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
-        echo ":: v036 D1 Red-mode shape detected: $test_added"
+        echo ":: v037 D1 Red-mode shape detected: $test_staged"
         echo ":: skipping check-tests + check-coverage (commit-msg replay hook is the verifier)"
         export LIVESPEC_PRECOMMIT_RED_MODE=1
     fi
