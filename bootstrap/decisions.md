@@ -1545,3 +1545,37 @@ scaffolding, not versioned; PROPOSAL.md unaffected. User-gated
 in chat ("do all that first then let me clear context and new
 session" 2026-05-03).
 
+## 2026-05-03T10:50:00Z — phase 7 sub-step 1.a (propose-change file landed)
+
+**Decision:** File the seed-wrapper-per-tree-emission propose-change
+against main `SPECIFICATION/` as the first concrete Phase 7
+sub-step. Carry one architectural follow-up forward: the
+`heading_coverage.py` check currently treats every `## ` heading
+under `SPECIFICATION/**/*.md` as a "spec heading", including
+`## Proposal: ...` headings under `proposed_changes/` and
+`## Decision and Rationale` under `history/vNNN/proposed_changes/`.
+These are propose-change/revision boilerplate, not spec content
+that should require test coverage. The check should likely skip
+`proposed_changes/` directories at every depth (root + per-version
+inside `history/vNNN/`). Defer the fix to a separate Phase 7
+propose-change cycle so the current sub-step stays focused.
+
+**Rationale:** Phase 6's resolved gap-fix entry
+(open-issues 2026-05-03T02:39:00Z) explicitly named the seed-wrapper
+widening as "Phase-7 sub-step 1 scope in the plan body"; the plan
+body's Phase 6 description (lines 3256-3258) already requires the
+wrapper to write skill-owned files per tree. The implementation
+gap is straightforward to spec — `contracts.md` §"Sub-spec
+structural mechanism" needs sharpening to enumerate the per-tree
+skill-owned files explicitly, and `spec.md` §"Specification model"
+gains a one-sentence cross-reference. The propose-change file
+landed via `bin/propose_change.py` (dogfooding the Phase-3
+minimum-viable wrapper) at `SPECIFICATION/proposed_changes/
+seed-wrapper-per-tree-emission.md`; revise will land the spec
+edits + the wrapper implementation atomically per Phase 7's
+dogfooding rule. Heading-coverage entry added inline under
+`SPECIFICATION/proposed_changes` spec_root to unblock the commit;
+the entry's spec_root flips to `SPECIFICATION/history/v002/
+proposed_changes` when revise moves the file (per the governed
+loop's `resulting_files[]` mechanism).
+

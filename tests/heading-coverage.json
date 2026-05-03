@@ -976,5 +976,11 @@
     "spec_root": "SPECIFICATION/templates/minimal",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Proposal: Seed wrapper emits skill-owned files per spec tree",
+    "spec_root": "SPECIFICATION/proposed_changes",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 1 in-flight propose-change boilerplate; the entry's spec_root flips from SPECIFICATION/proposed_changes to SPECIFICATION/history/v002/proposed_changes when revise moves the file (per the governed loop's resulting_files[] mechanism). Architectural follow-up: heading_coverage.py should likely skip proposed_changes/ entirely since `## Proposal:` headings are structural boilerplate (decisions.md 2026-05-03 phase 7 sub-step 1.a)."
   }
 ]
