@@ -20,7 +20,10 @@ from typing import Any
 from returns.io import IOResult
 from returns.result import Success, safe
 
-from livespec.commands._seed_railway_emits_per_tree import _emit_skill_owned_history_readme
+from livespec.commands._seed_railway_emits_per_tree import (
+    _emit_skill_owned_history_readme,
+    _emit_skill_owned_sub_spec_proposed_changes_readmes,
+)
 from livespec.errors import LivespecError, PreconditionError
 from livespec.io import fs, proc
 from livespec.schemas.dataclasses.seed_input import SeedInput
@@ -30,6 +33,7 @@ __all__: list[str] = [
     "_emit_seed_revision",
     "_emit_skill_owned_history_readme",
     "_emit_skill_owned_proposed_changes_readme",
+    "_emit_skill_owned_sub_spec_proposed_changes_readmes",
     "_run_post_step_doctor",
 ]
 
