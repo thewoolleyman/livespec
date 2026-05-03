@@ -363,6 +363,13 @@ check-mutation:
 check-no-todo-registry:
     uv run python3 dev-tooling/checks/no_todo_registry.py
 
+# Release-gate ONLY — paired with check-mutation + check-no-todo-registry
+# on the release-tag CI workflow. NOT in `just check`; does NOT run
+# per-commit. Closes the M3 soft-band drift loophole: forces refactor
+# work to land before any v* tag push when any file is in 201-250 LLOC.
+check-no-lloc-soft-warnings:
+    uv run python3 dev-tooling/checks/no_lloc_soft_warnings.py
+
 # v034 D3 hard gate: trailer-based Red→Green replay verification.
 # Invoked by lefthook commit-msg stage (NOT pre-commit) — the hook
 # requires the commit-message file path as argv[1] to write trailers
