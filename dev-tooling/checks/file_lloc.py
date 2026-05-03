@@ -1,24 +1,27 @@
-"""file_lloc — per-file LLOC ≤ 200 cap.
+"""file_lloc — per-file LLOC two-tier policy (soft warn at 200, hard fail at 250).
 
-Per `python-skill-script-style-requirements.md` §"Canonical
-target list" (the `check-complexity` row, which composes ruff
-C901+PLR with this script): every `.py` file under
-`.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/
-bin/**`, and `<repo-root>/dev-tooling/**` MUST have at most
-200 logical lines of code (LLOC). LLOC excludes blank lines,
-comment-only lines, and module/class/function docstrings —
-it counts only executable statements (one count per line of
-source that contributes a non-comment, non-docstring,
-non-blank token).
+Per `SPECIFICATION/constraints.md` §"File LLOC ceiling" (post-v005),
+every `.py` file under `.claude-plugin/scripts/livespec/**`,
+`.claude-plugin/scripts/bin/**`, and `<repo-root>/dev-tooling/**`
+SHOULD have at most 200 logical lines of code (LLOC) and MUST have
+at most 250 LLOC.
 
-The check tokenizes each `.py` via the standard library
-`tokenize` module (which yields tokens with `start = (line,
-col)`). Lines containing tokens other than `COMMENT`, `NL`,
-`NEWLINE`, `INDENT`, `DEDENT`, `ENCODING`, `ENDMARKER`, or
-`STRING`-as-docstring count toward LLOC. Docstring strings
-are filtered via `ast`: walk every Module/ClassDef/
-FunctionDef/AsyncFunctionDef and skip the first statement
-when it's a bare `Expr(Constant(str))`.
+LLOC excludes blank lines, comment-only lines, and module/class/
+function docstrings — it counts only executable statements. The
+check tokenizes each `.py` via the standard library `tokenize`
+module and filters docstring lines via `ast`.
+
+Two-tier policy:
+
+- 201-250 LLOC — SOFT ceiling. The file passes the check (exit 0)
+  but a `warning`-level structured diagnostic is emitted to stderr
+  flagging the file for refactoring.
+- > 250 LLOC — HARD ceiling. The file fails the check (exit 1)
+  with an `error`-level structured diagnostic.
+
+The two-tier split removes the mid-Green-amend wedge where an
+in-progress refactor naturally pushes LLOC above 200 and would
+otherwise force a sibling-module extraction in the same amend.
 
 Output discipline: per spec lines 1738-1762, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
@@ -49,7 +52,8 @@ _COVERED_TREES = (
     Path(".claude-plugin") / "scripts" / "bin",
     Path("dev-tooling"),
 )
-_LLOC_CEILING = 200
+_LLOC_SOFT_CEILING = 200
+_LLOC_HARD_CEILING = 250
 _NON_LLOC_TOKEN_TYPES = frozenset(
     {
         tokenize.COMMENT,
@@ -110,7 +114,8 @@ def main() -> int:
     )
     log = structlog.get_logger("file_lloc")
     cwd = Path.cwd()
-    offenders: list[tuple[Path, int]] = []
+    soft_offenders: list[tuple[Path, int]] = []
+    hard_offenders: list[tuple[Path, int]] = []
     for tree_rel in _COVERED_TREES:
         root = cwd / tree_rel
         if not root.is_dir():
@@ -118,16 +123,26 @@ def main() -> int:
         for py_file in sorted(root.rglob("*.py")):
             source = py_file.read_text(encoding="utf-8")
             lloc = _count_lloc(source=source)
-            if lloc > _LLOC_CEILING:
-                offenders.append((py_file.relative_to(cwd), lloc))
-    if offenders:
-        for path, lloc in offenders:
-            log.error(
-                "file LLOC exceeds 200-line ceiling",
-                file=str(path),
-                lloc=lloc,
-                ceiling=_LLOC_CEILING,
-            )
+            if lloc > _LLOC_HARD_CEILING:
+                hard_offenders.append((py_file.relative_to(cwd), lloc))
+            elif lloc > _LLOC_SOFT_CEILING:
+                soft_offenders.append((py_file.relative_to(cwd), lloc))
+    for path, lloc in soft_offenders:
+        log.warning(
+            "file LLOC exceeds 200-line soft ceiling — flag for refactor",
+            file=str(path),
+            lloc=lloc,
+            soft_ceiling=_LLOC_SOFT_CEILING,
+            hard_ceiling=_LLOC_HARD_CEILING,
+        )
+    for path, lloc in hard_offenders:
+        log.error(
+            "file LLOC exceeds 250-line hard ceiling",
+            file=str(path),
+            lloc=lloc,
+            hard_ceiling=_LLOC_HARD_CEILING,
+        )
+    if hard_offenders:
         return 1
     return 0
 

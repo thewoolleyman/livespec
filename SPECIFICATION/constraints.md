@@ -34,6 +34,12 @@ The shebang-wrapper layer at `bin/<sub-command>.py` MUST conform to the canonica
 
 `returns` library typechecker integration MUST use plain pyright strict (no plugin); the v018 Q4 returns-pyright-plugin assumption was falsified at v025 D1 — pyright has no plugin system and dry-python/returns explicitly does not support pyright. Strict-plus diagnostics carry the load.
 
+## File LLOC ceiling
+
+Every `.py` file under `.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/bin/**`, and `dev-tooling/**` SHOULD have at most 200 logical lines of code (LLOC) and MUST have at most 250 LLOC. LLOC excludes blank lines, comment-only lines, and module/class/function docstrings — it counts only executable statements.
+
+The two-tier policy splits the prior single-threshold cap: 200 LLOC is a SOFT ceiling — files at 201-250 LLOC pass the check with a structured warning emitted to stderr (so `just check` stays green) but are flagged for refactoring. 250 LLOC is the HARD ceiling — files above 250 LLOC fail the check (exit 1). The `dev-tooling/checks/file_lloc.py` script enforces the binding mechanically. The two-tier policy removes the mid-Green-amend wedge where an in-progress refactor naturally pushes LLOC just above 200 and would otherwise force a sibling-module extraction in the same amend; instead, the warning surfaces the growing file and the refactor lands in its own cycle when natural.
+
 ## Heading taxonomy
 
 Top-level `#` headings in spec files SHOULD reflect intent rather than a fixed taxonomy.

@@ -182,6 +182,13 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
+    "heading": "## File LLOC ceiling",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 2 mini-track item M3.b new constraints.md sub-section codifying the two-tier LLOC policy. Real test for the soft/hard threshold semantics covered by tests/dev-tooling/checks/test_file_lloc.py; rule-test pending."
+  },
+  {
     "heading": "## Heading taxonomy",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
