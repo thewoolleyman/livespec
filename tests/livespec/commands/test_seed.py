@@ -1033,3 +1033,101 @@ def test_path_minima_constants_pin_documented_shapes() -> None:
 
     assert _seed_railway_writes._MIN_PARTS_MAIN_SPEC == 2  # noqa: SLF001
     assert _seed_railway_writes._MIN_PARTS_SUB_SPEC == 4  # noqa: SLF001
+
+
+def test_emit_skill_owned_history_readme_writes_main_spec_history_readme(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The new helper writes <main-spec-root>/history/README.md per Phase 7 sub-step 1.
+
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
+    (post-v002): the seed wrapper writes the skill-owned
+    history/README.md for every spec tree. This unit-tests the
+    main-spec helper.
+    """
+    from livespec.commands._seed_railway_emits import _emit_skill_owned_history_readme
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[],
+    )
+    result = _emit_skill_owned_history_readme(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    history_readme = project_root / "SPECIFICATION" / "history" / "README.md"
+    assert history_readme.exists(), f"expected {history_readme} to be written"
+    content = history_readme.read_text(encoding="utf-8")
+    assert content.startswith("# History"), f"unexpected content: {content[:80]}"
+
+
+def test_emit_skill_owned_history_readme_early_returns_on_empty_files(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Empty seed_input.files: skip — no spec_root to anchor on.
+
+    Mirrors the other emit helpers' first-line guard. Returns
+    Success(seed_input) without touching the disk.
+    """
+    from livespec.commands._seed_railway_emits import _emit_skill_owned_history_readme
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(template="livespec", intent="x", files=[], sub_specs=[])
+    result = _emit_skill_owned_history_readme(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not (
+        project_root / "SPECIFICATION" / "history" / "README.md"
+    ).exists(), "should not write README when files[] is empty"
+
+
+def test_emit_skill_owned_history_readme_early_returns_on_loose_first_file(
+    *,
+    tmp_path: Path,
+) -> None:
+    """First file path with too-few parts (loose file at repo root): skip.
+
+    Same shape-guard as the other emit helpers — when the first
+    files[] entry is a single-component path (no <spec-root>/<file>
+    shape), the helper cannot derive the spec_root.
+    """
+    from livespec.commands._seed_railway_emits import _emit_skill_owned_history_readme
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "loose-file.md", "content": "# Loose\n"}],
+        sub_specs=[],
+    )
+    result = _emit_skill_owned_history_readme(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not (
+        project_root / "loose-file.md" / "history" / "README.md"
+    ).exists(), "should not write README under a loose-path-derived spec root"
