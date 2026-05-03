@@ -979,8 +979,14 @@
   },
   {
     "heading": "## Proposal: Seed wrapper emits skill-owned files per spec tree",
-    "spec_root": "SPECIFICATION/proposed_changes",
+    "spec_root": "SPECIFICATION/history/v002/proposed_changes",
     "test": "TODO",
-    "reason": "Phase 7 sub-step 1 in-flight propose-change boilerplate; the entry's spec_root flips from SPECIFICATION/proposed_changes to SPECIFICATION/history/v002/proposed_changes when revise moves the file (per the governed loop's resulting_files[] mechanism). Architectural follow-up: heading_coverage.py should likely skip proposed_changes/ entirely since `## Proposal:` headings are structural boilerplate (decisions.md 2026-05-03 phase 7 sub-step 1.a)."
+    "reason": "Phase 7 sub-step 1.b post-revise audit-trail entry; flipped spec_root from SPECIFICATION/proposed_changes per the governed loop's resulting_files[] mechanism. Architectural follow-up tracked in decisions.md 2026-05-03 phase 7 sub-step 1.a: heading_coverage.py should skip proposed_changes/ at every depth (boilerplate, not spec content)."
+  },
+  {
+    "heading": "## Decision and Rationale",
+    "spec_root": "SPECIFICATION/history/v002/proposed_changes",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 1.b auto-emitted revision-file boilerplate (Phase-3 minimum revise's _compose_revision_body output). Same architectural follow-up as the paired Proposal heading."
   }
 ]
