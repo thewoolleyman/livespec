@@ -1574,3 +1574,234 @@ def test_emit_skill_owned_sub_spec_history_readmes_skips_loose_path_entries(
     assert not any(
         project_root.rglob("history/README.md")
     ), "should not write any README when all paths are loose"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_writes_one_per_sub_spec(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The new helper writes history/v001/proposed_changes/.gitkeep per sub-spec.
+
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
+    (post-v002): the seed wrapper writes `.gitkeep` markers under
+    each sub-spec's `history/v001/proposed_changes/` so the empty
+    dir survives `git add`. Sub-specs do NOT receive auto-captured
+    seed.md proposed-changes per v018 Q1, so the history/v001/
+    proposed_changes/ directory is otherwise empty for sub-specs.
+    """
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+            {
+                "name": "minimal",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/minimal/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    livespec_gitkeep = (
+        project_root
+        / "SPECIFICATION"
+        / "templates"
+        / "livespec"
+        / "history"
+        / "v001"
+        / "proposed_changes"
+        / ".gitkeep"
+    )
+    minimal_gitkeep = (
+        project_root
+        / "SPECIFICATION"
+        / "templates"
+        / "minimal"
+        / "history"
+        / "v001"
+        / "proposed_changes"
+        / ".gitkeep"
+    )
+    assert livespec_gitkeep.exists(), f"expected {livespec_gitkeep} to be written"
+    assert minimal_gitkeep.exists(), f"expected {minimal_gitkeep} to be written"
+    assert (
+        livespec_gitkeep.read_text(encoding="utf-8") == ""
+    ), "gitkeep should be an empty marker file"
+    assert (
+        minimal_gitkeep.read_text(encoding="utf-8") == ""
+    ), "gitkeep should be an empty marker file"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_when_sub_specs_empty(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Empty seed_input.sub_specs: skip — no tree to anchor on."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob(".gitkeep")
+    ), "should not write any .gitkeep when sub_specs is empty"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_non_list_files_field(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Sub-spec entry with a non-list `files` field: skip that sub-spec."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[{"name": "broken", "files": "not-a-list"}],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob(".gitkeep")
+    ), "should not write any .gitkeep when files field is non-list"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_non_dict_entries_within_files(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Non-dict elements inside the `files` list: skip and continue scanning."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "mixed",
+                "files": [
+                    "not-a-dict-just-a-string",
+                    {
+                        "path": "SPECIFICATION/templates/mixed/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    mixed_gitkeep = (
+        project_root
+        / "SPECIFICATION"
+        / "templates"
+        / "mixed"
+        / "history"
+        / "v001"
+        / "proposed_changes"
+        / ".gitkeep"
+    )
+    assert mixed_gitkeep.exists(), f"expected {mixed_gitkeep} to be written after skipping non-dict"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_loose_path_entries(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Sub-spec with all-too-shallow paths: skip — no spec_root derivable."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "shallow",
+                "files": [{"path": "loose.md", "content": "# Loose\n"}],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob(".gitkeep")
+    ), "should not write any .gitkeep when all paths are loose"
