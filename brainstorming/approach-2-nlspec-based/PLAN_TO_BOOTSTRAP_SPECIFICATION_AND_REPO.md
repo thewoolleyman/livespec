@@ -4275,3 +4275,69 @@ itself via its own SPECIFICATION/-driven loop, the scaffolding
 has no further role.
 
 ---
+
+## 9. Followup conventions
+
+These conventions govern the project AFTER the bootstrap finishes,
+but the principles emerge during bootstrap execution and are
+codified here so the first agent to operate the post-bootstrap
+project inherits them.
+
+### 9.1 Release-gate-violation tracking via an issue tracker
+
+Per-commit gates (`just check`) MUST stay ergonomic — the developer
+loop is fast and unblocked on accumulated debt. Release-gates (the
+`check-mutation`, `check-no-todo-registry`,
+`check-no-lloc-soft-warnings`, etc. targets that fire ONLY on `v*`
+tag push via `.github/workflows/release-tag.yml`) close the loops
+that the per-commit ergonomic gates leave open. Without this
+two-tier separation, soft warnings accumulate silently and
+per-commit gates either grow brittle (if every check is hard) or
+become noise (if every check warns).
+
+**Convention.** When a release-gate violation is originally noticed
+or originally created (e.g., a new release-gate check is introduced
+and its first run surfaces N existing offenders; OR an existing
+release-gate's offender count grows during a session's work), the
+executor SHOULD immediately file a `chore`-shaped issue in the
+project's issue tracker for follow-up — to be addressed AFTER the
+current session's load-bearing work finishes. The chore is the
+persistent record so the violation is not lost between sessions.
+The chore does NOT block the current session's work; it is a
+forward-looking commitment captured before context bleeds out.
+
+The issue tracker is NOT yet selected at bootstrap time. The likely
+choice is Steve Yegge's `beads` tool
+(<https://github.com/steveyegge/beads>) — a lightweight per-repo
+issue tracker that fits the livespec ergonomics (CLI-driven,
+git-native storage). The tracker decision lands in a Phase-7-or-
+later propose-change cycle when the first such chore needs filing
+in earnest. Until the tracker is wired up, executors carry the
+convention forward via `bootstrap/decisions.md` notes that name the
+violation, the file/line affected, and the deferred fix's intent —
+those notes migrate to the chosen tracker once it lands.
+
+**Applies to.** Every release-gate target enumerated in
+`.github/workflows/release-tag.yml` and every future addition. As
+of this plan revision, that set is `check-mutation`,
+`check-no-todo-registry`, and `check-no-lloc-soft-warnings`.
+Additions to the set MUST update this section's enumeration AND
+add the convention reference to the new check's docstring.
+
+### 9.2 Why per-commit gates stay ergonomic
+
+The user's recurring guidance during bootstrap: per-commit pressure
+that forces context-switching mid-amend is paid in developer
+attention every cycle. The Red→Green-per-behavior discipline
+already fragments attention; layering accumulated-debt enforcement
+into the same window compounds the cost. Release-gates keep the
+debt visible without demanding immediate response — the chore
+mechanism turns "you must refactor now" into "you've committed to
+refactor before tagging release N".
+
+When in doubt: prefer release-gate over per-commit hard-fail for
+any check that surfaces drift from a desired-state invariant
+(coverage, complexity, exemption-creep, etc.); reserve per-commit
+hard-fail for checks that catch immediate correctness bugs
+(broken imports, malformed JSON, type errors, missing test pairs
+on actually-testable code).

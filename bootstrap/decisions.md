@@ -1579,3 +1579,40 @@ the entry's spec_root flips to `SPECIFICATION/history/v002/
 proposed_changes` when revise moves the file (per the governed
 loop's `resulting_files[]` mechanism).
 
+## 2026-05-03T18:26:28Z — phase 7 sub-step 2 M6 (Case-B plan-text addition)
+
+**Decision:** Apply the unstaged §9 "Followup conventions"
+addition (66 lines) to
+`brainstorming/approach-2-nlspec-based/PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md`
+as a Case-B direct fix; commit it as a standalone
+`chore:` plan-codification commit prior to the STATUS bookkeeping
+commit. PROPOSAL.md is unaffected: the release-gate-as-pattern
+framing already exists at PROPOSAL lines 655 (mutmut release-gate
+schedule), 3403 (mutation testing release-gate schedule), 3617
+(`check-mutation` release-gate), 3822-3832 (release-gate target
+forces eventual cleanup), 4048 (no_todo_registry.py release-gate
+only, not in `just check`), 4056 (check_mutation.py release-gate).
+The only genuinely new reference in §9 is the `beads` issue-tracker
+candidate, which §9.1 scopes appropriately ("not yet selected
+at bootstrap time", "Until the tracker is wired up...").
+
+**Rationale:** §9 codifies two conventions that emerged from the
+mini-track sub-step 2 work: (a) §9.1 release-gate-violation
+tracking via a per-repo issue tracker — the natural
+generalization of M6's `check-no-lloc-soft-warnings` release-gate,
+which itself closes the M3 soft-band drift loophole user-flagged
+2026-05-03 ("what drives a refactor after hitting soft LOC?
+instead of just hitting hard and having original problem
+eventually"); (b) §9.2 the per-commit-ergonomic-vs-release-gate
+distinction — a load-bearing principle the user surfaced
+recurrently during bootstrap and which both M3 and M6 turn on.
+Per the bootstrap skill's Case-B rule, plan-text edits are
+user-gated even under `--ff`; the gate fired at this turn and
+the user selected "Apply + commit alongside STATUS update"
+2026-05-03T18:26Z. Commit pattern: a standalone
+`chore: phase-7 plan codify §9 followup conventions` commit for
+the plan-only edit, followed by a `chore: phase-7 sub-step 2 M6
+complete — STATUS update` bookkeeping commit, mirroring the
+established two-commit pattern from earlier mini-track wraps
+(085a983, da441f1, 6d3b67c).
+
