@@ -36,9 +36,21 @@ The shebang-wrapper layer at `bin/<sub-command>.py` MUST conform to the canonica
 
 ## Heading taxonomy
 
-Top-level `#` headings in spec files SHOULD reflect intent rather than a fixed taxonomy. `##` headings within each spec file form the test-anchor surface: every `##` heading MUST have a corresponding entry in `tests/heading-coverage.json` whose `spec_root` field matches the heading's tree per v021 Q3.
+Top-level `#` headings in spec files SHOULD reflect intent rather than a fixed taxonomy.
 
-The `dev-tooling/checks/heading_coverage.py` script enforces the binding mechanically. Pre-Phase-6 the check tolerates an empty `[]` array; from this seed forward (Phase 6 onward), emptiness is a failure if any spec tree exists.
+Every `##` heading in a **template-declared NLSpec file at a spec-tree root** MUST have a corresponding entry in `tests/heading-coverage.json`. The registry maps `(spec_root, spec_file, heading)` triples to pytest test identifiers per PROPOSAL.md §"Coverage registry" (lines 3771-3813). The `spec_root` field is the repo-root-relative path to the spec tree's root (main spec = `SPECIFICATION`; sub-specs = `SPECIFICATION/templates/<name>`). The `spec_file` field is the `spec_root`-relative path to the spec file containing the heading (e.g., `spec.md`, `contracts.md`). The `heading` field is the exact `##` heading text. Each entry's `test` field is a pytest node identifier (`<path>::<function>`) OR the literal `"TODO"`; `"TODO"` entries MUST also carry a non-empty `reason` field.
+
+The `dev-tooling/checks/heading_coverage.py` script enforces the binding mechanically at `just check` time. Per tree, the check walks **only the template-declared NLSpec files at the tree root** — for the `livespec` template, the four files `spec.md`, `contracts.md`, `constraints.md`, and `scenarios.md`. The check does NOT recurse into `proposed_changes/`, `history/`, `templates/<name>/history/`, or any other subdirectory; it does NOT include the skill-owned `README.md` at the tree root. Boilerplate headings such as `## Proposal: ...` in propose-change files, `## Decision and Rationale` in revision records, and per-version snapshot headings under `history/v*/` are out of scope for the registry and are NOT counted by the check.
+
+The check fails in three directions:
+
+1. **Uncovered heading** — a `(spec_root, spec_file, heading)` triple appears in some template-declared spec file but no matching registry entry exists. Diagnostic: `spec heading missing coverage entry`.
+2. **Orphan registry entry** — a registry entry's `(spec_root, spec_file, heading)` triple does not match any heading in any template-declared spec file (heading was renamed or removed without updating the registry). Diagnostic: `registry entry orphaned — no matching spec heading`.
+3. **Missing `reason` on a `TODO` entry** — entry carries `test: "TODO"` but no non-empty `reason` field. Diagnostic: `TODO registry entry missing reason`.
+
+The check SKIPS `##` headings whose text begins with the literal `Scenario:` prefix per PROPOSAL.md lines 3779-3782: scenario blocks are exercised by the per-spec-file rule test for the scenario-carrying spec file; per-scenario registry entries are not required.
+
+Pre-Phase-6 the check tolerated an empty `[]` array; from the Phase 6 seed forward (this revision and later), emptiness is a failure if any spec tree exists.
 
 ## BCP14 normative language
 
