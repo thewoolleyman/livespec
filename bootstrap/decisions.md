@@ -1427,3 +1427,49 @@ The cycle 3a Red commit (most recent attempt at sha f101987)
 was reset via `git reset --soft HEAD~1` and dropped from
 HEAD pending cycle 2.8. After 2.8 lands, cycle 3a will be
 redone fresh.
+
+## 2026-05-03T03:00:00Z — phase 5 (D8 activation)
+
+**Decision:** v034 D8 branch-protection rule activated on
+`thewoolleyman/livespec` master via
+`gh api -X PUT repos/.../branches/master/protection
+--input branch-protection.json`. Required-status-checks shape:
+27 currently-passing CI contexts (the canonical-target subset
+excluding `check-types` Phase-7-deferred,
+`check-prompts` Phase-9-deferred, and
+`e2e-test-claude-code-mock` Phase-9-deferred).
+`enforce_admins: true`; `required_linear_history: true`;
+`allow_force_pushes: false`; `allow_deletions: false`. PR
+reviews not required (solo-dev workflow).
+
+Direct-push verification: `git commit --allow-empty + git
+push origin master` rejected with "GH006: Protected branch
+update failed for refs/heads/master. — 27 of 27 required
+status checks are expected." ✓
+
+PR + auto-merge verification: this commit lands via PR with
+`gh pr create --fill && gh pr merge --auto --squash`. CI
+runs the 30-target matrix; the 27 required + 3 deferred
+contexts. PR auto-merges when the 27 required gates green.
+
+**Rationale:** v034 D8 codified branch-protection at the
+end of Phase 5 to gate Phase 6 self-application work behind
+a CI-gated merge flow. Master is now write-protected; the
+agent's normal rhythm switches from "commit + push direct
+to master" to "branch off master → cycle work + commits →
+push branch → gh pr create --fill && gh pr merge --auto
+--squash → CI gates the merge."
+
+CI matrix gaps surfaced during D8 authoring (deferred to
+post-Phase-6 cleanup):
+- `check-rop-pipeline-shape` is in `just check` aggregate
+  but NOT in the CI matrix at `.github/workflows/ci.yml`.
+  Local pre-commit covers it; CI does not.
+- `check-no-except-outside-io` is in CI matrix declaration
+  but didn't appear in the latest commit's check-runs (per
+  `gh api repos/.../commits/master/check-runs`). Either a
+  silent skip or a name mismatch worth investigating.
+
+These gaps are not blocking — the local `just check` aggregate
+catches violations; CI's 27 required checks span the rest of
+the canonical target set.
