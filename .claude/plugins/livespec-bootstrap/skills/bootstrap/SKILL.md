@@ -219,9 +219,14 @@ carry the audit-trail weight of PROPOSAL changes. Procedure:
      route to Case A.
 4. On "Apply": apply the edits via `Edit`; record a `decisions.md`
    entry naming the drift, the proposed fix, and the user's gate
-   confirmation; commit (message starts with `phase-N: ...` or
-   similar). Do NOT write to `open-issues.md` — that file is for
-   PROPOSAL-blocking entries only. Loop back to main step 1.
+   confirmation; commit with a Conventional Commits subject
+   (typically `chore: ...` since plan-text edits are not
+   user-facing features or fixes; `chore!:` if the change is
+   breaking). Post-v034 the commit-msg replay hook rejects
+   non-Conventional subjects; legacy `phase-N: ...` framing is
+   no longer accepted. Do NOT write to `open-issues.md` — that
+   file is for PROPOSAL-blocking entries only. Loop back to
+   main step 1.
 
 Plan drift entries never enter `open-issues.md` under this rule.
 If a single drift touches BOTH plan and PROPOSAL.md, route to Case
@@ -402,8 +407,14 @@ now?" — options:
 
 On advance: update STATUS to `current_phase: N+1`,
 `current_sub_step: 1`, `last_completed_exit_criterion: phase N`.
-Commit STATUS change with message `phase-N: complete`. Loop back
-to step 1.
+Commit STATUS change with a Conventional Commits subject like
+`chore: phase N complete — advance to Phase N+1` (matches the
+Phase 5 → Phase 6 precedent at PR #1's
+`chore: phase 5 complete — D8 branch-protection activated;
+advance to Phase 6` and the Phase 6 → Phase 7 precedent at
+`chore: phase 6 complete — advance to Phase 7`). The
+post-v034 commit-msg replay hook rejects the legacy
+`phase-N: complete` subject. Loop back to step 1.
 
 ### 6. At Phase 10 exit
 
@@ -464,8 +475,10 @@ references to the bootstrap scaffolding. Sub-steps:
    Phase 11 commit lands.
 
 4. **Commit and push.** Suggested message:
-   `phase-11: remove bootstrap-skill symlink and root AGENTS.md`.
-   Gate the push on AskUserQuestion confirmation.
+   `chore: phase 11 — remove bootstrap-skill symlink and root
+   AGENTS.md` (Conventional Commits per v034 D1; matches the
+   prior `chore: phase N complete` advance pattern). Gate the
+   push on AskUserQuestion confirmation.
 
 5. **Update STATUS one last time** with the cleanup commit sha.
    Print the final "bootstrap complete; livespec is now
@@ -544,9 +557,14 @@ PROPOSAL or plan-level changes that cannot be deferred.
    AskUserQuestion: "Commit + push the vNNN revision?" — options:
    commit-and-push (Recommended), commit-only, hold (let user
    review more first).
-   - On commit-and-push: `git add` the modified files; `git commit
-     -m "Revise proposal to vNNN: <one-line summary>"`; `git push`.
-   - On commit-only: same `git add` + `git commit`; skip `git push`.
+   - On commit-and-push: `git add` the modified files;
+     `mise exec -- git commit -m "chore!: codify vNNN — <one-line
+     summary>"` (Conventional Commits per v034 D1; the `!` marks
+     the spec change as breaking; `mise exec` ensures lefthook
+     hook shims fire correctly per the established convention);
+     then `mise exec -- git push`.
+   - On commit-only: same `git add` + `mise exec -- git commit`;
+     skip the push.
    - On hold: stop the sub-flow; STATUS update; user resumes when
      ready.
 

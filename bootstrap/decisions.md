@@ -1509,3 +1509,39 @@ documents the deviation explicitly so a future widening commit
 flips the test to assert exit 0 with a successfully-walked
 `.livespec.jsonc` default.
 
+
+## 2026-05-03T10:30:00Z — phase 7 sub-step 1 (pre-start)
+
+**Decision:** Apply Case-B direct-fix to bootstrap SKILL.md to
+update four commit-message literals to post-v034 Conventional
+Commits format. Locations + replacements:
+
+1. Line 222 (Case-B direct-fix step 4): `phase-N: ...` →
+   "Conventional Commits subject (typically `chore: ...`)".
+2. Line 405 (5d Advance): `phase-N: complete` → "`chore: phase
+   N complete — advance to Phase N+1`" with PR #1 + the
+   2026-05-03 Phase 6 → Phase 7 advance commit cited as
+   precedent.
+3. Line 467 (Phase 11 cleanup): `phase-11: remove ...` →
+   "`chore: phase 11 — remove ...`".
+4. Line 548 (halt-and-revise step 8): `Revise proposal to
+   vNNN: ...` → `chore!: codify vNNN — ...` wrapped in
+   `mise exec -- git commit` per the established hook-firing
+   convention.
+
+**Rationale:** Discovered when authoring the Phase 6 → Phase 7
+advance commit this session: SKILL.md prescribed `phase-6:
+complete` literally; the commit-msg replay hook (post-v034 D1
+adoption of Conventional Commits) rejected it; second attempt
+with `chore: phase 6 complete — advance to Phase 7` succeeded
+matching PR #1's `chore: phase 5 complete — D8 branch-protection
+activated; advance to Phase 6` precedent. SKILL.md text
+pre-dated v034 Conventional Commits adoption and was not
+swept during the v034 codification. PROPOSAL.md confirmed
+unaffected (`grep -n "phase-N: complete\|phase-11:"` returns
+empty in PROPOSAL.md). Fix lands as Case-B direct-fix per
+§"Drift handling" Case-B path: SKILL.md is throwaway
+scaffolding, not versioned; PROPOSAL.md unaffected. User-gated
+in chat ("do all that first then let me clear context and new
+session" 2026-05-03).
+
