@@ -10,6 +10,7 @@ subset registers 8 checks; the rest land at Phase 7.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -134,3 +135,88 @@ def test_run_static_main_emits_findings_json_to_stdout(
     }
     for check_id in expected_check_ids:
         assert check_id in out, f"missing {check_id!r} in stdout"
+
+
+def _seed_sub_spec_tree(*, sub_spec_root: Path) -> None:
+    """Seed `sub_spec_root` with the sub-spec layout the 6 sub-spec checks need.
+
+    Sub-spec trees skip the project-root-only checks
+    (`livespec_jsonc_valid` + `template_exists`) per
+    APPLICABILITY_BY_TREE_KIND['sub_spec'] (Plan Phase 6 +
+    static/__init__.py cycle 143). The 6 remaining checks need
+    `<sub_spec_root>/{spec.md, proposed_changes/, history/v001/
+    proposed_changes/}` plus the skill-owned `history/README.md`
+    that v037 D1's cycle (ii) Red→Green established as the
+    valid-and-skipped non-version sibling.
+    """
+    sub_spec_root.mkdir(parents=True, exist_ok=True)
+    _ = (sub_spec_root / "spec.md").write_text("# Sub-spec\n", encoding="utf-8")
+    (sub_spec_root / "proposed_changes").mkdir()
+    history_path = sub_spec_root / "history"
+    history_path.mkdir()
+    _ = (history_path / "README.md").write_text(
+        "Skill-owned directory description.\n",
+        encoding="utf-8",
+    )
+    (history_path / "v001" / "proposed_changes").mkdir(parents=True)
+
+
+def test_run_static_main_emits_per_tree_findings_for_sub_specs(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """run_static.main enumerates main + sub-spec trees in one invocation.
+
+    Per Plan §"Phase 6" exit criterion ("/livespec:doctor's
+    static phase runs cleanly against every spec tree — one
+    wrapper invocation, exit 0 overall, with per-tree findings
+    emitted and all marked pass"): a project that ships
+    `<spec_root>/templates/<name>/` sub-spec trees must drive
+    the orchestrator to enumerate every (main + sub-spec) tree,
+    apply the appropriate APPLICABILITY_BY_TREE_KIND subset to
+    each, and emit per-tree findings tagged with their
+    `spec_root` field. Asserts: (a) exit 0; (b) main tree's 8
+    Phase-3-minimum findings are emitted with the main
+    spec_root; (c) each sub-spec's 6 sub-spec-applicable
+    findings are emitted with the sub-spec spec_root; (d) every
+    finding's status is 'pass'.
+    """
+    project_root = tmp_path / "project"
+    main_spec_root = _seed_fully_valid_project(project_root=project_root)
+    livespec_sub = main_spec_root / "templates" / "livespec"
+    minimal_sub = main_spec_root / "templates" / "minimal"
+    _seed_sub_spec_tree(sub_spec_root=livespec_sub)
+    _seed_sub_spec_tree(sub_spec_root=minimal_sub)
+    exit_code = run_static.main(argv=["--project-root", str(project_root)])
+    out = capsys.readouterr().out
+    assert exit_code == 0, f"expected exit 0, got {exit_code}; stdout: {out}"
+    main_check_ids = {
+        "doctor-livespec-jsonc-valid",
+        "doctor-template-exists",
+        "doctor-template-files-present",
+        "doctor-proposed-changes-and-history-dirs",
+        "doctor-version-directories-complete",
+        "doctor-version-contiguity",
+        "doctor-revision-to-proposed-change-pairing",
+        "doctor-proposed-change-topic-format",
+    }
+    sub_spec_check_ids = {
+        "doctor-template-files-present",
+        "doctor-proposed-changes-and-history-dirs",
+        "doctor-version-directories-complete",
+        "doctor-version-contiguity",
+        "doctor-revision-to-proposed-change-pairing",
+        "doctor-proposed-change-topic-format",
+    }
+    payload = json.loads(out)
+    findings = payload["findings"]
+    findings_by_spec_root: dict[str, set[str]] = {}
+    for finding in findings:
+        assert finding["status"] == "pass", f"non-pass finding: {finding}"
+        findings_by_spec_root.setdefault(finding["spec_root"], set()).add(
+            finding["check_id"],
+        )
+    assert findings_by_spec_root.get(str(main_spec_root)) == main_check_ids
+    assert findings_by_spec_root.get(str(livespec_sub)) == sub_spec_check_ids
+    assert findings_by_spec_root.get(str(minimal_sub)) == sub_spec_check_ids
