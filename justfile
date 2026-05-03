@@ -353,6 +353,33 @@ check-tests-mirror-pairing:
 check-commit-pairs-source-and-test:
     uv run python3 dev-tooling/checks/commit_pairs_source_and_test.py
 
+# Phase 7 sub-step 2 mini-track item M1: ruff fix + format on staged
+# Python files BEFORE the rest of the pre-commit gate runs. Saves the
+# ~5min retry on auto-fixable lint trivia. Runs as lefthook
+# `00-lint-autofix-staged` step ahead of the existing checks.
+# Per SPECIFICATION/spec.md §"Developer-tooling layout" + contracts.md
+# §"Pre-commit step ordering" (post-v003). Non-blocking — unfixable
+# issues fall through to be caught by check-lint / check-format inside
+# the `just check` aggregate at the `02-check-pre-commit` step.
+# v034 D2-D3 interaction: autofix runs BEFORE the commit-msg replay
+# hook computes the Red trailer's test-file SHA-256 checksum, so the
+# recorded checksum reflects post-autofix bytes. Green amend stages
+# impl files only (not the test), preserving the
+# test-file-byte-identical invariant.
+lint-autofix-staged:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    staged=$(git diff --cached --name-only --diff-filter=AM | grep -E '\.py$' || true)
+    if [[ -z "$staged" ]]; then
+        exit 0
+    fi
+    # --exit-zero so unfixable lint issues don't fail this step;
+    # they fall through to check-lint inside `just check` later.
+    echo "$staged" | xargs uv run ruff check --fix --exit-zero
+    echo "$staged" | xargs uv run ruff format
+    # Re-stage so post-autofix bytes are what the commit captures.
+    echo "$staged" | xargs git add
+
 # ---------------------------------------------------------------
 # Mutating targets (opt-in; not run in CI).
 # ---------------------------------------------------------------

@@ -32,6 +32,8 @@
 
 pre-commit:
   commands:
+    00-lint-autofix-staged:
+      run: just lint-autofix-staged
     01-commit-pairs-source-and-test:
       run: just check-commit-pairs-source-and-test
     02-check-pre-commit:
