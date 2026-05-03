@@ -209,18 +209,54 @@ check-pre-commit:
     #!/usr/bin/env bash
     set -uo pipefail
     staged=$(git diff --cached --name-only --diff-filter=AM)
+    py_staged=$(echo "$staged" | grep -E '\.py$' || true)
     test_staged=$(echo "$staged" | grep -E '^tests/.*\.py$' || true)
     impl_staged=$(echo "$staged" | grep -E '^(\.claude-plugin/scripts/livespec|\.claude-plugin/scripts/bin|dev-tooling/checks)/.*\.py$' || true)
     test_count=0
     impl_count=0
     [[ -n "$test_staged" ]] && test_count=$(echo "$test_staged" | wc -l)
     [[ -n "$impl_staged" ]] && impl_count=$(echo "$impl_staged" | wc -l)
+    if [[ -z "$py_staged" ]]; then
+        echo ":: doc-only mode detected (zero .py files staged): running just check-pre-commit-doc-only"
+        echo ":: pre-push + CI keep the full aggregate as the load-bearing safety net"
+        just check-pre-commit-doc-only
+        exit 0
+    fi
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
         echo ":: v037 D1 Red-mode shape detected: $test_staged"
         echo ":: skipping check-tests + check-coverage (commit-msg replay hook is the verifier)"
         export LIVESPEC_PRECOMMIT_RED_MODE=1
     fi
     just check
+
+# Per SPECIFICATION/contracts.md §"Pre-commit step ordering"
+# (post-v007): when zero `.py` files are staged, `check-pre-commit`
+# delegates to this CONSERVATIVE doc-only subset instead of running
+# the full 30-target aggregate. Pre-push + CI never invoke this —
+# the full aggregate is the load-bearing safety net.
+check-pre-commit-doc-only:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    targets=(
+        check-claude-md-coverage
+        check-heading-coverage
+        check-vendor-manifest
+        check-no-direct-tool-invocation
+        check-tools
+    )
+    failed=()
+    for t in "${targets[@]}"; do
+        printf '\n::: just %s\n' "$t"
+        if ! just "$t"; then
+            failed+=("$t")
+        fi
+    done
+    if [[ ${#failed[@]} -gt 0 ]]; then
+        printf '\nFailed targets (%d):\n' "${#failed[@]}"
+        printf '  - %s\n' "${failed[@]}"
+        exit 1
+    fi
+    printf '\nAll %d doc-only targets passed.\n' "${#targets[@]}"
 
 # ---------------------------------------------------------------
 # AST / grep / hand-written checks. Each delegates to a script
