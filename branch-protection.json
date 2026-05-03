@@ -1,0 +1,40 @@
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "check-all-declared",
+      "check-assert-never-exhaustiveness",
+      "check-claude-md-coverage",
+      "check-complexity",
+      "check-coverage",
+      "check-format",
+      "check-global-writes",
+      "check-heading-coverage",
+      "check-imports-architecture",
+      "check-keyword-only-args",
+      "check-lint",
+      "check-main-guard",
+      "check-match-keyword-only",
+      "check-newtype-domain-primitives",
+      "check-no-direct-tool-invocation",
+      "check-no-inheritance",
+      "check-no-raise-outside-io",
+      "check-no-write-direct",
+      "check-pbt-coverage-pure-modules",
+      "check-private-calls",
+      "check-public-api-result-typed",
+      "check-schema-dataclass-pairing",
+      "check-supervisor-discipline",
+      "check-tests",
+      "check-tools",
+      "check-vendor-manifest",
+      "check-wrapper-shape"
+    ]
+  },
+  "enforce_admins": true,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "required_linear_history": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
