@@ -1473,3 +1473,39 @@ post-Phase-6 cleanup):
 These gaps are not blocking — the local `just check` aggregate
 catches violations; CI's 27 required checks span the rest of
 the canonical target set.
+
+
+## 2026-05-03T02:03:19Z — phase 6 sub-step "resolve_template gap-fix"
+
+**Decision:** In the Phase 6 in-band gap-fix that re-authors
+`bin/resolve_template.py` + `livespec/commands/resolve_template.py`
+(the missing files surfaced at Phase 6 entry per
+`open-issues.md` 2026-05-03T01:31:03Z), the implementation
+deviates from PROPOSAL.md §"Template resolution contract" line
+1443 by making `--template` REQUIRED at the argparse level. The
+PROPOSAL contract marks `--template` OPTIONAL: when omitted,
+the wrapper walks upward from `--project-root` for
+`.livespec.jsonc` and resolves the `template` field. This
+default-flow is deferred to Phase 7.
+
+**Rationale:** Phase 6 sub-step 1 (the seed self-application)
+exercises only the pre-seed flow per v017 Q2 — `bin/resolve_template.py
+--template livespec` (and similar for `--template minimal` /
+user-paths). The default `.livespec.jsonc`-walking flow has
+NO Phase-6 consumer. Authoring the default flow now without a
+consumer would require additional cycles (`.livespec.jsonc`
+upward-walk, JSONC parse, schema-validate against
+`livespec_config.schema.json`, fall through to
+`_resolve_template_value`) plus tests, doubling the gap-fix
+scope without unblocking anything. Phase 7 widens this command
+alongside the doctor LLM-driven phases via the dogfooded
+propose-change/revise loop, at which point the default flow
+gets its own propose-change cycle against
+`SPECIFICATION/templates/livespec/` (or the doctor sub-spec).
+Until then, omitting `--template` returns exit 2 (UsageError)
+— argparse rejects the missing required arg. Test
+`test_resolve_template_missing_template_flag_returns_2`
+documents the deviation explicitly so a future widening commit
+flips the test to assert exit 0 with a successfully-walked
+`.livespec.jsonc` default.
+
