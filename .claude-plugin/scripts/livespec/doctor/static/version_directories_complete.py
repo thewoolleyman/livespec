@@ -67,18 +67,35 @@ def _verify_version_dirs(
     return accumulator
 
 
+def _select_version_dirs(*, children: list[Path]) -> list[Path]:
+    """Filter `children` to only `v*`-named entries that are directories.
+
+    The `v*`-name + `is_dir()` filter excludes the skill-owned
+    `<spec_root>/history/README.md` directory-description file
+    (Plan Phase 6 lines 3160-3162, 3174-3175, 3194-3195) along
+    with any other non-version sibling that may live alongside
+    the `vNNN/` snapshots. Without this filter the per-version
+    `proposed_changes/` probe would fire against
+    `history/README.md/proposed_changes`, yielding an
+    IOFailure(`Not a directory`) that mis-classifies a valid
+    seeded tree as failing the version-directory-shape check.
+    """
+    return [child for child in children if child.name.startswith("v") and child.is_dir()]
+
+
 def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     """Run the version-directories-complete check against `ctx`.
 
-    Lists `<ctx.spec_root>/history/`, then for each child
-    directory verifies that `<vNNN>/proposed_changes/` exists.
-    On all-present yields IOSuccess(Finding(status='pass')).
-    The fail arm lands in subsequent cycles.
+    Lists `<ctx.spec_root>/history/`, filters to `v*`-named
+    directories, then for each verifies that
+    `<vNNN>/proposed_changes/` exists. On all-present yields
+    IOSuccess(Finding(status='pass')). The fail arm lands in
+    subsequent cycles.
     """
     history_path = ctx.spec_root / "history"
     return fs.list_dir(path=history_path).bind(
-        lambda version_paths: _verify_version_dirs(
+        lambda children: _verify_version_dirs(
             ctx=ctx,
-            version_paths=version_paths,
+            version_paths=_select_version_dirs(children=children),
         ),
     )

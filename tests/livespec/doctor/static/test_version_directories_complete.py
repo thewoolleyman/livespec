@@ -57,3 +57,41 @@ def test_version_directories_complete_run_returns_pass_for_well_formed_history(
         spec_root=str(spec_root),
     )
     assert version_directories_complete.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_version_directories_complete_run_skips_non_version_entries_in_history(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) ignores non-`v*` entries (files + dirs) under history/.
+
+    Per the seed wrapper's per-tree skill-owned `history/README.md`
+    directory-description (Plan Phase 6 lines 3160-3162, 3174-3175,
+    3194-3195), the seeded `<spec_root>/history/` directory contains
+    a `README.md` file alongside the `vNNN/` version directories.
+    The check must walk only `v*` directories when verifying the
+    `proposed_changes/` subdir presence; non-`v*` siblings (file or
+    dir) are skill-owned scaffolding outside the per-version-dir
+    contract and must not be probed.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_path = spec_root / "history"
+    history_path.mkdir()
+    (history_path / "v001" / "proposed_changes").mkdir(parents=True)
+    (history_path / "README.md").write_text(
+        "Skill-owned directory description.\n",
+        encoding="utf-8",
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = Finding(
+        check_id="doctor-version-directories-complete",
+        status="pass",
+        message="every history/vNNN/ contains its proposed_changes/ subdir",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert version_directories_complete.run(ctx=ctx) == IOSuccess(expected)
