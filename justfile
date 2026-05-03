@@ -75,9 +75,9 @@ check:
     # four v033-D5a guardrails plus `check-coverage` (now
     # rejoined post-cycle-117 — every measured first-party file
     # is at 100% line+branch) and `check-tests-mirror-pairing`
-    # (still deferred until the docstring-+-`__all__`
-    # __init__.py exemption is wired into the cycle-1 mirror-
-    # pairing script) + `check-lint`/`check-format`/`check-types`
+    # (rejoined post-Phase-7 sub-step 2 mini-track item M4 — the
+    # private-helper + pure-declaration exemptions are wired in)
+    # + `check-lint`/`check-format`/`check-types`
     # (deferred until config-tier-fix cycles land) +
     # `check-prompts` / `e2e-test-claude-code-mock` (Phase 5/9
     # deferrals unchanged).
@@ -107,6 +107,7 @@ check:
         check-pbt-coverage-pure-modules
         check-newtype-domain-primitives
         check-schema-dataclass-pairing
+        check-tests-mirror-pairing
         check-complexity
         check-lint
         check-format
