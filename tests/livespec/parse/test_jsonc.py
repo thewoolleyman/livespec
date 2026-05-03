@@ -13,10 +13,9 @@ import json
 
 from hypothesis import given
 from hypothesis import strategies as st
-from returns.result import Failure, Success
-
 from livespec.errors import ValidationError
 from livespec.parse import jsonc
+from returns.result import Failure, Success
 
 __all__: list[str] = []
 

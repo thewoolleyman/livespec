@@ -28,7 +28,7 @@ time.
 from __future__ import annotations
 
 import re
-import subprocess  # noqa: S404
+import subprocess
 import sys
 from pathlib import Path
 
@@ -49,7 +49,7 @@ import structlog  # noqa: E402  — vendor-path-aware import after sys.path inse
 # (cycle 4c LLOC reduction). The leading underscore in the module
 # name marks it as a private helper rather than a check entry
 # point.
-from _red_green_replay_modes import (  # noqa: E402, I001  — sibling private import
+from _red_green_replay_modes import (  # noqa: E402  — sibling private import
     _handle_green_mode,
     _handle_red_mode,
     _head_has_red_trailers,
@@ -108,7 +108,7 @@ def _configure_logger() -> structlog.stdlib.BoundLogger:
 
 
 def _staged_files_list() -> list[str]:
-    result = subprocess.run(  # noqa: S603, S607
+    result = subprocess.run(
         ["git", "diff", "--cached", "--name-only"],
         capture_output=True,
         text=True,

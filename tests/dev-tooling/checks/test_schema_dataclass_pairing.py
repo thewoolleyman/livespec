@@ -40,7 +40,7 @@ def test_schema_dataclass_pairing_rejects_missing_dataclass(*, tmp_path: Path) -
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SCHEMA_DATACLASS_PAIRING)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -74,7 +74,7 @@ def test_schema_dataclass_pairing_rejects_missing_validator(*, tmp_path: Path) -
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SCHEMA_DATACLASS_PAIRING)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -106,7 +106,7 @@ def test_schema_dataclass_pairing_accepts_complete_triplet(*, tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SCHEMA_DATACLASS_PAIRING)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -122,7 +122,7 @@ def test_schema_dataclass_pairing_accepts_complete_triplet(*, tmp_path: Path) ->
 
 def test_schema_dataclass_pairing_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SCHEMA_DATACLASS_PAIRING)],
         cwd=str(tmp_path),
         capture_output=True,

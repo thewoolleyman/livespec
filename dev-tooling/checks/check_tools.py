@@ -79,7 +79,7 @@ def _verify_tool(*, name: str, expected_version: str) -> str | None:
     if binary_path is None:
         return f"{name}: not on PATH"
     # S603: argv is fixed (binary path resolved via shutil.which + literal flag).
-    completed = subprocess.run(  # noqa: S603
+    completed = subprocess.run(
         [binary_path, "--version"],
         capture_output=True,
         text=True,
@@ -87,7 +87,7 @@ def _verify_tool(*, name: str, expected_version: str) -> str | None:
     )
     if completed.returncode != 0:
         # Fallback for binaries with subcommand-style version surfaces.
-        completed = subprocess.run(  # noqa: S603
+        completed = subprocess.run(
             [binary_path, "version"],
             capture_output=True,
             text=True,

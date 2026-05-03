@@ -61,7 +61,7 @@ def test_match_keyword_only_rejects_positional_class_pattern_for_livespec_class(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_MATCH_KEYWORD_ONLY)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -112,7 +112,7 @@ def test_match_keyword_only_accepts_keyword_class_pattern(*, tmp_path: Path) -> 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_MATCH_KEYWORD_ONLY)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -164,7 +164,7 @@ def test_match_keyword_only_accepts_returns_positional_class_pattern(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_MATCH_KEYWORD_ONLY)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -181,7 +181,7 @@ def test_match_keyword_only_accepts_returns_positional_class_pattern(
 
 def test_match_keyword_only_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_MATCH_KEYWORD_ONLY)],
         cwd=str(tmp_path),
         capture_output=True,

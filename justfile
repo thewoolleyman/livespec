@@ -108,6 +108,7 @@ check:
         check-newtype-domain-primitives
         check-schema-dataclass-pairing
         check-complexity
+        check-lint
         check-tools
     )
     failed=()

@@ -17,10 +17,9 @@ from pathlib import Path
 
 from hypothesis import given
 from hypothesis import strategies as st
-from returns.result import Success
-
 from livespec.schemas.dataclasses.seed_input import SeedInput
 from livespec.validate import seed_input
+from returns.result import Success
 
 __all__: list[str] = []
 

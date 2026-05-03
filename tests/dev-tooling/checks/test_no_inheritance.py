@@ -54,7 +54,7 @@ def test_no_inheritance_rejects_disallowed_base_class(*, tmp_path: Path) -> None
     )
 
     # S603: argv is fixed; no untrusted shell input.
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_INHERITANCE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -109,7 +109,7 @@ def test_no_inheritance_accepts_allowlisted_base_classes(*, tmp_path: Path) -> N
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_INHERITANCE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -130,7 +130,7 @@ def test_no_inheritance_accepts_tree_without_livespec_directory(*, tmp_path: Pat
     Closes the `if livespec_root.is_dir():` False arm: tmp_path
     is empty, so main() short-circuits without walking.
     """
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_INHERITANCE)],
         cwd=str(tmp_path),
         capture_output=True,

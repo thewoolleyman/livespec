@@ -49,7 +49,7 @@ def test_all_declared_rejects_module_missing_all_declaration(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ALL_DECLARED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -92,7 +92,7 @@ def test_all_declared_rejects_undefined_name_in_all(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ALL_DECLARED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -153,7 +153,7 @@ def test_all_declared_accepts_module_with_complete_all_declaration(*, tmp_path: 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ALL_DECLARED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -173,7 +173,7 @@ def test_all_declared_accepts_tree_without_livespec_directory(*, tmp_path: Path)
 
     Closes the `if livespec_root.is_dir():` False arm.
     """
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ALL_DECLARED)],
         cwd=str(tmp_path),
         capture_output=True,

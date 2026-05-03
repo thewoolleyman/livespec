@@ -1,4 +1,4 @@
-"""public_api_result_typed — pure-layer public APIs return Result/IOResult or carry railway-lifting decorator.
+"""public_api_result_typed — pure-layer public APIs return Result/IOResult or carry decorator.
 
 Per `python-skill-script-style-requirements.md` §"Canonical
 target list" (the `check-public-api-result-typed` row),

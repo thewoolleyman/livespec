@@ -72,7 +72,7 @@ def test_tests_mirror_pairing_rejects_livespec_source_without_paired_test(*, tmp
 
     # S603: argv is a fixed list (sys.executable + repo-controlled
     # script path); no untrusted shell input.
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_TESTS_MIRROR_PAIRING)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -132,7 +132,7 @@ def test_tests_mirror_pairing_accepts_paired_source_and_test(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_TESTS_MIRROR_PAIRING)],
         cwd=str(tmp_path),
         capture_output=True,

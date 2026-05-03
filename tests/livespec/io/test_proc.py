@@ -23,11 +23,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from returns.result import Failure, Success
-from returns.unsafe import unsafe_perform_io
-
 from livespec.errors import PreconditionError
 from livespec.io import proc
+from returns.result import Failure, Success
+from returns.unsafe import unsafe_perform_io
 
 __all__: list[str] = []
 

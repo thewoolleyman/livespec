@@ -54,7 +54,7 @@ def test_assert_never_exhaustiveness_rejects_match_missing_case_underscore(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ASSERT_NEVER_EXHAUSTIVENESS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -102,7 +102,7 @@ def test_assert_never_exhaustiveness_rejects_case_underscore_with_non_assert_nev
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ASSERT_NEVER_EXHAUSTIVENESS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -144,7 +144,7 @@ def test_assert_never_exhaustiveness_accepts_proper_match_terminator(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ASSERT_NEVER_EXHAUSTIVENESS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -161,7 +161,7 @@ def test_assert_never_exhaustiveness_accepts_proper_match_terminator(
 
 def test_assert_never_exhaustiveness_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ASSERT_NEVER_EXHAUSTIVENESS)],
         cwd=str(tmp_path),
         capture_output=True,

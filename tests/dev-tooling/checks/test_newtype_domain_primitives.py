@@ -50,7 +50,7 @@ def test_newtype_domain_primitives_rejects_canonical_field_with_raw_type(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -94,7 +94,7 @@ def test_newtype_domain_primitives_accepts_canonical_field_with_newtype(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -133,7 +133,7 @@ def test_newtype_domain_primitives_ignores_non_canonical_field_name(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -182,7 +182,7 @@ def test_newtype_domain_primitives_skips_class_body_methods_and_docstrings(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -224,7 +224,7 @@ def test_newtype_domain_primitives_ignores_template_root(*, tmp_path: Path) -> N
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -268,7 +268,7 @@ def test_newtype_domain_primitives_accepts_canonical_field_with_optional_newtype
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -308,7 +308,7 @@ def test_newtype_domain_primitives_accepts_canonical_field_with_optional_newtype
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -351,7 +351,7 @@ def test_newtype_domain_primitives_rejects_optional_with_raw_type(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -401,7 +401,7 @@ def test_newtype_domain_primitives_rejects_canonical_field_with_non_optional_uni
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -418,7 +418,7 @@ def test_newtype_domain_primitives_rejects_canonical_field_with_non_optional_uni
 
 def test_newtype_domain_primitives_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NEWTYPE_DOMAIN_PRIMITIVES)],
         cwd=str(tmp_path),
         capture_output=True,

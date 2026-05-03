@@ -16,11 +16,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from returns.io import IOSuccess
-
 from livespec.context import DoctorContext
 from livespec.doctor.static import proposed_change_topic_format
 from livespec.schemas.dataclasses.finding import Finding
+from returns.io import IOSuccess
 
 __all__: list[str] = []
 

@@ -47,7 +47,7 @@ def test_supervisor_discipline_rejects_sys_exit_in_livespec(*, tmp_path: Path) -
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SUPERVISOR_DISCIPLINE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -92,7 +92,7 @@ def test_supervisor_discipline_rejects_raise_systemexit_in_livespec(*, tmp_path:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SUPERVISOR_DISCIPLINE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -132,7 +132,7 @@ def test_supervisor_discipline_accepts_sys_exit_inside_bin(*, tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SUPERVISOR_DISCIPLINE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -183,7 +183,7 @@ def test_supervisor_discipline_accepts_clean_livespec(*, tmp_path: Path) -> None
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SUPERVISOR_DISCIPLINE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -200,7 +200,7 @@ def test_supervisor_discipline_accepts_clean_livespec(*, tmp_path: Path) -> None
 
 def test_supervisor_discipline_accepts_empty_tree(*, tmp_path: Path) -> None:
     """A repo cwd without `.claude-plugin/scripts/livespec/` passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_SUPERVISOR_DISCIPLINE)],
         cwd=str(tmp_path),
         capture_output=True,

@@ -38,7 +38,11 @@ class TemplateConfig:
     """
 
     template_format_version: int
-    spec_root: SpecRoot = SpecRoot("SPECIFICATION/")
+    # NewType is structural — `SpecRoot("SPECIFICATION/")`
+    # returns the immutable str at definition time and is
+    # safely shareable across instances; ruff's RUF009 false-
+    # positives the call as mutable-default risk.
+    spec_root: SpecRoot = SpecRoot("SPECIFICATION/")  # noqa: RUF009
     doctor_static_check_modules: list[str] = field(default_factory=list)
     doctor_llm_objective_checks_prompt: str | None = None
     doctor_llm_subjective_checks_prompt: str | None = None

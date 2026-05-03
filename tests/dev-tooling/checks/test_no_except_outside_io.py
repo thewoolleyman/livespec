@@ -49,7 +49,7 @@ def test_no_except_outside_io_rejects_try_except_in_pure_layer(*, tmp_path: Path
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_EXCEPT_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -95,7 +95,7 @@ def test_no_except_outside_io_accepts_try_except_in_io_layer(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_EXCEPT_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -135,7 +135,7 @@ def test_no_except_outside_io_accepts_supervisor_bug_catcher(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_EXCEPT_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -172,7 +172,7 @@ def test_no_except_outside_io_accepts_supervisor_bug_catcher_in_run_static(*, tm
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_EXCEPT_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -218,7 +218,7 @@ def test_no_except_outside_io_rejects_try_except_in_helper_in_commands(*, tmp_pa
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_EXCEPT_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -235,7 +235,7 @@ def test_no_except_outside_io_rejects_try_except_in_helper_in_commands(*, tmp_pa
 
 def test_no_except_outside_io_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_EXCEPT_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,

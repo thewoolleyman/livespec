@@ -254,9 +254,8 @@ def test_revise_bind_resulting_files_skips_non_list_resulting_files(
     reaching this helper, but the runtime isinstance-check keeps
     pyright strict-mode + bug-class drift safe.
     """
-    from returns.io import IOSuccess
-
     from livespec.schemas.dataclasses.revise_input import RevisionInput
+    from returns.io import IOSuccess
 
     revise_input = RevisionInput(author=None, decisions=[])
     decision: dict[str, object] = {
@@ -286,9 +285,8 @@ def test_revise_bind_resulting_files_skips_non_dict_entry(
     reaching this helper, but the runtime isinstance-check keeps
     pyright strict-mode + bug-class drift safe.
     """
-    from returns.io import IOSuccess
-
     from livespec.schemas.dataclasses.revise_input import RevisionInput
+    from returns.io import IOSuccess
 
     revise_input = RevisionInput(author=None, decisions=[])
     decision: dict[str, object] = {

@@ -15,12 +15,11 @@ from pathlib import Path
 
 from hypothesis import given
 from hypothesis import strategies as st
-from returns.result import Failure, Success
-
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.livespec_config import LivespecConfig
 from livespec.types import TemplateName
 from livespec.validate import livespec_config
+from returns.result import Failure, Success
 
 __all__: list[str] = []
 

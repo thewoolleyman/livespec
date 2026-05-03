@@ -44,7 +44,7 @@ def test_rop_pipeline_shape_rejects_class_with_two_public_methods(*, tmp_path: P
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ROP_PIPELINE_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -94,7 +94,7 @@ def test_rop_pipeline_shape_accepts_class_with_one_public_method(*, tmp_path: Pa
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ROP_PIPELINE_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -140,7 +140,7 @@ def test_rop_pipeline_shape_accepts_bare_decorator_and_class_attributes(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ROP_PIPELINE_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -175,7 +175,7 @@ def test_rop_pipeline_shape_ignores_undecorated_classes(*, tmp_path: Path) -> No
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ROP_PIPELINE_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -191,7 +191,7 @@ def test_rop_pipeline_shape_ignores_undecorated_classes(*, tmp_path: Path) -> No
 
 def test_rop_pipeline_shape_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_ROP_PIPELINE_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,

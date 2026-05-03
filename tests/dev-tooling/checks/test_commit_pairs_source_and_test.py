@@ -42,8 +42,8 @@ def _git(*, cwd: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
     # S603/S607: argv is a fixed list (literal git binary + repo-controlled
     # args); bare `git` is the canonical invocation per system PATH;
     # no untrusted shell input.
-    return subprocess.run(  # noqa: S603
-        ["git", *args],  # noqa: S607
+    return subprocess.run(
+        ["git", *args],
         cwd=str(cwd),
         capture_output=True,
         text=True,
@@ -83,7 +83,7 @@ def test_commit_pairs_rejects_staged_source_without_staged_test(*, tmp_path: Pat
 
     # S603: argv is a fixed list (sys.executable + repo-controlled
     # script path); no untrusted shell input.
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -158,7 +158,7 @@ def test_commit_pairs_skips_when_head_has_unpaired_red_trailers(
     _git(cwd=tmp_path, args=["add", ".claude-plugin/scripts/livespec/foo/bar.py"])
 
     # S603: argv is a fixed list (sys.executable + repo-controlled script path).
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -216,7 +216,7 @@ def test_commit_pairs_applies_when_head_has_paired_red_and_green_trailers(
     _git(cwd=tmp_path, args=["add", ".claude-plugin/scripts/livespec/foo/bar.py"])
 
     # S603: argv is a fixed list (sys.executable + repo-controlled script path).
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -259,7 +259,7 @@ def test_commit_pairs_skips_on_empty_repo_with_no_head() -> None:
 
         # S603: argv is a fixed list (sys.executable + repo-controlled
         # script path); no untrusted shell input.
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
             cwd=str(empty_repo),
             capture_output=True,
@@ -357,7 +357,7 @@ def test_commit_pairs_accepts_staged_source_with_staged_test(*, tmp_path: Path) 
     _git(cwd=tmp_path, args=["add", "tests/livespec/foo/test_bar.py"])
 
     # S603: argv is a fixed list (sys.executable + repo-controlled script path).
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_COMMIT_PAIRS_SOURCE_AND_TEST)],
         cwd=str(tmp_path),
         capture_output=True,

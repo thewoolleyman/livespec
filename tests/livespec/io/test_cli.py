@@ -11,12 +11,11 @@ from __future__ import annotations
 
 import argparse
 
+from livespec.errors import UsageError
+from livespec.io import cli
 from returns.io import IOSuccess
 from returns.result import Failure
 from returns.unsafe import unsafe_perform_io
-
-from livespec.errors import UsageError
-from livespec.io import cli
 
 __all__: list[str] = []
 

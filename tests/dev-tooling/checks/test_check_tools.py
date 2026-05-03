@@ -30,7 +30,7 @@ def test_check_tools_rejects_missing_mise_toml(*, tmp_path: Path) -> None:
     Fixture: empty tmp_path. The check requires the mise
     config to know which binaries to verify.
     """
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CHECK_TOOLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -85,7 +85,7 @@ def test_check_tools_accepts_mise_pinned_tools_at_pinned_versions(*, tmp_path: P
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CHECK_TOOLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -114,7 +114,7 @@ def test_check_tools_accepts_substring_match_against_version_output(*, tmp_path:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CHECK_TOOLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -140,7 +140,7 @@ def test_check_tools_rejects_tool_not_on_path(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CHECK_TOOLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -162,7 +162,7 @@ def test_check_tools_rejects_pinned_version_mismatch(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CHECK_TOOLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -220,7 +220,7 @@ def test_check_tools_falls_back_to_subcommand_version_when_dash_dash_version_err
     env = dict(os.environ)
     env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CHECK_TOOLS)],
         cwd=str(tmp_path),
         capture_output=True,

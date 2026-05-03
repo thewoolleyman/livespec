@@ -80,8 +80,8 @@ _GREEN_TRAILER_TOKEN: str = "TDD-Green-Verified-At:"
 def _staged_files(*, cwd: Path) -> list[str]:
     # S603/S607: argv is a fixed list (literal git binary + literal flags);
     # bare `git` resolves via PATH; no untrusted shell input.
-    result = subprocess.run(  # noqa: S603
-        ["git", "diff", "--cached", "--name-only"],  # noqa: S607
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
         cwd=str(cwd),
         capture_output=True,
         text=True,
@@ -106,8 +106,8 @@ def _head_has_unpaired_red_trailers(*, cwd: Path) -> bool:
     """
     # S603/S607: argv is a fixed list (literal git binary + literal flags);
     # bare `git` resolves via PATH; no untrusted shell input.
-    result = subprocess.run(  # noqa: S603
-        ["git", "log", "-1", "--format=%B"],  # noqa: S607
+    result = subprocess.run(
+        ["git", "log", "-1", "--format=%B"],
         cwd=str(cwd),
         capture_output=True,
         text=True,

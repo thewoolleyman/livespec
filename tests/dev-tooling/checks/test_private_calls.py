@@ -50,7 +50,7 @@ def test_private_calls_rejects_cross_module_underscore_call(*, tmp_path: Path) -
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PRIVATE_CALLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -99,7 +99,7 @@ def test_private_calls_accepts_self_underscore_method_call(*, tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PRIVATE_CALLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -139,7 +139,7 @@ def test_private_calls_accepts_intra_module_underscore_call(*, tmp_path: Path) -
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PRIVATE_CALLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -176,7 +176,7 @@ def test_private_calls_accepts_cross_module_public_call(*, tmp_path: Path) -> No
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PRIVATE_CALLS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -193,7 +193,7 @@ def test_private_calls_accepts_cross_module_public_call(*, tmp_path: Path) -> No
 
 def test_private_calls_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PRIVATE_CALLS)],
         cwd=str(tmp_path),
         capture_output=True,

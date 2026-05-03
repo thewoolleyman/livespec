@@ -49,7 +49,7 @@ def test_file_lloc_rejects_file_exceeding_two_hundred_lines(*, tmp_path: Path) -
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_FILE_LLOC)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -86,7 +86,7 @@ def test_file_lloc_accepts_small_file(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_FILE_LLOC)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -129,7 +129,7 @@ def test_file_lloc_excludes_blank_lines_and_comments_and_docstrings(*, tmp_path:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_FILE_LLOC)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -146,7 +146,7 @@ def test_file_lloc_excludes_blank_lines_and_comments_and_docstrings(*, tmp_path:
 
 def test_file_lloc_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_FILE_LLOC)],
         cwd=str(tmp_path),
         capture_output=True,

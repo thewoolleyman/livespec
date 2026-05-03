@@ -30,7 +30,7 @@ def test_no_todo_registry_rejects_todo_entry(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_TODO_REGISTRY)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -60,7 +60,7 @@ def test_no_todo_registry_accepts_no_todo_entries(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_TODO_REGISTRY)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -86,7 +86,7 @@ def test_no_todo_registry_accepts_object_top_level(*, tmp_path: Path) -> None:
     coverage_json = tests_dir / "heading-coverage.json"
     coverage_json.write_text("{}", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_TODO_REGISTRY)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -102,7 +102,7 @@ def test_no_todo_registry_accepts_object_top_level(*, tmp_path: Path) -> None:
 
 def test_no_todo_registry_accepts_missing_coverage_file(*, tmp_path: Path) -> None:
     """Repo without `tests/heading-coverage.json` passes (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_TODO_REGISTRY)],
         cwd=str(tmp_path),
         capture_output=True,

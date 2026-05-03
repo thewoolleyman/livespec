@@ -50,7 +50,7 @@ def test_keyword_only_args_rejects_def_with_positional_arg(*, tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_KEYWORD_ONLY_ARGS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -95,7 +95,7 @@ def test_keyword_only_args_accepts_def_with_kw_only_separator(*, tmp_path: Path)
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_KEYWORD_ONLY_ARGS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -129,7 +129,7 @@ def test_keyword_only_args_accepts_zero_arg_def(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_KEYWORD_ONLY_ARGS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -169,7 +169,7 @@ def test_keyword_only_args_accepts_dunder_methods(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_KEYWORD_ONLY_ARGS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -207,7 +207,7 @@ def test_keyword_only_args_accepts_method_with_self_then_kw_only(*, tmp_path: Pa
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_KEYWORD_ONLY_ARGS)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -224,7 +224,7 @@ def test_keyword_only_args_accepts_method_with_self_then_kw_only(*, tmp_path: Pa
 
 def test_keyword_only_args_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_KEYWORD_ONLY_ARGS)],
         cwd=str(tmp_path),
         capture_output=True,

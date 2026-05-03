@@ -49,7 +49,6 @@ if str(_VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(_VENDOR_DIR))
 
 import structlog  # noqa: E402  — vendor-path-aware import after sys.path insert.
-
 from coverage import Coverage  # noqa: E402  — uv-managed dep, available post-vendor-path-insert.
 
 __all__: list[str] = []

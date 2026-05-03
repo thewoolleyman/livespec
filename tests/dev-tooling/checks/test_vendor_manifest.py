@@ -45,7 +45,7 @@ def test_vendor_manifest_rejects_empty_upstream_ref(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -78,7 +78,7 @@ def test_vendor_manifest_rejects_unparseable_vendored_at(*, tmp_path: Path) -> N
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -107,7 +107,7 @@ def test_vendor_manifest_rejects_shim_on_non_canonical_entry(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -135,7 +135,7 @@ def test_vendor_manifest_rejects_canonical_shim_without_flag(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -163,7 +163,7 @@ def test_vendor_manifest_rejects_empty_upstream_url(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -193,7 +193,7 @@ def test_vendor_manifest_rejects_missing_vendored_at_field(*, tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -212,7 +212,7 @@ def test_vendor_manifest_rejects_missing_libraries_array(*, tmp_path: Path) -> N
     manifest = tmp_path / ".vendor.jsonc"
     manifest.write_text('{"other_key": []}', encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -233,7 +233,7 @@ def test_vendor_manifest_rejects_non_dict_library_entry(*, tmp_path: Path) -> No
         '{"libraries": ["bogus_string_entry"]}', encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -265,7 +265,7 @@ def test_vendor_manifest_accepts_canonical_manifest(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -287,7 +287,7 @@ def test_vendor_manifest_accepts_missing_manifest_file(*, tmp_path: Path) -> Non
     branch — the check exits silently when no manifest
     exists.
     """
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_VENDOR_MANIFEST)],
         cwd=str(tmp_path),
         capture_output=True,

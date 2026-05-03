@@ -452,7 +452,7 @@ def test_write_sub_spec_history_v001_skips_paths_with_fewer_than_four_components
     versioned = (
         project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
     )
-    assert versioned.exists(), f"the well-formed entry should still produce v001"
+    assert versioned.exists(), "the well-formed entry should still produce v001"
 
 
 def test_write_sub_spec_history_v001_skips_non_dict_entry_inside_files_list(
@@ -501,7 +501,7 @@ def test_write_sub_spec_history_v001_skips_non_dict_entry_inside_files_list(
     versioned = (
         project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
     )
-    assert versioned.exists(), f"well-formed entry should still produce v001"
+    assert versioned.exists(), "well-formed entry should still produce v001"
 
 
 def test_write_sub_spec_history_v001_skips_entries_with_non_list_files_field(
@@ -551,7 +551,7 @@ def test_write_sub_spec_history_v001_skips_entries_with_non_list_files_field(
     versioned = (
         project_root / "SPECIFICATION/templates/livespec/history/v001/spec.md"
     )
-    assert versioned.exists(), f"the well-formed sub-spec should still produce v001"
+    assert versioned.exists(), "the well-formed sub-spec should still produce v001"
 
 
 def test_write_sub_spec_files_skips_non_dict_entry_inside_files_list(
@@ -600,7 +600,7 @@ def test_write_sub_spec_files_skips_non_dict_entry_inside_files_list(
     unwrapped = unsafe_perform_io(result)
     assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
     well_formed = project_root / "SPECIFICATION/templates/livespec/spec.md"
-    assert well_formed.exists(), f"well-formed entry should still be written"
+    assert well_formed.exists(), "well-formed entry should still be written"
 
 
 def test_write_sub_spec_files_skips_entries_with_non_list_files_field(
@@ -630,8 +630,8 @@ def test_write_sub_spec_files_skips_entries_with_non_list_files_field(
     """
     from livespec.commands.seed import _write_sub_spec_files
     from livespec.schemas.dataclasses.seed_input import SeedInput
-    from returns.unsafe import unsafe_perform_io
     from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
 
     project_root = tmp_path / "proj"
     project_root.mkdir()
@@ -656,7 +656,7 @@ def test_write_sub_spec_files_skips_entries_with_non_list_files_field(
     unwrapped = unsafe_perform_io(result)
     assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped!r}"
     well_formed = project_root / "SPECIFICATION/templates/livespec/spec.md"
-    assert well_formed.exists(), f"the second sub-spec's file should still be written"
+    assert well_formed.exists(), "the second sub-spec's file should still be written"
 
 
 def test_seed_main_skips_seed_md_emission_when_files_array_is_empty(
@@ -770,7 +770,7 @@ def test_seed_main_skips_main_spec_history_for_single_component_paths(
     # The single-component file's history copy is omitted; verify the
     # plausible-but-incorrect target was NOT materialized.
     spurious = project_root / "loose-file.md/history/v001"
-    assert not spurious.exists(), f"single-component path should not produce history dir"
+    assert not spurious.exists(), "single-component path should not produce history dir"
 
 
 def test_fold_doctor_completed_process_returns_failure_on_malformed_json_stdout(
@@ -793,13 +793,13 @@ def test_fold_doctor_completed_process_returns_failure_on_malformed_json_stdout(
     is Failure(PreconditionError); the supervisor's exit-code
     contract folds it to 3.
     """
-    import subprocess as _subprocess  # noqa: S404  # test-only import for the dataclass shape
-    from returns.result import Failure
-    from returns.unsafe import unsafe_perform_io
+    import subprocess as _subprocess  # test-only import for the dataclass shape
 
     from livespec.commands._seed_railway_emits import _fold_doctor_completed_process
     from livespec.errors import PreconditionError
     from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
 
     _ = tmp_path  # fixture present for symmetry; helper does not touch the disk
     seed_input = SeedInput(
@@ -836,13 +836,13 @@ def test_fold_doctor_completed_process_returns_failure_on_missing_findings_key(
     Tested by calling the helper directly with stdout `{}` —
     valid JSON, decodes to a dict, but lacks the `findings` key.
     """
-    import subprocess as _subprocess  # noqa: S404
-    from returns.result import Failure
-    from returns.unsafe import unsafe_perform_io
+    import subprocess as _subprocess
 
     from livespec.commands._seed_railway_emits import _fold_doctor_completed_process
     from livespec.errors import PreconditionError
     from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
 
     _ = tmp_path
     seed_input = SeedInput(
@@ -879,13 +879,13 @@ def test_fold_doctor_completed_process_returns_failure_on_non_list_findings(
     `{"findings": "oops"}` — a JSON string at the findings key
     instead of a list.
     """
-    import subprocess as _subprocess  # noqa: S404
-    from returns.result import Failure
-    from returns.unsafe import unsafe_perform_io
+    import subprocess as _subprocess
 
     from livespec.commands._seed_railway_emits import _fold_doctor_completed_process
     from livespec.errors import PreconditionError
     from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
 
     _ = tmp_path
     seed_input = SeedInput(
@@ -1019,7 +1019,7 @@ def test_path_minima_constants_pin_documented_shapes() -> None:
     extracted to keep `seed.py` under 200 LLOC. This test
     pins the writes-side helper's values.
     """
-    from livespec.commands import _seed_railway_writes  # noqa: PLC0415
+    from livespec.commands import _seed_railway_writes
 
     assert _seed_railway_writes._MIN_PARTS_MAIN_SPEC == 2  # noqa: SLF001
     assert _seed_railway_writes._MIN_PARTS_SUB_SPEC == 4  # noqa: SLF001

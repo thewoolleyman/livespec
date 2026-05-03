@@ -14,12 +14,11 @@ from pathlib import Path
 
 from hypothesis import given
 from hypothesis import strategies as st
-from returns.result import Failure, Success
-
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.finding import Finding
 from livespec.types import CheckId, SpecRoot
 from livespec.validate import finding
+from returns.result import Failure, Success
 
 __all__: list[str] = []
 

@@ -43,7 +43,7 @@ def test_chore_commit_subject_exits_zero(*, tmp_path: Path) -> None:
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("chore: codify v034\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -70,7 +70,7 @@ def test_docs_commit_subject_exits_zero(*, tmp_path: Path) -> None:
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("docs: clarify proposal\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -108,7 +108,7 @@ def test_remaining_exempt_commit_subjects_exit_zero(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text(f"{type_token}: minor change\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -140,7 +140,7 @@ def test_feat_commit_subject_exits_nonzero(*, tmp_path: Path) -> None:
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -167,13 +167,13 @@ def test_feat_in_git_repo_with_no_staged_files_diagnoses_no_mode(*, tmp_path: Pa
     rejection reason. Pins the True branch of the staged-emptiness
     check.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -204,7 +204,7 @@ def test_feat_in_git_repo_with_staged_files_skips_no_staged_diagnostic(
     rejection path is inactive. This guarantees per-file 100% branch
     coverage on the new staged-emptiness conditional.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     (tmp_path / "tests").mkdir()
@@ -212,7 +212,7 @@ def test_feat_in_git_repo_with_staged_files_skips_no_staged_diagnostic(
     test_file.write_text(
         "def test_x() -> None:\n    assert True\n", encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_dummy.py"],
         cwd=str(tmp_path),
         check=True,
@@ -221,7 +221,7 @@ def test_feat_in_git_repo_with_staged_files_skips_no_staged_diagnostic(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -254,7 +254,7 @@ def test_feat_with_tests_only_staged_emits_red_mode_candidate(
     the discriminator. The hook still exits non-zero (pytest invocation
     + Red-trailer authoring come in subsequent cycles).
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     (tmp_path / "tests").mkdir()
@@ -262,7 +262,7 @@ def test_feat_with_tests_only_staged_emits_red_mode_candidate(
     test_file.write_text(
         "def test_x() -> None:\n    assert True\n", encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_dummy.py"],
         cwd=str(tmp_path),
         check=True,
@@ -271,7 +271,7 @@ def test_feat_with_tests_only_staged_emits_red_mode_candidate(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -303,14 +303,14 @@ def test_feat_with_impl_only_staged_skips_red_mode_candidate(
     staged tests. Together with the True-branch test above, this
     guarantees per-file 100% branch coverage on the new conditional.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     impl_dir = tmp_path / "livespec"
     impl_dir.mkdir()
     impl_file = impl_dir / "foo.py"
     impl_file.write_text("VALUE: int = 1\n", encoding="utf-8")
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "livespec/foo.py"],
         cwd=str(tmp_path),
         check=True,
@@ -319,7 +319,7 @@ def test_feat_with_impl_only_staged_skips_red_mode_candidate(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -355,14 +355,14 @@ def test_feat_with_single_test_file_staged_emits_sha256_checksum(
     `hashlib.sha256(file_bytes).hexdigest()` to make the contract
     mechanical.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     (tmp_path / "tests").mkdir()
     test_file = tmp_path / "tests" / "test_dummy.py"
     test_bytes = b"def test_x() -> None:\n    assert True\n"
     test_file.write_bytes(test_bytes)
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_dummy.py"],
         cwd=str(tmp_path),
         check=True,
@@ -371,7 +371,7 @@ def test_feat_with_single_test_file_staged_emits_sha256_checksum(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -412,7 +412,7 @@ def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagn
     Together with the True-branch test above, this guarantees per-file
     100% branch coverage on the new conditional.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     (tmp_path / "tests").mkdir()
@@ -422,7 +422,7 @@ def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagn
     (tmp_path / "tests" / "test_b.py").write_text(
         "def test_b() -> None:\n    assert True\n", encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_a.py", "tests/test_b.py"],
         cwd=str(tmp_path),
         check=True,
@@ -431,7 +431,7 @@ def test_feat_with_multiple_test_files_staged_rejects_with_multi_test_file_diagn
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -468,7 +468,7 @@ def test_feat_with_failing_test_staged_emits_red_pytest_result(
     carrying `pytest_returncode=<non-zero-int>`. Pins the False
     branch of `pytest_result.returncode == 0`.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     (tmp_path / "tests").mkdir()
@@ -478,7 +478,7 @@ def test_feat_with_failing_test_staged_emits_red_pytest_result(
         "    assert False, 'staged red test fails as required'\n",
         encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_failing.py"],
         cwd=str(tmp_path),
         check=True,
@@ -487,7 +487,7 @@ def test_feat_with_failing_test_staged_emits_red_pytest_result(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -528,7 +528,7 @@ def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
     `red-green-replay-red-pytest-result` info event MUST NOT
     fire on this path.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     (tmp_path / "tests").mkdir()
@@ -537,7 +537,7 @@ def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
         "def test_passing() -> None:\n    assert True\n",
         encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_passing.py"],
         cwd=str(tmp_path),
         check=True,
@@ -546,7 +546,7 @@ def test_feat_with_passing_test_staged_rejects_with_test_passed_at_red(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -588,7 +588,7 @@ def test_feat_with_failing_test_writes_full_red_trailer_schema(
     present. The hook returns 0 (the new happy-path exit — Red moment
     fully verified, commit proceeds).
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
     (tmp_path / "tests").mkdir()
@@ -598,7 +598,7 @@ def test_feat_with_failing_test_writes_full_red_trailer_schema(
         "    assert False, 'red-trailer-test'\n",
         encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_red.py"],
         cwd=str(tmp_path),
         check=True,
@@ -607,7 +607,7 @@ def test_feat_with_failing_test_writes_full_red_trailer_schema(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add new feature\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -656,15 +656,15 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
     invocation, Green trailer authoring — lands in subsequent
     cycles).
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "config", "user.email", "test@test.test"],
         cwd=str(tmp_path),
         check=True,
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "config", "user.name", "Test User"],
         cwd=str(tmp_path),
         check=True,
@@ -674,7 +674,7 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
         "def test_red() -> None:\n    assert False\n",
         encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_red.py"],
         cwd=str(tmp_path),
         check=True,
@@ -688,7 +688,7 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
         "TDD-Red-Output-Checksum: sha256:1111111111111111111111111111111111111111111111111111111111111111\n"
         "TDD-Red-Captured-At: 2026-05-02T05:00:00Z\n"
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "commit", "-m", red_commit_msg],
         cwd=str(tmp_path),
         check=True,
@@ -698,7 +698,7 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
     (tmp_path / "livespec" / "foo.py").write_text(
         "VALUE: int = 1\n", encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "livespec/foo.py"],
         cwd=str(tmp_path),
         check=True,
@@ -707,7 +707,7 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: add green impl\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -741,14 +741,14 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     for this unit), stages an impl file, and verifies returncode==0
     plus Green trailer presence in COMMIT_EDITMSG.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "config", "user.email", "test@test.test"],
         cwd=str(tmp_path), check=True,
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "config", "user.name", "Test User"],
         cwd=str(tmp_path), check=True,
     )
@@ -758,7 +758,7 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     test_file = tmp_path / "tests" / "test_x.py"
     test_file.write_bytes(test_bytes)
     real_checksum = f"sha256:{hashlib.sha256(test_bytes).hexdigest()}"
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_x.py"],
         cwd=str(tmp_path), check=True,
     )
@@ -771,7 +771,7 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
         "TDD-Red-Output-Checksum: sha256:abc\n"
         "TDD-Red-Captured-At: 2026-05-02T05:00:00Z\n"
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "commit", "-m", red_commit_msg],
         cwd=str(tmp_path), check=True,
     )
@@ -780,7 +780,7 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     (tmp_path / "livespec" / "foo.py").write_text(
         "VALUE: int = 1\n", encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "livespec/foo.py"],
         cwd=str(tmp_path), check=True,
     )
@@ -788,7 +788,7 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: green impl\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -819,14 +819,14 @@ def test_feat_green_amend_with_test_still_failing_rejects(
     `red-green-replay-test-still-failing`. Pins the True branch of
     `green_pytest_result.returncode != 0`.
     """
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "init", "-q"], cwd=str(tmp_path), check=True,
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "config", "user.email", "test@test.test"],
         cwd=str(tmp_path), check=True,
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "config", "user.name", "Test User"],
         cwd=str(tmp_path), check=True,
     )
@@ -839,7 +839,7 @@ def test_feat_green_amend_with_test_still_failing_rejects(
     test_file = tmp_path / "tests" / "test_still_failing.py"
     test_file.write_bytes(test_bytes)
     real_checksum = f"sha256:{hashlib.sha256(test_bytes).hexdigest()}"
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "tests/test_still_failing.py"],
         cwd=str(tmp_path), check=True,
     )
@@ -852,7 +852,7 @@ def test_feat_green_amend_with_test_still_failing_rejects(
         "TDD-Red-Output-Checksum: sha256:abc\n"
         "TDD-Red-Captured-At: 2026-05-02T05:00:00Z\n"
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "commit", "-m", red_commit_msg],
         cwd=str(tmp_path), check=True,
     )
@@ -861,7 +861,7 @@ def test_feat_green_amend_with_test_still_failing_rejects(
     (tmp_path / "livespec" / "foo.py").write_text(
         "VALUE: int = 1\n", encoding="utf-8",
     )
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "add", "livespec/foo.py"],
         cwd=str(tmp_path), check=True,
     )
@@ -869,7 +869,7 @@ def test_feat_green_amend_with_test_still_failing_rejects(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text("feat: green impl\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -915,7 +915,7 @@ def test_conventional_commit_breaking_and_scope_variants_exit_zero(
     msg_path = tmp_path / "COMMIT_EDITMSG"
     msg_path.write_text(f"{subject_token}\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
         cwd=str(tmp_path),
         capture_output=True,

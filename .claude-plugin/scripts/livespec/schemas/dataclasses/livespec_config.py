@@ -35,7 +35,11 @@ class LivespecConfig:
     matching the schema's defaults.
     """
 
-    template: TemplateName = TemplateName("livespec")
+    # NewType is structural — `TemplateName("livespec")` returns
+    # the immutable str "livespec" at definition time and is
+    # safely shareable across instances; ruff's RUF009 false-
+    # positives the call as mutable-default risk.
+    template: TemplateName = TemplateName("livespec")  # noqa: RUF009
     template_format_version: int = 1
     post_step_skip_doctor_llm_objective_checks: bool = False
     post_step_skip_doctor_llm_subjective_checks: bool = False

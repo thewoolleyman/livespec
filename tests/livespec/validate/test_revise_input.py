@@ -19,11 +19,10 @@ from pathlib import Path
 
 from hypothesis import given
 from hypothesis import strategies as st
-from returns.result import Failure, Success
-
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.revise_input import RevisionInput
 from livespec.validate import revise_input
+from returns.result import Failure, Success
 
 __all__: list[str] = []
 

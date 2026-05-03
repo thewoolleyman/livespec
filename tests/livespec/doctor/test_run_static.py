@@ -13,7 +13,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from livespec.doctor import run_static
 
 __all__: list[str] = []

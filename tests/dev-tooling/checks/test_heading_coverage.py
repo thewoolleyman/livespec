@@ -39,7 +39,7 @@ def test_heading_coverage_rejects_uncovered_heading(*, tmp_path: Path) -> None:
     tests_dir.mkdir()
     (tests_dir / "heading-coverage.json").write_text("[]", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_HEADING_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -73,7 +73,7 @@ def test_heading_coverage_accepts_covered_heading(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_HEADING_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -111,7 +111,7 @@ def test_heading_coverage_tolerates_malformed_coverage_entries(*, tmp_path: Path
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_HEADING_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -137,7 +137,7 @@ def test_heading_coverage_tolerates_object_top_level_coverage_json(*, tmp_path: 
     tests_dir.mkdir()
     (tests_dir / "heading-coverage.json").write_text("{}", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_HEADING_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -161,7 +161,7 @@ def test_heading_coverage_accepts_pre_phase_6_empty(*, tmp_path: Path) -> None:
     tests_dir.mkdir()
     (tests_dir / "heading-coverage.json").write_text("[]", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_HEADING_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -177,7 +177,7 @@ def test_heading_coverage_accepts_pre_phase_6_empty(*, tmp_path: Path) -> None:
 
 def test_heading_coverage_accepts_no_coverage_file(*, tmp_path: Path) -> None:
     """Repo without `tests/heading-coverage.json` passes (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_HEADING_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,

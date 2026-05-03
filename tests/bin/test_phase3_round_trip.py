@@ -39,7 +39,7 @@ behavior individually.
 from __future__ import annotations
 
 import json
-import subprocess  # noqa: S404  # documented integration-test usage
+import subprocess  # documented integration-test usage
 import sys
 from pathlib import Path
 
@@ -67,7 +67,7 @@ def _run_wrapper(
     exits in the CompletedProcess return value so the test can
     assert on returncode + diagnostic streams.
     """
-    return subprocess.run(  # noqa: S603  # argv is a fixed repo-controlled list
+    return subprocess.run(  # argv is a fixed repo-controlled list
         argv,
         cwd=str(cwd),
         capture_output=True,

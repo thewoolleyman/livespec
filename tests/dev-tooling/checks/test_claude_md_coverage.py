@@ -43,7 +43,7 @@ def test_claude_md_coverage_rejects_directory_missing_claude_md(*, tmp_path: Pat
     ):
         (ancestor / "CLAUDE.md").write_text("# stub\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CLAUDE_MD_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -75,7 +75,7 @@ def test_claude_md_coverage_accepts_fully_covered_tree(*, tmp_path: Path) -> Non
         d.mkdir(parents=True)
         (d / "CLAUDE.md").write_text("# stub\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CLAUDE_MD_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -107,7 +107,7 @@ def test_claude_md_coverage_exempts_vendor_subtree(*, tmp_path: Path) -> None:
     vendor_lib.mkdir(parents=True)
     (vendor_lib / "io.py").write_text("# vendored\n", encoding="utf-8")
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CLAUDE_MD_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -134,7 +134,7 @@ def test_claude_md_coverage_exempts_fixtures_subtree(*, tmp_path: Path) -> None:
     fixture_dir = tests_dir / "fixtures" / "deep" / "nested"
     fixture_dir.mkdir(parents=True)
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CLAUDE_MD_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -151,7 +151,7 @@ def test_claude_md_coverage_exempts_fixtures_subtree(*, tmp_path: Path) -> None:
 
 def test_claude_md_coverage_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_CLAUDE_MD_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,

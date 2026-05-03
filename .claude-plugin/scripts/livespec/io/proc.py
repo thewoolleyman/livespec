@@ -24,7 +24,7 @@ per style doc lines 645-694.
 
 from __future__ import annotations
 
-import subprocess  # noqa: S404  # subprocess is the documented io/ surface (style doc line 337)
+import subprocess  # subprocess is the documented io/ surface (style doc line 337)
 
 from returns.io import IOResult, impure_safe
 

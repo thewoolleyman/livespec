@@ -46,7 +46,7 @@ def test_public_api_result_typed_rejects_non_result_public_function(*, tmp_path:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -83,7 +83,7 @@ def test_public_api_result_typed_accepts_result_typed_function(*, tmp_path: Path
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -128,7 +128,7 @@ def test_public_api_result_typed_accepts_safe_decorated_function(*, tmp_path: Pa
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -163,7 +163,7 @@ def test_public_api_result_typed_skips_private_filename(*, tmp_path: Path) -> No
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -194,7 +194,7 @@ def test_public_api_result_typed_skips_module_without_all(*, tmp_path: Path) -> 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -231,7 +231,7 @@ def test_public_api_result_typed_accepts_bare_safe_decorator(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -266,7 +266,7 @@ def test_public_api_result_typed_rejects_function_without_return_annotation(
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -300,7 +300,7 @@ def test_public_api_result_typed_ignores_private_function(*, tmp_path: Path) -> 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -316,7 +316,7 @@ def test_public_api_result_typed_ignores_private_function(*, tmp_path: Path) -> 
 
 def test_public_api_result_typed_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PUBLIC_API_RESULT_TYPED)],
         cwd=str(tmp_path),
         capture_output=True,

@@ -66,12 +66,9 @@ def _is_compliant(*, func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     positional = func.args.args
     if len(positional) == 0:
         return True
-    if (
-        len(positional) == 1
-        and positional[0].arg in _IMPLICIT_FIRST_PARAMS
-    ):
-        return True
-    return False
+    return bool(
+        len(positional) == 1 and positional[0].arg in _IMPLICIT_FIRST_PARAMS,
+    )
 
 
 def _find_offenders(*, source: str) -> list[tuple[int, str]]:

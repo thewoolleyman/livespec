@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import datetime
 import hashlib
-import subprocess  # noqa: S404
+import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -26,7 +26,7 @@ __all__: list[str] = []
 
 def _head_has_red_trailers() -> bool:
     """Return True iff HEAD's commit message carries `TDD-Red-*` trailers."""
-    result = subprocess.run(  # noqa: S603, S607
+    result = subprocess.run(
         ["git", "log", "-1", "--format=%B"],
         capture_output=True,
         text=True,
@@ -37,7 +37,7 @@ def _head_has_red_trailers() -> bool:
 
 def _head_trailer_value(*, key: str) -> str:
     """Return the value of HEAD~0's named trailer, or empty if absent."""
-    result = subprocess.run(  # noqa: S603, S607
+    result = subprocess.run(
         ["git", "log", "-1", f"--pretty=%(trailers:key={key},valueonly)"],
         capture_output=True,
         text=True,
@@ -48,7 +48,7 @@ def _head_trailer_value(*, key: str) -> str:
 
 def _current_head_sha() -> str:
     """Return the current HEAD SHA via `git rev-parse HEAD`, or empty on failure."""
-    result = subprocess.run(  # noqa: S603, S607
+    result = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         capture_output=True,
         text=True,
@@ -61,7 +61,7 @@ def _write_trailers(*, msg_path: Path, trailers: tuple[tuple[str, str], ...]) ->
     args: list[str] = []
     for key, value in trailers:
         args.extend(["--trailer", f"{key}: {value}"])
-    subprocess.run(  # noqa: S603, S607
+    subprocess.run(
         ["git", "interpret-trailers", "--in-place", *args, str(msg_path)],
         capture_output=True,
         text=True,
@@ -80,7 +80,11 @@ def _handle_red_mode(
             "multi-test-file: Red mode is per-file (one test file per commit)",
             check_id="red-green-replay-multi-test-file",
             tests_paths=tests_paths,
-            hint="The v034 D2 trailer schema's `TDD-Red-Test-File-Checksum:` is a singular field; stage exactly one test file per Red commit.",
+            hint=(
+                "The v034 D2 trailer schema's "
+                "`TDD-Red-Test-File-Checksum:` is a singular field; "
+                "stage exactly one test file per Red commit."
+            ),
         )
         return 1
     test_file_path = Path.cwd() / tests_paths[0]
@@ -92,7 +96,7 @@ def _handle_red_mode(
         tests_paths=tests_paths,
         test_file_checksum=test_file_checksum,
     )
-    pytest_result = subprocess.run(  # noqa: S603
+    pytest_result = subprocess.run(
         [sys.executable, "-m", "pytest", str(test_file_path), "--tb=no", "-q"],
         capture_output=True,
         text=True,
@@ -105,7 +109,12 @@ def _handle_red_mode(
             tests_paths=tests_paths,
             test_file_checksum=test_file_checksum,
             pytest_returncode=pytest_result.returncode,
-            hint="Red mode requires the staged test to fail; if the test already passes, this is not a Red moment (the subsequent Green amend has nothing to verify).",
+            hint=(
+                "Red mode requires the staged test to fail; "
+                "if the test already passes, this is not a Red "
+                "moment (the subsequent Green amend has "
+                "nothing to verify)."
+            ),
         )
         return 1
     log.info(
@@ -155,10 +164,15 @@ def _handle_green_mode(
             recorded=recorded_checksum,
             current=green_test_checksum,
             test_path=recorded_test,
-            hint="The test file referenced by HEAD~0's TDD-Red-Test must be byte-identical at the Green amend; if you needed to change the test, author a new Red commit.",
+            hint=(
+                "The test file referenced by HEAD~0's "
+                "TDD-Red-Test must be byte-identical at the "
+                "Green amend; if you needed to change the test, "
+                "author a new Red commit."
+            ),
         )
         return 1
-    green_pytest_result = subprocess.run(  # noqa: S603
+    green_pytest_result = subprocess.run(
         [sys.executable, "-m", "pytest", str(green_test_path), "--tb=no", "-q"],
         capture_output=True,
         text=True,
@@ -170,7 +184,10 @@ def _handle_green_mode(
             check_id="red-green-replay-test-still-failing",
             pytest_returncode=green_pytest_result.returncode,
             test_path=recorded_test,
-            hint="Green mode requires the staged test to pass; the new impl has not yet made the Red test green.",
+            hint=(
+                "Green mode requires the staged test to pass; "
+                "the new impl has not yet made the Red test green."
+            ),
         )
         return 1
     green_verified_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

@@ -58,7 +58,7 @@ def test_no_write_direct_rejects_sys_stdout_write_in_livespec(*, tmp_path: Path)
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_WRITE_DIRECT)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -107,7 +107,7 @@ def test_no_write_direct_rejects_sys_stderr_write_in_dev_tooling(*, tmp_path: Pa
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_WRITE_DIRECT)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -149,7 +149,7 @@ def test_no_write_direct_accepts_module_without_banned_calls(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_WRITE_DIRECT)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -188,7 +188,7 @@ def test_no_write_direct_accepts_bin_bootstrap_file_scope_exemption(*, tmp_path:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_WRITE_DIRECT)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -233,7 +233,7 @@ def test_no_write_direct_accepts_doctor_run_static_file_scope(*, tmp_path: Path)
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_WRITE_DIRECT)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -278,7 +278,7 @@ def test_no_write_direct_accepts_commands_file_scope(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_WRITE_DIRECT)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -299,7 +299,7 @@ def test_no_write_direct_accepts_empty_tree(*, tmp_path: Path) -> None:
     Closes the `if root.is_dir():` False arm for every covered
     subtree.
     """
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_WRITE_DIRECT)],
         cwd=str(tmp_path),
         capture_output=True,

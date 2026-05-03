@@ -10,12 +10,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from livespec.errors import PreconditionError
+from livespec.io import fs
 from returns.io import IOSuccess
 from returns.result import Failure
 from returns.unsafe import unsafe_perform_io
-
-from livespec.errors import PreconditionError
-from livespec.io import fs
 
 __all__: list[str] = []
 

@@ -37,7 +37,7 @@ def test_pbt_coverage_rejects_parse_test_without_given_decorator(*, tmp_path: Pa
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PBT_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -77,7 +77,7 @@ def test_pbt_coverage_accepts_parse_test_with_given_decorator(*, tmp_path: Path)
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PBT_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -130,7 +130,7 @@ def test_pbt_coverage_accepts_validate_test_with_given_decorator(*, tmp_path: Pa
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PBT_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -146,7 +146,7 @@ def test_pbt_coverage_accepts_validate_test_with_given_decorator(*, tmp_path: Pa
 
 def test_pbt_coverage_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PBT_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,

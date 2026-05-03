@@ -18,12 +18,11 @@ from pathlib import Path
 
 from hypothesis import given
 from hypothesis import strategies as st
-from returns.result import Failure, Success
-
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.sub_spec_payload import SubSpecPayload
 from livespec.types import TemplateName
 from livespec.validate import sub_spec_payload
+from returns.result import Failure, Success
 
 __all__: list[str] = []
 

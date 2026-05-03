@@ -32,7 +32,7 @@ def test_no_direct_tool_invocation_rejects_uv_run_in_lefthook(*, tmp_path: Path)
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_DIRECT_TOOL)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -66,7 +66,7 @@ def test_no_direct_tool_invocation_rejects_pytest_in_workflow(*, tmp_path: Path)
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_DIRECT_TOOL)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -99,7 +99,7 @@ def test_no_direct_tool_invocation_accepts_just_only_lefthook(*, tmp_path: Path)
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_DIRECT_TOOL)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -116,7 +116,7 @@ def test_no_direct_tool_invocation_accepts_just_only_lefthook(*, tmp_path: Path)
 
 def test_no_direct_tool_invocation_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_DIRECT_TOOL)],
         cwd=str(tmp_path),
         capture_output=True,

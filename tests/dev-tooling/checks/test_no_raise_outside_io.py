@@ -51,7 +51,7 @@ def test_no_raise_outside_io_rejects_domain_error_raise_in_pure_layer(*, tmp_pat
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_RAISE_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -94,7 +94,7 @@ def test_no_raise_outside_io_accepts_domain_error_raise_in_io_layer(*, tmp_path:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_RAISE_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -129,7 +129,7 @@ def test_no_raise_outside_io_accepts_domain_error_raise_in_errors_module(*, tmp_
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_RAISE_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -172,7 +172,7 @@ def test_no_raise_outside_io_accepts_bug_class_raise_in_pure_layer(*, tmp_path: 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_RAISE_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -189,7 +189,7 @@ def test_no_raise_outside_io_accepts_bug_class_raise_in_pure_layer(*, tmp_path: 
 
 def test_no_raise_outside_io_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_NO_RAISE_OUTSIDE_IO)],
         cwd=str(tmp_path),
         capture_output=True,

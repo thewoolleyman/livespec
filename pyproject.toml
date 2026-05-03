@@ -179,7 +179,40 @@ ban-relative-imports = "all"
 # the literal IS the fixture's expected value, so extracting to a
 # named constant adds noise without value. Standard Python testing
 # convention is to allow magic values in test assertions.
-"tests/**.py" = ["S101", "PLR2004"]
+# S603 / S607 (flake8-bandit "untrusted-input subprocess") flag
+# every `subprocess.run(...)` call in tests. Integration tests
+# shell out to git, python, etc. with fixed argv lists; the
+# patterns are documented at the call site. PT018 (pytest-style
+# "composite assertion") flags `assert x and y` patterns; for
+# tests, single-statement composite assertions are idiomatic.
+# S108 (/tmp use) flags Path("/tmp/...") in fixtures; pytest's
+# tmp_path is preferred but explicit /tmp is sometimes needed.
+# Tests carveout (rationale per category):
+# - S101: bare assert is the pytest convention
+# - PLR2004: magic literals in assertions are integral to fixtures
+# - S603/S607: subprocess.run with fixed argv shells out to
+#   git/python in integration tests
+# - PT018: composite assertions are idiomatic
+# - S108: explicit /tmp paths are sometimes needed in fixtures
+# - S105: variable names ending in "token" trigger the
+#   password heuristic (e.g. `expected_token`); zero real
+#   credentials live in tests
+# - TRY003: `raise AssertionError(f"...long message...")` is the
+#   canonical pytest failure-context pattern
+# - E501: test module docstrings carry descriptive titles like
+#   "Outside-in test for `dev-tooling/checks/<name>.py` — <desc>"
+#   which routinely exceed 100 chars; the 100-char ceiling is
+#   over-strict for documentation
+"tests/**.py" = [
+    "S101", "PLR2004", "S603", "S607", "PT018", "S108", "S105", "TRY003", "E501",
+]
+# dev-tooling/checks/ scripts shell out to git, ruff, python via
+# subprocess.run with fixed argv lists per the canonical-target
+# invocation contract. S603/S607/S404 are over-strict for this
+# documented pattern; the inline-noqa rationales were adding
+# noise. S105 covers TRAILER-token constants whose names trip
+# the password heuristic.
+"dev-tooling/checks/*.py" = ["S603", "S607", "S404", "S105"]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.

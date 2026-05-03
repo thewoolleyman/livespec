@@ -65,7 +65,7 @@ def test_wrapper_shape_rejects_wrapper_with_extra_statement(*, tmp_path: Path) -
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_WRAPPER_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -112,7 +112,7 @@ def test_wrapper_shape_rejects_wrapper_with_wrong_statement_kind(*, tmp_path: Pa
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_WRAPPER_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -153,7 +153,7 @@ def test_wrapper_shape_rejects_wrapper_with_wrong_final_statement(*, tmp_path: P
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_WRAPPER_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -187,7 +187,7 @@ def test_wrapper_shape_accepts_canonical_wrapper(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_WRAPPER_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -228,7 +228,7 @@ def test_wrapper_shape_exempts_bootstrap_file(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_WRAPPER_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -245,7 +245,7 @@ def test_wrapper_shape_exempts_bootstrap_file(*, tmp_path: Path) -> None:
 
 def test_wrapper_shape_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_WRAPPER_SHAPE)],
         cwd=str(tmp_path),
         capture_output=True,

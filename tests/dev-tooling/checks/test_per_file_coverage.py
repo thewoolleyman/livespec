@@ -81,7 +81,7 @@ def test_per_file_coverage_rejects_file_below_100_line_coverage(*, tmp_path: Pat
 
     # S603: argv is a fixed list (sys.executable + repo-controlled
     # script path); no untrusted shell input.
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PER_FILE_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -112,7 +112,7 @@ def test_per_file_coverage_rejects_when_no_coverage_data_file_exists(*, tmp_path
     check must exit non-zero and surface the missing path so the
     developer knows pytest --cov was skipped.
     """
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PER_FILE_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -160,7 +160,7 @@ def test_per_file_coverage_accepts_when_all_files_at_100_percent(*, tmp_path: Pa
     data.add_lines({str(src_file): [1, 2]})
     data.write()
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_PER_FILE_COVERAGE)],
         cwd=str(tmp_path),
         capture_output=True,

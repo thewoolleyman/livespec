@@ -50,7 +50,7 @@ def test_global_writes_rejects_global_statement(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_GLOBAL_WRITES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -95,7 +95,7 @@ def test_global_writes_rejects_nonlocal_statement(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_GLOBAL_WRITES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -128,7 +128,7 @@ def test_global_writes_accepts_clean_module(*, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_GLOBAL_WRITES)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -145,7 +145,7 @@ def test_global_writes_accepts_clean_module(*, tmp_path: Path) -> None:
 
 def test_global_writes_accepts_empty_tree(*, tmp_path: Path) -> None:
     """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_GLOBAL_WRITES)],
         cwd=str(tmp_path),
         capture_output=True,

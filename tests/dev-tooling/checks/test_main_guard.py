@@ -62,7 +62,7 @@ def test_main_guard_rejects_main_guard_inside_livespec(*, tmp_path: Path) -> Non
 
     # S603: argv is a fixed list (sys.executable + repo-controlled
     # script path); no untrusted shell input.
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_MAIN_GUARD)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -111,7 +111,7 @@ def test_main_guard_accepts_livespec_file_without_main_guard(*, tmp_path: Path) 
         encoding="utf-8",
     )
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_MAIN_GUARD)],
         cwd=str(tmp_path),
         capture_output=True,
@@ -134,7 +134,7 @@ def test_main_guard_accepts_tree_without_livespec_directory(*, tmp_path: Path) -
     `.claude-plugin` directory at all — so the check has
     nothing to inspect. Exit 0 with empty offenders list.
     """
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, str(_MAIN_GUARD)],
         cwd=str(tmp_path),
         capture_output=True,

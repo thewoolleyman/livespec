@@ -72,7 +72,8 @@ def main() -> int:
     if issues:
         for name, kind, expected_path in issues:
             log.error(
-                f"schema `{name}` missing paired {kind}",
+                "schema missing paired %s",
+                kind,
                 schema_name=name,
                 missing_kind=kind,
                 expected_path=expected_path,
