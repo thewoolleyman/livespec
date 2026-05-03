@@ -1006,5 +1006,11 @@
     "spec_root": "SPECIFICATION",
     "test": "TODO",
     "reason": "Phase 7 sub-step 2 mini-track item M1.b new contracts.md sub-section. Real test for the lefthook step-ordering contract pending; covered transitively today by every commit going through the three pre-commit steps successfully."
+  },
+  {
+    "heading": "## Proposal: Narrow heading-coverage walk to template-declared NLSpec files at tree roots; add (spec_root, spec_file, heading) triple and orphan direction",
+    "spec_root": "SPECIFICATION/proposed_changes",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 2 mini-track item M2.a in-flight propose-change boilerplate. Doubly transient: M2.b is the cycle that NARROWS heading_coverage.py's walk to exclude proposed_changes/ entirely AND prunes the registry — so this entry will be dropped (not relocated to history/v004/proposed_changes/) when M2.b lands."
   }
 ]
