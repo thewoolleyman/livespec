@@ -36,6 +36,7 @@ from livespec.commands._seed_railway_emits import (
     _emit_seed_revision,
     _emit_skill_owned_history_readme,
     _emit_skill_owned_proposed_changes_readme,
+    _emit_skill_owned_sub_spec_history_readmes,
     _emit_skill_owned_sub_spec_proposed_changes_readmes,
     _run_post_step_doctor,
 )
@@ -211,6 +212,12 @@ def main(*, argv: list[str] | None = None) -> int:
             )
             .bind(
                 lambda si: _emit_skill_owned_history_readme(
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda si: _emit_skill_owned_sub_spec_history_readmes(
                     seed_input=si,
                     project_root=_resolve_project_root(namespace=namespace),
                 ),

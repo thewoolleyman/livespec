@@ -26,6 +26,7 @@ from livespec.schemas.dataclasses.seed_input import SeedInput
 
 __all__: list[str] = [
     "_emit_skill_owned_history_readme",
+    "_emit_skill_owned_sub_spec_history_readmes",
     "_emit_skill_owned_sub_spec_proposed_changes_readmes",
 ]
 
@@ -124,6 +125,49 @@ def _emit_skill_owned_sub_spec_proposed_changes_readmes(
             lambda _value, target=readme_target: fs.write_text(
                 path=target,
                 text=_PROPOSED_CHANGES_README_TEXT_SUB_SPEC,
+            ).map(lambda _: seed_input),
+        )
+    return accumulator
+
+
+def _resolve_sub_spec_history_readme_target(
+    *,
+    sub_spec: dict[str, object],
+    project_root: Path,
+) -> Path | None:
+    """Derive `<sub-spec-root>/history/README.md`, or None if invalid."""
+    files_list = sub_spec["files"]
+    if not isinstance(files_list, list):
+        return None
+    for entry in files_list:
+        if not isinstance(entry, dict):
+            continue
+        original_path = Path(str(entry["path"]))
+        if len(original_path.parts) < _MIN_PARTS_SUB_SPEC:
+            continue
+        sub_spec_root = project_root.joinpath(*original_path.parts[:_SUB_SPEC_ROOT_PARTS_PREFIX])
+        return sub_spec_root / "history" / "README.md"
+    return None
+
+
+def _emit_skill_owned_sub_spec_history_readmes(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Write `<sub-spec-root>/history/README.md` for every sub-spec."""
+    accumulator: IOResult[SeedInput, LivespecError] = IOResult.from_value(seed_input)
+    for sub_spec in seed_input.sub_specs:
+        readme_target = _resolve_sub_spec_history_readme_target(
+            sub_spec=sub_spec,
+            project_root=project_root,
+        )
+        if readme_target is None:
+            continue
+        accumulator = accumulator.bind(
+            lambda _value, target=readme_target: fs.write_text(
+                path=target,
+                text=_HISTORY_README_TEXT_MAIN_SPEC,
             ).map(lambda _: seed_input),
         )
     return accumulator
