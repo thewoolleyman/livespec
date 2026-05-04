@@ -107,6 +107,7 @@ check:
         check-newtype-domain-primitives
         check-schema-dataclass-pairing
         check-tests-mirror-pairing
+        check-comment-line-anchors
         check-complexity
         check-lint
         check-format
@@ -358,6 +359,9 @@ check-mutation:
 
 check-no-todo-registry:
     uv run python3 dev-tooling/checks/no_todo_registry.py
+
+check-comment-line-anchors:
+    uv run python3 dev-tooling/checks/comment_line_anchors.py
 
 # Per v039 D3: path-scoped fast-feedback variant of check-coverage.
 # Takes `--paths <impl_path> [<impl_path>...]` (repo-root-relative)
