@@ -98,7 +98,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Skill \u2194 template JSON contracts",
+    "heading": "## Skill ↔ template JSON contracts",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
@@ -238,28 +238,28 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 1 \u2014 propose-change against a non-existent spec target",
+    "heading": "## Error path 1 — propose-change against a non-existent spec target",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 2 \u2014 schema-violation in inbound seed payload",
+    "heading": "## Error path 2 — schema-violation in inbound seed payload",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 3 \u2014 version-contiguity gap in history",
+    "heading": "## Error path 3 — version-contiguity gap in history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Recovery path \u2014 pruning history before a long retention horizon",
+    "heading": "## Recovery path — pruning history before a long retention horizon",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
@@ -385,14 +385,14 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview \u2014 \"no\" branch (default)",
+    "heading": "## Happy-path seed interview — \"no\" branch (default)",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview \u2014 \"yes\" branch (meta-project)",
+    "heading": "## Happy-path seed interview — \"yes\" branch (meta-project)",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "TODO",
@@ -420,7 +420,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Edge case \u2014 seed against non-empty SPECIFICATION/",
+    "heading": "## Edge case — seed against non-empty SPECIFICATION/",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "TODO",
@@ -560,7 +560,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end critique \u2192 propose-change handoff",
+    "heading": "## End-to-end critique → propose-change handoff",
     "spec_root": "SPECIFICATION/templates/minimal",
     "spec_file": "scenarios.md",
     "test": "TODO",
@@ -572,5 +572,12 @@
     "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Author identifier resolution",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 3.b imperative addition for the v014 N5 + author-precedence subsection introduced by propose-change-full-feature-parity revise (v009). Phase 8 work replaces this TODO with the real test ID via the governed propose-change/revise loop."
   }
 ]
