@@ -153,6 +153,62 @@ def test_propose_change_main_returns_validation_exit_code_on_schema_violation(
     assert exit_code == 4
 
 
+def test_propose_change_canonicalizes_topic_lowercase_and_hyphens(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Inbound topic with uppercase + spaces canonicalizes to slug filename.
+
+    Per SPECIFICATION/spec.md "Topic canonicalization (v015 O3)": the
+    wrapper canonicalizes the inbound topic before filename selection
+    via lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip-edges ->
+    truncate-64. Drives the canonicalization helper into propose_change
+    and proves the canonical form is what lands on disk.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "Foo Bar!!",
+        ],
+    )
+    assert exit_code == 0
+    out = spec_target / "proposed_changes" / "foo-bar.md"
+    assert out.exists(), f"expected canonicalized {out} to be written"
+
+
+def test_propose_change_main_returns_usage_exit_code_on_empty_after_canonicalization(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Topic that canonicalizes to empty string returns exit 2 (UsageError).
+
+    Per SPECIFICATION/spec.md "Topic canonicalization (v015 O3)": "If the
+    result is empty, the wrapper exits 2 with `UsageError`." A topic of
+    only non-[a-z0-9] characters (e.g. `"!!!"`) canonicalizes through
+    the regex to a string of hyphens, which strip("-") empties; the
+    empty result short-circuits to IOFailure(UsageError) on the railway.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "!!!",
+        ],
+    )
+    assert exit_code == 2
+
+
 def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_flags(
     *,
     tmp_path: Path,

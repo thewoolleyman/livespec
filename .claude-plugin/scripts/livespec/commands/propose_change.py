@@ -18,6 +18,7 @@ IOResult to derive the exit code.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -27,7 +28,7 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
-from livespec.errors import LivespecError
+from livespec.errors import LivespecError, UsageError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.proposal_findings import ProposalFindings
@@ -133,6 +134,23 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
     )
 
 
+def _canonicalize_topic(*, hint: str) -> str | None:
+    """Canonicalize a topic hint per spec.md "Topic canonicalization (v015 O3)".
+
+    Algorithm: lowercase -> replace every run of non-[a-z0-9] characters with
+    a single hyphen -> strip leading and trailing hyphens -> truncate to 64
+    characters. Returns None when the result is empty (caller surfaces
+    UsageError on the railway).
+    """
+    lowered = hint.lower()
+    hyphenated = re.sub(r"[^a-z0-9]+", "-", lowered)
+    stripped = hyphenated.strip("-")
+    truncated = stripped[:64]
+    if not truncated:
+        return None
+    return truncated
+
+
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
 
@@ -183,12 +201,17 @@ def _write_proposed_change(
 ) -> IOResult[ProposalFindings, LivespecError]:
     """Write the composed proposed-change file to disk.
 
-    Per Plan Phase 3 (lines 1505-1523): writes the composed
-    body to `<spec-target>/proposed_changes/<topic>.md`. The
-    topic is taken verbatim from the namespace per Phase-3
-    minimum-viable scope (canonicalization deferred to Phase 7).
+    Per spec.md "Topic canonicalization (v015 O3)": the inbound `<topic>`
+    is canonicalized before filename selection; an empty result lifts to
+    UsageError on the railway. Writes to
+    `<spec-target>/proposed_changes/<canonical-topic>.md`.
     """
+    canonical = _canonicalize_topic(hint=str(namespace.topic))
+    if canonical is None:
+        return IOResult.from_failure(
+            UsageError(f"topic '{namespace.topic}' canonicalizes to empty"),
+        )
     spec_target = _resolve_spec_target(namespace=namespace)
-    target = spec_target / "proposed_changes" / f"{namespace.topic}.md"
+    target = spec_target / "proposed_changes" / f"{canonical}.md"
     body = _compose_proposed_change_body(findings=findings)
     return fs.write_text(path=target, text=body).map(lambda _: findings)
