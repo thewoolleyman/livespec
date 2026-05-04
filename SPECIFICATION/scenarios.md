@@ -52,7 +52,7 @@ Scenario: Revise after a single-proposal propose-change
   When the user invokes `/livespec:revise`
   And the SKILL.md prose walks the user through the per-proposal accept/reject decision
   And composes a `revise_input.schema.json`-conforming JSON payload
-  And invokes `bin/revise.py --revise-input <tempfile>`
+  And invokes `bin/revise.py --revise-json <tempfile>`
   Then the wrapper applies the accepted proposals to the live spec files
   And writes `<spec-target>/proposed_changes/<topic>-revision.md` recording the per-proposal disposition
   And moves both files atomically into `<spec-target>/history/v002/proposed_changes/`

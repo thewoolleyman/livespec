@@ -11,7 +11,7 @@ Every Python wrapper under `.claude-plugin/scripts/bin/<sub-command>.py` MUST ac
 | `seed` | `--seed-json <path>` | `--project-root <path>` |
 | `propose-change` | `--findings-json <path>`, `<topic>` (positional) | `--author <id>`, `--reserve-suffix <text>`, `--spec-target <path>`, `--project-root <path>` |
 | `critique` | `--findings-json <path>` | `--author <id>`, `--spec-target <path>`, `--project-root <path>` |
-| `revise` | (varies; Phase 7 widens) | `--spec-target <path>`, `--project-root <path>` |
+| `revise` | `--revise-json <path>` | `--author <id>`, `--spec-target <path>`, `--project-root <path>` |
 | `prune-history` | (varies; Phase 7 widens) | (Phase 7 widens) |
 | `doctor` (static) | (none) | `--project-root <path>` |
 | `resolve-template` | `--template <value>` (Phase-3-min required; Phase-7 widens to optional) | `--project-root <path>` |
