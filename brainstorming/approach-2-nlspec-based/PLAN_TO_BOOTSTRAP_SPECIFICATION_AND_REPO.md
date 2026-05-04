@@ -1023,6 +1023,56 @@ v029 decisions (direct critique-fix overlay; see
   doctor-check fix from this point on extends an existing
   pair).
 
+- v038 D1 (PROPOSAL.md only): Statement B authoritative on
+  the version-cut rule. PROPOSAL §"Versioning" line 1734-1738
+  rewrites the iff "A new version is cut when, and only
+  when, `revise` either accepts or modifies at least one
+  proposal" to "A new version is cut on every successful
+  `revise` invocation — that is, whenever
+  `<spec-root>/proposed_changes/` contains at least one
+  in-flight proposal at the time `revise` runs and every
+  proposal is processed to a decision". The §"Versioning"
+  line 1739-1745 paragraph (the all-reject-still-cuts
+  case-handler) stays verbatim — it IS Statement B and
+  survives unchanged. PROPOSAL §"`revise`" line 2483-2484
+  rewrites "If any decision is `accept` or `modify`, a new
+  version `vN` is cut" to "A new version `vN` is cut on
+  every successful revise invocation (per §"Versioning"). When
+  at least one decision is `accept` or `modify`, the
+  working-spec files named in those decisions'
+  `resulting_files[]` are updated in place before the
+  snapshot. When every decision is `reject`, the new
+  version's spec files are byte-identical copies of the
+  prior version's spec files (preserving the audit trail per
+  §"Versioning")." No follow-up implementation commit
+  required — the Phase-3 minimum-viable
+  `livespec/commands/revise.py` already implements
+  Statement B's "always cut on non-empty processing"
+  semantic via `_process_decisions` always invoking
+  `_next_history_version_dir` regardless of decision
+  content; Phase 7 sub-step 5.c will widen the impl under
+  v038's now-canonical contract.
+- v038 D2 (plan-level): Plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v038/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v038" (per the
+  established no-op convention since v024 — the literal
+  PROPOSAL.md header line never actually changes; the
+  PLAN's narrative reference is what bumps). Execution-
+  prompt block authoritative-version line bumps to v038.
+  STATUS.md updated.
+- Triggered by drift discovered during Phase 7 sub-step 5.a
+  (open-issues entry 2026-05-04T03:43:15Z) — the
+  cascading-impact scan after authoring the
+  revise-full-feature-parity propose-change against
+  `SPECIFICATION/` caught the §"Versioning" Statement A
+  vs. Statement B contradiction. v038 picks Statement B
+  per PROPOSAL.md line 1745's stated intent ("preserves the
+  audit trail for every proposal that ever reached
+  `revise`") and avoids the new sub-architecture Statement
+  A would require (deciding where rejection revisions land
+  when no version is cut).
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -1233,8 +1283,16 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v037/PROPOSAL.md` (the v037
-   snapshot — v036 substance plus the two v037 decisions:
+   byte-identical to `history/v038/PROPOSAL.md` (the v038
+   snapshot — v037 substance plus the two v038 decisions:
+   Statement B authoritative on the version-cut rule —
+   §"Versioning" iff softened from "when, and only when,
+   accepts or modifies" to "on every successful revise
+   invocation (i.e., processes at least one proposal)";
+   §"`revise`" line 2483 rewritten to match (D1), and
+   plan-text + housekeeping (D2) per
+   `history/v038/proposed_changes/critique-fix-v037-revision.md`;
+   v037 substance is v036 substance plus the two v037 decisions:
    broaden the v036 D1 Red-mode classifier from
    `--diff-filter=A` to `--diff-filter=AM` so cycles that
    extend pre-existing test+impl mirror-pairs satisfy the
@@ -1339,7 +1397,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v037. Further evolution happens in
+   > **Status:** Frozen at v038. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -3930,7 +3988,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v037 as authoritative. Do not propose any
+Treat PROPOSAL.md v038 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
