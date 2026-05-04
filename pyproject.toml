@@ -69,6 +69,7 @@ dev = [
     "pytest==8.3.4",
     "pytest-cov==6.0.0",
     "pytest-icdiff==0.9",
+    "pytest-xdist==3.8.0",
     "hypothesis==6.122.3",
     "hypothesis-jsonschema==0.23.1",
     "mutmut==3.2.3",

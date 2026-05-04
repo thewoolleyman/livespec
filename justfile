@@ -186,7 +186,14 @@ check-coverage:
     # under `pytest --cov`. Without this, structlog (transitively
     # imported by livespec modules) is measured and inflates the
     # report with sub-100% files that aren't first-party code.
-    uv run pytest --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
+    # `-n auto` (pytest-xdist) parallelizes the suite across cores.
+    # pytest-cov auto-runs `coverage combine` at session-end to merge
+    # the per-worker `.coverage.<host>.<pid>.<rand>` files into the
+    # single `.coverage` that `per_file_coverage.py` reads on the
+    # next line. Per v039 D2 wall-clock target: drops `check-coverage`
+    # from ~3.5min serial to under ~1min on a typical multi-core
+    # developer machine.
+    uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
     uv run python3 dev-tooling/checks/per_file_coverage.py
 
 # Per v036 D1: Red-mode-aware pre-commit aggregate. Classifies the

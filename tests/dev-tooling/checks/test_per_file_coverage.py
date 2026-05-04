@@ -213,3 +213,77 @@ def test_full_coverage_pct_constant_pins_v033_d2_threshold() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module._FULL_COVERAGE_PCT == 100.0  # noqa: SLF001
+
+
+def test_per_file_coverage_parses_xdist_combined_data(*, tmp_path: Path) -> None:
+    """per_file_coverage.py correctly reads `.coverage` data combined from xdist workers.
+
+    Per v039 D2: `check-coverage` invokes `pytest -n auto` so the
+    test suite executes across N worker processes. Each worker
+    writes its own parallel-mode `.coverage.<host>.<pid>.<rand>`
+    data file; pytest-cov's session-end hook calls
+    `coverage.Coverage().combine()` to merge them into a single
+    `.coverage` file before `per_file_coverage.py` runs. This
+    test pins the post-processor's correctness against that
+    combined shape: two synthetic worker files (one missing line
+    coverage on `subject.py`, one with all lines covered on
+    `other.py`) are combined in `tmp_path`; the check must walk
+    the merged data and reject `subject.py` while leaving
+    `other.py` unflagged.
+
+    The hard `import xdist` at the top guarantees this test fails
+    at collection time when pytest-xdist is not installed in the
+    dev-environment, which is the Red signal for the v039 D2
+    Green amend (which adds pytest-xdist to pyproject.toml
+    [dependency-groups.dev]).
+    """
+    import xdist  # noqa: F401  — Red signal: ImportError if pytest-xdist not in dev-deps.
+    from coverage import Coverage
+
+    src_subject = tmp_path / "subject.py"
+    src_subject.write_text(
+        "from __future__ import annotations\n"
+        "\n"
+        "__all__: list[str] = []\n"
+        "\n"
+        "x = 1\n"
+        "y = 2\n"
+        "z = 3\n",
+        encoding="utf-8",
+    )
+    src_other = tmp_path / "other.py"
+    src_other.write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\n",
+        encoding="utf-8",
+    )
+
+    worker_a = CoverageData(basename=str(tmp_path / ".coverage"), suffix="worker-a")
+    worker_a.add_lines({str(src_subject): [1, 3]})
+    worker_a.write()
+    worker_b = CoverageData(basename=str(tmp_path / ".coverage"), suffix="worker-b")
+    worker_b.add_lines({str(src_other): [1, 2]})
+    worker_b.write()
+
+    combiner = Coverage(data_file=str(tmp_path / ".coverage"))
+    combiner.combine(data_paths=[str(tmp_path)])
+    combiner.save()
+
+    result = subprocess.run(
+        [sys.executable, str(_PER_FILE_COVERAGE)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"per_file_coverage should reject subject.py at <100% coverage in xdist-combined data; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    combined_output = result.stdout + result.stderr
+    assert "subject.py" in combined_output, (
+        f"per_file_coverage diagnostic does not surface offending file `subject.py` "
+        f"under xdist-combined input; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
