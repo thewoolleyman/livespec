@@ -230,10 +230,14 @@ def _process_decisions(
     `<spec-target>/proposed_changes/<stem>.md` byte-identically
     into `<spec-target>/history/vNNN/proposed_changes/`; (3) on
     accept/modify, materialize `resulting_files[]` into the
-    working-spec files. Threads `author_human` (from
-    `io.git.get_git_user`), `author_llm` (from `_resolve_author`),
-    and `revised_at` (from `_now_utc_iso8601`) into every
-    per-decision `_compose_revision_body` call.
+    working-spec files. After all decisions are processed,
+    snapshot every spec-root file byte-identically into
+    `<spec-target>/history/vNNN/` per v011 Proposal 3 item d /
+    v038 D1 Statement B (version cut on every successful revise).
+    Threads `author_human` (from `io.git.get_git_user`),
+    `author_llm` (from `_resolve_author`), and `revised_at` (from
+    `_now_utc_iso8601`) into every per-decision
+    `_compose_revision_body` call.
     """
     return _next_history_version_dir(spec_target=spec_target).bind(
         lambda version_dir: _write_and_move_per_decision(
@@ -243,8 +247,64 @@ def _process_decisions(
             author_human=author_human,
             author_llm=author_llm,
             revised_at=revised_at,
+        ).bind(
+            lambda _value, version_dir=version_dir: _snapshot_working_spec_files(
+                spec_target=spec_target,
+                version_dir=version_dir,
+            ).map(lambda _: revise_input),
         ),
     )
+
+
+def _snapshot_working_spec_files(
+    *,
+    spec_target: Path,
+    version_dir: Path,
+) -> IOResult[list[Path], LivespecError]:
+    """Snapshot every immediate spec-root file byte-identically into `version_dir`.
+
+    Per v011 Proposal 3 item d ("on every cut, `<spec-target>/
+    history/vNNN/` snapshots every template-declared spec file
+    byte-identically"). "Template-declared" is approximated as
+    every immediate file child of `<spec-target>/` — directory
+    children (`history/`, `proposed_changes/`, `templates/`) are
+    not template-declared spec files and are skipped.
+    """
+    return fs.list_dir(path=spec_target).bind(
+        lambda children: _copy_files_into(
+            sources=children,
+            target_dir=version_dir,
+        ),
+    )
+
+
+def _copy_files_into(
+    *,
+    sources: list[Path],
+    target_dir: Path,
+) -> IOResult[list[Path], LivespecError]:
+    """For each file in `sources` (skipping directories), read+write into `target_dir`.
+
+    Composes `fs.read_text` -> `fs.write_text` per source. Bytes
+    are preserved through UTF-8 round-trip (the spec contract
+    requires `.md` text files only). Directory children are
+    skipped via `is_file()` since the spec-root carries
+    sibling subdirs (`history/`, `proposed_changes/`,
+    `templates/`) that are not template-declared spec files.
+    """
+    accumulator: IOResult[list[Path], LivespecError] = IOResult.from_value([])
+    for source in sources:
+        if not source.is_file():
+            continue
+        target = target_dir / source.name
+        accumulator = accumulator.bind(
+            lambda _value, source=source, target=target: fs.read_text(path=source)
+            .bind(
+                lambda text, target=target: fs.write_text(path=target, text=text),
+            )
+            .map(lambda _: []),
+        )
+    return accumulator
 
 
 def _write_and_move_per_decision(

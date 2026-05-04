@@ -954,3 +954,115 @@ def test_revise_main_emits_rejection_notes_section_for_reject_decision(
     revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
     text = revision_md.read_text(encoding="utf-8")
     assert "## Rejection Notes" in text
+
+
+def test_revise_main_snapshots_working_spec_files_into_history_vnnn(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Per v011 Proposal 3 item d, every successful revise snapshots
+    every spec-root file byte-identically into `<spec-target>/history/vNNN/`.
+
+    Subdirectories at the spec-root (`history/`, `proposed_changes/`,
+    `templates/`) are NOT snapshotted — only the template-declared spec
+    files (immediate file children of `<spec-target>/`). Implements
+    v038 D1 Statement B's "version cut on every successful revise"
+    contract: the new `history/vNNN/` carries byte-identical copies of
+    the working-spec files as they stand post-revise.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    (spec_target / "templates" / "livespec").mkdir(parents=True)
+    spec_md = spec_target / "spec.md"
+    contracts_md = spec_target / "contracts.md"
+    readme_md = spec_target / "README.md"
+    _ = spec_md.write_text("# Spec\nSpec body.\n", encoding="utf-8")
+    _ = contracts_md.write_text("# Contracts\nContracts body.\n", encoding="utf-8")
+    _ = readme_md.write_text("# README\nReadme body.\n", encoding="utf-8")
+    proposed_md = proposed_changes / "demo.md"
+    _ = proposed_md.write_text("## Proposal: demo\nContent.\n", encoding="utf-8")
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    history_v002 = spec_target / "history" / "v002"
+    assert (history_v002 / "spec.md").read_text(encoding="utf-8") == "# Spec\nSpec body.\n"
+    assert (history_v002 / "contracts.md").read_text(
+        encoding="utf-8"
+    ) == "# Contracts\nContracts body.\n"
+    assert (history_v002 / "README.md").read_text(encoding="utf-8") == "# README\nReadme body.\n"
+    assert not (history_v002 / "templates").exists()
+    assert not (history_v002 / "history").exists()
+
+
+def test_revise_main_snapshot_captures_post_resulting_files_content_for_accept_decision(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Per v011 Proposal 3 item d, snapshot reflects post-update content.
+
+    For an `accept` decision, `resulting_files` materialize into the
+    working spec BEFORE the snapshot is taken; the snapshot's `spec.md`
+    in `history/vNNN/` carries the new content, not the pre-update
+    content. Pins the ordering of resulting-files-write -> snapshot.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    spec_md = spec_target / "spec.md"
+    _ = spec_md.write_text("# Spec v1\nOld content.\n", encoding="utf-8")
+    proposed_md = proposed_changes / "demo.md"
+    _ = proposed_md.write_text("## Proposal: demo\n", encoding="utf-8")
+    new_spec_content = "# Spec v2\nNew content.\n"
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "accept",
+                        "rationale": "Looks good.",
+                        "resulting_files": [
+                            {"path": "spec.md", "content": new_spec_content},
+                        ],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    snapshot_md = spec_target / "history" / "v002" / "spec.md"
+    assert snapshot_md.read_text(encoding="utf-8") == new_spec_content
