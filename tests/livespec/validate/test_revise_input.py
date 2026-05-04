@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.revise_input import RevisionInput
@@ -35,6 +35,14 @@ _SCHEMA_PATH = (
     / "revise_input.schema.json"
 )
 
+# Module-level schema cache (v040 D1): hypothesis-based @given
+# tests run the body ~100 times per invocation; reloading the schema
+# from disk on each example pushes individual examples over the
+# default 200ms hypothesis deadline under `pytest -n auto` xdist
+# worker contention. Loading once at module-import time eliminates
+# per-example file I/O and the associated timing nondeterminism.
+_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+
 
 def test_validate_revise_input_returns_success_with_dataclass_for_valid_payload() -> None:
     """A well-formed revise-input payload validates to Success(RevisionInput).
@@ -44,7 +52,7 @@ def test_validate_revise_input_returns_success_with_dataclass_for_valid_payload(
     here so the validator's `.get("author")` -> None branch is
     exercised.
     """
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "decisions": [
             {
@@ -78,7 +86,7 @@ def test_validate_revise_input_returns_failure_on_schema_violation() -> None:
     a ValidationError. The error message embeds the schema-
     violation context.
     """
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     result = revise_input.validate_revise_input(payload={}, schema=schema)
     match result:
         case Failure(ValidationError() as err):
@@ -94,7 +102,7 @@ def test_validate_revise_input_carries_optional_author_when_present() -> None:
     Drives the `.get("author")` branch where the value is the
     populated string rather than the missing-default None.
     """
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "author": "claude-opus-4-7",
         "decisions": [
@@ -115,6 +123,7 @@ def test_validate_revise_input_carries_optional_author_when_present() -> None:
             raise AssertionError(msg)
 
 
+@settings(deadline=None)
 @given(
     rationale=st.text(min_size=1, max_size=200),
     author=st.text(min_size=1, max_size=80),
@@ -132,7 +141,7 @@ def test_validate_revise_input_round_trips_text_fields_through_success_path(
     property asserts that contract holds for arbitrary user-
     provided text within the schema's `type: string` constraint.
     """
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "author": author,
         "decisions": [

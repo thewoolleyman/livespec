@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.proposed_change_front_matter import (
@@ -38,10 +38,18 @@ _SCHEMA_PATH = (
     / "proposed_change_front_matter.schema.json"
 )
 
+# Module-level schema cache (v040 D1): hypothesis-based @given
+# tests run the body ~100 times per invocation; reloading the schema
+# from disk on each example pushes individual examples over the
+# default 200ms hypothesis deadline under `pytest -n auto` xdist
+# worker contention. Loading once at module-import time eliminates
+# per-example file I/O and the associated timing nondeterminism.
+_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+
 
 def test_validate_proposed_change_front_matter_returns_success_for_valid_payload() -> None:
     """A well-formed front-matter payload validates to Success(ProposedChangeFrontMatter)."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "topic": "switch-auth-middleware",
         "author": "claude-opus-4-7",
@@ -61,7 +69,7 @@ def test_validate_proposed_change_front_matter_returns_success_for_valid_payload
 
 def test_validate_proposed_change_front_matter_returns_failure_on_invalid_topic_slug() -> None:
     """A topic that doesn't match the kebab-case pattern returns Failure."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "topic": "Invalid Topic With Spaces",
         "author": "claude-opus-4-7",
@@ -81,7 +89,7 @@ def test_validate_proposed_change_front_matter_returns_failure_on_invalid_topic_
 
 def test_validate_proposed_change_front_matter_returns_failure_on_missing_required_field() -> None:
     """A payload missing `created_at` returns Failure(ValidationError)."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "topic": "demo",
         "author": "claude-opus-4-7",
@@ -98,6 +106,7 @@ def test_validate_proposed_change_front_matter_returns_failure_on_missing_requir
             raise AssertionError(msg)
 
 
+@settings(deadline=None)
 @given(
     author=st.text(min_size=1, max_size=80),
 )
@@ -106,7 +115,7 @@ def test_validate_proposed_change_front_matter_round_trips_author_text(
     author: str,
 ) -> None:
     """For arbitrary author text, the success path preserves it verbatim."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "topic": "demo",
         "author": author,

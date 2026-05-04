@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.schemas.dataclasses.seed_input import SeedInput
 from livespec.validate import seed_input
@@ -32,6 +32,14 @@ _SCHEMA_PATH = (
     / "seed_input.schema.json"
 )
 
+# Module-level schema cache (v040 D1): hypothesis-based @given
+# tests run the body ~100 times per invocation; reloading the schema
+# from disk on each example pushes individual examples over the
+# default 200ms hypothesis deadline under `pytest -n auto` xdist
+# worker contention. Loading once at module-import time eliminates
+# per-example file I/O and the associated timing nondeterminism.
+_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+
 
 def test_validate_seed_input_returns_success_with_dataclass_for_valid_payload() -> None:
     """A well-formed seed-input payload validates to Success(SeedInput).
@@ -40,7 +48,7 @@ def test_validate_seed_input_returns_success_with_dataclass_for_valid_payload() 
     file and an empty sub_specs list (the user-answered-no
     branch of the v020 Q2 dialogue).
     """
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "template": "livespec",
         "intent": "build a thing",
@@ -57,6 +65,7 @@ def test_validate_seed_input_returns_success_with_dataclass_for_valid_payload() 
     assert result == Success(expected)
 
 
+@settings(deadline=None)
 @given(intent=st.text(min_size=1, max_size=200))
 def test_validate_seed_input_round_trips_intent_text(*, intent: str) -> None:
     """For arbitrary `intent` strings, the success path preserves the text verbatim.
@@ -69,7 +78,7 @@ def test_validate_seed_input_round_trips_intent_text(*, intent: str) -> None:
     `type: string` with no further restrictions, so any string
     must round-trip unchanged.
     """
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "template": "livespec",
         "intent": intent,
