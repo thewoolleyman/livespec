@@ -359,6 +359,22 @@ check-mutation:
 check-no-todo-registry:
     uv run python3 dev-tooling/checks/no_todo_registry.py
 
+# Per v039 D3: path-scoped fast-feedback variant of check-coverage.
+# Takes `--paths <impl_path> [<impl_path>...]` (repo-root-relative)
+# and applies the per-file 100% line+branch coverage gate to the
+# named impls only. Resolves each impl's mirror-paired test per
+# v033 D1, runs pytest --cov on the combined test set with full
+# instrumentation (the v039 D5 spike found path-scoped --cov=<dir>
+# breaks under subprocess instrumentation; tmp/bootstrap/v039-d5-spike.md),
+# then applies `coverage report --include=<impl_paths> --fail-under=100`.
+# NOT in `just check` aggregate — interactive developer tool, not
+# per-commit gate. Wall-clock target: under 10 seconds for a typical
+# single-file pair. Used during the v039 D4 Red→Green authoring
+# loop to surface defensive-branch coverage gaps proactively,
+# BEFORE the Green amend triggers a multi-minute aggregate retry.
+check-coverage-incremental *args:
+    uv run python3 dev-tooling/checks/check_coverage_incremental.py {{args}}
+
 # Release-gate ONLY — paired with check-mutation + check-no-todo-registry
 # on the release-tag CI workflow. NOT in `just check`; does NOT run
 # per-commit. Closes the M3 soft-band drift loophole: forces refactor

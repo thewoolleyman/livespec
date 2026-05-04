@@ -197,7 +197,9 @@ appends:
 
 ## 2026-05-04T08:30:00Z — phase 7 — non-blocking — deferred-spike
 
-**Status:** open (highest priority after wip/comment-line-anchors lands)
+**Status:** resolved
+
+**Resolved:** 2026-05-05T00:05:00Z — spike completed and v039 D3 contract finalized; see `tmp/bootstrap/v039-d5-spike.md` (uncommitted artifact under gitignored `tmp/bootstrap/`) for the empirical findings + `dev-tooling/checks/check_coverage_incremental.py` + `justfile` `check-coverage-incremental` recipe + the `python-skill-script-style-requirements.md` §"Canonical target list" `check-coverage-incremental` row update (placeholder language replaced with the spike-finalized contract). Outcome branch: (a) — found the configuration knob. The cleanest configuration drops the path-scoped `--cov=<path>` filter entirely; runs pytest with bare `--cov` against the existing pyproject.toml omit-only config (which correctly handles subprocess instrumentation by NOT setting a relative source allowlist); applies per-file scoping at REPORT time via `coverage report --include=<impl_paths> --fail-under=100`. Inner pytest uses `COVERAGE_FILE=.coverage.check-coverage-incremental` env override (with `COV_CORE_*` env stripped) to isolate the data file from any outer pytest-cov session. Wall-clock empirically ~4 seconds for a single-file pair, well under the 10-second D3 target.
 
 **Owner:** TBD — next bootstrap session resumed under v039
 
