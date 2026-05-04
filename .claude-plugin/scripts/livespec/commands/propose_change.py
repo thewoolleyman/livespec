@@ -4,10 +4,12 @@ Per PROPOSAL.md §"`propose-change`" (line ~2134) and Plan Phase 3
 (lines 1505-1523): the wrapper validates the inbound
 `--findings-json <path>` payload, composes a proposed-change
 file from the findings, and writes it to
-`<spec-target>/proposed_changes/<topic>.md`. Phase-3 scope is
-minimum-viable per v019 Q1 — topic canonicalization, reserve-
-suffix handling, collision disambiguation, and unified author
-precedence are deferred to Phase 7.
+`<spec-target>/proposed_changes/<canonical-topic>.md`. Phase 7
+sub-step 3.c widens the wrapper to full feature parity per
+SPECIFICATION/spec.md "Topic canonicalization (v015 O3)",
+"Reserve-suffix canonicalization (v016 P3 / v017 Q1)", and the
+remaining v014 N5/N6 + v016 P4 rules (collision disambiguation
+and unified author precedence land in subsequent cycles).
 
 `build_parser()` is the pure argparse factory per style doc
 §"CLI argument parsing seam"; `main()` is the supervisor that
@@ -55,6 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
     _ = parser.add_argument("--findings-json", required=True)
     _ = parser.add_argument("topic")
     _ = parser.add_argument("--author", default=None)
+    _ = parser.add_argument("--reserve-suffix", default=None)
     _ = parser.add_argument("--spec-target", default=None)
     _ = parser.add_argument("--project-root", default=None)
     return parser
@@ -134,21 +137,42 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
     )
 
 
-def _canonicalize_topic(*, hint: str) -> str | None:
-    """Canonicalize a topic hint per spec.md "Topic canonicalization (v015 O3)".
+def _canonical_alnum_run_strip(*, text: str) -> str:
+    """Apply v015 O3 steps 1-3: lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip edges.
 
-    Algorithm: lowercase -> replace every run of non-[a-z0-9] characters with
-    a single hyphen -> strip leading and trailing hyphens -> truncate to 64
-    characters. Returns None when the result is empty (caller surfaces
-    UsageError on the railway).
+    Shared by both the v015 O3 base canonicalization and the v016 P3
+    reserve-suffix algorithm (per deferred-items.md "Reserve-suffix
+    topic canonicalization", which composes against this primitive).
     """
-    lowered = hint.lower()
+    lowered = text.lower()
     hyphenated = re.sub(r"[^a-z0-9]+", "-", lowered)
-    stripped = hyphenated.strip("-")
-    truncated = stripped[:64]
-    if not truncated:
+    return hyphenated.strip("-")
+
+
+def _canonicalize_topic(*, hint: str, reserve_suffix: str | None = None) -> str | None:
+    """Canonicalize a topic hint, optionally preserving a reserve suffix.
+
+    With reserve_suffix=None (default), applies v015 O3 verbatim:
+    lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip edges -> truncate
+    to 64. With a non-None reserve_suffix, applies v016 P3 (deferred-
+    items.md "Reserve-suffix topic canonicalization"): canonicalize
+    hint and suffix; strip pre-attached suffix from hint tail; truncate
+    the non-suffix portion to 64 - len(<canonical-suffix>); rstrip
+    trailing hyphens; re-append the canonical suffix. Returns None
+    when the resulting filename would be unrooted (empty, or
+    suffix-only).
+    """
+    canonical_hint = _canonical_alnum_run_strip(text=hint)
+    if reserve_suffix is None:
+        return canonical_hint[:64] or None
+    canonical_suffix = f"-{_canonical_alnum_run_strip(text=reserve_suffix)}"
+    if canonical_hint.endswith(canonical_suffix):
+        canonical_hint = canonical_hint[: -len(canonical_suffix)]
+    budget = 64 - len(canonical_suffix)
+    truncated_hint = canonical_hint[:budget].rstrip("-")
+    if not truncated_hint:
         return None
-    return truncated
+    return f"{truncated_hint}{canonical_suffix}"
 
 
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
@@ -206,7 +230,10 @@ def _write_proposed_change(
     UsageError on the railway. Writes to
     `<spec-target>/proposed_changes/<canonical-topic>.md`.
     """
-    canonical = _canonicalize_topic(hint=str(namespace.topic))
+    canonical = _canonicalize_topic(
+        hint=str(namespace.topic),
+        reserve_suffix=namespace.reserve_suffix,
+    )
     if canonical is None:
         return IOResult.from_failure(
             UsageError(f"topic '{namespace.topic}' canonicalizes to empty"),

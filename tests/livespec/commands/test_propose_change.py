@@ -209,6 +209,130 @@ def test_propose_change_main_returns_usage_exit_code_on_empty_after_canonicaliza
     assert exit_code == 2
 
 
+def test_propose_change_appends_reserve_suffix_to_canonical_topic(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`--reserve-suffix critique` produces `<canonical-hint>-critique.md`.
+
+    Per SPECIFICATION/spec.md "Reserve-suffix canonicalization (v016 P3 /
+    v017 Q1)" and the deferred-items.md "Reserve-suffix topic
+    canonicalization" algorithm: when the flag is supplied, the wrapper
+    canonicalizes the hint, canonicalizes the suffix, and re-appends the
+    canonical suffix verbatim. Drives `--reserve-suffix` parser wiring
+    and the new branch of `_canonicalize_topic`.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "--reserve-suffix=-critique",
+            "Foo Bar",
+        ],
+    )
+    assert exit_code == 0
+    out = spec_target / "proposed_changes" / "foo-bar-critique.md"
+    assert out.exists(), f"expected {out} to be written"
+
+
+def test_propose_change_with_reserve_suffix_strips_pre_attached_suffix(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A topic hint pre-ending with the reserve suffix is not duplicated.
+
+    Per the v016 P3 algorithm step 3: "If <canonical-hint> already ends
+    in <canonical-suffix>, strip the trailing suffix from
+    <canonical-hint> before truncation." Drives the endswith branch
+    of the reserve-suffix path.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "--reserve-suffix=-critique",
+            "Claude Opus 4.7-critique",
+        ],
+    )
+    assert exit_code == 0
+    out = spec_target / "proposed_changes" / "claude-opus-4-7-critique.md"
+    assert out.exists(), f"expected pre-attached-suffix-stripped {out} to be written"
+
+
+def test_propose_change_with_reserve_suffix_truncates_to_sixty_four_chars(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Long hint + reserve suffix yields a result of at most 64 chars.
+
+    Per the v016 P3 algorithm step 4: "Truncate the resulting non-suffix
+    portion to `64 - len(<canonical-suffix>)` characters; strip
+    trailing hyphens left behind by the truncation." With suffix
+    `-critique` (9 chars), the non-suffix budget is 55 chars; the
+    composed result is exactly 64 chars and ends with `-critique`.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    long_hint = "An unusually long author identifier that keeps going and going past fifty"
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "--reserve-suffix=-critique",
+            long_hint,
+        ],
+    )
+    assert exit_code == 0
+    written = list((spec_target / "proposed_changes").iterdir())
+    assert len(written) == 1
+    out = written[0]
+    stem = out.stem
+    assert len(stem) <= 64
+    assert stem.endswith("-critique")
+    assert stem == "an-unusually-long-author-identifier-that-keeps-going-an-critique"
+
+
+def test_propose_change_with_reserve_suffix_returns_usage_on_empty_hint(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Empty-after-canonicalization hint with reserve-suffix exits 2.
+
+    Per the v016 P3 algorithm: when the truncated non-suffix portion
+    is empty, the resulting filename would consist only of the
+    reserve-suffix and would not anchor to a meaningful artifact name;
+    the wrapper short-circuits to UsageError on the railway. Drives the
+    `if not truncated_hint` branch of the reserve-suffix path.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "--reserve-suffix=-critique",
+            "!!!",
+        ],
+    )
+    assert exit_code == 2
+
+
 def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_flags(
     *,
     tmp_path: Path,
