@@ -1155,6 +1155,45 @@ v029 decisions (direct critique-fix overlay; see
   proactive coverage is cheap and Red-time enumeration
   becomes the natural authoring rhythm.
 
+PROPOSAL.md v040 codifies a single hard constraint surfaced
+during v039 D3 verification:
+
+- v040 D1 (PROPOSAL.md): codify "flaky tests are unacceptable"
+  as a hard constraint in §"Test-Driven Development
+  discipline" — new sub-section
+  `### Determinism: flaky tests are unacceptable (v040 D1)`
+  placed between `### Failing for the right reason` and
+  `### Legitimate exceptions to test-first`. Any observed
+  flake (in CI, pre-commit aggregate, local development, or
+  any other channel) halts work and demands conclusive
+  resolution. Conclusive resolution = (1) deterministic fix
+  (root-cause + remedy + repeated-run verification) OR
+  (2) deletion. Forbidden alternatives: `@pytest.mark.flaky`
+  retry-plugins, "non-blocking follow-up note" dispositions
+  in STATUS.md, low-severity open-issues entries, and
+  "couldn't reproduce" deferrals. Mechanical enforcement is
+  the existing `pytest -n auto` pre-commit + pre-push
+  aggregate (any failure blocks); no separate flake-detection
+  layer. Originating instance: one observed flake of
+  `tests/livespec/validate/test_proposal_findings.py::test_validate_proposal_findings_round_trips_name_text`
+  under v039 D2's new `-n auto` xdist conditions, fixed
+  deterministically at commit `aaaaa82` (lift schema load to
+  module-level constant; eliminate per-example file I/O).
+- v040 D2 (plan-level): plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v040/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v040". Execution-prompt
+  block authoritative-version line bumps to v040. STATUS.md
+  updated.
+- Triggered by user direction 2026-05-05T00:45:00Z (verbatim:
+  "Flaky tests are always unacceptable. They must either be
+  fixed with a conclusive resolution of the flakiness, or
+  else deleted. This must be codified as a hard constraint.")
+  after the executor initially recorded the v039-surfaced
+  flake as a non-blocking follow-up note in STATUS.md. User
+  rejected the non-blocking disposition and demanded
+  PROPOSAL-level codification.
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -1365,8 +1404,19 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v039/PROPOSAL.md` (the v039
-   snapshot — v038 substance plus the six v039 decisions:
+   byte-identical to `history/v040/PROPOSAL.md` (the v040
+   snapshot — v039 substance plus the two v040 decisions:
+   codify "flaky tests are unacceptable" as a hard constraint
+   in §"Test-Driven Development discipline" — new sub-section
+   `### Determinism: flaky tests are unacceptable (v040 D1)`
+   placed between `### Failing for the right reason` and
+   `### Legitimate exceptions to test-first`; observed flakes
+   halt work and demand conclusive resolution (deterministic
+   fix or deletion); retry-plugins, non-blocking-note
+   dispositions, and "couldn't reproduce" deferrals are
+   forbidden (D1), and plan-text + housekeeping (D2) per
+   `history/v040/proposed_changes/flaky-tests-unacceptable.md`;
+   v039 substance is v038 substance plus the six v039 decisions:
    drop `check-tests` from the canonical aggregate (D1),
    pytest-xdist `-n auto` parallelism for `check-coverage`
    (D2), introduce `check-coverage-incremental`
@@ -1489,7 +1539,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v039. Further evolution happens in
+   > **Status:** Frozen at v040. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -4080,7 +4130,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v039 as authoritative. Do not propose any
+Treat PROPOSAL.md v040 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.

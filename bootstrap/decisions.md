@@ -1767,3 +1767,63 @@ dev-tooling/checks/comment_line_anchors.py` to surface the
 defensive-branch gaps that originally caused the failure,
 (f) extend the test, re-amend the Red commit, complete the
 Green amend cleanly.
+
+## 2026-05-05T00:50:00Z — phase 7 v040 codification (flaky tests are unacceptable)
+
+**Decision:** Codify v040 as a single PROPOSAL.md hard
+constraint plus the standard plan-text + housekeeping pair.
+v040 D1 adds a new `### Determinism: flaky tests are
+unacceptable (v040 D1)` sub-section to PROPOSAL.md
+§"Test-Driven Development discipline" between
+`### Failing for the right reason` and `### Legitimate
+exceptions to test-first`. The rule: any observed flake
+halts work and demands conclusive resolution (deterministic
+fix or deletion). Forbidden alternatives explicitly
+enumerated: `@pytest.mark.flaky` retry-plugins,
+"non-blocking follow-up note" STATUS.md dispositions,
+low-severity open-issues entries, and "couldn't reproduce"
+deferrals. Mechanical enforcement is the existing
+`pytest -n auto` pre-commit + pre-push aggregate (no
+separate flake-detection layer). v040 D2 covers the
+standard housekeeping (Phase 0 byte-identity bump to
+`history/v040/PROPOSAL.md`, frozen-status header bump to
+"Frozen at v040", execution-prompt authoritative-version
+bump to v040, STATUS update).
+
+**Rationale:** User direction 2026-05-05T00:45:00Z (verbatim:
+"Flaky tests are always unacceptable. They must either be
+fixed with a conclusive resolution of the flakiness, or else
+deleted. This must be codified as a hard constraint.")
+after the executor initially recorded a v039-surfaced
+hypothesis flake as a non-blocking follow-up note at v039
+mini-track completion (STATUS commit `6c82d85`). User
+explicitly rejected the non-blocking disposition.
+
+The originating instance: one observed flake of
+`tests/livespec/validate/test_proposal_findings.py::test_validate_proposal_findings_round_trips_name_text`
+under v039 D2's new `pytest -n auto` xdist conditions during
+v039 D3 verification (passed on retry). The flake was
+deterministically resolved at commit `aaaaa82` (lift
+schema load to module-level `_SCHEMA` constant, eliminate
+per-example file I/O, verified by 5 consecutive `pytest -n
+auto` runs). v040 codifies the GENERAL rule so future flakes
+are blocked the same way regardless of the executor's
+initial reflex toward non-blocking-note disposition.
+
+The rule is mechanically self-enforcing under the existing
+v039 aggregate (`pytest -n auto` blocks any test failure,
+flaky or otherwise). The codification is process-level:
+it forbids the deferral dispositions that would otherwise
+let flakes accumulate, and trains both the executor and
+future maintainers to treat first-flake-observation as a
+work-halt event rather than a non-blocking follow-up.
+
+The user also flagged a SECOND issue at the same turn — the
+`_write_trailers` bug appending TDD-Red-* trailers across
+re-amends instead of replacing them. That's a code bug, not
+a spec issue; fixed at commit `a622381` via Red→Green pair
+(test pinning the contract; impl using a Python-side
+pre-strip pass before `git interpret-trailers --in-place`
+because `git interpret-trailers --if-exists=replace` uses
+prefix-aliasing that drops `TDD-Red-Test` when
+`TDD-Red-Test-File-Checksum` is present).
