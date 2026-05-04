@@ -1651,3 +1651,33 @@ keeps Phase 7 focus on widening sub-commands per the branch name
 mechanically verifiable (the three helpers are textually
 near-identical), and won't grow further (sub-step 1.c is closed).
 
+## 2026-05-04T02:10:00Z — phase 7 sub-step 3.c cycle 4
+
+**Decision:** Cycle 4 (author slug transformation per v014 N5) lands
+as a structural no-op for the propose-change direct path; no Red→Green
+pair authored. The five-cycle ordering at STATUS line 6 is preserved
+in numbering only — cycle 4's behavior is structurally satisfied by
+cycle 1's `_canonical_alnum_run_strip` helper plus cycle 2's
+`_canonicalize_topic(hint, reserve_suffix)` composition.
+
+**Rationale:** SPECIFICATION/spec.md "Author identifier → filename
+slug transformation (v014 N5)" requires the slug rule to apply
+"when the resolved `author` value is used as a filename component
+(the raw topic stem passed from `critique`, or any other
+author-derived filename use in the future)." propose-change's
+direct path does NOT use the resolved author as a filename
+component — the user-supplied topic is the filename, and the
+resolved author lands un-slugged in YAML front-matter for
+audit-trail fidelity (already implemented at cycle 3). The slug
+algorithm itself (lowercase → non-[a-z0-9] runs → strip-edges →
+truncate-64) is already encoded in `_canonical_alnum_run_strip`
+and applied uniformly to ANY hint passed through
+`_canonicalize_topic` — so when `critique` later delegates to
+propose-change by passing the resolved author identifier as the
+topic hint with `--reserve-suffix=-critique`, the existing
+canonicalization will slug it correctly without any new helper.
+Cycle 2's reserve-suffix tests (hint `"Foo Bar"` → slug
+`"foo-bar"` → composed `"foo-bar-critique.md"`) already prove
+this composition. Adding a separate Red→Green cycle would author
+a redundant test against the same algorithm.
+
