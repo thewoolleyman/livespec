@@ -1378,13 +1378,39 @@ tests. Each test pressures one behavior; let the next test
 pressure the next. Once Green:
 
 ```sh
-just check-tests          # full suite, no regression
-just check-coverage       # 100% line+branch, anchored at unit layer
+just check-coverage       # full suite + 100% line+branch in one pass (per v039 D1)
 ```
 
 Both green and the implementation is complete enough to
 commit alongside the test as the feature/bugfix unit of
 value.
+
+**Per v039 D4 (proactive coverage discipline).** Before
+staging the Green amend, run the path-scoped fast-feedback
+variant:
+
+```sh
+just check-coverage-incremental --paths <impl_path>
+```
+
+The incremental tool finishes in seconds and surfaces
+coverage gaps (including defensive branches: `try`/`except`
+arms, `isinstance` narrowings, optional-arg fallbacks, the
+`if __name__ == "__main__":` entry) BEFORE the Green amend
+triggers the full pre-commit aggregate. Surface the gap
+here, extend the test (re-amending the Red commit if
+necessary, since v034 D2-D3 locks the test-file SHA-256 at
+Red), then re-run the incremental tool until 100%
+line+branch is reached on the impacted impl. The full
+`check-coverage` aggregate runs at pre-commit as the
+load-bearing safety net; the incremental tool exists to
+make the failure mode rare.
+
+**Per v039 D1.** `check-tests` no longer exists as a
+canonical target — the full-tree suite is exercised as a
+side effect of `check-coverage`. Use `check-coverage`
+when you want full-suite regression confirmation;
+`check-coverage-incremental` for tight authoring loops.
 
 ### Refactor cycle (independent, structure-only)
 
@@ -1392,8 +1418,10 @@ A refactor commit is reviewable on its own terms. The
 operational shape:
 
 1. Confirm the suite is green pre-refactor
-   (`just check-tests`). If it is not, the refactor cannot
-   safely begin — fix or skip the failing tests first.
+   (`just check-coverage` per v039 D1 — exercises the
+   full suite plus per-file 100% coverage in one pass).
+   If it is not, the refactor cannot safely begin — fix
+   or skip the failing tests first.
 2. Identify any coverage gaps in the area you are about to
    restructure. If gaps exist, author characterization
    tests that pin down current behavior:
@@ -2096,8 +2124,8 @@ specific native code works). No Windows support.
 | `just check-vendor-manifest` | Validates `.vendor.jsonc` against a schema that forbids placeholder strings — every entry has a non-empty `upstream_url`, a non-empty `upstream_ref`, a parseable-ISO `vendored_at`, and the `shim: true` flag is present on `typing_extensions` and absent on every other entry. |
 | `just check-no-direct-tool-invocation` | grep: `lefthook.yml` and `.github/workflows/*.yml` only invoke `just <target>`. |
 | `just check-tools` | Verify every pinned tool is installed at the pinned version — both mise-pinned binaries (`uv`, `just`, `lefthook`) and uv-managed Python deps from `pyproject.toml` `[dependency-groups.dev]` per v024. |
-| `just check-tests` | `pytest`. |
-| `just check-coverage` | `pytest --cov --cov-branch` then `dev-tooling/checks/per_file_coverage.py` (v033 D2): authoritative gate is per-file 100% line+branch, not just total. The `--cov-branch` CLI flag is required (in addition to `[tool.coverage.run].branch = true` in pyproject.toml) so that pytest-cov sets `COV_CORE_BRANCH=enabled` for subprocess-inheritance — without the flag, child processes generate line-only data and `cov.combine()` rejects the parallel-data combine. |
+| `just check-coverage` | `pytest -n auto --cov --cov-branch` then `dev-tooling/checks/per_file_coverage.py` (v033 D2 + v039 D2): authoritative gate is per-file 100% line+branch, not just total. The `-n auto` flag (per v039 D2) parallelizes the suite via `pytest-xdist`, dropping wall-clock from ~3.5 minutes serial to under a minute on a typical multi-core developer machine. The `--cov-branch` CLI flag is required (in addition to `[tool.coverage.run].branch = true` in pyproject.toml) so that pytest-cov sets `COV_CORE_BRANCH=enabled` for subprocess-inheritance — without the flag, child processes generate line-only data and `cov.combine()` rejects the parallel-data combine. Per v039 D1, `check-coverage` exercises the suite as a side effect; the standalone `check-tests` target is dropped from the canonical aggregate. |
+| `just check-coverage-incremental` | v039 D3: path-scoped fast-feedback variant of `check-coverage`. Inputs are `--paths <impl_paths>` (repo-root-relative impl files); the wrapper resolves each impl's mirror-paired test (per v033 D1), runs `pytest -n auto --cov=<impl_path> tests/<mirror>/test_<name>.py` per pair, then runs the per-file 100% line+branch gate on the impacted impl files only. Wall-clock target: under 10 seconds for a typical single-file pair. NOT a replacement for `check-coverage` — the full-tree run remains the load-bearing pre-commit gate. The fast-feedback role is to surface coverage gaps proactively during the v039 D4 Red→Green authoring loop, before the Green amend triggers a 5+-minute aggregate retry on a missed defensive branch. The pytest-cov subprocess-instrumentation path-translation behavior under explicit `--cov=<path>` filters (the v039-D5-deferred spike) MUST be resolved before this target's contract is finalized; the spike's outcome dictates whether the per-pair invocation uses `--cov=<impl_path>` directly or routes through a `[paths]` mapping in `pyproject.toml`. |
 | `just check-tests-mirror-pairing` | v033 D1: every covered `.py` under `.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/bin/**`, and `<repo-root>/dev-tooling/checks/**` has a paired test file at the mirror path under `tests/` containing at least one `def test_*` function. Closed exemption set: `_vendor/**`, `bin/_bootstrap.py` (covered by the preserved `tests/bin/test_bootstrap.py`), and `__init__.py` files containing only `from __future__ import annotations` + `__all__: list[str] = []`. |
 | `just check-commit-pairs-source-and-test` | v033 D3: lefthook pre-commit gate (NOT in `just check` aggregate — runs once-per-commit, not once-per-`just check` invocation). Inspects `git diff --name-only HEAD~1 HEAD` (or against the v033-codification-commit's parent on the very first post-codification commit). Every commit modifying any `.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/bin/**`, or `<repo-root>/dev-tooling/checks/**` source file MUST also modify a `tests/**` file in the same commit. Carve-outs (closed list): pure-deletion commits; refactor commits declared via `refactor:` message-prefix or `## Type: refactor` body line; config-only commits declared via `## Type: config` body line OR via filename match for `pyproject.toml`/`justfile`/`lefthook.yml`/`.mise.toml`/`.vendor.jsonc`/`.gitignore`; docs-only commits declared via `## Type: docs-only`. Pre-v033-codification-commit commits are grandfathered. |
 | `just check-red-output-in-commit` | v032 D4 / v033 D4: lefthook pre-commit gate (NOT in `just check` aggregate). Every feature/bugfix commit body MUST contain a `## Red output` heading followed by a fenced code block carrying the literal pytest output the executor observed when the failing test was first run prior to any implementation change. Hard gate from v033-codification onward (the v032 D4 "informational at Phase-4, hard gate at Phase-5-exit" framing is closed; promotion happens at the v033-codification commit). Same carve-out set as `check-commit-pairs-source-and-test`. Pre-v033-codification commits are grandfathered. |

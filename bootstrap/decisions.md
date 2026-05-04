@@ -1681,3 +1681,89 @@ Cycle 2's reserve-suffix tests (hint `"Foo Bar"` → slug
 this composition. Adding a separate Red→Green cycle would author
 a redundant test against the same algorithm.
 
+
+## 2026-05-04T08:30:00Z — phase 7 v039 codification (aggregate perf + Red-Green discipline)
+
+**Decision:** Codify v039 as a six-decision bundle interrupting the
+in-progress sub-step 5.c work. v039 D1 drops `check-tests` from
+the canonical aggregate (`check-coverage` already exercises the
+full suite as a side effect under `pytest --cov`); D2 adds
+`-n auto` (pytest-xdist) to `check-coverage` for parallel test
+execution; D3 introduces `just check-coverage-incremental` as a
+path-scoped fast-feedback variant for tight authoring loops; D4
+codifies Red-time branch enumeration + proactive coverage as a
+PROPOSAL.md §"Test-Driven Development discipline" sub-section
+(reinforced operationally in companion-doc); D5 defers the
+pytest-cov subprocess-instrumentation path-translation spike to
+highest-priority follow-up after the in-progress
+`wip/comment-line-anchors` Red+wip-Green pair lands; D6 covers
+plan-text + housekeeping (Phase 0 byte-identity bump,
+frozen-status header, execution-prompt authoritative-version,
+STATUS update). The in-progress sub-step 5.c work is preserved
+at `wip/comment-line-anchors` (Red commit 7968757) plus
+`tmp/bootstrap/wip-comment-line-anchors-green-amend.patch`
+(uncommitted Green-amend impl + justfile diff); resumes after
+v039 D5 spike resolves and D2/D3 land.
+
+**Rationale:** User-initiated 2026-05-04T08:30Z after the prior
+session timed out on a Green-amend coverage-gap discovery —
+defensive branches in `comment_line_anchors.py` (the `try/except`
+clause + the `if __name__ == "__main__":` guard) were not
+enumerated at Red time, surfaced post-hoc at the
+`check-coverage` Green-amend gate, requiring back-up to extend
+the Red test, then a 5+-minute pre-commit aggregate retry.
+Three such round-trips burned ~30 minutes for what should have
+been ~10 minutes of authoring.
+
+The user surfaced three discipline gaps in chat (Q1: proactive
+coverage runs not part of the loop, Q2: Red-time branch
+enumeration not codified, Q3: no incremental coverage tool
+exists) and three perf opportunities (drop check-tests, add
+pytest-xdist, collapse small AST checks into one runner). Item
+three was dropped during the design discussion — collapsing 29
+AST checks saves only ~12s out of 350s and collides with v033 D1
+mirror-pairing + v033 D2 per-file 100 overage + main-guard +
+wrapper-shape invariants in PROPOSAL.md. The surviving five
+items bundle as one v039 codification because they share the
+iteration-loop thesis: make the full-aggregate cycle fast
+enough that the `check-coverage` gate is rarely hit on a missed
+branch, AND make a faster path-scoped variant available for
+proactive use during authoring.
+
+Q1 + Q2 are not directly mechanically enforceable — there is no
+hook that can verify "the executor ran the incremental tool"
+or "the executor enumerated every defensive branch." Both are
+made mechanically cheap to follow by D3's incremental tool;
+both are mechanically caught post-hoc by the existing
+`check-coverage` per-file gate at Green-amend time. The honest
+framing in PROPOSAL.md §"Mechanical reinforcement" subsection
+states this directly: D3 is the load-bearing mechanical
+addition, D4 is the discipline that becomes ergonomic because
+of D3.
+
+The alternative — splitting v039 perf (drop check-tests, add
+xdist) from v039 discipline (Q1+Q2+Q3) into v039 + v040 —
+would force sequencing for no real gain. They share the same
+PROPOSAL.md sections, the same companion-doc target list, and
+landing the discipline rules without the perf changes leaves
+the iteration loop too slow for the discipline to actually
+follow. Bundle is correct.
+
+In-progress preservation mechanism: `git checkout -b
+wip/comment-line-anchors` from then-HEAD `7968757` (Red
+commit), `git diff --staged > tmp/bootstrap/
+wip-comment-line-anchors-green-amend.patch`, then
+`git reset --hard HEAD~1` on `phase-7-widen-sub-commands` to
+drop the half-cycle. wip branch persists as a discoverable
+marker; patch file persists as durable working-dir content
+(stash chosen against because `git stash clear` is too easy
+to trigger accidentally). Resume sequence: (a) finish v039 D5
+spike + D2/D3 implementation on `phase-7-widen-sub-commands`,
+(b) `git checkout wip/comment-line-anchors`, (c)
+`git apply tmp/bootstrap/wip-comment-line-anchors-green-amend.patch`,
+(d) `git rebase phase-7-widen-sub-commands`, (e) run
+`just check-coverage-incremental --paths
+dev-tooling/checks/comment_line_anchors.py` to surface the
+defensive-branch gaps that originally caused the failure,
+(f) extend the test, re-amend the Red commit, complete the
+Green amend cleanly.

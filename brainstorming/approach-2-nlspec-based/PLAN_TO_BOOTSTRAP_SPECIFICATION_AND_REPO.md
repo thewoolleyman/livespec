@@ -1073,6 +1073,88 @@ v029 decisions (direct critique-fix overlay; see
   A would require (deciding where rejection revisions land
   when no version is cut).
 
+- v039 D1 (PROPOSAL.md + companion-doc): drop `check-tests`
+  from the canonical aggregate. The full-tree pytest suite
+  is exercised as a side effect of `check-coverage`'s
+  `pytest --cov --cov-branch` invocation; running it
+  separately doubles wall-clock without information gain.
+  PROPOSAL §"Activation", §"Coexistence with the
+  pre-commit gate", and §"CI workflow (v034 D8)" updated
+  to reflect that the Red-mode skip semantic targets
+  `check-coverage` only and the CI matrix no longer
+  enumerates `check-tests` separately.
+  `python-skill-script-style-requirements.md` §"Canonical
+  target list" drops the `check-tests` row.
+- v039 D2 (companion-doc): `check-coverage` invokes pytest
+  with `-n auto` (pytest-xdist) for parallel test
+  execution, dropping wall-clock from ~3.5 minutes serial
+  to well under a minute on a typical multi-core developer
+  machine. Combined with D1, total `just check` aggregate
+  wall-clock drops from ~5:49 to ~1:30-2:00 on the
+  measured workload. Subprocess coverage instrumentation
+  via the `.pth` startup hook continues to drive
+  `--cov-branch` inheritance unchanged.
+- v039 D3 (companion-doc): introduce
+  `just check-coverage-incremental` as a path-scoped
+  fast-feedback variant. Inputs: `--paths <impl_paths>`
+  (repo-root-relative impl files); the wrapper resolves
+  each impl's mirror-paired test (per v033 D1), runs
+  `pytest -n auto --cov=<impl_path> tests/<mirror>/test_<name>.py`
+  per pair, then runs the per-file 100% line+branch gate
+  on the impacted impl files only. NOT a replacement for
+  `check-coverage` — the full-tree run remains the
+  load-bearing pre-commit gate. Wall-clock target: under
+  10 seconds for a typical single-file pair. The
+  pytest-cov subprocess-instrumentation path-translation
+  behavior under explicit `--cov=<path>` filters is the
+  v039 D5 deferred-spike; D3's contract is finalized after
+  the spike resolves.
+- v039 D4 (PROPOSAL.md + companion-doc): codify the
+  Red-time branch enumeration discipline + the proactive
+  `check-coverage-incremental` discipline as PROPOSAL.md
+  §"Test-Driven Development discipline" sub-section. The
+  v034 D2-D3 amend pattern locks the test-file SHA-256 at
+  Red, so coverage gaps in defensive branches surface as
+  Green-amend gate failures requiring back-up to Red plus
+  full-aggregate retries. Q1+Q2 are not directly
+  mechanically enforceable; D3's tool makes them cheap
+  enough to follow that the existing post-hoc
+  `check-coverage` gate suffices as the safety net.
+- v039 D5 (open-issues): defer the pytest-cov
+  subprocess-instrumentation path-translation spike as
+  highest-priority follow-up after the in-progress
+  `wip/comment-line-anchors` Red+wip-Green pair lands.
+  Spike investigates why explicit `pytest --cov=<path>
+  tests/...` returns 0% under the existing `.pth` startup
+  hook architecture and either finds the
+  `[paths]`/`COVERAGE_FILE`/`COVERAGE_PROCESS_START` knob
+  that makes path-scoped invocation work or accepts a
+  fallback contract for `check-coverage-incremental`
+  (e.g., full-suite filtered post-hoc by impl paths).
+- v039 D6 (plan-level): plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v039/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v039" (per the
+  established no-op convention since v024 — the literal
+  PROPOSAL.md header line never actually changes; the
+  PLAN's narrative reference is what bumps). Execution-
+  prompt block authoritative-version line bumps to v039.
+  STATUS.md updated.
+- Triggered by user-initiated perf+discipline cycle
+  2026-05-04T08:30:00Z after the prior session timed out
+  on a Green-amend coverage gap discovered post-hoc. User
+  surfaced three discipline gaps (Q1: proactive coverage,
+  Q2: Red-time branch enumeration, Q3: incremental
+  coverage tool absent) and three perf opportunities
+  (drop check-tests, add pytest-xdist, collapse small
+  AST checks — third dropped as colliding with
+  mirror-pairing + per-file-coverage invariants). v039
+  bundles the surviving five items as one cohesive
+  iteration-loop codification because they share the
+  thesis: make the iteration loop fast enough that
+  proactive coverage is cheap and Red-time enumeration
+  becomes the natural authoring rhythm.
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -1283,8 +1365,18 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v038/PROPOSAL.md` (the v038
-   snapshot — v037 substance plus the two v038 decisions:
+   byte-identical to `history/v039/PROPOSAL.md` (the v039
+   snapshot — v038 substance plus the six v039 decisions:
+   drop `check-tests` from the canonical aggregate (D1),
+   pytest-xdist `-n auto` parallelism for `check-coverage`
+   (D2), introduce `check-coverage-incremental`
+   path-scoped fast-feedback target (D3), codify Red-time
+   branch enumeration + proactive coverage discipline
+   (D4), defer pytest-cov subprocess-instrumentation
+   spike to highest-priority follow-up (D5), and
+   plan-text + housekeeping (D6) per
+   `history/v039/proposed_changes/aggregate-perf-and-iteration-loop.md`;
+   v038 substance is v037 substance plus the two v038 decisions:
    Statement B authoritative on the version-cut rule —
    §"Versioning" iff softened from "when, and only when,
    accepts or modifies" to "on every successful revise
@@ -1397,7 +1489,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v038. Further evolution happens in
+   > **Status:** Frozen at v039. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -3988,7 +4080,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v038 as authoritative. Do not propose any
+Treat PROPOSAL.md v039 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
