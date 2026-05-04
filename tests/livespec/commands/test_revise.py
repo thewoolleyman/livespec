@@ -1066,3 +1066,91 @@ def test_revise_main_snapshot_captures_post_resulting_files_content_for_accept_d
     assert exit_code == 0
     snapshot_md = spec_target / "history" / "v002" / "spec.md"
     assert snapshot_md.read_text(encoding="utf-8") == new_spec_content
+
+
+def test_revise_main_returns_precondition_exit_code_when_proposed_changes_only_has_readme(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Per v011 Proposal 3 item a, revise fails on README-only proposed_changes/.
+
+    When `<spec-target>/proposed_changes/` contains only the
+    skill-owned `README.md` (zero in-flight proposal files), revise
+    MUST exit 3 (PreconditionError) without any file-system
+    mutations. Pins the precondition check at the railway boundary
+    before any per-decision processing.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    _ = (proposed_changes / "README.md").write_text(
+        "# Skill-owned README\n",
+        encoding="utf-8",
+    )
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 3
+    assert not (spec_target / "history" / "v002").exists()
+
+
+def test_revise_main_returns_precondition_exit_code_when_proposed_changes_completely_empty(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Per v011 Proposal 3 item a, revise fails on completely empty proposed_changes/.
+
+    Variant of the README-only test: `proposed_changes/` exists
+    but has zero entries (not even `README.md`). Same exit-3
+    outcome; no file-system mutations.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 3
+    assert not (spec_target / "history" / "v002").exists()
