@@ -487,6 +487,72 @@ def test_propose_change_falls_back_to_unknown_llm_when_no_author_source(
     assert "author: unknown-llm\n" in text
 
 
+def test_propose_change_disambiguates_first_collision_with_dash_two_suffix(
+    *,
+    tmp_path: Path,
+) -> None:
+    """First name-collision yields `<topic>-2.md`, not an overwrite.
+
+    Per SPECIFICATION/spec.md "Collision disambiguation (v014 N6)":
+    when `<canonical-topic>.md` already exists, the wrapper writes
+    to `<canonical-topic>-2.md`. No user prompt, no zero-padding,
+    no overwrite of the pre-existing file. Drives the
+    `_resolve_target_path` helper into existence.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    pre_existing = proposed_changes / "demo-topic.md"
+    _ = pre_existing.write_text("PRE-EXISTING-CONTENT", encoding="utf-8")
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    assert pre_existing.read_text(encoding="utf-8") == "PRE-EXISTING-CONTENT"
+    out = proposed_changes / "demo-topic-2.md"
+    assert out.exists(), f"expected disambiguated {out} to be written"
+
+
+def test_propose_change_disambiguates_second_collision_with_dash_three_suffix(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Second name-collision yields `<topic>-3.md` (counter increments past 2).
+
+    Per v014 N6's monotonic-integer-starting-at-2 rule, with both
+    `<topic>.md` AND `<topic>-2.md` already on disk, the wrapper
+    walks the counter to 3 and writes `<topic>-3.md`. Drives the
+    iterating branch of `_resolve_target_path`'s while-loop body.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo-topic.md").write_text("FIRST", encoding="utf-8")
+    _ = (proposed_changes / "demo-topic-2.md").write_text("SECOND", encoding="utf-8")
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    out = proposed_changes / "demo-topic-3.md"
+    assert out.exists(), f"expected disambiguated {out} to be written"
+
+
 def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_flags(
     *,
     tmp_path: Path,

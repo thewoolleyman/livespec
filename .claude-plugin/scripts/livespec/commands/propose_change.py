@@ -192,6 +192,33 @@ def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     return project_root / "SPECIFICATION"
 
 
+def _resolve_target_path(
+    *,
+    proposed_changes_dir: Path,
+    canonical_topic: str,
+    existing_filenames: set[str],
+) -> Path:
+    """Resolve the next non-colliding proposed-change file path per v014 N6.
+
+    First file at `<canonical-topic>` is suffix-less; each collision
+    appends a hyphen-separated monotonic integer suffix starting at
+    `2` (so the second file named `<canonical-topic>` is
+    `<canonical-topic>-2.md`, the third is `<canonical-topic>-3.md`,
+    and so on). No zero-padding; no user prompt. The front-matter
+    `topic` field carries the canonical topic without the `-N`
+    suffix per v017 Q7.
+    """
+    base_name = f"{canonical_topic}.md"
+    if base_name not in existing_filenames:
+        return proposed_changes_dir / base_name
+    counter = 2
+    while True:
+        candidate = f"{canonical_topic}-{counter}.md"
+        if candidate not in existing_filenames:
+            return proposed_changes_dir / candidate
+        counter += 1
+
+
 def _resolve_author(
     *,
     namespace: argparse.Namespace,
@@ -298,11 +325,23 @@ def _write_proposed_change(
     )
     created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     spec_target = _resolve_spec_target(namespace=namespace)
-    target = spec_target / "proposed_changes" / f"{canonical}.md"
+    proposed_changes_dir = spec_target / "proposed_changes"
     body = _compose_proposed_change_body(
         findings=findings,
         canonical_topic=canonical,
         author=author,
         created_at=created_at,
     )
-    return fs.write_text(path=target, text=body).map(lambda _: findings)
+    listing_io: IOResult[list[Path], LivespecError] = fs.list_dir(
+        path=proposed_changes_dir,
+    ).lash(lambda _: IOResult.from_value([]))
+    return listing_io.bind(
+        lambda paths: fs.write_text(
+            path=_resolve_target_path(
+                proposed_changes_dir=proposed_changes_dir,
+                canonical_topic=canonical,
+                existing_filenames={p.name for p in paths},
+            ),
+            text=body,
+        ).map(lambda _: findings),
+    )
