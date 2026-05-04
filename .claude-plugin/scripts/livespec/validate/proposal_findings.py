@@ -21,6 +21,7 @@ from returns.result import Result, safe
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.proposal_findings import ProposalFindings
+from livespec.types import Author
 
 __all__: list[str] = ["validate_proposal_findings"]
 
@@ -36,7 +37,11 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> Proposa
     """
     validator = fastjsonschema.compile(schema)
     validated = validator(payload)
-    return ProposalFindings(findings=validated["findings"])
+    raw_author = validated.get("author")
+    return ProposalFindings(
+        findings=validated["findings"],
+        author=Author(raw_author) if raw_author is not None else None,
+    )
 
 
 def validate_proposal_findings(

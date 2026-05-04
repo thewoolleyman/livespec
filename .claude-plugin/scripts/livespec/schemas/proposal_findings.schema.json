@@ -9,6 +9,10 @@
     "findings"
   ],
   "properties": {
+    "author": {
+      "type": "string",
+      "description": "Optional file-level LLM-self-declared author identifier. Consumed by the unified author-precedence chain (CLI flag > LIVESPEC_AUTHOR_LLM env > this field > 'unknown-llm') in propose-change/critique/revise."
+    },
     "findings": {
       "type": "array",
       "items": {

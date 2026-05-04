@@ -20,8 +20,11 @@ IOResult to derive the exit code.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
+from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -189,14 +192,59 @@ def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     return project_root / "SPECIFICATION"
 
 
-def _compose_proposed_change_body(*, findings: ProposalFindings) -> str:
-    """Compose the proposed-change file body from validated findings.
+def _resolve_author(
+    *,
+    namespace: argparse.Namespace,
+    payload: ProposalFindings,
+    env_lookup: Callable[[str], str | None],
+) -> str:
+    """Resolve the author identifier per spec.md "Author identifier resolution".
+
+    Four-step precedence: `--author <id>` (CLI) > `LIVESPEC_AUTHOR_LLM`
+    (env) > `payload.author` (LLM self-declaration) > literal
+    `"unknown-llm"` fallback. The first non-empty value in this order
+    wins. The fallback path is also where livespec narrates the
+    "running with unknown LLM identifier" warning in skill prose; the
+    Python wrapper just returns the literal.
+    """
+    if namespace.author:
+        return str(namespace.author)
+    env_value = env_lookup("LIVESPEC_AUTHOR_LLM")
+    if env_value:
+        return env_value
+    if payload.author:
+        return payload.author
+    return "unknown-llm"
+
+
+def _compose_front_matter(*, topic: str, author: str, created_at: str) -> str:
+    """Compose the YAML front-matter block per the proposed-change front-matter schema.
+
+    Required keys: `topic`, `author`, `created_at`. Values are emitted
+    unquoted; `topic` is canonical kebab-case (matches the schema's
+    `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` pattern); `created_at` is UTC
+    ISO-8601 seconds (e.g., `2026-04-26T09:30:00Z`); `author` is the
+    resolved identifier from `_resolve_author`.
+    """
+    return "---\n" f"topic: {topic}\n" f"author: {author}\n" f"created_at: {created_at}\n" "---\n\n"
+
+
+def _compose_proposed_change_body(
+    *,
+    findings: ProposalFindings,
+    canonical_topic: str,
+    author: str,
+    created_at: str,
+) -> str:
+    """Compose the proposed-change file (front-matter + sections) from validated findings.
 
     Per PROPOSAL.md lines 2232-2242 (field-copy mapping): each
     finding becomes one `## Proposal: <name>` section with
     `### Target specification files`, `### Summary`,
     `### Motivation`, `### Proposed Changes` subsections
-    populated verbatim from the finding's fields.
+    populated verbatim from the finding's fields. The file is
+    prefixed with YAML front-matter carrying the canonical topic,
+    resolved author, and creation timestamp.
     """
     sections: list[str] = []
     for finding in findings.findings:
@@ -215,7 +263,12 @@ def _compose_proposed_change_body(*, findings: ProposalFindings) -> str:
             f"### Motivation\n\n{motivation}\n\n"
             f"### Proposed Changes\n\n{proposed_changes}\n",
         )
-    return "\n".join(sections)
+    front_matter = _compose_front_matter(
+        topic=canonical_topic,
+        author=author,
+        created_at=created_at,
+    )
+    return front_matter + "\n".join(sections)
 
 
 def _write_proposed_change(
@@ -238,7 +291,18 @@ def _write_proposed_change(
         return IOResult.from_failure(
             UsageError(f"topic '{namespace.topic}' canonicalizes to empty"),
         )
+    author = _resolve_author(
+        namespace=namespace,
+        payload=findings,
+        env_lookup=os.environ.get,
+    )
+    created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     spec_target = _resolve_spec_target(namespace=namespace)
     target = spec_target / "proposed_changes" / f"{canonical}.md"
-    body = _compose_proposed_change_body(findings=findings)
+    body = _compose_proposed_change_body(
+        findings=findings,
+        canonical_topic=canonical,
+        author=author,
+        created_at=created_at,
+    )
     return fs.write_text(path=target, text=body).map(lambda _: findings)

@@ -333,6 +333,160 @@ def test_propose_change_with_reserve_suffix_returns_usage_on_empty_hint(
     assert exit_code == 2
 
 
+def test_propose_change_writes_front_matter_with_cli_author(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`--author <id>` lands as the front-matter `author` field.
+
+    Per SPECIFICATION/spec.md "Author identifier resolution" step 1:
+    `--author <id>` (CLI) wins over env / payload / fallback. The
+    proposed-change file gains YAML front-matter with `topic`
+    (canonical), `author` (resolved), `created_at` (UTC ISO-8601
+    seconds). Drives the front-matter generator + the CLI branch
+    of `_resolve_author`.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "--author",
+            "alice",
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    out = spec_target / "proposed_changes" / "demo-topic.md"
+    text = out.read_text(encoding="utf-8")
+    assert text.startswith("---\n"), "expected YAML front-matter at file start"
+    assert "topic: demo-topic\n" in text
+    assert "author: alice\n" in text
+    import re as _re
+
+    assert _re.search(
+        r"created_at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\n",
+        text,
+    ), "expected UTC ISO-8601-seconds created_at field"
+
+
+def test_propose_change_uses_env_author_when_no_flag(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """`LIVESPEC_AUTHOR_LLM` env wins when `--author` is absent.
+
+    Per spec.md "Author identifier resolution" step 2: the env
+    variable supplies the author when the CLI flag isn't passed.
+    Drives the env branch of `_resolve_author`.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.setenv("LIVESPEC_AUTHOR_LLM", "claude-via-env")
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    text = (spec_target / "proposed_changes" / "demo-topic.md").read_text(encoding="utf-8")
+    assert "author: claude-via-env\n" in text
+
+
+def test_propose_change_uses_payload_author_when_no_flag_or_env(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Payload `author` wins when neither flag nor env is supplied.
+
+    Per spec.md "Author identifier resolution" step 3: the LLM
+    self-declared `author` field at top level of the findings
+    payload is the fallback before the literal `unknown-llm`.
+    Drives the payload branch of `_resolve_author` and exercises
+    the schema's now-permitted optional top-level `author`
+    property.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.delenv("LIVESPEC_AUTHOR_LLM", raising=False)
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = {
+        "author": "claude-via-payload",
+        "findings": [
+            {
+                "name": "Sample finding",
+                "target_spec_files": ["SPECIFICATION/spec.md"],
+                "summary": "Demo summary.",
+                "motivation": "Demo motivation.",
+                "proposed_changes": "Demo changes prose.",
+            },
+        ],
+    }
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    text = (spec_target / "proposed_changes" / "demo-topic.md").read_text(encoding="utf-8")
+    assert "author: claude-via-payload\n" in text
+
+
+def test_propose_change_falls_back_to_unknown_llm_when_no_author_source(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Fallback `unknown-llm` lands when no author source supplies a value.
+
+    Per spec.md "Author identifier resolution" step 4: when CLI flag
+    is absent, env var unset, and payload omits `author`, the
+    resolved value is the literal `"unknown-llm"`. Drives the
+    fallback branch of `_resolve_author`.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.delenv("LIVESPEC_AUTHOR_LLM", raising=False)
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    text = (spec_target / "proposed_changes" / "demo-topic.md").read_text(encoding="utf-8")
+    assert "author: unknown-llm\n" in text
+
+
 def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_flags(
     *,
     tmp_path: Path,
