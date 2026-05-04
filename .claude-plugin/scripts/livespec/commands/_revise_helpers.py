@@ -63,7 +63,7 @@ def _resolve_author(
 def _now_utc_iso8601() -> str:
     """Format the current UTC time as ISO-8601 seconds for `revised_at`.
 
-    Matches `propose_change.main`'s `created_at` shape (line ~326):
+    Matches `propose_change.main`'s `created_at` shape:
     `datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")`.
     Computed once per `revise` invocation in `main` and threaded
     through to every per-decision `_compose_revision_body` call
@@ -90,7 +90,7 @@ def _compose_revision_body(
     `decision: modify`; `## Resulting Changes` when `decision:
     accept` or `modify`; `## Rejection Notes` when `decision:
     reject` (the rejection-flow audit-trail richness Plan Phase 7
-    line 3383 mandates).
+    mandates).
     """
     topic = str(decision.get("proposal_topic", ""))
     decision_value = str(decision.get("decision", ""))

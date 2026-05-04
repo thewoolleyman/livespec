@@ -1,6 +1,6 @@
 """Resolve-template sub-command supervisor.
 
-Per PROPOSAL.md §"Template resolution contract" (lines 1424-1530)
+Per PROPOSAL.md §"Template resolution contract"
 and v028 D1: emits the resolved template directory path on
 stdout. The path-computation formula
 `Path(__file__).resolve().parents[3]` derives the bundle root
@@ -14,7 +14,7 @@ implemented (the pre-seed flow per v017 Q2). The default
 consumer in Phase 6's seed self-application; the seed/SKILL.md
 prose uses --template livespec pre-seed. With --template
 required at this phase, the seed unblocks for Phase 6. The
-deviation from PROPOSAL line 1443 (which marks --template
+deviation from PROPOSAL (which marks --template
 OPTIONAL) is captured in `bootstrap/decisions.md` under the
 2026-05-03 Phase 6 resolve_template in-band gap-fix entry;
 in-Phase-7-redress when the default flow lands.
@@ -56,7 +56,7 @@ _BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "minimal"})
 def build_parser() -> argparse.ArgumentParser:
     """Construct the resolve-template argparse parser without parsing.
 
-    Per PROPOSAL §"Template resolution contract" lines 1435-1454:
+    Per PROPOSAL §"Template resolution contract":
     `--project-root <path>` (default `Path.cwd()`) and
     `--template <value>`. PROPOSAL marks --template OPTIONAL; this
     Phase-3-minimum makes it required (the default
@@ -92,7 +92,7 @@ def _resolve_template_value(
     `_BUILTIN_TEMPLATES_DIR`. Other strings are treated as paths
     relative to --project-root and validated to (a) exist as a
     directory and (b) contain `template.json`. Failures map to
-    `PreconditionError` (exit 3 per PROPOSAL line 1488-1492).
+    `PreconditionError` (exit 3 per PROPOSAL).
     """
     if value in _BUILTIN_TEMPLATE_NAMES:
         return IOSuccess(_BUILTIN_TEMPLATES_DIR / value)
@@ -116,7 +116,7 @@ def _resolve_template_value(
 def _emit_resolved_path(*, path: Path) -> IOResult[Path, LivespecError]:
     """Emit the resolved path on stdout per the v1-frozen contract.
 
-    PROPOSAL §"Template resolution contract" lines 1455-1459:
+    PROPOSAL §"Template resolution contract":
     exactly one line, absolute POSIX path, trailing `\\n`.
     """
     sys.stdout.write(f"{path}\n")

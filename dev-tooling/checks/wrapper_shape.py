@@ -30,7 +30,7 @@ Any deviation (extra statements, missing pieces, wrong
 order, wrong identifiers) surfaces as a violation. The
 shebang line is a comment and isn't part of the AST body.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/
@@ -55,7 +55,7 @@ __all__: list[str] = []
 _BIN_TREE = Path(".claude-plugin") / "scripts" / "bin"
 _EXEMPT_NAMES = frozenset({"_bootstrap.py"})
 
-# Per python-skill-script-style-requirements.md lines 1664-1668:
+# Per python-skill-script-style-requirements.md:
 # the canonical shebang wrapper has exactly five top-level
 # statements (docstring → bootstrap import → bootstrap() call →
 # main import → SystemExit(main())). This constant names the

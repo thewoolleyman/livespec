@@ -3,7 +3,7 @@
 Asserts the shebang wrapper threads its main()'s return value
 into `raise SystemExit(<code>)`, per the canonical 6-statement
 wrapper shape (style doc §"Wrapper shape" / PROPOSAL.md
-§"Template resolution contract" lines 1469-1472 — the wrapper
+§"Template resolution contract" — the wrapper
 has no room for path-computation logic; the heavy lifting lives
 in `livespec.commands.resolve_template`).
 

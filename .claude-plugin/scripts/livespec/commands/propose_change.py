@@ -1,7 +1,7 @@
 """Propose-change sub-command supervisor.
 
-Per PROPOSAL.md §"`propose-change`" (line ~2134) and Plan Phase 3
-(lines 1505-1523): the wrapper validates the inbound
+Per PROPOSAL.md §"`propose-change`" and Plan Phase 3
+: the wrapper validates the inbound
 `--findings-json <path>` payload, composes a proposed-change
 file from the findings, and writes it to
 `<spec-target>/proposed_changes/<canonical-topic>.md`. Phase 7
@@ -181,7 +181,7 @@ def _canonicalize_topic(*, hint: str, reserve_suffix: str | None = None) -> str 
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
 
-    Per Plan Phase 3 (lines 1505-1523): the `<spec-target>` is
+    Per Plan Phase 3: the `<spec-target>` is
     selected via the --spec-target flag, defaulting to the
     project's main spec root. With the built-in `livespec`
     template, that's <project-root>/SPECIFICATION/.
@@ -265,7 +265,7 @@ def _compose_proposed_change_body(
 ) -> str:
     """Compose the proposed-change file (front-matter + sections) from validated findings.
 
-    Per PROPOSAL.md lines 2232-2242 (field-copy mapping): each
+    Per PROPOSAL.md (field-copy mapping): each
     finding becomes one `## Proposal: <name>` section with
     `### Target specification files`, `### Summary`,
     `### Motivation`, `### Proposed Changes` subsections

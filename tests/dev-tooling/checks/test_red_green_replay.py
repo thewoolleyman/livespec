@@ -671,7 +671,7 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
     """Green-mode-candidate detection: HEAD~0 has Red trailers + impl staged.
 
     Cycle 182 wires the Green-mode dispatch counterpart to Red mode.
-    Per PROPOSAL.md §"Green mode (amend)" lines 3533-3543, Green mode
+    Per PROPOSAL.md §"Green mode (amend)", Green mode
     is triggered when the HEAD~0 commit message carries Red trailers
     AND the new staged tree adds implementation files. This test
     fixtures a Red commit by manually authoring a commit body with
@@ -761,7 +761,7 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
     """Full Green-mode replay success: Green trailers written, hook returns 0.
 
     Cycle 183 wires Green-mode replay verification. Per PROPOSAL.md
-    §"Green mode (amend)" lines 3533-3543, the hook must: recompute
+    §"Green mode (amend)", the hook must: recompute
     test file SHA-256 from working tree (rejects on mismatch), run
     pytest (expects exit zero), then add `TDD-Green-Verified-At:`
     and `TDD-Green-Parent-Reflog:` trailers and let the commit land.

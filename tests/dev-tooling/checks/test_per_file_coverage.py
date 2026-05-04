@@ -50,8 +50,8 @@ def test_per_file_coverage_rejects_file_below_100_line_coverage(*, tmp_path: Pat
     of `from __future__ import annotations` + `__all__` + three
     trivial assignment statements). A hand-authored `.coverage`
     data file records only two of those statements as covered
-    (lines 1 and 3 — the import and the `__all__` declaration);
-    the three assignment statements (lines 5, 6, 7) are missing.
+    (the import and the `__all__` declaration); the three
+    assignment statements are missing.
     The check, invoked with `cwd=tmp_path`, must walk the
     `.coverage` data, detect `subject.py` at <100% line coverage,
     exit non-zero, and surface the offending file path so the
@@ -105,7 +105,7 @@ def test_per_file_coverage_rejects_file_below_100_line_coverage(*, tmp_path: Pat
 def test_per_file_coverage_rejects_when_no_coverage_data_file_exists(*, tmp_path: Path) -> None:
     """No `.coverage` file in cwd makes the check exit non-zero with a clear diagnostic.
 
-    Per `per_file_coverage.py` lines 70-72: the helper inspects
+    Per `per_file_coverage.py`: the helper inspects
     `cwd / ".coverage"` and, if missing, logs a "no coverage data
     found" error and returns 1. Drives that early-exit branch:
     fixture is a fresh tmp_path with no `.coverage` file. The
@@ -135,13 +135,13 @@ def test_per_file_coverage_rejects_when_no_coverage_data_file_exists(*, tmp_path
 def test_per_file_coverage_accepts_when_all_files_at_100_percent(*, tmp_path: Path) -> None:
     """A `.coverage` data file where every measured file is at 100% passes the check.
 
-    Per `per_file_coverage.py` lines 86-98: when the per-file
+    Per `per_file_coverage.py`: when the per-file
     walk finds no offenders, the helper returns 0. Fixture: a
     synthetic `subject.py` with exactly two executable statements
     (the import line + the __all__ declaration); the `.coverage`
     data file records both as covered. The check exits 0.
 
-    Drives the success-path return on line 98 (`return 0`) and the
+    Drives the success-path return on (`return 0`) and the
     no-offenders branch (86->83 in coverage's report: when the
     loop body's `if line_pct < 100.0` arm is NOT taken, control
     returns to the loop header, and on loop exit the empty
@@ -154,8 +154,8 @@ def test_per_file_coverage_accepts_when_all_files_at_100_percent(*, tmp_path: Pa
         encoding="utf-8",
     )
     data = CoverageData(basename=str(tmp_path / ".coverage"), suffix=False)
-    # Both executable statements covered: the future-import (line 1)
-    # and the __all__ declaration (line 2). Coverage's `add_lines`
+    # Both executable statements covered: the future-import
+    # and the __all__ declaration. Coverage's `add_lines`
     # records executed lines per file.
     data.add_lines({str(src_file): [1, 2]})
     data.write()

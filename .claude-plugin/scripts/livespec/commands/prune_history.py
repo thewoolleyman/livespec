@@ -1,6 +1,6 @@
 """Prune-history sub-command supervisor.
 
-Per PROPOSAL.md §"`prune-history`" (line ~2454): prune-history
+Per PROPOSAL.md §"`prune-history`": prune-history
 trims historical revisions from `<spec-target>/history/vNNN/`
 down to a caller-specified retention horizon, preserving the
 contiguous-version invariant. Phase 3 lands the parser shape +
@@ -33,7 +33,7 @@ __all__: list[str] = ["build_parser", "main"]
 def build_parser() -> argparse.ArgumentParser:
     """Construct the prune-history argparse parser without parsing.
 
-    Per PROPOSAL.md §"`prune-history`" lines 2458-2462: the
+    Per PROPOSAL.md §"`prune-history`": the
     wrapper accepts ONLY the mutually-exclusive `--skip-pre-check`
     / `--run-pre-check` flag pair (per §"Pre-step skip control");
     no other arguments in v1. Phase 3 lands the bare parser; the

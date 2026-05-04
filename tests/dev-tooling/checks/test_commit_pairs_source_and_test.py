@@ -237,7 +237,7 @@ def test_commit_pairs_skips_on_empty_repo_with_no_head() -> None:
     """On a fresh repo with zero commits, the head-message lookup falls back gracefully.
 
     Drives the `result.returncode != 0` early-return in
-    `_head_has_unpaired_red_trailers` (line 92-ish): `git log -1`
+    `_head_has_unpaired_red_trailers`: `git log -1`
     exits non-zero on a repo with no commits, the function
     returns False (no Red trailers), and the check applies its
     normal source-vs-test enforcement.
@@ -289,7 +289,7 @@ def test_commit_pairs_module_importable_without_running_main() -> None:
       - 42->45: the `if str(_VENDOR_DIR) not in sys.path:` guard
         is taken on second import (the test runner already added
         _VENDOR_DIR via pytest's pythonpath config), so the body
-        line 43 (`sys.path.insert(...)`) is skipped — the
+        (`sys.path.insert(...)`) is skipped — the
         already-present branch is exercised.
 
     Pins the invocation contract that this script is BOTH usable
@@ -327,7 +327,7 @@ def test_commit_pairs_accepts_staged_source_with_staged_test(*, tmp_path: Path) 
     finds both a source-tree file AND a tests/-tree file in the
     same commit, and exits 0 (success).
 
-    Drives the success-path return on line 97 (`return 0`) and
+    Drives the success-path return on (`return 0`) and
     closes the load-bearing branch coverage gap: only the
     rejection arm has been exercised; the accept arm has been
     silently unreachable from the test suite.

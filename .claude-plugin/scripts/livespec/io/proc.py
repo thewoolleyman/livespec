@@ -1,6 +1,6 @@
 """Subprocess boundary facade.
 
-Per style doc §"Skill layout — `io/`" line 337: every operation
+Per style doc §"Skill layout — `io/`": every operation
 that touches the subprocess boundary lives here under
 `@impure_safe` so the railway flows through `IOResult`.
 Mirrors the shape of `livespec.io.fs` (every operation is a thin
@@ -19,12 +19,12 @@ Why subprocess: the layered-architecture import-linter contract
 `doctor` as independent sibling layers that cannot import each
 other. Subprocess invocation respects that boundary while still
 letting `commands.<cmd>.main()` own the deterministic lifecycle
-per style doc lines 645-694.
+per style doc.
 """
 
 from __future__ import annotations
 
-import subprocess  # subprocess is the documented io/ surface (style doc line 337)
+import subprocess  # subprocess is the documented io/ surface (style doc)
 
 from returns.io import IOResult, impure_safe
 
@@ -74,7 +74,7 @@ def run_subprocess(
     boundary — they lift to IOSuccess(CompletedProcess) so the
     caller can pattern-match `completed.returncode` and fold the
     semantics into its own railway. This matches PROPOSAL.md
-    §"Sub-command lifecycle orchestration" line 768-773: any
+    §"Sub-command lifecycle orchestration": any
     `status: "fail"` finding from post-step doctor aborts the
     wrapper with exit 3, but the doctor subprocess itself ran
     correctly — the failure is on the wrapper's own railway, not

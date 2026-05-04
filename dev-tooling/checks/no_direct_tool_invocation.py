@@ -23,7 +23,7 @@ tokens and checks whether the first non-whitespace word in
 shell-line position is a banned tool. Lines starting with `#`
 (comments) and empty lines are skipped.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

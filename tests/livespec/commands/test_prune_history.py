@@ -1,6 +1,6 @@
 """Tests for livespec.commands.prune_history.
 
-Per PROPOSAL.md §"`prune-history`" (line ~2454): prune-history
+Per PROPOSAL.md §"`prune-history`": prune-history
 trims the historical revisions from history/vNNN/ down to a
 caller-specified retention horizon. Phase 3 lands the stub
 shape only; the full implementation widens in Phase 7.
@@ -27,7 +27,7 @@ def test_prune_history_main_exists_and_returns_int() -> None:
 def test_prune_history_main_returns_zero_on_valid_argv() -> None:
     """prune-history with no flags returns exit code 0.
 
-    Per PROPOSAL.md §"`prune-history`" lines 2454-2467: the
+    Per PROPOSAL.md §"`prune-history`": the
     Phase-3 minimum scope just establishes the parser. Phase 7
     widens to the actual prune mechanic (pruning the oldest
     `<spec-target>/history/v*/` directories down to a caller-

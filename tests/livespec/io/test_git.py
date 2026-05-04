@@ -1,16 +1,15 @@
 """Tests for livespec.io.git.
 
-Per style doc §"Skill layout — `io/`" line 337: io/ is the
+Per style doc §"Skill layout — `io/`": io/ is the
 impure boundary; every operation that touches the git working
 tree lives here under `@impure_safe` so the railway flows
 through `IOResult`. The git facade exposes the typed primitive
 that `livespec.commands.revise.main` (and `seed.main`'s revision-
 auto-capture path) compose against to populate the
 revision-file `author_human` field per PROPOSAL.md §"Revision
-file format" lines 3107-3167 and `revision_front_matter.schema.json`.
+file format" and `revision_front_matter.schema.json`.
 
-The seam is named `io.git.get_git_user` per PROPOSAL.md line
-3123-3124 + `revision_front_matter.schema.json` description on
+The seam is named `io.git.get_git_user` per PROPOSAL.md + `revision_front_matter.schema.json` description on
 the `author_human` property. Cycle 5.c.1 lands the smallest
 viable surface: a single `get_git_user` primitive that returns
 `"Name <email>"` from local git config when both values are
@@ -68,7 +67,7 @@ def test_get_git_user_returns_combined_name_and_email(
     monkeypatch cwd to that repo, call `get_git_user()`, assert
     the IOSuccess carrier holds the conventional Git author
     format `"Name <email>"` per PROPOSAL.md §"Revision file
-    format" lines 3123-3124. Drives the `livespec/io/git.py`
+    format". Drives the `livespec/io/git.py`
     module into existence (importing it fails at HEAD).
 
     Per the cwd-fallback isolation rule, monkeypatch.chdir is

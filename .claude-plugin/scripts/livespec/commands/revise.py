@@ -1,7 +1,7 @@
 """Revise sub-command supervisor.
 
-Per PROPOSAL.md §"`revise`" (line ~2335) and Plan Phase 3
-(lines 1533-1553): revise is minimum-viable per v019 Q1 —
+Per PROPOSAL.md §"`revise`" and Plan Phase 3
+: revise is minimum-viable per v019 Q1 —
 validates `--revise-json <path>` against revise_input.schema.json,
 processes per-proposal `decisions[]` in payload order, writes
 the paired `<stem>-revision.md` per decision, moves each
@@ -60,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     `argparse.ArgumentError` rather than `SystemExit`. The
     parser exposes `--revise-json <path>` (required), and the
     optional `--author`, `--spec-target`, `--project-root` flags
-    per PROPOSAL.md §"revise" lines 2375-2410.
+    per PROPOSAL.md §"revise".
     """
     parser = argparse.ArgumentParser(prog="revise", exit_on_error=False)
     _ = parser.add_argument("--revise-json", required=True)
@@ -160,7 +160,7 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
 
-    Per Plan Phase 3 (lines 1533-1553) + PROPOSAL.md §"revise":
+    Per Plan Phase 3 + PROPOSAL.md §"revise":
     `<spec-target>` is selected via --spec-target, defaulting to
     the project's main spec root (`<project-root>/SPECIFICATION/`
     under the built-in livespec template).
@@ -308,7 +308,7 @@ def _bind_resulting_files(
 ) -> IOResult[RevisionInput, LivespecError]:
     """Append resulting_files writes to the accumulator for accept/modify.
 
-    Per PROPOSAL.md §"`revise`" lines 2411-2421: only `accept`
+    Per PROPOSAL.md §"`revise`": only `accept`
     and `modify` decisions materialize resulting_files into the
     working spec; `reject` decisions produce no working-spec
     changes (just the audit-trail revision file).

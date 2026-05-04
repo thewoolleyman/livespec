@@ -20,13 +20,13 @@ The check fails on three directions:
    but no non-empty `reason` field.
 
 The check SKIPS `##` headings whose text begins with the literal
-`Scenario:` prefix per PROPOSAL.md lines 3779-3782.
+`Scenario:` prefix per PROPOSAL.md.
 
 Pre-Phase-6 the check tolerates an empty `[]` array; from the
 Phase 6 seed forward, emptiness is a failure if any spec tree
 exists.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

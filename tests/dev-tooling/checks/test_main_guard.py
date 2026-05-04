@@ -81,7 +81,7 @@ def test_main_guard_rejects_main_guard_inside_livespec(*, tmp_path: Path) -> Non
         f"main_guard diagnostic does not surface offending file `{expected_path}`; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
-    # Line 10 is the `if __name__ ...` line in the fixture.
+    # is the `if __name__ ...` line in the fixture.
     assert "10" in combined, (
         f"main_guard diagnostic does not surface offending line number 10; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"

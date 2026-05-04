@@ -1,6 +1,6 @@
 """Phase-3 exit-criterion round-trip integration test.
 
-Per Plan §"Exit criterion (narrow Phase-3 gate)" lines 1592-1633
+Per Plan §"Exit criterion (narrow Phase-3 gate)"
 and PROPOSAL.md §"`seed`" / §"`propose-change`" / §"`critique`"
 / §"`revise`" / §"`prune-history`" / §"`doctor`": this module
 exercises the full Phase-3 mechanically-achievable round-trip
@@ -81,7 +81,7 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
 
     Pins the composed behavior the cycles 65-145 ladder authored
     incrementally. Per Plan §"Exit criterion (narrow Phase-3
-    gate)" lines 1592-1633: the gate fires when all five
+    gate)": the gate fires when all five
     sub-commands compose into a clean round-trip exiting at
     each stage with the documented exit code, and the final
     doctor static check sees zero fail-status findings.

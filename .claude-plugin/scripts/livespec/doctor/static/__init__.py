@@ -1,8 +1,8 @@
 """Static-doctor check registry + applicability table.
 
-Per PROPOSAL.md §"`doctor` → Static-phase structure" lines
-2507-2512, this package's `__init__.py` holds the registry of
-implemented static-phase check modules. Each check is registered
+Per PROPOSAL.md §"`doctor` → Static-phase structure", this
+package's `__init__.py` holds the registry of implemented
+static-phase check modules. Each check is registered
 explicitly (no dynamic discovery); adding or removing a check is
 one explicit edit to this file.
 

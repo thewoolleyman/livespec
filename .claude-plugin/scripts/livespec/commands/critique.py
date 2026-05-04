@@ -1,6 +1,6 @@
 """Critique sub-command supervisor.
 
-Per PROPOSAL.md §"`critique`" (line ~2280) and SPECIFICATION/spec.md
+Per PROPOSAL.md §"`critique`" and SPECIFICATION/spec.md
 §"`critique` internal delegation" + §"Author identifier resolution":
 critique validates the inbound `--findings-json` payload then
 resolves the author identifier via the unified four-step precedence

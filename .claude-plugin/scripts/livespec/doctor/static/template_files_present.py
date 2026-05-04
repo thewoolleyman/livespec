@@ -1,6 +1,6 @@
 """Static-phase doctor check: template_files_present.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks": this check asserts that the canonical
 template-materialized files are present in the spec_root.
 

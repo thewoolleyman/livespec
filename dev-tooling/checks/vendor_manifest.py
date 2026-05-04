@@ -17,7 +17,7 @@ parse layer; the check imports that pure helper rather than
 re-implementing JSONC stripping). If the manifest file is
 absent, the check exits 0 — vendoring may not have run yet.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

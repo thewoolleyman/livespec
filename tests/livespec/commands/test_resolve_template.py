@@ -1,6 +1,6 @@
 """Tests for livespec.commands.resolve_template.
 
-Per PROPOSAL.md §"Template resolution contract" (lines 1424-1530)
+Per PROPOSAL.md §"Template resolution contract"
 and Plan Phase 3 sub-step 12 (codified at v028 D1 with the
 `Path(__file__).resolve().parents[3]` formula): resolve_template
 emits the resolved template directory path on stdout. The path-
@@ -48,7 +48,7 @@ def test_resolve_template_emits_bundle_path_for_builtin_livespec(
 ) -> None:
     """--template livespec → emits <bundle-root>/specification-templates/livespec on stdout, exit 0.
 
-    Per PROPOSAL.md lines 1460-1476: the bundle root is computed
+    Per PROPOSAL.md: the bundle root is computed
     via `Path(__file__).resolve().parents[3]` from the impl file.
     Asserts the resolved path is absolute, ends in
     `.../specification-templates/livespec`, and the directory
@@ -74,9 +74,9 @@ def test_resolve_template_emits_bundle_path_for_builtin_minimal(
 ) -> None:
     """--template minimal → emits <bundle-root>/specification-templates/minimal on stdout, exit 0.
 
-    Mirror of the `livespec` built-in test against the second v1
-    built-in template name per PROPOSAL §"Custom templates"
-    line 1513.
+     Mirror of the `livespec` built-in test against the second v1
+     built-in template name per PROPOSAL §"Custom templates"
+    .
     """
     exit_code = resolve_template.main(argv=["--template", "minimal"])
     assert exit_code == 0
@@ -97,7 +97,7 @@ def test_resolve_template_resolves_user_path_with_template_json(
 ) -> None:
     """--template <relative-path> + template.json present → emits absolute path, exit 0.
 
-    Per PROPOSAL.md lines 1477-1484: any value other than a built-in
+    Per PROPOSAL.md: any value other than a built-in
     name is treated as a path relative to --project-root. The
     wrapper validates (a) the directory exists and (b) it contains
     `template.json`.
@@ -125,7 +125,7 @@ def test_resolve_template_user_path_missing_template_json_returns_3(
 ) -> None:
     """--template <relative-path> without template.json → exit 3 (PreconditionError).
 
-    Per PROPOSAL.md line 1488-1492: exit 3 on "resolved path lacks
+    Per PROPOSAL.md: exit 3 on "resolved path lacks
     template.json".
     """
     template_dir = tmp_path / "bare-dir"
@@ -147,7 +147,7 @@ def test_resolve_template_user_path_does_not_exist_returns_3(
 ) -> None:
     """--template <relative-path-does-not-exist> → exit 3.
 
-    Per PROPOSAL.md line 1488-1492: exit 3 on "resolved path
+    Per PROPOSAL.md: exit 3 on "resolved path
     missing".
     """
     exit_code = resolve_template.main(
@@ -164,7 +164,7 @@ def test_resolve_template_user_path_does_not_exist_returns_3(
 def test_resolve_template_unknown_flag_returns_2() -> None:
     """Unknown CLI flag → exit 2 (UsageError).
 
-    Per PROPOSAL.md line 1493: exit 2 on "bad CLI usage". Drives
+    Per PROPOSAL.md: exit 2 on "bad CLI usage". Drives
     the parse_argv stage on the railway: an unknown flag surfaces
     as an argparse SystemExit, which io/cli's @impure_safe maps
     to UsageError; the supervisor's pattern-match lifts to
@@ -181,7 +181,7 @@ def test_resolve_template_missing_template_flag_returns_2() -> None:
 
     Phase 3 minimum-viable scope: --template is required (the
     default `.livespec.jsonc`-walking flow is Phase 7 work).
-    PROPOSAL §"Template resolution contract" line 1443 lists
+    PROPOSAL §"Template resolution contract" lists
     --template as OPTIONAL; this Phase-3-minimum deviates by
     making it required, captured in
     `bootstrap/decisions.md` under the Phase 6 resolve_template
@@ -198,7 +198,7 @@ def test_resolve_template_default_project_root_is_cwd(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """--project-root defaults to Path.cwd() per PROPOSAL line 1437.
+    """--project-root defaults to Path.cwd() per PROPOSAL.
 
     Drives the cwd-fallback branch of `_resolve_project_root`
     (the `Path.cwd() if namespace.project_root is None` path).

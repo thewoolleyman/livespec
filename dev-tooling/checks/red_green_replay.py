@@ -17,7 +17,7 @@ in git log; not load-bearing for current behavior. Cycle 4c
 into the sibling `_red_green_replay_modes.py` so this file
 stays under the 200 LLOC ceiling.
 
-Output discipline: per spec lines 1738-1762, `print` (T20)
+Output discipline: per spec, `print` (T20)
 and `sys.stderr.write` (`check-no-write-direct`) are banned
 in dev-tooling/**. Diagnostics flow through structlog (JSON
 to stderr); the vendored copy under `.claude-plugin/scripts/

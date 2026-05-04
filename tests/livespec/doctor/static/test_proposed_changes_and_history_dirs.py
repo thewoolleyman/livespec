@@ -1,6 +1,6 @@
 """Tests for livespec.doctor.static.proposed_changes_and_history_dirs.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks": this is the fourth of the eight Phase-3
 minimum-subset doctor checks. It asserts that
 `<spec_root>/proposed_changes/` and `<spec_root>/history/`

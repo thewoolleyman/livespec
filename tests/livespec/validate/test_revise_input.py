@@ -39,8 +39,7 @@ _SCHEMA_PATH = (
 def test_validate_revise_input_returns_success_with_dataclass_for_valid_payload() -> None:
     """A well-formed revise-input payload validates to Success(RevisionInput).
 
-    Payload mirrors the example in PROPOSAL.md §"`revise`" lines
-    2375-2410: one decision with `proposal_topic`, `decision`,
+    Payload mirrors the example in PROPOSAL.md §"`revise`": one decision with `proposal_topic`, `decision`,
     and `rationale`. The optional `author` field is omitted
     here so the validator's `.get("author")` -> None branch is
     exercised.

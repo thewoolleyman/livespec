@@ -12,7 +12,7 @@ walks the array. Any entry whose `test` field equals the
 literal string `"TODO"` surfaces. If the file is missing or
 contains only non-TODO entries, the check exits 0.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

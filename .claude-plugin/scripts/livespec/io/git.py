@@ -1,14 +1,13 @@
 """Git boundary facade.
 
-Per style doc §"Skill layout — `io/`" line 337: the io/ layer is
+Per style doc §"Skill layout — `io/`": the io/ layer is
 the impure boundary; every operation that touches git lives here
 under `@impure_safe` so the railway flows through `IOResult`.
 The git facade exposes `get_git_user` returning the conventional
 `"Name <email>"` author string from local git config, used by
 `livespec.commands.revise.main` (and `seed.main`'s revision-auto-
 capture path) to populate the revision-file `author_human`
-front-matter field per PROPOSAL.md §"Revision file format" lines
-3107-3167 and `revision_front_matter.schema.json`.
+front-matter field per PROPOSAL.md §"Revision file format" and `revision_front_matter.schema.json`.
 
 Cycle 5.c.1 lands the smallest viable surface: the happy path
 where both `git config --get user.name` and
@@ -49,7 +48,7 @@ def get_git_user() -> IOResult[str, LivespecError]:
     unset (returncode != 0) or empty (whitespace-only stdout),
     the literal substring is emitted as-is. Later cycles widen
     this to the `"unknown"` fallback per PROPOSAL.md §"Revision
-    file format" line 3125-3126 + the PreconditionError lift
+    file format" + the PreconditionError lift
     when the git binary is missing.
     """
     return run_subprocess(argv=["git", "config", "--get", "user.name"]).bind(

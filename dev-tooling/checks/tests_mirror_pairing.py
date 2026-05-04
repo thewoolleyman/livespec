@@ -20,7 +20,7 @@ checks/**` MUST have a paired test file at the mirror path under
 (c) `bin/_bootstrap.py` — special-cased; covered by
     `tests/bin/test_bootstrap.py`.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

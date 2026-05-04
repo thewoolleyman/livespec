@@ -1,6 +1,6 @@
 """Static-phase doctor check: version_directories_complete.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks": this check asserts that every
 `<spec_root>/history/vNNN/` directory contains its expected
 sub-structure.
@@ -72,7 +72,7 @@ def _select_version_dirs(*, children: list[Path]) -> list[Path]:
 
     The `v*`-name + `is_dir()` filter excludes the skill-owned
     `<spec_root>/history/README.md` directory-description file
-    (Plan Phase 6 lines 3160-3162, 3174-3175, 3194-3195) along
+    (Plan Phase 6, 3174-3175, 3194-3195) along
     with any other non-version sibling that may live alongside
     the `vNNN/` snapshots. Without this filter the per-version
     `proposed_changes/` probe would fire against

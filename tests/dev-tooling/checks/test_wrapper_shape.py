@@ -277,7 +277,7 @@ def test_wrapper_shape_module_importable_without_running_main() -> None:
 def test_canonical_wrapper_stmt_count_pins_5() -> None:
     """The `_CANONICAL_WRAPPER_STMT_COUNT` constant pins the 5-statement shape.
 
-    Per python-skill-script-style-requirements.md lines 1664-1668:
+    Per python-skill-script-style-requirements.md:
     every shebang wrapper has exactly five top-level statements
     (docstring → bootstrap import → bootstrap() call → main
     import → SystemExit(main())). This test pins the count so a

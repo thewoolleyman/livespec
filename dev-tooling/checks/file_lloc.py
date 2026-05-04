@@ -23,7 +23,7 @@ The two-tier split removes the mid-Green-amend wedge where an
 in-progress refactor naturally pushes LLOC above 200 and would
 otherwise force a sibling-module extraction in the same amend.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

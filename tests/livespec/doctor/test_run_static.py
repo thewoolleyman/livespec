@@ -1,7 +1,7 @@
 """Tests for livespec.doctor.run_static.
 
-Per PROPOSAL.md §"`doctor`" (line ~2468) and Plan Phase 3
-(lines 1554-1616): run_static is the static-phase orchestrator.
+Per PROPOSAL.md §"`doctor`" and Plan Phase 3
+: run_static is the static-phase orchestrator.
 It enumerates `(spec_root, template_name)` pairs, builds a
 per-tree DoctorContext, and runs the applicable check subset
 per the orchestrator-owned applicability table. Phase-3 minimum

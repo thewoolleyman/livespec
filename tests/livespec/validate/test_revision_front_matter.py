@@ -8,7 +8,7 @@ Per style doc §"Skill layout — `validate/`": validator at
 The wire payload is the YAML front-matter at the top of a
 revision file at
 `<spec-root>/history/vNNN/proposed_changes/<topic>-revision.md`
-(per PROPOSAL §"Revision file format" lines 3027-3050):
+(per PROPOSAL §"Revision file format"):
 required `proposal`, `decision` (enum), `revised_at`,
 `author_human`, `author_llm`.
 """

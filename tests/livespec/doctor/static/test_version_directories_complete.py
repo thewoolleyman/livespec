@@ -1,6 +1,6 @@
 """Tests for livespec.doctor.static.version_directories_complete.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks": this is the fifth of the eight Phase-3
 minimum-subset doctor checks. It asserts that every
 `<spec_root>/history/vNNN/` directory contains its expected
@@ -66,7 +66,7 @@ def test_version_directories_complete_run_skips_non_version_entries_in_history(
     """run(ctx) ignores non-`v*` entries (files + dirs) under history/.
 
     Per the seed wrapper's per-tree skill-owned `history/README.md`
-    directory-description (Plan Phase 6 lines 3160-3162, 3174-3175,
+    directory-description (Plan Phase 6, 3174-3175,
     3194-3195), the seeded `<spec_root>/history/` directory contains
     a `README.md` file alongside the `vNNN/` version directories.
     The check must walk only `v*` directories when verifying the

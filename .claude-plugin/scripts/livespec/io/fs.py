@@ -120,7 +120,7 @@ def move(*, source: Path, target: Path) -> IOResult[None, LivespecError]:
     lifts to PreconditionError (exit 3). Used by revise to move
     each processed `<spec-target>/proposed_changes/<stem>.md`
     into `<spec-target>/history/vNNN/proposed_changes/<stem>.md`
-    per PROPOSAL.md §"`revise`" lines 2422-2429.
+    per PROPOSAL.md §"`revise`".
     """
     return _raw_move(source=source, target=target).alt(
         lambda exc: PreconditionError(f"fs.move: {exc}"),

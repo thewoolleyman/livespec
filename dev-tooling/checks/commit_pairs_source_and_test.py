@@ -44,7 +44,7 @@ deletion-only commits, config-only filenames like
 pyproject.toml / justfile / lefthook.yml / .mise.toml /
 .vendor.jsonc / .gitignore).
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

@@ -73,7 +73,7 @@ def test_no_inheritance_rejects_disallowed_base_class(*, tmp_path: Path) -> None
         f"no_inheritance diagnostic does not surface offending file `{expected_path}`; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
-    # Line 10 is the `class Foo(Bar):` line in the fixture.
+    # is the `class Foo(Bar):` line in the fixture.
     assert "10" in combined, (
         f"no_inheritance diagnostic does not surface offending line number 10; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
