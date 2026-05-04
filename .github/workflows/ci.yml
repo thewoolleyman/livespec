@@ -72,7 +72,6 @@ jobs:
           - check-vendor-manifest
           - check-no-direct-tool-invocation
           - check-tools
-          - check-tests
           - check-coverage
     steps:
       - name: Checkout

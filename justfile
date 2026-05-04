@@ -83,7 +83,6 @@ check:
     # deferrals unchanged).
     targets=(
         check-imports-architecture
-        check-tests
         check-coverage
         check-main-guard
         check-no-inheritance
@@ -151,7 +150,7 @@ check-complexity:
 check-imports-architecture:
     PYTHONPATH=.claude-plugin/scripts uv run lint-imports
 
-check-tests:
+check-coverage:
     #!/usr/bin/env bash
     set -uo pipefail
     # Per v036 D1: when invoked under the pre-commit Red-mode-aware
@@ -160,21 +159,11 @@ check-tests:
     # The commit-msg replay hook (`check-red-green-replay`) is the
     # load-bearing verifier in Red mode — it runs pytest on the
     # staged test file and expects non-zero exit. Pre-push, CI,
-    # and manual `just check-tests` invocations don't set the env
-    # var and run normally.
-    if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
-        echo ":: check-tests skipped (v036 D1 Red-mode pre-commit; commit-msg replay hook verifies)"
-        exit 0
-    fi
-    uv run pytest
-
-check-coverage:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    # Per v036 D1: same Red-mode-skip semantics as check-tests above.
-    # In Red mode the staged tree has no impl files, so per-file
-    # coverage of the new (non-existent) impl is moot; pre-existing
-    # impl coverage is unchanged and re-validated at the Green amend.
+    # and manual `just check-coverage` invocations don't set the env
+    # var and run normally. Per v039 D1, `check-coverage` is the
+    # sole pytest-running aggregate target (check-tests was dropped
+    # because pytest already runs as a side effect of pytest --cov,
+    # so the standalone check-tests target was double-counting).
     if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
         echo ":: check-coverage skipped (v036 D1 Red-mode pre-commit; verified at Green amend)"
         exit 0
@@ -205,10 +194,10 @@ check-coverage:
 # `.claude-plugin/scripts/livespec/**`,
 # `.claude-plugin/scripts/bin/**`, or `dev-tooling/checks/**`.
 # In Red mode, sets LIVESPEC_PRECOMMIT_RED_MODE=1 and runs `just
-# check`; check-tests + check-coverage observe the env var and skip
-# (commit-msg replay hook is the load-bearing test-verifier in Red
-# mode). In all other modes (Green amend, test:/chore:/etc.,
-# non-Red feat:/fix:), runs `just check` unconditionally.
+# check`; check-coverage observes the env var and skips (commit-msg
+# replay hook is the load-bearing test-verifier in Red mode). In
+# all other modes (Green amend, test:/chore:/etc., non-Red
+# feat:/fix:), runs `just check` unconditionally.
 #
 # Pre-push and CI keep invoking `just check` directly (no Red-mode
 # classifier; full suite always).
@@ -231,7 +220,7 @@ check-pre-commit:
     fi
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
         echo ":: v037 D1 Red-mode shape detected: $test_staged"
-        echo ":: skipping check-tests + check-coverage (commit-msg replay hook is the verifier)"
+        echo ":: skipping check-coverage (commit-msg replay hook is the verifier)"
         export LIVESPEC_PRECOMMIT_RED_MODE=1
     fi
     just check
