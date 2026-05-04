@@ -22,6 +22,7 @@ subsequent cycles widen the railway.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -31,8 +32,15 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec.commands._revise_helpers import (
+    _compose_resulting_changes_section,  # re-exported for the paired test surface  # noqa: F401
+    _compose_revision_body,
+    _now_utc_iso8601,
+    _resolve_author,
+)
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
+from livespec.io import git as io_git
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.revise_input import RevisionInput
 from livespec.validate import revise_input as validate_revise_input_module
@@ -99,15 +107,25 @@ def main(*, argv: list[str] | None = None) -> int:
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
     parse_result = cli.parse_argv(parser=parser, argv=resolved_argv)
+    revised_at = _now_utc_iso8601()
     railway: IOResult[Any, LivespecError] = parse_result.bind(
         lambda namespace: (
             fs.read_text(path=Path(namespace.revise_json))
             .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
             .bind(lambda payload: _validate_payload(payload=payload))
             .bind(
-                lambda revise_input: _process_decisions(
-                    revise_input=revise_input,
-                    spec_target=_resolve_spec_target(namespace=namespace),
+                lambda revise_input: io_git.get_git_user().bind(
+                    lambda author_human: _process_decisions(
+                        revise_input=revise_input,
+                        spec_target=_resolve_spec_target(namespace=namespace),
+                        author_human=author_human,
+                        author_llm=_resolve_author(
+                            namespace=namespace,
+                            payload=revise_input,
+                            env_lookup=os.environ.get,
+                        ),
+                        revised_at=revised_at,
+                    ),
                 ),
             )
         ),
@@ -195,52 +213,36 @@ def _format_next_version_name(*, children: list[Path]) -> str:
     return f"v{max_version + 1:03d}"
 
 
-def _compose_revision_body(*, decision: dict[str, object]) -> str:
-    """Compose the `<stem>-revision.md` body from a decision dict.
-
-    Per PROPOSAL.md §"Revision file format" (line ~3037): the
-    body has front-matter (proposal, decision, rationale) plus
-    a `## Decision and Rationale` section. Phase-3 minimum-viable
-    keeps the front-matter to the three required keys; richer
-    fields (`author_llm`, `author_human`, `revised_at`) widen
-    under consumer pressure once the doctor's
-    `revision-to-proposed-change-pairing` check pulls them in.
-    """
-    topic = str(decision.get("proposal_topic", ""))
-    decision_value = str(decision.get("decision", ""))
-    rationale = str(decision.get("rationale", ""))
-    return (
-        "---\n"
-        f"proposal: {topic}.md\n"
-        f"decision: {decision_value}\n"
-        "---\n"
-        "\n"
-        "## Decision and Rationale\n"
-        "\n"
-        f"{rationale}\n"
-    )
-
-
 def _process_decisions(
     *,
     revise_input: RevisionInput,
     spec_target: Path,
+    author_human: str,
+    author_llm: str,
+    revised_at: str,
 ) -> IOResult[RevisionInput, LivespecError]:
     """Process each decision in payload order; write paired revisions + move proposals.
 
     For each decision: (1) compose the `<stem>-revision.md` body
-    and write it under `<spec-target>/history/vNNN/proposed_changes/`,
-    and (2) move `<spec-target>/proposed_changes/<stem>.md`
-    byte-identically into `<spec-target>/history/vNNN/proposed_changes/`.
-    Phase-3 minimum-viable; the accept/modify version-cut that
-    materializes resulting_files in the working spec is appended
-    by a subsequent cycle.
+    with the v011-spec-codified full 5-key front-matter +
+    per-decision-type sections and write it under
+    `<spec-target>/history/vNNN/proposed_changes/`; (2) move
+    `<spec-target>/proposed_changes/<stem>.md` byte-identically
+    into `<spec-target>/history/vNNN/proposed_changes/`; (3) on
+    accept/modify, materialize `resulting_files[]` into the
+    working-spec files. Threads `author_human` (from
+    `io.git.get_git_user`), `author_llm` (from `_resolve_author`),
+    and `revised_at` (from `_now_utc_iso8601`) into every
+    per-decision `_compose_revision_body` call.
     """
     return _next_history_version_dir(spec_target=spec_target).bind(
         lambda version_dir: _write_and_move_per_decision(
             revise_input=revise_input,
             spec_target=spec_target,
             version_dir=version_dir,
+            author_human=author_human,
+            author_llm=author_llm,
+            revised_at=revised_at,
         ),
     )
 
@@ -250,6 +252,9 @@ def _write_and_move_per_decision(
     revise_input: RevisionInput,
     spec_target: Path,
     version_dir: Path,
+    author_human: str,
+    author_llm: str,
+    revised_at: str,
 ) -> IOResult[RevisionInput, LivespecError]:
     """For each decision, write revision + move proposal + materialize resulting_files.
 
@@ -265,7 +270,12 @@ def _write_and_move_per_decision(
     for decision in revise_input.decisions:
         topic = str(decision.get("proposal_topic", ""))
         revision_target = version_dir / "proposed_changes" / f"{topic}-revision.md"
-        revision_body = _compose_revision_body(decision=decision)
+        revision_body = _compose_revision_body(
+            decision=decision,
+            author_human=author_human,
+            author_llm=author_llm,
+            revised_at=revised_at,
+        )
         proposed_source = spec_target / "proposed_changes" / f"{topic}.md"
         proposed_target = version_dir / "proposed_changes" / f"{topic}.md"
         accumulator = accumulator.bind(

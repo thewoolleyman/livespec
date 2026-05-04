@@ -464,3 +464,493 @@ def test_revise_main_materializes_resulting_files_for_accept_decision(
     )
     assert exit_code == 0
     assert spec_md.read_text(encoding="utf-8") == new_spec_content
+
+
+def _git_init_with_user(*, cwd: Path, name: str, email: str) -> None:
+    """Initialize a git repo at `cwd` and set local user.name + user.email.
+
+    Mirrors the helper in `tests/livespec/io/test_git.py`. Used by
+    the v038-widened revise tests that exercise the
+    `io.git.get_git_user` integration in the revision-md
+    front-matter `author_human` field.
+    """
+    import subprocess
+
+    _ = subprocess.run(
+        ["git", "init", "--quiet"],
+        cwd=cwd,
+        check=True,
+    )
+    _ = subprocess.run(
+        ["git", "config", "--local", "user.name", name],
+        cwd=cwd,
+        check=True,
+    )
+    _ = subprocess.run(
+        ["git", "config", "--local", "user.email", email],
+        cwd=cwd,
+        check=True,
+    )
+
+
+def test_revise_main_writes_full_5key_front_matter_for_reject_decision(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """The revision-md front-matter has all 5 required keys per v038/v011 spec.
+
+    Per `SPECIFICATION/spec.md` §"Proposed-change and revision file
+    formats" §"Revision file format" + `revision_front_matter.schema.json`:
+    `proposal`, `decision`, `revised_at`, `author_human`, `author_llm`.
+    Drives the widening of `_compose_revision_body` from the
+    Phase-3-minimum 2-key shape (proposal + decision) to the full
+    5-key shape. The `author_human` value is composed via
+    `io.git.get_git_user` (cycle 5.c.1 landed at `9547caa`); the
+    `author_llm` is resolved per the unified 4-step precedence
+    via a new `_resolve_author` helper analogous to
+    propose_change/critique. The `revised_at` is computed via
+    `datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")`
+    matching propose_change's `created_at` shape (line 326).
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.delenv("LIVESPEC_AUTHOR_LLM", raising=False)
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\n",
+        encoding="utf-8",
+    )
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Not aligned.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "proposal: demo.md" in text
+    assert "decision: reject" in text
+    assert "revised_at:" in text
+    assert "author_human: Test User <test@example.com>" in text
+    assert "author_llm: unknown-llm" in text
+
+
+def test_revise_main_emits_modifications_section_for_modify_decision(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """For a `modify` decision, the revision-md emits a `## Modifications` section.
+
+    Per `SPECIFICATION/spec.md` §"Revision file format" item (3):
+    `## Modifications` is REQUIRED when `decision: modify`; the
+    section carries prose-form description of how the proposal
+    was changed before incorporation. Asserts both the heading
+    appears and the modifications text from the decision dict
+    is embedded.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.delenv("LIVESPEC_AUTHOR_LLM", raising=False)
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\n",
+        encoding="utf-8",
+    )
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "modify",
+                        "rationale": "Mostly OK.",
+                        "modifications": "Tightened the wording on paragraph 2.",
+                        "resulting_files": [
+                            {"path": "spec.md", "content": "modified content"},
+                        ],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "## Modifications" in text
+    assert "Tightened the wording on paragraph 2." in text
+
+
+def test_revise_main_emits_resulting_changes_section_for_accept_decision(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """For an `accept` decision, the revision-md emits a `## Resulting Changes` section.
+
+    Per `SPECIFICATION/spec.md` §"Revision file format" item (4):
+    `## Resulting Changes` is REQUIRED when `decision: accept`
+    or `modify`; the section names the specification files
+    modified and lists the sections changed. Asserts both the
+    heading appears and the file path from `resulting_files[0]`
+    is embedded.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.delenv("LIVESPEC_AUTHOR_LLM", raising=False)
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\n",
+        encoding="utf-8",
+    )
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "accept",
+                        "rationale": "Looks good.",
+                        "resulting_files": [
+                            {"path": "spec.md", "content": "new content"},
+                        ],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "## Resulting Changes" in text
+    assert "spec.md" in text
+
+
+def test_revise_main_resolves_cli_author_flag_into_author_llm(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """`--author <id>` CLI wins step 1 of the 4-step author precedence.
+
+    Drives `_resolve_author`'s `if namespace.author:` branch.
+    Asserts the revision-md `author_llm:` line carries the
+    CLI-supplied identifier verbatim, with no env / payload /
+    fallback interference.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.setenv("LIVESPEC_AUTHOR_LLM", "env-loses-to-cli")
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\n",
+        encoding="utf-8",
+    )
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "author": "payload-also-loses-to-cli",
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "--author",
+            "cli-wins",
+        ],
+    )
+    assert exit_code == 0
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "author_llm: cli-wins" in text
+
+
+def test_revise_main_resolves_env_var_into_author_llm_when_no_cli_flag(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """`LIVESPEC_AUTHOR_LLM` env wins step 2 of the 4-step author precedence.
+
+    Drives `_resolve_author`'s `env_value` branch (no `--author`
+    CLI, env var set). Asserts the revision-md `author_llm:` line
+    carries the env value, beating the payload-self-declaration
+    fallback and the `unknown-llm` fallback.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.setenv("LIVESPEC_AUTHOR_LLM", "env-wins-no-cli")
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\n",
+        encoding="utf-8",
+    )
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "author": "payload-loses-to-env",
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "author_llm: env-wins-no-cli" in text
+
+
+def test_revise_main_resolves_payload_author_into_author_llm_when_no_cli_no_env(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Payload `author` field wins step 3 of the 4-step author precedence.
+
+    Drives `_resolve_author`'s `payload.author` branch (no `--author`
+    CLI, no env var, payload has self-declared `author` field).
+    Asserts the revision-md `author_llm:` line carries the payload
+    value, beating the `unknown-llm` fallback.
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.delenv("LIVESPEC_AUTHOR_LLM", raising=False)
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\n",
+        encoding="utf-8",
+    )
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "author": "payload-self-declared",
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "author_llm: payload-self-declared" in text
+
+
+def test_revise_compose_resulting_changes_emits_none_marker_when_resulting_files_absent() -> None:
+    """Direct test of `_compose_resulting_changes_section` defensive paths.
+
+    Drives the two defensive branches in
+    `_compose_resulting_changes_section`: (a) the `isinstance(
+    resulting_files, list)` False arm when the decision dict
+    has no `resulting_files` key (the `.get(..., [])` default
+    DOES return a list, so this also exercises the empty-list
+    case where the for-loop body doesn't run); (b) the
+    `isinstance(entry, dict)` False arm when an entry is a
+    non-dict value (defensive against a runtime type-violating
+    payload).
+
+    These branches are unreachable through `revise.main` because
+    `revise_input.schema.json` enforces `resulting_files` is an
+    array of `{path, content}` objects at the wrapper boundary.
+    The defensive checks remain in the impl because the
+    post-validation railway flows the decision dict typed as
+    `dict[str, object]` (the schema-narrowed type isn't preserved
+    through the dataclass), so pyright strict requires the
+    isinstance narrowings.
+    """
+    body_no_files = revise._compose_resulting_changes_section(  # noqa: SLF001
+        decision={"decision": "accept"},
+    )
+    assert "## Resulting Changes" in body_no_files
+    assert "(none)" in body_no_files
+    body_non_dict_entry = revise._compose_resulting_changes_section(  # noqa: SLF001
+        decision={"decision": "accept", "resulting_files": ["not-a-dict-entry"]},
+    )
+    assert "## Resulting Changes" in body_non_dict_entry
+    assert "(none)" in body_non_dict_entry
+    body_non_list = revise._compose_resulting_changes_section(  # noqa: SLF001
+        decision={"decision": "accept", "resulting_files": "not-a-list"},
+    )
+    assert "## Resulting Changes" in body_non_list
+    assert "(none)" in body_non_list
+
+
+def test_revise_main_emits_rejection_notes_section_for_reject_decision(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """For a `reject` decision, the revision-md emits a `## Rejection Notes` section.
+
+    Per `SPECIFICATION/spec.md` §"Revision file format" item (5):
+    `## Rejection Notes` is REQUIRED when `decision: reject`;
+    explains what would need to change about the proposal for it
+    to be acceptable in a future revision. This is the
+    rejection-flow audit-trail richness Plan Phase 7 line 3383
+    mandates ("rejection flow preserving audit trail").
+    """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.delenv("LIVESPEC_AUTHOR_LLM", raising=False)
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\n",
+        encoding="utf-8",
+    )
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Not aligned with current direction.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    revision_md = spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    text = revision_md.read_text(encoding="utf-8")
+    assert "## Rejection Notes" in text
