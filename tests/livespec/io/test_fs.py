@@ -155,3 +155,51 @@ def test_fs_move_returns_precondition_error_on_missing_source(
             raise AssertionError(
                 f"expected IOFailure(PreconditionError), got {result!r}",
             )
+
+
+def test_fs_rmtree_removes_populated_directory_and_returns_iosuccess(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`rmtree(path)` recursively deletes `path` and returns IOSuccess(None).
+
+    Per cycle 6.c.6 consumer pressure from prune-history: per
+    v012 SPECIFICATION/spec.md §"Sub-command lifecycle"
+    prune-history paragraph step (c), the wrapper deletes every
+    `<spec-root>/history/vK/` where K < N-1. The fixture sets up
+    a populated v-style directory tree (nested files +
+    subdirectories) and asserts the directory is gone after
+    rmtree returns. Mirrors the byte-identical-move primitive
+    `fs.move`'s success-arm shape.
+    """
+    target = tmp_path / "v001"
+    target.mkdir()
+    nested = target / "proposed_changes"
+    nested.mkdir()
+    _ = (target / "spec.md").write_text("# spec\n", encoding="utf-8")
+    _ = (nested / "demo.md").write_text("## demo\n", encoding="utf-8")
+    result = fs.rmtree(path=target)
+    assert result == IOSuccess(None)
+    assert not target.exists()
+
+
+def test_fs_rmtree_returns_precondition_error_on_missing_path(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`rmtree(path=missing)` returns IOFailure(PreconditionError(...)).
+
+    FileNotFoundError -> PreconditionError per the canonical
+    mapping at the io boundary; mirrors `read_text` /
+    `list_dir` / `move`'s failure-arm treatment.
+    """
+    missing = tmp_path / "no-such-dir"
+    result = fs.rmtree(path=missing)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(PreconditionError()):
+            pass
+        case _:
+            raise AssertionError(
+                f"expected IOFailure(PreconditionError), got {result!r}",
+            )
