@@ -642,7 +642,9 @@ def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent
     either. The resolver path runs through the marker-absent
     impure branch (no `fs.read_text` is invoked) and the pure
     resolver is called with `prior_marker_text=None`. Cycle
-    6.c.5 still emits no-op (no acting yet).
+    6.c.5 still emits no-op (no acting yet). At cycle 6.c.6b the
+    deletion mechanic widens; v002/v003 (K < N-1 = 4) are
+    expected to be removed, v004 + v005 remain.
     """
     spec_root = tmp_path / "SPECIFICATION"
     (spec_root / "history" / "v002").mkdir(parents=True)
@@ -655,3 +657,239 @@ def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent
     payload = json.loads(captured.out)
     assert payload["findings"][0]["check_id"] == "prune-history-no-op"
     assert payload["findings"][0]["status"] == "skipped"
+    # Per v012 spec.md prune-history paragraph step (c): every
+    # `<spec-root>/history/vK/` with K < N-1 is deleted. With
+    # N=5, that means v002 + v003 are gone; v004 + v005 remain.
+    assert not (spec_root / "history" / "v002").exists()
+    assert not (spec_root / "history" / "v003").exists()
+    assert (spec_root / "history" / "v004").is_dir()
+    assert (spec_root / "history" / "v005").is_dir()
+
+
+def test_prune_history_v_dirs_below_threshold_returns_empty_when_max_version_is_one(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_v_dirs_below_threshold` returns [] when max_version == 1.
+
+    Drives the K < N-1 = 0 case: no v-directory satisfies K < 0,
+    so the helper returns an empty list. The supervisor's no-op
+    short-circuit (i) prevents this branch from being reached in
+    practice, but the pure helper is exercised directly to cover
+    the degenerate boundary.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    children = sorted(history.iterdir())
+    paths = prune_history._v_dirs_below_threshold(  # noqa: SLF001
+        children=children,
+        max_version=1,
+    )
+    assert paths == []
+
+
+def test_prune_history_v_dirs_below_threshold_returns_empty_when_max_version_is_two(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_v_dirs_below_threshold` returns [] when max_version == 2.
+
+    Drives the K < N-1 = 1 case: no v-directory satisfies K < 1
+    (v001's K is 1, not less than 1), so the helper returns an
+    empty list. v(N-1) = v001 is preserved at this cycle (its
+    replacement-with-marker happens at 6.c.7).
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    (history / "v002").mkdir()
+    children = sorted(history.iterdir())
+    paths = prune_history._v_dirs_below_threshold(  # noqa: SLF001
+        children=children,
+        max_version=2,
+    )
+    assert paths == []
+
+
+def test_prune_history_v_dirs_below_threshold_returns_v001_when_max_version_is_three(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_v_dirs_below_threshold` returns [v001] when max_version == 3.
+
+    Drives the K < N-1 = 2 case with N=3 history: v001 (K=1)
+    satisfies K<2, v002 (K=2) does NOT (it is v(N-1) and is
+    preserved at this cycle), v003 (K=3) is fully intact.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    (history / "v002").mkdir()
+    (history / "v003").mkdir()
+    children = sorted(history.iterdir())
+    paths = prune_history._v_dirs_below_threshold(  # noqa: SLF001
+        children=children,
+        max_version=3,
+    )
+    assert paths == [history / "v001"]
+
+
+def test_prune_history_v_dirs_below_threshold_returns_v001_v002_when_max_version_is_four(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_v_dirs_below_threshold` returns [v001, v002] when max_version == 4.
+
+    Drives the K < N-1 = 3 case with N=4 history: v001 (K=1) and
+    v002 (K=2) both satisfy K<3; v003 (K=3) does NOT (v(N-1)
+    preserved); v004 (K=4) is fully intact.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    (history / "v002").mkdir()
+    (history / "v003").mkdir()
+    (history / "v004").mkdir()
+    children = sorted(history.iterdir())
+    paths = prune_history._v_dirs_below_threshold(  # noqa: SLF001
+        children=children,
+        max_version=4,
+    )
+    assert paths == [history / "v001", history / "v002"]
+
+
+def test_prune_history_v_dirs_below_threshold_skips_non_directory_entries(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_v_dirs_below_threshold` skips non-directory children defensively.
+
+    Drives the `if not child.is_dir(): continue` guard branch.
+    Mirrors the analogous defensive guards in `_find_max_version`
+    and `_oldest_below_has_pruned_marker`.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "README.txt").write_text("not a v-dir", encoding="utf-8")
+    (history / "v001").mkdir()
+    (history / "v002").mkdir()
+    (history / "v003").mkdir()
+    children = sorted(history.iterdir())
+    paths = prune_history._v_dirs_below_threshold(  # noqa: SLF001
+        children=children,
+        max_version=3,
+    )
+    assert paths == [history / "v001"]
+
+
+def test_prune_history_v_dirs_below_threshold_skips_non_v_prefix_dirs(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_v_dirs_below_threshold` skips directory children whose name lacks `v` prefix.
+
+    Drives the `if not name.startswith("v"): continue` guard
+    branch.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "scratch").mkdir()
+    (history / "v001").mkdir()
+    (history / "v002").mkdir()
+    (history / "v003").mkdir()
+    children = sorted(history.iterdir())
+    paths = prune_history._v_dirs_below_threshold(  # noqa: SLF001
+        children=children,
+        max_version=3,
+    )
+    assert paths == [history / "v001"]
+
+
+def test_prune_history_v_dirs_below_threshold_skips_v_prefix_with_non_digit_suffix(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_v_dirs_below_threshold` skips `v<non-digits>` directory children.
+
+    Drives the `if not suffix.isdigit(): continue` guard branch.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "vextra").mkdir()
+    (history / "v001").mkdir()
+    (history / "v002").mkdir()
+    (history / "v003").mkdir()
+    children = sorted(history.iterdir())
+    paths = prune_history._v_dirs_below_threshold(  # noqa: SLF001
+        children=children,
+        max_version=3,
+    )
+    assert paths == [history / "v001"]
+
+
+def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_4(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md prune-history step (c): with N=4, v001 + v002 are deleted.
+
+    Fixture sets up v001/v002/v003/v004 (N=4); after prune-history
+    runs, v001 (K=1<3) and v002 (K=2<3) are gone; v003 (K=3=N-1,
+    preserved at this cycle) and v004 (vN, fully intact) remain.
+    Drives the supervisor-level integration through
+    `_delete_old_v_dirs` end-to-end via `fs.rmtree`. Sub-content
+    inside v001/v002 is included in the fixture to confirm
+    recursive deletion (not just empty-dir removal).
+    """
+    spec_root = tmp_path / "SPECIFICATION"
+    (spec_root / "history" / "v001").mkdir(parents=True)
+    _ = (spec_root / "history" / "v001" / "spec.md").write_text(
+        "# v001\n",
+        encoding="utf-8",
+    )
+    (spec_root / "history" / "v002").mkdir()
+    (spec_root / "history" / "v002" / "proposed_changes").mkdir()
+    _ = (spec_root / "history" / "v002" / "proposed_changes" / "demo.md").write_text(
+        "## demo\n",
+        encoding="utf-8",
+    )
+    (spec_root / "history" / "v003").mkdir()
+    (spec_root / "history" / "v004").mkdir()
+    exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert not (spec_root / "history" / "v001").exists()
+    assert not (spec_root / "history" / "v002").exists()
+    assert (spec_root / "history" / "v003").is_dir()
+    assert (spec_root / "history" / "v004").is_dir()
+
+
+def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_3(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md prune-history step (c): with N=3, only v001 is deleted.
+
+    Fixture sets up v001/v002/v003 (N=3); after prune-history
+    runs, v001 (K=1<2) is gone; v002 (K=2=N-1, preserved at this
+    cycle) and v003 (vN, fully intact) remain. Drives the
+    supervisor-level integration with the smallest non-trivial
+    deletion set (single path).
+    """
+    spec_root = tmp_path / "SPECIFICATION"
+    (spec_root / "history" / "v001").mkdir(parents=True)
+    (spec_root / "history" / "v002").mkdir()
+    (spec_root / "history" / "v003").mkdir()
+    exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert not (spec_root / "history" / "v001").exists()
+    assert (spec_root / "history" / "v002").is_dir()
+    assert (spec_root / "history" / "v003").is_dir()

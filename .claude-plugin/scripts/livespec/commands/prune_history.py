@@ -153,11 +153,20 @@ def _maybe_no_op_or_resolve(
     if _oldest_below_has_pruned_marker(children=children, max_version=max_version):
         _emit_no_op_finding()
         return IOResult.from_value(None)
-    return _resolve_first_via_marker_or_children(
-        children=children,
-        max_version=max_version,
-        history_root=history_root,
-    ).bind(lambda _first: _emit_no_op_pending_prune_mechanic())
+    return (
+        _resolve_first_via_marker_or_children(
+            children=children,
+            max_version=max_version,
+            history_root=history_root,
+        )
+        .bind(
+            lambda _first: _delete_old_v_dirs(
+                children=children,
+                max_version=max_version,
+            ),
+        )
+        .bind(lambda _none: _emit_no_op_pending_prune_mechanic())
+    )
 
 
 def _find_max_version(*, children: list[Path]) -> int:
@@ -284,16 +293,69 @@ def _resolve_first(
     return smallest
 
 
-def _emit_no_op_pending_prune_mechanic() -> IOResult[None, LivespecError]:
-    """Emit the no-op finding pending the prune-mechanic widening at cycle 6.c.6.
+def _v_dirs_below_threshold(*, children: list[Path], max_version: int) -> list[Path]:
+    """Return the list of `vK/` paths in `children` where K < max_version - 1.
 
-    Cycle 6.c.5 EXERCISES the carry-forward `first` resolver
-    along the prune path but does NOT yet act on the resolved
-    value. The wrapper still emits the canonical
-    `prune-history-no-op` skipped finding to stdout and exits 0.
-    Subsequent cycles (6.c.6 destructive deletion, 6.c.7 marker
-    write) replace this placeholder with the full 5-step
-    mechanic.
+    Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle"
+    prune-history paragraph step (c): the wrapper deletes every
+    `<spec-root>/history/vK/` where K < N-1. With N=4, that
+    means K ∈ {1, 2} (v003 = v(N-1) is preserved at this cycle;
+    its replacement-with-marker happens at 6.c.7). Pure helper
+    so unit tests cover each filter branch without filesystem
+    I/O. Mirrors `_find_max_version` and `_resolve_first`'s
+    defensive guards (non-directory entries, non-`v`-prefixed
+    names, `v<non-digits>` suffixes are all skipped).
+    """
+    threshold = max_version - 1
+    paths: list[Path] = []
+    for child in children:
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not name.startswith("v"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        version = int(suffix)
+        if version >= threshold:
+            continue
+        paths.append(child)
+    return paths
+
+
+def _delete_old_v_dirs(
+    *,
+    children: list[Path],
+    max_version: int,
+) -> IOResult[None, LivespecError]:
+    """Delete every `<spec-root>/history/vK/` where K < max_version - 1.
+
+    Per v012 spec.md prune-history paragraph step (c): the
+    wrapper recursively removes each old v-directory below the
+    K < N-1 threshold via the `fs.rmtree` boundary primitive.
+    Threads the per-path deletions sequentially through the
+    railway so a mid-iteration OSError lifts to
+    `IOFailure(PreconditionError)` and short-circuits the
+    remaining deletions.
+    """
+    paths = _v_dirs_below_threshold(children=children, max_version=max_version)
+    railway: IOResult[None, LivespecError] = IOResult.from_value(None)
+    for path in paths:
+        railway = railway.bind(lambda _none, p=path: fs.rmtree(path=p))
+    return railway
+
+
+def _emit_no_op_pending_prune_mechanic() -> IOResult[None, LivespecError]:
+    """Emit the no-op finding pending the marker-write widening at cycle 6.c.7.
+
+    Cycle 6.c.6 widens the supervisor with the destructive
+    deletion of every `<spec-root>/history/vK/` where K < N-1
+    per v012 spec.md prune-history paragraph step (c). The
+    wrapper still emits the canonical `prune-history-no-op`
+    skipped finding to stdout and exits 0 — the proper success
+    finding emit lands at cycle 6.c.7 once the v(N-1) marker is
+    materialized.
     """
     _emit_no_op_finding()
     return IOResult.from_value(None)
