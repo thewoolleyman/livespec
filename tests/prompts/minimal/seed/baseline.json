@@ -1,0 +1,21 @@
+{
+  "prompt_name": "seed",
+  "schema_id": "seed_input.schema.json",
+  "input_context": {
+    "template": "minimal",
+    "intent": "Track the open-source maintenance status of a personal blog engine"
+  },
+  "replayed_response": {
+    "template": "minimal",
+    "intent": "Track the open-source maintenance status of a personal blog engine",
+    "files": [
+      {
+        "path": "SPECIFICATION.md",
+        "content": "# Spec\n\n## Project intent\n\nTrack the open-source maintenance status of a personal blog engine.\n\n## Cadence\n\nThe maintainer MUST review issues and pull requests at least once per quarter.\n"
+      }
+    ],
+    "sub_specs": []
+  },
+  "expected_schema_valid": true,
+  "expected_semantic_properties": []
+}
