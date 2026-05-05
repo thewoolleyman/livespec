@@ -579,5 +579,12 @@
     "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 7 sub-step 3.b imperative addition for the v014 N5 + author-precedence subsection introduced by propose-change-full-feature-parity revise (v009). Phase 8 work replaces this TODO with the real test ID via the governed propose-change/revise loop."
+  },
+  {
+    "heading": "## Prompt-QA harness contract",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step (f) imperative addition for the prompt-QA harness contract section introduced by SPECIFICATION/v014 (commit 6b84b75). The matching rule test under tests/test_contracts.py replaces this TODO once the harness implementation cycles land later in Phase 7 sub-step (f)."
   }
 ]
