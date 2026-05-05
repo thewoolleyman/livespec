@@ -1863,3 +1863,40 @@ beyond), resolution (a) is the correct one. The fix lands as
 a small overlay reconciliation in a future propose-change
 cycle (or rides along with whatever Phase 7 work next touches
 contracts.md §"Sub-spec structural mechanism").
+
+## 2026-05-05T07:30:00Z — phase 7 sub-step 7.a.iv (recovery)
+
+**Decision:** 7.a.iv was reset (4 commits dropped via `git reset --hard b589c8d`; orphan chain preserved at tag `wrong-7a-impl-2026-05-05`) and redone after the 7.a.v sub-agent flagged a contradiction between PROPOSAL.md §"Static-phase checks" lines 2825-2829 and the shipped `_collect_divergences` semantics. PROPOSAL: HEAD-active vs HEAD-history-vN comparison; both committed; working-tree WIP IGNORED. Shipped: working-tree-vs-HEAD comparison. Recovery redo (cycles `7ce3144` + `3488f7e`) ships PROPOSAL-correct comparison.
+
+**Rationale:** Implementation must follow PROPOSAL, not the other way around. Working-tree-vs-HEAD is the LESS semantically useful check (git status already shows uncommitted edits); PROPOSAL's HEAD-active-vs-HEAD-history-vN catches the load-bearing scenario (someone committed a spec edit bypassing propose-change/revise). Three options were presented to the user; option A (revert + redo per PROPOSAL) selected.
+
+**Capture for revisit:**
+
+1. **Strict template-declared filtering** (this session): the recovery sub-agent simplified the file-enumeration to "every top-level *.md file at HEAD under spec_root" instead of strictly walking template-declared files. User directed to keep template-declared framing strict for now (cycle adding `livespec/io/template_files.py` + tightening the enumerator follows this entry). Support for arbitrary user-added files at spec_root (i.e., flagging non-template-declared drift as a separate signal, or routing to a different check) is deferred — to revisit at a later phase.
+
+2. **anchor_reference_resolution has the same loose enumeration drift.** Its `_list_top_level_md_files` walks working-tree spec_root for *.md files (`fs.list_dir(path=spec_root)`), which is NOT the strict "template-declared spec files (resolved from the active template's `specification-template/` walk)" PROPOSAL line 2865-2867 specifies. Pre-existing condition since cycle 7.d (`e5289e9`) — not introduced by 7.a work. Should be tightened in a follow-up cycle once the new `io/template_files.py` enumerator stabilizes here. Per the user's "strict for now" directive applied narrowly to 7.a, this anchor_reference_resolution fix is deferred (separate cycle, same eventual goal).
+
+3. **`livespec/parse/template_files.py` placement question** (research-A's original recommendation): rejected per `parse/CLAUDE.md`'s strict "no I/O — every function takes an in-memory str" rule. Path-walking enumeration belongs in `io/`, not `parse/`. The new module is `livespec/io/template_files.py`.
+
+4. **Synthesis-failure process lesson** (codified to memory at `feedback_contract_verify_before_brief.md`): when briefing implementation that depends on a load-bearing contract clause (PROPOSAL.md, schema, etc.), run the contract-pin research SEQUENTIALLY before composing the implementation brief — never in parallel. The wrong-semantics 7.a.iv shipped because research-B was spawned in parallel with 7.a.iii and 7.a.iv was briefed before research-B's PROPOSAL-pinned contract returned; my synthesis defaulted to "research-B agrees with what I briefed" rather than re-auditing the brief against the pinned text. Process fix: contract-verification gates briefing for any cycle whose semantics depend on text the executor hasn't read directly.
+
+## 2026-05-05T07:45:00Z — phase 7 sub-step 7.a.iv (strict-tightening deferral)
+
+**Decision:** The strict-template-declared file enumeration tightening for `out_of_band_edits` is DEFERRED. 7.a.iv's loose enumeration (top-level *.md files at HEAD under `<spec_root>/` via `list_at_head`) stays in place for now. Strict tightening lands when the upstream prereq cascade is done (DoctorContext.template_name + orchestrator template-resolution + sub-spec template-name decision + resolve_template public helper).
+
+**Rationale:** A sub-agent invocation revealed the strict tightening requires ~5 prereq cycles + 1 architectural call (sub-specs have no `.livespec.jsonc`; do they inherit template = directory-name, or ship their own config?). For Phase 6's current state, strict and loose enumerations are functionally identical: built-in templates' `specification-template/` subtrees are `.gitkeep`-only, so both return empty for the project's three spec trees. The strict tightening is a CORRECTNESS-IMPROVEMENT for a future state where templates are authored — not a current-behavior fix. The DoctorContext widening + orchestrator template-resolution work is on the Phase 7 plan list ("doctor LLM-driven phase orchestration", "full livespec template content") and is better landed as a coherent pass than a tactical detour. User selected the deferral path.
+
+**Capture for revisit (when DoctorContext widens):**
+
+1. Introduce `livespec/io/template_files.py`: `enumerate_template_spec_files(*, template_root: Path) -> IOResult[tuple[Path, ...], LivespecError]`. Reads `<template_root>/template.json`'s spec_root; walks `<template_root>/specification-template/<spec_root>/` for immediate file children; returns sorted tuple of paths relative to `<spec_root>`.
+2. Update `out_of_band_edits.run` to use the strict enumerator instead of `list_at_head` on spec_root. Tests: pin "non-template-declared file at HEAD that diverges is IGNORED"; pin "template-declared file diverging is flagged".
+3. Apply same tightening to `anchor_reference_resolution._list_top_level_md_files` (already deferred per item 2 of the prior decisions.md entry from this session — same root cause).
+4. Architectural call: sub-spec template-name resolution. Likely path: directory-name inheritance (`SPECIFICATION/templates/livespec/` → template=`livespec`); document in PROPOSAL.md if it doesn't already specify.
+
+## 2026-05-05T08:55:00Z — phase 7 sub-step 7.a.v-redo (write-direct simplification)
+
+**Decision:** PROPOSAL.md line 2832-2838 specifies a create-then-move sequence for the auto-backfill artifacts: "creates `<spec-root>/proposed_changes/out-of-band-edit-<UTC>.md` ... It then moves the proposed-change and revision into `<spec-root>/history/v(N+1)/proposed_changes/`." The 7.a.v-redo impl skips the intermediate step and writes directly to the move destination (`<spec_root>/history/v(N+1)/proposed_changes/<artifact>.md`). The top-level `<spec_root>/proposed_changes/` is never touched.
+
+**Rationale:** End state is byte-identical to PROPOSAL's intent. The pre-backfill guard from 7.a.iii detects partial-write state via "history/v(N+1)/ exists" (its second condition); the first condition ("any `<spec-root>/proposed_changes/out-of-band-edit-*.md` file") is now structurally unreachable for THIS check's writes (the artifacts never land at top-level). That's defensible because (a) the second condition still catches partial-write recovery; (b) avoiding the intermediate state simplifies the railway (one fewer impure step + one fewer crash window). PROPOSAL revision could codify the simplification — but it's a sequence-vs-end-state distinction with no architectural implication, so it rides along with whatever PROPOSAL revision happens for substantive reasons. Cosmetic per `feedback_severity_judgment_over_rule_following.md`.
+
+**Capture for revisit:** if a future PROPOSAL revision touches §"Static-phase checks — out-of-band-edits", reconcile line 2837-2838 to either (a) drop the move step (impl-aligned: "writes directly into v(N+1)/proposed_changes/"), or (b) restore the impl's intermediate step (PROPOSAL-aligned literal). Recommend (a) since the impl simplification is sound.
