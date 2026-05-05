@@ -32,6 +32,12 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec.commands._prune_history_railway import (
+    _emit_no_op_finding,
+    _emit_pre_step_skipped_finding,  # re-exported for the paired test surface
+    _emit_pruned_finding,
+    _resolve_skip,  # re-exported for the paired test surface
+)
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 
@@ -105,38 +111,62 @@ def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError
     detection path; subsequent cycles widen the dispatch to the
     full 5-step prune mechanic.
 
-    Per v012 spec.md §"Pre-step skip control" rule (1): when
-    `--skip-pre-check` is set, the supervisor emits a single-
+    Per v012 spec.md §"Pre-step skip control": the supervisor
+    threads `_resolve_skip` through the railway to derive the
+    effective skip value from the 4-rule matrix (skip-flag,
+    run-flag, `.livespec.jsonc` config key, default False).
+    When the resolved value is True, the wrapper emits a single-
     finding `pre-step-skipped` JSON document to stdout BEFORE
-    running the body and proceeds without invoking the pre-step
-    doctor static phase. The body still runs and emits its own
+    running the body. The body still runs and emits its own
     `prune-history-no-op` / `prune-history-pruned` finding, so
-    stdout carries TWO JSON lines on the skip path. Cycle 6.c.8
-    only wires the explicit-flag branch; the
-    `.livespec.jsonc` config-key fallback (rule 3) and the
-    pre-step doctor invocation (rule final) land at 6.c.9 / 6.c.10.
+    stdout carries TWO JSON lines on the skip path. The pre-step
+    doctor invocation (the rule that follows) lands at 6.c.10.
     """
-    if namespace.skip_pre_check:
-        _emit_pre_step_skipped_finding()
-    spec_root = _resolve_spec_root(namespace=namespace)
-    history_root = spec_root / "history"
-    return fs.list_dir(path=history_root).bind(
-        lambda children: _maybe_no_op_or_resolve(
-            children=children,
-            history_root=history_root,
-        ),
+    project_root = _resolve_project_root(namespace=namespace)
+    history_root = project_root / "SPECIFICATION" / "history"
+    return (
+        _resolve_skip(namespace=namespace, project_root=project_root)
+        .bind(
+            lambda skip: _maybe_emit_skipped(skip=skip),
+        )
+        .bind(
+            lambda _none: fs.list_dir(path=history_root),
+        )
+        .bind(
+            lambda children: _maybe_no_op_or_resolve(
+                children=children,
+                history_root=history_root,
+            ),
+        )
     )
 
 
-def _resolve_spec_root(*, namespace: argparse.Namespace) -> Path:
-    """Resolve `<project-root>/SPECIFICATION/` from --project-root or cwd.
+def _maybe_emit_skipped(*, skip: bool) -> IOResult[None, LivespecError]:
+    """Emit the `pre-step-skipped` finding when `skip` is True; otherwise no-op.
+
+    Threads the `_resolve_skip` boolean back through the railway
+    as a side-effect-only step. Returns IOSuccess(None) in both
+    branches so subsequent `.bind(...)` stages always run.
+    """
+    if skip:
+        _emit_pre_step_skipped_finding()
+    return IOResult.from_value(None)
+
+
+def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
+    """Resolve `<project-root>` from `--project-root` or cwd.
 
     Per v012 contracts.md §"Wrapper CLI surface" prune-history row
     + the universal `--project-root <path>` baseline. Defaults to
-    `Path.cwd() / "SPECIFICATION"` when --project-root is omitted.
+    `Path.cwd()` when `--project-root` is omitted. The spec root
+    `<project-root>/SPECIFICATION` is derived at the call site;
+    `_resolve_skip` also needs `project_root` directly to read
+    `<project-root>/.livespec.jsonc`, so the helper returns the
+    project root rather than the spec root.
     """
-    project_root = Path.cwd() if namespace.project_root is None else Path(namespace.project_root)
-    return project_root / "SPECIFICATION"
+    if namespace.project_root is None:
+        return Path.cwd()
+    return Path(namespace.project_root)
 
 
 def _maybe_no_op_or_resolve(
@@ -399,77 +429,3 @@ def _replace_v_n_minus_one_with_marker(
     return fs.rmtree(path=v_n_minus_one).bind(
         lambda _none: fs.write_text(path=marker_path, text=text),
     )
-
-
-def _emit_pruned_finding(*, first: int, last: int) -> None:
-    """Write the canonical `prune-history-pruned` pass finding to stdout.
-
-    Per v012 spec.md prune-history paragraph: the wrapper emits a
-    single-finding JSON document to stdout describing the
-    completed prune. The `commands/`-tree exemption in the
-    `check-no-write-direct` allowlist permits this stdout-write.
-    `first` and `last` are interpolated into the human-readable
-    message; the structured payload preserves them as the
-    canonical pruned-range pair.
-    """
-    payload = {
-        "findings": [
-            {
-                "check_id": "prune-history-pruned",
-                "status": "pass",
-                "message": (
-                    f"pruned v{first:03d}..v{last:03d} into v{last:03d}/PRUNED_HISTORY.json"
-                ),
-            },
-        ],
-    }
-    _ = sys.stdout.write(json.dumps(payload) + "\n")
-
-
-def _emit_no_op_finding() -> None:
-    """Write the canonical prune-history-no-op skipped finding to stdout.
-
-    Per v012 spec.md prune-history paragraph: the wrapper emits a
-    single-finding `{"findings": [{"check_id": "prune-history-
-    no-op", "status": "skipped", "message": "..."}]}` JSON document
-    to stdout. The commands/-tree exemption in the
-    `check-no-write-direct` allowlist permits this stdout-write.
-    """
-    payload = {
-        "findings": [
-            {
-                "check_id": "prune-history-no-op",
-                "status": "skipped",
-                "message": (
-                    "nothing to prune; oldest surviving history is " "already PRUNED_HISTORY.json"
-                ),
-            },
-        ],
-    }
-    _ = sys.stdout.write(json.dumps(payload) + "\n")
-
-
-def _emit_pre_step_skipped_finding() -> None:
-    """Write the canonical pre-step-skipped finding to stdout.
-
-    Per v012 spec.md §"Pre-step skip control": when the resolved
-    skip value is True (either via the `--skip-pre-check` flag at
-    cycle 6.c.8 or via the `.livespec.jsonc`
-    `pre_step_skip_static_checks` config key at cycle 6.c.9), the
-    wrapper MUST emit a single-finding `{"findings": [{"check_id":
-    "pre-step-skipped", "status": "skipped", "message":
-    "pre-step checks skipped by user config or
-    --skip-pre-check"}]}` JSON document to stdout. The commands/-
-    tree exemption in the `check-no-write-direct` allowlist
-    permits this stdout-write.
-    """
-    payload = {
-        "findings": [
-            {
-                "check_id": "pre-step-skipped",
-                "status": "skipped",
-                "message": ("pre-step checks skipped by user config " "or --skip-pre-check"),
-            },
-        ],
-    }
-    _ = sys.stdout.write(json.dumps(payload) + "\n")

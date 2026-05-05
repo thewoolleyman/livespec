@@ -1287,3 +1287,304 @@ def test_prune_history_main_does_not_emit_pre_step_skipped_finding_when_neither_
     assert len(lines) == 1
     payload = json.loads(lines[0])
     assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+
+
+def test_prune_history_main_run_pre_check_overrides_config_key_true(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md §"Pre-step skip control" rule (2): --run-pre-check overrides config.
+
+    Fixture sets `pre_step_skip_static_checks: true` in
+    `.livespec.jsonc` AND passes `--run-pre-check` on the CLI.
+    Per rule (2), `--run-pre-check` overrides the config key, so
+    the resolved skip value is False and the `pre-step-skipped`
+    finding is NOT emitted. Stdout contains exactly ONE JSON line
+    — the body's `prune-history-no-op` finding. Drives the
+    flag-overrides-config branch of `_resolve_skip`.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    _ = (project_root / ".livespec.jsonc").write_text(
+        '{"pre_step_skip_static_checks": true}',
+        encoding="utf-8",
+    )
+    exit_code = prune_history.main(
+        argv=["--run-pre-check", "--project-root", str(project_root)],
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "pre-step-skipped" not in captured.out
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+
+
+def test_prune_history_main_emits_skipped_finding_when_config_key_true_and_no_flags(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md §"Pre-step skip control" rule (3): config key true → skip = true.
+
+    Fixture sets `pre_step_skip_static_checks: true` in
+    `.livespec.jsonc` and passes neither flag. Per rule (3), the
+    resolved skip value defers to the config key, which is True.
+    The `pre-step-skipped` finding IS emitted before the body
+    runs. Stdout contains TWO JSON lines: the
+    `pre-step-skipped` finding first, then the body's
+    `prune-history-no-op` finding.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    _ = (project_root / ".livespec.jsonc").write_text(
+        '{"pre_step_skip_static_checks": true}',
+        encoding="utf-8",
+    )
+    exit_code = prune_history.main(argv=["--project-root", str(project_root)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 2
+    first_payload = json.loads(lines[0])
+    assert first_payload["findings"][0]["check_id"] == "pre-step-skipped"
+    second_payload = json.loads(lines[1])
+    assert second_payload["findings"][0]["check_id"] == "prune-history-no-op"
+
+
+def test_prune_history_main_does_not_emit_skipped_finding_when_config_key_false_and_no_flags(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md §"Pre-step skip control" rule (3): config key false → skip = false.
+
+    Fixture sets `pre_step_skip_static_checks: false` explicitly
+    in `.livespec.jsonc` and passes neither flag. Per rule (3),
+    the resolved skip value defers to the config key, which is
+    False. The `pre-step-skipped` finding is NOT emitted. Stdout
+    contains exactly ONE JSON line — the body's
+    `prune-history-no-op` finding. Distinct from the
+    config-key-absent test below: this drives the present-and-
+    false branch of the JSONC parse.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    _ = (project_root / ".livespec.jsonc").write_text(
+        '{"pre_step_skip_static_checks": false}',
+        encoding="utf-8",
+    )
+    exit_code = prune_history.main(argv=["--project-root", str(project_root)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "pre-step-skipped" not in captured.out
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+
+
+def test_prune_history_main_does_not_emit_skipped_finding_when_config_key_absent(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md §"Pre-step skip control" rule (3): config key absent → skip = false default.
+
+    Fixture writes `.livespec.jsonc` WITHOUT the
+    `pre_step_skip_static_checks` key (an unrelated key only) and
+    passes neither flag. Per rule (3) default, the resolved skip
+    value is False. The `pre-step-skipped` finding is NOT
+    emitted. Stdout contains exactly ONE JSON line — the body's
+    `prune-history-no-op` finding. Drives the
+    `dict.get(..., False)` default-branch of the resolver.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    _ = (project_root / ".livespec.jsonc").write_text(
+        '{"some_other_key": "ignored"}',
+        encoding="utf-8",
+    )
+    exit_code = prune_history.main(argv=["--project-root", str(project_root)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "pre-step-skipped" not in captured.out
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+
+
+def test_prune_history_main_does_not_emit_skipped_finding_when_jsonc_file_missing(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md §"Pre-step skip control" rule (3): missing `.livespec.jsonc` → skip = false default.
+
+    Fixture has NO `.livespec.jsonc` at the project root and
+    passes neither flag. Per spec rule (3) the default skip
+    value is False; the resolver must defensively treat a missing
+    config file as the default-False case (do NOT raise). The
+    `pre-step-skipped` finding is NOT emitted. Stdout contains
+    exactly ONE JSON line — the body's `prune-history-no-op`
+    finding. Drives the file-missing branch of the resolver.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    # Sanity check — fixture has no .livespec.jsonc.
+    assert not (project_root / ".livespec.jsonc").exists()
+    exit_code = prune_history.main(argv=["--project-root", str(project_root)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "pre-step-skipped" not in captured.out
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+
+
+def test_prune_history_main_treats_malformed_jsonc_as_default_false(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Spec is silent on malformed `.livespec.jsonc`; resolver defaults to skip=false defensively.
+
+    Fixture writes a syntactically broken `.livespec.jsonc` (not
+    valid JSON nor JSONC). The spec §"Pre-step skip control" is
+    silent on malformed-config behavior; the resolver MUST
+    defensively default to skip=false rather than crash, on the
+    principle that a malformed config should not make the
+    `prune-history` wrapper unrunnable. The `livespec_jsonc_valid`
+    doctor static check is the dedicated mechanism for surfacing
+    malformed configs to the user; the prune-history wrapper's
+    body-level concern is only the boolean skip resolution.
+    Stdout contains exactly ONE JSON line — the body's
+    `prune-history-no-op` finding.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    _ = (project_root / ".livespec.jsonc").write_text(
+        "this is not jsonc at all { broken",
+        encoding="utf-8",
+    )
+    exit_code = prune_history.main(argv=["--project-root", str(project_root)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "pre-step-skipped" not in captured.out
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+
+
+def test_prune_history_resolve_skip_returns_true_when_skip_pre_check_flag_set(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_skip` returns IOSuccess(True) when `--skip-pre-check` is set.
+
+    Drives rule (1) of the resolution matrix directly: when
+    `namespace.skip_pre_check` is True, the resolver short-
+    circuits with True regardless of any config-key value. The
+    fixture sets the config key to False to confirm the flag
+    overrides it.
+    """
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path
+    _ = (project_root / ".livespec.jsonc").write_text(
+        '{"pre_step_skip_static_checks": false}',
+        encoding="utf-8",
+    )
+    namespace = prune_history.build_parser().parse_args(["--skip-pre-check"])
+    result = prune_history._resolve_skip(  # noqa: SLF001
+        namespace=namespace,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success)
+    assert unwrapped.unwrap() is True
+
+
+def test_prune_history_resolve_skip_returns_false_when_run_pre_check_flag_set(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_skip` returns IOSuccess(False) when `--run-pre-check` is set.
+
+    Drives rule (2) of the resolution matrix directly: when
+    `namespace.run_pre_check` is True (and skip_pre_check is
+    False), the resolver short-circuits with False regardless of
+    config. The fixture sets the config key to True to confirm
+    the flag overrides it.
+    """
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path
+    _ = (project_root / ".livespec.jsonc").write_text(
+        '{"pre_step_skip_static_checks": true}',
+        encoding="utf-8",
+    )
+    namespace = prune_history.build_parser().parse_args(["--run-pre-check"])
+    result = prune_history._resolve_skip(  # noqa: SLF001
+        namespace=namespace,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success)
+    assert unwrapped.unwrap() is False
+
+
+def test_prune_history_resolve_skip_returns_config_key_value_when_neither_flag_set(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_skip` reads `pre_step_skip_static_checks` when neither flag is set.
+
+    Drives rule (3) of the resolution matrix directly: when
+    neither flag is set, the resolver reads the config key from
+    `.livespec.jsonc` at `project_root`. Fixture sets the key to
+    True; the resolver returns IOSuccess(True).
+    """
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path
+    _ = (project_root / ".livespec.jsonc").write_text(
+        '{"pre_step_skip_static_checks": true}',
+        encoding="utf-8",
+    )
+    namespace = prune_history.build_parser().parse_args([])
+    result = prune_history._resolve_skip(  # noqa: SLF001
+        namespace=namespace,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success)
+    assert unwrapped.unwrap() is True
+
+
+def test_prune_history_resolve_skip_returns_false_when_jsonc_missing(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_skip` returns IOSuccess(False) when `.livespec.jsonc` is absent.
+
+    Drives the file-missing defensive branch: the resolver MUST
+    NOT raise when the config file does not exist — it returns
+    the spec-prescribed default (False) so a freshly-cloned or
+    pre-seed project doesn't crash the prune-history wrapper.
+    """
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path
+    assert not (project_root / ".livespec.jsonc").exists()
+    namespace = prune_history.build_parser().parse_args([])
+    result = prune_history._resolve_skip(  # noqa: SLF001
+        namespace=namespace,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success)
+    assert unwrapped.unwrap() is False
