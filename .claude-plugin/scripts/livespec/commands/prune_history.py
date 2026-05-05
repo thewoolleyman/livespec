@@ -36,6 +36,7 @@ from livespec.commands._prune_history_railway import (
     _emit_no_op_finding,
     _emit_pre_step_skipped_finding,  # re-exported for the paired test surface
     _emit_pruned_finding,
+    _invoke_pre_step_doctor,  # re-exported for the paired test surface
     _resolve_skip,  # re-exported for the paired test surface
 )
 from livespec.errors import LivespecError
@@ -119,15 +120,22 @@ def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError
     finding `pre-step-skipped` JSON document to stdout BEFORE
     running the body. The body still runs and emits its own
     `prune-history-no-op` / `prune-history-pruned` finding, so
-    stdout carries TWO JSON lines on the skip path. The pre-step
-    doctor invocation (the rule that follows) lands at 6.c.10.
+    stdout carries TWO JSON lines on the skip path.
+
+    Per v012 spec.md §"Sub-command lifecycle" (cycle 6.c.10):
+    when the resolved skip value is False, the wrapper invokes
+    `bin/doctor_static.py` as a subprocess via
+    `_invoke_pre_step_doctor` BEFORE running the body. On any
+    fail-status finding the helper returns
+    `IOFailure(PreconditionError)`, which the supervisor's
+    pattern-match lifts to exit 3 — the body NEVER runs.
     """
     project_root = _resolve_project_root(namespace=namespace)
     history_root = project_root / "SPECIFICATION" / "history"
     return (
         _resolve_skip(namespace=namespace, project_root=project_root)
         .bind(
-            lambda skip: _maybe_emit_skipped(skip=skip),
+            lambda skip: _dispatch_pre_step(skip=skip, project_root=project_root),
         )
         .bind(
             lambda _none: fs.list_dir(path=history_root),
@@ -141,16 +149,29 @@ def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError
     )
 
 
-def _maybe_emit_skipped(*, skip: bool) -> IOResult[None, LivespecError]:
-    """Emit the `pre-step-skipped` finding when `skip` is True; otherwise no-op.
+def _dispatch_pre_step(
+    *,
+    skip: bool,
+    project_root: Path,
+) -> IOResult[None, LivespecError]:
+    """Dispatch the pre-step phase based on the resolved skip value.
 
-    Threads the `_resolve_skip` boolean back through the railway
-    as a side-effect-only step. Returns IOSuccess(None) in both
-    branches so subsequent `.bind(...)` stages always run.
+    When `skip` is True, the wrapper emits the canonical
+    `pre-step-skipped` finding and proceeds without invoking the
+    pre-step doctor static phase per v012 spec.md §"Pre-step skip
+    control" emit-and-proceed contract.
+
+    When `skip` is False (the default per the 4-rule matrix), the
+    wrapper invokes `_invoke_pre_step_doctor` to run
+    `bin/doctor_static.py` against `<project_root>/SPECIFICATION`.
+    Any fail-status finding short-circuits the railway with
+    `IOFailure(PreconditionError)` (exit 3); zero fail findings
+    return `IOSuccess(None)` and the body proceeds.
     """
     if skip:
         _emit_pre_step_skipped_finding()
-    return IOResult.from_value(None)
+        return IOResult.from_value(None)
+    return _invoke_pre_step_doctor(project_root=project_root)
 
 
 def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:

@@ -5,30 +5,41 @@ file's LLOC stays under the 250-LLOC hard ceiling enforced by
 `dev-tooling/checks/file_lloc.py`. The split is purely
 organizational; the behavior is identical to the inline original.
 
-Stages: stdout-finding emitters (`_emit_*_finding`) and the
+Stages: stdout-finding emitters (`_emit_*_finding`), the
 `_resolve_skip` helper that implements the v012 spec.md
-§"Pre-step skip control" 4-rule resolution matrix.
+§"Pre-step skip control" 4-rule resolution matrix, and the
+`_invoke_pre_step_doctor` helper (cycle 6.c.10) that fires
+`bin/doctor_static.py` as a subprocess and folds fail-status
+findings onto the IOFailure track.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 from returns.io import IOResult
+from returns.result import Success, safe
 
-from livespec.errors import LivespecError
-from livespec.io import fs
+from livespec.errors import LivespecError, PreconditionError
+from livespec.io import fs, proc
 from livespec.parse import jsonc
 
 __all__: list[str] = [
     "_emit_no_op_finding",
     "_emit_pre_step_skipped_finding",
     "_emit_pruned_finding",
+    "_invoke_pre_step_doctor",
     "_resolve_skip",
 ]
+
+
+_BIN_DIR = Path(__file__).resolve().parents[2] / "bin"
+_DOCTOR_STATIC_WRAPPER = _BIN_DIR / "doctor_static.py"
 
 
 def _emit_pruned_finding(*, first: int, last: int) -> None:
@@ -151,4 +162,87 @@ def _resolve_skip(
         return IOResult.from_value(skip_default)
     return fs.read_text(path=config_path).map(
         lambda text: _resolve_skip_from_config_text(text=text),
+    )
+
+
+@safe(exceptions=(ValueError,))
+def _safe_json_loads(*, text: str) -> Any:
+    """Decorator-lifted strict-JSON decode for the pre-step doctor stdout contract."""
+    return json.loads(text)
+
+
+def _fold_pre_step_doctor_completed_process(
+    *,
+    completed: subprocess.CompletedProcess[str],
+) -> IOResult[None, LivespecError]:
+    """Parse the pre-step doctor subprocess's stdout JSON; fold fail findings -> Failure.
+
+    Mirror of the post-step fold in `_seed_railway_emits._fold_doctor_completed_process`,
+    specialized to the pre-step contract: when one or more
+    findings carry `status == "fail"`, the wrapper MUST short-
+    circuit with `IOFailure(PreconditionError)` so the supervisor
+    pattern-match lifts to exit 3 per PROPOSAL.md §"Sub-command
+    lifecycle orchestration". The doctor's stdout is propagated
+    intact via the helper's caller (the LLM-narration layer in
+    SKILL.md prose surfaces the structured findings to the user;
+    the wrapper does not add ad-hoc stderr text).
+    """
+    parsed = _safe_json_loads(text=completed.stdout)
+    if not isinstance(parsed, Success):
+        return IOResult.from_failure(
+            PreconditionError(
+                f"pre-step doctor stdout malformed JSON: {parsed.failure()}",
+            ),
+        )
+    payload = parsed.unwrap()
+    if not isinstance(payload, dict) or "findings" not in payload:
+        return IOResult.from_failure(
+            PreconditionError("pre-step doctor stdout missing 'findings' key"),
+        )
+    findings_value = payload["findings"]
+    if not isinstance(findings_value, list):
+        return IOResult.from_failure(
+            PreconditionError("pre-step doctor 'findings' is not a list"),
+        )
+    fail_count = sum(
+        1
+        for finding in findings_value
+        if isinstance(finding, dict) and finding.get("status") == "fail"
+    )
+    if fail_count > 0:
+        return IOResult.from_failure(
+            PreconditionError(
+                f"pre-step doctor reported {fail_count} fail-status finding(s)",
+            ),
+        )
+    _ = sys.stdout.write(completed.stdout)
+    return IOResult.from_value(None)
+
+
+def _invoke_pre_step_doctor(*, project_root: Path) -> IOResult[None, LivespecError]:
+    """Invoke `bin/doctor_static.py` as a subprocess; fold fail findings -> Failure.
+
+    Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle": when
+    the resolved skip value is False, the prune-history wrapper
+    MUST run the pre-step doctor static check before its action.
+    Composition mechanism mirrors the post-step doctor invocation
+    in `_seed_railway_emits._run_post_step_doctor` — `subprocess`
+    is chosen over direct in-process import because the layered-
+    architecture import-linter contract treats `livespec.commands`
+    and `livespec.doctor` as independent siblings that cannot
+    import each other.
+
+    Forwards `--project-root <path>` to the subprocess so the
+    doctor resolves the spec root from the same project root the
+    prune-history wrapper resolved.
+    """
+    return proc.run_subprocess(
+        argv=[
+            sys.executable,
+            str(_DOCTOR_STATIC_WRAPPER),
+            "--project-root",
+            str(project_root),
+        ],
+    ).bind(
+        lambda completed: _fold_pre_step_doctor_completed_process(completed=completed),
     )
