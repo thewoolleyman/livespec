@@ -33,6 +33,7 @@ from __future__ import annotations
 from typing import Literal
 
 from livespec.doctor.static import (
+    bcp14_keyword_wellformedness,
     livespec_jsonc_valid,
     proposed_change_topic_format,
     proposed_changes_and_history_dirs,
@@ -58,6 +59,7 @@ STATIC_CHECKS = (
     version_contiguity,
     revision_to_proposed_change_pairing,
     proposed_change_topic_format,
+    bcp14_keyword_wellformedness,
 )
 
 
@@ -70,5 +72,6 @@ APPLICABILITY_BY_TREE_KIND: dict[TreeKind, tuple[object, ...]] = {
         version_contiguity,
         revision_to_proposed_change_pairing,
         proposed_change_topic_format,
+        bcp14_keyword_wellformedness,
     ),
 }

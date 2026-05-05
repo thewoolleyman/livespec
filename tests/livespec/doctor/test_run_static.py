@@ -132,6 +132,7 @@ def test_run_static_main_emits_findings_json_to_stdout(
         "doctor-version-contiguity",
         "doctor-revision-to-proposed-change-pairing",
         "doctor-proposed-change-topic-format",
+        "doctor-bcp14-keyword-wellformedness",
     }
     for check_id in expected_check_ids:
         assert check_id in out, f"missing {check_id!r} in stdout"
@@ -200,6 +201,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-version-contiguity",
         "doctor-revision-to-proposed-change-pairing",
         "doctor-proposed-change-topic-format",
+        "doctor-bcp14-keyword-wellformedness",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -208,6 +210,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-version-contiguity",
         "doctor-revision-to-proposed-change-pairing",
         "doctor-proposed-change-topic-format",
+        "doctor-bcp14-keyword-wellformedness",
     }
     payload = json.loads(out)
     findings = payload["findings"]
