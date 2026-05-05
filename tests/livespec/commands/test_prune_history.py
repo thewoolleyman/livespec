@@ -85,3 +85,18 @@ def test_prune_history_main_rejects_both_skip_and_run_pre_check_flags_together()
     """
     exit_code = prune_history.main(argv=["--skip-pre-check", "--run-pre-check"])
     assert exit_code == 2
+
+
+def test_prune_history_main_accepts_project_root_flag() -> None:
+    """`--project-root <path>` is a recognized optional flag (exit 0).
+
+    Per v012 contracts.md §"Wrapper CLI surface" prune-history row
+    + the universal `--project-root <path>` baseline (PROPOSAL.md
+    §"Project-root detection contract" explicitly enumerates
+    `bin/prune_history.py` as a project-state wrapper that accepts
+    the flag). The actual project-root resolution + spec-root
+    upward-walk happens in later cycles when the wrapper body is
+    wired.
+    """
+    exit_code = prune_history.main(argv=["--project-root", "/tmp"])
+    assert exit_code == 0

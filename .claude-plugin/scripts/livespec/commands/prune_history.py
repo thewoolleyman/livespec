@@ -44,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     pre_check_group = parser.add_mutually_exclusive_group()
     _ = pre_check_group.add_argument("--skip-pre-check", action="store_true")
     _ = pre_check_group.add_argument("--run-pre-check", action="store_true")
+    _ = parser.add_argument("--project-root", default=None)
     return parser
 
 
