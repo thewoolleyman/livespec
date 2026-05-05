@@ -1,0 +1,28 @@
+{
+  "prompt_name": "revise",
+  "schema_id": "revise_input.schema.json",
+  "input_context": {
+    "spec_target": "SPECIFICATION/",
+    "pending_proposals": [
+      "SPECIFICATION/proposed_changes/quiet-flag.md"
+    ]
+  },
+  "replayed_response": {
+    "author": "Claude Opus 4.7 (1M context)",
+    "decisions": [
+      {
+        "proposal_topic": "quiet-flag",
+        "decision": "accept",
+        "rationale": "Adopt the universal --quiet flag as proposed; the CI-output use case is well-grounded and the universal-flag mechanism keeps SKILL.md prose generic.",
+        "resulting_files": [
+          {
+            "path": "contracts.md",
+            "content": "# Contracts — `livespec`\n\n## Wrapper CLI surface\n\nEvery wrapper accepts `--project-root <path>` and `--quiet`.\n"
+          }
+        ]
+      }
+    ]
+  },
+  "expected_schema_valid": true,
+  "expected_semantic_properties": []
+}
