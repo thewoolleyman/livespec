@@ -245,3 +245,189 @@ def test_prune_history_find_max_version_skips_v_prefix_with_non_digit_suffix(
     (history / "vextra").mkdir()
     children = sorted(history.iterdir())
     assert prune_history._find_max_version(children=children) == 1  # noqa: SLF001
+
+
+def test_prune_history_main_emits_no_op_finding_when_oldest_surviving_is_pruned_history_marker(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md no-op short-circuit (ii): oldest surviving has PRUNED_HISTORY.json.
+
+    When `<spec-root>/history/` has multiple v* dirs and the
+    smallest-K (oldest surviving) v-dir already contains a
+    `PRUNED_HISTORY.json` marker, no full versions remain to
+    prune below the prior marker. The wrapper emits the same
+    single-finding `prune-history-no-op` skipped JSON document
+    to stdout and exits 0 without re-writing anything. Drives
+    the new (ii) detection branch in `_maybe_no_op` plus the
+    `_oldest_below_has_pruned_marker` helper.
+    """
+    spec_root = tmp_path / "SPECIFICATION"
+    (spec_root / "history" / "v001").mkdir(parents=True)
+    (spec_root / "history" / "v001" / "PRUNED_HISTORY.json").write_text(
+        '{"pruned_range": [1, 1]}',
+        encoding="utf-8",
+    )
+    (spec_root / "history" / "v002").mkdir()
+    (spec_root / "history" / "v003").mkdir()
+    exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert payload["findings"][0]["status"] == "skipped"
+
+
+def test_prune_history_oldest_below_has_pruned_marker_returns_true_when_marker_present(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_oldest_below_has_pruned_marker` returns True when smallest-K v-dir has marker.
+
+    Drives the `return (child / "PRUNED_HISTORY.json").is_file()`
+    True-side branch. The fixture sets up v001/PRUNED_HISTORY.json
+    + v002 and asks for max_version=2; v001 is the oldest below
+    max and it carries the marker.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    (history / "v001" / "PRUNED_HISTORY.json").write_text("{}", encoding="utf-8")
+    (history / "v002").mkdir()
+    children = sorted(history.iterdir())
+    assert (
+        prune_history._oldest_below_has_pruned_marker(  # noqa: SLF001
+            children=children,
+            max_version=2,
+        )
+        is True
+    )
+
+
+def test_prune_history_oldest_below_has_pruned_marker_returns_false_when_marker_absent(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_oldest_below_has_pruned_marker` returns False when smallest-K v-dir lacks marker.
+
+    Drives the `return ... .is_file()` False-side branch. The
+    fixture sets up v001 + v002 (no PRUNED_HISTORY.json anywhere)
+    and asks for max_version=2; v001 is oldest below max but has
+    no marker.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    (history / "v002").mkdir()
+    children = sorted(history.iterdir())
+    assert (
+        prune_history._oldest_below_has_pruned_marker(  # noqa: SLF001
+            children=children,
+            max_version=2,
+        )
+        is False
+    )
+
+
+def test_prune_history_oldest_below_has_pruned_marker_skips_non_directory_entries(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_oldest_below_has_pruned_marker` skips non-directory children defensively.
+
+    Drives the `if not child.is_dir(): continue` guard branch.
+    The fixture mixes a regular file (skipped) with a v001 dir
+    that carries the marker; the helper must walk past the file
+    and find v001.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "README.txt").write_text("not a v-dir", encoding="utf-8")
+    (history / "v001").mkdir()
+    (history / "v001" / "PRUNED_HISTORY.json").write_text("{}", encoding="utf-8")
+    (history / "v002").mkdir()
+    children = sorted(history.iterdir())
+    assert (
+        prune_history._oldest_below_has_pruned_marker(  # noqa: SLF001
+            children=children,
+            max_version=2,
+        )
+        is True
+    )
+
+
+def test_prune_history_oldest_below_has_pruned_marker_skips_non_v_prefix_dirs(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_oldest_below_has_pruned_marker` skips dir children whose name lacks `v` prefix.
+
+    Drives the `if not name.startswith("v"): continue` guard
+    branch. Sorted iteration encounters `aaa` first (skipped),
+    then v001 (has marker).
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "aaa").mkdir()
+    (history / "v001").mkdir()
+    (history / "v001" / "PRUNED_HISTORY.json").write_text("{}", encoding="utf-8")
+    (history / "v002").mkdir()
+    children = sorted(history.iterdir())
+    assert (
+        prune_history._oldest_below_has_pruned_marker(  # noqa: SLF001
+            children=children,
+            max_version=2,
+        )
+        is True
+    )
+
+
+def test_prune_history_oldest_below_has_pruned_marker_skips_v_prefix_with_non_digit_suffix(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_oldest_below_has_pruned_marker` skips `v<non-digits>` dir children.
+
+    Drives the `if not suffix.isdigit(): continue` guard True-side
+    branch. The fixture has only a `vextra` dir (no eligible v-
+    digit children at all); the helper iterates, hits the
+    isdigit-False filter, continues, exits the loop, and returns
+    False via the post-loop fallthrough.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "vextra").mkdir()
+    children = sorted(history.iterdir())
+    assert (
+        prune_history._oldest_below_has_pruned_marker(  # noqa: SLF001
+            children=children,
+            max_version=3,
+        )
+        is False
+    )
+
+
+def test_prune_history_oldest_below_has_pruned_marker_skips_versions_at_or_above_max(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_oldest_below_has_pruned_marker` returns False when no v<max-version dirs exist.
+
+    Drives the `if version >= max_version: continue` guard True-
+    side AND the post-loop `return False` branch. The fixture
+    has only v002 and asks for max_version=2; v002 is filtered
+    out (version >= max_version), no candidates remain, return
+    False.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v002").mkdir()
+    children = sorted(history.iterdir())
+    assert (
+        prune_history._oldest_below_has_pruned_marker(  # noqa: SLF001
+            children=children,
+            max_version=2,
+        )
+        is False
+    )

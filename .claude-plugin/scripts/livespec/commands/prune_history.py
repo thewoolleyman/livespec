@@ -123,17 +123,21 @@ def _resolve_spec_root(*, namespace: argparse.Namespace) -> Path:
 
 
 def _maybe_no_op(*, children: list[Path]) -> IOResult[None, LivespecError]:
-    """Emit the no-op skipped finding when only v001 exists; else continue.
+    """Emit the no-op skipped finding when either short-circuit fires; else continue.
 
-    Per v012 spec.md prune-history no-op short-circuit (i): when
-    `<spec-root>/history/` contains only `v001`, the wrapper emits
-    a single-finding skipped JSON document to stdout and exits 0
-    without any deletion. Subsequent cycles widen this to also
-    detect short-circuit (ii) (oldest surviving is already
-    `PRUNED_HISTORY.json`) and to perform the actual prune.
+    Per v012 spec.md prune-history no-op short-circuits: (i) only
+    `v001` exists; (ii) the oldest surviving v-directory already
+    contains a `PRUNED_HISTORY.json` marker. On either, the
+    wrapper emits a single-finding skipped JSON document to
+    stdout and exits 0 without any deletion. Subsequent cycles
+    widen the dispatch to perform the actual prune mechanic when
+    neither no-op fires.
     """
     max_version = _find_max_version(children=children)
     if max_version == 1:
+        _emit_no_op_finding()
+        return IOResult.from_value(None)
+    if _oldest_below_has_pruned_marker(children=children, max_version=max_version):
         _emit_no_op_finding()
     return IOResult.from_value(None)
 
@@ -157,6 +161,34 @@ def _find_max_version(*, children: list[Path]) -> int:
             continue
         max_version = max(max_version, int(suffix))
     return max_version
+
+
+def _oldest_below_has_pruned_marker(*, children: list[Path], max_version: int) -> bool:
+    """Whether the smallest-K v-directory (K < max_version) holds a PRUNED_HISTORY.json.
+
+    Per v012 spec.md no-op short-circuit (ii): when the oldest
+    surviving v-directory below the current max already carries a
+    `PRUNED_HISTORY.json` marker, no full versions remain to prune
+    below the prior marker. `children` is pre-sorted by
+    `fs.list_dir`, so the FIRST eligible v-directory encountered
+    IS the smallest-K; we return its marker presence directly.
+    Returns False when no eligible v-directory exists below
+    `max_version`.
+    """
+    for child in children:
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not name.startswith("v"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        version = int(suffix)
+        if version >= max_version:
+            continue
+        return (child / "PRUNED_HISTORY.json").is_file()
+    return False
 
 
 def _emit_no_op_finding() -> None:
