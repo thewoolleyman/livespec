@@ -33,6 +33,7 @@ from __future__ import annotations
 from typing import Literal
 
 from livespec.doctor.static import (
+    anchor_reference_resolution,
     bcp14_keyword_wellformedness,
     gherkin_blank_line_format,
     livespec_jsonc_valid,
@@ -62,6 +63,7 @@ STATIC_CHECKS = (
     proposed_change_topic_format,
     bcp14_keyword_wellformedness,
     gherkin_blank_line_format,
+    anchor_reference_resolution,
 )
 
 
@@ -76,5 +78,6 @@ APPLICABILITY_BY_TREE_KIND: dict[TreeKind, tuple[object, ...]] = {
         proposed_change_topic_format,
         bcp14_keyword_wellformedness,
         gherkin_blank_line_format,
+        anchor_reference_resolution,
     ),
 }
