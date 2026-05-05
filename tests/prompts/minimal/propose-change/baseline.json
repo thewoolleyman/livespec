@@ -1,0 +1,22 @@
+{
+  "prompt_name": "propose-change",
+  "schema_id": "proposal_findings.schema.json",
+  "input_context": {
+    "spec_target": "SPECIFICATION.md",
+    "user_described_change": "Bump the maintainer-review cadence from quarterly to monthly."
+  },
+  "replayed_response": {
+    "author": "Claude Opus 4.7 (1M context)",
+    "findings": [
+      {
+        "name": "Tighten maintenance review cadence",
+        "target_spec_files": ["SPECIFICATION.md"],
+        "summary": "The maintainer MUST review issues and pull requests at least once per month, replacing the prior quarterly cadence.",
+        "motivation": "User reports the quarterly cadence allowed three open security advisories to age past their disclosure SLA. Monthly review keeps the SLA reachable while staying lightweight enough for a single-maintainer project.",
+        "proposed_changes": "Replace the §\"Cadence\" paragraph in `SPECIFICATION.md` with: \"The maintainer MUST review issues and pull requests at least once per month. The maintainer MUST publish a monthly summary noting any unresolved security advisories.\""
+      }
+    ]
+  },
+  "expected_schema_valid": true,
+  "expected_semantic_properties": []
+}
