@@ -180,12 +180,12 @@ def test_prune_history_main_does_not_short_circuit_on_only_v001_guard_when_max_v
     and v002, so max_version = 2; the (i) short-circuit does NOT
     fire. The (ii) short-circuit ALSO does not fire (v001 has no
     `PRUNED_HISTORY.json`), so the wrapper proceeds into
-    carry-forward `first` resolution per spec.md step (b). Cycle
-    6.c.5 emits the no-op-pending-prune-mechanic placeholder
-    finding (acting on the resolved `first` is reserved for
-    cycles 6.c.6+), so we assert the placeholder finding is on
-    stdout. Subsequent cycles replace the placeholder with the
-    full 5-step mechanic.
+    carry-forward `first` resolution per spec.md step (b) and the
+    full 5-step mechanic. With N=2: step (c) deletes nothing (no
+    K<N-1=1); step (d) replaces v(N-1)=v001 contents with
+    `PRUNED_HISTORY.json` carrying `{"pruned_range": [1, 1]}`;
+    step (e) leaves v002 (vN) intact. The supervisor emits the
+    `prune-history-pruned` `pass` finding.
     """
     spec_root = tmp_path / "SPECIFICATION"
     (spec_root / "history" / "v001").mkdir(parents=True)
@@ -194,7 +194,13 @@ def test_prune_history_main_does_not_short_circuit_on_only_v001_guard_when_max_v
     captured = capsys.readouterr()
     assert exit_code == 0
     payload = json.loads(captured.out)
-    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert payload["findings"][0]["check_id"] == "prune-history-pruned"
+    assert payload["findings"][0]["status"] == "pass"
+    marker_path = spec_root / "history" / "v001" / "PRUNED_HISTORY.json"
+    assert marker_path.is_file()
+    marker_payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    assert marker_payload == {"pruned_range": [1, 1]}
+    assert (spec_root / "history" / "v002").is_dir()
 
 
 def test_prune_history_find_max_version_skips_non_directory_entries(
@@ -602,12 +608,17 @@ def test_prune_history_main_resolves_first_via_marker_at_n_minus_1(
     `pruned_range[0]`. Fixture is constructed so the (ii) no-op
     short-circuit does NOT fire (v002 — the OLDEST surviving v-
     dir below max=5 — has NO marker), but v(N-1)=v004 DOES
-    carry a marker. The resolver path runs end-to-end through
-    the impure `fs.read_text` boundary, exercising the integration
-    seam between `_run_prune` and `_resolve_first`. Cycle 6.c.5
-    does NOT yet act on the resolved `first`; the wrapper still
-    emits the no-op finding for now (acting is reserved for
-    cycles 6.c.6+).
+    carry a marker `{"pruned_range": [3, 4]}` (so first=3). The
+    resolver path runs end-to-end through the impure
+    `fs.read_text` boundary, exercising the integration seam
+    between `_run_prune` and `_resolve_first`. With N=5, step (c)
+    deletes v002 + v003 (K<4); step (d) replaces v004's contents
+    with a fresh `PRUNED_HISTORY.json` carrying
+    `{"pruned_range": [3, 4]}` (the marker is rewritten with
+    first carried forward and last advanced to N-1=4 — same
+    payload here since first was already 3 and last was already
+    4); step (e) leaves v005 intact. The supervisor emits the
+    `prune-history-pruned` `pass` finding.
     """
     spec_root = tmp_path / "SPECIFICATION"
     (spec_root / "history" / "v002").mkdir(parents=True)
@@ -622,8 +633,15 @@ def test_prune_history_main_resolves_first_via_marker_at_n_minus_1(
     captured = capsys.readouterr()
     assert exit_code == 0
     payload = json.loads(captured.out)
-    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
-    assert payload["findings"][0]["status"] == "skipped"
+    assert payload["findings"][0]["check_id"] == "prune-history-pruned"
+    assert payload["findings"][0]["status"] == "pass"
+    assert not (spec_root / "history" / "v002").exists()
+    assert not (spec_root / "history" / "v003").exists()
+    marker_path = spec_root / "history" / "v004" / "PRUNED_HISTORY.json"
+    assert marker_path.is_file()
+    marker_payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    assert marker_payload == {"pruned_range": [3, 4]}
+    assert (spec_root / "history" / "v005").is_dir()
 
 
 def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent_at_n_minus_1(
@@ -641,10 +659,14 @@ def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent
     below max=5 — has NO marker) AND v(N-1)=v004 has NO marker
     either. The resolver path runs through the marker-absent
     impure branch (no `fs.read_text` is invoked) and the pure
-    resolver is called with `prior_marker_text=None`. Cycle
-    6.c.5 still emits no-op (no acting yet). At cycle 6.c.6b the
-    deletion mechanic widens; v002/v003 (K < N-1 = 4) are
-    expected to be removed, v004 + v005 remain.
+    resolver is called with `prior_marker_text=None`. At cycle
+    6.c.6b the deletion mechanic widens; v002/v003 (K < N-1 = 4)
+    are removed, v004 + v005 remain. At cycle 6.c.7 the
+    full step (d) marker write replaces v004's contents with a
+    single `PRUNED_HISTORY.json` file containing
+    `{"pruned_range": [first, N-1]}` and the supervisor emits
+    the `prune-history-pruned` `pass` finding instead of the
+    `prune-history-no-op` placeholder.
     """
     spec_root = tmp_path / "SPECIFICATION"
     (spec_root / "history" / "v002").mkdir(parents=True)
@@ -655,8 +677,8 @@ def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent
     captured = capsys.readouterr()
     assert exit_code == 0
     payload = json.loads(captured.out)
-    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
-    assert payload["findings"][0]["status"] == "skipped"
+    assert payload["findings"][0]["check_id"] == "prune-history-pruned"
+    assert payload["findings"][0]["status"] == "pass"
     # Per v012 spec.md prune-history paragraph step (c): every
     # `<spec-root>/history/vK/` with K < N-1 is deleted. With
     # N=5, that means v002 + v003 are gone; v004 + v005 remain.
@@ -664,6 +686,20 @@ def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent
     assert not (spec_root / "history" / "v003").exists()
     assert (spec_root / "history" / "v004").is_dir()
     assert (spec_root / "history" / "v005").is_dir()
+    # Per v012 spec.md prune-history paragraph step (d): v(N-1)
+    # contents are replaced with a single PRUNED_HISTORY.json
+    # carrying `{"pruned_range": [first, N-1]}`. With first=2
+    # (smallest surviving v-dir, marker-absent branch) and N=5,
+    # the marker contains `{"pruned_range": [2, 4]}`.
+    marker_path = spec_root / "history" / "v004" / "PRUNED_HISTORY.json"
+    assert marker_path.is_file()
+    marker_payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    assert marker_payload == {"pruned_range": [2, 4]}
+    # Step (e): vN (here v005) is left fully intact — no marker
+    # was written into v005, no contents were rearranged. The
+    # `is_dir()` assertion above covers existence; this asserts
+    # the absence of a stray marker file inside v005.
+    assert list((spec_root / "history" / "v005").iterdir()) == []
 
 
 def test_prune_history_v_dirs_below_threshold_returns_empty_when_max_version_is_one(
@@ -833,15 +869,19 @@ def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_4(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md prune-history step (c): with N=4, v001 + v002 are deleted.
+    """Per v012 spec.md prune-history step (c)+(d): with N=4, v001+v002 deleted, v003 marker-replaced.
 
-    Fixture sets up v001/v002/v003/v004 (N=4); after prune-history
-    runs, v001 (K=1<3) and v002 (K=2<3) are gone; v003 (K=3=N-1,
-    preserved at this cycle) and v004 (vN, fully intact) remain.
-    Drives the supervisor-level integration through
-    `_delete_old_v_dirs` end-to-end via `fs.rmtree`. Sub-content
-    inside v001/v002 is included in the fixture to confirm
-    recursive deletion (not just empty-dir removal).
+    Fixture sets up v001/v002/v003/v004 (N=4) with sub-content
+    in v001 + v002 + v003 to confirm recursive deletion. After
+    prune-history runs, step (c) removes v001 (K=1<3) and v002
+    (K=2<3); step (d) replaces v003's contents (K=3=N-1) with a
+    single `PRUNED_HISTORY.json` containing
+    `{"pruned_range": [1, 3]}`; step (e) leaves v004 (vN) fully
+    intact. The supervisor emits the `prune-history-pruned`
+    `pass` finding to stdout. Drives the supervisor-level
+    integration through `_delete_old_v_dirs` +
+    `_replace_v_n_minus_one_with_marker` end-to-end via
+    `fs.rmtree` and `fs.write_text`.
     """
     spec_root = tmp_path / "SPECIFICATION"
     (spec_root / "history" / "v001").mkdir(parents=True)
@@ -856,16 +896,36 @@ def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_4(
         encoding="utf-8",
     )
     (spec_root / "history" / "v003").mkdir()
+    # Sub-content inside v003 confirms `rmtree` runs on v(N-1)
+    # before the marker write — not just empty-dir removal.
+    _ = (spec_root / "history" / "v003" / "spec.md").write_text(
+        "# v003\n",
+        encoding="utf-8",
+    )
+    (spec_root / "history" / "v003" / "proposed_changes").mkdir()
+    _ = (spec_root / "history" / "v003" / "proposed_changes" / "leftover.md").write_text(
+        "## leftover\n",
+        encoding="utf-8",
+    )
     (spec_root / "history" / "v004").mkdir()
     exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
     captured = capsys.readouterr()
     assert exit_code == 0
     payload = json.loads(captured.out)
-    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert payload["findings"][0]["check_id"] == "prune-history-pruned"
+    assert payload["findings"][0]["status"] == "pass"
     assert not (spec_root / "history" / "v001").exists()
     assert not (spec_root / "history" / "v002").exists()
     assert (spec_root / "history" / "v003").is_dir()
     assert (spec_root / "history" / "v004").is_dir()
+    # Step (d): v003's contents are exactly one PRUNED_HISTORY.json
+    # carrying `{"pruned_range": [1, 3]}`. The leftover sub-content
+    # written to v003 above MUST be gone (rmtree before write).
+    marker_path = spec_root / "history" / "v003" / "PRUNED_HISTORY.json"
+    assert marker_path.is_file()
+    marker_payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    assert marker_payload == {"pruned_range": [1, 3]}
+    assert sorted((spec_root / "history" / "v003").iterdir()) == [marker_path]
 
 
 def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_3(
@@ -873,13 +933,13 @@ def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_3(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md prune-history step (c): with N=3, only v001 is deleted.
+    """Per v012 spec.md prune-history step (c)+(d): with N=3, only v001 deleted, v002 marker-replaced.
 
     Fixture sets up v001/v002/v003 (N=3); after prune-history
-    runs, v001 (K=1<2) is gone; v002 (K=2=N-1, preserved at this
-    cycle) and v003 (vN, fully intact) remain. Drives the
-    supervisor-level integration with the smallest non-trivial
-    deletion set (single path).
+    runs, step (c) removes v001 (K=1<2); step (d) replaces v002's
+    contents (K=2=N-1) with `PRUNED_HISTORY.json` containing
+    `{"pruned_range": [1, 2]}`; step (e) leaves v003 (vN) fully
+    intact. Smallest non-trivial deletion set (single path).
     """
     spec_root = tmp_path / "SPECIFICATION"
     (spec_root / "history" / "v001").mkdir(parents=True)
@@ -889,7 +949,224 @@ def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_3(
     captured = capsys.readouterr()
     assert exit_code == 0
     payload = json.loads(captured.out)
-    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert payload["findings"][0]["check_id"] == "prune-history-pruned"
+    assert payload["findings"][0]["status"] == "pass"
     assert not (spec_root / "history" / "v001").exists()
     assert (spec_root / "history" / "v002").is_dir()
     assert (spec_root / "history" / "v003").is_dir()
+    marker_path = spec_root / "history" / "v002" / "PRUNED_HISTORY.json"
+    assert marker_path.is_file()
+    marker_payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    assert marker_payload == {"pruned_range": [1, 2]}
+
+
+def test_prune_history_main_replaces_v_n_minus_one_when_prior_marker_present(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md step (d) with prior marker: v003 marker-replaced carrying first=1.
+
+    Fixture sets up v001/PRUNED_HISTORY.json (carrying
+    `{"pruned_range": [1, 1]}`), v002, v003, v004 (N=4). The (ii)
+    no-op short-circuit does NOT fire — v001 IS the oldest
+    surviving v-dir and DOES carry the marker, so `_oldest_below_
+    has_pruned_marker` returns True. To genuinely exercise the
+    prior-marker prune path we therefore use a different fixture:
+    v001/, v002/PRUNED_HISTORY.json, v003/, v004/. Here v002 is
+    the v(N-1)=v003-1 marker location? No — v(N-1)=v003 with
+    N=4. Let me use a cleaner setup: place the marker at v(N-1)
+    location directly.
+
+    Actual setup: v001 (no marker), v002 (no marker),
+    v003/PRUNED_HISTORY.json (`{"pruned_range": [1, 3]}`),
+    v004, v005. Here N=5, v(N-1)=v004 has no marker, so
+    (ii) does not fire (oldest below max is v001, no marker).
+    The `_resolve_first` reads v(N-1)=v004 marker — but v004
+    has none. So this would still take the marker-absent branch.
+
+    For the prior-marker branch to fire, we need v(N-1) to
+    carry the marker. With N=4, v(N-1)=v003. Set up
+    v001 (no marker), v002 (no marker), v003/PRUNED_HISTORY.json
+    `{"pruned_range": [1, 3]}`, v004. (ii) fires because v001 is
+    oldest and lacks marker; FALSE. Wait: (ii) checks whether
+    OLDEST below max has the marker, not whether v(N-1) does.
+    With max=4 and v001 oldest below, (ii) fires only if v001
+    has the marker. Here v001 doesn't, so (ii) does NOT fire.
+    Then `_resolve_first_via_marker_or_children` reads v003's
+    marker, gets `pruned_range[0] = 1`, so first=1. Step (c)
+    deletes v001 + v002. Step (d) replaces v003 contents with
+    `{"pruned_range": [1, 3]}`. Step (e) leaves v004 intact.
+    """
+    spec_root = tmp_path / "SPECIFICATION"
+    (spec_root / "history" / "v001").mkdir(parents=True)
+    (spec_root / "history" / "v002").mkdir()
+    (spec_root / "history" / "v003").mkdir()
+    _ = (spec_root / "history" / "v003" / "PRUNED_HISTORY.json").write_text(
+        '{"pruned_range": [1, 3]}',
+        encoding="utf-8",
+    )
+    # Also include some content alongside the marker to confirm
+    # rmtree clears it before the new marker is written.
+    _ = (spec_root / "history" / "v003" / "spec.md").write_text(
+        "# v003 stale\n",
+        encoding="utf-8",
+    )
+    (spec_root / "history" / "v004").mkdir()
+    exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["findings"][0]["check_id"] == "prune-history-pruned"
+    assert payload["findings"][0]["status"] == "pass"
+    assert not (spec_root / "history" / "v001").exists()
+    assert not (spec_root / "history" / "v002").exists()
+    marker_path = spec_root / "history" / "v003" / "PRUNED_HISTORY.json"
+    assert marker_path.is_file()
+    marker_payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    # `first` carries forward from the prior marker (which read
+    # `[1, 3]`); v(N-1)=v003 last is N-1=3. The new marker is a
+    # rewrite carrying the same payload — but stale sibling
+    # content (spec.md) is gone.
+    assert marker_payload == {"pruned_range": [1, 3]}
+    assert sorted((spec_root / "history" / "v003").iterdir()) == [marker_path]
+    assert (spec_root / "history" / "v004").is_dir()
+
+
+def test_prune_history_main_writes_marker_when_history_starts_at_v005(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md step (d): non-1-based history → marker first reflects smallest v-dir.
+
+    Fixture sets up v005/v006/v007 (history begins at v005, no
+    prior marker, max=7, max-1=6). The (ii) no-op short-circuit
+    does NOT fire (v005 is oldest below max=7 and has no marker).
+    The `_resolve_first` falls back to smallest v-dir → first=5.
+    Step (c) deletes v005 (K=5<6). Step (d) replaces v006 with
+    `PRUNED_HISTORY.json` carrying `{"pruned_range": [5, 6]}`.
+    Step (e) leaves v007 intact. Confirms the marker-first
+    field is NOT hard-coded to 1.
+    """
+    spec_root = tmp_path / "SPECIFICATION"
+    (spec_root / "history" / "v005").mkdir(parents=True)
+    (spec_root / "history" / "v006").mkdir()
+    (spec_root / "history" / "v007").mkdir()
+    exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["findings"][0]["check_id"] == "prune-history-pruned"
+    assert payload["findings"][0]["status"] == "pass"
+    assert not (spec_root / "history" / "v005").exists()
+    assert (spec_root / "history" / "v006").is_dir()
+    assert (spec_root / "history" / "v007").is_dir()
+    marker_path = spec_root / "history" / "v006" / "PRUNED_HISTORY.json"
+    assert marker_path.is_file()
+    marker_payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    assert marker_payload == {"pruned_range": [5, 6]}
+
+
+def test_prune_history_build_pruned_history_marker_with_first_one_last_three(
+    *,
+    tmp_path: Path,  # noqa: ARG001
+) -> None:
+    """`_build_pruned_history_marker` returns the canonical JSON shape.
+
+    Per v012 spec.md prune-history paragraph step (d): the marker
+    contains exactly `{"pruned_range": [first, N-1]}` with no
+    timestamps, git SHAs, or identity fields (no-metadata
+    invariant). Drives the pure helper with first=1, last=3.
+    """
+    text = prune_history._build_pruned_history_marker(  # noqa: SLF001
+        first=1,
+        last=3,
+    )
+    assert json.loads(text) == {"pruned_range": [1, 3]}
+
+
+def test_prune_history_build_pruned_history_marker_with_carry_forward_first(
+    *,
+    tmp_path: Path,  # noqa: ARG001
+) -> None:
+    """`_build_pruned_history_marker` carries forward an arbitrary `first` value.
+
+    Drives the pure helper with first=5, last=6 — the
+    non-1-based history scenario where `first` was resolved from
+    the smallest surviving v-dir (and NOT hard-coded to 1).
+    """
+    text = prune_history._build_pruned_history_marker(  # noqa: SLF001
+        first=5,
+        last=6,
+    )
+    assert json.loads(text) == {"pruned_range": [5, 6]}
+
+
+def test_prune_history_replace_v_n_minus_one_with_marker_replaces_existing_contents(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_replace_v_n_minus_one_with_marker` rmtree's v(N-1) and writes the marker.
+
+    Drives the impure helper end-to-end via the real filesystem.
+    Fixture sets up `<history>/v002/spec.md` + `v002/sub/dir/`;
+    after the helper runs, the only file under v002 MUST be
+    `PRUNED_HISTORY.json` with the canonical content.
+    """
+    history = tmp_path / "history"
+    v_n_minus_one = history / "v002"
+    v_n_minus_one.mkdir(parents=True)
+    _ = (v_n_minus_one / "spec.md").write_text("# stale\n", encoding="utf-8")
+    (v_n_minus_one / "sub").mkdir()
+    _ = (v_n_minus_one / "sub" / "leftover.md").write_text(
+        "## leftover\n",
+        encoding="utf-8",
+    )
+    result = prune_history._replace_v_n_minus_one_with_marker(  # noqa: SLF001
+        history_root=history,
+        max_version=3,
+        first=1,
+    )
+    from returns.unsafe import unsafe_perform_io
+
+    unwrapped = unsafe_perform_io(result)
+    from returns.result import Success
+
+    assert isinstance(unwrapped, Success)
+    marker_path = v_n_minus_one / "PRUNED_HISTORY.json"
+    assert marker_path.is_file()
+    assert json.loads(marker_path.read_text(encoding="utf-8")) == {
+        "pruned_range": [1, 2],
+    }
+    assert sorted(v_n_minus_one.iterdir()) == [marker_path]
+
+
+def test_prune_history_replace_v_n_minus_one_with_marker_propagates_rmtree_failure(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_replace_v_n_minus_one_with_marker` lifts an rmtree OSError to IOFailure.
+
+    Fixture sets up an empty `<history>/` with NO v002/ child
+    (the rmtree target is absent). `fs.rmtree` lifts the
+    FileNotFoundError to PreconditionError; the helper short-
+    circuits and the marker write does NOT execute.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    result = prune_history._replace_v_n_minus_one_with_marker(  # noqa: SLF001
+        history_root=history,
+        max_version=3,
+        first=1,
+    )
+    from livespec.errors import PreconditionError
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
+
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Failure)
+    assert isinstance(unwrapped.failure(), PreconditionError)
+    # Marker MUST NOT have been written: v(N-1) didn't exist, so
+    # the rmtree failed and `bind` short-circuited the write.
+    assert not (history / "v002" / "PRUNED_HISTORY.json").exists()

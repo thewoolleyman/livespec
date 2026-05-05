@@ -153,19 +153,23 @@ def _maybe_no_op_or_resolve(
     if _oldest_below_has_pruned_marker(children=children, max_version=max_version):
         _emit_no_op_finding()
         return IOResult.from_value(None)
-    return (
-        _resolve_first_via_marker_or_children(
+    return _resolve_first_via_marker_or_children(
+        children=children,
+        max_version=max_version,
+        history_root=history_root,
+    ).bind(
+        lambda first: _delete_old_v_dirs(
             children=children,
             max_version=max_version,
-            history_root=history_root,
         )
         .bind(
-            lambda _first: _delete_old_v_dirs(
-                children=children,
+            lambda _none: _replace_v_n_minus_one_with_marker(
+                history_root=history_root,
                 max_version=max_version,
+                first=first,
             ),
         )
-        .bind(lambda _none: _emit_no_op_pending_prune_mechanic())
+        .map(lambda _none: _emit_pruned_finding(first=first, last=max_version - 1)),
     )
 
 
@@ -346,19 +350,67 @@ def _delete_old_v_dirs(
     return railway
 
 
-def _emit_no_op_pending_prune_mechanic() -> IOResult[None, LivespecError]:
-    """Emit the no-op finding pending the marker-write widening at cycle 6.c.7.
+def _build_pruned_history_marker(*, first: int, last: int) -> str:
+    """Build the canonical `PRUNED_HISTORY.json` body per v012 spec.md step (d).
 
-    Cycle 6.c.6 widens the supervisor with the destructive
-    deletion of every `<spec-root>/history/vK/` where K < N-1
-    per v012 spec.md prune-history paragraph step (c). The
-    wrapper still emits the canonical `prune-history-no-op`
-    skipped finding to stdout and exits 0 — the proper success
-    finding emit lands at cycle 6.c.7 once the v(N-1) marker is
-    materialized.
+    The marker is exactly `{"pruned_range": [first, N-1]}` — no
+    timestamps, git SHAs, or identity fields (no-metadata
+    invariant; git commit metadata already provides that audit
+    context). Pure helper so unit tests cover the JSON shape
+    without filesystem I/O.
     """
-    _emit_no_op_finding()
-    return IOResult.from_value(None)
+    return json.dumps({"pruned_range": [first, last]})
+
+
+def _replace_v_n_minus_one_with_marker(
+    *,
+    history_root: Path,
+    max_version: int,
+    first: int,
+) -> IOResult[None, LivespecError]:
+    """Replace v(N-1)/ contents with a single PRUNED_HISTORY.json marker.
+
+    Per v012 spec.md prune-history paragraph step (d): rmtree
+    `<spec-root>/history/v(N-1)/` (clearing any leftover content
+    including a stale prior marker), then write the fresh marker
+    at `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json`. The
+    `fs.write_text` boundary auto-creates the parent directory
+    via `mkdir(parents=True, exist_ok=True)` so no separate
+    mkdir stage is needed. Threaded through the railway so an
+    rmtree OSError lifts to `IOFailure(PreconditionError)` and
+    short-circuits the marker write.
+    """
+    v_n_minus_one = history_root / f"v{max_version - 1:03d}"
+    marker_path = v_n_minus_one / "PRUNED_HISTORY.json"
+    text = _build_pruned_history_marker(first=first, last=max_version - 1)
+    return fs.rmtree(path=v_n_minus_one).bind(
+        lambda _none: fs.write_text(path=marker_path, text=text),
+    )
+
+
+def _emit_pruned_finding(*, first: int, last: int) -> None:
+    """Write the canonical `prune-history-pruned` pass finding to stdout.
+
+    Per v012 spec.md prune-history paragraph: the wrapper emits a
+    single-finding JSON document to stdout describing the
+    completed prune. The `commands/`-tree exemption in the
+    `check-no-write-direct` allowlist permits this stdout-write.
+    `first` and `last` are interpolated into the human-readable
+    message; the structured payload preserves them as the
+    canonical pruned-range pair.
+    """
+    payload = {
+        "findings": [
+            {
+                "check_id": "prune-history-pruned",
+                "status": "pass",
+                "message": (
+                    f"pruned v{first:03d}..v{last:03d} into v{last:03d}/PRUNED_HISTORY.json"
+                ),
+            },
+        ],
+    }
+    _ = sys.stdout.write(json.dumps(payload) + "\n")
 
 
 def _emit_no_op_finding() -> None:
