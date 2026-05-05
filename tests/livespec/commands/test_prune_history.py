@@ -48,3 +48,40 @@ def test_prune_history_main_returns_usage_exit_code_on_unknown_flag() -> None:
     """
     exit_code = prune_history.main(argv=["--no-such-flag"])
     assert exit_code == 2
+
+
+def test_prune_history_main_accepts_skip_pre_check_flag() -> None:
+    """`--skip-pre-check` is a recognized optional flag (exit 0).
+
+    Per v012 §"Wrapper CLI surface" prune-history row: the wrapper
+    accepts `--skip-pre-check` as one half of the mutually-exclusive
+    flag pair codified in v012 spec.md §"Pre-step skip control".
+    The Phase-3 minimum-viable parser knows nothing about this
+    flag; exit 0 here pins the post-cycle-6.c.1 contract.
+    """
+    exit_code = prune_history.main(argv=["--skip-pre-check"])
+    assert exit_code == 0
+
+
+def test_prune_history_main_accepts_run_pre_check_flag() -> None:
+    """`--run-pre-check` is a recognized optional flag (exit 0).
+
+    Per v012 §"Wrapper CLI surface" prune-history row: the wrapper
+    accepts `--run-pre-check` as the override-config half of the
+    mutually-exclusive flag pair codified in v012 spec.md
+    §"Pre-step skip control".
+    """
+    exit_code = prune_history.main(argv=["--run-pre-check"])
+    assert exit_code == 0
+
+
+def test_prune_history_main_rejects_both_skip_and_run_pre_check_flags_together() -> None:
+    """Passing both `--skip-pre-check` AND `--run-pre-check` exits 2.
+
+    Per v012 spec.md §"Pre-step skip control" rule (4): both flags
+    set together MUST result in argparse mutually-exclusive usage
+    error, lifting to exit 2 via `IOFailure(UsageError)`. Drives
+    the `add_mutually_exclusive_group` enforcement.
+    """
+    exit_code = prune_history.main(argv=["--skip-pre-check", "--run-pre-check"])
+    assert exit_code == 2

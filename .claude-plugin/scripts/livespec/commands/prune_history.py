@@ -33,14 +33,17 @@ __all__: list[str] = ["build_parser", "main"]
 def build_parser() -> argparse.ArgumentParser:
     """Construct the prune-history argparse parser without parsing.
 
-    Per PROPOSAL.md §"`prune-history`": the
-    wrapper accepts ONLY the mutually-exclusive `--skip-pre-check`
-    / `--run-pre-check` flag pair (per §"Pre-step skip control");
-    no other arguments in v1. Phase 3 lands the bare parser; the
-    pre-check logic widens in Phase 7 once the mutually-exclusive
-    flag pair is enforced.
+    Per v012 spec.md §"Pre-step skip control" rule: the wrapper
+    declares an `add_mutually_exclusive_group` carrying the two
+    flags `--skip-pre-check` / `--run-pre-check`; passing both
+    together lifts to argparse usage error → exit 2 via
+    `IOFailure(UsageError)`. Subsequent cycles add `--project-root
+    <path>` and the body operation.
     """
     parser = argparse.ArgumentParser(prog="prune-history", exit_on_error=False)
+    pre_check_group = parser.add_mutually_exclusive_group()
+    _ = pre_check_group.add_argument("--skip-pre-check", action="store_true")
+    _ = pre_check_group.add_argument("--run-pre-check", action="store_true")
     return parser
 
 
