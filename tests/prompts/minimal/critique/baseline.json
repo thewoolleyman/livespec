@@ -1,0 +1,22 @@
+{
+  "prompt_name": "critique",
+  "schema_id": "proposal_findings.schema.json",
+  "input_context": {
+    "spec_target": "SPECIFICATION.md",
+    "current_spec_files": ["SPECIFICATION.md"]
+  },
+  "replayed_response": {
+    "author": "Claude Opus 4.7 (1M context)",
+    "findings": [
+      {
+        "name": "Cadence section silent on missed-month escalation",
+        "target_spec_files": ["SPECIFICATION.md"],
+        "summary": "The §\"Cadence\" paragraph mandates a monthly review but does not specify what happens if a month is missed. A maintainer reading the spec MAY infer no recovery is required, leaving the SLA contract ambiguous.",
+        "motivation": "The minimal template's catalogue prioritizes contradictions and ambiguities. The current cadence text mandates monthly review without an escalation clause, leaving readers without explicit guidance for a recurring real-world failure mode.",
+        "proposed_changes": "Append a paragraph to §\"Cadence\" specifying: \"If the maintainer misses a monthly review, the next review MUST cover both months and the monthly summary MUST flag the gap explicitly.\""
+      }
+    ]
+  },
+  "expected_schema_valid": true,
+  "expected_semantic_properties": []
+}
