@@ -1,0 +1,34 @@
+{
+  "prompt_name": "seed",
+  "schema_id": "seed_input.schema.json",
+  "input_context": {
+    "template": "livespec",
+    "intent": "Build a small CLI tool that prints greetings",
+    "ships_own_templates": false
+  },
+  "replayed_response": {
+    "template": "livespec",
+    "intent": "Build a small CLI tool that prints greetings",
+    "files": [
+      {
+        "path": "SPECIFICATION/spec.md",
+        "content": "# Spec\n\n## Project intent\n\nBuild a small CLI tool that prints greetings.\n"
+      },
+      {
+        "path": "SPECIFICATION/contracts.md",
+        "content": "# Contracts\n\n## CLI surface\n\nThe tool MUST accept a `--name <value>` flag and print `Hello, <value>!` on stdout.\n"
+      },
+      {
+        "path": "SPECIFICATION/constraints.md",
+        "content": "# Constraints\n\n## Runtime\n\nThe tool MUST run on Python 3.10 or newer.\n"
+      },
+      {
+        "path": "SPECIFICATION/scenarios.md",
+        "content": "# Scenarios\n\n## Happy-path greeting\n\n```gherkin\nScenario: User passes a name\n  Given the user invokes the tool with `--name Ada`\n  Then the tool prints `Hello, Ada!`\n  And exits 0\n```\n"
+      }
+    ],
+    "sub_specs": []
+  },
+  "expected_schema_valid": true,
+  "expected_semantic_properties": []
+}

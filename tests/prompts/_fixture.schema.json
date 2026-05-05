@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "_fixture.schema.json",
+  "title": "prompt_qa_fixture",
+  "description": "Schema for prompt-QA fixture files under tests/prompts/<template>/<prompt>/<case>.json. Per SPECIFICATION/contracts.md §\"Prompt-QA harness contract\" (v014).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "prompt_name",
+    "schema_id",
+    "input_context",
+    "replayed_response",
+    "expected_schema_valid",
+    "expected_semantic_properties"
+  ],
+  "properties": {
+    "prompt_name": {
+      "type": "string",
+      "enum": ["seed", "propose-change", "revise", "critique"],
+      "description": "The REQUIRED-prompt name this fixture exercises."
+    },
+    "schema_id": {
+      "type": "string",
+      "enum": [
+        "seed_input.schema.json",
+        "proposal_findings.schema.json",
+        "revise_input.schema.json"
+      ],
+      "description": "The named wire-contract schema replayed_response MUST validate against (or, when expected_schema_valid is false, MUST FAIL to validate against)."
+    },
+    "input_context": {
+      "type": "object",
+      "description": "Variables the skill prose would pass to the prompt at invocation time. Shape is template-specific."
+    },
+    "replayed_response": {
+      "type": "object",
+      "description": "Canonical LLM-output JSON the harness asserts against."
+    },
+    "expected_schema_valid": {
+      "type": "boolean",
+      "description": "Whether replayed_response is expected to validate against schema_id. False reserved for negative-test fixtures."
+    },
+    "expected_semantic_properties": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Property names the harness MUST invoke against replayed_response via the per-template ASSERTIONS dict."
+    }
+  }
+}
