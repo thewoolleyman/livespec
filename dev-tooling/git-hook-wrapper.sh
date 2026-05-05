@@ -10,8 +10,17 @@
 # search entirely by invoking mise directly (mise itself resolves to
 # `/usr/bin/mise`, which is on every shell's default PATH).
 #
+# `--no-auto-install` is critical: without it, every `lefthook run` invocation
+# attempts to "sync" `.git/hooks/<name>` against lefthook's own standard
+# template, which (a) backs up our custom wrapper to `<name>.old` and (b)
+# replaces the active hook with the PATH-searching standard wrapper that
+# silently no-ops in Claude Code's bash. The auto-sync is fundamentally
+# incompatible with our custom-wrapper design — its "fix" defeats the very
+# purpose of this wrapper. `--no-auto-install` disables the sync attempt,
+# eliminating both the `sync hooks: ❌` warning noise and the clobber risk.
+#
 # `just bootstrap` installs this same script as both `.git/hooks/pre-commit`
 # and `.git/hooks/pre-push`; the basename of `$0` distinguishes which hook
 # is firing so lefthook can dispatch the right command list from `lefthook.yml`.
 HOOK_NAME="$(basename "$0")"
-exec mise exec lefthook -- lefthook run "$HOOK_NAME" "$@"
+exec mise exec lefthook -- lefthook run --no-auto-install "$HOOK_NAME" "$@"
