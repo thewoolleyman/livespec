@@ -1,0 +1,22 @@
+{
+  "prompt_name": "propose-change",
+  "schema_id": "proposal_findings.schema.json",
+  "input_context": {
+    "spec_target": "SPECIFICATION/",
+    "user_described_change": "Add a CLI flag --quiet that suppresses non-error output across every wrapper."
+  },
+  "replayed_response": {
+    "author": "Claude Opus 4.7 (1M context)",
+    "findings": [
+      {
+        "name": "Universal --quiet flag",
+        "target_spec_files": ["SPECIFICATION/contracts.md"],
+        "summary": "Every wrapper MUST accept an optional --quiet flag that suppresses non-error stdout/stderr output. Error diagnostics MUST continue to print regardless.",
+        "motivation": "Users running `livespec` from CI workflows want a stripped-down output surface. The flag is universal so SKILL.md prose can be written generically.",
+        "proposed_changes": "Append a new row to the wrapper-CLI surface table in `SPECIFICATION/contracts.md` introducing `--quiet` as a baseline optional flag alongside `--project-root <path>`. Each wrapper MUST suppress its non-error stdout (e.g., the seed wrapper's success message) while continuing to emit structured findings on stderr."
+      }
+    ]
+  },
+  "expected_schema_valid": true,
+  "expected_semantic_properties": []
+}
