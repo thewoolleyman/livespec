@@ -1,0 +1,27 @@
+{
+  "prompt_name": "critique",
+  "schema_id": "proposal_findings.schema.json",
+  "input_context": {
+    "spec_target": "SPECIFICATION/",
+    "current_spec_files": [
+      "SPECIFICATION/spec.md",
+      "SPECIFICATION/contracts.md",
+      "SPECIFICATION/constraints.md",
+      "SPECIFICATION/scenarios.md"
+    ]
+  },
+  "replayed_response": {
+    "author": "Claude Opus 4.7 (1M context)",
+    "findings": [
+      {
+        "name": "Ambiguous --quiet semantics across wrappers",
+        "target_spec_files": ["SPECIFICATION/contracts.md"],
+        "summary": "The wrapper-CLI surface table introduces `--quiet` as a baseline optional flag without specifying which output channels (stdout, stderr, structured findings) it suppresses. Different wrappers MAY interpret the flag differently, producing inconsistent behavior across the CLI surface.",
+        "motivation": "Critique findings MUST ground in the spec's current state. The `--quiet` row exists in `SPECIFICATION/contracts.md` §\"Wrapper CLI surface\" but no companion paragraph defines its observable effect. Treating this as an ambiguity over a wording-style suggestion is appropriate per the catalogue's prioritization rule.",
+        "proposed_changes": "Append a paragraph to §\"Wrapper CLI surface\" specifying that `--quiet` suppresses non-error stdout text only; structured findings on stdout (e.g., doctor static-phase JSON output) are NOT suppressed; stderr error diagnostics are NOT suppressed. Each wrapper's lifecycle MUST honor this contract."
+      }
+    ]
+  },
+  "expected_schema_valid": true,
+  "expected_semantic_properties": []
+}
