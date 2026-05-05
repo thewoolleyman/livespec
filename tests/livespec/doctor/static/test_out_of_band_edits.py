@@ -2,10 +2,12 @@
 
 Per Plan Phase 7 sub-step 7.a + PROPOSAL.md §"`doctor` →
 Static-phase checks": the `out-of-band-edits` check detects
-working-tree spec files whose contents have diverged from their
-HEAD blob. It is the only check whose `run()` has a narrow
-auto-backfill write path (per `static/CLAUDE.md`); divergence
-detection + auto-backfill land in 7.a.iii / 7.a.iv.
+HEAD-committed spec files whose contents have diverged from
+their HEAD-committed `history/vN/` snapshot. It is the only
+check whose `run()` has a narrow auto-backfill write path (per
+`static/CLAUDE.md`); auto-backfill on detected drift lands in
+sub-step 7.a.v. Cycle 7.a.iv (redo) lands ONLY the detection
+half — no writes.
 
 Cycle 7.a.ii lands the skeleton + registry wiring + the first
 two pinned behaviors:
@@ -21,7 +23,9 @@ two pinned behaviors:
     emits a placeholder pass-Finding. Divergence detection lands
     in 7.a.iv; until then the placeholder keeps the aggregate
     `just check` gate green for the project itself (which IS a
-    git repo).
+    git repo). Cycle 7.a.iv (redo) replaces this placeholder
+    with real HEAD-active-vs-HEAD-history-vN divergence
+    detection.
 
 The SLUG ↔ check_id literal mapping (`doctor-out-of-band-edits`)
 is also pinned per the `static/CLAUDE.md` registry convention.
@@ -54,6 +58,33 @@ backfill before re-running). Per memory
 feedback_domain_errors_vs_bugs the leftover state is an EXPECTED
 business outcome, not a bug, so it stays on the IOSuccess track
 with `status="skipped"` rather than lifting to IOFailure.
+
+Cycle 7.a.iv (redo) replaces the placeholder pass-Finding with
+HEAD-committed-active-vs-HEAD-committed-history-vN comparison
+(PROPOSAL §"Static-phase checks → out-of-band-edits →
+Comparison": "diffs `git show HEAD:<spec-root>/<spec-file>`
+against `git show HEAD:<spec-root>/history/vN/<spec-file>` for
+each top-level spec file. Both sides are HEAD-committed
+artifacts; working-tree WIP is ignored for the comparison.").
+
+The "template-declared spec files" enumeration is realized as
+"the immediate top-level files at HEAD under `<spec-root>/`",
+walked via `livespec.io.git.list_at_head`. Subdirs
+(`history/`, `proposed_changes/`, `templates/`) are excluded
+by ls-tree's blob-only filter, so the enumeration matches the
+top-level *.md files the seed materializes.
+
+Edge case decisions (PROPOSAL is silent; codified here):
+
+  - No `<spec-root>/history/` at HEAD: emits `status="pass"`
+    with a "no history baseline" message. This is a benign
+    "post-seed pre-revise" state — there's nothing to compare
+    against — and the pre-backfill guard already covers the
+    leftover-from-prior-backfill cases that would otherwise
+    land here.
+  - `history/` at HEAD with no `vNNN/` subdirs (only
+    `README.md` or similar): same as above. Without a vN to
+    diff against, "no drift" is the correct outcome.
 
 Per memory feedback_test_cwd_isolation, every git-fixture test
 sets `monkeypatch.chdir(tmp_path)` so the surrounding livespec
@@ -90,6 +121,41 @@ def _git_init(*, repo_root: Path) -> None:
         check=True,
         capture_output=True,
     )
+    _ = subprocess.run(
+        ["git", "config", "--local", "user.email", "fixture@example.com"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+    )
+    _ = subprocess.run(
+        ["git", "config", "--local", "user.name", "Fixture User"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+    )
+
+
+def _git_commit_paths(*, repo_root: Path, paths: list[Path], message: str = "fixture") -> None:
+    """Stage `paths` (relative to repo_root) and commit them.
+
+    Each path must already exist under `repo_root` with the
+    desired content; this helper only stages + commits. Used
+    to land HEAD-committed state for the divergence-detection
+    fixtures so the comparison runs against real HEAD blobs.
+    """
+    relative_paths = [str(path.relative_to(repo_root)) for path in paths]
+    _ = subprocess.run(
+        ["git", "add", *relative_paths],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+    )
+    _ = subprocess.run(
+        ["git", "commit", "--quiet", "-m", message],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+    )
 
 
 def test_run_returns_skipped_when_spec_root_is_not_in_git_repo(
@@ -122,41 +188,6 @@ def test_run_returns_skipped_when_spec_root_is_not_in_git_repo(
         check_id="doctor-out-of-band-edits",
         status="skipped",
         message="spec_root is not inside a git working tree",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert out_of_band_edits.run(ctx=ctx) == IOSuccess(expected)
-
-
-def test_run_returns_pass_placeholder_when_spec_root_is_in_git_repo(
-    *,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """run(ctx) returns IOSuccess(pass-placeholder-Finding) inside a git working tree.
-
-    Git-repo fixture: `tmp_path` is initialized as a git repo
-    via `git init`. The check's second branch SHOULD detect
-    this via `is_git_repo` and emit a placeholder pass-Finding
-    (the divergence-detection logic itself lands in 7.a.iv;
-    cycle 7.a.ii pins only the skeleton).
-
-    `monkeypatch.chdir(tmp_path)` isolates cwd per
-    `feedback_test_cwd_isolation`.
-    """
-    monkeypatch.chdir(tmp_path)
-    _git_init(repo_root=tmp_path)
-    project_root = tmp_path
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    expected = Finding(
-        check_id="doctor-out-of-band-edits",
-        status="pass",
-        message=(
-            "no out-of-band edits detected (placeholder; divergence " "detection lands in 7.a.iv)"
-        ),
         path=None,
         line=None,
         spec_root=str(spec_root),
@@ -264,61 +295,6 @@ def test_run_returns_skipped_when_v001_already_exists_with_no_prior_versions(
     assert out_of_band_edits.run(ctx=ctx) == IOSuccess(expected)
 
 
-def test_run_returns_pass_placeholder_when_history_has_only_non_version_children(
-    *,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """run(ctx) falls through to pass when history/ has only non-vNNN/ entries.
-
-    Condition B negative fixture: `<spec_root>/history/` is
-    present but contains only entries the v-dir filter MUST
-    skip — none of them are committed `vNNN/` snapshots and
-    none of them is the v(N+1)=v001 leftover candidate:
-
-      - `README.md` (a regular file, not a directory).
-      - `notes/` (a directory whose name does not begin with
-        `v` — exercises the `not name.startswith("v")` filter
-        in `_parse_version_number`).
-      - `vbeta/` (a directory whose name DOES begin with `v`
-        but whose suffix is non-numeric — exercises the
-        `not suffix.isdigit()` filter in
-        `_parse_version_number`, which is critical because
-        without it the integer parse would raise on a non-
-        digit suffix and propagate as a bug).
-
-    Per the guard's "highest version" semantics N=0
-    (no parseable v-dirs); v(N+1)=v001 is NOT on disk;
-    condition B is FALSE. Condition A is also FALSE (no
-    proposed-change files at all). The check therefore
-    advances to the placeholder pass branch landed in 7.a.ii.
-    This pins the non-vNNN-children shape as a non-trigger so
-    seeded-but-unrevised trees do not spuriously emit skipped.
-    """
-    monkeypatch.chdir(tmp_path)
-    _git_init(repo_root=tmp_path)
-    project_root = tmp_path
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    history = spec_root / "history"
-    history.mkdir()
-    _ = (history / "README.md").write_text("# history dir description\n")
-    (history / "notes").mkdir()
-    (history / "vbeta").mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    expected = Finding(
-        check_id="doctor-out-of-band-edits",
-        status="pass",
-        message=(
-            "no out-of-band edits detected (placeholder; divergence " "detection lands in 7.a.iv)"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert out_of_band_edits.run(ctx=ctx) == IOSuccess(expected)
-
-
 def test_run_returns_skipped_when_v003_exists_alongside_committed_v001_and_v002(
     *,
     tmp_path: Path,
@@ -364,4 +340,404 @@ def test_run_returns_skipped_when_v003_exists_alongside_committed_v001_and_v002(
     (history / "v003").mkdir()
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     expected = _expected_pre_backfill_skipped(spec_root=spec_root)
+    assert out_of_band_edits.run(ctx=ctx) == IOSuccess(expected)
+
+
+def _seed_clean_active_and_history(
+    *,
+    repo_root: Path,
+    spec_root: Path,
+    files: dict[str, bytes],
+    version_label: str = "v001",
+) -> None:
+    """Seed `spec_root` with byte-identical active + history/`<vNNN>/` content.
+
+    Used by clean-baseline tests: writes each file twice (once
+    at `<spec_root>/<name>` and once at
+    `<spec_root>/history/<vNNN>/<name>`) with the same bytes,
+    then commits both. The HEAD-active and HEAD-history-vN
+    blobs are byte-identical (same SHA), so the divergence
+    check MUST emit a pass-Finding.
+    """
+    spec_root.mkdir(parents=True, exist_ok=True)
+    history_v = spec_root / "history" / version_label
+    history_v.mkdir(parents=True, exist_ok=True)
+    paths_to_commit: list[Path] = []
+    for name, content in files.items():
+        active = spec_root / name
+        _ = active.write_bytes(content)
+        paths_to_commit.append(active)
+        history_file = history_v / name
+        _ = history_file.write_bytes(content)
+        paths_to_commit.append(history_file)
+    _git_commit_paths(repo_root=repo_root, paths=paths_to_commit, message="seed clean")
+
+
+def _expected_pass_clean(*, spec_root: Path) -> Finding:
+    """Construct the canonical pass-Finding for the no-drift case.
+
+    Emitted when every HEAD-active spec file matches its
+    HEAD-history-vN counterpart byte-for-byte. The message is
+    pinned literally so cosmetic changes surface as test
+    failures rather than silent semantic drift.
+    """
+    return Finding(
+        check_id="doctor-out-of-band-edits",
+        status="pass",
+        message="no out-of-band edits detected (HEAD-active matches HEAD-history-vN)",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+
+
+def _expected_pass_no_history_baseline(*, spec_root: Path) -> Finding:
+    """Construct the canonical pass-Finding for the no-history-baseline case.
+
+    Emitted when `<spec-root>/history/` is absent at HEAD or
+    contains no `vNNN/` subdirs at HEAD. Per the edge-case
+    decision documented in the module docstring, "no baseline"
+    is treated as "no drift" (PROPOSAL is silent on this
+    case; the pre-backfill guard already covers the leftover
+    cases that would otherwise land here).
+    """
+    return Finding(
+        check_id="doctor-out-of-band-edits",
+        status="pass",
+        message="no HEAD history baseline; nothing to compare",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+
+
+def test_run_returns_pass_when_active_and_history_match_byte_for_byte(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(pass) when HEAD-active matches HEAD-history-vN.
+
+    Canonical no-drift fixture: a top-level `spec.md` is
+    committed at HEAD with byte-identical content at
+    `<spec_root>/spec.md` and `<spec_root>/history/v001/spec.md`.
+    Per PROPOSAL §"Static-phase checks → out-of-band-edits →
+    Comparison" both sides are HEAD-committed artifacts; the
+    byte-equality check MUST emit a pass-Finding.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    _seed_clean_active_and_history(
+        repo_root=tmp_path,
+        spec_root=spec_root,
+        files={"spec.md": b"# Spec\n\nIdentical bytes.\n"},
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    assert out_of_band_edits.run(ctx=ctx) == IOSuccess(_expected_pass_clean(spec_root=spec_root))
+
+
+def test_run_returns_fail_when_active_diverges_from_history(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(fail) when active and history-vN bytes differ.
+
+    Canonical drift fixture: `<spec_root>/spec.md` is
+    committed at HEAD with content X; `<spec_root>/history/v001/
+    spec.md` is committed at HEAD with content Y where Y != X.
+    This represents an out-of-band edit landing on the
+    HEAD-active spec without a paired revise step (the user
+    edited spec.md and committed without running revise to
+    snapshot the new state into history/v002/).
+
+    The check MUST emit a fail-Finding naming the diverging
+    file (so the auto-backfill in 7.a.v knows which file to
+    snapshot).
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v = spec_root / "history" / "v001"
+    history_v.mkdir(parents=True)
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(b"# Active\n\nNew text after OOB edit.\n")
+    snapshot = history_v / "spec.md"
+    _ = snapshot.write_bytes(b"# Active\n\nOriginal text.\n")
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot])
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+    expected_message = "out-of-band edits detected at HEAD against history/v001: spec.md"
+    expected = Finding(
+        check_id="doctor-out-of-band-edits",
+        status="fail",
+        message=expected_message,
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_run_returns_fail_when_active_present_history_missing_at_head(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(fail) when active is at HEAD but history-vN is not.
+
+    Drift case: a NEW top-level spec file landed at HEAD-active
+    without a paired snapshot at HEAD-history-vN (e.g., user
+    added `extras.md` directly without revising). PROPOSAL's
+    comparison says "diff active against history/vN/<file>";
+    when the history side is absent at HEAD, the file IS
+    drift — it was added since vN's snapshot was taken without
+    a revise pass.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v = spec_root / "history" / "v001"
+    history_v.mkdir(parents=True)
+    active_paired = spec_root / "spec.md"
+    _ = active_paired.write_bytes(b"# Spec\n")
+    snapshot_paired = history_v / "spec.md"
+    _ = snapshot_paired.write_bytes(b"# Spec\n")
+    active_unpaired = spec_root / "extras.md"
+    _ = active_unpaired.write_bytes(b"# Extras\nadded out-of-band\n")
+    _git_commit_paths(
+        repo_root=tmp_path,
+        paths=[active_paired, snapshot_paired, active_unpaired],
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+    expected_message = "out-of-band edits detected at HEAD against history/v001: extras.md"
+    expected = Finding(
+        check_id="doctor-out-of-band-edits",
+        status="fail",
+        message=expected_message,
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_run_returns_fail_when_history_present_active_missing_at_head(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(fail) when history-vN holds a file but active is missing.
+
+    Drift case: HEAD-history/v001/ snapshot still carries
+    `removed.md`, but HEAD-active no longer carries it (user
+    deleted it directly without revising). The check MUST
+    detect this asymmetric file-set as drift.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v = spec_root / "history" / "v001"
+    history_v.mkdir(parents=True)
+    active_paired = spec_root / "spec.md"
+    _ = active_paired.write_bytes(b"# Spec\n")
+    snapshot_paired = history_v / "spec.md"
+    _ = snapshot_paired.write_bytes(b"# Spec\n")
+    snapshot_unpaired = history_v / "removed.md"
+    _ = snapshot_unpaired.write_bytes(b"# Removed since v001\n")
+    _git_commit_paths(
+        repo_root=tmp_path,
+        paths=[active_paired, snapshot_paired, snapshot_unpaired],
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+    expected_message = "out-of-band edits detected at HEAD against history/v001: removed.md"
+    expected = Finding(
+        check_id="doctor-out-of-band-edits",
+        status="fail",
+        message=expected_message,
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_run_returns_fail_naming_all_diverging_files_sorted(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(fail) listing every diverging file (sorted).
+
+    Multi-divergence fixture: spec.md modified (bytes differ);
+    extras.md added without a v001 snapshot; removed.md
+    snapshotted at v001 but absent from active. The fail
+    message MUST list all three files in sorted order so
+    downstream auto-backfill (7.a.v) can deterministically
+    iterate.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v = spec_root / "history" / "v001"
+    history_v.mkdir(parents=True)
+    active_modified = spec_root / "spec.md"
+    _ = active_modified.write_bytes(b"# Spec ACTIVE\n")
+    snapshot_modified = history_v / "spec.md"
+    _ = snapshot_modified.write_bytes(b"# Spec ORIGINAL\n")
+    active_extras = spec_root / "extras.md"
+    _ = active_extras.write_bytes(b"# Extras\n")
+    snapshot_removed = history_v / "removed.md"
+    _ = snapshot_removed.write_bytes(b"# Removed\n")
+    _git_commit_paths(
+        repo_root=tmp_path,
+        paths=[
+            active_modified,
+            active_extras,
+            snapshot_modified,
+            snapshot_removed,
+        ],
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+    expected_message = (
+        "out-of-band edits detected at HEAD against history/v001: " "extras.md, removed.md, spec.md"
+    )
+    expected = Finding(
+        check_id="doctor-out-of-band-edits",
+        status="fail",
+        message=expected_message,
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_run_returns_fail_against_latest_version_when_multiple_versions_exist(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) compares against the LATEST `vNNN/` when several exist at HEAD.
+
+    Fixture: HEAD carries `history/v001/spec.md` AND
+    `history/v002/spec.md` (both with content matching v001's
+    seed), plus a top-level `spec.md` differing from both.
+    The comparison MUST select v002 (the highest committed
+    version) as the comparison target, not v001 — and the
+    fail message MUST name v002 specifically.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    history_v002 = spec_root / "history" / "v002"
+    history_v002.mkdir(parents=True)
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(b"# Spec ACTIVE\n")
+    snapshot_v001 = history_v001 / "spec.md"
+    _ = snapshot_v001.write_bytes(b"# Spec ORIGINAL\n")
+    snapshot_v002 = history_v002 / "spec.md"
+    _ = snapshot_v002.write_bytes(b"# Spec V002\n")
+    _git_commit_paths(
+        repo_root=tmp_path,
+        paths=[active, snapshot_v001, snapshot_v002],
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+    expected_message = "out-of-band edits detected at HEAD against history/v002: spec.md"
+    expected = Finding(
+        check_id="doctor-out-of-band-edits",
+        status="fail",
+        message=expected_message,
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_run_returns_pass_when_history_has_only_non_version_children(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(pass) with no-history-baseline message when history/ has no vNNN/ at HEAD.
+
+    Edge case codified in the module docstring: when
+    `<spec_root>/history/` exists at HEAD but contains only
+    non-vNNN children (a `README.md`, a `notes/` dir, a
+    `vbeta/` dir whose suffix isn't numeric), there is no vN
+    against which to compare. The check MUST emit a
+    pass-Finding (no drift detectable). The pre-backfill
+    guard already covers the leftover-from-prior-backfill
+    cases that would otherwise need different handling here.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history = spec_root / "history"
+    history.mkdir()
+    readme = history / "README.md"
+    _ = readme.write_text("# history dir description\n")
+    notes_file = history / "notes" / "note.md"
+    notes_file.parent.mkdir()
+    _ = notes_file.write_text("# notes\n")
+    vbeta_file = history / "vbeta" / "placeholder.md"
+    vbeta_file.parent.mkdir()
+    _ = vbeta_file.write_text("# vbeta placeholder\n")
+    _git_commit_paths(
+        repo_root=tmp_path,
+        paths=[readme, notes_file, vbeta_file],
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = _expected_pass_no_history_baseline(spec_root=spec_root)
+    assert out_of_band_edits.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_run_returns_pass_when_history_dir_is_absent_at_head(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(pass) with no-history-baseline message when history/ is absent at HEAD.
+
+    Edge case codified in the module docstring: when
+    `<spec_root>/history/` does NOT exist at HEAD at all (the
+    "post-seed pre-revise" state where the seed materialized
+    top-level files but no v001 snapshot has been written
+    yet via revise), there is no comparison target. The check
+    MUST emit a pass-Finding (no drift detectable). The
+    pre-backfill guard's condition B is also FALSE in this
+    state (no `history/`), so this branch reaches the
+    no-history-baseline pass.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(b"# Spec\n")
+    _git_commit_paths(repo_root=tmp_path, paths=[active])
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = _expected_pass_no_history_baseline(spec_root=spec_root)
     assert out_of_band_edits.run(ctx=ctx) == IOSuccess(expected)
