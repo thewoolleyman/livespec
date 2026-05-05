@@ -1827,3 +1827,39 @@ pre-strip pass before `git interpret-trailers --in-place`
 because `git interpret-trailers --if-exists=replace` uses
 prefix-aliasing that drops `TDD-Red-Test` when
 `TDD-Red-Test-File-Checksum` is present).
+
+
+## 2026-05-04T23:30:00Z — phase 7 sub-step 6.a
+
+**Decision:** Pre-existing drift between PROPOSAL.md §"Spec-target
+selection contract" line 363-366 (which enumerates `--spec-target`
+as supported by `bin/propose_change.py`, `bin/critique.py`, and
+`bin/revise.py` only — three wrappers, no `doctor`) and seeded
+SPECIFICATION/contracts.md line 50 (which says "the
+`propose-change`, `revise`, `critique`, and `doctor` sub-commands
+all accept `--spec-target <path>`" — four sub-commands, includes
+`doctor`) noticed during the cascading-impact scan for sub-step
+6.a's prune-history propose-change. Not addressed in 6.a — per
+"one investigation, one finding, one question" memory rule, the
+doctor drift is separate from prune-history's widening and gets a
+side note here rather than a peer-status open-issues entry.
+
+**Rationale:** The drift is structurally separate from
+prune-history's contract scope — bundling unrelated drifts
+into one propose-change violates the one-finding-per-gate
+discipline. Doctor's actual `bin/doctor_static.py` does NOT
+take `--spec-target` (it iterates every spec tree per
+PROPOSAL.md §"Static-phase structure" line 2591-2603, and its
+seeded contracts.md row at line 16 shows only `--project-root
+<path>` as optional, no `--spec-target`). So contracts.md
+line 50's enumeration of `doctor` in the `--spec-target`
+list is a wording slip — likely an over-broadening when the
+sentence was authored. Two resolutions are viable: (a) drop
+`doctor` from the enumeration; (b) keep `doctor` but document
+that doctor's `--spec-target` is a future scope-narrower (a
+new feature). Per the v019 Q1 / Phase 7 widening discipline
+(SPECIFICATION/ stays parity with PROPOSAL, not extending
+beyond), resolution (a) is the correct one. The fix lands as
+a small overlay reconciliation in a future propose-change
+cycle (or rides along with whatever Phase 7 work next touches
+contracts.md §"Sub-spec structural mechanism").
