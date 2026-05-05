@@ -34,6 +34,7 @@ from typing import Literal
 
 from livespec.doctor.static import (
     bcp14_keyword_wellformedness,
+    gherkin_blank_line_format,
     livespec_jsonc_valid,
     proposed_change_topic_format,
     proposed_changes_and_history_dirs,
@@ -60,6 +61,7 @@ STATIC_CHECKS = (
     revision_to_proposed_change_pairing,
     proposed_change_topic_format,
     bcp14_keyword_wellformedness,
+    gherkin_blank_line_format,
 )
 
 
@@ -73,5 +75,6 @@ APPLICABILITY_BY_TREE_KIND: dict[TreeKind, tuple[object, ...]] = {
         revision_to_proposed_change_pairing,
         proposed_change_topic_format,
         bcp14_keyword_wellformedness,
+        gherkin_blank_line_format,
     ),
 }
