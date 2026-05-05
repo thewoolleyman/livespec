@@ -92,6 +92,9 @@ from pathlib import Path
 from returns.io import IOResult, IOSuccess
 
 from livespec.context import DoctorContext
+from livespec.doctor.static._out_of_band_edits_writes import (
+    route_drift_outcome,
+)
 from livespec.errors import LivespecError
 from livespec.io.git import is_git_repo, list_at_head, show_at_head
 from livespec.schemas.dataclasses.finding import Finding
@@ -318,36 +321,17 @@ def _aggregate_drifts(
     return accumulator
 
 
-def _build_drift_finding(
-    *,
-    ctx: DoctorContext,
-    latest_version_label: str,
-    diverging_files: list[str],
-) -> Finding:
-    """Translate a drift-outcome list into the appropriate pass/fail Finding."""
-    if not diverging_files:
-        return _make_finding(
-            ctx=ctx,
-            status="pass",
-            message=("no out-of-band edits detected (HEAD-active matches HEAD-history-vN)"),
-        )
-    files_csv = ", ".join(diverging_files)
-    return _make_finding(
-        ctx=ctx,
-        status="fail",
-        message=(
-            f"out-of-band edits detected at HEAD against "
-            f"history/{latest_version_label}: {files_csv}"
-        ),
-    )
-
-
 def _run_divergence_or_no_baseline(
     *,
     ctx: DoctorContext,
     latest: str | None,
 ) -> IOResult[Finding, LivespecError]:
-    """Run the comparison for `latest`, or emit the no-baseline pass when `latest` is None."""
+    """Run the comparison for `latest`, or emit the no-baseline pass when `latest` is None.
+
+    On non-empty divergence the writes-module's `route_drift_outcome`
+    auto-backfills under `<spec_root>/history/v(N+1)/` before
+    composing the fail-Finding, per PROPOSAL §"Backfill on drift".
+    """
     if latest is None:
         return IOSuccess(
             _make_finding(
@@ -356,25 +340,23 @@ def _run_divergence_or_no_baseline(
                 message="no HEAD history baseline; nothing to compare",
             ),
         )
-    return (
-        _enumerate_union_file_basenames(
+    return _enumerate_union_file_basenames(
+        ctx=ctx,
+        latest_version_label=latest,
+    ).bind(
+        lambda names: _aggregate_drifts(
             ctx=ctx,
             latest_version_label=latest,
-        )
-        .bind(
-            lambda names: _aggregate_drifts(
+            file_basenames=names,
+        ).bind(
+            lambda diverging, names=names: route_drift_outcome(
                 ctx=ctx,
+                make_finding=_make_finding,
                 latest_version_label=latest,
-                file_basenames=names,
-            ),
-        )
-        .map(
-            lambda diverging: _build_drift_finding(
-                ctx=ctx,
-                latest_version_label=latest,
+                enumerated_files=names,
                 diverging_files=diverging,
             ),
-        )
+        ),
     )
 
 
