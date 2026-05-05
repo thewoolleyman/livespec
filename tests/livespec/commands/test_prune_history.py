@@ -1170,3 +1170,120 @@ def test_prune_history_replace_v_n_minus_one_with_marker_propagates_rmtree_failu
     # Marker MUST NOT have been written: v(N-1) didn't exist, so
     # the rmtree failed and `bind` short-circuited the write.
     assert not (history / "v002" / "PRUNED_HISTORY.json").exists()
+
+
+def test_prune_history_emit_pre_step_skipped_finding_writes_canonical_json(
+    *,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`_emit_pre_step_skipped_finding` writes the canonical JSON document.
+
+    Per v012 spec.md §"Pre-step skip control": when the resolved
+    skip value is True, the wrapper MUST emit a single-finding
+    `{"findings": [{"check_id": "pre-step-skipped", "status":
+    "skipped", "message": "pre-step checks skipped by user config
+    or --skip-pre-check"}]}` JSON document to stdout. This unit
+    test drives the helper in isolation and asserts the exact
+    payload shape.
+    """
+    prune_history._emit_pre_step_skipped_finding()  # noqa: SLF001
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload == {
+        "findings": [
+            {
+                "check_id": "pre-step-skipped",
+                "status": "skipped",
+                "message": ("pre-step checks skipped by user config " "or --skip-pre-check"),
+            },
+        ],
+    }
+
+
+def test_prune_history_main_emits_pre_step_skipped_finding_when_skip_pre_check_flag_set(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md §"Pre-step skip control": --skip-pre-check emits the finding.
+
+    When the supervisor parses `--skip-pre-check`, the wrapper
+    emits a single-finding `pre-step-skipped` skipped JSON
+    document to stdout BEFORE running the body. The body still
+    runs and emits its own prune-history finding (the
+    `prune-history-no-op` skipped finding here, because the
+    fixture has only v001). Stdout therefore contains TWO JSON
+    lines: the `pre-step-skipped` finding first, then the
+    body's `prune-history-no-op` finding. Drives the
+    skip-pre-check resolution branch (1) of the spec's 4-rule
+    matrix.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    exit_code = prune_history.main(
+        argv=["--skip-pre-check", "--project-root", str(project_root)],
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 2
+    first_payload = json.loads(lines[0])
+    assert first_payload["findings"][0]["check_id"] == "pre-step-skipped"
+    assert first_payload["findings"][0]["status"] == "skipped"
+    second_payload = json.loads(lines[1])
+    assert second_payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert second_payload["findings"][0]["status"] == "skipped"
+
+
+def test_prune_history_main_does_not_emit_pre_step_skipped_finding_when_run_pre_check_flag_set(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md §"Pre-step skip control" rule (2): --run-pre-check forces skip=False.
+
+    When the supervisor parses `--run-pre-check`, the resolved
+    skip value is False (the override-config half of the
+    mutually-exclusive flag pair). The wrapper does NOT emit
+    the `pre-step-skipped` finding. The body still runs and
+    emits its own prune-history finding. Stdout therefore
+    contains exactly ONE JSON line — the body's
+    `prune-history-no-op` finding.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    exit_code = prune_history.main(
+        argv=["--run-pre-check", "--project-root", str(project_root)],
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "pre-step-skipped" not in captured.out
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+
+
+def test_prune_history_main_does_not_emit_pre_step_skipped_finding_when_neither_flag_set(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Per v012 spec.md §"Pre-step skip control" rule (3): neither flag falls through.
+
+    When neither `--skip-pre-check` nor `--run-pre-check` is
+    passed, the resolved skip value defers to the
+    `.livespec.jsonc` `pre_step_skip_static_checks` config key
+    (default False). At cycle 6.c.8 the config-key fallback is
+    not yet wired (6.c.9 scope), so the resolved value defaults
+    to False and the `pre-step-skipped` finding is NOT emitted.
+    Stdout contains exactly ONE JSON line — the body's
+    `prune-history-no-op` finding.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    exit_code = prune_history.main(argv=["--project-root", str(project_root)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "pre-step-skipped" not in captured.out
+    lines = [line for line in captured.out.splitlines() if line.strip()]
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"

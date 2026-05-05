@@ -104,7 +104,20 @@ def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError
     Lists `<spec-root>/history/` and dispatches to the no-op
     detection path; subsequent cycles widen the dispatch to the
     full 5-step prune mechanic.
+
+    Per v012 spec.md §"Pre-step skip control" rule (1): when
+    `--skip-pre-check` is set, the supervisor emits a single-
+    finding `pre-step-skipped` JSON document to stdout BEFORE
+    running the body and proceeds without invoking the pre-step
+    doctor static phase. The body still runs and emits its own
+    `prune-history-no-op` / `prune-history-pruned` finding, so
+    stdout carries TWO JSON lines on the skip path. Cycle 6.c.8
+    only wires the explicit-flag branch; the
+    `.livespec.jsonc` config-key fallback (rule 3) and the
+    pre-step doctor invocation (rule final) land at 6.c.9 / 6.c.10.
     """
+    if namespace.skip_pre_check:
+        _emit_pre_step_skipped_finding()
     spec_root = _resolve_spec_root(namespace=namespace)
     history_root = spec_root / "history"
     return fs.list_dir(path=history_root).bind(
@@ -430,6 +443,32 @@ def _emit_no_op_finding() -> None:
                 "message": (
                     "nothing to prune; oldest surviving history is " "already PRUNED_HISTORY.json"
                 ),
+            },
+        ],
+    }
+    _ = sys.stdout.write(json.dumps(payload) + "\n")
+
+
+def _emit_pre_step_skipped_finding() -> None:
+    """Write the canonical pre-step-skipped finding to stdout.
+
+    Per v012 spec.md §"Pre-step skip control": when the resolved
+    skip value is True (either via the `--skip-pre-check` flag at
+    cycle 6.c.8 or via the `.livespec.jsonc`
+    `pre_step_skip_static_checks` config key at cycle 6.c.9), the
+    wrapper MUST emit a single-finding `{"findings": [{"check_id":
+    "pre-step-skipped", "status": "skipped", "message":
+    "pre-step checks skipped by user config or
+    --skip-pre-check"}]}` JSON document to stdout. The commands/-
+    tree exemption in the `check-no-write-direct` allowlist
+    permits this stdout-write.
+    """
+    payload = {
+        "findings": [
+            {
+                "check_id": "pre-step-skipped",
+                "status": "skipped",
+                "message": ("pre-step checks skipped by user config " "or --skip-pre-check"),
             },
         ],
     }
