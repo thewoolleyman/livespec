@@ -30,6 +30,15 @@ fine — only the returncode matters). The latter needs binary
 stdout capture (text mode would corrupt non-UTF-8 bytes), so it
 uses a dedicated `@impure_safe` raw helper with
 `subprocess.run(..., stdout=PIPE)` returning bytes.
+
+Phase 7 sub-step 7.a.iv (redo) adds `list_at_head`. It enumerates
+immediate file basenames at HEAD under a given repo-relative
+directory via `git ls-tree HEAD <dir>/`, parsing the canonical
+`<mode> SP <type> SP <object-id> TAB <name>` shape and filtering
+to type=blob entries. Empty subtree + missing subtree both return
+IOSuccess(()) (git's ls-tree does not distinguish them); the
+no-HEAD-yet case lifts to IOFailure via the same @impure_safe
+exception widening as `_raw_show_at_head`.
 """
 
 from __future__ import annotations
@@ -42,7 +51,14 @@ from returns.io import IOResult, impure_safe
 from livespec.errors import LivespecError, PreconditionError
 from livespec.io.proc import run_subprocess
 
-__all__: list[str] = ["get_git_user", "is_git_repo", "show_at_head"]
+__all__: list[str] = ["get_git_user", "is_git_repo", "list_at_head", "show_at_head"]
+
+
+# Column index of the type field (`blob`, `tree`, `commit`) in the
+# whitespace-split prefix of a `git ls-tree` line. Each line has the
+# canonical shape `<mode> SP <type> SP <object-id> TAB <name>`; the
+# prefix split yields three tokens with type at index 1.
+_LS_TREE_TYPE_COLUMN_INDEX: int = 1
 
 
 def get_git_user() -> IOResult[str, LivespecError]:
@@ -137,6 +153,119 @@ def _raw_show_at_head(*, project_root: Path, repo_relative_path: Path) -> bytes:
         check=True,
     )
     return completed.stdout
+
+
+@impure_safe(exceptions=(OSError, subprocess.SubprocessError))
+def _raw_list_at_head(
+    *,
+    project_root: Path,
+    repo_relative_dir: Path,
+) -> tuple[str, ...]:
+    """Decorator-lifted call into `git -C <project_root> ls-tree HEAD <dir>/`.
+
+    Captures stdout as text (the parsed output is mode + type +
+    object-id + name on each line, all ASCII; text-mode is the
+    appropriate decode here even though `show_at_head` uses
+    binary mode for blob bodies). Filters lines whose type
+    column is `blob` and returns only the basename column.
+    Subtrees (type=tree) are excluded — the doctor's HEAD-active
+    enumeration is files-only.
+
+    Non-zero exit codes (repo has no HEAD yet) raise
+    `subprocess.CalledProcessError` via `check=True`; the
+    decorator widens its caught-exception tuple to include
+    `subprocess.SubprocessError` (CalledProcessError's parent)
+    so the failure lifts to IOFailure. OSError (e.g., the `git`
+    binary itself missing) lifts via the same decorator.
+
+    The trailing `/` on `<repo_relative_dir>` matches the
+    `git ls-tree` "directory listing" syntax: without it the
+    command treats the path as a single tree object reference
+    rather than enumerating immediate children. A missing-at-HEAD
+    directory yields exit 0 with empty stdout (NOT a failure);
+    the empty-result and missing-result cases are
+    indistinguishable by ls-tree and both surface as
+    IOSuccess(()) at the public seam.
+    """
+    # S603/S607: argv is a fixed list of literals + caller-controlled paths;
+    # `git` is the documented io/git boundary binary, mirrored from
+    # `_raw_show_at_head`.
+    completed = subprocess.run(  # noqa: S603
+        [  # noqa: S607
+            "git",
+            "-C",
+            str(project_root),
+            "ls-tree",
+            "HEAD",
+            f"{repo_relative_dir}/",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    names: list[str] = []
+    for line in completed.stdout.splitlines():
+        # Each ls-tree line has the canonical shape:
+        #   <mode> SP <type> SP <object-id> TAB <name>
+        # where <type> is one of `blob` / `tree` / `commit`. Split
+        # on TAB once to isolate the name column; split the
+        # prefix on whitespace to recover the type column. Filter
+        # to blobs so subtrees are excluded. Git's output format
+        # is stable across versions — a well-formed `ls-tree`
+        # invocation always produces this shape — so the parse
+        # is straight-line (no defensive empty-line / short-prefix
+        # branches; a malformed line would surface as an
+        # IndexError bug rather than a domain error).
+        prefix, _sep, raw_name = line.partition("\t")
+        if prefix.split()[_LS_TREE_TYPE_COLUMN_INDEX] != "blob":
+            continue
+        # `git ls-tree HEAD <dir>/` returns the path-from-repo-
+        # root in the name column (e.g. `SPECIFICATION/alpha.md`);
+        # the basename is what callers need. Use `Path` to extract
+        # the basename portably (handles trailing slashes and
+        # nested-segment names uniformly across platforms).
+        names.append(Path(raw_name).name)
+    return tuple(names)
+
+
+def list_at_head(
+    *,
+    project_root: Path,
+    repo_relative_dir: Path,
+) -> IOResult[tuple[str, ...], LivespecError]:
+    """Return the immediate file basenames at HEAD under `repo_relative_dir`.
+
+    The doctor's out-of-band-edits check uses this primitive to
+    iterate over HEAD-committed spec files for the
+    active-vs-history-vN comparison (PROPOSAL §"Static-phase
+    checks → out-of-band-edits → Comparison"). Subtrees and
+    files nested inside subtrees are excluded — the comparison
+    is a top-level-files question.
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - Repo has no HEAD yet (zero commits since `git init`):
+        `git ls-tree HEAD <dir>/` exits non-zero
+        (CalledProcessError → PreconditionError).
+      - The `git` binary itself missing: `OSError` →
+        PreconditionError via `@impure_safe`.
+
+    Empty-result cases (both stay on the IOSuccess track with
+    an empty tuple — `git ls-tree` does not distinguish these
+    two shapes):
+      - Dir at HEAD with only subdir children (no immediate
+        file children).
+      - Dir not at HEAD at all (never added to any commit).
+        `git ls-tree HEAD <dir>/` exits 0 with empty stdout
+        for an unknown subtree path. The doctor folds this
+        into "no files at HEAD under spec_root" — the
+        comparison is a no-op when no HEAD baseline exists.
+    """
+    return _raw_list_at_head(
+        project_root=project_root,
+        repo_relative_dir=repo_relative_dir,
+    ).alt(
+        lambda exc: PreconditionError(f"git.list_at_head: {exc}"),
+    )
 
 
 def show_at_head(

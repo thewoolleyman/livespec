@@ -24,6 +24,17 @@ check), and `show_at_head(*, project_root, repo_relative_path)`
 returns the raw bytes of a path at HEAD so the doctor can
 byte-compare against the working tree without a decode step
 that could corrupt non-ASCII content.
+
+Phase 7 sub-step 7.a.iv (redo) adds `list_at_head(*,
+project_root, repo_relative_dir)` returning the immediate file
+basenames at HEAD under a given repo-relative directory. The
+out-of-band-edits divergence detection composes this primitive
+with `show_at_head` to compare HEAD-active spec content against
+HEAD-history-vN snapshot content (PROPOSAL §"Static-phase
+checks → out-of-band-edits → Comparison"). Empty subtree and
+missing-subtree cases both return IOSuccess(()) — the underlying
+`git ls-tree HEAD <dir>/` does not distinguish them — and the
+no-HEAD-yet case lifts to IOFailure.
 """
 
 from __future__ import annotations
@@ -313,6 +324,176 @@ def test_show_at_head_returns_failure_when_no_head(
     result = io_git.show_at_head(
         project_root=tmp_path,
         repo_relative_path=Path("anything.md"),
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure, got {result!r}")
+
+
+def test_list_at_head_returns_immediate_file_children(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`list_at_head` returns the immediate file basenames at HEAD under a directory.
+
+    Phase 7 sub-step 7.a.iv (redo): the doctor's
+    out-of-band-edits static check needs a typed primitive
+    that enumerates files at HEAD under a given directory so
+    the active-vs-history-vN comparison can iterate over the
+    HEAD-committed spec files without a working-tree walk.
+    The fixture commits two immediate file children under
+    `SPECIFICATION/` plus a subdirectory's file; the assertion
+    pins `list_at_head` returning only the two immediate file
+    basenames, NOT the subdir name and NOT the file inside
+    the subdir.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    spec_root = tmp_path / "SPECIFICATION"
+    spec_root.mkdir()
+    _git_commit_file(
+        cwd=tmp_path,
+        path=spec_root / "alpha.md",
+        content=b"# Alpha\n",
+    )
+    _git_commit_file(
+        cwd=tmp_path,
+        path=spec_root / "beta.md",
+        content=b"# Beta\n",
+    )
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    _git_commit_file(
+        cwd=tmp_path,
+        path=history_v001 / "snapshot.md",
+        content=b"# Snapshot\n",
+    )
+
+    result = io_git.list_at_head(
+        project_root=tmp_path,
+        repo_relative_dir=Path("SPECIFICATION"),
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert sorted(value) == ["alpha.md", "beta.md"]
+        case _:
+            raise AssertionError(f"expected IOSuccess(<names>), got {result!r}")
+
+
+def test_list_at_head_returns_empty_tuple_when_dir_has_no_immediate_files(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`list_at_head` returns an empty tuple when `repo_relative_dir` has only subdirs at HEAD.
+
+    A directory under HEAD whose only children are
+    subdirectories MUST yield an empty tuple — the
+    enumeration is a "files only" question, and a "no
+    immediate files" answer is a genuinely empty answer
+    rather than an IOFailure (the dir IS at HEAD; it just
+    contains no enumerable spec files).
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    spec_root = tmp_path / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    _git_commit_file(
+        cwd=tmp_path,
+        path=history_v001 / "snapshot.md",
+        content=b"# Snapshot\n",
+    )
+
+    result = io_git.list_at_head(
+        project_root=tmp_path,
+        repo_relative_dir=Path("SPECIFICATION"),
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value == ()
+        case _:
+            raise AssertionError(f"expected IOSuccess(()), got {result!r}")
+
+
+def test_list_at_head_returns_empty_tuple_when_dir_missing_at_head(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`list_at_head` returns IOSuccess(()) when `repo_relative_dir` is not at HEAD.
+
+    A repo with one commit landing `committed.md`; calling
+    `list_at_head` for `nonexistent/` (a directory never added
+    to any commit) returns IOSuccess with an empty tuple — the
+    underlying `git ls-tree HEAD <dir>/` exits 0 with empty
+    stdout when the dir-path is unknown to HEAD (it does NOT
+    distinguish "empty subtree" from "subtree missing"). The
+    doctor folds either zero-result outcome into "no files at
+    HEAD under spec_root" so the comparison is a no-op when
+    the spec_root has no HEAD baseline. The no-HEAD-at-all
+    case (zero commits) is the genuinely-failing branch
+    covered by the next test.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    committed = tmp_path / "committed.md"
+    _git_commit_file(cwd=tmp_path, path=committed, content=b"present at head\n")
+
+    result = io_git.list_at_head(
+        project_root=tmp_path,
+        repo_relative_dir=Path("nonexistent"),
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value == ()
+        case _:
+            raise AssertionError(f"expected IOSuccess(()), got {result!r}")
+
+
+def test_list_at_head_returns_failure_when_no_head(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`list_at_head` returns IOFailure when the repo has no commits yet.
+
+    A freshly `git init`-ed repo with zero commits has no
+    HEAD ref; `git ls-tree HEAD <dir>/` exits non-zero. The
+    doctor folds this into "no prior baseline" — a project
+    with no HEAD has no files at HEAD and so no comparison
+    target exists.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    result = io_git.list_at_head(
+        project_root=tmp_path,
+        repo_relative_dir=Path("SPECIFICATION"),
     )
     unwrapped = unsafe_perform_io(result)
     match unwrapped:
