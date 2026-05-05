@@ -106,8 +106,12 @@ def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError
     full 5-step prune mechanic.
     """
     spec_root = _resolve_spec_root(namespace=namespace)
-    return fs.list_dir(path=spec_root / "history").bind(
-        lambda children: _maybe_no_op(children=children),
+    history_root = spec_root / "history"
+    return fs.list_dir(path=history_root).bind(
+        lambda children: _maybe_no_op_or_resolve(
+            children=children,
+            history_root=history_root,
+        ),
     )
 
 
@@ -122,16 +126,25 @@ def _resolve_spec_root(*, namespace: argparse.Namespace) -> Path:
     return project_root / "SPECIFICATION"
 
 
-def _maybe_no_op(*, children: list[Path]) -> IOResult[None, LivespecError]:
-    """Emit the no-op skipped finding when either short-circuit fires; else continue.
+def _maybe_no_op_or_resolve(
+    *,
+    children: list[Path],
+    history_root: Path,
+) -> IOResult[None, LivespecError]:
+    """Detect either no-op short-circuit; else resolve the carry-forward `first` field.
 
     Per v012 spec.md prune-history no-op short-circuits: (i) only
     `v001` exists; (ii) the oldest surviving v-directory already
     contains a `PRUNED_HISTORY.json` marker. On either, the
     wrapper emits a single-finding skipped JSON document to
-    stdout and exits 0 without any deletion. Subsequent cycles
-    widen the dispatch to perform the actual prune mechanic when
-    neither no-op fires.
+    stdout and exits 0 without any deletion. When NEITHER no-op
+    fires, this dispatches to the carry-forward `first`
+    resolution per spec.md step (b), threading the
+    `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json` marker
+    (when present) through `_resolve_first`. Cycle 6.c.5 only
+    EXERCISES the resolver — it does not yet act on the
+    resolved `first`. Subsequent cycles widen the dispatch to
+    the full 5-step prune mechanic.
     """
     max_version = _find_max_version(children=children)
     if max_version == 1:
@@ -139,7 +152,12 @@ def _maybe_no_op(*, children: list[Path]) -> IOResult[None, LivespecError]:
         return IOResult.from_value(None)
     if _oldest_below_has_pruned_marker(children=children, max_version=max_version):
         _emit_no_op_finding()
-    return IOResult.from_value(None)
+        return IOResult.from_value(None)
+    return _resolve_first_via_marker_or_children(
+        children=children,
+        max_version=max_version,
+        history_root=history_root,
+    ).bind(lambda _first: _emit_no_op_pending_prune_mechanic())
 
 
 def _find_max_version(*, children: list[Path]) -> int:
@@ -189,6 +207,96 @@ def _oldest_below_has_pruned_marker(*, children: list[Path], max_version: int) -
             continue
         return (child / "PRUNED_HISTORY.json").is_file()
     return False
+
+
+def _resolve_first_via_marker_or_children(
+    *,
+    children: list[Path],
+    max_version: int,
+    history_root: Path,
+) -> IOResult[int, LivespecError]:
+    """Read the v(N-1) marker (when present) and call `_resolve_first` to compute `first`.
+
+    Per v012 spec.md prune-history paragraph step (b): if
+    `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json` exists, the
+    wrapper reads its `pruned_range[0]` and uses it as `first`;
+    otherwise `first` is the smallest-numbered v-directory
+    currently under `<spec-root>/history/`. This impure layer
+    decides whether to invoke `fs.read_text` based on
+    `Path.is_file()`, then threads the result through the pure
+    resolver. The marker-absent path skips the read entirely and
+    calls the resolver with `prior_marker_text=None`.
+    """
+    marker_path = history_root / f"v{max_version - 1:03d}" / "PRUNED_HISTORY.json"
+    if not marker_path.is_file():
+        return IOResult.from_value(
+            _resolve_first(
+                children=children,
+                max_version=max_version,
+                prior_marker_text=None,
+            ),
+        )
+    return fs.read_text(path=marker_path).map(
+        lambda text: _resolve_first(
+            children=children,
+            max_version=max_version,
+            prior_marker_text=text,
+        ),
+    )
+
+
+def _resolve_first(
+    *,
+    children: list[Path],
+    max_version: int,  # noqa: ARG001
+    prior_marker_text: str | None,
+) -> int:
+    """Resolve the carry-forward `first` field per v012 spec.md step (b).
+
+    When `prior_marker_text` is provided (the v(N-1)
+    `PRUNED_HISTORY.json` contents), parse it as JSON and return
+    `pruned_range[0]`. Otherwise return the smallest-numbered v-
+    directory in `children`. `max_version` is accepted to keep
+    the call-site contract symmetric with
+    `_oldest_below_has_pruned_marker` even though the resolver
+    does not currently filter by it (the smallest-numbered v-
+    dir is by definition <= max_version when callers respect the
+    pre-no-op-check invariant).
+    """
+    if prior_marker_text is not None:
+        payload = json.loads(prior_marker_text)
+        pruned_range = payload["pruned_range"]
+        first_int: int = pruned_range[0]
+        return first_int
+    smallest = 0
+    for child in children:
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not name.startswith("v"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        version = int(suffix)
+        if smallest == 0 or version < smallest:
+            smallest = version
+    return smallest
+
+
+def _emit_no_op_pending_prune_mechanic() -> IOResult[None, LivespecError]:
+    """Emit the no-op finding pending the prune-mechanic widening at cycle 6.c.6.
+
+    Cycle 6.c.5 EXERCISES the carry-forward `first` resolver
+    along the prune path but does NOT yet act on the resolved
+    value. The wrapper still emits the canonical
+    `prune-history-no-op` skipped finding to stdout and exits 0.
+    Subsequent cycles (6.c.6 destructive deletion, 6.c.7 marker
+    write) replace this placeholder with the full 5-step
+    mechanic.
+    """
+    _emit_no_op_finding()
+    return IOResult.from_value(None)
 
 
 def _emit_no_op_finding() -> None:

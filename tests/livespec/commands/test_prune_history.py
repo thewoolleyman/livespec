@@ -168,19 +168,24 @@ def test_prune_history_main_accepts_project_root_flag(
     assert exit_code == 0
 
 
-def test_prune_history_main_does_not_emit_no_op_finding_when_history_has_multiple_versions(
+def test_prune_history_main_does_not_short_circuit_on_only_v001_guard_when_max_version_is_two(
     *,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """When history has multiple v* dirs, the only-v001 short-circuit does NOT fire.
+    """The `if max_version == 1:` guard's "not-taken" branch fires when max_version == 2.
 
     Drives the `if max_version == 1:` guard's "guard not taken"
-    branch in `_maybe_no_op`. The fixture sets up v001 and v002,
-    so max_version = 2; the no-op finding MUST NOT be emitted to
-    stdout. Subsequent cycles widen the wrapper to either fire
-    the second no-op short-circuit (oldest is already
-    PRUNED_HISTORY.json) or perform the actual prune.
+    branch in `_maybe_no_op_or_resolve`. The fixture sets up v001
+    and v002, so max_version = 2; the (i) short-circuit does NOT
+    fire. The (ii) short-circuit ALSO does not fire (v001 has no
+    `PRUNED_HISTORY.json`), so the wrapper proceeds into
+    carry-forward `first` resolution per spec.md step (b). Cycle
+    6.c.5 emits the no-op-pending-prune-mechanic placeholder
+    finding (acting on the resolved `first` is reserved for
+    cycles 6.c.6+), so we assert the placeholder finding is on
+    stdout. Subsequent cycles replace the placeholder with the
+    full 5-step mechanic.
     """
     spec_root = tmp_path / "SPECIFICATION"
     (spec_root / "history" / "v001").mkdir(parents=True)
@@ -188,7 +193,8 @@ def test_prune_history_main_does_not_emit_no_op_finding_when_history_has_multipl
     exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert captured.out == ""
+    payload = json.loads(captured.out)
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
 
 
 def test_prune_history_find_max_version_skips_non_directory_entries(
@@ -431,3 +437,221 @@ def test_prune_history_oldest_below_has_pruned_marker_skips_versions_at_or_above
         )
         is False
     )
+
+
+def test_prune_history_resolve_first_returns_pruned_range_zero_when_marker_text_provided(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_first` returns `pruned_range[0]` when prior-marker text is supplied.
+
+    Per v012 spec.md §"Sub-command lifecycle" prune-history
+    paragraph step (b): if `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json`
+    exists, the wrapper reads its `pruned_range[0]` and uses it as
+    the carry-forward `first` field. Drives the marker-present
+    branch of the pure resolver: text overrides any children
+    enumeration. Children list is irrelevant to the marker-
+    present branch.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v007").mkdir()
+    children = sorted(history.iterdir())
+    first = prune_history._resolve_first(  # noqa: SLF001
+        children=children,
+        max_version=7,
+        prior_marker_text='{"pruned_range": [5, 7]}',
+    )
+    assert first == 5
+
+
+def test_prune_history_resolve_first_returns_smallest_v_dir_when_marker_text_absent(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_first` returns smallest-numbered v-dir when no marker text supplied.
+
+    Per v012 spec.md prune-history paragraph step (b): when no
+    prior `PRUNED_HISTORY.json` marker exists at v(N-1), `first`
+    is the smallest-numbered v-directory currently under
+    `<spec-root>/history/`. Drives the marker-absent branch of
+    the pure resolver. Fixture has v002/v003/v004/v005, so the
+    smallest-numbered v-dir is 2 (NOT 1; nothing was ever
+    seeded at v001 in this synthetic fixture, exercising that
+    `first` is NOT hard-coded to 1).
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v002").mkdir()
+    (history / "v003").mkdir()
+    (history / "v004").mkdir()
+    (history / "v005").mkdir()
+    children = sorted(history.iterdir())
+    first = prune_history._resolve_first(  # noqa: SLF001
+        children=children,
+        max_version=5,
+        prior_marker_text=None,
+    )
+    assert first == 2
+
+
+def test_prune_history_resolve_first_returns_one_when_only_v001_exists(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_first` returns 1 when `<spec-root>/history/` has only v001.
+
+    Edge case of the marker-absent branch per spec.md prune-
+    history paragraph step (b): the smallest-numbered v-dir is
+    v001 → `first` = 1. The (i) no-op short-circuit normally
+    prevents the resolver from being called when only v001
+    exists, but the pure helper is called via direct unit test
+    to cover the degenerate-but-valid input.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "v001").mkdir()
+    children = sorted(history.iterdir())
+    first = prune_history._resolve_first(  # noqa: SLF001
+        children=children,
+        max_version=1,
+        prior_marker_text=None,
+    )
+    assert first == 1
+
+
+def test_prune_history_resolve_first_skips_non_directory_entries_when_marker_absent(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_first` skips non-directory children defensively in the marker-absent branch.
+
+    Drives the `if not child.is_dir(): continue` guard branch of
+    the pure resolver. Mirrors the analogous defensive guard in
+    `_find_max_version` and `_oldest_below_has_pruned_marker`.
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "README.txt").write_text("not a v-dir", encoding="utf-8")
+    (history / "v003").mkdir()
+    children = sorted(history.iterdir())
+    first = prune_history._resolve_first(  # noqa: SLF001
+        children=children,
+        max_version=3,
+        prior_marker_text=None,
+    )
+    assert first == 3
+
+
+def test_prune_history_resolve_first_skips_non_v_prefix_dirs_when_marker_absent(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_first` skips dir children whose name doesn't start with `v` (marker-absent branch).
+
+    Drives the `if not name.startswith("v"): continue` guard
+    branch of the pure resolver. Sorted iteration yields `aaa`
+    first (skipped), then v003 (smallest remaining v-dir).
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "aaa").mkdir()
+    (history / "v003").mkdir()
+    children = sorted(history.iterdir())
+    first = prune_history._resolve_first(  # noqa: SLF001
+        children=children,
+        max_version=3,
+        prior_marker_text=None,
+    )
+    assert first == 3
+
+
+def test_prune_history_resolve_first_skips_v_prefix_with_non_digit_suffix_when_marker_absent(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_resolve_first` skips `v<non-digits>` dir children (marker-absent branch).
+
+    Drives the `if not suffix.isdigit(): continue` guard branch
+    of the pure resolver. Sorted iteration yields `vextra`
+    (skipped), then v003 (counted).
+    """
+    history = tmp_path / "history"
+    history.mkdir()
+    (history / "vextra").mkdir()
+    (history / "v003").mkdir()
+    children = sorted(history.iterdir())
+    first = prune_history._resolve_first(  # noqa: SLF001
+        children=children,
+        max_version=3,
+        prior_marker_text=None,
+    )
+    assert first == 3
+
+
+def test_prune_history_main_resolves_first_via_marker_at_n_minus_1(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """When v(N-1) has PRUNED_HISTORY.json and (ii) no-op does NOT fire, marker is read.
+
+    Per v012 spec.md prune-history paragraph step (b): the
+    wrapper resolves the carry-forward `first` field from
+    `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json`'s
+    `pruned_range[0]`. Fixture is constructed so the (ii) no-op
+    short-circuit does NOT fire (v002 — the OLDEST surviving v-
+    dir below max=5 — has NO marker), but v(N-1)=v004 DOES
+    carry a marker. The resolver path runs end-to-end through
+    the impure `fs.read_text` boundary, exercising the integration
+    seam between `_run_prune` and `_resolve_first`. Cycle 6.c.5
+    does NOT yet act on the resolved `first`; the wrapper still
+    emits the no-op finding for now (acting is reserved for
+    cycles 6.c.6+).
+    """
+    spec_root = tmp_path / "SPECIFICATION"
+    (spec_root / "history" / "v002").mkdir(parents=True)
+    (spec_root / "history" / "v003").mkdir()
+    (spec_root / "history" / "v004").mkdir()
+    (spec_root / "history" / "v004" / "PRUNED_HISTORY.json").write_text(
+        '{"pruned_range": [3, 4]}',
+        encoding="utf-8",
+    )
+    (spec_root / "history" / "v005").mkdir()
+    exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert payload["findings"][0]["status"] == "skipped"
+
+
+def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent_at_n_minus_1(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """When v(N-1) has NO PRUNED_HISTORY.json, `first` falls back to smallest-numbered v-dir.
+
+    Per v012 spec.md prune-history paragraph step (b)'s `else`
+    clause: when the v(N-1) marker is absent, `first` is the
+    smallest-numbered v-directory currently under
+    `<spec-root>/history/`. Fixture is constructed so the (ii)
+    no-op short-circuit does NOT fire (v002 — oldest surviving
+    below max=5 — has NO marker) AND v(N-1)=v004 has NO marker
+    either. The resolver path runs through the marker-absent
+    impure branch (no `fs.read_text` is invoked) and the pure
+    resolver is called with `prior_marker_text=None`. Cycle
+    6.c.5 still emits no-op (no acting yet).
+    """
+    spec_root = tmp_path / "SPECIFICATION"
+    (spec_root / "history" / "v002").mkdir(parents=True)
+    (spec_root / "history" / "v003").mkdir()
+    (spec_root / "history" / "v004").mkdir()
+    (spec_root / "history" / "v005").mkdir()
+    exit_code = prune_history.main(argv=["--project-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["findings"][0]["check_id"] == "prune-history-no-op"
+    assert payload["findings"][0]["status"] == "skipped"
