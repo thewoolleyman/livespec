@@ -225,3 +225,63 @@ def test_per_proposal_disposition_with_rationale_rejects_empty_rationale() -> No
             },
             input_context={},
         )
+
+
+def test_findings_grounded_in_spec_target_passes_when_targets_match() -> None:
+    assertion = ASSERTIONS["findings_grounded_in_spec_target"]
+    assertion(
+        replayed_response={
+            "findings": [
+                {
+                    "name": "x",
+                    "target_spec_files": ["SPECIFICATION/spec.md"],
+                    "motivation": "ambiguous wording",
+                },
+            ],
+        },
+        input_context={
+            "current_spec_files": ["SPECIFICATION/spec.md", "SPECIFICATION/contracts.md"],
+        },
+    )
+
+
+def test_findings_grounded_in_spec_target_rejects_target_not_in_current_files() -> None:
+    assertion = ASSERTIONS["findings_grounded_in_spec_target"]
+    with pytest.raises(AssertionError, match="not in input_context.current_spec_files"):
+        assertion(
+            replayed_response={
+                "findings": [
+                    {
+                        "name": "x",
+                        "target_spec_files": ["SPECIFICATION/missing.md"],
+                        "motivation": "contradiction",
+                    },
+                ],
+            },
+            input_context={"current_spec_files": ["SPECIFICATION/spec.md"]},
+        )
+
+
+def test_prioritizes_ambiguity_over_style_passes_when_lexicon_present() -> None:
+    assertion = ASSERTIONS["prioritizes_ambiguity_over_style"]
+    assertion(
+        replayed_response={
+            "findings": [
+                {"name": "x", "motivation": "The CONTRADICTION between A and B."},
+            ],
+        },
+        input_context={},
+    )
+
+
+def test_prioritizes_ambiguity_over_style_rejects_motivation_without_lexicon() -> None:
+    assertion = ASSERTIONS["prioritizes_ambiguity_over_style"]
+    with pytest.raises(AssertionError, match="ambiguity/contradiction lexicon"):
+        assertion(
+            replayed_response={
+                "findings": [
+                    {"name": "x", "motivation": "The wording could be smoother."},
+                ],
+            },
+            input_context={},
+        )
