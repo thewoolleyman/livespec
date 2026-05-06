@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.version_contiguity.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this is the sixth of the eight Phase-3
+Per Plan Phase 3 +: this is the sixth of the eight Phase-3
 minimum-subset doctor checks. It asserts that the
 `<spec_root>/history/vNNN/` directory numbers are contiguous
 starting from `v001` with no gaps (e.g., v001, v002, v003 is

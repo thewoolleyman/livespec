@@ -1,6 +1,6 @@
 """Seed sub-command supervisor.
 
-Per PROPOSAL.md §"`seed`" + briefing "outside-in walking
+Per briefing "outside-in walking
 direction": this is the wrapper entry-point importing
 `livespec.commands.seed.main`. Drives the seed flow:
 load+validate `--seed-json` payload, write `.livespec.jsonc`,

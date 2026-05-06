@@ -2,8 +2,7 @@
 
 Asserts the shebang wrapper threads its stubbed main()'s return
 value into `raise SystemExit(<code>)`, per the canonical
-6-statement wrapper shape (style doc §"Wrapper shape" /
-PROPOSAL.md §"`seed`").
+6-statement wrapper shape (style doc §"Wrapper shape" /).
 
 `wrapper_runner` (in conftest.py) stubs `_bootstrap.bootstrap`
 and `livespec.commands.seed.main` so we exercise only the

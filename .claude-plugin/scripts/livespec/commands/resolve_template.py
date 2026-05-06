@@ -1,6 +1,6 @@
 """Resolve-template sub-command supervisor.
 
-Per PROPOSAL.md §"Template resolution contract"
+
 and v028 D1: emits the resolved template directory path on
 stdout. The path-computation formula
 `Path(__file__).resolve().parents[3]` derives the bundle root
@@ -52,11 +52,9 @@ _BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "minimal"})
 def build_parser() -> argparse.ArgumentParser:
     """Construct the resolve-template argparse parser without parsing.
 
-    Per PROPOSAL §"Template resolution contract":
-    `--project-root <path>` (default `Path.cwd()`) and
-    `--template <value>`. PROPOSAL marks --template OPTIONAL; this
-    Phase-3-minimum makes it required (the default
-    `.livespec.jsonc` walking flow is Phase 7 work).
+    Two args: `--project-root <path>` (default `Path.cwd()`) and
+    `--template <value>` (required at this minimum-viable stage;
+    the default `.livespec.jsonc`-walking flow is a future widening).
 
     `exit_on_error=False` lets argparse signal errors via
     `argparse.ArgumentError` rather than `SystemExit`, per style
@@ -87,7 +85,7 @@ def _resolve_template_value(
     `_BUILTIN_TEMPLATES_DIR`. Other strings are treated as paths
     relative to --project-root and validated to (a) exist as a
     directory and (b) contain `template.json`. Failures map to
-    `PreconditionError` (exit 3 per PROPOSAL).
+    `PreconditionError` (exit 3).
     """
     if value in _BUILTIN_TEMPLATE_NAMES:
         return IOSuccess(_BUILTIN_TEMPLATES_DIR / value)
@@ -109,9 +107,7 @@ def _resolve_template_value(
 
 
 def _emit_resolved_path(*, path: Path) -> IOResult[Path, LivespecError]:
-    """Emit the resolved path on stdout per the v1-frozen contract.
-
-    PROPOSAL §"Template resolution contract":
+    """Emit the resolved path on stdout per the v1-frozen contract.:
     exactly one line, absolute POSIX path, trailing `\\n`.
     """
     sys.stdout.write(f"{path}\n")
@@ -146,8 +142,8 @@ def main(*, argv: list[str] | None = None) -> int:
 
     UsageError (parse, missing required) -> exit 2;
     PreconditionError (template path missing or invalid) -> exit
-    3; success -> exit 0 with one-line stdout per PROPOSAL
-    §"Template resolution contract".
+    3; success -> exit 0 with one-line stdout per
+    SPECIFICATION/contracts.md §"Resolved-template stdout contract".
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()

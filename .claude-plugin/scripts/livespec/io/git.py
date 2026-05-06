@@ -7,7 +7,7 @@ The git facade exposes `get_git_user` returning the conventional
 `"Name <email>"` author string from local git config, used by
 `livespec.commands.revise.main` (and `seed.main`'s revision-auto-
 capture path) to populate the revision-file `author_human`
-front-matter field per PROPOSAL.md §"Revision file format" and `revision_front_matter.schema.json`.
+front-matter field and `revision_front_matter.schema.json`.
 
 Cycle 5.c.1 lands the smallest viable surface: the happy path
 where both `git config --get user.name` and
@@ -73,8 +73,7 @@ def get_git_user() -> IOResult[str, LivespecError]:
     Cycle 5.c.1 happy-path-only: when either git config value is
     unset (returncode != 0) or empty (whitespace-only stdout),
     the literal substring is emitted as-is. Later cycles widen
-    this to the `"unknown"` fallback per PROPOSAL.md §"Revision
-    file format" + the PreconditionError lift
+    this to the `"unknown"` fallback + the PreconditionError lift
     when the git binary is missing.
     """
     return run_subprocess(argv=["git", "config", "--get", "user.name"]).bind(
@@ -237,8 +236,7 @@ def list_at_head(
 
     The doctor's out-of-band-edits check uses this primitive to
     iterate over HEAD-committed spec files for the
-    active-vs-history-vN comparison (PROPOSAL §"Static-phase
-    checks → out-of-band-edits → Comparison"). Subtrees and
+    active-vs-history-vN comparison. Subtrees and
     files nested inside subtrees are excluded — the comparison
     is a top-level-files question.
 

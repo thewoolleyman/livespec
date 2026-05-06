@@ -95,7 +95,7 @@ fixture-evaluation layer.
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
   Same as the other LLM-driven prompts.
 - **Thin intent.** When `<intent>` is too sparse to populate
   meaningful regions, the SKILL.md prose handles re-prompting

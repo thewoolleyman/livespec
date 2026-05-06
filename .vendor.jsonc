@@ -1,7 +1,6 @@
 // .vendor.jsonc — vendored library manifest.
 //
-// Authoritative source: PROPOSAL.md §"Runtime dependencies —
-// Vendored pure-Python libraries" (five entries per v025; the
+// Authoritative source: (five entries per v025; the
 // v018 Q4 sixth entry returns_pyright_plugin was dropped in
 // v025 D1; jsoncomment was reclassified from upstream-sourced
 // lib to hand-authored shim per v026 D1; typing_extensions was

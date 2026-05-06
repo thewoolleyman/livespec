@@ -117,11 +117,11 @@ def _raw_move(*, source: Path, target: Path) -> None:
 def move(*, source: Path, target: Path) -> IOResult[None, LivespecError]:
     """Move `source` to `target` byte-identically; return IOSuccess(None).
 
-    OSError (source missing, cross-device move, permission denied)
-    lifts to PreconditionError (exit 3). Used by revise to move
-    each processed `<spec-target>/proposed_changes/<stem>.md`
-    into `<spec-target>/history/vNNN/proposed_changes/<stem>.md`
-    per PROPOSAL.md §"`revise`".
+     OSError (source missing, cross-device move, permission denied)
+     lifts to PreconditionError (exit 3). Used by revise to move
+     each processed `<spec-target>/proposed_changes/<stem>.md`
+     into `<spec-target>/history/vNNN/proposed_changes/<stem>.md`
+    .
     """
     return _raw_move(source=source, target=target).alt(
         lambda exc: PreconditionError(f"fs.move: {exc}"),

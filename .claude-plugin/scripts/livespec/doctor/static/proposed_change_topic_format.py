@@ -1,7 +1,6 @@
 """Static-phase doctor check: proposed_change_topic_format.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check asserts that every
+Per Plan Phase 3 +: this check asserts that every
 `<spec_root>/proposed_changes/<topic>.md` filename follows the
 canonical topic-slug format (lowercase letters, digits, and
 hyphens only — pattern `^[a-z0-9-]+$`).

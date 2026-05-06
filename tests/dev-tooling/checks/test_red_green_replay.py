@@ -355,9 +355,7 @@ def test_feat_with_single_test_file_staged_emits_sha256_checksum(
 ) -> None:
     """A feat: subject with one staged test file surfaces a SHA-256 checksum.
 
-    Cycle 179 wires SHA-256 computation of the staged test file. Per
-    PROPOSAL.md §"Testing approach — Activation §v034 D2-D3 Red→Green
-    replay contract" and the trailer schema (`TDD-Red-Test-File-Checksum:
+    Cycle 179 wires SHA-256 computation of the staged test file. Per and the trailer schema (`TDD-Red-Test-File-Checksum:
     sha256:<hex>`), the Red-mode hook computes the test file's SHA-256
     so the Green-mode amend can verify the test file is unchanged. This
     test pins: a tests-only-staged commit with exactly one path under
@@ -597,7 +595,7 @@ def test_feat_with_failing_test_writes_full_red_trailer_schema(
     """Red-moment confirmed → COMMIT_EDITMSG gains the v034 D2 trailer schema.
 
     Cycle 181 wires Red trailer authoring via `git interpret-trailers
-    --in-place`. Per PROPOSAL.md §"Trailer schema", the full set of
+    --in-place`. Per, the full set of
     Red trailers required at the Red commit boundary is:
 
       TDD-Red-Test: <pytest-node-id>
@@ -668,7 +666,7 @@ def test_feat_with_impl_staged_and_head_has_red_trailers_emits_green_mode_candid
     """Green-mode-candidate detection: HEAD~0 has Red trailers + impl staged.
 
     Cycle 182 wires the Green-mode dispatch counterpart to Red mode.
-    Per PROPOSAL.md §"Green mode (amend)", Green mode
+    Per, Green mode
     is triggered when the HEAD~0 commit message carries Red trailers
     AND the new staged tree adds implementation files. This test
     fixtures a Red commit by manually authoring a commit body with
@@ -757,8 +755,7 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
 ) -> None:
     """Full Green-mode replay success: Green trailers written, hook returns 0.
 
-    Cycle 183 wires Green-mode replay verification. Per PROPOSAL.md
-    §"Green mode (amend)", the hook must: recompute
+    Green-mode replay verification: the hook must recompute the
     test file SHA-256 from working tree (rejects on mismatch), run
     pytest (expects exit zero), then add `TDD-Green-Verified-At:`
     and `TDD-Green-Parent-Reflog:` trailers and let the commit land.

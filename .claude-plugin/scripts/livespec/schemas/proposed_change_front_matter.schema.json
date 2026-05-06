@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "proposed_change_front_matter.schema.json",
   "title": "proposed_change_front_matter",
-  "description": "Schema for the YAML front-matter at the top of a proposed-change file at <spec-root>/proposed_changes/<topic>.md. Per PROPOSAL §'Proposed-change file format' lines 2933-2989.",
+  "description": "Schema for the YAML front-matter at the top of a proposed-change file at <spec-root>/proposed_changes/<topic>.md.",
   "type": "object",
   "additionalProperties": false,
   "required": [

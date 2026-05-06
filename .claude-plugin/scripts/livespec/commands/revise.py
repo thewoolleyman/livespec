@@ -1,6 +1,6 @@
 """Revise sub-command supervisor.
 
-Per PROPOSAL.md §"`revise`" and Plan Phase 3
+Per and Plan Phase 3
 : revise is minimum-viable per v019 Q1 —
 validates `--revise-json <path>` against revise_input.schema.json,
 processes per-proposal `decisions[]` in payload order, writes
@@ -59,12 +59,12 @@ _REVISE_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "revise_input.schema.json"
 def build_parser() -> argparse.ArgumentParser:
     """Construct the revise argparse parser without parsing.
 
-    Per style doc §"CLI argument parsing seam":
-    `exit_on_error=False` lets argparse signal errors via
-    `argparse.ArgumentError` rather than `SystemExit`. The
-    parser exposes `--revise-json <path>` (required), and the
-    optional `--author`, `--spec-target`, `--project-root` flags
-    per PROPOSAL.md §"revise".
+     Per style doc §"CLI argument parsing seam":
+     `exit_on_error=False` lets argparse signal errors via
+     `argparse.ArgumentError` rather than `SystemExit`. The
+     parser exposes `--revise-json <path>` (required), and the
+     optional `--author`, `--spec-target`, `--project-root` flags
+    .
     """
     parser = argparse.ArgumentParser(prog="revise", exit_on_error=False)
     _ = parser.add_argument("--revise-json", required=True)
@@ -159,7 +159,7 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
 
-    Per Plan Phase 3 + PROPOSAL.md §"revise":
+    Per Plan Phase 3 +:
     `<spec-target>` is selected via --spec-target, defaulting to
     the project's main spec root (`<project-root>/SPECIFICATION/`
     under the built-in livespec template).

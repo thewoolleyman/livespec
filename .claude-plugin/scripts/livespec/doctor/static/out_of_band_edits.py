@@ -1,7 +1,6 @@
 """Static-phase doctor check: out_of_band_edits.
 
-Per Plan Phase 7 sub-step 7.a + PROPOSAL.md §"`doctor` →
-Static-phase checks": the `out-of-band-edits` check detects
+Per Plan Phase 7 sub-step 7.a +: the `out-of-band-edits` check detects
 HEAD-committed spec files whose contents have diverged from
 their HEAD-committed `history/vN/` snapshot (i.e., edits made
 to the active spec without the propose-change → revise pipeline
@@ -15,8 +14,7 @@ discriminates on whether `ctx.spec_root` is inside a git
 working tree.
 
 Cycle 7.a.iii widens the in-git-repo branch with a pre-backfill
-guard. Per PROPOSAL §"Static-phase checks → out-of-band-edits →
-Pre-backfill guard — uncommitted prior backfill present", the
+guard. Per, the
 guard fires on either of two leftover-from-prior-run shapes
 BEFORE the divergence comparison or the auto-backfill write
 path:
@@ -38,19 +36,11 @@ Per memory feedback_domain_errors_vs_bugs the leftover state
 is an EXPECTED business outcome, not a bug, so it stays on
 the IOSuccess track.
 
-Cycle 7.a.iv (redo) replaces the placeholder pass-Finding with
-HEAD-active-vs-HEAD-history-vN comparison per PROPOSAL
-§"Static-phase checks → out-of-band-edits → Comparison":
-"diffs `git show HEAD:<spec-root>/<spec-file>` against `git
-show HEAD:<spec-root>/history/vN/<spec-file>` for each
-template-declared spec file. Both sides are HEAD-committed
-artifacts; working-tree WIP is ignored for the comparison."
-
-This redo replaces the prior wrong-divergence-semantics 7.a.iv
-attempt (orphan tag `wrong-7a-impl-2026-05-05`) which
-incorrectly compared working-tree state against HEAD. Per
-PROPOSAL the comparison runs entirely on git HEAD content;
-working-tree WIP is irrelevant.
+The check uses HEAD-active-vs-HEAD-history-vN comparison: diffs
+`git show HEAD:<spec-root>/<spec-file>` against `git show
+HEAD:<spec-root>/history/vN/<spec-file>` for each template-declared
+spec file. Both sides are HEAD-committed artifacts; working-tree
+WIP is ignored for the comparison.
 
 The "template-declared spec files" enumeration is realized as
 "the immediate top-level files at HEAD under `<spec-root>/`",
@@ -67,7 +57,7 @@ exists at HEAD". The probe walks v001 forward and stops at
 the first absent candidate; the highest successful N is the
 comparison target.
 
-Edge case decisions (PROPOSAL silent; codified here):
+Edge case decisions (codified here):
 
   - No `<spec-root>/history/` at HEAD: emits `status="pass"`
     with a "no HEAD history baseline" message. Benign post-
@@ -81,8 +71,7 @@ NO writes happen in this cycle — the auto-backfill write path
 (`<spec-root>/proposed_changes/out-of-band-edit-<UTC>.md` +
 `<spec-root>/history/v(N+1)/...`) lands at 7.a.v.
 
-Per v018 Q1: applies to all spec-text-bearing trees (main +
-each sub-spec).
+Applies to all spec-text-bearing trees (main + each sub-spec).
 """
 
 from __future__ import annotations
@@ -296,7 +285,7 @@ def _run_divergence_or_no_baseline(
 
     On non-empty divergence the writes-module's `route_drift_outcome`
     auto-backfills under `<spec_root>/history/v(N+1)/` before
-    composing the fail-Finding, per PROPOSAL §"Backfill on drift".
+    composing the fail-Finding.
     """
     if latest is None:
         return IOSuccess(

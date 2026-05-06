@@ -6,8 +6,7 @@ boundary. Every function wraps a side-effecting operation
 facade exposes the typed subprocess primitive that
 `livespec.commands.seed.main` (and future sub-command wrappers)
 compose against to invoke `bin/doctor_static.py` for the
-post-step lifecycle phase per PROPOSAL.md §"Sub-command
-lifecycle orchestration".
+post-step lifecycle phase.
 
 Subprocess invocation is the chosen composition mechanism (over
 direct in-process import) because the layered-architecture

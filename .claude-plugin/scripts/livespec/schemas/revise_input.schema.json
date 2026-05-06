@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "revise_input.schema.json",
   "title": "revise_input",
-  "description": "Schema for the JSON payload that the active template's prompts/revise.md produces and that bin/revise.py consumes via --revise-json. Per PROPOSAL §'revise' lines 2365-2400.",
+  "description": "Schema for the JSON payload that the active template's prompts/revise.md produces and that bin/revise.py consumes via --revise-json.",
   "type": "object",
   "additionalProperties": false,
   "required": [

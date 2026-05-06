@@ -7,7 +7,7 @@ returning `Result[ProposedChangeFrontMatter, ValidationError]`.
 
 The wire payload is the YAML front-matter at the top of a
 proposed-change file at `<spec-root>/proposed_changes/<topic>.md`
-(per PROPOSAL §"Proposed-change file format"):
+(per):
 required `topic` (kebab-case slug), `author` identifier, and
 `created_at` UTC ISO-8601 datetime.
 """

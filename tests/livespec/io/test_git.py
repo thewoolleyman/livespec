@@ -6,11 +6,11 @@ tree lives here under `@impure_safe` so the railway flows
 through `IOResult`. The git facade exposes the typed primitive
 that `livespec.commands.revise.main` (and `seed.main`'s revision-
 auto-capture path) compose against to populate the
-revision-file `author_human` field per PROPOSAL.md §"Revision
-file format" and `revision_front_matter.schema.json`.
+revision-file `author_human` field and `revision_front_matter.schema.json`.
 
-The seam is named `io.git.get_git_user` per PROPOSAL.md + `revision_front_matter.schema.json` description on
-the `author_human` property. Cycle 5.c.1 lands the smallest
+The seam is named `io.git.get_git_user` per the
+`revision_front_matter.schema.json` description on the
+`author_human` property. Cycle 5.c.1 lands the smallest
 viable surface: a single `get_git_user` primitive that returns
 `"Name <email>"` from local git config when both values are
 set; later cycles (or consumer pressure) widen the unset/missing-
@@ -30,8 +30,7 @@ project_root, repo_relative_dir)` returning the immediate file
 basenames at HEAD under a given repo-relative directory. The
 out-of-band-edits divergence detection composes this primitive
 with `show_at_head` to compare HEAD-active spec content against
-HEAD-history-vN snapshot content (PROPOSAL §"Static-phase
-checks → out-of-band-edits → Comparison"). Empty subtree and
+HEAD-history-vN snapshot content. Empty subtree and
 missing-subtree cases both return IOSuccess(()) — the underlying
 `git ls-tree HEAD <dir>/` does not distinguish them — and the
 no-HEAD-yet case lifts to IOFailure.
@@ -106,8 +105,7 @@ def test_get_git_user_returns_combined_name_and_email(
     `tmp_path` with local `user.name` and `user.email` set,
     monkeypatch cwd to that repo, call `get_git_user()`, assert
     the IOSuccess carrier holds the conventional Git author
-    format `"Name <email>"` per PROPOSAL.md §"Revision file
-    format". Drives the `livespec/io/git.py`
+    format `"Name <email>"`. Drives the `livespec/io/git.py`
     module into existence (importing it fails at HEAD).
 
     Per the cwd-fallback isolation rule, monkeypatch.chdir is

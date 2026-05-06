@@ -35,7 +35,7 @@ cannot synthesize on Python 3.10.
 - **Verbatim license file:** `.claude-plugin/scripts/_vendor/returns/LICENSE`
 
 ROP primitives: `Result`, `IOResult`, `bind`, `map`, `Success`,
-`Failure`. See PROPOSAL.md §"Railway-Oriented Programming (ROP)".
+`Failure`.
 
 ---
 
@@ -47,7 +47,7 @@ ROP primitives: `Result`, `IOResult`, `bind`, `map`, `Success`,
 - **Verbatim license file:** `.claude-plugin/scripts/_vendor/fastjsonschema/LICENSE`
 
 JSON Schema validator. Compiles schemas to Python code for
-fast validation. See PROPOSAL.md §"Schemas and dataclasses".
+fast validation.
 
 ---
 
@@ -101,17 +101,12 @@ files that benefit from inline comments.
 - **Verbatim license file:** `.claude-plugin/scripts/_vendor/typing_extensions/LICENSE`
 
 Python typing-system backports. Vendored full upstream verbatim
-at tag `4.12.2` per v027 D1 (was the v013 M1 hand-authored
-minimal shim pre-v027). Provides the variadic-generics + Self +
-Never + TypedDict + ParamSpec + TypeVarTuple + Unpack symbols
-that the vendored returns + structlog + fastjsonschema sources
-transitively require at import time, plus livespec's own
-canonical-import-path needs (`override` for pyright's
-`reportImplicitOverride` per style-doc L2; `assert_never` for
-the Never-narrowing exhaustiveness check per style-doc L7).
-v027 D1 reclassified typing_extensions from shim to
-upstream-sourced because the v013 M1 minimal-shim approach
-cannot satisfy `Generic[..., Unpack[TypeVarTuple(...)]]`
-variadic-generics usage on Python 3.10 (the dev-env minimum) —
-PROPOSAL.md v013 M1 explicitly anticipated this scope-widening
-path.
+at tag `4.12.2`. Provides the variadic-generics + Self + Never +
+TypedDict + ParamSpec + TypeVarTuple + Unpack symbols that the
+vendored returns + structlog + fastjsonschema sources transitively
+require at import time, plus livespec's own canonical-import-path
+needs (`override` for pyright's `reportImplicitOverride`;
+`assert_never` for the Never-narrowing exhaustiveness check). A
+hand-authored minimal shim cannot satisfy `Generic[...,
+Unpack[TypeVarTuple(...)]]` variadic-generics usage on Python
+3.10 (the dev-env minimum), so the full upstream is vendored.

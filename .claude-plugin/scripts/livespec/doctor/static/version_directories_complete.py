@@ -1,14 +1,12 @@
 """Static-phase doctor check: version_directories_complete.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check asserts that every
+Per Plan Phase 3 +: this check asserts that every
 `<spec_root>/history/vNNN/` directory contains its expected
 sub-structure.
 
 Phase-3 minimum scope: verifies every existing `history/v*/`
 directory contains a `proposed_changes/` subdirectory. The
-template-specific "main-file" presence (PROPOSAL.md or
-equivalent) is deferred to Phase 7.
+template-specific "main-file" presence is deferred to Phase 7.
 
 Cycle 138 lands the pass arm. Subsequent cycles add the
 fail arm for version-directory shape violations.

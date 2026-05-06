@@ -1,11 +1,10 @@
 """Tests for livespec.doctor.static.proposed_changes_and_history_dirs.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this is the fourth of the eight Phase-3
+Per Plan Phase 3 +: this is the fourth of the eight Phase-3
 minimum-subset doctor checks. It asserts that
 `<spec_root>/proposed_changes/` and `<spec_root>/history/`
 directories both exist (the canonical seeded-revise tree
-shape per PROPOSAL §"`seed`" steps 4-5).
+shape steps 4-5).
 
 Phase-3 minimum scope: pass arm. Cycle 137 lands the success
 case; the missing-directory failure arms land in subsequent

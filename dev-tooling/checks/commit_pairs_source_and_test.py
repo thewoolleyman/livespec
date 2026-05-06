@@ -24,13 +24,12 @@ be `git commit --amend` adding the impl. During that amend,
 `git diff --cached --name-only` shows only the impl files
 (the Red commit's test is already in HEAD, unchanged), so the
 naive staged-only enforcement would reject the amend. The
-check skips itself in that case — the v034 D2-D3 contract
+check skips itself in that case — the Red→Green replay contract
 enforces pairing structurally (Red commit MUST stage a test;
-Green amend MUST land impl and pass the test). PROPOSAL line
-4054's contract ("every feat/fix commit ... must also touch
-tests/**") is satisfied by the post-amend commit (which
-contains BOTH the Red commit's test and the Green amend's
-impl). Once the amend lands, HEAD carries both Red AND Green
+Green amend MUST land impl and pass the test). The "every
+feat/fix commit must also touch tests/**" contract is satisfied
+by the post-amend commit (which contains BOTH the Red commit's
+test and the Green amend's impl). Once the amend lands, HEAD carries both Red AND Green
 trailers and the next commit's pre-commit sees the
 "complete" state — the check resumes normal enforcement.
 

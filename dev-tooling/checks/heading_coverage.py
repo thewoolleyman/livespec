@@ -20,7 +20,7 @@ The check fails on three directions:
    but no non-empty `reason` field.
 
 The check SKIPS `##` headings whose text begins with the literal
-`Scenario:` prefix per PROPOSAL.md.
+`Scenario:` prefix.
 
 Pre-Phase-6 the check tolerates an empty `[]` array; from the
 Phase 6 seed forward, emptiness is a failure if any spec tree

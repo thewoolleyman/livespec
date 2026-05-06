@@ -1,10 +1,10 @@
 # Release-tag workflow — runs the release-gate targets on tag push.
 #
-# Authoritative source: PROPOSAL.md and
-# python-skill-script-style-requirements.md §"Enforcement suite —
-# Release-gate targets". The targets in this workflow are NOT
-# part of `just check` (they are not run per-commit); they fire
-# only on tag push to gate releases.
+# Authoritative source: justfile release-gate recipes
+# (`check-mutation`, `check-no-todo-registry`,
+# `check-no-lloc-soft-warnings`). These targets are NOT part of
+# `just check` (not run per-commit); they fire only on tag push
+# to gate releases.
 #
 #   - check-mutation: mutmut against livespec/parse/ + validate/.
 #     Threshold = ratchet against .mutmut-baseline.json (v013 M3)

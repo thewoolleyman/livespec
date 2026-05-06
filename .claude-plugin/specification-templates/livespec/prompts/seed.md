@@ -61,10 +61,9 @@ LLM-driven subjective phase tightens the semantic fit later.
   emit one `SubSpecPayload` entry under `sub_specs[]` carrying:
   - `template_name` — matches the template's directory name.
   - `files[]` — the full sub-spec file set under
-    `SPECIFICATION/templates/<template_name>/` per PROPOSAL.md
-    §"Template sub-specifications" — uniformly multi-file:
-    `spec.md`, `contracts.md`, `constraints.md`, `scenarios.md`,
-    `README.md`.
+    `SPECIFICATION/templates/<template_name>/` — uniformly
+    multi-file: `spec.md`, `contracts.md`, `constraints.md`,
+    `scenarios.md`, `README.md`.
 
 Both branches handle the user's `<intent>` rigorously: every
 spec-file's content reflects the intent; sub-spec content
@@ -92,7 +91,7 @@ section names where appropriate (e.g., `## Intent`, `## Cadence`,
 - **`scenarios.md`** — Gherkin scenarios. The `# H1` is
   `<title> — scenarios`. Sections are `## Scenario: ...` blocks
   with proper blank-line-delimited Gherkin steps (no fenced
-  code blocks per PROPOSAL.md's GFM-rendering convention).
+  code blocks — Gherkin renders as plain GFM).
 - **`README.md`** — overview. The `# H1` matches the
   `<title>` and the body describes how the spec files relate.
 
@@ -152,7 +151,7 @@ templates, the same payload's `sub_specs[]` becomes:
   pre-seed dialogue rather than emitting a malformed JSON
   payload. The seed wrapper does NOT have a recovery path for
   this — the SKILL.md prose handles re-prompting.
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
   When the wrapper exits 4 with a `fastjsonschema` validation
   error, the SKILL.md prose re-invokes this prompt with the
   error context appended; the LLM repairs the offending field.

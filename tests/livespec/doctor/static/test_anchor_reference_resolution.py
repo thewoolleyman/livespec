@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.anchor_reference_resolution.
 
-Per Plan Phase 7 sub-step 7.d + PROPOSAL.md §"`doctor` →
-Static-phase checks": the `anchor-reference-resolution` check
+Per Plan Phase 7 sub-step 7.d +: the `anchor-reference-resolution` check
 verifies that every Markdown intra-document anchor reference (a
 link of the form `[text](#slug)`) resolves to an actual heading
 in the same file via the GFM slug algorithm. This is the last of
@@ -9,7 +8,7 @@ four remaining doctor static checks landing at Phase 7 (alongside
 `out-of-band-edits`, `bcp14-keyword-wellformedness`, and
 `gherkin-blank-line-format`).
 
-Per PROPOSAL.md §"Static-phase checks": "Anchors are generated
+Per: "Anchors are generated
 per GitHub-flavored Markdown (GFM) slug rules: the heading text
 is lowercased; internal whitespace is replaced with single
 hyphens; punctuation is stripped except `-` and `_`; multiple

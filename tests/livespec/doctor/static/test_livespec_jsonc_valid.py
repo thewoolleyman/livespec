@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.livespec_jsonc_valid.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this is the first of the eight Phase-3
+Per Plan Phase 3 +: this is the first of the eight Phase-3
 minimum-subset doctor checks. It asserts that the project's
 `.livespec.jsonc` config file exists and parses as valid JSONC
 (comments stripped via the vendored jsoncomment shim).

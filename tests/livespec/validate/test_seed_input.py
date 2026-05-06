@@ -44,7 +44,7 @@ _SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
 def test_validate_seed_input_returns_success_with_dataclass_for_valid_payload() -> None:
     """A well-formed seed-input payload validates to Success(SeedInput).
 
-    Payload mirrors the example in PROPOSAL.md §"`seed`": a `livespec` template choice with one main-spec
+    Payload mirrors the example in: a `livespec` template choice with one main-spec
     file and an empty sub_specs list (the user-answered-no
     branch of the v020 Q2 dialogue).
     """

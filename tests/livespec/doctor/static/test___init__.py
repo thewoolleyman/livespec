@@ -1,10 +1,10 @@
 """Tests for livespec.doctor.static package surface.
 
-The static-doctor check registry is the v033 D5b second-redo
-seam where each Phase-3 / Phase-7 doctor check module gets pulled
-into existence via consumer pressure (see PROPOSAL.md
-§"`doctor` → Static-phase structure"). Until any
-check module is authored under TDD, the package's `__init__.py`
+The static-doctor check registry is the seam where each doctor
+check module gets pulled into existence via consumer pressure
+(see SPECIFICATION/contracts.md §"Per-sub-spec doctor
+parameterization"). Until any check module is authored under
+TDD, the package's `__init__.py`
 holds only the canonical no-op preamble (the v033 D1
 mirror-pairing-rule's `__init__.py` carve-out: a file whose body
 is `from __future__ import annotations` + `__all__: list[str] = []`
@@ -46,7 +46,7 @@ def test_static_package_is_importable() -> None:
 def test_applicability_by_tree_kind_maps_main_to_all_eight_checks() -> None:
     """APPLICABILITY_BY_TREE_KIND['main'] enumerates every Phase-3 check.
 
-    Per PROPOSAL.md §"`doctor` → Static-phase structure" + Plan
+    Per Plan
     Phase 3: the applicability table is
     orchestrator-owned and decides which checks apply to which
     tree kind. The 'main' entry must include every member of

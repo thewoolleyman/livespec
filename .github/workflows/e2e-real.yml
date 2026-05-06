@@ -1,10 +1,8 @@
 # E2E real-claude workflow — runs the real-claude E2E target
 # against the minimal template via the live claude-agent-sdk.
 #
-# Authoritative source: PROPOSAL.md and
-# python-skill-script-style-requirements.md §"Enforcement suite —
-# Canonical target list" → e2e-test-claude-code-real (alternate-
-# cadence target NOT in `just check`).
+# Authoritative source: justfile recipe `e2e-test-claude-code-real`
+# (alternate-cadence target NOT in `just check`).
 #
 # Triggers per plan:
 #   - merge_group (pre-merge via merge queue)

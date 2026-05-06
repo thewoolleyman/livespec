@@ -39,8 +39,7 @@ flags in v1:
 
 - `--project-root <path>` (optional; defaults to `Path.cwd()`).
   Anchors `<spec-root>/` resolution and the upward walk to find
-  `.livespec.jsonc`. Uniform across every wrapper per
-  PROPOSAL.md §"Project-root detection contract".
+  `.livespec.jsonc`. Uniform across every wrapper per.
 - `--skip-pre-check` (optional). Skips the pre-step doctor
   static phase before pruning. Mutually exclusive with
   `--run-pre-check`.
@@ -55,8 +54,8 @@ deferred (tracked under `sub-spec-structural-formalization`).
 The wrapper takes no JSON-payload flag; there is no
 LLM-provided JSON input for this sub-command.
 
-Effective skip resolution for the pre-step (per PROPOSAL.md
-§"Pre-step skip control"):
+Effective skip resolution for the pre-step (per
+SPECIFICATION/spec.md §"Sub-command lifecycle"):
 
 1. `--skip-pre-check` on the CLI → skip = true.
 2. `--run-pre-check` on the CLI → skip = false (overrides

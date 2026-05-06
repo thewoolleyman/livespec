@@ -1,7 +1,6 @@
 """Static-phase doctor check: revision_to_proposed_change_pairing.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check asserts that every
+Per Plan Phase 3 +: this check asserts that every
 `history/vNNN/proposed_changes/<topic>.md` has a paired
 `<topic>-revision.md` in the same directory.
 

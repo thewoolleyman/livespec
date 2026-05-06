@@ -3,7 +3,7 @@
 # Authoritative source: python-skill-script-style-requirements.md
 # §"Enforcement suite — Canonical target list". All recipes
 # delegate to their underlying tool or to a dev-tooling check
-# script. Per PROPOSAL.md §"Dev tooling and task runner",
+# script. Per,
 # `just` is the single source of truth for every dev-tooling
 # invocation; lefthook.yml and .github/workflows/*.yml only
 # call `just <target>`.

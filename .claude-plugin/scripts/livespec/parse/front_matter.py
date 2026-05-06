@@ -1,6 +1,6 @@
 """Pure restricted-YAML front-matter parser.
 
-Per PROPOSAL.md §"Proposed-change file format" + §"Revision file
+Per §"Revision file
 format": values MUST be JSON-compatible scalars (strings,
 integers, booleans, `null`); no lists, no nested dicts, no
 anchors, no flow style. Schema-level `additionalProperties: false`

@@ -63,7 +63,7 @@ def test_fs_write_text_writes_utf8_content_and_returns_iosuccess(
     `tmp_path` location, assert the file contents on disk match
     the input verbatim, and assert the railway carrier is the
     IOSuccess(None) shape every seed file-shaping stage composes
-    against. PROPOSAL.md §"`seed`" steps 1-3 (write
+    against. steps 1-3 (write
     `.livespec.jsonc`, main-spec files, sub-spec files) all bind
     against this primitive.
     """

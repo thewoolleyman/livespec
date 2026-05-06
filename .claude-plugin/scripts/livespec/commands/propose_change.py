@@ -1,6 +1,6 @@
 """Propose-change sub-command supervisor.
 
-Per PROPOSAL.md §"`propose-change`" and Plan Phase 3
+Per and Plan Phase 3
 : the wrapper validates the inbound
 `--findings-json <path>` payload, composes a proposed-change
 file from the findings, and writes it to
@@ -54,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     `argparse.ArgumentError` rather than `SystemExit`. The
     parser exposes `--findings-json <path>` (required), a
     positional `<topic>`, optional `--author <id>`, and
-    `--spec-target <path>` per PROPOSAL.md §"propose-change".
+    `--spec-target <path>`.
     """
     parser = argparse.ArgumentParser(prog="propose-change", exit_on_error=False)
     _ = parser.add_argument("--findings-json", required=True)
@@ -265,13 +265,12 @@ def _compose_proposed_change_body(
 ) -> str:
     """Compose the proposed-change file (front-matter + sections) from validated findings.
 
-    Per PROPOSAL.md (field-copy mapping): each
-    finding becomes one `## Proposal: <name>` section with
-    `### Target specification files`, `### Summary`,
-    `### Motivation`, `### Proposed Changes` subsections
-    populated verbatim from the finding's fields. The file is
-    prefixed with YAML front-matter carrying the canonical topic,
-    resolved author, and creation timestamp.
+    Field-copy mapping: each finding becomes one `## Proposal:
+    <name>` section with `### Target specification files`,
+    `### Summary`, `### Motivation`, `### Proposed Changes`
+    subsections populated verbatim from the finding's fields. The
+    file is prefixed with YAML front-matter carrying the canonical
+    topic, resolved author, and creation timestamp.
     """
     sections: list[str] = []
     for finding in findings.findings:

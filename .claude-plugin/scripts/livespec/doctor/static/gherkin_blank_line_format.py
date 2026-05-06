@@ -1,7 +1,6 @@
 """Static-phase doctor check: gherkin_blank_line_format.
 
-Per Plan Phase 7 sub-step 7.c + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check verifies that fenced
+Per Plan Phase 7 sub-step 7.c +: this check verifies that fenced
 ` ```gherkin ` blocks in spec-text-bearing markdown files are
 surrounded by blank lines (one blank line above the opening
 fence, one blank line below the closing fence). Start-of-file

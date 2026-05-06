@@ -42,9 +42,8 @@ findings about ambiguities and contradictions in
 processes it.
 
 Note: the `gherkin-blank-line-format` doctor-static check is
-conditional on the `livespec` template per PROPOSAL.md
-§"Static-phase checks" and does NOT apply when the active
-template is `minimal`. Critique findings about Gherkin
+conditional on the `livespec` template and does NOT apply when
+the active template is `minimal`. Critique findings about Gherkin
 formatting in the minimal template's `SPECIFICATION.md` are
 out of scope (the minimal template doesn't ship Gherkin
 scenarios).
@@ -79,7 +78,7 @@ Same shape as `propose-change` — emit JSON conforming to
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
 - **Empty critique** (no findings). Emit `findings: []`. The
   wrapper handles the empty case.
 - **Wording-style suggestions.** Defer to a separate

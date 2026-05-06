@@ -7,8 +7,7 @@ by `dev-tooling/checks/file_lloc.py`. Mirrors the
 (extracting compose-and-write helpers from a parent supervisor /
 check that would otherwise blow the file-LLOC ceiling).
 
-Per PROPOSAL §"Static-phase checks → out-of-band-edits → Backfill
-on drift": when divergence is detected against the HEAD-history-vN
+Per: when divergence is detected against the HEAD-history-vN
 baseline, the check writes three classes of artifacts under
 `<spec_root>/history/v(N+1)/`:
 
@@ -23,13 +22,11 @@ baseline, the check writes three classes of artifacts under
      Files NOT at HEAD-active (i.e., divergence kind is missing-
      active) are skipped.
 
-The PROPOSAL "moves the proposed-change and revision into
-history/v(N+1)/proposed_changes/" step is implemented as direct
-write into `history/v(N+1)/proposed_changes/` rather than write +
-move — the destination is the same in either order, and the
-single-write path is cleaner. The pre-backfill guard's leftover-
-detection covers the partial-write case the spec's move-step
-phrasing was guarding against.
+The auto-backfill writes directly into
+`history/v(N+1)/proposed_changes/` (no top-level intermediate
+write + move) — the destination is the same and the single-write
+path is cleaner. The pre-backfill guard's leftover-detection
+covers any partial-write case.
 
 TIMESTAMP-FILENAME format: `%Y-%m-%dt%H-%M-%Sz` (lowercase t/z,
 all hyphens) so the resulting filename satisfies both the topic
@@ -39,7 +36,7 @@ revised_at) use the canonical ISO-8601 `%Y-%m-%dT%H:%M:%SZ` per
 the schema's `format: date-time`.
 
 Author identifier `livespec-doctor` is the literal reserved skill-
-tool prefix from PROPOSAL §"Backfill on drift"; the doctor is the
+tool prefix from; the doctor is the
 sole author for auto-backfill artifacts (no resolution from CLI /
 env / payload).
 
@@ -284,7 +281,7 @@ def route_drift_outcome(
 
     No drift → IOSuccess(pass-Finding). Drift → write artifacts
     (proposed-change + revision + v(N+1)/ snapshots) then return
-    IOSuccess(fail-Finding) per PROPOSAL §"Backfill on drift". The
+    IOSuccess(fail-Finding). The
     `make_finding` callable is the parent module's Finding-construction
     formula so this module does not duplicate the per-check check_id +
     spec_root payload shape.

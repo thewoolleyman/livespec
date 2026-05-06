@@ -142,7 +142,7 @@ def test_seed_main_defaults_argv_to_sys_argv_when_called_without_args(
     assert exit_code == 2
     """The pure argparse factory accepts `--seed-json <path>` and binds it.
 
-    Per PROPOSAL.md §"`seed`" (`bin/seed.py
+    Per (`bin/seed.py
     --seed-json <path>` is the sole wrapper entry point) and
     style doc §"CLI argument parsing seam" (commands/<cmd>.py
     exposes a pure `build_parser() -> ArgumentParser` factory
@@ -160,7 +160,7 @@ def test_seed_main_writes_livespec_jsonc_at_project_root_on_success(
 ) -> None:
     """Successful seed writes `<project-root>/.livespec.jsonc` with the template.
 
-    Per PROPOSAL.md §"`seed`" step 1: the wrapper
+    Per step 1: the wrapper
     writes `.livespec.jsonc` at repo root using the payload's
     top-level `template` field value. This is the first
     deterministic file-shaping stage — drives the success-arm
@@ -184,7 +184,7 @@ def test_seed_main_writes_main_spec_files_at_their_paths(
 ) -> None:
     """Successful seed writes each main-spec `files[]` entry to its path.
 
-    Per PROPOSAL.md §"`seed`" step 2: "Write each
+    Per step 2: "Write each
     main-spec `files[]` entry to its specified path." Each
     entry's `path` is project-root-relative; content goes
     verbatim. Drives the second deterministic file-shaping
@@ -207,7 +207,7 @@ def test_seed_main_writes_sub_spec_files_at_their_paths(
 ) -> None:
     """Successful seed writes each sub-spec entry's `files[]` to its path.
 
-    Per PROPOSAL.md §"`seed`" step 3: "For each
+    Per step 3: "For each
     entry in `sub_specs[]`, write every `files[]` entry in
     that sub-spec to its
     `SPECIFICATION/templates/<template_name>/<spec-file>` path."
@@ -243,7 +243,7 @@ def test_seed_main_creates_history_v001_with_versioned_main_spec_files(
 ) -> None:
     """Successful seed materializes `<spec-root>/history/v001/<spec-file>`.
 
-    Per PROPOSAL.md §"`seed`" step 4: "Create
+    Per step 4: "Create
     `<spec-root>/history/v001/` for the main spec (including
     the initial versioned spec files...)." With the built-in
     `livespec` template's spec_root = `SPECIFICATION/`, each
@@ -268,7 +268,7 @@ def test_seed_main_creates_sub_spec_history_v001(
 ) -> None:
     """Successful seed materializes sub-spec history/v001/ for each sub-spec tree.
 
-    Per PROPOSAL.md §"`seed`" step 5: "For
+    Per step 5: "For
     each sub-spec tree, create
     SPECIFICATION/templates/<template_name>/history/v001/
     alongside the main-spec history — including the sub-spec's
@@ -303,7 +303,7 @@ def test_seed_main_emits_auto_captured_seed_proposed_change(
 ) -> None:
     """Successful seed writes `<spec-root>/history/v001/proposed_changes/seed.md`.
 
-    Per PROPOSAL.md §"`seed`" step 6 and the
+    Per step 6 and the
     "Auto-generated...seed.md content" subsection:
     the wrapper writes a proposed-change file with front-matter
     `topic: seed`, `author: livespec-seed`, plus a
@@ -330,7 +330,7 @@ def test_seed_main_emits_auto_captured_seed_revision(
 ) -> None:
     """Successful seed writes `<spec-root>/history/v001/proposed_changes/seed-revision.md`.
 
-        Per PROPOSAL.md §"`seed`" "Auto-generated...seed-revision.md"
+        Per "Auto-generated...seed-revision.md"
     : front-matter `proposal: seed.md`,
         `decision: accept`, `author_llm: livespec-seed`, with
         `## Decision and Rationale` paragraph "auto-accepted during
@@ -379,7 +379,7 @@ def test_seed_main_returns_exit_zero_on_successful_seed(
 def test_seed_build_parser_accepts_project_root_flag() -> None:
     """The argparse factory accepts `--project-root <path>` and binds it.
 
-    Per PROPOSAL.md §"Wrapper CLI surface":
+    Per:
     every wrapper that operates on project state accepts
     `--project-root <path>` as an optional CLI flag with default
     `Path.cwd()`. Seed uses this to anchor `.livespec.jsonc`
@@ -772,8 +772,7 @@ def test_fold_doctor_completed_process_returns_failure_on_malformed_json_stdout(
 
     Per `_fold_doctor_completed_process` guard: the
     doctor wrapper's documented stdout contract is a single
-    `{"findings": [...]}` JSON object (PROPOSAL.md §"`doctor` →
-    Static-phase output contract"). If stdout cannot be decoded
+    `{"findings": [...]}` JSON object. If stdout cannot be decoded
     by `json.loads`, the doctor's contract was violated and seed
     cannot proceed — the helper lifts the json.ValueError catch
     into a Failure(PreconditionError) so the supervisor pattern-
@@ -925,7 +924,7 @@ def test_seed_main_invokes_post_step_doctor_and_returns_exit_three_on_fail_findi
 ) -> None:
     """After seed completes, post-step doctor runs; any fail finding -> exit 3.
 
-    Per PROPOSAL.md §"Sub-command lifecycle orchestration" + §"`seed`": "Seed is exempt from
+    Per §"`seed`": "Seed is exempt from
     pre-step doctor-static; post-step runs normally after the
     wrapper's deterministic work completes." On any `status:
     "fail"` finding from post-step, the wrapper aborts with exit
@@ -989,7 +988,7 @@ def test_seed_main_defaults_project_root_to_cwd_when_flag_omitted(
 ) -> None:
     """Without --project-root, the supervisor defaults to `Path.cwd()`.
 
-    Per PROPOSAL.md §"Wrapper CLI surface": every
+    Per: every
     wrapper accepts `--project-root <path>` with the default
     applied at the supervisor edge as `Path.cwd()` (NOT at the
     parser layer; the parser keeps default=None so the supervisor

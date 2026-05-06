@@ -73,12 +73,11 @@ def run_subprocess(
     Non-zero exit codes from the child are NOT failures at this
     boundary — they lift to IOSuccess(CompletedProcess) so the
     caller can pattern-match `completed.returncode` and fold the
-    semantics into its own railway. This matches PROPOSAL.md
-    §"Sub-command lifecycle orchestration": any
-    `status: "fail"` finding from post-step doctor aborts the
-    wrapper with exit 3, but the doctor subprocess itself ran
-    correctly — the failure is on the wrapper's own railway, not
-    the io boundary.
+    semantics into its own railway. Per the sub-command lifecycle
+    semantics in SPECIFICATION/spec.md, any `status: "fail"`
+    finding from post-step doctor aborts the wrapper with exit 3,
+    but the doctor subprocess itself ran correctly — the failure
+    is on the wrapper's own railway, not the io boundary.
     """
     return _raw_run_subprocess(argv=argv).alt(
         lambda exc: PreconditionError(f"proc.run_subprocess: {exc}"),

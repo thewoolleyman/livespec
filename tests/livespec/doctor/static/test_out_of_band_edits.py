@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.out_of_band_edits.
 
-Per Plan Phase 7 sub-step 7.a + PROPOSAL.md §"`doctor` →
-Static-phase checks": the `out-of-band-edits` check detects
+Per Plan Phase 7 sub-step 7.a +: the `out-of-band-edits` check detects
 HEAD-committed spec files whose contents have diverged from
 their HEAD-committed `history/vN/` snapshot. It is the only
 check whose `run()` has a narrow auto-backfill write path (per
@@ -14,7 +13,7 @@ two pinned behaviors:
 
   - When `ctx.spec_root` is NOT inside a git working tree, the
     check emits a skipped-Finding (`status="skipped"`). Non-git
-    projects are an expected business outcome (PROPOSAL §"`doctor`":
+    projects are an expected business outcome (:
     "skip the out-of-band check, the project isn't versioned");
     they MUST NOT lift to an IOFailure (memory:
     feedback_domain_errors_vs_bugs).
@@ -31,7 +30,7 @@ The SLUG ↔ check_id literal mapping (`doctor-out-of-band-edits`)
 is also pinned per the `static/CLAUDE.md` registry convention.
 
 Cycle 7.a.iii widens the in-git-repo branch with a pre-backfill
-guard, per PROPOSAL §"Static-phase checks" → out-of-band-edits
+guard → out-of-band-edits
 → "Pre-backfill guard — uncommitted prior backfill present".
 The guard detects two leftover-from-prior-run shapes BEFORE
 running the divergence comparison (which lands in 7.a.iv) or
@@ -52,17 +51,15 @@ the auto-backfill write path (7.a.v):
 When either condition holds, the check emits a skipped-Finding
 naming the manual-intervention requirement. The skipped-Finding
 keeps the doctor non-destructive: it refuses to double-write a
-fresh auto-backfill on top of an in-flight prior one (PROPOSAL
-guard semantics — the user must commit-or-revert the prior
-backfill before re-running). Per memory
+fresh auto-backfill on top of an in-flight prior one (the user
+must commit-or-revert the prior backfill before re-running). Per memory
 feedback_domain_errors_vs_bugs the leftover state is an EXPECTED
 business outcome, not a bug, so it stays on the IOSuccess track
 with `status="skipped"` rather than lifting to IOFailure.
 
 Cycle 7.a.iv (redo) replaces the placeholder pass-Finding with
 HEAD-committed-active-vs-HEAD-committed-history-vN comparison
-(PROPOSAL §"Static-phase checks → out-of-band-edits →
-Comparison": "diffs `git show HEAD:<spec-root>/<spec-file>`
+(: "diffs `git show HEAD:<spec-root>/<spec-file>`
 against `git show HEAD:<spec-root>/history/vN/<spec-file>` for
 each top-level spec file. Both sides are HEAD-committed
 artifacts; working-tree WIP is ignored for the comparison.").
@@ -74,7 +71,7 @@ walked via `livespec.io.git.list_at_head`. Subdirs
 by ls-tree's blob-only filter, so the enumeration matches the
 top-level *.md files the seed materializes.
 
-Edge case decisions (PROPOSAL is silent; codified here):
+Edge case decisions (codified here):
 
   - No `<spec-root>/history/` at HEAD: emits `status="pass"`
     with a "no history baseline" message. This is a benign
@@ -165,18 +162,18 @@ def test_run_returns_skipped_when_spec_root_is_not_in_git_repo(
 ) -> None:
     """run(ctx) returns IOSuccess(skipped-Finding) when not in a git working tree.
 
-    Non-git fixture: `tmp_path` is NOT initialized as a git
-    repo. The check's first branch SHOULD detect this via
-    `is_git_repo` and emit a skipped-Finding instead of
-    attempting any divergence detection. Non-git is an
-    expected business outcome — the doctor folds it into
-    "skip the out-of-band check, the project isn't versioned"
-    (PROPOSAL §"Static-phase checks").
+     Non-git fixture: `tmp_path` is NOT initialized as a git
+     repo. The check's first branch SHOULD detect this via
+     `is_git_repo` and emit a skipped-Finding instead of
+     attempting any divergence detection. Non-git is an
+     expected business outcome — the doctor folds it into
+     "skip the out-of-band check, the project isn't versioned"
+    .
 
-    `monkeypatch.chdir(tmp_path)` isolates cwd per
-    `feedback_test_cwd_isolation` so the `is_git_repo` check
-    cannot accidentally walk up into the surrounding livespec
-    repo's `.git/` directory.
+     `monkeypatch.chdir(tmp_path)` isolates cwd per
+     `feedback_test_cwd_isolation` so the `is_git_repo` check
+     cannot accidentally walk up into the surrounding livespec
+     repo's `.git/` directory.
     """
     monkeypatch.chdir(tmp_path)
     project_root = tmp_path / "project"
@@ -215,8 +212,7 @@ def _expected_pre_backfill_skipped(*, spec_root: Path) -> Finding:
     existing v(N+1) for N=0 or N=2). Building it via a single
     helper keeps the assertion target identical across the
     test cases and pins the literal message — the precise
-    string lands as the message field per PROPOSAL §"`doctor`
-    → out-of-band-edits → Pre-backfill guard".
+    string lands as the message field.
     """
     return Finding(
         check_id="doctor-out-of-band-edits",
@@ -397,9 +393,8 @@ def _expected_pass_no_history_baseline(*, spec_root: Path) -> Finding:
     Emitted when `<spec-root>/history/` is absent at HEAD or
     contains no `vNNN/` subdirs at HEAD. Per the edge-case
     decision documented in the module docstring, "no baseline"
-    is treated as "no drift" (PROPOSAL is silent on this
-    case; the pre-backfill guard already covers the leftover
-    cases that would otherwise land here).
+    is treated as "no drift" (the pre-backfill guard already
+    covers the leftover cases that would otherwise land here).
     """
     return Finding(
         check_id="doctor-out-of-band-edits",
@@ -421,8 +416,7 @@ def test_run_returns_pass_when_active_and_history_match_byte_for_byte(
     Canonical no-drift fixture: a top-level `spec.md` is
     committed at HEAD with byte-identical content at
     `<spec_root>/spec.md` and `<spec_root>/history/v001/spec.md`.
-    Per PROPOSAL §"Static-phase checks → out-of-band-edits →
-    Comparison" both sides are HEAD-committed artifacts; the
+    Per both sides are HEAD-committed artifacts; the
     byte-equality check MUST emit a pass-Finding.
     """
     monkeypatch.chdir(tmp_path)
@@ -492,11 +486,10 @@ def test_run_returns_fail_when_active_present_history_missing_at_head(
 
     Drift case: a NEW top-level spec file landed at HEAD-active
     without a paired snapshot at HEAD-history-vN (e.g., user
-    added `extras.md` directly without revising). PROPOSAL's
-    comparison says "diff active against history/vN/<file>";
-    when the history side is absent at HEAD, the file IS
-    drift — it was added since vN's snapshot was taken without
-    a revise pass.
+    added `extras.md` directly without revising). The comparison
+    says "diff active against history/vN/<file>"; when the history
+    side is absent at HEAD, the file IS drift — it was added since
+    vN's snapshot was taken without a revise pass.
     """
     monkeypatch.chdir(tmp_path)
     _git_init(repo_root=tmp_path)
@@ -746,8 +739,7 @@ def test_run_returns_pass_when_history_dir_is_absent_at_head(
 # --------------------------------------------------------------------------
 # Cycle 7.a.v-redo: auto-backfill write path on detected divergence.
 #
-# Per PROPOSAL.md §"Static-phase checks → out-of-band-edits → Backfill on
-# drift": when divergence is detected, the check writes
+# Per: when divergence is detected, the check writes
 # three classes of artifacts before emitting the fail Finding:
 #
 #   1. `<spec_root>/history/v(N+1)/proposed_changes/
@@ -770,8 +762,7 @@ def test_run_returns_pass_when_history_dir_is_absent_at_head(
 #       to copy.
 #
 # After the artifact writes, the check emits a fail Finding so the
-# orchestrator's exit-code derivation lands on 3 — PROPOSAL §"Backfill
-# on drift" says "Check exits `3`", translated to the Finding model
+# orchestrator's exit-code derivation lands on 3 — says "Check exits `3`", translated to the Finding model
 # that's a fail-Finding (the orchestrator maps any fail-Finding to exit 3).
 #
 # TIMESTAMP-FILENAME format: `%Y-%m-%dt%H-%M-%Sz` (lowercase t/z, all
@@ -797,7 +788,7 @@ def _find_oob_artifact_in_v_dir(
 
     Both the proposed-change (`<TS>.md`) and revision (`<TS>-revision.md`)
     artifacts land in `<spec_root>/history/<version_label>/proposed_changes/`
-    after the move step (PROPOSAL §"Backfill on drift" "moves the
+    after the move step ( "moves the
     proposed-change and revision into history/v(N+1)/proposed_changes/").
     The `suffix` parameter discriminates between the two: `.md` for the
     proposed-change (anchored via the timestamp boundary) and
@@ -827,7 +818,7 @@ def test_run_writes_proposed_change_artifact_under_v_next_proposed_changes(
     test: HEAD-active `spec.md` differs from HEAD-history-v001/spec.md.
     The auto-backfill MUST land its proposed-change artifact under
     the v002/proposed_changes/ subdir (the moved-into-v(N+1) shape
-    per PROPOSAL §"Backfill on drift"). The filename's timestamp
+    per). The filename's timestamp
     portion matches `out-of-band-edit-<%Y-%m-%dt%H-%M-%Sz>.md` so
     the topic schema's kebab-case regex is satisfied.
     """
@@ -908,7 +899,7 @@ def test_run_writes_proposed_change_with_livespec_doctor_author(
 ) -> None:
     """The proposed-change front-matter `author` is the literal `livespec-doctor`.
 
-    Per PROPOSAL §"Backfill on drift": "Author identifier:
+    Per: "Author identifier:
     `livespec-doctor` (reserved skill-tool prefix)." The auto-backfill MUST hardcode
     `livespec-doctor` rather than resolving from git config or env
     — the doctor is the artifact author.
@@ -946,7 +937,7 @@ def test_run_writes_revision_with_decision_accept_and_doctor_authors(
 ) -> None:
     """The revision front-matter has `decision: accept` and `author_*: livespec-doctor`.
 
-    Per PROPOSAL §"Backfill on drift" + the auto-backfill semantic:
+    Per the auto-backfill semantic:
     the doctor endorses the divergent active state as the new canonical
     version (decision = accept). Both the human and llm author
     fields land as `livespec-doctor` since the doctor is the sole
@@ -985,7 +976,7 @@ def test_run_snapshots_head_active_bytes_into_v_next_dir(
 ) -> None:
     """run(ctx) writes HEAD-active bytes into `<spec_root>/history/v002/<file>`.
 
-    Per PROPOSAL §"Backfill on drift" ("writes `<spec-root>/history/v(N+1)/`
+    Per ("writes `<spec-root>/history/v(N+1)/`
     with the current HEAD-committed spec content"): every enumerated
     file present at HEAD-active is copied byte-identically into
     v(N+1)/. Source bytes are HEAD-active (the `git show HEAD:<path>`
@@ -1019,7 +1010,7 @@ def test_run_emits_fail_finding_after_writing_auto_backfill_artifacts(
 ) -> None:
     """run(ctx) STILL emits IOSuccess(fail-Finding) after writing artifacts.
 
-    Per PROPOSAL §"Backfill on drift": the check exits with status 3 (a
+    Per: the check exits with status 3 (a
     fail-Finding in the orchestrator's translation) instructing the
     user to commit the new history/v(N+1)/ + backfill artifacts and
     re-run. The artifact writes do NOT swallow the fail signal —
@@ -1056,9 +1047,7 @@ def test_run_proposed_change_diff_body_names_diverging_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The proposed-change body's `### Proposed Changes` carries the diff naming the file.
-
-    PROPOSAL §"Backfill on drift": "containing one `## Proposal` with the
+    """The proposed-change body's `### Proposed Changes` carries the diff naming the file.: "containing one `## Proposal` with the
     diff as `### Proposed Changes`". Driven via stdlib
     `difflib.unified_diff`; the file's basename appears in the diff
     so downstream consumers can identify which file diverged. This

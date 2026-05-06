@@ -6,9 +6,9 @@ One module per sub-command (`seed`, `propose-change`, `critique`,
 supervisor returning `int`).
 
 Doctor is intentionally absent here: its supervisor lives at
-`livespec/doctor/run_static.py` per the PROPOSAL tree. Help is also
-absent — `/livespec:help` is a SKILL.md-only sub-command with no
-Python wrapper.
+`livespec/doctor/run_static.py`. Help is also absent —
+`/livespec:help` is a SKILL.md-only sub-command with no Python
+wrapper.
 
 Supervisor `main()` functions are the only place outside `bin/` and
 `livespec/doctor/run_static.py` where `sys.stdout.write` is

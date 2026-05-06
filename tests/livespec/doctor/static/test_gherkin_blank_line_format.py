@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.gherkin_blank_line_format.
 
-Per Plan Phase 7 sub-step 7.c + PROPOSAL.md §"`doctor` →
-Static-phase checks": the `gherkin-blank-line-format` check
+Per Plan Phase 7 sub-step 7.c +: the `gherkin-blank-line-format` check
 verifies that fenced ` ```gherkin ` blocks in spec-text-bearing
 markdown files are surrounded by blank lines (one blank line
 above the opening fence, one blank line below the closing
@@ -429,15 +428,15 @@ def test_run_only_walks_top_level_md_files(
 ) -> None:
     """run(ctx) does NOT recurse into history/proposed_changes/templates subtrees.
 
-    Per the `anchor-reference-resolution` walk-set semantic
-    (PROPOSAL.md §"Static-phase checks"), the
-    gherkin-blank-line-format check inspects only top-level
-    `<spec_root>/*.md` files (livespec-shape) or only
-    `<spec_root>/SPECIFICATION.md` (minimal-shape). A
-    violation seeded inside `<spec_root>/history/v001/
-    scenarios.md` MUST NOT trip the check (history snapshots
-    are byte-identical copies that inherit the live spec's
-    well-formedness via the seed/revise discipline).
+     Per the `anchor-reference-resolution` walk-set semantic
+    , the
+     gherkin-blank-line-format check inspects only top-level
+     `<spec_root>/*.md` files (livespec-shape) or only
+     `<spec_root>/SPECIFICATION.md` (minimal-shape). A
+     violation seeded inside `<spec_root>/history/v001/
+     scenarios.md` MUST NOT trip the check (history snapshots
+     are byte-identical copies that inherit the live spec's
+     well-formedness via the seed/revise discipline).
     """
     project_root = tmp_path / "project"
     project_root.mkdir()

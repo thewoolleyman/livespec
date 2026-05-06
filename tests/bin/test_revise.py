@@ -2,8 +2,8 @@
 
 Asserts the shebang wrapper threads its main()'s return value
 into `raise SystemExit(<code>)`, per the canonical 6-statement
-wrapper shape (style doc §"Wrapper shape" / PROPOSAL.md
-§"`revise`").
+wrapper shape (SPECIFICATION/constraints.md §"Shebang-wrapper
+contract").
 """
 
 from __future__ import annotations

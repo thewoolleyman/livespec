@@ -71,7 +71,7 @@ files byte-identical, writes paired `<topic>-revision.md` files,
 applies `resulting_files[]` to working spec files in place, and
 snapshots post-update spec files into the new vNNN/.
 
-**Audit-trail invariant** (PROPOSAL.md §"Versioning" Statement B,
+**Audit-trail invariant** ( Statement B,
 codified in v038 D1). Even when ALL decisions are `reject`, the
 wrapper cuts a new `v<N+1>/` with the rejected proposed-change
 files moved into history and rejection-revision files paired
@@ -138,7 +138,7 @@ filename stem when the stem carries a `-N` collision suffix).
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
   Same as the other LLM-driven prompts.
 - **Empty proposed_changes/.** When zero in-flight proposals
   exist (only `README.md` is present), revise's wrapper exits

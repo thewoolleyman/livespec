@@ -223,7 +223,7 @@ def _bind_resulting_files(
 ) -> IOResult[RevisionInput, LivespecError]:
     """Append resulting_files writes to the accumulator for accept/modify.
 
-    Per PROPOSAL.md §"`revise`": only `accept`
+    Per: only `accept`
     and `modify` decisions materialize resulting_files into the
     working spec; `reject` decisions produce no working-spec
     changes (just the audit-trail revision file).

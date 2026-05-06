@@ -1,14 +1,13 @@
 """Static-phase doctor check: anchor_reference_resolution.
 
-Per Plan Phase 7 sub-step 7.d + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check verifies that every Markdown
+Per Plan Phase 7 sub-step 7.d +: this check verifies that every Markdown
 intra-document anchor reference (a link of the form
 `[text](#slug)`) resolves to an actual heading in the SAME file
 via the GFM slug algorithm. Cross-file references and external
 links are out of scope at the static layer (their resolution
-moves to the LLM-driven phase per PROPOSAL.md §"LLM-driven phase").
+moves to the LLM-driven phase per).
 
-GFM slug algorithm (per PROPOSAL.md §"Static-phase checks"):
+GFM slug algorithm (per):
   1. Lowercase the heading text.
   2. Strip punctuation EXCEPT `-` and `_` (whitespace is preserved
      for the next step).
@@ -17,12 +16,12 @@ GFM slug algorithm (per PROPOSAL.md §"Static-phase checks"):
   5. Strip leading and trailing hyphens.
 
 Headings inside fenced code blocks (` ``` ` or `~~~`) are NOT
-considered headings (per PROPOSAL.md). Explicit `{#custom-id}`
-syntax is NOT supported in v1.
+considered headings. Explicit `{#custom-id}` syntax is NOT
+supported in v1.
 
-Per v018 Q1: applies to all spec-text-bearing trees (main + each
-sub-spec). The walk-set semantic matches the sibling Phase-7
-checks: livespec-shape spec_roots walk `<spec_root>/*.md`
+Applies to all spec-text-bearing trees (main + each sub-spec).
+The walk-set semantic matches the sibling Phase-7 checks:
+livespec-shape spec_roots walk `<spec_root>/*.md`
 top-level files only; minimal-shape spec_roots scan only
 `<spec_root>/SPECIFICATION.md`. Neither shape recurses into
 `history/`, `proposed_changes/`, or `templates/` subtrees —

@@ -6,7 +6,7 @@ allowed-tools: Bash, Read
 
 # doctor
 
-`doctor` runs in two layers per PROPOSAL.md §"`doctor`" lines
+`doctor` runs in two layers lines
 2546-2606:
 
 - **Static phase** is implemented in Python at
@@ -27,8 +27,7 @@ allowed-tools: Bash, Read
   (`doctor_llm_objective_checks_prompt`,
   `doctor_llm_subjective_checks_prompt`).
 
-There is no `bin/doctor.py` wrapper (PROPOSAL.md §"Note on
-`bin/doctor.py`"); the user invokes `/livespec:doctor` (or
+There is no `bin/doctor.py` wrapper; the user invokes `/livespec:doctor` (or
 expresses intent in dialogue) and the LLM follows this skill's
 prose end-to-end.
 
@@ -62,8 +61,8 @@ disk via the upward walk and discovers sub-spec trees by
 listing `<main-spec-root>/templates/<name>/`.
 
 Two LLM-layer flag pairs apply during the LLM-driven phase but
-are NEVER passed to the Python wrapper (per PROPOSAL.md
-§"Skill-prose-side: LLM-driven post-step"):
+are NEVER passed to the Python wrapper (per
+SPECIFICATION/spec.md §"Sub-command lifecycle"):
 
 - `--skip-doctor-llm-objective-checks` /
   `--run-doctor-llm-objective-checks` (mutually exclusive).
@@ -122,8 +121,7 @@ proceed to §"Failure handling".
 
 6. **Skill-baked objective checks.** Run the following
    checks against every spec tree, surfacing each finding
-   as it arises (per PROPOSAL.md §"LLM-driven phase →
-   LLM-driven objective checks"):
+   as it arises (per):
 
    - Internal contradiction detection (section A says X,
      section B says not-X).
@@ -169,8 +167,7 @@ proceed to §"Failure handling".
    there and SKIP to Step 10. Otherwise proceed.
 
 9. **Skill-baked subjective checks.** Run the following
-   against every spec tree (per PROPOSAL.md §"LLM-driven
-   phase → LLM-driven subjective checks"):
+   against every spec tree (per):
 
    - Spec↔implementation drift (compare the spec's stated
      contracts and constraints to the surrounding repo's
@@ -215,7 +212,7 @@ proceed to §"Failure handling".
     `proposed_change_hint` as the user-described change.
 
     No cross-invocation persistence of dismissals in v1
-    (PROPOSAL.md §"LLM-driven phase" line 3003-3004). A
+   . A
     finding the user dismissed in one run MAY surface again
     in the next run; the user dismisses again or chooses a
     different disposition.
@@ -223,8 +220,7 @@ proceed to §"Failure handling".
 ## Skip control
 
 Each LLM-layer flag pair resolves to a `skip` boolean per the
-precedence chain (PROPOSAL.md §"LLM-driven phase →
-Skippability"):
+precedence chain:
 
 1. **CLI flag.** If `--skip-<phase>-checks` is on the
    invocation: `skip = true`. If `--run-<phase>-checks` is on:
@@ -236,7 +232,7 @@ Skippability"):
 3. **Both flags present.** Argparse-style usage error: surface
    and abort the LLM-driven phase. Do NOT proceed.
 
-**Narration rule** (PROPOSAL.md §"LLM-driven phase" lines
+**Narration rule** ( lines
 3006-3013): the skill MUST surface a warning via LLM narration
 whenever an LLM-driven phase is SILENTLY skipped (the skip
 came from the config key with no CLI flag passed). When a

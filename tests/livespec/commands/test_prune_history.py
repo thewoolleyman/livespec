@@ -200,11 +200,9 @@ def test_prune_history_main_accepts_project_root_flag(
 ) -> None:
     """`--project-root <path>` is a recognized optional flag (exit 0).
 
-    Per v012 contracts.md §"Wrapper CLI surface" prune-history row
-    + the universal `--project-root <path>` baseline (PROPOSAL.md
-    §"Project-root detection contract" explicitly enumerates
-    `bin/prune_history.py` as a project-state wrapper that accepts
-    the flag).
+    Per SPECIFICATION/contracts.md §"Wrapper CLI surface"
+    prune-history row + the universal `--project-root <path>`
+    baseline.
     """
     project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
     exit_code = prune_history.main(argv=["--project-root", str(project_root)])
@@ -1727,7 +1725,7 @@ def test_prune_history_main_short_circuits_with_exit_three_on_pre_step_doctor_fa
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Per PROPOSAL.md §"Sub-command lifecycle orchestration": fail finding -> exit 3.
+    """Per: fail finding -> exit 3.
 
     "On any `status: \"fail\"` finding from pre-step, the wrapper
     aborts with exit 3 and sub-command logic does not run." This
@@ -1836,8 +1834,7 @@ def test_prune_history_invoke_pre_step_doctor_returns_iofailure_when_any_fail_fi
     CompletedProcess whose stdout carries a `findings` payload
     with one fail-status entry. The helper MUST return
     IOFailure(PreconditionError) so the wrapper short-circuits
-    with exit 3 per PROPOSAL.md §"Sub-command lifecycle
-    orchestration".
+    with exit 3.
     """
     import subprocess
 

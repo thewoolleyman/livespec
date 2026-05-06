@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.version_directories_complete.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this is the fifth of the eight Phase-3
+Per Plan Phase 3 +: this is the fifth of the eight Phase-3
 minimum-subset doctor checks. It asserts that every
 `<spec_root>/history/vNNN/` directory contains its expected
 sub-structure (the main-file + the `proposed_changes/`
@@ -9,10 +8,9 @@ subdirectory).
 
 Phase-3 minimum scope: pass arm. The check verifies that every
 existing `history/v*/` directory has a `proposed_changes/`
-subdirectory. The "main-file" presence (PROPOSAL.md or
-template-specific equivalent) is template-aware and lands at
-Phase 7. Cycle 138 lands the success arm; subsequent cycles
-add the missing-subdirectory failure arm.
+subdirectory. The "main-file" presence (template-specific) is
+template-aware and lands at Phase 7. Cycle 138 lands the success
+arm; subsequent cycles add the missing-subdirectory failure arm.
 
 Phase 7 prereq.B widens the rule with the pruned-marker
 exemption per SPECIFICATION/v013 spec.md §"Pruning history":

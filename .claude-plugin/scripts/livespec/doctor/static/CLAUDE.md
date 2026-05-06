@@ -14,4 +14,4 @@ statements name both forms.
 Checks under this directory are pure with respect to side effects
 EXCEPT `out_of_band_edits.run`, which has a narrow auto-backfill
 write path to `<spec-root>/proposed_changes/` and
-`<spec-root>/history/` per PROPOSAL.md §"Static-phase checks".
+`<spec-root>/history/`.

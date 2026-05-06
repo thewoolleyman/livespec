@@ -1,6 +1,6 @@
 """Tests for livespec.commands.critique.
 
-Per PROPOSAL.md §"`critique`" and Plan Phase 3
+Per and Plan Phase 3
 : critique is minimum-viable per v019 Q1 —
 invokes propose_change internally with the `-critique`
 reserve-suffix appended. Full LLM-driven critique flow lives at
@@ -30,7 +30,7 @@ def test_critique_main_exists_and_returns_int() -> None:
 def test_critique_main_returns_usage_exit_code_on_missing_required_flag() -> None:
     """Missing required `--findings-json <path>` returns exit code 2.
 
-    Per PROPOSAL.md §"`critique`": the wrapper
+    Per: the wrapper
     requires `--findings-json <path>` (plus optional `--author
     <id>`, `--spec-target <path>`, `--project-root <path>`).
     Drives the first real railway-composition behavior by
@@ -157,14 +157,14 @@ def test_critique_main_writes_proposed_change_with_critique_suffix(
 ) -> None:
     """Successful critique writes `<spec-target>/proposed_changes/<author>-critique.md`.
 
-     Per PROPOSAL.md §"`critique`" + Plan Phase 3
+     Per Plan Phase 3
     : critique delegates to propose_change with
      topic hint `<author>` plus the reserve-suffix `"-critique"`.
      Phase-3 minimum-viable scope: with `--author claude-opus-4-7`
      (already canonical), the resulting filename is
      `claude-opus-4-7-critique.md`. The body is the same one-
      proposal-section-per-finding shape as propose_change's
-     output (per PROPOSAL.md, field-copy mapping).
+     output (field-copy mapping).
     """
     spec_target = tmp_path / "spec-root"
     spec_target.mkdir()

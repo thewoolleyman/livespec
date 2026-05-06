@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.proposed_change_topic_format.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this is the eighth and final Phase-3
+Per Plan Phase 3 +: this is the eighth and final Phase-3
 minimum-subset doctor check. It asserts that every
 `<spec_root>/proposed_changes/<topic>.md` filename follows the
 canonical topic-slug format (lowercase letters, digits, and

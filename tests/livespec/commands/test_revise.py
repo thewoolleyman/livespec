@@ -1,6 +1,6 @@
 """Tests for livespec.commands.revise.
 
-Per PROPOSAL.md §"`revise`" and Plan Phase 3
+Per and Plan Phase 3
 : revise is minimum-viable per v019 Q1 —
 validate `--revise-json` payload, process per-proposal
 `decisions[]` in payload order, write paired
@@ -32,7 +32,7 @@ def test_revise_main_exists_and_returns_int() -> None:
 def test_revise_main_returns_usage_exit_code_on_missing_required_flag() -> None:
     """Missing required `--revise-json <path>` returns exit code 2.
 
-    Per PROPOSAL.md §"`revise`": the wrapper
+    Per: the wrapper
     requires `--revise-json <path>` (plus optional `--author
     <id>`, `--spec-target <path>`, `--project-root <path>`).
     Drives the first real railway-composition behavior by
@@ -309,7 +309,7 @@ def test_revise_main_writes_paired_revision_for_reject_decision(
 ) -> None:
     """For a `reject` decision, revise writes `<stem>-revision.md`.
 
-    Per PROPOSAL.md §"`revise`": each processed
+    Per: each processed
     proposal gets a paired revision at
     `<spec-root>/history/vN/proposed_changes/<stem>-revision.md`.
     Phase-3 minimum-viable for `reject`: the revision file's
@@ -368,7 +368,7 @@ def test_revise_main_moves_proposed_change_into_history_for_reject_decision(
 ) -> None:
     """For a `reject` decision, the proposed-change file moves into history.
 
-    Per PROPOSAL.md §"`revise`": each processed
+    Per: each processed
     proposal file is moved byte-identically from
     `<spec-target>/proposed_changes/<stem>.md` into
     `<spec-target>/history/vN/proposed_changes/<stem>.md`. The
@@ -421,7 +421,7 @@ def test_revise_main_materializes_resulting_files_for_accept_decision(
 ) -> None:
     """For an `accept` decision, working-spec files in resulting_files are updated.
 
-    Per PROPOSAL.md §"`revise`": if any decision
+    Per: if any decision
     is `accept` or `modify`, working-spec files named in
     `resulting_files` are updated in place with the new content.
     Phase-3 minimum-viable: write each `{path, content}` entry's

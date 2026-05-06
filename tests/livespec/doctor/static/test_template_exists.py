@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.template_exists.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this is the second of the eight Phase-3
+Per Plan Phase 3 +: this is the second of the eight Phase-3
 minimum-subset doctor checks. It asserts that the project's
 `.livespec.jsonc` `template` field resolves to a known template
 — either a built-in template name (one of {`livespec`,
