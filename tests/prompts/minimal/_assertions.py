@@ -178,6 +178,41 @@ def _per_proposal_disposition_with_rationale(
             )
 
 
+_AMBIGUITY_LEXICON = (
+    "ambiguity",
+    "ambiguous",
+    "contradiction",
+    "contradicts",
+    "contradictory",
+    "unclear",
+    "inconsistent",
+    "inconsistency",
+    "silent",
+    "undefined",
+)
+
+
+def _prioritizes_ambiguity_over_style(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every finding's `motivation` contains an ambiguity / contradiction lexicon term.
+
+    Same shape as livespec-template `_prioritizes_ambiguity_over_style`.
+    """
+    del input_context
+    payload = cast(dict[str, Any], replayed_response)
+    for finding in payload.get("findings", []):
+        motivation: str = finding.get("motivation", "").lower()
+        if not any(keyword in motivation for keyword in _AMBIGUITY_LEXICON):
+            raise AssertionError(
+                f"finding {finding.get('name')!r} motivation "
+                f"prose contains no ambiguity/contradiction "
+                f"lexicon keyword ({_AMBIGUITY_LEXICON!r})",
+            )
+
+
 ASSERTIONS: dict[str, Callable[..., None]] = {
     "sub_specs_always_empty": _sub_specs_always_empty,
     "single_specification_md_file": _single_specification_md_file,
@@ -185,4 +220,5 @@ ASSERTIONS: dict[str, Callable[..., None]] = {
     "bcp14_in_proposed_changes": _bcp14_in_proposed_changes,
     "walks_every_pending_proposal": _walks_every_pending_proposal,
     "per_proposal_disposition_with_rationale": _per_proposal_disposition_with_rationale,
+    "prioritizes_ambiguity_over_style": _prioritizes_ambiguity_over_style,
 }

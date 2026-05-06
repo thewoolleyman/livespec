@@ -18,5 +18,8 @@
     ]
   },
   "expected_schema_valid": true,
-  "expected_semantic_properties": []
+  "expected_semantic_properties": [
+    "target_is_single_specification_md",
+    "prioritizes_ambiguity_over_style"
+  ]
 }
