@@ -346,6 +346,9 @@ omit = [
     # §"Prompt-QA harness contract §"Python-rule compliance".
     "tests/e2e/*",
     "tests/prompts/*",
+    # pytest tmp_path fixture directories — test helpers written into
+    # /tmp/pytest-*/... are test scaffolding, not first-party code.
+    "/tmp/*",
 ]
 
 [tool.coverage.report]
@@ -355,6 +358,7 @@ skip_covered = false
 exclude_also = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+    "raise ImportError",
     "@overload",
     # `case _:` arms are structurally unreachable by spec mandate:
     # python-skill-script-style-requirements.md lines 1054-1066

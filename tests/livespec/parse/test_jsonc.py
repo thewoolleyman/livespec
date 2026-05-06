@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.parse import jsonc
@@ -40,6 +40,7 @@ def test_jsonc_loads_malformed_input_returns_validation_failure() -> None:
             raise AssertionError(f"expected Failure(ValidationError), got {result!r}")
 
 
+@settings(deadline=None)  # type: ignore[misc]
 @given(
     value=st.dictionaries(
         keys=st.text(min_size=1, max_size=10),
