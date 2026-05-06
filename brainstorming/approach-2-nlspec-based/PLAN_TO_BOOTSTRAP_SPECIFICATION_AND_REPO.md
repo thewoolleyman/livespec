@@ -4073,21 +4073,349 @@ not exist; `.claude-plugin/marketplace.json` does not exist;
 repo-root `AGENTS.md` does not exist; the grep in step 3
 produces no output; Phase 11 commit landed.
 
-After Phase 11, the bootstrap is fully wound down. The `bootstrap/`
-and `brainstorming/` directories remain as historical reference,
-but the production app — `.claude-plugin/`, `SPECIFICATION/`,
-`dev-tooling/`, `tests/`, `pyproject.toml`, `justfile`,
-`lefthook.yml`, etc. — does not reference them, and the
-`/livespec-bootstrap:bootstrap` slash command is no longer
-available.
+After Phase 11, the bootstrap-skill scaffolding is removed and the
+`/livespec-bootstrap:bootstrap` slash command is no longer available.
+The `bootstrap/` and `brainstorming/` directories themselves remain
+in place at this point as historical reference; Phase 12 closes the
+residual drift logged across Phases 0–11 and relocates those
+directories under a new top-level `archive/`.
+
+### Phase 12 — Post-bootstrap residue closure and archival
+
+After Phase 11's bootstrap-cleanup commit lands (sha `c382bef` on
+master), close the residue logged across Phases 0–11, recover the
+files Phase 11 deleted into a new top-level `archive/` tree, and move
+the bootstrap-era directories themselves (`bootstrap/`,
+`brainstorming/`) under `archive/`. After Phase 12, no
+production-permanent file in the repo references archived content;
+`prior-art/` STAYS at repo root permanently (it is reference source
+material adapted into the shipped livespec template, not bootstrap
+scaffolding).
+
+**Immutability exception (one-time).** This Phase 12 section is the
+first amendment to `brainstorming/` content since the Phase 0 freeze.
+The freeze rule (Phase 0 Step 2 + §7 Execution rule 3) is suspended
+for this single PLAN amendment. brainstorming/ is then archived as
+part of Phase 12 itself (sub-step 12.6), after which the freeze
+re-applies under the new path (`archive/brainstorming/`).
+
+**Drives without the bootstrap skill.** The `livespec-bootstrap`
+plugin was removed at Phase 11. Phase 12 sub-steps run as ordinary
+user-gated turns; each ends with explicit "go" before advancing.
+
+#### 12.1 — Resolve trivial spec drift via dogfooded revise
+
+Two `propose-change` → `revise` cycles against the live
+`SPECIFICATION/` spec tree, each closing one open "Capture for
+revisit" entry from `bootstrap/decisions.md`:
+
+- **A3** (`bootstrap/decisions.md` 2026-05-05T08:55:00Z) — reconcile
+  `SPECIFICATION/` (spec.md / contracts.md / scenarios.md, whichever
+  carries the rule) text describing the `out_of_band_edits` doctor
+  static check to match the impl's "write directly into
+  `<spec-root>/history/v(N+1)/proposed_changes/`" simplification. The
+  shipped impl skips the intermediate top-level write + move; the
+  spec text should match.
+- **A4** (`bootstrap/decisions.md` 2026-05-04T23:30:00Z) — drop
+  `doctor` from the `--spec-target`-supporting sub-command
+  enumeration in `SPECIFICATION/contracts.md` (currently line 50).
+  PROPOSAL §"Spec-target selection contract" (lines 363-366) names
+  only `propose-change`, `revise`, and `critique`;
+  `bin/doctor_static.py` accepts only `--project-root`.
+
+Each cycle: invoke `bin/propose_change.py --spec-target SPECIFICATION`
+to author the proposed-change file under
+`SPECIFICATION/proposed_changes/`, then invoke `bin/revise.py
+--spec-target SPECIFICATION` to accept it (cuts a new
+`SPECIFICATION/history/vNNN/`). Each `propose-change` + `revise`
+pair lands as its own commit per the post-Phase-6 dogfooding
+contract.
+
+**Exit criterion:** both cycles' `bin/propose_change.py` and
+`bin/revise.py` invocations exit 0; `just check` aggregate clean
+after each `revise`; the corresponding `bootstrap/decisions.md`
+"Capture for revisit" intent is satisfied by the landed revisions.
+
+#### 12.2 — Move A1 + A2 to a single SPECIFICATION/ proposed change
+
+Author `SPECIFICATION/proposed_changes/template-files-strict-enumeration-roadmap.md`
+capturing both A1 (`bootstrap/decisions.md` 2026-05-05T07:30:00Z +
+07:45:00Z — `out_of_band_edits` strict template-declared file
+enumeration) and A2 (same entry, item 2 —
+`anchor_reference_resolution._list_top_level_md_files` same loose-
+enumeration drift). The proposed change:
+
+- Documents the v1.0 behavior: top-level `*.md` files at HEAD under
+  `<spec-root>/` are walked; non-template-declared files are not
+  filtered.
+- Codifies acceptance of this behavior at v1.0 — the strict-
+  tightening prereq cascade (~5 Red→Green cycles per
+  `bootstrap/decisions.md` 2026-05-05T07:45 plus the architectural
+  call on sub-spec template-name resolution: directory-name
+  inheritance vs per-tree `.livespec.jsonc`) is not Phase-12 cleanup
+  scope.
+- Tracks strict tightening as a post-v1.0 roadmap item, listing the
+  prereq cascade verbatim from the source `decisions.md` entry so a
+  future implementer has the full context.
+
+Routes through `bin/revise.py --spec-target SPECIFICATION` as
+accepted. The resulting `SPECIFICATION/history/vNNN/` revision file
+records the acceptance.
+
+**Exit criterion:**
+`SPECIFICATION/history/vNNN/proposed_changes/template-files-strict-enumeration-roadmap.md`
+exists with the paired `-revision.md` recording acceptance; `just
+check` clean.
+
+#### 12.3 — Spike + resolve A5 (lefthook-vs-just exit-code propagation)
+
+Time-boxed investigation against `bootstrap/decisions.md`
+2026-05-06T00:00:00Z's "Capture for revisit":
+
+1. Read the `02-check-pre-commit` step definition in `lefthook.yml`
+   (likely `command:` syntax wrapping `mise exec -- just
+   check-pre-commit-doc-only`).
+2. Reproduce the symptom: stage a known-failing doc-only change
+   (e.g., introduce a heading without a registry entry in
+   `tests/heading-coverage.json`) and attempt `git commit`. Observe
+   whether lefthook surfaces the inner recipe's non-zero exit code on
+   the parent step's success summary.
+3. Classify and act:
+   - **Real propagation gap.** Adjust the `02-check-pre-commit` step
+     shape to surface the inner exit code (e.g., switch from
+     `command:` to `commands:`, or wrap the invocation so non-zero
+     exits propagate cleanly). If a `SPECIFICATION/` contract
+     codifies the gate semantic, dogfood a `propose-change` /
+     `revise` cycle. Otherwise this is a Case-B plan/lefthook fix
+     landed directly.
+   - **Known property of lefthook.** Add a brief note in
+     `SPECIFICATION/` (via revise cycle) so the boundary is
+     documented and future readers are not surprised; close.
+   - **Non-issue / already mitigated.** Close with the analysis
+     recorded in the eventual Phase-12 commit body or follow-up
+     commit.
+
+**Exit criterion:** explicit classification + the appropriate fix
+landed (or close-as-non-issue note recorded). `just check` aggregate
+remains clean.
+
+#### 12.4 — Recover `c382bef` deletions to `archive/`
+
+Create `archive/` at repo root. Recover the four files deleted by
+commit `c382bef` using `git show c382bef^:<path>` and write each into
+the corresponding location under `archive/`:
+
+- `git show c382bef^:.claude-plugin/marketplace.json` →
+  `archive/.claude-plugin/marketplace.json`
+- `git show c382bef^:.claude/plugins/livespec-bootstrap/.claude-plugin/plugin.json`
+  → `archive/.claude/plugins/livespec-bootstrap/.claude-plugin/plugin.json`
+- `git show c382bef^:.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md`
+  → `archive/.claude/plugins/livespec-bootstrap/skills/bootstrap/SKILL.md`
+- `git show c382bef^:AGENTS.md` → `archive/AGENTS.md`
+
+The recovered files are static archive content. They are NOT wired
+into Claude Code's plugin discovery — Claude Code scans
+`.claude/plugins/` and `.claude-plugin/marketplace.json` at the repo
+root, neither of which is reintroduced under `archive/`.
+
+#### 12.5 — Save `tmp/bootstrap/v039-d5-spike.md`
+
+Copy `tmp/bootstrap/v039-d5-spike.md` →
+`archive/bootstrap/v039-d5-spike.md`. The spike is referenced from
+`bootstrap/decisions.md` 2026-05-04T08:30:00Z and downstream cycles;
+preserving it under `archive/bootstrap/` (sibling of the soon-to-be-
+moved bootstrap content) keeps the audit trail self-contained.
+
+The other artifacts under `tmp/bootstrap/` (`tdd-redo-briefing.md`,
+`tdd-redo-briefing-v033.md`, `v039-resume-prompt.md`) are session
+scratch and remain in `tmp/`; they are not referenced by any
+production-permanent file or any `decisions.md` entry.
+
+#### 12.6 — Move `bootstrap/` and `brainstorming/` to `archive/`
+
+```
+git mv bootstrap archive/bootstrap
+git mv brainstorming archive/brainstorming
+```
+
+`prior-art/` STAYS at repo root permanently — it is reference source
+material, not bootstrap scaffolding.
+
+`bootstrap/scratch/pre-redo.zip` and `bootstrap/scratch/pre-second-redo.zip`
+travel as part of the move.
+
+After this sub-step, `archive/bootstrap/STATUS.md`,
+`archive/bootstrap/decisions.md`, `archive/bootstrap/open-issues.md`,
+`archive/bootstrap/v032-quality-report.md`,
+`archive/brainstorming/approach-2-nlspec-based/PROPOSAL.md`, and this
+PLAN itself
+(`archive/brainstorming/approach-2-nlspec-based/PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md`)
+all live under `archive/`.
+
+**Exit criterion:** repo-root `bootstrap/` and `brainstorming/` no
+longer exist; all content under `archive/bootstrap/` and
+`archive/brainstorming/` respectively;
+`archive/bootstrap/v039-d5-spike.md` exists; `prior-art/` remains at
+repo root.
+
+#### 12.7 — Strip all references to archived content from production-permanent files
+
+After 12.6, several production-permanent files still mention
+`bootstrap/...` or `brainstorming/...` paths from the now-archived
+directories. Per the rule "no references to archive-bound content in
+production-permanent files," REMOVE each reference (do not rewrite
+the path to `archive/...`). The reference content was a breadcrumb to
+provenance; the surrounding code/prose carries the substantive rule,
+so dropping the breadcrumb is lossless. Targets (line numbers
+approximate; the actual editor is the executor):
+
+- `justfile` — drop comments referencing `tmp/bootstrap/v039-d5-spike.md`
+  and `bootstrap/decisions.md`. The recipe semantics stay intact.
+- `lefthook.yml` — drop the `bootstrap/decisions.md` provenance
+  comment on the `commit-msg` stage. The stage rationale stays intact.
+- `dev-tooling/checks/check_coverage_incremental.py` — drop the
+  docstring references to
+  `brainstorming/approach-2-nlspec-based/history/v039/proposed_changes/aggregate-perf-and-iteration-loop.md`
+  and `tmp/bootstrap/v039-d5-spike.md`.
+- `dev-tooling/checks/commit_pairs_source_and_test.py` — drop the
+  `bootstrap/decisions.md 2026-05-02 cycle 2.7` reference.
+- `dev-tooling/checks/per_file_coverage.py` — drop the
+  `brainstorming/approach-2-nlspec-based/.../v033 D2` reference.
+- `NOTICES.md` — drop the three `brainstorming/approach-2-nlspec-based/history/v0{25,26,27}/proposed_changes/...`
+  provenance pointers. The surrounding prose already explains the
+  substantive rationale (pyright lacks a plugin system; bitbucket was
+  sunset; variadic generics need full upstream typing_extensions).
+- `tests/livespec/validate/CLAUDE.md` — drop the
+  `bootstrap/decisions.md 2026-04-26T09:23:07Z` reference.
+
+The reference at
+`.claude-plugin/specification-templates/livespec/livespec-nlspec-spec.md:7`
+to `<repo-root>/prior-art/nlspec-spec.md` is NOT an archive-bound
+reference — `prior-art/` stays at repo root — and is NOT touched in
+this sub-step.
+
+**Exit criterion:** the verification grep at sub-step 12.11 returns
+empty for `bootstrap/` and `brainstorming/` under the production-
+permanent file set.
+
+#### 12.8 — Rewrite `README.md` and author a new repo-root `AGENTS.md`
+
+Replace `README.md` with a minimal post-bootstrap version: brief
+project description, slash-command list, pointer to `AGENTS.md` and
+`archive/` for historical context. Drop every reference to
+`bootstrap/` and `brainstorming/`.
+
+Author a NEW `AGENTS.md` at repo root with minimal layout +
+slash-command pointer content. This is NOT a recovery of the deleted
+`c382bef` root `AGENTS.md` — that historical content is preserved at
+`archive/AGENTS.md` (per 12.4). The new `AGENTS.md` is purpose-built
+for the post-bootstrap repo. Required content:
+
+- One-line project description.
+- Repo-root layout table covering: `.claude-plugin/`,
+  `SPECIFICATION/`, `dev-tooling/`, `tests/`, `prior-art/`,
+  `archive/`, plus the toolchain-config files (`pyproject.toml`,
+  `justfile`, `lefthook.yml`, `.mise.toml`, `.python-version`,
+  `.vendor.jsonc`, `.livespec.jsonc`).
+- Six `/livespec:<sub-command>` slash commands enumerated, each with
+  a one-line purpose and the SKILL.md path under
+  `.claude-plugin/skills/<name>/SKILL.md`.
+- Daily commands: `just check` (full enforcement aggregate), and
+  `just check-pre-commit-doc-only` (fast doc-only subset).
+- Pointer to `archive/` for the bootstrap-process history.
+
+**Exit criterion:** new `README.md` and `AGENTS.md` exist at repo
+root; neither contains any reference to `bootstrap/` or
+`brainstorming/`; both are valid and self-contained.
+
+#### 12.9 — Delete `.codex` and `.claude/scheduled_tasks.lock`
+
+Both files were ADDED by commit `c382bef` (not deletions to recover).
+Neither is referenced from any production-permanent file (verified
+via grep). `.codex` is an empty marker; `.claude/scheduled_tasks.lock`
+is a transient runtime lockfile that should not have been committed
+in the first place.
+
+```
+git rm .codex .claude/scheduled_tasks.lock
+```
+
+Append to `.gitignore` (so they do not re-accumulate):
+
+```
+.codex
+.claude/scheduled_tasks.lock
+```
+
+#### 12.10 — Update `STATUS.md`
+
+Edit `archive/bootstrap/STATUS.md` (now under `archive/` per 12.6) to
+reflect Phase 12 closure:
+
+```
+**Current phase:** 12
+**Current sub-step:** COMPLETE — bootstrap closed; livespec is now self-governing via /livespec:* commands.
+**Last completed exit criterion:** phase 12 — residue closed; c382bef recovered to archive/; bootstrap/ + brainstorming/ moved to archive/; production-permanent refs to archived content removed; .codex + scheduled_tasks.lock deleted; new repo-root AGENTS.md + README.md authored.
+**Next action:** none — bootstrap permanently closed.
+**Last updated:** <UTC ISO 8601 of the Phase 12 commit>
+**Last commit:** <Phase 12 commit sha>
+```
+
+#### 12.11 — Verify isolation + commit
+
+Verification grep:
+
+```
+grep -rn "bootstrap/\|brainstorming/" \
+  .claude-plugin/ dev-tooling/ tests/ SPECIFICATION/ \
+  pyproject.toml justfile lefthook.yml .mise.toml \
+  .github/ NOTICES.md .vendor.jsonc README.md AGENTS.md \
+  2>/dev/null | grep -v _vendor
+```
+
+Expected output: empty. Any match is a missed reference and must be
+removed before the Phase 12 commit lands.
+
+`just check` aggregate passes (full enforcement suite).
+
+Commit message: `phase-12: close residue + archive bootstrap
+scaffolding`. Push only on explicit user confirmation.
+
+**Phase 12 exit criterion:**
+- A3, A4 closed via dogfooded revise cycles (12.1); A5 classified
+  and resolved per its outcome branch (12.3).
+- A1 + A2 captured in
+  `SPECIFICATION/history/vNNN/proposed_changes/template-files-strict-enumeration-roadmap.md`
+  as accepted (12.2).
+- The four `c382bef`-deleted files exist under `archive/` (12.4).
+- `archive/bootstrap/v039-d5-spike.md` exists (12.5).
+- `bootstrap/` and `brainstorming/` no longer exist at repo root
+  (12.6); `archive/bootstrap/` and `archive/brainstorming/` exist;
+  `prior-art/` remains at repo root.
+- No production-permanent file references `bootstrap/` or
+  `brainstorming/` paths (12.7); the verification grep at 12.11 is
+  empty.
+- New `README.md` and new `AGENTS.md` at repo root (12.8).
+- `.codex` and `.claude/scheduled_tasks.lock` deleted + gitignored
+  (12.9).
+- `archive/bootstrap/STATUS.md` reflects phase 12 complete (12.10).
+- Phase 12 commit landed.
+
+After Phase 12, the bootstrap process is permanently closed. The
+historical scaffolding is preserved under `archive/` for reference;
+the production app — `.claude-plugin/`, `SPECIFICATION/`,
+`dev-tooling/`, `tests/`, `prior-art/`, `pyproject.toml`, `justfile`,
+`lefthook.yml`, etc. — does not reference anything under `archive/`.
 
 ---
 
 ## 5. Out of scope for this plan
 
-- Any change to `brainstorming/`, `prior-art/`, or
+- Any change to content under `brainstorming/` or
   `history/vNNN/` — those are immutable archives from this point
-  forward.
+  forward (and become `archive/brainstorming/...` after Phase 12).
+  `prior-art/` stays at repo root permanently and is also not
+  edited as part of this plan.
 - Publishing the plugin to a Claude Code plugin marketplace
   (v2 non-goal per PROPOSAL.md).
 - `opencode` / `pi-mono` agent-runtime packaging (v2 non-goal).
@@ -4205,12 +4533,15 @@ the persistent log files.
 
 ## Execution rules
 
-1. Work phase by phase, in order: Phase 0 → Phase 11. Do not
+1. Work phase by phase, in order: Phase 0 → Phase 12. Do not
    skip forward. Each phase's exit criterion MUST be demonstrably
    met before starting the next. Demonstrate the exit criterion
    by running the relevant `just` target or the explicit check
    the plan names. (Phase 11 is bookkeeping cleanup of the
-   bootstrap scaffolding; it follows the v1.0.0 tag from Phase 10.)
+   bootstrap-skill scaffolding; it follows the `v1.0.0` tag from
+   Phase 10. Phase 12 closes residual drift logged across Phases
+   0–11 and archives the bootstrap-era directories under
+   `archive/`; it follows Phase 11.)
 
 2. Every phase of work lands as one or more git commits. Commit
    messages follow the form `<phase>: <summary>` (e.g.,
