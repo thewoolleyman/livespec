@@ -201,6 +201,70 @@ def _per_proposal_disposition_with_rationale(
             )
 
 
+_AMBIGUITY_LEXICON = (
+    "ambiguity",
+    "ambiguous",
+    "contradiction",
+    "contradicts",
+    "contradictory",
+    "unclear",
+    "inconsistent",
+    "inconsistency",
+    "silent",
+    "undefined",
+)
+
+
+def _findings_grounded_in_spec_target(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every finding's `target_spec_files[]` paths exist in `input_context.current_spec_files[]`.
+
+    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
+    semantic-property catalogue → prompts/critique.md", critique
+    findings MUST reference files that exist in the target tree.
+    """
+    ctx = cast(dict[str, Any], input_context)
+    payload = cast(dict[str, Any], replayed_response)
+    current_files = set(ctx.get("current_spec_files", []))
+    for finding in payload.get("findings", []):
+        for target in finding.get("target_spec_files", []):
+            if target not in current_files:
+                raise AssertionError(
+                    f"finding {finding.get('name')!r} target "
+                    f"{target!r} is not in "
+                    f"input_context.current_spec_files",
+                )
+
+
+def _prioritizes_ambiguity_over_style(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every finding's `motivation` contains an ambiguity / contradiction lexicon term.
+
+    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
+    semantic-property catalogue → prompts/critique.md", the prompt
+    SHOULD prioritize ambiguities + contradictions over wording-
+    style suggestions. The lexicon match is heuristic; richer
+    semantic checks live in the doctor LLM-driven subjective
+    phase.
+    """
+    del input_context
+    payload = cast(dict[str, Any], replayed_response)
+    for finding in payload.get("findings", []):
+        motivation: str = finding.get("motivation", "").lower()
+        if not any(keyword in motivation for keyword in _AMBIGUITY_LEXICON):
+            raise AssertionError(
+                f"finding {finding.get('name')!r} motivation "
+                f"prose contains no ambiguity/contradiction "
+                f"lexicon keyword ({_AMBIGUITY_LEXICON!r})",
+            )
+
+
 ASSERTIONS: dict[str, Callable[..., None]] = {
     "headings_derived_from_intent": _headings_derived_from_intent,
     "asks_v020_q2_question": _asks_v020_q2_question,
@@ -208,4 +272,6 @@ ASSERTIONS: dict[str, Callable[..., None]] = {
     "bcp14_in_proposed_changes": _bcp14_in_proposed_changes,
     "walks_every_pending_proposal": _walks_every_pending_proposal,
     "per_proposal_disposition_with_rationale": _per_proposal_disposition_with_rationale,
+    "findings_grounded_in_spec_target": _findings_grounded_in_spec_target,
+    "prioritizes_ambiguity_over_style": _prioritizes_ambiguity_over_style,
 }
