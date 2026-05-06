@@ -607,5 +607,12 @@
     "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 7 sub-step (f) imperative addition for the prompt-QA harness contract section introduced by SPECIFICATION/v014 (commit 6b84b75). The matching rule test under tests/test_contracts.py replaces this TODO once the harness implementation cycles land later in Phase 7 sub-step (f)."
+  },
+  {
+    "heading": "## Package layout",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 5 addition: §\"Package layout\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v020 (python-style-package-layout propose-change). Phase 8 remaining cycles replace this TODO with the real test ID via the governed propose-change/revise loop."
   }
 ]
