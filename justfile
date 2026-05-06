@@ -112,6 +112,8 @@ check:
         check-lint
         check-format
         check-tools
+        check-branch-protection-alignment
+        check-master-ci-green
     )
     failed=()
     for t in "${targets[@]}"; do
@@ -328,6 +330,17 @@ check-no-direct-tool-invocation:
 
 check-tools:
     uv run python3 dev-tooling/checks/check_tools.py
+
+# Guard Layer 1 mechanical checks. Both shell out to `gh api` to
+# read remote GitHub state; they exit 0 with a structured warning
+# when `gh` is unavailable or unauthenticated locally so per-commit
+# pre-commit runs are not blocked. CI with GH_TOKEN exercises the
+# full enforcement path.
+check-branch-protection-alignment:
+    uv run python3 dev-tooling/checks/branch_protection_alignment.py
+
+check-master-ci-green:
+    uv run python3 dev-tooling/checks/master_ci_green.py
 
 # ---------------------------------------------------------------
 # E2E + prompt verification (part of `just check`).
