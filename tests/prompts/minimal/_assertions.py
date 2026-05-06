@@ -20,6 +20,7 @@ per the in-line widening rule (Plan §3543-3550).
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 __all__: list[str] = ["ASSERTIONS"]
@@ -124,9 +125,64 @@ def _bcp14_in_proposed_changes(
             )
 
 
+_DECISION_VALUES = ("accept", "modify", "reject")
+
+
+def _walks_every_pending_proposal(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """`replayed_response.decisions[]` covers every `input_context.pending_proposals[]` topic.
+
+    Same shape as livespec-template `_walks_every_pending_proposal`;
+    per-template registry independence per v014 fixture pattern.
+    """
+    ctx = cast(dict[str, Any], input_context)
+    payload = cast(dict[str, Any], replayed_response)
+    pending = ctx.get("pending_proposals", [])
+    expected_topics = {Path(p).stem for p in pending}
+    decisions = payload.get("decisions", [])
+    actual_topics = {d.get("proposal_topic", "") for d in decisions}
+    missing = expected_topics - actual_topics
+    if missing:
+        raise AssertionError(
+            f"replayed_response.decisions[] missing topics for "
+            f"pending proposals: {sorted(missing)!r}",
+        )
+
+
+def _per_proposal_disposition_with_rationale(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every decision has `decision` in {accept, modify, reject} + non-empty `rationale`.
+
+    Same shape as livespec-template
+    `_per_proposal_disposition_with_rationale`.
+    """
+    del input_context
+    payload = cast(dict[str, Any], replayed_response)
+    for decision in payload.get("decisions", []):
+        topic = decision.get("proposal_topic", "<unknown>")
+        if decision.get("decision") not in _DECISION_VALUES:
+            raise AssertionError(
+                f"decision for topic {topic!r} has unexpected "
+                f"decision value {decision.get('decision')!r}",
+            )
+        rationale: str = decision.get("rationale", "")
+        if not rationale.strip():
+            raise AssertionError(
+                f"decision for topic {topic!r} has empty / " f"whitespace-only rationale",
+            )
+
+
 ASSERTIONS: dict[str, Callable[..., None]] = {
     "sub_specs_always_empty": _sub_specs_always_empty,
     "single_specification_md_file": _single_specification_md_file,
     "target_is_single_specification_md": _target_is_single_specification_md,
     "bcp14_in_proposed_changes": _bcp14_in_proposed_changes,
+    "walks_every_pending_proposal": _walks_every_pending_proposal,
+    "per_proposal_disposition_with_rationale": _per_proposal_disposition_with_rationale,
 }
