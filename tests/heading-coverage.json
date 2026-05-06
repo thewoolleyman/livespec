@@ -656,5 +656,19 @@
     "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 8 item 2 cycle 18 addition: §\"Exit code contract\" migrated via SPECIFICATION/v033."
+  },
+  {
+    "heading": "## Structured logging",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"Structured logging\" migrated via SPECIFICATION/v034."
+  },
+  {
+    "heading": "## File naming and invocation",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"File naming and invocation\" migrated via SPECIFICATION/v034."
   }
 ]
