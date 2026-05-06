@@ -649,5 +649,12 @@
     "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 8 item 2 cycle 15 addition: §\"Structural pattern matching\" migrated via SPECIFICATION/v030."
+  },
+  {
+    "heading": "## Structured logging",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 17 addition: §\"Structured logging\" migrated via SPECIFICATION/v032."
   }
 ]
