@@ -17,6 +17,7 @@ __pycache__/
 .ruff_cache/
 .pyright/
 .mutmut-cache/
+mutants/
 htmlcov/
 
 ### UV / lefthook local state

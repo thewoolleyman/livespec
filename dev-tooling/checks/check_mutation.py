@@ -41,12 +41,8 @@ __all__: list[str] = [
 ]
 
 _BASELINE_PATH = Path(".mutmut-baseline.json")
-_PATHS_TO_MUTATE = ",".join(
-    [
-        ".claude-plugin/scripts/livespec/parse",
-        ".claude-plugin/scripts/livespec/validate",
-    ]
-)
+# Paths to mutate are configured in [tool.mutmut] in pyproject.toml;
+# mutmut reads them automatically when invoked without explicit path flags.
 _KILL_RATE_FLOOR: float = 80.0
 
 
@@ -130,7 +126,6 @@ def main() -> int:
             "-m",
             "mutmut",
             "run",
-            f"--paths-to-mutate={_PATHS_TO_MUTATE}",
         ],
         capture_output=True,
         text=True,
