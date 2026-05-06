@@ -1,8 +1,8 @@
 # Bootstrap status
 
-**Current phase:** 10
-**Current sub-step:** Phase 10 sub-step 1 — Walk the "Definition of Done (v1)" section in SPECIFICATION/spec.md item-by-item (DoD 1–15), produce a checklist revision in SPECIFICATION/history/vNNN/ confirming each item. Any gaps become propose-change inputs and are revised. When every DoD item is marked done, tag the commit v1.0.0.
-**Last completed exit criterion:** phase 9 — `just e2e-test-claude-code-mock` exits 0 in just check (34 targets); PR #9 merged; master CI green at 6a4203e
-**Next action:** Read SPECIFICATION/spec.md §"Definition of Done (v1)" section; walk each item; file propose-changes for any gaps; verify all DoD items are satisfied; tag v1.0.0.
-**Last updated:** 2026-05-06T14:10:00Z
-**Last commit:** 6a4203e (phase-9 squash merge to master)
+**Current phase:** 11
+**Current sub-step:** Phase 11 sub-step 1 — Remove the bootstrap plugin and its marketplace. Three removals gated by AskUserQuestion: `.claude/plugins/livespec-bootstrap` (plugin contents), `.claude/plugins/` (if empty), `.claude-plugin/marketplace.json` (marketplace manifest). Do NOT remove `.claude/skills/`, `.claude-plugin/plugin.json`, or `.claude/settings.local.json`.
+**Last completed exit criterion:** phase 10 — DoD 1-15 verified; v1.0.0 tag exists at 4f15e3f; release-tag CI (check-mutation, check-no-todo-registry, check-no-lloc-soft-warnings) triggered on tag push
+**Next action:** Remove bootstrap plugin + marketplace per Phase 11 sub-step 1. Gate each removal with AskUserQuestion confirmation per the plan's "gated by AskUserQuestion since these are committed files" requirement.
+**Last updated:** 2026-05-06T15:50:00Z
+**Last commit:** 4f15e3f (phase-10 squash merge to master; v1.0.0 tagged)
