@@ -670,5 +670,19 @@
     "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 8 item 2 cycles 17+19 combined: §\"File naming and invocation\" migrated via SPECIFICATION/v034."
+  },
+  {
+    "heading": "## Enforcement suite",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycles 21+22 combined: §\"Enforcement suite\" migrated via SPECIFICATION/v036."
+  },
+  {
+    "heading": "## CLAUDE.md coverage",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycles 21+22 combined: §\"CLAUDE.md coverage\" migrated via SPECIFICATION/v036."
   }
 ]
