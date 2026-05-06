@@ -140,6 +140,13 @@
     "reason": "Phase 7 sub-step 2 mini-track item M1.b new contracts.md sub-section. Real test for the lefthook step-ordering contract pending; covered transitively today by every commit going through the three pre-commit steps successfully."
   },
   {
+    "heading": "## Constraint scope",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md §\"Scope\" into constraints.md. Real test pending release-gate test wiring."
+  },
+  {
     "heading": "## Python runtime constraint",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
