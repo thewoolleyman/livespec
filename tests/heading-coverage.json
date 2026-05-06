@@ -642,5 +642,12 @@
     "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 8 item 2 cycle 14 addition: §\"Keyword-only arguments\" migrated via SPECIFICATION/v029."
+  },
+  {
+    "heading": "## Structural pattern matching",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 15 addition: §\"Structural pattern matching\" migrated via SPECIFICATION/v030."
   }
 ]
