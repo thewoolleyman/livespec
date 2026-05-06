@@ -1,980 +1,611 @@
 [
   {
-    "heading": "## Python runtime constraint",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Vendored-library discipline",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Pure / IO boundary",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## ROP composition",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Supervisor discipline",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Typechecker constraints (Phase 1 pin)",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Heading taxonomy",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## BCP14 normative language",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Self-application bootstrap exception",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Wrapper CLI surface",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Lifecycle exit-code table",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Skill \u2194 template JSON contracts",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Sub-spec structural mechanism",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Per-sub-spec doctor parameterization",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Resolved-template stdout contract",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Help-requested escape",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Python runtime constraint",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Vendored-library discipline",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Pure / IO boundary",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## ROP composition",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Supervisor discipline",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Typechecker constraints (Phase 1 pin)",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Heading taxonomy",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## BCP14 normative language",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Self-application bootstrap exception",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Wrapper CLI surface",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Lifecycle exit-code table",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Skill \u2194 template JSON contracts",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Sub-spec structural mechanism",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Per-sub-spec doctor parameterization",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Resolved-template stdout contract",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Help-requested escape",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Decision and Rationale",
-    "spec_root": "SPECIFICATION/history/v001/proposed_changes",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Resulting Changes",
-    "spec_root": "SPECIFICATION/history/v001/proposed_changes",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Proposal: seed",
-    "spec_root": "SPECIFICATION/history/v001/proposed_changes",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path seed",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path propose-change",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path revise",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path doctor",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Error path 1 \u2014 propose-change against a non-existent spec target",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Error path 2 \u2014 schema-violation in inbound seed payload",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Error path 3 \u2014 version-contiguity gap in history",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Recovery path \u2014 pruning history before a long retention horizon",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Project intent",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Runtime and packaging",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Specification model",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Sub-command lifecycle",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Versioning",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Pruning history",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Proposed-change and revision file formats",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Testing approach",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Developer-tooling layout",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Definition of Done",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Non-goals",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Self-application",
-    "spec_root": "SPECIFICATION/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path seed",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path propose-change",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path revise",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path doctor",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Error path 1 \u2014 propose-change against a non-existent spec target",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Error path 2 \u2014 schema-violation in inbound seed payload",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Error path 3 \u2014 version-contiguity gap in history",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Recovery path \u2014 pruning history before a long retention horizon",
-    "spec_root": "SPECIFICATION",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
     "heading": "## Project intent",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Runtime and packaging",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Specification model",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Sub-command lifecycle",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Versioning",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Pruning history",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Proposed-change and revision file formats",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Testing approach",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Developer-tooling layout",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Definition of Done",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Non-goals",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Self-application",
     "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## BCP14 normative-keyword well-formedness",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Wrapper CLI surface",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Gherkin blank-line convention",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Lifecycle exit-code table",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Heading taxonomy guidance",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Skill ↔ template JSON contracts",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Spec-file-set well-formedness",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Sub-spec structural mechanism",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Propose-change topic-format constraint",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Per-sub-spec doctor parameterization",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Version-contiguity invariant",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Resolved-template stdout contract",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## NLSpec-discipline reference document",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Help-requested escape",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Template-internal JSON contracts",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Pre-commit step ordering",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 2 mini-track item M1.b new contracts.md sub-section. Real test for the lefthook step-ordering contract pending; covered transitively today by every commit going through the three pre-commit steps successfully."
+  },
+  {
+    "heading": "## Constraint scope",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md §\"Scope\" into constraints.md. Real test pending release-gate test wiring."
+  },
+  {
+    "heading": "## Non-interactive execution",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md §\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
+  },
+  {
+    "heading": "## Python runtime constraint",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Per-prompt semantic-property catalogue",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## End-user runtime dependencies",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md §\"Runtime dependencies → End-user install\" into constraints.md. Real test pending release-gate test wiring."
+  },
+  {
+    "heading": "## Vendored-library discipline",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Doctor-LLM-subjective-checks prompt",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Pure / IO boundary",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## BCP14 normative-keyword well-formedness",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## ROP composition",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Gherkin blank-line convention",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Supervisor discipline",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Heading taxonomy guidance",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Typechecker constraints (Phase 1 pin)",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Spec-file-set well-formedness",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## File LLOC ceiling",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 2 mini-track item M3.b new constraints.md sub-section codifying the two-tier LLOC policy. Real test for the soft/hard threshold semantics covered by tests/dev-tooling/checks/test_file_lloc.py; rule-test pending."
+  },
+  {
+    "heading": "## Heading taxonomy",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Propose-change topic-format constraint",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## BCP14 normative language",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Version-contiguity invariant",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Self-application bootstrap exception",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## NLSpec-discipline reference document",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Happy-path seed",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Template-internal JSON contracts",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Happy-path propose-change",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Per-prompt semantic-property catalogue",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Happy-path revise",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Doctor-LLM-subjective-checks prompt",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Happy-path doctor",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview \u2014 \"no\" branch (default)",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Error path 1 — propose-change against a non-existent spec target",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview \u2014 \"yes\" branch (meta-project)",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Error path 2 — schema-violation in inbound seed payload",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path propose-change interview",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
+    "heading": "## Error path 3 — version-contiguity gap in history",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path revise interview",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path critique interview",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Edge case \u2014 seed against non-empty SPECIFICATION/",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Template root layout",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Seed interview flow",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Propose-change interview flow",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Revise interview flow",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Critique interview flow",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## NLSpec discipline injection",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Starter-content policy",
-    "spec_root": "SPECIFICATION/templates/livespec/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path seed interview \u2014 \"no\" branch (default)",
-    "spec_root": "SPECIFICATION/templates/livespec",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path seed interview \u2014 \"yes\" branch (meta-project)",
-    "spec_root": "SPECIFICATION/templates/livespec",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path propose-change interview",
-    "spec_root": "SPECIFICATION/templates/livespec",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path revise interview",
-    "spec_root": "SPECIFICATION/templates/livespec",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Happy-path critique interview",
-    "spec_root": "SPECIFICATION/templates/livespec",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Edge case \u2014 seed against non-empty SPECIFICATION/",
-    "spec_root": "SPECIFICATION/templates/livespec",
+    "heading": "## Recovery path — pruning history before a long retention horizon",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Template root layout",
     "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Seed interview flow",
     "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Propose-change interview flow",
     "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Revise interview flow",
     "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Critique interview flow",
     "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## NLSpec discipline injection",
     "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Starter-content policy",
     "spec_root": "SPECIFICATION/templates/livespec",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Single-file end-user output",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## `spec_root: \"./\"` convention",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Gherkin blank-line format check exemption",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## BCP14 normative-keyword well-formedness",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Single-file delimiter-comment well-formedness",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Version-contiguity and topic-format constraints",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Delimiter-comment format",
-    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Template-internal JSON contracts",
-    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Per-prompt semantic-property catalogue",
-    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Doctor-LLM-driven phase opt-out",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Single-file end-user output",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## `spec_root: \"./\"` convention",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Gherkin blank-line format check exemption",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Doctor-LLM-subjective-checks prompt",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## BCP14 normative-keyword well-formedness",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Single-file delimiter-comment well-formedness",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Gherkin blank-line convention",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Version-contiguity and topic-format constraints",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Heading taxonomy guidance",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Delimiter-comment format",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Spec-file-set well-formedness",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Template-internal JSON contracts",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Propose-change topic-format constraint",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Per-prompt semantic-property catalogue",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Version-contiguity invariant",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Doctor-LLM-driven phase opt-out",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## NLSpec-discipline reference document",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end seed retry-on-exit-4",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Happy-path seed interview — \"no\" branch (default)",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end doctor-static-fail-then-fix recovery",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Happy-path seed interview — \"yes\" branch (meta-project)",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end prune-history no-op",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Happy-path propose-change interview",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end propose-change/revise round-trip",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Happy-path revise interview",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end critique \u2192 propose-change handoff",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
+    "heading": "## Happy-path critique interview",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Test harness contract",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Template root layout",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Single-file positioning",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Reduced prompt interview intents",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## End-to-end integration test fixture",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Starter-content policy",
-    "spec_root": "SPECIFICATION/templates/minimal/history/v001",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## End-to-end seed retry-on-exit-4",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## End-to-end doctor-static-fail-then-fix recovery",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## End-to-end prune-history no-op",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## End-to-end propose-change/revise round-trip",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## End-to-end critique \u2192 propose-change handoff",
-    "spec_root": "SPECIFICATION/templates/minimal",
-    "test": "TODO",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Test harness contract",
-    "spec_root": "SPECIFICATION/templates/minimal",
+    "heading": "## Edge case — seed against non-empty SPECIFICATION/",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Template root layout",
     "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Single-file positioning",
     "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Reduced prompt interview intents",
     "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## End-to-end integration test fixture",
     "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Starter-content policy",
     "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Delimiter-comment format",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Template-internal JSON contracts",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Per-prompt semantic-property catalogue",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Doctor-LLM-driven phase opt-out",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Single-file end-user output",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## `spec_root: \"./\"` convention",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Gherkin blank-line format check exemption",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## BCP14 normative-keyword well-formedness",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Single-file delimiter-comment well-formedness",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Version-contiguity and topic-format constraints",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## End-to-end seed retry-on-exit-4",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## End-to-end doctor-static-fail-then-fix recovery",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## End-to-end prune-history no-op",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## End-to-end propose-change/revise round-trip",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## End-to-end critique → propose-change handoff",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Test harness contract",
+    "spec_root": "SPECIFICATION/templates/minimal",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Author identifier resolution",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step 3.b imperative addition for the v014 N5 + author-precedence subsection introduced by propose-change-full-feature-parity revise (v009). Phase 8 work replaces this TODO with the real test ID via the governed propose-change/revise loop."
+  },
+  {
+    "heading": "## Prompt-QA harness contract",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Phase 7 sub-step (f) imperative addition for the prompt-QA harness contract section introduced by SPECIFICATION/v014 (commit 6b84b75). The matching rule test under tests/test_contracts.py replaces this TODO once the harness implementation cycles land later in Phase 7 sub-step (f)."
   }
 ]

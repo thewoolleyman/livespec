@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from livespec.types import Author
+
 __all__: list[str] = ["ProposalFindings"]
 
 
@@ -21,7 +23,11 @@ class ProposalFindings:
 
     Mirrors proposal_findings.schema.json: top-level `findings`
     list of objects (each with `name`, `target_spec_files`,
-    `summary`, `motivation`, `proposed_changes` per the schema).
+    `summary`, `motivation`, `proposed_changes` per the schema)
+    plus an optional file-level `author` LLM self-declaration
+    (canonical NewType per `check-newtype-domain-primitives`)
+    consumed by the unified author-precedence chain.
     """
 
     findings: list[dict[str, object]]
+    author: Author | None = None

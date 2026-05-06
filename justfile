@@ -75,15 +75,14 @@ check:
     # four v033-D5a guardrails plus `check-coverage` (now
     # rejoined post-cycle-117 — every measured first-party file
     # is at 100% line+branch) and `check-tests-mirror-pairing`
-    # (still deferred until the docstring-+-`__all__`
-    # __init__.py exemption is wired into the cycle-1 mirror-
-    # pairing script) + `check-lint`/`check-format`/`check-types`
+    # (rejoined post-Phase-7 sub-step 2 mini-track item M4 — the
+    # private-helper + pure-declaration exemptions are wired in)
+    # + `check-lint`/`check-format`/`check-types`
     # (deferred until config-tier-fix cycles land) +
     # `check-prompts` / `e2e-test-claude-code-mock` (Phase 5/9
     # deferrals unchanged).
     targets=(
         check-imports-architecture
-        check-tests
         check-coverage
         check-main-guard
         check-no-inheritance
@@ -107,6 +106,8 @@ check:
         check-pbt-coverage-pure-modules
         check-newtype-domain-primitives
         check-schema-dataclass-pairing
+        check-tests-mirror-pairing
+        check-comment-line-anchors
         check-complexity
         check-lint
         check-format
@@ -150,7 +151,7 @@ check-complexity:
 check-imports-architecture:
     PYTHONPATH=.claude-plugin/scripts uv run lint-imports
 
-check-tests:
+check-coverage:
     #!/usr/bin/env bash
     set -uo pipefail
     # Per v036 D1: when invoked under the pre-commit Red-mode-aware
@@ -159,21 +160,11 @@ check-tests:
     # The commit-msg replay hook (`check-red-green-replay`) is the
     # load-bearing verifier in Red mode — it runs pytest on the
     # staged test file and expects non-zero exit. Pre-push, CI,
-    # and manual `just check-tests` invocations don't set the env
-    # var and run normally.
-    if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
-        echo ":: check-tests skipped (v036 D1 Red-mode pre-commit; commit-msg replay hook verifies)"
-        exit 0
-    fi
-    uv run pytest
-
-check-coverage:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    # Per v036 D1: same Red-mode-skip semantics as check-tests above.
-    # In Red mode the staged tree has no impl files, so per-file
-    # coverage of the new (non-existent) impl is moot; pre-existing
-    # impl coverage is unchanged and re-validated at the Green amend.
+    # and manual `just check-coverage` invocations don't set the env
+    # var and run normally. Per v039 D1, `check-coverage` is the
+    # sole pytest-running aggregate target (check-tests was dropped
+    # because pytest already runs as a side effect of pytest --cov,
+    # so the standalone check-tests target was double-counting).
     if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
         echo ":: check-coverage skipped (v036 D1 Red-mode pre-commit; verified at Green amend)"
         exit 0
@@ -185,7 +176,14 @@ check-coverage:
     # under `pytest --cov`. Without this, structlog (transitively
     # imported by livespec modules) is measured and inflates the
     # report with sub-100% files that aren't first-party code.
-    uv run pytest --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
+    # `-n auto` (pytest-xdist) parallelizes the suite across cores.
+    # pytest-cov auto-runs `coverage combine` at session-end to merge
+    # the per-worker `.coverage.<host>.<pid>.<rand>` files into the
+    # single `.coverage` that `per_file_coverage.py` reads on the
+    # next line. Per v039 D2 wall-clock target: drops `check-coverage`
+    # from ~3.5min serial to under ~1min on a typical multi-core
+    # developer machine.
+    uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
     uv run python3 dev-tooling/checks/per_file_coverage.py
 
 # Per v036 D1: Red-mode-aware pre-commit aggregate. Classifies the
@@ -197,10 +195,10 @@ check-coverage:
 # `.claude-plugin/scripts/livespec/**`,
 # `.claude-plugin/scripts/bin/**`, or `dev-tooling/checks/**`.
 # In Red mode, sets LIVESPEC_PRECOMMIT_RED_MODE=1 and runs `just
-# check`; check-tests + check-coverage observe the env var and skip
-# (commit-msg replay hook is the load-bearing test-verifier in Red
-# mode). In all other modes (Green amend, test:/chore:/etc.,
-# non-Red feat:/fix:), runs `just check` unconditionally.
+# check`; check-coverage observes the env var and skips (commit-msg
+# replay hook is the load-bearing test-verifier in Red mode). In
+# all other modes (Green amend, test:/chore:/etc., non-Red
+# feat:/fix:), runs `just check` unconditionally.
 #
 # Pre-push and CI keep invoking `just check` directly (no Red-mode
 # classifier; full suite always).
@@ -208,18 +206,54 @@ check-pre-commit:
     #!/usr/bin/env bash
     set -uo pipefail
     staged=$(git diff --cached --name-only --diff-filter=AM)
+    py_staged=$(echo "$staged" | grep -E '\.py$' || true)
     test_staged=$(echo "$staged" | grep -E '^tests/.*\.py$' || true)
     impl_staged=$(echo "$staged" | grep -E '^(\.claude-plugin/scripts/livespec|\.claude-plugin/scripts/bin|dev-tooling/checks)/.*\.py$' || true)
     test_count=0
     impl_count=0
     [[ -n "$test_staged" ]] && test_count=$(echo "$test_staged" | wc -l)
     [[ -n "$impl_staged" ]] && impl_count=$(echo "$impl_staged" | wc -l)
+    if [[ -z "$py_staged" ]]; then
+        echo ":: doc-only mode detected (zero .py files staged): running just check-pre-commit-doc-only"
+        echo ":: pre-push + CI keep the full aggregate as the load-bearing safety net"
+        just check-pre-commit-doc-only
+        exit 0
+    fi
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
         echo ":: v037 D1 Red-mode shape detected: $test_staged"
-        echo ":: skipping check-tests + check-coverage (commit-msg replay hook is the verifier)"
+        echo ":: skipping check-coverage (commit-msg replay hook is the verifier)"
         export LIVESPEC_PRECOMMIT_RED_MODE=1
     fi
     just check
+
+# Per SPECIFICATION/contracts.md §"Pre-commit step ordering"
+# (post-v007): when zero `.py` files are staged, `check-pre-commit`
+# delegates to this CONSERVATIVE doc-only subset instead of running
+# the full 30-target aggregate. Pre-push + CI never invoke this —
+# the full aggregate is the load-bearing safety net.
+check-pre-commit-doc-only:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    targets=(
+        check-claude-md-coverage
+        check-heading-coverage
+        check-vendor-manifest
+        check-no-direct-tool-invocation
+        check-tools
+    )
+    failed=()
+    for t in "${targets[@]}"; do
+        printf '\n::: just %s\n' "$t"
+        if ! just "$t"; then
+            failed+=("$t")
+        fi
+    done
+    if [[ ${#failed[@]} -gt 0 ]]; then
+        printf '\nFailed targets (%d):\n' "${#failed[@]}"
+        printf '  - %s\n' "${failed[@]}"
+        exit 1
+    fi
+    printf '\nAll %d doc-only targets passed.\n' "${#targets[@]}"
 
 # ---------------------------------------------------------------
 # AST / grep / hand-written checks. Each delegates to a script
@@ -326,6 +360,32 @@ check-mutation:
 check-no-todo-registry:
     uv run python3 dev-tooling/checks/no_todo_registry.py
 
+check-comment-line-anchors:
+    uv run python3 dev-tooling/checks/comment_line_anchors.py
+
+# Per v039 D3: path-scoped fast-feedback variant of check-coverage.
+# Takes `--paths <impl_path> [<impl_path>...]` (repo-root-relative)
+# and applies the per-file 100% line+branch coverage gate to the
+# named impls only. Resolves each impl's mirror-paired test per
+# v033 D1, runs pytest --cov on the combined test set with full
+# instrumentation (the v039 D5 spike found path-scoped --cov=<dir>
+# breaks under subprocess instrumentation; tmp/bootstrap/v039-d5-spike.md),
+# then applies `coverage report --include=<impl_paths> --fail-under=100`.
+# NOT in `just check` aggregate — interactive developer tool, not
+# per-commit gate. Wall-clock target: under 10 seconds for a typical
+# single-file pair. Used during the v039 D4 Red→Green authoring
+# loop to surface defensive-branch coverage gaps proactively,
+# BEFORE the Green amend triggers a multi-minute aggregate retry.
+check-coverage-incremental *args:
+    uv run python3 dev-tooling/checks/check_coverage_incremental.py {{args}}
+
+# Release-gate ONLY — paired with check-mutation + check-no-todo-registry
+# on the release-tag CI workflow. NOT in `just check`; does NOT run
+# per-commit. Closes the M3 soft-band drift loophole: forces refactor
+# work to land before any v* tag push when any file is in 201-250 LLOC.
+check-no-lloc-soft-warnings:
+    uv run python3 dev-tooling/checks/no_lloc_soft_warnings.py
+
 # v034 D3 hard gate: trailer-based Red→Green replay verification.
 # Invoked by lefthook commit-msg stage (NOT pre-commit) — the hook
 # requires the commit-message file path as argv[1] to write trailers
@@ -352,6 +412,33 @@ check-tests-mirror-pairing:
 # only; NOT in `just check` aggregate (per-commit, not per-tree).
 check-commit-pairs-source-and-test:
     uv run python3 dev-tooling/checks/commit_pairs_source_and_test.py
+
+# Phase 7 sub-step 2 mini-track item M1: ruff fix + format on staged
+# Python files BEFORE the rest of the pre-commit gate runs. Saves the
+# ~5min retry on auto-fixable lint trivia. Runs as lefthook
+# `00-lint-autofix-staged` step ahead of the existing checks.
+# Per SPECIFICATION/spec.md §"Developer-tooling layout" + contracts.md
+# §"Pre-commit step ordering" (post-v003). Non-blocking — unfixable
+# issues fall through to be caught by check-lint / check-format inside
+# the `just check` aggregate at the `02-check-pre-commit` step.
+# v034 D2-D3 interaction: autofix runs BEFORE the commit-msg replay
+# hook computes the Red trailer's test-file SHA-256 checksum, so the
+# recorded checksum reflects post-autofix bytes. Green amend stages
+# impl files only (not the test), preserving the
+# test-file-byte-identical invariant.
+lint-autofix-staged:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    staged=$(git diff --cached --name-only --diff-filter=AM | grep -E '\.py$' || true)
+    if [[ -z "$staged" ]]; then
+        exit 0
+    fi
+    # --exit-zero so unfixable lint issues don't fail this step;
+    # they fall through to check-lint inside `just check` later.
+    echo "$staged" | xargs uv run ruff check --fix --exit-zero
+    echo "$staged" | xargs uv run ruff format
+    # Re-stage so post-autofix bytes are what the commit captures.
+    echo "$staged" | xargs git add
 
 # ---------------------------------------------------------------
 # Mutating targets (opt-in; not run in CI).

@@ -23,7 +23,7 @@ scripts/livespec/`, parses each via `ast`, and inspects every
 domain-error names (or a parameterized call thereof). Files
 under `io/` and the single `errors.py` file are exempt.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

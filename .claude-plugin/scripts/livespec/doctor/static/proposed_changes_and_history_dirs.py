@@ -1,6 +1,6 @@
 """Static-phase doctor check: proposed_changes_and_history_dirs.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks": this check asserts that
 `<spec_root>/proposed_changes/` and `<spec_root>/history/`
 directories both exist (the canonical seeded-revise tree shape

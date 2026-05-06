@@ -15,13 +15,14 @@ payload to derive exit codes.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from returns.io import IOResult, impure_safe
 
 from livespec.errors import LivespecError, PreconditionError
 
-__all__: list[str] = ["list_dir", "move", "read_text", "write_text"]
+__all__: list[str] = ["list_dir", "move", "read_text", "rmtree", "write_text"]
 
 
 @impure_safe(exceptions=(OSError,))
@@ -120,8 +121,34 @@ def move(*, source: Path, target: Path) -> IOResult[None, LivespecError]:
     lifts to PreconditionError (exit 3). Used by revise to move
     each processed `<spec-target>/proposed_changes/<stem>.md`
     into `<spec-target>/history/vNNN/proposed_changes/<stem>.md`
-    per PROPOSAL.md §"`revise`" lines 2422-2429.
+    per PROPOSAL.md §"`revise`".
     """
     return _raw_move(source=source, target=target).alt(
         lambda exc: PreconditionError(f"fs.move: {exc}"),
+    )
+
+
+@impure_safe(exceptions=(OSError,))
+def _raw_rmtree(*, path: Path) -> None:
+    """Decorator-lifted recursive-delete via shutil.rmtree.
+
+    `shutil.rmtree` removes `path` and all of its contents. Missing
+    or non-directory `path` lifts to OSError → PreconditionError via
+    the public seam.
+    """
+    shutil.rmtree(path)
+
+
+def rmtree(*, path: Path) -> IOResult[None, LivespecError]:
+    """Recursively remove `path` and all contents; return IOSuccess(None).
+
+    Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle"
+    prune-history paragraph step (c): the wrapper deletes every
+    `<spec-root>/history/vK/` where K < N-1. OSError
+    (FileNotFoundError on a missing path, permission denied)
+    lifts to PreconditionError (exit 3) per the canonical mapping
+    at the io boundary.
+    """
+    return _raw_rmtree(path=path).alt(
+        lambda exc: PreconditionError(f"fs.rmtree: {exc}"),
     )

@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.livespec_config import LivespecConfig
@@ -32,10 +32,18 @@ _SCHEMA_PATH = (
     / "livespec_config.schema.json"
 )
 
+# Module-level schema cache (v040 D1): hypothesis-based @given
+# tests run the body ~100 times per invocation; reloading the schema
+# from disk on each example pushes individual examples over the
+# default 200ms hypothesis deadline under `pytest -n auto` xdist
+# worker contention. Loading once at module-import time eliminates
+# per-example file I/O and the associated timing nondeterminism.
+_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+
 
 def test_validate_livespec_config_returns_success_with_defaults_for_empty_payload() -> None:
     """An empty `{}` payload validates to Success(LivespecConfig) with all schema defaults."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     result = livespec_config.validate_livespec_config(payload={}, schema=schema)
     expected = LivespecConfig(
         template=TemplateName("livespec"),
@@ -49,7 +57,7 @@ def test_validate_livespec_config_returns_success_with_defaults_for_empty_payloa
 
 def test_validate_livespec_config_returns_success_for_explicit_template() -> None:
     """An explicit `template` overrides the default."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {"template": "minimal"}
     result = livespec_config.validate_livespec_config(payload=payload, schema=schema)
     match result:
@@ -67,7 +75,7 @@ def test_validate_livespec_config_returns_failure_on_unknown_field() -> None:
     Drives `additionalProperties: false`: fastjsonschema rejects
     any field not enumerated in the schema's `properties`.
     """
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {"unknown_field": "boom"}
     result = livespec_config.validate_livespec_config(payload=payload, schema=schema)
     match result:
@@ -78,6 +86,7 @@ def test_validate_livespec_config_returns_failure_on_unknown_field() -> None:
             raise AssertionError(msg)
 
 
+@settings(deadline=None)
 @given(
     skip_objective=st.booleans(),
     skip_subjective=st.booleans(),
@@ -90,7 +99,7 @@ def test_validate_livespec_config_round_trips_skip_flags(
     skip_static: bool,
 ) -> None:
     """For arbitrary skip-flag combinations, the success path preserves them verbatim."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "post_step_skip_doctor_llm_objective_checks": skip_objective,
         "post_step_skip_doctor_llm_subjective_checks": skip_subjective,

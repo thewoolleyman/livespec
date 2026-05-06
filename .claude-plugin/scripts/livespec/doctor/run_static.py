@@ -1,15 +1,14 @@
 """Doctor static-phase orchestrator.
 
-Per PROPOSAL.md §"`doctor`" (line ~2468) and Plan Phase 3 (lines
-1554-1616): the orchestrator enumerates (spec_root,
+Per PROPOSAL.md §"`doctor`" and Plan Phase 3: the orchestrator enumerates (spec_root,
 template_name) pairs at startup; per pair it builds a per-tree
 DoctorContext and runs the applicable check subset decided by
 the orchestrator-owned applicability table
 (`APPLICABILITY_BY_TREE_KIND` in `static/__init__.py` per v022
 D7).
 
-Phase-3 minimum subset registers 8 implemented checks per Plan
-line 1596-1602 (livespec_jsonc_valid, template_exists,
+Phase-3 minimum subset registers 8 implemented checks
+(livespec_jsonc_valid, template_exists,
 template_files_present, proposed_changes_and_history_dirs,
 version_directories_complete, version_contiguity,
 revision_to_proposed_change_pairing,

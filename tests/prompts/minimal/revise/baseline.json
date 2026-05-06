@@ -1,0 +1,31 @@
+{
+  "prompt_name": "revise",
+  "schema_id": "revise_input.schema.json",
+  "input_context": {
+    "spec_target": "SPECIFICATION.md",
+    "pending_proposals": [
+      "proposed_changes/monthly-cadence.md"
+    ]
+  },
+  "replayed_response": {
+    "author": "Claude Opus 4.7 (1M context)",
+    "decisions": [
+      {
+        "proposal_topic": "monthly-cadence",
+        "decision": "accept",
+        "rationale": "Adopt the monthly review cadence as proposed; the security-SLA motivation is well-grounded and the maintainer-burden delta is small.",
+        "resulting_files": [
+          {
+            "path": "SPECIFICATION.md",
+            "content": "# Spec\n\n## Project intent\n\nTrack the open-source maintenance status of a personal blog engine.\n\n## Cadence\n\nThe maintainer MUST review issues and pull requests at least once per month. The maintainer MUST publish a monthly summary noting any unresolved security advisories.\n"
+          }
+        ]
+      }
+    ]
+  },
+  "expected_schema_valid": true,
+  "expected_semantic_properties": [
+    "walks_every_pending_proposal",
+    "per_proposal_disposition_with_rationale"
+  ]
+}

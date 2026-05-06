@@ -17,7 +17,7 @@ dunders (`__*__`) are exempt; underscore-prefixed are
 "private"; everything else is "public". Exactly one public
 method must exist; otherwise the class fails the check.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.sub_spec_payload import SubSpecPayload
@@ -35,10 +35,18 @@ _SCHEMA_PATH = (
     / "sub_spec_payload.schema.json"
 )
 
+# Module-level schema cache (v040 D1): hypothesis-based @given
+# tests run the body ~100 times per invocation; reloading the schema
+# from disk on each example pushes individual examples over the
+# default 200ms hypothesis deadline under `pytest -n auto` xdist
+# worker contention. Loading once at module-import time eliminates
+# per-example file I/O and the associated timing nondeterminism.
+_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+
 
 def test_validate_sub_spec_payload_returns_success_for_valid_payload() -> None:
     """A well-formed payload validates to Success(SubSpecPayload)."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "template_name": "livespec",
         "files": [
@@ -57,7 +65,7 @@ def test_validate_sub_spec_payload_returns_success_for_valid_payload() -> None:
 
 def test_validate_sub_spec_payload_returns_failure_on_missing_required_field() -> None:
     """A payload missing `files` returns Failure(ValidationError)."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {"template_name": "livespec"}
     result = sub_spec_payload.validate_sub_spec_payload(payload=payload, schema=schema)
     match result:
@@ -70,7 +78,7 @@ def test_validate_sub_spec_payload_returns_failure_on_missing_required_field() -
 
 def test_validate_sub_spec_payload_carries_multiple_files() -> None:
     """A payload with multiple files preserves the list order and content."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "template_name": "minimal",
         "files": [
@@ -89,10 +97,11 @@ def test_validate_sub_spec_payload_carries_multiple_files() -> None:
             raise AssertionError(msg)
 
 
+@settings(deadline=None)
 @given(template_name=st.text(min_size=1, max_size=40))
 def test_validate_sub_spec_payload_round_trips_template_name(*, template_name: str) -> None:
     """For arbitrary template_name text, the success path preserves it verbatim."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "template_name": template_name,
         "files": [{"path": "p", "content": "c"}],

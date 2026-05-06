@@ -1,7 +1,7 @@
 """Tests for livespec.doctor.run_static.
 
-Per PROPOSAL.md §"`doctor`" (line ~2468) and Plan Phase 3
-(lines 1554-1616): run_static is the static-phase orchestrator.
+Per PROPOSAL.md §"`doctor`" and Plan Phase 3
+: run_static is the static-phase orchestrator.
 It enumerates `(spec_root, template_name)` pairs, builds a
 per-tree DoctorContext, and runs the applicable check subset
 per the orchestrator-owned applicability table. Phase-3 minimum
@@ -132,6 +132,10 @@ def test_run_static_main_emits_findings_json_to_stdout(
         "doctor-version-contiguity",
         "doctor-revision-to-proposed-change-pairing",
         "doctor-proposed-change-topic-format",
+        "doctor-bcp14-keyword-wellformedness",
+        "doctor-gherkin-blank-line-format",
+        "doctor-anchor-reference-resolution",
+        "doctor-out-of-band-edits",
     }
     for check_id in expected_check_ids:
         assert check_id in out, f"missing {check_id!r} in stdout"
@@ -200,6 +204,10 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-version-contiguity",
         "doctor-revision-to-proposed-change-pairing",
         "doctor-proposed-change-topic-format",
+        "doctor-bcp14-keyword-wellformedness",
+        "doctor-gherkin-blank-line-format",
+        "doctor-anchor-reference-resolution",
+        "doctor-out-of-band-edits",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -208,12 +216,28 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-version-contiguity",
         "doctor-revision-to-proposed-change-pairing",
         "doctor-proposed-change-topic-format",
+        "doctor-bcp14-keyword-wellformedness",
+        "doctor-gherkin-blank-line-format",
+        "doctor-anchor-reference-resolution",
+        "doctor-out-of-band-edits",
     }
     payload = json.loads(out)
     findings = payload["findings"]
     findings_by_spec_root: dict[str, set[str]] = {}
     for finding in findings:
-        assert finding["status"] == "pass", f"non-pass finding: {finding}"
+        # The out-of-band-edits check returns "skipped" when the
+        # spec_root is not inside a git working tree; the tmp_path
+        # fixtures here are NOT initialized as git repos, so the
+        # skip is the correct outcome (PROPOSAL §"Static-phase
+        # checks": "skip the out-of-band check, the project isn't
+        # versioned"). The exit-code derivation treats skipped
+        # as pass, so this does not break the exit-0 invariant.
+        if finding["check_id"] == "doctor-out-of-band-edits":
+            assert (
+                finding["status"] == "skipped"
+            ), f"expected skipped for out-of-band-edits in non-git fixture; got {finding}"
+        else:
+            assert finding["status"] == "pass", f"non-pass finding: {finding}"
         findings_by_spec_root.setdefault(finding["spec_root"], set()).add(
             finding["check_id"],
         )

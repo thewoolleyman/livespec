@@ -8,7 +8,7 @@ Per style doc §"Skill layout — `validate/`": validator at
 The wire payload is the YAML front-matter at the top of a
 revision file at
 `<spec-root>/history/vNNN/proposed_changes/<topic>-revision.md`
-(per PROPOSAL §"Revision file format" lines 3027-3050):
+(per PROPOSAL §"Revision file format"):
 required `proposal`, `decision` (enum), `revised_at`,
 `author_human`, `author_llm`.
 """
@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.revision_front_matter import RevisionFrontMatter
@@ -37,10 +37,18 @@ _SCHEMA_PATH = (
     / "revision_front_matter.schema.json"
 )
 
+# Module-level schema cache (v040 D1): hypothesis-based @given
+# tests run the body ~100 times per invocation; reloading the schema
+# from disk on each example pushes individual examples over the
+# default 200ms hypothesis deadline under `pytest -n auto` xdist
+# worker contention. Loading once at module-import time eliminates
+# per-example file I/O and the associated timing nondeterminism.
+_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+
 
 def test_validate_revision_front_matter_returns_success_for_valid_accept() -> None:
     """A well-formed accept-decision payload validates to Success."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "proposal": "switch-auth-middleware.md",
         "decision": "accept",
@@ -64,7 +72,7 @@ def test_validate_revision_front_matter_returns_success_for_valid_accept() -> No
 
 def test_validate_revision_front_matter_returns_failure_on_invalid_decision_enum() -> None:
     """A decision outside the enum returns Failure(ValidationError)."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "proposal": "demo.md",
         "decision": "maybe",
@@ -86,7 +94,7 @@ def test_validate_revision_front_matter_returns_failure_on_invalid_decision_enum
 
 def test_validate_revision_front_matter_carries_modify_decision() -> None:
     """A `modify` decision validates and the dataclass carries the value through."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "proposal": "demo.md",
         "decision": "modify",
@@ -106,10 +114,11 @@ def test_validate_revision_front_matter_carries_modify_decision() -> None:
             raise AssertionError(msg)
 
 
+@settings(deadline=None)
 @given(author_llm=st.text(min_size=1, max_size=80))
 def test_validate_revision_front_matter_round_trips_author_llm(*, author_llm: str) -> None:
     """For arbitrary author_llm text, the success path preserves it verbatim."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "proposal": "demo.md",
         "decision": "reject",

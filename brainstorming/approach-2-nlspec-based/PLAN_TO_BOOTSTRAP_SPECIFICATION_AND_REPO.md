@@ -1023,6 +1023,177 @@ v029 decisions (direct critique-fix overlay; see
   doctor-check fix from this point on extends an existing
   pair).
 
+- v038 D1 (PROPOSAL.md only): Statement B authoritative on
+  the version-cut rule. PROPOSAL §"Versioning" line 1734-1738
+  rewrites the iff "A new version is cut when, and only
+  when, `revise` either accepts or modifies at least one
+  proposal" to "A new version is cut on every successful
+  `revise` invocation — that is, whenever
+  `<spec-root>/proposed_changes/` contains at least one
+  in-flight proposal at the time `revise` runs and every
+  proposal is processed to a decision". The §"Versioning"
+  line 1739-1745 paragraph (the all-reject-still-cuts
+  case-handler) stays verbatim — it IS Statement B and
+  survives unchanged. PROPOSAL §"`revise`" line 2483-2484
+  rewrites "If any decision is `accept` or `modify`, a new
+  version `vN` is cut" to "A new version `vN` is cut on
+  every successful revise invocation (per §"Versioning"). When
+  at least one decision is `accept` or `modify`, the
+  working-spec files named in those decisions'
+  `resulting_files[]` are updated in place before the
+  snapshot. When every decision is `reject`, the new
+  version's spec files are byte-identical copies of the
+  prior version's spec files (preserving the audit trail per
+  §"Versioning")." No follow-up implementation commit
+  required — the Phase-3 minimum-viable
+  `livespec/commands/revise.py` already implements
+  Statement B's "always cut on non-empty processing"
+  semantic via `_process_decisions` always invoking
+  `_next_history_version_dir` regardless of decision
+  content; Phase 7 sub-step 5.c will widen the impl under
+  v038's now-canonical contract.
+- v038 D2 (plan-level): Plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v038/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v038" (per the
+  established no-op convention since v024 — the literal
+  PROPOSAL.md header line never actually changes; the
+  PLAN's narrative reference is what bumps). Execution-
+  prompt block authoritative-version line bumps to v038.
+  STATUS.md updated.
+- Triggered by drift discovered during Phase 7 sub-step 5.a
+  (open-issues entry 2026-05-04T03:43:15Z) — the
+  cascading-impact scan after authoring the
+  revise-full-feature-parity propose-change against
+  `SPECIFICATION/` caught the §"Versioning" Statement A
+  vs. Statement B contradiction. v038 picks Statement B
+  per PROPOSAL.md line 1745's stated intent ("preserves the
+  audit trail for every proposal that ever reached
+  `revise`") and avoids the new sub-architecture Statement
+  A would require (deciding where rejection revisions land
+  when no version is cut).
+
+- v039 D1 (PROPOSAL.md + companion-doc): drop `check-tests`
+  from the canonical aggregate. The full-tree pytest suite
+  is exercised as a side effect of `check-coverage`'s
+  `pytest --cov --cov-branch` invocation; running it
+  separately doubles wall-clock without information gain.
+  PROPOSAL §"Activation", §"Coexistence with the
+  pre-commit gate", and §"CI workflow (v034 D8)" updated
+  to reflect that the Red-mode skip semantic targets
+  `check-coverage` only and the CI matrix no longer
+  enumerates `check-tests` separately.
+  `python-skill-script-style-requirements.md` §"Canonical
+  target list" drops the `check-tests` row.
+- v039 D2 (companion-doc): `check-coverage` invokes pytest
+  with `-n auto` (pytest-xdist) for parallel test
+  execution, dropping wall-clock from ~3.5 minutes serial
+  to well under a minute on a typical multi-core developer
+  machine. Combined with D1, total `just check` aggregate
+  wall-clock drops from ~5:49 to ~1:30-2:00 on the
+  measured workload. Subprocess coverage instrumentation
+  via the `.pth` startup hook continues to drive
+  `--cov-branch` inheritance unchanged.
+- v039 D3 (companion-doc): introduce
+  `just check-coverage-incremental` as a path-scoped
+  fast-feedback variant. Inputs: `--paths <impl_paths>`
+  (repo-root-relative impl files); the wrapper resolves
+  each impl's mirror-paired test (per v033 D1), runs
+  `pytest -n auto --cov=<impl_path> tests/<mirror>/test_<name>.py`
+  per pair, then runs the per-file 100% line+branch gate
+  on the impacted impl files only. NOT a replacement for
+  `check-coverage` — the full-tree run remains the
+  load-bearing pre-commit gate. Wall-clock target: under
+  10 seconds for a typical single-file pair. The
+  pytest-cov subprocess-instrumentation path-translation
+  behavior under explicit `--cov=<path>` filters is the
+  v039 D5 deferred-spike; D3's contract is finalized after
+  the spike resolves.
+- v039 D4 (PROPOSAL.md + companion-doc): codify the
+  Red-time branch enumeration discipline + the proactive
+  `check-coverage-incremental` discipline as PROPOSAL.md
+  §"Test-Driven Development discipline" sub-section. The
+  v034 D2-D3 amend pattern locks the test-file SHA-256 at
+  Red, so coverage gaps in defensive branches surface as
+  Green-amend gate failures requiring back-up to Red plus
+  full-aggregate retries. Q1+Q2 are not directly
+  mechanically enforceable; D3's tool makes them cheap
+  enough to follow that the existing post-hoc
+  `check-coverage` gate suffices as the safety net.
+- v039 D5 (open-issues): defer the pytest-cov
+  subprocess-instrumentation path-translation spike as
+  highest-priority follow-up after the in-progress
+  `wip/comment-line-anchors` Red+wip-Green pair lands.
+  Spike investigates why explicit `pytest --cov=<path>
+  tests/...` returns 0% under the existing `.pth` startup
+  hook architecture and either finds the
+  `[paths]`/`COVERAGE_FILE`/`COVERAGE_PROCESS_START` knob
+  that makes path-scoped invocation work or accepts a
+  fallback contract for `check-coverage-incremental`
+  (e.g., full-suite filtered post-hoc by impl paths).
+- v039 D6 (plan-level): plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v039/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v039" (per the
+  established no-op convention since v024 — the literal
+  PROPOSAL.md header line never actually changes; the
+  PLAN's narrative reference is what bumps). Execution-
+  prompt block authoritative-version line bumps to v039.
+  STATUS.md updated.
+- Triggered by user-initiated perf+discipline cycle
+  2026-05-04T08:30:00Z after the prior session timed out
+  on a Green-amend coverage gap discovered post-hoc. User
+  surfaced three discipline gaps (Q1: proactive coverage,
+  Q2: Red-time branch enumeration, Q3: incremental
+  coverage tool absent) and three perf opportunities
+  (drop check-tests, add pytest-xdist, collapse small
+  AST checks — third dropped as colliding with
+  mirror-pairing + per-file-coverage invariants). v039
+  bundles the surviving five items as one cohesive
+  iteration-loop codification because they share the
+  thesis: make the iteration loop fast enough that
+  proactive coverage is cheap and Red-time enumeration
+  becomes the natural authoring rhythm.
+
+PROPOSAL.md v040 codifies a single hard constraint surfaced
+during v039 D3 verification:
+
+- v040 D1 (PROPOSAL.md): codify "flaky tests are unacceptable"
+  as a hard constraint in §"Test-Driven Development
+  discipline" — new sub-section
+  `### Determinism: flaky tests are unacceptable (v040 D1)`
+  placed between `### Failing for the right reason` and
+  `### Legitimate exceptions to test-first`. Any observed
+  flake (in CI, pre-commit aggregate, local development, or
+  any other channel) halts work and demands conclusive
+  resolution. Conclusive resolution = (1) deterministic fix
+  (root-cause + remedy + repeated-run verification) OR
+  (2) deletion. Forbidden alternatives: `@pytest.mark.flaky`
+  retry-plugins, "non-blocking follow-up note" dispositions
+  in STATUS.md, low-severity open-issues entries, and
+  "couldn't reproduce" deferrals. Mechanical enforcement is
+  the existing `pytest -n auto` pre-commit + pre-push
+  aggregate (any failure blocks); no separate flake-detection
+  layer. Originating instance: one observed flake of
+  `tests/livespec/validate/test_proposal_findings.py::test_validate_proposal_findings_round_trips_name_text`
+  under v039 D2's new `-n auto` xdist conditions, fixed
+  deterministically at commit `aaaaa82` (lift schema load to
+  module-level constant; eliminate per-example file I/O).
+- v040 D2 (plan-level): plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v040/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v040". Execution-prompt
+  block authoritative-version line bumps to v040. STATUS.md
+  updated.
+- Triggered by user direction 2026-05-05T00:45:00Z (verbatim:
+  "Flaky tests are always unacceptable. They must either be
+  fixed with a conclusive resolution of the flakiness, or
+  else deleted. This must be codified as a hard constraint.")
+  after the executor initially recorded the v039-surfaced
+  flake as a non-blocking follow-up note in STATUS.md. User
+  rejected the non-blocking disposition and demanded
+  PROPOSAL-level codification.
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -1233,8 +1404,37 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v037/PROPOSAL.md` (the v037
-   snapshot — v036 substance plus the two v037 decisions:
+   byte-identical to `history/v040/PROPOSAL.md` (the v040
+   snapshot — v039 substance plus the two v040 decisions:
+   codify "flaky tests are unacceptable" as a hard constraint
+   in §"Test-Driven Development discipline" — new sub-section
+   `### Determinism: flaky tests are unacceptable (v040 D1)`
+   placed between `### Failing for the right reason` and
+   `### Legitimate exceptions to test-first`; observed flakes
+   halt work and demand conclusive resolution (deterministic
+   fix or deletion); retry-plugins, non-blocking-note
+   dispositions, and "couldn't reproduce" deferrals are
+   forbidden (D1), and plan-text + housekeeping (D2) per
+   `history/v040/proposed_changes/flaky-tests-unacceptable.md`;
+   v039 substance is v038 substance plus the six v039 decisions:
+   drop `check-tests` from the canonical aggregate (D1),
+   pytest-xdist `-n auto` parallelism for `check-coverage`
+   (D2), introduce `check-coverage-incremental`
+   path-scoped fast-feedback target (D3), codify Red-time
+   branch enumeration + proactive coverage discipline
+   (D4), defer pytest-cov subprocess-instrumentation
+   spike to highest-priority follow-up (D5), and
+   plan-text + housekeeping (D6) per
+   `history/v039/proposed_changes/aggregate-perf-and-iteration-loop.md`;
+   v038 substance is v037 substance plus the two v038 decisions:
+   Statement B authoritative on the version-cut rule —
+   §"Versioning" iff softened from "when, and only when,
+   accepts or modifies" to "on every successful revise
+   invocation (i.e., processes at least one proposal)";
+   §"`revise`" line 2483 rewritten to match (D1), and
+   plan-text + housekeeping (D2) per
+   `history/v038/proposed_changes/critique-fix-v037-revision.md`;
+   v037 substance is v036 substance plus the two v037 decisions:
    broaden the v036 D1 Red-mode classifier from
    `--diff-filter=A` to `--diff-filter=AM` so cycles that
    extend pre-existing test+impl mirror-pairs satisfy the
@@ -1339,7 +1539,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v037. Further evolution happens in
+   > **Status:** Frozen at v040. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -3485,10 +3685,13 @@ against the seeded `SPECIFICATION/`):
 **Exit criterion:** every wrapper in `bin/` has a real
 implementation path; every doctor-static check runs in full;
 `just check` + `/livespec:doctor` pass on the project's own
-`SPECIFICATION/`; every `test: "TODO"` in
-`heading-coverage.json` has been resolved to a real test id;
-`just check-prompts` (template-agnostic harness + per-template
-tests) passes.
+`SPECIFICATION/`; `just check-prompts` (template-agnostic
+harness + per-template tests) passes. (Heading-coverage
+`test: "TODO"` entries with non-empty `reason` are acceptable
+at this phase per PROPOSAL.md §"Registry lifecycle"; the
+load-bearing TODO-drain enforces at v1.0.0 release-tag time
+via `just check-no-todo-registry`, verified by Phase 10's
+v1 Definition-of-Done check.)
 
 ### Phase 8 — Process every deferred-items entry
 
@@ -3930,7 +4133,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v037 as authoritative. Do not propose any
+Treat PROPOSAL.md v040 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
@@ -4275,3 +4478,69 @@ itself via its own SPECIFICATION/-driven loop, the scaffolding
 has no further role.
 
 ---
+
+## 9. Followup conventions
+
+These conventions govern the project AFTER the bootstrap finishes,
+but the principles emerge during bootstrap execution and are
+codified here so the first agent to operate the post-bootstrap
+project inherits them.
+
+### 9.1 Release-gate-violation tracking via an issue tracker
+
+Per-commit gates (`just check`) MUST stay ergonomic — the developer
+loop is fast and unblocked on accumulated debt. Release-gates (the
+`check-mutation`, `check-no-todo-registry`,
+`check-no-lloc-soft-warnings`, etc. targets that fire ONLY on `v*`
+tag push via `.github/workflows/release-tag.yml`) close the loops
+that the per-commit ergonomic gates leave open. Without this
+two-tier separation, soft warnings accumulate silently and
+per-commit gates either grow brittle (if every check is hard) or
+become noise (if every check warns).
+
+**Convention.** When a release-gate violation is originally noticed
+or originally created (e.g., a new release-gate check is introduced
+and its first run surfaces N existing offenders; OR an existing
+release-gate's offender count grows during a session's work), the
+executor SHOULD immediately file a `chore`-shaped issue in the
+project's issue tracker for follow-up — to be addressed AFTER the
+current session's load-bearing work finishes. The chore is the
+persistent record so the violation is not lost between sessions.
+The chore does NOT block the current session's work; it is a
+forward-looking commitment captured before context bleeds out.
+
+The issue tracker is NOT yet selected at bootstrap time. The likely
+choice is Steve Yegge's `beads` tool
+(<https://github.com/steveyegge/beads>) — a lightweight per-repo
+issue tracker that fits the livespec ergonomics (CLI-driven,
+git-native storage). The tracker decision lands in a Phase-7-or-
+later propose-change cycle when the first such chore needs filing
+in earnest. Until the tracker is wired up, executors carry the
+convention forward via `bootstrap/decisions.md` notes that name the
+violation, the file/line affected, and the deferred fix's intent —
+those notes migrate to the chosen tracker once it lands.
+
+**Applies to.** Every release-gate target enumerated in
+`.github/workflows/release-tag.yml` and every future addition. As
+of this plan revision, that set is `check-mutation`,
+`check-no-todo-registry`, and `check-no-lloc-soft-warnings`.
+Additions to the set MUST update this section's enumeration AND
+add the convention reference to the new check's docstring.
+
+### 9.2 Why per-commit gates stay ergonomic
+
+The user's recurring guidance during bootstrap: per-commit pressure
+that forces context-switching mid-amend is paid in developer
+attention every cycle. The Red→Green-per-behavior discipline
+already fragments attention; layering accumulated-debt enforcement
+into the same window compounds the cost. Release-gates keep the
+debt visible without demanding immediate response — the chore
+mechanism turns "you must refactor now" into "you've committed to
+refactor before tagging release N".
+
+When in doubt: prefer release-gate over per-commit hard-fail for
+any check that surfaces drift from a desired-state invariant
+(coverage, complexity, exemption-creep, etc.); reserve per-commit
+hard-fail for checks that catch immediate correctness bugs
+(broken imports, malformed JSON, type errors, missing test pairs
+on actually-testable code).

@@ -1,6 +1,6 @@
 """Static-phase doctor check: version_contiguity.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks": this check asserts that the
 `<spec_root>/history/vNNN/` directory numbers form a
 contiguous sequence starting from `v001` with no gaps.

@@ -1,16 +1,9 @@
-"""Outside-in test for `dev-tooling/checks/file_lloc.py` — per-file LLOC ≤ 200 cap.
+"""Outside-in test for `dev-tooling/checks/file_lloc.py` — per-file LLOC two-tier policy.
 
-Per `python-skill-script-style-requirements.md` §"Canonical
-target list" (the `check-complexity` row, which composes ruff
-C901+PLR with file_lloc.py): every `.py` file under
-`.claude-plugin/scripts/livespec/**`, `.claude-plugin/scripts/
-bin/**`, and `<repo-root>/dev-tooling/**` MUST have at most
-200 logical lines of code (LLOC). LLOC excludes blank lines,
-comment-only lines, and module/class/function docstrings —
-it counts only executable statements.
-
-Cycle 159 implements the per-file cap with a synthetic
-fixture exceeding the threshold.
+Per `SPECIFICATION/constraints.md` §"File LLOC ceiling" (post-v005):
+files at 201-250 LLOC pass with a structured warning (SOFT ceiling);
+files above 250 LLOC fail (HARD ceiling). LLOC excludes blank lines,
+comment-only lines, and module/class/function docstrings.
 """
 
 from __future__ import annotations
@@ -26,89 +19,89 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _FILE_LLOC = _REPO_ROOT / "dev-tooling" / "checks" / "file_lloc.py"
 
 
-def test_file_lloc_rejects_file_exceeding_two_hundred_lines(*, tmp_path: Path) -> None:
-    """A `.py` file with > 200 LLOC fails the check.
-
-    Fixture: `.claude-plugin/scripts/livespec/big.py` contains
-    `from __future__ import annotations`, the canonical
-    `__all__` declaration, and 250 trivial assignment
-    statements (`x_<n> = <n>`). The check must walk livespec/,
-    count LLOC, detect the violation, exit non-zero, and
-    surface the file path plus actual LLOC count.
-    """
-    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec"
-    package_dir.mkdir(parents=True)
-    source = package_dir / "big.py"
-    body_lines = "\n".join(f"x_{i} = {i}" for i in range(250))
-    source.write_text(
-        "from __future__ import annotations\n"
-        "\n"
-        "__all__: list[str] = []\n"
-        "\n"
-        f"{body_lines}\n",
-        encoding="utf-8",
-    )
-
-    result = subprocess.run(
+def _run_check(*, cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
         [sys.executable, str(_FILE_LLOC)],
-        cwd=str(tmp_path),
+        cwd=str(cwd),
         capture_output=True,
         text=True,
         check=False,
     )
 
-    assert result.returncode != 0, (
-        f"file_lloc should reject 250-LLOC file; "
-        f"got returncode={result.returncode} "
-        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+
+def _write_py_with_lloc(*, tmp_path: Path, rel_path: str, n_statements: int) -> None:
+    full = tmp_path / rel_path
+    full.parent.mkdir(parents=True, exist_ok=True)
+    body_lines = "\n".join(f"x_{i} = {i}" for i in range(n_statements))
+    full.write_text(
+        "from __future__ import annotations\n\n__all__: list[str] = []\n\n" + body_lines + "\n",
+        encoding="utf-8",
     )
+
+
+def test_file_lloc_rejects_file_exceeding_hard_ceiling(*, tmp_path: Path) -> None:
+    """A `.py` file with > 250 LLOC fails (exit 1)."""
+    _write_py_with_lloc(
+        tmp_path=tmp_path,
+        rel_path=".claude-plugin/scripts/livespec/big.py",
+        n_statements=300,
+    )
+    result = _run_check(cwd=tmp_path)
+    assert result.returncode != 0
     combined = result.stdout + result.stderr
-    expected_path = ".claude-plugin/scripts/livespec/big.py"
-    assert expected_path in combined, (
-        f"file_lloc diagnostic does not surface offending file `{expected_path}`; "
-        f"stdout={result.stdout!r} stderr={result.stderr!r}"
-    )
+    assert ".claude-plugin/scripts/livespec/big.py" in combined
+    assert "hard ceiling" in combined
 
 
-def test_file_lloc_accepts_small_file(*, tmp_path: Path) -> None:
-    """A `.py` file with ≤ 200 LLOC passes the check (exit 0)."""
-    package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec"
-    package_dir.mkdir(parents=True)
-    source = package_dir / "small.py"
-    source.write_text(
-        "from __future__ import annotations\n"
-        "\n"
-        "__all__: list[str] = []\n"
-        "\n"
-        "\n"
-        "def main() -> int:\n"
-        "    return 0\n",
-        encoding="utf-8",
+def test_file_lloc_warns_but_passes_in_soft_band(*, tmp_path: Path) -> None:
+    """A `.py` file with 201-250 LLOC passes with exit 0 but emits a warning."""
+    _write_py_with_lloc(
+        tmp_path=tmp_path,
+        rel_path=".claude-plugin/scripts/livespec/medium.py",
+        n_statements=220,
     )
+    result = _run_check(cwd=tmp_path)
+    assert result.returncode == 0
+    combined = result.stdout + result.stderr
+    assert "soft ceiling" in combined
+    assert ".claude-plugin/scripts/livespec/medium.py" in combined
 
-    result = subprocess.run(
-        [sys.executable, str(_FILE_LLOC)],
-        cwd=str(tmp_path),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
 
-    assert result.returncode == 0, (
-        f"file_lloc should accept small file with exit 0; "
-        f"got returncode={result.returncode} "
-        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+def test_file_lloc_accepts_file_at_or_below_soft_ceiling(*, tmp_path: Path) -> None:
+    """A `.py` file with ≤ 200 LLOC passes silently (no warning, exit 0)."""
+    _write_py_with_lloc(
+        tmp_path=tmp_path,
+        rel_path=".claude-plugin/scripts/livespec/small.py",
+        n_statements=50,
     )
+    result = _run_check(cwd=tmp_path)
+    assert result.returncode == 0
+    combined = result.stdout + result.stderr
+    assert "soft ceiling" not in combined
+    assert "hard ceiling" not in combined
+
+
+def test_file_lloc_accepts_file_at_exactly_hard_ceiling(*, tmp_path: Path) -> None:
+    """A `.py` file with exactly 250 LLOC passes (warning emitted, exit 0).
+
+    250 is in the soft band (201-250); only > 250 is the hard fail.
+    Constructing exactly 250 LLOC: 3 setup lines (future-import,
+    blank line, __all__) plus 247 assignment statements. blank lines
+    don't count, future-import and __all__ count as 2 LLOC, +247 = 249.
+    Use 248 statements to land at exactly 250 LLOC.
+    """
+    _write_py_with_lloc(
+        tmp_path=tmp_path,
+        rel_path=".claude-plugin/scripts/livespec/edge.py",
+        n_statements=248,
+    )
+    result = _run_check(cwd=tmp_path)
+    # Exit 0 either way (in soft band or below); just verify no hard fail.
+    assert result.returncode == 0
 
 
 def test_file_lloc_excludes_blank_lines_and_comments_and_docstrings(*, tmp_path: Path) -> None:
-    """Blank lines, comments, and docstrings do not count toward LLOC.
-
-    Fixture: a livespec module with 250 blank lines + 250
-    comment lines + a long docstring + only 5 actual
-    executable statements. LLOC ≤ 200, so the check must
-    accept it.
-    """
+    """Blank lines, comments, and docstrings do not count toward LLOC."""
     package_dir = tmp_path / ".claude-plugin" / "scripts" / "livespec"
     package_dir.mkdir(parents=True)
     source = package_dir / "padded.py"
@@ -128,37 +121,33 @@ def test_file_lloc_excludes_blank_lines_and_comments_and_docstrings(*, tmp_path:
         "z = 2\n",
         encoding="utf-8",
     )
+    result = _run_check(cwd=tmp_path)
+    assert result.returncode == 0
 
-    result = subprocess.run(
-        [sys.executable, str(_FILE_LLOC)],
-        cwd=str(tmp_path),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
 
-    assert result.returncode == 0, (
-        f"file_lloc should accept padded file (LLOC ≤ 200) with exit 0; "
-        f"got returncode={result.returncode} "
-        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+def test_file_lloc_emits_both_tiers_in_one_run(*, tmp_path: Path) -> None:
+    """When both soft and hard offenders exist, hard wins (exit 1) + both diagnostics emit."""
+    _write_py_with_lloc(
+        tmp_path=tmp_path,
+        rel_path=".claude-plugin/scripts/livespec/medium.py",
+        n_statements=220,
     )
+    _write_py_with_lloc(
+        tmp_path=tmp_path,
+        rel_path=".claude-plugin/scripts/livespec/big.py",
+        n_statements=300,
+    )
+    result = _run_check(cwd=tmp_path)
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "soft ceiling" in combined
+    assert "hard ceiling" in combined
 
 
 def test_file_lloc_accepts_empty_tree(*, tmp_path: Path) -> None:
-    """An empty repo cwd passes the check (exit 0)."""
-    result = subprocess.run(
-        [sys.executable, str(_FILE_LLOC)],
-        cwd=str(tmp_path),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert result.returncode == 0, (
-        f"file_lloc should accept empty tree with exit 0; "
-        f"got returncode={result.returncode} "
-        f"stdout={result.stdout!r} stderr={result.stderr!r}"
-    )
+    """An empty repo cwd passes (exit 0)."""
+    result = _run_check(cwd=tmp_path)
+    assert result.returncode == 0
 
 
 def test_file_lloc_module_importable_without_running_main() -> None:
@@ -172,4 +161,4 @@ def test_file_lloc_module_importable_without_running_main() -> None:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert callable(module.main), "main should be importable without invocation"
+    assert callable(module.main)

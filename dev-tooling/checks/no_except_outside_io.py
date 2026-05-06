@@ -18,7 +18,7 @@ under `commands/` and `doctor/run_static.py`, only the
 direct-child `Try` nodes inside the `main()` function body
 are exempt — `try/except` in helper functions remains banned.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

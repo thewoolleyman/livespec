@@ -58,6 +58,41 @@ def _current_head_sha() -> str:
 
 
 def _write_trailers(*, msg_path: Path, trailers: tuple[tuple[str, str], ...]) -> None:
+    # Two-step write to handle the v034 D2-D3 Red re-amend case
+    # (surfaced concretely 2026-05-04 during v039 D3 authoring):
+    # three Red re-amends produced three sets of `TDD-Red-*`
+    # trailers in the commit message, after which
+    # `_head_trailer_value` returned a newline-joined string of
+    # three identical paths and the Green-mode handler raised
+    # FileNotFoundError on Path.read_bytes().
+    #
+    # Step 1: pre-strip any line in the existing message whose
+    # leading token matches one of the keys we're about to write.
+    # We CANNOT use `git interpret-trailers --if-exists=replace`
+    # here because git's `replace` matching uses prefix-aliasing
+    # (treats `TDD-Red-Test` and `TDD-Red-Test-File-Checksum` as
+    # the same trailer when one is a prefix of the other) and
+    # silently DROPS the longer-keyed trailer when a shorter
+    # prefix is present. The Red trailer schema has exactly
+    # this collision (`TDD-Red-Test` is a strict prefix of
+    # `TDD-Red-Test-File-Checksum` and `TDD-Red-Output-Checksum`'s
+    # base form), so prefix-matching corrupts the trailer set
+    # rather than fixing the duplicate-append bug.
+    #
+    # Step 2: invoke `git interpret-trailers --in-place` to add
+    # the new trailers. Git's trailer-block-formatting rules
+    # (blank-line separator between body and trailer block,
+    # `Key: value` formatting, etc.) are preserved.
+    keys_to_replace = {key for key, _ in trailers}
+    original_text = msg_path.read_text(encoding="utf-8")
+    stripped_lines: list[str] = []
+    for line in original_text.splitlines(keepends=True):
+        head = line.split(":", 1)[0]
+        if head in keys_to_replace:
+            continue
+        stripped_lines.append(line)
+    msg_path.write_text("".join(stripped_lines), encoding="utf-8")
+
     args: list[str] = []
     for key, value in trailers:
         args.extend(["--trailer", f"{key}: {value}"])

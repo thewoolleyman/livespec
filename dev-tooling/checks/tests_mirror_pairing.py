@@ -1,27 +1,26 @@
 """tests_mirror_pairing — every covered `.py` has a paired test (v033 D1).
 
-Per `python-skill-script-style-requirements.md` §"Canonical
-target list" (the `check-tests-mirror-pairing` row, added at
-v033) and PROPOSAL.md §"Test pyramid" (post-v033), every covered
+Per `SPECIFICATION/spec.md` §"Testing approach" (post-v006), every
 `.py` file under `.claude-plugin/scripts/livespec/**`,
 `.claude-plugin/scripts/bin/**`, and `<repo-root>/dev-tooling/
 checks/**` MUST have a paired test file at the mirror path under
-`tests/` containing at least one `def test_*` function (subsequent
-cycles tighten the existence-only check to also verify
-`def test_*` content). The 1:1 mirror rule was author-discipline-
-only pre-v033; this script promotes it to a hard mechanical gate
-at the v033-codification commit boundary.
+`tests/`, except:
 
-Closed exemption set (per v033 D1): `_vendor/**` (vendored libs),
-`bin/_bootstrap.py` (covered by the preserved `tests/bin/
-test_bootstrap.py`), and `__init__.py` files containing only
-`from __future__ import annotations` plus `__all__: list[str] =
-[]` with no executable logic. Subsequent cycles wire up the
-exemption matchers; cycle 1 implements the core walk + missing-
-pair detection on a non-exempt source path
-(`.claude-plugin/scripts/livespec/foo/bar.py`).
+(a) **Private-helper modules** — `.py` files whose filename starts
+    with `_` and is NOT `__init__.py` (e.g., `_seed_railway_emits.py`).
+    Their behavior is exercised through the public function that
+    imports them.
+(b) **Pure declaration modules** — files whose AST contains no
+    `FunctionDef` or `AsyncFunctionDef` anywhere (no module-level
+    or class-level functions). This covers boilerplate `__init__.py`,
+    pure dataclass declarations under `schemas/dataclasses/`, the
+    `DoctorContext` value-object, the `LivespecError` hierarchy,
+    and the static-check registry — none of which have testable
+    behavior independent of the consumers tested elsewhere.
+(c) `bin/_bootstrap.py` — special-cased; covered by
+    `tests/bin/test_bootstrap.py`.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/
@@ -30,6 +29,7 @@ _vendor/structlog` is added to `sys.path` at module import time.
 
 from __future__ import annotations
 
+import ast
 import sys
 from pathlib import Path
 
@@ -47,6 +47,7 @@ _SOURCE_TREES_TO_TESTS: dict[Path, Path] = {
     Path(".claude-plugin") / "scripts" / "bin": Path("tests") / "bin",
     Path("dev-tooling") / "checks": Path("tests") / "dev-tooling" / "checks",
 }
+_BOOTSTRAP_REL = Path(".claude-plugin") / "scripts" / "bin" / "_bootstrap.py"
 
 
 def _expected_paired_test_path(*, source_path: Path, source_tree: Path, tests_tree: Path) -> Path:
@@ -55,6 +56,28 @@ def _expected_paired_test_path(*, source_path: Path, source_tree: Path, tests_tr
     name = rel.name
     test_name = f"test_{name[1:]}" if name.startswith("_") else f"test_{name}"
     return tests_tree / parent / test_name
+
+
+def _is_private_helper_module(*, name: str) -> bool:
+    return name.startswith("_") and name != "__init__.py"
+
+
+def _is_pure_declaration_module(*, source_path: Path) -> bool:
+    source = source_path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            return False
+    return True
+
+
+def _is_exempt(*, source_path: Path, cwd: Path) -> bool:
+    rel_to_cwd = source_path.relative_to(cwd)
+    if rel_to_cwd == _BOOTSTRAP_REL:
+        return True
+    if _is_private_helper_module(name=source_path.name):
+        return True
+    return _is_pure_declaration_module(source_path=source_path)
 
 
 def _iter_python_files(*, root: Path) -> list[Path]:
@@ -79,6 +102,8 @@ def main() -> int:
             continue
         tests_tree = cwd / tests_tree_rel
         for py_file in _iter_python_files(root=source_tree):
+            if _is_exempt(source_path=py_file, cwd=cwd):
+                continue
             expected_pair = _expected_paired_test_path(
                 source_path=py_file, source_tree=source_tree, tests_tree=tests_tree
             )

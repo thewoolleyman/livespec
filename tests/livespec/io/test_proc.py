@@ -1,6 +1,6 @@
 """Tests for livespec.io.proc.
 
-Per style doc §"Skill layout — `io/`" line 337: "io/ — impure
+Per style doc §"Skill layout — `io/`": "io/ — impure
 boundary. Every function wraps a side-effecting operation
 (filesystem, subprocess, git) with @impure_safe." The proc
 facade exposes the typed subprocess primitive that
@@ -15,7 +15,7 @@ import-linter contract `livespec.commands | livespec.doctor`
 treats `commands` and `doctor` as independent sibling layers
 that cannot import each other. Subprocess invocation respects
 that boundary while still letting `commands.<cmd>.main()` own
-the deterministic lifecycle per style doc lines 645-694.
+the deterministic lifecycle per style doc.
 """
 
 from __future__ import annotations

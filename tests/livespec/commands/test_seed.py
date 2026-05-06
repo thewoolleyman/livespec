@@ -142,7 +142,7 @@ def test_seed_main_defaults_argv_to_sys_argv_when_called_without_args(
     assert exit_code == 2
     """The pure argparse factory accepts `--seed-json <path>` and binds it.
 
-    Per PROPOSAL.md §"`seed`" lines 1937-1942 (`bin/seed.py
+    Per PROPOSAL.md §"`seed`" (`bin/seed.py
     --seed-json <path>` is the sole wrapper entry point) and
     style doc §"CLI argument parsing seam" (commands/<cmd>.py
     exposes a pure `build_parser() -> ArgumentParser` factory
@@ -160,7 +160,7 @@ def test_seed_main_writes_livespec_jsonc_at_project_root_on_success(
 ) -> None:
     """Successful seed writes `<project-root>/.livespec.jsonc` with the template.
 
-    Per PROPOSAL.md §"`seed`" step 1 (line ~1996): the wrapper
+    Per PROPOSAL.md §"`seed`" step 1: the wrapper
     writes `.livespec.jsonc` at repo root using the payload's
     top-level `template` field value. This is the first
     deterministic file-shaping stage — drives the success-arm
@@ -184,7 +184,7 @@ def test_seed_main_writes_main_spec_files_at_their_paths(
 ) -> None:
     """Successful seed writes each main-spec `files[]` entry to its path.
 
-    Per PROPOSAL.md §"`seed`" step 2 (line ~1999): "Write each
+    Per PROPOSAL.md §"`seed`" step 2: "Write each
     main-spec `files[]` entry to its specified path." Each
     entry's `path` is project-root-relative; content goes
     verbatim. Drives the second deterministic file-shaping
@@ -207,7 +207,7 @@ def test_seed_main_writes_sub_spec_files_at_their_paths(
 ) -> None:
     """Successful seed writes each sub-spec entry's `files[]` to its path.
 
-    Per PROPOSAL.md §"`seed`" step 3 (line ~2000): "For each
+    Per PROPOSAL.md §"`seed`" step 3: "For each
     entry in `sub_specs[]`, write every `files[]` entry in
     that sub-spec to its
     `SPECIFICATION/templates/<template_name>/<spec-file>` path."
@@ -243,7 +243,7 @@ def test_seed_main_creates_history_v001_with_versioned_main_spec_files(
 ) -> None:
     """Successful seed materializes `<spec-root>/history/v001/<spec-file>`.
 
-    Per PROPOSAL.md §"`seed`" step 4 (line ~2007): "Create
+    Per PROPOSAL.md §"`seed`" step 4: "Create
     `<spec-root>/history/v001/` for the main spec (including
     the initial versioned spec files...)." With the built-in
     `livespec` template's spec_root = `SPECIFICATION/`, each
@@ -268,7 +268,7 @@ def test_seed_main_creates_sub_spec_history_v001(
 ) -> None:
     """Successful seed materializes sub-spec history/v001/ for each sub-spec tree.
 
-    Per PROPOSAL.md §"`seed`" step 5 (line ~2014-2020): "For
+    Per PROPOSAL.md §"`seed`" step 5: "For
     each sub-spec tree, create
     SPECIFICATION/templates/<template_name>/history/v001/
     alongside the main-spec history — including the sub-spec's
@@ -303,8 +303,8 @@ def test_seed_main_emits_auto_captured_seed_proposed_change(
 ) -> None:
     """Successful seed writes `<spec-root>/history/v001/proposed_changes/seed.md`.
 
-    Per PROPOSAL.md §"`seed`" step 6 (line ~2029) and the
-    "Auto-generated...seed.md content" subsection (line ~2043):
+    Per PROPOSAL.md §"`seed`" step 6 and the
+    "Auto-generated...seed.md content" subsection:
     the wrapper writes a proposed-change file with front-matter
     `topic: seed`, `author: livespec-seed`, plus a
     `## Proposal: seed` section. Drives the smallest visible
@@ -330,13 +330,13 @@ def test_seed_main_emits_auto_captured_seed_revision(
 ) -> None:
     """Successful seed writes `<spec-root>/history/v001/proposed_changes/seed-revision.md`.
 
-    Per PROPOSAL.md §"`seed`" "Auto-generated...seed-revision.md"
-    (lines ~2058-2064): front-matter `proposal: seed.md`,
-    `decision: accept`, `author_llm: livespec-seed`, with
-    `## Decision and Rationale` paragraph "auto-accepted during
-    seed" and `## Resulting Changes`. Drives the smallest visible
-    behavior: the file exists with the canonical front-matter
-    + section markers.
+        Per PROPOSAL.md §"`seed`" "Auto-generated...seed-revision.md"
+    : front-matter `proposal: seed.md`,
+        `decision: accept`, `author_llm: livespec-seed`, with
+        `## Decision and Rationale` paragraph "auto-accepted during
+        seed" and `## Resulting Changes`. Drives the smallest visible
+        behavior: the file exists with the canonical front-matter
+        + section markers.
     """
     project_root = tmp_path / "proj"
     project_root.mkdir()
@@ -379,7 +379,7 @@ def test_seed_main_returns_exit_zero_on_successful_seed(
 def test_seed_build_parser_accepts_project_root_flag() -> None:
     """The argparse factory accepts `--project-root <path>` and binds it.
 
-    Per PROPOSAL.md §"Wrapper CLI surface" (lines 349-356):
+    Per PROPOSAL.md §"Wrapper CLI surface":
     every wrapper that operates on project state accepts
     `--project-root <path>` as an optional CLI flag with default
     `Path.cwd()`. Seed uses this to anchor `.livespec.jsonc`
@@ -399,7 +399,7 @@ def test_write_sub_spec_history_v001_skips_paths_with_fewer_than_four_components
 ) -> None:
     """A sub_spec file path with fewer than 4 components is skipped from history/v001/.
 
-    Per `_write_sub_spec_history_v001` line 354-355 guard: the
+    Per `_write_sub_spec_history_v001` guard: the
     canonical sub-spec file shape is
     `SPECIFICATION/templates/<name>/<spec-file>` (4 path
     components). A path with fewer components can't be split into
@@ -455,7 +455,7 @@ def test_write_sub_spec_history_v001_skips_non_dict_entry_inside_files_list(
 ) -> None:
     """A non-dict entry inside a sub_spec's `files` is skipped from history/v001/.
 
-    Per `_write_sub_spec_history_v001` line 351-352 guard: the
+    Per `_write_sub_spec_history_v001` guard: the
     inner-loop `if not isinstance(entry, dict): continue`. Mirror
     of cycle 109's pattern in the sub-spec history-materialization
     helper. Tested by calling the helper directly with a sub-spec
@@ -503,7 +503,7 @@ def test_write_sub_spec_history_v001_skips_entries_with_non_list_files_field(
 ) -> None:
     """A sub_spec whose `files` is not a list is skipped from history/v001/.
 
-    Per `_write_sub_spec_history_v001` line 348-349 guard: same
+    Per `_write_sub_spec_history_v001` guard: same
     type-defensive pattern as cycle 108's `_write_sub_spec_files`,
     but in the sub-spec-history-materialization helper. The
     dataclass surface still types each sub-spec's `files` value as
@@ -552,7 +552,7 @@ def test_write_sub_spec_files_skips_non_dict_entry_inside_files_list(
 ) -> None:
     """A non-dict entry inside a sub_spec's `files` list is skipped defensively.
 
-    Per `_write_sub_spec_files` line 204-205 guard: inside the
+    Per `_write_sub_spec_files` guard: inside the
     per-sub-spec `files` iteration, each entry must be a dict
     before its `path`/`content` keys can be read. The dataclass
     surface types each entry as `object` (the inner items live
@@ -601,7 +601,7 @@ def test_write_sub_spec_files_skips_entries_with_non_list_files_field(
 ) -> None:
     """A sub_spec whose `files` is not a list is skipped defensively.
 
-    Per `_write_sub_spec_files` line 201-202 guard: the supervisor
+    Per `_write_sub_spec_files` guard: the supervisor
     is type-defensive against the dataclass's
     `sub_specs: list[dict[str, object]]` typing, where the inner
     dict's values are `object`. Schema validation guarantees
@@ -657,8 +657,8 @@ def test_seed_main_skips_seed_md_emission_when_files_array_is_empty(
 ) -> None:
     """An empty `files[]` array short-circuits the seed.md / seed-revision.md emission.
 
-    Per `_emit_seed_proposed_change` line 232-233 + `_emit_seed_revision`
-    line 293-294 guards: when the payload carries no main-spec
+    Per `_emit_seed_proposed_change` + `_emit_seed_revision`
+    guards: when the payload carries no main-spec
     `files[]`, both auto-captured-proposed-change emission and
     auto-revision emission early-return with the unchanged
     seed_input. The body of those files derives a target path
@@ -714,7 +714,7 @@ def test_seed_main_skips_main_spec_history_for_single_component_paths(
 ) -> None:
     """A main-spec `files[]` entry with a single-component path is skipped from history/v001/.
 
-    Per `_write_main_spec_history_v001` line 168-169 guard: when
+    Per `_write_main_spec_history_v001` guard: when
     a file's project-root-relative path has fewer than 2
     components (e.g., `loose-file.md` directly at the project
     root, with no `<spec-root>/<file>` shape), it cannot be
@@ -770,7 +770,7 @@ def test_fold_doctor_completed_process_returns_failure_on_malformed_json_stdout(
 ) -> None:
     """Malformed-JSON stdout from the doctor subprocess -> Failure(PreconditionError).
 
-    Per `_fold_doctor_completed_process` line 510-515 guard: the
+    Per `_fold_doctor_completed_process` guard: the
     doctor wrapper's documented stdout contract is a single
     `{"findings": [...]}` JSON object (PROPOSAL.md §"`doctor` →
     Static-phase output contract"). If stdout cannot be decoded
@@ -825,7 +825,7 @@ def test_fold_doctor_completed_process_returns_failure_on_missing_findings_key(
 ) -> None:
     """Doctor stdout JSON without a `findings` key -> Failure(PreconditionError).
 
-    Per `_fold_doctor_completed_process` line 516-521 guard: the
+    Per `_fold_doctor_completed_process` guard: the
     payload must be a dict carrying a `findings` key. A non-dict
     payload (e.g., a JSON array at the root) or a dict missing
     the `findings` key both signal a contract violation; the
@@ -875,7 +875,7 @@ def test_fold_doctor_completed_process_returns_failure_on_non_list_findings(
 ) -> None:
     """Doctor stdout `{"findings": <not-a-list>}` -> Failure(PreconditionError).
 
-    Per `_fold_doctor_completed_process` line 522-528 guard: the
+    Per `_fold_doctor_completed_process` guard: the
     `findings` value MUST be a list per the doctor contract.
     Any other shape (dict, string, number) signals a contract
     violation; the helper lifts to Failure(PreconditionError).
@@ -925,8 +925,7 @@ def test_seed_main_invokes_post_step_doctor_and_returns_exit_three_on_fail_findi
 ) -> None:
     """After seed completes, post-step doctor runs; any fail finding -> exit 3.
 
-    Per PROPOSAL.md §"Sub-command lifecycle orchestration" lines
-    767-773 + §"`seed`" lines 2037-2042: "Seed is exempt from
+    Per PROPOSAL.md §"Sub-command lifecycle orchestration" + §"`seed`": "Seed is exempt from
     pre-step doctor-static; post-step runs normally after the
     wrapper's deterministic work completes." On any `status:
     "fail"` finding from post-step, the wrapper aborts with exit
@@ -990,13 +989,13 @@ def test_seed_main_defaults_project_root_to_cwd_when_flag_omitted(
 ) -> None:
     """Without --project-root, the supervisor defaults to `Path.cwd()`.
 
-    Per PROPOSAL.md §"Wrapper CLI surface" lines 349-356: every
+    Per PROPOSAL.md §"Wrapper CLI surface": every
     wrapper accepts `--project-root <path>` with the default
     applied at the supervisor edge as `Path.cwd()` (NOT at the
     parser layer; the parser keeps default=None so the supervisor
     is the single place the cwd-read happens). Drives
-    `_resolve_project_root`'s cwd-fallback branch (line 404:
-    `if namespace.project_root is None: return Path.cwd()`).
+    `_resolve_project_root`'s cwd-fallback branch
+    (`if namespace.project_root is None: return Path.cwd()`).
     `monkeypatch.chdir(project_root)` anchors the cwd at a writable
     deterministic location so the seed flow's full success arm
     materializes there.
@@ -1033,3 +1032,775 @@ def test_path_minima_constants_pin_documented_shapes() -> None:
 
     assert _seed_railway_writes._MIN_PARTS_MAIN_SPEC == 2  # noqa: SLF001
     assert _seed_railway_writes._MIN_PARTS_SUB_SPEC == 4  # noqa: SLF001
+
+
+def test_emit_skill_owned_history_readme_writes_main_spec_history_readme(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The new helper writes <main-spec-root>/history/README.md per Phase 7 sub-step 1.
+
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
+    (post-v002): the seed wrapper writes the skill-owned
+    history/README.md for every spec tree. This unit-tests the
+    main-spec helper.
+    """
+    from livespec.commands._seed_railway_emits import _emit_skill_owned_history_readme
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[],
+    )
+    result = _emit_skill_owned_history_readme(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    history_readme = project_root / "SPECIFICATION" / "history" / "README.md"
+    assert history_readme.exists(), f"expected {history_readme} to be written"
+    content = history_readme.read_text(encoding="utf-8")
+    assert content.startswith("# History"), f"unexpected content: {content[:80]}"
+
+
+def test_emit_skill_owned_history_readme_early_returns_on_empty_files(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Empty seed_input.files: skip — no spec_root to anchor on.
+
+    Mirrors the other emit helpers' first-line guard. Returns
+    Success(seed_input) without touching the disk.
+    """
+    from livespec.commands._seed_railway_emits import _emit_skill_owned_history_readme
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(template="livespec", intent="x", files=[], sub_specs=[])
+    result = _emit_skill_owned_history_readme(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not (
+        project_root / "SPECIFICATION" / "history" / "README.md"
+    ).exists(), "should not write README when files[] is empty"
+
+
+def test_emit_skill_owned_history_readme_early_returns_on_loose_first_file(
+    *,
+    tmp_path: Path,
+) -> None:
+    """First file path with too-few parts (loose file at repo root): skip.
+
+    Same shape-guard as the other emit helpers — when the first
+    files[] entry is a single-component path (no <spec-root>/<file>
+    shape), the helper cannot derive the spec_root.
+    """
+    from livespec.commands._seed_railway_emits import _emit_skill_owned_history_readme
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "loose-file.md", "content": "# Loose\n"}],
+        sub_specs=[],
+    )
+    result = _emit_skill_owned_history_readme(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not (
+        project_root / "loose-file.md" / "history" / "README.md"
+    ).exists(), "should not write README under a loose-path-derived spec root"
+
+
+def test_emit_skill_owned_sub_spec_proposed_changes_readmes_writes_one_per_sub_spec(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The new helper writes proposed_changes/README.md for every sub-spec.
+
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
+    (post-v002): the seed wrapper writes the skill-owned
+    proposed_changes/README.md for every spec tree, including each
+    sub-spec. Cycle 2 of Phase 7 sub-step 1.c — the matching
+    main-spec helper already exists at
+    `_emit_skill_owned_proposed_changes_readme`; this new helper
+    closes the per-sub-spec gap.
+    """
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_proposed_changes_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+            {
+                "name": "minimal",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/minimal/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_proposed_changes_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    livespec_readme = (
+        project_root / "SPECIFICATION" / "templates" / "livespec" / "proposed_changes" / "README.md"
+    )
+    minimal_readme = (
+        project_root / "SPECIFICATION" / "templates" / "minimal" / "proposed_changes" / "README.md"
+    )
+    assert livespec_readme.exists(), f"expected {livespec_readme} to be written"
+    assert minimal_readme.exists(), f"expected {minimal_readme} to be written"
+    livespec_content = livespec_readme.read_text(encoding="utf-8")
+    minimal_content = minimal_readme.read_text(encoding="utf-8")
+    assert livespec_content.startswith(
+        "# Proposed Changes",
+    ), f"unexpected livespec content: {livespec_content[:80]}"
+    assert minimal_content.startswith(
+        "# Proposed Changes",
+    ), f"unexpected minimal content: {minimal_content[:80]}"
+
+
+def test_emit_skill_owned_sub_spec_proposed_changes_readmes_skips_when_sub_specs_empty(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Empty seed_input.sub_specs: skip — no tree to anchor on.
+
+    Mirrors the standard short-circuit guard. Returns
+    Success(seed_input) without touching the disk.
+    """
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_proposed_changes_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[],
+    )
+    result = _emit_skill_owned_sub_spec_proposed_changes_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob("proposed_changes/README.md")
+    ), "should not write any README when sub_specs is empty"
+
+
+def test_emit_skill_owned_sub_spec_proposed_changes_readmes_skips_non_list_files_field(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Sub-spec entry with a non-list `files` field: skip that sub-spec.
+
+    Mirrors the same guard in `_write_sub_spec_files` /
+    `_write_sub_spec_history_v001`.
+    """
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_proposed_changes_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[{"name": "broken", "files": "not-a-list"}],
+    )
+    result = _emit_skill_owned_sub_spec_proposed_changes_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob("proposed_changes/README.md")
+    ), "should not write any README when files field is non-list"
+
+
+def test_emit_skill_owned_sub_spec_proposed_changes_readmes_skips_non_dict_entries_within_files(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Non-dict elements inside the `files` list: skip and continue scanning.
+
+    Mirrors the dict-shape guard in `_write_sub_spec_files`: when
+    a non-dict element appears in the list, skip it but continue
+    looking for a valid dict entry from which to derive the
+    sub-spec root.
+    """
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_proposed_changes_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "mixed",
+                "files": [
+                    "not-a-dict-just-a-string",
+                    {
+                        "path": "SPECIFICATION/templates/mixed/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_proposed_changes_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    mixed_readme = (
+        project_root / "SPECIFICATION" / "templates" / "mixed" / "proposed_changes" / "README.md"
+    )
+    assert mixed_readme.exists(), f"expected {mixed_readme} to be written after skipping non-dict"
+
+
+def test_emit_skill_owned_sub_spec_proposed_changes_readmes_skips_loose_path_entries(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Sub-spec with all-too-shallow paths: skip — no spec_root derivable.
+
+    Sub-spec paths must be at least four parts
+    (`<spec_root>/templates/<name>/<file>`) to derive the
+    sub-spec root. When every entry is loose, skip.
+    """
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_proposed_changes_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "shallow",
+                "files": [{"path": "loose.md", "content": "# Loose\n"}],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_proposed_changes_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob("proposed_changes/README.md")
+    ), "should not write any README when all paths are loose"
+
+
+def test_emit_skill_owned_sub_spec_history_readmes_writes_one_per_sub_spec(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The new helper writes history/README.md for every sub-spec.
+
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
+    (post-v002): the seed wrapper writes the skill-owned
+    history/README.md for every spec tree, including each
+    sub-spec. Cycle 3 of Phase 7 sub-step 1.c — the matching
+    main-spec helper already exists at
+    `_emit_skill_owned_history_readme` (cycle 1); this new helper
+    closes the per-sub-spec gap.
+    """
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+            {
+                "name": "minimal",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/minimal/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    livespec_readme = (
+        project_root / "SPECIFICATION" / "templates" / "livespec" / "history" / "README.md"
+    )
+    minimal_readme = (
+        project_root / "SPECIFICATION" / "templates" / "minimal" / "history" / "README.md"
+    )
+    assert livespec_readme.exists(), f"expected {livespec_readme} to be written"
+    assert minimal_readme.exists(), f"expected {minimal_readme} to be written"
+    livespec_content = livespec_readme.read_text(encoding="utf-8")
+    minimal_content = minimal_readme.read_text(encoding="utf-8")
+    assert livespec_content.startswith(
+        "# History",
+    ), f"unexpected livespec content: {livespec_content[:80]}"
+    assert minimal_content.startswith(
+        "# History",
+    ), f"unexpected minimal content: {minimal_content[:80]}"
+
+
+def test_emit_skill_owned_sub_spec_history_readmes_skips_when_sub_specs_empty(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Empty seed_input.sub_specs: skip — no tree to anchor on."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[],
+    )
+    result = _emit_skill_owned_sub_spec_history_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob("history/README.md")
+    ), "should not write any README when sub_specs is empty"
+
+
+def test_emit_skill_owned_sub_spec_history_readmes_skips_non_list_files_field(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Sub-spec entry with a non-list `files` field: skip that sub-spec."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[{"name": "broken", "files": "not-a-list"}],
+    )
+    result = _emit_skill_owned_sub_spec_history_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob("history/README.md")
+    ), "should not write any README when files field is non-list"
+
+
+def test_emit_skill_owned_sub_spec_history_readmes_skips_non_dict_entries_within_files(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Non-dict elements inside the `files` list: skip and continue scanning."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "mixed",
+                "files": [
+                    "not-a-dict-just-a-string",
+                    {
+                        "path": "SPECIFICATION/templates/mixed/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    mixed_readme = project_root / "SPECIFICATION" / "templates" / "mixed" / "history" / "README.md"
+    assert mixed_readme.exists(), f"expected {mixed_readme} to be written after skipping non-dict"
+
+
+def test_emit_skill_owned_sub_spec_history_readmes_skips_loose_path_entries(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Sub-spec with all-too-shallow paths: skip — no spec_root derivable."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_readmes,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "shallow",
+                "files": [{"path": "loose.md", "content": "# Loose\n"}],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_readmes(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob("history/README.md")
+    ), "should not write any README when all paths are loose"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_writes_one_per_sub_spec(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The new helper writes history/v001/proposed_changes/.gitkeep per sub-spec.
+
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
+    (post-v002): the seed wrapper writes `.gitkeep` markers under
+    each sub-spec's `history/v001/proposed_changes/` so the empty
+    dir survives `git add`. Sub-specs do NOT receive auto-captured
+    seed.md proposed-changes per v018 Q1, so the history/v001/
+    proposed_changes/ directory is otherwise empty for sub-specs.
+    """
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "livespec",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/livespec/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+            {
+                "name": "minimal",
+                "files": [
+                    {
+                        "path": "SPECIFICATION/templates/minimal/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    livespec_gitkeep = (
+        project_root
+        / "SPECIFICATION"
+        / "templates"
+        / "livespec"
+        / "history"
+        / "v001"
+        / "proposed_changes"
+        / ".gitkeep"
+    )
+    minimal_gitkeep = (
+        project_root
+        / "SPECIFICATION"
+        / "templates"
+        / "minimal"
+        / "history"
+        / "v001"
+        / "proposed_changes"
+        / ".gitkeep"
+    )
+    assert livespec_gitkeep.exists(), f"expected {livespec_gitkeep} to be written"
+    assert minimal_gitkeep.exists(), f"expected {minimal_gitkeep} to be written"
+    assert (
+        livespec_gitkeep.read_text(encoding="utf-8") == ""
+    ), "gitkeep should be an empty marker file"
+    assert (
+        minimal_gitkeep.read_text(encoding="utf-8") == ""
+    ), "gitkeep should be an empty marker file"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_when_sub_specs_empty(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Empty seed_input.sub_specs: skip — no tree to anchor on."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob(".gitkeep")
+    ), "should not write any .gitkeep when sub_specs is empty"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_non_list_files_field(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Sub-spec entry with a non-list `files` field: skip that sub-spec."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[{"name": "broken", "files": "not-a-list"}],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob(".gitkeep")
+    ), "should not write any .gitkeep when files field is non-list"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_non_dict_entries_within_files(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Non-dict elements inside the `files` list: skip and continue scanning."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "mixed",
+                "files": [
+                    "not-a-dict-just-a-string",
+                    {
+                        "path": "SPECIFICATION/templates/mixed/spec.md",
+                        "content": "# Sub spec\n",
+                    },
+                ],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    mixed_gitkeep = (
+        project_root
+        / "SPECIFICATION"
+        / "templates"
+        / "mixed"
+        / "history"
+        / "v001"
+        / "proposed_changes"
+        / ".gitkeep"
+    )
+    assert mixed_gitkeep.exists(), f"expected {mixed_gitkeep} to be written after skipping non-dict"
+
+
+def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_loose_path_entries(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Sub-spec with all-too-shallow paths: skip — no spec_root derivable."""
+    from livespec.commands._seed_railway_emits import (
+        _emit_skill_owned_sub_spec_history_v001_gitkeeps,
+    )
+    from livespec.schemas.dataclasses.seed_input import SeedInput
+    from returns.result import Success
+    from returns.unsafe import unsafe_perform_io
+
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    seed_input = SeedInput(
+        template="livespec",
+        intent="x",
+        files=[{"path": "SPECIFICATION/spec.md", "content": "# Spec\n"}],
+        sub_specs=[
+            {
+                "name": "shallow",
+                "files": [{"path": "loose.md", "content": "# Loose\n"}],
+            },
+        ],
+    )
+    result = _emit_skill_owned_sub_spec_history_v001_gitkeeps(
+        seed_input=seed_input,
+        project_root=project_root,
+    )
+    unwrapped = unsafe_perform_io(result)
+    assert isinstance(unwrapped, Success), f"expected Success, got {unwrapped}"
+    assert not any(
+        project_root.rglob(".gitkeep")
+    ), "should not write any .gitkeep when all paths are loose"

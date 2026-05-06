@@ -1,8 +1,8 @@
 """Static-doctor check registry + applicability table.
 
-Per PROPOSAL.md §"`doctor` → Static-phase structure" lines
-2507-2512, this package's `__init__.py` holds the registry of
-implemented static-phase check modules. Each check is registered
+Per PROPOSAL.md §"`doctor` → Static-phase structure", this
+package's `__init__.py` holds the registry of implemented
+static-phase check modules. Each check is registered
 explicitly (no dynamic discovery); adding or removing a check is
 one explicit edit to this file.
 
@@ -12,7 +12,11 @@ the remaining seven Phase-3 minimum-subset checks
 `proposed_changes_and_history_dirs`,
 `version_directories_complete`, `version_contiguity`,
 `revision_to_proposed_change_pairing`,
-`proposed_change_topic_format`).
+`proposed_change_topic_format`). Phase 7 (sub-steps 7.b/7.c/
+7.d/7.a.ii) registers the remaining four checks
+(`bcp14_keyword_wellformedness`, `gherkin_blank_line_format`,
+`anchor_reference_resolution`, `out_of_band_edits`); all
+twelve are now wired.
 
 Cycle 143 makes the orchestrator-owned applicability mapping
 explicit: APPLICABILITY_BY_TREE_KIND maps each `tree_kind`
@@ -33,7 +37,11 @@ from __future__ import annotations
 from typing import Literal
 
 from livespec.doctor.static import (
+    anchor_reference_resolution,
+    bcp14_keyword_wellformedness,
+    gherkin_blank_line_format,
     livespec_jsonc_valid,
+    out_of_band_edits,
     proposed_change_topic_format,
     proposed_changes_and_history_dirs,
     revision_to_proposed_change_pairing,
@@ -58,6 +66,10 @@ STATIC_CHECKS = (
     version_contiguity,
     revision_to_proposed_change_pairing,
     proposed_change_topic_format,
+    bcp14_keyword_wellformedness,
+    gherkin_blank_line_format,
+    anchor_reference_resolution,
+    out_of_band_edits,
 )
 
 
@@ -70,5 +82,9 @@ APPLICABILITY_BY_TREE_KIND: dict[TreeKind, tuple[object, ...]] = {
         version_contiguity,
         revision_to_proposed_change_pairing,
         proposed_change_topic_format,
+        bcp14_keyword_wellformedness,
+        gherkin_blank_line_format,
+        anchor_reference_resolution,
+        out_of_band_edits,
     ),
 }

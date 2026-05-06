@@ -50,8 +50,8 @@ def test_per_file_coverage_rejects_file_below_100_line_coverage(*, tmp_path: Pat
     of `from __future__ import annotations` + `__all__` + three
     trivial assignment statements). A hand-authored `.coverage`
     data file records only two of those statements as covered
-    (lines 1 and 3 — the import and the `__all__` declaration);
-    the three assignment statements (lines 5, 6, 7) are missing.
+    (the import and the `__all__` declaration); the three
+    assignment statements are missing.
     The check, invoked with `cwd=tmp_path`, must walk the
     `.coverage` data, detect `subject.py` at <100% line coverage,
     exit non-zero, and surface the offending file path so the
@@ -105,7 +105,7 @@ def test_per_file_coverage_rejects_file_below_100_line_coverage(*, tmp_path: Pat
 def test_per_file_coverage_rejects_when_no_coverage_data_file_exists(*, tmp_path: Path) -> None:
     """No `.coverage` file in cwd makes the check exit non-zero with a clear diagnostic.
 
-    Per `per_file_coverage.py` lines 70-72: the helper inspects
+    Per `per_file_coverage.py`: the helper inspects
     `cwd / ".coverage"` and, if missing, logs a "no coverage data
     found" error and returns 1. Drives that early-exit branch:
     fixture is a fresh tmp_path with no `.coverage` file. The
@@ -135,13 +135,13 @@ def test_per_file_coverage_rejects_when_no_coverage_data_file_exists(*, tmp_path
 def test_per_file_coverage_accepts_when_all_files_at_100_percent(*, tmp_path: Path) -> None:
     """A `.coverage` data file where every measured file is at 100% passes the check.
 
-    Per `per_file_coverage.py` lines 86-98: when the per-file
+    Per `per_file_coverage.py`: when the per-file
     walk finds no offenders, the helper returns 0. Fixture: a
     synthetic `subject.py` with exactly two executable statements
     (the import line + the __all__ declaration); the `.coverage`
     data file records both as covered. The check exits 0.
 
-    Drives the success-path return on line 98 (`return 0`) and the
+    Drives the success-path return on (`return 0`) and the
     no-offenders branch (86->83 in coverage's report: when the
     loop body's `if line_pct < 100.0` arm is NOT taken, control
     returns to the loop header, and on loop exit the empty
@@ -154,8 +154,8 @@ def test_per_file_coverage_accepts_when_all_files_at_100_percent(*, tmp_path: Pa
         encoding="utf-8",
     )
     data = CoverageData(basename=str(tmp_path / ".coverage"), suffix=False)
-    # Both executable statements covered: the future-import (line 1)
-    # and the __all__ declaration (line 2). Coverage's `add_lines`
+    # Both executable statements covered: the future-import
+    # and the __all__ declaration. Coverage's `add_lines`
     # records executed lines per file.
     data.add_lines({str(src_file): [1, 2]})
     data.write()
@@ -213,3 +213,77 @@ def test_full_coverage_pct_constant_pins_v033_d2_threshold() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module._FULL_COVERAGE_PCT == 100.0  # noqa: SLF001
+
+
+def test_per_file_coverage_parses_xdist_combined_data(*, tmp_path: Path) -> None:
+    """per_file_coverage.py correctly reads `.coverage` data combined from xdist workers.
+
+    Per v039 D2: `check-coverage` invokes `pytest -n auto` so the
+    test suite executes across N worker processes. Each worker
+    writes its own parallel-mode `.coverage.<host>.<pid>.<rand>`
+    data file; pytest-cov's session-end hook calls
+    `coverage.Coverage().combine()` to merge them into a single
+    `.coverage` file before `per_file_coverage.py` runs. This
+    test pins the post-processor's correctness against that
+    combined shape: two synthetic worker files (one missing line
+    coverage on `subject.py`, one with all lines covered on
+    `other.py`) are combined in `tmp_path`; the check must walk
+    the merged data and reject `subject.py` while leaving
+    `other.py` unflagged.
+
+    The hard `import xdist` at the top guarantees this test fails
+    at collection time when pytest-xdist is not installed in the
+    dev-environment, which is the Red signal for the v039 D2
+    Green amend (which adds pytest-xdist to pyproject.toml
+    [dependency-groups.dev]).
+    """
+    import xdist  # noqa: F401  — Red signal: ImportError if pytest-xdist not in dev-deps.
+    from coverage import Coverage
+
+    src_subject = tmp_path / "subject.py"
+    src_subject.write_text(
+        "from __future__ import annotations\n"
+        "\n"
+        "__all__: list[str] = []\n"
+        "\n"
+        "x = 1\n"
+        "y = 2\n"
+        "z = 3\n",
+        encoding="utf-8",
+    )
+    src_other = tmp_path / "other.py"
+    src_other.write_text(
+        "from __future__ import annotations\n__all__: list[str] = []\n",
+        encoding="utf-8",
+    )
+
+    worker_a = CoverageData(basename=str(tmp_path / ".coverage"), suffix="worker-a")
+    worker_a.add_lines({str(src_subject): [1, 3]})
+    worker_a.write()
+    worker_b = CoverageData(basename=str(tmp_path / ".coverage"), suffix="worker-b")
+    worker_b.add_lines({str(src_other): [1, 2]})
+    worker_b.write()
+
+    combiner = Coverage(data_file=str(tmp_path / ".coverage"))
+    combiner.combine(data_paths=[str(tmp_path)])
+    combiner.save()
+
+    result = subprocess.run(
+        [sys.executable, str(_PER_FILE_COVERAGE)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"per_file_coverage should reject subject.py at <100% coverage in xdist-combined data; "
+        f"got returncode={result.returncode} "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    combined_output = result.stdout + result.stderr
+    assert "subject.py" in combined_output, (
+        f"per_file_coverage diagnostic does not surface offending file `subject.py` "
+        f"under xdist-combined input; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )

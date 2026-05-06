@@ -1,11 +1,11 @@
 """Tests for livespec.doctor.static.revision_to_proposed_change_pairing.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks": this is the seventh of the eight Phase-3
 minimum-subset doctor checks. It asserts that every
 `history/vNNN/proposed_changes/<topic>.md` has a paired
 `<topic>-revision.md` in the same directory (the canonical
-revise output shape per PROPOSAL §"`revise`" lines 2422-2429).
+revise output shape per PROPOSAL §"`revise`").
 
 Cycle 140 lands the pass arm for a well-paired layout.
 The fail arm (orphan proposed-change with no revision) lands
@@ -33,8 +33,7 @@ def test_revision_to_proposed_change_pairing_run_returns_pass_for_paired_topic(
     Seeds a project root with a populated spec_root containing
     `history/v001/proposed_changes/seed.md` and
     `history/v001/proposed_changes/seed-revision.md` — the
-    canonical seed-flow output per PROPOSAL §"`seed`" lines
-    2043-2064. Asserts the check yields a pass-status Finding.
+    canonical seed-flow output per PROPOSAL §"`seed`". Asserts the check yields a pass-status Finding.
     """
     project_root = tmp_path / "project"
     project_root.mkdir()

@@ -17,8 +17,10 @@
 # pre-commit ordering: the cheap commit-pairs gate first (inspects
 # staged file list; doesn't run tests), then the heavy
 # `just check-pre-commit` aggregate (per v036 D1: Red-mode-aware,
-# skips check-tests + check-coverage when the staged tree matches
-# the v034 Red commit shape). Fail-fast on the cheap gate so the
+# skips check-coverage when the staged tree matches the v034 Red
+# commit shape). Per v039 D1, check-coverage is the sole
+# pytest-running gate (check-tests was dropped from the aggregate
+# at v039 codification). Fail-fast on the cheap gate so the
 # developer learns about a missing test pair without waiting for
 # pytest.
 #
@@ -32,6 +34,8 @@
 
 pre-commit:
   commands:
+    00-lint-autofix-staged:
+      run: just lint-autofix-staged
     01-commit-pairs-source-and-test:
       run: just check-commit-pairs-source-and-test
     02-check-pre-commit:

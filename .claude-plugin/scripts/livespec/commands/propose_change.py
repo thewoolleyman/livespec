@@ -1,13 +1,15 @@
 """Propose-change sub-command supervisor.
 
-Per PROPOSAL.md §"`propose-change`" (line ~2134) and Plan Phase 3
-(lines 1505-1523): the wrapper validates the inbound
+Per PROPOSAL.md §"`propose-change`" and Plan Phase 3
+: the wrapper validates the inbound
 `--findings-json <path>` payload, composes a proposed-change
 file from the findings, and writes it to
-`<spec-target>/proposed_changes/<topic>.md`. Phase-3 scope is
-minimum-viable per v019 Q1 — topic canonicalization, reserve-
-suffix handling, collision disambiguation, and unified author
-precedence are deferred to Phase 7.
+`<spec-target>/proposed_changes/<canonical-topic>.md`. Phase 7
+sub-step 3.c widens the wrapper to full feature parity per
+SPECIFICATION/spec.md "Topic canonicalization (v015 O3)",
+"Reserve-suffix canonicalization (v016 P3 / v017 Q1)", and the
+remaining v014 N5/N6 + v016 P4 rules (collision disambiguation
+and unified author precedence land in subsequent cycles).
 
 `build_parser()` is the pure argparse factory per style doc
 §"CLI argument parsing seam"; `main()` is the supervisor that
@@ -18,7 +20,11 @@ IOResult to derive the exit code.
 from __future__ import annotations
 
 import argparse
+import os
+import re
 import sys
+from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +33,7 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
-from livespec.errors import LivespecError
+from livespec.errors import LivespecError, UsageError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.proposal_findings import ProposalFindings
@@ -54,6 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     _ = parser.add_argument("--findings-json", required=True)
     _ = parser.add_argument("topic")
     _ = parser.add_argument("--author", default=None)
+    _ = parser.add_argument("--reserve-suffix", default=None)
     _ = parser.add_argument("--spec-target", default=None)
     _ = parser.add_argument("--project-root", default=None)
     return parser
@@ -133,10 +140,48 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
     )
 
 
+def _canonical_alnum_run_strip(*, text: str) -> str:
+    """Apply v015 O3 steps 1-3: lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip edges.
+
+    Shared by both the v015 O3 base canonicalization and the v016 P3
+    reserve-suffix algorithm (per deferred-items.md "Reserve-suffix
+    topic canonicalization", which composes against this primitive).
+    """
+    lowered = text.lower()
+    hyphenated = re.sub(r"[^a-z0-9]+", "-", lowered)
+    return hyphenated.strip("-")
+
+
+def _canonicalize_topic(*, hint: str, reserve_suffix: str | None = None) -> str | None:
+    """Canonicalize a topic hint, optionally preserving a reserve suffix.
+
+    With reserve_suffix=None (default), applies v015 O3 verbatim:
+    lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip edges -> truncate
+    to 64. With a non-None reserve_suffix, applies v016 P3 (deferred-
+    items.md "Reserve-suffix topic canonicalization"): canonicalize
+    hint and suffix; strip pre-attached suffix from hint tail; truncate
+    the non-suffix portion to 64 - len(<canonical-suffix>); rstrip
+    trailing hyphens; re-append the canonical suffix. Returns None
+    when the resulting filename would be unrooted (empty, or
+    suffix-only).
+    """
+    canonical_hint = _canonical_alnum_run_strip(text=hint)
+    if reserve_suffix is None:
+        return canonical_hint[:64] or None
+    canonical_suffix = f"-{_canonical_alnum_run_strip(text=reserve_suffix)}"
+    if canonical_hint.endswith(canonical_suffix):
+        canonical_hint = canonical_hint[: -len(canonical_suffix)]
+    budget = 64 - len(canonical_suffix)
+    truncated_hint = canonical_hint[:budget].rstrip("-")
+    if not truncated_hint:
+        return None
+    return f"{truncated_hint}{canonical_suffix}"
+
+
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
 
-    Per Plan Phase 3 (lines 1505-1523): the `<spec-target>` is
+    Per Plan Phase 3: the `<spec-target>` is
     selected via the --spec-target flag, defaulting to the
     project's main spec root. With the built-in `livespec`
     template, that's <project-root>/SPECIFICATION/.
@@ -147,14 +192,86 @@ def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     return project_root / "SPECIFICATION"
 
 
-def _compose_proposed_change_body(*, findings: ProposalFindings) -> str:
-    """Compose the proposed-change file body from validated findings.
+def _resolve_target_path(
+    *,
+    proposed_changes_dir: Path,
+    canonical_topic: str,
+    existing_filenames: set[str],
+) -> Path:
+    """Resolve the next non-colliding proposed-change file path per v014 N6.
 
-    Per PROPOSAL.md lines 2232-2242 (field-copy mapping): each
+    First file at `<canonical-topic>` is suffix-less; each collision
+    appends a hyphen-separated monotonic integer suffix starting at
+    `2` (so the second file named `<canonical-topic>` is
+    `<canonical-topic>-2.md`, the third is `<canonical-topic>-3.md`,
+    and so on). No zero-padding; no user prompt. The front-matter
+    `topic` field carries the canonical topic without the `-N`
+    suffix per v017 Q7.
+    """
+    base_name = f"{canonical_topic}.md"
+    if base_name not in existing_filenames:
+        return proposed_changes_dir / base_name
+    counter = 2
+    while True:
+        candidate = f"{canonical_topic}-{counter}.md"
+        if candidate not in existing_filenames:
+            return proposed_changes_dir / candidate
+        counter += 1
+
+
+def _resolve_author(
+    *,
+    namespace: argparse.Namespace,
+    payload: ProposalFindings,
+    env_lookup: Callable[[str], str | None],
+) -> str:
+    """Resolve the author identifier per spec.md "Author identifier resolution".
+
+    Four-step precedence: `--author <id>` (CLI) > `LIVESPEC_AUTHOR_LLM`
+    (env) > `payload.author` (LLM self-declaration) > literal
+    `"unknown-llm"` fallback. The first non-empty value in this order
+    wins. The fallback path is also where livespec narrates the
+    "running with unknown LLM identifier" warning in skill prose; the
+    Python wrapper just returns the literal.
+    """
+    if namespace.author:
+        return str(namespace.author)
+    env_value = env_lookup("LIVESPEC_AUTHOR_LLM")
+    if env_value:
+        return env_value
+    if payload.author:
+        return payload.author
+    return "unknown-llm"
+
+
+def _compose_front_matter(*, topic: str, author: str, created_at: str) -> str:
+    """Compose the YAML front-matter block per the proposed-change front-matter schema.
+
+    Required keys: `topic`, `author`, `created_at`. Values are emitted
+    unquoted; `topic` is canonical kebab-case (matches the schema's
+    `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` pattern); `created_at` is UTC
+    ISO-8601 seconds (e.g., `2026-04-26T09:30:00Z`); `author` is the
+    resolved identifier from `_resolve_author`.
+    """
+    return "---\n" f"topic: {topic}\n" f"author: {author}\n" f"created_at: {created_at}\n" "---\n\n"
+
+
+def _compose_proposed_change_body(
+    *,
+    findings: ProposalFindings,
+    canonical_topic: str,
+    author: str,
+    created_at: str,
+) -> str:
+    """Compose the proposed-change file (front-matter + sections) from validated findings.
+
+    Per PROPOSAL.md (field-copy mapping): each
     finding becomes one `## Proposal: <name>` section with
     `### Target specification files`, `### Summary`,
     `### Motivation`, `### Proposed Changes` subsections
-    populated verbatim from the finding's fields.
+    populated verbatim from the finding's fields. The file is
+    prefixed with YAML front-matter carrying the canonical topic,
+    resolved author, and creation timestamp.
     """
     sections: list[str] = []
     for finding in findings.findings:
@@ -173,7 +290,12 @@ def _compose_proposed_change_body(*, findings: ProposalFindings) -> str:
             f"### Motivation\n\n{motivation}\n\n"
             f"### Proposed Changes\n\n{proposed_changes}\n",
         )
-    return "\n".join(sections)
+    front_matter = _compose_front_matter(
+        topic=canonical_topic,
+        author=author,
+        created_at=created_at,
+    )
+    return front_matter + "\n".join(sections)
 
 
 def _write_proposed_change(
@@ -183,12 +305,43 @@ def _write_proposed_change(
 ) -> IOResult[ProposalFindings, LivespecError]:
     """Write the composed proposed-change file to disk.
 
-    Per Plan Phase 3 (lines 1505-1523): writes the composed
-    body to `<spec-target>/proposed_changes/<topic>.md`. The
-    topic is taken verbatim from the namespace per Phase-3
-    minimum-viable scope (canonicalization deferred to Phase 7).
+    Per spec.md "Topic canonicalization (v015 O3)": the inbound `<topic>`
+    is canonicalized before filename selection; an empty result lifts to
+    UsageError on the railway. Writes to
+    `<spec-target>/proposed_changes/<canonical-topic>.md`.
     """
+    canonical = _canonicalize_topic(
+        hint=str(namespace.topic),
+        reserve_suffix=namespace.reserve_suffix,
+    )
+    if canonical is None:
+        return IOResult.from_failure(
+            UsageError(f"topic '{namespace.topic}' canonicalizes to empty"),
+        )
+    author = _resolve_author(
+        namespace=namespace,
+        payload=findings,
+        env_lookup=os.environ.get,
+    )
+    created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     spec_target = _resolve_spec_target(namespace=namespace)
-    target = spec_target / "proposed_changes" / f"{namespace.topic}.md"
-    body = _compose_proposed_change_body(findings=findings)
-    return fs.write_text(path=target, text=body).map(lambda _: findings)
+    proposed_changes_dir = spec_target / "proposed_changes"
+    body = _compose_proposed_change_body(
+        findings=findings,
+        canonical_topic=canonical,
+        author=author,
+        created_at=created_at,
+    )
+    listing_io: IOResult[list[Path], LivespecError] = fs.list_dir(
+        path=proposed_changes_dir,
+    ).lash(lambda _: IOResult.from_value([]))
+    return listing_io.bind(
+        lambda paths: fs.write_text(
+            path=_resolve_target_path(
+                proposed_changes_dir=proposed_changes_dir,
+                canonical_topic=canonical,
+                existing_filenames={p.name for p in paths},
+            ),
+            text=body,
+        ).map(lambda _: findings),
+    )

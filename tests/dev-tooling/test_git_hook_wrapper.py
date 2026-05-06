@@ -97,7 +97,17 @@ def test_git_hook_wrapper_dispatches_to_mise_with_basename_hook_name(*, tmp_path
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
     recorded_argv = argv_log.read_text(encoding="utf-8").splitlines()
-    expected_argv = ["exec", "lefthook", "--", "lefthook", "run", "pre-commit", "foo", "bar"]
+    expected_argv = [
+        "exec",
+        "lefthook",
+        "--",
+        "lefthook",
+        "run",
+        "--no-auto-install",
+        "pre-commit",
+        "foo",
+        "bar",
+    ]
     assert recorded_argv == expected_argv, (
         f"git-hook-wrapper did not dispatch with canonical argv; "
         f"expected={expected_argv!r} got={recorded_argv!r}"

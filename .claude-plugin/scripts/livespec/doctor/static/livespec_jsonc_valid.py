@@ -1,6 +1,6 @@
 """Static-phase doctor check: livespec_jsonc_valid.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks": this check asserts that the project's
 `.livespec.jsonc` config file exists and parses as valid JSONC.
 First-of-eight in the Phase-3 minimum-subset registry.

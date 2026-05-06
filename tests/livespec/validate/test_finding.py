@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.finding import Finding
@@ -31,10 +31,18 @@ _SCHEMA_PATH = (
     / "finding.schema.json"
 )
 
+# Module-level schema cache (v040 D1): hypothesis-based @given
+# tests run the body ~100 times per invocation; reloading the schema
+# from disk on each example pushes individual examples over the
+# default 200ms hypothesis deadline under `pytest -n auto` xdist
+# worker contention. Loading once at module-import time eliminates
+# per-example file I/O and the associated timing nondeterminism.
+_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+
 
 def test_validate_finding_returns_success_with_dataclass_for_valid_payload() -> None:
     """A well-formed finding payload validates to Success(Finding)."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "check_id": "doctor-version-contiguity",
         "status": "pass",
@@ -64,7 +72,7 @@ def test_validate_finding_returns_failure_on_schema_violation() -> None:
     validator lifts to Failure and the public seam .alt-maps to
     a ValidationError.
     """
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "check_id": "doctor-version-contiguity",
         "message": "missing status field",
@@ -81,10 +89,11 @@ def test_validate_finding_returns_failure_on_schema_violation() -> None:
             raise AssertionError(msg)
 
 
+@settings(deadline=None)
 @given(message=st.text(min_size=1, max_size=200))
 def test_validate_finding_round_trips_message_text(*, message: str) -> None:
     """For arbitrary `message` strings, the success path preserves the text verbatim."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "check_id": "doctor-version-contiguity",
         "status": "pass",
@@ -104,7 +113,7 @@ def test_validate_finding_round_trips_message_text(*, message: str) -> None:
 
 def test_validate_finding_carries_path_and_line_when_present() -> None:
     """When `path` and `line` are populated, the dataclass carries them through."""
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = _SCHEMA
     payload: dict[str, object] = {
         "check_id": "doctor-frontmatter-spec-version",
         "status": "fail",

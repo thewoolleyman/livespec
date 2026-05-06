@@ -21,7 +21,9 @@ Phases 6–9).
 Conventions:
 
 - pytest is the test framework (`uv run pytest tests/` or
-  `just check-tests`).
+  `just check-coverage`; per v039 D1 the standalone
+  `check-tests` target is gone — `check-coverage` is the
+  canonical pytest-running aggregate target).
 - Every directory under `tests/` (except `fixtures/` subtrees)
   carries a `CLAUDE.md` per the strict DoD-13 rule.
 - `tests/heading-coverage.json` and similar data files live at

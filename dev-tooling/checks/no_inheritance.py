@@ -21,7 +21,7 @@ outside the allowlist emits a structlog ERROR carrying the
 file path, line number, class name, and offending base; the
 script exits 1. With no violations, exits 0.
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/

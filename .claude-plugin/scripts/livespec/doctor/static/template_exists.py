@@ -1,6 +1,6 @@
 """Static-phase doctor check: template_exists.
 
-Per Plan Phase 3 line 1596-1602 + PROPOSAL.md §"`doctor` →
+Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
 Static-phase checks" + livespec_config.schema.json §"template":
 this check asserts that the `.livespec.jsonc` `template` field
 resolves to either a built-in template name (one of

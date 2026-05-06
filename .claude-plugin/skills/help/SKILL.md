@@ -46,11 +46,13 @@ narration, no `bin/*.py` invocation, no JSON.
      proposed-changes with per-proposal accept/modify/reject
      decisions, cut a new history/vNNN/ snapshot.
    - **doctor** (`/livespec:doctor`) — run static-invariant
-     checks across the main spec + each sub-spec tree.
-   - **prune-history** (`/livespec:prune-history`) — collapse
-     old version snapshots per the configured retention rule
-     (Phase 7 adds the wrapper; not available in Phase 3
-     minimum-viable).
+     checks across the main spec + each sub-spec tree. The
+     LLM-driven objective + subjective post-step phases are
+     not yet wired; only the static phase runs today.
+   - **prune-history** (`/livespec:prune-history`) — destructively
+     collapse old `history/vNNN/` snapshots into a single
+     `PRUNED_HISTORY.json` marker. Requires explicit user
+     invocation; the LLM MUST NOT auto-activate this sub-command.
 
 3. **Pointer to per-sub-command help.** Mention that each
    sub-command's wrapper supports `-h` / `--help` (e.g.,
@@ -63,12 +65,7 @@ No wrapper invocation; no post-step LLM-driven phase.
 ## Failure handling
 
 No wrapper exit codes — this skill is pure LLM narration. If
-the user asks about a sub-command not yet implemented (e.g.,
-`prune-history` in Phase 3), redirect them to "Phase 7 adds
-this wrapper; for now, the spec tree is append-only".
-
-## Phase 3 minimum-viable scope
-
-This is bootstrap prose; Phase 7 widens to the full
-per-sub-command dispatch + intent-recognition flow per
-`skill-md-prose-authoring`.
+the user asks about a capability that is not yet wired
+(e.g., the LLM-driven objective/subjective doctor phases),
+say so directly and point at the static phase as the
+currently-available behavior.

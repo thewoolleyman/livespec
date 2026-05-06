@@ -13,7 +13,7 @@ verification (the v013 M6 three-way walker that verifies
 every listed schema field matches the dataclass's Python
 type and vice versa).
 
-Output discipline: per spec lines 1738-1762, `print` (T20) and
+Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
 dev-tooling/**. Diagnostics flow through structlog (JSON to
 stderr); the vendored copy under `.claude-plugin/scripts/
