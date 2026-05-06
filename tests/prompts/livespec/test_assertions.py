@@ -87,3 +87,65 @@ def test_asks_v020_q2_question_rejects_count_mismatch_when_ships_true() -> None:
                 "named_templates": ["livespec", "minimal"],
             },
         )
+
+
+def test_target_files_within_spec_target_passes_when_all_paths_under_target() -> None:
+    assertion = ASSERTIONS["target_files_within_spec_target"]
+    assertion(
+        replayed_response={
+            "findings": [
+                {
+                    "name": "x",
+                    "target_spec_files": ["SPECIFICATION/spec.md"],
+                },
+            ],
+        },
+        input_context={"spec_target": "SPECIFICATION/"},
+    )
+
+
+def test_target_files_within_spec_target_rejects_path_outside_target() -> None:
+    assertion = ASSERTIONS["target_files_within_spec_target"]
+    with pytest.raises(AssertionError, match="outside input_context.spec_target"):
+        assertion(
+            replayed_response={
+                "findings": [
+                    {
+                        "name": "x",
+                        "target_spec_files": ["other/dir/spec.md"],
+                    },
+                ],
+            },
+            input_context={"spec_target": "SPECIFICATION/"},
+        )
+
+
+def test_bcp14_in_proposed_changes_passes_when_keyword_present() -> None:
+    assertion = ASSERTIONS["bcp14_in_proposed_changes"]
+    assertion(
+        replayed_response={
+            "findings": [
+                {
+                    "name": "x",
+                    "proposed_changes": "The system MUST emit X.",
+                },
+            ],
+        },
+        input_context={},
+    )
+
+
+def test_bcp14_in_proposed_changes_rejects_prose_without_keyword() -> None:
+    assertion = ASSERTIONS["bcp14_in_proposed_changes"]
+    with pytest.raises(AssertionError, match="lacks any BCP14 keyword"):
+        assertion(
+            replayed_response={
+                "findings": [
+                    {
+                        "name": "x",
+                        "proposed_changes": "The system emits X.",
+                    },
+                ],
+            },
+            input_context={},
+        )
