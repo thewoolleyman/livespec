@@ -705,5 +705,12 @@
     "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 8 item 3C: four lifecycle companion docs SUPERSEDED-by-section; migrated via SPECIFICATION/v039."
+  },
+  {
+    "heading": "## E2E harness contract",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Phase 9: E2E harness contract section codified in SPECIFICATION/v042; tested indirectly by just e2e-test-claude-code-mock passing."
   }
 ]
