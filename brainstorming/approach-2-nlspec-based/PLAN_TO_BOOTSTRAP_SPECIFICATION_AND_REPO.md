@@ -1194,6 +1194,48 @@ during v039 D3 verification:
   rejected the non-blocking disposition and demanded
   PROPOSAL-level codification.
 
+PROPOSAL.md v041 codifies the CI / branch-protection discipline
+surfaced during the Phase 7 → 8 PR-merge investigation:
+
+- v041 D1 (PROPOSAL.md): codify CI / branch-protection
+  discipline as a sub-section under §"Developer tooling
+  layout" — `### CI / branch-protection discipline (v041 D1)`
+  placed after `### CI workflow (v034 D8)`. Three rules:
+  (1) no permanent-red CI jobs (deferred jobs MUST be
+  removed from `.github/workflows/*.yml`, not left as red);
+  (2) the master-branch-protection required-checks list
+  MUST equal the ci.yml `matrix.target` set modulo
+  optional-marked workflows; (3) master CI MUST be green at
+  every commit. Mechanical Layer-1 enforcement via
+  `dev-tooling/checks/branch_protection_alignment.py` and
+  `dev-tooling/checks/master_ci_green.py` (both wired into
+  `just check`); skill-side Layer-2/3 enforcement via
+  `bootstrap/.claude-plugin/skills/bootstrap/SKILL.md` step
+  1 sub-step 6 (session-start sanity checks) and §5d
+  (phase-advance is a 4-step transaction).
+- v041 D2 (plan-level): plan-text + housekeeping. Phase 0
+  step 1 byte-identity reference bumps to
+  `history/v041/PROPOSAL.md`. Phase 0 step 2 frozen-status
+  header literal bumps to "Frozen at v041". Execution-prompt
+  block authoritative-version line bumps to v041.
+  §"Developer tooling layout" enumeration of
+  dev-tooling/checks/ scripts gains two new entries
+  (`branch_protection_alignment.py` and `master_ci_green.py`).
+  STATUS.md updated.
+- Triggered by user direction 2026-05-06T05:50:00Z after
+  the Phase 7 → 8 PR-merge investigation surfaced three
+  compounding drift modes simultaneously. User asked:
+  "Looks like you shouldn't have made a giant PR, huh? And
+  why were you ignoring the broken master?" Follow-up:
+  "First I want you to propose the changes so these
+  mistakes won't ever happen again." This codification
+  documents the architectural rules; PR #6 (sha
+  `f3812121`) lands the implementation. PR #5 (sha
+  `05c4f10`) and the master-branch-protection cleanup that
+  preceded it (`gh api -X DELETE` removing stale
+  `check-tests` from required-checks list) unblocked
+  master so PR #4 could land.
+
 Execution is performed by the prompt at the end of this file. The
 prompt is self-contained; it can be pasted into a fresh Claude Code
 session in the `livespec` repo.
@@ -1404,8 +1446,21 @@ sub-steps within a phase MAY run in parallel where noted.
 ### Phase 0 — Freeze the brainstorming folder
 
 1. Confirm `brainstorming/approach-2-nlspec-based/PROPOSAL.md` is
-   byte-identical to `history/v040/PROPOSAL.md` (the v040
-   snapshot — v039 substance plus the two v040 decisions:
+   byte-identical to `history/v041/PROPOSAL.md` (the v041
+   snapshot — v040 substance plus the two v041 decisions:
+   codify CI / branch-protection discipline as a sub-section
+   under §"Developer tooling layout" — new sub-section
+   `### CI / branch-protection discipline (v041 D1)` placed
+   after `### CI workflow (v034 D8)`; three rules: no
+   permanent-red CI jobs, ci.yml matrix MUST equal master
+   branch-protection required-checks (modulo optional-marked
+   workflows), master CI MUST be green at every commit;
+   mechanical Layer-1 enforcement via
+   `dev-tooling/checks/branch_protection_alignment.py` and
+   `dev-tooling/checks/master_ci_green.py` (D1), and
+   plan-text + housekeeping (D2) per
+   `history/v041/proposed_changes/ci-discipline.md`;
+   v040 substance is v039 substance plus the two v040 decisions:
    codify "flaky tests are unacceptable" as a hard constraint
    in §"Test-Driven Development discipline" — new sub-section
    `### Determinism: flaky tests are unacceptable (v040 D1)`
@@ -1539,7 +1594,7 @@ sub-steps within a phase MAY run in parallel where noted.
    for v022's underlying substance.
 2. Add a top-of-file note to
    `brainstorming/approach-2-nlspec-based/PROPOSAL.md`:
-   > **Status:** Frozen at v040. Further evolution happens in
+   > **Status:** Frozen at v041. Further evolution happens in
    > `SPECIFICATION/` via `propose-change` / `revise`. This file
    > and the rest of the `brainstorming/` tree are historical
    > reference only.
@@ -4133,7 +4188,7 @@ sources)" section before doing any work:
   `history/vNNN/retired-documents/` READMEs to understand what was
   retired and why, but do NOT load retired docs themselves.
 
-Treat PROPOSAL.md v040 as authoritative. Do not propose any
+Treat PROPOSAL.md v041 as authoritative. Do not propose any
 modification to it, to any companion doc under `brainstorming/`,
 or to any file under `brainstorming/history/` during this
 execution. Those are frozen.
