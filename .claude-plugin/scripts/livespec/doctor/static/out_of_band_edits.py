@@ -1,7 +1,6 @@
 """Static-phase doctor check: out_of_band_edits.
 
-Per Plan Phase 7 sub-step 7.a + PROPOSAL.md §"`doctor` →
-Static-phase checks": the `out-of-band-edits` check detects
+Per Plan Phase 7 sub-step 7.a +: the `out-of-band-edits` check detects
 HEAD-committed spec files whose contents have diverged from
 their HEAD-committed `history/vN/` snapshot (i.e., edits made
 to the active spec without the propose-change → revise pipeline
@@ -15,8 +14,7 @@ discriminates on whether `ctx.spec_root` is inside a git
 working tree.
 
 Cycle 7.a.iii widens the in-git-repo branch with a pre-backfill
-guard. Per PROPOSAL §"Static-phase checks → out-of-band-edits →
-Pre-backfill guard — uncommitted prior backfill present", the
+guard. Per, the
 guard fires on either of two leftover-from-prior-run shapes
 BEFORE the divergence comparison or the auto-backfill write
 path:
@@ -296,7 +294,7 @@ def _run_divergence_or_no_baseline(
 
     On non-empty divergence the writes-module's `route_drift_outcome`
     auto-backfills under `<spec_root>/history/v(N+1)/` before
-    composing the fail-Finding, per PROPOSAL §"Backfill on drift".
+    composing the fail-Finding.
     """
     if latest is None:
         return IOSuccess(

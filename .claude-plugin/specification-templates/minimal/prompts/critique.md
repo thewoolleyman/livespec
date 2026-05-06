@@ -79,7 +79,7 @@ Same shape as `propose-change` — emit JSON conforming to
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
 - **Empty critique** (no findings). Emit `findings: []`. The
   wrapper handles the empty case.
 - **Wording-style suggestions.** Defer to a separate

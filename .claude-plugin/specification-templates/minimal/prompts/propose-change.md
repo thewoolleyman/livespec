@@ -79,7 +79,7 @@ for every finding — the harness's
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
   Same as the other LLM-driven prompts.
 - **Multi-file intent.** When the user's intent suggests
   multiple files, the prompt MUST consolidate everything into

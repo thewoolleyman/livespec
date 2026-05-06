@@ -40,8 +40,7 @@ in v1:
 
 - `<topic>` (positional, required). User-facing topic hint. The
   wrapper treats the inbound value as a hint, not yet the
-  canonical artifact identifier, and canonicalizes it per
-  PROPOSAL.md §"Topic canonicalization (v015 O3)": lowercase →
+  canonical artifact identifier, and canonicalizes it per: lowercase →
   replace every run of non-`[a-z0-9]` characters with a single
   hyphen → strip leading and trailing hyphens → truncate to
   64 characters. If the result is empty, the wrapper exits 2
@@ -55,7 +54,7 @@ in v1:
   validates the payload internally; the SKILL.md prose does NOT
   invoke a separate validator. Each finding produces one
   `## Proposal: <name>` section in the output file. Field
-  mapping is one-to-one per PROPOSAL.md §"`propose-change`":
+  mapping is one-to-one:
   `name` → `## Proposal: <name>` heading; `target_spec_files`
   (array of strings) → `### Target specification files` (one
   path per line); `summary` → `### Summary`; `motivation` →
@@ -65,8 +64,7 @@ in v1:
   wrapper resolves it per the four-step precedence below.
 - `--author <id>` (optional). Uniform `--author` flag with
   identical four-step precedence across all three LLM-driven
-  wrappers (propose-change, critique, revise) per
-  PROPOSAL.md §"Author identifier resolution":
+  wrappers (propose-change, critique, revise) per:
   1. CLI `--author <id>` if set and non-empty.
   2. Env var `LIVESPEC_AUTHOR_LLM` if set and non-empty.
   3. Payload file-level `author` field if present and
@@ -85,8 +83,7 @@ in v1:
   preserved intact at the end of the canonicalized topic, even
   when the inbound hint already ends in that suffix
   (pre-attached case) or when truncation would otherwise clip
-  it. Per PROPOSAL.md §"Reserve-suffix canonicalization (v016
-  P3; v017 Q1)", the resulting canonical topic is at most 64
+  it. Per, the resulting canonical topic is at most 64
   characters AND preserves the suffix at the end. User-facing
   use is rare; the primary consumer is `critique`'s internal
   delegation, which passes `--reserve-suffix=-critique` so the
@@ -96,7 +93,7 @@ in v1:
   (exit 2) applies to the final composed result.
 - `--spec-target <path>` (optional). Defaults to the main
   spec root (resolved via `.livespec.jsonc` upward walk).
-  Per PROPOSAL.md §"Spec-target selection contract" (v018 Q1),
+  Per (v018 Q1),
   may point at a sub-spec tree under
   `<main-spec-root>/templates/<name>/` to route the proposal
   there. The wrapper validates the target structure before
@@ -105,8 +102,7 @@ in v1:
   structural requirement.
 - `--project-root <path>` (optional; defaults to `Path.cwd()`).
   Anchors `<spec-root>/` resolution and the upward walk for
-  `.livespec.jsonc`. Uniform across every wrapper per
-  PROPOSAL.md §"Project-root detection contract".
+  `.livespec.jsonc`. Uniform across every wrapper per.
 - `--skip-pre-check` (optional). Skips the pre-step doctor
   static phase before the wrapper writes. Mutually exclusive
   with `--run-pre-check`.
@@ -127,7 +123,7 @@ Effective skip resolution for the pre-step (per PROPOSAL.md
 
 Two LLM-layer flag pairs ALSO apply during the post-step
 LLM-driven phase but are NEVER passed to the Python wrapper
-(per PROPOSAL.md §"Skill-prose-side: LLM-driven post-step"):
+(per):
 
 - `--skip-doctor-llm-objective-checks` /
   `--run-doctor-llm-objective-checks` (mutually exclusive).
@@ -156,7 +152,6 @@ exit code is `0` (NOT an error).
    `<resolved-path>/prompts/propose-change.md`. Use its
    contents as the template prompt for finding generation.
    This is the two-step template-prompt dispatch from
-   PROPOSAL.md §"Per-sub-command SKILL.md body structure"
    (Bash for resolution, then Read for the prompt file) and
    works uniformly for built-in and custom templates.
 
@@ -171,7 +166,7 @@ exit code is `0` (NOT an error).
    canonicalize to lowercase-kebab-case and truncate to 64
    characters)." Capture free-text. Do NOT pre-canonicalize on
    the SKILL.md side — single-canonicalization invariant
-   (PROPOSAL.md §"Single-canonicalization invariant (v016 P4)")
+  
    requires every `topic` derivation to route through the
    wrapper's shared canonicalization. Pass the hint verbatim as
    the `<topic>` positional argument.
@@ -261,8 +256,7 @@ On exit 0, the wrapper has:
   `<spec-target>/proposed_changes/<canonical-topic>.md`
   containing one `## Proposal: <name>` section per finding,
   with file-level YAML front-matter (`topic`, `author`,
-  `created_at`) per PROPOSAL.md §"Proposed-change file
-  format". On collision (a file with the same canonical topic
+  `created_at`). On collision (a file with the same canonical topic
   already exists), the wrapper auto-disambiguates with a
   hyphen-separated monotonic integer suffix starting at `2`
   (`<canonical-topic>-2.md`, `<canonical-topic>-3.md`, ...)

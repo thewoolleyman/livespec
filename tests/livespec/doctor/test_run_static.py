@@ -1,6 +1,6 @@
 """Tests for livespec.doctor.run_static.
 
-Per PROPOSAL.md §"`doctor`" and Plan Phase 3
+Per and Plan Phase 3
 : run_static is the static-phase orchestrator.
 It enumerates `(spec_root, template_name)` pairs, builds a
 per-tree DoctorContext, and runs the applicable check subset
@@ -47,7 +47,7 @@ def _seed_fully_valid_project(*, project_root: Path) -> Path:
     """Seed a project root with a fully-valid spec tree all 8 checks pass.
 
     Returns the spec_root. The fixture mirrors the post-seed
-    output shape per PROPOSAL §"`seed`": .livespec.jsonc with
+    output shape: .livespec.jsonc with
     a builtin template; <spec_root>/spec.md; proposed_changes/
     + history/ + history/v001/proposed_changes/{seed.md,
     seed-revision.md}.
@@ -228,8 +228,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         # The out-of-band-edits check returns "skipped" when the
         # spec_root is not inside a git working tree; the tmp_path
         # fixtures here are NOT initialized as git repos, so the
-        # skip is the correct outcome (PROPOSAL §"Static-phase
-        # checks": "skip the out-of-band check, the project isn't
+        # skip is the correct outcome (: "skip the out-of-band check, the project isn't
         # versioned"). The exit-code derivation treats skipped
         # as pass, so this does not break the exit-0 invariant.
         if finding["check_id"] == "doctor-out-of-band-edits":

@@ -32,8 +32,7 @@ dialogue (Step 11), NOT a hard stop.
 
 For the built-in `livespec` template, the subjective-checks
 prompt covers four dimensions, two skill-baked + two
-template-extension (per PROPOSAL.md §"LLM-driven subjective
-checks"):
+template-extension (per):
 
 1. **Spec↔implementation drift** (skill-baked). Compare the
    spec tree's stated contracts and constraints to the
@@ -133,7 +132,7 @@ suffix scopes per-dimension.
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
   Same as the other LLM-driven prompts. The doctor SKILL.md
   re-invokes with the error context.
 - **Long-running review.** When the spec tree is large enough

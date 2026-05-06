@@ -93,8 +93,7 @@ def _compose_revision_body(
     Front-matter conforms to revision_front_matter.schema.json
     (required keys: proposal, decision, revised_at, author_human,
     author_llm). Body has `## Decision and Rationale` (always) and
-    `## Resulting Changes` (because decision is `accept` per
-    PROPOSAL §"Backfill on drift").
+    `## Resulting Changes` (because decision is `accept` per).
     """
     return (
         "---\n"

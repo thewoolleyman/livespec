@@ -87,7 +87,7 @@ Same shape as `propose-change`: emit JSON conforming to
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
   Same as the other LLM-driven prompts.
 - **Empty critique** (no findings). When the prompt's review
   surfaces no ambiguities or contradictions, emit

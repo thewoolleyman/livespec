@@ -1,6 +1,6 @@
 # CI workflow — per-target matrix with fail-fast: false.
 #
-# Authoritative source: PROPOSAL.md §"Dev tooling and task runner"
+# Authoritative source:
 # and python-skill-script-style-requirements.md §"Enforcement
 # suite — Invocation surfaces": one job per check via a matrix
 # strategy with fail-fast: false, each calling `just <target>`.
@@ -43,9 +43,7 @@ jobs:
           # "deferred until Phase 5/9 fix-cycles" but still
           # configured to run as red is exactly the noise that
           # hides real signal. They re-join in the same commit
-          # that fixes their underlying issue. See PROPOSAL.md
-          # §"CI / branch-protection discipline" (forthcoming
-          # vNNN halt-and-revise) for the codified rule.
+          # that fixes their underlying issue.
           - check-lint
           - check-format
           - check-complexity

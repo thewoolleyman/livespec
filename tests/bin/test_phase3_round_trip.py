@@ -1,7 +1,7 @@
 """Phase-3 exit-criterion round-trip integration test.
 
 Per Plan §"Exit criterion (narrow Phase-3 gate)"
-and PROPOSAL.md §"`seed`" / §"`propose-change`" / §"`critique`"
+and / §"`propose-change`" / §"`critique`"
 / §"`revise`" / §"`prune-history`" / §"`doctor`": this module
 exercises the full Phase-3 mechanically-achievable round-trip
 in one pytest run by invoking each shebang wrapper as a real

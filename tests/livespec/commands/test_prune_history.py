@@ -1727,7 +1727,7 @@ def test_prune_history_main_short_circuits_with_exit_three_on_pre_step_doctor_fa
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Per PROPOSAL.md §"Sub-command lifecycle orchestration": fail finding -> exit 3.
+    """Per: fail finding -> exit 3.
 
     "On any `status: \"fail\"` finding from pre-step, the wrapper
     aborts with exit 3 and sub-command logic does not run." This
@@ -1836,8 +1836,7 @@ def test_prune_history_invoke_pre_step_doctor_returns_iofailure_when_any_fail_fi
     CompletedProcess whose stdout carries a `findings` payload
     with one fail-status entry. The helper MUST return
     IOFailure(PreconditionError) so the wrapper short-circuits
-    with exit 3 per PROPOSAL.md §"Sub-command lifecycle
-    orchestration".
+    with exit 3.
     """
     import subprocess
 

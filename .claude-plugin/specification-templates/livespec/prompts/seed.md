@@ -152,7 +152,7 @@ templates, the same payload's `sub_specs[]` becomes:
   pre-seed dialogue rather than emitting a malformed JSON
   payload. The seed wrapper does NOT have a recovery path for
   this — the SKILL.md prose handles re-prompting.
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
   When the wrapper exits 4 with a `fastjsonschema` validation
   error, the SKILL.md prose re-invokes this prompt with the
   error context appended; the LLM repairs the offending field.

@@ -105,7 +105,7 @@ related findings).
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
   When the wrapper exits 4 with a `fastjsonschema` validation
   error, the SKILL.md prose re-invokes this prompt with the
   error context appended; the LLM repairs the offending field.

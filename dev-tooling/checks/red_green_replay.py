@@ -1,7 +1,6 @@
 """red_green_replay — v034 D2-D3 replay-based TDD enforcement.
 
-Per PROPOSAL.md §"Testing approach — Activation §v034 D2-D3
-Red→Green replay contract" and Plan §"Per-commit Red→Green
+Per and Plan §"Per-commit Red→Green
 replay discipline (v034 D2-D3)", this hook is invoked as a
 `commit-msg` git hook with the path to `.git/COMMIT_EDITMSG`
 as argv[1]. It reads the commit subject; for `feat:`/`fix:`

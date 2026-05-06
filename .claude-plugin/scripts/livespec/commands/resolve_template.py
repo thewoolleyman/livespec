@@ -1,6 +1,6 @@
 """Resolve-template sub-command supervisor.
 
-Per PROPOSAL.md §"Template resolution contract"
+
 and v028 D1: emits the resolved template directory path on
 stdout. The path-computation formula
 `Path(__file__).resolve().parents[3]` derives the bundle root
@@ -52,7 +52,7 @@ _BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "minimal"})
 def build_parser() -> argparse.ArgumentParser:
     """Construct the resolve-template argparse parser without parsing.
 
-    Per PROPOSAL §"Template resolution contract":
+    Per:
     `--project-root <path>` (default `Path.cwd()`) and
     `--template <value>`. PROPOSAL marks --template OPTIONAL; this
     Phase-3-minimum makes it required (the default
@@ -109,9 +109,7 @@ def _resolve_template_value(
 
 
 def _emit_resolved_path(*, path: Path) -> IOResult[Path, LivespecError]:
-    """Emit the resolved path on stdout per the v1-frozen contract.
-
-    PROPOSAL §"Template resolution contract":
+    """Emit the resolved path on stdout per the v1-frozen contract.:
     exactly one line, absolute POSIX path, trailing `\\n`.
     """
     sys.stdout.write(f"{path}\n")

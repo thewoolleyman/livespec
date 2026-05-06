@@ -1,12 +1,10 @@
 """Static-phase doctor check: template_files_present.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check asserts that the canonical
+Per Plan Phase 3 +: this check asserts that the canonical
 template-materialized files are present in the spec_root.
 
 Phase-3 minimum scope: verifies that `<spec_root>/spec.md` (the
-file every livespec-template seed materializes per
-PROPOSAL §"`seed`" step 2) is present on disk. Phase 7 widens
+file every livespec-template seed materializes per step 2) is present on disk. Phase 7 widens
 this to walk the template's full declared file manifest
 (template.json + recursively-discovered template-source files).
 

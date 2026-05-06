@@ -1,6 +1,6 @@
 """Doctor static-phase orchestrator.
 
-Per PROPOSAL.md §"`doctor`" and Plan Phase 3: the orchestrator enumerates (spec_root,
+Per and Plan Phase 3: the orchestrator enumerates (spec_root,
 template_name) pairs at startup; per pair it builds a per-tree
 DoctorContext and runs the applicable check subset decided by
 the orchestrator-owned applicability table
@@ -113,7 +113,7 @@ def _emit_findings_json(*, findings: list[Finding]) -> None:
 def _derive_exit_code(*, findings: list[Finding]) -> int:
     """Derive the supervisor exit code from aggregated finding statuses.
 
-    Per PROPOSAL.md §"`doctor` → Static-phase output contract":
+    Per:
     no findings or every finding pass => exit 0; at least one
     fail => exit 3. The skipped status is treated as pass for
     exit-code derivation.

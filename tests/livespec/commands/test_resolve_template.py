@@ -1,6 +1,6 @@
 """Tests for livespec.commands.resolve_template.
 
-Per PROPOSAL.md §"Template resolution contract"
+
 and Plan Phase 3 sub-step 12 (codified at v028 D1 with the
 `Path(__file__).resolve().parents[3]` formula): resolve_template
 emits the resolved template directory path on stdout. The path-
@@ -75,7 +75,7 @@ def test_resolve_template_emits_bundle_path_for_builtin_minimal(
     """--template minimal → emits <bundle-root>/specification-templates/minimal on stdout, exit 0.
 
      Mirror of the `livespec` built-in test against the second v1
-     built-in template name per PROPOSAL §"Custom templates"
+     built-in template name
     .
     """
     exit_code = resolve_template.main(argv=["--template", "minimal"])
@@ -180,8 +180,7 @@ def test_resolve_template_missing_template_flag_returns_2() -> None:
     """Missing --template (Phase-3-min required flag) → exit 2 (UsageError).
 
     Phase 3 minimum-viable scope: --template is required (the
-    default `.livespec.jsonc`-walking flow is Phase 7 work).
-    PROPOSAL §"Template resolution contract" lists
+    default `.livespec.jsonc`-walking flow is Phase 7 work). lists
     --template as OPTIONAL; this Phase-3-minimum deviates by
     making it required (the default flow is Phase 7 work).
     """

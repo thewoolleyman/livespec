@@ -48,8 +48,7 @@ v1:
   current spec, not new behavior.
 - `--author <id>` (optional). Uniform `--author` flag with
   identical four-step precedence across all three LLM-driven
-  wrappers (propose-change, critique, revise) per
-  PROPOSAL.md §"Author identifier resolution":
+  wrappers (propose-change, critique, revise) per:
   1. CLI `--author <id>` if set and non-empty.
   2. Env var `LIVESPEC_AUTHOR_LLM` if set and non-empty.
   3. Payload file-level `author` field if present and
@@ -65,7 +64,7 @@ v1:
   audit-trail-clean attribution.").
 - `--spec-target <path>` (optional). Defaults to the main
   spec root (resolved via `.livespec.jsonc` upward walk).
-  Per PROPOSAL.md §"Spec-target selection contract" (v018 Q1),
+  Per (v018 Q1),
   may point at a sub-spec tree under
   `<main-spec-root>/templates/<name>/` to route the critique
   there. The wrapper validates the target structure before
@@ -74,8 +73,7 @@ v1:
   verbatim to its internal propose-change delegation.
 - `--project-root <path>` (optional; defaults to `Path.cwd()`).
   Anchors `<spec-root>/` resolution and the upward walk for
-  `.livespec.jsonc`. Uniform across every wrapper per
-  PROPOSAL.md §"Project-root detection contract".
+  `.livespec.jsonc`. Uniform across every wrapper per.
 - `--skip-pre-check` (optional). Skips the pre-step doctor
   static phase before critique runs. Mutually exclusive with
   `--run-pre-check`.
@@ -96,7 +94,7 @@ Effective skip resolution for the pre-step (per PROPOSAL.md
 
 Two LLM-layer flag pairs ALSO apply during the post-step
 LLM-driven phase but are NEVER passed to the Python wrapper
-(per PROPOSAL.md §"Skill-prose-side: LLM-driven post-step"):
+(per):
 
 - `--skip-doctor-llm-objective-checks` /
   `--run-doctor-llm-objective-checks` (mutually exclusive).

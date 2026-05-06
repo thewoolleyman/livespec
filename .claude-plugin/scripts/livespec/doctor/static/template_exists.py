@@ -1,7 +1,6 @@
 """Static-phase doctor check: template_exists.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks" + livespec_config.schema.json §"template":
+Per Plan Phase 3 + + livespec_config.schema.json §"template":
 this check asserts that the `.livespec.jsonc` `template` field
 resolves to either a built-in template name (one of
 `{livespec, minimal}`) or a path-as-string to a custom template

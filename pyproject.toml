@@ -3,19 +3,16 @@
 # Authoritative sources (DO NOT diverge from these without
 # producing a new PROPOSAL.md vNNN snapshot first):
 #
-#   - PROPOSAL.md §"Developer-time dependencies (livespec repo
-#     only)" — uv-managed dev deps per v024 (mise pins only the
+#   - — uv-managed dev deps per v024 (mise pins only the
 #     non-Python binaries `uv`, `just`, `lefthook`).
-#   - PROPOSAL.md §"Runtime dependencies — Vendored pure-Python
-#     libraries" — returns vendoring (BSD-3-Clause). NO
+#   - — returns vendoring (BSD-3-Clause). NO
 #     `returns_pyright_plugin` vendored: per v025 D1, pyright
 #     has no plugin system (microsoft/pyright#607) and no such
 #     upstream artifact exists — the v018 Q4 closure of
 #     `returns-pyright-plugin-disposition` was rescinded and
 #     re-closed in v025. See `[tool.pyright]` below: NO
 #     `pluginPaths` entry.
-#   - PROPOSAL.md §"Runtime dependencies — Developer-time
-#     dependencies → Typechecker decision (v018 Q4)" — pyright
+#   - — pyright
 #     (NOT basedpyright); rationale = the seven strict-plus
 #     diagnostics manually enabled below provide the load-bearing
 #     guardrails against agent-authored-code failure patterns.
@@ -54,8 +51,7 @@ requires-python = ">=3.10,<3.11"
 
 # Per v024: NO [project.dependencies] table. livespec ships nothing
 # as a runtime dep — the bundle's _vendor/ tree IS the runtime
-# (see PROPOSAL.md §"Runtime dependencies — Vendored pure-Python
-# libraries"). End users install nothing beyond Python 3.10+.
+#. End users install nothing beyond Python 3.10+.
 
 [dependency-groups]
 # Per v024: every Python dev tool is uv-managed via this table

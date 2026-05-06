@@ -1,7 +1,6 @@
 """DoctorContext — per-tree context value-object for static-phase checks.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase orchestrator": the orchestrator enumerates
+Per Plan Phase 3 +: the orchestrator enumerates
 `(spec_root, template_name)` pairs and builds one
 `DoctorContext` per pair. Each static-phase check's `run()`
 takes the context and returns a `Finding`.

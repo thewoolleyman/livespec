@@ -46,7 +46,7 @@ def test_static_package_is_importable() -> None:
 def test_applicability_by_tree_kind_maps_main_to_all_eight_checks() -> None:
     """APPLICABILITY_BY_TREE_KIND['main'] enumerates every Phase-3 check.
 
-    Per PROPOSAL.md §"`doctor` → Static-phase structure" + Plan
+    Per Plan
     Phase 3: the applicability table is
     orchestrator-owned and decides which checks apply to which
     tree kind. The 'main' entry must include every member of

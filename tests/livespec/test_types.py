@@ -1,7 +1,7 @@
 """Tests for livespec.types — domain-primitive NewTypes.
 
 Per `python-skill-script-style-requirements.md` §"Skill layout"
-+ PROPOSAL.md §"`livespec/types.py`": the module exposes a
++: the module exposes a
 small set of `typing.NewType`-defined domain primitives that
 the canonical-target `check-newtype-domain-primitives`
 (per `dev-tooling/checks/newtype_domain_primitives.py`)

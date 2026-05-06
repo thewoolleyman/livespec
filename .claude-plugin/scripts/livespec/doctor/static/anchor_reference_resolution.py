@@ -1,14 +1,13 @@
 """Static-phase doctor check: anchor_reference_resolution.
 
-Per Plan Phase 7 sub-step 7.d + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check verifies that every Markdown
+Per Plan Phase 7 sub-step 7.d +: this check verifies that every Markdown
 intra-document anchor reference (a link of the form
 `[text](#slug)`) resolves to an actual heading in the SAME file
 via the GFM slug algorithm. Cross-file references and external
 links are out of scope at the static layer (their resolution
-moves to the LLM-driven phase per PROPOSAL.md §"LLM-driven phase").
+moves to the LLM-driven phase per).
 
-GFM slug algorithm (per PROPOSAL.md §"Static-phase checks"):
+GFM slug algorithm (per):
   1. Lowercase the heading text.
   2. Strip punctuation EXCEPT `-` and `_` (whitespace is preserved
      for the next step).

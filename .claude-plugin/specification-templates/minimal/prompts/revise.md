@@ -52,7 +52,7 @@ files byte-identical, writes paired `<topic>-revision.md`
 files, applies `resulting_files[]` to `SPECIFICATION.md` in
 place, snapshots into the new vNNN/.
 
-**Audit-trail invariant** (PROPOSAL.md §"Versioning"
+**Audit-trail invariant** (
 Statement B, codified in v038 D1). Even when ALL decisions
 are `reject`, the wrapper cuts a new `v<N+1>/` with the
 rejected proposed-change files moved into history. Same
@@ -92,7 +92,7 @@ proposed-change file's front-matter `topic:` field.
 
 ## Failure modes
 
-- **Schema-violation retry (PROPOSAL.md §"Retry-on-exit-4").**
+- **Schema-violation retry.**
 - **Empty proposed_changes/.** Revise's wrapper exits 3
   (PreconditionError); the prompt does not run.
 - **Mid-stream LLM truncation.** Same recovery path as the

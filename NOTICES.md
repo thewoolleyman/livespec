@@ -35,7 +35,7 @@ cannot synthesize on Python 3.10.
 - **Verbatim license file:** `.claude-plugin/scripts/_vendor/returns/LICENSE`
 
 ROP primitives: `Result`, `IOResult`, `bind`, `map`, `Success`,
-`Failure`. See PROPOSAL.md §"Railway-Oriented Programming (ROP)".
+`Failure`.
 
 ---
 
@@ -47,7 +47,7 @@ ROP primitives: `Result`, `IOResult`, `bind`, `map`, `Success`,
 - **Verbatim license file:** `.claude-plugin/scripts/_vendor/fastjsonschema/LICENSE`
 
 JSON Schema validator. Compiles schemas to Python code for
-fast validation. See PROPOSAL.md §"Schemas and dataclasses".
+fast validation.
 
 ---
 

@@ -57,8 +57,7 @@ The wrapper `bin/revise.py` accepts the following flags in v1:
   the wrapper resolves it per the four-step precedence below.
 - `--author <id>` (optional). Uniform `--author` flag with
   identical four-step precedence across all three LLM-driven
-  wrappers (propose-change, critique, revise) per
-  PROPOSAL.md §"Author identifier resolution":
+  wrappers (propose-change, critique, revise) per:
   1. CLI `--author <id>` if set and non-empty.
   2. Env var `LIVESPEC_AUTHOR_LLM` if set and non-empty.
   3. Payload file-level `author` field if present and
@@ -78,7 +77,7 @@ The wrapper `bin/revise.py` accepts the following flags in v1:
   `--author <id>` for an audit-trail-clean attribution.").
 - `--spec-target <path>` (optional). Defaults to the main
   spec root (resolved via `.livespec.jsonc` upward walk).
-  Per PROPOSAL.md §"Spec-target selection contract" (v018
+  Per (v018
   Q1), may point at a sub-spec tree under
   `<main-spec-root>/templates/<name>/` to route the revise
   there. The wrapper validates the target structure
@@ -90,8 +89,7 @@ The wrapper `bin/revise.py` accepts the following flags in v1:
 - `--project-root <path>` (optional; defaults to
   `Path.cwd()`). Anchors `<spec-root>/` resolution and the
   upward walk for `.livespec.jsonc`. Uniform across every
-  wrapper per PROPOSAL.md §"Project-root detection
-  contract".
+  wrapper.
 - `--skip-pre-check` (optional). Skips the pre-step doctor
   static phase before revise runs. Mutually exclusive with
   `--run-pre-check`.
@@ -112,7 +110,7 @@ Effective skip resolution for the pre-step (per PROPOSAL.md
 
 Two LLM-layer flag pairs ALSO apply during the post-step
 LLM-driven phase but are NEVER passed to the Python wrapper
-(per PROPOSAL.md §"Skill-prose-side: LLM-driven post-step"):
+(per):
 
 - `--skip-doctor-llm-objective-checks` /
   `--run-doctor-llm-objective-checks` (mutually exclusive).
@@ -142,8 +140,7 @@ and exit code is `0` (NOT an error).
    `<resolved-path>/prompts/revise.md`. Use its contents
    as the template prompt for per-proposal decision
    generation. This is the two-step template-prompt
-   dispatch from PROPOSAL.md §"Per-sub-command SKILL.md
-   body structure" (Bash for resolution, then Read for the
+   dispatch from (Bash for resolution, then Read for the
    prompt file) and works uniformly for built-in and
    custom templates.
 
@@ -169,7 +166,7 @@ and exit code is `0` (NOT an error).
    intent for this revise pass? (e.g., 'reject anything
    touching the auth section') — leave blank to let the
    LLM decide each proposal independently." Capture
-   free-text. Per PROPOSAL.md §"`revise`", the steering
+   free-text. Per, the steering
    intent MUST only steer per-proposal decisions for the
    current revise invocation; it MUST NOT contain new
    spec content. If the user-supplied content reads as
@@ -193,8 +190,7 @@ and exit code is `0` (NOT an error).
      resulting-files list when applicable) and capture
      confirm / override. This is the only sub-command
      in the suite that runs a per-proposal confirmation
-     dialogue (PROPOSAL.md §"Per-sub-command SKILL.md
-     body structure" Step 4 — "Prompt the user for
+     dialogue ( Step 4 — "Prompt the user for
      confirmation (only for `revise`'s per-proposal
      dialogue)").
    - On `modify`, the LLM drafts the modification and
@@ -298,7 +294,7 @@ On exit 0, the wrapper has:
 - Resolved `author_llm` via the four-step precedence and
   `author_human` via `livespec.io.git.get_git_user()`.
 - Run pre-step doctor static (unless skipped).
-- **Cut a new `vN` per PROPOSAL.md §"Versioning"** (every
+- **Cut a new `vN` per** (every
   successful revise cuts one new version, incrementing
   past the highest existing `vNNN`; v038 D1 Statement B).
   When at least one decision is `accept` or `modify`, the

@@ -67,31 +67,27 @@ The wrapper `bin/seed.py` accepts the following flags in v1:
   The required top-level `template` field carries the user-
   chosen template value from the pre-seed dialogue (one of
   `livespec`, `minimal`, or a custom template path); the
-  wrapper consumes it to bootstrap `.livespec.jsonc` per
-  PROPOSAL.md §"`seed`" bullet "`.livespec.jsonc` is wrapper-
+  wrapper consumes it to bootstrap `.livespec.jsonc` per bullet "`.livespec.jsonc` is wrapper-
   owned" (v016 P2). The `sub_specs[]` list MAY be empty (the
   default end-user case) or carry one entry per template the
   user selected for sub-spec governance (v018 Q1; v020 Q2).
 - `--project-root <path>` (optional; defaults to `Path.cwd()`).
   Anchors `.livespec.jsonc` placement and template-relative
-  path resolution. Uniform across every wrapper per
-  PROPOSAL.md §"Project-root detection contract".
+  path resolution. Uniform across every wrapper per.
 
 Seed has **no `--skip-pre-check` / `--run-pre-check` flag pair**
-because seed has no pre-step (PROPOSAL.md §"Sub-command
-lifecycle orchestration — Pre-step/post-step applicability":
+because seed has no pre-step (:
 "`seed` is exempt from pre-step doctor static"). Seed also has
 **no `--author` flag**: the auto-captured seed proposed-change
 and its revision pair are written with the literal author
 identifiers `livespec-seed` (LLM-side) and the user's git
-identity (human-side), per PROPOSAL.md §"`seed`" auto-generated-
+identity (human-side) auto-generated-
 file details. Author resolution applies only to the three
 LLM-driven user-authored wrappers (`propose-change`, `critique`,
 `revise`).
 
 Two LLM-layer flag pairs apply during the post-step LLM-driven
-phase but are NEVER passed to the Python wrapper (per
-PROPOSAL.md §"Skill-prose-side: LLM-driven post-step"):
+phase but are NEVER passed to the Python wrapper (per):
 
 - `--skip-doctor-llm-objective-checks` /
   `--run-doctor-llm-objective-checks` (mutually exclusive).
@@ -165,8 +161,7 @@ exit code is `0` (NOT an error).
 3. **Read the seed prompt.** Use the Read tool on
    `<resolved-path>/prompts/seed.md`. Use its contents as the
    template prompt for spec-content generation. This is the
-   two-step template-prompt dispatch from PROPOSAL.md §"Per-
-   sub-command SKILL.md body structure" (Bash for resolution,
+   two-step template-prompt dispatch from (Bash for resolution,
    then Read for the prompt file) and works uniformly for
    built-in and custom templates.
 
@@ -203,7 +198,7 @@ exit code is `0` (NOT an error).
    via the Bash tool with explicit argv. Capture exit code.
    The wrapper validates the payload internally, then performs
    its deterministic file-shaping work in this order BEFORE
-   post-step doctor static runs (per PROPOSAL.md §"`seed`"):
+   post-step doctor static runs (per):
    write `.livespec.jsonc` from the payload's `template`
    value, write each main-spec `files[]` entry, write every
    `sub_specs[]` entry's `files[]` entries to their
@@ -331,15 +326,14 @@ Wrapper exit-code-to-narration mapping:
      >    **Expect propose-change to ALSO exit 3** (its own
      >    post-step doctor-static trips the same findings),
      >    but the proposed-change file IS on disk per
-     >    PROPOSAL.md §"Wrapper-side: deterministic
-     >    lifecycle"; this is the expected sequential-
+     >; this is the expected sequential-
      >    lifecycle behavior, not a separate failure.
      > 3. `git commit` the partial state (the seed-written
      >    files plus the new proposed-change file). This step
      >    is load-bearing — without it, the next invocation's
      >    `doctor-out-of-band-edits` check will trip its pre-
      >    backfill guard. livespec does NOT write to git
-     >    itself per PROPOSAL.md §"Git"; the commit is a user
+     >    itself; the commit is a user
      >    action.
      > 4. Run `/livespec:revise --skip-pre-check` to process
      >    the proposed-change and cut `v002` with the

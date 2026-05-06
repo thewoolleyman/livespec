@@ -1,6 +1,6 @@
 """Pure JSONC parser: thin Result-wrapping shim over vendored `jsoncomment`.
 
-Per PROPOSAL.md §"`livespec/parse/jsonc.py`": a pure wrapper that
+Per: a pure wrapper that
 strips `//` and `/* */` comments via the vendored shim, then
 delegates to stdlib JSON. Errors flow as
 `Failure(<LivespecError>)` on the railway; this module performs

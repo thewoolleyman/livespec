@@ -1,6 +1,6 @@
 """Critique sub-command supervisor.
 
-Per PROPOSAL.md §"`critique`" and SPECIFICATION/spec.md
+Per SPECIFICATION/spec.md
 §"`critique` internal delegation" + §"Author identifier resolution":
 critique validates the inbound `--findings-json` payload then
 resolves the author identifier via the unified four-step precedence
@@ -54,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     `argparse.ArgumentError` rather than `SystemExit`. The
     parser exposes `--findings-json <path>` (required), and the
     same optional `--author`, `--spec-target`, `--project-root`
-    flags propose_change takes per PROPOSAL.md §"critique".
+    flags propose_change takes.
     """
     parser = argparse.ArgumentParser(prog="critique", exit_on_error=False)
     _ = parser.add_argument("--findings-json", required=True)

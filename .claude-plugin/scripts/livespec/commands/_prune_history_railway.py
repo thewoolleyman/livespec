@@ -277,8 +277,7 @@ def _fold_pre_step_doctor_completed_process(
     specialized to the pre-step contract: when one or more
     findings carry `status == "fail"`, the wrapper MUST short-
     circuit with `IOFailure(PreconditionError)` so the supervisor
-    pattern-match lifts to exit 3 per PROPOSAL.md §"Sub-command
-    lifecycle orchestration". The doctor's stdout is propagated
+    pattern-match lifts to exit 3. The doctor's stdout is propagated
     intact via the helper's caller (the LLM-narration layer in
     SKILL.md prose surfaces the structured findings to the user;
     the wrapper does not add ad-hoc stderr text).

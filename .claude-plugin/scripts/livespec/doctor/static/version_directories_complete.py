@@ -1,7 +1,6 @@
 """Static-phase doctor check: version_directories_complete.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check asserts that every
+Per Plan Phase 3 +: this check asserts that every
 `<spec_root>/history/vNNN/` directory contains its expected
 sub-structure.
 

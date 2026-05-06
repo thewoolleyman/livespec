@@ -1,7 +1,6 @@
 """Static-phase doctor check: bcp14_keyword_wellformedness.
 
-Per Plan Phase 7 sub-step 7.b + PROPOSAL.md §"`doctor` →
-Static-phase checks": this check detects malformed BCP 14
+Per Plan Phase 7 sub-step 7.b +: this check detects malformed BCP 14
 (RFC 2119 + RFC 8174) normative keyword usage in spec-text-
 bearing markdown files. The deferred `static-check-semantics`
 entry in `deferred-items.md` reserves the precise enumeration;

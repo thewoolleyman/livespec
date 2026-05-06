@@ -1,7 +1,6 @@
 # tests/prompts/
 
-Prompt-QA tier per PROPOSAL.md §"Prompt-QA tier (per-prompt
-verification, v018 Q5)" and SPECIFICATION/contracts.md
+Prompt-QA tier and SPECIFICATION/contracts.md
 §"Prompt-QA harness contract" (v014). Each per-template
 subdirectory exercises that template's REQUIRED prompts via
 deterministic replay-and-assert against canonical fixtures.

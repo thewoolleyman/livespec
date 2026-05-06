@@ -39,8 +39,7 @@ flags in v1:
 
 - `--project-root <path>` (optional; defaults to `Path.cwd()`).
   Anchors `<spec-root>/` resolution and the upward walk to find
-  `.livespec.jsonc`. Uniform across every wrapper per
-  PROPOSAL.md §"Project-root detection contract".
+  `.livespec.jsonc`. Uniform across every wrapper per.
 - `--skip-pre-check` (optional). Skips the pre-step doctor
   static phase before pruning. Mutually exclusive with
   `--run-pre-check`.

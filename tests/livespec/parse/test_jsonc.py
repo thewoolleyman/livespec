@@ -1,7 +1,7 @@
 """Tests for livespec.parse.jsonc.
 
 The jsonc module is a thin pure wrapper over the vendored
-`jsoncomment` shim per PROPOSAL.md §"`livespec/parse/jsonc.py`"
+`jsoncomment` shim
 and the briefing's outside-in walking direction. Comments
 strip, JSON parses; errors flow as
 `Failure(<LivespecError>)` on the railway.

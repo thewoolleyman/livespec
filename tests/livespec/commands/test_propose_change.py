@@ -1,6 +1,6 @@
 """Tests for livespec.commands.propose_change.
 
-Per PROPOSAL.md §"`propose-change`" and Plan
+Per and Plan
 Phase 3, propose-change is the second
 sub-command authored under TDD. Phase-3 minimum-viable scope:
 validate the inbound `--findings-json <path>` payload against
@@ -57,7 +57,7 @@ def test_propose_change_main_exists_and_returns_int() -> None:
 def test_propose_change_main_returns_usage_exit_code_on_missing_required_flag() -> None:
     """Missing required args (UsageError) returns exit code 2.
 
-    Per PROPOSAL.md §"`propose-change`": the
+    Per: the
     wrapper requires `--findings-json <path>` plus a positional
     `<topic>`. Drives the first real railway-composition behavior
     by threading argv through io/cli.parse_argv and pattern-
@@ -106,7 +106,7 @@ def test_propose_change_main_writes_proposed_change_file_on_success(
 ) -> None:
     """Successful propose-change writes `<spec-target>/proposed_changes/<topic>.md`.
 
-    Per PROPOSAL.md §"`propose-change`": the
+    Per: the
     wrapper creates a proposed-change file containing one or
     more `## Proposal: <name>` sections. With --spec-target
     explicit, the target is `<spec-target>/proposed_changes/
@@ -560,7 +560,7 @@ def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_f
 ) -> None:
     """Without --spec-target or --project-root, falls back to `cwd()/SPECIFICATION`.
 
-    Per PROPOSAL.md §"Wrapper CLI surface" + Plan
+    Per Plan
     Phase 3: when neither --spec-target nor --project-root is
     supplied, project_root defaults to Path.cwd() and the spec
     target derives as `<cwd>/SPECIFICATION`. Drives

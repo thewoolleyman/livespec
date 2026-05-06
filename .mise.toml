@@ -1,7 +1,6 @@
 # Livespec developer-tooling pins — non-Python binaries only.
 #
-# Authority: PROPOSAL.md §"Developer-time dependencies (livespec
-# repo only)" (v024) and PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md
+# Authority: (v024) and PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md
 # Phase 1.
 #
 # Per v024, mise pins `uv`, `just`, `lefthook` only. Python and

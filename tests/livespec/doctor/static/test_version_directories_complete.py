@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.version_directories_complete.
 
-Per Plan Phase 3 + PROPOSAL.md §"`doctor` →
-Static-phase checks": this is the fifth of the eight Phase-3
+Per Plan Phase 3 +: this is the fifth of the eight Phase-3
 minimum-subset doctor checks. It asserts that every
 `<spec_root>/history/vNNN/` directory contains its expected
 sub-structure (the main-file + the `proposed_changes/`

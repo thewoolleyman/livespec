@@ -1,22 +1,20 @@
 """Tests for livespec.doctor.static.bcp14_keyword_wellformedness.
 
-Per Plan Phase 7 sub-step 7.b + PROPOSAL.md §"`doctor` →
-Static-phase checks": the `bcp14-keyword-wellformedness` check
+Per Plan Phase 7 sub-step 7.b +: the `bcp14-keyword-wellformedness` check
 detects malformed BCP 14 (RFC 2119 + RFC 8174) normative keyword
 usage in spec-text-bearing markdown files. This is one of four
 remaining doctor static checks landing at Phase 7 (alongside
 `out-of-band-edits`, `gherkin-blank-line-format`, and
 `anchor-reference-resolution`).
 
-Per PROPOSAL.md §"Static-phase checks" `bcp14-keyword-
+Per `bcp14-keyword-
 wellformedness`: the check detects mixed-case BCP 14 keywords
 appearing as standalone words (`Must`, `Should`, `May`, etc.).
 The deferred `static-check-semantics` entry in
 `deferred-items.md` reserves the precise enumeration; the v1
 minimum scope authored here is the mixed-case standalone-word
 rule. Sentence-level context-dependent checks (lowercase `must`
-in normative passages) move to the LLM-driven phase per
-PROPOSAL.md §"LLM-driven phase".
+in normative passages) move to the LLM-driven phase per.
 
 Per v018 Q1: this check applies to all spec-text-bearing trees
 (main + each sub-spec). The check walks `<spec_root>/*.md`
@@ -36,8 +34,7 @@ Detection rules (v1 minimum scope per PROPOSAL.md):
     `| Required flags |`, descriptive prose like `Deployment
     is Recommended`) that risk significant false-positive
     rates without sentence-level context. Their case-
-    discipline detection moves to the LLM-driven phase per
-    PROPOSAL.md §"LLM-driven phase".
+    discipline detection moves to the LLM-driven phase per.
   - Token-boundary respecting: `Mustang`, `Bust`, `Maybe`,
     `Shallow` etc. do NOT trip the rule (must be a complete
     word per `\\b<keyword>\\b`).
@@ -240,7 +237,7 @@ def test_run_returns_fail_for_mixed_case_must(
 
     Fail-arm seed: the spec text contains a standalone-word
     `Must` (capital M, lowercase rest) in a clearly normative
-    context. Per PROPOSAL.md §"Static-phase checks"
+    context. Per
     `bcp14-keyword-wellformedness`: mixed-case BCP 14 keywords
     as standalone words are malformed. The check yields a
     fail-Finding naming the offending file and line.
@@ -379,7 +376,7 @@ def test_run_only_walks_top_level_md_files(
     """run(ctx) does NOT recurse into history/proposed_changes/templates subtrees.
 
     Per the `anchor-reference-resolution` walk-set semantic
-    (PROPOSAL.md §"Static-phase checks", generalized to every
+    (, generalized to every
     doctor static check that walks `<spec-root>/`), the BCP14
     check inspects only top-level `<spec_root>/*.md` files. A
     `Must`-violation seeded inside `<spec_root>/history/v001/
