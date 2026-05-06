@@ -81,3 +81,50 @@ def test_single_specification_md_file_rejects_wrong_path() -> None:
             },
             input_context={},
         )
+
+
+def test_target_is_single_specification_md_passes_when_exact() -> None:
+    assertion = ASSERTIONS["target_is_single_specification_md"]
+    assertion(
+        replayed_response={
+            "findings": [{"name": "x", "target_spec_files": ["SPECIFICATION.md"]}],
+        },
+        input_context={},
+    )
+
+
+def test_target_is_single_specification_md_rejects_extra_file() -> None:
+    assertion = ASSERTIONS["target_is_single_specification_md"]
+    with pytest.raises(AssertionError, match=r"MUST equal \['SPECIFICATION.md'\]"):
+        assertion(
+            replayed_response={
+                "findings": [
+                    {
+                        "name": "x",
+                        "target_spec_files": ["SPECIFICATION.md", "EXTRA.md"],
+                    },
+                ],
+            },
+            input_context={},
+        )
+
+
+def test_bcp14_in_proposed_changes_passes_when_keyword_present() -> None:
+    assertion = ASSERTIONS["bcp14_in_proposed_changes"]
+    assertion(
+        replayed_response={
+            "findings": [{"name": "x", "proposed_changes": "The system MUST X."}],
+        },
+        input_context={},
+    )
+
+
+def test_bcp14_in_proposed_changes_rejects_no_keyword() -> None:
+    assertion = ASSERTIONS["bcp14_in_proposed_changes"]
+    with pytest.raises(AssertionError, match="lacks any BCP14 keyword"):
+        assertion(
+            replayed_response={
+                "findings": [{"name": "x", "proposed_changes": "Just prose."}],
+            },
+            input_context={},
+        )
