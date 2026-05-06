@@ -42,9 +42,8 @@ findings about ambiguities and contradictions in
 processes it.
 
 Note: the `gherkin-blank-line-format` doctor-static check is
-conditional on the `livespec` template per PROPOSAL.md
-§"Static-phase checks" and does NOT apply when the active
-template is `minimal`. Critique findings about Gherkin
+conditional on the `livespec` template and does NOT apply when
+the active template is `minimal`. Critique findings about Gherkin
 formatting in the minimal template's `SPECIFICATION.md` are
 out of scope (the minimal template doesn't ship Gherkin
 scenarios).

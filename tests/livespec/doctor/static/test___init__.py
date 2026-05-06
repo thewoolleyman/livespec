@@ -1,10 +1,10 @@
 """Tests for livespec.doctor.static package surface.
 
-The static-doctor check registry is the v033 D5b second-redo
-seam where each Phase-3 / Phase-7 doctor check module gets pulled
-into existence via consumer pressure (see PROPOSAL.md
-§"`doctor` → Static-phase structure"). Until any
-check module is authored under TDD, the package's `__init__.py`
+The static-doctor check registry is the seam where each doctor
+check module gets pulled into existence via consumer pressure
+(see SPECIFICATION/contracts.md §"Per-sub-spec doctor
+parameterization"). Until any check module is authored under
+TDD, the package's `__init__.py`
 holds only the canonical no-op preamble (the v033 D1
 mirror-pairing-rule's `__init__.py` carve-out: a file whose body
 is `from __future__ import annotations` + `__all__: list[str] = []`

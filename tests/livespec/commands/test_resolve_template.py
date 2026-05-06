@@ -48,7 +48,7 @@ def test_resolve_template_emits_bundle_path_for_builtin_livespec(
 ) -> None:
     """--template livespec → emits <bundle-root>/specification-templates/livespec on stdout, exit 0.
 
-    Per PROPOSAL.md: the bundle root is computed
+    Per the spec: the bundle root is computed
     via `Path(__file__).resolve().parents[3]` from the impl file.
     Asserts the resolved path is absolute, ends in
     `.../specification-templates/livespec`, and the directory
@@ -97,7 +97,7 @@ def test_resolve_template_resolves_user_path_with_template_json(
 ) -> None:
     """--template <relative-path> + template.json present → emits absolute path, exit 0.
 
-    Per PROPOSAL.md: any value other than a built-in
+    Per the spec: any value other than a built-in
     name is treated as a path relative to --project-root. The
     wrapper validates (a) the directory exists and (b) it contains
     `template.json`.
@@ -125,7 +125,7 @@ def test_resolve_template_user_path_missing_template_json_returns_3(
 ) -> None:
     """--template <relative-path> without template.json → exit 3 (PreconditionError).
 
-    Per PROPOSAL.md: exit 3 on "resolved path lacks
+    Per the spec: exit 3 on "resolved path lacks
     template.json".
     """
     template_dir = tmp_path / "bare-dir"
@@ -147,7 +147,7 @@ def test_resolve_template_user_path_does_not_exist_returns_3(
 ) -> None:
     """--template <relative-path-does-not-exist> → exit 3.
 
-    Per PROPOSAL.md: exit 3 on "resolved path
+    Per the spec: exit 3 on "resolved path
     missing".
     """
     exit_code = resolve_template.main(
@@ -164,7 +164,7 @@ def test_resolve_template_user_path_does_not_exist_returns_3(
 def test_resolve_template_unknown_flag_returns_2() -> None:
     """Unknown CLI flag → exit 2 (UsageError).
 
-    Per PROPOSAL.md: exit 2 on "bad CLI usage". Drives
+    Per the spec: exit 2 on "bad CLI usage". Drives
     the parse_argv stage on the railway: an unknown flag surfaces
     as an argparse SystemExit, which io/cli's @impure_safe maps
     to UsageError; the supervisor's pattern-match lifts to
@@ -194,7 +194,7 @@ def test_resolve_template_default_project_root_is_cwd(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """--project-root defaults to Path.cwd() per PROPOSAL.
+    """--project-root defaults to Path.cwd() per the spec.
 
     Drives the cwd-fallback branch of `_resolve_project_root`
     (the `Path.cwd() if namespace.project_root is None` path).

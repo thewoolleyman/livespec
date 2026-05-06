@@ -51,9 +51,8 @@ the auto-backfill write path (7.a.v):
 When either condition holds, the check emits a skipped-Finding
 naming the manual-intervention requirement. The skipped-Finding
 keeps the doctor non-destructive: it refuses to double-write a
-fresh auto-backfill on top of an in-flight prior one (PROPOSAL
-guard semantics — the user must commit-or-revert the prior
-backfill before re-running). Per memory
+fresh auto-backfill on top of an in-flight prior one (the user
+must commit-or-revert the prior backfill before re-running). Per memory
 feedback_domain_errors_vs_bugs the leftover state is an EXPECTED
 business outcome, not a bug, so it stays on the IOSuccess track
 with `status="skipped"` rather than lifting to IOFailure.
@@ -72,7 +71,7 @@ walked via `livespec.io.git.list_at_head`. Subdirs
 by ls-tree's blob-only filter, so the enumeration matches the
 top-level *.md files the seed materializes.
 
-Edge case decisions (PROPOSAL is silent; codified here):
+Edge case decisions (codified here):
 
   - No `<spec-root>/history/` at HEAD: emits `status="pass"`
     with a "no history baseline" message. This is a benign
@@ -394,9 +393,8 @@ def _expected_pass_no_history_baseline(*, spec_root: Path) -> Finding:
     Emitted when `<spec-root>/history/` is absent at HEAD or
     contains no `vNNN/` subdirs at HEAD. Per the edge-case
     decision documented in the module docstring, "no baseline"
-    is treated as "no drift" (PROPOSAL is silent on this
-    case; the pre-backfill guard already covers the leftover
-    cases that would otherwise land here).
+    is treated as "no drift" (the pre-backfill guard already
+    covers the leftover cases that would otherwise land here).
     """
     return Finding(
         check_id="doctor-out-of-band-edits",
@@ -488,11 +486,10 @@ def test_run_returns_fail_when_active_present_history_missing_at_head(
 
     Drift case: a NEW top-level spec file landed at HEAD-active
     without a paired snapshot at HEAD-history-vN (e.g., user
-    added `extras.md` directly without revising). PROPOSAL's
-    comparison says "diff active against history/vN/<file>";
-    when the history side is absent at HEAD, the file IS
-    drift — it was added since vN's snapshot was taken without
-    a revise pass.
+    added `extras.md` directly without revising). The comparison
+    says "diff active against history/vN/<file>"; when the history
+    side is absent at HEAD, the file IS drift — it was added since
+    vN's snapshot was taken without a revise pass.
     """
     monkeypatch.chdir(tmp_path)
     _git_init(repo_root=tmp_path)

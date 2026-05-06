@@ -22,13 +22,11 @@ baseline, the check writes three classes of artifacts under
      Files NOT at HEAD-active (i.e., divergence kind is missing-
      active) are skipped.
 
-The PROPOSAL "moves the proposed-change and revision into
-history/v(N+1)/proposed_changes/" step is implemented as direct
-write into `history/v(N+1)/proposed_changes/` rather than write +
-move — the destination is the same in either order, and the
-single-write path is cleaner. The pre-backfill guard's leftover-
-detection covers the partial-write case the spec's move-step
-phrasing was guarding against.
+The auto-backfill writes directly into
+`history/v(N+1)/proposed_changes/` (no top-level intermediate
+write + move) — the destination is the same and the single-write
+path is cleaner. The pre-backfill guard's leftover-detection
+covers any partial-write case.
 
 TIMESTAMP-FILENAME format: `%Y-%m-%dt%H-%M-%Sz` (lowercase t/z,
 all hyphens) so the resulting filename satisfies both the topic

@@ -8,8 +8,9 @@ that `livespec.commands.revise.main` (and `seed.main`'s revision-
 auto-capture path) compose against to populate the
 revision-file `author_human` field and `revision_front_matter.schema.json`.
 
-The seam is named `io.git.get_git_user` per PROPOSAL.md + `revision_front_matter.schema.json` description on
-the `author_human` property. Cycle 5.c.1 lands the smallest
+The seam is named `io.git.get_git_user` per the
+`revision_front_matter.schema.json` description on the
+`author_human` property. Cycle 5.c.1 lands the smallest
 viable surface: a single `get_git_user` primitive that returns
 `"Name <email>"` from local git config when both values are
 set; later cycles (or consumer pressure) widen the unset/missing-

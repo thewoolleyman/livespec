@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "revision_front_matter.schema.json",
   "title": "revision_front_matter",
-  "description": "Schema for the YAML front-matter at the top of a revision file at <spec-root>/history/vNNN/proposed_changes/<topic>-revision.md. Per PROPOSAL §'Revision file format' lines 3027-3050.",
+  "description": "Schema for the YAML front-matter at the top of a revision file at <spec-root>/history/vNNN/proposed_changes/<topic>-revision.md.",
   "type": "object",
   "additionalProperties": false,
   "required": [

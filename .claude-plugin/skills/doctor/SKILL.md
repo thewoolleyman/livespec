@@ -61,8 +61,8 @@ disk via the upward walk and discovers sub-spec trees by
 listing `<main-spec-root>/templates/<name>/`.
 
 Two LLM-layer flag pairs apply during the LLM-driven phase but
-are NEVER passed to the Python wrapper (per PROPOSAL.md
-§"Skill-prose-side: LLM-driven post-step"):
+are NEVER passed to the Python wrapper (per
+SPECIFICATION/spec.md §"Sub-command lifecycle"):
 
 - `--skip-doctor-llm-objective-checks` /
   `--run-doctor-llm-objective-checks` (mutually exclusive).

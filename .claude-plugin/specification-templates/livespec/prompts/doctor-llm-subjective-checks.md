@@ -19,8 +19,7 @@
 
 ## Behavior
 
-Run the LLM-driven subjective-checks phase per PROPOSAL.md
-§"LLM-driven subjective checks" (lines 2975-2998) and
+Run the LLM-driven subjective-checks phase per
 SPECIFICATION/contracts.md §"Doctor-LLM-subjective-checks
 prompt". Walk every file in the spec tree and emit findings
 along each of the dimensions below. Each dimension is

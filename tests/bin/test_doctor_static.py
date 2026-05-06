@@ -2,13 +2,12 @@
 
 Asserts the shebang wrapper threads its main()'s return value
 into `raise SystemExit(<code>)`, per the canonical 6-statement
-wrapper shape (style doc §"Wrapper shape" / PROPOSAL.md
-§"`doctor`").
+wrapper shape (SPECIFICATION/constraints.md §"Shebang-wrapper
+contract").
 
 Doctor's supervisor lives at `livespec/doctor/run_static.py`
-(not `livespec/commands/doctor.py`) per the PROPOSAL tree —
-doctor is the only sub-command whose Python lives outside
-`commands/`.
+(not `livespec/commands/doctor.py`) — doctor is the only
+sub-command whose Python lives outside `commands/`.
 """
 
 from __future__ import annotations

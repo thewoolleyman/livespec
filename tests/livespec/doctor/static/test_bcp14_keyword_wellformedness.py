@@ -24,7 +24,7 @@ covered by their own checks; the per-version snapshots inherit
 the well-formedness via the seed/revise byte-identical write
 discipline).
 
-Detection rules (v1 minimum scope per PROPOSAL.md):
+Detection rules (v1 minimum scope):
   - Mixed-case BCP 14 modal-verb keywords as standalone words:
     `Must`, `Should`, `May`, `Shall` (capitalized first letter,
     lowercase remainder) flag as malformed.
@@ -160,11 +160,10 @@ def test_run_returns_pass_for_lowercase_non_normative_usage(
     """run(ctx) returns IOSuccess(pass-Finding) when keywords are full-lowercase.
 
     Pass-arm seed: the spec text uses lowercase `must`/`should`/
-    `may` in non-normative descriptive prose. Per PROPOSAL.md
-    §"LLM-driven phase" — sentence-level case-inconsistency
-    detection is deferred to the LLM-driven phase; the static
-    check passes on full-lowercase usage because RFC 2119
-    keywords are normative ONLY when uppercase.
+    `may` in non-normative descriptive prose. Sentence-level
+    case-inconsistency detection is deferred to the LLM-driven
+    phase; the static check passes on full-lowercase usage because
+    RFC 2119 keywords are normative ONLY when uppercase.
     """
     project_root = tmp_path / "project"
     project_root.mkdir()

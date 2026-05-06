@@ -98,8 +98,8 @@ The wrapper `bin/revise.py` accepts the following flags in v1:
   is `true` in `.livespec.jsonc`. Mutually exclusive with
   `--skip-pre-check`.
 
-Effective skip resolution for the pre-step (per PROPOSAL.md
-§"Pre-step skip control"):
+Effective skip resolution for the pre-step (per
+SPECIFICATION/spec.md §"Sub-command lifecycle"):
 
 1. `--skip-pre-check` on the CLI → skip = true.
 2. `--run-pre-check` on the CLI → skip = false (overrides
@@ -320,8 +320,9 @@ On exit 0, the wrapper has:
   at
   `<spec-target>/history/vN/proposed_changes/<stem>-revision.md`
   using the same `<stem>` value as the proposed-change
-  filename. The revision file conforms to PROPOSAL.md
-  §"Revision file format": YAML front-matter (`proposal`,
+  filename. The revision file conforms to
+  SPECIFICATION/spec.md §"Proposed-change and revision file
+  formats": YAML front-matter (`proposal`,
   `decision`, `revised_at` UTC ISO-8601 seconds,
   `author_human`, `author_llm`) validated against
   `revision_front_matter.schema.json`, followed by

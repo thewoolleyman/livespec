@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "proposal_findings.schema.json",
   "title": "proposal_findings",
-  "description": "Schema for the LLM-output JSON payload that propose-change and critique consume — an array of proposal findings, each a candidate proposed-change. Distinct from doctor_findings (the doctor static-phase output). Per PROPOSAL §'doctor → Static-phase orchestrator' line 2624 and §'propose-change' / §'critique'.",
+  "description": "Schema for the LLM-output JSON payload that propose-change and critique consume — an array of proposal findings, each a candidate proposed-change. Distinct from doctor_findings (the doctor static-phase output).",
   "type": "object",
   "additionalProperties": false,
   "required": [

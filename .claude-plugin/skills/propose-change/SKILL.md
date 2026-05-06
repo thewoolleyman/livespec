@@ -111,8 +111,8 @@ in v1:
   is `true` in `.livespec.jsonc`. Mutually exclusive with
   `--skip-pre-check`.
 
-Effective skip resolution for the pre-step (per PROPOSAL.md
-§"Pre-step skip control"):
+Effective skip resolution for the pre-step (per
+SPECIFICATION/spec.md §"Sub-command lifecycle"):
 
 1. `--skip-pre-check` on the CLI → skip = true.
 2. `--run-pre-check` on the CLI → skip = false (overrides
@@ -244,10 +244,10 @@ exit code is `0` (NOT an error).
 
 On exit 0, the wrapper has:
 
-- Canonicalized the inbound `<topic>` hint per PROPOSAL.md
-  §"Topic canonicalization (v015 O3)" (and §"Reserve-suffix
-  canonicalization (v016 P3; v017 Q1)" when `--reserve-suffix`
-  was supplied).
+- Canonicalized the inbound `<topic>` hint per
+  SPECIFICATION/spec.md §"Proposed-change and revision file
+  formats" (with reserve-suffix preservation when
+  `--reserve-suffix` was supplied).
 - Validated the `--findings-json` payload against
   `proposal_findings.schema.json`.
 - Resolved the author via the four-step precedence.

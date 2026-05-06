@@ -8,10 +8,9 @@ subdirectory).
 
 Phase-3 minimum scope: pass arm. The check verifies that every
 existing `history/v*/` directory has a `proposed_changes/`
-subdirectory. The "main-file" presence (PROPOSAL.md or
-template-specific equivalent) is template-aware and lands at
-Phase 7. Cycle 138 lands the success arm; subsequent cycles
-add the missing-subdirectory failure arm.
+subdirectory. The "main-file" presence (template-specific) is
+template-aware and lands at Phase 7. Cycle 138 lands the success
+arm; subsequent cycles add the missing-subdirectory failure arm.
 
 Phase 7 prereq.B widens the rule with the pruned-marker
 exemption per SPECIFICATION/v013 spec.md §"Pruning history":

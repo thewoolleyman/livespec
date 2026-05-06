@@ -200,11 +200,9 @@ def test_prune_history_main_accepts_project_root_flag(
 ) -> None:
     """`--project-root <path>` is a recognized optional flag (exit 0).
 
-    Per v012 contracts.md §"Wrapper CLI surface" prune-history row
-    + the universal `--project-root <path>` baseline (PROPOSAL.md
-    §"Project-root detection contract" explicitly enumerates
-    `bin/prune_history.py` as a project-state wrapper that accepts
-    the flag).
+    Per SPECIFICATION/contracts.md §"Wrapper CLI surface"
+    prune-history row + the universal `--project-root <path>`
+    baseline.
     """
     project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
     exit_code = prune_history.main(argv=["--project-root", str(project_root)])

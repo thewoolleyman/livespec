@@ -16,12 +16,12 @@ GFM slug algorithm (per):
   5. Strip leading and trailing hyphens.
 
 Headings inside fenced code blocks (` ``` ` or `~~~`) are NOT
-considered headings (per PROPOSAL.md). Explicit `{#custom-id}`
-syntax is NOT supported in v1.
+considered headings. Explicit `{#custom-id}` syntax is NOT
+supported in v1.
 
-Per v018 Q1: applies to all spec-text-bearing trees (main + each
-sub-spec). The walk-set semantic matches the sibling Phase-7
-checks: livespec-shape spec_roots walk `<spec_root>/*.md`
+Applies to all spec-text-bearing trees (main + each sub-spec).
+The walk-set semantic matches the sibling Phase-7 checks:
+livespec-shape spec_roots walk `<spec_root>/*.md`
 top-level files only; minimal-shape spec_roots scan only
 `<spec_root>/SPECIFICATION.md`. Neither shape recurses into
 `history/`, `proposed_changes/`, or `templates/` subtrees —

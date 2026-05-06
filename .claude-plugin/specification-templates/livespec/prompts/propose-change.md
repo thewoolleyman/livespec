@@ -48,8 +48,7 @@ phases.
 Produce a JSON `findings[]` array, where each finding becomes one
 `## Proposal: <name>` section in the resulting proposed-change
 file at `<spec-target>/proposed_changes/<topic>.md`. The wrapper
-performs the field-to-section mapping per PROPOSAL.md
-§"propose-change" lines 2236-2242:
+performs the field-to-section mapping:
 
 - `name` → `## Proposal: <name>` heading.
 - `target_spec_files` → `### Target specification files`

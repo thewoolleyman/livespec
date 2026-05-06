@@ -755,8 +755,7 @@ def test_feat_green_amend_with_unchanged_test_and_passing_pytest_writes_green_tr
 ) -> None:
     """Full Green-mode replay success: Green trailers written, hook returns 0.
 
-    Cycle 183 wires Green-mode replay verification. Per PROPOSAL.md
-    §"Green mode (amend)", the hook must: recompute
+    Green-mode replay verification: the hook must recompute the
     test file SHA-256 from working tree (rejects on mismatch), run
     pytest (expects exit zero), then add `TDD-Green-Verified-At:`
     and `TDD-Green-Parent-Reflog:` trailers and let the commit land.

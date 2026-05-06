@@ -82,8 +82,8 @@ v1:
   is `true` in `.livespec.jsonc`. Mutually exclusive with
   `--skip-pre-check`.
 
-Effective skip resolution for the pre-step (per PROPOSAL.md
-§"Pre-step skip control"):
+Effective skip resolution for the pre-step (per
+SPECIFICATION/spec.md §"Sub-command lifecycle"):
 
 1. `--skip-pre-check` on the CLI → skip = true.
 2. `--run-pre-check` on the CLI → skip = false (overrides
@@ -123,10 +123,9 @@ and exit code is `0` (NOT an error).
 2. **Read the critique prompt.** Use the Read tool on
    `<resolved-path>/prompts/critique.md`. Use its contents
    as the template prompt for finding generation. This is
-   the two-step template-prompt dispatch from PROPOSAL.md
-   §"Per-sub-command SKILL.md body structure" (Bash for
-   resolution, then Read for the prompt file) and works
-   uniformly for built-in and custom templates.
+   the two-step template-prompt dispatch (Bash for resolution,
+   then Read for the prompt file) and works uniformly for
+   built-in and custom templates.
 
 3. **Capture critique target.** Ask the user: "What do you
    want critiqued? Describe the spec area, contract, or

@@ -2,17 +2,14 @@
 
 Per Plan Phase 7 sub-step 7.b +: this check detects malformed BCP 14
 (RFC 2119 + RFC 8174) normative keyword usage in spec-text-
-bearing markdown files. The deferred `static-check-semantics`
-entry in `deferred-items.md` reserves the precise enumeration;
-the v1 minimum scope is the mixed-case standalone-word rule
-(`Must`, `Should`, `May`, etc.). Sentence-level case-
-inconsistency detection (lowercase `must` in normative
-context) moves to the LLM-driven phase per PROPOSAL.md
-§"LLM-driven phase".
+bearing markdown files. The v1 minimum scope is the mixed-case
+standalone-word rule (`Must`, `Should`, `May`, etc.). Sentence-
+level case-inconsistency detection (lowercase `must` in normative
+context) moves to the LLM-driven phase.
 
-Per v018 Q1: applies to all spec-text-bearing trees (main +
-each sub-spec). The check walks `<spec_root>/*.md` top-level
-files only — it does NOT recurse into `history/`,
+Applies to all spec-text-bearing trees (main + each sub-spec).
+The check walks `<spec_root>/*.md` top-level files only — it
+does NOT recurse into `history/`,
 `proposed_changes/`, or `templates/` subtrees. This walk-set
 semantic is the same as the `anchor-reference-resolution`
 check's deliberately-narrow scope: per-version snapshots
@@ -29,8 +26,7 @@ Detection rules:
     common English words (column headers, descriptive prose,
     etc.) that risk significant false-positive rates without
     sentence-level context. Their case-discipline detection
-    moves to the LLM-driven phase per PROPOSAL.md
-    §"LLM-driven phase" along with the broader case-
+    moves to the LLM-driven phase along with the broader case-
     inconsistency rules.
   - Full-uppercase forms (`MUST`, `SHALL NOT`) are well-formed
     and pass.

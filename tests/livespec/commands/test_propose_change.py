@@ -111,7 +111,7 @@ def test_propose_change_main_writes_proposed_change_file_on_success(
     more `## Proposal: <name>` sections. With --spec-target
     explicit, the target is `<spec-target>/proposed_changes/
     <topic>.md`. The body composes from the findings array via
-    the field-copy mapping in PROPOSAL.md.
+    the field-copy mapping.
     """
     spec_target = tmp_path / "spec-root"
     spec_target.mkdir()

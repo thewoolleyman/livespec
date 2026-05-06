@@ -1,8 +1,8 @@
 """Tests for livespec.parse.front_matter.
 
-The restricted-YAML front-matter parser per PROPOSAL.md
-§"Proposed-change file format" + §"Revision file format". Format
-restrictions (verbatim from the PROPOSAL):
+The restricted-YAML front-matter parser per
+SPECIFICATION/spec.md §"Proposed-change and revision file
+formats". Format restrictions:
 
     Format restrictions: values MUST be JSON-compatible scalars
     (strings, integers, booleans, `null`); no lists, no nested

@@ -11,7 +11,7 @@
 # `uv sync --all-groups`.
 #
 # `typing_extensions` is intentionally NOT listed: it is vendored
-# in `_vendor/typing_extensions/` per PROPOSAL.md v013 M1.
+# in `.claude-plugin/scripts/_vendor/typing_extensions/`.
 
 [tools]
 uv       = "0.5.20"

@@ -265,13 +265,12 @@ def _compose_proposed_change_body(
 ) -> str:
     """Compose the proposed-change file (front-matter + sections) from validated findings.
 
-    Per PROPOSAL.md (field-copy mapping): each
-    finding becomes one `## Proposal: <name>` section with
-    `### Target specification files`, `### Summary`,
-    `### Motivation`, `### Proposed Changes` subsections
-    populated verbatim from the finding's fields. The file is
-    prefixed with YAML front-matter carrying the canonical topic,
-    resolved author, and creation timestamp.
+    Field-copy mapping: each finding becomes one `## Proposal:
+    <name>` section with `### Target specification files`,
+    `### Summary`, `### Motivation`, `### Proposed Changes`
+    subsections populated verbatim from the finding's fields. The
+    file is prefixed with YAML front-matter carrying the canonical
+    topic, resolved author, and creation timestamp.
     """
     sections: list[str] = []
     for finding in findings.findings:

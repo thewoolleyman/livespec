@@ -1,48 +1,19 @@
 # pyproject.toml — livespec dev tooling configuration.
 #
-# Authoritative sources (DO NOT diverge from these without
-# producing a new PROPOSAL.md vNNN snapshot first):
-#
-#   - — uv-managed dev deps per v024 (mise pins only the
-#     non-Python binaries `uv`, `just`, `lefthook`).
-#   - — returns vendoring (BSD-3-Clause). NO
-#     `returns_pyright_plugin` vendored: per v025 D1, pyright
-#     has no plugin system (microsoft/pyright#607) and no such
-#     upstream artifact exists — the v018 Q4 closure of
-#     `returns-pyright-plugin-disposition` was rescinded and
-#     re-closed in v025. See `[tool.pyright]` below: NO
-#     `pluginPaths` entry.
-#   - — pyright
-#     (NOT basedpyright); rationale = the seven strict-plus
-#     diagnostics manually enabled below provide the load-bearing
-#     guardrails against agent-authored-code failure patterns.
-#   - python-skill-script-style-requirements.md §"Linter and
-#     formatter" — ruff 27-category config + pylint thresholds
-#     + TID banned imports.
-#   - python-skill-script-style-requirements.md §"Type safety"
-#     — pyright strict + the seven strict-plus diagnostics.
-#   - python-skill-script-style-requirements.md §"Code coverage"
-#     — 100% line+branch threshold.
-#   - python-skill-script-style-requirements.md §"Import-Linter
-#     contracts (minimum configuration)" — two contracts
-#     (parse-and-validate-are-pure forbidden + layered-architecture
-#     layers); per v017 Q3 the v012 L15a third contract was
-#     retracted (raise-discipline is raise-site-enforced only by
-#     check-no-raise-outside-io).
-#   - python-skill-script-style-requirements.md §"Mutation
-#     testing as release-gate" — mutmut runtime config only;
-#     NO `threshold` key here (the ratchet-with-ceiling
-#     semantics live in `just check-mutation`, which reads
-#     .mutmut-baseline.json and computes the floor; a static
-#     threshold = 80 here would misstate the spec, see
-#     PROPOSAL.md DoD 10).
+# The authoritative source for every rule expressed here is the
+# live specification at `SPECIFICATION/`. In particular:
+#   - `SPECIFICATION/constraints.md` §"End-user runtime dependencies"
+#     and §"Vendored-library discipline" govern the dependency policy
+#     (uv-managed dev deps; vendored runtime libs).
+#   - `SPECIFICATION/constraints.md` §"Typechecker constraints"
+#     and §"Linter and formatter" govern pyright + ruff configuration.
+#   - `SPECIFICATION/constraints.md` §"Code coverage" governs the
+#     100% line+branch threshold.
+#   - `SPECIFICATION/constraints.md` §"Import-Linter contracts"
+#     governs the layered-architecture and pure-layer contracts.
 #
 # NO [build-system] section: livespec is not a published PyPI
 # package; it ships via Claude Code plugin bundling.
-#
-# Phase 6 migrates this rationale into SPECIFICATION/constraints.md;
-# Phase 8 items 8 and 9 become bookkeeping closes pointing at the
-# Phase-1 commit that established this file.
 
 [project]
 name = "livespec"
@@ -298,8 +269,8 @@ markers = [
 ]
 
 # ---------------------------------------------------------------------------
-# Coverage — 100% line + branch (per python-skill-script-style-requirements.md
-# §"Code coverage" and PROPOSAL.md DoD).
+# Coverage — 100% line + branch (per SPECIFICATION/constraints.md
+# §"Code coverage" and SPECIFICATION/spec.md §"Definition of Done").
 # ---------------------------------------------------------------------------
 
 [tool.coverage.run]
@@ -426,12 +397,11 @@ layers = [
 ]
 
 # ---------------------------------------------------------------------------
-# Mutmut — runtime config ONLY. Per python-skill-script-style-requirements.md
-# §"Mutation testing as release-gate": NO threshold key here. The
+# Mutmut — runtime config ONLY. Per SPECIFICATION/spec.md §"Mutation
+# testing as release-gate": NO threshold key here. The
 # ratchet-with-ceiling semantics (floor = baseline_kill_rate, capped at 80%)
 # live entirely in `just check-mutation`, which reads .mutmut-baseline.json
-# and computes the floor at runtime. A static threshold = 80 here would
-# misstate the spec (PROPOSAL.md DoD 10).
+# and computes the floor at runtime.
 # ---------------------------------------------------------------------------
 
 [tool.mutmut]

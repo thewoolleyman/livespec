@@ -164,7 +164,7 @@ def test_critique_main_writes_proposed_change_with_critique_suffix(
      (already canonical), the resulting filename is
      `claude-opus-4-7-critique.md`. The body is the same one-
      proposal-section-per-finding shape as propose_change's
-     output (per PROPOSAL.md, field-copy mapping).
+     output (field-copy mapping).
     """
     spec_target = tmp_path / "spec-root"
     spec_target.mkdir()
