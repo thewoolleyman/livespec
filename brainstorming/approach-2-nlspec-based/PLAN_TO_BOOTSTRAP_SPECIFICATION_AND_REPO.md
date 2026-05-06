@@ -3685,10 +3685,13 @@ against the seeded `SPECIFICATION/`):
 **Exit criterion:** every wrapper in `bin/` has a real
 implementation path; every doctor-static check runs in full;
 `just check` + `/livespec:doctor` pass on the project's own
-`SPECIFICATION/`; every `test: "TODO"` in
-`heading-coverage.json` has been resolved to a real test id;
-`just check-prompts` (template-agnostic harness + per-template
-tests) passes.
+`SPECIFICATION/`; `just check-prompts` (template-agnostic
+harness + per-template tests) passes. (Heading-coverage
+`test: "TODO"` entries with non-empty `reason` are acceptable
+at this phase per PROPOSAL.md §"Registry lifecycle"; the
+load-bearing TODO-drain enforces at v1.0.0 release-tag time
+via `just check-no-todo-registry`, verified by Phase 10's
+v1 Definition-of-Done check.)
 
 ### Phase 8 — Process every deferred-items entry
 

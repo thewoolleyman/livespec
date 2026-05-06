@@ -1902,6 +1902,15 @@ contracts.md §"Sub-spec structural mechanism").
 **Capture for revisit:** if a future PROPOSAL revision touches §"Static-phase checks — out-of-band-edits", reconcile line 2837-2838 to either (a) drop the move step (impl-aligned: "writes directly into v(N+1)/proposed_changes/"), or (b) restore the impl's intermediate step (PROPOSAL-aligned literal). Recommend (a) since the impl simplification is sound.
 
 
+## 2026-05-06T05:30:00Z — phase 7 sub-step 5b → 5c (plan-only drift, Case-B direct fix)
+
+**Decision:** Phase 7 exit-criterion's "every `test: \"TODO\"` in `heading-coverage.json` has been resolved to a real test id" clause was misapplied — it prematurely fires the release-gate check that PROPOSAL.md §"Registry lifecycle" lines 3964-3974 explicitly defers to v1.0.0 release-tag CI (via `just check-no-todo-registry`). Per PROPOSAL: per-commit `just check` ACCEPTS `test: "TODO"` + non-empty `reason` entries; the release-gate is the load-bearing enforcer. The plan body's Phase 7 sub-step list (Plan §3565-3692) doesn't enumerate a "TODO drain" sub-step, so the exit criterion's strict interpretation has no companion sub-step to satisfy it within Phase 7. Plan-only drift per Case B; PROPOSAL.md unaffected (its §"Registry lifecycle" is internally consistent). User confirmed Apply at the 5c → "Report failure as new issue" → Case-B direct-fix gate (turn 2026-05-06).
+
+**Rationale:** Edit Phase 7's exit criterion to drop the premature TODO-drain clause and add an explanatory sentence pointing at PROPOSAL.md §"Registry lifecycle" + Phase 10's v1 DoD check (where the release-gate fires). Aligns the plan with PROPOSAL's existing release-gate-only-for-TODOs policy. Smaller scope than authoring a new (g) sub-step for ~60-80 per-spec-file rule tests in Phase 7. The eventual TODO drain still happens — at v1.0.0 release-tag time, which is the point at which `just check-no-todo-registry` fires per PROPOSAL.
+
+**Capture for revisit:** none. The plan edit is self-contained; no PROPOSAL ride-along needed; the release-gate mechanism stays as already codified.
+
+
 ## 2026-05-06T00:00:00Z — phase 7 sub-step (f).1.B → (f).1.C
 
 **Decision:** Continued sub-step (f) as a fix-forward (commit `c223b1a`) rather than amending the v014-revise commit (`6b84b75`). The `6b84b75` revise commit landed cleanly via `mise exec -- git commit` despite the inner `just check-pre-commit-doc-only` recipe printing `Recipe ... failed with exit code 1` for the `check-heading-coverage` sub-target — lefthook reported parent step `02-check-pre-commit` ✔️ in its summary box. Working hypothesis: the lefthook step uses `command:` syntax against `mise exec -- just check-pre-commit-doc-only` and the wrapping shell didn't propagate the inner recipe's non-zero exit code through the lefthook step's success criterion. NOT investigated in this turn; logged as a side observation per `feedback_one_investigation_one_finding_one_question.md`. Pre-push aggregate keeps the load-bearing safety net (full `just check`) so this gap is bounded to between-commit / on-master visibility.
