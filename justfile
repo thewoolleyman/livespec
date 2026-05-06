@@ -78,9 +78,8 @@ check:
     # (rejoined post-Phase-7 sub-step 2 mini-track item M4 — the
     # private-helper + pure-declaration exemptions are wired in)
     # + `check-lint`/`check-format`/`check-types`
-    # (deferred until config-tier-fix cycles land) +
-    # `check-prompts` / `e2e-test-claude-code-mock` (Phase 5/9
-    # deferrals unchanged).
+    # (deferred until config-tier-fix cycles land).
+    # `check-prompts` and `e2e-test-claude-code-mock` rejoined at Phase 9.
     targets=(
         check-imports-architecture
         check-coverage
@@ -114,6 +113,8 @@ check:
         check-tools
         check-branch-protection-alignment
         check-master-ci-green
+        check-prompts
+        e2e-test-claude-code-mock
     )
     failed=()
     for t in "${targets[@]}"; do

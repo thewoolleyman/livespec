@@ -297,6 +297,9 @@ addopts = [
     # `__init__.py` files needed in the `tests/` tree.
     "--import-mode=importlib",
 ]
+markers = [
+    "mock_only: test runs only in mock tier (LIVESPEC_E2E_HARNESS=mock); skipped in real tier",
+]
 
 # ---------------------------------------------------------------------------
 # Coverage — 100% line + branch (per python-skill-script-style-requirements.md
@@ -338,6 +341,11 @@ omit = [
     "*/.venv/*",
     "*/site-packages/*",
     "*/__pycache__/*",
+    # E2E and prompt-QA test infrastructure is excluded from coverage
+    # per SPECIFICATION/contracts.md §"E2E harness contract" and
+    # §"Prompt-QA harness contract §"Python-rule compliance".
+    "tests/e2e/*",
+    "tests/prompts/*",
 ]
 
 [tool.coverage.report]
