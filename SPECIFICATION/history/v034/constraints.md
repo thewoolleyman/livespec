@@ -586,47 +586,6 @@ def bootstrap() -> None:
 ```
 
 
-## Enforcement suite
-
-The enforcement suite is **invocation-surface-agnostic**. Every check is a `just` target; pre-commit, pre-push, CI, and manual invocation are consumers. Linux is the primary platform; macOS is a supported developer platform. No Windows support.
-
-The canonical target list is maintained in PROPOSAL.md §"Canonical target list" and in the justfile. Key groupings:
-
-- **Per-commit aggregate (`just check`):** runs every check below sequentially, continues on failure, exits non-zero if any failed.
-- **Standard per-commit checks:** `check-lint`, `check-format`, `check-types`, `check-complexity`, `check-imports-architecture`, `check-private-calls`, `check-global-writes`, `check-rop-pipeline-shape`, `check-supervisor-discipline`, `check-no-raise-outside-io`, `check-no-except-outside-io`, `check-public-api-result-typed`, `check-schema-dataclass-pairing`, `check-main-guard`, `check-wrapper-shape`, `check-keyword-only-args`, `check-match-keyword-only`, `check-no-inheritance`, `check-assert-never-exhaustiveness`, `check-newtype-domain-primitives`, `check-all-declared`, `check-no-write-direct`, `check-pbt-coverage-pure-modules`, `check-claude-md-coverage`, `check-heading-coverage`, `check-vendor-manifest`, `check-no-direct-tool-invocation`, `check-tools`, `check-coverage`, `e2e-test-claude-code-mock`, `check-prompts`.
-- **Alternate-cadence targets (NOT in `just check`):** `e2e-test-claude-code-real` (requires `ANTHROPIC_API_KEY`; runs on merge-queue, master push, and `workflow_dispatch`).
-- **Release-gate targets (release-tag CI only; NOT in `just check`):** `check-mutation` (mutmut; ≥80% kill rate on `parse/` + `validate/`); `check-no-todo-registry` (rejects any `test: "TODO"` entry in `tests/heading-coverage.json`).
-- **Mutating targets (opt-in, not in CI):** `just fmt` (`ruff format`), `just lint-fix` (`ruff check --fix`), `just vendor-update <lib>`.
-
-**Invocation surfaces:**
-
-- **Pre-commit and pre-push (local):** `lefthook.yml` runs `just check`.
-- **CI (GitHub Actions):** one job per check via a matrix strategy with `fail-fast: false`, each calling `just <target>`. The `jdx/mise-action@v2` step installs pinned tools.
-- **Manual (developer at the shell):** `just <target>` — same targets hooks and CI use.
-
-
-## CLAUDE.md coverage
-
-Every directory under:
-
-- `.claude-plugin/scripts/` (with the entire `_vendor/` subtree explicitly excluded), AND
-- `<repo-root>/tests/` (with the entire `fixtures/` subtree explicitly excluded at any depth — e.g., `tests/fixtures/` AND `tests/e2e/fixtures/` per v014 N9), AND
-- `<repo-root>/dev-tooling/`
-
-MUST contain a `CLAUDE.md` file describing the local constraints an agent working in that directory must satisfy.
-
-Each `CLAUDE.md`:
-
-- States the directory's purpose in one sentence.
-- Lists directory-local rules (e.g., "this directory is pure; no imports from `io/`").
-- Links to the global style doc for global rules rather than duplicating.
-- Is kept short (typically under 50 lines); it's a local crib sheet, not a full reference.
-
-One optional `tests/fixtures/CLAUDE.md` (and `tests/e2e/fixtures/CLAUDE.md`) is permitted but not required; subdirectories under any `fixtures/` tree are never required to carry `CLAUDE.md`. The `_vendor/` carve-out prevents forcing `CLAUDE.md` inside vendored libs.
-
-Enforced by `just check-claude-md-coverage`.
-
-
 ## Heading taxonomy
 
 Top-level `#` headings in spec files SHOULD reflect intent rather than a fixed taxonomy.

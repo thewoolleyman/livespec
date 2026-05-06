@@ -203,7 +203,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## File LLOC ceiling",
+    "heading": "## Complexity thresholds",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "TODO",
@@ -607,5 +607,103 @@
     "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Phase 7 sub-step (f) imperative addition for the prompt-QA harness contract section introduced by SPECIFICATION/v014 (commit 6b84b75). The matching rule test under tests/test_contracts.py replaces this TODO once the harness implementation cycles land later in Phase 7 sub-step (f)."
+  },
+  {
+    "heading": "## Package layout",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 5 addition: §\"Package layout\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v020 (python-style-package-layout propose-change). Phase 8 remaining cycles replace this TODO with the real test ID via the governed propose-change/revise loop."
+  },
+  {
+    "heading": "## Linter and formatter",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 10 addition: §\"Linter and formatter\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v025."
+  },
+  {
+    "heading": "## Test-Driven Development discipline",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 12 addition: §\"Test-Driven Development discipline\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v027."
+  },
+  {
+    "heading": "## Code coverage",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 13 addition: §\"Code coverage\" migrated via SPECIFICATION/v028."
+  },
+  {
+    "heading": "## Keyword-only arguments",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 14 addition: §\"Keyword-only arguments\" migrated via SPECIFICATION/v029."
+  },
+  {
+    "heading": "## Structural pattern matching",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 15 addition: §\"Structural pattern matching\" migrated via SPECIFICATION/v030."
+  },
+  {
+    "heading": "## Exit code contract",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 18 addition: §\"Exit code contract\" migrated via SPECIFICATION/v033."
+  },
+  {
+    "heading": "## Structured logging",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"Structured logging\" migrated via SPECIFICATION/v034."
+  },
+  {
+    "heading": "## File naming and invocation",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"File naming and invocation\" migrated via SPECIFICATION/v034."
+  },
+  {
+    "heading": "## Enforcement suite",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycles 21+22 combined: §\"Enforcement suite\" migrated via SPECIFICATION/v036."
+  },
+  {
+    "heading": "## CLAUDE.md coverage",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycles 21+22 combined: §\"CLAUDE.md coverage\" migrated via SPECIFICATION/v036."
+  },
+  {
+    "heading": "## Prior Art",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 3A: prior-art.md companion doc SUPERSEDED-by-section; migrated via SPECIFICATION/v038."
+  },
+  {
+    "heading": "## Subdomain routing",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 3B: subdomains-and-unsolved-routing.md companion doc SUPERSEDED-by-section; migrated via SPECIFICATION/v038."
+  },
+  {
+    "heading": "## Lifecycle",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 3C: four lifecycle companion docs SUPERSEDED-by-section; migrated via SPECIFICATION/v039."
   }
 ]

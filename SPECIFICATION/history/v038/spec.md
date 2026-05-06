@@ -185,48 +185,6 @@ Python-implementation non-goals:
 - **Ruby / Node / other language hooks.** No non-Python dev-tooling scripts.
 - **Automated vendored-lib drift detection.** Pinned versions in `.vendor.jsonc` + the no-edit discipline + code review are the controls; no `check-vendor-audit` script exists.
 
-## Lifecycle
-
-The `livespec` process is a **revision loop**, not a one-way waterfall. The loop begins with intent (a seed of desire, observation, or change pressure), produces a living specification, governs implementation, and generates new intent inputs from observations and feedback. The following diagram and terminology summary are archived from the brainstorming phase in `brainstorming/approach-2-nlspec-based/`; this section is the living-spec record.
-
-### Revision loop
-
-```mermaid
-flowchart TD
-    seed_intent[/"Define: Initial seed of intent"/] --> seed_cmd["Command: seed"]
-    seed_cmd --> spec[(SPECIFICATION)]
-
-    spec --> implement["Action: Implement from specification"]
-    implement --> impl[(IMPLEMENTATION)]
-
-    spec --> observe_spec["Observe: specification\n(optionally via Command: critique)"]
-    impl --> observe_impl["Observe: implementation\n(optionally via Command: critique)"]
-    impl --> test_deploy["Action: Test/Deploy implementation"]
-    test_deploy --> observe_behavior["Observe: behavior\n(optionally via Command: critique)"]
-
-    observe_spec --> revise_needed{"Revision needed?"}
-    observe_impl --> revise_needed
-    observe_behavior --> revise_needed
-
-    revise_needed -->|yes| propose_cmd["Command: propose-change"]
-    propose_cmd --> proposed[(proposed_changes)]
-
-    proposed --> revise_cmd["Command: revise"]
-    revise_cmd --> spec
-    revise_cmd --> history[(history)]
-```
-
-### Terminology
-
-**Intent** — inputs feeding into specification revision: seeds, requests, critiques, observations, external requirements, implementation feedback, and other change pressure. The specification is itself the current authoritative and ratified form of intent, but the term `intent` in the diagram refers to incoming change pressure.
-
-**The specification is one logical living specification** represented on disk as multiple files for explicit LLM boundaries, lower nondeterminism, and specialized processing. `spec.md` is the primary source surface. `contracts.md`, `constraints.md`, and `scenarios.md` are specialized operational partitions of the same specification.
-
-**Why `spec.md`** (not `intent.md`, `behavior.md`, or `core.md`): the file is the default authoritative surface for all current spec content not factored into the specialized files. `spec.md` is the clearest machine-facing name for LLM routing, even though `SPECIFICATION/spec.md` is aesthetically redundant to human readers. The redundancy is acceptable because it improves explicit LLM boundaries.
-
-**Why not a single file**: `contracts.md`, `constraints.md`, and `scenarios.md` are separated because they are processed with lower ambiguity and stronger mechanical enforcement. Keeping them separate keeps the per-file LLM processing surface small and unambiguous.
-
-
 ## Prior Art
 
 The following annotated references shaped the livespec design. Each entry is archived in full at `brainstorming/approach-2-nlspec-based/prior-art.md`; this section records the key citation and its design relevance.
