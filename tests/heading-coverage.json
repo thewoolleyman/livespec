@@ -684,5 +684,19 @@
     "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 8 item 2 cycles 21+22 combined: §\"CLAUDE.md coverage\" migrated via SPECIFICATION/v036."
+  },
+  {
+    "heading": "## Prior Art",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 3A: prior-art.md companion doc SUPERSEDED-by-section; migrated via SPECIFICATION/v038."
+  },
+  {
+    "heading": "## Subdomain routing",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 3B: subdomains-and-unsolved-routing.md companion doc SUPERSEDED-by-section; migrated via SPECIFICATION/v038."
   }
 ]
