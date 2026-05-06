@@ -698,5 +698,12 @@
     "spec_file": "spec.md",
     "test": "TODO",
     "reason": "Phase 8 item 3B: subdomains-and-unsolved-routing.md companion doc SUPERSEDED-by-section; migrated via SPECIFICATION/v038."
+  },
+  {
+    "heading": "## Lifecycle",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 3C: four lifecycle companion docs SUPERSEDED-by-section; migrated via SPECIFICATION/v039."
   }
 ]
