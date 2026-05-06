@@ -19,10 +19,10 @@ schema-conformance only.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from _assertions import ASSERTIONS
 from _harness import assert_fixture
 
 __all__: list[str] = []
@@ -36,5 +36,9 @@ _FIXTURE_DIR = Path(__file__).resolve().parent / "propose-change"
     sorted(_FIXTURE_DIR.glob("*.json")),
     ids=lambda p: p.name,
 )
-def test_propose_change_prompt_qa(*, fixture_path: Path) -> None:
-    assert_fixture(fixture_path=fixture_path, assertions=ASSERTIONS)
+def test_propose_change_prompt_qa(
+    *,
+    fixture_path: Path,
+    assertions: dict[str, Callable[..., None]],
+) -> None:
+    assert_fixture(fixture_path=fixture_path, assertions=assertions)

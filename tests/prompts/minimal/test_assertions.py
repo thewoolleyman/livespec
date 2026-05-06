@@ -1,0 +1,83 @@
+"""Unit tests for `tests/prompts/minimal/_assertions.py`.
+
+Mirrors `tests/prompts/livespec/test_assertions.py`'s pattern:
+loads the per-template `_assertions.py` via importlib with a
+unique sys.modules name + unit-tests every branch of each
+registered function (happy-path + AssertionError paths).
+"""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+import pytest
+
+__all__: list[str] = []
+
+
+_ASSERTIONS_PATH = Path(__file__).resolve().parent / "_assertions.py"
+_SPEC = importlib.util.spec_from_file_location(
+    "_minimal_template_assertions_for_unit_tests",
+    _ASSERTIONS_PATH,
+)
+if _SPEC is None or _SPEC.loader is None:  # pragma: no cover
+    raise RuntimeError(f"could not load {_ASSERTIONS_PATH}")
+_MODULE = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MODULE)
+ASSERTIONS = _MODULE.ASSERTIONS
+
+
+def test_sub_specs_always_empty_passes_when_empty() -> None:
+    assertion = ASSERTIONS["sub_specs_always_empty"]
+    assertion(replayed_response={"sub_specs": []}, input_context={})
+
+
+def test_sub_specs_always_empty_rejects_non_empty() -> None:
+    assertion = ASSERTIONS["sub_specs_always_empty"]
+    with pytest.raises(AssertionError, match="MUST be empty"):
+        assertion(
+            replayed_response={"sub_specs": [{"template_name": "x", "files": []}]},
+            input_context={},
+        )
+
+
+def test_single_specification_md_file_passes_when_one_correct_entry() -> None:
+    assertion = ASSERTIONS["single_specification_md_file"]
+    assertion(
+        replayed_response={
+            "files": [{"path": "SPECIFICATION.md", "content": "# x\n"}],
+        },
+        input_context={},
+    )
+
+
+def test_single_specification_md_file_rejects_zero_files() -> None:
+    assertion = ASSERTIONS["single_specification_md_file"]
+    with pytest.raises(AssertionError, match="exactly 1 entry"):
+        assertion(replayed_response={"files": []}, input_context={})
+
+
+def test_single_specification_md_file_rejects_multiple_files() -> None:
+    assertion = ASSERTIONS["single_specification_md_file"]
+    with pytest.raises(AssertionError, match="exactly 1 entry"):
+        assertion(
+            replayed_response={
+                "files": [
+                    {"path": "SPECIFICATION.md", "content": "x"},
+                    {"path": "EXTRA.md", "content": "y"},
+                ],
+            },
+            input_context={},
+        )
+
+
+def test_single_specification_md_file_rejects_wrong_path() -> None:
+    assertion = ASSERTIONS["single_specification_md_file"]
+    with pytest.raises(AssertionError, match="MUST equal 'SPECIFICATION.md'"):
+        assertion(
+            replayed_response={
+                "files": [{"path": "WRONG.md", "content": "x"}],
+            },
+            input_context={},
+        )

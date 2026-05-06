@@ -17,5 +17,8 @@
     "sub_specs": []
   },
   "expected_schema_valid": true,
-  "expected_semantic_properties": []
+  "expected_semantic_properties": [
+    "sub_specs_always_empty",
+    "single_specification_md_file"
+  ]
 }

@@ -10,10 +10,24 @@ coverage here per the per-file 100% line+branch gate.
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import pytest
-from _assertions import ASSERTIONS
 
 __all__: list[str] = []
+
+
+_ASSERTIONS_PATH = Path(__file__).resolve().parent / "_assertions.py"
+_SPEC = importlib.util.spec_from_file_location(
+    "_livespec_template_assertions_for_unit_tests",
+    _ASSERTIONS_PATH,
+)
+if _SPEC is None or _SPEC.loader is None:  # pragma: no cover
+    raise RuntimeError(f"could not load {_ASSERTIONS_PATH}")
+_MODULE = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MODULE)
+ASSERTIONS = _MODULE.ASSERTIONS
 
 
 _VALID_REPLAY = {
