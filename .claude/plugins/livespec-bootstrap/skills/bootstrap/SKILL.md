@@ -110,6 +110,47 @@ confirmation.
    In either case, do NOT present "Proceed with the next sub-step"
    as an option until the drift is resolved.
 
+6. **Session-start sanity checks (mandatory; Guard Layer 2).**
+   After the consistency scan, run these three quick checks and
+   halt-with-finding if any returns red. The goal is to catch
+   prior-session drift on first turn, not after the user asks.
+
+   - **Branch ↔ phase alignment.** Run
+     `git rev-parse --abbrev-ref HEAD`. If `STATUS.md`'s
+     `current_phase` is `N`, the active branch SHOULD match
+     `phase-<N>-*` (or `master` for cleanup-shaped sessions, or
+     a `chore/*` / `docs/*` branch when the session is explicitly
+     not Phase work). Mismatch → halt and surface to the user:
+     *"STATUS says Phase N but we're on `<branch>`; this drift
+     usually means a phase advance happened without merging the
+     prior PR + cutting a fresh phase-(N+1) branch. Resolve before
+     starting work."* Route through the "Report an issue first"
+     gate to give the user the merge-and-cut-fresh / accept-drift
+     options.
+   - **Master CI green.** Run
+     `gh run list --branch master --limit 1 --workflow CI --json conclusion,headSha`.
+     If conclusion is `failure` (or `cancelled` / `timed_out` /
+     `action_required` / `stale` / `startup_failure`), halt and
+     surface: *"Master CI is red on `<sha>`; do not start new
+     work on a broken base. Plan-codified deferrals are not a
+     license to leave master red — fix or remove from CI."* If
+     `gh` is unavailable or unauthenticated, log a warning but
+     proceed (graceful skip; the same posture as the Guard Layer 1
+     mechanical check `check-master-ci-green`).
+   - **Active PR mergeability.** When the active branch has an
+     open PR, run
+     `gh pr view <N> --json mergeStateStatus,statusCheckRollup`.
+     If `mergeStateStatus` is `BLOCKED` and the cause is a
+     missing-but-required check (the v039 / `check-tests` shape),
+     halt and surface to the user. The `check-branch-protection-
+     alignment` Guard Layer 1 check is the durable detector;
+     this session-start check is the early-warning surface.
+
+   These three checks complement the `dev-tooling/checks/`
+   mechanical Layer 1 checks (which fire on commit). Layer 2's
+   value: catch the broken state BEFORE the agent burns a session
+   writing on top of it.
+
 ### 2. Present current state
 
 One short paragraph, complete sentences:
@@ -403,18 +444,56 @@ now?" — options:
   "Report an issue first" branch; if user flags it `blocking`,
   the halt-on-blocking sub-flow takes over).
 
-#### 5d. Advance
+#### 5d. Advance — phase advance is a 4-step transaction (Guard Layer 3)
 
-On advance: update STATUS to `current_phase: N+1`,
-`current_sub_step: 1`, `last_completed_exit_criterion: phase N`.
-Commit STATUS change with a Conventional Commits subject like
-`chore: phase N complete — advance to Phase N+1` (matches the
-Phase 5 → Phase 6 precedent at PR #1's
-`chore: phase 5 complete — D8 branch-protection activated;
-advance to Phase 6` and the Phase 6 → Phase 7 precedent at
-`chore: phase 6 complete — advance to Phase 7`). The
-post-v034 commit-msg replay hook rejects the legacy
-`phase-N: complete` subject. Loop back to step 1.
+Advancement is NOT a single STATUS edit + commit; it is a
+4-step transaction that MUST land atomically. Skipping any
+step produces the cross-phase-PR drift that surfaced in PR #4
+(phase-7-widen-sub-commands accumulated 175 commits because
+the Phase 7 → 8 advance happened without merging the prior PR
+or cutting a fresh branch). Each step is gated.
+
+1. **Verify the active PR for phase N is merged.** Run
+   `gh pr list --base master --search "phase-<N>" --state merged`.
+   If no merged phase-N PR exists, surface to the user and gate:
+   "Phase N has no merged PR. Advancement requires the prior
+   phase's work to land on master first. Merge the active PR
+   (or open one if absent) before advancing."
+
+2. **Verify master CI is green.** Run
+   `gh run list --branch master --limit 1 --workflow CI --json conclusion`.
+   If conclusion is not `success`, halt — same posture as the
+   step-1 session-start sanity check. Master green is a hard
+   precondition for phase advancement; deferral-shaped red is
+   not acceptable here.
+
+3. **Cut a fresh `phase-<N+1>-<scope>` branch from master HEAD.**
+   AskUserQuestion picker for the `<scope>` slug (kebab-case,
+   ≤30 chars, summarizes the upcoming phase's headline work —
+   e.g., `phase-8-deferred-items-drain`,
+   `phase-9-e2e-real-claude-test`). Run `git checkout master`,
+   `git pull --ff-only origin master`, then
+   `git checkout -b phase-<N+1>-<scope>`.
+
+4. **Land the phase-advance STATUS commit on the new branch.**
+   Update STATUS to `current_phase: N+1`, `current_sub_step: 1`,
+   `last_completed_exit_criterion: phase N`. Commit with a
+   Conventional Commits subject like
+   `chore: phase N complete — advance to Phase N+1` (matches
+   the Phase 5 → 6 precedent at PR #1's `chore: phase 5
+   complete — D8 branch-protection activated; advance to Phase
+   6` and the Phase 6 → 7 precedent at `chore: phase 6 complete
+   — advance to Phase 7`). The post-v034 commit-msg replay hook
+   rejects the legacy `phase-N: complete` subject.
+
+After step 4, the new branch is the working surface for Phase
+N+1. Open a fresh PR for it on first push (Layer 2's
+session-start sanity check will flag any branch/phase
+mismatch on the next invocation).
+
+The four steps are an ATOMIC transaction conceptually — partial
+completion (e.g., merge prior PR but skip cutting fresh branch)
+is the failure mode this guard prevents. Loop back to step 1.
 
 ### 6. At Phase 10 exit
 
