@@ -614,5 +614,12 @@
     "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 8 item 2 cycle 5 addition: §\"Package layout\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v020 (python-style-package-layout propose-change). Phase 8 remaining cycles replace this TODO with the real test ID via the governed propose-change/revise loop."
+  },
+  {
+    "heading": "## Linter and formatter",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 10 addition: §\"Linter and formatter\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v025."
   }
 ]
