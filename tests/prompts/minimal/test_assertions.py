@@ -187,3 +187,24 @@ def test_per_proposal_disposition_with_rationale_rejects_empty_rationale() -> No
             },
             input_context={},
         )
+
+
+def test_prioritizes_ambiguity_over_style_passes_when_lexicon_present() -> None:
+    assertion = ASSERTIONS["prioritizes_ambiguity_over_style"]
+    assertion(
+        replayed_response={
+            "findings": [{"name": "x", "motivation": "The CONTRADICTION between A and B."}],
+        },
+        input_context={},
+    )
+
+
+def test_prioritizes_ambiguity_over_style_rejects_motivation_without_lexicon() -> None:
+    assertion = ASSERTIONS["prioritizes_ambiguity_over_style"]
+    with pytest.raises(AssertionError, match="ambiguity/contradiction lexicon"):
+        assertion(
+            replayed_response={
+                "findings": [{"name": "x", "motivation": "Just polish the wording."}],
+            },
+            input_context={},
+        )
