@@ -6,7 +6,5 @@ wrappers import; `_vendor/` carries vendored pure-Python libraries
 (read-only — no local edits).
 
 Per-subdirectory rules live alongside each subdirectory. Global
-rules live in
-`brainstorming/approach-2-nlspec-based/python-skill-script-style-requirements.md`
-during bootstrap and migrate to `SPECIFICATION/` at Phase 6. Do not
+rules live in `SPECIFICATION/constraints.md`. Do not
 duplicate global rules here.

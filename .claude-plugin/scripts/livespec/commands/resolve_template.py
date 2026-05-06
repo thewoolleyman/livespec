@@ -13,11 +13,7 @@ implemented (the pre-seed flow per v017 Q2). The default
 `.livespec.jsonc`-walking flow is deferred to Phase 7 — no
 consumer in Phase 6's seed self-application; the seed/SKILL.md
 prose uses --template livespec pre-seed. With --template
-required at this phase, the seed unblocks for Phase 6. The
-deviation from PROPOSAL (which marks --template
-OPTIONAL) is captured in `bootstrap/decisions.md` under the
-2026-05-03 Phase 6 resolve_template in-band gap-fix entry;
-in-Phase-7-redress when the default flow lands.
+required at this phase, the seed unblocks for Phase 6.
 
 `build_parser()` is the pure argparse factory per style doc
 §"CLI argument parsing seam"; `main()` is the supervisor that
@@ -60,8 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     `--project-root <path>` (default `Path.cwd()`) and
     `--template <value>`. PROPOSAL marks --template OPTIONAL; this
     Phase-3-minimum makes it required (the default
-    `.livespec.jsonc` walking flow is Phase 7 work; deviation
-    captured in `bootstrap/decisions.md` 2026-05-03).
+    `.livespec.jsonc` walking flow is Phase 7 work).
 
     `exit_on_error=False` lets argparse signal errors via
     `argparse.ArgumentError` rather than `SystemExit`, per style
