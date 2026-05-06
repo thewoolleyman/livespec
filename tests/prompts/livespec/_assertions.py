@@ -22,6 +22,7 @@ commit as their matching assertion functions.
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 __all__: list[str] = ["ASSERTIONS"]
@@ -141,9 +142,70 @@ def _bcp14_in_proposed_changes(
             )
 
 
+_DECISION_VALUES = ("accept", "modify", "reject")
+
+
+def _walks_every_pending_proposal(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """`replayed_response.decisions[]` covers every `input_context.pending_proposals[]` topic.
+
+    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
+    semantic-property catalogue → prompts/revise.md", skipping a
+    pending proposal is a silent-data-loss bug. The set of topic
+    stems extracted from `pending_proposals` MUST be a subset of
+    the set of `decisions[].proposal_topic` values.
+    """
+    ctx = cast(dict[str, Any], input_context)
+    payload = cast(dict[str, Any], replayed_response)
+    pending = ctx.get("pending_proposals", [])
+    expected_topics = {Path(p).stem for p in pending}
+    decisions = payload.get("decisions", [])
+    actual_topics = {d.get("proposal_topic", "") for d in decisions}
+    missing = expected_topics - actual_topics
+    if missing:
+        raise AssertionError(
+            f"replayed_response.decisions[] missing topics for "
+            f"pending proposals: {sorted(missing)!r}",
+        )
+
+
+def _per_proposal_disposition_with_rationale(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every decision has `decision` in {accept, modify, reject} + non-empty `rationale`.
+
+    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
+    semantic-property catalogue → prompts/revise.md". Schema
+    validation enforces field presence + the enum; this assertion
+    strengthens the rationale check (whitespace-only rationales
+    fail).
+    """
+    del input_context
+    payload = cast(dict[str, Any], replayed_response)
+    for decision in payload.get("decisions", []):
+        topic = decision.get("proposal_topic", "<unknown>")
+        if decision.get("decision") not in _DECISION_VALUES:
+            raise AssertionError(
+                f"decision for topic {topic!r} has unexpected "
+                f"decision value {decision.get('decision')!r}",
+            )
+        rationale: str = decision.get("rationale", "")
+        if not rationale.strip():
+            raise AssertionError(
+                f"decision for topic {topic!r} has empty / " f"whitespace-only rationale",
+            )
+
+
 ASSERTIONS: dict[str, Callable[..., None]] = {
     "headings_derived_from_intent": _headings_derived_from_intent,
     "asks_v020_q2_question": _asks_v020_q2_question,
     "target_files_within_spec_target": _target_files_within_spec_target,
     "bcp14_in_proposed_changes": _bcp14_in_proposed_changes,
+    "walks_every_pending_proposal": _walks_every_pending_proposal,
+    "per_proposal_disposition_with_rationale": _per_proposal_disposition_with_rationale,
 }
