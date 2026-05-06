@@ -18,6 +18,7 @@ resolves the main spec root as <project_root>/SPECIFICATION/ by default.
 from __future__ import annotations
 
 import json
+import re
 import subprocess  # documented integration-test usage
 import sys
 import tempfile
@@ -32,9 +33,29 @@ __all__ = [
     "revise",
     "seed",
 ]
+# _command_from_prompt_file and _HARNESS_COMMAND_PATTERN are private helpers (not in __all__).
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BIN_DIR = _REPO_ROOT / ".claude-plugin" / "scripts" / "bin"
+_MINIMAL_PROMPTS_DIR = (
+    _REPO_ROOT / ".claude-plugin" / "specification-templates" / "minimal" / "prompts"
+)
+_HARNESS_COMMAND_PATTERN = re.compile(r"<!--\s*livespec-harness-command:\s*([a-z-]+)\s*-->")
+
+
+def _command_from_prompt_file(*, prompt_file: Path) -> str:
+    """Extract the livespec-harness-command from a minimal template prompt file.
+
+    Per SPECIFICATION/contracts.md §"E2E harness contract" and DoD 3:
+    each minimal template prompt carries a `<!-- livespec-harness-command: <cmd> -->`
+    directive that identifies the wrapper invocation for the mock harness.
+    """
+    text = prompt_file.read_text(encoding="utf-8")
+    match = _HARNESS_COMMAND_PATTERN.search(text)
+    if match is None:
+        raise ValueError(f"no livespec-harness-command found in {prompt_file}")
+    return match.group(1)
+
 
 _SEED_CONTENT_TEMPLATE = """\
 # `{intent}`
@@ -54,7 +75,12 @@ A change MUST flow through the propose-change/revise loop before landing.
 
 
 def seed(*, project_root: Path, intent: str) -> subprocess.CompletedProcess[str]:
-    """Invoke bin/seed.py with a deterministic minimal-template payload."""
+    """Invoke bin/seed.py with a deterministic minimal-template payload.
+
+    Reads the seed prompt file and verifies its harness-command directive
+    per SPECIFICATION/contracts.md §"E2E harness contract" DoD 3 requirement.
+    """
+    assert _command_from_prompt_file(prompt_file=_MINIMAL_PROMPTS_DIR / "seed.md") == "seed"
     payload: dict[str, object] = {
         "template": "minimal",
         "intent": intent,
@@ -81,6 +107,10 @@ def propose_change(
     topic: str,
 ) -> subprocess.CompletedProcess[str]:
     """Invoke bin/propose_change.py with a deterministic findings payload."""
+    assert (
+        _command_from_prompt_file(prompt_file=_MINIMAL_PROMPTS_DIR / "propose-change.md")
+        == "propose-change"
+    )
     payload: dict[str, object] = {
         "findings": [
             {
@@ -148,6 +178,7 @@ def critique(
     intent: str,
 ) -> subprocess.CompletedProcess[str]:
     """Invoke bin/critique.py with a deterministic findings payload."""
+    assert _command_from_prompt_file(prompt_file=_MINIMAL_PROMPTS_DIR / "critique.md") == "critique"
     payload: dict[str, object] = {
         "findings": [
             {
@@ -177,10 +208,12 @@ def critique(
 def revise(*, project_root: Path) -> subprocess.CompletedProcess[str]:
     """Invoke bin/revise.py, accepting all pending proposals.
 
-    Discovers pending proposals under SPECIFICATION/proposed_changes/,
+    Reads the revise prompt file and verifies its harness-command directive
+    per DoD 3. Discovers pending proposals under SPECIFICATION/proposed_changes/,
     generates an accept decision for each with empty resulting_files
     (accept without spec-file modification), and invokes the wrapper.
     """
+    assert _command_from_prompt_file(prompt_file=_MINIMAL_PROMPTS_DIR / "revise.md") == "revise"
     spec_target = project_root / "SPECIFICATION"
     proposed_changes_dir = spec_target / "proposed_changes"
     topics = sorted(

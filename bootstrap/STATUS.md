@@ -1,8 +1,8 @@
 # Bootstrap status
 
-**Current phase:** 9
-**Current sub-step:** Phase 9 sub-step 1 — COMPLETE. Exit criterion satisfied: `just e2e-test-claude-code-mock` exits 0 (4 tests: happy path, retry-on-exit-4, doctor-fail-then-fix, prune-history-noop). Awaiting PR merge + master CI green to advance to Phase 10.
-**Last completed exit criterion:** phase 9 sub-step 1 — `just e2e-test-claude-code-mock` exits 0 locally + in `just check` (34 targets). Phase 9 PR pending merge to master before Phase 10 can begin.
-**Next action:** Push phase-9-e2e-integration branch, open PR for Phase 9, wait for CI green + merge, then cut phase-10 branch and advance.
-**Last updated:** 2026-05-06T13:30:00Z
-**Last commit:** e8c06d4 (chore: phase 9 — E2E mock harness implementation + e2e-test-claude-code-mock)
+**Current phase:** 10
+**Current sub-step:** Phase 10 sub-step 1 — Walk the "Definition of Done (v1)" section in SPECIFICATION/spec.md item-by-item (DoD 1–15), produce a checklist revision in SPECIFICATION/history/vNNN/ confirming each item. Any gaps become propose-change inputs and are revised. When every DoD item is marked done, tag the commit v1.0.0.
+**Last completed exit criterion:** phase 9 — `just e2e-test-claude-code-mock` exits 0 in just check (34 targets); PR #9 merged; master CI green at 6a4203e
+**Next action:** Read SPECIFICATION/spec.md §"Definition of Done (v1)" section; walk each item; file propose-changes for any gaps; verify all DoD items are satisfied; tag v1.0.0.
+**Last updated:** 2026-05-06T14:10:00Z
+**Last commit:** 6a4203e (phase-9 squash merge to master)

@@ -30,16 +30,112 @@ from livespec.io import fs, proc
 from livespec.parse import jsonc
 
 __all__: list[str] = [
+    "_build_pruned_history_marker",
     "_emit_no_op_finding",
     "_emit_pre_step_skipped_finding",
     "_emit_pruned_finding",
+    "_find_max_version",
     "_invoke_pre_step_doctor",
+    "_oldest_below_has_pruned_marker",
     "_resolve_skip",
+    "_v_dirs_below_threshold",
 ]
 
 
 _BIN_DIR = Path(__file__).resolve().parents[2] / "bin"
 _DOCTOR_STATIC_WRAPPER = _BIN_DIR / "doctor_static.py"
+
+
+def _find_max_version(*, children: list[Path]) -> int:
+    """Compute the highest `vNNN` integer suffix among directory children.
+
+    Walks `children` looking for `vNNN` directories; tracks the
+    maximum N found; returns 0 when no `vNNN` children are present.
+    Non-directory entries and non-`v\\d+` names are skipped.
+    """
+    max_version = 0
+    for child in children:
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not name.startswith("v"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        max_version = max(max_version, int(suffix))
+    return max_version
+
+
+def _oldest_below_has_pruned_marker(*, children: list[Path], max_version: int) -> bool:
+    """Whether the smallest-K v-directory (K < max_version) holds a PRUNED_HISTORY.json.
+
+    Per v012 spec.md no-op short-circuit (ii): when the oldest
+    surviving v-directory below the current max already carries a
+    `PRUNED_HISTORY.json` marker, no full versions remain to prune
+    below the prior marker. `children` is pre-sorted by
+    `fs.list_dir`, so the FIRST eligible v-directory encountered
+    IS the smallest-K; we return its marker presence directly.
+    Returns False when no eligible v-directory exists below
+    `max_version`.
+    """
+    for child in children:
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not name.startswith("v"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        version = int(suffix)
+        if version >= max_version:
+            continue
+        return (child / "PRUNED_HISTORY.json").is_file()
+    return False
+
+
+def _v_dirs_below_threshold(*, children: list[Path], max_version: int) -> list[Path]:
+    """Return the list of `vK/` paths in `children` where K < max_version - 1.
+
+    Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle"
+    prune-history paragraph step (c): the wrapper deletes every
+    `<spec-root>/history/vK/` where K < N-1. With N=4, that
+    means K ∈ {1, 2} (v003 = v(N-1) is preserved at this cycle;
+    its replacement-with-marker happens at 6.c.7). Pure helper
+    so unit tests cover each filter branch without filesystem
+    I/O. Mirrors `_find_max_version` and `_resolve_first`'s
+    defensive guards (non-directory entries, non-`v`-prefixed
+    names, `v<non-digits>` suffixes are all skipped).
+    """
+    threshold = max_version - 1
+    paths: list[Path] = []
+    for child in children:
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not name.startswith("v"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        version = int(suffix)
+        if version >= threshold:
+            continue
+        paths.append(child)
+    return paths
+
+
+def _build_pruned_history_marker(*, first: int, last: int) -> str:
+    """Build the canonical `PRUNED_HISTORY.json` body per v012 spec.md step (d).
+
+    The marker is exactly `{"pruned_range": [first, N-1]}` — no
+    timestamps, git SHAs, or identity fields (no-metadata
+    invariant; git commit metadata already provides that audit
+    context). Pure helper so unit tests cover the JSON shape
+    without filesystem I/O.
+    """
+    return json.dumps({"pruned_range": [first, last]})
 
 
 def _emit_pruned_finding(*, first: int, last: int) -> None:

@@ -86,7 +86,7 @@ line-length = 100
 # Vendored third-party libraries are exempt from livespec's own style
 # rules per python-skill-script-style-requirements.md line 294-296.
 # `__pycache__/` mirrors `[tool.pyright].exclude`.
-extend-exclude = ["**/_vendor/**", "**/__pycache__/**"]
+extend-exclude = ["**/_vendor/**", "**/__pycache__/**", "mutants/**"]
 
 [tool.ruff.lint]
 # 27 categories total. v011 baseline (11) + v012 additions (16).
@@ -346,6 +346,12 @@ omit = [
     # §"Prompt-QA harness contract §"Python-rule compliance".
     "tests/e2e/*",
     "tests/prompts/*",
+    # pytest tmp_path fixture directories — test helpers written into
+    # /tmp/pytest-*/... are test scaffolding, not first-party code.
+    "/tmp/*",
+    # mutmut working directory — instrumented copies of source files;
+    # measured during mutation testing but not first-party code.
+    "mutants/*",
 ]
 
 [tool.coverage.report]
@@ -355,7 +361,15 @@ skip_covered = false
 exclude_also = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+    "raise ImportError",
     "@overload",
+    # Main guard — never executed via pytest; covered by the
+    # shebang-wrapper meta-test pattern where applicable.
+    "if __name__ == .__main__.:",
+    # Vendored-path guard — `if str(X) not in sys.path: sys.path.insert(...)`.
+    # Already in sys.path when tests run via pyproject.toml `pythonpath`
+    # config; the sys.path.insert branch is structurally dead in tests.
+    "sys.path.insert",
     # `case _:` arms are structurally unreachable by spec mandate:
     # python-skill-script-style-requirements.md lines 1054-1066
     # require every `match` statement to terminate with
@@ -429,5 +443,5 @@ paths_to_mutate = [
     ".claude-plugin/scripts/livespec/parse",
     ".claude-plugin/scripts/livespec/validate",
 ]
-runner = "python -m pytest -x -q"
+runner = "uv run pytest -x -q"
 tests_dir = "tests"

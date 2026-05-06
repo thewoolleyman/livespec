@@ -92,6 +92,11 @@ from pathlib import Path
 from returns.io import IOResult, IOSuccess
 
 from livespec.context import DoctorContext
+from livespec.doctor.static._out_of_band_edits_pure import (
+    _is_empty_dir,
+    _make_finding,
+    _parse_version_number,
+)
 from livespec.doctor.static._out_of_band_edits_writes import (
     route_drift_outcome,
 )
@@ -111,51 +116,12 @@ _HISTORY_SUBDIR_NAME: str = "history"
 _VERSION_DIR_PADDING: int = 3
 
 
-def _make_finding(
-    *,
-    ctx: DoctorContext,
-    status: str,
-    message: str,
-) -> Finding:
-    """Construct a Finding shaped for this check.
-
-    Centralizes the per-check Finding-construction so every
-    status branch (skipped, pass, fail) shares the same
-    check_id + spec_root field formula and only varies on
-    status + message.
-    """
-    return Finding(
-        check_id=SLUG,
-        status=status,
-        message=message,
-        path=None,
-        line=None,
-        spec_root=str(ctx.spec_root),
-    )
-
-
 def _has_oob_proposed_change_file(*, spec_root: Path) -> bool:
     """Return True iff condition A is satisfied (existing OOB proposed-change file)."""
     proposed_changes = spec_root / "proposed_changes"
     if not proposed_changes.is_dir():
         return False
     return any(proposed_changes.glob(_OOB_PROPOSED_CHANGE_GLOB))
-
-
-def _parse_version_number(*, version_path: Path) -> int | None:
-    """Parse the integer suffix from a `vNNN` directory name; None on non-match."""
-    name = version_path.name
-    if not name.startswith(_VERSION_DIR_PREFIX):
-        return None
-    suffix = name[len(_VERSION_DIR_PREFIX) :]
-    if not suffix.isdigit():
-        return None
-    return int(suffix)
-
-
-def _is_empty_dir(*, dir_path: Path) -> bool:
-    """Return True iff `dir_path` is a directory with zero entries."""
-    return not any(dir_path.iterdir())
 
 
 def _has_leading_empty_version_dir(*, spec_root: Path) -> bool:
