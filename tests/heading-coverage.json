@@ -621,5 +621,12 @@
     "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 8 item 2 cycle 10 addition: §\"Linter and formatter\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v025."
+  },
+  {
+    "heading": "## Test-Driven Development discipline",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 12 addition: §\"Test-Driven Development discipline\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v027."
   }
 ]
