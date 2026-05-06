@@ -1,16 +1,12 @@
-"""Outside-in test for `dev-tooling/checks/check_coverage_incremental.py` — v039 D3.
+"""Outside-in test for `dev-tooling/checks/check_coverage_incremental.py`.
 
-Per v039 D3 (codified at `fa7f3bd`):
-`brainstorming/approach-2-nlspec-based/history/v039/proposed_changes/aggregate-perf-and-iteration-loop.md`,
-the path-scoped fast-feedback variant of `check-coverage` is
+The path-scoped fast-feedback variant of `check-coverage` is
 authored as `dev-tooling/checks/check_coverage_incremental.py`
 + a `check-coverage-incremental:` recipe in the justfile.
-Invocation contract per the v039 D5 spike outcome
-(`tmp/bootstrap/v039-d5-spike.md`): take `--paths <impl_path>
-[<impl_path>...]`, resolve each impl's mirror-paired test per
-v033 D1, run pytest with full `--cov` (no path filter — the
-spike found that path-scoped `--cov=<dir>` filters break
-under subprocess instrumentation), then apply the per-file
+Invocation contract: take `--paths <impl_path> [<impl_path>...]`,
+resolve each impl's mirror-paired test, run pytest with full
+`--cov` (no path filter — path-scoped `--cov=<dir>` filters
+break under subprocess instrumentation), then apply the per-file
 100% line+branch gate via `coverage report
 --include=<impl_paths> --fail-under=100`.
 
@@ -160,13 +156,13 @@ def test_resolve_mirror_test_raises_on_unknown_impl_tree() -> None:
     The mapping table covers exactly three impl trees:
     `.claude-plugin/scripts/livespec/`,
     `.claude-plugin/scripts/bin/`, `dev-tooling/checks/`. A
-    path under any other tree (e.g., `tests/`, `bootstrap/`,
+    path under any other tree (e.g., `tests/`, `sandbox/`,
     a top-level script) is unmappable and must surface a clear
     error rather than silently producing a bogus test path.
     """
     module = _load_check_module()
-    impl_path = Path("bootstrap") / "scratch" / "foo.py"
-    with pytest.raises(ValueError, match=r"bootstrap/scratch/foo\.py|bootstrap.scratch.foo\.py"):
+    impl_path = Path("sandbox") / "scratch" / "foo.py"
+    with pytest.raises(ValueError, match=r"sandbox/scratch/foo\.py|sandbox.scratch.foo\.py"):
         _ = module._resolve_mirror_test_path(impl_path=impl_path)  # noqa: SLF001
 
 
@@ -193,7 +189,7 @@ def test_resolve_test_paths_returns_empty_list_for_empty_impl_paths() -> None:
 def test_main_fails_on_unknown_impl_tree(*, tmp_path: Path) -> None:
     """`--paths` under no recognized impl tree → exit non-zero, ValueError logged.
 
-    The path `bootstrap/scratch/foo.py` is under no v033 D1
+    The path `sandbox/scratch/foo.py` is under no
     mirror-paired source tree (livespec/, bin/, dev-tooling/checks/),
     so `_resolve_mirror_test_path` raises ValueError. The
     script's `main` catches that, logs the diagnostic with
@@ -203,7 +199,7 @@ def test_main_fails_on_unknown_impl_tree(*, tmp_path: Path) -> None:
     """
     _ = tmp_path
     result = subprocess.run(
-        [sys.executable, str(_CHECK_PATH), "--paths", "bootstrap/scratch/foo.py"],
+        [sys.executable, str(_CHECK_PATH), "--paths", "sandbox/scratch/foo.py"],
         cwd=str(_REPO_ROOT),
         capture_output=True,
         text=True,

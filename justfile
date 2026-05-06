@@ -382,9 +382,10 @@ check-comment-line-anchors:
 # and applies the per-file 100% line+branch coverage gate to the
 # named impls only. Resolves each impl's mirror-paired test per
 # v033 D1, runs pytest --cov on the combined test set with full
-# instrumentation (the v039 D5 spike found path-scoped --cov=<dir>
-# breaks under subprocess instrumentation; tmp/bootstrap/v039-d5-spike.md),
-# then applies `coverage report --include=<impl_paths> --fail-under=100`.
+# instrumentation (path-scoped --cov=<dir> breaks under subprocess
+# instrumentation, so the recipe runs unfiltered --cov and applies
+# the per-file scoping at REPORT time), then applies
+# `coverage report --include=<impl_paths> --fail-under=100`.
 # NOT in `just check` aggregate — interactive developer tool, not
 # per-commit gate. Wall-clock target: under 10 seconds for a typical
 # single-file pair. Used during the v039 D4 Red→Green authoring
@@ -406,12 +407,9 @@ check-no-lloc-soft-warnings:
 # via `git interpret-trailers --in-place`. NOT in `just check`
 # aggregate (per-commit, not per-tree).
 #
-# Note on lefthook stage: PROPOSAL.md line 3517 calls this "the
-# pre-commit hook" but the design is fundamentally `commit-msg`
+# Note on lefthook stage: the design is fundamentally `commit-msg`
 # (writes to the commit-message file; distinguishes Red/Green via
-# HEAD~0 inspection). PROPOSAL terminology fix rides along with the
-# next substantive revision; see bootstrap/decisions.md
-# 2026-05-02T06:00:00Z.
+# HEAD~0 inspection), not pre-commit.
 check-red-green-replay msg_path:
     uv run python3 dev-tooling/checks/red_green_replay.py {{msg_path}}
 

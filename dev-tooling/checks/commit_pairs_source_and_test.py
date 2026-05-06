@@ -16,8 +16,7 @@ the commit lands. The script reads `git diff --cached
 --name-only` to enumerate staged files, applies the source-tree
 filter, and verifies a `tests/**` co-staging.
 
-**v034 D2-D3 amend-pattern coexistence (recorded
-`bootstrap/decisions.md` 2026-05-02 cycle 2.7).** When HEAD's
+**v034 D2-D3 amend-pattern coexistence.** When HEAD's
 commit message carries `TDD-Red-Test-File-Checksum:` trailers
 WITHOUT paired `TDD-Green-Verified-At:` trailers, the next
 operation is structurally guaranteed by the v034 contract to

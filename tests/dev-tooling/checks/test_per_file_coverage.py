@@ -1,8 +1,6 @@
-"""Outside-in test for `dev-tooling/checks/per_file_coverage.py` — v033 D2 per-file 100% gate.
+"""Outside-in test for `dev-tooling/checks/per_file_coverage.py` — per-file 100% gate.
 
-Per the v033 D2 revision file at `brainstorming/approach-2-nlspec-
-based/history/v033/proposed_changes/critique-fix-v032-revision.md`,
-every covered `.py` file MUST hit 100% line and 100% branch
+Every covered `.py` file MUST hit 100% line and 100% branch
 coverage independently — not just total. This script supersedes
 the totalize-only `[tool.coverage.report].fail_under = 100`
 threshold by reading the `.coverage` data file (post-combine, as

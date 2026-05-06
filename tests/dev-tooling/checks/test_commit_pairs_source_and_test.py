@@ -1,8 +1,6 @@
-"""Outside-in test for `dev-tooling/checks/commit_pairs_source_and_test.py` — v033 D3 commit-pair gate.
+"""Outside-in test for `dev-tooling/checks/commit_pairs_source_and_test.py` — commit-pair gate.
 
-Per the v033 D3 revision file at `brainstorming/approach-2-nlspec-
-based/history/v033/proposed_changes/critique-fix-v032-revision.md`,
-every commit modifying any `.claude-plugin/scripts/livespec/**`,
+Every commit modifying any `.claude-plugin/scripts/livespec/**`,
 `.claude-plugin/scripts/bin/**`, or `<repo-root>/dev-tooling/
 checks/**` source file MUST also modify a `tests/**` file in the
 same commit. Lefthook pre-commit gate, NOT in `just check`

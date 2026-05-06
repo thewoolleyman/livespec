@@ -1,12 +1,9 @@
-"""Outside-in test for `dev-tooling/checks/red_green_replay.py` — v034 D2-D3 replay-based TDD enforcement.
+"""Outside-in test for `dev-tooling/checks/red_green_replay.py` — replay-based TDD enforcement.
 
-Per `brainstorming/approach-2-nlspec-based/PROPOSAL.md`
-§"Testing approach — Activation §v034 D2-D3 Red→Green replay
-contract" and Plan §"Per-commit Red→Green replay discipline
-(v034 D2-D3)", this hook gates `feat:`/`fix:` commits via the
-amend pattern (Red-mode initial commit; Green-mode amend) and
-exempts other Conventional Commit types (chore, docs, build,
-ci, style, test, refactor, perf, revert).
+This hook gates `feat:`/`fix:` commits via the amend pattern
+(Red-mode initial commit; Green-mode amend) and exempts other
+Conventional Commit types (chore, docs, build, ci, style, test,
+refactor, perf, revert).
 
 Cycle 173 pins the first behavior: a `chore:` commit subject
 is exempt from TDD enforcement; the hook reads the commit
@@ -980,19 +977,13 @@ def test_conventional_commit_breaking_and_scope_variants_exit_zero(
 def test_classify_staged_recognizes_production_claude_plugin_scripts_paths() -> None:
     """`_classify_staged` buckets `.claude-plugin/scripts/{livespec,bin}/...` paths as impl.
 
-    Cycle 2.8 fix (2026-05-02): the original `_IMPL_PREFIXES`
-    enumeration listed bare `livespec/` and `bin/` prefixes,
-    which don't match the actual repo layout
-    (`.claude-plugin/scripts/livespec/...` and
-    `.claude-plugin/scripts/bin/...`). Drain cycle 3a's Green
-    amend got rejected because impl_paths came back empty —
-    `.claude-plugin/scripts/livespec/validate/finding.py`
-    didn't match `livespec/`. The fix added the production
-    prefixes alongside the legacy ones (the legacy prefixes
-    are kept for paired-test fixture compatibility — the test
-    fixtures synthesize paths like `livespec/foo.py` in tmp
-    repos rather than full production paths). This test pins
-    the new prefix matches.
+    The `_IMPL_PREFIXES` enumeration recognizes both production
+    paths (`.claude-plugin/scripts/livespec/...` and
+    `.claude-plugin/scripts/bin/...`) and bare `livespec/`/`bin/`
+    legacy prefixes (kept for paired-test fixture compatibility —
+    the test fixtures synthesize paths like `livespec/foo.py` in
+    tmp repos rather than full production paths). This test pins
+    both forms of impl-tree match.
     """
     import importlib.util
 
@@ -1009,7 +1000,7 @@ def test_classify_staged_recognizes_production_claude_plugin_scripts_paths() -> 
         ".claude-plugin/scripts/bin/seed.py",
         "dev-tooling/checks/foo.py",
         "tests/livespec/test_foo.py",
-        "bootstrap/STATUS.md",
+        "docs/STATUS.md",
     ]
     tests_paths, impl_paths = module._classify_staged(paths=paths)  # noqa: SLF001
     assert ".claude-plugin/scripts/livespec/validate/finding.py" in impl_paths, (
@@ -1026,11 +1017,13 @@ def test_classify_staged_recognizes_production_claude_plugin_scripts_paths() -> 
     assert "tests/livespec/test_foo.py" in tests_paths, (
         f"`tests/...` path should be in tests bucket; " f"got tests_paths={tests_paths}"
     )
-    assert "bootstrap/STATUS.md" not in impl_paths, (
-        f"`bootstrap/...` path should NOT be in impl bucket; " f"got impl_paths={impl_paths}"
+    assert "docs/STATUS.md" not in impl_paths, (
+        f"path under no recognized prefix should NOT be in impl bucket; "
+        f"got impl_paths={impl_paths}"
     )
-    assert "bootstrap/STATUS.md" not in tests_paths, (
-        f"`bootstrap/...` path should NOT be in tests bucket; " f"got tests_paths={tests_paths}"
+    assert "docs/STATUS.md" not in tests_paths, (
+        f"path under no recognized prefix should NOT be in tests bucket; "
+        f"got tests_paths={tests_paths}"
     )
 
 

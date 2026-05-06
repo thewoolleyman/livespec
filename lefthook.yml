@@ -27,10 +27,7 @@
 # commit-msg stage: the v034 D3 replay hook runs here, NOT at
 # pre-commit. The hook needs the commit-message file path (passed
 # as argv[1] via lefthook's {1} template) so it can write Red /
-# Green trailers via `git interpret-trailers --in-place`. PROPOSAL.md
-# line 3517 says "pre-commit hook" loosely; the actual design is
-# commit-msg. See bootstrap/decisions.md 2026-05-02T06:00:00Z for
-# the architectural-choice provenance.
+# Green trailers via `git interpret-trailers --in-place`.
 
 pre-commit:
   commands:

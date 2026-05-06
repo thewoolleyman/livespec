@@ -1,10 +1,6 @@
-"""per_file_coverage — every covered file at 100% line+branch coverage (v033 D2).
+"""per_file_coverage — every covered file at 100% line+branch coverage.
 
-Per `python-skill-script-style-requirements.md` §"Canonical
-target list" (the `check-coverage` row, rewritten at v033) and
-the v033 D2 revision file at `brainstorming/approach-2-nlspec-
-based/history/v033/proposed_changes/critique-fix-v032-revision.md`,
-the authoritative coverage gate is **per-file** at 100% line
+The authoritative coverage gate is **per-file** at 100% line
 AND 100% branch — not just total. The existing
 `[tool.coverage.report].fail_under = 100` setting in
 pyproject.toml is preserved as a belt-and-braces total guard,
