@@ -161,6 +161,13 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
+    "heading": "## End-user runtime dependencies",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md §\"Runtime dependencies → End-user install\" into constraints.md. Real test pending release-gate test wiring."
+  },
+  {
     "heading": "## Vendored-library discipline",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
