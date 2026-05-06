@@ -149,3 +149,79 @@ def test_bcp14_in_proposed_changes_rejects_prose_without_keyword() -> None:
             },
             input_context={},
         )
+
+
+def test_walks_every_pending_proposal_passes_when_all_topics_covered() -> None:
+    assertion = ASSERTIONS["walks_every_pending_proposal"]
+    assertion(
+        replayed_response={
+            "decisions": [
+                {"proposal_topic": "foo", "decision": "accept", "rationale": "ok"},
+                {"proposal_topic": "bar", "decision": "reject", "rationale": "no"},
+            ],
+        },
+        input_context={
+            "pending_proposals": [
+                "SPECIFICATION/proposed_changes/foo.md",
+                "SPECIFICATION/proposed_changes/bar.md",
+            ],
+        },
+    )
+
+
+def test_walks_every_pending_proposal_rejects_missing_topic() -> None:
+    assertion = ASSERTIONS["walks_every_pending_proposal"]
+    with pytest.raises(AssertionError, match="missing topics"):
+        assertion(
+            replayed_response={
+                "decisions": [
+                    {"proposal_topic": "foo", "decision": "accept", "rationale": "ok"},
+                ],
+            },
+            input_context={
+                "pending_proposals": [
+                    "SPECIFICATION/proposed_changes/foo.md",
+                    "SPECIFICATION/proposed_changes/bar.md",
+                ],
+            },
+        )
+
+
+def test_per_proposal_disposition_with_rationale_passes_when_all_valid() -> None:
+    assertion = ASSERTIONS["per_proposal_disposition_with_rationale"]
+    assertion(
+        replayed_response={
+            "decisions": [
+                {"proposal_topic": "x", "decision": "accept", "rationale": "ok"},
+                {"proposal_topic": "y", "decision": "modify", "rationale": "tweak"},
+                {"proposal_topic": "z", "decision": "reject", "rationale": "out of scope"},
+            ],
+        },
+        input_context={},
+    )
+
+
+def test_per_proposal_disposition_with_rationale_rejects_unknown_decision() -> None:
+    assertion = ASSERTIONS["per_proposal_disposition_with_rationale"]
+    with pytest.raises(AssertionError, match="unexpected decision value"):
+        assertion(
+            replayed_response={
+                "decisions": [
+                    {"proposal_topic": "x", "decision": "skip", "rationale": "ok"},
+                ],
+            },
+            input_context={},
+        )
+
+
+def test_per_proposal_disposition_with_rationale_rejects_empty_rationale() -> None:
+    assertion = ASSERTIONS["per_proposal_disposition_with_rationale"]
+    with pytest.raises(AssertionError, match="empty / whitespace-only rationale"):
+        assertion(
+            replayed_response={
+                "decisions": [
+                    {"proposal_topic": "x", "decision": "accept", "rationale": "   "},
+                ],
+            },
+            input_context={},
+        )
