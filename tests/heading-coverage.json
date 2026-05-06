@@ -635,5 +635,12 @@
     "spec_file": "constraints.md",
     "test": "TODO",
     "reason": "Phase 8 item 2 cycle 13 addition: §\"Code coverage\" migrated via SPECIFICATION/v028."
+  },
+  {
+    "heading": "## Keyword-only arguments",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 14 addition: §\"Keyword-only arguments\" migrated via SPECIFICATION/v029."
   }
 ]
