@@ -183,10 +183,7 @@ def test_resolve_template_missing_template_flag_returns_2() -> None:
     default `.livespec.jsonc`-walking flow is Phase 7 work).
     PROPOSAL §"Template resolution contract" lists
     --template as OPTIONAL; this Phase-3-minimum deviates by
-    making it required, captured in
-    `bootstrap/decisions.md` under the Phase 6 resolve_template
-    in-band gap-fix entry. The deviation is in-Phase-7-redress
-    when the default flow lands.
+    making it required (the default flow is Phase 7 work).
     """
     exit_code = resolve_template.main(argv=[])
     assert exit_code == 2
@@ -205,9 +202,7 @@ def test_resolve_template_default_project_root_is_cwd(
     `monkeypatch.chdir(tmp_path)` isolates the test from the
     runner's invocation cwd so the fallback resolves
     deterministically to a writable scratch root rather than the
-    repo cwd (preventing tmp-artifact leakage into the repo
-    tree per the cycle-122 lesson recorded in
-    `bootstrap/decisions.md`).
+    repo cwd (preventing tmp-artifact leakage into the repo tree).
     """
     template_dir = tmp_path / "tmpl"
     template_dir.mkdir()

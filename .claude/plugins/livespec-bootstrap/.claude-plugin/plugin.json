@@ -1,5 +1,0 @@
-{
-  "name": "livespec-bootstrap",
-  "version": "0.0.1",
-  "description": "Throwaway scaffolding skill that walks the executor agent (and the user) through the livespec bootstrap plan one sub-step at a time. Removed or archived at Phase 10 exit alongside the rest of bootstrap/."
-}
