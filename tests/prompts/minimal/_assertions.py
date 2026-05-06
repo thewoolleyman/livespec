@@ -76,7 +76,57 @@ def _single_specification_md_file(
         )
 
 
+_BCP14_KEYWORDS = ("MUST NOT", "SHOULD NOT", "MAY NOT", "MUST", "SHOULD", "MAY")
+
+
+def _target_is_single_specification_md(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every finding's target_spec_files equals exactly ["SPECIFICATION.md"].
+
+    Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
+    semantic-property catalogue → prompts/propose-change.md", the
+    minimal template's single-file output means every finding
+    targets exactly the single SPECIFICATION.md path.
+    """
+    del input_context
+    payload = cast(dict[str, Any], replayed_response)
+    for finding in payload.get("findings", []):
+        targets = finding.get("target_spec_files", [])
+        if targets != ["SPECIFICATION.md"]:
+            raise AssertionError(
+                f"finding {finding.get('name')!r} target_spec_files "
+                f"MUST equal ['SPECIFICATION.md'], got {targets!r}",
+            )
+
+
+def _bcp14_in_proposed_changes(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every finding's proposed_changes prose contains a BCP14 keyword.
+
+    Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
+    semantic-property catalogue → prompts/propose-change.md".
+    """
+    del input_context
+    payload = cast(dict[str, Any], replayed_response)
+    for finding in payload.get("findings", []):
+        prose: str = finding.get("proposed_changes", "")
+        if not any(keyword in prose for keyword in _BCP14_KEYWORDS):
+            raise AssertionError(
+                f"finding {finding.get('name')!r} proposed_changes "
+                f"prose lacks any BCP14 keyword "
+                f"({_BCP14_KEYWORDS!r})",
+            )
+
+
 ASSERTIONS: dict[str, Callable[..., None]] = {
     "sub_specs_always_empty": _sub_specs_always_empty,
     "single_specification_md_file": _single_specification_md_file,
+    "target_is_single_specification_md": _target_is_single_specification_md,
+    "bcp14_in_proposed_changes": _bcp14_in_proposed_changes,
 }
