@@ -88,7 +88,62 @@ def _asks_v020_q2_question(
         )
 
 
+_BCP14_KEYWORDS = ("MUST NOT", "SHOULD NOT", "MAY NOT", "MUST", "SHOULD", "MAY")
+
+
+def _target_files_within_spec_target(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every finding's `target_spec_files[]` paths are under `input_context.spec_target`.
+
+    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
+    semantic-property catalogue → prompts/propose-change.md", findings
+    referencing paths outside the spec target are malformed.
+    """
+    ctx = cast(dict[str, Any], input_context)
+    payload = cast(dict[str, Any], replayed_response)
+    spec_target: str = ctx.get("spec_target", "")
+    findings = payload.get("findings", [])
+    for finding in findings:
+        for target in finding.get("target_spec_files", []):
+            if not target.startswith(spec_target):
+                raise AssertionError(
+                    f"finding {finding.get('name')!r} target "
+                    f"{target!r} is outside input_context.spec_target "
+                    f"({spec_target!r})",
+                )
+
+
+def _bcp14_in_proposed_changes(
+    *,
+    replayed_response: object,
+    input_context: object,
+) -> None:
+    """Every finding's `proposed_changes` prose contains a BCP14 keyword.
+
+    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
+    semantic-property catalogue → prompts/propose-change.md", proposed-
+    change prose SHOULD apply normative language so the resulting
+    file flows into the spec under the same discipline.
+    """
+    del input_context
+    payload = cast(dict[str, Any], replayed_response)
+    findings = payload.get("findings", [])
+    for finding in findings:
+        prose: str = finding.get("proposed_changes", "")
+        if not any(keyword in prose for keyword in _BCP14_KEYWORDS):
+            raise AssertionError(
+                f"finding {finding.get('name')!r} proposed_changes "
+                f"prose lacks any BCP14 keyword "
+                f"({_BCP14_KEYWORDS!r})",
+            )
+
+
 ASSERTIONS: dict[str, Callable[..., None]] = {
     "headings_derived_from_intent": _headings_derived_from_intent,
     "asks_v020_q2_question": _asks_v020_q2_question,
+    "target_files_within_spec_target": _target_files_within_spec_target,
+    "bcp14_in_proposed_changes": _bcp14_in_proposed_changes,
 }

@@ -18,5 +18,8 @@
     ]
   },
   "expected_schema_valid": true,
-  "expected_semantic_properties": []
+  "expected_semantic_properties": [
+    "target_files_within_spec_target",
+    "bcp14_in_proposed_changes"
+  ]
 }
