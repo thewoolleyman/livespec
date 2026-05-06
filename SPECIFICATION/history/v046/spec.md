@@ -6,6 +6,7 @@ This document MUST be read alongside `contracts.md`, `constraints.md`, and `scen
 
 `livespec` provides governance and lifecycle management for a living `SPECIFICATION` directory. It MUST NOT be conflated with a spec authoring format, an implementation engine, or a workflow runner. The central invariant: a project's `SPECIFICATION` is the maintained source of truth for intended system behavior, and all changes to that `SPECIFICATION` flow through a documented, versioned propose → revise → acknowledge → validate cycle.
 
+The seeded `SPECIFICATION/` tree at this revision (v001) derives from the brainstorming archive at `brainstorming/approach-2-nlspec-based/PROPOSAL.md` (frozen at v036) and `brainstorming/approach-2-nlspec-based/goals-and-non-goals.md`. Companion docs in that archive (the Python style requirements, the NLSpec discipline doc, lifecycle and terminology docs, prior-art survey) MUST migrate via dedicated Phase 8 propose-change cycles per Plan §"Phase 8 — Process every deferred-items entry" rather than land en masse in this seed.
 
 ## Runtime and packaging
 
@@ -170,7 +171,7 @@ The full DoD widens via Phase 7 dogfooded propose-change cycles when individual 
 
 ## Non-goals
 
-`livespec` v1 explicitly does NOT solve subdomain ownership inside a `SPECIFICATION`, semantic routing of cross-cutting changes, or any universal decomposition strategy. It does NOT replace implementation engines. It does NOT define the full template mechanism beyond the v1 contract.
+`livespec` v1 explicitly does NOT solve subdomain ownership inside a `SPECIFICATION`, semantic routing of cross-cutting changes, or any universal decomposition strategy. It does NOT replace implementation engines. It does NOT define the full template mechanism beyond the v1 contract. See the seeded `goals-and-non-goals` material (this revision's seed input) and the deferred-items archive at `brainstorming/approach-2-nlspec-based/deferred-items.md` for the long-form non-goal rationale.
 
 Python-implementation non-goals:
 
@@ -186,7 +187,7 @@ Python-implementation non-goals:
 
 ## Lifecycle
 
-The `livespec` process is a **revision loop**, not a one-way waterfall. The loop begins with intent (a seed of desire, observation, or change pressure), produces a living specification, governs implementation, and generates new intent inputs from observations and feedback.
+The `livespec` process is a **revision loop**, not a one-way waterfall. The loop begins with intent (a seed of desire, observation, or change pressure), produces a living specification, governs implementation, and generates new intent inputs from observations and feedback. The following diagram and terminology summary are archived from the brainstorming phase in `brainstorming/approach-2-nlspec-based/`; this section is the living-spec record.
 
 ### Revision loop
 
@@ -228,7 +229,7 @@ flowchart TD
 
 ## Prior Art
 
-The following annotated references shaped the livespec design.
+The following annotated references shaped the livespec design. Each entry is archived in full at `brainstorming/approach-2-nlspec-based/prior-art.md`; this section records the key citation and its design relevance.
 
 **NLSpec:** TG-Techie's NLSpec Spec (GitHub) — the main direct prior art for separation between intent, specification, and implementation. The term `livespec` adapts its core framing while rejecting the one-way `Intent → NLSpec → Implementation` waterfall in favor of a revision loop.
 
@@ -250,6 +251,8 @@ The following annotated references shaped the livespec design.
 Cross-cutting changes — those spanning multiple subdomains in a larger `SPECIFICATION` — require ownership decisions: which part of the `SPECIFICATION` owns which statement? This routing problem is not solved in `livespec` v1. No deterministic mechanism assigns cross-cutting requirements to specific spec files; the assignment is author judgment at propose-change time.
 
 Contemporary public precedents (OpenSpec, Kiro) show analogous gaps: OpenSpec centers on a rigid path-based merge model once the target spec path is already known, but does not solve semantic routing of cross-cutting changes; Kiro's model is per-feature rather than cross-cutting. `livespec` v1 does not attempt to solve the general case.
+
+The brainstorming analysis in `brainstorming/approach-2-nlspec-based/subdomains-and-unsolved-routing.md` is preserved for context; its conclusion is that this is a genuine open problem in spec-governance tooling, not a limitation unique to `livespec`.
 
 
 ## Self-application

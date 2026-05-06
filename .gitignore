@@ -1,6 +1,8 @@
 ### Project ignores
 tmp/
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.codex
 
 ### Python toolchain artifacts (per Phase 1 sub-step 12)
 # Note: .mypy_cache/ is intentionally NOT listed. Mypy

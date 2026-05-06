@@ -17,23 +17,14 @@ in place; the 1 shim is hand-authored at Phase 2. Until Phase
 yet exist.
 
 The library list and license metadata below are authoritative
-per PROPOSAL.md §"Runtime dependencies — Vendored pure-Python
-libraries" (five entries per v025; 4 upstream-sourced + 1 shim
-per v027; the v018 Q4 sixth entry `returns_pyright_plugin` was
-dropped in v025 D1 — pyright has no plugin system and no
-upstream artifact existed, see
-`brainstorming/approach-2-nlspec-based/history/v025/proposed_changes/critique-fix-v024-revision.md`;
-`jsoncomment` was reclassified from upstream-sourced lib to
-hand-authored shim in v026 D1 because its canonical upstream
-(`bitbucket.org/Dando_Real_ITA/json-comment`) was sunset and no
-live git mirror exists, see
-`brainstorming/approach-2-nlspec-based/history/v026/proposed_changes/critique-fix-v025-revision.md`;
-`typing_extensions` was reclassified from hand-authored shim to
-upstream-sourced lib in v027 D1 because vendored libs'
-transitive use of variadic generics required full upstream
-typing_extensions backports that a minimal shim cannot
-synthesize on Python 3.10, see
-`brainstorming/approach-2-nlspec-based/history/v027/proposed_changes/critique-fix-v026-revision.md`).
+(five entries: 4 upstream-sourced + 1 shim). Notable historical
+choices: `pyright` has no plugin system, so no `returns_pyright_plugin`
+ships; `jsoncomment` is a hand-authored shim because its canonical
+upstream (`bitbucket.org/Dando_Real_ITA/json-comment`) was sunset
+and no live git mirror exists; `typing_extensions` is vendored
+upstream verbatim because vendored libs' transitive use of variadic
+generics requires full upstream backports that a minimal shim
+cannot synthesize on Python 3.10.
 
 ---
 

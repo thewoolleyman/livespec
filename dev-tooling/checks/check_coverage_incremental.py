@@ -1,20 +1,16 @@
-"""check_coverage_incremental — v039 D3 path-scoped per-file 100% gate.
+"""check_coverage_incremental — path-scoped per-file 100% gate.
 
-Per v039 D3 (codified at `fa7f3bd`):
-`brainstorming/approach-2-nlspec-based/history/v039/proposed_changes/aggregate-perf-and-iteration-loop.md`,
-this is a path-scoped fast-feedback variant of `check-coverage`
-for the v039 D4 Red→Green authoring loop. Invocation contract
-per the v039 D5 spike outcome (`tmp/bootstrap/v039-d5-spike.md`):
+A path-scoped fast-feedback variant of `check-coverage` for the
+Red→Green authoring loop. Invocation contract:
 
     just check-coverage-incremental --paths <impl_path> [<impl_path>...]
 
 For each `<impl_path>` (repo-root-relative): resolve its
-mirror-paired test path per v033 D1, then run pytest on the
-combined test set with full `--cov` (no path filter — the v039
-D5 spike found that path-scoped `--cov=<dir>` filters break
-under subprocess instrumentation because coverage's `source=`
-resolves the relative path against the subprocess's cwd at
-measurement time). Apply the per-file 100% line+branch gate via
+mirror-paired test path, then run pytest on the combined test
+set with full `--cov` (no path filter — path-scoped `--cov=<dir>`
+filters break under subprocess instrumentation because coverage's
+`source=` resolves the relative path against the subprocess's cwd
+at measurement time). Apply the per-file 100% line+branch gate via
 `coverage report --include=<impl_paths> --fail-under=100`.
 
 Both subprocess invocations always run; the script returns the

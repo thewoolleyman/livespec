@@ -652,3 +652,5 @@ Spec-file prose MUST use BCP 14 (RFC 2119 + RFC 8174) requirement language: `MUS
 ## Self-application bootstrap exception
 
 The Phase 0–6 imperative window per PROPOSAL.md §"Self-application" v018 Q2 / v019 Q1 closes at the Phase 6 seed commit (this revision). From Phase 7 onward, every mutation to this `SPECIFICATION/` MUST flow through `/livespec:propose-change` → `/livespec:revise` against the appropriate spec target. Hand-edits to spec files outside the propose-change/revise loop are forbidden and would be caught by `dev-tooling/checks` plus the doctor static phase.
+
+The bootstrap scaffolding under `bootstrap/` is removed at Phase 11 per the plan; once removed, this constraint operates without the bootstrap-window carve-out.
