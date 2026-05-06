@@ -1,0 +1,3 @@
+# `SPECIFICATION/`
+
+This directory holds the canonical natural-language specification for `livespec` itself. The four spec files (`spec.md`, `contracts.md`, `constraints.md`, `scenarios.md`) MUST be read together; each scopes a different concern. `proposed_changes/` holds in-flight change requests; `history/` holds versioned snapshots produced by `/livespec:revise`. `templates/livespec/` and `templates/minimal/` hold sub-spec trees governing the two v1 built-in templates' prompts, starter content, and template-internal contracts. All mutations to this tree from this revision (v001) onward MUST flow through `/livespec:propose-change` → `/livespec:revise` against the appropriate `--spec-target`.
