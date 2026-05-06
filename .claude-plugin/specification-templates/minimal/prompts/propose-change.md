@@ -1,5 +1,7 @@
 # `propose-change` prompt — `minimal` template
 
+<!-- livespec-harness-command: propose-change -->
+
 > **Status: Phase-7-final per `SPECIFICATION/templates/minimal/contracts.md`
 > §"Per-prompt semantic-property catalogue → prompts/propose-change.md".**
 > Future regenerations land via dogfooded propose-change/revise

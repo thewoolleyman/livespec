@@ -1,5 +1,7 @@
 # `critique` prompt — `minimal` template
 
+<!-- livespec-harness-command: critique -->
+
 > **Status: Phase-7-final per `SPECIFICATION/templates/minimal/contracts.md`
 > §"Per-prompt semantic-property catalogue → prompts/critique.md".**
 

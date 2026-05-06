@@ -1,5 +1,7 @@
 # `seed` prompt — `minimal` template
 
+<!-- livespec-harness-command: seed -->
+
 > **Status: Phase-7-final per `SPECIFICATION/templates/minimal/contracts.md`
 > §"Per-prompt semantic-property catalogue → prompts/seed.md".**
 > Future regenerations land via dogfooded propose-change/revise

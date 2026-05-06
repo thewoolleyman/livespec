@@ -1,5 +1,7 @@
 # `revise` prompt — `minimal` template
 
+<!-- livespec-harness-command: revise -->
+
 > **Status: Phase-7-final per `SPECIFICATION/templates/minimal/contracts.md`
 > §"Per-prompt semantic-property catalogue → prompts/revise.md".**
 
