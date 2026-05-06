@@ -128,3 +128,62 @@ def test_bcp14_in_proposed_changes_rejects_no_keyword() -> None:
             },
             input_context={},
         )
+
+
+def test_walks_every_pending_proposal_passes_when_topics_match() -> None:
+    assertion = ASSERTIONS["walks_every_pending_proposal"]
+    assertion(
+        replayed_response={
+            "decisions": [
+                {"proposal_topic": "foo", "decision": "accept", "rationale": "ok"},
+            ],
+        },
+        input_context={"pending_proposals": ["proposed_changes/foo.md"]},
+    )
+
+
+def test_walks_every_pending_proposal_rejects_missing_topic() -> None:
+    assertion = ASSERTIONS["walks_every_pending_proposal"]
+    with pytest.raises(AssertionError, match="missing topics"):
+        assertion(
+            replayed_response={"decisions": []},
+            input_context={"pending_proposals": ["proposed_changes/foo.md"]},
+        )
+
+
+def test_per_proposal_disposition_with_rationale_passes_when_valid() -> None:
+    assertion = ASSERTIONS["per_proposal_disposition_with_rationale"]
+    assertion(
+        replayed_response={
+            "decisions": [
+                {"proposal_topic": "x", "decision": "accept", "rationale": "ok"},
+            ],
+        },
+        input_context={},
+    )
+
+
+def test_per_proposal_disposition_with_rationale_rejects_unknown_decision() -> None:
+    assertion = ASSERTIONS["per_proposal_disposition_with_rationale"]
+    with pytest.raises(AssertionError, match="unexpected decision value"):
+        assertion(
+            replayed_response={
+                "decisions": [
+                    {"proposal_topic": "x", "decision": "skip", "rationale": "ok"},
+                ],
+            },
+            input_context={},
+        )
+
+
+def test_per_proposal_disposition_with_rationale_rejects_empty_rationale() -> None:
+    assertion = ASSERTIONS["per_proposal_disposition_with_rationale"]
+    with pytest.raises(AssertionError, match="empty / whitespace-only rationale"):
+        assertion(
+            replayed_response={
+                "decisions": [
+                    {"proposal_topic": "x", "decision": "accept", "rationale": "  "},
+                ],
+            },
+            input_context={},
+        )
