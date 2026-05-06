@@ -147,6 +147,13 @@
     "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md §\"Scope\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
+    "heading": "## Non-interactive execution",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md §\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
+  },
+  {
     "heading": "## Python runtime constraint",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
