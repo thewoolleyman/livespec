@@ -220,7 +220,7 @@ check-pre-commit:
         echo ":: doc-only mode detected (zero .py files staged): running just check-pre-commit-doc-only"
         echo ":: pre-push + CI keep the full aggregate as the load-bearing safety net"
         just check-pre-commit-doc-only
-        exit 0
+        exit $?
     fi
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
         echo ":: v037 D1 Red-mode shape detected: $test_staged"
