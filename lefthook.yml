@@ -54,4 +54,4 @@ commit-msg:
 pre-push:
   commands:
     check:
-      run: just check
+      run: just check-pre-push

@@ -229,11 +229,9 @@ check-pre-commit:
     fi
     just check
 
-# Per SPECIFICATION/contracts.md §"Pre-commit step ordering"
-# (post-v007): when zero `.py` files are staged, `check-pre-commit`
-# delegates to this CONSERVATIVE doc-only subset instead of running
-# the full 30-target aggregate. Pre-push + CI never invoke this —
-# the full aggregate is the load-bearing safety net.
+# When zero `.py` files are staged, `check-pre-commit` delegates to this
+# conservative doc-only subset. Pre-push delegates here via `check-pre-push`
+# when the push contains zero `.py` changes.
 check-pre-commit-doc-only:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -258,9 +256,25 @@ check-pre-commit-doc-only:
     fi
     printf '\nAll %d doc-only targets passed.\n' "${#targets[@]}"
 
+# Skip the Python-code check subset when the pushed commits contain zero
+# `.py` changes; those checks are deterministic functions of the source
+# tree and would pass-or-fail identically against the merge-base. Falls
+# back to `origin/master` when no upstream branch is configured locally.
+check-pre-push:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null || echo "origin/master")
+    changeset=$(git diff --name-only "${upstream}..HEAD")
+    py_changed=$(echo "$changeset" | grep -E '\.py$' || true)
+    if [[ -z "$py_changed" ]]; then
+        echo ":: doc-only push detected (zero .py changes vs ${upstream}): running check-pre-commit-doc-only"
+        just check-pre-commit-doc-only
+        exit $?
+    fi
+    just check
+
 # ---------------------------------------------------------------
-# AST / grep / hand-written checks. Each delegates to a script
-# under dev-tooling/checks/ authored in Phase 4.
+# AST / grep / hand-written checks.
 # ---------------------------------------------------------------
 
 check-private-calls:
