@@ -31,6 +31,14 @@
 
 pre-commit:
   commands:
+    0-no-commit-on-master:
+      run: |
+        branch=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$branch" = "master" ]; then
+          printf 'ERROR: direct commits to master are forbidden; create a feature branch first\n' >&2
+          printf 'Hint: git checkout -b <branch-name>\n' >&2
+          exit 1
+        fi
     00-lint-autofix-staged:
       run: just lint-autofix-staged
     01-commit-pairs-source-and-test:
