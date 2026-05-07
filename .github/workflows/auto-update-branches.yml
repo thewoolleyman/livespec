@@ -1,0 +1,53 @@
+# Fires on every master push (i.e., every merged PR) and updates every
+# non-draft open PR whose mergeStateStatus is BEHIND. Replaces the manual
+# `gh api PUT /pulls/{N}/update-branch` step that branch protection's
+# `required_status_checks.strict = true` would otherwise force on each PR
+# after master moves.
+#
+# Why not GitHub Merge Queue: only available on org repos (and Team/
+# Enterprise plans). This repo is a personal-account public repo, where
+# merge queue is not surfaced in the UI or accepted by the rulesets API.
+
+name: Auto-update behind PRs
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-update-branches
+  cancel-in-progress: false
+
+jobs:
+  update-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update PRs behind master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          prs=$(gh pr list \
+            --repo "$REPO" \
+            --base master \
+            --state open \
+            --json number,isDraft,mergeStateStatus \
+            --jq '.[] | select(.isDraft == false and .mergeStateStatus == "BEHIND") | .number')
+          if [ -z "$prs" ]; then
+            echo "No PRs behind master."
+            exit 0
+          fi
+          for pr in $prs; do
+            echo "::group::PR #$pr"
+            if gh api -X PUT "repos/$REPO/pulls/$pr/update-branch"; then
+              echo "  updated"
+            else
+              echo "  update failed (likely conflicts); skipping"
+            fi
+            echo "::endgroup::"
+          done
