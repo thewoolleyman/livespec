@@ -158,6 +158,42 @@ def test_aligned_lists_pass(*, tmp_path: Path) -> None:
     assert "required check has no matching" not in result.stderr
 
 
+def test_blank_and_comment_lines_in_matrix_are_skipped(*, tmp_path: Path) -> None:
+    """Blank lines and `# comment` lines within the matrix target bullets are skipped.
+
+    Exercises the in-bullet-list `continue` branch in
+    `_parse_ci_matrix` so an author may insert blank lines or
+    comments to group jobs without breaking the parser.
+    """
+    workflows = tmp_path / ".github" / "workflows"
+    workflows.mkdir(parents=True)
+    ci_yml = (
+        "name: CI\n"
+        "on: push\n"
+        "jobs:\n"
+        "  check:\n"
+        "    strategy:\n"
+        "      matrix:\n"
+        "        target:\n"
+        "          # a comment line\n"
+        "          - check-foo\n"
+        "\n"
+        "          - check-bar\n"
+        "    runs-on: ubuntu-latest\n"
+    )
+    _ = (workflows / "ci.yml").write_text(ci_yml, encoding="utf-8")
+    fake_path = _install_fake_gh(
+        tmp_path=tmp_path,
+        stdout='["check-foo", "check-bar"]',
+    )
+    result = _run_check(cwd=tmp_path, env_path=fake_path)
+    assert result.returncode == 0, (
+        f"expected exit 0 with blank/comment lines in matrix; "
+        f"got {result.returncode}, stderr={result.stderr!r}"
+    )
+    assert "required check has no matching" not in result.stderr
+
+
 def test_extra_ci_job_warns(*, tmp_path: Path) -> None:
     """ci.yml has a job not in required list → exit 0 with warning."""
     _setup_repo_with_ci_yml(tmp_path=tmp_path, matrix_targets=["check-foo", "check-extra"])
