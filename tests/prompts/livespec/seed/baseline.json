@@ -24,12 +24,16 @@
         "content": "# CLI greeting tool — constraints\n\n## Runtime\n\nThe tool MUST run on Python 3.10 or newer.\n"
       },
       {
+        "path": "SPECIFICATION/non-functional-requirements.md",
+        "content": "# CLI greeting tool — non-functional requirements\n\n## Boundary\n\nThis file declares dev-environment and contributor-workflow invariants that are NOT visible at the user-facing CLI surface. Constraints whose violation an end user could observe stay in `constraints.md`.\n\n## Tooling\n\nThe project MUST use pytest for tests and ruff for linting.\n"
+      },
+      {
         "path": "SPECIFICATION/scenarios.md",
         "content": "# CLI greeting tool — scenarios\n\n## Happy-path greeting\n\n```gherkin\nScenario: User passes a name\n  Given the user invokes the tool with `--name Ada`\n  Then the tool prints `Hello, Ada!`\n  And exits 0\n```\n"
       },
       {
         "path": "SPECIFICATION/README.md",
-        "content": "# CLI greeting tool — specification overview\n\nThis directory holds the spec for a small CLI tool that prints greetings. See `spec.md` for the project intent, `contracts.md` for the wire-level CLI surface, `constraints.md` for runtime constraints, and `scenarios.md` for end-to-end Gherkin scenarios.\n"
+        "content": "# CLI greeting tool — specification overview\n\nThis directory holds the spec for a small CLI tool that prints greetings. See `spec.md` for the project intent, `contracts.md` for the wire-level CLI surface, `constraints.md` for runtime constraints, `non-functional-requirements.md` for dev-environment invariants, and `scenarios.md` for end-to-end Gherkin scenarios.\n"
       }
     ],
     "sub_specs": []

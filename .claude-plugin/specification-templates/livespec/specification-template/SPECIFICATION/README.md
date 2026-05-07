@@ -2,14 +2,18 @@
 
 This `SPECIFICATION/` directory holds the living specification
 for the project, governed by `livespec`'s propose-change/revise
-loop. The `livespec` template ships five spec files plus the
+loop. The `livespec` template ships six spec files plus the
 `proposed_changes/` and `history/` machinery:
 
 - `spec.md` — primary source surface (project intent, top-level
   architecture).
 - `contracts.md` — wire-level / CLI-level interfaces.
-- `constraints.md` — architecture-level constraints (runtime,
-  language, dependencies, etc.).
+- `constraints.md` — architecture-level constraints whose
+  violation an end user could observe (runtime, language,
+  dependencies, etc.).
+- `non-functional-requirements.md` — dev-environment,
+  repository-tooling, build/test, and contributor-workflow
+  invariants that are NOT visible at the user-facing surface.
 - `scenarios.md` — Gherkin acceptance scenarios.
 - `README.md` (this file) — overview + entry-point.
 

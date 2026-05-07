@@ -16,7 +16,7 @@
     },
     "files": {
       "type": "array",
-      "description": "Sub-spec spec-file content. Each entry's path is conventionally SPECIFICATION/templates/<template_name>/<spec-file>; uniformly multi-file (README.md, spec.md, contracts.md, constraints.md, scenarios.md) per v020 Q1.",
+      "description": "Sub-spec spec-file content. Each entry's path is conventionally SPECIFICATION/templates/<template_name>/<spec-file>; uniformly multi-file per v020 Q1, with the file set determined by the named template's declared spec-file surface (e.g., the livespec template ships README.md, spec.md, contracts.md, constraints.md, non-functional-requirements.md, and scenarios.md).",
       "items": {
         "type": "object",
         "additionalProperties": false,

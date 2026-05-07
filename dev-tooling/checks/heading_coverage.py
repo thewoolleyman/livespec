@@ -51,7 +51,13 @@ __all__: list[str] = []
 _MAIN_SPEC_ROOT = Path("SPECIFICATION")
 _SUB_SPEC_PARENT = Path("SPECIFICATION") / "templates"
 _COVERAGE_PATH = Path("tests") / "heading-coverage.json"
-_TREE_ROOT_NLSPEC_FILES = ("spec.md", "contracts.md", "constraints.md", "scenarios.md")
+_TREE_ROOT_NLSPEC_FILES = (
+    "spec.md",
+    "contracts.md",
+    "constraints.md",
+    "non-functional-requirements.md",
+    "scenarios.md",
+)
 _SCENARIO_PREFIX = "Scenario:"
 
 

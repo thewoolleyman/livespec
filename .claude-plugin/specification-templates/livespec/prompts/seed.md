@@ -63,7 +63,8 @@ LLM-driven subjective phase tightens the semantic fit later.
   - `files[]` — the full sub-spec file set under
     `SPECIFICATION/templates/<template_name>/` — uniformly
     multi-file: `spec.md`, `contracts.md`, `constraints.md`,
-    `scenarios.md`, `README.md`.
+    `non-functional-requirements.md`, `scenarios.md`,
+    `README.md`.
 
 Both branches handle the user's `<intent>` rigorously: every
 spec-file's content reflects the intent; sub-spec content
@@ -85,9 +86,22 @@ section names where appropriate (e.g., `## Intent`, `## Cadence`,
   `# H1` is `<title> — contracts` or similar. Sections
   enumerate the project's contractual surfaces (CLI flags,
   exit codes, JSON shapes).
-- **`constraints.md`** — architecture-level constraints. The
-  `# H1` is `<title> — constraints`. Sections cover runtime,
-  language, dependencies, etc.
+- **`constraints.md`** — architecture-level constraints whose
+  violation an end user could observe. The `# H1` is
+  `<title> — constraints`. Sections cover runtime, language,
+  dependencies, exit codes, etc.
+- **`non-functional-requirements.md`** — dev-environment,
+  repository-tooling, build/test, and contributor-workflow
+  invariants that are NOT visible at the user-facing surface.
+  The `# H1` is `<title> — non-functional requirements`. The
+  file MUST open with a `## Boundary` section (or equivalent
+  preamble) clarifying which content belongs here versus in
+  `spec.md`, `contracts.md`, `constraints.md`, and
+  `scenarios.md`. Subsequent sections cover Test-Driven
+  Development discipline, linter/formatter rules, code-coverage
+  targets, hook configuration, repo-local task tracking, and
+  any other contributor-facing invariants derived from the
+  user's intent.
 - **`scenarios.md`** — Gherkin scenarios. The `# H1` is
   `<title> — scenarios`. Sections are `## Scenario: ...` blocks
   with proper blank-line-delimited Gherkin steps (no fenced
@@ -108,6 +122,7 @@ Emit JSON conforming to
     {"path": "SPECIFICATION/spec.md", "content": "..."},
     {"path": "SPECIFICATION/contracts.md", "content": "..."},
     {"path": "SPECIFICATION/constraints.md", "content": "..."},
+    {"path": "SPECIFICATION/non-functional-requirements.md", "content": "..."},
     {"path": "SPECIFICATION/scenarios.md", "content": "..."},
     {"path": "SPECIFICATION/README.md", "content": "..."}
   ],
@@ -126,6 +141,7 @@ templates, the same payload's `sub_specs[]` becomes:
       {"path": "SPECIFICATION/templates/livespec/spec.md", "content": "..."},
       {"path": "SPECIFICATION/templates/livespec/contracts.md", "content": "..."},
       {"path": "SPECIFICATION/templates/livespec/constraints.md", "content": "..."},
+      {"path": "SPECIFICATION/templates/livespec/non-functional-requirements.md", "content": "..."},
       {"path": "SPECIFICATION/templates/livespec/scenarios.md", "content": "..."},
       {"path": "SPECIFICATION/templates/livespec/README.md", "content": "..."}
     ]
