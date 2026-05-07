@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from returns.io import IOResult
-from returns.result import Failure, Success
+from returns.result import Failure, Result, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
@@ -49,7 +49,7 @@ from livespec.commands._revise_validation import (
     _validate_resulting_files_paths,  # noqa: F401  # re-exported for tests
     _validate_resulting_files_targets_exist,  # noqa: F401  # re-exported for tests
 )
-from livespec.errors import LivespecError
+from livespec.errors import LivespecError, UsageError
 from livespec.io import cli, fs
 from livespec.io import git as io_git
 from livespec.parse import jsonc
@@ -117,6 +117,7 @@ def main(*, argv: list[str] | None = None) -> int:
         lambda namespace: (
             fs.read_text(path=Path(namespace.revise_json))
             .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
+            .bind(lambda payload: IOResult.from_result(_check_decisions_nonempty(payload=payload)))
             .bind(lambda payload: _validate_payload(payload=payload))
             .bind(
                 lambda revise_input: _validate_resulting_files(
@@ -142,6 +143,37 @@ def main(*, argv: list[str] | None = None) -> int:
         ),
     )
     return _pattern_match_io_result(io_result=railway)
+
+
+def _check_decisions_nonempty(
+    *,
+    payload: dict[str, Any],
+) -> Result[dict[str, Any], LivespecError]:
+    """Reject payloads whose `decisions[]` is present-but-empty.
+
+    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle" revise
+    clause (b) (v052): the wrapper MUST fail hard with UsageError
+    (exit 2) when the inbound `--revise-json` payload's
+    `decisions[]` array is empty. A revise pass with zero
+    decisions would produce a no-op cut and is forbidden.
+
+    This pre-check fires BEFORE schema validation so the user
+    sees exit 2 (UsageError) for the explicit empty-list case
+    rather than exit 4 (ValidationError) from the schema's
+    `minItems: 1` constraint, which encodes the same precondition
+    as defense-in-depth. Other malformations (missing `decisions`
+    key, wrong type) fall through to schema validation
+    unchanged.
+    """
+    if isinstance(payload, dict):
+        decisions = payload.get("decisions")
+        if isinstance(decisions, list) and len(decisions) == 0:
+            return Failure(
+                UsageError(
+                    "revise: decisions[] array is empty; " "revise requires at least one decision",
+                ),
+            )
+    return Success(payload)
 
 
 def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError]:
