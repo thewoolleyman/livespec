@@ -155,6 +155,74 @@ def test_revise_main_returns_validation_exit_code_on_schema_violation(
     assert exit_code == 4
 
 
+def test_revise_main_passes_through_non_dict_payload_to_schema_validation(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Non-dict JSON payload (`[]`) falls through pre-check to schema validation.
+
+    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle" revise
+    clause (b) (v052): the empty-decisions pre-check fires BEFORE
+    schema validation. The pre-check's defensive
+    `isinstance(payload, dict)` guard ensures non-dict JSON
+    payloads (e.g., a top-level `[]`) fall through cleanly to
+    schema validation rather than crashing on `.get(...)`. The
+    schema's `type: object` constraint then rejects with
+    ValidationError (exit 4).
+
+    Drives the False branch of the pre-check's isinstance guard.
+    """
+    payload = tmp_path / "non-dict.json"
+    _ = payload.write_text("[]", encoding="utf-8")
+    exit_code = revise.main(argv=["--revise-json", str(payload)])
+    assert exit_code == 4
+
+
+def test_revise_main_returns_usage_exit_code_on_empty_decisions(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Payload with `decisions: []` returns exit 2 (UsageError).
+
+    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle" revise
+    clause (b), v052: `bin/revise.py` MUST fail hard with
+    UsageError (exit 2) when the inbound `--revise-json` payload's
+    `decisions[]` array is empty. A revise pass with zero decisions
+    would produce a no-op cut and is forbidden. The wrapper-level
+    pre-check fires before schema validation so the user sees
+    exit 2 (UsageError) rather than exit 4 (ValidationError) for
+    the explicit empty-list case; schema-level `minItems: 1`
+    encodes the same precondition as defense-in-depth.
+
+    Fixture has a non-empty `proposed_changes/` so clause (a)'s
+    PreconditionError (exit 3) does NOT fire — the wrapper would
+    otherwise pass clause (a) and reach a no-op cut at exit 0
+    without the new pre-check.
+    """
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
+    )
+    payload = tmp_path / "empty-decisions.json"
+    _ = payload.write_text(
+        json.dumps({"decisions": []}),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 2
+
+
 def test_revise_main_uses_cwd_specification_default_when_no_target_flags(
     *,
     tmp_path: Path,
