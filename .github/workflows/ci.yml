@@ -1,25 +1,12 @@
-# CI workflow — per-target matrix with fail-fast: false.
+# Per-target matrix CI. Python-code checks gate on whether the changeset
+# contains any `.py` files; repo-metadata checks always run.
 #
-# Authoritative source:
-# and python-skill-script-style-requirements.md §"Enforcement
-# suite — Invocation surfaces": one job per check via a matrix
-# strategy with fail-fast: false, each calling `just <target>`.
-# The jdx/mise-action@v2 step installs the mise-pinned binaries
-# (uv, just, lefthook); `uv sync --all-groups` installs the
-# Python dev deps from pyproject.toml [dependency-groups.dev]
-# per v024.
+# Master pushes and merge_group events bypass the gate (they always run
+# the full aggregate as the merge-queue safety net).
 #
-# Targets in the matrix mirror python-skill-script-style-requirements.md
-# §"Enforcement suite — Canonical target list" (the targets that
-# are part of `just check`). Release-gate targets
-# (check-mutation, check-no-todo-registry) live in
-# release-tag.yml. The real-claude E2E target lives in
-# e2e-real.yml.
-#
-# Direct tool invocations (`ruff`, `pyright`, `pytest`, `python3`)
-# in `run:` lines are forbidden by check-no-direct-tool-invocation
-# (Phase 4 grep-level enforcement); every step delegates to
-# `just <target>`.
+# Direct tool invocations (ruff, pyright, pytest, python3) in `run:` lines
+# are forbidden by check-no-direct-tool-invocation; every step delegates
+# to `just <target>`.
 
 name: CI
 
@@ -30,20 +17,45 @@ on:
   merge_group:
 
 jobs:
-  check:
+  setup:
+    name: detect-py-changes
+    runs-on: ubuntu-latest
+    outputs:
+      py_changed: ${{ steps.detect.outputs.py_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need the base ref reachable for the PR diff below.
+          fetch-depth: 0
+
+      - name: Detect Python file changes
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -uo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
+            changeset=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+            if echo "$changeset" | grep -qE '\.py$'; then
+              echo "py_changed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "py_changed=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "py_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  check-python:
     name: ${{ matrix.target }}
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         target:
-          # Deferred jobs (check-types, check-prompts,
-          # e2e-test-claude-code-mock) removed in
-          # Guard-Layer cleanup: a CI job documented as
-          # "deferred until Phase 5/9 fix-cycles" but still
-          # configured to run as red is exactly the noise that
-          # hides real signal. They re-join in the same commit
-          # that fixes their underlying issue.
           - check-lint
           - check-format
           - check-complexity
@@ -65,12 +77,46 @@ jobs:
           - check-all-declared
           - check-no-write-direct
           - check-pbt-coverage-pure-modules
+          - check-coverage
+    steps:
+      # Per-step `if:` (not job-level) so each matrix entry still
+      # reports a status check named `${{ matrix.target }}`. With
+      # job-level `if:`, a skipped matrix collapses to one
+      # `check-python` status, which doesn't satisfy branch
+      # protection's requirement that each specific check name be
+      # present.
+      - name: Skip when no .py changes
+        if: needs.setup.outputs.py_changed != 'true'
+        run: echo "::notice::skipped ${{ matrix.target }} — no .py changes in this PR"
+
+      - name: Checkout
+        if: needs.setup.outputs.py_changed == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install pinned binaries via mise
+        if: needs.setup.outputs.py_changed == 'true'
+        uses: jdx/mise-action@v2
+
+      - name: Install Python dev deps via uv
+        if: needs.setup.outputs.py_changed == 'true'
+        run: uv sync --all-groups
+
+      - name: just ${{ matrix.target }}
+        if: needs.setup.outputs.py_changed == 'true'
+        run: just ${{ matrix.target }}
+
+  check-metadata:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
           - check-claude-md-coverage
           - check-heading-coverage
           - check-vendor-manifest
           - check-no-direct-tool-invocation
           - check-tools
-          - check-coverage
     steps:
       - name: Checkout
         uses: actions/checkout@v4
