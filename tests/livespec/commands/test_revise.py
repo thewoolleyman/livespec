@@ -590,6 +590,7 @@ def test_revise_main_emits_modifications_section_for_modify_decision(
         "## Proposal: demo\n",
         encoding="utf-8",
     )
+    _ = (spec_target / "spec.md").write_text("old content\n", encoding="utf-8")
     payload_path = tmp_path / "revise.json"
     _ = payload_path.write_text(
         json.dumps(
@@ -653,6 +654,7 @@ def test_revise_main_emits_resulting_changes_section_for_accept_decision(
         "## Proposal: demo\n",
         encoding="utf-8",
     )
+    _ = (spec_target / "spec.md").write_text("old content\n", encoding="utf-8")
     payload_path = tmp_path / "revise.json"
     _ = payload_path.write_text(
         json.dumps(
@@ -1154,3 +1156,167 @@ def test_revise_main_returns_precondition_exit_code_when_proposed_changes_comple
     )
     assert exit_code == 3
     assert not (spec_target / "history" / "v002").exists()
+
+
+def test_revise_main_rejects_absolute_resulting_files_path(
+    *,
+    tmp_path: Path,
+) -> None:
+    """An absolute resulting_files[].path returns exit 2 (UsageError).
+
+    Per the path-relativity guard: paths beginning with `/` are
+    rejected before any file-shaping work runs.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "accept",
+                        "rationale": "Demo.",
+                        "resulting_files": [
+                            {"path": "/etc/passwd", "content": "x"},
+                        ],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 2
+
+
+def test_revise_main_rejects_path_with_spec_target_basename_prefix(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A path beginning with the spec-target's basename + `/` returns exit 2.
+
+    Per the path-relativity guard: such paths indicate the LLM
+    emitted a project-root-relative path where a spec-target-
+    relative path is required.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "accept",
+                        "rationale": "Demo.",
+                        "resulting_files": [
+                            {"path": "spec-root/spec.md", "content": "x"},
+                        ],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 2
+
+
+def test_revise_main_rejects_missing_resulting_files_target(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A resulting_files[].path whose target doesn't exist returns exit 3.
+
+    Per the require-existing-target rule: revise updates existing
+    spec files only; non-existent targets are a PreconditionError.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "accept",
+                        "rationale": "Demo.",
+                        "resulting_files": [
+                            {"path": "nonexistent.md", "content": "x"},
+                        ],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 3
+
+
+def test_revise_iter_resulting_files_paths_skips_non_list_resulting_files() -> None:
+    """`_iter_resulting_files_paths` skips decisions with non-list resulting_files.
+
+    The schema enforces array, but the helper defensively narrows
+    types via isinstance for pyright strictness — the branch is
+    exercised by directly constructing a non-conforming dict.
+    """
+    from livespec.schemas.dataclasses.revise_input import RevisionInput
+
+    revise_input = RevisionInput(
+        author=None,
+        decisions=[
+            {
+                "decision": "accept",
+                "resulting_files": "not-a-list",
+            },
+        ],
+    )
+    paths = revise._iter_resulting_files_paths(revise_input=revise_input)  # noqa: SLF001
+    assert paths == []
+
+
+def test_revise_iter_resulting_files_paths_skips_non_dict_entry() -> None:
+    """`_iter_resulting_files_paths` skips entries that are not dicts.
+
+    The schema enforces object items, but the helper defensively
+    narrows entry types via isinstance.
+    """
+    from livespec.schemas.dataclasses.revise_input import RevisionInput
+
+    revise_input = RevisionInput(
+        author=None,
+        decisions=[
+            {
+                "decision": "accept",
+                "resulting_files": ["not-a-dict", {"path": "spec.md"}],
+            },
+        ],
+    )
+    paths = revise._iter_resulting_files_paths(revise_input=revise_input)  # noqa: SLF001
+    assert paths == ["spec.md"]

@@ -46,8 +46,14 @@
               "additionalProperties": false,
               "required": ["path", "content"],
               "properties": {
-                "path": {"type": "string"},
-                "content": {"type": "string"}
+                "path": {
+                  "type": "string",
+                  "description": "Spec-target-relative path of the file to update (e.g., \"contracts.md\", NOT \"SPECIFICATION/contracts.md\"). The wrapper joins this to <spec-target>/ via Path /. Absolute paths (begin with /) and paths beginning with the spec-target's basename followed by / are rejected with UsageError (exit 2)."
+                },
+                "content": {
+                  "type": "string",
+                  "description": "Full post-update content of the file. The target file MUST already exist at <spec-target>/<path> before the revise wrapper writes; non-existent targets raise PreconditionError (exit 3) since revise is for updating existing spec files only."
+                }
               }
             }
           }

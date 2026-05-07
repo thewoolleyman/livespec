@@ -43,6 +43,12 @@ from livespec.commands._revise_railway_emits import (
     _format_next_version_name,  # re-exported for the paired test surface  # noqa: F401
     _process_decisions,
 )
+from livespec.commands._revise_validation import (
+    _iter_resulting_files_paths,  # noqa: F401  # re-exported for tests
+    _validate_resulting_files,
+    _validate_resulting_files_paths,  # noqa: F401  # re-exported for tests
+    _validate_resulting_files_targets_exist,  # noqa: F401  # re-exported for tests
+)
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.io import git as io_git
@@ -112,6 +118,12 @@ def main(*, argv: list[str] | None = None) -> int:
             fs.read_text(path=Path(namespace.revise_json))
             .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
             .bind(lambda payload: _validate_payload(payload=payload))
+            .bind(
+                lambda revise_input: _validate_resulting_files(
+                    revise_input=revise_input,
+                    spec_target=_resolve_spec_target(namespace=namespace),
+                ),
+            )
             .bind(
                 lambda revise_input: io_git.get_git_user().bind(
                     lambda author_human: _process_decisions(

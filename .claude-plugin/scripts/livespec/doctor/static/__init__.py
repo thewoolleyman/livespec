@@ -37,6 +37,7 @@ from __future__ import annotations
 from typing import Literal
 
 from livespec.doctor.static import (
+    accept_decision_snapshot_consistency,
     anchor_reference_resolution,
     bcp14_keyword_wellformedness,
     gherkin_blank_line_format,
@@ -70,6 +71,7 @@ STATIC_CHECKS = (
     gherkin_blank_line_format,
     anchor_reference_resolution,
     out_of_band_edits,
+    accept_decision_snapshot_consistency,
 )
 
 
@@ -86,5 +88,6 @@ APPLICABILITY_BY_TREE_KIND: dict[TreeKind, tuple[object, ...]] = {
         gherkin_blank_line_format,
         anchor_reference_resolution,
         out_of_band_edits,
+        accept_decision_snapshot_consistency,
     ),
 }
