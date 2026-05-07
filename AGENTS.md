@@ -37,6 +37,27 @@ Each skill orchestrates dialogue capture, prompt-driven content
 generation, wrapper invocation against `.claude-plugin/scripts/bin/<sub-command>.py`,
 and structured-finding interpretation.
 
+## Agent prerequisites for plugin work
+
+When investigating issues or making changes related to the Claude Code plugin installation, marketplace, or distribution:
+
+1. **Establish execution context first** — Do NOT assume or make changes based on how you think the system works. Instead:
+   - Run `claude plugin marketplace list` to see which marketplaces are configured and whether they point to local files or remote repos
+   - Understand that changes to local `marketplace.json` will NOT affect installations from remote GitHub marketplaces
+   - Read `SPECIFICATION/contracts.md` §"Plugin distribution" to understand the intended contract
+
+2. **Map the execution flow before making changes**:
+   - Trace where the actual install command is fetching from (local or remote)
+   - Verify that any changes you make will actually affect that code path
+   - If the marketplace points to remote GitHub, local changes are irrelevant — you either need to push to GitHub first or test against the local marketplace
+
+3. **Use the correct testing approach**:
+   - For remote marketplaces: push changes to GitHub, then test
+   - For local marketplaces: use `/plugin marketplace add ./.claude-plugin/marketplace.json` and test against that
+   - Never test local changes against a remote marketplace and assume they will work
+
+This prevents wasted effort on changes that have no effect on the actual problem.
+
 ## Plugin install (end users)
 
 The plugin is distributed via a Claude Code marketplace at
