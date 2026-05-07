@@ -20,7 +20,7 @@ lives at `SPECIFICATION/` and is itself maintained via the plugin's
 
 ## Slash commands and skills
 
-The plugin exposes six sub-commands; each is backed by a skill at
+The plugin exposes seven sub-commands; each is backed by a skill at
 `.claude-plugin/skills/<name>/SKILL.md`:
 
 | Command | Skill | Purpose |
@@ -31,10 +31,47 @@ The plugin exposes six sub-commands; each is backed by a skill at
 | `/livespec:revise` | `skills/revise/SKILL.md` | Accept, modify, or reject pending proposed changes |
 | `/livespec:doctor` | `skills/doctor/SKILL.md` | Run static + LLM-driven validation against a spec tree |
 | `/livespec:prune-history` | `skills/prune-history/SKILL.md` | Collapse old `history/vNNN/` entries into a pruned-marker |
+| `/livespec:help` | `skills/help/SKILL.md` | Overview + routing to the right sub-command |
 
 Each skill orchestrates dialogue capture, prompt-driven content
 generation, wrapper invocation against `.claude-plugin/scripts/bin/<sub-command>.py`,
 and structured-finding interpretation.
+
+## Plugin install (end users)
+
+The plugin is distributed via a Claude Code marketplace at
+`.claude-plugin/marketplace.json` (per `SPECIFICATION/contracts.md`
+§"Plugin distribution"). Install with:
+
+```
+/plugin marketplace add thewoolleyman/livespec
+/plugin install livespec@livespec
+```
+
+After install, the seven `/livespec:*` slash commands become available
+with the `livespec:` namespace prefix.
+
+## Daily dogfooding (maintainer development)
+
+When editing the plugin source in this repo, two workflows:
+
+- **Live-reload mode**: launch Claude Code with `claude --plugin-dir .`
+  from the repo root. Plugin loads directly from local source; edits to
+  `.claude-plugin/skills/<name>/SKILL.md` and `.claude-plugin/scripts/...`
+  are picked up via `/reload-plugins` without re-installing. This is the
+  daily-edit path.
+- **Marketplace install path** (verifies the published flow): use the
+  install commands above, or
+  `/plugin marketplace add ./.claude-plugin/marketplace.json` for the
+  local variant. Either copies the plugin into `~/.claude/plugins/cache/`
+  and does NOT live-reload — run `/plugin update livespec@livespec` to
+  pull changes after editing. Use this path to verify the install flow
+  end-to-end before pushing.
+
+The `.claude/skills` symlink (which used to load the plugin's skills as
+PROJECT-level without the namespace prefix) was removed in v049. The
+marketplace install or `--plugin-dir` is now the only way the plugin's
+skills load with the correct `/livespec:*` namespace.
 
 ## Daily commands
 

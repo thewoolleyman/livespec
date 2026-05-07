@@ -1,0 +1,14 @@
+{
+  "name": "livespec",
+  "owner": {
+    "name": "Chad Woolley",
+    "url": "https://github.com/thewoolleyman"
+  },
+  "plugins": [
+    {
+      "name": "livespec",
+      "source": ".",
+      "description": "Lives-as-spec: write a NL-spec for your project, seed/propose-change/critique/revise it via the LLM, doctor it for invariants. Exposes /livespec:seed, /livespec:propose-change, /livespec:critique, /livespec:revise, /livespec:doctor, /livespec:prune-history, and /livespec:help."
+    }
+  ]
+}
