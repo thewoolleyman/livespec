@@ -74,7 +74,7 @@ def test_marketplace_name_is_livespec() -> None:
 
 
 def test_marketplace_lists_single_livespec_plugin() -> None:
-    """Marketplace `plugins[]` has exactly one entry, named `livespec`, source `.`."""
+    """Marketplace `plugins[]` has exactly one entry, named `livespec`, source `./.claude-plugin`."""
     data = json.loads(_MARKETPLACE_JSON.read_text(encoding="utf-8"))
     plugins = data["plugins"]
     assert len(plugins) == 1, (
@@ -83,8 +83,8 @@ def test_marketplace_lists_single_livespec_plugin() -> None:
     )
     entry = plugins[0]
     assert entry["name"] == "livespec", f"plugin name MUST be 'livespec'; got {entry['name']!r}."
-    assert entry["source"] == ".", (
-        f"plugin source MUST be '.' (same directory as marketplace.json); "
+    assert entry["source"] == "./.claude-plugin", (
+        f"plugin source MUST be './.claude-plugin' (relative path to .claude-plugin directory); "
         f"got {entry['source']!r}."
     )
 
