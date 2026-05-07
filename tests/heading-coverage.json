@@ -133,6 +133,13 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
+    "heading": "## Plugin distribution",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Added by v049 (claude-code-marketplace-json-for-plugin-discovery propose-change). Implementation follow-up will (a) author .claude-plugin/marketplace.json + remove the .claude/skills symlink + add the per-project install hook, and (b) add a rule test asserting the install path + slash-command surface match the spec. Replace this TODO with the real test ID then."
+  },
+  {
     "heading": "## Pre-commit step ordering",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
