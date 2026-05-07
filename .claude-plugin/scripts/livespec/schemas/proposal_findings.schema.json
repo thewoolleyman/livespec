@@ -33,7 +33,7 @@
           "target_spec_files": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Repo-root-relative paths this proposal touches."
+            "description": "Project-root-relative paths this proposal touches (e.g., \"SPECIFICATION/contracts.md\"). This field is project-root-relative; do NOT use spec-target-relative paths here."
           },
           "summary": {
             "type": "string",

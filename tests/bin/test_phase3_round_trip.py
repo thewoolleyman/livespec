@@ -229,7 +229,7 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
                 "modifications": "",
                 "resulting_files": [
                     {
-                        "path": "SPECIFICATION/spec.md",
+                        "path": "spec.md",
                         "content": "# Spec\n\nRevised content after v002.\n",
                     },
                 ],
@@ -241,7 +241,7 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
                 "modifications": "",
                 "resulting_files": [
                     {
-                        "path": "SPECIFICATION/spec.md",
+                        "path": "spec.md",
                         "content": "# Spec\n\nRevised content after v002.\n",
                     },
                 ],
