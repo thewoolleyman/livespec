@@ -98,7 +98,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Skill ↔ template JSON contracts",
+    "heading": "## Skill \u2194 template JSON contracts",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.commands.test_seed",
@@ -150,14 +150,14 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md §\"Scope\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md \u00a7\"Scope\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Non-interactive execution",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md §\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md \u00a7\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Python runtime constraint",
@@ -171,7 +171,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md §\"Runtime dependencies → End-user install\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md \u00a7\"Runtime dependencies \u2192 End-user install\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Vendored-library discipline",
@@ -265,28 +265,28 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 1 — propose-change against a non-existent spec target",
+    "heading": "## Error path 1 \u2014 propose-change against a non-existent spec target",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 2 — schema-violation in inbound seed payload",
+    "heading": "## Error path 2 \u2014 schema-violation in inbound seed payload",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_retry_on_exit_4.test_retry_on_exit_4",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 3 — version-contiguity gap in history",
+    "heading": "## Error path 3 \u2014 version-contiguity gap in history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.livespec.doctor.static.test_version_contiguity",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Recovery path — pruning history before a long retention horizon",
+    "heading": "## Recovery path \u2014 pruning history before a long retention horizon",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_prune_history_noop.test_prune_history_noop",
@@ -412,14 +412,14 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview — \"no\" branch (default)",
+    "heading": "## Happy-path seed interview \u2014 \"no\" branch (default)",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "tests.prompts.livespec.test_seed",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview — \"yes\" branch (meta-project)",
+    "heading": "## Happy-path seed interview \u2014 \"yes\" branch (meta-project)",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "tests.prompts.livespec.test_seed",
@@ -447,7 +447,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Edge case — seed against non-empty SPECIFICATION/",
+    "heading": "## Edge case \u2014 seed against non-empty SPECIFICATION/",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "tests.livespec.commands.test_seed",
@@ -587,7 +587,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end critique → propose-change handoff",
+    "heading": "## End-to-end critique \u2192 propose-change handoff",
     "spec_root": "SPECIFICATION/templates/minimal",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_happy_path.test_happy_path_minimal",
@@ -619,14 +619,14 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_tests_mirror_pairing",
-    "reason": "Phase 8 item 2 cycle 5 addition: §\"Package layout\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v020 (python-style-package-layout propose-change). Phase 8 remaining cycles replace this TODO with the real test ID via the governed propose-change/revise loop."
+    "reason": "Phase 8 item 2 cycle 5 addition: \u00a7\"Package layout\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v020 (python-style-package-layout propose-change). Phase 8 remaining cycles replace this TODO with the real test ID via the governed propose-change/revise loop."
   },
   {
     "heading": "## Linter and formatter",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_no_lloc_soft_warnings",
-    "reason": "Phase 8 item 2 cycle 10 addition: §\"Linter and formatter\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v025."
+    "reason": "Phase 8 item 2 cycle 10 addition: \u00a7\"Linter and formatter\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v025."
   },
   {
     "heading": "## Comment discipline",
@@ -640,63 +640,63 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "tests.dev-tooling.checks.test_red_green_replay",
-    "reason": "Phase 8 item 2 cycle 12 addition: §\"Test-Driven Development discipline\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v027."
+    "reason": "Phase 8 item 2 cycle 12 addition: \u00a7\"Test-Driven Development discipline\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v027."
   },
   {
     "heading": "## Code coverage",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_per_file_coverage",
-    "reason": "Phase 8 item 2 cycle 13 addition: §\"Code coverage\" migrated via SPECIFICATION/v028."
+    "reason": "Phase 8 item 2 cycle 13 addition: \u00a7\"Code coverage\" migrated via SPECIFICATION/v028."
   },
   {
     "heading": "## Keyword-only arguments",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_keyword_only_args",
-    "reason": "Phase 8 item 2 cycle 14 addition: §\"Keyword-only arguments\" migrated via SPECIFICATION/v029."
+    "reason": "Phase 8 item 2 cycle 14 addition: \u00a7\"Keyword-only arguments\" migrated via SPECIFICATION/v029."
   },
   {
     "heading": "## Structural pattern matching",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_match_keyword_only",
-    "reason": "Phase 8 item 2 cycle 15 addition: §\"Structural pattern matching\" migrated via SPECIFICATION/v030."
+    "reason": "Phase 8 item 2 cycle 15 addition: \u00a7\"Structural pattern matching\" migrated via SPECIFICATION/v030."
   },
   {
     "heading": "## Exit code contract",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 18 addition: §\"Exit code contract\" migrated via SPECIFICATION/v033."
+    "reason": "Phase 8 item 2 cycle 18 addition: \u00a7\"Exit code contract\" migrated via SPECIFICATION/v033."
   },
   {
     "heading": "## Structured logging",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.livespec.commands.test_seed",
-    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"Structured logging\" migrated via SPECIFICATION/v034."
+    "reason": "Phase 8 item 2 cycles 17+19 combined: \u00a7\"Structured logging\" migrated via SPECIFICATION/v034."
   },
   {
     "heading": "## File naming and invocation",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_wrapper_shape",
-    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"File naming and invocation\" migrated via SPECIFICATION/v034."
+    "reason": "Phase 8 item 2 cycles 17+19 combined: \u00a7\"File naming and invocation\" migrated via SPECIFICATION/v034."
   },
   {
     "heading": "## Enforcement suite",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_check_tools",
-    "reason": "Phase 8 item 2 cycles 21+22 combined: §\"Enforcement suite\" migrated via SPECIFICATION/v036."
+    "reason": "Phase 8 item 2 cycles 21+22 combined: \u00a7\"Enforcement suite\" migrated via SPECIFICATION/v036."
   },
   {
     "heading": "## CLAUDE.md coverage",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_claude_md_coverage",
-    "reason": "Phase 8 item 2 cycles 21+22 combined: §\"CLAUDE.md coverage\" migrated via SPECIFICATION/v036."
+    "reason": "Phase 8 item 2 cycles 21+22 combined: \u00a7\"CLAUDE.md coverage\" migrated via SPECIFICATION/v036."
   },
   {
     "heading": "## Prior Art",
@@ -725,5 +725,19 @@
     "spec_file": "contracts.md",
     "test": "tests.e2e.test_happy_path.test_happy_path_minimal",
     "reason": "Phase 9: E2E harness contract section codified in SPECIFICATION/v042; tested indirectly by just e2e-test-claude-code-mock passing."
+  },
+  {
+    "heading": "## Non-functional-requirements file",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "spec.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Non-functional-requirements scope",
+    "spec_root": "SPECIFICATION/templates/livespec",
+    "spec_file": "constraints.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   }
 ]

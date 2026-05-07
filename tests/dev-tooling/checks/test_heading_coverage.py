@@ -2,9 +2,10 @@
 
 Per `SPECIFICATION/constraints.md` §"Heading taxonomy" (post-v004),
 the registry maps `(spec_root, spec_file, heading)` triples and the
-check walks ONLY the four template-declared NLSpec files at each
+check walks ONLY the five template-declared NLSpec files at each
 spec-tree root (`spec.md`, `contracts.md`, `constraints.md`,
-`scenarios.md`) — never recursing into `proposed_changes/`,
+`non-functional-requirements.md`, `scenarios.md`) — never
+recursing into `proposed_changes/`,
 `history/`, `templates/<name>/history/`, or any other subdirectory;
 never including the skill-owned `README.md` at the tree root.
 
