@@ -629,6 +629,13 @@
     "reason": "Phase 8 item 2 cycle 10 addition: §\"Linter and formatter\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v025."
   },
   {
+    "heading": "## Comment discipline",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Pending impl of dev-tooling/checks/comment_no_historical_refs.py (the mechanical Rule 2 enforcement). Rule 1 (WHY-not-WHAT) is judgment-based and code-review gated, not test-covered."
+  },
+  {
     "heading": "## Test-Driven Development discipline",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
