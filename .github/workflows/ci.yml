@@ -51,7 +51,6 @@ jobs:
   check-python:
     name: ${{ matrix.target }}
     needs: setup
-    if: needs.setup.outputs.py_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -80,16 +79,30 @@ jobs:
           - check-pbt-coverage-pure-modules
           - check-coverage
     steps:
+      # Per-step `if:` (not job-level) so each matrix entry still
+      # reports a status check named `${{ matrix.target }}`. With
+      # job-level `if:`, a skipped matrix collapses to one
+      # `check-python` status, which doesn't satisfy branch
+      # protection's requirement that each specific check name be
+      # present.
+      - name: Skip when no .py changes
+        if: needs.setup.outputs.py_changed != 'true'
+        run: echo "::notice::skipped ${{ matrix.target }} — no .py changes in this PR"
+
       - name: Checkout
+        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/checkout@v4
 
       - name: Install pinned binaries via mise
+        if: needs.setup.outputs.py_changed == 'true'
         uses: jdx/mise-action@v2
 
       - name: Install Python dev deps via uv
+        if: needs.setup.outputs.py_changed == 'true'
         run: uv sync --all-groups
 
       - name: just ${{ matrix.target }}
+        if: needs.setup.outputs.py_changed == 'true'
         run: just ${{ matrix.target }}
 
   check-metadata:
