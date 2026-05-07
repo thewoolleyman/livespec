@@ -161,6 +161,22 @@ and exit code is `0` (NOT an error).
    that finding to the user and direct them to run
    `/livespec:propose-change` first.
 
+   **Narrate stale-pending-proposal count + oldest.**
+   Before the per-proposal accept/modify/reject loop
+   begins, surface a single informational line of the
+   form: "N pending proposal(s); oldest is
+   `<canonical-topic>` from <created_at>." (Use the
+   YAML front-matter `topic` field for the canonical
+   topic and `created_at` for the timestamp.) Per
+   SPECIFICATION/spec.md (v052) §"Sub-command lifecycle"
+   revise-lifecycle paragraph, this narration MUST NOT
+   gate the wrapper, MUST NOT add any pre-step or
+   post-step doctor check, and MUST NOT block
+   downstream wrapper invocations. The sole purpose is
+   pending-proposal-accumulation visibility so the user
+   MAY choose to address older proposals during the
+   current pass.
+
 4. **Capture optional steering intent.** Ask the user
    (optional, single free-text prompt): "Any steering
    intent for this revise pass? (e.g., 'reject anything
