@@ -59,43 +59,46 @@ Prior research supports the boundary:
   concrete, reusable form. The `openbrain` project-local plugin describes
   itself as skills for keeping its `SPECIFICATION` and implementation
   converged:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/.claude-plugin/plugin.json#L1-L8
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/.claude-plugin/plugin.json#L1-L8
   Its `update-specification-drift`, `plan`, and `implement` skills provide
   the nearest examples for `refresh-gaps`, `plan`, and `implement` here:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L1-L35
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/plan/SKILL.md#L1-L20
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/implement/SKILL.md#L1-L19
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L1-L35
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/plan/SKILL.md#L1-L20
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/implement/SKILL.md#L1-L19
 
 The Open Brain beads migration and problem-history documents are especially
 important because they record decisions and upstream Beads workarounds that
 should be copied or consciously adapted:
 
 - Migration plan and original adoption rationale:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/migrate-to-beads.md#L1-L27
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/migrate-to-beads.md#L1-L27
 - Migration constraints around JSONL as derived view, hooks, and agent
   commands:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/migrate-to-beads.md#L45-L54
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/migrate-to-beads.md#L79-L90
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/migrate-to-beads.md#L123-L154
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/migrate-to-beads.md#L45-L54
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/migrate-to-beads.md#L79-L90
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/migrate-to-beads.md#L123-L154
 - Living index of Beads upstream problems and local workarounds:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L1-L20
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L1-L20
 - Upstream Beads bugs and workaround requirements already encountered:
   `bd init` does not synthesize the Dolt remote
-  (https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L24-L56);
+  (https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L24-L56);
   `bd doctor` is unavailable in embedded mode
-  (https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L60-L87);
+  (https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L60-L87);
   JSONL-vs-Dolt source-of-truth confusion caused real failure modes
-  (https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L91-L125);
+  (https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L91-L125);
   `bd bootstrap` does not reliably wire the remote on fresh embedded init
-  (https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L129-L157);
+  (https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L129-L157);
   Beads-generated docs omit key command explanations
-  (https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L161-L188);
+  (https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L161-L188);
   `.beads/` permissions warnings require a temporary self-heal until a
   post-v1.0.3 Beads release includes upstream PR #3483
-  (https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L192-L229);
+  (https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L192-L229);
   workspace identity mismatch requires explicit detection and reversible
   local-Dolt rebuild
-  (https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L233-L321).
+  (https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L233-L321);
+  and lefthook's npm postinstall can race Beads hook ownership, requiring
+  a mise-pinned lefthook binary plus explicit hook-path checks
+  (https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L325-L363).
 
 The synthesis is that LiveSpec-the-product should remain a SPECIFICATION
 governance tool, while LiveSpec-the-repository should have a local
@@ -106,69 +109,70 @@ tests, justfile, branch protection, and release discipline.
 
 When revising this proposal, use the following Open Brain permalinks as
 implementation examples. They are commit-pinned to
-`795cffeb5f11e67f50449945fffc5f745b20f591` so the referenced line numbers
+`b3dc01b961e064db1ad02d1e61c32d52364075aa` so the referenced line numbers
 remain stable.
 
 - Project-local plugin manifest:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/.claude-plugin/plugin.json#L1-L8
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/.claude-plugin/plugin.json#L1-L8
 - `update-specification-drift` skill: source-of-truth framing,
   read-only gap refresh, schema, commit discipline, and inspection procedure:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L13-L35
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L37-L94
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L96-L178
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L180-L215
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L13-L35
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L37-L94
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L96-L178
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/update-specification-drift/SKILL.md#L180-L215
 - Gap schema example:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/PLAN/current-specification-drift.schema.json#L1-L180
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/PLAN/current-specification-drift.schema.json#L1-L225
 - `plan` skill: beads operations, clean-tree discipline, gap coverage
   triage, non-fix closures, and explicit non-goals:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/plan/SKILL.md#L22-L46
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/plan/SKILL.md#L54-L83
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/plan/SKILL.md#L105-L157
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/plan/SKILL.md#L179-L246
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/plan/SKILL.md#L22-L46
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/plan/SKILL.md#L54-L83
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/plan/SKILL.md#L105-L157
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/plan/SKILL.md#L179-L246
 - `implement` skill: beads issue execution, ranking, destructive-action
   gates, checkpoint commits, verified gap closure, and refusal to close
   unverified fixes:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/implement/SKILL.md#L21-L70
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/implement/SKILL.md#L72-L154
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/implement/SKILL.md#L179-L235
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/implement/SKILL.md#L264-L376
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/implement/SKILL.md#L21-L70
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/implement/SKILL.md#L72-L154
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/implement/SKILL.md#L179-L235
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/implement/SKILL.md#L264-L376
 - Shared commit discipline for clean-tree entry, atomic commits, explicit
   staging, message shapes, push behavior, destructive-action two-commit
   pattern, and audit trail:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/_shared/commit-discipline.md#L13-L80
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/_shared/commit-discipline.md#L82-L128
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/skills/_shared/commit-discipline.md#L130-L187
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/_shared/commit-discipline.md#L13-L80
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/_shared/commit-discipline.md#L82-L128
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/skills/_shared/commit-discipline.md#L130-L187
 - Beads architecture docs in agent instructions:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/AGENTS.md#L284-L414
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/AGENTS.md#L416-L461
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/AGENTS.md#L463-L518
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/AGENTS.md#L284-L414
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/AGENTS.md#L416-L461
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/AGENTS.md#L463-L518
 - Beads setup and hook rewrite example:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L1-L27
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L31-L42
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L54-L86
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L88-L110
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L119-L186
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L188-L203
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L205-L339
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L1-L30
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L37-L48
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L56-L86
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L94-L123
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L125-L192
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L194-L209
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L211-L334
 - Embedded-mode beads doctor replacement:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/bd-doctor.sh#L1-L38
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/bd-doctor.sh#L91-L125
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/bd-doctor.sh#L157-L188
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/bd-doctor.sh#L194-L226
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/bd-doctor.sh#L1-L49
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/bd-doctor.sh#L102-L136
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/bd-doctor.sh#L142-L199
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/bd-doctor.sh#L205-L289
 - Package/setup examples for `setup:beads`, `bd:doctor`, `prepare`,
-  `bd prime`, and pinned `bd`:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/package.json#L39-L41
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/settings.json#L1-L26
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.mise.toml#L1-L6
-- Beads config and gitignore shape:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.beads/config.yaml#L1-L3
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.beads/.gitignore#L1-L73
+  `bd prime`, and pinned `bd` / `lefthook`:
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/package.json#L39-L41
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/settings.json#L1-L25
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.mise.toml#L1-L7
+- Beads per-clone config and gitignore shape:
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L118-L123
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L158-L192
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.beads/.gitignore#L1-L73
 - Current-gap to beads-label invariant:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/smoke.ts#L402-L449
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/smoke.ts#L402-L449
 - Beads adoption and upstream-problem research files that `revise` should
   treat as required implementation context:
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/migrate-to-beads.md#L1-L154
-  https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/research/beads-problems.md#L1-L344
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/migrate-to-beads.md#L1-L154
+  https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/research/beads-problems.md#L1-L387
 - LiveSpec lifecycle archive context for keeping implementation downstream
   from `SPECIFICATION` revision:
   https://github.com/thewoolleyman/livespec/blob/3cae7764a2aac70e07a5458f876e115f23441a50/archive/brainstorming/approach-2-nlspec-based/2026-04-19-nlspec-lifecycle-diagram.md#L1-L41
@@ -193,8 +197,8 @@ repository locations:
   `implementation-gaps/current.schema.json` and
   `implementation-gaps/current.json`
 - Beads state/config:
-  `.beads/config.yaml`, `.beads/.gitignore`, and the embedded Dolt state
-  managed by `just implementation:setup-beads`
+  `.beads/.gitignore`, per-clone `.beads/config.yaml`, and the embedded
+  Dolt state managed by `just implementation:setup-beads`
 - Agent docs:
   `AGENTS.md` Beads architecture, command, anti-pattern, and session
   completion guidance
@@ -202,7 +206,7 @@ repository locations:
   `.claude/settings.json` for `bd prime` session-start and pre-compact
   context priming
 - Tool pin:
-  `.mise.toml` for the pinned `bd` version
+  `.mise.toml` for the pinned `bd` and `lefthook` versions
 - Just interface:
   `justfile` targets under the `implementation:*` namespace only
 - Helper code:
@@ -272,7 +276,7 @@ The project-local implementation plugin root is:
 
 The plugin manifest SHOULD mirror the Open Brain project-local manifest
 shape, adapted to the `livespec-implementation` name and purpose. Reference:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/plugins/openbrain/.claude-plugin/plugin.json#L1-L8
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/plugins/openbrain/.claude-plugin/plugin.json#L1-L8
 
 The command namespace is:
 
@@ -317,7 +321,7 @@ The report schema SHOULD be modeled on Open Brain's current drift schema,
 with names adapted from `PLAN/current-specification-drift.*` to
 `implementation-gaps/current.*` and with LiveSpec-specific `area` values.
 Reference:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/PLAN/current-specification-drift.schema.json#L1-L180
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/PLAN/current-specification-drift.schema.json#L1-L225
 
 All user-facing helper and verification entry points for this layer MUST be
 exposed through the `implementation:*` justfile namespace. Initial required
@@ -333,7 +337,7 @@ targets:
 `pnpm run setup:beads` covers in Open Brain. `just
 implementation:beads-doctor` MUST cover the role that
 `pnpm run bd:doctor` covers there. Reference:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/package.json#L39-L41
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/package.json#L39-L41
 
 The implementation layer MUST NOT introduce a top-level `scripts/` directory
 or a parallel user-facing command surface. If helper code is needed, it
@@ -358,11 +362,13 @@ Add a new section under developer-tooling constraints:
 The `livespec` repository uses beads (`bd`) as the canonical task tracker
 for repo-local implementation work.
 
-`bd` MUST be pinned through `.mise.toml`. The initial implementation SHOULD
-use the same version currently vetted by Open Brain unless a newer version
-has been deliberately tested with the setup and doctor guards below. Open
-Brain pin reference:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.mise.toml#L1-L6
+`bd` and `lefthook` MUST be pinned through `.mise.toml`. The initial
+implementation SHOULD use the same versions currently vetted by Open Brain
+unless newer versions have been deliberately tested with the setup and
+doctor guards below. `lefthook` MUST NOT be installed through npm or a
+node package because its postinstall behavior can overwrite
+`core.hooksPath` and bypass Beads hook wrappers. Open Brain pin reference:
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.mise.toml#L1-L7
 
 Beads issue ids for this repository's implementation workflow use the
 prefix `li-`. Every current implementation gap id in
@@ -382,7 +388,7 @@ the Dolt database as source of truth, `refs/dolt/data` as the git-pushed
 sync ref, `.beads/issues.jsonl` as derived export, the purpose of `bd prime`
 and `bd remember`, upstream documentation entry points, and common
 anti-patterns. Open Brain reference:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/AGENTS.md#L284-L414
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/AGENTS.md#L284-L414
 
 The implementation workflow MUST use noninteractive `bd` commands only.
 `bd edit` is forbidden because it opens `$EDITOR`. Agents MUST use
@@ -398,42 +404,46 @@ bulk staging (`git add -A`, `git add .`, `git commit -a`) remain forbidden
 for implementation workflow skills.
 
 `just implementation:setup-beads` MUST adapt Open Brain's setup guardrails
-to this repository. It MUST install or resolve the pinned `bd` through
-`mise`; skip unsafe setup in git worktrees; initialize or bootstrap an
-embedded Dolt database with the `li-` prefix; prefer `refs/dolt/data` as
-the bootstrap source; clean stale lock files only when no live lock holder
-exists; detect symlink corruption; detect workspace identity mismatch with
-a real database-opening probe; move a mismatched local `.beads/embeddeddolt/`
-aside to a timestamped backup before rebuilding; assert the `origin` Dolt
-remote; assert `dolt.auto-commit=on` and `export.auto=true`; set `.beads/`
-permissions to `0700` until the upstream permissions fix is available in
-the pinned Beads release; assert `core.hooksPath = .beads/hooks`; and
-rewrite hook files only through the canonical setup target. Open Brain
+to this repository. It MUST install or resolve the pinned `bd` and
+`lefthook` through `mise`; skip unsafe setup in git worktrees; initialize
+or bootstrap an embedded Dolt database with the `li-` prefix; prefer
+`refs/dolt/data` as the bootstrap source; clean stale lock files only when
+no live lock holder exists; detect symlink corruption; detect workspace
+identity mismatch with a real database-opening probe; move a mismatched
+local `.beads/embeddeddolt/` aside to a timestamped backup before
+rebuilding; assert the `origin` Dolt remote; assert `dolt.auto-commit=on`
+and `export.auto=true`; set `.beads/` permissions to `0700` until the
+upstream permissions fix is available in the pinned Beads release; assert
+`core.hooksPath = .beads/hooks`; and rewrite hook files only through the
+canonical setup target. The generated hook wrappers MUST dispatch lefthook
+through `mise exec -- lefthook` and MUST warn or fail if a `node_modules`
+lefthook installation returns. Open Brain
 references:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L1-L27
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L31-L86
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L88-L150
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L152-L203
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L1-L30
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L37-L86
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L94-L156
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L158-L209
 
 Hook templates managed by `just implementation:setup-beads` MUST run the
 existing lefthook-managed repository gates first, then Beads hook behavior,
 while preserving and returning the lefthook exit status. Open Brain
 reference:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/setup-beads.sh#L205-L339
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/setup-beads.sh#L211-L334
 
 `just implementation:beads-doctor` MUST exist because upstream `bd doctor`
 does not cover the embedded-mode checks this repository needs. It MUST
 check the resolved `bd` version and path, `.beads/embeddeddolt` presence,
 git hook path, Dolt remote wiring, pushed `refs/dolt/data`, local Dolt
-status, `dolt.auto-commit`, and `export.auto`. Open Brain references:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/bd-doctor.sh#L1-L38
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/bd-doctor.sh#L91-L125
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/scripts/bd-doctor.sh#L157-L226
+status, `dolt.auto-commit`, `export.auto`, `core.hooksPath`, and
+lefthook resolution through `mise`. Open Brain references:
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/bd-doctor.sh#L1-L49
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/bd-doctor.sh#L102-L199
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/scripts/bd-doctor.sh#L205-L289
 
 The local Claude settings SHOULD wire `bd prime` on session start and
 pre-compaction so agents begin with recent beads context. Open Brain
 reference:
-https://github.com/thewoolleyman/openbrain/blob/795cffeb5f11e67f50449945fffc5f745b20f591/.claude/settings.json#L1-L26
+https://github.com/thewoolleyman/openbrain/blob/b3dc01b961e064db1ad02d1e61c32d52364075aa/.claude/settings.json#L1-L25
 
 Every mutating `livespec-implementation` skill invocation MUST begin with a
 clean-tree precondition. If the tree is dirty, the skill MUST surface the
@@ -532,6 +542,7 @@ Given the repository already uses lefthook and `just check` as enforcement
 gates
 When the maintainer invokes `just implementation:setup-beads`
 Then the command resolves the pinned `bd`
+And resolves lefthook through `mise`
 And initializes or repairs embedded Beads state without replacing the
 existing enforcement model
 And sets `core.hooksPath` to `.beads/hooks`
@@ -547,6 +558,7 @@ Then the command checks the pinned `bd` path and version
 And checks embedded Dolt presence and status
 And checks Dolt remote wiring and pushed `refs/dolt/data`
 And checks `dolt.auto-commit` and `export.auto`
+And checks `core.hooksPath` and lefthook resolution
 And reports actionable repair instructions for any failed check
 
 Scenario: current gaps must map to exactly one beads issue
