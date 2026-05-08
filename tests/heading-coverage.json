@@ -655,5 +655,19 @@
     "spec_file": "contracts.md",
     "test": "tests.prompts.livespec.test_seed",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Sub-command wire contracts",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Sub-command lifecycle mechanics",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   }
 ]
