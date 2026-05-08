@@ -28,15 +28,17 @@
 Two semantic properties are mechanically asserted by the
 prompt-QA harness against this prompt's `replayed_response`:
 
-- `walks_every_pending_proposal` — every topic in
-  `input_context.pending_proposals[]` (extracted as filename
-  stems from each path) appears in
-  `replayed_response.decisions[].proposal_topic`. Skipping a
-  pending proposal is a silent-data-loss bug. The harness's
-  set-subset check fails when any pending topic is missing
-  from the decisions; extras (decisions not corresponding to
-  pending proposals) are tolerated by the assertion but should
-  not be emitted in normal operation.
+- `decisions_reference_pending_proposals` — every topic in
+  `replayed_response.decisions[].proposal_topic` is a member
+  of the topic-stem set extracted from
+  `input_context.pending_proposals[]` (filename stems from
+  each path). The prompt MAY emit decisions for any subset of
+  pending proposals (selective revise per
+  `SPECIFICATION/spec.md` (v052) §"Sub-command lifecycle"
+  revise lifecycle clause (h)); pending proposals not covered
+  by decisions are tolerated. Extras — decisions whose topic
+  is NOT in pending — indicate stale or typo'd topic
+  references and fail the assertion.
 - `per_proposal_disposition_with_rationale` — every decision
   in `replayed_response.decisions[]` has `decision` in
   `{"accept", "modify", "reject"}` AND a non-empty
@@ -88,14 +90,16 @@ prompt's path discipline.
 disambiguation, a propose-change filename stem may carry a `-N`
 suffix (e.g., `quiet-flag-2.md`) while the front-matter `topic:`
 field stays canonical (`quiet-flag`). The
-`walks_every_pending_proposal` assertion's filename-stem
-extraction is a structural approximation that holds in the
-collision-free common case; the prompt's
+`decisions_reference_pending_proposals` assertion's
+filename-stem extraction is a structural approximation that
+holds in the collision-free common case; the prompt's
 `decisions[].proposal_topic` MUST emit the canonical topic from
-front-matter even when the filename has a collision suffix. The
-harness's set-subset check tolerates the suffix mismatch as an
-"extra" decision in the collision case (since the canonical
-topic is not in the filename-stem set).
+front-matter even when the filename has a collision suffix. In
+the collision case the canonical topic is not in the
+filename-stem set, so the harness's emitted-in-pending check
+would fail on a legitimate `-N`-collision-disambiguated topic;
+the harness or fixture authoring MUST account for this when
+the collision case arises.
 
 ## Output schema
 
@@ -145,8 +149,9 @@ filename stem when the stem carries a `-N` collision suffix).
   3 with `PreconditionError`. The prompt does not run in this
   case; the SKILL.md prose surfaces the precondition failure.
 - **Mid-stream LLM truncation.** If the LLM truncates output
-  before covering all pending proposals,
-  `walks_every_pending_proposal` fires at the harness layer
-  (or the user surfaces the gap during normal review). The
-  retry-on-exit-4 path is the recovery: re-invoke with the
-  same input context.
+  before covering the user's intended subset of pending
+  proposals, the user surfaces the gap during normal review
+  (the `decisions_reference_pending_proposals` assertion does
+  NOT catch under-coverage; selective revise is permitted by
+  contract). The retry-on-exit-4 path is the recovery:
+  re-invoke with the same input context.

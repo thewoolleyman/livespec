@@ -20,10 +20,16 @@
 Two semantic properties are mechanically asserted by the
 prompt-QA harness:
 
-- `walks_every_pending_proposal` — every topic in
-  `input_context.pending_proposals[]` (filename-stem extracted)
-  appears in `replayed_response.decisions[].proposal_topic`.
-  Skipping a pending proposal is a silent-data-loss bug.
+- `decisions_reference_pending_proposals` — every topic in
+  `replayed_response.decisions[].proposal_topic` is a member
+  of the topic-stem set extracted from
+  `input_context.pending_proposals[]` (filename-stem
+  extracted). Selective revise is permitted per
+  `SPECIFICATION/spec.md` (v052) §"Sub-command lifecycle"
+  revise lifecycle clause (h); pending proposals not covered
+  by decisions are tolerated. Extras — decisions whose topic
+  is NOT in pending — indicate stale or typo'd topic
+  references and fail the assertion.
 - `per_proposal_disposition_with_rationale` — every decision
   has `decision` in `{"accept", "modify", "reject"}` AND a
   non-empty whitespace-stripped `rationale`.

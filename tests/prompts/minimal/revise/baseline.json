@@ -25,7 +25,7 @@
   },
   "expected_schema_valid": true,
   "expected_semantic_properties": [
-    "walks_every_pending_proposal",
+    "decisions_reference_pending_proposals",
     "per_proposal_disposition_with_rationale"
   ]
 }
