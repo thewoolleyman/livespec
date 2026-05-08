@@ -128,27 +128,27 @@ def _bcp14_in_proposed_changes(
 _DECISION_VALUES = ("accept", "modify", "reject")
 
 
-def _walks_every_pending_proposal(
+def _decisions_reference_pending_proposals(
     *,
     replayed_response: object,
     input_context: object,
 ) -> None:
-    """`replayed_response.decisions[]` covers every `input_context.pending_proposals[]` topic.
+    """Every `replayed_response.decisions[].proposal_topic` references an actually-pending proposal.
 
-    Same shape as livespec-template `_walks_every_pending_proposal`;
+    Same shape as livespec-template `_decisions_reference_pending_proposals`;
     per-template registry independence per v014 fixture pattern.
     """
     ctx = cast(dict[str, Any], input_context)
     payload = cast(dict[str, Any], replayed_response)
     pending = ctx.get("pending_proposals", [])
-    expected_topics = {Path(p).stem for p in pending}
+    pending_topics = {Path(p).stem for p in pending}
     decisions = payload.get("decisions", [])
-    actual_topics = {d.get("proposal_topic", "") for d in decisions}
-    missing = expected_topics - actual_topics
-    if missing:
+    emitted_topics = {d.get("proposal_topic", "") for d in decisions}
+    extras = emitted_topics - pending_topics
+    if extras:
         raise AssertionError(
-            f"replayed_response.decisions[] missing topics for "
-            f"pending proposals: {sorted(missing)!r}",
+            f"replayed_response.decisions[] topics not in pending "
+            f"proposals: {sorted(extras)!r}",
         )
 
 
@@ -218,7 +218,7 @@ ASSERTIONS: dict[str, Callable[..., None]] = {
     "single_specification_md_file": _single_specification_md_file,
     "target_is_single_specification_md": _target_is_single_specification_md,
     "bcp14_in_proposed_changes": _bcp14_in_proposed_changes,
-    "walks_every_pending_proposal": _walks_every_pending_proposal,
+    "decisions_reference_pending_proposals": _decisions_reference_pending_proposals,
     "per_proposal_disposition_with_rationale": _per_proposal_disposition_with_rationale,
     "prioritizes_ambiguity_over_style": _prioritizes_ambiguity_over_style,
 }

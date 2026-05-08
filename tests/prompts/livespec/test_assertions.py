@@ -165,13 +165,12 @@ def test_bcp14_in_proposed_changes_rejects_prose_without_keyword() -> None:
         )
 
 
-def test_walks_every_pending_proposal_passes_when_all_topics_covered() -> None:
-    assertion = ASSERTIONS["walks_every_pending_proposal"]
+def test_decisions_reference_pending_proposals_passes_when_emitted_subset_of_pending() -> None:
+    assertion = ASSERTIONS["decisions_reference_pending_proposals"]
     assertion(
         replayed_response={
             "decisions": [
                 {"proposal_topic": "foo", "decision": "accept", "rationale": "ok"},
-                {"proposal_topic": "bar", "decision": "reject", "rationale": "no"},
             ],
         },
         input_context={
@@ -183,13 +182,14 @@ def test_walks_every_pending_proposal_passes_when_all_topics_covered() -> None:
     )
 
 
-def test_walks_every_pending_proposal_rejects_missing_topic() -> None:
-    assertion = ASSERTIONS["walks_every_pending_proposal"]
-    with pytest.raises(AssertionError, match="missing topics"):
+def test_decisions_reference_pending_proposals_rejects_extra_topic_not_in_pending() -> None:
+    assertion = ASSERTIONS["decisions_reference_pending_proposals"]
+    with pytest.raises(AssertionError, match="topics not in pending"):
         assertion(
             replayed_response={
                 "decisions": [
                     {"proposal_topic": "foo", "decision": "accept", "rationale": "ok"},
+                    {"proposal_topic": "baz", "decision": "reject", "rationale": "no"},
                 ],
             },
             input_context={

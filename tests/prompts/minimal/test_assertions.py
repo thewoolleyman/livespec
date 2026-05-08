@@ -130,8 +130,8 @@ def test_bcp14_in_proposed_changes_rejects_no_keyword() -> None:
         )
 
 
-def test_walks_every_pending_proposal_passes_when_topics_match() -> None:
-    assertion = ASSERTIONS["walks_every_pending_proposal"]
+def test_decisions_reference_pending_proposals_passes_when_emitted_in_pending() -> None:
+    assertion = ASSERTIONS["decisions_reference_pending_proposals"]
     assertion(
         replayed_response={
             "decisions": [
@@ -142,11 +142,15 @@ def test_walks_every_pending_proposal_passes_when_topics_match() -> None:
     )
 
 
-def test_walks_every_pending_proposal_rejects_missing_topic() -> None:
-    assertion = ASSERTIONS["walks_every_pending_proposal"]
-    with pytest.raises(AssertionError, match="missing topics"):
+def test_decisions_reference_pending_proposals_rejects_extra_not_in_pending() -> None:
+    assertion = ASSERTIONS["decisions_reference_pending_proposals"]
+    with pytest.raises(AssertionError, match="topics not in pending"):
         assertion(
-            replayed_response={"decisions": []},
+            replayed_response={
+                "decisions": [
+                    {"proposal_topic": "baz", "decision": "reject", "rationale": "no"},
+                ],
+            },
             input_context={"pending_proposals": ["proposed_changes/foo.md"]},
         )
 
