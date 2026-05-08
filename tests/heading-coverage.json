@@ -223,7 +223,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Recovery path \u2014 pruning history before a long retention horizon",
+    "heading": "## Recovery path \u2014 pruning history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_prune_history_noop.test_prune_history_noop",
