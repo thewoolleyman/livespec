@@ -1,10 +1,11 @@
-"""Outside-in test for `dev-tooling/checks/wrapper_shape.py` — `bin/*.py` 6-statement shebang-wrapper shape.
+"""Outside-in test for `dev-tooling/checks/wrapper_shape.py` — `bin/*.py` 5-statement shebang-wrapper shape.
 
 Per `python-skill-script-style-requirements.md` §"Canonical
 target list" (the `check-wrapper-shape` row), every
 `.claude-plugin/scripts/bin/*.py` file (except
-`_bootstrap.py`) MUST conform to the 6-statement shebang-
-wrapper shape:
+`_bootstrap.py`) MUST conform to the 5-statement shebang-
+wrapper shape (the shebang is a comment, not a Python
+statement, and is not part of the AST body):
 
     #!/usr/bin/env python3
     \"\"\"Shebang wrapper for <name>. ...\"\"\"
