@@ -49,27 +49,6 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Testing approach",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "spec.md",
-    "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Developer-tooling layout",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "spec.md",
-    "test": "tests.dev-tooling.checks.test_check_tools",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Definition of Done",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "spec.md",
-    "test": "tests.e2e.test_happy_path.test_happy_path_minimal",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
     "heading": "## Non-goals",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
@@ -181,41 +160,6 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Pure / IO boundary",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_no_except_outside_io",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## ROP composition",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.livespec.commands.test_seed",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Supervisor discipline",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_supervisor_discipline",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Typechecker constraints (Phase 1 pin)",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_schema_dataclass_pairing",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Complexity thresholds",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_file_lloc",
-    "reason": "Phase 7 sub-step 2 mini-track item M3.b new constraints.md sub-section codifying the two-tier LLOC policy. Real test for the soft/hard threshold semantics covered by tests/dev-tooling/checks/test_file_lloc.py; rule-test pending."
-  },
-  {
     "heading": "## Heading taxonomy",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
@@ -227,13 +171,6 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.livespec.doctor.static.test_bcp14_keyword_wellformedness",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Self-application bootstrap exception",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
@@ -615,55 +552,6 @@
     "reason": "Phase 7 sub-step (f) imperative addition for the prompt-QA harness contract section introduced by SPECIFICATION/v014 (commit 6b84b75). The matching rule test under tests/test_contracts.py replaces this TODO once the harness implementation cycles land later in Phase 7 sub-step (f)."
   },
   {
-    "heading": "## Package layout",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_tests_mirror_pairing",
-    "reason": "Phase 8 item 2 cycle 5 addition: \u00a7\"Package layout\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v020 (python-style-package-layout propose-change). Phase 8 remaining cycles replace this TODO with the real test ID via the governed propose-change/revise loop."
-  },
-  {
-    "heading": "## Linter and formatter",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_no_lloc_soft_warnings",
-    "reason": "Phase 8 item 2 cycle 10 addition: \u00a7\"Linter and formatter\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v025."
-  },
-  {
-    "heading": "## Comment discipline",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "TODO",
-    "reason": "Pending impl of dev-tooling/checks/comment_no_historical_refs.py (the mechanical Rule 2 enforcement). Rule 1 (WHY-not-WHAT) is judgment-based and code-review gated, not test-covered."
-  },
-  {
-    "heading": "## Test-Driven Development discipline",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "spec.md",
-    "test": "tests.dev-tooling.checks.test_red_green_replay",
-    "reason": "Phase 8 item 2 cycle 12 addition: \u00a7\"Test-Driven Development discipline\" migrated from python-skill-script-style-requirements.md via SPECIFICATION/v027."
-  },
-  {
-    "heading": "## Code coverage",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_per_file_coverage",
-    "reason": "Phase 8 item 2 cycle 13 addition: \u00a7\"Code coverage\" migrated via SPECIFICATION/v028."
-  },
-  {
-    "heading": "## Keyword-only arguments",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_keyword_only_args",
-    "reason": "Phase 8 item 2 cycle 14 addition: \u00a7\"Keyword-only arguments\" migrated via SPECIFICATION/v029."
-  },
-  {
-    "heading": "## Structural pattern matching",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_match_keyword_only",
-    "reason": "Phase 8 item 2 cycle 15 addition: \u00a7\"Structural pattern matching\" migrated via SPECIFICATION/v030."
-  },
-  {
     "heading": "## Exit code contract",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
@@ -683,20 +571,6 @@
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_wrapper_shape",
     "reason": "Phase 8 item 2 cycles 17+19 combined: \u00a7\"File naming and invocation\" migrated via SPECIFICATION/v034."
-  },
-  {
-    "heading": "## Enforcement suite",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_check_tools",
-    "reason": "Phase 8 item 2 cycles 21+22 combined: \u00a7\"Enforcement suite\" migrated via SPECIFICATION/v036."
-  },
-  {
-    "heading": "## CLAUDE.md coverage",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_claude_md_coverage",
-    "reason": "Phase 8 item 2 cycles 21+22 combined: \u00a7\"CLAUDE.md coverage\" migrated via SPECIFICATION/v036."
   },
   {
     "heading": "## Prior Art",
@@ -737,6 +611,41 @@
     "heading": "## Non-functional-requirements scope",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "constraints.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Boundary",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "non-functional-requirements.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Spec",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "non-functional-requirements.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Contracts",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "non-functional-requirements.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Constraints",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "non-functional-requirements.md",
+    "test": "tests.prompts.livespec.test_seed",
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Scenarios",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "non-functional-requirements.md",
     "test": "tests.prompts.livespec.test_seed",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   }
