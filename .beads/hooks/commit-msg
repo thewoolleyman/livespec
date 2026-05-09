@@ -1,0 +1,47 @@
+#!/bin/sh
+# LIVESPEC-IMPLEMENTATION-MANAGED HOOK.
+# Re-asserted on every `just implementation:setup-beads` invocation
+# by dev-tooling/implementation/setup-beads.sh.
+# Layout (per NFR §Constraints "Hook chaining"):
+#   1. Lefthook (mise-pinned; invoked with --no-auto-install).
+#   2. BEADS INTEGRATION (auto-export of .beads/issues.jsonl, etc.) —
+#      OMITTED for hooks bd does not process (notably commit-msg).
+#   3. Exit fix: re-honor lefthook's exit code so a failing pre-commit
+#      job actually blocks the commit (the bd integration otherwise
+#      overwrites $? and hides the failure).
+
+if [ "$LEFTHOOK_VERBOSE" = "1" ] || [ "$LEFTHOOK_VERBOSE" = "true" ]; then
+  set -x
+fi
+
+if [ "$LEFTHOOK" = "0" ]; then
+  exit 0
+fi
+
+# Resolve lefthook: mise-pinned per .mise.toml. We deliberately do NOT
+# install lefthook via npm (see research/beads-problems.md § Problem 8 —
+# lefthook's npm postinstall runs `lefthook install -f` which clobbers
+# core.hooksPath and bypasses this hook entirely).
+call_lefthook()
+{
+  if test -n "$LEFTHOOK_BIN"
+  then
+    "$LEFTHOOK_BIN" "$@"
+  elif command -v mise >/dev/null 2>&1 && mise exec -- lefthook -h >/dev/null 2>&1
+  then
+    mise exec -- lefthook "$@"
+  elif lefthook -h >/dev/null 2>&1
+  then
+    lefthook "$@"
+  else
+    echo >&2 "Can't find lefthook (expected via 'mise exec -- lefthook'; run 'mise install')"
+    return 127
+  fi
+}
+
+call_lefthook run --no-auto-install "commit-msg" "$@"
+_lefthook_exit=$?
+
+# --- BEGIN LIVESPEC HOOK EXIT FIX ---
+exit ${_lefthook_exit:-0}
+# --- END LIVESPEC HOOK EXIT FIX ---
