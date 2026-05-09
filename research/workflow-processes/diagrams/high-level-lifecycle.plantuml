@@ -1,0 +1,69 @@
+@startuml high-level-lifecycle
+title Livespec — High-Level Lifecycle
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam ArrowFontColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam usecase {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+rectangle "Initial seed of intent" as SeedIntent
+card      "Command:\n/livespec:seed" as SeedCmd
+database  "SPECIFICATION/" as Spec
+
+rectangle "Implement\nfrom specification" as ImplementFromSpec #FFFFFF;line.dashed
+database  "IMPLEMENTATION\n(repo code, tests, config)" as Impl
+
+rectangle "Observe\nspecification, implementation,\nbehavior, or tooling" as Observe #FFFFFF;line.dashed
+usecase   "Does this\nchange a project\nrequirement?" as DecideRequirement
+
+card      "Command:\n/livespec:propose-change\n→ /livespec:revise" as SpecChangeCmds
+card      "Command:\n/livespec-implementation:plan\n(freeform `bd create`,\nuser-consented)" as ImplOnlyCmd
+database  ".beads/\nissue tracker\n(gap-tied + freeform)" as Beads
+
+card      "Command:\n/livespec-implementation:implement\n(Red→Green; close with audit)" as ImplementCmd
+
+SeedIntent --> SeedCmd
+SeedCmd --> Spec
+Spec --> ImplementFromSpec
+ImplementFromSpec --> Impl
+Impl --> Observe
+Spec --> Observe
+Observe --> DecideRequirement
+
+DecideRequirement -down-> SpecChangeCmds : YES\n(spec gap;\ngap-tied issue)
+DecideRequirement -down-> ImplOnlyCmd : NO\n(implementation-only;\nfreeform issue)
+
+SpecChangeCmds --> Beads : gap-tied issue,\nlabel `gap-id:gap-NNNN`
+SpecChangeCmds --> Spec : updates spec\n(via revise)
+ImplOnlyCmd --> Beads : freeform issue,\nno `gap-id:` label
+
+Beads --> ImplementCmd
+ImplementCmd --> Impl
+ImplementCmd --> Beads : close\n(--resolution fix\nor freeform)
+
+note right of DecideRequirement : Diagnostic: would `current.json`\nchange after `refresh-gaps`?\nYES → spec lifecycle (left).\nNO  → implementation-only (right).\n(Captured in\nresearch/workflow-processes/\nspec-vs-implementation-line.md.)
+
+note bottom of Spec : Mutated only via\n`/livespec:propose-change` →\n`/livespec:revise`. Direct edits\nforbidden by the spec's own\nself-application rule.
+
+note bottom of Beads : Source of truth: embedded Dolt.\nExport view: `.beads/issues.jsonl`\n(git-tracked, human-readable).
+@enduml

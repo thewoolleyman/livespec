@@ -1,0 +1,106 @@
+@startuml observation-flow
+title Observation Flow — Spec-vs-Implementation Routing
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam ArrowFontColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam usecase {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+rectangle "Observation\n(human notice during work,\nagent surface during refresh-gaps,\nfailing test, runtime drift,\nworkaround accumulation, ...)" as Observation #FFFFFF;line.dashed
+
+usecase "Does this introduce\nor change a project\nrequirement?\n\n(Diagnostic: would\n`current.json` change\nafter `refresh-gaps`?)" as DecideRequirement
+
+' ------------ PATH A: spec content ------------
+
+rectangle "PATH A — spec content\n(YES: requirement change)" as PathALabel #FFFFFF;line.dashed
+
+card     "/livespec:propose-change\n(author proposed_changes/<topic>.md)" as ProposeCmd
+database "proposed_changes/" as Proposed
+card     "/livespec:revise" as ReviseCmd
+database "SPECIFICATION/" as Spec
+database "history/vNNN/" as History
+
+card     "/livespec-implementation:\nrefresh-gaps\n(re-derives current.json)" as RefreshCmd
+database "implementation-gaps/\ncurrent.json" as CurrentJson
+card     "/livespec-implementation:plan\n(file gap-tied beads issues\nwith user consent)" as PlanCmd
+database ".beads/\n(gap-tied issue\nlabel `gap-id:gap-NNNN`)" as BeadsGap
+
+' ------------ PATH B: implementation only ------------
+
+rectangle "PATH B — implementation-only intent\n(NO: no requirement change)" as PathBLabel #FFFFFF;line.dashed
+
+card     "Manual `bd create`\n(freeform issue,\nuser-consented)" as ManualBdCreate
+database ".beads/\n(freeform issue,\nNO `gap-id:` label)" as BeadsFreeform
+
+' ------------ Common downstream: implement ------------
+
+card     "/livespec-implementation:implement\n(driven by `bd ready`)" as ImplementCmd
+database "Repository code,\ntests, config" as Repo
+
+' ------------ Closure semantics differ by path ------------
+
+usecase  "Was the issue\ngap-tied?" as ClosurePath
+card     "bd close --resolution fix\nMUST re-run refresh-gaps;\ngap-id MUST be gone\nfrom current.json" as CloseFix
+card     "bd close --reason <summary>\nfreeform closure;\nno spec-verification step" as CloseFreeform
+
+' ------------ Wiring ------------
+
+Observation --> DecideRequirement
+
+DecideRequirement -left-> PathALabel : YES
+DecideRequirement -right-> PathBLabel : NO
+
+PathALabel --> ProposeCmd
+ProposeCmd --> Proposed
+Proposed --> ReviseCmd
+ReviseCmd --> Spec
+ReviseCmd --> History
+Spec --> RefreshCmd
+RefreshCmd --> CurrentJson
+CurrentJson --> PlanCmd
+PlanCmd --> BeadsGap
+
+PathBLabel --> ManualBdCreate
+ManualBdCreate --> BeadsFreeform
+
+BeadsGap --> ImplementCmd
+BeadsFreeform --> ImplementCmd
+ImplementCmd --> Repo
+ImplementCmd --> ClosurePath
+
+ClosurePath -left-> CloseFix : YES (gap-tied)
+ClosurePath -right-> CloseFreeform : NO  (freeform)
+
+CloseFix --> BeadsGap
+CloseFreeform --> BeadsFreeform
+
+CloseFix ..> CurrentJson : verify\n(refresh-gaps re-run)
+
+note right of DecideRequirement : The line is the architecture-vs-mechanism\ndistinction the spec already enforces,\napplied to a different question:\n• Spec content = what the system MUST/SHOULD/MAY\n  do or be (a requirement).\n• Implementation-only intent = realization or\n  improvement of an existing requirement, OR\n  a refactor / cleanup that does not change\n  any requirement.\nCaptured in\nresearch/workflow-processes/\nspec-vs-implementation-line.md.
+
+note bottom of BeadsFreeform : Freeform issues coexist with gap-tied issues.\n`check-gap-tracking` only enforces 1:1 from\ncurrent gaps to issues; the absence of a\n`gap-id:` label is the freeform signal.
+
+note bottom of CloseFix : Audit fields required (per\nnon-functional-requirements.md §Constraints):\n• gap-id at filing time\n• evidence of fix (spec section + impl)\n• verification run_id (refresh-gaps UUID)\n• verification timestamp (UTC ISO-8601)
+
+note bottom of CloseFreeform : Audit fields not required by spec; closure\nreason is recommended for review continuity\nbut no machine-checked verification step.
+@enduml
