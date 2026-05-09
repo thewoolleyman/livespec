@@ -1,12 +1,12 @@
 # Livespec developer-tooling pins — non-Python binaries only.
 #
-# Authority: (v024) and PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md
-# Phase 1.
+# Authority: (v024) PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md Phase 1
+# (initial pins) + (v058) non-functional-requirements.md §Contracts
+# §"Toolchain pins" (added `bd`).
 #
-# Per v024, mise pins `uv`, `just`, `lefthook` only. Python and
-# every Python dev package are managed by uv via pyproject.toml's
-# [project.requires-python] (Python interpreter pin) and
-# [dependency-groups.dev] (dev packages); uv produces a committed
+# Python and every Python dev package are managed by uv via
+# pyproject.toml's [project.requires-python] (Python interpreter pin)
+# and [dependency-groups.dev] (dev packages); uv produces a committed
 # uv.lock and installs into a project-local .venv via
 # `uv sync --all-groups`.
 #
@@ -17,3 +17,4 @@
 uv       = "0.5.20"
 just     = "1.36.0"
 lefthook = "1.13.6"
+"github:gastownhall/beads" = { version = "1.0.3", bin = "bd" }
