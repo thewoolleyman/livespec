@@ -28,6 +28,13 @@ htmlcov/
 ### UV / lefthook local state
 .venv/
 
+### Beads / Dolt
+# Per-clone bd state (Dolt working copy, lockfiles, runtime artifacts)
+# is excluded by .beads/.gitignore (bd-managed, tracked itself). The
+# only top-level entry is the credential key, which is global rather
+# than per-project.
+.beads-credential-key
+
 ### macOS template
 # General
 .DS_Store
@@ -55,3 +62,7 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
