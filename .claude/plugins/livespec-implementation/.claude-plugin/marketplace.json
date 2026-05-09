@@ -1,0 +1,13 @@
+{
+  "name": "livespec-implementation-local",
+  "owner": {
+    "name": "livespec contributors"
+  },
+  "plugins": [
+    {
+      "name": "livespec-implementation",
+      "source": "./.claude/plugins/livespec-implementation",
+      "description": "Repo-local implementation workflow for livespec — discovers implementation gaps against SPECIFICATION/, manages them as beads issues, drives gap-closing implementation cycles. Project-local dogfooding only; NOT shipped under .claude-plugin/. Mirrors the source-path convention of the shipped livespec marketplace (repo-root-relative)."
+    }
+  ]
+}
