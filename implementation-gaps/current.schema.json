@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://livespec.local/schemas/current.schema.json",
+  "title": "livespec implementation-gap report",
+  "description": "Machine-readable gap report between SPECIFICATION/ and the actual livespec repository. Authoritative shape comes from SPECIFICATION/non-functional-requirements.md §Contracts §'Implementation-gap report shape'. Overwritten on every run of the refresh-gaps skill (or its just wrapper). Resolved gaps disappear from this file once `implement` verifies their closure; closed beads issues retain their gap-id labels for audit but no longer appear here.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "spec_sources", "inspection", "gaps", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bumped only when the report shape changes incompatibly."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO-8601 timestamp at which refresh-gaps produced this report."
+    },
+    "spec_sources": {
+      "type": "object",
+      "description": "Git blob hashes for the SPECIFICATION/ files read at generation time. The implement skill rejects the report as stale if any hash no longer matches the current file on disk.",
+      "required": ["spec_md", "contracts_md", "constraints_md", "scenarios_md", "non_functional_requirements_md"],
+      "additionalProperties": false,
+      "properties": {
+        "spec_md":                       { "$ref": "#/$defs/SpecSource" },
+        "contracts_md":                  { "$ref": "#/$defs/SpecSource" },
+        "constraints_md":                { "$ref": "#/$defs/SpecSource" },
+        "scenarios_md":                  { "$ref": "#/$defs/SpecSource" },
+        "non_functional_requirements_md":{ "$ref": "#/$defs/SpecSource" }
+      }
+    },
+    "inspection": {
+      "type": "object",
+      "description": "What refresh-gaps inspected and what it deliberately or unavoidably skipped. Findings backed by concrete file/command evidence are stronger than findings inferred from absence.",
+      "required": ["scopes_inspected", "scopes_skipped"],
+      "additionalProperties": true,
+      "properties": {
+        "scopes_inspected": {
+          "type": "array",
+          "description": "Repository sub-trees actually walked.",
+          "items": { "type": "string" }
+        },
+        "scopes_skipped": {
+          "type": "array",
+          "description": "Sub-trees deliberately not walked, with one-line reason each.",
+          "items": {
+            "type": "object",
+            "required": ["scope", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "scope":  { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "run_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUID assigned to this refresh-gaps invocation. Quoted in beads close --note as the verification run id (per non-functional-requirements.md §Constraints close-with-audit-fields rule)."
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Gap" }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Aggregate counts. Each sub-object's keys are open-ended (the value-set lives in the corresponding gap field's enum); 'unassigned' or omitted bands are tolerated.",
+      "required": ["by_area", "by_severity", "by_status"],
+      "additionalProperties": false,
+      "properties": {
+        "by_area":     { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "by_severity": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "by_status":   { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
+      }
+    }
+  },
+  "$defs": {
+    "SpecSource": {
+      "type": "object",
+      "required": ["path", "git_blob_sha"],
+      "additionalProperties": false,
+      "properties": {
+        "path":         { "type": "string", "description": "Relative path from repo root." },
+        "git_blob_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$", "description": "Git blob hash (sha1) as reported by `git hash-object <file>`." }
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "required": [
+        "id",
+        "area",
+        "severity",
+        "title",
+        "spec_refs",
+        "expected",
+        "observed",
+        "evidence",
+        "evidence_kind",
+        "destructive_to_fix",
+        "destructive_reason",
+        "fix_hint",
+        "depends_on"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^gap-[0-9]{4,}$",
+          "description": "Stable identifier. Once assigned to an entry, it MUST persist across regenerations as long as the underlying gap remains; do not renumber on re-run."
+        },
+        "area": {
+          "type": "string",
+          "enum": [
+            "spec",
+            "plugin",
+            "implementation",
+            "dev-tooling",
+            "tests",
+            "config",
+            "ci",
+            "docs"
+          ],
+          "description": "Which sub-system the gap belongs to. `spec` = SPECIFICATION/ tree itself; `plugin` = .claude-plugin/ shipped surface; `implementation` = .claude/plugins/livespec-implementation/ + dev-tooling/implementation/; `dev-tooling` = the enforcement-suite checks; `tests` = pytest tree; `config` = top-level toolchain (.mise.toml, justfile, lefthook.yml, pyproject.toml); `ci` = .github/workflows; `docs` = README.md, AGENTS.md, CLAUDE.md, etc."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["blocking", "missing", "partial", "drift", "cosmetic"],
+          "description": "Author-assigned severity. blocking = the workflow does not run at all without this; missing = required artifact entirely absent; partial = artifact exists but incomplete; drift = artifact exists but diverged from spec; cosmetic = wording / naming nit."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["P0", "P1", "P2", "P3"],
+          "description": "Operator-assigned priority band. Optional; omit on new gaps until classified. The plan skill sorts by priority before severity. P0 = critical / unblock-immediately; P1 = high; P2 = normal (default when classifying); P3 = backlog."
+        },
+        "title": { "type": "string", "minLength": 1, "description": "Short human-readable label." },
+        "spec_refs": {
+          "type": "array",
+          "description": "Anchor links of the form `<file>.md#<slug>` (e.g. `non-functional-requirements.md#beads-invariants`) that the gap is claimed against.",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "expected": { "type": "string", "minLength": 1, "description": "What SPECIFICATION/ requires." },
+        "observed": { "type": "string", "minLength": 1, "description": "What the repository actually exhibits, or 'not present' / 'not invocable' / etc. when the artifact is wholly absent." },
+        "evidence": {
+          "type": "array",
+          "description": "Concrete pointers — file paths, command outputs, git blob hashes — that support the finding.",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "evidence_kind": {
+          "type": "string",
+          "enum": ["code", "test", "config", "tool-output", "doc", "absent"],
+          "description": "Kind of evidence the entry rests on. `absent` = the absence-of-X is itself the evidence (e.g. file does not exist)."
+        },
+        "destructive_to_fix": {
+          "type": "boolean",
+          "description": "True when any plausible fix involves dropping data, rewriting published commits, force-pushing, or other hard-to-reverse actions. The implement skill hard-stops on this flag and surfaces to the user before proceeding."
+        },
+        "destructive_reason": {
+          "type": ["string", "null"],
+          "description": "Short phrase naming the destructive risk. MUST be non-null when destructive_to_fix is true; null otherwise."
+        },
+        "fix_hint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One-sentence nudge for the implement skill — not a full plan."
+        },
+        "depends_on": {
+          "type": "array",
+          "description": "Gap ids that MUST be resolved before this one. Use only for genuinely forced orderings (e.g. a Python script depends on its schema being authored).",
+          "items": { "type": "string", "pattern": "^gap-[0-9]{4,}$" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "destructive_to_fix": { "const": true } } },
+          "then": { "properties": { "destructive_reason": { "type": "string", "minLength": 1 } } }
+        }
+      ]
+    }
+  }
+}
