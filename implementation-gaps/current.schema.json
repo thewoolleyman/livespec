@@ -57,8 +57,8 @@
         },
         "run_id": {
           "type": "string",
-          "format": "uuid",
-          "description": "UUID assigned to this refresh-gaps invocation. Quoted in beads close --note as the verification run id (per non-functional-requirements.md §Constraints close-with-audit-fields rule)."
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "UUID assigned to this refresh-gaps invocation (lowercase 8-4-4-4-12 hex). Quoted in beads close --note as the verification run id (per non-functional-requirements.md §Constraints close-with-audit-fields rule). The format is a regex rather than `format: uuid` because fastjsonschema does not support the `uuid` JSON-Schema format extension."
         }
       }
     },
