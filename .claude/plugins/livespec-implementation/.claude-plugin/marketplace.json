@@ -1,13 +1,14 @@
 {
   "name": "livespec-implementation-local",
+  "description": "Project-local marketplace exposing the single livespec-implementation plugin to contributors of this repository. Wired into .claude/settings.json so the plugin auto-enables when claude is launched from this repo (no --plugin-dir / no /plugin install needed).",
   "owner": {
     "name": "livespec contributors"
   },
   "plugins": [
     {
       "name": "livespec-implementation",
-      "source": "./.claude/plugins/livespec-implementation",
-      "description": "Repo-local implementation workflow for livespec — discovers implementation gaps against SPECIFICATION/, manages them as beads issues, drives gap-closing implementation cycles. Project-local dogfooding only; NOT shipped under .claude-plugin/. Mirrors the source-path convention of the shipped livespec marketplace (repo-root-relative)."
+      "source": "./.claude-plugin",
+      "description": "Repo-local implementation workflow for livespec — discovers implementation gaps against SPECIFICATION/, manages them as beads issues, drives gap-closing implementation cycles. Project-local dogfooding only; NOT shipped under .claude-plugin/. The `source` is resolved relative to the parent of the marketplace's .claude-plugin/ directory (the plugin root); `./.claude-plugin` therefore points to the directory containing this plugin's plugin.json — same convention as the shipped livespec marketplace."
     }
   ]
 }
