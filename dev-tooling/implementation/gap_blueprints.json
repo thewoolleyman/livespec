@@ -1,0 +1,130 @@
+[
+  {
+    "id": "gap-0001",
+    "area": "implementation",
+    "severity": "missing",
+    "priority": "P1",
+    "title": "refresh_gaps.py automation missing — refresh-gaps skill is currently manual-fallback-only",
+    "spec_refs": [
+      "non-functional-requirements.md#repo-local-implementation-workflow",
+      "non-functional-requirements.md#implementation-justfile-namespace"
+    ],
+    "expected": "dev-tooling/implementation/refresh_gaps.py exists and produces a complete implementation-gaps/current.json from a static walk of SPECIFICATION/ and the repo, with a fresh run_id per invocation. The /livespec-implementation-beads:refresh-gaps slash command and `just implementation::refresh-gaps` recipe both delegate to it.",
+    "observed": "dev-tooling/implementation/refresh_gaps.py does not exist. `just implementation::refresh-gaps` fails with `python3: can't open file ... refresh_gaps.py: No such file or directory`. The refresh-gaps SKILL.md describes a manual fallback in lieu.",
+    "evidence": [
+      "absent: dev-tooling/implementation/refresh_gaps.py",
+      ".claude/skills/livespec-implementation-beads:refresh-gaps/SKILL.md §'Manual fallback (current state)'",
+      "implementation.just §refresh-gaps recipe"
+    ],
+    "evidence_kind": "absent",
+    "destructive_to_fix": false,
+    "destructive_reason": null,
+    "fix_hint": "Author dev-tooling/implementation/refresh_gaps.py following the existing dev-tooling/checks/* style: structlog-on-stderr, vendor-path-aware imports, exit 0/1 main(). Walk SPECIFICATION/ + repo state, emit a JSON report against implementation-gaps/current.schema.json. Open Brain's `update-specification-drift` skill is the pattern source.",
+    "depends_on": []
+  },
+  {
+    "id": "gap-0002",
+    "area": "implementation",
+    "severity": "missing",
+    "priority": "P2",
+    "title": "plan.py automation missing — plan skill is currently manual-fallback-only",
+    "spec_refs": ["non-functional-requirements.md#repo-local-implementation-workflow"],
+    "expected": "dev-tooling/implementation/plan.py exists and reads implementation-gaps/current.json, surfaces untracked gaps to the user, calls `bd create` (with `--label gap-id:<id>`) for confirmed gaps, establishes `bd dep add` edges per the depends_on field, and commits the auto-exported .beads/issues.jsonl as a planning commit.",
+    "observed": "dev-tooling/implementation/plan.py does not exist. The plan SKILL.md describes the manual fallback workflow.",
+    "evidence": [
+      "absent: dev-tooling/implementation/plan.py",
+      ".claude/skills/livespec-implementation-beads:plan/SKILL.md §'Manual fallback (current state)'"
+    ],
+    "evidence_kind": "absent",
+    "destructive_to_fix": false,
+    "destructive_reason": null,
+    "fix_hint": "Author dev-tooling/implementation/plan.py with the bd noninteractive command repertoire. Surface gaps to user before creation; honour depends_on as `bd dep add` edges. Re-run check-gap-tracking after each batch.",
+    "depends_on": ["gap-0001"]
+  },
+  {
+    "id": "gap-0003",
+    "area": "implementation",
+    "severity": "missing",
+    "priority": "P2",
+    "title": "implement.py automation missing — implement skill is currently manual-fallback-only",
+    "spec_refs": [
+      "non-functional-requirements.md#repo-local-implementation-workflow",
+      "non-functional-requirements.md#beads-invariants"
+    ],
+    "expected": "dev-tooling/implementation/implement.py exists. Pulls a leaf-level issue from `bd ready --json`, drives a Red-Green code cycle (delegating to the user / agent for the actual code edits), re-runs refresh-gaps, verifies the gap-id is gone from current.json, then calls `bd close --resolution fix --note '<audit fields>'` per non-functional-requirements.md §Constraints close-with-audit-fields rule.",
+    "observed": "dev-tooling/implementation/implement.py does not exist. The implement SKILL.md describes the manual fallback workflow (run by hand).",
+    "evidence": [
+      "absent: dev-tooling/implementation/implement.py",
+      ".claude/skills/livespec-implementation-beads:implement/SKILL.md §'Manual fallback (current state)'"
+    ],
+    "evidence_kind": "absent",
+    "destructive_to_fix": false,
+    "destructive_reason": null,
+    "fix_hint": "Author dev-tooling/implementation/implement.py with `bd ready --json` polling, audit-field formatting for `bd close --note`, and a hard refusal to close any issue whose gap-id still appears in current.json after a fresh refresh-gaps run.",
+    "depends_on": ["gap-0001"]
+  },
+  {
+    "id": "gap-0004",
+    "area": "tests",
+    "severity": "missing",
+    "priority": "P2",
+    "title": "tests/dev-tooling/implementation/ pytest mirrors missing for check_gaps + check_gap_tracking",
+    "spec_refs": ["non-functional-requirements.md#repo-local-implementation-workflow"],
+    "expected": "tests/dev-tooling/implementation/test_check_gaps.py and test_check_gap_tracking.py exist, exercising both validators against tmp_path fixtures (valid report, malformed report, missing report; the 0/1/2-match cases for the gap-tracking invariant). Style mirrors tests/dev-tooling/checks/*.",
+    "observed": "tests/dev-tooling/implementation/test_check_gaps.py and test_check_gap_tracking.py do not exist. The check-tests-mirror-pairing dev-tooling check currently scopes only dev-tooling/checks/ → tests/dev-tooling/checks/, so absence is not gated yet.",
+    "evidence": [
+      "absent: tests/dev-tooling/implementation/test_check_gaps.py",
+      "absent: tests/dev-tooling/implementation/test_check_gap_tracking.py",
+      "dev-tooling/checks/tests_mirror_pairing.py — _SOURCE_TREES_TO_TESTS only includes dev-tooling/checks/"
+    ],
+    "evidence_kind": "absent",
+    "destructive_to_fix": false,
+    "destructive_reason": null,
+    "fix_hint": "Author the two test files (one per validator) following the existing tests/dev-tooling/checks/ style: tmp_path-scoped, subprocess-invoked, golden-output matching where useful. Optionally widen the tests_mirror_pairing check to cover dev-tooling/implementation/ too.",
+    "depends_on": []
+  },
+  {
+    "id": "gap-0005",
+    "area": "implementation",
+    "severity": "partial",
+    "priority": "P3",
+    "title": "Three SKILL.md files are minimal stubs — full operational prose deferred",
+    "spec_refs": [
+      "non-functional-requirements.md#repo-local-implementation-workflow",
+      "non-functional-requirements.md#project-local-implementation-plugin-command-surface"
+    ],
+    "expected": "Each of refresh-gaps / plan / implement SKILL.md contains full operational prose covering the entire workflow the skill drives, modelled on Open Brain's openbrain/skills/{update-specification-drift,plan,implement}/SKILL.md (300-500 lines each), with the manual-fallback section either removed or scoped to legitimate degraded-mode situations rather than 'Python automation does not exist yet'.",
+    "observed": "At least one SKILL.md file under .claude/skills/livespec-implementation-beads:* still contains the 'Manual fallback (current state)' section, indicating the stub-prose state has not yet been retired.",
+    "evidence": [
+      ".claude/skills/livespec-implementation-beads:refresh-gaps/SKILL.md",
+      ".claude/skills/livespec-implementation-beads:plan/SKILL.md",
+      ".claude/skills/livespec-implementation-beads:implement/SKILL.md"
+    ],
+    "evidence_kind": "code",
+    "destructive_to_fix": false,
+    "destructive_reason": null,
+    "fix_hint": "Once gap-0001 / gap-0002 / gap-0003 are closed and the Python automation exists, expand each SKILL.md to reference the now-existing entry points and remove the 'Manual fallback (current state)' sections.",
+    "depends_on": ["gap-0001", "gap-0002", "gap-0003"]
+  },
+  {
+    "id": "gap-0006",
+    "area": "config",
+    "severity": "drift",
+    "priority": "P3",
+    "title": ".beads/config.yaml is git-tracked — Open Brain convention is to gitignore it (per-clone host URL drift)",
+    "spec_refs": ["non-functional-requirements.md#beads-invariants"],
+    "expected": "Per Open Brain's setup-beads.sh comments and OB's top-level .gitignore: .beads/config.yaml is gitignored because the dolt remote URL it embeds is host-specific (HTTPS on Linux/VPS, SSH on macOS), causing per-machine diff thrash if tracked. Livespec's spec defers to OB conventions (canonical pattern source) so the same gitignore entry applies.",
+    "observed": ".beads/config.yaml is git-tracked; bd init committed it as part of the first beads-init commit on the bootstrap branch. No `.beads/config.yaml` line in the top-level .gitignore.",
+    "evidence": [
+      "git ls-files .beads/config.yaml",
+      ".gitignore — no .beads/config.yaml entry",
+      "/home/ubuntu/workspace/openbrain/.gitignore — has `.beads/config.yaml`",
+      "dev-tooling/implementation/setup-beads.sh — re-asserts every required value on each run, so a per-clone config.yaml is fully reproducible"
+    ],
+    "evidence_kind": "config",
+    "destructive_to_fix": false,
+    "destructive_reason": null,
+    "fix_hint": "Add `.beads/config.yaml` to top-level .gitignore and `git rm --cached .beads/config.yaml`. Subsequent `setup-beads` runs re-assert the required values, so the per-clone file regenerates automatically.",
+    "depends_on": []
+  }
+]
