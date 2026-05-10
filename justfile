@@ -369,6 +369,16 @@ check-prompts:
 
 # ---------------------------------------------------------------
 # Alternate-cadence target (NOT in `just check`).
+#
+# WARNING: the "real" harness is currently UNIMPLEMENTED. The
+# LIVESPEC_E2E_HARNESS=real env var is set here but no code reads
+# it — tests/e2e/fake_claude.py runs identically in both `mock`
+# and `real` modes (no claude-agent-sdk integration exists yet).
+# This recipe and the corresponding e2e-real.yml workflow are
+# therefore dormant: they execute the mock-harness tests, not
+# any live claude-agent-sdk path. Tracked as a separate beads
+# issue for actual implementation; do NOT trust e2e-real CI runs
+# as live-API regression coverage today.
 # ---------------------------------------------------------------
 
 e2e-test-claude-code-real:
