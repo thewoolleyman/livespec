@@ -1,8 +1,28 @@
-# E2E real-claude workflow — runs the real-claude E2E target
-# against the minimal template via the live claude-agent-sdk.
+# E2E real-claude workflow — DORMANT (real harness unimplemented).
 #
-# Authoritative source: justfile recipe `e2e-test-claude-code-real`
-# (alternate-cadence target NOT in `just check`).
+# Status: This workflow is currently a no-op. The "real" harness
+# tier described below is documented but UNIMPLEMENTED:
+# tests/e2e/fake_claude.py runs identically in both LIVESPEC_E2E_HARNESS
+# modes ("mock" and "real"); no code reads the env var, no
+# claude-agent-sdk integration exists. The workflow runs the mock
+# harness regardless of secret state.
+#
+# Implications:
+#   - Setting ANTHROPIC_API_KEY does NOT unlock real claude-agent-sdk
+#     coverage today. The skip-when-secret-unset gate below is
+#     load-bearing only as a fork-PR carve-out; it does NOT enable
+#     live-API regression testing when the secret IS set.
+#   - Treat green runs of this workflow as "the wrappers don't
+#     crash on the mock-harness payloads" — not as "live SDK is
+#     compatible". The actual live-SDK regression coverage is an
+#     unimplemented beads issue tracked separately (the successor
+#     to li-7c0).
+#
+# Original intent (still the design target, just not yet built):
+#   - Run the real-claude E2E target against the minimal template
+#     via the live claude-agent-sdk.
+#   - Authoritative source: justfile recipe `e2e-test-claude-code-real`
+#     (alternate-cadence target NOT in `just check`).
 #
 # Triggers per plan:
 #   - merge_group (pre-merge via merge queue)
@@ -12,7 +32,7 @@
 # Gated on the ANTHROPIC_API_KEY repo secret. The job no-ops if
 # the secret is absent (forks, fresh clones without the secret
 # configured), so that PRs from forks do not fail the workflow
-# on a missing-secret error.
+# on a missing-secret error. Currently moot — see Status above.
 
 name: E2E (real Claude)
 
