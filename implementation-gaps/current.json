@@ -1,7 +1,7 @@
 {
   "$schema": "./current.schema.json",
   "schema_version": 1,
-  "generated_at": "2026-05-10T08:47:55Z",
+  "generated_at": "2026-05-10T09:25:54Z",
   "spec_sources": {
     "spec_md": {
       "path": "SPECIFICATION/spec.md",
@@ -44,33 +44,10 @@
         "reason": "livespec has no live system to probe (no DB / no edge functions); inspection is static-only"
       }
     ],
-    "run_id": "8e046f46-4f5b-44aa-903f-bf88d703c2b0",
+    "run_id": "a1ab6d7e-855f-4008-b66b-f1660889075b",
     "inspection_method": "static \u2014 dev-tooling/implementation/refresh_gaps.py walked the repo via hardcoded gap-detection predicates"
   },
   "gaps": [
-    {
-      "id": "gap-0002",
-      "area": "implementation",
-      "severity": "missing",
-      "priority": "P2",
-      "title": "plan.py automation missing \u2014 plan skill is currently manual-fallback-only",
-      "spec_refs": [
-        "non-functional-requirements.md#repo-local-implementation-workflow"
-      ],
-      "expected": "dev-tooling/implementation/plan.py exists and reads implementation-gaps/current.json, surfaces untracked gaps to the user, calls `bd create` (with `--label gap-id:<id>`) for confirmed gaps, establishes `bd dep add` edges per the depends_on field, and commits the auto-exported .beads/issues.jsonl as a planning commit.",
-      "observed": "dev-tooling/implementation/plan.py does not exist. The plan SKILL.md describes the manual fallback workflow.",
-      "evidence": [
-        "absent: dev-tooling/implementation/plan.py",
-        ".claude/skills/livespec-implementation-beads:plan/SKILL.md \u00a7'Manual fallback (current state)'"
-      ],
-      "evidence_kind": "absent",
-      "destructive_to_fix": false,
-      "destructive_reason": null,
-      "fix_hint": "Author dev-tooling/implementation/plan.py with the bd noninteractive command repertoire. Surface gaps to user before creation; honour depends_on as `bd dep add` edges. Re-run check-gap-tracking after each batch.",
-      "depends_on": [
-        "gap-0001"
-      ]
-    },
     {
       "id": "gap-0003",
       "area": "implementation",
@@ -148,16 +125,16 @@
   ],
   "summary": {
     "by_area": {
-      "implementation": 3,
+      "implementation": 2,
       "config": 1
     },
     "by_severity": {
-      "missing": 2,
+      "missing": 1,
       "partial": 1,
       "drift": 1
     },
     "by_status": {
-      "open": 4
+      "open": 3
     }
   }
 }
