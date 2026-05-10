@@ -1,7 +1,7 @@
 {
   "$schema": "./current.schema.json",
   "schema_version": 1,
-  "generated_at": "2026-05-10T09:49:59Z",
+  "generated_at": "2026-05-10T09:54:25Z",
   "spec_sources": {
     "spec_md": {
       "path": "SPECIFICATION/spec.md",
@@ -44,7 +44,7 @@
         "reason": "livespec has no live system to probe (no DB / no edge functions); inspection is static-only"
       }
     ],
-    "run_id": "9d80534e-f3e8-4547-bf6d-acd5f67721a2",
+    "run_id": "89bdaa78-b053-4142-be9d-3713b47a374c",
     "inspection_method": "static \u2014 dev-tooling/implementation/refresh_gaps.py walked the repo via hardcoded gap-detection predicates"
   },
   "gaps": [
