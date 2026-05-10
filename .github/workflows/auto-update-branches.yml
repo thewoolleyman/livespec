@@ -4,6 +4,17 @@
 # `required_status_checks.strict = true` would otherwise force on each PR
 # after master moves.
 #
+# Why three triggers: a single push trigger has a known race when two PRs
+# merge in quick succession. The workflow fires when PR #N merges, but
+# PR #N+1 may still be BLOCKED at that moment (CI in flight). After
+# CI finishes on #N+1 and it transitions BLOCKED → BEHIND, no event
+# re-fires this workflow under push-only. The two extra triggers close
+# that gap:
+#   - schedule: cron — sweeps any PR that drifted into BEHIND for any
+#     reason (cheap; no-op when nothing's behind).
+#   - workflow_run: completed on CI — re-evaluates a PR's merge state
+#     right when its BLOCKED → BEHIND transition can happen.
+#
 # Why not GitHub Merge Queue: only available on org repos (and Team/
 # Enterprise plans). This repo is a personal-account public repo, where
 # merge queue is not surfaced in the UI or accepted by the rulesets API.
@@ -13,6 +24,11 @@ name: Auto-update behind PRs
 on:
   push:
     branches: [master]
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
   contents: write
