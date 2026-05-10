@@ -1,7 +1,7 @@
 {
   "$schema": "./current.schema.json",
   "schema_version": 1,
-  "generated_at": "2026-05-10T10:07:30Z",
+  "generated_at": "2026-05-10T13:37:36Z",
   "spec_sources": {
     "spec_md": {
       "path": "SPECIFICATION/spec.md",
@@ -44,43 +44,15 @@
         "reason": "livespec has no live system to probe (no DB / no edge functions); inspection is static-only"
       }
     ],
-    "run_id": "db9e7232-6e70-4650-8fd4-07fd978f8a13",
+    "run_id": "533a7e51-dd05-49b3-bc9f-e30d849d1c33",
     "inspection_method": "static \u2014 dev-tooling/implementation/refresh_gaps.py walked the repo via hardcoded gap-detection predicates"
   },
-  "gaps": [
-    {
-      "id": "gap-0006",
-      "area": "config",
-      "severity": "drift",
-      "priority": "P3",
-      "title": ".beads/config.yaml is git-tracked \u2014 Open Brain convention is to gitignore it (per-clone host URL drift)",
-      "spec_refs": [
-        "non-functional-requirements.md#beads-invariants"
-      ],
-      "expected": "Per Open Brain's setup-beads.sh comments and OB's top-level .gitignore: .beads/config.yaml is gitignored because the dolt remote URL it embeds is host-specific (HTTPS on Linux/VPS, SSH on macOS), causing per-machine diff thrash if tracked. Livespec's spec defers to OB conventions (canonical pattern source) so the same gitignore entry applies.",
-      "observed": ".beads/config.yaml is git-tracked; bd init committed it as part of the first beads-init commit on the bootstrap branch. No `.beads/config.yaml` line in the top-level .gitignore.",
-      "evidence": [
-        "git ls-files .beads/config.yaml",
-        ".gitignore \u2014 no .beads/config.yaml entry",
-        "/home/ubuntu/workspace/openbrain/.gitignore \u2014 has `.beads/config.yaml`",
-        "dev-tooling/implementation/setup-beads.sh \u2014 re-asserts every required value on each run, so a per-clone config.yaml is fully reproducible"
-      ],
-      "evidence_kind": "config",
-      "destructive_to_fix": false,
-      "destructive_reason": null,
-      "fix_hint": "Add `.beads/config.yaml` to top-level .gitignore and `git rm --cached .beads/config.yaml`. Subsequent `setup-beads` runs re-assert the required values, so the per-clone file regenerates automatically.",
-      "depends_on": []
-    }
-  ],
+  "gaps": [],
   "summary": {
-    "by_area": {
-      "config": 1
-    },
-    "by_severity": {
-      "drift": 1
-    },
+    "by_area": {},
+    "by_severity": {},
     "by_status": {
-      "open": 1
+      "open": 0
     }
   }
 }
