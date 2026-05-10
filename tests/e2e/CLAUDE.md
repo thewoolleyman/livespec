@@ -1,12 +1,19 @@
 # tests/e2e/
 
 End-to-end integration tests for the livespec wrapper chain. Two tiers
-selected by the `LIVESPEC_E2E_HARNESS` env var:
+were *designed* (selected by the `LIVESPEC_E2E_HARNESS` env var) but only
+the `mock` tier is implemented today:
 
 - `mock` — `fake_claude.py` provides deterministic payloads; wrappers run
   for real. Invoked by `just e2e-test-claude-code-mock` (in `just check`).
-- `real` — real `claude-agent-sdk` + live Anthropic API. Invoked by
-  `just e2e-test-claude-code-real` (NOT in `just check`).
+- `real` — *DESIGN INTENT, NOT YET IMPLEMENTED.* Was meant to run real
+  `claude-agent-sdk` + live Anthropic API via `just
+  e2e-test-claude-code-real` and the `e2e-real.yml` CI workflow. In
+  practice no code reads `LIVESPEC_E2E_HARNESS`, so both modes execute
+  the same `fake_claude.py` mock harness. The `real` recipe + workflow
+  exist but are functionally identical to the `mock` path; setting
+  `ANTHROPIC_API_KEY` does not change behavior. Tracked as a separate
+  beads issue (the successor to li-7c0) for actual implementation.
 
 ## Files
 
