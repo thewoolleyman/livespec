@@ -1,0 +1,77 @@
+# Auto-enable-merge workflow — set --auto --rebase on PRs from the
+# user-or-agent identity allowlist, when not draft and not flagged
+# do-not-merge. Eliminates the "agent opened a PR but forgot to
+# `gh pr merge --auto --rebase` the user" failure mode (li-abl;
+# observed in PR #56 on 2026-05-10).
+#
+# Author allowlist (initially):
+#   - thewoolleyman — covers the user's own PRs and PRs opened by
+#     agents acting via the user's PAT (Claude Code, etc., where
+#     the PR author == the PAT owner).
+#
+# Explicit opt-out paths:
+#   - `--draft` PRs are skipped (the trigger only fires on
+#     ready-for-review state).
+#   - PRs labelled `do-not-merge` are skipped (give the user a
+#     "open it, think for a beat, then merge manually" rhythm).
+#
+# Out of scope by design:
+#   - External bot PRs (dependabot, future renovate) — author not
+#     in the allowlist, so they don't auto-merge until added.
+#   - Future collaborator PRs — same gate.
+#
+# Complementary to .github/workflows/auto-update-branches.yml
+# (li-x0x): that workflow keeps PRs from sticking in BEHIND after
+# master moves; THIS workflow ensures they enter the auto-merge
+# state in the first place. Both are needed for the
+# rebase-merge-only discipline (per
+# SPECIFICATION/non-functional-requirements.md §"Commit and merge
+# discipline") to be hands-off.
+
+name: Auto-enable merge
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - synchronize
+      - unlabeled
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  # Per-PR concurrency: a synchronize-then-unlabeled burst on the
+  # same PR collapses to one run.
+  group: auto-enable-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    # Composed gate: NOT draft AND author in allowlist AND
+    # do-not-merge label absent.
+    if: >-
+      github.event.pull_request.draft == false
+      && contains(fromJSON('["thewoolleyman"]'), github.event.pull_request.user.login)
+      && !contains(github.event.pull_request.labels.*.name, 'do-not-merge')
+    steps:
+      - name: "Enable auto-merge (rebase) on PR #${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          # `gh pr merge --auto` is idempotent — re-running on a PR
+          # that already has auto-merge set returns 0 with a
+          # "Auto-merge already enabled" diagnostic.
+          if gh pr merge "$PR" --repo "$REPO" --auto --rebase; then
+            echo "Auto-merge enabled on PR #$PR (rebase strategy)"
+          else
+            echo "::warning::failed to enable auto-merge on PR #$PR"
+            exit 1
+          fi
