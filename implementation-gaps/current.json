@@ -1,7 +1,7 @@
 {
   "$schema": "./current.schema.json",
   "schema_version": 1,
-  "generated_at": "2026-05-10T09:54:25Z",
+  "generated_at": "2026-05-10T10:03:49Z",
   "spec_sources": {
     "spec_md": {
       "path": "SPECIFICATION/spec.md",
@@ -44,37 +44,10 @@
         "reason": "livespec has no live system to probe (no DB / no edge functions); inspection is static-only"
       }
     ],
-    "run_id": "89bdaa78-b053-4142-be9d-3713b47a374c",
+    "run_id": "1f82f1fa-7c12-4dfb-88a5-a03756f887d1",
     "inspection_method": "static \u2014 dev-tooling/implementation/refresh_gaps.py walked the repo via hardcoded gap-detection predicates"
   },
   "gaps": [
-    {
-      "id": "gap-0005",
-      "area": "implementation",
-      "severity": "partial",
-      "priority": "P3",
-      "title": "Three SKILL.md files are minimal stubs \u2014 full operational prose deferred",
-      "spec_refs": [
-        "non-functional-requirements.md#repo-local-implementation-workflow",
-        "non-functional-requirements.md#project-local-implementation-plugin-command-surface"
-      ],
-      "expected": "Each of refresh-gaps / plan / implement SKILL.md contains full operational prose covering the entire workflow the skill drives, modelled on Open Brain's openbrain/skills/{update-specification-drift,plan,implement}/SKILL.md (300-500 lines each), with the manual-fallback section either removed or scoped to legitimate degraded-mode situations rather than 'Python automation does not exist yet'.",
-      "observed": "At least one SKILL.md file under .claude/skills/livespec-implementation-beads:* still contains the 'Manual fallback (current state)' section, indicating the stub-prose state has not yet been retired.",
-      "evidence": [
-        ".claude/skills/livespec-implementation-beads:refresh-gaps/SKILL.md",
-        ".claude/skills/livespec-implementation-beads:plan/SKILL.md",
-        ".claude/skills/livespec-implementation-beads:implement/SKILL.md"
-      ],
-      "evidence_kind": "code",
-      "destructive_to_fix": false,
-      "destructive_reason": null,
-      "fix_hint": "Once gap-0001 / gap-0002 / gap-0003 are closed and the Python automation exists, expand each SKILL.md to reference the now-existing entry points and remove the 'Manual fallback (current state)' sections.",
-      "depends_on": [
-        "gap-0001",
-        "gap-0002",
-        "gap-0003"
-      ]
-    },
     {
       "id": "gap-0006",
       "area": "config",
@@ -101,15 +74,13 @@
   ],
   "summary": {
     "by_area": {
-      "implementation": 1,
       "config": 1
     },
     "by_severity": {
-      "partial": 1,
       "drift": 1
     },
     "by_status": {
-      "open": 2
+      "open": 1
     }
   }
 }
