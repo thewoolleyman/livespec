@@ -1,6 +1,6 @@
 ---
-name: refresh-gaps
-description: Compare the current SPECIFICATION/ tree against this repository's implementation, tests, tooling, and workflow state, then write the current implementation-gap report to implementation-gaps/current.json. Read-only with respect to SPECIFICATION/. Does NOT create or close beads issues. Invoked by /livespec-implementation:refresh-gaps, "refresh implementation gaps", or as the verification step before any beads issue is closed with resolution:fix.
+name: livespec-implementation-beads:refresh-gaps
+description: Compare the current SPECIFICATION/ tree against this repository's implementation, tests, tooling, and workflow state, then write the current implementation-gap report to implementation-gaps/current.json. Read-only with respect to SPECIFICATION/. Does NOT create or close beads issues. Invoked by /livespec-implementation-beads:refresh-gaps, "refresh implementation gaps", or as the verification step before any beads issue is closed with resolution:fix.
 ---
 
 # refresh-gaps

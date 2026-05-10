@@ -1,6 +1,6 @@
 ---
-name: plan
-description: Manage beads issues for implementation work — create new issues for untracked implementation gaps, triage existing issues, set priorities and dependencies, and commit the beads export view as a reviewable planning commit. Surfaces untracked gaps to the user before creating issues. Invoked by /livespec-implementation:plan, "plan implementation work", "manage beads issues", or after a refresh-gaps run reveals new untracked gaps.
+name: livespec-implementation-beads:plan
+description: Manage beads issues for implementation work — create new issues for untracked implementation gaps, triage existing issues, set priorities and dependencies, and commit the beads export view as a reviewable planning commit. Surfaces untracked gaps to the user before creating issues. Invoked by /livespec-implementation-beads:plan, "plan implementation work", "manage beads issues", or after a refresh-gaps run reveals new untracked gaps.
 ---
 
 # plan
