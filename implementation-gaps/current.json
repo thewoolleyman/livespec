@@ -1,7 +1,7 @@
 {
   "$schema": "./current.schema.json",
   "schema_version": 1,
-  "generated_at": "2026-05-10T09:30:43Z",
+  "generated_at": "2026-05-10T09:49:59Z",
   "spec_sources": {
     "spec_md": {
       "path": "SPECIFICATION/spec.md",
@@ -44,34 +44,10 @@
         "reason": "livespec has no live system to probe (no DB / no edge functions); inspection is static-only"
       }
     ],
-    "run_id": "0ba447f9-a36f-465d-9a67-6e77d2f1bef4",
+    "run_id": "9d80534e-f3e8-4547-bf6d-acd5f67721a2",
     "inspection_method": "static \u2014 dev-tooling/implementation/refresh_gaps.py walked the repo via hardcoded gap-detection predicates"
   },
   "gaps": [
-    {
-      "id": "gap-0003",
-      "area": "implementation",
-      "severity": "missing",
-      "priority": "P2",
-      "title": "implement.py automation missing \u2014 implement skill is currently manual-fallback-only",
-      "spec_refs": [
-        "non-functional-requirements.md#repo-local-implementation-workflow",
-        "non-functional-requirements.md#beads-invariants"
-      ],
-      "expected": "dev-tooling/implementation/implement.py exists. Pulls a leaf-level issue from `bd ready --json`, drives a Red-Green code cycle (delegating to the user / agent for the actual code edits), re-runs refresh-gaps, verifies the gap-id is gone from current.json, then calls `bd close --resolution fix --note '<audit fields>'` per non-functional-requirements.md \u00a7Constraints close-with-audit-fields rule.",
-      "observed": "dev-tooling/implementation/implement.py does not exist. The implement SKILL.md describes the manual fallback workflow (run by hand).",
-      "evidence": [
-        "absent: dev-tooling/implementation/implement.py",
-        ".claude/skills/livespec-implementation-beads:implement/SKILL.md \u00a7'Manual fallback (current state)'"
-      ],
-      "evidence_kind": "absent",
-      "destructive_to_fix": false,
-      "destructive_reason": null,
-      "fix_hint": "Author dev-tooling/implementation/implement.py with `bd ready --json` polling, audit-field formatting for `bd close --note`, and a hard refusal to close any issue whose gap-id still appears in current.json after a fresh refresh-gaps run.",
-      "depends_on": [
-        "gap-0001"
-      ]
-    },
     {
       "id": "gap-0005",
       "area": "implementation",
@@ -125,16 +101,15 @@
   ],
   "summary": {
     "by_area": {
-      "implementation": 2,
+      "implementation": 1,
       "config": 1
     },
     "by_severity": {
-      "missing": 1,
       "partial": 1,
       "drift": 1
     },
     "by_status": {
-      "open": 3
+      "open": 2
     }
   }
 }
