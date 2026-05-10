@@ -34,6 +34,13 @@ htmlcov/
 # only top-level entry is the credential key, which is global rather
 # than per-project.
 .beads-credential-key
+# .beads/config.yaml carries the host-specific dolt remote URL
+# (HTTPS on Linux/VPS, SSH on macOS) — tracking it would cause
+# per-machine diff thrash. dev-tooling/implementation/setup-beads.sh
+# touches the file defensively on each run and re-asserts the two
+# required bd-config keys (`dolt.auto-commit=on`, `export.auto=true`),
+# so a per-clone config.yaml is fully reproducible.
+.beads/config.yaml
 
 ### macOS template
 # General
