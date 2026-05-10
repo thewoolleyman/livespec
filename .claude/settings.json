@@ -22,16 +22,5 @@
         ]
       }
     ]
-  },
-  "extraKnownMarketplaces": {
-    "livespec-implementation-local": {
-      "source": {
-        "source": "file",
-        "path": "./.claude/plugins/livespec-implementation/.claude-plugin/marketplace.json"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "livespec-implementation@livespec-implementation-local": true
   }
 }

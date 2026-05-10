@@ -1,6 +1,6 @@
 ---
-name: implement
-description: Drive issue-based implementation work. Pull a leaf-level issue from `bd ready`, do the gap-closing work (Red→Green code cycle, doc edit, config change, etc.), verify the gap is closed by re-running refresh-gaps, then close the beads issue with resolution:fix and the required audit fields. Invoked by /livespec-implementation:implement, "implement next gap", or "work the bd ready queue".
+name: livespec-implementation-beads:implement
+description: Drive issue-based implementation work. Pull a leaf-level issue from `bd ready`, do the gap-closing work (Red→Green code cycle, doc edit, config change, etc.), verify the gap is closed by re-running refresh-gaps, then close the beads issue with resolution:fix and the required audit fields. Invoked by /livespec-implementation-beads:implement, "implement next gap", or "work the bd ready queue".
 ---
 
 # implement

@@ -1,8 +1,0 @@
-{
-  "name": "livespec-implementation",
-  "version": "0.1.0",
-  "description": "Repo-local implementation workflow for the livespec project — discovers implementation gaps against SPECIFICATION/, manages them as beads issues, and drives gap-closing implementation cycles. Project-local dogfooding only; NOT shipped under .claude-plugin/ and NOT a first-class livespec product feature (per SPECIFICATION/non-functional-requirements.md §Spec §'Repo-local implementation workflow').",
-  "author": {
-    "name": "livespec contributors"
-  }
-}
