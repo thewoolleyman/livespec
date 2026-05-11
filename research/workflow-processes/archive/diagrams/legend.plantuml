@@ -1,0 +1,53 @@
+@startuml legend
+title Livespec Workflow Diagrams — Legend
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam ArrowFontColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam usecase {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam actor {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+rectangle "external input\n(seed of intent, observation)" as Input
+card      "slash command\n(/livespec:..., /livespec-implementation:...)" as Command
+rectangle "action / observation\n(work, walk, inspection)" as Action #FFFFFF;line.dashed
+usecase   "decision\n(branch point)" as Decision
+database  "stored artifact\n(SPECIFICATION/, .beads/, current.json)" as Artifact
+actor     "User\nor agent" as User
+
+Input    -[hidden]right-> Command
+Command  -[hidden]right-> Action
+Action   -[hidden]right-> Decision
+Decision -[hidden]right-> Artifact
+Artifact -[hidden]right-> User
+
+note bottom of Input : Plain rectangle = external input.\n(Something the system did not produce.)
+note bottom of Command : Card (slightly rounded rectangle) =\na slash command invoked by a user or agent.
+note bottom of Action : Dashed rectangle = an action or observation\nperformed externally to the slash-command\nsurface (writing code, running tests,\nreading output).
+note bottom of Decision : Oval = a branch point.\n(PlantUML deployment diagrams don't have\na native diamond shape outside activity\ncontext; oval is the closest equivalent.)
+note bottom of Artifact : Cylinder = a persistent stored artifact\n(file, directory, database).
+note bottom of User : Stick figure = the human or agent driving\nthe workflow. Either may invoke any slash\ncommand; some commands require explicit\nhuman consent (e.g. `bd create`).
+@enduml

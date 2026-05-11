@@ -1,0 +1,81 @@
+@startuml implementation-lifecycle
+title Livespec Implementation Lifecycle (detailed)
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam ArrowFontColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam usecase {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+database  "SPECIFICATION/\n(input — read-only here)" as Spec
+database  "Repository\n(code, tests,\nconfig, plugins)" as Repo
+
+card      "/livespec-implementation:\nrefresh-gaps" as RefreshCmd
+database  "implementation-gaps/\ncurrent.json\n(gap report)" as CurrentJson
+card      "just implementation::\ncheck-gaps\n(schema validation)" as CheckGapsCmd
+
+card      "/livespec-implementation:plan" as PlanCmd
+database  ".beads/\nissues\n(gap-tied + freeform)" as Beads
+card      "just implementation::\ncheck-gap-tracking\n(1:1 invariant)" as CheckTrackingCmd
+
+card      "/livespec-implementation:\nimplement\n(pulls from `bd ready`,\ndrives Red→Green)" as ImplementCmd
+rectangle "Red commit:\ntest only" as RedCommit #FFFFFF;line.dashed
+rectangle "Green amend:\nimpl that turns\ntest green" as GreenCommit #FFFFFF;line.dashed
+rectangle "refresh-gaps re-run\n(verify gap-id\ngone from\ncurrent.json)" as VerifyClose #FFFFFF;line.dashed
+usecase   "Gap-id still\nin current.json?" as VerifiedClosed
+
+card      "bd close\n--resolution fix\n--note <audit>" as CloseFix
+card      "bd close\n--reason <closure_summary>\n(non-fix path: wontfix /\nspec-revised / duplicate)" as CloseNonFix
+
+Spec --> RefreshCmd
+Repo --> RefreshCmd
+RefreshCmd --> CurrentJson
+CurrentJson --> CheckGapsCmd
+CheckGapsCmd ..> CurrentJson : passes /\nfails
+
+CurrentJson --> PlanCmd
+PlanCmd --> Beads : `bd create`\nper untracked gap\n(user-consented)
+PlanCmd ..> CheckTrackingCmd : verify\n1:1 invariant
+CheckTrackingCmd ..> Beads
+
+Beads --> ImplementCmd : `bd ready`\n→ leaf-level issue
+ImplementCmd --> RedCommit
+RedCommit --> GreenCommit : amend
+GreenCommit --> Repo
+GreenCommit --> VerifyClose
+VerifyClose --> CurrentJson : refresh-gaps\nre-run
+VerifyClose --> VerifiedClosed
+VerifiedClosed -right-> CloseFix : NO\n(gap is gone)
+VerifiedClosed -down-> ImplementCmd : YES\n(continue work;\ndo not close)
+ImplementCmd ..> CloseNonFix : non-fix closure\n(if scope changed)
+
+CloseFix --> Beads
+CloseNonFix --> Beads
+
+note right of RefreshCmd : Read-only with respect to SPECIFICATION/\n(per non-functional-requirements.md\n§"Repo-local implementation workflow").\nComputes spec ↔ repo divergence.
+
+note right of PlanCmd : Surfaces every untracked gap to the user\nbefore any `bd create`. Each filing is a\nseparate user-consented action; no\nbatch-filing.
+
+note bottom of CloseFix : Audit fields required:\n• gap-id from current.json\n• Evidence of fix (spec section + impl)\n• Verification refresh-gaps run_id (UUID)\n• Verification timestamp (UTC ISO-8601)
+
+note bottom of Beads : Source of truth: embedded Dolt\ndatabase at .beads/embeddeddolt/.\nExport view: .beads/issues.jsonl\n(git-tracked human-readable).\nCross-clone sync: refs/dolt/data\non git origin (`bd dolt push`).
+@enduml

@@ -1,0 +1,63 @@
+@startuml core-vs-impl-api-surface
+title Core vs Implementation — API Surface and Contract
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+package "livespec-core (one plugin)" {
+  rectangle "skills exposed:" as CoreSkillsBox {
+    card "/livespec:seed" as Seed #LightYellow
+    card "/livespec:propose-changes" as Propose #LightYellow
+    card "/livespec:critique" as Critique #LightYellow
+    card "/livespec:revise" as Revise #LightYellow
+    card "/livespec:doctor" as Doctor #LightYellow
+    card "/livespec:prune-history" as Prune #LightYellow
+    card "/livespec:help" as Help #LightYellow
+  }
+  rectangle "contracts.md publishes:" as PublishedContract {
+    rectangle "• SPECIFICATION/ tree shape\n• .livespec.jsonc core schema (open extension)\n• impl-plugin contract (must-expose skills)\n• .ai/<topic>.md convention\n• secrets-out-of-config rule\n• shared spec-vocabulary" as ContractItems #Lavender
+  }
+  database "manages\nSPECIFICATION/" as SpecOwned
+}
+
+package "implementation plugin (one of N)" {
+  rectangle "skills MUST expose:" as ImplSkillsBox {
+    card "/livespec-impl-*:capture-spec-gaps" as CaptureGaps #LightYellow
+    card "/livespec-impl-*:implement" as Implement #LightYellow
+    card "/livespec-impl-*:capture-memo" as CaptureMemo #LightYellow
+    card "/livespec-impl-*:list-memos" as ListMemos #LightYellow
+    card "/livespec-impl-*:process-memos" as ProcessMemos #LightYellow
+  }
+  rectangle "additional contract obligations:" as ImplContract {
+    rectangle "• `list-memos --untriaged --json`\n  (machine query for doctor)\n• process-memos honors .ai/ convention\n  for persistent-knowledge graduations\n• reads its OWN section of .livespec.jsonc\n• tolerates other plugins' sections" as ImplObligations #Lavender
+  }
+  database "manages its\nwork-item queue +\nmemo store" as ImplOwned
+}
+
+PublishedContract -down-> ImplContract : every impl plugin\nMUST honor
+Doctor -right-> ListMemos : queries\n--untriaged --json\nfor memo-hygiene invariant
+ProcessMemos -up-> Propose : routes spec-bound\nmemos via\n/livespec:propose-changes\n(cross-namespace handoff)
+
+note left of CoreSkillsBox : Core knows NOTHING about\nimplementation plugins by name.\nThe published contract is uniform;\nany plugin honoring it is swappable.
+
+note right of ImplSkillsBox : Implementations differ in:\n• backend (bd vs JSONL vs GitLab vs ...)\n• which dispositions are practical\n• which format choices apply\nThey AGREE on the skill surface\nand the contract obligations.
+
+note bottom of Implement : `implement` is generic.\nIt consumes any work item\nregardless of origin:\n• capture-spec-gaps-derived (gap-id labeled)\n• process-memos impl-bound disposition\n• future direct-filing\nClosure differs only by gap-id presence.
+
+@enduml
