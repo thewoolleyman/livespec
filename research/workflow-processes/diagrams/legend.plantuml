@@ -1,10 +1,16 @@
 @startuml legend
-title Livespec Workflow Diagrams — Legend
+title Legend — Symbol Vocabulary
 skinparam defaultFontName Helvetica
 skinparam shadowing false
 skinparam BackgroundColor white
 skinparam ArrowColor #111
 skinparam ArrowFontColor #111
+
+skinparam actor {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
 skinparam rectangle {
   BorderColor #111
   BackgroundColor white
@@ -25,29 +31,24 @@ skinparam card {
   BackgroundColor white
   FontColor #111
 }
-skinparam actor {
-  BorderColor #111
-  BackgroundColor white
-  FontColor #111
-}
 
-rectangle "external input\n(seed of intent, observation)" as Input
-card      "slash command\n(/livespec:..., /livespec-implementation:...)" as Command
-rectangle "action / observation\n(work, walk, inspection)" as Action #FFFFFF;line.dashed
-usecase   "decision\n(branch point)" as Decision
-database  "stored artifact\n(SPECIFICATION/, .beads/, current.json)" as Artifact
-actor     "User\nor agent" as User
+actor "Human user" as HumanUser
+actor "Agent\n(Claude, etc.)" as Agent #LightSkyBlue
 
-Input    -[hidden]right-> Command
-Command  -[hidden]right-> Action
-Action   -[hidden]right-> Decision
-Decision -[hidden]right-> Artifact
-Artifact -[hidden]right-> User
+card "Skill /\nslash command" as Skill #LightYellow
+rectangle "External input\n(observation,\nuser intent,\nfailing test)" as Input #FFFFFF;line.dashed
+database "Persistent\nstore" as Store
+usecase "Decision\npoint" as Decision
+rectangle "Action /\nside effect" as Action #LightGreen;line.dashed
+rectangle "Convention /\nartifact\n(file in repo)" as Convention #Lavender
 
-note bottom of Input : Plain rectangle = external input.\n(Something the system did not produce.)
-note bottom of Command : Card (slightly rounded rectangle) =\na slash command invoked by a user or agent.
-note bottom of Action : Dashed rectangle = an action or observation\nperformed externally to the slash-command\nsurface (writing code, running tests,\nreading output).
-note bottom of Decision : Oval = a branch point.\n(PlantUML deployment diagrams don't have\na native diamond shape outside activity\ncontext; oval is the closest equivalent.)
-note bottom of Artifact : Cylinder = a persistent stored artifact\n(file, directory, database).
-note bottom of User : Stick figure = the human or agent driving\nthe workflow. Either may invoke any slash\ncommand; some commands require explicit\nhuman consent (e.g. `bd create`).
+note bottom of HumanUser : Stick figure, white background — the project maintainer or contributor invoking workflows directly.
+note bottom of Agent : Stick figure, light blue background — an AI agent (Claude Code, Codex CLI, etc.) acting on user's behalf. Distinguished from human by background color.
+note bottom of Skill : Yellow card — a slash command exposed by livespec-core or an implementation plugin (e.g., /livespec:revise, /livespec-impl-*:capture-spec-gaps).
+note bottom of Input : Dashed rectangle, white background — something outside the workflow surface that flows in (an observation, a memo's source thought, a CI failure).
+note bottom of Store : Cylinder — a persistent data store (SPECIFICATION/, .beads/, repo files, work-item queue).
+note bottom of Decision : Oval — a branch point that routes based on a condition or user choice.
+note bottom of Action : Green dashed rectangle — an action taken inside a workflow (writing a file, running a check, computing a diff).
+note bottom of Convention : Lavender rectangle — a structured artifact written by a workflow to the repo (e.g., .ai/<topic>.md, AGENTS.md reference).
+
 @enduml

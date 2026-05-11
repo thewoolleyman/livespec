@@ -1,0 +1,86 @@
+@startuml seq-revise
+title Sequence — /livespec:revise (selective per-proposal)
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam sequence {
+  ParticipantBorderColor #111
+  ParticipantBackgroundColor white
+  ParticipantFontColor #111
+  ActorBorderColor #111
+  ActorBackgroundColor white
+  ActorFontColor #111
+  LifeLineBorderColor #444
+}
+
+actor "Human user" as User
+actor "Agent" as Agent #LightSkyBlue
+participant "/livespec:revise" as Revise #LightYellow
+participant "/livespec:doctor\n(pre-step static)" as DoctorPre #LightYellow
+participant "proposed_changes/" as Proposed
+participant "SPECIFICATION/" as Spec
+participant "history/" as History
+participant "/livespec:doctor\n(post-step static)" as DoctorPost #LightYellow
+participant "/livespec:doctor\n(post-step LLM-driven)" as DoctorLLM #LightYellow
+
+User -> Agent : "run revise"
+Agent -> Revise : invoke
+activate Revise
+
+Revise -> DoctorPre : pre-step static checks
+DoctorPre -> Spec : invariants
+DoctorPre -> Proposed : invariants
+DoctorPre --> Revise : findings (pass / fail)
+
+alt pre-step fails
+  Revise --> Agent : surface failures; abort
+  Agent --> User : report; do not proceed
+else pre-step passes
+  Revise -> Proposed : enumerate pending propose-change files\n(skip README.md, skip *-revision.md)
+  Proposed --> Revise : N files, ordered by created_at
+  Revise -> Agent : narrate count + oldest
+
+  Agent -> Agent : optional steering-intent prompt
+  Agent -> User : capture steering intent (optional)
+
+  loop for each pending proposal
+    Agent -> Agent : LLM drafts decision (accept / modify / reject\n+ rationale + resulting_files)
+    Agent -> User : present decision for confirmation
+    alt user confirms
+      User --> Agent : approve
+    else user requests modify
+      User --> Agent : steer
+      Agent -> Agent : redraft modification iteratively\nuntil user converges
+    end
+    note right of Agent : User may toggle\n"delegate remaining\nto the LLM" at any\nturn (whole-revise scope).
+  end
+
+  Revise -> Revise : assemble revise-json payload
+  Revise -> Spec : apply resulting_files updates
+  Revise -> History : cut new vNNN/ snapshot
+  Revise -> History : move processed proposed-changes\n+ write paired -revision.md files
+  Revise -> Proposed : in-flight pile now drained of accepted
+
+  Revise -> DoctorPost : post-step static checks
+  DoctorPost -> Spec : invariants on new state
+  DoctorPost -> History : versioning invariants
+  DoctorPost --> Revise : findings
+
+  alt post-step fails
+    Revise --> Agent : surface failures; vNNN still cut
+    Agent --> User : report
+  end
+
+  Revise --> Agent : exit 0
+  deactivate Revise
+
+  Agent -> DoctorLLM : post-step LLM-driven phase (skill-prose)
+  DoctorLLM -> Spec : objective + subjective passes
+  DoctorLLM --> Agent : findings (if any)
+  Agent --> User : final report
+end
+
+note over User, DoctorLLM : Note: Selective revise per (v052) —\nthe user MAY accept some proposals\nin the current revise pass and leave\nothers for the next. revise's deterministic\nfile-shaping is in the Python wrapper;\nLLM-driven per-proposal acceptance lives\nin the SKILL.md prose.
+
+@enduml

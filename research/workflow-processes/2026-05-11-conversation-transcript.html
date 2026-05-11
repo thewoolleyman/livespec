@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LiveSpec brainstorm transcript — 2026-05-11</title>
+<style>
+  body { max-width: 1000px; margin: 2em auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif; line-height: 1.55; color: #1a1a1a; padding: 0 1.2em; }
+  h1 { font-size: 1.6em; border-bottom: 2px solid #d96b9d; padding-bottom: 0.3em; }
+  .meta { color: #666; font-size: 0.9em; margin-bottom: 2em; }
+  .user, .assistant, .system { padding: 1em 1.3em; margin: 1em 0; border-radius: 8px; }
+  .user { background: #fde8f0; border-left: 4px solid #d96b9d; }
+  .assistant { background: #f5f5f5; border-left: 4px solid #888; }
+  .system { background: #fff8e0; border-left: 4px solid #d4a017; font-size: 0.88em; color: #555; padding: 0.5em 1em; }
+  .turn-label { font-weight: 700; text-transform: uppercase; font-size: 0.75em; letter-spacing: 0.1em; margin-bottom: 0.5em; color: #888; }
+  .user .turn-label { color: #b04477; }
+  .assistant .turn-label { color: #555; }
+  .system .turn-label { color: #b07a17; }
+  code { background: rgba(0,0,0,0.06); padding: 0.1em 0.35em; border-radius: 3px; font-family: "SF Mono", Monaco, Menlo, monospace; font-size: 0.92em; }
+  pre { background: #2a2a2a; color: #e8e8e8; padding: 1em; border-radius: 6px; overflow-x: auto; font-size: 0.88em; }
+  pre code { background: transparent; padding: 0; color: inherit; }
+  table { border-collapse: collapse; margin: 0.8em 0; width: 100%; font-size: 0.95em; }
+  th, td { border: 1px solid #ccc; padding: 0.4em 0.7em; text-align: left; vertical-align: top; }
+  th { background: rgba(0,0,0,0.05); font-weight: 600; }
+  blockquote { border-left: 3px solid #999; padding-left: 1em; color: #555; margin: 0.8em 0; }
+  p { margin: 0.7em 0; }
+  ul, ol { margin: 0.5em 0; padding-left: 1.5em; }
+  li { margin: 0.2em 0; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }
+  .toc { background: #f0f0f0; padding: 1em 1.5em; border-radius: 6px; margin-bottom: 2em; }
+  .toc h2 { margin-top: 0; font-size: 1.1em; }
+  .toc ol { margin: 0; }
+</style>
+</head>
+<body>
+
+<h1>LiveSpec brainstorm transcript — 2026-05-11</h1>
+
+<p class="meta">
+  Verbatim conversation between the maintainer and Claude Opus 4.7 (1M context). Auto-loaded skill prompts and tool-call mechanics are elided as <span class="system" style="display: inline; padding: 0.1em 0.4em; font-size: 0.85em;">system annotations</span> to keep the conversational flow readable. The summary derived from this conversation is at <code>2026-05-11-architecture-summary.html</code>.
+</p>
+
+<div class="toc">
+  <h2>Conversation arc</h2>
+  <ol>
+    <li>Spec revise (v060) — three claude-opus-4-7-critique proposals accepted</li>
+    <li>Plan pass — discovers metadata-only refresh of current.json</li>
+    <li>"Why are we tracking these fields?" — honest per-field analysis</li>
+    <li>"Bigger architectural question — eliminate the yaml file" — first brainstorm</li>
+    <li>Sit-with doc landed on master</li>
+    <li>Reframe: git-only as a peer implementation, not just an alternative</li>
+    <li>Multi-repo vs monorepo — marketplace verification + CI + agent-context</li>
+    <li>Decision: multi-repo</li>
+    <li>Plugin API surface in contracts.md; renames (livespec-core, livespec-impl-X)</li>
+    <li>livespec-impl-plaintext consolidation; .livespec.jsonc as shared config; GitLab support</li>
+    <li>Beads weight-pull assessment — livespec stops dogfooding beads</li>
+    <li>bd remember deep-dive</li>
+    <li>"Is memory actually an anti-pattern?" — paradigm shift</li>
+    <li>Triage / scratch terminology; branch-local storage</li>
+    <li>Cohesion: propose-changes vs critique vs scratch</li>
+    <li>"Memo" as the canonical term; spec/impl routing</li>
+    <li>Reset: memos as impl-side concept; bd-remember terminology preserved</li>
+    <li>Reset: doctor must enforce hygiene; query API contract</li>
+    <li>Reset: review-memories lives impl-side; .ai/&lt;topic&gt;.md convention</li>
+    <li>impl-* skills table</li>
+    <li>Final rename pass: capture-memo / list-memos / process-memos; capture-spec-gaps collapse</li>
+    <li>implement stays generic</li>
+    <li>Meta question: "why is all of this so hard?"</li>
+    <li>Stopping point + this transcript task</li>
+  </ol>
+</div>
+
+<hr>
+
+<div class="system">
+<div class="turn-label">Session start</div>
+<p>Session opened with <code>/clear</code>. Beads workflow context auto-loaded by SessionStart hook (full beads command reference). Skill list refreshed. <code>currentDate</code> set to <code>2026-05-11</code> (later corrected from <code>2026-05-11</code>; transcript preserves both timestamps where relevant). Initial branch: <code>research/beads-only-gap-storage-sit-with</code> on master ancestor.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User · /livespec:revise</div>
+<p>User invoked <code>/livespec:revise</code>. The revise skill prompt auto-loaded (~250 lines describing the sub-command lifecycle, retry-on-exit-4 handshake, per-proposal accept/modify/reject mechanics, etc.). Skill prompt itself is preserved in the <code>.claude-plugin/</code> tree; not duplicated here.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>I'll start by resolving the active template and enumerating pending proposed-change files.</p>
+<p>The wrapper requires <code>--template</code> (the SKILL.md prose is slightly outdated). Reading from <code>.livespec.jsonc</code> the template is <code>livespec</code>.</p>
+<p>One pending proposed-change file: <code>claude-opus-4-7-critique.md</code> (created 2026-05-10T07:47:48Z, three proposals against SPECIFICATION/spec.md).</p>
+<p>Pre-revise narration: 1 pending proposal file with 3 proposals; oldest (and only) is <code>claude-opus-4-7-critique</code> from 2026-05-10T07:47:48Z.</p>
+<p>All three proposals target <code>SPECIFICATION/spec.md</code>:</p>
+<ol>
+  <li><strong><code>add-seed-to-opening-sentence-except-list</code></strong> — fixes a real contradiction at spec.md §"Sub-command lifecycle" line 72: opening sentence omits <code>seed</code> from the except-list, but the bullets immediately below exempt <code>seed</code> from pre-step. <strong>Recommend ACCEPT.</strong></li>
+  <li><strong><code>kebab-case-resolve-template</code></strong> — fixes snake_case <code>resolve_template</code> on the same line 72, while everywhere else (<code>contracts.md</code>, surrounding <code>propose-change</code>/<code>prune-history</code>) uses kebab-case. Trivial typo with one obviously correct fix. <strong>Recommend ACCEPT.</strong></li>
+  <li><strong><code>split-monster-sentence-revise-responsibilities</code></strong> — splits the ~600-word single sentence at line 88 into a bulleted list, preserving every normative obligation and the closing prose. <strong>Recommend ACCEPT.</strong></li>
+</ol>
+<p>Proposals 1 and 2 both modify the same opening sentence; proposal 3 rewrites a separate paragraph. I'll fold all three into a combined <code>resulting_files[]</code> content for spec.md so they apply atomically.</p>
+<p>Skipping the optional <code>&lt;revision-steering-intent&gt;</code> prompt — no steering needed.</p>
+<p><em>[AskUserQuestion: "Three proposals all touching spec.md, all clear fixes — proceed how?" with options Accept all / Step through / Show me the diff first]</em></p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Accept all three (Recommended)</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>I'll build the modified spec.md content via a small Python helper, write the JSON payload, then invoke the wrapper.</p>
+<p>[Builds payload via <code>/tmp/build_revise_payload.py</code>, runs the revise wrapper, exit 0.]</p>
+<p>Wrapper exited 0. v060 cut, proposed_changes/ is empty (only README remains), revision file paired correctly. Verifying spec.md applied both edits.</p>
+<p>All three changes landed correctly:</p>
+<ol>
+  <li>Line 72 now has <code>resolve-template</code> (kebab-case)</li>
+  <li>Line 72 now has the <code>seed</code> exemption clause</li>
+  <li>The §"<code>revise</code> skill-prose responsibilities" is now a bulleted list</li>
+</ol>
+<p>Now running the post-step LLM-driven doctor phase. Given the revise touched only <code>SPECIFICATION/spec.md</code> with three small textual fixes (no semantic-model changes, no new terminology, no new references), I'll focus the LLM-driven sweep on the changed sections rather than re-evaluate every tree from scratch.</p>
+<p><strong>Objective phase</strong> — main spec, focused on the changes: no new contradictions / undefined terms / dangling references introduced. <strong>PASS.</strong></p>
+<p><strong>Subjective phase</strong> — main spec, focused on the changes: spec↔implementation drift unchanged; prose quality improved by bulletization. <strong>PASS.</strong></p>
+<p>No new findings. Now the session-close protocol per the SessionStart hook.</p>
+<p>Revise produced v060 + spec.md edits (13 lines net). Diff shape: opening sentence at line 72 fixed (<code>seed</code> exempt + kebab-case <code>resolve-template</code>), §"<code>revise</code> skill-prose responsibilities" bulletized.</p>
+<p><em>[AskUserQuestion: "v060 cut and ready. Proceed with commit + push?"]</em></p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Commit and push (Recommended)</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Pre-commit hooks all passed but <code>00-no-commit-on-master</code> blocked the commit — direct commits to master are forbidden. I need to put this on a feature branch and PR it.</p>
+<p>[Creates branch <code>spec/v060-claude-opus-4-7-critique</code>, commits, pushes.]</p>
+<p>Branch pushed. The remote prompts for PR creation; master is protected so the v060 commit needs a PR to land.</p>
+<p><em>[AskUserQuestion: "Open the PR for spec/v060-claude-opus-4-7-critique?"]</em></p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>just land it on master. Don't ask me</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>[Creates PR #84 with auto-merge enabled by the <code>livespec-pr-bot</code> App.]</p>
+<p>PR #84 opened; auto-merge enabled (rebase method) by the <code>livespec-pr-bot</code> GitHub App. CI is running — it'll auto-land on master once green.</p>
+<p><strong>Done.</strong></p>
+<ul>
+  <li><code>/livespec:revise</code> v060 cut accepting all three claude-opus-4-7-critique proposals against <code>SPECIFICATION/spec.md</code></li>
+  <li>Wrapper exit 0; pre-step + post-step doctor static both passed; LLM-driven post-step pass found no new findings</li>
+  <li>Branch <code>spec/v060-claude-opus-4-7-critique</code> pushed; PR #84 with auto-merge: <a href="https://github.com/thewoolleyman/livespec/pull/84">https://github.com/thewoolleyman/livespec/pull/84</a></li>
+</ul>
+</div>
+
+<div class="user">
+<div class="turn-label">User · /livespec-implementation-beads:plan</div>
+<p>User invoked <code>/livespec-implementation-beads:plan</code>. The plan skill prompt auto-loaded (~120 lines describing the plan workflow for managing beads-tied issues, consent rules, the gap-id ↔ beads-label invariant, etc.).</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Starting the plan workflow. Let me check gap-report freshness and surface untracked gaps.</p>
+<p>The <code>just implementation::plan</code> recipe isn't registered (only <code>refresh-gaps</code>, <code>check-gap-tracking</code>, etc. show up). Falling back to the direct script invocation per SKILL's "Equivalent direct invocation":</p>
+<p>[Runs <code>plan.py</code>, returns <code>[]</code>. Refreshes gaps; <code>gap_count: 0</code>.]</p>
+<p><strong>Plan workflow result: nothing for <code>plan</code> to do this pass.</strong></p>
+<ul>
+  <li><code>implementation-gaps/current.json</code> refreshed → <code>gap_count: 0</code></li>
+  <li><code>plan.py</code> returns <code>[]</code> — no untracked gaps to file</li>
+  <li><code>check-gap-tracking</code> reports invariant holds (no orphaned gap-id labels, no untracked gap ids)</li>
+  <li><code>bd stats</code>: 17 total / 5 open (all ready) / 1 in_progress / 11 closed; no blocked</li>
+</ul>
+<p>The 5 open issues are all gap-untied and already in the ready queue. No <code>bd create</code>, no <code>bd dep add</code> — nothing to consent on.</p>
+<p><strong>Side-effect from refresh-gaps:</strong> <code>implementation-gaps/current.json</code> has a metadata-only diff (new <code>generated_at</code>, new <code>run_id</code>, updated <code>spec_md.git_blob_sha</code> reflecting the v060 spec.md edit). Substantive payload (<code>gaps: []</code>) unchanged.</p>
+<p><em>[AskUserQuestion about disposition of the metadata-only refresh.]</em></p>
+</div>
+
+<div class="user">
+<div class="turn-label">User · question rejected for clarification</div>
+<p>Why are we even tracking these fields? Do they have any value that the Git history doesn't give us?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Fair question. Let me check whether anything actually consumes these fields rather than guess.</p>
+<p>[Greps the codebase for consumers of <code>generated_at</code>, <code>run_id</code>, <code>git_blob_sha</code>.]</p>
+<p>Honest answer: mostly no, they don't earn their keep over git. Per-field:</p>
+<p><strong><code>git_blob_sha</code> (per spec source)</strong> — <em>no consumer at all.</em> <code>refresh_gaps.py:100</code> writes it; no code reads it back. The schema requires it (line 84) but nothing compares the recorded blob to <code>git hash-object</code> to detect staleness. Pure audit cosmetic, and <code>git ls-tree &lt;commit&gt; -- &lt;path&gt;</code> already gives you this for any committed state. <strong>Verdict: redundant with git, drop it.</strong></p>
+<p><strong><code>run_id</code></strong> — <code>implement.py:166-174,225,231</code> threads it into the <code>bd close --reason</code> text and the close-note, intending to correlate with <code>refresh_gaps</code>'s stderr structlog line bearing that UUID. In practice that stderr is ephemeral — nobody archives it for <code>bd show</code> lookups weeks later. So the UUID lives forever in Dolt-backed beads history while pointing at a log line that's already gone. <strong>Verdict: theoretical value, zero practical consumer. Drop it (or keep stderr-only and stop persisting it).</strong></p>
+<p><strong><code>generated_at</code></strong> — same <code>implement.py</code> path embeds this in the <code>bd close</code> reason and close-note, which Dolt persists. Weak but real value: tells you when the verifying refresh-gaps actually ran, which can be minutes-to-hours before the close-commit timestamp <code>git log</code> shows. Marginal. <strong>Verdict: only one of the three with a non-zero non-git consumer; could go either way.</strong></p>
+<p>Net: <code>git_blob_sha</code> is straight redundancy with git; <code>run_id</code> is dead weight in practice; <code>generated_at</code> is the only honest survivor. Every refresh-gaps run currently creates a 7-line metadata-only diff (timestamp + uuid + 3-5 blob shas) for zero downstream decisions. That's the noise you're feeling.</p>
+<p>This is a real cleanup. Outside the strict scope of the <code>plan</code> skill (no untracked gaps to file), but it's the kind of finding the plan-pass should surface for triage.</p>
+<p><em>[AskUserQuestion about disposition.]</em></p>
+</div>
+
+<div class="user">
+<div class="turn-label">User · question rejected for clarification</div>
+<p>I want to step back and think about this as a bigger architectural question.</p>
+<p>Read under <code>research/workflow-processes</code> for context.</p>
+<p>The fact that this is stored in git is an anti-pattern. We'd really like to have just one persistent store for workflow tracking. And in this current implementation pattern of beads, that is the [Dolt] database and beads itself.</p>
+<p>So I want you to brainstorm on how we can collapse this gap tracking to metadata in beads itself and eliminate the yaml file.</p>
+<p>Carefully read the workflow processes, diagrams, and other documents in there to see the larger direction we are going with pluggable implementations, and think about the API surface between the LiveSpec Core and the implementation, and how the decision here impacts that.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Let me read the workflow-processes research material first.</p>
+<p>[Reads <code>research/workflow-processes/CLAUDE.md</code>, <code>spec-vs-implementation-line.md</code>, <code>workflow-diagrams.md</code>, all PlantUML sources, <code>beads-problems.md</code>, relevant NFR sections, <code>current.schema.json</code>, <code>current.json</code>.]</p>
+<p>Read everything. Here's the brainstorm.</p>
+<h3>The forces at play</h3>
+<p>Three load-bearing facts:</p>
+<ol>
+  <li><strong>Beads-Dolt is <em>already</em> the source of truth for everything else</strong> in the implementation layer. <code>current.json</code> is the <em>only</em> implementation-layer artifact that's stored outside it.</li>
+  <li><strong>The implementation layer is intentionally outside LiveSpec Core.</strong> NFR §"Repo-local implementation workflow" explicitly says discovery is "repository-specific implementation knowledge … intentionally outside <code>livespec</code> core." So whatever we standardize is not a core contract — it's an emerging <em>pattern</em> other projects can adopt or replace.</li>
+  <li><strong>The current shape leaks every refresh into git.</strong> Every refresh-gaps regenerates timestamps, UUIDs, and 5 blob SHAs — independent of whether any gap actually changed.</li>
+</ol>
+<h3>Design alternatives</h3>
+<p><strong>Option A — Pure beads, refresh-gaps writes directly.</strong> refresh-gaps detects predicates and immediately reconciles bd. Pro: simplest data flow. Con: breaks the load-bearing read-only invariant on refresh-gaps. Plan's whole purpose is the per-issue user-consent gate.</p>
+<p><strong>Option B — Beads as truth, refresh-gaps stays read-only, no persisted JSON.</strong> ⭐ refresh-gaps becomes an in-memory predicate runner emitting 3-way diff to stdout; plan reads from stdin, surfaces per-issue with consent, then bd-writes. Pro: preserves consent gate; no git artifact. Con: loses reproducible snapshot — but it was never load-bearing.</p>
+<p><strong>Option C — Pure beads with rich label vocabulary.</strong> Same storage move as B, plus structured labels for enumerated gap fields (<code>area:</code>, <code>severity:</code>, <code>evidence-kind:</code>, <code>destructive:</code>). Description carries the prose. Pro: every gap field becomes queryable. Con: mild label-namespace sprawl.</p>
+<p><strong>Option D — Hybrid with ephemeral on-demand view.</strong> Same as C, plus optional <code>just implementation::view</code> that derives a Markdown rollup from bd queries.</p>
+<h3>What dies, decisively (Option B+C)</h3>
+<p>[Detailed field-by-field map: <code>gap-id</code> → bd label (already); enums → bd labels; <code>priority</code> → bd-native; <code>title</code> → bd title; prose fields → bd description; <code>depends_on</code> → bd dep add; <code>spec_refs</code> → description anchor list; <code>generated_at</code> → verifying close text; <code>run_id</code> → on-the-spot UUID in implement; <code>git_blob_sha</code> → gone; aggregates → derive on demand.]</p>
+<h3>API-surface impact for pluggable implementations</h3>
+<p>Today's implicit contract for any adopter:</p>
+<blockquote>Produce a current.json conforming to current.schema.json with N typed fields per gap, fingerprint your spec sources, and commit on every refresh.</blockquote>
+<p>Beads-only contract:</p>
+<ol>
+  <li>Implement a refresh-gaps detector (any language, any predicate vocabulary).</li>
+  <li>Every detected gap MUST exist as exactly one bd issue with the <code>gap-id:gap-NNNN</code> label.</li>
+  <li>Issue closure with <code>resolution:fix</code> MUST re-run the detector and confirm the predicate no longer fires.</li>
+</ol>
+<p>Three sentences. No schema. No file. Strictly smaller, strictly more pluggable.</p>
+<h3>My leaning</h3>
+<p><strong>Option C with Option D as the optional human-view layer.</strong> Drop <code>current.json</code>, its schema, and the spec_sources / run_id / generated_at fields entirely. refresh-gaps emits 3-way diff to stdout; plan consumes from stdin. Gap fields move into bd labels + description + dep edges + priority. <code>check-gap-tracking</code> becomes a bd query.</p>
+<p>This is a meaningful change to NFR — it deletes the §"Implementation-gap report shape" section entirely and rewrites the workflow around three skills with a smaller, beads-only contract. Worth capturing this brainstorm in <code>research/workflow-processes/</code> first to sit with before authoring the actual proposed-change.</p>
+<p><em>[AskUserQuestion: how to disposition this brainstorm? Options: capture in research/, skip to propose-change, just capture in thread, drill deeper on one alt.]</em></p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Capture in research/workflow-processes/ first (Recommended)</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>[Writes <code>research/workflow-processes/beads-only-gap-storage.md</code> — 364 lines following the spec-vs-implementation-line.md template. Discards the current.json metadata refresh. PR #84 merged to master meanwhile.]</p>
+<p>Sit-with doc captured at <code>research/workflow-processes/beads-only-gap-storage.md</code> (364 lines; follows the spec-vs-implementation-line.md template).</p>
+<p>PR #85: <a href="https://github.com/thewoolleyman/livespec/pull/85">https://github.com/thewoolleyman/livespec/pull/85</a> (research-only; no spec or code changes).</p>
+<p><code>current.json</code> metadata refresh discarded.</p>
+<p>v060 (PR #84) auto-merged to master while we were brainstorming; local master fast-forwarded.</p>
+<p><strong>Plan-pass net for this session:</strong> zero new beads writes, zero gap-tied work; the substantive output was the architectural brainstorm captured for sitting-with.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>OK, before we trash this approach, we need to think about a different implementation, which is get only and has no dependency on beads. Some projects may want to use this. Because they don't want a dependency on beads. So this is going to drive more of our workflow planning and probably the separation between different repos for the different implementations. So let's start by thinking that through as an initial prerequisite. This means defining the API surface and cleaning up some of the existing workflow, and there are some other topics we need to discuss as well.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Right — the prior brainstorm assumed beads as the universal substrate. That assumption is itself the load-bearing thing to question.</p>
+<h3>The reframe</h3>
+<p>If we treat <strong>beads-backed</strong> and <strong>git-only</strong> as two equally valid first-class implementations of the same conceptual workflow, then:</p>
+<ul>
+  <li>The "JSON-vs-beads" question I framed earlier is a <strong>second-order</strong> question. For the beads-backed path, eliminate the JSON. For the git-only path, the JSON (or some file-based artifact) is <em>exactly</em> the right answer.</li>
+  <li>Today's livespec-implementation is <strong>not really a clean instance of either pattern</strong>. It's a hybrid: gaps in git (current.json), work items in bd.</li>
+  <li>"Single source of truth" can be achieved going <em>either</em> direction — eliminate the JSON (beads-only) OR eliminate beads (git-only). The current code accidentally chose neither.</li>
+</ul>
+<h3>What this means structurally</h3>
+<pre><code>LiveSpec Core (shipped, .claude-plugin/)
+  ├── governs SPECIFICATION/
+  ├── exposes /livespec:* commands
+  ├── knows NOTHING about implementations
+  └── publishes a documented API for what implementations may consume
+
+         ↓ adopter chooses one (or none)
+
+Implementation (project-local, separate repo, or built-in template)
+  ├── livespec-implementation-beads/  (bd + Dolt; today's path)
+  ├── livespec-implementation-git/    (files-only; no bd dependency)
+  ├── livespec-implementation-X/      (whatever an adopter authors)
+  └── … all expose the same outward shape
+</code></pre>
+<h3>Topics I think we need to discuss</h3>
+<ol>
+  <li><strong>Repo / distribution boundary.</strong> Single repo, multi-repo, or middle ground.</li>
+  <li><strong>The API contract LiveSpec Core publishes.</strong></li>
+  <li><strong>Naming conventions for implementations.</strong></li>
+  <li><strong>Pattern-vs-library framing.</strong></li>
+  <li><strong>What the git-only implementation actually looks like.</strong></li>
+  <li><strong>Existing workflow cleanups before either path is sane.</strong></li>
+  <li><strong>Migration / coexistence between implementations.</strong></li>
+  <li><strong>Where non-actionable observations live in each implementation.</strong></li>
+  <li><strong>Workflow triggers.</strong></li>
+  <li><strong>Dogfooding choice for livespec itself.</strong></li>
+</ol>
+<p>My instinct is that (1) and (2) are upstream of everything else.</p>
+<p><em>[AskUserQuestion: where to start?]</em></p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Other topics first — you bring them up</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Understood — ready when you are. What's on your list?</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>I'm leaning towards a mono repo.</p>
+<p>That will make it easier to share common files. For example, non-functional requirements around how code and CI work, the TDD workflow, etc.</p>
+<p>We will have to figure out some way to make these shared at the spec level, but it will be easier if they're in the same repo, I think.</p>
+<p>Here are my two concerns:</p>
+<ol>
+  <li>Can we still publish multiple plugins from a single repo to the Claude Code and other plugin registries? Or do they assume that there must be one repo per plugin, with the plugin at the top level?</li>
+  <li>Having agents manage the context properly. They will tend to bleed over and read each other's context, but if we have them in separate repos, there will be a hard boundary about bleeding over context and instructions between the repos that should be clearly delimited.</li>
+</ol>
+<p>So even though I like a mono repo, in practice I think those two things are leading me towards separate repos and somehow managing the sync of any common instructions or context mechanically.</p>
+<p>What are your thoughts?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Honest answer needs me to actually check the marketplace question before opining.</p>
+<p>[Delegates verification to a subagent that confirms marketplace.json supports multiple plugins from subdirectories via relative-path <code>source</code> entries.]</p>
+<p>Concern 1 is empirically false — I just verified. Claude Code marketplaces explicitly support multiple plugins from subdirectories of a single repo via the <code>source</code> field's relative-path form.</p>
+<pre><code>{
+  "name": "livespec",
+  "plugins": [
+    { "name": "livespec",                       "source": "./livespec/.claude-plugin" },
+    { "name": "livespec-implementation-beads",  "source": "./livespec-implementation-beads/.claude-plugin" },
+    { "name": "livespec-implementation-git",    "source": "./livespec-implementation-git/.claude-plugin" }
+  ]
+}</code></pre>
+<h3>On concern 2 — honestly examined</h3>
+<p>The agent-context-bleed concern is <strong>real but bounded</strong>. A few things to weigh:</p>
+<p><strong>It's a discipline problem, not a correctness one.</strong> When an agent over-reads, it makes weaker decisions, gets verbose, occasionally applies the wrong convention. It doesn't <em>break</em> things in a way that survives PR review.</p>
+<p><strong>Mitigations available inside a monorepo:</strong></p>
+<ul>
+  <li>Per-plugin top-level CLAUDE.md with aggressive scoping prose</li>
+  <li>The <code>Agent</code> tool's <code>isolation: "worktree"</code> for sub-agents that need to do cross-plugin work without polluting the main session</li>
+  <li>User-facing invocation discipline: <code>claude --cwd plugin-x/</code> anchors many tool defaults</li>
+  <li>Per-skill <code>allowed-tools</code> frontmatter for skills that should never need cross-plugin reach</li>
+</ul>
+<p><strong>The multi-repo "mechanical sync" tax is high.</strong> Submodules, subtree, shared-repo + version pin, sync script — all options add maintenance burden and new failure modes.</p>
+<h3>My take: monorepo, structured aggressively for the boundary concern</h3>
+<p>I think monorepo is the right call now that concern 1 is gone. But the structure matters.</p>
+<p><strong>Specifically, I'd reject the current shape:</strong> today, LiveSpec Core lives at <code>.claude-plugin/</code> (the repo root) and the implementation lives nested under <code>.claude/plugins/livespec-implementation/</code>. That bakes in "Core is privileged." In a multi-implementation world, Core is <em>just one of N peers</em>.</p>
+<p><strong>Suggested layout:</strong></p>
+<pre><code>livespec/                                    ← the monorepo root
+  .claude-plugin/marketplace.json            ← repo-level marketplace declaring N plugins
+  CLAUDE.md                                  ← repo-level orientation
+  shared/                                    ← cross-cutting content
+    SPECIFICATION/                           ← shared NFR sections
+    dev-tooling/                             ← shared lefthook, justfile, lint rules
+    CLAUDE.md                                ← "changes here propagate to ALL plugins"
+  livespec/                                  ← LiveSpec Core (a peer, not privileged root)
+    .claude-plugin/plugin.json
+    skills/, scripts/, specification-templates/, …
+    SPECIFICATION/                           ← Core's own spec
+    CLAUDE.md                                ← scoped instructions
+  livespec-implementation-beads/             ← peer plugin
+    …
+  livespec-implementation-git/               ← peer plugin
+    …
+</code></pre>
+<p>What's your reaction — and what's the next topic you want to surface?</p>
+</div>
+
+<div class="system">
+<div class="turn-label">User · /color command</div>
+<p>Session color set to: pink.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Explain these 2:</p>
+<ol>
+  <li>The Agent tool's <code>isolation: "worktree"</code> for sub-agents that need to do cross-plugin work without polluting the main session.</li>
+  <li>Per-skill <code>allowed-tools</code> frontmatter for skills that should never need cross-plugin reach.</li>
+</ol>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Let me actually verify what each does before explaining.</p>
+<p>[Checks SKILL.md files for allowed-tools usage.]</p>
+<p>Let me walk through both honestly — I want to flag up front that I oversold both of these as cross-plugin-context mitigations in the prior message. They're real Claude Code primitives but they solve adjacent problems, not the exact one I attached them to.</p>
+<h3>1. <code>Agent</code> tool's <code>isolation: "worktree"</code></h3>
+<p><strong>What it actually does (mechanical):</strong> When I (or you) invoke a sub-agent via the <code>Agent</code> tool with <code>isolation: "worktree"</code>, Claude Code creates a temporary git worktree — a separate working directory backed by the same git history but on a separate branch. The sub-agent does its work there.</p>
+<p><strong>What it solves:</strong> <em>Edit pollution.</em> If you spawn a sub-agent to do something complex, and it goes off the rails, your main session's working tree is untouched.</p>
+<p><strong>What it does NOT solve — and where I oversold it:</strong> Read scoping. The worktree contains the <em>whole repo</em>, just on a separate branch. A worktree-isolated sub-agent can still <code>Read</code> any file in the entire monorepo. The isolation is about <em>writes</em>, not <em>reads</em>.</p>
+<h3>2. Per-skill <code>allowed-tools</code> frontmatter</h3>
+<p><strong>What it actually does (mechanical):</strong> A SKILL.md file's YAML frontmatter can declare <code>allowed-tools: &lt;comma-separated-tool-names&gt;</code>. When the skill is loaded, Claude operating under that skill's instructions is restricted to invoking only those tool <em>types</em>.</p>
+<p><strong>What it solves:</strong> <em>Privilege scoping by tool category.</em> A skill that should never write files declares <code>allowed-tools: Read, Bash</code> and the engine refuses Edit/Write attempts.</p>
+<p><strong>What it does NOT solve — and where I oversold it:</strong> Path scoping. <code>Read</code> is <code>Read</code>. A skill with <code>allowed-tools: Read</code> can read <em>any</em> file. There is no <code>allowed-paths</code> analogue.</p>
+<h3>Honest correction to my prior message</h3>
+<p>The two real cross-plugin-context defenses in a monorepo are weaker than I made them sound:</p>
+<ul>
+  <li><strong>CLAUDE.md prose at every plugin's root</strong> — convention-based.</li>
+  <li><strong>User-side invocation discipline</strong> — <code>claude --cwd</code> anchors cwd but agents can still pass absolute paths.</li>
+</ul>
+<p>Neither of those is enforcement. They're guardrails. If the agent-context-bleed concern is the deciding factor between mono and multi-repo, the mitigations I listed don't close the gap — multi-repo's filesystem-as-fence really is categorically stronger.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Multi-Repo also makes CI easier, right, because the pipelines are isolated just to that particular repo, rather than having to manage multiple complex pipelines for different product builds in the same repo.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're right, and this is a real one. Let me be specific about why.</p>
+<h3>The CI cost in a monorepo with multiple plugins</h3>
+<p>You need: path-filtered triggers, wrapper jobs for required-status checks, a change-detection step, per-plugin release pipelines, and cross-plugin integration tests when applicable. Each is solvable, but they pile on — on top of the existing CI work you've recently done (<code>a4073c7</code> re-add auto-merge with App auth, <code>c628eb8</code> revert auto-enable-merge, <code>cba0f73</code> author-and-state gating, <code>af76e69</code> auto-update-branches), the GitHub Actions surface is already non-trivial.</p>
+<h3>The CI cost in multi-repo</h3>
+<p>Per repo, the pipeline is straightforward: one repo, one product, full build runs unconditionally on every PR. No path filters, no wrapper jobs, no conditional release pipelines. The mental model is <em>clean</em>.</p>
+<p>The trade is sync drift on shared content. Either accepted-as-drift, paid via a shared scaffolding repo, or via a sync script.</p>
+<p>But pipeline complexity isn't multiplicative — three simple pipelines is genuinely easier to reason about than one pipeline with three conditionally-triggered halves.</p>
+<h3>My honest take</h3>
+<p>You're right that <strong>multi-repo wins on CI simplicity per-pipeline</strong>, and stacked on top of the agent-context concern, this isn't an incremental nudge — it's a second independent reason pulling the same direction. Two real concerns, both pointing the same way, against one main benefit (in-tree shared content).</p>
+<p>The realistic options for shared-content sync: git subtree, versioned shared repo (package-style), symlink-via-clone, generation from a meta-repo. Each has different costs.</p>
+<p>Does the multi-repo direction feel decided enough to start working through the sync mechanism, or do you want to weigh anything else first?</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>yes, multi-repo wins because of simplicity.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Decision logged: multi-repo for plugin distribution, with mechanically-synced shared content.</p>
+<p>One implication worth flagging immediately: the <strong><code>beads-only-gap-storage.md</code> sit-with doc on master is now partially obsolete in framing</strong>. It presents the JSON-vs-beads question as a single global decision, but in multi-repo land that decision becomes <em>per-implementation</em> — <code>livespec-implementation-beads</code> keeps the beads-backed approach (and likely still eliminates the JSON), <code>livespec-implementation-git</code> is git-only by design and uses files as its canonical store.</p>
+<p>What's the next topic on your list?</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Yeah there's tons of stuff that needs to be updated for this decision, that doc is just one of them.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Yep — big cascade, and we're nowhere near ready to start updating things. Plenty more decisions need to land first before any of those updates would be coherent.</p>
+<p>What's next on your list?</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>What does the actual interface look like in practice?</p>
+<p>I'm thinking it lives in the SPECIFICATION/contracts.md of the livespec-core repo, with a section saying what the PUBLISHED interface is. E.g., the actual shape of the SPECIFICATION folder in the livespec-core repo, and the <code>livespec:</code> skills that are exposed, with their interfaces. This probably duplicates some of what is in spec.md or other files already, but that can be DRY'd up to refer to the contracts.md.</p>
+<p>And as a side note we would probably rename <code>livespec</code> plugin to <code>livespec-spec</code> or <code>livespec-core</code>, and the others to <code>livespec-impl-git</code>, <code>livespec-impl-beads</code>, <code>livespec-impl-gastown</code>, <code>livespec-impl-kilroy</code>, etc.</p>
+<p>And as a second side note, <code>livespec-impl-git</code> is maybe a misnomer. The implementation workflow and task tracking mechanism is what we are really describing. So <code>livespec-impl-md</code> or <code>livespec-impl-html</code> would probably be more appropriate for implementations which store the gaps and issues in Markdown or HTML files respectively.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>All three of these land. Walking through:</p>
+<h3>Interface in contracts.md — yes, this is exactly where it belongs</h3>
+<p>contracts.md is already where wire-level interfaces live in the existing livespec convention. Adding §"Implementation plugin contract" fits the file's role exactly.</p>
+<p>Sketch of what that section publishes:</p>
+<ul>
+  <li><strong>File-system contract</strong> — SPECIFICATION/ tree shape implementations may rely on; proposed_changes/ and history/vNNN/ ownership; spec_root resolution via .livespec.jsonc.</li>
+  <li><strong>Configuration contract</strong> — .livespec.jsonc shape.</li>
+  <li><strong>Slash-command contract for livespec-core</strong> — for each <code>/livespec:*</code> command: name, purpose, inputs, outputs, lifecycle effects.</li>
+  <li><strong>Lifecycle contract</strong> — invariants implementations may rely on (propose-change → revise is the only mutation path; doctor static guarantees).</li>
+  <li><strong>What an implementation MUST do</strong> — three skills (refresh-gaps, plan, implement); read-only on SPECIFICATION/; same conceptual workflow.</li>
+  <li><strong>What an implementation MAY do</strong> — pick any storage/tracking mechanism; define additional slash commands; carry its own SPECIFICATION/.</li>
+  <li><strong>What an implementation MUST NOT do</strong> — mutate SPECIFICATION/; use <code>/livespec:*</code> namespace; promote itself as part of livespec-core.</li>
+</ul>
+<h3>Renames — lean <code>livespec-core</code></h3>
+<p>Both work. My lean: <code>livespec-core</code>. Matches the conventional plugin-ecosystem pattern; conveys "the foundation everything depends on" unambiguously. <code>livespec-spec</code> reads as "spec for livespec" — slightly ambiguous.</p>
+<p>For the implementations: <code>livespec-impl-&lt;X&gt;</code> is a clean prefix convention.</p>
+<h3>Impl naming axis — yes, tracking mechanism, not substrate</h3>
+<p>Git is the <strong>substrate</strong> every plugin sits on; it's not the differentiating feature. Your <code>-md</code> / <code>-html</code> / <code>-beads</code> / <code>-gastown</code> / <code>-kilroy</code> list captures the right axis. Generalizing:</p>
+<ul>
+  <li><strong>Storage-format names</strong> when "files in a directory in a particular format": <code>livespec-impl-md</code>, <code>livespec-impl-html</code>, <code>livespec-impl-jsonl</code>, <code>livespec-impl-yaml</code></li>
+  <li><strong>Tool/service names</strong> when wrapping a specific tool or external service: <code>livespec-impl-beads</code>, <code>livespec-impl-gastown</code>, <code>livespec-impl-kilroy</code>, <code>livespec-impl-jira</code>, <code>livespec-impl-linear</code>, <code>livespec-impl-github</code></li>
+</ul>
+<p>Today's <code>livespec-implementation-beads</code> is the <strong>long form</strong>; <code>livespec-impl-beads</code> is the short form — cleaner, fewer characters.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>A little more refinement on naming:</p>
+<ol>
+  <li><code>livespec-impl-plaintext</code> can be a single repo that encompasses all plain text formats. md, html, jsonl, yaml. The one chosen can be specified by livespec.jsonc in the project</li>
+  <li>This also brings up the point that livespec.jsonc is the shared configuration file that all of the repos use together. They will have to have different parts of the schema which they own. And the implementation repos will clearly have to read it to see what the shape and location of the specification is, correct?</li>
+  <li>Yes, livespec-core is the clear winner for the main repo.</li>
+  <li>We also want to support GitLab work items.</li>
+</ol>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>All four land. Walking through:</p>
+<h3>1. <code>livespec-impl-plaintext</code> consolidation — yes</h3>
+<p>Smart consolidation. The plaintext implementations differ only in serializer; the workflow shape, skill prompts, gap-detection predicates, and lifecycle are all identical. One plugin with a format dispatch beats N near-duplicate plugins.</p>
+<p>A bonus capability falls out: <strong>format migration</strong>. Change <code>format: md</code> → <code>format: jsonl</code> in <code>.livespec.jsonc</code> and the plugin can migrate existing data on next run.</p>
+<h3>2. <code>.livespec.jsonc</code> as shared configuration with per-plugin section ownership — yes</h3>
+<p>Exactly the right architecture. The file is <em>already</em> serving this role for livespec-core. Extending it to carry per-implementation sections is the natural generalization.</p>
+<pre><code>{
+  // owned by livespec-core
+  "template": "livespec",
+  "spec_root": "SPECIFICATION",
+  "pre_step_skip_static_checks": false,
+
+  // implementation activation
+  "implementation": {
+    "plugin": "livespec-impl-plaintext"
+  },
+
+  // each implementation owns a top-level section keyed by its name
+  "livespec-impl-plaintext": {
+    "format": "md",
+    "gaps_path": "implementation-gaps/"
+  }
+}</code></pre>
+<p>To answer your question directly: <strong>yes</strong>, every implementation MUST read <code>.livespec.jsonc</code> to discover spec location and shape. Rules to codify in contracts.md:</p>
+<ul>
+  <li>livespec-core's schema covers Core's fields; all other top-level keys are open.</li>
+  <li>Each implementation owns the schema for its own top-level section.</li>
+  <li>Each implementation MUST validate its own section on read; MUST tolerate unknown sections.</li>
+</ul>
+<h3>3. <code>livespec-core</code> — confirmed</h3>
+<h3>4. GitLab work items — added to the catalog</h3>
+<p><code>livespec-impl-gitlab</code> slots in cleanly. One concern worth flagging: <strong>auth and credentials</strong>. <code>.livespec.jsonc</code> is git-committed; secrets can't live there. So external-tracker implementations need a separate secrets channel (env vars, OS keyring, 1Password). Worth a sentence in contracts.md: <em>implementations requiring credentials MUST NOT read them from <code>.livespec.jsonc</code></em>.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Sure. Yes, clearly nobody should be storing random auth and credentials in a plain text file. I would hope that's a given.</p>
+<p>So now we need to talk about a separate topic.</p>
+<p>Give me your honest assessment of whether beads is pulling its weight in this repo. And the ../openbrain repo as well.</p>
+<p>It's a lot of overhead to keep things in sync and the dual source of truth with the extra commits for the human-readable JSON file.</p>
+<p>I know Beads was initially made and still works for high-concurrency systems like Gas City. (FYI it's now named Gas City, not Gas Town) update the naming and correct me if I use the wrong one.</p>
+<p>But we are only doing minimal concurrency, if at all. And especially if we lead with a plain text format like JSONL that is very amenable to get conflict resolution. It seems like we avoid a lot of the headaches that Beads is brining along.</p>
+<p>But maybe I'm missing something. Think hard about it and push back.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Noted — Gas City (will fix in any references going forward, including the catalog: <code>livespec-impl-gascity</code> not <code>livespec-impl-gastown</code>).</p>
+<p>Now the honest assessment. I thought hard about this and I'm going to argue <em>with</em> you, not push back, because the evidence in this repo is one-sided.</p>
+<h3>What beads gives over plaintext+git</h3>
+<table>
+<thead><tr><th>Feature</th><th>Real value here?</th><th>Replicable in plaintext+git?</th></tr></thead>
+<tbody>
+<tr><td>Issue create/update/close lifecycle</td><td>Yes</td><td>Trivially — YAML frontmatter + file moves</td></tr>
+<tr><td>Status transitions</td><td>Yes</td><td><code>status:</code> frontmatter field</td></tr>
+<tr><td><code>bd ready</code> (dep-aware leaf queue)</td><td>Yes — genuinely convenient</td><td>~80 lines of Python over JSONL</td></tr>
+<tr><td>Dependencies (<code>bd dep add</code>)</td><td>Yes</td><td><code>depends_on: [id, id]</code> frontmatter</td></tr>
+<tr><td>Labels / priorities</td><td>Yes</td><td>Frontmatter fields</td></tr>
+<tr><td>Search (<code>bd search</code>)</td><td>Yes</td><td><code>grep -r</code></td></tr>
+<tr><td>Memory (<code>bd remember</code>)</td><td>Genuine win</td><td>A memories tree + a remember skill</td></tr>
+<tr><td>Dolt concurrent-merge semantics</td><td><strong>No</strong> — concurrency profile doesn't justify</td><td>N/A</td></tr>
+<tr><td>Cross-machine sync</td><td>Beads-specific</td><td>git push handles plaintext natively</td></tr>
+</tbody>
+</table>
+<h3>What beads costs in this repo, concretely</h3>
+<ul>
+  <li><strong>32 KB of bootstrap scripts</strong> — setup-beads.sh (20 KB) + bd-doctor.sh (12 KB), almost entirely workarounds for upstream bugs.</li>
+  <li><strong>beads-problems.md catalogues 8 distinct upstream issues</strong> with workarounds. Three involve silent failure modes — Problem 7 burned 8 hours of misdiagnosis.</li>
+  <li><strong>Problem 8 — hook-chaining race with lefthook</strong> — directly contributed to the recent CI churn.</li>
+  <li><strong>Dual-source-of-truth tension</strong> is the exact thing that triggered this whole brainstorm.</li>
+  <li><strong><code>bd edit</code> forbidden</strong> — every workflow has to remember not to call it.</li>
+  <li><strong>Setup-time onboarding cost</strong> — every new contributor has to install bd, run setup-beads.sh, understand the Dolt mental model.</li>
+</ul>
+<p>For this repo's concurrency profile — single author, occasional branch-level Claude parallelism — beads is paying its cost but not earning its keep.</p>
+<h3>Strongest counter-arguments I can muster</h3>
+<ul>
+  <li><strong>Existing investment</strong> — 17 issues in beads, muscle memory built. One-time tax.</li>
+  <li><strong>Open Brain pattern lineage</strong> — coordination question, not a technical one.</li>
+  <li><strong><code>bd remember</code> ergonomics</strong> — genuinely smooth. But a plaintext equivalent is a day's work.</li>
+  <li><strong><code>bd ready</code>'s graph-walking</strong> — real code, ~80 lines. Not free, but not blocker either.</li>
+  <li><strong>Future scaling</strong> — IF livespec becomes multi-contributor with concurrent issue editing, beads re-earns its keep. But CLAUDE.md says not to design for hypothetical futures.</li>
+</ul>
+<p>None of these is decisive against stepping back from beads.</p>
+<h3>My honest recommendation</h3>
+<p><strong>For livespec itself dogfooding: switch to <code>livespec-impl-plaintext</code> (JSONL format) once it exists.</strong> Keep <code>livespec-impl-beads</code> as a first-class implementation for adopters with the right concurrency profile.</p>
+<p>So: my honest answer is <strong>no, beads is not pulling its weight in this repo, and probably not in openbrain either</strong>. Lead with plaintext, keep beads as a supported but not-default implementation.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>I want to talk more about BD Remember. I don't really understand much about what it is and what it's used for. From what I do understand, it's just for capturing things that you discover in the middle of a workflow when you don't want to interrupt your current branch or commit?</p>
+<p>And the real downside if you don't have beads is that then you don't have a place to persist that anywhere unless you make a differently named branch and remember to come back to it. Right?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You've got one use case but it's narrower than the full picture.</p>
+<h3>Mechanically</h3>
+<p><code>bd remember "&lt;text&gt;"</code> appends a memory entry to the beads Dolt store. Each memory gets an auto-generated id, timestamp, text body, optional tags. Memories auto-export to JSONL alongside issues.</p>
+<p>You query with <code>bd memories &lt;keyword&gt;</code> which does substring search. The Claude Code SessionStart hook in this repo explicitly tells agents to use <code>bd remember</code> (and to avoid per-account MEMORY.md) because beads-memories are <em>shared across all agents and machines</em> via Dolt sync.</p>
+<h3>What it's actually for</h3>
+<p>Your hypothesis (mid-workflow capture without interrupting) is <strong>one</strong> use case but the broader picture has at least four:</p>
+<ol>
+  <li><strong>Mid-workflow capture.</strong> "I noticed bd's export throttles at 60s by default; might matter later."</li>
+  <li><strong>End-of-workflow capture.</strong> "We just discovered lefthook's npm postinstall rewrites core.hooksPath."</li>
+  <li><strong>Deliberate seeding for future agents.</strong> "When debugging X, look at Y first."</li>
+  <li><strong>Anti-patterns / failed-attempts.</strong> "I tried X and it didn't work because of Y."</li>
+</ol>
+<p>The thing all four have in common: <strong>they're noteworthy but not actionable</strong>. They're not work items, not spec, not code, not docs. They're "stuff a future agent or contributor should know."</p>
+<h3>Your branch-naming alternative — yes, that's the corollary</h3>
+<p>You're right: without a memory mechanism, mid-workflow capture has only bad options (stray TODO comment, <code>wip/note-foo</code> branch, personal scratchpad, file a bd issue anyway, or just forget). The branch-naming approach is one option but you have to remember to come back.</p>
+<p>But — and this is important — <strong>the workaround disappears the moment you have <em>any</em> memory mechanism, not just beads'</strong>. The branch-naming pain is "you don't have a remember tool," not "you don't have beads."</p>
+<h3>Crucially: this is not actually beads-unique</h3>
+<p><code>bd remember</code> is a wrapper around "append a line to a structured store, then make it searchable." In plaintext-land, the equivalent is trivial — half a day's work for the plugin author, identical ergonomics, zero dependency on Dolt or beads.</p>
+<p>So <code>bd remember</code> is <em>not</em> a load-bearing reason to keep beads. It's a workflow mechanism that any implementation plugin can — and probably should — provide.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Okay, I'm going to pretend like I'm you and say, "That's a really great revelation, and when we should think about."</p>
+<p>So let's specifically dig into this statement and see if it's really true and to what extent:</p>
+<blockquote>"The thing all four have in common: they're noteworthy but not actionable. They're not work items (no fix to do); they're not spec (no requirement); they're not code (no implementation); they're not docs (too narrow / too tactical). They're 'stuff a future agent or contributor should know.' That's the category beads-memories serves."</blockquote>
+<p>So we are attempting a reframing how most people think about these things with LiveSpec.</p>
+<p>With the addition of non-functional requirements as a canonical portion of the spec. I actually believe that many of the things that would be memories before are actually in the category of non-functional requirements.</p>
+<p>And from that perspective, is memory actually just an anti-pattern? An easy way out to have an unstructured way to capture things that are actually non-functional requirements of the repository and project?</p>
+<p>Is the problem really that everything could be captured as a non-functional requirement, but the difficult part is how you appropriately inject it and make it searchable for LLMs' context in a concise way that doesn't blow up the context?</p>
+<p>And if you think of it from that perspective, really, the problem is that the whole specification needs to be searchable in that way, not just the non-functional ones.</p>
+<p>And does that lead us to the conclusion that the real problem is we need an efficient way to make the specification easily indexed and searchable by LLMs and the entire specification?</p>
+<p>And if we do that and have a way to easily have newly discovered things flow to Non-functional requirements (maybe by some staging area that is outside of git or a different branch or something else or a work tree), does that then fulfill all of the purposes that were previously being filled by the memory tool?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Okay, I went back and tested this against my own four examples honestly. The argument has teeth — more than I initially gave it.</p>
+<h3>Testing the reframe against my own examples</h3>
+<ol>
+  <li><strong>"bd's export throttles at 60s by default"</strong> — fact about a third-party tool; not an NFR; belongs in <code>research/beads-problems.md</code> which already exists. <strong>Research doc, not memory.</strong></li>
+  <li><strong>"lefthook's npm postinstall rewrites core.hooksPath"</strong> — Already an NFR (the constraint that lefthook MUST NOT be installed through npm). <strong>NFR, not memory.</strong></li>
+  <li><strong>"When debugging X, look at Y first because Z"</strong> — Agent-procedural. Belongs in CLAUDE.md or as a code comment. <strong>CLAUDE.md, not memory.</strong></li>
+  <li><strong>"Tried X, didn't work because Y"</strong> — When load-bearing → NFR. When tactical → research doc or code comment. <strong>NFR or research, not memory.</strong></li>
+</ol>
+<p>So <strong>none of my four examples is best-served by memory</strong> once NFR + CLAUDE.md + research/ are in scope. I can't honestly find a case where memory is the <em>best</em> home — only the lowest-friction one. That's the anti-pattern indictment. You're right.</p>
+<h3>So what's memory actually doing?</h3>
+<p><code>bd remember</code> does two things that look like one:</p>
+<ul>
+  <li><strong>Capture</strong> (low-friction deposit) — type a thing, it's stored.</li>
+  <li><strong>Retrieval</strong> (cross-session search) — query, find relevant stored things.</li>
+</ul>
+<p>These are independent capabilities. The reframe separates them:</p>
+<ul>
+  <li><strong>The capture problem</strong> is "how does knowledge get into the canonical store with friction calibrated correctly."</li>
+  <li><strong>The retrieval problem</strong> is "how does relevant spec content surface efficiently to LLMs."</li>
+</ul>
+<p>Your insight collapses memory by <strong>solving the retrieval problem at the spec level</strong> and <strong>adding a staging mechanism for the capture problem</strong>.</p>
+<h3>Pushing back on the weak spots</h3>
+<ol>
+  <li><strong>"Searchable spec" needs to become concrete.</strong> Section-level indexing? Keyword inverted index? Embedding-based RAG? MCP server exposing the spec as a queryable resource? The MCP-server-with-section-indexing option is probably the right v1.</li>
+  <li><strong>"Outside of git" is probably the wrong framing for staging.</strong> The killer feature of beads-memories isn't structureless capture — it's that they're <em>shared, persistent across machines</em>. If staging is outside git, you lose that. What you probably want is <strong>outside of <code>master</code> but inside git</strong>.</li>
+  <li><strong>Friction calibration is the real design problem.</strong> Memory's killer ergonomic feature is one command, zero ceremony. Even with a staging area, if filing requires choosing a topic/section/prose, you'll skip it.</li>
+</ol>
+<p>A workable shape: <code>livespec stage "&lt;one-line observation&gt;"</code> for ultra-low-friction deposit, then periodic <code>livespec triage</code> to walk staged items.</p>
+<h3>Honest answer</h3>
+<p><strong>Yes, memory is largely an anti-pattern given the NFR canonicalization.</strong> Not entirely — there's a thin residue of "in-flight observations that haven't matured" — but that residue is best served by a staging mechanism with triage, not by a junk-drawer memory store.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Before we do that - you are making up a triage concept. But we already have livespec:* skills (specifically livespec:plan and livespec:doctor) that could handle discovering and guaranteeing cleanup of and proactive triage of items.</p>
+<p>And I'm not sure that I like the observation terminology. Staging is a closer term, but it is overloaded with staging versus production. It's really a scratch area.</p>
+<p>And in the plain text scenario, Why can't we use the same approach that Beads uses for the DOLT database and just store it on a separate git ref? I kind of don't like that because it's not easily discoverable. The alternative is to just leave it on whatever branch it's on, and it will eventually make it to master. Unless the branch is never merged or reverted.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Three sharp corrections; all three land.</p>
+<h3>1. "Triage" as a new concept — concede</h3>
+<p>You're right, I invented a noun for work that existing skills already cover. The right framing:</p>
+<ul>
+  <li><strong><code>livespec:doctor</code></strong> owns the <em>hygiene check</em> — "are there scratch entries that should have been processed?"</li>
+  <li><strong><code>livespec:critique</code></strong> owns the <em>analytical pass</em> — walks scratch entries, identifies ones that look NFR-shaped, drafts proposed-changes.</li>
+  <li><strong><code>livespec:propose-change</code></strong> owns the <em>ratification deposit</em>.</li>
+  <li><strong>Discards</strong> are just <code>git rm scratch/foo.md</code>.</li>
+</ul>
+<p>One correction: today's livespec-core doesn't have a <code>livespec:plan</code> skill — that's the implementation layer. Core has <code>seed / propose-change / critique / revise / doctor / prune-history / help</code>.</p>
+<h3>2. Terminology — "scratch" wins</h3>
+<p>Going forward I'll use <strong>scratch</strong>. Concretely:</p>
+<ul>
+  <li>Directory: <code>scratch/</code></li>
+  <li>Deposit skill: <code>/livespec:scratch &lt;text&gt;</code></li>
+  <li>State: "scratch entries"</li>
+  <li>Doctor's invariant: "stale scratch entries"</li>
+</ul>
+<h3>3. Storage mechanism — branch-local, no separate ref</h3>
+<p>Branch-local is the right answer. Beads stores Dolt on <code>refs/dolt/data</code> because Dolt is binary database state — git can't merge a Dolt database. For plaintext content there's no such constraint.</p>
+<p>The flow becomes:</p>
+<ul>
+  <li>During work: <code>livespec scratch "thought"</code> appends to <code>scratch/</code> on the current branch.</li>
+  <li>Branch merges to master: scratch entries land alongside the real work.</li>
+  <li>After merge: doctor checks for stale scratch; user runs critique against scratch; promotables become proposed-changes; rest are <code>git rm</code>'d.</li>
+</ul>
+<p>Your objection about "unless the branch is never merged or reverted" is actually a feature — abandoned branches drop the scratch on the floor, which is acceptable for throwaway scratch content.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Okay, but then how is this really looking that much different than propose_change? It's just a different directory of Markdown files that still have to be processed. The reason we didn't like propose change is because it is too heavyweight, right?</p>
+<p>But this brings me to something else I've been wanting to bring up for a while.</p>
+<p>Why do we have a distinction between critique and propose change? I know the proposed change was supposed to be the primitive, and the critique was supposed to be the more interactive one. But in practice, is critique really pulling its weight? Both of them can accept arbitrary prompts afterwards and serve the same purpose as each other, in effect, right?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Both pushbacks land.</p>
+<h3>1. Is scratch really lighter than propose-change?</h3>
+<p>At deposit time, scratch IS meaningfully lighter (one-line free text vs. interactive dialogue with required sections). But you're right that at the storage layer, they're both just directories of markdown files.</p>
+<p>I think one directory is cleaner. Concretely: collapse scratch into propose-change as a "draft" mode. Same skill, two ergonomic paths.</p>
+<h3>2. Critique vs propose-change — does critique pull its weight?</h3>
+<p>This is the bigger one and I think you're substantially right.</p>
+<p>Both terminate in proposed-change files. Both accept arbitrary prompts to steer. The fuzziness you're noticing is real — there isn't a sharp line.</p>
+<p>The one genuinely distinct capability critique has is <strong>discovery without user intent</strong> — the "walk the spec, tell me what's wrong" mode. But that's a <em>mode</em>, not a separate skill. It could absorb cleanly into propose-change:</p>
+<ul>
+  <li><code>/livespec:propose-change</code> — interactive authoring from user intent</li>
+  <li><code>/livespec:propose-change --discover</code> — LLM walks the spec, surfaces issues</li>
+  <li><code>/livespec:propose-change "&lt;rough text&gt;"</code> — quick draft (scratch mode)</li>
+</ul>
+<p>The concept count goes from 7 down to 6.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Let's nail down the API a little more. We have to be careful because we are now making a proposed change less cohesive. Which is often an anti-pattern architecturally. You have to get the abstraction over it and the user interface right.</p>
+<p>So stepping back, we're saying the proposed change is going to have three different behaviors:</p>
+<ol>
+  <li>Formal, which is based off of a template, and for a specific topic</li>
+  <li>Scratch - no template, freeform, quick topic (or "quick", or "note" or "TODO" - I'm still not sure what I want to use as the domain term here. We need to do competitive research and see what works best.)</li>
+  <li>Discovery - walk spec and discover issues</li>
+</ol>
+<p>But we are also discovering one thing we missed that makes critique fundamentally different than propose_change.</p>
+<p>The Cardinality</p>
+<p>Currently, a critique can discover one or more things and can use them to create one or more proposed changes.</p>
+<p>So if nothing else, the singular form of propose_change is now somewhat of a misnomer. It would be propose_changes.</p>
+<p>So the tension here is whether to lean into a more granular traditional API interface or a more flexible modern LLM adaptive interface with a single command.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're caught on the right thing. The cohesion concern is real and the 1-to-N insight on critique sharpens the decomposition question.</p>
+<h3>The cardinality observation is decisive</h3>
+<p>critique is structurally 1-to-N: one invocation, many findings, many resulting proposed changes. That's not a UX quirk — it's a categorical difference from "I have an intent, structure it into a change." Forcing both under one skill makes the abstraction <em>lie</em>.</p>
+<p>The rename to plural is correcting an existing misnomer, independent of this discussion. The <code>claude-opus-4-7-critique.md</code> file had three <code>## Proposal:</code> sections in one file. The file format is <em>already</em> 1-to-N; only the skill name pretends it's 1-to-1. <strong><code>propose-changes</code> (plural) is the honest name.</strong></p>
+<h3>Where the granular-vs-flexible line falls</h3>
+<p>The right answer isn't fully granular OR fully flexible — it's <strong>granular where the operations differ structurally; flexible where they share machinery</strong>.</p>
+<ul>
+  <li><strong>One skill for authoring</strong> that handles formal + scratch. Same operation ("author a proposed change") with two input-shape variants.</li>
+  <li><strong>One skill for discovery</strong> that survives as a separate concept. Its cardinality, posture, and analytical machinery are categorically different.</li>
+</ul>
+<h3>Terminology</h3>
+<p>Candidates: <strong>note</strong> (most familiar), <strong>TODO</strong> (action-implication might constrain), <strong>scratch</strong> (engineer-familiar), <strong>fleeting</strong> (Zettelkasten, unfamiliar), <strong>draft</strong> (overloads), <strong>inbox</strong> (right semantic but email-y).</p>
+<p>Worth flagging the competitive research you wanted to do.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Re: "Strong action implication, which is wrong for 'I noticed something' but right for 'I should do something.' Carries a specific connotation that might constrain the use case."</p>
+<p>What is the point of capturing a to-do if you're not going to do anything about it? If you notice it but it's not actionable, why do you want to save it?</p>
+<p>And I think the distinction that we have forgotten about is that to-dos may also only impact the implementation and not change the specification.</p>
+<p>Actually, I think I have the perfect name for it. 'memo', Which is consistent with the BD-Remember terminology and memory concept in LLMs, which we will be using for some of the implementations.</p>
+<p>The mismatch that is emerging here is that livespec revise is the wrong path to process a memo that is targeted to the implementation (code, infra, including LLM instructions and "memory" files like CLAUDE.md).</p>
+<p>Because revise implies that you're only modifying the specification.</p>
+<p>So the question is, what is the path through which memo should get processed? If not through revise.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're right on all three counts. The pushback on "not actionable" is fair — if something genuinely doesn't graduate to anything, it doesn't deserve persistence. And the impl-vs-spec memo routing distinction is the part I missed entirely.</p>
+<h3>Memo as the name — yes</h3>
+<p>"Memo" is the right call. It carries the business-correspondence semantic; aligns with bd remember / memory terminology; doesn't carry false action-implication of TODO; doesn't carry throwaway-by-default of scratch.</p>
+<h3>The impl-vs-spec routing is the load-bearing insight</h3>
+<p>Memos can be:</p>
+<ul>
+  <li><strong>Spec-bound</strong> — "lefthook MUST NOT be installed through npm" (became an NFR).</li>
+  <li><strong>Impl-bound</strong> — "the auto-merge workflow should use the GitHub App token" (became CI changes).</li>
+  <li><strong>CLAUDE.md / docs-bound</strong> — "when debugging X, look at Y first."</li>
+  <li><strong>Unclassified at capture time</strong> — most common case.</li>
+</ul>
+<h3>The processing path</h3>
+<pre><code>livespec:memo "&lt;text&gt;"
+    ↓
+memos/&lt;id&gt;.md
+    ↓
+[promotion step]
+    ├── spec-bound  → /livespec:critique promotes to proposed_changes/
+    │                    → /livespec:revise → SPECIFICATION/
+    └── impl-bound  → /livespec-impl-*:plan promotes to work item
+                         → /livespec-impl-*:implement → repo code
+</code></pre>
+<p>Critique is the <strong>spec-side discovery</strong> skill. The impl plugin's plan is the <strong>impl-side discovery</strong> skill.</p>
+<h3>Updated livespec-core API</h3>
+<p>Eight skills now (added memo + review-memories). Memo is its own skill; propose-changes shrinks back to its sharp formal role.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>No, that doesn't sound right. I only ran halfway through, and it sounded like you were trying to force both critique and plan into roles that they don't currently fit or are intended to fit.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're right, I was force-fitting. Let me back up honestly.</p>
+<p><strong>What critique is actually for</strong>: LLM-driven analysis OF the spec itself — contradictions, ambiguities, dangling references. Its input domain is "the spec content." Pointing it at the memo store asks it to do something categorically different.</p>
+<p><strong>What plan is actually for</strong>: coordinating between the mechanical gap report and the issue tracker. Pointing plan at free-text memos asks it to process a different input domain entirely.</p>
+<p>So the honest answer is: <strong>neither critique nor plan is the right home for memo-processing.</strong></p>
+<p>That surfaces three real possibilities:</p>
+<ol>
+  <li><strong>Memo processing is its own operation</strong> — a separate skill.</li>
+  <li><strong>Memo doesn't belong in livespec-core at all</strong> — it's an impl-side concept.</li>
+  <li><strong>The whole memo concept needs more thought</strong> before slotting it into any skill.</li>
+</ol>
+<p>What I should <em>not</em> have done is pretend critique and plan naturally cover this.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Yes, that is a key realization. This is an implementation-side skill. And what we were missing is that beads makes that apparent, because BD remember is an implementation-side skill. The persistent store for that lives on the implementation side and is implementation-dependent and determined.</p>
+<p>So are we landing back on just a straight up plain text port of BD Remember, that just lives on the current branch in the JSON-L file? And can just steal the exact same terminology from beads?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Yes, this is the clean landing. Memory lives on the impl side. Beads makes the right answer obvious: <code>bd remember</code> is an implementation-side feature because beads IS the implementation.</p>
+<p>Steal beads' terminology verbatim:</p>
+<ul>
+  <li><strong>Verb (write):</strong> <code>remember</code></li>
+  <li><strong>Plural noun:</strong> <code>memories</code></li>
+  <li><strong>Singular entity:</strong> a <code>memory</code></li>
+</ul>
+<p>We abandon "memo" — it was a misstep en route.</p>
+<p>The livespec-core API shrinks back to 7 skills (no <code>/livespec:memo</code>, no <code>memos/</code> directory). Impl-plugin contract grows by one obligation: expose <code>remember</code> + <code>memories</code> with bd-aligned semantics.</p>
+<p>Spec promotion of a memory becomes user-driven: if a memory is spec-bound, the user manually invokes <code>/livespec:propose-changes</code> with the memory text as input.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>No, This is unacceptable. No, we are not going to rely on the user to manually do anything. The whole point of livespec is to handhold them through all of the process:</p>
+<blockquote>"Spec promotion of a memory becomes user-driven: if a memory turns out to be spec-bound, the user manually invokes /livespec:propose-changes with the memory text as input. No automatic routing layer needed — the user makes the call when they decide to promote. Clean and explicit."</blockquote>
+<p>So the big problem of it living implementation size is that then livespec doctor and core cannot be responsible for ensuring that memories are all cleaned up and either implemented or moved to the specification.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're right on both counts. The "user manually invokes" framing violates the handholding mandate, and doctor not being able to enforce memory hygiene if memories live impl-side is a real architectural problem.</p>
+<p>The mistake in the prior turn was conflating <strong>storage</strong> with <strong>lifecycle orchestration</strong>. They aren't the same:</p>
+<ul>
+  <li><strong>Storage / capture</strong> is correctly impl-side.</li>
+  <li><strong>Lifecycle orchestration</strong> (hygiene, promotion routing, cleanup enforcement) must be core-side.</li>
+</ul>
+<p>The fix: <strong>impl plugins MUST expose a query/mutation API for their memory store that core can call.</strong> Doctor uses it to enforce hygiene; a new core skill uses it to handhold the user through promotion.</p>
+<p>Impl-plugin memory contract: <code>:remember &lt;text&gt;</code>, <code>:memories [&lt;keyword&gt;]</code>, <code>:memories --json</code>, <code>:memories --mark-processed &lt;id&gt;</code>, <code>:memories --delete &lt;id&gt;</code>.</p>
+<p>Core gains a new skill <code>/livespec:review-memories</code> that orchestrates the per-memory dialogue.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>No, you've got it wrong. Review Memories doesn't live on the livespec core side. Because it needs to possibly have knowledge of the implementation. The sole extent of livespec-core knowing about memories is that a doctor will expose and warn about them if they remain unresolved. They either have to get implemented or move to the specification. Otherwise, the doctor keeps complaining about them.</p>
+<p>This is a fundamental paradigm shift from beads, where Memories is intended as a persistent store that is read by the LLM Harness instruction files.</p>
+<p>To go with our philosophy that everything should either be represented in the specification or the implementation, we need to have a different approach.</p>
+<p>If it is truly just something that needs to be remembered but doesn't belong anywhere else in the implementation or skill or AI Harness,</p>
+<p>Then we can have an opinionated convention that we will offer for the user to have it just be added to a <code>.ai/&lt;memory-topic&gt;.md</code> file, with a progressively-loaded reference in AGENTS.md (optionally CLAUDE.md too).</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're absolutely right. I missed the paradigm shift and inverted the responsibility model.</p>
+<h3>The philosophical framing</h3>
+<p><strong>LiveSpec's invariant: everything is either spec or implementation. Memory is in-flight state, not a permanent store.</strong> A memory either flows out to one of those two places — or, in the edge case where it's genuinely persistent knowledge that doesn't fit either, it becomes a named, structured artifact (<code>.ai/&lt;topic&gt;.md</code> with explicit agent-instruction references).</p>
+<p>This is fundamentally different from beads. Beads' <code>bd remember</code> is a <em>persistent store</em>. In LiveSpec, memory is <em>transient by construction</em>: it must resolve to spec, to implementation, or to a named knowledge file. The doctor's job is to keep nagging until it does.</p>
+<h3>The responsibility split</h3>
+<p><strong>livespec-core owns: detection-and-warning only.</strong></p>
+<ul>
+  <li>Doctor has an invariant: "untriaged memories MUST NOT remain unresolved beyond N days."</li>
+  <li>Doctor queries the active impl plugin via a documented contract to count untriaged memories.</li>
+  <li>Doctor doesn't know HOW memories get resolved. It just keeps complaining until they're gone.</li>
+</ul>
+<p><strong>Impl plugin owns: capture, storage, search, and the full resolution flow.</strong></p>
+<ul>
+  <li><code>&lt;impl&gt;:remember &lt;text&gt;</code> — capture</li>
+  <li><code>&lt;impl&gt;:memories [&lt;keyword&gt;]</code> — user-facing search</li>
+  <li><code>&lt;impl&gt;:memories --json --untriaged</code> — inventory query (for doctor)</li>
+  <li><strong><code>&lt;impl&gt;:review-memories</code></strong> — the handholding flow, walks the user through pending memories per-entry, with four dispositions: spec-bound (→ <code>/livespec:propose-changes</code>), impl-bound (→ impl work item), persistent-knowledge (→ <code>.ai/&lt;topic&gt;.md</code>), discard.</li>
+</ul>
+<h3>The <code>.ai/&lt;topic&gt;.md</code> convention</h3>
+<p>Named per topic, progressively loaded, first-class artifact. Compare to beads' unstructured memory store — there's no naming discipline, no progressive-loading discipline, no graduation step.</p>
+<p>livespec-core stays at 7 skills. Impl-plugin contract grows substantially.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Also I want you to write out the livespec-impl-* skills we are discussing here too in a table just like the core ones.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Implementation plugin skills, in the same shape as the core table — <code>*</code> is the plugin name suffix:</p>
+<table>
+<thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>/livespec-impl-*:refresh-gaps</code></td><td>Detect implementation gaps between SPECIFICATION/ and the repo state</td></tr>
+<tr><td><code>/livespec-impl-*:plan</code></td><td>File work items for untracked gaps (per-item user consent)</td></tr>
+<tr><td><code>/livespec-impl-*:implement</code></td><td>Drive Red→Green for a work item; verify gap closure via refresh-gaps; close item</td></tr>
+<tr><td><code>/livespec-impl-*:remember</code></td><td>Capture a free-text memory entry to impl-side storage</td></tr>
+<tr><td><code>/livespec-impl-*:memories</code></td><td>Search/recall memories; <code>--json --untriaged</code> exposes inventory for <code>/livespec:doctor</code></td></tr>
+<tr><td><code>/livespec-impl-*:review-memories</code></td><td>Per-entry handholding: spec-bound / impl-bound / persistent-knowledge / discard</td></tr>
+</tbody>
+</table>
+<p>Six skills.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Having second thoughts about stealing the beads terminology verbatim. Because it may not correspond to other implementation providers. Better to come up with something of our own that is descriptive and generic.</p>
+<p>So:</p>
+<ul>
+  <li><code>:capture-memo</code></li>
+  <li><code>:list-memos</code></li>
+  <li><code>:process-memos</code></li>
+</ul>
+<p>And I have had increasing concerns about the gap handling too. And now this framing, I think, makes the rename more clear there as well. Can't there just be a single command?</p>
+<ul>
+  <li><code>:capture-spec-gaps</code></li>
+</ul>
+<p>This detects them and files appropriately labeled, categorized work items in whatever format for the specified gaps that are found.</p>
+<p>How does all that sound?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Both refinements land.</p>
+<h3>Memory rename — yes, good catch</h3>
+<p>The bd-remember terminology breaks down at impl plugins backed onto third-party trackers. "Remember" reads naturally for beads but for <code>livespec-impl-gitlab</code> or <code>livespec-impl-jira</code> it's a beads-ism.</p>
+<p><code>capture-memo</code> / <code>list-memos</code> / <code>process-memos</code> is the right move — descriptive, generic, consistent verb-noun pattern. "Memo" survives as the entity noun.</p>
+<h3>Gap-handling collapse — yes, and it solves the persistent-JSON problem</h3>
+<p>Collapsing refresh-gaps + plan into <code>:capture-spec-gaps</code> is a real simplification. The persistent intermediate artifact (<code>current.json</code>) disappears entirely without forcing a beads-vs-plaintext choice. Detection state is ephemeral, generated on demand inside the single skill invocation.</p>
+<p>Consent stays per-gap inside the unified skill. The user gets one operation start-to-finish instead of two coupled-but-separate skills.</p>
+<h3>Updated impl-plugin table</h3>
+<table>
+<thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>/livespec-impl-*:capture-spec-gaps</code></td><td>Detect implementation gaps; file labeled, categorized work items (per-gap user consent)</td></tr>
+<tr><td><code>/livespec-impl-*:implement</code></td><td>Drive Red→Green for a single work item; verify via <code>:capture-spec-gaps --dry-run</code>; close item</td></tr>
+<tr><td><code>/livespec-impl-*:capture-memo</code></td><td>Capture a free-text memo to impl-side storage</td></tr>
+<tr><td><code>/livespec-impl-*:list-memos</code></td><td>List/search memos; <code>--untriaged --json</code> exposes inventory for <code>/livespec:doctor</code></td></tr>
+<tr><td><code>/livespec-impl-*:process-memos</code></td><td>Per-memo handholding: spec-bound / impl-bound / persistent-knowledge / discard</td></tr>
+</tbody>
+</table>
+<p>5 skills (down from 6).</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>No, it doesn't make any sense to rename implement to process spec gaps. Because it could also be handling changes that don't come from the specification.</p>
+<p>Specifically, process memos could create a non-memo work item that changes the implementation and needs to get picked up by implement.</p>
+<p>Correct, or am I missing something?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Correct, and that's a sharper distinction than I gave you credit for. <code>implement</code> is <strong>the general work-item processor</strong>, not "the second half of the gap lifecycle." Work items can originate from multiple sources:</p>
+<ul>
+  <li><code>capture-spec-gaps</code> → spec-derived work items (carry the <code>gap-id</code> label)</li>
+  <li><code>process-memos</code> (impl-bound disposition) → memo-derived work items (no gap-id)</li>
+  <li>Future possibility: direct user filing → user-filed work items</li>
+</ul>
+<p>All flow into the impl plugin's work-item queue. <code>implement</code> consumes from that queue uniformly without caring where each item came from.</p>
+<p>The only place origin matters in <code>implement</code> is <strong>closure semantics</strong>:</p>
+<ul>
+  <li><strong>Gap-tied items</strong> → closure requires re-running <code>capture-spec-gaps --dry-run</code> and confirming gap-id absent; close with audit fields.</li>
+  <li><strong>Freeform items</strong> → closure is simple <code>--reason</code> text; no verification step required.</li>
+</ul>
+<p>One adjacent observation: <code>process-memos</code>'s <strong>persistent-knowledge disposition</strong> does NOT create a work item — the file write IS the implementation action, completed inline. So only the impl disposition feeds the <code>implement</code> queue.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>I've been doing software engineering for 35 years and sophisticated, agile teams and workflows. I thought I knew how to do project management from an IC implementer small team perspective. Why is all of this so hard in the agentic world and feels like we have to reinvent everything from scratch?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Honest answer: a meaningful chunk of it isn't reinvention. It's what was implicit on human teams becoming load-bearing infrastructure when the human falls out of the loop.</p>
+<p><strong>The agent is amnesiac by default.</strong> Your old team accumulated tacit context — yesterday's hallway conversation, last quarter's incident, the unwritten "we don't do that here." Agents have none of it. Every piece of context that would otherwise be implicit has to be made explicit, written, and re-discoverable.</p>
+<p><strong>There's no peer accountability.</strong> A human IC self-polices because of reputation, relationships, career continuity. Agents don't. Every convention humans police via code review has to become mechanical.</p>
+<p><strong>Compressed timescales break traditional controls.</strong> A 2-week sprint review on agent-pace work is laughable. Agents make 100 architectural decisions per hour.</p>
+<p><strong>Borrowed vocabulary nearly fits but doesn't.</strong> "Issues," "tickets," "memory," "commits," "review," "triage" — these all import assumptions from human teams. Half of this conversation has been catching the mismatches.</p>
+<p><strong>Some of it really is novel.</strong> The "everything must be spec or implementation, memory is transient by construction" framing you landed on is not a thing you need on a human team because humans naturally bridge gaps.</p>
+<p><strong>The tooling is 1-3 years old.</strong> Agile is 20+ years of accumulated discovery. We literally do not have the agentic equivalents yet — the patterns will get named eventually.</p>
+<p><strong>What IS transferable from your 35 years:</strong></p>
+<ul>
+  <li>The instinct to question abstraction quality.</li>
+  <li>The "if no one's going to do anything about it, why are we tracking it?" pushback.</li>
+  <li>The contract/interface discipline.</li>
+  <li>Knowing when ceremony is paying for itself.</li>
+</ul>
+<p>It's hard because it's actually hard, and because you're early. Not because you're missing something obvious.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Great conversation. I think this is a good stopping point. I want you to do three things.</p>
+<ol>
+  <li>Capture this conversation verbatim in an HTML file under the <code>research/workflow-processes</code> folder. Make each turn between you and me nicely formatted. With different backgrounds and colors, just like they appear in Claude code. Don't over-engineer it. Just make a few inline styles. Don't blow up your contacts trying to write a whole HTML design system. Single HTML file that I can easily read and review in the future, and agents can read too.</li>
+  <li>Archive the outdated information we have under <code>research/workflow-processes</code> to a <code>research/workflow-processes/archive</code> folder. I believe it is pretty much everything in that folder except for CLAUDE.md that needs to get updated. Including the diagrams</li>
+  <li>Write a new Markdown document here summarizing all of our findings and the directions and decisions that we have made so far.</li>
+  <li>Make a new set of diagrams similar to the old ones. Still based in plant UML, still separate files rendered to SVGs. But here's the changes I want:
+    <ol type="a">
+      <li>There's no more dedicated top-level file just for the diagrams. The diagram should be naturally incorporated into the new Markdown document above from step 3. Remember this is an HTML file, not Markdown. It will include the SVG files in line in appropriate places.</li>
+      <li>You'll need to make some more diagrams that make clear the core versus implementation breakdown and how they relate to each other.</li>
+      <li>Throw some sequence diagrams in there that will really help understand the flow better.</li>
+      <li>The two different forms of square boxes you have for external inputs and skills are indistinguishable when rendered. Distinguish them somehow by color or background or some different shape.</li>
+      <li>None of your existing flow chart diagrams include actors and the entry point of users vs. agents.</li>
+    </ol>
+  </li>
+  <li>One point I forgot to mention before. The critique skill now has a very specific point in the workflow. Its role is to surface observations based on observing the specification.</li>
+  <li>Finally, there's one big elephant in the room that we still need to discuss, and it should be called out as an unresolved question that still needs brainstorming and thought. It is this: <code>capture-spec-gaps</code> handles the direction where the correct intent is in the spec but not yet reflected in the implementation. But we don't have anything to capture the other direction. Where the implementation is actually observed to be correct (through some inherent behavior or perhaps through a memo that got implemented), and this has surfaced a drift in the specification, where the specification is incorrect and needs to be changed, via a propose_change. There's really no good way to capture that other than directly proposing a change. Previously, I think we had sort of hand waved that critique would handle this, and that might actually even be codified somewhere in the current specification. But now that we have a hard wall between spec and implementation, that can no longer be Critique's job. So we have a hole. Don't need to discuss this now. Just need to capture it as a follow-up.</li>
+</ol>
+<p>All clear? Can you accomplish all this without any more input from me?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Clear. The elephant (impl→spec drift direction) captured as explicit unresolved follow-up in the summary doc; not discussed in this turn. Starting now.</p>
+<p>[Executes: archives existing content; writes 9 new PlantUML diagram sources covering legend, multi-repo-layout, core-vs-impl API surface, spec-lifecycle, implementation-lifecycle, memo-lifecycle, sequence diagrams for capture-spec-gaps / process-memos / revise; renders to SVG; writes summary HTML and this transcript HTML.]</p>
+</div>
+
+<hr>
+
+<p class="meta">End of transcript. See <code>2026-05-11-architecture-summary.html</code> for the structured summary with embedded diagrams.</p>
+
+</body>
+</html>

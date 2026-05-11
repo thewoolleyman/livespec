@@ -1,5 +1,5 @@
 @startuml spec-lifecycle
-title Livespec Spec Lifecycle (detailed)
+title LiveSpec Core — Spec Lifecycle
 skinparam defaultFontName Helvetica
 skinparam shadowing false
 skinparam BackgroundColor white
@@ -25,67 +25,63 @@ skinparam card {
   BackgroundColor white
   FontColor #111
 }
+skinparam actor {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
 
-rectangle "Initial seed of intent" as SeedIntent
-card      "/livespec:seed" as SeedCmd
+actor "Human\nuser" as HumanUser
+actor "Agent" as Agent #LightSkyBlue
 
-database  "SPECIFICATION/\n(spec.md, contracts.md,\nconstraints.md, scenarios.md,\nnon-functional-requirements.md)" as Spec
-database  "history/\n(vNNN/ snapshots)" as History
-database  "proposed_changes/\n(pending propose-change files)" as Proposed
+rectangle "Initial seed\nof intent" as SeedIntent #FFFFFF;line.dashed
+card "/livespec:seed" as SeedCmd #LightYellow
 
-rectangle "Observe specification" as ObserveSpec #FFFFFF;line.dashed
-rectangle "Observe implementation" as ObserveImpl #FFFFFF;line.dashed
-rectangle "Observe behavior\n(tests / dogfood)" as ObserveBehavior #FFFFFF;line.dashed
+database "SPECIFICATION/\n(spec.md, contracts.md,\nconstraints.md, scenarios.md,\nnon-functional-requirements.md)" as Spec
+database "history/vNNN/\nsnapshots" as History
+database "proposed_changes/\n(pending)" as Proposed
 
-card      "/livespec:critique\n(LLM-driven analysis;\nformulates a fix)" as CritiqueCmd
+rectangle "Observation\n(spec-internal:\nambiguity, contradiction,\nundefined term)" as SpecObs #FFFFFF;line.dashed
 
-usecase   "Revision\nneeded?" as RevisionNeeded
+card "/livespec:critique" as CritiqueCmd #LightYellow
+note right of CritiqueCmd : Role: surface observations\nbased on observing the\nspec. NOT the implementation.\nFinds spec-internal issues\n(ambiguity, contradiction,\ndangling refs).
 
-card      "/livespec:propose-change" as ProposeCmd
-card      "/livespec:revise\n(selective per proposal)" as ReviseCmd
+card "/livespec:propose-changes\n(formal or quick-deposit)" as ProposeCmd #LightYellow
+card "/livespec:revise\n(selective per proposal)" as ReviseCmd #LightYellow
 
-card      "/livespec:doctor\n(static phase —\ndeterministic findings)" as DoctorStatic
-card      "/livespec:doctor\n(LLM-driven phase —\nnon-deterministic findings)" as DoctorLLM
+usecase "Revision\nneeded?" as RevisionNeeded
+card "/livespec:doctor" as DoctorCmd #LightYellow
+card "/livespec:prune-history" as PruneCmd #LightYellow
+card "/livespec:help" as HelpCmd #LightYellow
 
-card      "/livespec:prune-history\n(collapse old vNNN\nentries)" as PruneCmd
-
+HumanUser --> SeedIntent
+HumanUser --> SeedCmd : invokes
+Agent --> SeedCmd : drives
 SeedIntent --> SeedCmd
-SeedCmd --> Spec
-SeedCmd --> History : v001 snapshot
+SeedCmd --> Spec : authors initial tree
+SeedCmd --> History : writes v001
 
-Spec --> ObserveSpec
-Spec --> ObserveImpl
-Spec --> ObserveBehavior
+Spec --> SpecObs
+SpecObs --> CritiqueCmd : analyzed by
+CritiqueCmd --> Proposed : drafts findings\nas proposed changes
 
-ObserveSpec --> RevisionNeeded
-ObserveImpl --> RevisionNeeded
-ObserveBehavior --> RevisionNeeded
+HumanUser --> RevisionNeeded
+RevisionNeeded -right-> ProposeCmd : YES (user intent)
+ProposeCmd --> Proposed : writes
+Proposed --> ReviseCmd : consumed by
+HumanUser --> ReviseCmd : per-proposal\nconfirm
+ReviseCmd --> Spec : mutates
+ReviseCmd --> History : cuts new vNNN
 
-ObserveSpec ..> CritiqueCmd : optional
-ObserveImpl ..> CritiqueCmd : optional
-ObserveBehavior ..> CritiqueCmd : optional
-CritiqueCmd --> Proposed : findings as\nproposed-change files
+DoctorCmd ..> Spec : static + LLM-driven\ninvariants
+DoctorCmd ..> Proposed : hygiene
+DoctorCmd ..> History : structural checks
 
-RevisionNeeded -right-> ProposeCmd : YES
-ProposeCmd --> Proposed
-Proposed --> ReviseCmd
-ReviseCmd --> Spec
-ReviseCmd --> History : new vNNN\nsnapshot
+History --> PruneCmd : oldest collapsed
+PruneCmd --> History : pruned-marker
 
-Spec ..> DoctorStatic
-Proposed ..> DoctorStatic
-History ..> DoctorStatic
-DoctorStatic ..> ProposeCmd : findings\nas inline diff
-DoctorStatic ..> DoctorLLM : on pass
-Spec ..> DoctorLLM
-DoctorLLM ..> CritiqueCmd : drift /\nconformance findings
+note bottom of Spec : Mutated ONLY through\n/livespec:propose-changes →\n/livespec:revise. Direct edits forbidden\nafter v001 seed.
 
-History --> PruneCmd
-PruneCmd --> History : prune marker\n(see scenarios.md)
+note right of ReviseCmd : Selective per-proposal\naccept / modify / reject.\nEach revise pass cuts\nexactly one new vNNN.
 
-note bottom of Spec : Self-application: SPECIFICATION mutates ONLY\nthrough propose-change → revise. Direct edits\nforbidden after the v001 seed commit closes\nthe imperative window.
-
-note right of DoctorStatic : Doctor splits into a static phase\n(deterministic findings expressible as\ninline diff, routed straight to\npropose-change) and an LLM-driven phase\n(non-deterministic, routed to critique\nto formulate the fix). Doctor is invoked\npre/post by every other command, and\nrunnable on demand.
-
-note bottom of ReviseCmd : Selective per-proposal accept / modify /\nreject (v052). Each accepted proposal\nlands spec edits in the same revise pass\nand writes one new history/vNNN/ snapshot.
 @enduml
