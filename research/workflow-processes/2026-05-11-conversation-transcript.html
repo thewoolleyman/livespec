@@ -1030,6 +1030,134 @@ memos/&lt;id&gt;.md
 <p>[Executes: archives existing content; writes 9 new PlantUML diagram sources covering legend, multi-repo-layout, core-vs-impl API surface, spec-lifecycle, implementation-lifecycle, memo-lifecycle, sequence diagrams for capture-spec-gaps / process-memos / revise; renders to SVG; writes summary HTML and this transcript HTML.]</p>
 </div>
 
+<div class="user">
+<div class="turn-label">User <span style="font-size: 0.8em; font-weight: normal; color: #888;">(state update via local-command-caveat)</span></div>
+<p>We have created Markdown wrapper versions pointing to the HTML files in the research directory. Do you see them? Confirm.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Yes, confirmed. I see both wrapper files:</p>
+<ul>
+  <li><code>research/workflow-processes/2026-05-11-architecture-summary.md</code> (540 B)</li>
+  <li><code>research/workflow-processes/2026-05-11-conversation-transcript.md</code> (545 B)</li>
+</ul>
+<p>Both sitting alongside their HTML counterparts. The HTML files (28KB summary, 89KB transcript), the <code>diagrams/</code> directory, the <code>archive/</code> directory, and <code>CLAUDE.md</code> are all still in place.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Ok I'm ready to discuss the follow-up now. Give me your thoughts on it.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Real elephant. Let me work through it.</p>
+
+<h2>The shape of the gap, more precisely</h2>
+<p>The asymmetry you've named is genuine and structural, not just a missing skill. The two directions of drift have categorically different detectability:</p>
+<p><strong>Spec → impl drift.</strong> The spec is <em>prescriptive</em> — it enumerates rules, constraints, contracts. For each rule, you can mechanically check "is there evidence of this rule in the impl?" That's what <code>capture-spec-gaps</code> does. The rule-set is finite and walkable.</p>
+<p><strong>Impl → spec drift.</strong> The impl is <em>descriptive</em> — every line of code is something the impl does. You can't iterate "for each impl behavior, is it in spec?" because there's no complete enumeration of "impl behaviors" to begin with. The signal-to-noise ratio is brutal — almost everything in the impl is "not in spec" by some interpretation; almost none of it is <em>load-bearing drift</em>.</p>
+<p>This means we shouldn't pretend the two directions need symmetric skills. They're not symmetric problems.</p>
+
+<h2>The existing doctor LLM-phase check that loses its home</h2>
+<p>Worth surfacing: today's <code>livespec:doctor</code> LLM-driven subjective phase already has "Spec↔implementation drift" as one of its baked checks (per the doctor SKILL.md, Step 9). So this isn't a new requirement we're inventing — it's an <em>existing</em> check that the new architecture orphans, because the new architecture's hard wall says livespec-core's doctor doesn't know about implementations.</p>
+<p>So we have a concrete artifact to relocate, not just an abstract hole.</p>
+
+<h2>What the memo path actually covers</h2>
+<p>The memo workflow we just designed handles a substantial chunk of this:</p>
+<ul>
+  <li>During impl work, an agent or human notices "impl does X, spec doesn't mention X; spec might need to say something."</li>
+  <li><code>capture-memo "&lt;observation&gt;"</code>.</li>
+  <li>Later, <code>process-memos</code> triages it as <strong>spec-bound</strong> — routes via <code>/livespec:propose-changes</code>.</li>
+  <li>Becomes a proposed-change, then revise, then spec is updated.</li>
+</ul>
+<p>This is the <strong>human-noticed</strong> discovery path, and it works without any new infrastructure. It's exactly the path you said earlier was "the user manually proposing a change" — except with the memo workflow it's <em>handheld</em>, not manual. The user just types <code>capture-memo "thought"</code> mid-flow; the rest is orchestrated.</p>
+
+<h2>What memos don't cover: silent drift</h2>
+<p>The memo path requires <em>somebody noticing</em>. What memos can't catch is silent drift — cases where:</p>
+<ul>
+  <li>The impl evolves in ways that nobody flags</li>
+  <li>The spec slowly becomes inaccurate over time without anyone naming a specific divergence</li>
+  <li>A piece of impl is correct-by-convention but the convention was never codified into spec</li>
+  <li>A bugfix landed that revealed spec-wrongness, but the bugfix-author didn't notice/note it</li>
+</ul>
+<p>This is the residue. It's structurally hard to catch via memos because it requires somebody to <em>notice the spec is wrong</em>, which requires <em>knowing what the spec currently says</em>, which requires loading and rereading the spec — exactly the friction the memo workflow tries to avoid.</p>
+
+<h2>Three options for closing the residue</h2>
+
+<h3>Option A: Trust the memo path; accept silent-drift risk</h3>
+<p>Don't add infrastructure. The memo path covers the noticed cases; for the silent cases, accept that spec slowly atrophies and rely on periodic full-spec review (manual). Pragmatic but limited — spec quality degrades over time without active intervention.</p>
+
+<h3>Option B: Add an impl-side audit skill</h3>
+<p>Add a new skill to the impl-plugin contract — e.g., <code>/livespec-impl-*:audit-spec-coverage</code> (naming TBD). Responsibilities:</p>
+<ul>
+  <li>Walk the impl and the spec, LLM-driven analysis identifying impl behaviors that look load-bearing but aren't reflected in spec.</li>
+  <li>For each finding, per-finding user consent dialogue.</li>
+  <li>Promoted findings → <code>/livespec:propose-changes</code> (cross-namespace handoff, identical pattern to <code>process-memos</code>'s spec-bound disposition).</li>
+  <li>Discarded findings → nothing; not persisted, not memoed.</li>
+</ul>
+<p>This is the structural symmetry: each plugin has both a forward-direction detector (<code>capture-spec-gaps</code>) and a reverse-direction auditor (<code>audit-spec-coverage</code>). It mirrors the spec/impl asymmetry honestly (the reverse-direction is heuristic, LLM-driven, and inherently fuzzier).</p>
+<p>This adds one skill to the impl-plugin contract:</p>
+<table>
+  <tr><th>Command</th><th>Purpose</th></tr>
+  <tr>
+    <td><code>/livespec-impl-*:audit-spec-coverage</code></td>
+    <td>Detect impl behaviors that look load-bearing but aren't reflected in spec; route findings to <code>/livespec:propose-changes</code></td>
+  </tr>
+</table>
+<p>Six skills on the impl side instead of five.</p>
+
+<h3>Option C: Doctor delegates the audit to the impl plugin</h3>
+<p>Don't add a top-level impl skill. Instead, define a documented impl-plugin operation that doctor's LLM-driven phase calls. Same effect as Option B from the user's perspective (they invoke <code>livespec:doctor</code>, doctor orchestrates the audit including impl-side), but the audit-skill isn't a separate impl-plugin surface — it's part of doctor's machine-readable contract with the impl plugin.</p>
+<p>Tradeoff: better cohesion (audit becomes a doctor-orchestrated step, like memo hygiene). Cost: doctor's interaction with impl-plugin grows past the simple memo-inventory query into something richer — it has to consume findings, drive a per-finding dialogue with the user, and route to propose-changes. That's a lot for doctor.</p>
+
+<h2>My honest leaning</h2>
+<p>I lean <strong>Option B</strong> for two reasons:</p>
+<ol>
+  <li><strong>Symmetry of plugin surface.</strong> Each impl plugin owns both directions of drift detection — forward (capture-spec-gaps) and reverse (audit-spec-coverage). Same shape: detect, file with consent, hand off appropriately. Easier to learn, easier to implement.</li>
+  <li><strong>Doctor stays narrow.</strong> Doctor's job is invariant-checking and hygiene-warning, not orchestrating analytical workflows. Pushing the audit into doctor expands its scope past coherence (memo hygiene was already adding to it; adding spec-coverage audit makes it a meta-orchestrator).</li>
+</ol>
+<p>But there's a real open question I want to flag honestly: <strong>detection quality</strong>. LLM-driven "find load-bearing impl behaviors that aren't in spec" is a very fuzzy operation. Without good heuristics or a constrained scope, it's likely to produce lots of false positives (every minor impl detail flagged as "missing from spec") and miss the genuinely-important drift. The skill exists, but how <em>good</em> it can be is uncertain.</p>
+<p>Possible mitigations:</p>
+<ul>
+  <li>Constrain by scope ("audit just the constraints section against the dev-tooling/ tree")</li>
+  <li>LLM gets only diffs since last audit, not full impl + full spec</li>
+  <li>User-targeted: "audit this specific subsystem"</li>
+  <li>Memo-triggered: "this memo claims impl-spec divergence; verify and surface"</li>
+</ul>
+<p>The last one is interesting — the audit could be <em>invoked</em> by a memo claiming divergence rather than running blindly. That keeps human-judgment in the loop.</p>
+
+<h2>One more thing worth surfacing</h2>
+<p><strong>Naming.</strong> "audit-spec-coverage" might be too narrow — it implies "find spec gaps," when really we want "find drift in either direction that warrants spec change." Some candidates:</p>
+<ul>
+  <li><code>audit-spec-coverage</code> — implies "what's the impl doing that spec doesn't cover"</li>
+  <li><code>propose-spec-revisions</code> — more action-oriented; reads as the verb-noun "propose revisions to spec"</li>
+  <li><code>surface-spec-drift</code> — neutral; "surface" matches process-memos verb pattern</li>
+  <li><code>discover-spec-drift</code> — discovery as the verb; reverse of capture-spec-gaps</li>
+</ul>
+<p>I'd actually lean toward <code>surface-spec-drift</code> as the cleanest match for the verb-noun pattern we've been using elsewhere. But it's a naming question to settle.</p>
+
+<h2>Summary</h2>
+<ul>
+  <li>Asymmetry is structural; the two directions are genuinely different problems.</li>
+  <li>Memo path closes most of the noticed-drift gap (handheld, no new infrastructure).</li>
+  <li>For silent drift, <strong>Option B</strong> (add <code>/livespec-impl-*:audit-spec-coverage</code> or <code>surface-spec-drift</code> as an impl-side skill) is my leaning.</li>
+  <li>Open questions: detection quality (LLM-driven analytical work is fuzzy), naming, whether to gate the audit on a memo trigger vs. periodic invocation.</li>
+</ul>
+<p>Want to push on any of these, or land on a direction?</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Update the conversation HTML with This latest turns in our discussion. Ensure it lands on master.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>[Appends the most recent four turns to this transcript HTML, commits on a fresh branch off master, pushes, opens a PR with auto-merge enabled so it lands on master via the established workflow.]</p>
+</div>
+
 <hr>
 
 <p class="meta">End of transcript. See <code>2026-05-11-architecture-summary.html</code> for the structured summary with embedded diagrams.</p>
