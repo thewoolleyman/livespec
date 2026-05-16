@@ -1,0 +1,141 @@
+@startuml draft-tool-agnostic-workflow
+title Tool-Agnostic Workflow — Spec / Implementation Lifecycle (DRAFT)
+
+' Primary process flow goes LEFT to RIGHT.
+' SPEC SIDE on the left; IMPLEMENTATION SIDE on the right.
+' Lines crossing the package boundary are HARD CONTRACTS.
+
+left to right direction
+
+' --- Styling ------------------------------------------------
+
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #333
+skinparam ArrowFontColor #111
+skinparam ArrowThickness 1
+
+skinparam package {
+  FontColor #111
+  FontSize 13
+  FontStyle bold
+  BorderColor #555
+  BorderThickness 2
+}
+
+' Activities / skills: light blue, regular rectangle
+skinparam rectangle {
+  BackgroundColor #d6e6f5
+  BorderColor #3a6a9a
+  FontColor #111
+  RoundCorner 4
+}
+
+' Stores / artifacts / queues: tan cylinder
+skinparam database {
+  BackgroundColor #f5ead5
+  BorderColor #8a6b3a
+  FontColor #111
+}
+
+' Actors
+skinparam actor {
+  BackgroundColor #ffffff
+  BorderColor #111
+  FontColor #111
+}
+
+' --- Actors -------------------------------------------------
+
+actor "User" as User
+actor "Agent" as Agent
+
+' --- SPEC SIDE (left) ---------------------------------------
+
+package "SPEC SIDE  ▏prescriptive" as SpecPkg #fde8ec {
+
+  rectangle "Seed" as Seed
+  rectangle "Propose\nChange" as Propose
+  rectangle "Critique" as Critique
+  rectangle "Revise" as Revise
+  rectangle "Doctor" as Doctor
+  rectangle "Prune\nHistory" as Prune
+
+  database "Specification" as Spec
+  database "Proposed\nChanges" as PCQueue
+  database "Specification\nHistory" as History
+}
+
+' --- IMPLEMENTATION SIDE (right) ----------------------------
+
+package "IMPLEMENTATION SIDE  ▏descriptive" as ImplPkg #e3f0e3 {
+
+  rectangle "Capture\nImpl Drift" as CaptureImplDrift
+  rectangle "Implement" as Implement
+  rectangle "Capture\nSpec Drift" as CaptureSpecDrift
+  rectangle "Capture\nMemo" as CaptureMemo
+  rectangle "List\nMemos" as ListMemos
+  rectangle "Process\nMemos" as ProcessMemos
+
+  database "Implementation\n(code, tests,\nconfig, infra,\nagent instructions)" as Impl
+  database "Work Items" as WorkItems
+  database "Memos" as Memos
+  database "Persistent Agent\nKnowledge\n(.ai/*.md)" as AgentKnowledge
+}
+
+' --- User / Agent entry points -----------------------------
+
+User --> Seed : initial intent
+User --> Propose : explicit\nchange
+Agent --> CaptureMemo : in-flight\nobservation
+
+' --- Spec lifecycle (within SPEC SIDE) ---------------------
+
+Seed --> Spec
+Propose --> PCQueue
+PCQueue --> Revise
+Revise --> Spec : applies
+Revise --> History : snapshots
+Spec ..> Critique : observes
+Critique --> PCQueue : findings ⇒\nproposals
+Spec ..> Doctor : observes
+History ..> Doctor
+Prune --> History : compresses
+
+' --- Cross-boundary: SPEC ⇒ IMPL (the prescription flow) ---
+
+Spec ===> CaptureImplDrift : prescription
+
+' --- Implementation gap lifecycle (within IMPL SIDE) -------
+
+Impl ..> CaptureImplDrift : current state
+CaptureImplDrift --> WorkItems : files items
+WorkItems --> Implement
+Implement --> Impl : changes
+Implement --> WorkItems : closes
+
+' --- Spec-drift detection (impl observed as truth) ---------
+
+Impl ..> CaptureSpecDrift : observed truth
+Spec ..> CaptureSpecDrift : compare\nagainst
+
+' --- Memo lifecycle (within IMPL SIDE) ---------------------
+
+CaptureMemo --> Memos
+Memos --> ListMemos : search /\nrecall
+Memos --> ProcessMemos
+ProcessMemos --> WorkItems : impl-bound
+ProcessMemos --> AgentKnowledge : persistent-\nknowledge
+
+' --- Cross-boundary feedback: IMPL ⇒ SPEC ------------------
+' (these are the load-bearing R→L feedback loops)
+
+ProcessMemos ===> Propose : spec-bound
+CaptureSpecDrift ===> Propose : drift\nfindings
+
+' --- Cross-boundary doctor hygiene query -------------------
+
+Doctor ..===> Memos : queries\nuntriaged
+
+@enduml
