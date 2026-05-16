@@ -1,125 +1,128 @@
 @startuml draft-tool-agnostic-workflow
-title Tool-Agnostic Workflow — Spec / Implementation Lifecycle (DRAFT v4)
+title Tool-Agnostic Workflow — Spec / Implementation Lifecycle (DRAFT v7)
 
-' v4 approach: NO outer containers. PlantUML's package/frame/
-' rectangle wrappers refuse to stack vertically when there are
-' bidirectional cross-container edges (verified across v1-v3
-' with multiple layout engines + hidden edges). Going flat
-' instead: free-floating nodes, colored by function, a horizontal
-' "WALL" rectangle as visual divider between SPEC and IMPL
-' regions, and aggressive hidden vertical edges to enforce the
-' top-down order.
+' Layout: flat (no outer containers). Vertical stacking enforced
+' via `together { }` blocks grouping each side, plus aggressive
+' hidden edges anchoring the WALL as a horizontal divider.
 
 skinparam defaultFontName Helvetica
 skinparam shadowing false
 skinparam BackgroundColor #fafafa
-skinparam ArrowColor #333
-skinparam ArrowFontColor #111
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
 skinparam ArrowFontSize 11
-skinparam nodesep 14
-skinparam ranksep 22
+skinparam ArrowThickness 1.3
+skinparam nodesep 16
+skinparam ranksep 28
 hide stereotype
 
 skinparam rectangle {
   BackgroundColor #d6e6f5
-  BorderColor #3a6a9a
+  BorderColor #1f4768
   FontColor #111
   RoundCorner 8
 }
 
 skinparam database {
   BackgroundColor #f5ead5
-  BorderColor #8a6b3a
-  FontColor #111
-}
-
-skinparam actor {
-  BackgroundColor #ffffff
-  BorderColor #111
+  BorderColor #5a4319
   FontColor #111
 }
 
 ' ============================================================
-' ACTORS (top)
+' EXTERNAL INPUT (replaces actors)
 ' ============================================================
 
-actor "User" as User
-actor "Agent" as Agent
+rectangle "initial intent /\nprompt / instruction / seed" as Input #fffacc
 
 ' ============================================================
-' SPEC SIDE — prescriptive (top half)
+' SPEC SIDE — top half (grouped via `together`)
 ' ============================================================
 
-rectangle "**SPEC SIDE**\n//prescriptive//" as SpecLabel #fde8ec
-rectangle "Seed" as Seed
-rectangle "Propose\nChange" as Propose
-rectangle "Critique" as Critique
-rectangle "Revise" as Revise
-rectangle "Doctor" as Doctor
-database "Specification" as Spec
-database "Proposed\nChanges" as PCQueue
-database "Specification\nHistory" as History
+together {
+  rectangle "Seed" as Seed
+  rectangle "Propose\nChange" as Propose
+  rectangle "Critique" as Critique
+  rectangle "Revise" as Revise
+  rectangle "Doctor" as Doctor
+
+  database "Specification" as Spec
+  database "Proposed\nChanges" as PCQueue
+  database "Specification\nHistory" as History
+}
 
 ' ============================================================
-' WALL — horizontal divider between SPEC and IMPL
+' WALL — horizontal divider
 ' ============================================================
 
-rectangle "═════════════════════  SPEC  ▏  IMPLEMENTATION  ═════════════════════" as Wall #f5d76e
+rectangle "═══════════  SPEC  (prescriptive)   ▏   IMPLEMENTATION  (descriptive)  ═══════════" as Wall #f5d76e
 
 ' ============================================================
-' IMPLEMENTATION SIDE — descriptive (bottom half)
+' IMPLEMENTATION SIDE — bottom half (grouped via `together`)
 ' ============================================================
 
-rectangle "**IMPLEMENTATION SIDE**\n//descriptive//" as ImplLabel #e3f0e3
-rectangle "Capture\nImpl Drift" as CaptureImplDrift
-rectangle "Implement" as Implement
-rectangle "Capture\nSpec Drift" as CaptureSpecDrift
-rectangle "Capture\nMemo" as CaptureMemo
-rectangle "Process\nMemos" as ProcessMemos
-database "Implementation" as Impl
-database "Work Items" as WorkItems
-database "Memos" as Memos
-database "Persistent\nAgent Knowledge" as AgentKnowledge
+together {
+  rectangle "Capture\nImpl Drift" as CaptureImplDrift
+  rectangle "Implement" as Implement
+  rectangle "Capture\nSpec Drift" as CaptureSpecDrift
+  rectangle "Capture\nMemo" as CaptureMemo
+  rectangle "Process\nMemos" as ProcessMemos
+
+  database "Implementation" as Impl
+  database "Work Items" as WorkItems
+  database "Memos" as Memos
+  database "Persistent\nAgent Knowledge" as AgentKnowledge
+}
 
 ' ============================================================
-' HIDDEN VERTICAL LAYOUT ENFORCEMENT
-' Forces top-to-bottom ordering: actors → spec → wall → impl
+' WALL ANCHORING (force WALL between the two together-groups)
 ' ============================================================
 
-User -[hidden]down-> SpecLabel
-SpecLabel -[hidden]down-> Seed
-SpecLabel -[hidden]right-> Propose
-Propose -[hidden]right-> Critique
+Input -[hidden]down-> Seed
 
+Seed     -[hidden]down-> Wall
+Propose  -[hidden]down-> Wall
+Critique -[hidden]down-> Wall
+Revise   -[hidden]down-> Wall
+Doctor   -[hidden]down-> Wall
+Spec     -[hidden]down-> Wall
+PCQueue  -[hidden]down-> Wall
+History  -[hidden]down-> Wall
+
+Wall -[hidden]down-> CaptureImplDrift
+Wall -[hidden]down-> Implement
+Wall -[hidden]down-> CaptureSpecDrift
+Wall -[hidden]down-> CaptureMemo
+Wall -[hidden]down-> ProcessMemos
+Wall -[hidden]down-> Impl
+Wall -[hidden]down-> WorkItems
+Wall -[hidden]down-> Memos
+Wall -[hidden]down-> AgentKnowledge
+
+' Intra-spec layout
 Seed -[hidden]down-> Spec
 Spec -[hidden]down-> PCQueue
 PCQueue -[hidden]down-> Revise
 Revise -[hidden]down-> History
 History -[hidden]down-> Doctor
+Seed -[hidden]right-> Propose
+Propose -[hidden]right-> Critique
 
-Doctor -[hidden]down-> Wall
-Wall -[hidden]down-> ImplLabel
-
-ImplLabel -[hidden]down-> CaptureImplDrift
-ImplLabel -[hidden]right-> CaptureMemo
-CaptureMemo -[hidden]right-> ProcessMemos
-
+' Intra-impl layout
 CaptureImplDrift -[hidden]down-> WorkItems
 WorkItems -[hidden]down-> Implement
 Implement -[hidden]down-> Impl
 Impl -[hidden]down-> CaptureSpecDrift
-Memos -[hidden]down-> AgentKnowledge
+CaptureImplDrift -[hidden]right-> CaptureMemo
+CaptureMemo -[hidden]down-> Memos
+Memos -[hidden]down-> ProcessMemos
+ProcessMemos -[hidden]down-> AgentKnowledge
 
 ' ============================================================
 ' VISIBLE EDGES (data flow)
 ' ============================================================
 
-' Actor entry
-User --> Seed
-User --> Propose
-User --> Revise
-Agent --> CaptureMemo
-Agent --> Implement
+Input --> Seed
 
 ' Spec lifecycle
 Seed --> Spec
@@ -132,8 +135,9 @@ Critique --> PCQueue
 Spec --> Doctor
 History --> Doctor
 
-' Cross-boundary: SPEC ⇣ IMPL (prescription)
+' Cross-boundary: SPEC ⇣ IMPL
 Spec -[#a02020,thickness=2]-> CaptureImplDrift
+Spec -[#a02020,thickness=2]-> CaptureSpecDrift
 
 ' Impl gap lifecycle
 Impl --> CaptureImplDrift
@@ -145,7 +149,7 @@ Implement --> WorkItems
 ' Spec-drift detection
 Impl --> CaptureSpecDrift
 
-' Cross-boundary: IMPL ⇡ SPEC (drift findings)
+' Cross-boundary: IMPL ⇡ SPEC
 CaptureSpecDrift -[#a02020,thickness=2]-> Propose
 
 ' Memo lifecycle
@@ -154,10 +158,8 @@ Memos --> ProcessMemos
 ProcessMemos --> WorkItems : impl-bound
 ProcessMemos --> AgentKnowledge : persistent
 
-' Cross-boundary: IMPL ⇡ SPEC (spec-bound memo)
+' Cross-boundary: IMPL ⇡ SPEC
 ProcessMemos -[#a02020,thickness=2]-> Propose : spec-bound
-
-' Cross-boundary: IMPL ⇡ SPEC (doctor hygiene query)
 Memos -[#a02020,thickness=2]-> Doctor : untriaged
 
 @enduml
