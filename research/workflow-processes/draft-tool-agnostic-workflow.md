@@ -35,6 +35,14 @@ This section describes every node in the diagram, organized by
 node type. Each node carries one paragraph summarizing its role
 and the nuances established during the design conversation.
 
+### Spec / implementation split
+
+**Why this is needed:** the spec captures *what should be true* (prescription); the implementation captures *what is true* (description). Treating these as one combined artifact conflates intent with realization, which makes it impossible to verify whether impl matches intent, to evolve them at independent paces, or to substitute one implementation for another while keeping the intent stable. A foundational invariant falls out of this: every piece of project state must live on one side or the other — not both, not neither.
+
+The wall between the two sides is hard. Neither side reads the other directly except through the **cross-boundary contracts** rendered as red edges in the diagram (and enumerated in the *Cross-boundary contracts* table below). Every cross-boundary edge is a deliberate, audited handoff rather than an implicit coupling — the wall forces the relationship between spec and implementation to be explicit and load-bearing rather than ambient.
+
+The implementation side is **pluggable**. LiveSpec Core (the spec side) publishes the contract; any implementation that fulfills it is interchangeable. The implementation can take any form — files in the repo (markdown, JSONL, YAML, HTML, etc.), an embedded database, a third-party issue tracker, or a hybrid — as long as it satisfies the published contract obligations (the cross-boundary edges plus the machine-readable query/mutation APIs that Doctor and the disposition handoffs rely on). Concrete implementations already in scope: `livespec-impl-plaintext` (files in repo, configurable format), `livespec-impl-beads` (Dolt-backed graph database), `livespec-impl-gitlab` (GitLab work items), `livespec-impl-gascity` (Gas City's tracker). New implementations slot in by satisfying the same contract; LiveSpec Core does not need to know about them in advance, and adopters pick whichever implementation matches their concurrency profile, existing tooling, and operational preferences.
+
 ### External input
 
 #### initial intent / prompt / instruction / seed
