@@ -721,7 +721,7 @@ work item across all statuses.
 
 ##### Memos
 
-**Why this is needed:** captured observations need durable storage between deposit and triage without becoming a permanent store, which would defeat the transient-by-construction discipline and re-introduce the junk-drawer pattern.
+**Why this is needed:** during another piece of work, an agent or human often notices something worth capturing — an observation, an idea, a half-formed thought, a possible problem — that does not warrant interrupting the current flow to go through the ceremony of authoring a structured proposed change, filing a work item, or directly editing agent knowledge. Memos are the low-friction in-flight capture channel that lets such signal land in the moment, deferring the formal-or-discard decision to a later focused triage pass.
 
 **Queue/archive — queue + archive.** Holds pending free-text
 observations awaiting `Process Memos` triage, plus dispositioned
