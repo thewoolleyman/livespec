@@ -73,6 +73,7 @@ package "SPEC SIDE  ▏ prescriptive" as SpecPkg #fde8ec {
 
 package "IMPLEMENTATION SIDE  ▏ descriptive" as ImplPkg #e3f0e3 {
   rectangle "Capture\nImpl Drift" as CaptureImplDrift
+  rectangle "Capture\nWork Item" as CaptureWorkItem
   rectangle "Implement" as Implement
   rectangle "Capture\nSpec Drift" as CaptureSpecDrift
   rectangle "Capture\nMemo" as CaptureMemo
@@ -114,6 +115,9 @@ CaptureImplDrift --> WorkItems
 WorkItems --> Implement
 Implement --> Impl
 Implement --> WorkItems
+
+' Direct work item filing (freeform, no gap-id)
+CaptureWorkItem --> WorkItems
 
 ' Spec-drift detection
 Impl --> CaptureSpecDrift

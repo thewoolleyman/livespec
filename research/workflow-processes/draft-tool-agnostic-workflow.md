@@ -39,6 +39,32 @@ specific implementation plugin).
 | 4 | impl → spec | `Process Memos → Propose Change` (spec-bound) | Spec-bound memo dispositions become proposals. |
 | 5 | impl → spec | `Memos → Doctor` (untriaged) | Doctor reads untriaged-memo inventory for its hygiene invariant check. |
 
+## Pending skill placeholders
+
+### `livespec:next` (spec-side, advisory)
+
+A future spec-side skill — provisionally named `livespec:next` —
+will recommend the most logical next workflow action based on the
+current state of the persistence stores and the dependencies between
+operations. Purely advisory: it does not mutate any store.
+
+Reads (via the impl-plugin machine-readable contract for impl-side
+stores; directly for spec-side stores):
+
+- **Proposed Changes** queue — pending proposals awaiting revise?
+- **Specification History** — recency of the last revision; pruning pressure?
+- **Work Items** queue — ready leaf items? blocked items? stale items?
+- **Memos** queue — untriaged memos, especially past the doctor-enforced hygiene threshold?
+- **Doctor** findings — unresolved invariant violations?
+
+Surfaces the most ripe next action — conceptually similar to
+`bd ready` but applied to the full spec ↔ implementation lifecycle
+rather than just the Work Items queue.
+
+Not yet represented in the diagram. Full design (single recommendation
+vs. ranked list, cross-boundary read mechanism, weighting heuristics
+across stores) is open for future iteration.
+
 ## Open questions for review
 
 - Cross-boundary red arrows take long winding routes around the
