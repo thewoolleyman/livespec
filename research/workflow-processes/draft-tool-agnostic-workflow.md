@@ -114,6 +114,15 @@ Each snapshot lives in a `history/vNNN/` directory containing
 byte-identical copies of every template-declared spec file.
 Provides the audit trail of how intent evolved over time.
 
+**Imperative window** — The brief period at project birth during
+which direct edits to the Specification are permitted, before
+the Propose Change → Revise lifecycle becomes the only allowed
+mutation path. The window opens when Seed begins materializing
+the spec from scratch (there is nothing to propose against yet)
+and closes when the Seed commit lands. After the window closes,
+direct spec edits are forbidden and all subsequent mutations
+MUST flow through Propose Change → Revise.
+
 **Implementation** — The actual code, tests, configuration,
 infrastructure, and agent-instruction files (CLAUDE.md,
 AGENTS.md, `.ai/*.md`) that realize the spec. The descriptive
@@ -143,6 +152,26 @@ propose-changes, critique, revise, doctor, prune-history), and
 the structural invariant checks. One side of the spec /
 implementation split; adopters install LiveSpec Core plus one
 implementation plugin of their choice.
+
+**Load-bearing** — Describes a piece of structure — a rule, a
+contract, an artifact, an invariant, an edge in the diagram —
+on which other parts of the workflow depend. Removing or
+altering a load-bearing element causes downstream breakage;
+incidental elements can be changed freely. Used throughout the
+design to distinguish "must preserve" elements from cosmetic
+or aesthetic ones. Example: the cross-boundary contracts are
+load-bearing because the spec / impl split would collapse
+without them; the arrow color in the diagram is not.
+
+**Materialization** — The act of bringing an abstract artifact
+into concrete existence on disk. Used primarily for what Seed
+does: takes the initial intent and materializes the
+Specification tree (the template-declared spec files plus the
+`v001` history snapshot). After materialization, the spec
+exists as concrete files that subsequent skills can read,
+mutate, and version against. Distinct from authoring (which
+mutates existing files) and from realization (which lives on
+the impl side, bridging spec prescription to running code).
 
 **Memo** — A transient free-text observation captured for later
 triage. Lives in the Memos queue. Captured via Capture Memo and
