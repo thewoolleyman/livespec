@@ -12,7 +12,7 @@ specific implementation plugin).
 
 **Layout conventions:**
 
-- **SPEC SIDE** (pink package, left) ▏ **IMPLEMENTATION SIDE** (green package, right). Side-by-side rather than vertically stacked — see *Layout history* below for why.
+- **SPEC SIDE** (pink package, left) ▏ **IMPLEMENTATION SIDE** (green package, right). Side-by-side rather than vertically stacked — see *PlantUML layout constraints* below for why.
 - **Arrow direction = data flow.** A read goes `artifact → skill`; a write goes `skill → artifact`.
 - **Shape vocabulary:**
   - light blue rounded rectangle = skill / operation (verb is in the node name)
@@ -46,7 +46,7 @@ produce multiple proposals atomically.
 
 **Closure** — The act of marking a work item as done. Two paths
 based on the item's origin: gap-tied items require verification
-(re-running drift detection to confirm the gap is gone) plus
+(re-running gap detection to confirm the gap is gone) plus
 audit fields; freeform items close with a simple reason and no
 verification step.
 
@@ -75,15 +75,17 @@ phase (spec-quality findings). Also enforces cross-cutting
 invariants such as memo hygiene by querying impl-side stores
 through the published contract.
 
-**Drift** — The unified domain term for a divergence between the
-Specification and the Implementation. Drift exists in two
-directions: **impl drift** (spec says X, impl doesn't reflect X
-— detected by Capture Impl Drift; closes via impl work) and
-**spec drift** (impl observed correct, spec lagging — detected
-by Capture Spec Drift; closes via Propose Change). The two
-directions have categorically different detection characteristics
-(mechanical vs. heuristic), which is why they are handled by
-separate skills rather than one bidirectional skill.
+**Drift** — Evolutionary lag in the spec: the implementation has
+done something load-bearing that the spec does not yet describe.
+The asymmetric counterpart to **gap** on the impl side.
+Detection is heuristic and LLM-driven — the impl side has no
+enumerable rule set the way the spec does, so finding "what
+looks load-bearing but isn't documented" is inherently fuzzy.
+Closes via routing to Propose Change. The bilateral framing
+("impl drift" vs "spec drift") was tried and rejected: the two
+directions are categorically different problems and benefit from
+the asymmetric naming **gap** / **drift** rather than symmetric
+naming that obscures the difference.
 
 **Freeform (work item)** — A work item with no gap-id marker;
 its existence is not tied to a detected spec gap. Comes from
@@ -91,17 +93,18 @@ Capture Work Item (direct user filing) or Process Memos
 (impl-bound disposition). Closes with a simple `--reason` text;
 no verification step required.
 
-**Gap** — Historical / legacy term for a specific direction of
-drift: something prescribed by the spec that is not yet
-reflected in the implementation. The `gap-id:gap-NNNN` label on
-gap-tied work items still uses this term as a stable identifier
-marker, but **drift** is the preferred unified concept term for
-the bilateral divergence. Each detected gap corresponds to
-exactly one tracked work item across all statuses (the 1:1
-gap-tracking invariant).
+**Gap** — A deficit in the implementation: something the spec
+prescribes that the implementation does not yet reflect. The
+asymmetric counterpart to **drift** on the spec side. Detection
+is mechanical (enumerate spec rules; check impl for each). Each
+detected gap corresponds to exactly one tracked work item across
+all statuses — the 1:1 gap-tracking invariant — and is marked
+with a `gap-id:gap-NNNN` label on the resulting gap-tied work
+item. Closure requires verifying the gap is no longer detected
+(see **Verification**).
 
 **Gap-tied (work item)** — A work item carrying a gap-id marker,
-derived from automated detection by Capture Impl Drift. Its
+derived from automated detection by Capture Impl Gaps. Its
 existence is justified by a specific spec rule the impl does
 not yet satisfy. Closure requires verification (re-run
 detection; confirm gap-id absent) plus audit fields (resolution
@@ -113,15 +116,6 @@ snapshots of the Specification at each successful Revise pass.
 Each snapshot lives in a `history/vNNN/` directory containing
 byte-identical copies of every template-declared spec file.
 Provides the audit trail of how intent evolved over time.
-
-**Imperative window** — The brief period at project birth during
-which direct edits to the Specification are permitted, before
-the Propose Change → Revise lifecycle becomes the only allowed
-mutation path. The window opens when Seed begins materializing
-the spec from scratch (there is nothing to propose against yet)
-and closes when the Seed commit lands. After the window closes,
-direct spec edits are forbidden and all subsequent mutations
-MUST flow through Propose Change → Revise.
 
 **Implementation** — The actual code, tests, configuration,
 infrastructure, and agent-instruction files (CLAUDE.md,
@@ -136,7 +130,7 @@ LiveSpec Core. Each plugin owns its own storage backend
 but exposes the same skill surface and the same machine-readable
 contract. Concrete examples: `livespec-impl-plaintext`,
 `livespec-impl-beads`, `livespec-impl-gitlab`,
-`livespec-impl-gascity`.
+`livespec-impl-gascity`, `livespec-impl-darkfactory-kilroy`.
 
 **Intent** — Incoming change pressure that drives spec or
 implementation work: an initial seed, an observation, a
@@ -207,9 +201,9 @@ snapshot (vNNN). Selective per-proposal — the user can address
 a subset and leave the rest pending for a future pass.
 
 **Seed** — One-time spec-side skill that bootstraps a new
-project's Specification from initial intent. After the seed
-commit, the imperative window closes and all subsequent spec
-mutations MUST flow through Propose Change → Revise.
+project's Specification from initial intent. After the Seed
+commit lands, all subsequent spec mutations MUST flow through
+Propose Change → Revise.
 
 **Spec** — See **Specification**.
 
@@ -223,16 +217,17 @@ workflow.
 
 **Verification** — The closure-time step that confirms a
 gap-tied work item's underlying gap is actually resolved.
-Implemented by re-running Capture Impl Drift in dry-run mode
+Implemented by re-running Capture Impl Gaps in dry-run mode
 and checking that the gap-id is no longer present in the
 detection output. Does not apply to freeform work items.
 
 **Work item** — An actionable, tracked task on the implementation
 side. Awaits processing by Implement. Comes from three sources:
-Capture Impl Drift (gap-tied), Capture Work Item (freeform
+Capture Impl Gaps (gap-tied), Capture Work Item (freeform
 direct filing), or Process Memos (impl-bound disposition,
 freeform). See **Gap-tied** vs **Freeform** for closure
-semantics.
+semantics, and **Closure** for the verification step that gap-tied
+closures require.
 
 ## Summary
 
@@ -272,7 +267,8 @@ rely on). Concrete implementations already in scope:
 `livespec-impl-plaintext` (files in repo, configurable format),
 `livespec-impl-beads` (Dolt-backed graph database),
 `livespec-impl-gitlab` (GitLab work items), `livespec-impl-gascity`
-(Gas City's tracker). New implementations slot in by satisfying
+(Gas City's tracker), `livespec-impl-darkfactory-kilroy`
+(Darkfactory's Kilroy tracker). New implementations slot in by satisfying
 the same contract; LiveSpec Core does not need to know about
 them in advance, and adopters pick whichever implementation
 matches their concurrency profile, existing tooling, and
@@ -311,15 +307,16 @@ One-time bootstrap of a new project's Specification. Reads the
 initial intent and materializes the initial state of the
 Specification tree (the template-declared spec files plus a
 `v001` History snapshot). Runs once at project birth; after the
-seed commit lands the imperative window for direct spec edits
-closes, and all subsequent spec mutations MUST flow through
-`Propose Change → Revise`. Seed is exempt from the pre-step
-doctor check (there is no prior state to check) but does run a
-post-step check to verify the materialized state is consistent.
+Seed commit lands, all subsequent spec mutations MUST flow
+through `Propose Change → Revise` — direct edits to the spec
+are forbidden from that point on. Seed is exempt from the
+pre-step doctor check (there is no prior state to check) but
+does run a post-step check to verify the materialized state is
+consistent.
 
 #### Propose Change
 
-**Why this is needed:** once the imperative window closes, spec mutations need a structured, audited entry point — otherwise every change becomes either an unrecorded direct edit or heavyweight ceremony that gets bypassed.
+**Why this is needed:** once Seed has run, spec mutations need a structured, audited entry point — otherwise every change becomes either an unrecorded direct edit or heavyweight ceremony that gets bypassed.
 
 User-initiated authoring of one or more proposed changes to the
 Specification. Accepts either a free-text rough deposit
@@ -386,7 +383,7 @@ prior state to check).
 
 *Implementation side.*
 
-#### Capture Impl Drift
+#### Capture Impl Gaps
 
 **Why this is needed:** without mechanical detection of which spec requirements are missing in impl, the gap-tracking discipline cannot be enforced and work either falls through the cracks or gets duplicated against the same underlying gap.
 
@@ -404,12 +401,12 @@ consent-driven skill; the previous persistent JSON intermediate
 artifact is eliminated — detection state is ephemeral and
 in-memory. Implementation-specific in nature: each implementation
 plugin (`livespec-impl-plaintext`, `livespec-impl-beads`,
-`livespec-impl-gitlab`, etc.) defines its own predicate set and
-storage backend.
+`livespec-impl-gitlab`, `livespec-impl-darkfactory-kilroy`,
+etc.) defines its own predicate set and storage backend.
 
 #### Capture Work Item
 
-**Why this is needed:** not every piece of impl work derives from a spec rule or an in-flight memo; bugs, refactors, and tactical tasks need a low-ceremony direct path to track them without pretending to be drift detection or observation triage.
+**Why this is needed:** not every piece of impl work derives from a spec rule or an in-flight memo; bugs, refactors, and tactical tasks need a low-ceremony direct path to track them without pretending to be gap or drift detection or observation triage.
 
 User-initiated direct path to file a work item, bypassing both
 gap detection and memo ceremony. The third deposit channel —
@@ -434,10 +431,10 @@ Generic work-item processor — pulls items from the Work Items
 queue (typically leaf-level, no blockers), drives a Red → Green
 code cycle (a failing test first, then the implementation that
 turns it green), and closes the item. Agnostic to the work
-item's origin (gap-tied from `Capture Impl Drift`, impl-bound
+item's origin (gap-tied from `Capture Impl Gaps`, impl-bound
 from `Process Memos`, or freeform from `Capture Work Item`).
 Branches on closure based on the gap-id marker: **gap-tied**
-items require verification (re-run `Capture Impl Drift` in
+items require verification (re-run `Capture Impl Gaps` in
 dry-run, confirm the gap-id is no longer detected, record audit
 fields including verification timestamp); **freeform** items
 close with a simple reason and no verification step. The
@@ -455,15 +452,15 @@ done something that looks load-bearing but is not reflected in
 the spec. Reads both the spec and the impl, runs LLM-driven
 analytical detection, and per finding (with user consent) routes
 to `Propose Change` to create a proposal that updates the spec.
-Mirror image of `Capture Impl Drift` but with categorically
-different detection characteristics: spec → impl is mechanically
-tractable (enumerate spec rules, check impl for each), while
-impl → spec is heuristic and fuzzy (every line of impl is "doing
-something"; signal-to-noise is brutal). This asymmetric
-detection difficulty is structural rather than incidental, which
-is why the two directions are separate skills rather than one
-bidirectional skill — merging would hide the reliability gap
-between mechanical and LLM-driven detection.
+**Asymmetric counterpart** to `Capture Impl Gaps`, not a mirror
+image: the two directions have categorically different detection
+characteristics, and the asymmetric `gap` / `drift` naming
+reflects that. Spec → impl is mechanically tractable (enumerate
+spec rules, check impl for each); impl → spec is heuristic and
+fuzzy (every line of impl is "doing something"; signal-to-noise
+is brutal). The two are separate skills rather than one
+bidirectional skill because merging would hide the reliability
+gap between mechanical and LLM-driven detection.
 
 #### Capture Memo
 
@@ -518,15 +515,16 @@ of markdown files (`spec.md`, `contracts.md`, `constraints.md`,
 `scenarios.md`, `non-functional-requirements.md`, `README.md`)
 at a known root resolved via `.livespec.jsonc`. Mutates only
 through the `Propose Change → Revise` loop after the initial
-Seed; direct edits are forbidden once the seed commit closes the
-imperative window. Read by `Capture Impl Drift` (as the
-prescription), `Capture Spec Drift` (for the comparison
-baseline), `Critique` (for analysis), and `Doctor` (for
-invariant checks). When the Specification and the Implementation
-disagree, **the side that is correct depends on the situation**
-(impl drifted from spec, vs. spec drifted from observed impl)
-— which is exactly why the two `capture-*-drift` skills are
-symmetric mirrors of each other.
+Seed; direct edits are forbidden from the Seed commit onward.
+Read by `Capture Impl Gaps` (as the prescription),
+`Capture Spec Drift` (for the comparison baseline), `Critique`
+(for analysis), and `Doctor` (for invariant checks). When the
+Specification and the Implementation disagree, **the side that
+is correct depends on the situation** — the impl may have a
+gap relative to the spec, or the spec may have drifted from
+observed-correct impl — which is why `Capture Impl Gaps` and
+`Capture Spec Drift` are asymmetric counterparts handling
+structurally different problems rather than symmetric mirrors.
 
 #### Proposed Changes
 
@@ -574,7 +572,7 @@ agent-instruction files (CLAUDE.md, AGENTS.md, `.ai/*.md`, etc.)
 that realize the spec. Mutates through `Implement` (driven by
 Work Items) and via direct edits to agent-instruction files by
 `Process Memos` (persistent-knowledge disposition). Read by
-`Capture Impl Drift` (current state for gap detection) and
+`Capture Impl Gaps` (current state for gap detection) and
 `Capture Spec Drift` (observed truth for spec-drift detection).
 The **descriptive** side of the workflow — what actually exists
 — in contrast to the Specification's **prescriptive** side of
@@ -588,7 +586,7 @@ artifact the project ships or operates.
 **Why this is needed:** work must be tracked durably between filing and completion; without a queue, items get lost, duplicated against the same gap, or worked out of dependency order with no way to verify closure.
 
 Queue of actionable tasks awaiting `Implement`. Items come from
-three sources: `Capture Impl Drift` (gap-tied items with
+three sources: `Capture Impl Gaps` (gap-tied items with
 gap-id markers), `Process Memos` (impl-bound dispositions,
 freeform), and `Capture Work Item` (direct user filing,
 freeform). Implementation-specific format — beads issues for
@@ -596,7 +594,7 @@ freeform). Implementation-specific format — beads issues for
 GitLab work items for `livespec-impl-gitlab`, etc. — but
 uniform external behavior. Closure semantics branch on the
 gap-tied vs. freeform distinction: **gap-tied items require
-verification** (re-run drift detection, confirm gap-id is gone,
+verification** (re-run gap detection, confirm gap-id is gone,
 record audit fields including resolution method and verification
 timestamp); **freeform items close with a simple reason**. The
 1:1 gap-tracking invariant applies only to gap-tied items: every
@@ -646,7 +644,7 @@ implementation is operated and maintained.
 
 | # | Direction | Edge | Meaning |
 |---|---|---|---|
-| 1 | spec → impl | `Specification → Capture Impl Drift` | The prescription. Capture Impl Drift reads the spec to detect what impl is missing. |
+| 1 | spec → impl | `Specification → Capture Impl Gaps` | The prescription. Capture Impl Gaps reads the spec to detect what impl is missing. |
 | 2 | spec → impl | `Specification → Capture Spec Drift` | Capture Spec Drift compares observed impl against the spec to find spec-side drift. |
 | 3 | impl → spec | `Capture Spec Drift → Propose Change` | Drift findings (impl observed correct, spec lagging) feed back as proposals. |
 | 4 | impl → spec | `Process Memos → Propose Change` (spec-bound) | Spec-bound memo dispositions become proposals. |
@@ -686,43 +684,23 @@ across stores) is open for future iteration.
 - `spec-bound` and `untriaged` labels sit on the far right edge,
   semantically detached from where the visual arrow turns.
 - `List Memos` and `Prune History` still dropped (tangential to
-  the spec ↔ impl drift story); re-add if they belong on the
-  canonical diagram.
-- Vertical stacking was attempted (v4-v7) but the trade-offs
-  weren't worth it — see *Layout history*.
+  the spec ↔ impl divergence story); re-add if they belong on
+  the canonical diagram.
 
-## Layout history
+## PlantUML layout constraints
 
-The layout has gone through several iterations:
+Known PlantUML formatting constraints that shaped the current
+diagram and may matter for future iterations:
 
-- **v1 (`32edbd5`):** PlantUML deployment with `package`
-  containers, `top to bottom direction`. Rendered side-by-side
-  (dot won't stack containers vertically when there are
-  bidirectional cross-container edges).
-- **v2 (`3e83aba`):** Added hidden vertical edges, reverted to
-  plain arrows. Still side-by-side.
-- **v3 (Mermaid, `dcd6335`):** Switched to Mermaid for
-  reliable `flowchart TB` + `subgraph` vertical stacking.
-  Reverted — staying on PlantUML.
-- **v4 (`e96efb1`):** Flat layout, no outer containers,
-  hidden vertical edges + horizontal yellow WALL divider.
-  First working vertical stacking, but intra-section layout
-  was loose.
-- **v5-v6 (unpushed):** Tried `linetype ortho`, aggressive
-  hidden edges anchoring the WALL. WALL kept getting pulled
-  out of position by visible cross-boundary edges.
-- **v7 (`6a0dfbb`):** Added `together { }` blocks. Vertical
-  stacking mostly worked, but the WALL rendered as a
-  fixed-width rectangle (not a real divider), Capture Impl
-  Drift and Capture Memo were pulled above the WALL by
-  visible Spec edges, and cross-boundary arrows took long
-  winding paths.
-- **v8 (this version, `4383ff2`):** Back to `package`
-  containers (side-by-side). Reviewer judges container
-  grouping cleaner than flat-layout vertical with messy
-  positioning. All v7 content improvements kept:
-  - Single yellow input box (no User/Agent actor figures)
-  - Spec → Capture Spec Drift cross-boundary edge
-  - Pure black ArrowColor
-  - Explicit dark FontColor on all nodes
-  - No bold-markup artifacts
+- PlantUML's dot layout will not reliably stack `package`
+  containers vertically when there are bidirectional
+  cross-container edges. Side-by-side is the path of least
+  resistance.
+- Hidden vertical edges can force partial ordering but do not
+  reliably anchor visual elements (e.g., a horizontal WALL
+  divider) against visible cross-section edges.
+- `together { }` blocks can group elements but visible
+  cross-container edges still pull elements out of the group.
+- Mermaid handles `flowchart TB` + `subgraph` vertical stacking
+  more reliably, but we are staying on PlantUML for toolchain
+  consistency.

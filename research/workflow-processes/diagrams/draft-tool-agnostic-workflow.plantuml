@@ -72,7 +72,7 @@ package "SPEC SIDE  ▏ prescriptive" as SpecPkg #fde8ec {
 ' ============================================================
 
 package "IMPLEMENTATION SIDE  ▏ descriptive" as ImplPkg #e3f0e3 {
-  rectangle "Capture\nImpl Drift" as CaptureImplDrift
+  rectangle "Capture\nImpl Gaps" as CaptureImplGaps
   rectangle "Capture\nWork Item" as CaptureWorkItem
   rectangle "Implement" as Implement
   rectangle "Capture\nSpec Drift" as CaptureSpecDrift
@@ -104,14 +104,14 @@ Spec --> Doctor
 History --> Doctor
 
 ' Cross-boundary: SPEC → IMPL (prescription)
-Spec -[#a02020,thickness=2]-> CaptureImplDrift
+Spec -[#a02020,thickness=2]-> CaptureImplGaps
 
 ' Cross-boundary: SPEC → IMPL (spec input to drift detection)
 Spec -[#a02020,thickness=2]-> CaptureSpecDrift
 
 ' Impl gap lifecycle
-Impl --> CaptureImplDrift
-CaptureImplDrift --> WorkItems
+Impl --> CaptureImplGaps
+CaptureImplGaps --> WorkItems
 WorkItems --> Implement
 Implement --> Impl
 Implement --> WorkItems
