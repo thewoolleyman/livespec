@@ -16,7 +16,8 @@ specific implementation plugin).
 - **Arrow direction = data flow.** A read goes `artifact → skill`; a write goes `skill → artifact`.
 - **Shape vocabulary:**
   - light blue rounded rectangle = skill / operation (verb is in the node name)
-  - tan cylinder = artifact / store / queue (noun)
+  - **gold cylinder = store** (canonical, monolithic intent accumulation — Specification, Implementation, Persistent Agent Knowledge)
+  - **tan cylinder = queue/archive** (collection of discrete items with lifecycle — Proposed Changes, Specification History, Work Items, Memos)
   - yellow rectangle = external input (the single entry point)
 - No actor figures. Any action can be taken by a human or an agent; the actor distinction isn't load-bearing. A single yellow input rectangle ("initial intent / prompt / instruction / seed") represents the external entry point into Seed.
 - **Cross-boundary edges** between the two packages are **hard contracts**; rendered as thick red lines.
@@ -37,12 +38,16 @@ have meanings here that differ from generic usage. Listed
 alphabetically.
 
 **Change** (or **proposed change**) — A structured proposal to
-modify the Specification. Lives in the Proposed Changes queue
-until processed by Revise. Authored directly via Propose Change,
-or promoted from Critique findings, Process Memos (spec-bound
-disposition), or Capture Spec Drift findings. The plural form
-(`propose-changes`) reflects that one authoring action can
-produce multiple proposals atomically.
+modify the Specification. Lives in the **Proposed Changes** box
+*(queue/archive: pure queue)* until processed by Revise.
+Authored directly via Propose Change, or promoted from Critique
+findings, Process Memos (spec-bound disposition), or Capture
+Spec Drift findings. The plural form (`propose-changes`) reflects
+that one authoring action can produce multiple proposals
+atomically. Processed proposed-changes relocate from the
+Proposed Changes queue into Specification History (paired with a
+revision file documenting the disposition) — they do not
+accumulate in Proposed Changes, which holds only pending items.
 
 **Closure** — The act of marking a work item as done. Two paths
 based on the item's origin: gap-tied items require verification
@@ -111,17 +116,23 @@ detection; confirm gap-id absent) plus audit fields (resolution
 method, verification timestamp, commits, files changed, etc.).
 Participates in the 1:1 gap-tracking invariant.
 
-**History** (or **Specification History**) — Versioned, immutable
-snapshots of the Specification at each successful Revise pass.
-Each snapshot lives in a `history/vNNN/` directory containing
-byte-identical copies of every template-declared spec file.
-Provides the audit trail of how intent evolved over time.
+**History** (or **Specification History**) — *(queue/archive:
+pure archive)* Versioned, immutable snapshots of the Specification
+at each successful Revise pass. Each snapshot lives in a
+`history/vNNN/` directory containing byte-identical copies of
+every template-declared spec file **plus the processed
+proposed-change files (with revision files documenting each
+disposition)** that produced that version. Therefore History is
+the complete audit trail of how each version was reached, not
+just a snapshot store. Items only enter (via Revise); they never
+become "pending" and never drain — bounded only by Prune.
 
-**Implementation** — The actual code, tests, configuration,
-infrastructure, and agent-instruction files (CLAUDE.md,
-AGENTS.md, `.ai/*.md`) that realize the spec. The descriptive
-side of the workflow — what actually exists — in contrast to
-the Specification's prescription of what should exist.
+**Implementation** — *(store)* The actual code, tests,
+configuration, infrastructure, and agent-instruction files
+(CLAUDE.md, AGENTS.md, `.ai/*.md`) that realize the spec. The
+descriptive side of the workflow — what actually exists — in
+contrast to the Specification's prescription of what should
+exist.
 
 **Implementation plugin** (or **impl plugin**) — A concrete
 realizer of the implementation-side contract published by
@@ -157,34 +168,26 @@ or aesthetic ones. Example: the cross-boundary contracts are
 load-bearing because the spec / impl split would collapse
 without them; the arrow color in the diagram is not.
 
-**Materialization** — The act of bringing an abstract artifact
-into concrete existence on disk. Used primarily for what Seed
-does: takes the initial intent and materializes the
-Specification tree (the template-declared spec files plus the
-`v001` history snapshot). After materialization, the spec
-exists as concrete files that subsequent skills can read,
-mutate, and version against. Distinct from authoring (which
-mutates existing files) and from realization (which lives on
-the impl side, bridging spec prescription to running code).
-
 **Memo** — A transient free-text observation captured for later
-triage. Lives in the Memos queue. Captured via Capture Memo and
+triage. Lives in the **Memos** box *(queue/archive: queue +
+archive)* — items get a disposition state marker on processing
+and remain in the store for audit. Captured via Capture Memo and
 processed via Process Memos. **Transient by construction** —
 every memo must eventually flow to a proposed change
 (spec-bound), a work item (impl-bound), persistent agent
 knowledge (lasting tactical knowledge), or discard. Doctor
-enforces a hygiene threshold to prevent memo accumulation; this
-rejects the "permanent memory store" pattern from tools like
-`bd remember`.
+enforces a hygiene threshold to prevent unprocessed memo
+accumulation; this rejects the "permanent memory store" pattern
+from tools like `bd remember`.
 
-**Persistent agent knowledge** — Long-term agent knowledge
-artifacts realized as named topic files under `.ai/<topic>.md`,
-with progressively-loaded references in AGENTS.md / CLAUDE.md.
-The landing place for memos that graduate via the
-persistent-knowledge disposition in Process Memos. Solves the
-placement problem (where does this go if it is not spec, code,
-or test?) and the context-window-blowup problem (progressive
-loading rather than always-loaded).
+**Persistent agent knowledge** — *(store)* Long-term agent
+knowledge artifacts realized as named topic files under
+`.ai/<topic>.md`, with progressively-loaded references in
+AGENTS.md / CLAUDE.md. The landing place for memos that graduate
+via the persistent-knowledge disposition in Process Memos. Solves
+the placement problem (where does this go if it is not spec,
+code, or test?) and the context-window-blowup problem
+(progressive loading rather than always-loaded).
 
 **Prescription / prescriptive** — Describes what the Specification
 is: a statement of what the system MUST / SHOULD / MAY do or be.
@@ -193,6 +196,20 @@ Implementation (what actually is). The spec-side / impl-side
 split mirrors this distinction.
 
 **Proposed change** — See **Change**.
+
+**Queue/archive** — A box in the diagram that holds a collection
+of discrete items with lifecycle state. Items enter, change state
+through processing, and either leave the box (toward another
+destination) or remain with a state marker. Four exist in the
+workflow: **Proposed Changes** (pure queue — processed items
+relocate to Specification History via Revise), **Specification
+History** (pure archive — versions accumulate without a pending
+state), **Work Items** (queue + archive — closed items remain
+with a status marker), **Memos** (queue + archive — dispositioned
+items remain with a disposition marker). Visually rendered as
+tan cylinders. Doctor's hygiene invariants target the pending-item
+subset (queue role); the archived portion is unbounded except by
+Prune.
 
 **Revise** — The spec-side skill that processes pending proposed
 changes, applies accept / modify / reject decisions per proposal
@@ -209,11 +226,24 @@ Propose Change → Revise.
 
 **Spec drift** — See **Drift**.
 
-**Specification** (or **spec**) — The canonical, ratified source
-of truth for project intent — what the system MUST / SHOULD /
-MAY do or be. Mutates only through the Propose Change → Revise
-loop after the initial Seed. The prescriptive side of the
-workflow.
+**Specification** (or **spec**) — *(store)* The canonical,
+ratified source of truth for project intent — what the system
+MUST / SHOULD / MAY do or be. Mutates only through the
+Propose Change → Revise loop after the initial Seed. The
+prescriptive side of the workflow.
+
+**Store** — A box in the diagram that holds the current canonical
+state of accumulated intent. Three exist in the workflow:
+**Specification** (prescriptive intent), **Implementation**
+(realized intent), **Persistent Agent Knowledge** (procedural
+intent). Stores are monolithic evolving artifacts — no concept
+of discrete items with lifecycle; the artifact IS what it
+currently is. Workflow operations mutate stores in place
+(Revise → Spec, Implement → Impl, Process Memos
+persistent-knowledge disposition → Persistent Agent Knowledge).
+Visually rendered as gold cylinders. These are the "source of
+truth" boxes a reader consults when asking what the project
+currently wants, has, or knows.
 
 **Verification** — The closure-time step that confirms a
 gap-tied work item's underlying gap is actually resolved.
@@ -222,12 +252,14 @@ and checking that the gap-id is no longer present in the
 detection output. Does not apply to freeform work items.
 
 **Work item** — An actionable, tracked task on the implementation
-side. Awaits processing by Implement. Comes from three sources:
-Capture Impl Gaps (gap-tied), Capture Work Item (freeform
-direct filing), or Process Memos (impl-bound disposition,
-freeform). See **Gap-tied** vs **Freeform** for closure
-semantics, and **Closure** for the verification step that gap-tied
-closures require.
+side. Lives in the **Work Items** box *(queue/archive: queue +
+archive)* — closed items remain with `status:closed` for audit.
+Awaits processing by Implement. Comes from three sources:
+Capture Impl Gaps (gap-tied), Capture Work Item (freeform direct
+filing), or Process Memos (impl-bound disposition, freeform).
+See **Gap-tied** vs **Freeform** for closure semantics, and
+**Closure** for the verification step that gap-tied closures
+require.
 
 ## Summary
 
@@ -499,9 +531,15 @@ The handholding principle is load-bearing: users do not manually
 invoke `Propose Change` for spec-bound memos; `Process Memos`
 drives them through the appropriate downstream skill. Doctor's
 hygiene warning about untriaged memos points to `Process Memos`
-as the resolution mechanism.
+as the resolution mechanism. **Structurally distinctive**:
+`Process Memos` is the only operation whose disposition cascades
+into multiple downstream destinations — Proposed Changes
+(spec-bound), Work Items (impl-bound), Persistent Agent Knowledge
+(persistent-knowledge), or nothing (discard). Every other
+processor (Revise, Implement) drains a queue into exactly one
+canonical store.
 
-### Artifacts / stores / queues
+### Stores and queue/archives
 
 *Spec side.*
 
@@ -509,7 +547,7 @@ as the resolution mechanism.
 
 **Why this is needed:** a project needs a single canonical source of truth for intent that humans and agents can consult, reference, and align against; without it, intent fragments across hallway conversations, code comments, and tribal knowledge that LLMs cannot reliably consume.
 
-The canonical, ratified source of truth for the project's intent
+**Store.** The canonical, ratified source of truth for the project's intent
 — what the system MUST / SHOULD / MAY do or be. Typically a tree
 of markdown files (`spec.md`, `contracts.md`, `constraints.md`,
 `scenarios.md`, `non-functional-requirements.md`, `README.md`)
@@ -530,36 +568,45 @@ structurally different problems rather than symmetric mirrors.
 
 **Why this is needed:** spec mutations cannot land atomically without an intermediate staging area; the queue holds in-flight proposals so they can be reviewed, modified, and selectively dispositioned rather than applied piecemeal.
 
-Queue of pending proposed-change files that have been authored
-but not yet processed by `Revise`. Each file is a structured
-markdown document with YAML frontmatter and one or more
-`## Proposal:` sections. Populated by `Propose Change` (direct
-user authoring), `Critique` (findings promoted from the analytical
-pass), `Process Memos` (spec-bound disposition handoff), and
-`Capture Spec Drift` (drift findings promoted to proposals).
-Drains through `Revise` — after a successful pass, processed
-proposals move to the corresponding `history/vNNN/proposed_changes/`
-directory paired with revision files documenting the
-disposition. Selective per-proposal disposition means the queue
-can carry a mix of in-flight work; entries that survive a Revise
+**Queue/archive — pure queue.** Holds pending proposed-change
+files that have been authored but not yet processed by `Revise`.
+Each file is a structured markdown document with YAML frontmatter
+and one or more `## Proposal:` sections. Populated by
+`Propose Change` (direct user authoring), `Critique` (findings
+promoted from the analytical pass), `Process Memos` (spec-bound
+disposition handoff), and `Capture Spec Drift` (drift findings
+promoted to proposals). Drains through `Revise` — after a
+successful pass, processed proposals (whether accepted, modified,
+or rejected) relocate to the corresponding
+`history/vNNN/proposed_changes/` directory paired with revision
+files documenting the disposition. So Proposed Changes holds
+*only currently-pending items* — completed items leave the box
+entirely and live in Specification History as part of the audit
+trail. Selective per-proposal disposition means the queue can
+carry a mix of in-flight work; entries that survive a Revise
 pass without being addressed remain pending for the next pass.
 
 #### Specification History
 
 **Why this is needed:** without immutable versioned snapshots, the spec's evolution cannot be audited and there is no way to answer "what did the spec say at version N?" against a current claim.
 
-Versioned, immutable snapshots of the Specification at each
-successful Revise pass — `history/vNNN/` directories containing
-byte-identical copies of every template-declared spec file as it
-stood when revision NNN was finalized. Provides the audit trail
-of how the spec evolved over time. Read by `Doctor` for invariant
-checks (contiguous-version invariant, version-directories-complete,
-etc.). Bounded by an explicit Prune History operation (not
-represented on the current diagram but retained in the skill set)
-that collapses old `vNNN` directories into a pruned-marker once
-they are no longer load-bearing for audit. New entries appear
-after every successful Revise — even all-reject Revise passes cut
-a new version, preserving the rejection audit trail.
+**Queue/archive — pure archive.** Versioned, immutable snapshots
+of the Specification at each successful Revise pass —
+`history/vNNN/` directories containing byte-identical copies of
+every template-declared spec file as it stood when revision NNN
+was finalized. Each `vNNN/` also receives the processed
+proposed-change files (with paired revision files documenting
+each disposition) that produced that version, so Specification
+History is the **complete audit trail of how each version was
+reached**, not just a snapshot store. Read by `Doctor` for
+invariant checks (contiguous-version invariant,
+version-directories-complete, etc.). Items only enter (via
+`Revise`); they never become "pending" and never drain — bounded
+only by an explicit Prune History operation that collapses old
+`vNNN` directories into a pruned-marker once they are no longer
+load-bearing for audit. New entries appear after every successful
+Revise — even all-reject Revise passes cut a new version,
+preserving the rejection audit trail.
 
 *Implementation side.*
 
@@ -567,7 +614,7 @@ a new version, preserving the rejection audit trail.
 
 **Why this is needed:** spec is prescription, but value only flows when something actually realizes it; the implementation is the running, testable, deployable embodiment of the spec's intent.
 
-The actual code, tests, configuration, infrastructure, and
+**Store.** The actual code, tests, configuration, infrastructure, and
 agent-instruction files (CLAUDE.md, AGENTS.md, `.ai/*.md`, etc.)
 that realize the spec. Mutates through `Implement` (driven by
 Work Items) and via direct edits to agent-instruction files by
@@ -585,7 +632,9 @@ artifact the project ships or operates.
 
 **Why this is needed:** work must be tracked durably between filing and completion; without a queue, items get lost, duplicated against the same gap, or worked out of dependency order with no way to verify closure.
 
-Queue of actionable tasks awaiting `Implement`. Items come from
+**Queue/archive — queue + archive.** Holds actionable tasks
+awaiting `Implement`, plus closed items that remain with a
+`status:closed` (or equivalent) marker for audit. Items come from
 three sources: `Capture Impl Gaps` (gap-tied items with
 gap-id markers), `Process Memos` (impl-bound dispositions,
 freeform), and `Capture Work Item` (direct user filing,
@@ -605,26 +654,30 @@ work item across all statuses.
 
 **Why this is needed:** captured observations need durable storage between deposit and triage without becoming a permanent store, which would defeat the transient-by-construction discipline and re-introduce the junk-drawer pattern.
 
-Queue of free-text observations awaiting `Process Memos` triage.
-Populated by `Capture Memo`. Implementation-specific storage
-(the beads memory store, a JSONL log file, etc.) but uniform
-external query API via the impl-plugin machine-readable
-contract — Doctor queries `--untriaged --json` for hygiene
-checks. Memos are **transient by construction**: every memo
-must eventually flow to a proposed-change, a work item,
-persistent agent knowledge, or discard. Doctor enforces this
-with an invariant warning when memos accumulate beyond a
-configured hygiene threshold. Replaces the open-ended "memory
-store" pattern from tools like `bd remember` — LiveSpec rejects
-permanence-by-default because it leads to a junk drawer that
-LLMs cannot reliably consume and that erodes the discipline of
-the canonical spec and implementation stores.
+**Queue/archive — queue + archive.** Holds pending free-text
+observations awaiting `Process Memos` triage, plus dispositioned
+items that remain with a disposition marker for audit (spec-bound,
+impl-bound, persistent-knowledge, discarded). Populated by
+`Capture Memo`. Implementation-specific storage (the beads memory
+store, a JSONL log file, etc.) but uniform external query API
+via the impl-plugin machine-readable contract — Doctor queries
+`--untriaged --json` for hygiene checks. Memos are **transient by
+construction**: every memo must eventually flow to a
+proposed-change, a work item, persistent agent knowledge, or
+discard — the "transient" rule constrains the *queue* role, not
+the archive role (processed memos remain visible). Doctor
+enforces this with an invariant warning when unprocessed memos
+accumulate beyond a configured hygiene threshold. Replaces the
+open-ended "memory store" pattern from tools like `bd remember`
+— LiveSpec rejects permanence-by-default because it leads to a
+junk drawer that LLMs cannot reliably consume and that erodes
+the discipline of the canonical spec and implementation stores.
 
 #### Persistent Agent Knowledge
 
 **Why this is needed:** some long-term knowledge genuinely does not fit as a spec requirement or as inline code, but still needs to load into agent context when its topic is relevant; named topic files with progressive AGENTS.md / CLAUDE.md references solve both the placement problem and the context-window-blowup problem.
 
-Long-term agent knowledge artifacts that do not fit in the spec
+**Store.** Long-term agent knowledge artifacts that do not fit in the spec
 (not a requirement) and do not fit as inline code, test, or
 config (too generic, too cross-cutting, or too procedural).
 Realized as named files under `.ai/<topic>.md` referenced

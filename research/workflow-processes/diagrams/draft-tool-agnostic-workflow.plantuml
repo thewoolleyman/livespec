@@ -62,7 +62,7 @@ package "SPEC SIDE  ▏ prescriptive" as SpecPkg #fde8ec {
   rectangle "Revise" as Revise
   rectangle "Doctor" as Doctor
 
-  database "Specification" as Spec
+  database "Specification" as Spec #f5d76e
   database "Proposed\nChanges" as PCQueue
   database "Specification\nHistory" as History
 }
@@ -79,10 +79,10 @@ package "IMPLEMENTATION SIDE  ▏ descriptive" as ImplPkg #e3f0e3 {
   rectangle "Capture\nMemo" as CaptureMemo
   rectangle "Process\nMemos" as ProcessMemos
 
-  database "Implementation" as Impl
+  database "Implementation" as Impl #f5d76e
   database "Work Items" as WorkItems
   database "Memos" as Memos
-  database "Persistent\nAgent Knowledge" as AgentKnowledge
+  database "Persistent\nAgent Knowledge" as AgentKnowledge #f5d76e
 }
 
 ' ============================================================
