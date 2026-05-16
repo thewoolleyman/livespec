@@ -1,10 +1,11 @@
 @startuml draft-tool-agnostic-workflow
-title Tool-Agnostic Workflow — Spec / Implementation Lifecycle (DRAFT v2)
+title Tool-Agnostic Workflow — Spec / Implementation Lifecycle (DRAFT v3)
 
 ' Vertical stacking: SPEC SIDE on top, IMPLEMENTATION SIDE below.
 ' Arrow direction = data flow.
 ' Cross-boundary arrows colored to flag them as hard contracts.
 
+!pragma layout smetana
 top to bottom direction
 
 ' --- Styling ------------------------------------------------
@@ -136,5 +137,20 @@ ProcessMemos -[#a02020,thickness=2]-> Propose : spec-bound
 ' Data flows Memos → Doctor (untriaged inventory).
 
 Memos -[#a02020,thickness=2]-> Doctor : untriaged
+
+' --- Hidden layout edges to force vertical package stacking -
+' PlantUML deployment diagrams default to side-by-side package
+' layout regardless of `top to bottom direction`. These hidden
+' edges from many spec-side nodes to impl-side nodes bias the
+' layout engine to stack IMPLEMENTATION SIDE below SPEC SIDE.
+
+Seed -[hidden]down-> CaptureImplDrift
+Spec -[hidden]down-> Impl
+PCQueue -[hidden]down-> WorkItems
+Revise -[hidden]down-> Implement
+History -[hidden]down-> AgentKnowledge
+Critique -[hidden]down-> ProcessMemos
+Doctor -[hidden]down-> CaptureSpecDrift
+Propose -[hidden]down-> CaptureMemo
 
 @enduml
