@@ -130,10 +130,8 @@ become "pending" and never drain — bounded only by Prune.
 
 **Implementation** — *(store)* The actual code, tests,
 configuration, infrastructure, and agent-instruction files
-(CLAUDE.md, AGENTS.md, `.ai/*.md`) that realize the spec. The
-descriptive side of the workflow — what actually exists — in
-contrast to the Specification's prescription of what should
-exist.
+(CLAUDE.md, AGENTS.md, `.ai/*.md`) that realize the spec — what
+actually exists, in contrast to what the spec says should exist.
 
 **Implementation plugin** (or **impl plugin**) — A concrete
 realizer of the implementation-side contract published by
@@ -189,12 +187,6 @@ via the persistent-knowledge disposition in Process Memos. Solves
 the placement problem (where does this go if it is not spec,
 code, or test?) and the context-window-blowup problem
 (progressive loading rather than always-loaded).
-
-**Prescription / prescriptive** — Describes what the Specification
-is: a statement of what the system MUST / SHOULD / MAY do or be.
-Contrasts with **descriptive**, which describes the
-Implementation (what actually is). The spec-side / impl-side
-split mirrors this distinction.
 
 **Proposed change** — See **Change**.
 
@@ -253,14 +245,13 @@ by other impl-side operations as needed.
 **Specification** (or **spec**) — *(store)* The canonical,
 ratified source of truth for project intent — what the system
 MUST / SHOULD / MAY do or be. Mutates only through the
-Propose Change → Revise loop after the initial Seed. The
-prescriptive side of the workflow.
+Propose Change → Revise loop after the initial Seed.
 
 **Store** — A box in the diagram that holds the current canonical
 state of accumulated intent. Three exist in the workflow:
-**Specification** (prescriptive intent), **Implementation**
-(realized intent), **Persistent Agent Knowledge** (procedural
-intent). Stores are monolithic evolving artifacts — no concept
+**Specification** (the spec itself), **Implementation** (the
+realized artifact), **Persistent Agent Knowledge** (procedural
+agent knowledge). Stores are monolithic evolving artifacts — no concept
 of discrete items with lifecycle; the artifact IS what it
 currently is. Workflow operations mutate stores in place
 (Revise → Spec, Implement → Impl, Process Memos
@@ -293,7 +284,7 @@ and the nuances established during the design conversation.
 
 ### Spec / implementation split
 
-**Why this is needed:** spec captures *what should be true* (prescription) and implementation captures *what is true* (description); treating them as one artifact makes it impossible to verify the relationship, evolve them at independent paces, or substitute one implementation for another while keeping intent stable.
+**Why this is needed:** spec captures *what should be true* and implementation captures *what is*; treating them as one artifact makes it impossible to verify the relationship, evolve them at independent paces, or substitute one implementation for another while keeping intent stable.
 
 A foundational invariant falls out of this split: every piece of
 project state must live on one side or the other — not both, not
@@ -625,7 +616,7 @@ of markdown files (`spec.md`, `contracts.md`, `constraints.md`,
 at a known root resolved via `.livespec.jsonc`. Mutates only
 through the `Propose Change → Revise` loop after the initial
 Seed; direct edits are forbidden from the Seed commit onward.
-Read by `Capture Impl Gaps` (as the prescription),
+Read by `Capture Impl Gaps` (as the rule source),
 `Capture Spec Drift` (for the comparison baseline), `Critique`
 (for analysis), and `Doctor` (for invariant checks). When the
 Specification and the Implementation disagree, **the side that
@@ -683,7 +674,7 @@ preserving the rejection audit trail.
 
 ##### Implementation
 
-**Why this is needed:** spec is prescription, but value only flows when something actually realizes it; the implementation is the running, testable, deployable embodiment of the spec's intent.
+**Why this is needed:** the spec states what should be, but value only flows when something actually realizes it; the implementation is the running, testable, deployable embodiment of the spec's intent.
 
 **Store.** The actual code, tests, configuration, infrastructure, and
 agent-instruction files (CLAUDE.md, AGENTS.md, `.ai/*.md`, etc.)
@@ -692,12 +683,12 @@ Work Items) and via direct edits to agent-instruction files by
 `Process Memos` (persistent-knowledge disposition). Read by
 `Capture Impl Gaps` (current state for gap detection) and
 `Capture Spec Drift` (observed truth for spec-drift detection).
-The **descriptive** side of the workflow — what actually exists
-— in contrast to the Specification's **prescriptive** side of
-what should exist. Includes everything that is not the
-Specification itself: source code, tests, infrastructure, build
-and CI configuration, dev tooling, agent prompts, and any other
-artifact the project ships or operates.
+What actually exists in the running, testable, deployable
+artifact, in contrast to what the spec says should exist.
+Includes everything that is not the Specification itself: source
+code, tests, infrastructure, build and CI configuration, dev
+tooling, agent prompts, and any other artifact the project ships
+or operates.
 
 ##### Work Items
 

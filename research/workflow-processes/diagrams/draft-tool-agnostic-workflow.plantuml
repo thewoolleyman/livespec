@@ -61,7 +61,7 @@ rectangle "initial intent /\nprompt / instruction / seed" as Input #fffacc
 ' SPEC SIDE
 ' ============================================================
 
-package "SPEC SIDE  ▏ prescriptive" as SpecPkg #fde8ec {
+package "SPEC SIDE" as SpecPkg #fde8ec {
   rectangle "Seed" as Seed
   rectangle "Propose\nChange" as Propose
   rectangle "Critique" as Critique
@@ -77,7 +77,7 @@ package "SPEC SIDE  ▏ prescriptive" as SpecPkg #fde8ec {
 ' IMPLEMENTATION SIDE
 ' ============================================================
 
-package "IMPLEMENTATION SIDE  ▏ descriptive" as ImplPkg #e3f0e3 {
+package "IMPLEMENTATION SIDE" as ImplPkg #e3f0e3 {
   rectangle "Capture\nImpl Gaps" as CaptureImplGaps
   rectangle "Capture\nWork Item" as CaptureWorkItem
   rectangle "Implement" as Implement
