@@ -129,9 +129,11 @@ just a snapshot store. Items only enter (via Revise); they never
 become "pending" and never drain — bounded only by Prune.
 
 **Implementation** — *(store)* The actual code, tests,
-configuration, infrastructure, and agent-instruction files
-(CLAUDE.md, AGENTS.md, `.ai/*.md`) that realize the spec — what
+configuration, and infrastructure that realize the spec — what
 actually exists, in contrast to what the spec says should exist.
+Distinct from **Persistent Agent Knowledge**, which is the
+separate store for long-term agent guidance (harness instruction
+files, long-lived memory stores, etc.).
 
 **Implementation plugin** (or **impl plugin**) — A concrete
 realizer of the implementation-side contract published by
@@ -180,12 +182,16 @@ accumulation; this rejects the "permanent memory store" pattern
 from tools like `bd remember`.
 
 **Persistent agent knowledge** — *(store)* Long-term agent
-knowledge artifacts realized as named topic files under
-`.ai/<topic>.md`, with progressively-loaded references in
-AGENTS.md / CLAUDE.md. The landing place for memos that graduate
-via the persistent-knowledge disposition in Process Memos. Solves
-the placement problem (where does this go if it is not spec,
-code, or test?) and the context-window-blowup problem
+knowledge in whatever form the implementation chooses to store
+it. Common forms: **harness instruction files** (CLAUDE.md,
+AGENTS.md, `.ai/<topic>.md` files referenced progressively from
+those harness files); a **long-lived memory store** queried by
+the agent at relevant points; or any other mechanism a plugin
+opts into. The landing place for memos that graduate via the
+persistent-knowledge disposition in Process Memos. Solves the
+placement problem (where does this knowledge live if it does not
+fit as a spec requirement or as inline code?) and — in the
+file-based realizations — the context-window-blowup problem
 (progressive loading rather than always-loaded).
 
 **Proposed change** — See **Change**.
@@ -551,11 +557,12 @@ spec rule or to implementation territory?" cannot be answered).
 Four dispositions: **(1) spec-bound** → routes to `Propose Change`
 (cross-boundary handoff into the spec-side workflow);
 **(2) impl-bound** → files a freeform work item into Work Items;
-**(3) persistent agent knowledge** → graduates the memo to a
-named file under Persistent Agent Knowledge (the `.ai/<topic>.md`
-convention) with a progressively-loaded reference added to
-AGENTS.md / CLAUDE.md; **(4) discard** → removes the memo with no
-follow-on artifact.
+**(3) persistent agent knowledge** → graduates the memo into the
+Persistent Agent Knowledge store (the specific form is
+implementation-dependent — harness instruction files such as
+CLAUDE.md / AGENTS.md / `.ai/<topic>.md`, a long-lived memory
+store, or another mechanism chosen by the plugin);
+**(4) discard** → removes the memo with no follow-on artifact.
 The handholding principle is load-bearing: users do not manually
 invoke `Propose Change` for spec-bound memos; `Process Memos`
 drives them through the appropriate downstream skill. Doctor's
@@ -676,19 +683,19 @@ preserving the rejection audit trail.
 
 **Why this is needed:** the spec states what should be, but value only flows when something actually realizes it; the implementation is the running, testable, deployable embodiment of the spec's intent.
 
-**Store.** The actual code, tests, configuration, infrastructure, and
-agent-instruction files (CLAUDE.md, AGENTS.md, `.ai/*.md`, etc.)
-that realize the spec. Mutates through `Implement` (driven by
-Work Items) and via direct edits to agent-instruction files by
-`Process Memos` (persistent-knowledge disposition). Read by
-`Capture Impl Gaps` (current state for gap detection) and
-`Capture Spec Drift` (observed truth for spec-drift detection).
-What actually exists in the running, testable, deployable
-artifact, in contrast to what the spec says should exist.
-Includes everything that is not the Specification itself: source
-code, tests, infrastructure, build and CI configuration, dev
-tooling, agent prompts, and any other artifact the project ships
-or operates.
+**Store.** The actual code, tests, configuration, and
+infrastructure that realize the spec. Mutates through `Implement`
+(driven by Work Items). Read by `Capture Impl Gaps` (current
+state for gap detection) and `Capture Spec Drift` (observed truth
+for spec-drift detection). What actually exists in the running,
+testable, deployable artifact, in contrast to what the spec says
+should exist. Includes everything that is not the Specification
+itself and is not Persistent Agent Knowledge: source code, tests,
+infrastructure, build and CI configuration, dev tooling, and any
+other artifact the project ships or operates. The separate store
+for long-term agent guidance — harness instruction files, memory
+stores, or other forms — is **Persistent Agent Knowledge**, not
+this one.
 
 ##### Work Items
 
@@ -737,23 +744,27 @@ the discipline of the canonical spec and implementation stores.
 
 ##### Persistent Agent Knowledge
 
-**Why this is needed:** some long-term knowledge genuinely does not fit as a spec requirement or as inline code, but still needs to load into agent context when its topic is relevant; named topic files with progressive AGENTS.md / CLAUDE.md references solve both the placement problem and the context-window-blowup problem.
+**Why this is needed:** some long-term knowledge genuinely does not fit as a spec requirement or as inline code, but still needs to be available to agents working on the project; a separate, dedicated store keeps it out of the implementation proper while staying available where it is needed.
 
-**Store.** Long-term agent knowledge artifacts that do not fit in the spec
-(not a requirement) and do not fit as inline code, test, or
-config (too generic, too cross-cutting, or too procedural).
-Realized as named files under `.ai/<topic>.md` referenced
-progressively from AGENTS.md and/or CLAUDE.md, so they load into
-agent context only when their topic is relevant to the current
-work. Populated by `Process Memos` when a memo is dispositioned
-as persistent knowledge. The structural alternative to
-memo-as-permanent-store: each entry has a topic, a focused
-subject, and an explicit reachability path from agent-instruction
-files. Solves both the context-blowup problem (progressive
-loading) and the junk-drawer problem (named topics, explicit
-graduation step from a memo through user-driven dialogue). Lives
-inside the Implementation surface because it is part of how the
-implementation is operated and maintained.
+**Store.** Long-term agent knowledge that does not fit in the
+spec (not a requirement) and does not fit as inline code, test,
+or config (too generic, too cross-cutting, or too procedural).
+The specific form is **implementation-dependent**: common
+realizations include harness instruction files (CLAUDE.md,
+AGENTS.md, `.ai/<topic>.md` files referenced progressively from
+those harness files); a long-lived memory store the agent queries
+at relevant points; or any other mechanism the plugin opts into.
+Populated by `Process Memos` when a memo is dispositioned as
+persistent knowledge. The structural alternative to
+memo-as-permanent-store: each entry is named, retrievable, and
+graduated explicitly via user-driven dialogue, which avoids the
+junk-drawer pattern. In the file-based realizations,
+progressively-loaded references also solve the
+context-window-blowup problem (only relevant topics load into
+agent context). A separate first-class store, distinct from
+**Implementation** — both live on the impl side, but they hold
+different categories of artifact and are mutated by different
+operations.
 
 ## Cross-boundary contracts (the load-bearing red edges)
 
