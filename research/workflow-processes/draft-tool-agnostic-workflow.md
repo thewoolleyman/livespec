@@ -29,6 +29,182 @@ specific implementation plugin).
 
 [PlantUML source](./diagrams/draft-tool-agnostic-workflow.plantuml)
 
+## Glossary
+
+Common terms used throughout this document and the LiveSpec
+specification. Definitions are workflow-relevant; some terms
+have meanings here that differ from generic usage. Listed
+alphabetically.
+
+**Change** (or **proposed change**) — A structured proposal to
+modify the Specification. Lives in the Proposed Changes queue
+until processed by Revise. Authored directly via Propose Change,
+or promoted from Critique findings, Process Memos (spec-bound
+disposition), or Capture Spec Drift findings. The plural form
+(`propose-changes`) reflects that one authoring action can
+produce multiple proposals atomically.
+
+**Closure** — The act of marking a work item as done. Two paths
+based on the item's origin: gap-tied items require verification
+(re-running drift detection to confirm the gap is gone) plus
+audit fields; freeform items close with a simple reason and no
+verification step.
+
+**Critique** — A spec-side LLM-driven analytical pass that
+observes the Specification in isolation and surfaces findings
+about spec quality (contradictions, undefined terms, dangling
+references, BCP14-keyword issues, prose quality). Findings can
+promote to proposed changes. Does NOT compare spec against
+implementation — that direction is Capture Spec Drift's job.
+
+**Cross-boundary contract** — A deliberate, audited handoff
+between the spec side and the implementation side. Rendered as
+red edges in the diagram and enumerated in the *Cross-boundary
+contracts* table. The hard wall between sides means these edges
+are the only sanctioned relationship between spec and
+implementation; everything else stays inside its own side.
+
+**Disposition** — A user's per-item routing decision during a
+triage operation. Most notably in Process Memos, where each
+memo is dispositioned as spec-bound, impl-bound,
+persistent-knowledge, or discard.
+
+**Doctor** — Spec-side hygiene and invariant check. Two layers:
+a static phase (mechanical structural checks) and an LLM-driven
+phase (spec-quality findings). Also enforces cross-cutting
+invariants such as memo hygiene by querying impl-side stores
+through the published contract.
+
+**Drift** — The unified domain term for a divergence between the
+Specification and the Implementation. Drift exists in two
+directions: **impl drift** (spec says X, impl doesn't reflect X
+— detected by Capture Impl Drift; closes via impl work) and
+**spec drift** (impl observed correct, spec lagging — detected
+by Capture Spec Drift; closes via Propose Change). The two
+directions have categorically different detection characteristics
+(mechanical vs. heuristic), which is why they are handled by
+separate skills rather than one bidirectional skill.
+
+**Freeform (work item)** — A work item with no gap-id marker;
+its existence is not tied to a detected spec gap. Comes from
+Capture Work Item (direct user filing) or Process Memos
+(impl-bound disposition). Closes with a simple `--reason` text;
+no verification step required.
+
+**Gap** — Historical / legacy term for a specific direction of
+drift: something prescribed by the spec that is not yet
+reflected in the implementation. The `gap-id:gap-NNNN` label on
+gap-tied work items still uses this term as a stable identifier
+marker, but **drift** is the preferred unified concept term for
+the bilateral divergence. Each detected gap corresponds to
+exactly one tracked work item across all statuses (the 1:1
+gap-tracking invariant).
+
+**Gap-tied (work item)** — A work item carrying a gap-id marker,
+derived from automated detection by Capture Impl Drift. Its
+existence is justified by a specific spec rule the impl does
+not yet satisfy. Closure requires verification (re-run
+detection; confirm gap-id absent) plus audit fields (resolution
+method, verification timestamp, commits, files changed, etc.).
+Participates in the 1:1 gap-tracking invariant.
+
+**History** (or **Specification History**) — Versioned, immutable
+snapshots of the Specification at each successful Revise pass.
+Each snapshot lives in a `history/vNNN/` directory containing
+byte-identical copies of every template-declared spec file.
+Provides the audit trail of how intent evolved over time.
+
+**Implementation** — The actual code, tests, configuration,
+infrastructure, and agent-instruction files (CLAUDE.md,
+AGENTS.md, `.ai/*.md`) that realize the spec. The descriptive
+side of the workflow — what actually exists — in contrast to
+the Specification's prescription of what should exist.
+
+**Implementation plugin** (or **impl plugin**) — A concrete
+realizer of the implementation-side contract published by
+LiveSpec Core. Each plugin owns its own storage backend
+(in-repo files, embedded database, third-party tracker, etc.)
+but exposes the same skill surface and the same machine-readable
+contract. Concrete examples: `livespec-impl-plaintext`,
+`livespec-impl-beads`, `livespec-impl-gitlab`,
+`livespec-impl-gascity`.
+
+**Intent** — Incoming change pressure that drives spec or
+implementation work: an initial seed, an observation, a
+requirement change, a bug report, an external constraint, a
+refactor pressure, etc. The Specification is itself the
+ratified accumulated form of intent; the term "intent" in this
+glossary refers to incoming pressure that has not yet been
+ratified.
+
+**LiveSpec Core** — The spec-side software stack: the published
+cross-boundary contract, the spec lifecycle skills (seed,
+propose-changes, critique, revise, doctor, prune-history), and
+the structural invariant checks. One side of the spec /
+implementation split; adopters install LiveSpec Core plus one
+implementation plugin of their choice.
+
+**Memo** — A transient free-text observation captured for later
+triage. Lives in the Memos queue. Captured via Capture Memo and
+processed via Process Memos. **Transient by construction** —
+every memo must eventually flow to a proposed change
+(spec-bound), a work item (impl-bound), persistent agent
+knowledge (lasting tactical knowledge), or discard. Doctor
+enforces a hygiene threshold to prevent memo accumulation; this
+rejects the "permanent memory store" pattern from tools like
+`bd remember`.
+
+**Persistent agent knowledge** — Long-term agent knowledge
+artifacts realized as named topic files under `.ai/<topic>.md`,
+with progressively-loaded references in AGENTS.md / CLAUDE.md.
+The landing place for memos that graduate via the
+persistent-knowledge disposition in Process Memos. Solves the
+placement problem (where does this go if it is not spec, code,
+or test?) and the context-window-blowup problem (progressive
+loading rather than always-loaded).
+
+**Prescription / prescriptive** — Describes what the Specification
+is: a statement of what the system MUST / SHOULD / MAY do or be.
+Contrasts with **descriptive**, which describes the
+Implementation (what actually is). The spec-side / impl-side
+split mirrors this distinction.
+
+**Proposed change** — See **Change**.
+
+**Revise** — The spec-side skill that processes pending proposed
+changes, applies accept / modify / reject decisions per proposal
+in dialogue with the user, and cuts a new Specification History
+snapshot (vNNN). Selective per-proposal — the user can address
+a subset and leave the rest pending for a future pass.
+
+**Seed** — One-time spec-side skill that bootstraps a new
+project's Specification from initial intent. After the seed
+commit, the imperative window closes and all subsequent spec
+mutations MUST flow through Propose Change → Revise.
+
+**Spec** — See **Specification**.
+
+**Spec drift** — See **Drift**.
+
+**Specification** (or **spec**) — The canonical, ratified source
+of truth for project intent — what the system MUST / SHOULD /
+MAY do or be. Mutates only through the Propose Change → Revise
+loop after the initial Seed. The prescriptive side of the
+workflow.
+
+**Verification** — The closure-time step that confirms a
+gap-tied work item's underlying gap is actually resolved.
+Implemented by re-running Capture Impl Drift in dry-run mode
+and checking that the gap-id is no longer present in the
+detection output. Does not apply to freeform work items.
+
+**Work item** — An actionable, tracked task on the implementation
+side. Awaits processing by Implement. Comes from three sources:
+Capture Impl Drift (gap-tied), Capture Work Item (freeform
+direct filing), or Process Memos (impl-bound disposition,
+freeform). See **Gap-tied** vs **Freeform** for closure
+semantics.
+
 ## Summary
 
 This section describes every node in the diagram, organized by
