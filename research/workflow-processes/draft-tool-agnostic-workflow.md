@@ -18,6 +18,7 @@ specific implementation plugin).
   - light blue rounded rectangle = skill / operation (verb is in the node name)
   - **gold cylinder = store** (canonical, monolithic intent accumulation — Specification, Implementation, Persistent Agent Knowledge)
   - **tan cylinder = queue/archive** (collection of discrete items with lifecycle — Proposed Changes, Specification History, Work Items, Memos)
+  - **pale lavender component shape = impl-side API / adapter** (the Spec Reader: provides unified spec access to impl-side operations; implementation-dependent in its internal mechanics)
   - yellow rectangle = external input (the single entry point)
 - No actor figures. Any action can be taken by a human or an agent; the actor distinction isn't load-bearing. A single yellow input rectangle ("initial intent / prompt / instruction / seed") represents the external entry point into Seed.
 - **Cross-boundary edges** between the two packages are **hard contracts**; rendered as thick red lines.
@@ -226,6 +227,29 @@ Propose Change → Revise.
 
 **Spec drift** — See **Drift**.
 
+**Spec Reader** — *(impl-side API / adapter)* A unifying access
+layer between the spec side's canonical artifacts (Specification,
+Specification History) and the impl-side operations that consume
+them. The spec side's only contract for read access is exposing
+the canonical file locations; the Spec Reader is the impl-side
+construct that reads those locations and presents spec content to
+other impl-side operations. **Implementation-dependent in its
+internals**: a plugin may implement it as a thin pass-through
+(plain-text file reads), as a richer adapter with caching,
+indexes, embeddings, denormalized graphs, RAG-style retrieval, or
+anything in between. **Excludes Proposed Changes** — only ratified
+canonical content is exposed (pending proposals are not yet
+intent). **Required capabilities**: (1) read the current
+Specification directly; (2) read the Specification History
+directly; (3) report the current spec version (`vNNN`); (4) read
+or summarize differences between specified versions. **Consumed
+by**: Capture Impl Gaps (gap-rule enumeration; also uses the
+version query to detect what has changed since its own
+last-checked marker), Capture Spec Drift (comparison baseline),
+Implement (work-item context resolution), Process Memos
+(spec-bound vs impl-bound disposition decisions). May be consumed
+by other impl-side operations as needed.
+
 **Specification** (or **spec**) — *(store)* The canonical,
 ratified source of truth for project intent — what the system
 MUST / SHOULD / MAY do or be. Mutates only through the
@@ -329,9 +353,9 @@ mechanism by which external intent enters the system.
 
 ### Skills / operations
 
-*Spec side.*
+#### Spec side
 
-#### Seed
+##### Seed
 
 **Why this is needed:** a new project's spec cannot exist without an initial materialization step; the rest of the workflow assumes a spec tree it can read, mutate, and version against.
 
@@ -346,7 +370,7 @@ pre-step doctor check (there is no prior state to check) but
 does run a post-step check to verify the materialized state is
 consistent.
 
-#### Propose Change
+##### Propose Change
 
 **Why this is needed:** once Seed has run, spec mutations need a structured, audited entry point — otherwise every change becomes either an unrecorded direct edit or heavyweight ceremony that gets bypassed.
 
@@ -362,7 +386,7 @@ one file with one or more `## Proposal:` sections; cardinality
 1-to-N. Proposed-changes wait in the queue for a `Revise` pass
 to process them.
 
-#### Critique
+##### Critique
 
 **Why this is needed:** spec quality issues (contradictions, undefined terms, dangling anchors) accumulate silently as the spec grows; a casual read will not surface them, so a systematic analytical pass is required to catch them before they erode the spec's authority.
 
@@ -379,7 +403,7 @@ Posture differs from `Propose Change`: Critique does not require
 prior user intent — it can walk the spec without being told what
 to look for.
 
-#### Revise
+##### Revise
 
 **Why this is needed:** proposed changes do not apply themselves; the queue needs a controlled process that walks each proposal with the user, applies accepted ones, snapshots the result, and produces an audit trail.
 
@@ -393,7 +417,7 @@ preserving the rejection audit trail with byte-identical spec
 files. Applies any `resulting_files` updates from accepted
 proposals to the Specification in place before snapshotting.
 
-#### Doctor
+##### Doctor
 
 **Why this is needed:** spec and store invariants drift silently — broken anchors, missing sections, untriaged memos accumulating past their hygiene window — and without a regular hygiene check those failures fester until they cause harder downstream breakage.
 
@@ -413,30 +437,34 @@ that they should be. Invokes as a pre-step and post-step around
 every other spec-side skill (except Seed pre-step, which has no
 prior state to check).
 
-*Implementation side.*
+#### Implementation side
 
-#### Capture Impl Gaps
+##### Capture Impl Gaps
 
 **Why this is needed:** without mechanical detection of which spec requirements are missing in impl, the gap-tracking discipline cannot be enforced and work either falls through the cracks or gets duplicated against the same underlying gap.
 
 Detects implementation gaps where the spec prescribes something
-the implementation does not yet reflect. Walks the spec and the
-impl, runs gap-detection predicates, and per detected gap files
-an appropriately labeled, categorized work item into the Work
-Items queue (with per-gap user consent). Work items it creates
-carry a marker (e.g. a `gap-id:gap-NNNN` label) tying them back
-to the originating gap, which makes closure verifiable: re-running
-this skill in dry-run mode and confirming the gap-id is no longer
-detected is the verification step. Collapses what used to be two
-separate operations (`refresh-gaps` + `plan`) into one
-consent-driven skill; the previous persistent JSON intermediate
-artifact is eliminated — detection state is ephemeral and
-in-memory. Implementation-specific in nature: each implementation
-plugin (`livespec-impl-plaintext`, `livespec-impl-beads`,
-`livespec-impl-gitlab`, `livespec-impl-darkfactory-kilroy`,
-etc.) defines its own predicate set and storage backend.
+the implementation does not yet reflect. Reads spec content via
+the **Spec Reader** (and uses its version query to detect what
+has changed since this skill's own last-checked marker — the
+marker is internal state of the impl plugin, not a separate
+diagram entity). Walks the spec and the impl, runs gap-detection
+predicates, and per detected gap files an appropriately labeled,
+categorized work item into the Work Items queue (with per-gap
+user consent). Work items it creates carry a marker (e.g. a
+`gap-id:gap-NNNN` label) tying them back to the originating gap,
+which makes closure verifiable: re-running this skill in dry-run
+mode and confirming the gap-id is no longer detected is the
+verification step. Collapses what used to be two separate
+operations (`refresh-gaps` + `plan`) into one consent-driven
+skill; the previous persistent JSON intermediate artifact is
+eliminated — detection state is ephemeral and in-memory.
+Implementation-specific in nature: each implementation plugin
+(`livespec-impl-plaintext`, `livespec-impl-beads`,
+`livespec-impl-gitlab`, `livespec-impl-darkfactory-kilroy`, etc.)
+defines its own predicate set and storage backend.
 
-#### Capture Work Item
+##### Capture Work Item
 
 **Why this is needed:** not every piece of impl work derives from a spec rule or an in-flight memo; bugs, refactors, and tactical tasks need a low-ceremony direct path to track them without pretending to be gap or drift detection or observation triage.
 
@@ -455,16 +483,19 @@ everyday workflows like filing a discrete bug, queuing a
 refactor, or capturing a tactical cleanup task that does not
 trace back to any spec rule.
 
-#### Implement
+##### Implement
 
 **Why this is needed:** work items do not realize themselves; once filed, they need a driver that authors a failing test, produces the impl that turns it green, verifies closure correctly per the item's origin, and updates the tracker.
 
 Generic work-item processor — pulls items from the Work Items
 queue (typically leaf-level, no blockers), drives a Red → Green
 code cycle (a failing test first, then the implementation that
-turns it green), and closes the item. Agnostic to the work
-item's origin (gap-tied from `Capture Impl Gaps`, impl-bound
-from `Process Memos`, or freeform from `Capture Work Item`).
+turns it green), and closes the item. Reads spec content via the
+**Spec Reader** when a work item references spec rules (work
+items frequently anchor on spec sections, so resolving that
+context is part of normal execution). Agnostic to the work item's
+origin (gap-tied from `Capture Impl Gaps`, impl-bound from
+`Process Memos`, or freeform from `Capture Work Item`).
 Branches on closure based on the gap-id marker: **gap-tied**
 items require verification (re-run `Capture Impl Gaps` in
 dry-run, confirm the gap-id is no longer detected, record audit
@@ -475,15 +506,18 @@ processor and is not renamed for symmetry with the `capture-*`
 family, because work items can legitimately originate from
 sources other than spec gaps.
 
-#### Capture Spec Drift
+##### Capture Spec Drift
 
 **Why this is needed:** sometimes the impl is observably correct and the spec is wrong; without explicit detection of this direction of drift, the spec slowly atrophies as ground truth shifts beneath it and no skill is responsible for catching the divergence.
 
 Detects impl-to-spec drift — places where the implementation has
 done something that looks load-bearing but is not reflected in
-the spec. Reads both the spec and the impl, runs LLM-driven
-analytical detection, and per finding (with user consent) routes
-to `Propose Change` to create a proposal that updates the spec.
+the spec. Reads spec content via the **Spec Reader** (using its
+history + diff capabilities to anchor "what should this version
+of impl correspond to in the spec?") and the impl directly, runs
+LLM-driven analytical detection, and per finding (with user
+consent) routes to `Propose Change` to create a proposal that
+updates the spec.
 **Asymmetric counterpart** to `Capture Impl Gaps`, not a mirror
 image: the two directions have categorically different detection
 characteristics, and the asymmetric `gap` / `drift` naming
@@ -494,7 +528,7 @@ is brutal). The two are separate skills rather than one
 bidirectional skill because merging would hide the reliability
 gap between mechanical and LLM-driven detection.
 
-#### Capture Memo
+##### Capture Memo
 
 **Why this is needed:** in-flight observations that are not yet ready for spec or impl classification will be lost or force-fit into the wrong channel unless there is a low-friction transient deposit that preserves them for later triage.
 
@@ -514,19 +548,23 @@ tools like `bd remember` where memories accumulate indefinitely
 as a persistent agent context store; LiveSpec rejects that
 pattern as a junk drawer that erodes the canonical stores.
 
-#### Process Memos
+##### Process Memos
 
 **Why this is needed:** captured memos must eventually flow to spec, impl, persistent knowledge, or discard — otherwise the memo store devolves into a junk drawer that erodes the canonical stores and that LLMs cannot reliably consume.
 
 Per-memo handholding skill that walks pending memos and disposes
-each via user dialogue. Four dispositions: **(1) spec-bound** →
-routes to `Propose Change` (cross-boundary handoff into the
-spec-side workflow); **(2) impl-bound** → files a freeform work
-item into Work Items; **(3) persistent agent knowledge** →
-graduates the memo to a named file under Persistent Agent
-Knowledge (the `.ai/<topic>.md` convention) with a
-progressively-loaded reference added to AGENTS.md / CLAUDE.md;
-**(4) discard** → removes the memo with no follow-on artifact.
+each via user dialogue. Reads spec content via the **Spec Reader**
+to inform the spec-bound vs impl-bound disposition decision
+(without spec context, "does this memo's content correspond to a
+spec rule or to implementation territory?" cannot be answered).
+Four dispositions: **(1) spec-bound** → routes to `Propose Change`
+(cross-boundary handoff into the spec-side workflow);
+**(2) impl-bound** → files a freeform work item into Work Items;
+**(3) persistent agent knowledge** → graduates the memo to a
+named file under Persistent Agent Knowledge (the `.ai/<topic>.md`
+convention) with a progressively-loaded reference added to
+AGENTS.md / CLAUDE.md; **(4) discard** → removes the memo with no
+follow-on artifact.
 The handholding principle is load-bearing: users do not manually
 invoke `Propose Change` for spec-bound memos; `Process Memos`
 drives them through the appropriate downstream skill. Doctor's
@@ -539,11 +577,44 @@ into multiple downstream destinations — Proposed Changes
 processor (Revise, Implement) drains a queue into exactly one
 canonical store.
 
+### Impl-side API
+
+#### Spec Reader
+
+**Why this is needed:** spec content needs to be readable from many impl-side operations (gap detection, drift detection, work-item context resolution, memo disposition decisions), but each implementation plugin may want to consume that content very differently — plaintext file reads for simple plugins, indexed / embedded / RAG-style retrieval for richer ones. A single named adapter on the impl side unifies the consumption surface without constraining the consumption mechanism.
+
+**Impl-side API.** A unifying access layer between the spec side's
+canonical artifacts (Specification, Specification History) and the
+impl-side operations that consume them. The spec side's only
+contract for read access is exposing the canonical file locations;
+the Spec Reader is the impl-side construct that reads those
+locations and presents spec content to other impl-side operations.
+Implementation-dependent in its internals: a plugin may implement
+it as a thin pass-through (plain-text file reads), as a richer
+adapter with caching, indexes, embeddings, denormalized graphs,
+RAG-style retrieval, or anything in between. Excludes Proposed
+Changes — only ratified canonical content is exposed (pending
+proposals are not yet intent).
+
+**Required capabilities:**
+
+1. Read the current Specification directly.
+2. Read the Specification History directly.
+3. Report the current spec version (`vNNN`).
+4. Read or summarize differences between specified versions.
+
+**Consumed by:** Capture Impl Gaps (gap-rule enumeration; also
+uses the version query to detect what has changed since its own
+last-checked marker), Capture Spec Drift (comparison baseline),
+Implement (work-item context resolution), Process Memos
+(spec-bound vs impl-bound disposition decisions). May be consumed
+by other impl-side operations as needed.
+
 ### Stores and queue/archives
 
-*Spec side.*
+#### Spec side
 
-#### Specification
+##### Specification
 
 **Why this is needed:** a project needs a single canonical source of truth for intent that humans and agents can consult, reference, and align against; without it, intent fragments across hallway conversations, code comments, and tribal knowledge that LLMs cannot reliably consume.
 
@@ -564,7 +635,7 @@ observed-correct impl — which is why `Capture Impl Gaps` and
 `Capture Spec Drift` are asymmetric counterparts handling
 structurally different problems rather than symmetric mirrors.
 
-#### Proposed Changes
+##### Proposed Changes
 
 **Why this is needed:** spec mutations cannot land atomically without an intermediate staging area; the queue holds in-flight proposals so they can be reviewed, modified, and selectively dispositioned rather than applied piecemeal.
 
@@ -586,7 +657,7 @@ trail. Selective per-proposal disposition means the queue can
 carry a mix of in-flight work; entries that survive a Revise
 pass without being addressed remain pending for the next pass.
 
-#### Specification History
+##### Specification History
 
 **Why this is needed:** without immutable versioned snapshots, the spec's evolution cannot be audited and there is no way to answer "what did the spec say at version N?" against a current claim.
 
@@ -608,9 +679,9 @@ load-bearing for audit. New entries appear after every successful
 Revise — even all-reject Revise passes cut a new version,
 preserving the rejection audit trail.
 
-*Implementation side.*
+#### Implementation side
 
-#### Implementation
+##### Implementation
 
 **Why this is needed:** spec is prescription, but value only flows when something actually realizes it; the implementation is the running, testable, deployable embodiment of the spec's intent.
 
@@ -628,7 +699,7 @@ Specification itself: source code, tests, infrastructure, build
 and CI configuration, dev tooling, agent prompts, and any other
 artifact the project ships or operates.
 
-#### Work Items
+##### Work Items
 
 **Why this is needed:** work must be tracked durably between filing and completion; without a queue, items get lost, duplicated against the same gap, or worked out of dependency order with no way to verify closure.
 
@@ -650,7 +721,7 @@ timestamp); **freeform items close with a simple reason**. The
 current gap in the spec MUST correspond to exactly one tracked
 work item across all statuses.
 
-#### Memos
+##### Memos
 
 **Why this is needed:** captured observations need durable storage between deposit and triage without becoming a permanent store, which would defeat the transient-by-construction discipline and re-introduce the junk-drawer pattern.
 
@@ -673,7 +744,7 @@ open-ended "memory store" pattern from tools like `bd remember`
 junk drawer that LLMs cannot reliably consume and that erodes
 the discipline of the canonical spec and implementation stores.
 
-#### Persistent Agent Knowledge
+##### Persistent Agent Knowledge
 
 **Why this is needed:** some long-term knowledge genuinely does not fit as a spec requirement or as inline code, but still needs to load into agent context when its topic is relevant; named topic files with progressive AGENTS.md / CLAUDE.md references solve both the placement problem and the context-window-blowup problem.
 
@@ -697,8 +768,8 @@ implementation is operated and maintained.
 
 | # | Direction | Edge | Meaning |
 |---|---|---|---|
-| 1 | spec → impl | `Specification → Capture Impl Gaps` | The prescription. Capture Impl Gaps reads the spec to detect what impl is missing. |
-| 2 | spec → impl | `Specification → Capture Spec Drift` | Capture Spec Drift compares observed impl against the spec to find spec-side drift. |
+| 1 | spec → impl | `Specification → Spec Reader` | Canonical spec content flows to the impl-side Spec Reader, which consumes it on behalf of all impl-side operations that need spec access. |
+| 2 | spec → impl | `Specification History → Spec Reader` | Versioned snapshots + audit trail flow to Spec Reader, enabling version-aware spec reads and inter-version diff queries. |
 | 3 | impl → spec | `Capture Spec Drift → Propose Change` | Drift findings (impl observed correct, spec lagging) feed back as proposals. |
 | 4 | impl → spec | `Process Memos → Propose Change` (spec-bound) | Spec-bound memo dispositions become proposals. |
 | 5 | impl → spec | `Memos → Doctor` (untriaged) | Doctor reads untriaged-memo inventory for its hygiene invariant check. |

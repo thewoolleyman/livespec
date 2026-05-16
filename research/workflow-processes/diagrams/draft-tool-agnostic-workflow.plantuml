@@ -45,6 +45,12 @@ skinparam database {
   FontColor #111
 }
 
+skinparam component {
+  BackgroundColor #e0d4ec
+  BorderColor #5a3a72
+  FontColor #111
+}
+
 ' ============================================================
 ' EXTERNAL INPUT (replaces actors)
 ' ============================================================
@@ -79,6 +85,8 @@ package "IMPLEMENTATION SIDE  ▏ descriptive" as ImplPkg #e3f0e3 {
   rectangle "Capture\nMemo" as CaptureMemo
   rectangle "Process\nMemos" as ProcessMemos
 
+  component "Spec\nReader" as SpecReader
+
   database "Implementation" as Impl #f5d76e
   database "Work Items" as WorkItems
   database "Memos" as Memos
@@ -103,11 +111,15 @@ Critique --> PCQueue
 Spec --> Doctor
 History --> Doctor
 
-' Cross-boundary: SPEC → IMPL (prescription)
-Spec -[#a02020,thickness=2]-> CaptureImplGaps
+' Cross-boundary: SPEC SIDE → Spec Reader (unified read access)
+Spec -[#a02020,thickness=2]-> SpecReader
+History -[#a02020,thickness=2]-> SpecReader
 
-' Cross-boundary: SPEC → IMPL (spec input to drift detection)
-Spec -[#a02020,thickness=2]-> CaptureSpecDrift
+' Spec Reader → impl-side consumers
+SpecReader --> CaptureImplGaps
+SpecReader --> CaptureSpecDrift
+SpecReader --> Implement
+SpecReader --> ProcessMemos
 
 ' Impl gap lifecycle
 Impl --> CaptureImplGaps
