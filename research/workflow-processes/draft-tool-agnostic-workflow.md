@@ -29,6 +29,338 @@ specific implementation plugin).
 
 [PlantUML source](./diagrams/draft-tool-agnostic-workflow.plantuml)
 
+## Summary
+
+This section describes every node in the diagram, organized by
+node type. Each node carries one paragraph summarizing its role
+and the nuances established during the design conversation.
+
+### External input
+
+#### initial intent / prompt / instruction / seed
+
+The single external entry point into the workflow. Represents
+whatever sparks a workflow action — a human's initial ask, an
+agent's recurring prompt, an instruction from elsewhere in the
+team. The diagram uses exactly one external input box (rather
+than separate User and Agent actors) to convey that any
+operation can be invoked by a human or an agent and the workflow
+is not sensitive to which — actor identity is not load-bearing.
+The arrow from this node goes only to `Seed` because every other
+skill is invoked from within an already-running project; they
+are internal entry points, not external ones, even when a human
+or agent triggers them directly. In practice this is realized as
+a human typing a slash-command, an agent firing a scheduled
+skill, an automated job dispatching work, or any other
+mechanism by which external intent enters the system.
+
+### Skills / operations
+
+*Spec side.*
+
+#### Seed
+
+One-time bootstrap of a new project's Specification. Reads the
+initial intent and materializes the initial state of the
+Specification tree (the template-declared spec files plus a
+`v001` History snapshot). Runs once at project birth; after the
+seed commit lands the imperative window for direct spec edits
+closes, and all subsequent spec mutations MUST flow through
+`Propose Change → Revise`. Seed is exempt from the pre-step
+doctor check (there is no prior state to check) but does run a
+post-step check to verify the materialized state is consistent.
+
+#### Propose Change
+
+User-initiated authoring of one or more proposed changes to the
+Specification. Accepts either a free-text rough deposit
+(lightweight, no structure required) or a full interactive
+structured dialogue, producing a proposed-change file in the
+Proposed Changes queue. This is the **direct** path for
+spec mutations — invoked when the user or agent knows they want
+to change the spec. Plural in name (`propose-changes`) because
+a single invocation can author multiple proposals atomically in
+one file with one or more `## Proposal:` sections; cardinality
+1-to-N. Proposed-changes wait in the queue for a `Revise` pass
+to process them.
+
+#### Critique
+
+LLM-driven analytical pass over the Specification — observes the
+spec in isolation and surfaces findings about **spec quality**:
+internal contradictions, ambiguities, undefined terms, dangling
+references, BCP14-keyword issues, prose-quality concerns. Each
+finding can promote to a proposed change in the Proposed Changes
+queue. Critique deliberately does NOT compare spec against
+implementation; that is `Capture Spec Drift`'s job and lives on
+the impl side. Cardinality is 1-to-N: one invocation produces
+many findings, each potentially becoming its own proposal.
+Posture differs from `Propose Change`: Critique does not require
+prior user intent — it can walk the spec without being told what
+to look for.
+
+#### Revise
+
+Processes pending entries in the Proposed Changes queue, applies
+accept / modify / reject decisions per proposal in dialogue with
+the user, and cuts a new Specification History snapshot
+(`vNNN`). Selective per-proposal — the user can address a subset
+and leave the rest pending for a future pass. Every successful
+Revise cuts a new version even when every decision is `reject`,
+preserving the rejection audit trail with byte-identical spec
+files. Applies any `resulting_files` updates from accepted
+proposals to the Specification in place before snapshotting.
+
+#### Doctor
+
+Health and invariant check across the Specification, the
+Proposed Changes queue, and the Specification History. Also
+queries impl-side stores (notably the Memos queue) via the
+machine-readable impl-plugin contract for cross-cutting hygiene
+invariants. Runs in two layers: a **static phase** that
+mechanically detects structural failures (file shape, schema
+conformance, anchor reference resolution, contiguous-version
+invariant, etc.), and an **LLM-driven phase** that surfaces
+findings about spec quality and inter-store hygiene. Memo
+hygiene — "no untriaged memo MUST remain unresolved beyond N
+days" — is one such invariant; Doctor does not know how memos
+get resolved (that is the impl plugin's responsibility), only
+that they should be. Invokes as a pre-step and post-step around
+every other spec-side skill (except Seed pre-step, which has no
+prior state to check).
+
+*Implementation side.*
+
+#### Capture Impl Drift
+
+Detects implementation gaps where the spec prescribes something
+the implementation does not yet reflect. Walks the spec and the
+impl, runs gap-detection predicates, and per detected gap files
+an appropriately labeled, categorized work item into the Work
+Items queue (with per-gap user consent). Work items it creates
+carry a marker (e.g. a `gap-id:gap-NNNN` label) tying them back
+to the originating gap, which makes closure verifiable: re-running
+this skill in dry-run mode and confirming the gap-id is no longer
+detected is the verification step. Collapses what used to be two
+separate operations (`refresh-gaps` + `plan`) into one
+consent-driven skill; the previous persistent JSON intermediate
+artifact is eliminated — detection state is ephemeral and
+in-memory. Implementation-specific in nature: each implementation
+plugin (`livespec-impl-plaintext`, `livespec-impl-beads`,
+`livespec-impl-gitlab`, etc.) defines its own predicate set and
+storage backend.
+
+#### Capture Work Item
+
+User-initiated direct path to file a work item, bypassing both
+gap detection and memo ceremony. The third deposit channel —
+alongside `Propose Change` (spec-bound work) and `Capture Memo`
+(uncertain observations) — invoked when the user is certain the
+work is impl-bound, well-formed, and ready to track. Items it
+creates are **freeform**: they carry no gap-id marker, do not
+participate in the 1:1 gap-tracking invariant, and close via
+the freeform path (simple `--reason` text, no verification
+step). This is the restoration of the old observation-flow's
+"Path B — manual create, freeform issue" pattern, which was
+lost in the tool-agnostic refactor and is necessary for
+everyday workflows like filing a discrete bug, queuing a
+refactor, or capturing a tactical cleanup task that does not
+trace back to any spec rule.
+
+#### Implement
+
+Generic work-item processor — pulls items from the Work Items
+queue (typically leaf-level, no blockers), drives a Red → Green
+code cycle (a failing test first, then the implementation that
+turns it green), and closes the item. Agnostic to the work
+item's origin (gap-tied from `Capture Impl Drift`, impl-bound
+from `Process Memos`, or freeform from `Capture Work Item`).
+Branches on closure based on the gap-id marker: **gap-tied**
+items require verification (re-run `Capture Impl Drift` in
+dry-run, confirm the gap-id is no longer detected, record audit
+fields including verification timestamp); **freeform** items
+close with a simple reason and no verification step. The
+`implement` verb is deliberate — the skill stays a clean
+processor and is not renamed for symmetry with the `capture-*`
+family, because work items can legitimately originate from
+sources other than spec gaps.
+
+#### Capture Spec Drift
+
+Detects impl-to-spec drift — places where the implementation has
+done something that looks load-bearing but is not reflected in
+the spec. Reads both the spec and the impl, runs LLM-driven
+analytical detection, and per finding (with user consent) routes
+to `Propose Change` to create a proposal that updates the spec.
+Mirror image of `Capture Impl Drift` but with categorically
+different detection characteristics: spec → impl is mechanically
+tractable (enumerate spec rules, check impl for each), while
+impl → spec is heuristic and fuzzy (every line of impl is "doing
+something"; signal-to-noise is brutal). This asymmetric
+detection difficulty is structural rather than incidental, which
+is why the two directions are separate skills rather than one
+bidirectional skill — merging would hide the reliability gap
+between mechanical and LLM-driven detection.
+
+#### Capture Memo
+
+Low-friction free-text deposit of an in-flight observation that
+the user or agent is not yet ready to classify as spec-bound,
+impl-bound, or persistent agent knowledge. Writes the memo into
+the Memos queue for later triage via `Process Memos`. The verb
+is `capture` (rather than `remember`) deliberately — generic
+across backends and avoiding tool-specific vocabulary. Memos are
+**transient by construction**: the LiveSpec philosophy says every
+piece of intent must eventually flow to either the Specification
+or the Implementation (or be discarded as no longer relevant);
+memo is not a permanent store. Doctor enforces this with an
+invariant warning when memos accumulate beyond a configured
+hygiene threshold. This is a fundamental paradigm shift from
+tools like `bd remember` where memories accumulate indefinitely
+as a persistent agent context store; LiveSpec rejects that
+pattern as a junk drawer that erodes the canonical stores.
+
+#### Process Memos
+
+Per-memo handholding skill that walks pending memos and disposes
+each via user dialogue. Four dispositions: **(1) spec-bound** →
+routes to `Propose Change` (cross-boundary handoff into the
+spec-side workflow); **(2) impl-bound** → files a freeform work
+item into Work Items; **(3) persistent agent knowledge** →
+graduates the memo to a named file under Persistent Agent
+Knowledge (the `.ai/<topic>.md` convention) with a
+progressively-loaded reference added to AGENTS.md / CLAUDE.md;
+**(4) discard** → removes the memo with no follow-on artifact.
+The handholding principle is load-bearing: users do not manually
+invoke `Propose Change` for spec-bound memos; `Process Memos`
+drives them through the appropriate downstream skill. Doctor's
+hygiene warning about untriaged memos points to `Process Memos`
+as the resolution mechanism.
+
+### Artifacts / stores / queues
+
+*Spec side.*
+
+#### Specification
+
+The canonical, ratified source of truth for the project's intent
+— what the system MUST / SHOULD / MAY do or be. Typically a tree
+of markdown files (`spec.md`, `contracts.md`, `constraints.md`,
+`scenarios.md`, `non-functional-requirements.md`, `README.md`)
+at a known root resolved via `.livespec.jsonc`. Mutates only
+through the `Propose Change → Revise` loop after the initial
+Seed; direct edits are forbidden once the seed commit closes the
+imperative window. Read by `Capture Impl Drift` (as the
+prescription), `Capture Spec Drift` (for the comparison
+baseline), `Critique` (for analysis), and `Doctor` (for
+invariant checks). When the Specification and the Implementation
+disagree, **the side that is correct depends on the situation**
+(impl drifted from spec, vs. spec drifted from observed impl)
+— which is exactly why the two `capture-*-drift` skills are
+symmetric mirrors of each other.
+
+#### Proposed Changes
+
+Queue of pending proposed-change files that have been authored
+but not yet processed by `Revise`. Each file is a structured
+markdown document with YAML frontmatter and one or more
+`## Proposal:` sections. Populated by `Propose Change` (direct
+user authoring), `Critique` (findings promoted from the analytical
+pass), `Process Memos` (spec-bound disposition handoff), and
+`Capture Spec Drift` (drift findings promoted to proposals).
+Drains through `Revise` — after a successful pass, processed
+proposals move to the corresponding `history/vNNN/proposed_changes/`
+directory paired with revision files documenting the
+disposition. Selective per-proposal disposition means the queue
+can carry a mix of in-flight work; entries that survive a Revise
+pass without being addressed remain pending for the next pass.
+
+#### Specification History
+
+Versioned, immutable snapshots of the Specification at each
+successful Revise pass — `history/vNNN/` directories containing
+byte-identical copies of every template-declared spec file as it
+stood when revision NNN was finalized. Provides the audit trail
+of how the spec evolved over time. Read by `Doctor` for invariant
+checks (contiguous-version invariant, version-directories-complete,
+etc.). Bounded by an explicit Prune History operation (not
+represented on the current diagram but retained in the skill set)
+that collapses old `vNNN` directories into a pruned-marker once
+they are no longer load-bearing for audit. New entries appear
+after every successful Revise — even all-reject Revise passes cut
+a new version, preserving the rejection audit trail.
+
+*Implementation side.*
+
+#### Implementation
+
+The actual code, tests, configuration, infrastructure, and
+agent-instruction files (CLAUDE.md, AGENTS.md, `.ai/*.md`, etc.)
+that realize the spec. Mutates through `Implement` (driven by
+Work Items) and via direct edits to agent-instruction files by
+`Process Memos` (persistent-knowledge disposition). Read by
+`Capture Impl Drift` (current state for gap detection) and
+`Capture Spec Drift` (observed truth for spec-drift detection).
+The **descriptive** side of the workflow — what actually exists
+— in contrast to the Specification's **prescriptive** side of
+what should exist. Includes everything that is not the
+Specification itself: source code, tests, infrastructure, build
+and CI configuration, dev tooling, agent prompts, and any other
+artifact the project ships or operates.
+
+#### Work Items
+
+Queue of actionable tasks awaiting `Implement`. Items come from
+three sources: `Capture Impl Drift` (gap-tied items with
+gap-id markers), `Process Memos` (impl-bound dispositions,
+freeform), and `Capture Work Item` (direct user filing,
+freeform). Implementation-specific format — beads issues for
+`livespec-impl-beads`, JSONL records for `livespec-impl-plaintext`,
+GitLab work items for `livespec-impl-gitlab`, etc. — but
+uniform external behavior. Closure semantics branch on the
+gap-tied vs. freeform distinction: **gap-tied items require
+verification** (re-run drift detection, confirm gap-id is gone,
+record audit fields including resolution method and verification
+timestamp); **freeform items close with a simple reason**. The
+1:1 gap-tracking invariant applies only to gap-tied items: every
+current gap in the spec MUST correspond to exactly one tracked
+work item across all statuses.
+
+#### Memos
+
+Queue of free-text observations awaiting `Process Memos` triage.
+Populated by `Capture Memo`. Implementation-specific storage
+(the beads memory store, a JSONL log file, etc.) but uniform
+external query API via the impl-plugin machine-readable
+contract — Doctor queries `--untriaged --json` for hygiene
+checks. Memos are **transient by construction**: every memo
+must eventually flow to a proposed-change, a work item,
+persistent agent knowledge, or discard. Doctor enforces this
+with an invariant warning when memos accumulate beyond a
+configured hygiene threshold. Replaces the open-ended "memory
+store" pattern from tools like `bd remember` — LiveSpec rejects
+permanence-by-default because it leads to a junk drawer that
+LLMs cannot reliably consume and that erodes the discipline of
+the canonical spec and implementation stores.
+
+#### Persistent Agent Knowledge
+
+Long-term agent knowledge artifacts that do not fit in the spec
+(not a requirement) and do not fit as inline code, test, or
+config (too generic, too cross-cutting, or too procedural).
+Realized as named files under `.ai/<topic>.md` referenced
+progressively from AGENTS.md and/or CLAUDE.md, so they load into
+agent context only when their topic is relevant to the current
+work. Populated by `Process Memos` when a memo is dispositioned
+as persistent knowledge. The structural alternative to
+memo-as-permanent-store: each entry has a topic, a focused
+subject, and an explicit reachability path from agent-instruction
+files. Solves both the context-blowup problem (progressive
+loading) and the junk-drawer problem (named topics, explicit
+graduation step from a memo through user-driven dialogue). Lives
+inside the Implementation surface because it is part of how the
+implementation is operated and maintained.
+
 ## Cross-boundary contracts (the load-bearing red edges)
 
 | # | Direction | Edge | Meaning |
