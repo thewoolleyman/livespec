@@ -39,6 +39,8 @@ and the nuances established during the design conversation.
 
 #### initial intent / prompt / instruction / seed
 
+**Why this is needed:** workflows do not start themselves; the system needs one explicit external entry point that admits intent from a human, an agent, or an automated trigger without privileging which.
+
 The single external entry point into the workflow. Represents
 whatever sparks a workflow action — a human's initial ask, an
 agent's recurring prompt, an instruction from elsewhere in the
@@ -60,6 +62,8 @@ mechanism by which external intent enters the system.
 
 #### Seed
 
+**Why this is needed:** a new project's spec cannot exist without an initial materialization step; the rest of the workflow assumes a spec tree it can read, mutate, and version against.
+
 One-time bootstrap of a new project's Specification. Reads the
 initial intent and materializes the initial state of the
 Specification tree (the template-declared spec files plus a
@@ -71,6 +75,8 @@ doctor check (there is no prior state to check) but does run a
 post-step check to verify the materialized state is consistent.
 
 #### Propose Change
+
+**Why this is needed:** once the imperative window closes, spec mutations need a structured, audited entry point — otherwise every change becomes either an unrecorded direct edit or heavyweight ceremony that gets bypassed.
 
 User-initiated authoring of one or more proposed changes to the
 Specification. Accepts either a free-text rough deposit
@@ -85,6 +91,8 @@ one file with one or more `## Proposal:` sections; cardinality
 to process them.
 
 #### Critique
+
+**Why this is needed:** spec quality issues (contradictions, undefined terms, dangling anchors) accumulate silently as the spec grows; a casual read will not surface them, so a systematic analytical pass is required to catch them before they erode the spec's authority.
 
 LLM-driven analytical pass over the Specification — observes the
 spec in isolation and surfaces findings about **spec quality**:
@@ -101,6 +109,8 @@ to look for.
 
 #### Revise
 
+**Why this is needed:** proposed changes do not apply themselves; the queue needs a controlled process that walks each proposal with the user, applies accepted ones, snapshots the result, and produces an audit trail.
+
 Processes pending entries in the Proposed Changes queue, applies
 accept / modify / reject decisions per proposal in dialogue with
 the user, and cuts a new Specification History snapshot
@@ -112,6 +122,8 @@ files. Applies any `resulting_files` updates from accepted
 proposals to the Specification in place before snapshotting.
 
 #### Doctor
+
+**Why this is needed:** spec and store invariants drift silently — broken anchors, missing sections, untriaged memos accumulating past their hygiene window — and without a regular hygiene check those failures fester until they cause harder downstream breakage.
 
 Health and invariant check across the Specification, the
 Proposed Changes queue, and the Specification History. Also
@@ -133,6 +145,8 @@ prior state to check).
 
 #### Capture Impl Drift
 
+**Why this is needed:** without mechanical detection of which spec requirements are missing in impl, the gap-tracking discipline cannot be enforced and work either falls through the cracks or gets duplicated against the same underlying gap.
+
 Detects implementation gaps where the spec prescribes something
 the implementation does not yet reflect. Walks the spec and the
 impl, runs gap-detection predicates, and per detected gap files
@@ -152,6 +166,8 @@ storage backend.
 
 #### Capture Work Item
 
+**Why this is needed:** not every piece of impl work derives from a spec rule or an in-flight memo; bugs, refactors, and tactical tasks need a low-ceremony direct path to track them without pretending to be drift detection or observation triage.
+
 User-initiated direct path to file a work item, bypassing both
 gap detection and memo ceremony. The third deposit channel —
 alongside `Propose Change` (spec-bound work) and `Capture Memo`
@@ -168,6 +184,8 @@ refactor, or capturing a tactical cleanup task that does not
 trace back to any spec rule.
 
 #### Implement
+
+**Why this is needed:** work items do not realize themselves; once filed, they need a driver that authors a failing test, produces the impl that turns it green, verifies closure correctly per the item's origin, and updates the tracker.
 
 Generic work-item processor — pulls items from the Work Items
 queue (typically leaf-level, no blockers), drives a Red → Green
@@ -187,6 +205,8 @@ sources other than spec gaps.
 
 #### Capture Spec Drift
 
+**Why this is needed:** sometimes the impl is observably correct and the spec is wrong; without explicit detection of this direction of drift, the spec slowly atrophies as ground truth shifts beneath it and no skill is responsible for catching the divergence.
+
 Detects impl-to-spec drift — places where the implementation has
 done something that looks load-bearing but is not reflected in
 the spec. Reads both the spec and the impl, runs LLM-driven
@@ -203,6 +223,8 @@ bidirectional skill — merging would hide the reliability gap
 between mechanical and LLM-driven detection.
 
 #### Capture Memo
+
+**Why this is needed:** in-flight observations that are not yet ready for spec or impl classification will be lost or force-fit into the wrong channel unless there is a low-friction transient deposit that preserves them for later triage.
 
 Low-friction free-text deposit of an in-flight observation that
 the user or agent is not yet ready to classify as spec-bound,
@@ -221,6 +243,8 @@ as a persistent agent context store; LiveSpec rejects that
 pattern as a junk drawer that erodes the canonical stores.
 
 #### Process Memos
+
+**Why this is needed:** captured memos must eventually flow to spec, impl, persistent knowledge, or discard — otherwise the memo store devolves into a junk drawer that erodes the canonical stores and that LLMs cannot reliably consume.
 
 Per-memo handholding skill that walks pending memos and disposes
 each via user dialogue. Four dispositions: **(1) spec-bound** →
@@ -243,6 +267,8 @@ as the resolution mechanism.
 
 #### Specification
 
+**Why this is needed:** a project needs a single canonical source of truth for intent that humans and agents can consult, reference, and align against; without it, intent fragments across hallway conversations, code comments, and tribal knowledge that LLMs cannot reliably consume.
+
 The canonical, ratified source of truth for the project's intent
 — what the system MUST / SHOULD / MAY do or be. Typically a tree
 of markdown files (`spec.md`, `contracts.md`, `constraints.md`,
@@ -261,6 +287,8 @@ symmetric mirrors of each other.
 
 #### Proposed Changes
 
+**Why this is needed:** spec mutations cannot land atomically without an intermediate staging area; the queue holds in-flight proposals so they can be reviewed, modified, and selectively dispositioned rather than applied piecemeal.
+
 Queue of pending proposed-change files that have been authored
 but not yet processed by `Revise`. Each file is a structured
 markdown document with YAML frontmatter and one or more
@@ -276,6 +304,8 @@ can carry a mix of in-flight work; entries that survive a Revise
 pass without being addressed remain pending for the next pass.
 
 #### Specification History
+
+**Why this is needed:** without immutable versioned snapshots, the spec's evolution cannot be audited and there is no way to answer "what did the spec say at version N?" against a current claim.
 
 Versioned, immutable snapshots of the Specification at each
 successful Revise pass — `history/vNNN/` directories containing
@@ -294,6 +324,8 @@ a new version, preserving the rejection audit trail.
 
 #### Implementation
 
+**Why this is needed:** spec is prescription, but value only flows when something actually realizes it; the implementation is the running, testable, deployable embodiment of the spec's intent.
+
 The actual code, tests, configuration, infrastructure, and
 agent-instruction files (CLAUDE.md, AGENTS.md, `.ai/*.md`, etc.)
 that realize the spec. Mutates through `Implement` (driven by
@@ -309,6 +341,8 @@ and CI configuration, dev tooling, agent prompts, and any other
 artifact the project ships or operates.
 
 #### Work Items
+
+**Why this is needed:** work must be tracked durably between filing and completion; without a queue, items get lost, duplicated against the same gap, or worked out of dependency order with no way to verify closure.
 
 Queue of actionable tasks awaiting `Implement`. Items come from
 three sources: `Capture Impl Drift` (gap-tied items with
@@ -328,6 +362,8 @@ work item across all statuses.
 
 #### Memos
 
+**Why this is needed:** captured observations need durable storage between deposit and triage without becoming a permanent store, which would defeat the transient-by-construction discipline and re-introduce the junk-drawer pattern.
+
 Queue of free-text observations awaiting `Process Memos` triage.
 Populated by `Capture Memo`. Implementation-specific storage
 (the beads memory store, a JSONL log file, etc.) but uniform
@@ -344,6 +380,8 @@ LLMs cannot reliably consume and that erodes the discipline of
 the canonical spec and implementation stores.
 
 #### Persistent Agent Knowledge
+
+**Why this is needed:** some long-term knowledge genuinely does not fit as a spec requirement or as inline code, but still needs to load into agent context when its topic is relevant; named topic files with progressive AGENTS.md / CLAUDE.md references solve both the placement problem and the context-window-blowup problem.
 
 Long-term agent knowledge artifacts that do not fit in the spec
 (not a requirement) and do not fit as inline code, test, or
