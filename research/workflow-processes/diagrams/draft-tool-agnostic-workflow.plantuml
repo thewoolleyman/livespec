@@ -1,9 +1,17 @@
 @startuml draft-tool-agnostic-workflow
-title Tool-Agnostic Workflow — Spec / Implementation Lifecycle (DRAFT v7)
+title Tool-Agnostic Workflow — Spec / Implementation Lifecycle (DRAFT v8)
 
-' Layout: flat (no outer containers). Vertical stacking enforced
-' via `together { }` blocks grouping each side, plus aggressive
-' hidden edges anchoring the WALL as a horizontal divider.
+' Container approach: package shapes for SPEC SIDE and
+' IMPLEMENTATION SIDE. Accepts PlantUML's default side-by-side
+' container layout in exchange for clean visual grouping that
+' the v4-v7 flat-layout approach couldn't provide.
+'
+' v8 = v7 content + package containers:
+' - Single input box (no actor figures)
+' - Spec → Capture Spec Drift edge included
+' - Pure black arrows, dark fonts everywhere
+' - Container packages do the spec/impl grouping (no separate
+'   SPEC SIDE / IMPLEMENTATION SIDE label boxes; no WALL element)
 
 skinparam defaultFontName Helvetica
 skinparam shadowing false
@@ -13,8 +21,16 @@ skinparam ArrowFontColor #000000
 skinparam ArrowFontSize 11
 skinparam ArrowThickness 1.3
 skinparam nodesep 16
-skinparam ranksep 28
+skinparam ranksep 26
 hide stereotype
+
+skinparam package {
+  FontColor #111
+  FontSize 13
+  FontStyle bold
+  BorderColor #444
+  BorderThickness 2
+}
 
 skinparam rectangle {
   BackgroundColor #d6e6f5
@@ -36,10 +52,10 @@ skinparam database {
 rectangle "initial intent /\nprompt / instruction / seed" as Input #fffacc
 
 ' ============================================================
-' SPEC SIDE — top half (grouped via `together`)
+' SPEC SIDE
 ' ============================================================
 
-together {
+package "SPEC SIDE  ▏ prescriptive" as SpecPkg #fde8ec {
   rectangle "Seed" as Seed
   rectangle "Propose\nChange" as Propose
   rectangle "Critique" as Critique
@@ -52,16 +68,10 @@ together {
 }
 
 ' ============================================================
-' WALL — horizontal divider
+' IMPLEMENTATION SIDE
 ' ============================================================
 
-rectangle "═══════════  SPEC  (prescriptive)   ▏   IMPLEMENTATION  (descriptive)  ═══════════" as Wall #f5d76e
-
-' ============================================================
-' IMPLEMENTATION SIDE — bottom half (grouped via `together`)
-' ============================================================
-
-together {
+package "IMPLEMENTATION SIDE  ▏ descriptive" as ImplPkg #e3f0e3 {
   rectangle "Capture\nImpl Drift" as CaptureImplDrift
   rectangle "Implement" as Implement
   rectangle "Capture\nSpec Drift" as CaptureSpecDrift
@@ -75,53 +85,10 @@ together {
 }
 
 ' ============================================================
-' WALL ANCHORING (force WALL between the two together-groups)
-' ============================================================
-
-Input -[hidden]down-> Seed
-
-Seed     -[hidden]down-> Wall
-Propose  -[hidden]down-> Wall
-Critique -[hidden]down-> Wall
-Revise   -[hidden]down-> Wall
-Doctor   -[hidden]down-> Wall
-Spec     -[hidden]down-> Wall
-PCQueue  -[hidden]down-> Wall
-History  -[hidden]down-> Wall
-
-Wall -[hidden]down-> CaptureImplDrift
-Wall -[hidden]down-> Implement
-Wall -[hidden]down-> CaptureSpecDrift
-Wall -[hidden]down-> CaptureMemo
-Wall -[hidden]down-> ProcessMemos
-Wall -[hidden]down-> Impl
-Wall -[hidden]down-> WorkItems
-Wall -[hidden]down-> Memos
-Wall -[hidden]down-> AgentKnowledge
-
-' Intra-spec layout
-Seed -[hidden]down-> Spec
-Spec -[hidden]down-> PCQueue
-PCQueue -[hidden]down-> Revise
-Revise -[hidden]down-> History
-History -[hidden]down-> Doctor
-Seed -[hidden]right-> Propose
-Propose -[hidden]right-> Critique
-
-' Intra-impl layout
-CaptureImplDrift -[hidden]down-> WorkItems
-WorkItems -[hidden]down-> Implement
-Implement -[hidden]down-> Impl
-Impl -[hidden]down-> CaptureSpecDrift
-CaptureImplDrift -[hidden]right-> CaptureMemo
-CaptureMemo -[hidden]down-> Memos
-Memos -[hidden]down-> ProcessMemos
-ProcessMemos -[hidden]down-> AgentKnowledge
-
-' ============================================================
 ' VISIBLE EDGES (data flow)
 ' ============================================================
 
+' External input → Seed
 Input --> Seed
 
 ' Spec lifecycle
@@ -135,8 +102,10 @@ Critique --> PCQueue
 Spec --> Doctor
 History --> Doctor
 
-' Cross-boundary: SPEC ⇣ IMPL
+' Cross-boundary: SPEC → IMPL (prescription)
 Spec -[#a02020,thickness=2]-> CaptureImplDrift
+
+' Cross-boundary: SPEC → IMPL (spec input to drift detection)
 Spec -[#a02020,thickness=2]-> CaptureSpecDrift
 
 ' Impl gap lifecycle
@@ -149,7 +118,7 @@ Implement --> WorkItems
 ' Spec-drift detection
 Impl --> CaptureSpecDrift
 
-' Cross-boundary: IMPL ⇡ SPEC
+' Cross-boundary: IMPL → SPEC (drift findings)
 CaptureSpecDrift -[#a02020,thickness=2]-> Propose
 
 ' Memo lifecycle
@@ -158,8 +127,10 @@ Memos --> ProcessMemos
 ProcessMemos --> WorkItems : impl-bound
 ProcessMemos --> AgentKnowledge : persistent
 
-' Cross-boundary: IMPL ⇡ SPEC
+' Cross-boundary: IMPL → SPEC (spec-bound memo)
 ProcessMemos -[#a02020,thickness=2]-> Propose : spec-bound
+
+' Cross-boundary: IMPL → SPEC (doctor hygiene query)
 Memos -[#a02020,thickness=2]-> Doctor : untriaged
 
 @enduml
