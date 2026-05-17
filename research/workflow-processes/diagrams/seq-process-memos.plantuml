@@ -1,79 +1,76 @@
 @startuml seq-process-memos
-title Sequence — /livespec-impl-*:process-memos (with all four dispositions)
+title Sequence — /livespec-impl-*:process-memos (four dispositions)
 skinparam defaultFontName Helvetica
 skinparam shadowing false
-skinparam BackgroundColor white
-skinparam ArrowColor #111
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
 skinparam sequence {
-  ParticipantBorderColor #111
-  ParticipantBackgroundColor white
+  ParticipantBorderColor #1f4768
+  ParticipantBackgroundColor #d6e6f5
   ParticipantFontColor #111
   ActorBorderColor #111
-  ActorBackgroundColor white
+  ActorBackgroundColor #fffacc
   ActorFontColor #111
   LifeLineBorderColor #444
 }
 
-actor "Human user" as User
-actor "Agent" as Agent #LightSkyBlue
-participant "/livespec:doctor" as Doctor #LightYellow
-participant "/livespec-impl-*:\nprocess-memos" as Process #LightYellow
-participant "memo store\n(impl backend)" as Memos
-participant "/livespec:propose-changes" as Propose #LightYellow
-participant "work-item queue" as Queue
-participant ".ai/<topic>.md\n+ AGENTS.md" as AiFiles
+actor "Initial intent\n(human or agent)" as User
+participant "/livespec:doctor" as Doctor
+participant "/livespec-impl-*:\nprocess-memos" as Process
+participant "Spec Reader" as SpecReader
+participant "Memos\n(plugin store)" as Memos
+participant "/livespec:propose-changes" as Propose
+participant "Work Items" as Queue
+participant "Persistent\nAgent Knowledge" as AgentKnowledge
 
 == Hygiene trigger (background invariant) ==
 
-User -> Doctor : invoke (routine check\nor pre/post wrapper step)
-Doctor -> Memos : list-memos --untriaged --json
+User -> Doctor : invoke (routine check\nor pre/post-step wrapper)
+Doctor -> Memos : untriaged-memo query\n(machine contract)
 Memos --> Doctor : N untriaged entries
 Doctor -> User : warn: "N memos pending,\nrun process-memos"
 
 == Per-memo dispositions ==
 
-User -> Agent : "run process-memos"
-Agent -> Process : invoke
+User -> Process : invoke
 activate Process
 
-Process -> Memos : list-memos --untriaged --json
+Process -> Memos : enumerate untriaged memos
 Memos --> Process : untriaged memo list
 
+Process -> SpecReader : read current spec content\n(for disposition decisions)
+SpecReader --> Process : spec content
+
 loop for each untriaged memo
-  Process -> Agent : surface memo text + suggested classification
-  Agent -> User : ask: spec-bound / impl-bound /\npersistent-knowledge / discard?
+  Process -> User : surface memo text\n+ suggested classification
 
   alt SPEC-BOUND
-    User --> Agent : confirms spec-bound
-    Agent -> Propose : invoke with memo text as input
+    User --> Process : confirms spec-bound
+    Process -> Propose : invoke with memo text as input
     Propose -> Propose : interactive structured authoring
-    Propose --> Agent : proposed_change file written
-    Agent -> Process : disposition done
-    Process -> Memos : mark memo processed
+    Propose --> Process : proposed_change file written
+    Process -> Memos : mark memo spec-bound (state marker)
   else IMPL-BOUND
-    User --> Agent : confirms impl-bound
-    Agent -> Process : disposition
-    Process -> Queue : file work item with memo text\n(no gap-id label — freeform)
+    User --> Process : confirms impl-bound
+    Process -> Queue : file freeform work item\n(no gap-id label)
     Queue --> Process : work item id
-    Process -> Memos : mark memo processed
-    note right : This work item joins the\nsame queue capture-spec-gaps\npopulates; /livespec-impl-*:\nimplement picks it up later.
+    Process -> Memos : mark memo impl-bound (state marker)
+    note right : Freeform — joins the same queue\ncapture-impl-gaps and capture-work-item\npopulate; implement picks it up later\nand closes via the freeform fix path.
   else PERSISTENT-KNOWLEDGE
-    User --> Agent : confirms; chooses topic name
-    Agent -> AiFiles : write .ai/<topic>.md\nwith memo content
-    Agent -> AiFiles : update AGENTS.md\n(and optionally CLAUDE.md)\nwith progressive-load reference
-    AiFiles --> Agent : files written
-    Process -> Memos : mark memo processed
-    note right : Persistent-knowledge is the\nslot for content that doesn't\nrise to spec or impl work\nbut must be reachable by\nfuture agents.
+    User --> Process : confirms;\nchooses topic / placement
+    Process -> AgentKnowledge : graduate memo into store\n(form is plugin-dependent —\nharness instruction file,\nlong-lived memory entry, etc.)
+    AgentKnowledge --> Process : entry written
+    Process -> Memos : mark memo persistent-knowledge (state marker)
+    note right : Each entry is named, retrievable,\nand explicitly graduated. Replaces the\njunk-drawer-by-default pattern from tools\nlike bd remember.
   else DISCARD
-    User --> Agent : confirms discard
-    Process -> Memos : delete memo
+    User --> Process : confirms discard
+    Process -> Memos : mark memo discarded (state marker)
   end
 end
 
-Process --> Agent : summary (N processed,\nbreakdown by disposition)
-Agent --> User : report
+Process --> User : summary (N processed,\nbreakdown by disposition)
 deactivate Process
 
-note over User, AiFiles : Note: livespec-core's doctor\nKNOWS that memos exist (via the\nuntriaged-query contract) but\nNEVER routes them. Routing is\n100% on the impl-plugin side.\nThe only cross-namespace handoff\nis the SPEC-BOUND disposition\ncalling /livespec:propose-changes.
+note over User, AgentKnowledge : LiveSpec Core's doctor KNOWS that memos\nexist (via the untriaged-query contract)\nbut NEVER routes them. Routing is 100%\non the impl-plugin side. The only\ncross-namespace handoff is the\nSPEC-BOUND disposition calling\n/livespec:propose-changes.
 
 @enduml

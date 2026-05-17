@@ -2,21 +2,23 @@
 title Multi-Repo Plugin Distribution
 skinparam defaultFontName Helvetica
 skinparam shadowing false
-skinparam BackgroundColor white
-skinparam ArrowColor #111
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+
 skinparam rectangle {
   BorderColor #111
   BackgroundColor white
   FontColor #111
 }
 skinparam database {
-  BorderColor #111
-  BackgroundColor white
+  BackgroundColor #f5ead5
+  BorderColor #5a4319
   FontColor #111
 }
 skinparam card {
-  BorderColor #111
-  BackgroundColor white
+  BorderColor #1f4768
+  BackgroundColor #d6e6f5
   FontColor #111
 }
 skinparam actor {
@@ -28,7 +30,7 @@ skinparam actor {
 package "Plugin source repos (each a separate GitHub repo)" {
   rectangle "livespec-core" as Core #LightYellow {
     card "/livespec:* skills" as CoreSkills
-    rectangle "publishes:\n• SPECIFICATION/ shape contract\n• .livespec.jsonc core schema\n• impl-plugin contract\n• .ai/<topic>.md convention" as CoreContract #Lavender
+    rectangle "publishes:\n• SPECIFICATION/ shape contract\n• .livespec.jsonc core schema\n• impl-plugin contract\n• Spec Reader API surface\n• Persistent Agent Knowledge\n  conventions for file-based\n  realizations" as CoreContract #Lavender
   }
   rectangle "livespec-impl-plaintext" as ImplPlain #LightYellow {
     card "/livespec-impl-plaintext:* skills" as PlainSkills
@@ -42,10 +44,10 @@ package "Plugin source repos (each a separate GitHub repo)" {
     card "/livespec-impl-gitlab:* skills" as GitLabSkills
     rectangle "wraps GitLab API\n(creds outside .livespec.jsonc)" as GitLabBackend #FFFFFF;line.dashed
   }
-  rectangle "livespec-impl-gascity,\nlivespec-impl-kilroy, ..." as ImplOthers #LightYellow
+  rectangle "livespec-impl-gascity,\nlivespec-impl-darkfactory-kilroy,\n..." as ImplOthers #LightYellow
 }
 
-rectangle "shared content\n(NFR, CI conventions,\nTDD rules, lefthook,\njustfile recipes)" as Shared #Lavender
+rectangle "shared content\n(non-functional-requirements,\nCI conventions, TDD rules,\nlefthook, justfile recipes)" as Shared #Lavender
 note bottom of Shared : Mechanical sync (subtree / generator / pinned package). Mechanism TBD; the existence of shared content survives the multi-repo decision.
 
 actor "Consumer\nproject\nmaintainer" as Consumer
@@ -53,8 +55,8 @@ rectangle "Consumer project\nrepository" as ConsumerRepo {
   card "/plugin install\nlivespec-core@..." as InstallCore
   card "/plugin install\nlivespec-impl-<choice>@..." as InstallImpl
   database "consumer's\n.livespec.jsonc" as Config
-  database "consumer's\nSPECIFICATION/" as SpecTree
-  rectangle ".ai/<topic>.md\n(persistent agent knowledge)" as AiTree #Lavender
+  database "consumer's\nSPECIFICATION/" as SpecTree #f5d76e
+  database "consumer's\nPersistent Agent Knowledge\n(harness instruction files,\nlong-lived memory store, ...)" as AgentKnowledge #f5d76e
 }
 
 Consumer --> InstallCore : installs once
@@ -79,5 +81,7 @@ ImplPlain ..> SpecTree : reads only
 note right of Core : LiveSpec Core is one peer among N plugins.\nIt's not privileged in the marketplace structure;\nit governs the SPECIFICATION/ surface and publishes\nthe contract that every implementation plugin honors.
 
 note right of ConsumerRepo : Consumer project installs ONE livespec-core\nplus EXACTLY ONE livespec-impl-* plugin.\nThe choice is recorded in .livespec.jsonc's\n`implementation.plugin` key.
+
+note bottom of AgentKnowledge : Persistent Agent Knowledge is one of the three\nstores (alongside SPECIFICATION/ and the\nrealized Implementation). Form is\nplugin-dependent: file-based plugins use\nharness instruction files (AGENTS.md /\nCLAUDE.md / .ai/<topic>.md); other plugins\nmay use a long-lived memory store.
 
 @enduml

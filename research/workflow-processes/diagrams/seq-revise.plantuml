@@ -2,30 +2,27 @@
 title Sequence — /livespec:revise (selective per-proposal)
 skinparam defaultFontName Helvetica
 skinparam shadowing false
-skinparam BackgroundColor white
-skinparam ArrowColor #111
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
 skinparam sequence {
-  ParticipantBorderColor #111
-  ParticipantBackgroundColor white
+  ParticipantBorderColor #1f4768
+  ParticipantBackgroundColor #d6e6f5
   ParticipantFontColor #111
   ActorBorderColor #111
-  ActorBackgroundColor white
+  ActorBackgroundColor #fffacc
   ActorFontColor #111
   LifeLineBorderColor #444
 }
 
-actor "Human user" as User
-actor "Agent" as Agent #LightSkyBlue
-participant "/livespec:revise" as Revise #LightYellow
-participant "/livespec:doctor\n(pre-step static)" as DoctorPre #LightYellow
+actor "Initial intent\n(human or agent)" as User
+participant "/livespec:revise" as Revise
+participant "/livespec:doctor\n(pre-step static)" as DoctorPre
 participant "proposed_changes/" as Proposed
 participant "SPECIFICATION/" as Spec
 participant "history/" as History
-participant "/livespec:doctor\n(post-step static)" as DoctorPost #LightYellow
-participant "/livespec:doctor\n(post-step LLM-driven)" as DoctorLLM #LightYellow
+participant "/livespec:doctor\n(post-step static + LLM)" as DoctorPost
 
-User -> Agent : "run revise"
-Agent -> Revise : invoke
+User -> Revise : invoke
 activate Revise
 
 Revise -> DoctorPre : pre-step static checks
@@ -34,53 +31,38 @@ DoctorPre -> Proposed : invariants
 DoctorPre --> Revise : findings (pass / fail)
 
 alt pre-step fails
-  Revise --> Agent : surface failures; abort
-  Agent --> User : report; do not proceed
+  Revise --> User : surface failures; abort
 else pre-step passes
   Revise -> Proposed : enumerate pending propose-change files\n(skip README.md, skip *-revision.md)
   Proposed --> Revise : N files, ordered by created_at
-  Revise -> Agent : narrate count + oldest
-
-  Agent -> Agent : optional steering-intent prompt
-  Agent -> User : capture steering intent (optional)
 
   loop for each pending proposal
-    Agent -> Agent : LLM drafts decision (accept / modify / reject\n+ rationale + resulting_files)
-    Agent -> User : present decision for confirmation
+    Revise -> User : present LLM-drafted decision\n(accept / modify / reject + rationale + resulting_files)
     alt user confirms
-      User --> Agent : approve
+      User --> Revise : approve
     else user requests modify
-      User --> Agent : steer
-      Agent -> Agent : redraft modification iteratively\nuntil user converges
+      User --> Revise : steer
+      Revise -> Revise : redraft modification iteratively\nuntil user converges
+    else user defers
+      User --> Revise : skip (leave pending\nfor a future revise pass)
     end
-    note right of Agent : User may toggle\n"delegate remaining\nto the LLM" at any\nturn (whole-revise scope).
   end
 
   Revise -> Revise : assemble revise-json payload
-  Revise -> Spec : apply resulting_files updates
+  Revise -> Spec : apply resulting_files updates\n(from accepted proposals)
   Revise -> History : cut new vNNN/ snapshot
   Revise -> History : move processed proposed-changes\n+ write paired -revision.md files
-  Revise -> Proposed : in-flight pile now drained of accepted
+  Revise -> Proposed : pending queue drained of\naddressed items
 
-  Revise -> DoctorPost : post-step static checks
+  Revise -> DoctorPost : post-step static + LLM-driven phases
   DoctorPost -> Spec : invariants on new state
   DoctorPost -> History : versioning invariants
   DoctorPost --> Revise : findings
 
-  alt post-step fails
-    Revise --> Agent : surface failures; vNNN still cut
-    Agent --> User : report
-  end
-
-  Revise --> Agent : exit 0
-  deactivate Revise
-
-  Agent -> DoctorLLM : post-step LLM-driven phase (skill-prose)
-  DoctorLLM -> Spec : objective + subjective passes
-  DoctorLLM --> Agent : findings (if any)
-  Agent --> User : final report
+  Revise --> User : final report; exit 0
 end
+deactivate Revise
 
-note over User, DoctorLLM : Note: Selective revise per (v052) —\nthe user MAY accept some proposals\nin the current revise pass and leave\nothers for the next. revise's deterministic\nfile-shaping is in the Python wrapper;\nLLM-driven per-proposal acceptance lives\nin the SKILL.md prose.
+note over User, DoctorPost : Selective per-proposal — the user MAY\naccept some proposals in the current revise\npass and leave others for the next.\nEvery successful pass — including all-reject —\ncuts exactly one new vNNN, preserving the\ndecision audit trail with byte-identical\nspec files when nothing was applied.
 
 @enduml

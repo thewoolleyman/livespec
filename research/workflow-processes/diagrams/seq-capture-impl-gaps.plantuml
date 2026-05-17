@@ -1,0 +1,71 @@
+@startuml seq-capture-impl-gaps
+title Sequence — /livespec-impl-*:capture-impl-gaps
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
+skinparam sequence {
+  ParticipantBorderColor #1f4768
+  ParticipantBackgroundColor #d6e6f5
+  ParticipantFontColor #111
+  ActorBorderColor #111
+  ActorBackgroundColor #fffacc
+  ActorFontColor #111
+  LifeLineBorderColor #444
+}
+
+actor "Initial intent\n(human or agent)" as User
+participant "/livespec-impl-*:\ncapture-impl-gaps" as Skill
+participant "Spec Reader\n(impl-side adapter)" as SpecReader
+participant "SPECIFICATION/" as Spec
+participant "history/" as History
+participant "Implementation\n(code, tests, config)" as Impl
+participant "Work Items\n(plugin queue)" as Queue
+
+User -> Skill : invoke
+activate Skill
+
+Skill -> SpecReader : read current spec content\n+ current spec version
+SpecReader -> Spec : read template-declared files
+Spec --> SpecReader : current spec content
+SpecReader -> History : current spec version (vNNN)
+History --> SpecReader : vNNN
+SpecReader --> Skill : spec content + version
+
+Skill -> Skill : check own last-checked\nversion marker;\nif unchanged, can short-circuit
+Skill -> Impl : walk per gap-detection predicates
+Impl --> Skill : current implementation state
+
+note right of Skill : Detection is ephemeral and\nin-memory. No persistent\nintermediate artifact.
+
+Skill -> Skill : compute 3-way diff vs. existing work items:\n• predicted-but-untracked (new gaps)\n• tracked-but-no-longer-predicted (stale gap-ids)\n• both (still-open known gaps)
+Skill -> Queue : list existing gap-tied work items
+Queue --> Skill : current gap-id labels in queue
+
+loop for each newly-detected untracked gap
+  Skill -> User : surface gap (id, title, severity,\nspec_refs, fix_hint, depends_on)
+  alt user confirms
+    User --> Skill : approve filing
+    Skill -> Queue : file gap-tied work item\n(gap-id:gap-NNNN label,\nseverity, area, ...)
+    Queue --> Skill : work item id
+  else user skips / declines
+    User --> Skill : skip
+  end
+end
+
+loop for each stale gap-id (tracked but no longer predicted)
+  Skill -> User : surface for triage:\n"this gap-id no longer detects;\nis it resolved?"
+  alt user confirms close
+    User --> Skill : approve close
+    Skill -> Queue : close work item\n(resolution:no-longer-applicable)
+  else user leaves open
+    User --> Skill : skip; investigate later
+  end
+end
+
+Skill --> User : run summary (N filed, M closed, K skipped)
+deactivate Skill
+
+note over User, Queue : Detection state is discarded at skill exit.\nClosure-time verification by\n/livespec-impl-*:implement re-runs\ncapture-impl-gaps in dry-run mode\nand checks the gap-id is no longer\ndetected — that completes the gap-tied\nclosure path.
+
+@enduml

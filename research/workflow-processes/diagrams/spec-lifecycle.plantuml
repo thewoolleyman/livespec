@@ -2,86 +2,81 @@
 title LiveSpec Core — Spec Lifecycle
 skinparam defaultFontName Helvetica
 skinparam shadowing false
-skinparam BackgroundColor white
-skinparam ArrowColor #111
-skinparam ArrowFontColor #111
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+skinparam ArrowThickness 1.3
+skinparam nodesep 16
+skinparam ranksep 26
+hide stereotype
+
 skinparam rectangle {
-  BorderColor #111
-  BackgroundColor white
+  BackgroundColor #d6e6f5
+  BorderColor #1f4768
   FontColor #111
+  RoundCorner 8
 }
 skinparam database {
-  BorderColor #111
-  BackgroundColor white
+  BackgroundColor #f5ead5
+  BorderColor #5a4319
   FontColor #111
 }
-skinparam usecase {
-  BorderColor #111
-  BackgroundColor white
+skinparam package {
   FontColor #111
-}
-skinparam card {
-  BorderColor #111
-  BackgroundColor white
-  FontColor #111
-}
-skinparam actor {
-  BorderColor #111
-  BackgroundColor white
-  FontColor #111
+  FontSize 13
+  FontStyle bold
+  BorderColor #444
+  BorderThickness 2
 }
 
-actor "Human\nuser" as HumanUser
-actor "Agent" as Agent #LightSkyBlue
+rectangle "initial intent /\nprompt / instruction / seed" as Input #fffacc
 
-rectangle "Initial seed\nof intent" as SeedIntent #FFFFFF;line.dashed
-card "/livespec:seed" as SeedCmd #LightYellow
+package "SPEC SIDE" as SpecPkg #fde8ec {
+  rectangle "/livespec:seed" as Seed
+  rectangle "/livespec:propose-changes" as Propose
+  rectangle "/livespec:critique" as Critique
+  rectangle "/livespec:revise" as Revise
+  rectangle "/livespec:doctor" as Doctor
+  rectangle "/livespec:prune-history" as Prune
 
-database "SPECIFICATION/\n(spec.md, contracts.md,\nconstraints.md, scenarios.md,\nnon-functional-requirements.md)" as Spec
-database "history/vNNN/\nsnapshots" as History
-database "proposed_changes/\n(pending)" as Proposed
+  database "SPECIFICATION/\n(spec.md, contracts.md,\nconstraints.md, scenarios.md,\nnon-functional-requirements.md)" as Spec #f5d76e
+  database "proposed_changes/\n(pending)" as PCQueue
+  database "history/vNNN/\n(snapshots +\nprocessed proposals)" as History
+}
 
-rectangle "Observation\n(spec-internal:\nambiguity, contradiction,\nundefined term)" as SpecObs #FFFFFF;line.dashed
+' Seed bootstraps spec + v001
+Input --> Seed
+Seed --> Spec : authors initial tree
+Seed --> History : writes v001
 
-card "/livespec:critique" as CritiqueCmd #LightYellow
-note right of CritiqueCmd : Role: surface observations\nbased on observing the\nspec. NOT the implementation.\nFinds spec-internal issues\n(ambiguity, contradiction,\ndangling refs).
+' Direct authoring path
+Propose --> PCQueue : writes pending\nproposed-change file
 
-card "/livespec:propose-changes\n(formal or quick-deposit)" as ProposeCmd #LightYellow
-card "/livespec:revise\n(selective per proposal)" as ReviseCmd #LightYellow
+' Critique reads spec, emits findings as proposed changes
+Spec --> Critique
+Critique --> PCQueue : promotes findings\nto proposed changes
 
-usecase "Revision\nneeded?" as RevisionNeeded
-card "/livespec:doctor" as DoctorCmd #LightYellow
-card "/livespec:prune-history" as PruneCmd #LightYellow
-card "/livespec:help" as HelpCmd #LightYellow
+' Revise drains the queue, mutates spec, cuts new history snapshot
+PCQueue --> Revise
+Revise --> Spec : applies accepted\nresulting_files
+Revise --> History : cuts new vNNN,\nrelocates processed\nproposals
 
-HumanUser --> SeedIntent
-HumanUser --> SeedCmd : invokes
-Agent --> SeedCmd : drives
-SeedIntent --> SeedCmd
-SeedCmd --> Spec : authors initial tree
-SeedCmd --> History : writes v001
+' Doctor's pre/post-step invariants
+Spec ..> Doctor : static + LLM-driven\ninvariants
+PCQueue ..> Doctor : hygiene
+History ..> Doctor : structural checks
 
-Spec --> SpecObs
-SpecObs --> CritiqueCmd : analyzed by
-CritiqueCmd --> Proposed : drafts findings\nas proposed changes
+' Prune collapses oldest history versions
+History --> Prune
+Prune --> History : pruned-marker
 
-HumanUser --> RevisionNeeded
-RevisionNeeded -right-> ProposeCmd : YES (user intent)
-ProposeCmd --> Proposed : writes
-Proposed --> ReviseCmd : consumed by
-HumanUser --> ReviseCmd : per-proposal\nconfirm
-ReviseCmd --> Spec : mutates
-ReviseCmd --> History : cuts new vNNN
+note right of Spec : Mutated ONLY through\n/livespec:propose-changes →\n/livespec:revise after the v001 seed.\nDirect edits forbidden.
 
-DoctorCmd ..> Spec : static + LLM-driven\ninvariants
-DoctorCmd ..> Proposed : hygiene
-DoctorCmd ..> History : structural checks
+note right of Revise : Selective per-proposal\naccept / modify / reject.\nEvery successful revise — including\nall-reject — cuts exactly one new\nvNNN, preserving the audit trail.
 
-History --> PruneCmd : oldest collapsed
-PruneCmd --> History : pruned-marker
+note bottom of PCQueue : Pure queue — drains via Revise.\nProcessed proposals relocate into\nhistory/vNNN/proposed_changes/ paired\nwith disposition revision files; they\ndo not accumulate here.
 
-note bottom of Spec : Mutated ONLY through\n/livespec:propose-changes →\n/livespec:revise. Direct edits forbidden\nafter v001 seed.
-
-note right of ReviseCmd : Selective per-proposal\naccept / modify / reject.\nEach revise pass cuts\nexactly one new vNNN.
+note bottom of History : Pure archive — items only enter\nvia Revise; never become pending,\nnever drain except via\n/livespec:prune-history.
 
 @enduml

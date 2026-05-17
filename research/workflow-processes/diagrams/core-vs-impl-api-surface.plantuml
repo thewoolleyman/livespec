@@ -2,62 +2,72 @@
 title Core vs Implementation — API Surface and Contract
 skinparam defaultFontName Helvetica
 skinparam shadowing false
-skinparam BackgroundColor white
-skinparam ArrowColor #111
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
+
 skinparam rectangle {
   BorderColor #111
   BackgroundColor white
   FontColor #111
 }
 skinparam database {
-  BorderColor #111
-  BackgroundColor white
+  BackgroundColor #f5ead5
+  BorderColor #5a4319
   FontColor #111
 }
 skinparam card {
-  BorderColor #111
-  BackgroundColor white
+  BorderColor #1f4768
+  BackgroundColor #d6e6f5
+  FontColor #111
+}
+skinparam component {
+  BackgroundColor #e0d4ec
+  BorderColor #5a3a72
   FontColor #111
 }
 
 package "livespec-core (one plugin)" {
   rectangle "skills exposed:" as CoreSkillsBox {
-    card "/livespec:seed" as Seed #LightYellow
-    card "/livespec:propose-changes" as Propose #LightYellow
-    card "/livespec:critique" as Critique #LightYellow
-    card "/livespec:revise" as Revise #LightYellow
-    card "/livespec:doctor" as Doctor #LightYellow
-    card "/livespec:prune-history" as Prune #LightYellow
-    card "/livespec:help" as Help #LightYellow
+    card "/livespec:seed" as Seed
+    card "/livespec:propose-changes" as Propose
+    card "/livespec:critique" as Critique
+    card "/livespec:revise" as Revise
+    card "/livespec:doctor" as Doctor
+    card "/livespec:prune-history" as Prune
+    card "/livespec:help" as Help
   }
   rectangle "contracts.md publishes:" as PublishedContract {
-    rectangle "• SPECIFICATION/ tree shape\n• .livespec.jsonc core schema (open extension)\n• impl-plugin contract (must-expose skills)\n• .ai/<topic>.md convention\n• secrets-out-of-config rule\n• shared spec-vocabulary" as ContractItems #Lavender
+    rectangle "• SPECIFICATION/ tree shape\n• .livespec.jsonc core schema (open extension)\n• impl-plugin contract (must-expose skills)\n• Spec Reader API surface (required capabilities)\n• Persistent Agent Knowledge\n  conventions (file-based realizations)\n• untriaged-memo machine-query surface\n• secrets-out-of-config rule\n• shared spec vocabulary" as ContractItems #Lavender
   }
-  database "manages\nSPECIFICATION/" as SpecOwned
+  database "manages\nSPECIFICATION/" as SpecOwned #f5d76e
 }
 
 package "implementation plugin (one of N)" {
   rectangle "skills MUST expose:" as ImplSkillsBox {
-    card "/livespec-impl-*:capture-spec-gaps" as CaptureGaps #LightYellow
-    card "/livespec-impl-*:implement" as Implement #LightYellow
-    card "/livespec-impl-*:capture-memo" as CaptureMemo #LightYellow
-    card "/livespec-impl-*:list-memos" as ListMemos #LightYellow
-    card "/livespec-impl-*:process-memos" as ProcessMemos #LightYellow
+    card "/livespec-impl-*:capture-impl-gaps" as CaptureImplGaps
+    card "/livespec-impl-*:capture-spec-drift" as CaptureSpecDrift
+    card "/livespec-impl-*:capture-work-item" as CaptureWorkItem
+    card "/livespec-impl-*:implement" as Implement
+    card "/livespec-impl-*:capture-memo" as CaptureMemo
+    card "/livespec-impl-*:process-memos" as ProcessMemos
   }
+  component "Spec Reader\n(impl-side adapter)" as SpecReader
   rectangle "additional contract obligations:" as ImplContract {
-    rectangle "• `list-memos --untriaged --json`\n  (machine query for doctor)\n• process-memos honors .ai/ convention\n  for persistent-knowledge graduations\n• reads its OWN section of .livespec.jsonc\n• tolerates other plugins' sections" as ImplObligations #Lavender
+    rectangle "• Spec Reader provides:\n  – read current Specification\n  – read Specification History\n  – report current spec version (vNNN)\n  – read/diff between versions\n• untriaged-memo query\n  (machine contract for doctor)\n• process-memos honors Persistent Agent\n  Knowledge contract for the\n  persistent-knowledge disposition\n• reads its OWN section of .livespec.jsonc\n• tolerates other plugins' sections" as ImplObligations #Lavender
   }
-  database "manages its\nwork-item queue +\nmemo store" as ImplOwned
+  database "manages its\nWork Items + Memos\nstores +\nPersistent Agent Knowledge\nrealization" as ImplOwned #f5d76e
 }
 
 PublishedContract -down-> ImplContract : every impl plugin\nMUST honor
-Doctor -right-> ListMemos : queries\n--untriaged --json\nfor memo-hygiene invariant
-ProcessMemos -up-> Propose : routes spec-bound\nmemos via\n/livespec:propose-changes\n(cross-namespace handoff)
+Doctor -[#a02020,thickness=2]right-> ProcessMemos : untriaged-memo\nhygiene query
+CaptureSpecDrift -[#a02020,thickness=2]up-> Propose : drift findings\n→ proposed changes
+ProcessMemos -[#a02020,thickness=2]up-> Propose : spec-bound\nmemo disposition
+SpecOwned -[#a02020,thickness=2]down-> SpecReader : canonical spec\ncontent
 
-note left of CoreSkillsBox : Core knows NOTHING about\nimplementation plugins by name.\nThe published contract is uniform;\nany plugin honoring it is swappable.
+note left of CoreSkillsBox : Core knows NOTHING about implementation\nplugins by name. The published contract\nis uniform; any plugin honoring it is\nswappable.
 
-note right of ImplSkillsBox : Implementations differ in:\n• backend (bd vs JSONL vs GitLab vs ...)\n• which dispositions are practical\n• which format choices apply\nThey AGREE on the skill surface\nand the contract obligations.
+note right of ImplSkillsBox : Implementations differ in:\n• backend (bd vs JSONL vs GitLab vs ...)\n• Spec Reader internals (thin pass-through,\n  cached, indexed, embedded, RAG, ...)\n• Persistent Agent Knowledge realization\n  (harness instruction files vs long-lived\n  memory store, etc.)\nThey AGREE on the skill surface, the Spec\nReader required capabilities, and the\ncontract obligations.
 
-note bottom of Implement : `implement` is generic.\nIt consumes any work item\nregardless of origin:\n• capture-spec-gaps-derived (gap-id labeled)\n• process-memos impl-bound disposition\n• future direct-filing\nClosure differs only by gap-id presence.
+note bottom of Implement : `implement` is generic — consumes any work\nitem regardless of origin:\n• capture-impl-gaps (gap-tied, gap-id label)\n• capture-work-item (freeform, direct)\n• process-memos impl-bound disposition\n  (freeform)\nClosure branches on origin × disposition:\ngap-tied fix verifies via dry-run re-detection;\nfreeform fix closes with --reason; non-fix\n(wontfix / duplicate / spec-revised / ...)\ncloses with reason, no verification.
 
 @enduml
