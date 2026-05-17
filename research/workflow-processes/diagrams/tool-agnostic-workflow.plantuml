@@ -1,5 +1,5 @@
-@startuml draft-tool-agnostic-workflow
-title Tool-Agnostic Workflow — Spec / Implementation Lifecycle (DRAFT v8)
+@startuml tool-agnostic-workflow
+title Tool-Agnostic Workflow — Spec / Implementation Lifecycle
 
 ' Container approach: package shapes for SPEC SIDE and
 ' IMPLEMENTATION SIDE. Accepts PlantUML's default side-by-side
