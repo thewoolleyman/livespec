@@ -1,0 +1,69 @@
+@startuml seq-capture-spec-gaps
+title Sequence — /livespec-impl-*:capture-spec-gaps
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam sequence {
+  ParticipantBorderColor #111
+  ParticipantBackgroundColor white
+  ParticipantFontColor #111
+  ActorBorderColor #111
+  ActorBackgroundColor white
+  ActorFontColor #111
+  LifeLineBorderColor #444
+}
+
+actor "Human user" as User
+actor "Agent" as Agent #LightSkyBlue
+participant "/livespec-impl-*:\ncapture-spec-gaps" as Skill #LightYellow
+participant "SPECIFICATION/\n(read)" as Spec
+participant "Repository\n(read)" as Repo
+participant "Work-item queue\n(impl-plugin store)" as Queue
+
+User -> Agent : "run capture-spec-gaps"
+Agent -> Skill : invoke
+activate Skill
+
+Skill -> Spec : read template-declared files
+Spec --> Skill : current spec content
+Skill -> Repo : walk repo per gap-detection predicates
+Repo --> Skill : current implementation state
+
+note right of Skill : Detection happens entirely\nin-memory. No persistent\ncurrent.json artifact.
+
+Skill -> Skill : compute 3-way diff:\n• predicted-but-untracked\n• tracked-but-no-longer-predicted\n• both
+Skill -> Queue : list existing labeled work items
+Queue --> Skill : current gap-id labels in queue
+
+loop for each newly-detected untracked gap
+  Skill -> Agent : surface gap (id, title, severity,\nspec_refs, fix_hint, depends_on)
+  Agent -> User : present gap + propose file action
+  User --> Agent : confirm / skip / edit metadata
+  alt user confirms
+    Agent -> Skill : approved
+    Skill -> Queue : file work item\n(gap-id label, severity label,\narea label, ...)
+    Queue --> Skill : work item id
+    Skill -> Agent : confirmed; queued as <id>
+  else user skips / declines
+    Skill -> Agent : skipped
+  end
+end
+
+loop for each stale gap-id (tracked but no longer predicted)
+  Skill -> Agent : surface for triage:\n"this gap-id no longer detects\nis it resolved?"
+  Agent -> User : present + propose close action
+  User --> Agent : confirm close / leave open / investigate
+  alt user confirms close
+    Agent -> Skill : approved
+    Skill -> Queue : close work item\n(resolution:no-longer-applicable)
+  end
+end
+
+Skill --> Agent : run summary (N filed, M closed, K skipped)
+Agent --> User : report
+deactivate Skill
+
+note over User, Queue : Note: detection state\nis ephemeral throughout.\nThe in-memory diff is\ndiscarded at skill exit.\nVerification on close\n(by /livespec-impl-*:implement)\nre-runs capture-spec-gaps --dry-run.
+
+@enduml

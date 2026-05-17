@@ -1,0 +1,83 @@
+@startuml multi-repo-layout
+title Multi-Repo Plugin Distribution
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam actor {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+package "Plugin source repos (each a separate GitHub repo)" {
+  rectangle "livespec-core" as Core #LightYellow {
+    card "/livespec:* skills" as CoreSkills
+    rectangle "publishes:\n• SPECIFICATION/ shape contract\n• .livespec.jsonc core schema\n• impl-plugin contract\n• .ai/<topic>.md convention" as CoreContract #Lavender
+  }
+  rectangle "livespec-impl-plaintext" as ImplPlain #LightYellow {
+    card "/livespec-impl-plaintext:* skills" as PlainSkills
+    rectangle "JSONL / md / html / yaml\nbackend" as PlainBackend #FFFFFF;line.dashed
+  }
+  rectangle "livespec-impl-beads" as ImplBeads #LightYellow {
+    card "/livespec-impl-beads:* skills" as BeadsSkills
+    rectangle "wraps bd / Dolt" as BeadsBackend #FFFFFF;line.dashed
+  }
+  rectangle "livespec-impl-gitlab" as ImplGitLab #LightYellow {
+    card "/livespec-impl-gitlab:* skills" as GitLabSkills
+    rectangle "wraps GitLab API\n(creds outside .livespec.jsonc)" as GitLabBackend #FFFFFF;line.dashed
+  }
+  rectangle "livespec-impl-gascity,\nlivespec-impl-kilroy, ..." as ImplOthers #LightYellow
+}
+
+rectangle "shared content\n(NFR, CI conventions,\nTDD rules, lefthook,\njustfile recipes)" as Shared #Lavender
+note bottom of Shared : Mechanical sync (subtree / generator / pinned package). Mechanism TBD; the existence of shared content survives the multi-repo decision.
+
+actor "Consumer\nproject\nmaintainer" as Consumer
+rectangle "Consumer project\nrepository" as ConsumerRepo {
+  card "/plugin install\nlivespec-core@..." as InstallCore
+  card "/plugin install\nlivespec-impl-<choice>@..." as InstallImpl
+  database "consumer's\n.livespec.jsonc" as Config
+  database "consumer's\nSPECIFICATION/" as SpecTree
+  rectangle ".ai/<topic>.md\n(persistent agent knowledge)" as AiTree #Lavender
+}
+
+Consumer --> InstallCore : installs once
+Consumer --> InstallImpl : picks ONE impl
+InstallCore ..> Core : marketplace install
+InstallImpl ..> ImplPlain : OR
+InstallImpl ..> ImplBeads : OR
+InstallImpl ..> ImplGitLab : OR
+InstallImpl ..> ImplOthers
+
+Shared ..> Core : synced
+Shared ..> ImplPlain : synced
+Shared ..> ImplBeads : synced
+Shared ..> ImplGitLab : synced
+Shared ..> ImplOthers : synced
+
+Core ..> Config : reads core schema keys
+ImplPlain ..> Config : reads its own section\n(only when active)
+Core ..> SpecTree : governs (writes via revise)
+ImplPlain ..> SpecTree : reads only
+
+note right of Core : LiveSpec Core is one peer among N plugins.\nIt's not privileged in the marketplace structure;\nit governs the SPECIFICATION/ surface and publishes\nthe contract that every implementation plugin honors.
+
+note right of ConsumerRepo : Consumer project installs ONE livespec-core\nplus EXACTLY ONE livespec-impl-* plugin.\nThe choice is recorded in .livespec.jsonc's\n`implementation.plugin` key.
+
+@enduml

@@ -1,0 +1,86 @@
+@startuml memo-lifecycle
+title Memo Lifecycle — Capture, Hygiene, Routing
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam ArrowFontColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam usecase {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam actor {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+actor "Human\nuser" as HumanUser
+actor "Agent" as Agent #LightSkyBlue
+
+rectangle "Mid-workflow\nobservation /\nidea / TODO" as Observation #FFFFFF;line.dashed
+
+card "/livespec-impl-*:\ncapture-memo" as CaptureMemo #LightYellow
+database "memo store\n(impl-plugin-specific:\nbd Dolt / JSONL / ...)" as MemoStore
+
+card "/livespec:doctor" as Doctor #LightYellow
+card "/livespec-impl-*:\nlist-memos\n[--keyword]\n[--untriaged --json]" as ListMemos #LightYellow
+
+card "/livespec-impl-*:\nprocess-memos\n(per-memo dialogue)" as ProcessMemos #LightYellow
+usecase "Per-memo\ndisposition?" as Disposition
+
+card "/livespec:propose-changes\n(cross-namespace handoff)" as ProposeChanges #LightYellow
+database "proposed_changes/\n(livespec-core)" as Proposed
+database "work-item queue\n(joins implement\nqueue)" as WorkQueue
+rectangle ".ai/<topic>.md\n+ AGENTS.md /\nCLAUDE.md reference" as AiTree #Lavender
+rectangle "(deleted)" as Discarded #FFFFFF;line.dashed
+
+HumanUser --> Observation
+Observation --> CaptureMemo
+Agent --> CaptureMemo : drives capture
+CaptureMemo --> MemoStore
+
+MemoStore -[#888,dashed]-> Doctor : --untriaged --json\nquery
+Doctor --> HumanUser : warns about\nuntriaged memos\nbeyond N days
+HumanUser --> ListMemos : (user-facing\nsearch)
+ListMemos --> MemoStore : reads
+MemoStore --> ListMemos
+
+HumanUser --> ProcessMemos : invokes after\ndoctor warning
+Agent --> ProcessMemos : per-memo handholding
+ProcessMemos --> MemoStore : reads each untriaged
+ProcessMemos --> Disposition
+
+Disposition --> ProposeChanges : SPEC-BOUND\n(handoff to core)
+ProposeChanges --> Proposed
+Disposition --> WorkQueue : IMPL-BOUND\n(file work item;\npicked up by implement)
+Disposition --> AiTree : PERSISTENT-KNOWLEDGE\n(write file + update\nAGENTS.md/CLAUDE.md ref)
+Disposition --> Discarded : DISCARD\n(delete from store)
+
+ProcessMemos --> MemoStore : marks each\nmemo processed
+
+note right of MemoStore : Storage backend is impl-plugin-specific.\nbd Dolt for livespec-impl-beads.\nJSONL for livespec-impl-plaintext.\nGitLab note for livespec-impl-gitlab.\nUser-facing semantics are uniform across all.
+
+note bottom of Doctor : Doctor's invariant:\n"no memo MUST remain\nuntriaged beyond N days."\nQueries the active impl plugin\nvia --untriaged --json. Doctor\nknows about memos ONLY to\ndetect-and-warn; resolution\nlives impl-side.
+
+note right of AiTree : Persistent-knowledge file:\nnamed per topic, progressively\nloaded via AGENTS.md /\nCLAUDE.md reference. NOT a junk\ndrawer — each file has a focused\nsubject and explicit reach.
+
+note bottom of Disposition : Four dispositions encode\nthe livespec philosophy:\neverything resolves to spec,\nimplementation, persistent\nknowledge, or oblivion.
+
+@enduml

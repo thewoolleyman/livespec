@@ -1,0 +1,87 @@
+@startuml implementation-lifecycle
+title Implementation Plugin — Lifecycle (per livespec-impl-*)
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam ArrowFontColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam usecase {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam actor {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+actor "Human\nuser" as HumanUser
+actor "Agent" as Agent #LightSkyBlue
+
+database "SPECIFICATION/\n(read-only input)" as Spec
+database "Repository\n(code, tests,\nconfig, plugins)" as Repo
+
+card "/livespec-impl-*:\ncapture-spec-gaps" as CaptureGaps #LightYellow
+rectangle "Detect gaps\nin-memory\n(NO persistent\ncurrent.json)" as DetectGaps #LightGreen;line.dashed
+
+usecase "User\nconsents\nper gap?" as PerGapConsent
+database "Work-item queue\n(impl-plugin-specific:\nbd / JSONL / GitLab / ...)" as WorkQueue
+
+card "/livespec-impl-*:\nimplement" as ImplementCmd #LightYellow
+rectangle "Red commit:\ntest only" as RedCommit #LightGreen;line.dashed
+rectangle "Green amend:\nimpl + test pass" as GreenCommit #LightGreen;line.dashed
+rectangle "Verify via\ncapture-spec-gaps\n--dry-run\n(in-memory)" as Verify #LightGreen;line.dashed
+
+usecase "gap-id label\npresent on\nthis item?" as GapTied
+card "bd close\n--resolution fix\n+ audit fields" as CloseFix #LightYellow
+card "bd close\n--reason <summary>\n(freeform)" as CloseFreeform #LightYellow
+
+rectangle "Memo capture\n(see memo-lifecycle\ndiagram)" as MemoCapture #FFFFFF;line.dashed
+note right of MemoCapture : Memo's impl-bound\ndisposition feeds\nthe same work queue.
+
+HumanUser --> CaptureGaps : invokes
+Agent --> CaptureGaps : drives
+Spec --> CaptureGaps
+Repo --> CaptureGaps
+CaptureGaps --> DetectGaps
+DetectGaps --> PerGapConsent
+HumanUser --> PerGapConsent : confirms each
+PerGapConsent --> WorkQueue : on each YES,\nfile work item\n(gap-id labeled)
+MemoCapture --> WorkQueue : impl-bound disposition\nfiles work item\n(no gap-id)
+
+WorkQueue --> ImplementCmd : leaf-level pick
+HumanUser --> ImplementCmd : invokes
+Agent --> ImplementCmd : drives Red→Green
+ImplementCmd --> RedCommit
+RedCommit --> GreenCommit
+GreenCommit --> Repo
+GreenCommit --> Verify
+Verify --> CaptureGaps : --dry-run\n(re-detect)
+
+Verify --> GapTied
+GapTied -left-> CloseFix : YES — must verify\ngap-id absent now
+GapTied -right-> CloseFreeform : NO — close on user reason
+CloseFix --> WorkQueue
+CloseFreeform --> WorkQueue
+
+note bottom of CaptureGaps : Detects gaps + files work items\nin one operation. Replaces today's\nrefresh-gaps + plan pair.\nDetection is ephemeral (in-memory),\neliminating the persistent current.json.
+
+note bottom of CloseFix : Audit fields:\n• gap-id at filing time\n• evidence of fix\n• verification timestamp\n• files changed
+
+@enduml

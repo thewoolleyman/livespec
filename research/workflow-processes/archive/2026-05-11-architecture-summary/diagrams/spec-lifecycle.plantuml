@@ -1,0 +1,87 @@
+@startuml spec-lifecycle
+title LiveSpec Core — Spec Lifecycle
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam ArrowFontColor #111
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam usecase {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam actor {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+actor "Human\nuser" as HumanUser
+actor "Agent" as Agent #LightSkyBlue
+
+rectangle "Initial seed\nof intent" as SeedIntent #FFFFFF;line.dashed
+card "/livespec:seed" as SeedCmd #LightYellow
+
+database "SPECIFICATION/\n(spec.md, contracts.md,\nconstraints.md, scenarios.md,\nnon-functional-requirements.md)" as Spec
+database "history/vNNN/\nsnapshots" as History
+database "proposed_changes/\n(pending)" as Proposed
+
+rectangle "Observation\n(spec-internal:\nambiguity, contradiction,\nundefined term)" as SpecObs #FFFFFF;line.dashed
+
+card "/livespec:critique" as CritiqueCmd #LightYellow
+note right of CritiqueCmd : Role: surface observations\nbased on observing the\nspec. NOT the implementation.\nFinds spec-internal issues\n(ambiguity, contradiction,\ndangling refs).
+
+card "/livespec:propose-changes\n(formal or quick-deposit)" as ProposeCmd #LightYellow
+card "/livespec:revise\n(selective per proposal)" as ReviseCmd #LightYellow
+
+usecase "Revision\nneeded?" as RevisionNeeded
+card "/livespec:doctor" as DoctorCmd #LightYellow
+card "/livespec:prune-history" as PruneCmd #LightYellow
+card "/livespec:help" as HelpCmd #LightYellow
+
+HumanUser --> SeedIntent
+HumanUser --> SeedCmd : invokes
+Agent --> SeedCmd : drives
+SeedIntent --> SeedCmd
+SeedCmd --> Spec : authors initial tree
+SeedCmd --> History : writes v001
+
+Spec --> SpecObs
+SpecObs --> CritiqueCmd : analyzed by
+CritiqueCmd --> Proposed : drafts findings\nas proposed changes
+
+HumanUser --> RevisionNeeded
+RevisionNeeded -right-> ProposeCmd : YES (user intent)
+ProposeCmd --> Proposed : writes
+Proposed --> ReviseCmd : consumed by
+HumanUser --> ReviseCmd : per-proposal\nconfirm
+ReviseCmd --> Spec : mutates
+ReviseCmd --> History : cuts new vNNN
+
+DoctorCmd ..> Spec : static + LLM-driven\ninvariants
+DoctorCmd ..> Proposed : hygiene
+DoctorCmd ..> History : structural checks
+
+History --> PruneCmd : oldest collapsed
+PruneCmd --> History : pruned-marker
+
+note bottom of Spec : Mutated ONLY through\n/livespec:propose-changes →\n/livespec:revise. Direct edits forbidden\nafter v001 seed.
+
+note right of ReviseCmd : Selective per-proposal\naccept / modify / reject.\nEach revise pass cuts\nexactly one new vNNN.
+
+@enduml
