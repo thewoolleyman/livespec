@@ -50,11 +50,25 @@ Proposed Changes queue into Specification History (paired with a
 revision file documenting the disposition) — they do not
 accumulate in Proposed Changes, which holds only pending items.
 
-**Closure** — The act of marking a work item as done. Two paths
-based on the item's origin: gap-tied items require verification
-(re-running gap detection to confirm the gap is gone) plus
-audit fields; freeform items close with a simple reason and no
-verification step.
+**Closure** — The act of marking a work item as done. Performed
+by **Implement** as the final step of its work cycle. The
+procedure depends on the item's origin and the disposition:
+
+- **Gap-tied fix**: requires verification — re-run gap detection
+  via the Spec Reader, confirm the gap is gone, record audit
+  fields (resolution method, verification timestamp, commits,
+  files changed, etc.). If the gap remains, closure MUST NOT
+  proceed as a fix.
+- **Freeform fix**: close with a simple reason; no verification
+  step required (freeform items were never tied to a detected
+  gap, so there is no detection to re-run).
+- **Non-fix closure** (gap-tied or freeform): administrative
+  closures where work will not be done or was resolved
+  out-of-band (e.g., `wontfix`, `duplicate`, `spec-revised`,
+  `no-longer-applicable`, `resolved-out-of-band`). Close with a
+  reason describing the disposition; no verification, no audit
+  fields. Lighter than fix closure because there is no work
+  product to verify.
 
 **Critique** — A spec-side LLM-driven analytical pass that
 observes the Specification in isolation and surfaces findings
@@ -493,15 +507,22 @@ items frequently anchor on spec sections, so resolving that
 context is part of normal execution). Agnostic to the work item's
 origin (gap-tied from `Capture Impl Gaps`, impl-bound from
 `Process Memos`, or freeform from `Capture Work Item`).
-Branches on closure based on the gap-id marker: **gap-tied**
-items require verification (re-run `Capture Impl Gaps` in
+Branches on closure based on (a) the gap-id marker (gap-tied vs
+freeform) and (b) the disposition (fix vs non-fix). For
+**gap-tied fix** closures: re-run `Capture Impl Gaps` in
 dry-run, confirm the gap-id is no longer detected, record audit
-fields including verification timestamp); **freeform** items
-close with a simple reason and no verification step. The
-`implement` verb is deliberate — the skill stays a clean
-processor and is not renamed for symmetry with the `capture-*`
-family, because work items can legitimately originate from
-sources other than spec gaps.
+fields (resolution method, verification timestamp, commits,
+files changed, etc.). For **freeform fix** closures: simple
+reason, no verification. For **non-fix closures** (regardless of
+origin — e.g., the spec was revised and the gap is now
+obsolete, the item is a duplicate, the work won't be done, the
+issue was resolved out-of-band): close with a reason describing
+the administrative disposition; no verification, no audit
+fields. The `implement` verb is deliberate — the skill stays a
+clean processor and is not renamed for symmetry with the
+`capture-*` family, because work items can legitimately originate
+from sources other than spec gaps and can close for reasons
+other than work landing.
 
 ##### Capture Spec Drift
 
@@ -710,14 +731,20 @@ freeform), and `Capture Work Item` (direct user filing,
 freeform). Implementation-specific format — beads issues for
 `livespec-impl-beads`, JSONL records for `livespec-impl-plaintext`,
 GitLab work items for `livespec-impl-gitlab`, etc. — but
-uniform external behavior. Closure semantics branch on the
-gap-tied vs. freeform distinction: **gap-tied items require
-verification** (re-run gap detection, confirm gap-id is gone,
-record audit fields including resolution method and verification
-timestamp); **freeform items close with a simple reason**. The
-1:1 gap-tracking invariant applies only to gap-tied items: every
-current gap in the spec MUST correspond to exactly one tracked
-work item across all statuses.
+uniform external behavior. Closure semantics branch on
+(a) gap-tied vs. freeform origin and (b) fix vs. non-fix
+disposition: **gap-tied fix** closures require verification
+(re-run gap detection, confirm gap-id is gone, record audit
+fields including resolution method and verification timestamp);
+**freeform fix** closures use a simple reason without
+verification; **non-fix closures** (administrative — wontfix,
+duplicate, spec-revised, no-longer-applicable, resolved
+out-of-band) close with a reason describing the disposition, no
+verification, no audit fields, lighter than fix closure because
+there is no work product to verify. The 1:1 gap-tracking
+invariant applies only to gap-tied items: every current gap in
+the spec MUST correspond to exactly one tracked work item across
+all statuses (regardless of how it closed).
 
 ##### Memos
 
