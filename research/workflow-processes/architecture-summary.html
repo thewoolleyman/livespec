@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LiveSpec architecture summary</title>
+<style>
+  body { max-width: 1000px; margin: 2em auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif; line-height: 1.55; color: #1a1a1a; padding: 0 1.2em; }
+  h1 { font-size: 1.8em; border-bottom: 2px solid #d96b9d; padding-bottom: 0.3em; }
+  h2 { font-size: 1.35em; margin-top: 2em; border-bottom: 1px solid #ddd; padding-bottom: 0.2em; }
+  h3 { font-size: 1.1em; margin-top: 1.5em; }
+  code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 3px; font-family: "SF Mono", Monaco, Menlo, monospace; font-size: 0.92em; }
+  pre { background: #f5f5f5; padding: 1em; border-radius: 6px; overflow-x: auto; border: 1px solid #e0e0e0; }
+  pre code { background: transparent; padding: 0; }
+  table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+  th, td { border: 1px solid #d0d0d0; padding: 0.55em 0.85em; text-align: left; vertical-align: top; }
+  th { background: #f3f3f3; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafafa; }
+  blockquote { border-left: 4px solid #d96b9d; padding: 0.3em 1em; color: #444; background: #fdf4f8; margin: 1em 0; border-radius: 0 4px 4px 0; }
+  img.diagram { display: block; max-width: 100%; margin: 1.5em auto; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.5em; background: white; }
+  .diagram-caption { text-align: center; font-style: italic; color: #555; font-size: 0.9em; margin-top: -0.5em; margin-bottom: 1.5em; }
+  .unresolved { background: #fff8e0; padding: 1em 1.2em; border-radius: 6px; border-left: 4px solid #d4a017; margin: 1.5em 0; }
+  .resolved { background: #e8f5e8; padding: 1em 1.2em; border-radius: 6px; border-left: 4px solid #4a9d4a; margin: 1.5em 0; }
+  .resolved h2, .resolved h3 { border: none; margin-top: 0; }
+  .unresolved h2, .unresolved h3 { border: none; margin-top: 0; }
+  .decision { background: #e8f5e8; padding: 1em 1.2em; border-radius: 6px; border-left: 4px solid #4a9d4a; margin: 1em 0; }
+  .decision strong { color: #2a5a2a; }
+  .meta { color: #666; font-size: 0.9em; margin-bottom: 2em; }
+  .prereq { background: #eef4fb; padding: 1em 1.2em; border-radius: 6px; border-left: 4px solid #4a7cb8; margin: 1.5em 0; }
+  ul.tight { margin: 0.3em 0; }
+  ul.tight li { margin-bottom: 0.2em; }
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+</style>
+</head>
+<body>
+
+<h1>LiveSpec architecture summary</h1>
+
+<p class="meta">
+  <strong>Branch:</strong> <code>docs/transcript-elephant-followup</code> &middot;
+  <strong>Status:</strong> Brainstorm output describing the specific LiveSpec implementation of the spec ↔ implementation pattern. Decisions captured here are <em>directions</em>, not yet formalized in SPECIFICATION/. Formalization happens via subsequent <code>/livespec:propose-change</code> activity. The pre-elephant snapshot of this document is preserved at <a href="archive/2026-05-11-architecture-summary/architecture-summary.html"><code>archive/2026-05-11-architecture-summary/</code></a> for audit.
+</p>
+
+<blockquote>
+  This document captures findings from an extended brainstorming session that re-examined the LiveSpec architecture from first principles and then followed through to resolve every load-bearing open question — most notably the impl-to-spec drift direction (the "elephant") that the 2026-05-11 snapshot flagged as unresolved. The verbatim transcript is preserved as a companion HTML file at <code>conversation-transcript.html</code>.
+</blockquote>
+
+<div class="prereq">
+  <strong>Prerequisite read:</strong> the conceptual model used by this doc — the spec ↔ implementation split, the store-vs-queue/archive distinction, gap-vs-drift naming, the Spec Reader adapter, and Persistent Agent Knowledge as a first-class store — is the subject of the companion <a href="tool-agnostic-workflow.md"><code>tool-agnostic-workflow.md</code></a>. That document is the <em>source of truth</em> for those concepts; this document is the LiveSpec-specific instantiation, using <code>livespec-core</code> / <code>livespec-impl-*</code> / <code>/livespec:*</code> names. When the two disagree, the tool-agnostic doc wins and this one gets regenerated to match.
+</div>
+
+<h2>Executive summary — decisions made</h2>
+
+<div class="decision">
+  <strong>1. Multi-repo distribution.</strong> LiveSpec Core and each implementation plugin live in <em>separate</em> repos. Shared content (non-functional requirements around code style, CI, TDD workflow) is propagated via a mechanical sync mechanism (specifics TBD). Concerns about CI complexity and agent context bleed outweighed the monorepo content-sharing benefits.
+</div>
+
+<div class="decision">
+  <strong>2. Plugin renaming.</strong> The current <code>livespec</code> plugin becomes <code>livespec-core</code>. Implementation plugins use the pattern <code>livespec-impl-&lt;X&gt;</code> where X is the tracking <em>mechanism</em> (not substrate). Catalog: <code>livespec-impl-plaintext</code>, <code>livespec-impl-beads</code>, <code>livespec-impl-gascity</code>, <code>livespec-impl-darkfactory-kilroy</code>, <code>livespec-impl-gitlab</code>, etc.
+</div>
+
+<div class="decision">
+  <strong>3. <code>livespec-impl-plaintext</code> consolidates formats.</strong> One plugin handles md / html / jsonl / yaml backends. Format choice lives in <code>.livespec.jsonc</code>. Format migration is a free bonus capability (one plugin owns readers and writers for all formats).
+</div>
+
+<div class="decision">
+  <strong>4. <code>.livespec.jsonc</code> as shared cross-plugin config</strong> with per-plugin section ownership. Root is <code>additionalProperties: true</code>. livespec-core owns core keys; each impl plugin owns a top-level key named for the plugin. Secrets MUST NOT live here.
+</div>
+
+<div class="decision">
+  <strong>5. Beads is not pulling its weight for livespec itself.</strong> Concurrency profile doesn't justify the workaround overhead. LiveSpec dogfoods <code>livespec-impl-plaintext</code> going forward; <code>livespec-impl-beads</code> remains a first-class implementation for adopters with concurrent multi-contributor profiles.
+</div>
+
+<div class="decision">
+  <strong>6. The "elephant" is resolved.</strong> Impl-to-spec drift now has its own first-class skill: <code>/livespec-impl-*:capture-spec-drift</code>. Asymmetric counterpart to <code>capture-impl-gaps</code>, not a mirror image — see the <em>Gap-vs-drift asymmetric naming</em> section.
+</div>
+
+<div class="decision">
+  <strong>7. Gap-vs-drift asymmetric naming.</strong> A spec → impl deficit is a <strong>gap</strong> (mechanical detection); an impl → spec lag is a <strong>drift</strong> (heuristic detection). The two directions are categorically different problems and benefit from asymmetric naming rather than symmetric naming that would obscure the difference. Renames the previously-considered "Capture Impl Drift" to <code>capture-impl-gaps</code>.
+</div>
+
+<div class="decision">
+  <strong>8. Spec Reader is a first-class impl-side adapter.</strong> Every implementation plugin exposes a Spec Reader that unifies spec access for the impl-side skills that need it (capture-impl-gaps, capture-spec-drift, implement, process-memos). The required-capability surface is in the contract; the internals are plugin-specific (thin pass-through vs cached vs indexed vs RAG-style).
+</div>
+
+<div class="decision">
+  <strong>9. Persistent Agent Knowledge is a first-class store.</strong> Promoted from the <code>.ai/&lt;topic&gt;.md</code> convention to one of the three canonical stores (alongside the Specification and the Implementation). The form is implementation-dependent: file-based plugins typically use harness instruction files (CLAUDE.md / AGENTS.md / <code>.ai/&lt;topic&gt;.md</code>); other plugins may use a long-lived memory store the agent queries at relevant points.
+</div>
+
+<div class="decision">
+  <strong>10. Capture Work Item is restored as a freeform-filing skill.</strong> Bugs, refactors, tactical tasks need a low-ceremony direct path that does not pretend to be gap or drift detection or observation triage. Items it creates carry no gap-id and close via the freeform path (simple <code>--reason</code>, no verification step). Restores the old observation-flow "Path B — manual create, freeform issue" pattern lost in the tool-agnostic refactor.
+</div>
+
+<div class="decision">
+  <strong>11. Memory is transient by construction.</strong> Fundamental paradigm shift from beads' memory-as-persistent-store. In LiveSpec, every memo MUST resolve to spec, implementation, persistent agent knowledge, or discard. Doctor enforces this via a hygiene invariant. Memos are queue + archive — dispositioned items remain with a state marker for audit but no longer block hygiene.
+</div>
+
+<div class="decision">
+  <strong>12. <code>capture-impl-gaps</code> collapses refresh-gaps + plan.</strong> Detection is ephemeral (in-memory). The persistent <code>current.json</code> intermediate artifact disappears entirely. Per-gap consent dialogue happens inside the unified skill. Verification on closure re-runs the skill in dry-run mode and checks the gap-id is no longer detected.
+</div>
+
+<div class="decision">
+  <strong>13. <code>propose-changes</code> is the renamed singular <code>propose-change</code>.</strong> Plural form acknowledges existing 1-to-N reality (one file can already carry multiple <code>## Proposal</code> sections). Singular name was misleading.
+</div>
+
+<div class="decision">
+  <strong>14. <code>critique</code> survives as a separate skill.</strong> Its role refined: surface observations <em>based on observing the specification</em> (spec-internal issues: ambiguity, contradiction, undefined terms, dangling references). NOT observation of the implementation — that is <code>capture-spec-drift</code>'s job and lives on the impl side. Its 1-to-N cardinality and no-user-intent posture justify keeping it separate from <code>propose-changes</code>.
+</div>
+
+<h2>What changed since the 2026-05-11 snapshot</h2>
+
+<p>The 2026-05-11 architecture summary is preserved verbatim under <a href="archive/2026-05-11-architecture-summary/architecture-summary.html"><code>archive/2026-05-11-architecture-summary/</code></a>. The post-elephant turns reshaped enough load-bearing material that this document is a clean rewrite rather than an edit. Major changes:</p>
+
+<table>
+  <thead><tr><th>Area</th><th>2026-05-11 snapshot</th><th>Post-elephant (this document)</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Impl plugin skill count</td>
+      <td>5 skills (<code>capture-spec-gaps</code>, <code>implement</code>, <code>capture-memo</code>, <code>list-memos</code>, <code>process-memos</code>)</td>
+      <td>6 canonical skills (<code>capture-impl-gaps</code>, <code>capture-spec-drift</code>, <code>capture-work-item</code>, <code>implement</code>, <code>capture-memo</code>, <code>process-memos</code>). <code>list-memos</code> is now plugin-discretionary (each plugin may expose user-facing search if useful); the doctor-hygiene query lives in the machine-readable contract surface.</td>
+    </tr>
+    <tr>
+      <td>Impl-to-spec drift direction</td>
+      <td>Flagged as unresolved follow-up ("the elephant")</td>
+      <td><strong>Resolved</strong> via <code>capture-spec-drift</code> — a separate impl-side skill, asymmetric counterpart to <code>capture-impl-gaps</code>, that routes findings to <code>/livespec:propose-changes</code> as a cross-boundary handoff.</td>
+    </tr>
+    <tr>
+      <td>Spec access from impl-side skills</td>
+      <td>Ad-hoc per skill</td>
+      <td>Unified through the <strong>Spec Reader</strong> impl-side adapter. Plugin-specific internals; uniform required capabilities.</td>
+    </tr>
+    <tr>
+      <td>Persistent agent knowledge</td>
+      <td><code>.ai/&lt;topic&gt;.md</code> convention only</td>
+      <td>Promoted to a <strong>first-class store</strong>. File-based realizations use harness instruction files; other plugins may use a long-lived memory store. Plugin's choice.</td>
+    </tr>
+    <tr>
+      <td>Direct work-item filing</td>
+      <td>Implicit / missing</td>
+      <td><code>capture-work-item</code> is the explicit freeform-filing path for bugs, refactors, and tactical tasks. Closes via the freeform path.</td>
+    </tr>
+    <tr>
+      <td>Box taxonomy</td>
+      <td>"Data stores are cylinders" (single category)</td>
+      <td><strong>Stores</strong> (canonical, monolithic — gold cylinders) distinguished from <strong>queue/archives</strong> (discrete items with lifecycle — tan cylinders). Three stores; four queue/archives. See the tool-agnostic doc for the full distinction.</td>
+    </tr>
+    <tr>
+      <td>Skill naming</td>
+      <td><code>capture-spec-gaps</code></td>
+      <td><code>capture-impl-gaps</code> — gaps are deficits in the implementation relative to the spec; the deficit belongs to the impl, not the spec. Aligns with the gap-vs-drift asymmetric naming.</td>
+    </tr>
+    <tr>
+      <td>Closure semantics</td>
+      <td>Implicit in <code>implement</code></td>
+      <td>Three explicit closure paths: <strong>gap-tied fix</strong> (verify + audit fields), <strong>freeform fix</strong> (simple reason), <strong>non-fix</strong> (administrative — wontfix / duplicate / spec-revised / no-longer-applicable / resolved-out-of-band — close with reason, no verification).</td>
+    </tr>
+    <tr>
+      <td>Diagram vocabulary</td>
+      <td>Human / Agent actor split; verb-phrase skill names; no Spec Reader</td>
+      <td>Single yellow "initial intent" input (actor identity not load-bearing); gold-vs-tan cylinder distinction; pale-lavender Spec Reader component; thick red cross-boundary edges.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Architecture: multi-repo plugin distribution</h2>
+
+<p>
+The plugins are distributed as separate GitHub repos, each registering as a Claude Code marketplace plugin. Consumer projects install <code>livespec-core</code> plus exactly one <code>livespec-impl-*</code> plugin via the standard marketplace flow.
+</p>
+
+<p>
+The marketplace.json schema does support multiple plugins from a single repo's subdirectories, but the multi-repo decision was driven by:
+</p>
+
+<ul>
+  <li><strong>CI simplicity.</strong> Per-repo pipelines are mentally simpler than monorepo path-filtering with wrapper jobs for required-status checks.</li>
+  <li><strong>Agent context isolation.</strong> Filesystem boundaries are categorically stronger than per-subdirectory CLAUDE.md conventions. The recent CI work (auto-merge, auto-update-branches, App-auth gymnastics) already taxes attention; multi-plugin path-filtering would compound it.</li>
+</ul>
+
+<p>
+The cost paid is the <strong>shared-content sync mechanism</strong>. Non-functional-requirement sections (TDD workflow, code style, CI conventions, lint rules, Python pins, lefthook setup) genuinely live in multiple plugins. The sync mechanism is open (subtree / pinned package / generator / etc.); the existence of shared content survives the decision.
+</p>
+
+<img class="diagram" src="diagrams/multi-repo-layout.svg" alt="Multi-repo plugin distribution layout">
+<div class="diagram-caption">Multi-repo layout. livespec-core is one peer among N plugins; the consumer installs Core plus exactly one impl plugin. Persistent Agent Knowledge in the consumer repo is plugin-form-dependent.</div>
+
+<h2>Core vs implementation: the API surface</h2>
+
+<p>
+LiveSpec Core publishes a documented contract in <code>SPECIFICATION/contracts.md</code> that implementation plugins must honor. The contract has these sections:
+</p>
+
+<ul>
+  <li><strong>File-system contract</strong> — the SPECIFICATION/ tree shape, <code>proposed_changes/</code> and <code>history/vNNN/</code> ownership, spec_root resolution rules.</li>
+  <li><strong>Configuration contract</strong> — <code>.livespec.jsonc</code> shape and per-plugin section ownership.</li>
+  <li><strong>Slash-command contract</strong> for livespec-core — every <code>/livespec:*</code> command's signature.</li>
+  <li><strong>Implementation plugin contract</strong> — what every <code>livespec-impl-*</code> MUST expose to be considered LiveSpec-compatible. Includes the Spec Reader required-capability surface, the untriaged-memo machine query, and the Persistent Agent Knowledge conventions for file-based realizations.</li>
+</ul>
+
+<img class="diagram" src="diagrams/core-vs-impl-api-surface.svg" alt="Core vs implementation API surface">
+<div class="diagram-caption">API surface: what Core publishes, what every implementation plugin must honor, and the load-bearing cross-boundary edges (red).</div>
+
+<h2>LiveSpec Core — skill surface (7 skills)</h2>
+
+<table>
+  <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>/livespec:seed</code></td><td>Initialize a new spec tree</td></tr>
+    <tr><td><code>/livespec:propose-changes</code></td><td>Author one or more proposed changes (plural rename of today's propose-change)</td></tr>
+    <tr><td><code>/livespec:critique</code></td><td>Surface observations based on observing the spec; spec-internal analysis only</td></tr>
+    <tr><td><code>/livespec:revise</code></td><td>Process pending proposed-changes; cut new history/vNNN. Selective per-proposal — user can address a subset and leave the rest pending.</td></tr>
+    <tr><td><code>/livespec:doctor</code></td><td>Spec invariants (static + LLM-driven) + memo-hygiene invariant via the impl plugin's untriaged-memo machine query</td></tr>
+    <tr><td><code>/livespec:prune-history</code></td><td>Bound history size; collapse oldest vNNN entries</td></tr>
+    <tr><td><code>/livespec:help</code></td><td>Overview + routing</td></tr>
+  </tbody>
+</table>
+
+<img class="diagram" src="diagrams/spec-lifecycle.svg" alt="Spec lifecycle">
+<div class="diagram-caption">LiveSpec Core spec lifecycle. The propose-changes → revise loop is the only mutation path. Critique observes the spec for spec-internal findings; it does NOT observe the implementation.</div>
+
+<img class="diagram" src="diagrams/seq-revise.svg" alt="Sequence diagram for revise">
+<div class="diagram-caption">Sequence diagram: <code>/livespec:revise</code> with pre-step + post-step doctor checks, selective per-proposal acceptance, and the user-defer branch that leaves unaddressed proposals pending.</div>
+
+<h2>Implementation plugins — canonical skill surface (6 skills per plugin)</h2>
+
+<p>Every <code>livespec-impl-*</code> plugin MUST expose these six skills under its own namespace prefix:</p>
+
+<table>
+  <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>/livespec-impl-*:capture-impl-gaps</code></td><td>Detect spec → impl gaps mechanically via the Spec Reader; file labeled / categorized gap-tied work items (per-gap user consent). Collapses today's <code>refresh-gaps</code> + <code>plan</code> pair into one ephemeral-detection skill.</td></tr>
+    <tr><td><code>/livespec-impl-*:capture-spec-drift</code></td><td>Detect impl → spec drift heuristically (LLM-driven); file findings as proposed changes via <code>/livespec:propose-changes</code> (cross-boundary handoff). Asymmetric counterpart to <code>capture-impl-gaps</code>, not a mirror image. Resolves the pre-elephant unresolved direction.</td></tr>
+    <tr><td><code>/livespec-impl-*:capture-work-item</code></td><td>Freeform direct filing of an impl-side work item — bugs, refactors, tactical tasks. No gap-id; closes via the freeform path. Bypasses gap detection and memo ceremony.</td></tr>
+    <tr><td><code>/livespec-impl-*:implement</code></td><td>Drive Red → Green for a single work item; verify via dry-run re-detection (gap-tied); close. Three closure paths: gap-tied fix (verify + audit), freeform fix (simple reason), non-fix (administrative reason).</td></tr>
+    <tr><td><code>/livespec-impl-*:capture-memo</code></td><td>Low-friction free-text deposit of an in-flight observation that the user is not yet ready to classify. Transient by construction.</td></tr>
+    <tr><td><code>/livespec-impl-*:process-memos</code></td><td>Per-memo handholding dialogue: spec-bound (→ propose-changes, cross-boundary) / impl-bound (→ freeform work item) / persistent-knowledge (→ Persistent Agent Knowledge store) / discard.</td></tr>
+  </tbody>
+</table>
+
+<p><strong>List-memos is plugin-discretionary.</strong> Each plugin MAY expose a user-facing <code>list-memos</code> if it adds value (search by keyword, filter by disposition); the canonical contract no longer requires it because Doctor's untriaged-memo hygiene query lives on a separate machine-readable surface in the plugin contract.</p>
+
+<p><strong>Cross-boundary handoffs:</strong> impl plugins reach "up" into core in three places, all rendered as thick red edges in the diagrams: <code>capture-spec-drift</code> → <code>/livespec:propose-changes</code> (drift findings), <code>process-memos</code> → <code>/livespec:propose-changes</code> (spec-bound disposition), and the untriaged-memo query from <code>/livespec:doctor</code> back into the plugin's memo store. Otherwise the plugins are independent.</p>
+
+<img class="diagram" src="diagrams/implementation-lifecycle.svg" alt="Implementation lifecycle">
+<div class="diagram-caption">Implementation plugin lifecycle. Spec Reader fans out canonical spec content to four impl-side skills; <code>capture-impl-gaps</code> and <code>capture-spec-drift</code> are asymmetric counterparts; <code>implement</code> drains the work-item queue regardless of origin and closes via the three-way branch.</div>
+
+<img class="diagram" src="diagrams/seq-capture-impl-gaps.svg" alt="Sequence diagram for capture-impl-gaps">
+<div class="diagram-caption">Sequence diagram: <code>/livespec-impl-*:capture-impl-gaps</code> with Spec Reader, in-memory detection, per-gap consent dialogue, and stale-gap-id triage.</div>
+
+<h2>Memory paradigm shift</h2>
+
+<p>
+The most significant conceptual move in this session: <strong>memory is transient by construction in LiveSpec, not a persistent store as in beads.</strong>
+</p>
+
+<p>
+Beads' <code>bd remember</code> is a permanent memory-bank read by LLM harness instructions — entries accumulate indefinitely. LiveSpec rejects this: it's the junk-drawer anti-pattern. The LiveSpec invariant is <strong>every piece of state must eventually flow to one of the three canonical stores</strong> (Specification, Implementation, Persistent Agent Knowledge) or be discarded. Memos are in-flight state awaiting that resolution; the Memos box is queue + archive (dispositioned items remain with a state marker for audit).
+</p>
+
+<p>The four <code>process-memos</code> dispositions encode this philosophy:</p>
+
+<table>
+  <thead><tr><th>Disposition</th><th>Action</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>spec-bound</strong></td>
+      <td>Calls <code>/livespec:propose-changes</code> with the memo text as input</td>
+      <td>The cross-namespace handoff to livespec-core; produces a proposed-change file that revise eventually consumes</td>
+    </tr>
+    <tr>
+      <td><strong>impl-bound</strong></td>
+      <td>Files a freeform work item in the impl plugin's queue (no <code>gap-id</code> label)</td>
+      <td>Joins the same queue <code>capture-impl-gaps</code> and <code>capture-work-item</code> populate; <code>implement</code> picks it up and closes via the freeform fix path</td>
+    </tr>
+    <tr>
+      <td><strong>persistent-knowledge</strong></td>
+      <td>Graduates the memo into the <strong>Persistent Agent Knowledge</strong> store</td>
+      <td>Form is implementation-dependent: file-based plugins typically use harness instruction files (CLAUDE.md / AGENTS.md / <code>.ai/&lt;topic&gt;.md</code>); other plugins may use a long-lived memory store. Named, retrievable, explicitly graduated — avoids the junk-drawer pattern.</td>
+    </tr>
+    <tr>
+      <td><strong>discard</strong></td>
+      <td>Marks the memo discarded (state marker; not deletion)</td>
+      <td>The terminal disposition — closes the entry without producing a follow-on artifact. The discarded memo remains in the Memos archive for audit but no longer blocks hygiene.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+<strong>Persistent Agent Knowledge as a first-class store</strong> is the load-bearing replacement for beads-style memory-as-store. Its form is plugin-dependent. The most common realization in file-based plugins (livespec-impl-plaintext, livespec-impl-beads) is a set of harness instruction files: CLAUDE.md, AGENTS.md, and <code>.ai/&lt;topic&gt;.md</code> files referenced progressively from those harness files so context window stays bounded. Plugins backed by external trackers may instead use a long-lived memory store the agent queries at relevant points; the contract requires the slot to exist, not a specific realization.
+</p>
+
+<img class="diagram" src="diagrams/memo-lifecycle.svg" alt="Memo lifecycle">
+<div class="diagram-caption">Memo lifecycle. Capture is impl-side; storage is impl-side; routing is impl-side. LiveSpec Core's doctor knows about memos ONLY to detect-and-warn — it cannot route them itself. Persistent Agent Knowledge is the named target of the persistent-knowledge disposition.</div>
+
+<img class="diagram" src="diagrams/seq-process-memos.svg" alt="Sequence diagram for process-memos">
+<div class="diagram-caption">Sequence diagram: <code>/livespec-impl-*:process-memos</code> showing the four dispositions in action, the doctor hygiene trigger, the Spec Reader feeding spec-vs-impl decisions, and the cross-namespace handoff for spec-bound dispositions.</div>
+
+<h2>Gap-vs-drift asymmetric naming</h2>
+
+<p>
+A spec → impl deficit is a <strong>gap</strong>; an impl → spec lag is a <strong>drift</strong>. The naming is deliberately asymmetric because the two directions are categorically different problems:
+</p>
+
+<table>
+  <thead><tr><th>Direction</th><th>Name</th><th>Detection character</th><th>Skill</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>spec → impl (deficit in implementation)</td>
+      <td><strong>gap</strong></td>
+      <td>Mechanical. Enumerate spec rules; check impl for each. 1:1 invariant per gap-id.</td>
+      <td><code>/livespec-impl-*:capture-impl-gaps</code></td>
+    </tr>
+    <tr>
+      <td>impl → spec (lag in specification)</td>
+      <td><strong>drift</strong></td>
+      <td>Heuristic (LLM-driven). Every line of impl is "doing something"; signal-to-noise is brutal.</td>
+      <td><code>/livespec-impl-*:capture-spec-drift</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+The two are separate skills rather than one bidirectional skill because merging would hide the reliability gap between mechanical and LLM-driven detection. The bilateral framing ("impl drift" vs "spec drift") was tried and rejected: it obscured the difference. The asymmetric framing makes the structural difference visible.
+</p>
+
+<p>
+This is the resolution to what the 2026-05-11 snapshot called "the elephant" — the impl-to-spec drift direction was flagged then as a load-bearing follow-up. <code>capture-spec-drift</code> closes that loop, routing findings to <code>/livespec:propose-changes</code> as the cross-boundary handoff.
+</p>
+
+<h2>Naming pivots</h2>
+
+<p>Terminology choices that landed during the session, in order of arrival:</p>
+
+<table>
+  <thead><tr><th>Before</th><th>After</th><th>Reason</th></tr></thead>
+  <tbody>
+    <tr><td><code>livespec</code> (plugin)</td><td><code>livespec-core</code></td><td>Conventional plugin-ecosystem pattern; unambiguous</td></tr>
+    <tr><td>(implicit "git" axis)</td><td><code>livespec-impl-&lt;tracking-mechanism&gt;</code></td><td>Git is the substrate, not the differentiator. Name by tracking mechanism (plaintext / beads / gitlab / etc.)</td></tr>
+    <tr><td><code>propose-change</code></td><td><code>propose-changes</code></td><td>File format already 1-to-N (multiple <code>## Proposal:</code> sections); singular name was misleading</td></tr>
+    <tr><td><code>refresh-gaps</code> + <code>plan</code></td><td><code>capture-impl-gaps</code></td><td>Single skill detects + files atomically; ephemeral in-memory detection state. (Renamed from <code>capture-spec-gaps</code> as part of the gap-vs-drift asymmetric naming — see next row.)</td></tr>
+    <tr><td><code>capture-spec-gaps</code> / "Capture Impl Drift"</td><td><code>capture-impl-gaps</code></td><td>Gaps are deficits in the implementation; the deficit belongs to the impl, not the spec. Lines up with the asymmetric gap-vs-drift framing.</td></tr>
+    <tr><td>(no skill — flagged elephant)</td><td><code>capture-spec-drift</code></td><td>New first-class skill for the impl → spec direction. Resolves the unresolved follow-up.</td></tr>
+    <tr><td>(implicit / missing direct filing)</td><td><code>capture-work-item</code></td><td>Restores the freeform direct-filing path for bugs / refactors / tactical tasks lost in the tool-agnostic refactor.</td></tr>
+    <tr><td><code>remember</code> / <code>memories</code> / <code>review-memories</code> (beads terms)</td><td><code>capture-memo</code> / <code>process-memos</code></td><td>Beads' verbs don't translate to gitlab/jira/etc. backends. Generic descriptive verbs work everywhere. <code>list-memos</code> dropped from the canonical contract (plugin-discretionary).</td></tr>
+    <tr><td>"observation" / "staging"</td><td><strong>memo</strong> (the noun)</td><td>"Observation" too narrow; "staging" overloaded with deployment connotation; "memo" is neutral and familiar</td></tr>
+    <tr><td>"data stores are cylinders"</td><td><strong>stores</strong> (gold) vs <strong>queue/archives</strong> (tan)</td><td>The two categories have different invariants: stores are monolithic intent-accumulation; queue/archives are collections of discrete items with lifecycle. Doctor's hygiene targets the pending-item subset of queue/archives.</td></tr>
+    <tr><td><code>.ai/&lt;topic&gt;.md</code> convention</td><td>Persistent Agent Knowledge (store)</td><td>Promoted from convention to first-class store; harness instruction files are one realization, long-lived memory store is another. Form is plugin-dependent.</td></tr>
+    <tr><td>(impl-side adapter unnamed)</td><td>Spec Reader</td><td>Unified impl-side access surface for spec content. Required capabilities in the contract; plugin-specific internals.</td></tr>
+    <tr><td>Gastown</td><td>Gascity</td><td>Correction — the project is named Gas City</td></tr>
+    <tr><td>(implicit prescriptive vs descriptive)</td><td>"spec" vs "implementation"</td><td>The two terms carry the contrast on their own; "prescriptive" and "descriptive" descriptors dropped as redundant clutter.</td></tr>
+    <tr><td>"imperative window"</td><td>(term retired)</td><td>Folded into ordinary discussion of skill invocation; not load-bearing as its own term.</td></tr>
+    <tr><td>"materialization"</td><td>(term retired)</td><td>Doesn't earn its own concept slot in the workflow — "Seed authors initial tree" is enough.</td></tr>
+  </tbody>
+</table>
+
+<h2><code>.livespec.jsonc</code> — shared cross-plugin config</h2>
+
+<p>
+The file is the cross-plugin discovery point. Every plugin reads it; livespec-core reads core keys; each impl plugin reads its own top-level section. Schema is open at the root (<code>additionalProperties: true</code>) so plugins can extend without central coordination.
+</p>
+
+<pre><code>{
+  // owned by livespec-core
+  "template": "livespec",
+  "spec_root": "SPECIFICATION",
+  "pre_step_skip_static_checks": false,
+
+  // implementation activation
+  "implementation": {
+    "plugin": "livespec-impl-plaintext"
+  },
+
+  // each implementation owns a top-level section keyed by its name
+  "livespec-impl-plaintext": {
+    "format": "md",
+    "work_items_path": "implementation-work-items/"
+  }
+  // ... or "livespec-impl-beads": { "issue_prefix": "li-" }
+  // ... or "livespec-impl-gitlab": { "project_id": "...", "labels_prefix": "livespec/" }
+}</code></pre>
+
+<p>
+<strong>Rules in the published contract:</strong>
+</p>
+
+<ul>
+  <li>livespec-core's schema covers Core's keys; all other top-level keys are open.</li>
+  <li>Each impl plugin owns the schema for its own top-level section, named for the plugin.</li>
+  <li>Each plugin MUST validate its own section on read; MUST tolerate unknown sections.</li>
+  <li><strong>Secrets MUST NOT live here.</strong> External-tracker implementations (gitlab, jira, linear) need a separate credentials channel (env vars, OS keyring, 1Password, etc.). <code>.livespec.jsonc</code> is git-committed and may only contain non-sensitive configuration.</li>
+</ul>
+
+<h2>Beads weight-pull assessment — livespec stops dogfooding beads</h2>
+
+<p>
+The session included an honest assessment of whether beads earns its keep in livespec specifically. The math came out one-sided:
+</p>
+
+<p><strong>Where beads paid off:</strong> dependency-aware ready queue, status transitions, label vocabulary, search — all real conveniences.</p>
+
+<p><strong>Where beads cost more than it earned:</strong></p>
+
+<ul class="tight">
+  <li>32 KB of workaround bootstrap scripts (<code>setup-beads.sh</code>, <code>bd-doctor.sh</code>)</li>
+  <li>Eight documented upstream bugs (<code>dev-tooling/implementation/research/beads-problems.md</code>), three with silent failure modes</li>
+  <li>Dual-source-of-truth tension (the trigger for the whole session)</li>
+  <li>Hook-chaining race with lefthook (Problem 8) contributing to ongoing CI work</li>
+  <li><code>bd edit</code> footgun (blocks agents; convention-enforced)</li>
+  <li>Setup-time onboarding cost for new contributors</li>
+  <li>Concurrency-merge features (the unique value of Dolt) <em>irrelevant for livespec's single-author profile</em></li>
+</ul>
+
+<p>The features beads provides over plaintext+git that are NOT trivially replicable in plaintext: only the Dolt concurrent-merge story, which livespec doesn't need.</p>
+
+<div class="decision">
+  <strong>Conclusion:</strong> livespec dogfoods <code>livespec-impl-plaintext</code> (JSONL format) going forward. <code>livespec-impl-beads</code> survives as a first-class implementation for adopters who DO have the concurrency profile (Gas City, etc.). LiveSpec ecosystem supports both; LiveSpec the project picks the one matching its actual usage.
+</div>
+
+<p>
+For openbrain (sibling project), the same assessment applies — if its concurrency profile is single-author + branch-parallelism, the same calculus holds. Coordination decision, not a technical one.
+</p>
+
+<h2>Critique's role — refinement</h2>
+
+<p>
+A specific refinement worth marking: <strong><code>/livespec:critique</code>'s role is to surface observations based on observing the specification.</strong>
+</p>
+
+<p>
+NOT the implementation. NOT memos. NOT observations from the world. Spec-internal analysis only: ambiguity, contradiction, undefined terms, dangling references, prose quality, NLSpec conformance. The complementary impl-side direction (impl → spec drift) is now <code>capture-spec-drift</code>'s job — a separate skill on the impl side that reads the spec via the Spec Reader and surfaces findings as proposed changes via the cross-boundary handoff.
+</p>
+
+<p>This sharpens the cohesion question that the session worked through. Critique survives as a separate skill (alongside propose-changes) precisely because its <em>input domain is the spec itself</em> — that's structurally different from authoring proposed changes from external intent.</p>
+
+<div class="resolved">
+<h2>Resolved: the impl → spec drift direction</h2>
+
+<p>The 2026-05-11 snapshot ended with an explicit "Unresolved follow-up" callout: <code>capture-spec-gaps</code> handled the spec → impl direction, but no skill captured the opposite direction (impl observably correct, spec needs to change). The candidates raised at that time were:</p>
+
+<ul>
+  <li>A new impl-side skill that compares impl against spec and surfaces drift candidates as memos with a spec-bound suggested disposition.</li>
+  <li>An inverse <code>capture-spec-gaps</code> mode that ran predicates against impl-as-source-of-truth.</li>
+  <li>A separate spec-drift-discovery operation explicitly bridging the spec/impl boundary in the impl → spec direction only.</li>
+  <li>Leaving it as a purely user-driven entry point (user notices, user invokes <code>propose-changes</code> directly).</li>
+</ul>
+
+<p>The post-elephant turns settled on the third option: <strong><code>/livespec-impl-*:capture-spec-drift</code></strong> as a first-class impl-side skill, asymmetric counterpart to <code>capture-impl-gaps</code>. It reads spec content via the Spec Reader (using the version + diff capabilities to anchor "what should this version of impl correspond to in the spec?") and the impl directly, runs LLM-driven analytical detection, and per finding (with user consent) routes to <code>/livespec:propose-changes</code> as a cross-boundary handoff that creates a proposal updating the spec.</p>
+
+<p>The gap-vs-drift asymmetric naming makes the categorical difference between the two directions explicit — mechanical detection on the spec → impl side; heuristic detection on the impl → spec side. They are not mirror images, and merging them would have obscured that.</p>
+</div>
+
+<h2>Pending skill placeholder</h2>
+
+<h3><code>/livespec:next</code> (spec-side, advisory)</h3>
+
+<p>A future spec-side skill — provisionally named <code>/livespec:next</code> — will recommend the most logical next workflow action based on the current state of the persistence stores and the dependencies between operations. Purely advisory: it does not mutate any store.</p>
+
+<p>Reads (via the impl-plugin machine-readable contract for impl-side stores; directly for spec-side stores):</p>
+
+<ul>
+  <li><strong>Proposed Changes</strong> queue — pending proposals awaiting revise?</li>
+  <li><strong>Specification History</strong> — recency of the last revision; pruning pressure?</li>
+  <li><strong>Work Items</strong> queue — ready leaf items? blocked items? stale items?</li>
+  <li><strong>Memos</strong> queue — untriaged memos, especially past the doctor-enforced hygiene threshold?</li>
+  <li><strong>Doctor</strong> findings — unresolved invariant violations?</li>
+</ul>
+
+<p>Surfaces the most ripe next action — conceptually similar to <code>bd ready</code> but applied to the full spec ↔ implementation lifecycle rather than just the Work Items queue. Full design (single recommendation vs ranked list, weighting heuristics across stores) is open for future iteration.</p>
+
+<h2>Other open implementation questions</h2>
+
+<ul>
+  <li><strong>Shared-content sync mechanism.</strong> Multi-repo with mechanically-synced shared content. Specific mechanism (subtree / pinned package / generator / dedicated meta-repo) TBD.</li>
+  <li><strong>Spec retrieval / searchability.</strong> Discussed but not deeply: making the spec efficiently searchable by LLMs (section-level indexing, MCP server, embedding-based RAG). Now lives under the Spec Reader abstraction — internals are plugin-specific, but the required-capability surface still needs concrete shape for advanced impls.</li>
+  <li><strong>Migration tooling.</strong> Both directions: <code>livespec-impl-beads</code> ↔ <code>livespec-impl-plaintext</code>, plus <code>livespec-impl-plaintext</code> format-to-format switches.</li>
+  <li><strong>Critique's prompt redesign.</strong> Today's critique skill needs its prompt restructured around the sharpened "observe spec only" role.</li>
+  <li><strong>Doctor's memo-hygiene invariant.</strong> Concrete threshold (N days), specific query API surface, exact narration to the user when triggered.</li>
+  <li><strong>Schema fragmentation for <code>.livespec.jsonc</code>.</strong> Each impl plugin publishes its own JSON Schema fragment; how do these get loaded for validation in practice?</li>
+  <li><strong>Discoverable plugin registry beyond the marketplace.</strong> The marketplace gives install; what gives "what implementations exist? what does each offer?"</li>
+  <li><strong>The auto-merge bot architecture</strong> if multi-repo lands.</li>
+  <li><strong><code>list-memos</code> as plugin-discretionary surface.</strong> When a plugin DOES expose user-facing memo search, what should the canonical command shape look like so it remains familiar across plugins that choose to expose it?</li>
+  <li><strong>Spec Reader capability shape.</strong> The four required capabilities are agreed; richer capabilities (semantic search, embedding-based retrieval) are unstandardized. Whether the contract enumerates them or leaves them as plugin-private extensions is open.</li>
+</ul>
+
+<h2>Files in this directory after the session</h2>
+
+<pre><code>research/workflow-processes/
+├── CLAUDE.md                                       (unchanged)
+├── architecture-summary.html            (this document — LiveSpec-specific)
+├── architecture-summary.md              (htmlpreview wrapper)
+├── tool-agnostic-workflow.md            (canonical conceptual model;
+│                                          source of truth for this doc)
+├── conversation-transcript.html         (cumulative verbatim transcript)
+├── conversation-transcript.md           (htmlpreview wrapper)
+├── diagrams/                                       (live workflow diagrams)
+│   ├── legend.{plantuml,svg}
+│   ├── multi-repo-layout.{plantuml,svg}
+│   ├── core-vs-impl-api-surface.{plantuml,svg}
+│   ├── spec-lifecycle.{plantuml,svg}
+│   ├── implementation-lifecycle.{plantuml,svg}
+│   ├── memo-lifecycle.{plantuml,svg}
+│   ├── seq-capture-impl-gaps.{plantuml,svg}
+│   ├── seq-process-memos.{plantuml,svg}
+│   ├── seq-revise.{plantuml,svg}
+│   └── tool-agnostic-workflow.{plantuml,svg}
+└── archive/
+    ├── 2026-05-09-pre-brainstorm/                  (pre-brainstorm research)
+    │   ├── spec-vs-implementation-line.md
+    │   ├── workflow-diagrams.md
+    │   ├── beads-only-gap-storage.md
+    │   └── diagrams/                               (proxy-rendered PlantUML)
+    └── 2026-05-11-architecture-summary/            (pre-elephant snapshot)
+        ├── architecture-summary.html
+        ├── architecture-summary.md
+        └── diagrams/                               (snapshotted SVGs)
+</code></pre>
+
+<hr>
+
+<p class="meta">
+  Generated from the cumulative brainstorming session between the maintainer and Claude Opus 4.7 (1M context). Verbatim transcript: <code>conversation-transcript.html</code>. Companion conceptual model: <code>tool-agnostic-workflow.md</code>. The conversation captured in this document is research / pre-formalization. Formal adoption of any decision recorded here flows through the standard <code>/livespec:propose-change</code> → <code>/livespec:revise</code> lifecycle against SPECIFICATION/non-functional-requirements.md and SPECIFICATION/contracts.md.
+</p>
+
+</body>
+</html>
