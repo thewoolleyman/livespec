@@ -2,85 +2,82 @@
 title Memo Lifecycle — Capture, Hygiene, Routing
 skinparam defaultFontName Helvetica
 skinparam shadowing false
-skinparam BackgroundColor white
-skinparam ArrowColor #111
-skinparam ArrowFontColor #111
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+skinparam ArrowThickness 1.3
+skinparam nodesep 16
+skinparam ranksep 26
+hide stereotype
+
 skinparam rectangle {
-  BorderColor #111
-  BackgroundColor white
+  BackgroundColor #d6e6f5
+  BorderColor #1f4768
   FontColor #111
+  RoundCorner 8
 }
 skinparam database {
-  BorderColor #111
-  BackgroundColor white
+  BackgroundColor #f5ead5
+  BorderColor #5a4319
   FontColor #111
 }
-skinparam usecase {
-  BorderColor #111
-  BackgroundColor white
+skinparam component {
+  BackgroundColor #e0d4ec
+  BorderColor #5a3a72
   FontColor #111
 }
-skinparam card {
-  BorderColor #111
-  BackgroundColor white
+skinparam package {
   FontColor #111
-}
-skinparam actor {
-  BorderColor #111
-  BackgroundColor white
-  FontColor #111
+  FontSize 13
+  FontStyle bold
+  BorderColor #444
+  BorderThickness 2
 }
 
-actor "Human\nuser" as HumanUser
-actor "Agent" as Agent #LightSkyBlue
+package "SPEC SIDE" as SpecPkg #fde8ec {
+  rectangle "/livespec:doctor" as Doctor
+  rectangle "/livespec:propose-changes" as Propose
+  database "SPECIFICATION/" as Spec #f5d76e
+  database "proposed_changes/" as PCQueue
+}
 
-rectangle "Mid-workflow\nobservation /\nidea / TODO" as Observation #FFFFFF;line.dashed
+package "IMPLEMENTATION SIDE" as ImplPkg #e3f0e3 {
+  rectangle "/livespec-impl-*:\ncapture-memo" as CaptureMemo
+  rectangle "/livespec-impl-*:\nprocess-memos" as ProcessMemos
+  component "Spec Reader" as SpecReader
 
-card "/livespec-impl-*:\ncapture-memo" as CaptureMemo #LightYellow
-database "memo store\n(impl-plugin-specific:\nbd Dolt / JSONL / ...)" as MemoStore
+  database "Memos\n(plugin-specific:\nbd Dolt / JSONL / ...)" as Memos
+  database "Work Items" as WorkItems
+  database "Persistent\nAgent Knowledge\n(harness instruction files,\nlong-lived memory store, ...)" as AgentKnowledge #f5d76e
+}
 
-card "/livespec:doctor" as Doctor #LightYellow
-card "/livespec-impl-*:\nlist-memos\n[--keyword]\n[--untriaged --json]" as ListMemos #LightYellow
+' Capture path — low-friction free-text deposit
+CaptureMemo --> Memos : writes pending memo
 
-card "/livespec-impl-*:\nprocess-memos\n(per-memo dialogue)" as ProcessMemos #LightYellow
-usecase "Per-memo\ndisposition?" as Disposition
+' Cross-boundary: Doctor queries untriaged memos for hygiene invariant
+Memos -[#a02020,thickness=2]-> Doctor : untriaged inventory\n(machine query)
 
-card "/livespec:propose-changes\n(cross-namespace handoff)" as ProposeChanges #LightYellow
-database "proposed_changes/\n(livespec-core)" as Proposed
-database "work-item queue\n(joins implement\nqueue)" as WorkQueue
-rectangle ".ai/<topic>.md\n+ AGENTS.md /\nCLAUDE.md reference" as AiTree #Lavender
-rectangle "(deleted)" as Discarded #FFFFFF;line.dashed
+' Spec Reader feeds Process Memos for spec-vs-impl disposition decisions
+Spec -[#a02020,thickness=2]-> SpecReader
+SpecReader --> ProcessMemos
 
-HumanUser --> Observation
-Observation --> CaptureMemo
-Agent --> CaptureMemo : drives capture
-CaptureMemo --> MemoStore
+' Process Memos drains pending memos and routes per disposition
+Memos --> ProcessMemos
+ProcessMemos --> WorkItems : impl-bound\n(freeform work item)
+ProcessMemos --> AgentKnowledge : persistent-knowledge\n(graduate the memo)
+ProcessMemos --> Memos : discard\n(state marker)
 
-MemoStore -[#888,dashed]-> Doctor : --untriaged --json\nquery
-Doctor --> HumanUser : warns about\nuntriaged memos\nbeyond N days
-HumanUser --> ListMemos : (user-facing\nsearch)
-ListMemos --> MemoStore : reads
-MemoStore --> ListMemos
+' Cross-boundary: spec-bound memo routes to Propose Change
+ProcessMemos -[#a02020,thickness=2]-> Propose : spec-bound
+Propose --> PCQueue
 
-HumanUser --> ProcessMemos : invokes after\ndoctor warning
-Agent --> ProcessMemos : per-memo handholding
-ProcessMemos --> MemoStore : reads each untriaged
-ProcessMemos --> Disposition
+note right of Memos : Queue + archive — dispositioned memos\nremain with a state marker for audit\n(spec-bound, impl-bound,\npersistent-knowledge, discard). Transient\nby construction: every memo MUST\neventually flow to spec, impl, persistent\nknowledge, or discard. Rejects the\npermanent-memory-store pattern from\ntools like bd remember.
 
-Disposition --> ProposeChanges : SPEC-BOUND\n(handoff to core)
-ProposeChanges --> Proposed
-Disposition --> WorkQueue : IMPL-BOUND\n(file work item;\npicked up by implement)
-Disposition --> AiTree : PERSISTENT-KNOWLEDGE\n(write file + update\nAGENTS.md/CLAUDE.md ref)
-Disposition --> Discarded : DISCARD\n(delete from store)
+note bottom of Doctor : Hygiene invariant: "no untriaged memo MUST\nremain unresolved beyond N days." Doctor\nqueries the active impl plugin via the\nmachine-readable contract; it does NOT\nknow how memos get resolved — only that\nthey should be.
 
-ProcessMemos --> MemoStore : marks each\nmemo processed
+note right of ProcessMemos : Per-memo handholding skill — walks each\npending memo via user dialogue with four\ndispositions. The handholding principle\nis load-bearing: users do not manually\ninvoke propose-changes for spec-bound memos;\nprocess-memos drives them through the\nappropriate downstream skill.
 
-note right of MemoStore : Storage backend is impl-plugin-specific.\nbd Dolt for livespec-impl-beads.\nJSONL for livespec-impl-plaintext.\nGitLab note for livespec-impl-gitlab.\nUser-facing semantics are uniform across all.
-
-note bottom of Doctor : Doctor's invariant:\n"no memo MUST remain\nuntriaged beyond N days."\nQueries the active impl plugin\nvia --untriaged --json. Doctor\nknows about memos ONLY to\ndetect-and-warn; resolution\nlives impl-side.
-
-note right of AiTree : Persistent-knowledge file:\nnamed per topic, progressively\nloaded via AGENTS.md /\nCLAUDE.md reference. NOT a junk\ndrawer — each file has a focused\nsubject and explicit reach.
-
-note bottom of Disposition : Four dispositions encode\nthe livespec philosophy:\neverything resolves to spec,\nimplementation, persistent\nknowledge, or oblivion.
+note bottom of AgentKnowledge : Long-term agent knowledge that doesn't fit\nas a spec requirement or as inline code.\nForm is implementation-dependent: file-based\nrealizations use harness instruction files\n(AGENTS.md / CLAUDE.md / .ai/<topic>.md);\nother plugins may use a long-lived memory\nstore the agent queries at relevant points.
 
 @enduml

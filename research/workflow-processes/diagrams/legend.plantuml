@@ -1,54 +1,45 @@
 @startuml legend
-title Legend — Symbol Vocabulary
+title Legend — Symbol Vocabulary (LiveSpec workflow diagrams)
 skinparam defaultFontName Helvetica
 skinparam shadowing false
-skinparam BackgroundColor white
-skinparam ArrowColor #111
-skinparam ArrowFontColor #111
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
 
-skinparam actor {
-  BorderColor #111
-  BackgroundColor white
-  FontColor #111
-}
 skinparam rectangle {
-  BorderColor #111
-  BackgroundColor white
+  BackgroundColor #d6e6f5
+  BorderColor #1f4768
   FontColor #111
+  RoundCorner 8
 }
 skinparam database {
-  BorderColor #111
-  BackgroundColor white
+  BackgroundColor #f5ead5
+  BorderColor #5a4319
   FontColor #111
 }
-skinparam usecase {
-  BorderColor #111
-  BackgroundColor white
-  FontColor #111
-}
-skinparam card {
-  BorderColor #111
-  BackgroundColor white
+skinparam component {
+  BackgroundColor #e0d4ec
+  BorderColor #5a3a72
   FontColor #111
 }
 
-actor "Human user" as HumanUser
-actor "Agent\n(Claude, etc.)" as Agent #LightSkyBlue
+rectangle "skill /\nslash command" as Skill
+rectangle "external input\n(initial intent /\nprompt / instruction)" as Input #fffacc
+database "store\n(canonical, monolithic\nintent accumulation)" as Store #f5d76e
+database "queue/archive\n(discrete items\nwith lifecycle)" as QueueArchive
+component "impl-side API /\nadapter\n(Spec Reader)" as Adapter
 
-card "Skill /\nslash command" as Skill #LightYellow
-rectangle "External input\n(observation,\nuser intent,\nfailing test)" as Input #FFFFFF;line.dashed
-database "Persistent\nstore" as Store
-usecase "Decision\npoint" as Decision
-rectangle "Action /\nside effect" as Action #LightGreen;line.dashed
-rectangle "Convention /\nartifact\n(file in repo)" as Convention #Lavender
+rectangle "within-side\ndata flow" as ArrowWithin
+rectangle "cross-boundary\ncontract\n(spec ↔ impl)" as ArrowCross
 
-note bottom of HumanUser : Stick figure, white background — the project maintainer or contributor invoking workflows directly.
-note bottom of Agent : Stick figure, light blue background — an AI agent (Claude Code, Codex CLI, etc.) acting on user's behalf. Distinguished from human by background color.
-note bottom of Skill : Yellow card — a slash command exposed by livespec-core or an implementation plugin (e.g., /livespec:revise, /livespec-impl-*:capture-spec-gaps).
-note bottom of Input : Dashed rectangle, white background — something outside the workflow surface that flows in (an observation, a memo's source thought, a CI failure).
-note bottom of Store : Cylinder — a persistent data store (SPECIFICATION/, .beads/, repo files, work-item queue).
-note bottom of Decision : Oval — a branch point that routes based on a condition or user choice.
-note bottom of Action : Green dashed rectangle — an action taken inside a workflow (writing a file, running a check, computing a diff).
-note bottom of Convention : Lavender rectangle — a structured artifact written by a workflow to the repo (e.g., .ai/<topic>.md, AGENTS.md reference).
+ArrowWithin -[#000000]-> ArrowWithin : thin black
+ArrowCross -[#a02020,thickness=2]-> ArrowCross : thick red
+
+note bottom of Skill : Light-blue rounded rectangle — a LiveSpec skill exposed as a slash command (e.g. /livespec:revise, /livespec-impl-*:capture-impl-gaps).
+note bottom of Input : Yellow rectangle — the single external entry point. Any action can be taken by a human or an agent; the actor distinction isn't load-bearing, so there is no human-vs-agent split.
+note bottom of Store : Gold cylinder — a canonical, monolithic intent-accumulation store. The three stores in LiveSpec: SPECIFICATION/, the realized Implementation (code + tests + config), Persistent Agent Knowledge.
+note bottom of QueueArchive : Tan cylinder — a collection of discrete items with lifecycle state. The four queue/archives: proposed_changes/ (pure queue), history/vNNN/ (pure archive), Work Items (queue+archive), Memos (queue+archive).
+note bottom of Adapter : Pale-lavender component — an impl-side API/adapter that unifies a capability for impl-side operations. Currently: Spec Reader (presents Specification + Specification History to impl-side skills). Internals are implementation-dependent per plugin.
+note bottom of ArrowCross : Thick red arrow — a deliberate, audited cross-boundary handoff between SPEC SIDE and IMPLEMENTATION SIDE. These edges are the only sanctioned spec↔impl relationship.
 
 @enduml
