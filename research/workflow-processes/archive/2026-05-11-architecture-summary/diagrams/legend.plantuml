@@ -1,0 +1,54 @@
+@startuml legend
+title Legend — Symbol Vocabulary
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #111
+skinparam ArrowFontColor #111
+
+skinparam actor {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam rectangle {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam database {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam usecase {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+skinparam card {
+  BorderColor #111
+  BackgroundColor white
+  FontColor #111
+}
+
+actor "Human user" as HumanUser
+actor "Agent\n(Claude, etc.)" as Agent #LightSkyBlue
+
+card "Skill /\nslash command" as Skill #LightYellow
+rectangle "External input\n(observation,\nuser intent,\nfailing test)" as Input #FFFFFF;line.dashed
+database "Persistent\nstore" as Store
+usecase "Decision\npoint" as Decision
+rectangle "Action /\nside effect" as Action #LightGreen;line.dashed
+rectangle "Convention /\nartifact\n(file in repo)" as Convention #Lavender
+
+note bottom of HumanUser : Stick figure, white background — the project maintainer or contributor invoking workflows directly.
+note bottom of Agent : Stick figure, light blue background — an AI agent (Claude Code, Codex CLI, etc.) acting on user's behalf. Distinguished from human by background color.
+note bottom of Skill : Yellow card — a slash command exposed by livespec-core or an implementation plugin (e.g., /livespec:revise, /livespec-impl-*:capture-spec-gaps).
+note bottom of Input : Dashed rectangle, white background — something outside the workflow surface that flows in (an observation, a memo's source thought, a CI failure).
+note bottom of Store : Cylinder — a persistent data store (SPECIFICATION/, .beads/, repo files, work-item queue).
+note bottom of Decision : Oval — a branch point that routes based on a condition or user choice.
+note bottom of Action : Green dashed rectangle — an action taken inside a workflow (writing a file, running a check, computing a diff).
+note bottom of Convention : Lavender rectangle — a structured artifact written by a workflow to the repo (e.g., .ai/<topic>.md, AGENTS.md reference).
+
+@enduml
