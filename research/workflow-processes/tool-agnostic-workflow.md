@@ -1,9 +1,12 @@
-# Draft — tool-agnostic workflow diagram
+# Tool-agnostic workflow
 
-**Status:** DRAFT for review (v8). Not yet integrated into the
-canonical
-[`2026-05-11-architecture-summary.html`](./2026-05-11-architecture-summary.md);
-expected to iterate based on review feedback before promotion.
+**Status:** canonical conceptual model of the spec ↔ implementation
+workflow. Intended for eventual promotion into the project's own
+`SPECIFICATION/` as introductory material. Source of truth for the
+LiveSpec-specific
+[`architecture-summary.html`](./architecture-summary.html) — when
+this doc and the workflow doc disagree, this doc wins and the
+workflow doc is regenerated to align.
 
 **Purpose:** represent the fundamental spec ↔ implementation
 workflow with **tool-agnostic, generic domain terminology**
@@ -27,9 +30,9 @@ specific implementation plugin).
 
 ## Diagram
 
-![Draft tool-agnostic workflow](./diagrams/draft-tool-agnostic-workflow.svg)
+![Tool-agnostic workflow](./diagrams/tool-agnostic-workflow.svg)
 
-[PlantUML source](./diagrams/draft-tool-agnostic-workflow.plantuml)
+[PlantUML source](./diagrams/tool-agnostic-workflow.plantuml)
 
 ## Glossary
 
