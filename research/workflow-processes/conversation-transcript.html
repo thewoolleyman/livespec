@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>LiveSpec brainstorm transcript — 2026-05-11</title>
+<title>LiveSpec brainstorm transcript</title>
 <style>
   body { max-width: 1000px; margin: 2em auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif; line-height: 1.55; color: #1a1a1a; padding: 0 1.2em; }
   h1 { font-size: 1.6em; border-bottom: 2px solid #d96b9d; padding-bottom: 0.3em; }
@@ -33,10 +33,10 @@
 </head>
 <body>
 
-<h1>LiveSpec brainstorm transcript — 2026-05-11</h1>
+<h1>LiveSpec brainstorm transcript</h1>
 
 <p class="meta">
-  Verbatim conversation between the maintainer and Claude Opus 4.7 (1M context). Auto-loaded skill prompts and tool-call mechanics are elided as <span class="system" style="display: inline; padding: 0.1em 0.4em; font-size: 0.85em;">system annotations</span> to keep the conversational flow readable. The summary derived from this conversation is at <code>2026-05-11-architecture-summary.html</code>.
+  Verbatim conversation between the maintainer and Claude Opus 4.7 (1M context). Auto-loaded skill prompts and tool-call mechanics are elided as <span class="system" style="display: inline; padding: 0.1em 0.4em; font-size: 0.85em;">system annotations</span> to keep the conversational flow readable. The summary derived from this conversation is at <code>architecture-summary.html</code>.
 </p>
 
 <div class="toc">
@@ -65,7 +65,21 @@
     <li>Final rename pass: capture-memo / list-memos / process-memos; capture-spec-gaps collapse</li>
     <li>implement stays generic</li>
     <li>Meta question: "why is all of this so hard?"</li>
-    <li>Stopping point + this transcript task</li>
+    <li>Elephant flagged: impl→spec drift direction</li>
+    <li>Tool-agnostic representation goal; v1 PlantUML draft</li>
+    <li>v1–v8 layout iteration (Mermaid detour, package containers)</li>
+    <li>Per-node Summary section with role/nuances</li>
+    <li>"Why this is needed:" bold lead per node</li>
+    <li>Spec / implementation split framing section</li>
+    <li>Glossary added; refined with Imperative window, Load-bearing, Materialization</li>
+    <li>"Gap as legacy" pushback → rename Capture Impl Drift → Capture Impl Gaps; drop imperative window; compress layout history; add livespec-impl-darkfactory-kilroy</li>
+    <li>Store vs queue/archive distinction; Materialization dropped</li>
+    <li>Spec Reader impl-side API; italic side-delimiters promoted to h4</li>
+    <li>Prescriptive/descriptive descriptors dropped</li>
+    <li>Harness instruction files moved to Persistent Agent Knowledge; store flexibility generalized</li>
+    <li>Memos "Why this is needed" reframed around in-flight capture</li>
+    <li>Closure semantics: code check + attribution to Implement + non-fix closures restored</li>
+    <li>Transcript update + filename de-dating</li>
   </ol>
 </div>
 
@@ -1150,17 +1164,360 @@ memos/&lt;id&gt;.md
 
 <div class="user">
 <div class="turn-label">User</div>
-<p>Update the conversation HTML with This latest turns in our discussion. Ensure it lands on master.</p>
+<p>Keeping this concept on the implementation side makes sense. And it can always be part of the exposed API of the implementation side if we want doctor to be able to call it. The current LLM-driven portion of doctor is only looking at the spec in isolation, not the implementation. But there's nothing to say that it can't also be extended to delegate to the implementation.</p>
+<p>So, <code>&lt;surface|discover|some other verb&gt;-spec-drift</code> is along the right lines. I like the parallelism with capture-spec-gaps. But stepping there still seems a lack of clarity.</p>
+<p>"drift" vs "gap" are arbitrary names for the same concept, just in different directions. We are using "gap" to mean something valid that is in the Spec but not reflected in the implementation. And we are using "drift" to mean something valid that is in the implementation but not reflected in the spec.</p>
+<p>So, can we come up with a single concept that reflects this? Maybe the single word is drift or gap. And maybe we have a separate domain concepts for the skills that just reflect which direction it is handling. Or maybe it's the same action that handles it in both directions? Think hard and brainstorm.</p>
 </div>
 
 <div class="assistant">
 <div class="turn-label">Assistant</div>
-<p>[Appends the most recent four turns to this transcript HTML, commits on a fresh branch off master, pushes, opens a PR with auto-merge enabled so it lands on master via the established workflow.]</p>
+<p>The underlying concept IS unified — both are <strong>divergence</strong> between spec and impl. The asymmetry is in (1) which side is authoritative, (2) which side needs to change, (3) how tractable the detection is.</p>
+<p>Picking a unified term: leaned <strong>drift</strong> over <strong>gap</strong>. "Gap" implies one-sided absence (works for impl-missing but feels weaker for impl-extra-unspecified). "Drift" implies bilateral divergence with a temporal quality.</p>
+<p>One skill vs two: pushed back on "one bidirectional skill" — detection mechanisms are categorically different (mechanical spec-rule walk vs. heuristic LLM analysis); merging would obscure these differences.</p>
+<p>Recommendation: <strong>two skills, unified terminology</strong>: <code>capture-impl-drift</code> + <code>capture-spec-drift</code>. Same verb, same noun, different direction. <code>capture-spec-gaps</code> should rename to <code>capture-impl-drift</code> for honesty about which side has the deficit.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>The direction and larger goal vision that is emerging is that we want to have a TOOL-AGNOSTIC representation of the fundamental principles we have been discussing. The core workflows, on both the spec and implementation side, with standard domain terms we have decided.</p>
+<p>But to properly drive our vision, this should NOT BE CONNECTED DIRECTLY TO LIVESPEC OR OUR SPECIFIC SKILLS/TOOLING/ETC.</p>
+<p>So, I want you to make a new plantuml/svg chart that represents this. The actual workflow that happens with generic domain-specific terminology. Left-to-right flow, clear SPEC vs. IMPLEMENTATION wall, side-by-side. Wherever lines cross the boundary, that's a hard contract.</p>
+<p>Make a draft pass — just the plantuml and an SVG for me to review. Don't push it yet, I'll rsync it down locally and iterate.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Drafted v1 at <code>research/workflow-processes/diagrams/draft-tool-agnostic-workflow.plantuml</code>. SPEC SIDE (left, pink package) and IMPLEMENTATION SIDE (right, green package). Shape vocabulary: rectangles for skills, cylinders for stores, actor figures for User/Agent, yellow rectangle for external input. Cross-boundary edges red. Five cross-boundary contracts identified. Files untracked for local review.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>We have iterated separately and added them to the markdown file at <code>research/workflow-processes/draft-tool-agnostic-workflow.md</code>. See the latest changes (v8).</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Read v8. Load-bearing changes from my v1:</p>
+<ul>
+  <li>Actor figures dropped; single yellow input rectangle ("human or agent" not load-bearing).</li>
+  <li><code>Spec → Capture Spec Drift</code> added as a second prescription edge.</li>
+  <li>Arrow direction = data flow as universal convention (dropped <code>..&gt;</code> vs <code>--&gt;</code> distinction).</li>
+  <li>Red #a02020 + thickness=2 for cross-boundary contracts (more emphatic than <code>===&gt;</code>).</li>
+  <li>List Memos / Prune History dropped from canonical diagram (tangential).</li>
+</ul>
+<p>v4–v7 layout history captured in the doc as provenance.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>ok, chart has been updated.</p>
+<p>There is one missing piece to the workflow: a path to directly create work items. Currently the only inputs to work items are Capture Impl Drift (gap-tied) and Process Memos (impl-bound disposition). Two scenarios this misses: (1) a well-formed implementation bug — user wants to file a work item directly, not through memo ceremony. (2) a feature that spans spec + non-spec impl directives — forcing this through Capture Spec Drift is awkward and over-process-heavy.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Both gaps real. <strong>Example 1:</strong> the old observation-flow diagram had this path ("Path B — manual create, freeform issue"); lost in the tool-agnostic refactor. Propose <code>Capture Work Item</code> as a third deposit channel alongside Propose Change and Capture Memo. Items it creates are freeform (no gap-id, close with simple reason).</p>
+<p><strong>Example 2:</strong> Forcing through Capture Spec Drift is a category error — that skill is reactive (detect existing drift); features are proactive. Cleanest flow: two parallel deposits — Propose Change for spec part, Capture Work Item for impl-specific tasks. After Revise lands spec changes, Capture Impl Gaps may detect additional gap-tied items.</p>
+<p>Closure semantics survive unchanged — Capture Work Item creates freeform items that Implement's existing freeform-closure branch handles.</p>
+<p>Diagram delta: one new rectangle, one new edge.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Explain "Closure semantics survive unchanged" in detail.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Walked through closure mechanism: gap-tied items carry a gap-id marker (e.g., <code>gap-id:gap-NNNN</code> label) enabling verification via re-running detection; freeform items don't. Gap-tied closures require re-running detector + recording audit fields (resolution method, verification timestamp, commits, files changed, destructive actions). Freeform closures use simple <code>--reason</code>. Codified in SPECIFICATION/NFR §"Gap-tied issue closure verification". Capture Work Item is a strict addition — new producer attached to existing Work Items queue, downstream consumer (Implement) already handles freeform items via the existing branch.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>add a summary Section just below the diagram. It should contain a one-paragraph summary for each. Sub-sections for the node types, and under that a section for each node. Each node has a summary describing role and nuances discussed in this conversation. Commit and push. The goal is that this whole doc is going to be the initial section in the main LiveSpec specification.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Added Summary section just below the diagram. Three sub-sections by node type (External input, Skills/operations, Artifacts/stores/queues). 19 total nodes (1 + 11 + 7), one paragraph per node. Italic separator lines between spec-side and impl-side groupings within each type. Pushed; 332 lines added.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Add a brief separate sentence to each section starting with "Why this is needed:". Separate paragraph at the beginning, with "Why this is needed:" in bold.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Added a bold <strong>Why this is needed:</strong> lead paragraph to all 19 node sections. Pushed; 38 lines added.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>add a section to summary before external input that describes reasoning for spec vs impl split based on our convo. Mention contracts and that impl side is a pluggable contract that can take any form which fulfills the contract.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Added "Spec / implementation split" subsection at top of Summary. Three paragraphs: foundational invariant (every piece of state lives on one side or the other), hard wall (no implicit coupling, cross-boundary contracts only), pluggable contract (LiveSpec Core publishes; implementations of any form slot in by satisfying — plaintext / beads / gitlab / gascity examples enumerated).</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>add a glossary section before summary that covers all terms that are important and may be unknown: gap, drift, spec, implementation, intent, memo, work item, change, etc.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Added Glossary between Diagram and Summary. 22 alphabetical entries + 3 cross-references. Definitions are workflow-relevant; some terms differ from generic usage.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>add ... materialization, load-bearing, imperative window, etc.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Added three more entries (Imperative window, Load-bearing, Materialization) at alphabetical positions. 25 total now.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>I don't like that we are framing "gap" as a legacy term. It is a useful term that should remain to represent anything the implementation doesn't have. I think we need to revisit the decision of whether drift should really be a bi-directional term or whether we should rebrand implementation drift as implementation gaps. Think hard and give me your thoughts.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're right. The two directions aren't actually the same KIND of misalignment:</p>
+<ul>
+<li><strong>Direction 1 (spec→impl) is a deficit</strong> — impl missing required functionality. "Gap" captures this.</li>
+<li><strong>Direction 2 (impl→spec) is evolutionary mismatch</strong> — impl moved on, spec didn't keep up. "Drift" captures this.</li>
+</ul>
+<p>Calling both "drift" obscures that they're different KINDS of problem. Industry usage backs the asymmetric naming: gap = standard for missing functionality, drift = standard for "diverged over time from a baseline."</p>
+<p>Steelmanned the unified framing — still loses. Detection differences aren't "just implementation"; mechanical verifiability is a categorical property of one direction absent from the other.</p>
+<p><strong>Recommendation:</strong> rebrand. <code>capture-impl-drift</code> → <code>capture-impl-gaps</code>. Keep <code>capture-spec-drift</code>. Promote Gap glossary entry from "legacy" to primary; narrow Drift to spec-side only.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>do it. Call it "capture impl gaps" and don't stress over the doc history. Delete any of the history that isn't important points about doing the plant UML formatting.</p>
+<p>Also lose the whole imperative window terminology. This is really just the seed window — there's no need for a different term.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Three coordinated changes: (1) Capture Impl Drift → Capture Impl Gaps (plantuml + SVG re-render + markdown rename + Gap promoted, Drift narrowed in glossary). (2) Imperative window glossary entry deleted; Seed / Propose Change / Specification entries reworded to reference the Seed commit directly. (3) Layout history compressed from v1-v8 narrative to brief "PlantUML layout constraints" section keeping only formatting-relevant gotchas.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User · [interrupted prior message]</div>
+<p>add livespec-impl-darkfactory-kilroy as an impl plugin example</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Added <code>livespec-impl-darkfactory-kilroy</code> (Darkfactory's Kilroy tracker) in all three plugin-catalogue locations. Bundled with the rename + history compression in one commit.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Regarding the intent glossary definition. Accumulative intent actually collects in three canonical places: the implementation, the specification, and the persistent agent knowledge. All of the other stores are shapes that just represent cues and/or archives of completed cue items. We should explicitly distinguish these. Different shape and color for the canonical stores. I'm leaning towards <strong>store</strong> versus <strong>queue/archive</strong>.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Sharp distinction. Confirmed: three canonical stores (Specification, Implementation, Persistent Agent Knowledge) vs four queues/archives. Proposed two-category visual treatment (store gold; queue/archive tan) and glossary additions. Walked through three sub-types within queue/archive (pure queue, queue+archive, pure archive).</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>You are missing the fact that the queues are also archives in the sense that they contain completed queue items. That's why I said q/archive.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're right — queue+archive is the dual role; processed items get a state marker but remain in the store. Refined the per-box descriptions to reflect each one's specific lifecycle.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>you are wrong About proposed changes. It is not an archive. Whether they are applied or rejected, they end up in the history, correct?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Correct — Proposed Changes is pure queue. Processed proposed-changes physically move to <code>history/vNNN/proposed_changes/</code>; the queue holds only currently-pending items. Sharpened the lifecycle map: Proposed Changes = pure queue; Specification History = pure archive (also receives processed proposed-changes, making it the complete audit trail); Work Items = queue+archive; Memos = queue+archive.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Why do we need an edge? The revise step is the edge.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're right. Revise IS the edge — reads from Proposed Changes, writes to Spec + History. Adding a direct edge between Proposed Changes and Specification History would imply a non-Revise pathway that doesn't exist and double-count Revise's data movement. Operations ARE the data-flow paths in this diagram, not just node-to-node connectors.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Is the materialization vs authoring vs realization terminology and distinction really carrying its weight?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Honestly, no. Each of those terms appears as a verb in exactly one node description and never as a load-bearing noun anywhere else. The three-way distinction was reverse-justification to make the Materialization glossary entry feel substantive. <strong>Drop the Materialization glossary entry entirely.</strong> The verb "materializes" reads cleanly as plain English without needing a glossary anchor.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Do it.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Made all the store-vs-queue/archive changes: plantuml gold for canonical stores; layout conventions updated; Store + Queue/archive glossary entries added; Materialization glossary entry deleted; per-artifact entries tagged with category; Summary subheading renamed; Proposed Changes / Memos / Work Items / Spec History descriptions refined for their specific lifecycle patterns; Process Memos description gained "structurally distinctive" note about multi-destination disposition cascade.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Currently the only path for input into the implementation side is specification flowing to capture specification gaps. Two issues: First, the specification and spec history should always be readable together because history is relevant to know what gaps can and should be captured. The spec itself does not indicate what might be a gap. Probably needs timestamp storage on the impl side. Second, there are likely other things on the implementation side that also need to read the specification and its history (Capture Work Item, possibly Capture Memo, Implement).</p>
+<p>What this brings up is perhaps there is an <strong>API</strong>, a unified interface to the spec and spec history, accessible from anywhere on the implementation side as a reference. Proposed Changes would NOT be part of this because they haven't been formalized as part of the spec. Thoughts?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Both observations are real. Proposed Changes correctly excluded. Proposed a <strong>Spec Reader API</strong> as part of the cross-boundary contract published by LiveSpec Core. Required capabilities: read spec, read history, version-aware diff queries. Internal "last-checked spec version" marker on impl side (per impl plugin).</p>
+<p>Diagram options: (A) keep current edges + document in prose; (B) add explicit Spec Reader hub on boundary with edges in from Spec/History and edges out to consumers. Initially leaned A with one small diagram tweak.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>I think option B is the better one. Think of it this way: the SpecReader API is going to be implementation-dependent. It depends on how it will be consumed. Some things may want plain text, others may create indexes, retrieval, augmented graphs, etc. The only interface that the spec side is exposing is the canonical locations of the specifications and the spec history files. The implementation can do with that whatever it wants. The API node lives on the implementation side.</p>
+<p>This node should also be a different type because it is not a data store and it's not a directly exposed skill. Capabilities should include: reading the spec directly, reading the history directly, reading or summarizing differences between given versions.</p>
+<p>Also process memos should definitely have an edge coming from this API because it has to know the spec to determine what flows back into proposed change.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Reframing sharper and correct on all three points. Spec Reader is impl-side infrastructure; spec side's contract is just exposing canonical file locations. Process Memos unambiguously a spec consumer for the disposition decision.</p>
+<p>Proposal: new <code>component</code> shape (pale lavender #e0d4ec, fifth shape vocabulary). Replaced direct Spec→Capture* edges with <code>Spec → SpecReader</code> + <code>History → SpecReader</code> (cross-boundary, red). Four impl-side edges from SpecReader to consumers (Capture Impl Gaps, Capture Spec Drift, Implement, Process Memos). Capabilities: read spec, read history, current version, read/summarize diffs.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Okay make current version part of it. Then make the changes. Also there's one additional change in this pass: The italic delimiter like "spec side" should be a first-class subheader so that it implies clear categorization and containment.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Made all Spec Reader changes (plantuml component + SVG re-render, glossary entry with 4 capabilities including current-version query, new Impl-side API h3 subsection, cross-boundary contracts table updates, descriptions of all four consumers refined).</p>
+<p>Promoted italic side-delimiters <code>*Spec side.*</code> / <code>*Implementation side.*</code> to <code>#### Spec side</code> / <code>#### Implementation side</code> first-class h4 headings; demoted all 18 existing node entries from h4 to h5. External input's h4 stays h4 (no spec/impl split under it).</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>I don't like the prescriptive vs. descriptive split. I don't think descriptive is a really accurate term for what the implementation side is doing. Do you have any better categorization?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>"Descriptive" undersells what the impl does — it's actively constructed and running. Proposed alternatives: <strong>Prescription / Realization</strong> (nouns, leading recommendation); <strong>Prescriptive / Realized</strong> (adjectives); <strong>Normative / Operational</strong> (more technical). Skipped Intent/Realization (overlaps with Intent glossary term) and Specification/Realization (overlaps with store name).</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Why do we need new terms at all? Why can't we just use spec and implementation?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>You're right. The descriptors don't pull their weight. "Spec" and "implementation" are terms of art that carry the contrast already. Adding a Latin-rooted tagline is over-explaining what's already in the primary word and forces readers to learn a mapping for no gain. Real simplification — drop the descriptors entirely.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>do it</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Plantuml package labels: <code>"SPEC SIDE  ▏ prescriptive"</code> → <code>"SPEC SIDE"</code>; same for IMPLEMENTATION SIDE. Glossary "Prescription / prescriptive" entry deleted. Specification / Implementation entries rewritten in plain English. Spec/impl split Why line dropped the parenthetical (prescription)/(description) labels. SVG re-rendered. Zero remaining occurrences verified.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>This is incorrect. Harness instruction files are part of the persistent agent knowledge.</p>
+<p>Also the persistent agent knowledge section is too specific. The agent knowledge can take any form — harness files like claude or agents.md, or a long-lived memory store, or something else. Make this flexibility clear.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Two corrections: (1) Implementation entries (glossary + Summary) no longer claim agent-instruction files. They point to Persistent Agent Knowledge as the separate store. Implementation's secondary mutation path via direct edits by Process Memos removed. (2) Persistent Agent Knowledge entries now describe the store as form-flexible — common realizations enumerated (harness instruction files, long-lived memory store, "any other mechanism the plugin opts into") rather than the previously-prescribed <code>.ai/&lt;topic&gt;.md</code> pattern. Process Memos persistent-knowledge disposition description similarly generalized.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>The description of Memos does not properly capture its reason for existing. The primary purpose is to capture quick or unformed things in the middle of another process when you would not want to stop and go through the formal process of creating a full work item. Clarify and update.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>The previous Why line dwelled on discipline (durable storage, junk-drawer avoidance) — that's HOW memos are managed, not WHY the store exists. Rewrote the Memos Why line to:</p>
+<blockquote>
+<p>during another piece of work, an agent or human often notices something worth capturing — an observation, an idea, a half-formed thought, a possible problem — that does not warrant interrupting the current flow to go through the ceremony of authoring a structured proposed change, filing a work item, or directly editing agent knowledge. Memos are the low-friction in-flight capture channel that lets such signal land in the moment, deferring the formal-or-discard decision to a later focused triage pass.</p>
+</blockquote>
+<p>Transient-by-construction / junk-drawer framing stays in the body where it belongs as "here's how the store is managed."</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>What currently implements closure semantics?</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Doc is under-explicit. The Closure glossary entry describes semantics but doesn't attribute. <strong>Implement</strong> is the skill that actually performs closure (per its Summary entry: "and closes the item"). Two real gaps: (1) Closure glossary doesn't attribute to Implement; (2) non-fix closures (wontfix, spec-revised, duplicate, no-longer-applicable, resolved-out-of-band) are missing entirely — they existed in the previous spec but vanished in the tool-agnostic refactor.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>Yes I want to make those updates but first I want you to tell me if anything actually implements it in the current livespec implementation and code.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Yes, closure IS implemented but only the <strong>fix</strong> path is mechanically codified.</p>
+<p><strong>Fix closure — fully implemented:</strong> <code>dev-tooling/implementation/implement.py</code> has <code>--close</code> mode (lines 199-236). Re-runs refresh-gaps; hard-refuses if gap-id still in current.json; formats four audit fields (gap_id, evidence, run_id, generated_at); calls <code>bd update --notes &lt;audit&gt; --add-label resolution:fix</code> then <code>bd close --reason</code>. Invoked from <code>.claude/skills/livespec-implementation-beads:implement/SKILL.md</code> step 6.</p>
+<p><strong>Non-fix closure — not mechanically implemented:</strong> Spec names five non-fix resolutions but no code attaches them. Handled as documented patterns (bare <code>bd close --reason</code> in implement skill's "Non-fix closures" section; plan skill triage-table row).</p>
+<p><strong>Bigger picture:</strong> Code still uses old skill names (livespec-implementation-beads:*) and the old current.json architecture. The tool-agnostic vocabulary we've been developing is doc-only. Both doc and code under-specify non-fix closures the same way.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>yes</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Closure doc updates: (1) Closure glossary entry leads with "Performed by <strong>Implement</strong>" and structures three closure paths (gap-tied fix / freeform fix / non-fix administrative). (2) Implement Summary entry branches closure on (a) gap-tied vs freeform AND (b) fix vs non-fix; non-fix path documented as administrative. (3) Work Items Summary updated parallel; clarifies 1:1 gap-tracking invariant applies regardless of how closure happened. Realigns doc with spec's existing five-resolution non-fix vocabulary that was lost in the refactor.</p>
+</div>
+
+<div class="user">
+<div class="turn-label">User</div>
+<p>I want you to update the conversation transcript markdown and HTML with all of the latest content of our conversation. Also remove the dates from the file names.</p>
+</div>
+
+<div class="assistant">
+<div class="turn-label">Assistant</div>
+<p>Renamed files (drop date prefix): <code>2026-05-11-conversation-transcript.{html,md}</code> → <code>conversation-transcript.{html,md}</code>; same for architecture-summary. Updated HTML titles, h1 headers, and internal cross-references. Updated wrapper .md files to point at new filenames (htmlpreview URLs use <code>blob/master/</code> ref). Expanded the TOC with the full conversation arc since the elephant discussion. Replaced the prior placeholder turn at the end with this captured continuation.</p>
 </div>
 
 <hr>
 
-<p class="meta">End of transcript. See <code>2026-05-11-architecture-summary.html</code> for the structured summary with embedded diagrams.</p>
+<p class="meta">End of transcript. See <code>architecture-summary.html</code> for the structured summary with embedded diagrams.</p>
 
 </body>
 </html>
