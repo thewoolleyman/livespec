@@ -98,6 +98,13 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
+    "heading": "## Thin-transport skill doctrine",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR that adds the thin-transport SKILL.md brevity / no-accretion lint rule and the cross-plugin-invocation-via-skill-namespace contract assertion."
+  },
+  {
     "heading": "## Sub-spec structural mechanism",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
@@ -137,6 +144,27 @@
     "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that wires the per-plugin compat block schema fragment into .livespec.jsonc validation and adds the contract-version-compatibility doctor invariant."
+  },
+  {
+    "heading": "## Implementation-plugin contract — the 9-skill surface",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR that scaffolds the nine canonical impl-plugin skills (six heavyweight authored + three thin-transport query) under the livespec-impl-plaintext namespace and wires the five cross-boundary handoffs into doctor's invariant catalog."
+  },
+  {
+    "heading": "## `/livespec-core:next` spec-side thin-transport skill",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR that authors bin/next.py + .claude-plugin/skills/next/SKILL.md (thin-transport pass-through), defines the spec-side ranking algorithm over proposed_changes/ depth + history/ recency + unresolved doctor findings, and emits structured JSON with {action, reason, urgency} per the contract."
+  },
+  {
+    "heading": "## Spec Reader required-capability surface",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR(s) that implement the Spec Reader adapter inside each livespec-impl-* plugin and assert the four required capabilities (read current spec, read history, report current version, read or summarize cross-version differences) against a uniform conformance harness."
   },
   {
     "heading": "## Shared content sync — copier template",
