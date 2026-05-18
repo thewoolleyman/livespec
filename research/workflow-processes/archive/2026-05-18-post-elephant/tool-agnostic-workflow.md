@@ -8,13 +8,6 @@ LiveSpec-specific
 this doc and the workflow doc disagree, this doc wins and the
 workflow doc is regenerated to align.
 
-**Last updated:** 2026-05-18 — post-orchestration revisions
-(thin-transport skill doctrine; impl-side surface 6 → 9; spec-side
-surface 7 → 8; doctor invariant catalog expanded with work-item
-invariants; backend-variability asymmetry articulated explicitly).
-The pre-revision snapshot is preserved at
-[`archive/2026-05-18-post-elephant/`](./archive/2026-05-18-post-elephant/).
-
 **Purpose:** represent the fundamental spec ↔ implementation
 workflow with **tool-agnostic, generic domain terminology**
 (NOT bound to `livespec`, `/livespec:*` skill names, or any
@@ -47,18 +40,6 @@ Common terms used throughout this document and the LiveSpec
 specification. Definitions are workflow-relevant; some terms
 have meanings here that differ from generic usage. Listed
 alphabetically.
-
-**Backend variability asymmetry** — The structural property that
-the spec side has a *fixed* backend (the canonical Specification
-tree shape — `spec.md`, `contracts.md`, `proposed_changes/`,
-`history/vNNN/`, etc.) while the impl side has *pluggable*
-backends (plaintext JSONL, beads/Dolt, GitLab issues, etc.). This
-asymmetry justifies why the impl side needs skill-wrapped query
-surfaces (`list-memos`, `list-work-items`, `next`) for cross-side
-consumers to read uniformly across backend variants, while the
-spec side does NOT need symmetric query skills — its consumers
-read the fixed file tree directly. Doctor's static phase already
-exemplifies the spec-side direct-read pattern.
 
 **Change** (or **proposed change**) — A structured proposal to
 modify the Specification. Lives in the **Proposed Changes** box
@@ -111,37 +92,11 @@ triage operation. Most notably in Process Memos, where each
 memo is dispositioned as spec-bound, impl-bound,
 persistent-knowledge, or discard.
 
-**Durable-pending** — An item-state category for queue/archive
-contents that legitimately MAY remain pending for extended periods
-without violating any invariant. Open work items and pending
-proposed changes are durable-pending: their pending state is
-normal (work takes time; deliberation takes time). Contrasts with
-**transient** items (memos), which MUST drain by construction and
-are subject to doctor's hygiene threshold. This distinction
-governs which queue/archives doctor enforces hygiene invariants
-against (transient only) vs. which it leaves to productivity
-tooling like `next` (durable-pending).
-
 **Doctor** — Spec-side hygiene and invariant check. Two layers:
 a static phase (mechanical structural checks) and an LLM-driven
 phase (spec-quality findings). Also enforces cross-cutting
-invariants by querying impl-side stores through the published
-contract (now via thin-transport skills rather than a separate
-machine-only surface). Catalog of contract-level invariants:
-spec-side structural checks (file shape, schema, anchor refs,
-contiguous-version invariant), spec-quality findings (LLM-driven),
-**memo hygiene** (no untriaged memo MUST remain unresolved beyond
-N days — the canonical drain-pressure invariant on the only
-transient queue/archive), **1:1 gap-tracking** (every detected gap
-MUST correspond to exactly one tracked work item across all
-statuses), **no-orphan-blocker** (a work item's declared
-`blocked_by` MUST resolve to an existing item), **no-stale-gap-tied**
-(a gap-tied open work item whose underlying gap no longer detects
-MUST be closed via a non-fix disposition), **no-duplicate-gap-id**
-(no two open work items MAY claim the same `gap-id`).
-Productivity heuristics (staleness of durable-pending work items,
-pile-up of proposed changes) are explicitly NOT doctor's scope —
-they live in `next` instead.
+invariants such as memo hygiene by querying impl-side stores
+through the published contract.
 
 **Drift** — Evolutionary lag in the spec: the implementation has
 done something load-bearing that the spec does not yet describe.
@@ -328,24 +283,6 @@ Visually rendered as gold cylinders. These are the "source of
 truth" boxes a reader consults when asking what the project
 currently wants, has, or knows.
 
-**Thin-transport skill** — A skill whose entire responsibility is
-to invoke an underlying CLI implementation and pass through the
-output verbatim, with no ranking, summarization, or judgment in
-the skill body. Used for contract-surface query operations
-(`list-memos`, `list-work-items`, `next`) where deterministic,
-fast, repeatable output is required (especially by the project-
-local loop driver invoking the skill on every iteration).
-**Discipline**: a thin-transport skill's `SKILL.md` MUST stay
-short and MUST NOT accrete prompt content over time; all ranking
-and filtering logic lives in the backing Python implementation
-under `.claude-plugin/scripts/bin/<cmd>.py`. Distinct from
-**heavyweight** skills (the authored dialogue-driven skills like
-`capture-impl-gaps`, `implement`, `process-memos`) where the skill
-body carries the orchestrating prompt itself. The thin-vs-heavy
-distinction is internal to each skill's design and does not show
-up in the diagram shape — both render as light-blue rounded
-rectangles.
-
 **Verification** — The closure-time step that confirms a
 gap-tied work item's underlying gap is actually resolved.
 Implemented by re-running Capture Impl Gaps in dry-run mode
@@ -358,16 +295,9 @@ archive)* — closed items remain with `status:closed` for audit.
 Awaits processing by Implement. Comes from three sources:
 Capture Impl Gaps (gap-tied), Capture Work Item (freeform direct
 filing), or Process Memos (impl-bound disposition, freeform).
-**Durable-pending by category** — an open work item that has not
-yet been picked up is in a normal state, not a hygiene violation.
-Doctor enforces *structural* invariants on work items (1:1
-gap-tracking, no-orphan-blocker, no-stale-gap-tied,
-no-duplicate-gap-id) but NOT staleness; pile-up and staleness
-heuristics belong to `next` (productivity), not doctor
-(invariants). See **Gap-tied** vs **Freeform** for closure
-semantics, **Closure** for the verification step that gap-tied
-closures require, and **Durable-pending** for the broader
-category distinction.
+See **Gap-tied** vs **Freeform** for closure semantics, and
+**Closure** for the verification step that gap-tied closures
+require.
 
 ## Summary
 
@@ -874,57 +804,33 @@ operations.
 | 2 | spec → impl | `Specification History → Spec Reader` | Versioned snapshots + audit trail flow to Spec Reader, enabling version-aware spec reads and inter-version diff queries. |
 | 3 | impl → spec | `Capture Spec Drift → Propose Change` | Drift findings (impl observed correct, spec lagging) feed back as proposals. |
 | 4 | impl → spec | `Process Memos → Propose Change` (spec-bound) | Spec-bound memo dispositions become proposals. |
-| 5 | impl → spec | `Doctor → List Memos` (untriaged hygiene) | Doctor invokes the impl plugin's `list-memos --filter=untriaged --json` thin-transport skill for the memo-hygiene invariant. Replaces the pre-2026-05-18 "machine-only" query surface. |
-| 6 | impl → spec | `Doctor → List Work Items` (structural invariants) | Doctor invokes the impl plugin's `list-work-items --json` thin-transport skill to evaluate the 1:1 gap-tracking, no-orphan-blocker, no-stale-gap-tied, and no-duplicate-gap-id invariants. |
-| 7 | impl → spec | `Next (spec-side) → Next (impl-side)` | Project-local loop drivers may compose cross-side recommendations by invoking both `livespec:next` and `<impl-plugin>:next` thin-transport skills. The cross-side weighting belongs in the project-local layer, not in core. |
+| 5 | impl → spec | `Memos → Doctor` (untriaged) | Doctor reads untriaged-memo inventory for its hygiene invariant check. |
 
-## Required thin-transport query skills
+## Pending skill placeholders
 
-Three contract-surface thin-transport skills resolve the
-pre-2026-05-18 split between user-facing skills and the "machine-
-readable contract surface that is NOT a skill." Under the
-thin-transport doctrine, every contract-surface API is a skill
-backed by a CLI implementation (see **Thin-transport skill** in
-the glossary).
+### `livespec:next` (spec-side, advisory)
 
-### `livespec:next` (spec side)
+A future spec-side skill — provisionally named `livespec:next` —
+will recommend the most logical next workflow action based on the
+current state of the persistence stores and the dependencies between
+operations. Purely advisory: it does not mutate any store.
 
-Ranks the most ripe **spec-side** action based on Proposed Changes
-queue depth, Specification History recency, and unresolved Doctor
-findings. Returns structured JSON. Pure function of file state on
-the spec side; no LLM in the ranking path. Thin-transport skill:
-its SKILL.md is a pass-through; logic lives in
-`.claude-plugin/scripts/bin/next.py`.
+Reads (via the impl-plugin machine-readable contract for impl-side
+stores; directly for spec-side stores):
 
-Does NOT read impl-side stores. Cross-side recommendations are
-composed by the project-local loop driver invoking both
-`livespec:next` and `<impl-plugin>:next`.
+- **Proposed Changes** queue — pending proposals awaiting revise?
+- **Specification History** — recency of the last revision; pruning pressure?
+- **Work Items** queue — ready leaf items? blocked items? stale items?
+- **Memos** queue — untriaged memos, especially past the doctor-enforced hygiene threshold?
+- **Doctor** findings — unresolved invariant violations?
 
-### `<impl-plugin>:next`
+Surfaces the most ripe next action — conceptually similar to
+`bd ready` but applied to the full spec ↔ implementation lifecycle
+rather than just the Work Items queue.
 
-Required of every impl plugin. Ranks the most ripe **impl-side**
-action using whatever native primitives the backend provides
-(`bd ready` for beads, JSONL traversal for plaintext, GitLab API
-for gitlab, etc.). Returns structured JSON in a uniform output
-schema (`{ action, work_item_ref, urgency, reason }`).
-Thin-transport skill — logic lives in each plugin's backing CLI.
-
-### `<impl-plugin>:list-memos`
-
-Required of every impl plugin (promoted from discretionary in the
-post-elephant snapshot). Supports `--filter` flags (most notably
-`--filter=untriaged`) and `--json` output. Doctor invokes it for
-the memo-hygiene invariant; users invoke it for queue inspection.
-Thin-transport skill.
-
-### `<impl-plugin>:list-work-items`
-
-Required of every impl plugin (new in 2026-05-18). Supports
-`--filter` flags (`--gap-tied`, `--blocked`, `--stale`,
-`--with-gap-id`, etc.) and `--json` output. Doctor invokes it to
-evaluate the four work-item structural invariants; users invoke it
-for queue inspection; the loop driver invokes it for routing
-decisions. Thin-transport skill.
+Not yet represented in the diagram. Full design (single recommendation
+vs. ranked list, cross-boundary read mechanism, weighting heuristics
+across stores) is open for future iteration.
 
 ## Open questions for review
 

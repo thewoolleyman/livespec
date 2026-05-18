@@ -45,7 +45,6 @@ package "SPEC SIDE" as SpecPkg #fde8ec {
 package "IMPLEMENTATION SIDE" as ImplPkg #e3f0e3 {
   rectangle "/livespec-impl-*:\ncapture-memo" as CaptureMemo
   rectangle "/livespec-impl-*:\nprocess-memos" as ProcessMemos
-  rectangle "/livespec-impl-*:\nlist-memos\n(thin transport)" as ListMemos #ccddee
   component "Spec Reader" as SpecReader
 
   database "Memos\n(plugin-specific:\nbd Dolt / JSONL / ...)" as Memos
@@ -56,10 +55,8 @@ package "IMPLEMENTATION SIDE" as ImplPkg #e3f0e3 {
 ' Capture path — low-friction free-text deposit
 CaptureMemo --> Memos : writes pending memo
 
-' Doctor queries untriaged memos via the list-memos thin-transport skill
-' (replaces the pre-2026-05-18 machine-only query surface)
-Memos --> ListMemos : read state
-ListMemos -[#a02020,thickness=2]-> Doctor : list-memos\n--filter=untriaged --json\n(hygiene invariant)
+' Cross-boundary: Doctor queries untriaged memos for hygiene invariant
+Memos -[#a02020,thickness=2]-> Doctor : untriaged inventory\n(machine query)
 
 ' Spec Reader feeds Process Memos for spec-vs-impl disposition decisions
 Spec -[#a02020,thickness=2]-> SpecReader
@@ -77,7 +74,7 @@ Propose --> PCQueue
 
 note right of Memos : Queue + archive — dispositioned memos\nremain with a state marker for audit\n(spec-bound, impl-bound,\npersistent-knowledge, discard). Transient\nby construction: every memo MUST\neventually flow to spec, impl, persistent\nknowledge, or discard. Rejects the\npermanent-memory-store pattern from\ntools like bd remember.
 
-note bottom of Doctor : Hygiene invariant: "no untriaged memo MUST\nremain unresolved beyond N days." Doctor\ninvokes the impl plugin's list-memos\nthin-transport skill (the 2026-05-18\nresolution to the prior machine-only\nquery surface). Doctor does NOT know how\nmemos get resolved — only that they should be.
+note bottom of Doctor : Hygiene invariant: "no untriaged memo MUST\nremain unresolved beyond N days." Doctor\nqueries the active impl plugin via the\nmachine-readable contract; it does NOT\nknow how memos get resolved — only that\nthey should be.
 
 note right of ProcessMemos : Per-memo handholding skill — walks each\npending memo via user dialogue with four\ndispositions. The handholding principle\nis load-bearing: users do not manually\ninvoke propose-changes for spec-bound memos;\nprocess-memos drives them through the\nappropriate downstream skill.
 

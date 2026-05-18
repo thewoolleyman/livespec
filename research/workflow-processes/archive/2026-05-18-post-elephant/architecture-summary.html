@@ -36,9 +36,8 @@
 <h1>LiveSpec architecture summary</h1>
 
 <p class="meta">
-  <strong>Branch:</strong> <code>docs/refresh-multi-repo-architecture-research</code> &middot;
-  <strong>Status:</strong> Brainstorm output describing the specific LiveSpec implementation of the spec ↔ implementation pattern. Decisions captured here are <em>directions</em>, not yet formalized in SPECIFICATION/. Formalization happens via subsequent <code>/livespec:propose-change</code> activity. The pre-elephant snapshot is preserved at <a href="archive/2026-05-11-architecture-summary/architecture-summary.html"><code>archive/2026-05-11-architecture-summary/</code></a>; the post-elephant snapshot taken immediately before today's orchestration / thin-transport revisions is at <a href="archive/2026-05-18-post-elephant/architecture-summary.html"><code>archive/2026-05-18-post-elephant/</code></a>. &middot;
-  <strong>Last updated:</strong> 2026-05-18 — adds the project-local orchestration layer, the thin-transport skill doctrine, the impl skill surface expansion (6 → 9), the spec skill surface expansion (7 → 8), the doctor invariant-catalog expansion, and the pin-and-bump cross-repo coordination mechanism. Diagram SVGs regenerated to match.
+  <strong>Branch:</strong> <code>docs/transcript-elephant-followup</code> &middot;
+  <strong>Status:</strong> Brainstorm output describing the specific LiveSpec implementation of the spec ↔ implementation pattern. Decisions captured here are <em>directions</em>, not yet formalized in SPECIFICATION/. Formalization happens via subsequent <code>/livespec:propose-change</code> activity. The pre-elephant snapshot of this document is preserved at <a href="archive/2026-05-11-architecture-summary/architecture-summary.html"><code>archive/2026-05-11-architecture-summary/</code></a> for audit.
 </p>
 
 <blockquote>
@@ -52,7 +51,7 @@
 <h2>Executive summary — decisions made</h2>
 
 <div class="decision">
-  <strong>1. Multi-repo distribution.</strong> LiveSpec Core and each implementation plugin live in <em>separate</em> repos. <strong>Shared content sync is via <code>copier</code></strong> (2026-05-18 resolution): <code>livespec-core/templates/impl-plugin/</code> holds the canonical scaffolding (justfile, lefthook, mise, ruff/pyright config, GitHub Actions workflows, starter <code>.claude/skills/loop/SKILL.md</code>, etc.); each <code>livespec-impl-*</code> repo is generated from that template via <code>copier copy</code> and re-syncs via <code>copier update</code> with a <code>.copier-answers.yml</code> tracker. Concerns about CI complexity and agent context bleed outweighed the monorepo content-sharing benefits.
+  <strong>1. Multi-repo distribution.</strong> LiveSpec Core and each implementation plugin live in <em>separate</em> repos. Shared content (non-functional requirements around code style, CI, TDD workflow) is propagated via a mechanical sync mechanism (specifics TBD). Concerns about CI complexity and agent context bleed outweighed the monorepo content-sharing benefits.
 </div>
 
 <div class="decision">
@@ -105,30 +104,6 @@
 
 <div class="decision">
   <strong>14. <code>critique</code> survives as a separate skill.</strong> Its role refined: surface observations <em>based on observing the specification</em> (spec-internal issues: ambiguity, contradiction, undefined terms, dangling references). NOT observation of the implementation — that is <code>capture-spec-drift</code>'s job and lives on the impl side. Its 1-to-N cardinality and no-user-intent posture justify keeping it separate from <code>propose-changes</code>.
-</div>
-
-<div class="decision">
-  <strong>15. Project-local orchestration layer (Layer 3).</strong> The autonomous-loop driver lives as a <strong>project-local skill</strong> at <code>.claude/skills/loop/SKILL.md</code> in every livespec-using repo (livespec-core, livespec-impl-plaintext, and every consumer project). NOT a livespec-core skill and NOT an impl-plugin skill — it composes primitives from both layers in a project-specific way (queue path, dispatch table, janitor command, budget/mode policy). Each repo's loop is hand-tuned; the copier template ships a reasonable starter. Architecture has three layers: Layer 1 deterministic CLIs under <code>.claude-plugin/scripts/bin/</code>; Layer 2 plugin primitives (the skills); Layer 3 project-local composition (the loop driver).
-</div>
-
-<div class="decision">
-  <strong>16. Cross-repo coordination via pin-and-bump.</strong> Multi-repo from the start; <code>livespec-impl-plaintext</code> pins a specific <code>livespec-core</code> release tag in <code>livespec.compat.json</code> (Obsidian-style per-plugin compatibility manifest). Loop B (impl-plaintext) runs against the pinned core, never against HEAD. When core ships a new release, a bump-pin PR fires in impl with the contract migration as its acceptance criterion. Doctor enforces contract-version compatibility as an invariant. <strong>No third coordinator repo.</strong> Plaintext-only focus for now; <code>livespec-impl-beads</code> deferred (still in the catalog for future adopters with concurrent multi-contributor profiles).
-</div>
-
-<div class="decision">
-  <strong>17. Thin-transport skill doctrine.</strong> Every contract-surface API is a skill backed by a CLI implementation, not a CLI-only "machine-readable surface." Retires the 2026-05-11 split between user-facing skills and machine-only queries. Thin-transport skills (short SKILL.md, no logic accretion, pure pass-through to the backing CLI) are distinct from <em>heavyweight</em> authored skills but render identically in the diagram. Discipline must be enforced in non-functional-requirements.md to prevent prompt accretion.
-</div>
-
-<div class="decision">
-  <strong>18. Skill surface expansion.</strong> Impl side: 6 → 9 (adds <code>next</code>, promotes <code>list-memos</code> from discretionary to required, adds <code>list-work-items</code>). Spec side: 7 → 8 (adds <code>next</code>). The three new impl skills and <code>livespec:next</code> are thin transports; the rest remain heavyweight. Backend-variability asymmetry: spec side does NOT need symmetric <code>list-proposed-changes</code> / <code>list-history</code> skills because the spec backend is fixed (the canonical SPECIFICATION/ tree shape); direct filesystem reads suffice. The impl side needs skill-wrapped queries because impl backends are pluggable (plaintext / beads / gitlab / ...).
-</div>
-
-<div class="decision">
-  <strong>19. Doctor invariant catalog expansion.</strong> Doctor's responsibilities now include four explicit work-item invariants in addition to memo hygiene: <strong>1:1 gap-tracking</strong> (every detected gap has exactly one tracked work item across all statuses), <strong>no-orphan-blocker</strong> (declared <code>blocked_by</code> resolves to an existing item), <strong>no-stale-gap-tied</strong> (a gap-tied open item whose gap no longer detects must close via non-fix disposition), <strong>no-duplicate-gap-id</strong> (no two open items claim the same gap-id). Plus contract-version compatibility (Decision 16). Staleness of durable-pending items is explicitly NOT a doctor invariant — that's a productivity heuristic, lives in <code>next</code>.
-</div>
-
-<div class="decision">
-  <strong>20. Transient vs durable-pending principle.</strong> Articulated explicitly. Memos are <em>transient by construction</em> (the item type is defined by needing disposition; pile-up violates the type); doctor enforces drain pressure. Work items and proposed changes are <em>durable-pending</em> (pending is a normal state; drain pressure is a productivity concern, not an invariant). This principle governs which queue/archives doctor enforces hygiene against (transient only) vs. which it leaves to <code>next</code> (durable-pending).
 </div>
 
 <h2>What changed since the 2026-05-11 snapshot</h2>
@@ -224,19 +199,18 @@ LiveSpec Core publishes a documented contract in <code>SPECIFICATION/contracts.m
 <img class="diagram" src="diagrams/core-vs-impl-api-surface.svg" alt="Core vs implementation API surface">
 <div class="diagram-caption">API surface: what Core publishes, what every implementation plugin must honor, and the load-bearing cross-boundary edges (red).</div>
 
-<h2>LiveSpec Core — skill surface (8 skills)</h2>
+<h2>LiveSpec Core — skill surface (7 skills)</h2>
 
 <table>
-  <thead><tr><th>Command</th><th>Weight</th><th>Purpose</th></tr></thead>
+  <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
   <tbody>
-    <tr><td><code>/livespec:seed</code></td><td>heavy</td><td>Initialize a new spec tree</td></tr>
-    <tr><td><code>/livespec:propose-changes</code></td><td>heavy</td><td>Author one or more proposed changes (plural rename of today's propose-change)</td></tr>
-    <tr><td><code>/livespec:critique</code></td><td>heavy</td><td>Surface observations based on observing the spec; spec-internal analysis only</td></tr>
-    <tr><td><code>/livespec:revise</code></td><td>heavy</td><td>Process pending proposed-changes; cut new history/vNNN. Selective per-proposal — user can address a subset and leave the rest pending.</td></tr>
-    <tr><td><code>/livespec:doctor</code></td><td>heavy</td><td>Spec invariants (static + LLM-driven), memo-hygiene invariant, four work-item structural invariants (1:1 gap-tracking, no-orphan-blocker, no-stale-gap-tied, no-duplicate-gap-id), and contract-version compatibility — all via the impl plugin's <code>list-memos</code> / <code>list-work-items</code> thin-transport skills</td></tr>
-    <tr><td><code>/livespec:prune-history</code></td><td>heavy</td><td>Bound history size; collapse oldest vNNN entries</td></tr>
-    <tr><td><code>/livespec:help</code></td><td>heavy</td><td>Overview + routing</td></tr>
-    <tr><td><code>/livespec:next</code> <em>(new)</em></td><td><strong>thin</strong></td><td>Ranks the most ripe <strong>spec-side</strong> action (proposals queue, history recency, doctor findings). Returns structured JSON. Pure function of file state; no LLM in the ranking path. Does NOT read impl-side stores — cross-side composition is the project-local loop driver's job.</td></tr>
+    <tr><td><code>/livespec:seed</code></td><td>Initialize a new spec tree</td></tr>
+    <tr><td><code>/livespec:propose-changes</code></td><td>Author one or more proposed changes (plural rename of today's propose-change)</td></tr>
+    <tr><td><code>/livespec:critique</code></td><td>Surface observations based on observing the spec; spec-internal analysis only</td></tr>
+    <tr><td><code>/livespec:revise</code></td><td>Process pending proposed-changes; cut new history/vNNN. Selective per-proposal — user can address a subset and leave the rest pending.</td></tr>
+    <tr><td><code>/livespec:doctor</code></td><td>Spec invariants (static + LLM-driven) + memo-hygiene invariant via the impl plugin's untriaged-memo machine query</td></tr>
+    <tr><td><code>/livespec:prune-history</code></td><td>Bound history size; collapse oldest vNNN entries</td></tr>
+    <tr><td><code>/livespec:help</code></td><td>Overview + routing</td></tr>
   </tbody>
 </table>
 
@@ -246,79 +220,31 @@ LiveSpec Core publishes a documented contract in <code>SPECIFICATION/contracts.m
 <img class="diagram" src="diagrams/seq-revise.svg" alt="Sequence diagram for revise">
 <div class="diagram-caption">Sequence diagram: <code>/livespec:revise</code> with pre-step + post-step doctor checks, selective per-proposal acceptance, and the user-defer branch that leaves unaddressed proposals pending.</div>
 
-<h2>Implementation plugins — canonical skill surface (9 skills per plugin)</h2>
+<h2>Implementation plugins — canonical skill surface (6 skills per plugin)</h2>
 
-<p>Every <code>livespec-impl-*</code> plugin MUST expose these nine skills under its own namespace prefix. Six are <strong>heavyweight</strong> authored skills (dialogue, detection logic, judgment calls); three are <strong>thin-transport</strong> skills (CLI pass-through, no logic accretion).</p>
+<p>Every <code>livespec-impl-*</code> plugin MUST expose these six skills under its own namespace prefix:</p>
 
 <table>
-  <thead><tr><th>Command</th><th>Weight</th><th>Purpose</th></tr></thead>
+  <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
   <tbody>
-    <tr><td><code>/livespec-impl-*:capture-impl-gaps</code></td><td>heavy</td><td>Detect spec → impl gaps mechanically via the Spec Reader; file labeled / categorized gap-tied work items (per-gap user consent). Collapses today's <code>refresh-gaps</code> + <code>plan</code> pair into one ephemeral-detection skill.</td></tr>
-    <tr><td><code>/livespec-impl-*:capture-spec-drift</code></td><td>heavy</td><td>Detect impl → spec drift heuristically (LLM-driven); file findings as proposed changes via <code>/livespec:propose-changes</code> (cross-boundary handoff). Asymmetric counterpart to <code>capture-impl-gaps</code>, not a mirror image. Resolves the pre-elephant unresolved direction.</td></tr>
-    <tr><td><code>/livespec-impl-*:capture-work-item</code></td><td>heavy</td><td>Freeform direct filing of an impl-side work item — bugs, refactors, tactical tasks. No gap-id; closes via the freeform path. Bypasses gap detection and memo ceremony.</td></tr>
-    <tr><td><code>/livespec-impl-*:implement</code></td><td>heavy</td><td>Drive Red → Green for a single work item; verify via dry-run re-detection (gap-tied); close. Three closure paths: gap-tied fix (verify + audit), freeform fix (simple reason), non-fix (administrative reason).</td></tr>
-    <tr><td><code>/livespec-impl-*:capture-memo</code></td><td>medium</td><td>Low-friction free-text deposit of an in-flight observation that the user is not yet ready to classify. Transient by construction.</td></tr>
-    <tr><td><code>/livespec-impl-*:process-memos</code></td><td>heavy</td><td>Per-memo handholding dialogue: spec-bound (→ propose-changes, cross-boundary) / impl-bound (→ freeform work item) / persistent-knowledge (→ Persistent Agent Knowledge store) / discard.</td></tr>
-    <tr><td><code>/livespec-impl-*:list-memos</code> <em>(promoted)</em></td><td><strong>thin</strong></td><td>Required (was discretionary). Supports <code>--filter</code> (e.g., <code>--filter=untriaged</code>) and <code>--json</code> output. Consumed by doctor's memo-hygiene invariant and by users for queue inspection.</td></tr>
-    <tr><td><code>/livespec-impl-*:list-work-items</code> <em>(new)</em></td><td><strong>thin</strong></td><td>Required. Supports filter flags (<code>--gap-tied</code>, <code>--blocked</code>, <code>--with-gap-id</code>, etc.) and <code>--json</code> output. Consumed by doctor's four work-item structural invariants, by the loop driver for routing decisions, and by users for queue inspection.</td></tr>
-    <tr><td><code>/livespec-impl-*:next</code> <em>(new)</em></td><td><strong>thin</strong></td><td>Required. Ranks the most ripe <strong>impl-side</strong> action using whatever native primitives the backend provides (<code>bd ready</code> for beads, JSONL traversal for plaintext, etc.). Returns structured JSON: <code>{ action, work_item_ref, urgency, reason }</code>. Pure function of impl-side state; no LLM in the ranking path.</td></tr>
+    <tr><td><code>/livespec-impl-*:capture-impl-gaps</code></td><td>Detect spec → impl gaps mechanically via the Spec Reader; file labeled / categorized gap-tied work items (per-gap user consent). Collapses today's <code>refresh-gaps</code> + <code>plan</code> pair into one ephemeral-detection skill.</td></tr>
+    <tr><td><code>/livespec-impl-*:capture-spec-drift</code></td><td>Detect impl → spec drift heuristically (LLM-driven); file findings as proposed changes via <code>/livespec:propose-changes</code> (cross-boundary handoff). Asymmetric counterpart to <code>capture-impl-gaps</code>, not a mirror image. Resolves the pre-elephant unresolved direction.</td></tr>
+    <tr><td><code>/livespec-impl-*:capture-work-item</code></td><td>Freeform direct filing of an impl-side work item — bugs, refactors, tactical tasks. No gap-id; closes via the freeform path. Bypasses gap detection and memo ceremony.</td></tr>
+    <tr><td><code>/livespec-impl-*:implement</code></td><td>Drive Red → Green for a single work item; verify via dry-run re-detection (gap-tied); close. Three closure paths: gap-tied fix (verify + audit), freeform fix (simple reason), non-fix (administrative reason).</td></tr>
+    <tr><td><code>/livespec-impl-*:capture-memo</code></td><td>Low-friction free-text deposit of an in-flight observation that the user is not yet ready to classify. Transient by construction.</td></tr>
+    <tr><td><code>/livespec-impl-*:process-memos</code></td><td>Per-memo handholding dialogue: spec-bound (→ propose-changes, cross-boundary) / impl-bound (→ freeform work item) / persistent-knowledge (→ Persistent Agent Knowledge store) / discard.</td></tr>
   </tbody>
 </table>
 
-<p><strong>Cross-boundary handoffs (red edges in diagrams):</strong></p>
+<p><strong>List-memos is plugin-discretionary.</strong> Each plugin MAY expose a user-facing <code>list-memos</code> if it adds value (search by keyword, filter by disposition); the canonical contract no longer requires it because Doctor's untriaged-memo hygiene query lives on a separate machine-readable surface in the plugin contract.</p>
 
-<ol>
-  <li><code>capture-spec-drift</code> → <code>/livespec:propose-changes</code> (drift findings).</li>
-  <li><code>process-memos</code> → <code>/livespec:propose-changes</code> (spec-bound disposition).</li>
-  <li><code>/livespec:doctor</code> → <code>/livespec-impl-*:list-memos --filter=untriaged --json</code> (memo-hygiene invariant; replaces the pre-2026-05-18 machine-only query surface).</li>
-  <li><code>/livespec:doctor</code> → <code>/livespec-impl-*:list-work-items --json</code> (work-item structural invariants; new in 2026-05-18).</li>
-  <li>Project-local loop driver invokes both <code>/livespec:next</code> and <code>/livespec-impl-*:next</code> to compose cross-side recommendations.</li>
-</ol>
-
-<h3>Backend-variability asymmetry</h3>
-
-<p>The impl-side query skills (<code>list-memos</code>, <code>list-work-items</code>, <code>next</code>) exist because impl backends are <em>pluggable</em> — plaintext stores JSONL, beads uses Dolt, gitlab uses the GitLab API — and cross-side consumers (doctor, the loop driver, core's <code>next</code>) need a uniform abstraction over those variants. The skill is that abstraction.</p>
-
-<p>The spec side has the <em>opposite</em> property: the spec backend is <strong>fixed</strong> (the canonical SPECIFICATION/ tree shape). Doctor's static phase already reads <code>SPECIFICATION/proposed_changes/</code> and <code>SPECIFICATION/history/</code> directly from the filesystem — no abstraction needed. Symmetric <code>list-proposed-changes</code> / <code>list-history</code> skills would be pure ceremony. This is the principled reason the spec-side surface grows only by <code>next</code>, while the impl-side surface grows by three.</p>
+<p><strong>Cross-boundary handoffs:</strong> impl plugins reach "up" into core in three places, all rendered as thick red edges in the diagrams: <code>capture-spec-drift</code> → <code>/livespec:propose-changes</code> (drift findings), <code>process-memos</code> → <code>/livespec:propose-changes</code> (spec-bound disposition), and the untriaged-memo query from <code>/livespec:doctor</code> back into the plugin's memo store. Otherwise the plugins are independent.</p>
 
 <img class="diagram" src="diagrams/implementation-lifecycle.svg" alt="Implementation lifecycle">
 <div class="diagram-caption">Implementation plugin lifecycle. Spec Reader fans out canonical spec content to four impl-side skills; <code>capture-impl-gaps</code> and <code>capture-spec-drift</code> are asymmetric counterparts; <code>implement</code> drains the work-item queue regardless of origin and closes via the three-way branch.</div>
 
 <img class="diagram" src="diagrams/seq-capture-impl-gaps.svg" alt="Sequence diagram for capture-impl-gaps">
 <div class="diagram-caption">Sequence diagram: <code>/livespec-impl-*:capture-impl-gaps</code> with Spec Reader, in-memory detection, per-gap consent dialogue, and stale-gap-id triage.</div>
-
-<h2>Orchestration layer — project-local Layer 3</h2>
-
-<p>
-The autonomous-loop driver — the thing that picks the next ripe work item, dispatches the appropriate skill, runs the janitor, commits, and loops — lives at a <strong>third layer</strong>, distinct from livespec-core and from any impl plugin. It is a <strong>project-local skill</strong> at <code>.claude/skills/loop/SKILL.md</code> checked into every livespec-using repo. Each repo (livespec-core, livespec-impl-plaintext, and every consumer project) ships its own, tuned to that repo's specifics.
-</p>
-
-<p><strong>Why neither livespec-core nor an impl plugin can ship the loop driver:</strong></p>
-
-<ul>
-  <li><strong>livespec-core can't ship it</strong> because the loop needs this-repo-specific knowledge it has no business knowing — queue path, <code>just check</code> invocation, dispatch table from item-kind to verb, budget and escalation policy, worktree convention. Hard-coding any of that breaks every consumer; surfacing all of it as configuration just relocates project-local state.</li>
-  <li><strong>An impl plugin can't ship it</strong> either, because the same plugin gets installed in many <em>different</em> consumer projects, each with its own answers to those same questions. A plugin skill pretending to know the canonical loop shape lies to every consumer that doesn't share the assumed shape.</li>
-</ul>
-
-<p><strong>The three-layer architecture:</strong></p>
-
-<table>
-  <thead><tr><th>Layer</th><th>Lives in</th><th>Examples</th></tr></thead>
-  <tbody>
-    <tr><td><strong>Layer 1</strong> — deterministic CLIs</td><td>Published with each plugin under <code>.claude-plugin/scripts/bin/</code></td><td><code>next.py</code>, <code>list-memos.py</code>, <code>list-work-items.py</code>, <code>doctor.py --json</code></td></tr>
-    <tr><td><strong>Layer 2</strong> — plugin primitives (skills)</td><td>livespec-core skills + impl-plugin skills; the contract surface</td><td>Heavyweight authored skills (capture-impl-gaps, implement, propose-changes, revise, ...) + thin-transport skills (next, list-memos, list-work-items)</td></tr>
-    <tr><td><strong>Layer 3</strong> — project-local composition</td><td><code>.claude/skills/loop/SKILL.md</code> in each consuming repo</td><td>Project-tuned dispatch + janitor invocation + budget/mode policy; hand-authored once per repo, lightly updated as the repo evolves</td></tr>
-  </tbody>
-</table>
-
-<p>The copier template at <code>livespec-core/templates/impl-plugin/</code> ships a starter <code>.claude/skills/loop/SKILL.md</code> alongside the rest of the impl-plugin scaffolding. Generated repos inherit a reasonable default; local divergence is expected and the copier-drift CI check explicitly excludes this file.</p>
-
-<p><strong>Cross-side composition belongs at Layer 3.</strong> The loop driver invokes both <code>/livespec:next</code> (spec-side ranking) and <code>/livespec-impl-*:next</code> (impl-side ranking), then applies <em>this project's</em> weighting to pick the winning action. The cross-side weighting deliberately does NOT live in livespec-core — different consumer projects make different choices about whether spec evolution or impl execution is the bottleneck, and the right place for that judgment is the project itself.</p>
-
-<p><strong>Operating mode discipline:</strong> <code>--mode interactive</code> is the default for spec-side dispatch (spec mutations stay human-gated); <code>--mode autonomous</code> is the default for impl-side dispatch (the part the maintainer wants hands-off). Janitor failure is a hard gate — no commit on janitor red.</p>
-
-<img class="diagram" src="diagrams/orchestration-layers.svg" alt="Three-layer orchestration model">
-<div class="diagram-caption">Three-layer orchestration model (new in 2026-05-18). Layer 3 is project-local — the Ralph-loop driver lives at <code>.claude/skills/loop/SKILL.md</code> in every consuming repo and is hand-tuned. Layer 2 is the published contract surface — the skills exposed by livespec-core and impl plugins. Layer 1 is the deterministic Python CLI implementations under <code>.claude-plugin/scripts/bin/</code>. The loop driver invokes Layer 2 skills (heavyweight + thin); each skill delegates to its Layer 1 CLI. Cross-side composition (combining <code>livespec:next</code> with <code>livespec-impl-*:next</code>) belongs at Layer 3 because the weighting decision is per-project.</div>
 
 <h2>Memory paradigm shift</h2>
 
@@ -363,7 +289,7 @@ Beads' <code>bd remember</code> is a permanent memory-bank read by LLM harness i
 </p>
 
 <img class="diagram" src="diagrams/memo-lifecycle.svg" alt="Memo lifecycle">
-<div class="diagram-caption">Memo lifecycle. Capture is impl-side; storage is impl-side; routing is impl-side. LiveSpec Core's doctor reads untriaged memos by invoking the impl plugin's <code>list-memos --filter=untriaged --json</code> thin-transport skill (2026-05-18 update — replaces the prior "machine-only" surface). Doctor knows about memos ONLY to detect-and-warn; it cannot route them itself. Persistent Agent Knowledge is the named target of the persistent-knowledge disposition.</div>
+<div class="diagram-caption">Memo lifecycle. Capture is impl-side; storage is impl-side; routing is impl-side. LiveSpec Core's doctor knows about memos ONLY to detect-and-warn — it cannot route them itself. Persistent Agent Knowledge is the named target of the persistent-knowledge disposition.</div>
 
 <img class="diagram" src="diagrams/seq-process-memos.svg" alt="Sequence diagram for process-memos">
 <div class="diagram-caption">Sequence diagram: <code>/livespec-impl-*:process-memos</code> showing the four dispositions in action, the doctor hygiene trigger, the Spec Reader feeding spec-vs-impl decisions, and the cross-namespace handoff for spec-bound dispositions.</div>
@@ -443,20 +369,13 @@ The file is the cross-plugin discovery point. Every plugin reads it; livespec-co
     "plugin": "livespec-impl-plaintext"
   },
 
-  // pin-and-bump cross-repo coordination (Obsidian-style per-plugin
-  // compatibility manifest; 2026-05-18 addition). Each impl plugin
-  // declares which livespec-core versions it supports + the
-  // currently-pinned tag it runs against in the project.
+  // each implementation owns a top-level section keyed by its name
   "livespec-impl-plaintext": {
     "format": "md",
-    "work_items_path": "implementation-work-items/",
-    "compat": {
-      "livespec_core": "&gt;=2.0.0,&lt;3.0.0",
-      "pinned": "v2.3.0"
-    }
+    "work_items_path": "implementation-work-items/"
   }
-  // ... or "livespec-impl-beads": { "issue_prefix": "li-", "compat": { ... } }
-  // ... or "livespec-impl-gitlab": { "project_id": "...", "labels_prefix": "livespec/", "compat": { ... } }
+  // ... or "livespec-impl-beads": { "issue_prefix": "li-" }
+  // ... or "livespec-impl-gitlab": { "project_id": "...", "labels_prefix": "livespec/" }
 }</code></pre>
 
 <p>
@@ -529,22 +448,36 @@ NOT the implementation. NOT memos. NOT observations from the world. Spec-interna
 <p>The gap-vs-drift asymmetric naming makes the categorical difference between the two directions explicit — mechanical detection on the spec → impl side; heuristic detection on the impl → spec side. They are not mirror images, and merging them would have obscured that.</p>
 </div>
 
-<h2>Resolved skill placeholder</h2>
+<h2>Pending skill placeholder</h2>
 
-<p><code>/livespec:next</code> graduated from "pending placeholder" to first-class on 2026-05-18 — see the spec-side skill surface table above. It is a <strong>thin-transport skill</strong> that ranks the most ripe spec-side action; the impl-side counterpart <code>/livespec-impl-*:next</code> ranks impl-side actions independently. Cross-side composition lives in the project-local Layer 3 loop driver, not in core.</p>
+<h3><code>/livespec:next</code> (spec-side, advisory)</h3>
+
+<p>A future spec-side skill — provisionally named <code>/livespec:next</code> — will recommend the most logical next workflow action based on the current state of the persistence stores and the dependencies between operations. Purely advisory: it does not mutate any store.</p>
+
+<p>Reads (via the impl-plugin machine-readable contract for impl-side stores; directly for spec-side stores):</p>
+
+<ul>
+  <li><strong>Proposed Changes</strong> queue — pending proposals awaiting revise?</li>
+  <li><strong>Specification History</strong> — recency of the last revision; pruning pressure?</li>
+  <li><strong>Work Items</strong> queue — ready leaf items? blocked items? stale items?</li>
+  <li><strong>Memos</strong> queue — untriaged memos, especially past the doctor-enforced hygiene threshold?</li>
+  <li><strong>Doctor</strong> findings — unresolved invariant violations?</li>
+</ul>
+
+<p>Surfaces the most ripe next action — conceptually similar to <code>bd ready</code> but applied to the full spec ↔ implementation lifecycle rather than just the Work Items queue. Full design (single recommendation vs ranked list, weighting heuristics across stores) is open for future iteration.</p>
 
 <h2>Other open implementation questions</h2>
 
 <ul>
-  <li><strong>Migration tooling.</strong> Both directions: <code>livespec-impl-beads</code> ↔ <code>livespec-impl-plaintext</code>, plus <code>livespec-impl-plaintext</code> format-to-format switches. (Deferred until <code>livespec-impl-beads</code> resurrects after plaintext stabilizes.)</li>
+  <li><strong>Shared-content sync mechanism.</strong> Multi-repo with mechanically-synced shared content. Specific mechanism (subtree / pinned package / generator / dedicated meta-repo) TBD.</li>
+  <li><strong>Spec retrieval / searchability.</strong> Discussed but not deeply: making the spec efficiently searchable by LLMs (section-level indexing, MCP server, embedding-based RAG). Now lives under the Spec Reader abstraction — internals are plugin-specific, but the required-capability surface still needs concrete shape for advanced impls.</li>
+  <li><strong>Migration tooling.</strong> Both directions: <code>livespec-impl-beads</code> ↔ <code>livespec-impl-plaintext</code>, plus <code>livespec-impl-plaintext</code> format-to-format switches.</li>
   <li><strong>Critique's prompt redesign.</strong> Today's critique skill needs its prompt restructured around the sharpened "observe spec only" role.</li>
-  <li><strong>Doctor's memo-hygiene threshold.</strong> Concrete value of N days, exact narration to the user when triggered.</li>
-  <li><strong>Doctor's contract-version compatibility invariant.</strong> Threshold for "drift exceeds N tags" before doctor fires red; mechanism for declaring the supported-version range across impl plugins.</li>
+  <li><strong>Doctor's memo-hygiene invariant.</strong> Concrete threshold (N days), specific query API surface, exact narration to the user when triggered.</li>
   <li><strong>Schema fragmentation for <code>.livespec.jsonc</code>.</strong> Each impl plugin publishes its own JSON Schema fragment; how do these get loaded for validation in practice?</li>
   <li><strong>Discoverable plugin registry beyond the marketplace.</strong> The marketplace gives install; what gives "what implementations exist? what does each offer?"</li>
-  <li><strong>The auto-merge bot architecture</strong> for the multi-repo split — particularly handling pin-and-bump PRs in <code>livespec-impl-plaintext</code> when <code>livespec-core</code> ships a new release.</li>
-  <li><strong>Loop driver discipline / starter template content.</strong> The starter <code>.claude/skills/loop/SKILL.md</code> in the copier template needs concrete shape (dispatch table, budget defaults, escalation policy) so generated repos have a sane default.</li>
-  <li><strong>Thin-transport skill brevity enforcement.</strong> Mechanism (lint rule, line-count check, SKILL.md schema) to prevent thin-transport skills from accreting prompt content over time.</li>
+  <li><strong>The auto-merge bot architecture</strong> if multi-repo lands.</li>
+  <li><strong><code>list-memos</code> as plugin-discretionary surface.</strong> When a plugin DOES expose user-facing memo search, what should the canonical command shape look like so it remains familiar across plugins that choose to expose it?</li>
   <li><strong>Spec Reader capability shape.</strong> The four required capabilities are agreed; richer capabilities (semantic search, embedding-based retrieval) are unstandardized. Whether the contract enumerates them or leaves them as plugin-private extensions is open.</li>
 </ul>
 
@@ -565,7 +498,6 @@ NOT the implementation. NOT memos. NOT observations from the world. Spec-interna
 │   ├── spec-lifecycle.{plantuml,svg}
 │   ├── implementation-lifecycle.{plantuml,svg}
 │   ├── memo-lifecycle.{plantuml,svg}
-│   ├── orchestration-layers.{plantuml,svg}        (new 2026-05-18)
 │   ├── seq-capture-impl-gaps.{plantuml,svg}
 │   ├── seq-process-memos.{plantuml,svg}
 │   ├── seq-revise.{plantuml,svg}
@@ -576,15 +508,10 @@ NOT the implementation. NOT memos. NOT observations from the world. Spec-interna
     │   ├── workflow-diagrams.md
     │   ├── beads-only-gap-storage.md
     │   └── diagrams/                               (proxy-rendered PlantUML)
-    ├── 2026-05-11-architecture-summary/            (pre-elephant snapshot)
-    │   ├── architecture-summary.html
-    │   ├── architecture-summary.md
-    │   └── diagrams/                               (snapshotted SVGs)
-    └── 2026-05-18-post-elephant/                   (pre-orchestration / pre-thin-transport snapshot)
+    └── 2026-05-11-architecture-summary/            (pre-elephant snapshot)
         ├── architecture-summary.html
         ├── architecture-summary.md
-        ├── tool-agnostic-workflow.md
-        └── diagrams/                               (snapshotted PlantUML + SVGs)
+        └── diagrams/                               (snapshotted SVGs)
 </code></pre>
 
 <hr>

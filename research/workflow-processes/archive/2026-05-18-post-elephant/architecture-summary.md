@@ -15,6 +15,3 @@ Companion source record: [verbatim conversation transcript](./conversation-trans
 
 The pre-elephant snapshot of this document is archived under
 [`archive/2026-05-11-architecture-summary/`](./archive/2026-05-11-architecture-summary/architecture-summary.md).
-The pre-orchestration / pre-thin-transport snapshot (taken
-2026-05-18, immediately before today's revisions) is at
-[`archive/2026-05-18-post-elephant/`](./archive/2026-05-18-post-elephant/architecture-summary.md).

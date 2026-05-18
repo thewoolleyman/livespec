@@ -39,7 +39,6 @@ package "SPEC SIDE" as SpecPkg #fde8ec {
   rectangle "/livespec:revise" as Revise
   rectangle "/livespec:doctor" as Doctor
   rectangle "/livespec:prune-history" as Prune
-  rectangle "/livespec:next\n(thin transport)" as Next #ccddee
 
   database "SPECIFICATION/\n(spec.md, contracts.md,\nconstraints.md, scenarios.md,\nnon-functional-requirements.md)" as Spec #f5d76e
   database "proposed_changes/\n(pending)" as PCQueue
@@ -71,13 +70,6 @@ History ..> Doctor : structural checks
 ' Prune collapses oldest history versions
 History --> Prune
 Prune --> History : pruned-marker
-
-' Next: spec-side ranking (thin transport, no LLM in ranking path)
-PCQueue --> Next
-History --> Next
-Doctor ..> Next : unresolved\nfindings
-
-note right of Next : Thin-transport skill. Pure function of\nspec-side file state. SKILL.md is a\npass-through to\n.claude-plugin/scripts/bin/next.py.\nDoes NOT read impl-side stores — cross-side\ncomposition is the project-local Layer 3\nloop driver's job.
 
 note right of Spec : Mutated ONLY through\n/livespec:propose-changes →\n/livespec:revise after the v001 seed.\nDirect edits forbidden.
 

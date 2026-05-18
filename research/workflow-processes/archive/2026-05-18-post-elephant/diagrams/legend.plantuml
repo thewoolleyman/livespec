@@ -23,8 +23,7 @@ skinparam component {
   FontColor #111
 }
 
-rectangle "skill /\nslash command\n(heavyweight)" as Skill
-rectangle "skill /\nslash command\n(thin transport)" as ThinSkill #ccddee
+rectangle "skill /\nslash command" as Skill
 rectangle "external input\n(initial intent /\nprompt / instruction)" as Input #fffacc
 database "store\n(canonical, monolithic\nintent accumulation)" as Store #f5d76e
 database "queue/archive\n(discrete items\nwith lifecycle)" as QueueArchive
@@ -36,8 +35,7 @@ rectangle "cross-boundary\ncontract\n(spec ↔ impl)" as ArrowCross
 ArrowWithin -[#000000]-> ArrowWithin : thin black
 ArrowCross -[#a02020,thickness=2]-> ArrowCross : thick red
 
-note bottom of Skill : Light-blue rounded rectangle — a heavyweight authored LiveSpec skill exposed as a slash command (e.g. /livespec:revise, /livespec-impl-*:capture-impl-gaps, /livespec-impl-*:implement). Carries dialogue, judgment calls, and detection logic in the SKILL.md body.
-note bottom of ThinSkill : Pale-blue rounded rectangle — a thin-transport skill (introduced 2026-05-18). Its SKILL.md is a pass-through wrapper around a deterministic CLI implementation under .claude-plugin/scripts/bin/. Used for contract-surface query operations (/livespec:next, /livespec-impl-*:list-memos, /livespec-impl-*:list-work-items, /livespec-impl-*:next). Renders the same shape as a heavyweight skill but is discipline-constrained to remain short.
+note bottom of Skill : Light-blue rounded rectangle — a LiveSpec skill exposed as a slash command (e.g. /livespec:revise, /livespec-impl-*:capture-impl-gaps).
 note bottom of Input : Yellow rectangle — the single external entry point. Any action can be taken by a human or an agent; the actor distinction isn't load-bearing, so there is no human-vs-agent split.
 note bottom of Store : Gold cylinder — a canonical, monolithic intent-accumulation store. The three stores in LiveSpec: SPECIFICATION/, the realized Implementation (code + tests + config), Persistent Agent Knowledge.
 note bottom of QueueArchive : Tan cylinder — a collection of discrete items with lifecycle state. The four queue/archives: proposed_changes/ (pure queue), history/vNNN/ (pure archive), Work Items (queue+archive), Memos (queue+archive).

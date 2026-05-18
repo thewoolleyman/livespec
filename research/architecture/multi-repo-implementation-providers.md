@@ -1,9 +1,16 @@
 # Multi-repo architecture for pluggable implementation providers
 
 **Date captured:** 2026-05-10
-**Last updated:** 2026-05-17 (post-elephant brainstorm refresh)
-**Status:** Substantially advanced — the architecture brainstorm and
-its elephant follow-up settled many of this doc's open questions.
+**Last updated:** 2026-05-18 (post-orchestration / thin-transport
+revisions — adds the project-local Layer 3 orchestration model,
+the thin-transport skill doctrine, the 6 → 9 impl skill surface
+expansion, the 7 → 8 core skill surface expansion, the doctor
+invariant-catalog expansion, and the pin-and-bump cross-repo
+coordination mechanism. Plaintext-only focus for the immediate
+phase; `livespec-impl-beads` deferred but still in the catalog.)
+**Status:** Substantially advanced — the architecture brainstorm,
+its elephant follow-up, and the 2026-05-18 orchestration revisions
+settled essentially all of this doc's load-bearing open questions.
 Awaiting formalization into `SPECIFICATION/` via
 `/livespec:propose-change` → `/livespec:revise`.
 **Related artifacts:**
@@ -89,25 +96,64 @@ A livespec-using project picks ONE provider variant and installs
 it alongside livespec-core via the standard Claude Code
 marketplace flow.
 
-### The 6-skill impl surface
+### The 9-skill impl surface
 
-The implementation-plugin skill surface settled at six required
-skills (post-elephant). Each plugin exposes them under its own
-namespace prefix.
+The implementation-plugin skill surface settled at **nine required
+skills** (six heavyweight authored + three thin-transport, per the
+2026-05-18 thin-transport doctrine). Each plugin exposes them
+under its own namespace prefix.
 
-| Skill | Purpose |
-|---|---|
-| `capture-impl-gaps` | Mechanical spec → impl gap detection via the Spec Reader; files gap-tied work items (per-gap user consent). Collapses the old `refresh-gaps` + `plan` pair into one ephemeral-detection skill. |
-| `capture-spec-drift` | Heuristic impl → spec drift detection (LLM-driven); routes findings to `/livespec:propose-changes` as a cross-boundary handoff. Asymmetric counterpart to `capture-impl-gaps`; resolves the pre-elephant unresolved direction. |
-| `capture-work-item` | Freeform direct filing of an impl-side work item (bugs, refactors, tactical tasks). No gap-id; closes via the freeform path. |
-| `implement` | Drives Red → Green for a single work item; verifies gap-tied items via dry-run re-detection; closes. Three closure paths: gap-tied fix (verify + audit), freeform fix (simple reason), non-fix (administrative). |
-| `capture-memo` | Low-friction free-text deposit of an in-flight observation. Transient by construction. |
-| `process-memos` | Per-memo handholding: spec-bound (→ propose-changes) / impl-bound (→ freeform work item) / persistent-knowledge (→ Persistent Agent Knowledge store) / discard. |
+| Skill | Weight | Purpose |
+|---|---|---|
+| `capture-impl-gaps` | heavy | Mechanical spec → impl gap detection via the Spec Reader; files gap-tied work items (per-gap user consent). Collapses the old `refresh-gaps` + `plan` pair into one ephemeral-detection skill. |
+| `capture-spec-drift` | heavy | Heuristic impl → spec drift detection (LLM-driven); routes findings to `/livespec:propose-changes` as a cross-boundary handoff. Asymmetric counterpart to `capture-impl-gaps`; resolves the pre-elephant unresolved direction. |
+| `capture-work-item` | heavy | Freeform direct filing of an impl-side work item (bugs, refactors, tactical tasks). No gap-id; closes via the freeform path. |
+| `implement` | heavy | Drives Red → Green for a single work item; verifies gap-tied items via dry-run re-detection; closes. Three closure paths: gap-tied fix (verify + audit), freeform fix (simple reason), non-fix (administrative). |
+| `capture-memo` | medium | Low-friction free-text deposit of an in-flight observation. Transient by construction. |
+| `process-memos` | heavy | Per-memo handholding: spec-bound (→ propose-changes) / impl-bound (→ freeform work item) / persistent-knowledge (→ Persistent Agent Knowledge store) / discard. |
+| `list-memos` *(promoted 2026-05-18)* | **thin** | Required (was discretionary). `--filter=untriaged --json` is consumed by doctor's memo-hygiene invariant. |
+| `list-work-items` *(new 2026-05-18)* | **thin** | Required. Filter flags (`--gap-tied`, `--blocked`, `--with-gap-id`, etc.) and `--json` output. Consumed by doctor's four work-item structural invariants and by the project-local loop driver. |
+| `next` *(new 2026-05-18)* | **thin** | Required. Ranks the most ripe impl-side action using whatever native primitives the backend provides (`bd ready` for beads, JSONL walk for plaintext). Returns structured JSON. Pure function of impl-side state; no LLM in the ranking path. Asymmetric counterpart to `/livespec:next` on the spec side. |
 
-`list-memos` is plugin-discretionary (each plugin MAY expose a
-user-facing memo search). The doctor-hygiene contract uses a
-separate untriaged-memo machine query that does NOT require a
-slash command surface.
+Backend-variability asymmetry: the spec side does NOT need
+symmetric `list-proposed-changes` / `list-history` skills because
+the spec backend is fixed (the canonical SPECIFICATION/ tree
+shape); direct filesystem reads suffice. The impl side needs
+skill-wrapped queries because impl backends are pluggable.
+
+### Orchestration layer (project-local Layer 3)
+
+The autonomous-loop driver lives at a **third layer** distinct
+from livespec-core (Layer 2 — the spec-side skills) and from any
+impl plugin (Layer 2 — the impl-side skills). It is a
+**project-local skill** at `.claude/skills/loop/SKILL.md` checked
+into every livespec-using repo. Neither core nor any impl plugin
+can ship the loop driver because the composition is fundamentally
+this-repo-specific (queue path, dispatch table, janitor invocation,
+budget/mode policy).
+
+The copier template at
+`livespec-core/templates/impl-plugin/.claude/skills/loop/SKILL.md`
+provides a starter; generated impl-plugin repos inherit a sane
+default and tune locally. Cross-side weighting (when both
+`/livespec:next` and `/livespec-impl-*:next` return ranked actions)
+belongs at this layer too — different consumer projects make
+different judgments about whether spec evolution or impl execution
+is the bottleneck.
+
+### Cross-repo coordination — pin-and-bump
+
+`livespec-impl-plaintext` pins a specific `livespec-core` release
+tag in its `livespec.compat.json` (Obsidian-style per-plugin
+compatibility manifest). The impl Ralph loop runs against the
+pinned core, never against HEAD. When core ships a new release, a
+bump-pin PR fires in impl with the contract migration as its
+acceptance criterion. Doctor enforces contract-version
+compatibility as an invariant.
+
+No third coordinating repo. The shared-content sync mechanism is
+`copier` (one-way: core publishes the impl-plugin template; each
+impl re-syncs via `copier update`).
 
 ## On the "circular dependency" concern
 
@@ -208,10 +254,14 @@ substantially resolved by the brainstorm; two remain open.
    this architecture, since the marketplace install path is the
    sanctioned distribution channel.
 
-3. **Contract evolution.** Still open. Semver in both core and
-   providers seems right; what triggers a MINOR vs MAJOR bump in
-   the contract surface — and how the doctor invariants react to
-   provider-vs-core version skew — is unspecified.
+3. **Contract evolution.** ✓ Substantially resolved (2026-05-18).
+   Semver in both core and providers; pin-and-bump mechanism for
+   cross-repo coordination (impl pins a core release tag in
+   `livespec.compat.json`); doctor enforces contract-version
+   compatibility as an invariant. Concrete thresholds (when to
+   fire red on version drift; major vs minor bump conventions for
+   the contract surface) are still open as a refinement, but the
+   architectural mechanism is settled.
 
 4. **Bootstrap / stage 0.** Still applies. You can't use a
    `livespec-impl-*` plugin to develop the FIRST version of a
@@ -238,26 +288,49 @@ substantially resolved by the brainstorm; two remain open.
 
 ## New concerns surfaced by the brainstorm
 
-Issues that did not exist in the 2026-05-10 frame and need to
-flow through into the spec amendment:
+Issues that did not exist in the 2026-05-10 frame. Several
+resolved on 2026-05-18; the rest flow through to the spec
+amendment.
 
-- **Shared content sync.** Non-functional-requirement sections
-  (TDD workflow, code style, CI conventions, lint rules, Python
-  pins, lefthook setup) genuinely live in multiple plugins. The
-  sync mechanism (subtree / pinned package / generator /
-  dedicated meta-repo) is unspecified.
-- **livespec stops dogfooding beads.** The Beads weight-pull
-  assessment in the architecture-summary settled that LiveSpec
+- **Shared content sync.** ✓ Resolved (2026-05-18). `copier` is
+  the mechanism: `livespec-core/templates/impl-plugin/` holds the
+  canonical scaffolding (justfile, lefthook, mise, ruff/pyright,
+  GitHub Actions, starter loop skill); generated impl-plugin
+  repos run `copier update` to re-sync; `.copier-answers.yml`
+  per repo tracks template version. CI in each impl runs
+  `copier update --dry-run` as drift detection (the
+  `.claude/skills/loop/SKILL.md` is explicitly excluded — local
+  divergence there is expected).
+- **livespec stops dogfooding beads.** ✓ Settled. LiveSpec
   itself uses `livespec-impl-plaintext` going forward.
-  `livespec-impl-beads` remains a first-class implementation for
-  adopters with the concurrency profile that justifies Dolt.
-  This affects which repo gets seeded first and which contract
-  details bake in based on plaintext's quirks.
+  `livespec-impl-beads` is **deferred** as of 2026-05-18 — still
+  in the catalog for future adopters with the concurrency profile
+  that justifies Dolt, but not on the immediate roadmap. Plaintext
+  drives all the contract patterns for now.
+- **Orchestration layer placement.** ✓ Resolved (2026-05-18). The
+  loop driver is a **project-local** skill at
+  `.claude/skills/loop/SKILL.md` (Layer 3), distinct from
+  livespec-core and from any impl plugin. Neither core nor any
+  plugin can ship the loop driver because the composition is
+  fundamentally per-repo. See architecture-summary's
+  "Orchestration layer" section.
+- **Contract-surface query skills.** ✓ Resolved (2026-05-18) via
+  the thin-transport doctrine. The impl-plugin contract surface
+  grew by three skills (`list-memos` promoted from discretionary,
+  `list-work-items` new, `next` new). Each is a thin pass-through
+  to a backing CLI; the contract is "expose a thin skill that
+  calls a CLI returning structured JSON," uniformly.
+- **Doctor invariant catalog.** ✓ Substantially resolved
+  (2026-05-18). Four new work-item structural invariants added
+  (1:1 gap-tracking, no-orphan-blocker, no-stale-gap-tied,
+  no-duplicate-gap-id) plus contract-version compatibility.
+  Staleness of durable-pending items is explicitly NOT a doctor
+  invariant — that's a productivity heuristic, lives in `next`.
 - **Spec Reader capability surface.** The four required
   capabilities are agreed; richer capabilities (semantic search,
   embedding-based retrieval, denormalized graph reads) are
   unstandardized. Whether the contract enumerates them or leaves
-  them as plugin-private extensions is open.
+  them as plugin-private extensions is still open.
 - **Plugin discovery beyond the marketplace.** The marketplace
   provides install; what surface answers "what implementations
   exist? what does each offer?" — a curated catalog, a registry,
@@ -266,6 +339,14 @@ flow through into the spec amendment:
   plugin publishes its own JSON Schema fragment for its section.
   How those fragments get loaded for IDE validation /
   pre-commit linting is unspecified.
+- **Thin-transport brevity enforcement.** Mechanism (lint rule,
+  line-count check, SKILL.md schema) to prevent thin-transport
+  skills from accreting prompt content over time is unspecified.
+- **Loop driver starter content.** The starter
+  `.claude/skills/loop/SKILL.md` shipped in the copier template
+  needs concrete shape (default dispatch table, budget defaults,
+  janitor invocation, escalation policy) so generated repos have
+  a working default.
 
 ## Superseded: the 2026-05-10 immediate-term decision
 

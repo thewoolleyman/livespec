@@ -67,7 +67,6 @@ package "SPEC SIDE" as SpecPkg #fde8ec {
   rectangle "Critique" as Critique
   rectangle "Revise" as Revise
   rectangle "Doctor" as Doctor
-  rectangle "Next\n(thin)" as SpecNext #ccddee
 
   database "Specification" as Spec #f5d76e
   database "Proposed\nChanges" as PCQueue
@@ -85,9 +84,6 @@ package "IMPLEMENTATION SIDE" as ImplPkg #e3f0e3 {
   rectangle "Capture\nSpec Drift" as CaptureSpecDrift
   rectangle "Capture\nMemo" as CaptureMemo
   rectangle "Process\nMemos" as ProcessMemos
-  rectangle "List\nMemos\n(thin)" as ListMemos #ccddee
-  rectangle "List\nWork Items\n(thin)" as ListWorkItems #ccddee
-  rectangle "Next\n(thin)" as ImplNext #ccddee
 
   component "Spec\nReader" as SpecReader
 
@@ -150,18 +146,7 @@ ProcessMemos --> AgentKnowledge : persistent
 ' Cross-boundary: IMPL → SPEC (spec-bound memo)
 ProcessMemos -[#a02020,thickness=2]-> Propose : spec-bound
 
-' Cross-boundary: IMPL → SPEC (doctor hygiene query via list-memos thin skill)
-Memos --> ListMemos
-ListMemos -[#a02020,thickness=2]-> Doctor : untriaged\nhygiene
-
-' Cross-boundary: IMPL → SPEC (doctor structural invariants via list-work-items thin skill)
-WorkItems --> ListWorkItems
-ListWorkItems -[#a02020,thickness=2]-> Doctor : 1:1 gap-tracking,\nno-orphan-blocker,\nno-stale-gap-tied,\nno-duplicate-gap-id
-
-' Thin-transport ranking skills (read store state, return JSON)
-PCQueue --> SpecNext
-History --> SpecNext
-WorkItems --> ImplNext
-Memos --> ImplNext
+' Cross-boundary: IMPL → SPEC (doctor hygiene query)
+Memos -[#a02020,thickness=2]-> Doctor : untriaged
 
 @enduml

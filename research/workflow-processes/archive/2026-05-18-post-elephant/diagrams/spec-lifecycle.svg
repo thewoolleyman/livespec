@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="899px" preserveAspectRatio="none" style="width:1118px;height:899px;background:#FAFAFA;" version="1.1" viewBox="0 0 1118 899" width="1118px" zoomAndPan="magnify"><defs/><g><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="283" x="421" y="16.708">LiveSpec Core — Spec Lifecycle</text><!--MD5=[781fc4211f0f0711d3811412dad38fe1]
+cluster SpecPkg--><polygon fill="#FDE8EC" points="22,112.4531,104,112.4531,111,133.5859,551,133.5859,551,886.9531,22,886.9531,22,112.4531" style="stroke: #444444; stroke-width: 1.5;"/><line style="stroke: #444444; stroke-width: 1.5;" x1="22" x2="111" y1="133.5859" y2="133.5859"/><text fill="#111111" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="76" x="26" y="126.52">SPEC SIDE</text><!--MD5=[9a5cf7b5ccfe99a8a50c4f56868c7fc8]
+entity Seed--><rect fill="#D6E6F5" height="36.2969" rx="4" ry="4" style="stroke: #1F4768; stroke-width: 1.5;" width="121" x="329.5" y="146.4531"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="101" x="339.5" y="169.4482">/livespec:seed</text><!--MD5=[b162903c3f5aa45441033ef018a482dd]
+entity Propose--><rect fill="#D6E6F5" height="36.2969" rx="4" ry="4" style="stroke: #1F4768; stroke-width: 1.5;" width="209" x="240.5" y="343.4531"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="189" x="250.5" y="366.4482">/livespec:propose-changes</text><!--MD5=[5bd62c65b3bf6048be3cb32942b001e5]
+entity Critique--><rect fill="#D6E6F5" height="36.2969" rx="4" ry="4" style="stroke: #1F4768; stroke-width: 1.5;" width="137" x="87.5" y="343.4531"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="117" x="97.5" y="366.4482">/livespec:critique</text><!--MD5=[e9c1fb24a4cd81b1c7322b8f0a98f11d]
+entity Revise--><rect fill="#D6E6F5" height="36.2969" rx="4" ry="4" style="stroke: #1F4768; stroke-width: 1.5;" width="127" x="278.5" y="572.4531"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="107" x="288.5" y="595.4482">/livespec:revise</text><!--MD5=[5a5d35bcfc46556bdff8e646cc6c81c2]
+entity Doctor--><rect fill="#D6E6F5" height="36.2969" rx="4" ry="4" style="stroke: #1F4768; stroke-width: 1.5;" width="131" x="195.5" y="834.9531"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="111" x="205.5" y="857.9482">/livespec:doctor</text><!--MD5=[e795410d1115affb2dc2318c56ac1958]
+entity Prune--><rect fill="#D6E6F5" height="36.2969" rx="4" ry="4" style="stroke: #1F4768; stroke-width: 1.5;" width="178" x="350" y="834.9531"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="158" x="360" y="857.9482">/livespec:prune-history</text><!--MD5=[5b0af1a53dfe6ce9d6337a803daa3faf]
+entity Spec--><path d="M38,232.4531 C38,222.4531 162,222.4531 162,222.4531 C162,222.4531 286,222.4531 286,232.4531 L286,306.6406 C286,316.6406 162,316.6406 162,316.6406 C162,316.6406 38,316.6406 38,306.6406 L38,232.4531 " fill="#F5D76E" style="stroke: #5A4319; stroke-width: 1.5;"/><path d="M38,232.4531 C38,242.4531 162,242.4531 162,242.4531 C162,242.4531 286,242.4531 286,232.4531 " fill="none" style="stroke: #5A4319; stroke-width: 1.5;"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="108" x="48" y="259.4482">SPECIFICATION/</text><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="168" x="48" y="275.7451">(spec.md, contracts.md,</text><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="208" x="48" y="292.042">constraints.md, scenarios.md,</text><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="228" x="48" y="308.3389">non-functional-requirements.md)</text><!--MD5=[4cc95f85745661d7fbe872bf21a1bbc7]
+entity PCQueue--><path d="M244.5,442.4531 C244.5,432.4531 324,432.4531 324,432.4531 C324,432.4531 403.5,432.4531 403.5,442.4531 L403.5,484.0469 C403.5,494.0469 324,494.0469 324,494.0469 C324,494.0469 244.5,494.0469 244.5,484.0469 L244.5,442.4531 " fill="#F5EAD5" style="stroke: #5A4319; stroke-width: 1.5;"/><path d="M244.5,442.4531 C244.5,452.4531 324,452.4531 324,452.4531 C324,452.4531 403.5,452.4531 403.5,442.4531 " fill="none" style="stroke: #5A4319; stroke-width: 1.5;"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="139" x="254.5" y="469.4482">proposed_changes/</text><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="67" x="254.5" y="485.7451">(pending)</text><!--MD5=[99a8f7b7d62222417991320410ebdaf2]
+entity History--><path d="M351.5,709.4531 C351.5,699.4531 437,699.4531 437,699.4531 C437,699.4531 522.5,699.4531 522.5,709.4531 L522.5,767.3438 C522.5,777.3438 437,777.3438 437,777.3438 C437,777.3438 351.5,777.3438 351.5,767.3438 L351.5,709.4531 " fill="#F5EAD5" style="stroke: #5A4319; stroke-width: 1.5;"/><path d="M351.5,709.4531 C351.5,719.4531 437,719.4531 437,719.4531 C437,719.4531 522.5,719.4531 522.5,709.4531 " fill="none" style="stroke: #5A4319; stroke-width: 1.5;"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="93" x="361.5" y="736.4482">history/vNNN/</text><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="94" x="361.5" y="752.7451">(snapshots +</text><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="151" x="361.5" y="769.042">processed proposals)</text><!--MD5=[1e9204083aa66e691856924869ece9f5]
+entity Input--><rect fill="#FFFACC" height="52.5938" rx="4" ry="4" style="stroke: #1F4768; stroke-width: 1.5;" width="204" x="288" y="29.4531"/><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="87" x="298" y="52.4482">initial intent /</text><text fill="#111111" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="184" x="298" y="68.7451">prompt / instruction / seed</text><path d="M567.5,233.9531 L567.5,265.4531 L286.19,269.4531 L567.5,273.4531 L567.5,304.4844 A0,0 0 0 0 567.5,304.4844 L818.5,304.4844 A0,0 0 0 0 818.5,304.4844 L818.5,243.9531 L808.5,233.9531 L567.5,233.9531 A0,0 0 0 0 567.5,233.9531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><path d="M808.5,233.9531 L808.5,243.9531 L818.5,243.9531 L808.5,233.9531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="145" x="573.5" y="251.02">Mutated ONLY through</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="185" x="573.5" y="266.1528">/livespec:propose-changes →</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="230" x="573.5" y="281.2856">/livespec:revise after the v001 seed.</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="141" x="573.5" y="296.4185">Direct edits forbidden.</text><path d="M861.5,547.4531 L861.5,633.1172 L1106.5,633.1172 L1106.5,557.4531 L1096.5,547.4531 L861.5,547.4531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><path d="M1096.5,547.4531 L1096.5,557.4531 L1106.5,557.4531 L1096.5,547.4531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="143" x="867.5" y="564.52">Selective per-proposal</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="150" x="867.5" y="579.6528">accept / modify / reject.</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="224" x="867.5" y="594.7856">Every successful revise — including</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="209" x="867.5" y="609.9185">all-reject — cuts exactly one new</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="205" x="867.5" y="625.0513">vNNN, preserving the audit trail.</text><path d="M567,547.4531 L567,633.1172 A0,0 0 0 0 567,633.1172 L845,633.1172 A0,0 0 0 0 845,633.1172 L845,557.4531 L835,547.4531 L581.62,547.4531 L403.61,490.5031 L573.62,547.4531 L567,547.4531 A0,0 0 0 0 567,547.4531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><path d="M835,547.4531 L835,557.4531 L845,557.4531 L835,547.4531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="204" x="573" y="564.52">Pure queue — drains via Revise.</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="216" x="573" y="579.6528">Processed proposals relocate into</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="257" x="573" y="594.7856">history/vNNN/proposed_changes/ paired</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="215" x="573" y="609.9185">with disposition revision files; they</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="157" x="573" y="625.0513">do not accumulate here.</text><path d="M567.5,817.4531 L567.5,887.9844 A0,0 0 0 0 567.5,887.9844 L810.5,887.9844 A0,0 0 0 0 810.5,887.9844 L810.5,827.4531 L800.5,817.4531 L615.4,817.4531 L522.32,777.5431 L607.4,817.4531 L567.5,817.4531 A0,0 0 0 0 567.5,817.4531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><path d="M800.5,817.4531 L800.5,827.4531 L810.5,827.4531 L800.5,817.4531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="204" x="573.5" y="834.52">Pure archive — items only enter</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="222" x="573.5" y="849.6528">via Revise; never become pending,</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="141" x="573.5" y="864.7856">never drain except via</text><text fill="#000000" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="148" x="573.5" y="879.9185">/livespec:prune-history.</text><!--MD5=[e38a78e35415c081adbe3d821d0b148b]
+link Input to Seed--><path d="M390,82.4631 C390,100.3131 390,123.9231 390,141.0431 " fill="none" id="Input-&gt;Seed" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="390,146.1331,394,137.1331,390,141.1331,386,137.1331,390,146.1331" style="stroke: #000000; stroke-width: 1.3;"/><!--MD5=[79b56c54669e1e209294348a48d118fe]
+link Seed to Spec--><path d="M352.35,182.4631 C329.42,192.8231 298.86,206.6231 268.95,220.1331 " fill="none" id="Seed-&gt;Spec" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="264.16,222.3031,274.0087,222.246,268.7172,220.246,270.7172,214.9545,264.16,222.3031" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="105" x="323" y="206.6636">authors initial tree</text><!--MD5=[e234211b21a33290f9c83c691cc53acc]
+link Seed to History--><path d="M419.07,182.5631 C424.12,186.3731 429.02,190.7131 433,195.4531 C456.02,222.8531 467,232.6631 467,268.4531 C467,268.4531 467,268.4531 467,591.4531 C467,633.7331 472.63,645.5331 462,686.4531 C461.3,689.1331 460.46,691.8431 459.5,694.5431 " fill="none" id="Seed-&gt;History" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="457.68,699.3831,464.6112,692.3861,459.4528,694.708,457.131,689.5496,457.68,699.3831" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="66" x="468" y="410.1636">writes v001</text><!--MD5=[6aed50f60f52d38e3c9589f0bac08744]
+link Propose to PCQueue--><path d="M331.13,379.6731 C328.62,383.6531 326.37,388.0331 325,392.4531 C321.59,403.4231 320.56,415.8331 320.62,427.1331 " fill="none" id="Propose-&gt;PCQueue" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="320.72,432.2331,324.5651,423.1659,320.6343,427.2339,316.5663,423.303,320.72,432.2331" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="84" x="344" y="403.6636">writes pending</text><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="120" x="326" y="416.4683">proposed-change file</text><!--MD5=[2c995db2faed80d07edb84013ad27120]
+link Spec to Critique--><path d="M158.93,316.5031 C158.43,323.9431 157.94,331.3331 157.5,337.8831 " fill="none" id="Spec-&gt;Critique" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="157.15,343.1631,161.7332,334.4456,157.4788,338.1739,153.7505,333.9196,157.15,343.1631" style="stroke: #000000; stroke-width: 1.3;"/><!--MD5=[18d5bc04b48706048bc504d5ed50186f]
+link Critique to PCQueue--><path d="M163.32,379.6831 C169.51,392.3531 179.54,409.0931 193,419.4531 C206.58,429.9031 222.81,437.8731 239.14,443.9331 " fill="none" id="Critique-&gt;PCQueue" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="244.21,445.7531,237.0888,438.9495,239.5036,444.0651,234.388,446.4798,244.21,445.7531" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="104" x="202.5" y="403.6636">promotes findings</text><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="121" x="194" y="416.4683">to proposed changes</text><!--MD5=[a69e2db2c58186bdfbdd2106032d7638]
+link PCQueue to Revise--><path d="M328.36,494.7131 C331.57,516.9931 335.86,546.8131 338.77,567.0031 " fill="none" id="PCQueue-&gt;Revise" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="339.51,572.1731,342.1817,562.6936,338.7949,567.2245,334.2639,563.8377,339.51,572.1731" style="stroke: #000000; stroke-width: 1.3;"/><!--MD5=[f8978627cb19ac31d7c0ec0d2ea4869c]
+link Revise to Spec--><path d="M305.42,572.3431 C237.03,539.5031 94.3,466.7231 68,419.4531 C51.41,389.6331 61.6,372.8131 79,343.4531 C83.79,335.3731 89.78,327.7131 96.34,320.6131 " fill="none" id="Revise-&gt;Spec" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="100.04,316.7231,90.9436,320.4988,96.5985,320.3503,96.747,326.0052,100.04,316.7231" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="96" x="69" y="403.6636">applies accepted</text><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="80" x="77" y="416.4683">resulting_files</text><!--MD5=[07bc2658038b75836dd6c06689447504]
+link Revise to History--><path d="M337.28,608.6331 C332.79,628.8231 328.62,662.5731 343,686.4531 C344.91,689.6231 347.09,692.6131 349.49,695.4231 " fill="none" id="Revise-&gt;History" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="352.9,699.1431,349.7949,689.7965,349.5324,695.4473,343.8816,695.1847,352.9,699.1431" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="89" x="358" y="657.6636">cuts new vNNN,</text><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="117" x="344" y="670.4683">relocates processed</text><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="57" x="374" y="683.2729">proposals</text><!--MD5=[29c2b6ec2f05da293fae6f93ae2f3ebb]
+link Spec to Doctor--><path d="M79.6,316.4631 C71.05,324.3931 63.5,333.3831 58,343.4531 C37.68,380.6731 66.28,529.3431 68,534.4531 C109.28,656.9331 204.17,782.1831 243.47,830.8431 " fill="none" id="Spec-&gt;Doctor" style="stroke: #000000; stroke-width: 1.3; stroke-dasharray: 7.0,7.0;"/><polygon fill="#000000" points="246.65,834.7631,244.0791,825.2557,243.497,830.8826,237.8702,830.3005,246.65,834.7631" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="108" x="69" y="518.6636">static + LLM-driven</text><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="56" x="95" y="531.4683">invariants</text><!--MD5=[f5921745b78d7af41c9fcc55811f74aa]
+link PCQueue to Doctor--><path d="M299.05,494.7731 C288.3,509.6931 276.87,528.5131 271,547.4531 C239.51,649.0531 251.32,778.9231 257.84,829.9631 " fill="none" id="PCQueue-&gt;Doctor" style="stroke: #000000; stroke-width: 1.3; stroke-dasharray: 7.0,7.0;"/><polygon fill="#000000" points="258.49,834.9331,261.2993,825.4934,257.847,829.9746,253.3658,826.5223,258.49,834.9331" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="44" x="253" y="670.6636">hygiene</text><!--MD5=[f0a82dc77730f883730a6bf29f010c28]
+link History to Doctor--><path d="M351.28,770.4631 C339.31,776.3131 327.52,782.9831 317,790.4531 C301.45,801.4831 287.04,817.5031 276.73,830.4231 " fill="none" id="History-&gt;Doctor" style="stroke: #000000; stroke-width: 1.3; stroke-dasharray: 7.0,7.0;"/><polygon fill="#000000" points="273.4,834.6831,282.0968,830.0608,276.4815,830.7456,275.7968,825.1303,273.4,834.6831" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="98" x="318" y="801.6636">structural checks</text><!--MD5=[512a23a9d0f291ed1fd003d9c5a90d11]
+link History to Prune--><path d="M503.92,777.5931 C507.44,781.5431 510.53,785.8231 513,790.4531 C522.13,807.5731 507.74,821.8231 489.29,832.2731 " fill="none" id="History-&gt;Prune" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="484.53,834.8531,494.3504,834.1043,488.9314,832.4809,490.5548,827.062,484.53,834.8531" style="stroke: #000000; stroke-width: 1.3;"/><!--MD5=[99cefe05050675266fb88a6170c30a72]
+link Prune to History--><path d="M431.23,834.7431 C427.64,825.8931 423.8,814.8131 422,804.4531 C420.76,797.3131 421.02,789.7831 422.13,782.4731 " fill="none" id="Prune-&gt;History" style="stroke: #000000; stroke-width: 1.3;"/><polygon fill="#000000" points="423.02,777.4631,417.5141,785.6292,422.1494,782.3868,425.3919,787.0221,423.02,777.4631" style="stroke: #000000; stroke-width: 1.3;"/><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="85" x="423" y="801.6636">pruned-marker</text><!--MD5=[f2e868a50909524fce5e2e44250d3f58]
+link Revise to GMN57--><path d="M386.32,572.4231 C431.05,555.2731 502.52,530.6831 567,520.9531 C689.17,502.5131 724.75,492.5631 845,520.9531 C868.37,526.4731 892.29,536.5531 913.55,547.3531 " fill="none" id="Revise-GMN57" style="stroke: #000000; stroke-width: 1.3; stroke-dasharray: 7.0,7.0;"/><!--MD5=[1eddf44790b31bd6e20f34e1be7bf14b]
+@startuml spec-lifecycle
+title LiveSpec Core — Spec Lifecycle
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+skinparam ArrowThickness 1.3
+skinparam nodesep 16
+skinparam ranksep 26
+hide stereotype
+
+skinparam rectangle {
+  BackgroundColor #d6e6f5
+  BorderColor #1f4768
+  FontColor #111
+  RoundCorner 8
+}
+skinparam database {
+  BackgroundColor #f5ead5
+  BorderColor #5a4319
+  FontColor #111
+}
+skinparam package {
+  FontColor #111
+  FontSize 13
+  FontStyle bold
+  BorderColor #444
+  BorderThickness 2
+}
+
+rectangle "initial intent /\nprompt / instruction / seed" as Input #fffacc
+
+package "SPEC SIDE" as SpecPkg #fde8ec {
+  rectangle "/livespec:seed" as Seed
+  rectangle "/livespec:propose-changes" as Propose
+  rectangle "/livespec:critique" as Critique
+  rectangle "/livespec:revise" as Revise
+  rectangle "/livespec:doctor" as Doctor
+  rectangle "/livespec:prune-history" as Prune
+
+  database "SPECIFICATION/\n(spec.md, contracts.md,\nconstraints.md, scenarios.md,\nnon-functional-requirements.md)" as Spec #f5d76e
+  database "proposed_changes/\n(pending)" as PCQueue
+  database "history/vNNN/\n(snapshots +\nprocessed proposals)" as History
+}
+
+Input - -> Seed
+Seed - -> Spec : authors initial tree
+Seed - -> History : writes v001
+
+Propose - -> PCQueue : writes pending\nproposed-change file
+
+Spec - -> Critique
+Critique - -> PCQueue : promotes findings\nto proposed changes
+
+PCQueue - -> Revise
+Revise - -> Spec : applies accepted\nresulting_files
+Revise - -> History : cuts new vNNN,\nrelocates processed\nproposals
+
+Spec ..> Doctor : static + LLM-driven\ninvariants
+PCQueue ..> Doctor : hygiene
+History ..> Doctor : structural checks
+
+History - -> Prune
+Prune - -> History : pruned-marker
+
+note right of Spec : Mutated ONLY through\n/livespec:propose-changes →\n/livespec:revise after the v001 seed.\nDirect edits forbidden.
+
+note right of Revise : Selective per-proposal\naccept / modify / reject.\nEvery successful revise — including\nall-reject — cuts exactly one new\nvNNN, preserving the audit trail.
+
+note bottom of PCQueue : Pure queue — drains via Revise.\nProcessed proposals relocate into\nhistory/vNNN/proposed_changes/ paired\nwith disposition revision files; they\ndo not accumulate here.
+
+note bottom of History : Pure archive — items only enter\nvia Revise; never become pending,\nnever drain except via\n/livespec:prune-history.
+
+@enduml
+
+PlantUML version 1.2020.02(Sun Mar 01 11:22:07 CET 2020)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 21.0.10+7-Ubuntu-125.10
+Operating System: Linux
+Default Encoding: UTF-8
+Language: en
+Country: null
+--></g></svg>
