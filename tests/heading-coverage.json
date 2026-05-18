@@ -132,6 +132,20 @@
     "test": "tests.test_plugin_distribution"
   },
   {
+    "heading": "## Cross-repo coordination — pin-and-bump",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that wires the per-plugin compat block schema fragment into .livespec.jsonc validation and adds the contract-version-compatibility doctor invariant."
+  },
+  {
+    "heading": "## Shared content sync — copier template",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that publishes templates/impl-plugin/ as the canonical copier scaffold and pins copier via uv against pyproject.toml [dependency-groups.dev]."
+  },
+  {
     "heading": "## Pre-commit step ordering",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
