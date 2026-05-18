@@ -21,6 +21,13 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
+    "heading": "## Template manifest",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Landed in v063 (template-manifest-additional-files proposal accept). Test ID populated in the impl follow-up PR that bumps template_config.schema.json to v2, adds spec_files blocks to both built-in templates' template.json, and widens template_files_present.py + heading_coverage.py to consult the manifest."
+  },
+  {
     "heading": "## Sub-command lifecycle",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
@@ -75,6 +82,13 @@
     "spec_file": "contracts.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Template manifest wire contract",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v063. Test ID populated in the impl follow-up PR that bumps template_config.schema.json to v2 + paired dataclass + adds .livespec.jsonc render_commands schema."
   },
   {
     "heading": "## Skill \u2194 template JSON contracts",
@@ -151,6 +165,13 @@
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
     "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md \u00a7\"Runtime dependencies \u2192 End-user install\" into constraints.md. Real test pending release-gate test wiring."
+  },
+  {
+    "heading": "## Renderer non-vendoring",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "constraints.md",
+    "test": "TODO",
+    "reason": "Landed in v063. Test ID populated in the impl follow-up PR. The constraint is architecture-level (livespec MUST NOT vendor renderer binaries/runtimes); the impl-side test verifies no plantuml/Mermaid/Graphviz dependency creeps into pyproject.toml or _vendor/."
   },
   {
     "heading": "## Vendored-library discipline",
