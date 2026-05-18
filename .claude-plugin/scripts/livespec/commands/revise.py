@@ -44,7 +44,9 @@ from livespec.commands._revise_railway_emits import (
     _process_decisions,
 )
 from livespec.commands._revise_validation import (
+    _iter_proposal_topics,  # noqa: F401  # re-exported for tests
     _iter_resulting_files_paths,  # noqa: F401  # re-exported for tests
+    _validate_proposal_topics_exist,  # noqa: F401  # re-exported for tests
     _validate_resulting_files,
     _validate_resulting_files_paths,  # noqa: F401  # re-exported for tests
     _validate_resulting_files_targets_exist,  # noqa: F401  # re-exported for tests

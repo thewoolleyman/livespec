@@ -103,6 +103,28 @@ skills load with the correct `/livespec:*` namespace.
 pre-push, and in CI. The doc-only subset is invoked only by lefthook
 pre-commit when zero `.py` files are staged.
 
+## Revise co-edit discipline — `tests/heading-coverage.json`
+
+Per `SPECIFICATION/spec.md` §"Self-application", every revise pass
+that adds, changes, or removes a `## ` heading in any spec file MUST
+update `tests/heading-coverage.json` via the same `resulting_files[]`
+mechanism so the test-coverage map stays in lockstep with the spec.
+When drafting a revise payload that touches a spec file's H2 set:
+
+1. Diff the proposed `## ` heading set against the current spec
+   file's H2 set.
+2. For each added heading, include a `TODO` + `reason` entry in
+   `tests/heading-coverage.json` (the v064 pattern); for each
+   removed heading, drop the corresponding entry; for renamed
+   headings, update the `heading` field.
+3. Include `tests/heading-coverage.json` in the revise payload's
+   `resulting_files[]` (path spelled as `../tests/heading-coverage.json`
+   when `--spec-target` is the main `SPECIFICATION/` tree, so the
+   wrapper's `spec_target / path` join resolves it to the project-
+   root-relative file). Pre-commit's `check-heading-coverage` is the
+   mechanical guard, but catching the omission at payload-assembly
+   time keeps the revise commit atomic.
+
 ## Historical context
 
 `archive/` contains the bootstrap-process artifacts: the design
