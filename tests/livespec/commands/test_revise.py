@@ -1388,3 +1388,157 @@ def test_revise_iter_resulting_files_paths_skips_non_dict_entry() -> None:
     )
     paths = revise._iter_resulting_files_paths(revise_input=revise_input)  # noqa: SLF001
     assert paths == ["spec.md"]
+
+
+def test_revise_main_rejects_missing_proposal_topic_source(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A decisions[].proposal_topic with no matching file in proposed_changes/ returns exit 3.
+
+    Critical no-partial-snapshot invariant: when the payload
+    references a topic that no longer exists in
+    `<spec-target>/proposed_changes/` (e.g., the topic was
+    already processed by a prior revise pass), the wrapper MUST
+    fail with PreconditionError (exit 3) BEFORE cutting a new
+    `history/v(N+1)/` directory. Previously the wrapper would
+    cut v(N+1)/, write the revision file, and only THEN fail
+    at the move step, leaving a partial-snapshot artifact on
+    disk that tripped doctor's version-directories-complete
+    invariant.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    _ = (proposed_changes / "other-in-flight.md").write_text(
+        "# Some other in-flight proposal\n",
+        encoding="utf-8",
+    )
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "already-processed",
+                        "decision": "accept",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 3
+    assert not (spec_target / "history" / "v002").exists()
+
+
+def test_revise_main_rejects_missing_proposal_topic_for_reject_decision(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The proposal-topic check fires for reject decisions too, not just accept/modify.
+
+    Even rejected proposals are moved byte-identically into
+    `history/vNNN/proposed_changes/` as part of the rejection
+    audit trail, so reject decisions with a missing source file
+    would also produce a partial-snapshot artifact. The check
+    iterates every decision regardless of verb.
+    """
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    _ = (proposed_changes / "other-in-flight.md").write_text(
+        "# Some other in-flight proposal\n",
+        encoding="utf-8",
+    )
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "never-existed",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 3
+    assert not (spec_target / "history" / "v002").exists()
+
+
+def test_revise_iter_proposal_topics_collects_all_topics_in_payload_order() -> None:
+    """`_iter_proposal_topics` returns every decision's topic in payload order.
+
+    Used by the proposal-topic-existence guard to name the first
+    violation deterministically. Verifies the helper iterates
+    every decision regardless of verb.
+    """
+    from livespec.schemas.dataclasses.revise_input import RevisionInput
+
+    revise_input = RevisionInput(
+        author=None,
+        decisions=[
+            {"proposal_topic": "alpha", "decision": "accept", "rationale": "."},
+            {"proposal_topic": "beta", "decision": "reject", "rationale": "."},
+            {"proposal_topic": "gamma", "decision": "modify", "rationale": "."},
+        ],
+    )
+    topics = revise._iter_proposal_topics(revise_input=revise_input)  # noqa: SLF001
+    assert topics == ["alpha", "beta", "gamma"]
+
+
+def test_revise_verify_in_flight_proposals_present_fails_on_empty_children(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_verify_in_flight_proposals_present` returns Failure when no in-flight files exist.
+
+    Defense-in-depth check inside `_process_decisions`. After the
+    `_validate_proposal_topics_exist` guard moved upstream, this
+    branch is no longer reachable via `revise.main()` — every
+    payload that would have tripped it is now caught earlier by
+    the stricter topic-resolution check. The unit test pins the
+    failure branch directly so the helper retains 100% coverage.
+    """
+    from livespec.commands._revise_railway_emits import (
+        _verify_in_flight_proposals_present,
+    )
+    from livespec.errors import PreconditionError
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
+
+    proposed_changes_dir = tmp_path / "proposed_changes"
+    proposed_changes_dir.mkdir()
+    result = _verify_in_flight_proposals_present(
+        children=[],
+        proposed_changes_dir=proposed_changes_dir,
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(PreconditionError() as err):
+            assert "no in-flight" in str(err)
+        case _:
+            raise AssertionError(f"expected Failure(PreconditionError), got {unwrapped!r}")

@@ -8,8 +8,17 @@ Per `SPECIFICATION/spec.md` §"Sub-command lifecycle":
 - **Require-existing-target rule**: rejects
   `resulting_files[].path` values whose resolved target does
   not exist as a regular file. PreconditionError (exit 3).
+- **Proposal-topic resolution rule**: rejects payloads whose
+  `decisions[].proposal_topic` does not resolve to an existing
+  `<spec-target>/proposed_changes/<topic>.md` file (e.g., the
+  topic was already processed in a prior revise pass, or never
+  existed). PreconditionError (exit 3). This check fires BEFORE
+  any new `history/vNNN/` directory is cut so a payload
+  referencing an already-processed topic leaves the spec tree
+  byte-identical instead of producing a partial-snapshot
+  artifact.
 
-Both validations fire AFTER schema validation but BEFORE any
+All validations fire AFTER schema validation but BEFORE any
 file-shaping work, so a violation leaves the spec tree byte-
 identical.
 
@@ -114,18 +123,76 @@ def _validate_resulting_files_targets_exist(
     return IOResult.from_value(None)
 
 
+def _iter_proposal_topics(
+    *,
+    revise_input: RevisionInput,
+) -> list[str]:
+    """Collect every `decisions[].proposal_topic` value in payload order.
+
+    Returns the list in payload order so the caller's error
+    message names the first violation deterministically. Every
+    decision contributes a topic regardless of its `decision`
+    verb (accept / modify / reject) — even rejected proposals
+    MUST resolve to an existing file because revise moves them
+    byte-identically into history/vNNN/proposed_changes/ as part
+    of the rejection audit trail.
+    """
+    topics: list[str] = []
+    for decision in revise_input.decisions:
+        topics.append(str(decision.get("proposal_topic", "")))
+    return topics
+
+
+def _validate_proposal_topics_exist(
+    *,
+    revise_input: RevisionInput,
+    spec_target: Path,
+) -> IOResult[None, LivespecError]:
+    """Reject when any decision's proposal_topic does not resolve to an existing file.
+
+    The pre-existing `_check_proposed_changes_nonempty` only
+    ensures `<spec-target>/proposed_changes/` holds at least one
+    in-flight proposal — it does NOT validate that the payload's
+    specific topics resolve. Without this stricter check, a
+    payload referencing an already-processed topic (e.g., a
+    second invocation of revise with the same payload) would
+    cut a new `history/v(N+1)/` directory, write the revision
+    file, and only THEN fail when the proposed-change move
+    cannot find its source — leaving a partial-snapshot artifact
+    on disk that trips downstream doctor invariants. Firing the
+    check before file-shaping leaves the spec tree byte-
+    identical on PreconditionError (exit 3).
+    """
+    for topic in _iter_proposal_topics(revise_input=revise_input):
+        target = spec_target / "proposed_changes" / f"{topic}.md"
+        if not target.is_file():
+            return IOResult.from_failure(
+                PreconditionError(
+                    f"revise: decisions[].proposal_topic '{topic}' does not "
+                    f"resolve to an existing file at {target}; revise processes "
+                    f"only in-flight proposed-change files (each topic must "
+                    f"correspond to <spec-target>/proposed_changes/<topic>.md)",
+                ),
+            )
+    return IOResult.from_value(None)
+
+
 def _validate_resulting_files(
     *,
     revise_input: RevisionInput,
     spec_target: Path,
 ) -> IOResult[RevisionInput, LivespecError]:
-    """Compose path-relativity guard then target-existence check.
+    """Compose path-relativity guard, target-existence check, and proposal-topic resolution.
 
     Sequential validation: path-relativity (UsageError, exit 2)
-    fires first; target-existence (PreconditionError, exit 3)
-    fires second. Both validate every `resulting_files[]` entry
-    across all accept/modify decisions; reject decisions are
-    not validated.
+    fires first; resulting_files target-existence (PreconditionError,
+    exit 3) fires second; proposal-topic resolution
+    (PreconditionError, exit 3) fires third. The path-relativity
+    and target-existence checks validate every `resulting_files[]`
+    entry across all accept/modify decisions; the proposal-topic
+    check validates every decision's `proposal_topic` regardless
+    of verb. All three fire BEFORE any file-shaping work so a
+    violation leaves the spec tree byte-identical.
     """
     return (
         IOResult.from_result(
@@ -136,6 +203,12 @@ def _validate_resulting_files(
         )
         .bind(
             lambda _value: _validate_resulting_files_targets_exist(
+                revise_input=revise_input,
+                spec_target=spec_target,
+            ),
+        )
+        .bind(
+            lambda _value: _validate_proposal_topics_exist(
                 revise_input=revise_input,
                 spec_target=spec_target,
             ),
