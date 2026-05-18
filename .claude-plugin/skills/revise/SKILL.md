@@ -161,21 +161,42 @@ and exit code is `0` (NOT an error).
    that finding to the user and direct them to run
    `/livespec:propose-change` first.
 
-   **Narrate stale-pending-proposal count + oldest.**
-   Before the per-proposal accept/modify/reject loop
-   begins, surface a single informational line of the
-   form: "N pending proposal(s); oldest is
+   **Narrate stale-pending-proposal count + oldest
+   (per spec tree).** Before the per-proposal
+   accept/modify/reject loop begins, surface:
+
+   (a) **Active `<spec-target>/`.** A single
+   informational line of the form: "N pending
+   proposal(s) in `<spec-target>`; oldest is
    `<canonical-topic>` from <created_at>." (Use the
    YAML front-matter `topic` field for the canonical
-   topic and `created_at` for the timestamp.) Per
-   SPECIFICATION/spec.md (v052) §"Sub-command lifecycle"
-   revise-lifecycle paragraph, this narration MUST NOT
-   gate the wrapper, MUST NOT add any pre-step or
-   post-step doctor check, and MUST NOT block
-   downstream wrapper invocations. The sole purpose is
-   pending-proposal-accumulation visibility so the user
-   MAY choose to address older proposals during the
-   current pass.
+   topic and `created_at` for the timestamp.)
+
+   (b) **Every OTHER spec tree in the project.** Walk
+   the main spec root (resolved from `.livespec.jsonc`)
+   and enumerate `<main-spec-root>/templates/<name>/`
+   for every sub-spec directory present. For every
+   such tree OTHER than the active `<spec-target>/`,
+   list its `proposed_changes/*.md` (filter out
+   `README.md` and any `-revision.md` siblings, same
+   as step 3 for the active target). For every other
+   tree that has at least one in-flight proposal,
+   surface one informational line of the form: "N
+   pending proposal(s) in `<other-tree-root>`; oldest
+   is `<canonical-topic>` from <created_at>." Trees
+   with zero in-flight proposals MUST NOT be surfaced
+   (no noise lines).
+
+   The two-clause narration prevents the user from
+   missing pending work in a sub-spec when invoking
+   revise against the main spec (or vice versa); the
+   user MAY then choose to address older proposals in
+   a different tree by invoking revise against that
+   `--spec-target` first. Per SPECIFICATION/spec.md
+   §"revise skill-prose responsibilities", this
+   narration MUST NOT gate the wrapper, MUST NOT add
+   any pre-step or post-step doctor check, and MUST
+   NOT block downstream wrapper invocations.
 
 4. **Capture optional steering intent.** Ask the user
    (optional, single free-text prompt): "Any steering
