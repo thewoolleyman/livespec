@@ -26,7 +26,7 @@ skinparam component {
   FontColor #111
 }
 
-package "livespec-core (one plugin)" {
+package "livespec-core (one plugin) — 8 skills" {
   rectangle "skills exposed:" as CoreSkillsBox {
     card "/livespec:seed" as Seed
     card "/livespec:propose-changes" as Propose
@@ -35,14 +35,15 @@ package "livespec-core (one plugin)" {
     card "/livespec:doctor" as Doctor
     card "/livespec:prune-history" as Prune
     card "/livespec:help" as Help
+    card "/livespec:next  (thin transport)" as Next #ccddee
   }
   rectangle "contracts.md publishes:" as PublishedContract {
-    rectangle "• SPECIFICATION/ tree shape\n• .livespec.jsonc core schema (open extension)\n• impl-plugin contract (must-expose skills)\n• Spec Reader API surface (required capabilities)\n• Persistent Agent Knowledge\n  conventions (file-based realizations)\n• untriaged-memo machine-query surface\n• secrets-out-of-config rule\n• shared spec vocabulary" as ContractItems #Lavender
+    rectangle "• SPECIFICATION/ tree shape\n• .livespec.jsonc core schema (open extension)\n• impl-plugin contract (9 must-expose skills,\n  6 heavyweight + 3 thin-transport)\n• Spec Reader API surface (required capabilities)\n• Persistent Agent Knowledge\n  conventions (file-based realizations)\n• thin-transport skill doctrine\n  (all contract-surface queries are thin\n   skills, not CLI-only)\n• pin-and-bump cross-repo coordination\n  (livespec.compat.json per impl)\n• copier template at templates/impl-plugin/\n• secrets-out-of-config rule\n• shared spec vocabulary" as ContractItems #Lavender
   }
   database "manages\nSPECIFICATION/" as SpecOwned #f5d76e
 }
 
-package "implementation plugin (one of N)" {
+package "implementation plugin (one of N) — 9 skills" {
   rectangle "skills MUST expose:" as ImplSkillsBox {
     card "/livespec-impl-*:capture-impl-gaps" as CaptureImplGaps
     card "/livespec-impl-*:capture-spec-drift" as CaptureSpecDrift
@@ -50,23 +51,36 @@ package "implementation plugin (one of N)" {
     card "/livespec-impl-*:implement" as Implement
     card "/livespec-impl-*:capture-memo" as CaptureMemo
     card "/livespec-impl-*:process-memos" as ProcessMemos
+    card "/livespec-impl-*:list-memos  (thin)" as ListMemos #ccddee
+    card "/livespec-impl-*:list-work-items  (thin)" as ListWorkItems #ccddee
+    card "/livespec-impl-*:next  (thin)" as ImplNext #ccddee
   }
   component "Spec Reader\n(impl-side adapter)" as SpecReader
   rectangle "additional contract obligations:" as ImplContract {
-    rectangle "• Spec Reader provides:\n  – read current Specification\n  – read Specification History\n  – report current spec version (vNNN)\n  – read/diff between versions\n• untriaged-memo query\n  (machine contract for doctor)\n• process-memos honors Persistent Agent\n  Knowledge contract for the\n  persistent-knowledge disposition\n• reads its OWN section of .livespec.jsonc\n• tolerates other plugins' sections" as ImplObligations #Lavender
+    rectangle "• Spec Reader provides:\n  – read current Specification\n  – read Specification History\n  – report current spec version (vNNN)\n  – read/diff between versions\n• thin-transport query skills uniformly\n  back contract-surface queries\n  (list-memos, list-work-items, next)\n• process-memos honors Persistent Agent\n  Knowledge contract for the\n  persistent-knowledge disposition\n• reads its OWN section of .livespec.jsonc\n• tolerates other plugins' sections\n• declares livespec.compat.json with the\n  pinned livespec-core release tag" as ImplObligations #Lavender
   }
   database "manages its\nWork Items + Memos\nstores +\nPersistent Agent Knowledge\nrealization" as ImplOwned #f5d76e
 }
 
+package "project-local Layer 3 (every consuming repo)" as ProjectLocal #f0f0e8 {
+  rectangle ".claude/skills/loop/SKILL.md" as LoopSkill #d6e6f5
+  rectangle "composes Layer 2 primitives:\n• /livespec:next + /livespec-impl-*:next\n  → cross-side ranking\n• dispatch to appropriate skill verb\n• janitor (just check + /livespec:doctor)\n• commit & loop\nProject-specific knowledge: queue path,\ndispatch table, budget/mode policy.\nHand-tuned per repo; copier ships starter." as LoopNotes #Lavender
+}
+
 PublishedContract -down-> ImplContract : every impl plugin\nMUST honor
-Doctor -[#a02020,thickness=2]right-> ProcessMemos : untriaged-memo\nhygiene query
+Doctor -[#a02020,thickness=2]right-> ListMemos : list-memos\n--filter=untriaged --json\n(memo hygiene)
+Doctor -[#a02020,thickness=2]right-> ListWorkItems : list-work-items --json\n(4 structural invariants)
 CaptureSpecDrift -[#a02020,thickness=2]up-> Propose : drift findings\n→ proposed changes
 ProcessMemos -[#a02020,thickness=2]up-> Propose : spec-bound\nmemo disposition
 SpecOwned -[#a02020,thickness=2]down-> SpecReader : canonical spec\ncontent
+LoopSkill -[#5a3a72]-> Next : reads spec-side\nranking
+LoopSkill -[#5a3a72]-> ImplNext : reads impl-side\nranking
 
-note left of CoreSkillsBox : Core knows NOTHING about implementation\nplugins by name. The published contract\nis uniform; any plugin honoring it is\nswappable.
+note left of CoreSkillsBox : Core knows NOTHING about implementation\nplugins by name. The published contract\nis uniform; any plugin honoring it is\nswappable. /livespec:next is a thin-\ntransport skill: SKILL.md is a pass-\nthrough to .claude-plugin/scripts/bin/next.py.
 
-note right of ImplSkillsBox : Implementations differ in:\n• backend (bd vs JSONL vs GitLab vs ...)\n• Spec Reader internals (thin pass-through,\n  cached, indexed, embedded, RAG, ...)\n• Persistent Agent Knowledge realization\n  (harness instruction files vs long-lived\n  memory store, etc.)\nThey AGREE on the skill surface, the Spec\nReader required capabilities, and the\ncontract obligations.
+note right of ImplSkillsBox : Implementations differ in:\n• backend (bd vs JSONL vs GitLab vs ...)\n• Spec Reader internals (thin pass-through,\n  cached, indexed, embedded, RAG, ...)\n• Persistent Agent Knowledge realization\n  (harness instruction files vs long-lived\n  memory store, etc.)\nThey AGREE on the 9-skill surface,\nthe Spec Reader required capabilities,\nand the contract obligations.
+
+note bottom of ProjectLocal : The loop driver does NOT live in core OR\nin an impl plugin — both lack the per-repo\nknowledge required (queue path, dispatch,\njanitor command, budget). It is checked\ninto each consuming repo and tuned locally.\nThe copier template ships a starter; CI\ncopier-drift check excludes this file.
 
 note bottom of Implement : `implement` is generic — consumes any work\nitem regardless of origin:\n• capture-impl-gaps (gap-tied, gap-id label)\n• capture-work-item (freeform, direct)\n• process-memos impl-bound disposition\n  (freeform)\nClosure branches on origin × disposition:\ngap-tied fix verifies via dry-run re-detection;\nfreeform fix closes with --reason; non-fix\n(wontfix / duplicate / spec-revised / ...)\ncloses with reason, no verification.
 

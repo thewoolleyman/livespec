@@ -46,15 +46,11 @@ package "IMPLEMENTATION SIDE" as ImplPkg #e3f0e3 {
   rectangle "/livespec-impl-*:\ncapture-spec-drift" as CaptureSpecDrift
   rectangle "/livespec-impl-*:\ncapture-work-item" as CaptureWorkItem
   rectangle "/livespec-impl-*:\nimplement" as Implement
-  rectangle "/livespec-impl-*:\nlist-memos\n(thin transport)" as ListMemos #ccddee
-  rectangle "/livespec-impl-*:\nlist-work-items\n(thin transport)" as ListWorkItems #ccddee
-  rectangle "/livespec-impl-*:\nnext\n(thin transport)" as ImplNext #ccddee
 
   component "Spec Reader\n(impl-plugin adapter)" as SpecReader
 
   database "Implementation\n(code, tests, config,\ninfra, plugins)" as Impl #f5d76e
   database "Work Items\n(plugin-specific:\nbd / JSONL / GitLab / ...)" as WorkItems
-  database "Memos\n(plugin-specific)" as Memos
 }
 
 ' Cross-boundary: spec content flows to the impl-side Spec Reader
@@ -83,18 +79,6 @@ CaptureWorkItem --> WorkItems : files freeform item\n(no gap-id)
 WorkItems --> Implement : leaf-level pick
 Implement --> Impl : Red → Green code cycle
 Implement --> WorkItems : close — branched by\norigin × disposition
-
-' Thin-transport query skills (read store state, return JSON)
-Memos --> ListMemos
-WorkItems --> ListWorkItems
-WorkItems --> ImplNext
-Memos --> ImplNext
-
-note right of ImplNext : Thin-transport ranking skill — returns\nthe next ripe impl-side action as\nstructured JSON. Each impl uses its\nnative primitives (bd ready, JSONL\ntraversal, GitLab API, ...). No LLM\nin the ranking path. Asymmetric\ncounterpart to /livespec:next on\nthe spec side.
-
-note right of ListMemos : Required thin-transport skill. Doctor\ninvokes with --filter=untriaged --json\nfor the memo-hygiene invariant.\nUsers invoke for queue inspection.\nPromoted from discretionary in 2026-05-18.
-
-note right of ListWorkItems : Required thin-transport skill. Doctor\ninvokes for four structural invariants\n(1:1 gap-tracking, no-orphan-blocker,\nno-stale-gap-tied, no-duplicate-gap-id).\nLoop driver invokes for routing decisions.\nNew in 2026-05-18.
 
 note right of CaptureImplGaps : Mechanical: enumerate spec rules,\ncheck impl for each. Detection is\nin-memory and ephemeral — no persistent\nintermediate artifact. Items it files carry\na gap-id:gap-NNNN label tying back to the\noriginating spec rule, which makes closure\nverifiable.
 

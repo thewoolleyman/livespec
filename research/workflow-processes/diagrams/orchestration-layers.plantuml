@@ -1,0 +1,88 @@
+@startuml orchestration-layers
+title Orchestration — three layers (introduced 2026-05-18)
+
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam BackgroundColor #fafafa
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+skinparam ArrowThickness 1.3
+skinparam nodesep 16
+skinparam ranksep 26
+hide stereotype
+
+skinparam package {
+  FontColor #111
+  FontSize 13
+  FontStyle bold
+  BorderColor #444
+  BorderThickness 2
+}
+
+skinparam rectangle {
+  BorderColor #1f4768
+  FontColor #111
+  RoundCorner 8
+}
+
+' ============================================================
+' Layer 3 — project-local
+' ============================================================
+
+package "Layer 3 — project-local (in EVERY consuming repo)" as L3 #f0f0e8 {
+  rectangle ".claude/skills/loop/SKILL.md\n(project-local Ralph-loop driver)" as Loop #d6e6f5
+
+  rectangle "knows THIS repo's:\n• queue path resolution\n• dispatch table (item-kind → verb)\n• janitor invocation\n  (just check + /livespec:doctor)\n• budget / mode policy\n• escalation rules\n• commit / PR conventions" as L3Notes #lavender
+}
+
+' ============================================================
+' Layer 2 — plugin primitives (skills)
+' ============================================================
+
+package "Layer 2 — plugin primitives (skills, the contract surface)" as L2 #fde8ec {
+
+  package "livespec-core (8 skills)" as Core #fff5f5 {
+    rectangle "heavyweight:\n• seed\n• propose-changes\n• critique\n• revise\n• doctor\n• prune-history\n• help" as CoreHeavy
+    rectangle "thin transport:\n• next" as CoreThin #ccddee
+  }
+
+  package "livespec-impl-* (9 skills)" as Impl #e3f0e3 {
+    rectangle "heavyweight:\n• capture-impl-gaps\n• capture-spec-drift\n• capture-work-item\n• implement\n• capture-memo\n• process-memos" as ImplHeavy
+    rectangle "thin transport:\n• list-memos\n• list-work-items\n• next" as ImplThin #ccddee
+  }
+}
+
+' ============================================================
+' Layer 1 — deterministic CLIs
+' ============================================================
+
+package "Layer 1 — deterministic CLIs (Python implementations behind every skill)" as L1 #eef4fb {
+  rectangle ".claude-plugin/scripts/bin/\n  next.py\n  list-memos.py\n  list-work-items.py\n  doctor.py --json\n  ... (one per skill)" as CLIs
+}
+
+' ============================================================
+' Edges
+' ============================================================
+
+Loop -[#5a3a72]-> CoreThin : reads spec-side\nranking
+Loop -[#5a3a72]-> ImplThin : reads impl-side\nranking
+Loop -[#5a3a72]-> CoreHeavy : dispatches\n(interactive, spec-side)
+Loop -[#5a3a72]-> ImplHeavy : dispatches\n(autonomous,\nimpl-side)
+
+CoreHeavy ..> CLIs : delegates
+CoreThin ..> CLIs : delegates
+ImplHeavy ..> CLIs : delegates
+ImplThin ..> CLIs : delegates
+
+' ============================================================
+' Notes
+' ============================================================
+
+note bottom of L3 : The loop driver does NOT live in core OR in\nan impl plugin. Both lack the per-repo knowledge\nrequired. It is checked into each consuming repo\nand hand-tuned. The copier template at\nlivespec-core/templates/impl-plugin/ ships a\nstarter; CI's copier-drift check excludes this\nfile (local divergence is expected).
+
+note right of L2 : The Layer 2 contract is uniform across impl\nplugins. Heavyweight skills carry authored\ndialogue/detection logic. Thin-transport skills\nare deterministic pass-throughs to Layer 1\nCLIs (short SKILL.md, no logic accretion).\nMode discipline: --mode interactive default for\nspec-side dispatch (human-gated); --mode\nautonomous default for impl-side dispatch\n(hands-off the user wants).
+
+note right of L1 : Layer 1 is testable directly (pytest against\nthe Python implementations). Non-Claude consumers\n(CI scripts, just targets) can invoke CLIs\ndirectly. But the contract surface is the Layer 2\nskill; the CLI is plumbing. Within a Claude Code\nsession, the Layer 3 loop invokes skills (not\nCLIs) so the dispatch is namespace-aware and\nClaude Code's plugin model handles it natively.
+
+@enduml

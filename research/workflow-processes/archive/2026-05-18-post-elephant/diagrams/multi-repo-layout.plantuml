@@ -29,33 +29,32 @@ skinparam actor {
 
 package "Plugin source repos (each a separate GitHub repo)" {
   rectangle "livespec-core" as Core #LightYellow {
-    card "/livespec:* skills (8)" as CoreSkills
-    rectangle "publishes:\n• SPECIFICATION/ shape contract\n• .livespec.jsonc core schema\n• impl-plugin contract (9 skills,\n  6 heavyweight + 3 thin-transport)\n• Spec Reader API surface\n• Persistent Agent Knowledge\n  conventions for file-based\n  realizations\n• templates/impl-plugin/\n  (copier scaffold for new impls)\n• pin-and-bump cross-repo\n  coordination mechanism" as CoreContract #Lavender
+    card "/livespec:* skills" as CoreSkills
+    rectangle "publishes:\n• SPECIFICATION/ shape contract\n• .livespec.jsonc core schema\n• impl-plugin contract\n• Spec Reader API surface\n• Persistent Agent Knowledge\n  conventions for file-based\n  realizations" as CoreContract #Lavender
   }
-  rectangle "livespec-impl-plaintext\n(IMMEDIATE FOCUS — dogfood)" as ImplPlain #LightYellow {
-    card "/livespec-impl-plaintext:*\nskills (9)" as PlainSkills
-    rectangle "JSONL / md / html / yaml\nbackend\n+ livespec.compat.json\n(pins livespec-core release)" as PlainBackend #FFFFFF;line.dashed
+  rectangle "livespec-impl-plaintext" as ImplPlain #LightYellow {
+    card "/livespec-impl-plaintext:* skills" as PlainSkills
+    rectangle "JSONL / md / html / yaml\nbackend" as PlainBackend #FFFFFF;line.dashed
   }
-  rectangle "livespec-impl-beads\n(DEFERRED — adopters with\nconcurrent multi-contributor\nprofile)" as ImplBeads #LightYellow;line.dashed {
+  rectangle "livespec-impl-beads" as ImplBeads #LightYellow {
     card "/livespec-impl-beads:* skills" as BeadsSkills
     rectangle "wraps bd / Dolt" as BeadsBackend #FFFFFF;line.dashed
   }
-  rectangle "livespec-impl-gitlab\n(future)" as ImplGitLab #LightYellow;line.dashed {
+  rectangle "livespec-impl-gitlab" as ImplGitLab #LightYellow {
     card "/livespec-impl-gitlab:* skills" as GitLabSkills
     rectangle "wraps GitLab API\n(creds outside .livespec.jsonc)" as GitLabBackend #FFFFFF;line.dashed
   }
-  rectangle "livespec-impl-gascity,\nlivespec-impl-darkfactory-kilroy,\n... (future)" as ImplOthers #LightYellow;line.dashed
+  rectangle "livespec-impl-gascity,\nlivespec-impl-darkfactory-kilroy,\n..." as ImplOthers #LightYellow
 }
 
-rectangle "shared content\n(non-functional-requirements,\nCI conventions, TDD rules,\nlefthook, justfile recipes,\nstarter loop skill)\nlives in livespec-core/templates/impl-plugin/" as Shared #Lavender
-note bottom of Shared : Sync via `copier`. Each impl-plugin repo is generated from this template via `copier copy` and re-syncs via `copier update`. `.copier-answers.yml` per repo tracks template version. CI runs `copier update --dry-run` for drift detection (.claude/skills/loop/SKILL.md excluded — local divergence is expected there).
+rectangle "shared content\n(non-functional-requirements,\nCI conventions, TDD rules,\nlefthook, justfile recipes)" as Shared #Lavender
+note bottom of Shared : Mechanical sync (subtree / generator / pinned package). Mechanism TBD; the existence of shared content survives the multi-repo decision.
 
 actor "Consumer\nproject\nmaintainer" as Consumer
 rectangle "Consumer project\nrepository" as ConsumerRepo {
   card "/plugin install\nlivespec-core@..." as InstallCore
   card "/plugin install\nlivespec-impl-<choice>@..." as InstallImpl
-  card ".claude/skills/loop/SKILL.md\n(project-local Layer 3\norchestration driver)" as LoopSkill
-  database "consumer's\n.livespec.jsonc\n(+ livespec.compat.json\npinning core release)" as Config
+  database "consumer's\n.livespec.jsonc" as Config
   database "consumer's\nSPECIFICATION/" as SpecTree #f5d76e
   database "consumer's\nPersistent Agent Knowledge\n(harness instruction files,\nlong-lived memory store, ...)" as AgentKnowledge #f5d76e
 }

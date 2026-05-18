@@ -16,7 +16,6 @@ skinparam sequence {
 
 actor "Initial intent\n(human or agent)" as User
 participant "/livespec:doctor" as Doctor
-participant "/livespec-impl-*:\nlist-memos\n(thin transport)" as ListMemos
 participant "/livespec-impl-*:\nprocess-memos" as Process
 participant "Spec Reader" as SpecReader
 participant "Memos\n(plugin store)" as Memos
@@ -27,10 +26,8 @@ participant "Persistent\nAgent Knowledge" as AgentKnowledge
 == Hygiene trigger (background invariant) ==
 
 User -> Doctor : invoke (routine check\nor pre/post-step wrapper)
-Doctor -> ListMemos : list-memos\n--filter=untriaged --json
-ListMemos -> Memos : read untriaged state
-Memos --> ListMemos : entries
-ListMemos --> Doctor : structured JSON\n(N untriaged entries)
+Doctor -> Memos : untriaged-memo query\n(machine contract)
+Memos --> Doctor : N untriaged entries
 Doctor -> User : warn: "N memos pending,\nrun process-memos"
 
 == Per-memo dispositions ==
@@ -74,6 +71,6 @@ end
 Process --> User : summary (N processed,\nbreakdown by disposition)
 deactivate Process
 
-note over User, AgentKnowledge : LiveSpec Core's doctor reads the untriaged-\nmemo state via the impl plugin's list-memos\nthin-transport skill (2026-05-18 update —\nreplaces the prior machine-only query\nsurface). Doctor KNOWS that memos exist\nbut NEVER routes them. Routing is 100% on\nthe impl-plugin side. The only cross-\nnamespace handoff is the SPEC-BOUND\ndisposition calling /livespec:propose-changes.
+note over User, AgentKnowledge : LiveSpec Core's doctor KNOWS that memos\nexist (via the untriaged-query contract)\nbut NEVER routes them. Routing is 100%\non the impl-plugin side. The only\ncross-namespace handoff is the\nSPEC-BOUND disposition calling\n/livespec:propose-changes.
 
 @enduml
