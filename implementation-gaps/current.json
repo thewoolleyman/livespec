@@ -1,19 +1,19 @@
 {
   "$schema": "./current.schema.json",
   "schema_version": 1,
-  "generated_at": "2026-05-10T13:37:36Z",
+  "generated_at": "2026-05-18T16:58:43Z",
   "spec_sources": {
     "spec_md": {
       "path": "SPECIFICATION/spec.md",
-      "git_blob_sha": "fa3e60f634805e7c2089f49583f0d6eb70a3336b"
+      "git_blob_sha": "3401524f8303837282b29813a0b6dcbcae06107b"
     },
     "contracts_md": {
       "path": "SPECIFICATION/contracts.md",
-      "git_blob_sha": "e24ab6c111d9df8260f03f1470209587b43f2d96"
+      "git_blob_sha": "58f0ba5b4ad7f48659efa7990b5f5a3ede3a5df8"
     },
     "constraints_md": {
       "path": "SPECIFICATION/constraints.md",
-      "git_blob_sha": "269dbf8824602035a38c7af420432887e67efd1d"
+      "git_blob_sha": "f6ca470c09cc54a15eaaa56c10fafab9d0468eae"
     },
     "scenarios_md": {
       "path": "SPECIFICATION/scenarios.md",
@@ -21,7 +21,7 @@
     },
     "non_functional_requirements_md": {
       "path": "SPECIFICATION/non-functional-requirements.md",
-      "git_blob_sha": "4ebd82a030ec876e2bb8396588a6f2f0d380f2fb"
+      "git_blob_sha": "ee75b1a5b03eea9bd96fbe547a8108aeb2b411b7"
     }
   },
   "inspection": {
@@ -44,7 +44,7 @@
         "reason": "livespec has no live system to probe (no DB / no edge functions); inspection is static-only"
       }
     ],
-    "run_id": "533a7e51-dd05-49b3-bc9f-e30d849d1c33",
+    "run_id": "4ba876f1-13c5-498f-ba17-c53f6f842cfb",
     "inspection_method": "static \u2014 dev-tooling/implementation/refresh_gaps.py walked the repo via hardcoded gap-detection predicates"
   },
   "gaps": [],
