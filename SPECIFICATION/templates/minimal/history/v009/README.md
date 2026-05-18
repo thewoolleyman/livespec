@@ -1,0 +1,3 @@
+# `SPECIFICATION/templates/minimal/`
+
+This sub-spec governs the `minimal` built-in template's prompt interview flows, starter content, delimiter-comment format, and template-internal contracts. Sub-spec layout follows livespec's internal multi-file convention per v020 Q1 and is decoupled from the `minimal` template's end-user single-file convention — sub-specs are livespec-internal artifacts governing template behavior, not exemplars of end-user template usage. All mutations to this tree from v001 onward MUST flow through `/livespec:propose-change --spec-target SPECIFICATION/templates/minimal/` → `/livespec:revise --spec-target SPECIFICATION/templates/minimal/`.
