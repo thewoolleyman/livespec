@@ -1,0 +1,118 @@
+# Canonical copier template for every livespec-impl-* plugin repository.
+#
+# Spec basis: livespec-core/SPECIFICATION/contracts.md
+#   §"Shared content sync — copier template"
+# Spec basis: livespec-core/SPECIFICATION/non-functional-requirements.md
+#   §"Shared content provenance"
+#   §"Project-local orchestration layer"
+#
+# Every livespec-impl-* repo MUST be generated from this template via:
+#   copier copy gh:thewoolleyman/livespec-core/templates/impl-plugin <target> \
+#     --vcs-ref=<core-release-tag>
+#
+# Generated repos MUST carry a .copier-answers.yml at the repo root tracking
+# the template version they were last generated from, and SHOULD re-sync via
+# `copier update` when livespec-core publishes a new release. CI in each
+# generated repo SHOULD run `copier update --dry-run` to surface drift, with
+# .claude/skills/loop/SKILL.md explicitly excluded from drift detection
+# because local divergence of the Layer 3 driver is expected and
+# load-bearing.
+#
+# Secrets MUST NOT be templated through copier; secret material lives only in
+# environment variables, OS keyring, or a secret manager.
+
+_templates_suffix: .jinja
+
+_exclude:
+  - copier.yml
+  - .git
+  - __pycache__
+  - "*.pyc"
+  - "*.pyo"
+
+_answers_file: .copier-answers.yml
+
+_message_before_copy: |
+  This template scaffolds a new livespec-impl-* plugin repository.
+
+  You will be asked for the plugin's short name, description, GitHub
+  coordinates, author info, Python version, and the livespec-core release
+  tag this repo pins against. See livespec-core/SPECIFICATION/contracts.md
+  §"Shared content sync — copier template" for the full contract.
+
+_message_after_copy: |
+  Generated. Suggested next steps:
+
+    1. cd into the generated repo.
+    2. Run `mise install && uv sync` to install the pinned toolchain.
+    3. Run `just check` to verify the scaffold is green.
+    4. Initialize git and push to {{ github_owner }}/{{ github_repo }}.
+    5. Hand-tune .claude/skills/loop/SKILL.md to your project's needs
+       (this file is exempt from copier-update drift detection per
+       livespec-core's spec — local divergence is expected).
+
+# -----------------------------------------------------------------------------
+# Questions
+# -----------------------------------------------------------------------------
+
+plugin_short_name:
+  type: str
+  help: |
+    Short identifier for this implementation plugin (lowercase, hyphen-
+    separated). Used to form livespec-impl-<plugin_short_name>. Examples:
+    plaintext, beads, gitlab, gascity, darkfactory-kilroy.
+
+plugin_full_name:
+  type: str
+  default: "livespec-impl-{{ plugin_short_name }}"
+  help: |
+    Full plugin name (used in marketplace.json, plugin.json, and as the
+    repo name by default). Defaults to livespec-impl-<plugin_short_name>.
+
+plugin_description:
+  type: str
+  help: |
+    One-line description of the plugin's tracking-mechanism focus
+    (e.g., "JSONL-backed implementation plugin for livespec-core"). Used
+    for plugin.json and marketplace.json descriptions.
+
+plugin_namespace:
+  type: str
+  default: "{{ plugin_full_name }}"
+  help: |
+    Claude Code namespace under which the plugin's slash commands are
+    exposed (e.g., /<plugin_namespace>:capture-memo). Defaults to
+    plugin_full_name.
+
+author_name:
+  type: str
+  help: Author name to embed in plugin.json and pyproject.toml.
+
+author_email:
+  type: str
+  help: Author email to embed in plugin.json and pyproject.toml.
+
+github_owner:
+  type: str
+  help: GitHub owner or organization for the repo (e.g., thewoolleyman).
+
+github_repo:
+  type: str
+  default: "{{ plugin_full_name }}"
+  help: GitHub repository name. Defaults to plugin_full_name.
+
+python_version:
+  type: str
+  default: "3.13"
+  help: |
+    Python version to pin via .python-version and .mise.toml. Should
+    match livespec-core's pinned Python version for the release tag this
+    template was generated against.
+
+livespec_core_release_tag:
+  type: str
+  help: |
+    livespec-core release tag this template was generated against
+    (e.g., v1.0.0). Used to seed the compat.pinned field in the generated
+    repo's .livespec.jsonc per livespec-core/SPECIFICATION/contracts.md
+    §"Cross-repo coordination — pin-and-bump".
