@@ -1,0 +1,212 @@
+# pyproject.toml — {{ plugin_full_name }} dev tooling configuration.
+#
+# Generated from livespec-core/templates/impl-plugin/pyproject.toml.jinja
+# at copier-copy time; re-sync via `copier update` when livespec-core
+# publishes a new release.
+#
+# Authority for the rules expressed here: the live specification at
+# livespec-core/SPECIFICATION/ (notably non-functional-requirements.md
+# §"Toolchain pins", §"Shared content provenance", §"Linter rule set",
+# §"Typechecker rule set").
+#
+# NO [build-system] section: livespec-impl-* plugins are NOT published
+# PyPI packages; they ship via Claude Code plugin bundling (per
+# livespec-core/SPECIFICATION/contracts.md §"Implementation-plugin
+# contract — the 9-skill surface").
+
+[project]
+name = "{{ plugin_full_name }}"
+version = "0.0.0"
+description = "{{ plugin_description }}"
+requires-python = ">={{ python_version }}"
+authors = [
+    { name = "{{ author_name }}", email = "{{ author_email }}" },
+]
+
+# Per the livespec-core convention: NO [project.dependencies] table —
+# the plugin bundle's _vendor/ tree IS the runtime; end users install
+# nothing beyond Python.
+
+[dependency-groups]
+# Every Python dev tool is uv-managed via this table (resolved into
+# uv.lock; installed into a project-local .venv via
+# `uv sync --all-groups`). Mise pins only the non-Python binaries
+# in .mise.toml.
+#
+# `copier` MUST be pinned here per
+# livespec-core/SPECIFICATION/non-functional-requirements.md
+# §"Shared content provenance" — every consuming repo's pyproject.toml
+# pins copier so `uv` resolves a reproducible version.
+dev = [
+    "copier==9.6.0",
+    "ruff==0.8.6",
+    "pyright==1.1.391",
+    "pytest==8.3.4",
+    "pytest-cov==6.0.0",
+    "pytest-icdiff==0.9",
+    "pytest-xdist==3.8.0",
+    "hypothesis==6.122.3",
+    "hypothesis-jsonschema==0.23.1",
+    "mutmut==3.2.3",
+    "import-linter==2.1",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — sole linter, formatter, import-sorter, complexity checker.
+# Rule set mirrors livespec-core/pyproject.toml [tool.ruff] per
+# livespec-core/SPECIFICATION/non-functional-requirements.md
+# §"Linter rule set".
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["**/_vendor/**", "**/__pycache__/**", "mutants/**"]
+
+[tool.ruff.lint]
+select = [
+    # ----- baseline (11 categories) -----
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "UP",    # pyupgrade
+    "SIM",   # flake8-simplify
+    "C90",   # mccabe complexity
+    "N",     # pep8-naming
+    "RUF",   # ruff-specific
+    "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
+    # ----- additions (16 categories) -----
+    "TRY",   # tryceratops — pairs with K10 domain-vs-bugs split
+    "FBT",   # flake8-boolean-trap — reinforces K4 keyword-only discipline
+    "PIE",   # flake8-pie — miscellaneous anti-patterns
+    "SLF",   # flake8-self — bans cross-class _-prefixed access
+    "LOG",   # flake8-logging — logging discipline
+    "G",     # flake8-logging-format — kwargs-only in log calls
+    "TID",   # flake8-tidy-imports — no relative imports + banned-imports
+    "ERA",   # eradicate — bans commented-out code (LLM artifact)
+    "ARG",   # flake8-unused-arguments
+    "RSE",   # flake8-raise — `raise X` over `raise X()`; raise...from discipline
+    "PT",    # flake8-pytest-style
+    "FURB",  # refurb — modern-Python refactor hints
+    "SLOT",  # flake8-slots
+    "ISC",   # flake8-implicit-str-concat
+    "T20",   # flake8-print — bans print/pprint
+    "S",     # flake8-bandit — security anti-patterns
+]
+ignore = [
+    "ISC001",  # implicit-str-concat on one line; conflicts with the formatter
+]
+
+[tool.ruff.lint.pylint]
+max-args = 6
+max-positional-args = 6
+max-branches = 10
+max-statements = 30
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"abc.ABC" = { msg = "use typing.Protocol" }
+"abc.ABCMeta" = { msg = "use typing.Protocol" }
+"abc.abstractmethod" = { msg = "use typing.Protocol" }
+"pickle" = { msg = "arbitrary-code-execution surface on load(); use JSON / JSONC" }
+"marshal" = { msg = "arbitrary-code-execution surface on load(); use JSON / JSONC" }
+"shelve" = { msg = "arbitrary-code-execution surface on load(); use JSON / JSONC" }
+
+[tool.ruff.lint.per-file-ignores]
+# Shebang-wrapper contract: shebang → docstring → `from _bootstrap import
+# bootstrap` → `bootstrap()` → `from <pkg>.<...> import main` →
+# `raise SystemExit(main())`. The post-bootstrap() import structurally
+# violates I001 + E402; the docstring template may overflow 100 chars.
+".claude-plugin/scripts/bin/*.py" = ["I001", "E402", "E501"]
+# `_bootstrap.py` carries the canonical Python-version check
+# `if sys.version_info < (X, Y): raise SystemExit(127)`. UP036 would
+# mark this dead code, but the check is the bootstrap mechanism itself.
+".claude-plugin/scripts/bin/_bootstrap.py" = ["UP036"]
+# pytest conventions: bare assert, magic literals in assertions,
+# subprocess.run with fixed argv lists, composite assertions,
+# /tmp paths, token-suffixed variable names, long descriptive
+# docstrings. Per livespec-core's tests/ per-file-ignore set.
+"tests/**.py" = [
+    "S101", "PLR2004", "S603", "S607", "PT018", "S108", "S105", "TRY003", "E501",
+]
+# dev-tooling/checks/ scripts shell out to git, ruff, python via
+# subprocess.run with fixed argv lists per the canonical-target
+# invocation contract. S603/S607/S404 are over-strict for this
+# documented pattern; S105 covers TRAILER-token constants.
+"dev-tooling/checks/*.py" = ["S603", "S607", "S404", "S105"]
+
+# ---------------------------------------------------------------------------
+# Pyright — strict + seven strict-plus diagnostics. Per
+# livespec-core/SPECIFICATION/non-functional-requirements.md
+# §"Typechecker rule set".
+# ---------------------------------------------------------------------------
+
+[tool.pyright]
+include = [".claude-plugin/scripts", "dev-tooling"]
+exclude = ["**/_vendor/**", "**/__pycache__/**"]
+pythonVersion = "{{ python_version }}"
+typeCheckingMode = "strict"
+
+reportUnusedCallResult = "error"
+reportImplicitOverride = "error"
+reportUninitializedInstanceVariable = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportUnnecessaryCast = "error"
+reportUnnecessaryIsInstance = "error"
+reportImplicitStringConcatenation = "error"
+
+# ---------------------------------------------------------------------------
+# Pytest — pytest-cov + pytest-icdiff wiring.
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# _bootstrap.bootstrap() sets up sys.path at runtime for the shebang
+# wrappers. Pytest needs the same paths during collection so plugin-
+# package imports and the vendored libs resolve.
+pythonpath = [
+    ".claude-plugin/scripts",
+    ".claude-plugin/scripts/_vendor",
+]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--import-mode=importlib",
+]
+
+# ---------------------------------------------------------------------------
+# Coverage — 100% line + branch. Per
+# livespec-core/SPECIFICATION/non-functional-requirements.md
+# §"Code coverage".
+# ---------------------------------------------------------------------------
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/_vendor/*",
+    "*/.venv/*",
+    "*/site-packages/*",
+    "*/__pycache__/*",
+    "tests/e2e/*",
+    "tests/prompts/*",
+    "/tmp/*",
+    "mutants/*",
+]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = false
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "raise ImportError",
+    "@overload",
+    "if __name__ == .__main__.:",
+    "sys.path.insert",
+    "case _:",
+]
