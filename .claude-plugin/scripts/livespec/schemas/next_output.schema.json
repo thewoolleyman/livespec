@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "next_output.schema.json",
+  "title": "next_output",
+  "description": "Schema for the JSON payload emitted on stdout by `/livespec:next` (the spec-side thin-transport ranker). Pure function of `<spec-target>/proposed_changes/` queue depth + oldest-proposal age + `<spec-target>/history/` unpruned version count. No LLM in the ranking path; no impl-side store reads.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "reason", "urgency"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["revise", "propose-change", "critique", "prune-history", "none"],
+      "description": "The most ripe spec-side sub-command to invoke next, or `none` when no spec-side work is pressing."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable narration of the ranking decision (queue depth, oldest-proposal age, history version count)."
+    },
+    "urgency": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Bucketed urgency derived from queue depth and oldest-proposal age. `none`-action payloads always emit `low`."
+    }
+  }
+}
