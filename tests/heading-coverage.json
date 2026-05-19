@@ -170,8 +170,8 @@
     "heading": "## `/livespec-core:next` spec-side thin-transport skill",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR that authors bin/next.py + .claude-plugin/skills/next/SKILL.md (thin-transport pass-through), defines the spec-side ranking algorithm over proposed_changes/ depth + history/ recency + unresolved doctor findings, and emits structured JSON with {action, reason, urgency} per the contract."
+    "test": "tests.livespec.commands.test_next.test_next_emits_schema_conformant_json",
+    "reason": "Phase B.1 (li-3ax) — authored bin/next.py + commands/next.py (pure-function-of-file-state ranker) + next_output.schema.json wire contract + paired dataclass + validator. The schema-conformance test exercises the full pipeline against a real spec tree and asserts the stdout payload validates against next_output.schema.json. Doctor-cache integration deferred to a follow-on once the cache format is formalized via propose-change."
   },
   {
     "heading": "## Spec Reader required-capability surface",
