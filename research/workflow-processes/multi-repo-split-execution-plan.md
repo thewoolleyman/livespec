@@ -1,5 +1,74 @@
 # Multi-repo split — execution plan
 
+## Reusable session-start prompt
+
+Paste this verbatim at the start of any new clean session to make
+progress on this plan. The prompt is idempotent — running it in
+successive sessions advances the work one beads issue at a time.
+
+---
+
+Read `research/workflow-processes/multi-repo-split-execution-plan.md`
+for the full execution plan context (you are inside that file already
+if you are reading this — the rest of the document is below).
+
+Then:
+
+1. Sync local state: `git checkout master && mise exec -- git pull`
+   and `mise exec -- bd dolt pull`. Confirm working tree is clean.
+
+2. Find the next actionable item **from THIS plan** (ignore unrelated
+   pre-existing open issues): run `mise exec -- bd ready` and pick the
+   lowest-priority-number issue whose ID is one of:
+   - `li-ny7` (Phase A — gap refresh)
+   - `li-3ax`, `li-5s0`, `li-qit` (Phase B sub-tasks)
+   - `li-jsl` (Phase C epic — decompose at pickup)
+   - `li-xjp` (Phase B epic — only after all 3 sub-tasks close)
+   - `li-6t5` (Phase D epic — only after Phase C closes;
+     decompose at pickup)
+   - `li-9l5` (Phase E epic — only after Phase D closes;
+     decompose at pickup)
+   - `li-qyk` (Phase F — deferred indefinitely; skip unless reviving)
+
+   If `bd ready` shows none of these IDs, this plan is complete.
+
+3. `mise exec -- bd show <id>` to read the full description, then
+   `mise exec -- bd update <id> --claim` to claim it.
+
+4. Execute the work per the issue description and the plan-doc
+   section it references (find via §"Phase X" header). For epics
+   with sub-tasks deferred to pickup (Phase C, D, E), the first
+   action is to decompose via `mise exec -- bd create` against the
+   epic, wire dependencies via `mise exec -- bd dep add <epic> <sub>`,
+   then claim the first leaf — DO NOT execute the epic's work
+   without first decomposing.
+
+5. When intent is unclear — exact wording, placement, edge cases,
+   cross-references — read these authoritative sources before
+   deciding:
+   - `research/workflow-processes/tool-agnostic-workflow.md`
+     (canonical conceptual model + glossary; wins on disagreement)
+   - `research/workflow-processes/architecture-summary.html`
+     (LiveSpec decisions list — the numbered Executive Summary at
+     the top maps to load-bearing decisions)
+   - `SPECIFICATION/` (v067 and later — the load-bearing contract)
+
+6. Run `just check` to verify. On green: create a feature branch
+   (`git checkout -b <type>(<scope>):<short-desc>`); commit on the
+   branch via `mise exec -- git commit` so lefthook fires correctly;
+   push; `gh pr create`; `gh pr merge --auto --squash`; close the
+   beads issue with `mise exec -- bd close <id>`; then
+   `mise exec -- bd dolt push` to sync beads state.
+
+7. STOP after one beads-issue cycle. Each cycle lands as its own PR
+   for clean audit-trail granularity.
+
+If you spawned the session via a recurring loop and want to chain to
+the next item automatically, that is a separate decision — by default,
+stop after one cycle so the user can review each PR independently.
+
+---
+
 **Status:** Phase A pending. Phases B–F not started.
 **Last updated:** 2026-05-19
 **Spec basis:** SPECIFICATION/ as of v067 (the four post-orchestration
@@ -151,26 +220,48 @@ plugin. Specifically:
    dev dependency.
 2. Update `.livespec.jsonc` to switch `implementation.plugin` from
    the current beads-backed config to `livespec-impl-plaintext`.
-3. Translate any still-open beads issues into JSONL work-items in the
-   new format. Closed beads issues stay in `.beads/` as historical
-   record; only open work needs to cross over.
+3. Translate **ALL** beads issues — open, closed, and deferred —
+   into JSONL records in livespec-impl-plaintext's new format,
+   preserving the complete historical record. Closed issues become
+   `status:closed` JSONL records carrying their closure reason, audit
+   fields (resolution method, verification timestamp, commits, files
+   changed), and original IDs for cross-reference; open issues become
+   the live queue; deferred issues retain their deferred state and
+   defer-until dates. **No beads data is orphaned in Dolt** — the
+   migrated JSONL is the new audit-trail source of truth for this
+   repo's complete historical impl tracking. A one-shot migration
+   script (likely living in livespec-impl-plaintext itself as a
+   utility, callable via `just`) handles the export → translate →
+   import flow; the script reads from the `.beads/` Dolt store via
+   `bd list --status=all --format=json` (or equivalent), maps the
+   beads schema fields to the JSONL record schema, and writes the
+   resulting records into livespec-impl-plaintext's configured
+   work-items + memos paths.
 4. Switch the project-local impl-tracking workflow from
    `livespec-implementation-beads:*` skills to
    `livespec-impl-plaintext:*` skills.
 5. Retire the project-local beads workflow scaffolding from this repo
-   (`.claude/skills/livespec-implementation-beads:*`, the
+   AFTER step 3's migration verifies all data crossed over:
+   `.claude/skills/livespec-implementation-beads:*`, the
    `just implementation:*` beads-specific recipes, the
-   `setup-beads.sh` / `bd-doctor.sh` scripts, the `.beads/` directory).
+   `setup-beads.sh` / `bd-doctor.sh` scripts, and the `.beads/`
+   directory. The `.beads/` directory deletion is safe at this point
+   because the migration has copied every record into the new store;
+   the old Dolt store can be archived separately if a defensive
+   point-in-time backup is wanted.
 
 This migration is the validation gate that Phase D is done. It must
 happen here, not in Phase E, because Phase E (the rename) is destructive
 on its own and shouldn't be combined with a backend swap.
 
 **Acceptance:** `livespec-impl-plaintext` is installable from its
-marketplace; livespec-core's `.livespec.jsonc` points at it; livespec-core's
-remaining backlog (Phase E + later) is tracked in the new JSONL store;
-the project's beads dependency is removed from livespec-core; doctor
-static across both repos is green.
+marketplace; livespec-core's `.livespec.jsonc` points at it; **ALL
+beads issues — open + closed + deferred — have been translated into
+JSONL records in the new store, preserving the complete historical
+audit trail** (no orphaned data in Dolt); livespec-core's remaining
+backlog and historical issue history are both queryable via
+livespec-impl-plaintext's skills; the project's beads dependency is
+removed from livespec-core; doctor static across both repos is green.
 
 ### Phase E — Rename `livespec` → `livespec-core`
 
