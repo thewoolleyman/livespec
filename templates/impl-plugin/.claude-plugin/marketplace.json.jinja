@@ -1,0 +1,14 @@
+{
+  "name": "{{ plugin_full_name }}",
+  "owner": {
+    "name": "{{ author_name }}",
+    "url": "https://github.com/{{ github_owner }}"
+  },
+  "plugins": [
+    {
+      "name": "{{ plugin_full_name }}",
+      "source": "./.claude-plugin",
+      "description": "{{ plugin_description }} Exposes /{{ plugin_namespace }}:capture-impl-gaps, /{{ plugin_namespace }}:capture-memo, /{{ plugin_namespace }}:capture-spec-drift, /{{ plugin_namespace }}:capture-work-item, /{{ plugin_namespace }}:implement, /{{ plugin_namespace }}:list-memos, /{{ plugin_namespace }}:list-work-items, /{{ plugin_namespace }}:next, /{{ plugin_namespace }}:process-memos."
+    }
+  ]
+}
