@@ -1,0 +1,113 @@
+# Per-target matrix CI for {{ plugin_full_name }}.
+#
+# Generated from livespec-core/templates/impl-plugin/.github/workflows/
+# ci.yml.jinja at copier-copy time; re-sync via `copier update` when
+# livespec-core publishes a new release.
+#
+# Authority: livespec-core/SPECIFICATION/contracts.md
+#   §"Pre-commit step ordering" (c)-(d) — zero-py subsetting:
+#   master pushes + merge_group events always run the full aggregate
+#   (merge-queue safety net); pull_request events skip Python-code
+#   checks when the changeset contains zero .py files.
+#
+# Authority: livespec-core/SPECIFICATION/non-functional-requirements.md
+#   §"Toolchain pins" — direct tool invocations (ruff, pyright,
+#   pytest, python3) in `run:` lines are forbidden; every step
+#   delegates to `just <target>`.
+#
+# Starter scaffold: the Python-code matrix carries only the tool-
+# backed checks (lint, format, types, coverage). The metadata matrix
+# is empty. As {{ plugin_full_name }} populates dev-tooling/checks/
+# scripts, add the corresponding `check-<slug>` targets to the
+# appropriate matrix and to branch protection's required-status-
+# checks list.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  merge_group:
+
+jobs:
+  setup:
+    name: detect-py-changes
+    runs-on: ubuntu-latest
+    outputs:
+      py_changed: ${{ '{{' }} steps.detect.outputs.py_changed {{ '}}' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Python file changes
+        id: detect
+        env:
+          EVENT_NAME: ${{ '{{' }} github.event_name {{ '}}' }}
+          BASE_REF: ${{ '{{' }} github.base_ref {{ '}}' }}
+        run: |
+          set -uo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
+            changeset=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+            if echo "$changeset" | grep -qE '\.py$'; then
+              echo "py_changed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "py_changed=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "py_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  check-python:
+    name: ${{ '{{' }} matrix.target {{ '}}' }}
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - check-lint
+          - check-format
+          - check-types
+          - check-coverage
+    steps:
+      # Per-step `if:` (not job-level) so each matrix entry still
+      # reports a status check named `${{ '{{' }} matrix.target {{ '}}' }}`. With
+      # job-level `if:`, a skipped matrix collapses to one
+      # `check-python` status, which doesn't satisfy branch
+      # protection's requirement that each specific check name be
+      # present.
+      - name: Skip when no .py changes
+        if: needs.setup.outputs.py_changed != 'true'
+        run: echo "::notice::skipped ${{ '{{' }} matrix.target {{ '}}' }} — no .py changes in this PR"
+
+      - name: Checkout
+        if: needs.setup.outputs.py_changed == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install pinned binaries via mise
+        if: needs.setup.outputs.py_changed == 'true'
+        uses: jdx/mise-action@v2
+
+      - name: Install Python dev deps via uv
+        if: needs.setup.outputs.py_changed == 'true'
+        run: uv sync --all-groups
+
+      - name: just ${{ '{{' }} matrix.target {{ '}}' }}
+        if: needs.setup.outputs.py_changed == 'true'
+        run: just ${{ '{{' }} matrix.target {{ '}}' }}
+
+  # Metadata matrix runs unconditionally to preserve the repo-metadata
+  # safety net. Empty in the starter; populate as {{ plugin_full_name }}
+  # adds dev-tooling/checks/<slug>.py scripts for
+  # claude-md-coverage, heading-coverage, vendor-manifest,
+  # no-direct-tool-invocation, check-tools, and similar.
+  check-metadata:
+    name: metadata-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder
+        run: echo "::notice::metadata-checks matrix is empty; populate as dev-tooling/checks/ scripts land"
