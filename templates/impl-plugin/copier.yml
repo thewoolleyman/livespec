@@ -23,6 +23,16 @@
 
 _templates_suffix: .jinja
 
+# Override Jinja2's default comment delimiters so they don't collide
+# with bash array-length syntax (`${#failed[@]}`) in justfile recipes
+# and similar shell idioms. None of this template's .jinja files use
+# Jinja2 comments — only variable interpolation and (rarely) block
+# tags — so swapping the comment delimiters from `{#`/`#}` to
+# `[#`/`#]` is a safe, localized fix.
+_envops:
+  comment_start_string: "[#"
+  comment_end_string: "#]"
+
 _exclude:
   - copier.yml
   - .git

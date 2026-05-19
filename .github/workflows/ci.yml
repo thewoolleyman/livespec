@@ -116,6 +116,7 @@ jobs:
           - check-heading-coverage
           - check-vendor-manifest
           - check-no-direct-tool-invocation
+          - check-copier-template-smoke
           - check-tools
     steps:
       - name: Checkout
