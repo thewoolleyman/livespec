@@ -137,6 +137,66 @@ def main() -> int:
         return _handle_red_mode(msg_path=msg_path, log=log, tests_paths=tests_paths)
     if impl_paths and _head_has_red_trailers():
         return _handle_green_mode(msg_path=msg_path, log=log, impl_paths=impl_paths)
+    return _diagnose_fallthrough(
+        log=log,
+        staged_paths=staged_paths,
+        tests_paths=tests_paths,
+        impl_paths=impl_paths,
+    )
+
+
+def _diagnose_fallthrough(
+    *,
+    log: structlog.stdlib.BoundLogger,
+    staged_paths: list[str],
+    tests_paths: list[str],
+    impl_paths: list[str],
+) -> int:
+    """Emit a structured diagnostic for each classifiable line-140 fallthrough case.
+
+    The previous implementation returned 1 with no diagnostic on any
+    non-empty staged tree that fell past the Red and Green dispatch
+    conditions. This helper distinguishes three cases and names each
+    via a stable check_id so the developer recovers without spelunking
+    the source.
+    """
+    if not tests_paths and not impl_paths:
+        log.error(
+            "staged paths classify as neither tests nor impl; "
+            "feat:/fix: types expect changes under tests/ or an impl prefix",
+            check_id="red-green-replay-staged-not-classifiable",
+            staged_paths=staged_paths,
+            hint=(
+                "If the staged change is config, docs, build, CI, tooling, or "
+                "any other non-product-code path, use one of the exempt commit "
+                "types: chore, docs, build, ci, style, test, refactor, perf, revert."
+            ),
+        )
+        return 1
+    if tests_paths and impl_paths:
+        log.error(
+            "tests and impl paths both staged without prior Red trailers; "
+            "Red mode requires tests-only; Green mode requires impl-only after Red",
+            check_id="red-green-replay-mixed-buckets",
+            tests_paths=tests_paths,
+            impl_paths=impl_paths,
+            hint=(
+                "Stage the failing test alone and commit (Red), then stage the "
+                "impl and amend (Green) — the Green amend produces one final "
+                "commit carrying both files plus the R-G trailers."
+            ),
+        )
+        return 1
+    log.error(
+        "impl staged but HEAD has no Red trailers; " "Green mode requires a preceding Red commit",
+        check_id="red-green-replay-green-without-red",
+        impl_paths=impl_paths,
+        hint=(
+            "Author a Red commit first: stage the failing test alone, commit, "
+            "then stage the impl and amend (Green). The Green amend reads the "
+            "Red trailers from HEAD~0 to verify the test now passes."
+        ),
+    )
     return 1
 
 

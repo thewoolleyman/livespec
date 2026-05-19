@@ -1158,3 +1158,157 @@ def test_write_trailers_replaces_existing_keys_does_not_append(*, tmp_path: Path
         f"the OLD value (sha256:aaaa) should be GONE after replace, "
         f"but it persists in:\n{final_message}"
     )
+
+
+def test_feat_with_neither_tests_nor_impl_staged_emits_diagnostic(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A feat: subject with staged paths that are neither tests nor impl MUST emit a diagnostic.
+
+    Pins the fallthrough case where `_classify_staged` returns
+    `(tests_paths=[], impl_paths=[])` — staged files are config,
+    docs, templates, top-level scripts, or any path that doesn't
+    start with `tests/` or one of the `_IMPL_PREFIXES`. Without
+    this diagnostic the hook silently rejects the commit, leaving
+    the developer with no signal about why lefthook failed
+    (observed 2026-05-19 while landing Phase C.1's
+    templates/impl-plugin/copier.yml under a feat: subject; the
+    workaround was to switch to chore(template):). The diagnostic
+    MUST name a stable check_id and MUST hint at the exempt commit
+    types so the developer can recover.
+    """
+    subprocess.run(
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+    (tmp_path / "templates").mkdir()
+    config_file = tmp_path / "templates" / "foo.yml"
+    config_file.write_text("key: value\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "templates/foo.yml"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add new template\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"feat: with neither-tests-nor-impl staged must reject; "
+        f"got returncode={result.returncode}"
+    )
+    assert "staged-not-classifiable" in result.stderr, (
+        f"expected 'staged-not-classifiable' check_id in stderr for "
+        f"neither-tests-nor-impl feat:; got stderr={result.stderr!r}"
+    )
+
+
+def test_feat_with_tests_and_impl_staged_together_emits_mixed_buckets_diagnostic(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A feat: subject with tests AND impl staged together (no prior Red) MUST emit a diagnostic.
+
+    Pins the fallthrough case where both buckets are non-empty
+    and HEAD has no Red trailers. Red mode requires tests-only;
+    Green mode requires impl-only + prior Red trailers. Mixed
+    staged tree without a preceding Red commit fits neither
+    mode. The diagnostic MUST name a stable `mixed-buckets`
+    check_id so the developer learns to split the change into
+    separate Red and Green commits.
+    """
+    subprocess.run(
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+    (tmp_path / "tests").mkdir()
+    test_file = tmp_path / "tests" / "test_dummy.py"
+    test_file.write_text("def test_x() -> None:\n    assert True\n", encoding="utf-8")
+    (tmp_path / "livespec").mkdir()
+    impl_file = tmp_path / "livespec" / "foo.py"
+    impl_file.write_text("VALUE: int = 1\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "tests/test_dummy.py", "livespec/foo.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add mixed change\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"feat: with mixed buckets staged must reject; " f"got returncode={result.returncode}"
+    )
+    assert "mixed-buckets" in result.stderr, (
+        f"expected 'mixed-buckets' check_id in stderr for mixed-staged feat:; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
+def test_feat_with_impl_only_staged_no_prior_red_emits_green_without_red_diagnostic(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A feat: subject with impl-only staged but HEAD has no Red trailers MUST emit a diagnostic.
+
+    Pins the fallthrough case where `impl_paths` is non-empty,
+    `tests_paths` is empty, and `_head_has_red_trailers()`
+    returns False (no prior Red commit). Green mode dispatch in
+    `red_green_replay.main()` is gated on the Red-trailers
+    predicate; without it the impl-only commit falls through
+    silently. The diagnostic MUST name a stable
+    `green-without-red` check_id so the developer learns to
+    author a Red commit first.
+    """
+    subprocess.run(
+        ["git", "init", "-q"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+    (tmp_path / "livespec").mkdir()
+    impl_file = tmp_path / "livespec" / "foo.py"
+    impl_file.write_text("VALUE: int = 1\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "livespec/foo.py"],
+        cwd=str(tmp_path),
+        check=True,
+    )
+
+    msg_path = tmp_path / "COMMIT_EDITMSG"
+    msg_path.write_text("feat: add impl-only change\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(_RED_GREEN_REPLAY), str(msg_path)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"feat: with impl-only staged + no Red trailers must reject; "
+        f"got returncode={result.returncode}"
+    )
+    assert "green-without-red" in result.stderr, (
+        f"expected 'green-without-red' check_id in stderr for "
+        f"impl-only-no-red feat:; got stderr={result.stderr!r}"
+    )
