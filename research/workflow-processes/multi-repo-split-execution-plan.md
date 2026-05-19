@@ -70,8 +70,11 @@ stop after one cycle so the user can review each PR independently.
 
 ---
 
-**Status:** Phases A, B, C complete. Phase D decomposed into 10 sub-tasks
-(D.1 bootstrap → D.10 dogfooding cutover). Phases E, F not started.
+**Status:** Phases A, B, C, D complete. The dogfooding cutover at D.10 moved
+livespec-core's own tracking from beads to livespec-impl-plaintext;
+all 45 historical beads issues are migrated into work-items.jsonl
+and the .beads/ scaffolding is retired from this repo. Phase E
+(rename livespec → livespec-core) and Phase F (deferred) remain.
 **Last updated:** 2026-05-19
 **Spec basis:** SPECIFICATION/ as of v067 (the four post-orchestration
 proposed-changes landed across v064–v067).

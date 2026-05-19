@@ -1,8 +1,11 @@
 # Livespec developer-tooling pins — non-Python binaries only.
 #
 # Authority: (v024) PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md Phase 1
-# (initial pins) + (v058) non-functional-requirements.md §Contracts
-# §"Toolchain pins" (added `bd`).
+# (initial pins). The `bd` (beads) pin was removed by the Phase D.10
+# cutover when livespec-core's tracking moved to livespec-impl-plaintext;
+# beads invariants in SPECIFICATION/non-functional-requirements.md
+# §Contracts §"Toolchain pins" are spec-drift that will be revised in a
+# follow-up propose-change cycle.
 #
 # Python and every Python dev package are managed by uv via
 # pyproject.toml's [project.requires-python] (Python interpreter pin)
@@ -17,4 +20,3 @@
 uv       = "0.5.20"
 just     = "1.36.0"
 lefthook = "1.13.6"
-"github:gastownhall/beads" = { version = "1.0.3", bin = "bd" }
