@@ -20,12 +20,13 @@ Then:
 2. Find the next actionable item **from THIS plan** (ignore unrelated
    pre-existing open issues): run `mise exec -- bd ready` and pick the
    lowest-priority-number issue whose ID is one of:
-   - `li-ny7` (Phase A — gap refresh)
-   - `li-3ax`, `li-5s0`, `li-qit` (Phase B sub-tasks)
-   - `li-jsl` (Phase C epic — decompose at pickup)
-   - `li-xjp` (Phase B epic — only after all 3 sub-tasks close)
-   - `li-6t5` (Phase D epic — only after Phase C closes;
-     decompose at pickup)
+   - `li-ny7` (Phase A — gap refresh; closed)
+   - `li-3ax`, `li-5s0`, `li-qit` (Phase B sub-tasks; closed)
+   - `li-xjp` (Phase B epic; closed)
+   - `li-jsl` (Phase C epic; closed)
+   - `li-xgj`, `li-ag3`, `li-d5w`, `li-1ow`, `li-liv`, `li-ekf`,
+     `li-716`, `li-9pf`, `li-f1w`, `li-zbd` (Phase D sub-tasks)
+   - `li-6t5` (Phase D epic — only after all 10 sub-tasks close)
    - `li-9l5` (Phase E epic — only after Phase D closes;
      decompose at pickup)
    - `li-qyk` (Phase F — deferred indefinitely; skip unless reviving)
@@ -69,7 +70,8 @@ stop after one cycle so the user can review each PR independently.
 
 ---
 
-**Status:** Phase A pending. Phases B–F not started.
+**Status:** Phases A, B, C complete. Phase D decomposed into 10 sub-tasks
+(D.1 bootstrap → D.10 dogfooding cutover). Phases E, F not started.
 **Last updated:** 2026-05-19
 **Spec basis:** SPECIFICATION/ as of v067 (the four post-orchestration
 proposed-changes landed across v064–v067).
@@ -192,7 +194,11 @@ thin-transport query skills (`list-memos`, `list-work-items`, `next`),
 wires `livespec.compat.json` pinning a livespec-core release tag, and
 ships v0.1.0 to its own marketplace.
 
-**Sub-scope (decompose at pickup time, not now):**
+**Sub-scope** (decomposed 2026-05-19 into ten beads sub-tasks
+`li-xgj` D.1, `li-ag3` D.2, `li-d5w` D.3, `li-1ow` D.4, `li-liv` D.5,
+`li-ekf` D.6, `li-716` D.7, `li-9pf` D.8, `li-f1w` D.9, `li-zbd` D.10
+— wired in a dependency chain; D.1 unblocked, others blocked on
+predecessors):
 
 - Generate the repo from the copier template.
 - Port the 6 heavyweight authored skills: `capture-impl-gaps`,
