@@ -1,16 +1,16 @@
 # Per-target matrix CI for {{ plugin_full_name }}.
 #
-# Generated from livespec-core/templates/impl-plugin/.github/workflows/
+# Generated from livespec/templates/impl-plugin/.github/workflows/
 # ci.yml.jinja at copier-copy time; re-sync via `copier update` when
-# livespec-core publishes a new release.
+# livespec publishes a new release.
 #
-# Authority: livespec-core/SPECIFICATION/contracts.md
+# Authority: livespec/SPECIFICATION/contracts.md
 #   §"Pre-commit step ordering" (c)-(d) — zero-py subsetting:
 #   master pushes + merge_group events always run the full aggregate
 #   (merge-queue safety net); pull_request events skip Python-code
 #   checks when the changeset contains zero .py files.
 #
-# Authority: livespec-core/SPECIFICATION/non-functional-requirements.md
+# Authority: livespec/SPECIFICATION/non-functional-requirements.md
 #   §"Toolchain pins" — direct tool invocations (ruff, pyright,
 #   pytest, python3) in `run:` lines are forbidden; every step
 #   delegates to `just <target>`.

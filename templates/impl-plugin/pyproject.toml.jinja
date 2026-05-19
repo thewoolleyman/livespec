@@ -1,17 +1,17 @@
 # pyproject.toml — {{ plugin_full_name }} dev tooling configuration.
 #
-# Generated from livespec-core/templates/impl-plugin/pyproject.toml.jinja
-# at copier-copy time; re-sync via `copier update` when livespec-core
+# Generated from livespec/templates/impl-plugin/pyproject.toml.jinja
+# at copier-copy time; re-sync via `copier update` when livespec
 # publishes a new release.
 #
 # Authority for the rules expressed here: the live specification at
-# livespec-core/SPECIFICATION/ (notably non-functional-requirements.md
+# livespec/SPECIFICATION/ (notably non-functional-requirements.md
 # §"Toolchain pins", §"Shared content provenance", §"Linter rule set",
 # §"Typechecker rule set").
 #
 # NO [build-system] section: livespec-impl-* plugins are NOT published
 # PyPI packages; they ship via Claude Code plugin bundling (per
-# livespec-core/SPECIFICATION/contracts.md §"Implementation-plugin
+# livespec/SPECIFICATION/contracts.md §"Implementation-plugin
 # contract — the 9-skill surface").
 
 [project]
@@ -23,7 +23,7 @@ authors = [
     { name = "{{ author_name }}", email = "{{ author_email }}" },
 ]
 
-# Per the livespec-core convention: NO [project.dependencies] table —
+# Per the livespec convention: NO [project.dependencies] table —
 # the plugin bundle's _vendor/ tree IS the runtime; end users install
 # nothing beyond Python.
 
@@ -34,7 +34,7 @@ authors = [
 # in .mise.toml.
 #
 # `copier` MUST be pinned here per
-# livespec-core/SPECIFICATION/non-functional-requirements.md
+# livespec/SPECIFICATION/non-functional-requirements.md
 # §"Shared content provenance" — every consuming repo's pyproject.toml
 # pins copier so `uv` resolves a reproducible version.
 dev = [
@@ -53,8 +53,8 @@ dev = [
 
 # ---------------------------------------------------------------------------
 # Ruff — sole linter, formatter, import-sorter, complexity checker.
-# Rule set mirrors livespec-core/pyproject.toml [tool.ruff] per
-# livespec-core/SPECIFICATION/non-functional-requirements.md
+# Rule set mirrors livespec/pyproject.toml [tool.ruff] per
+# livespec/SPECIFICATION/non-functional-requirements.md
 # §"Linter rule set".
 # ---------------------------------------------------------------------------
 
@@ -128,7 +128,7 @@ ban-relative-imports = "all"
 # pytest conventions: bare assert, magic literals in assertions,
 # subprocess.run with fixed argv lists, composite assertions,
 # /tmp paths, token-suffixed variable names, long descriptive
-# docstrings. Per livespec-core's tests/ per-file-ignore set.
+# docstrings. Per livespec's tests/ per-file-ignore set.
 "tests/**.py" = [
     "S101", "PLR2004", "S603", "S607", "PT018", "S108", "S105", "TRY003", "E501",
 ]
@@ -140,7 +140,7 @@ ban-relative-imports = "all"
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics. Per
-# livespec-core/SPECIFICATION/non-functional-requirements.md
+# livespec/SPECIFICATION/non-functional-requirements.md
 # §"Typechecker rule set".
 # ---------------------------------------------------------------------------
 
@@ -180,7 +180,7 @@ addopts = [
 
 # ---------------------------------------------------------------------------
 # Coverage — 100% line + branch. Per
-# livespec-core/SPECIFICATION/non-functional-requirements.md
+# livespec/SPECIFICATION/non-functional-requirements.md
 # §"Code coverage".
 # ---------------------------------------------------------------------------
 

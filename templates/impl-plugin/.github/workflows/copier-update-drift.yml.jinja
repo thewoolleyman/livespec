@@ -1,22 +1,22 @@
 # Copier-update drift detection for {{ plugin_full_name }}.
 #
-# Generated from livespec-core/templates/impl-plugin/.github/workflows/
+# Generated from livespec/templates/impl-plugin/.github/workflows/
 # copier-update-drift.yml.jinja at copier-copy time; re-sync via
-# `copier update` when livespec-core publishes a new release.
+# `copier update` when livespec publishes a new release.
 #
-# Authority: livespec-core/SPECIFICATION/contracts.md
+# Authority: livespec/SPECIFICATION/contracts.md
 #   §"Shared content sync — copier template" — each impl repo's CI
 #   SHOULD run `copier update --dry-run` and fail or warn on detected
 #   drift. `.claude/skills/loop/SKILL.md` MUST be excluded from drift
 #   detection because local divergence of the Layer 3 loop driver is
 #   expected and load-bearing.
 #
-# Authority: livespec-core/SPECIFICATION/non-functional-requirements.md
+# Authority: livespec/SPECIFICATION/non-functional-requirements.md
 #   §"Project-local orchestration layer" — the loop SKILL exemption
 #   rationale.
 #
 # This workflow surfaces drift between {{ plugin_full_name }}'s
-# generated content and livespec-core's current template. To re-sync
+# generated content and livespec's current template. To re-sync
 # after detected drift: run `copier update` locally and resolve any
 # 3-way merge conflicts.
 
@@ -27,7 +27,7 @@ on:
   push:
     branches: [master]
   schedule:
-    # Weekly drift sweep — catches livespec-core template changes
+    # Weekly drift sweep — catches livespec template changes
     # that haven't been propagated to {{ plugin_full_name }} via PR yet.
     - cron: "0 12 * * 1"
 

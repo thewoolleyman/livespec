@@ -1,16 +1,16 @@
 # lefthook.yml — {{ plugin_full_name }} git hook configuration.
 #
-# Generated from livespec-core/templates/impl-plugin/lefthook.yml.jinja
-# at copier-copy time; re-sync via `copier update` when livespec-core
+# Generated from livespec/templates/impl-plugin/lefthook.yml.jinja
+# at copier-copy time; re-sync via `copier update` when livespec
 # publishes a new release.
 #
-# Authority: livespec-core/SPECIFICATION/contracts.md
+# Authority: livespec/SPECIFICATION/contracts.md
 #   §"Pre-commit step ordering" — pre-commit runs three commands in
 #   order (00-lint-autofix-staged, 01-commit-pairs-source-and-test,
 #   02-check-pre-commit); commit-msg runs no-commit-on-master then
 #   red-green-replay (v034 D3); pre-push runs the full aggregate.
 #
-# Authority: livespec-core/SPECIFICATION/non-functional-requirements.md
+# Authority: livespec/SPECIFICATION/non-functional-requirements.md
 #   §"Toolchain pins" — `run:` fields MUST delegate to `just <target>`
 #   and MUST NOT shell out to underlying tools directly (the spec's
 #   lefthook-must-delegate-to-just rule, enforced by

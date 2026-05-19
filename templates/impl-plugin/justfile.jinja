@@ -1,16 +1,16 @@
 # justfile — {{ plugin_full_name }} dev-tooling task runner.
 #
-# Generated from livespec-core/templates/impl-plugin/justfile.jinja at
-# copier-copy time; re-sync via `copier update` when livespec-core
+# Generated from livespec/templates/impl-plugin/justfile.jinja at
+# copier-copy time; re-sync via `copier update` when livespec
 # publishes a new release.
 #
-# Authority: livespec-core/SPECIFICATION/non-functional-requirements.md
+# Authority: livespec/SPECIFICATION/non-functional-requirements.md
 #   §"Enforcement-suite invocation" — `just` is the canonical entry
 #   point for every dev-tooling invocation. Lefthook and CI MUST
 #   delegate to `just <target>`; direct tool invocations are banned
 #   (enforced by dev-tooling/checks/no_direct_tool_invocation.py).
 #
-# Authority: livespec-core/SPECIFICATION/contracts.md
+# Authority: livespec/SPECIFICATION/contracts.md
 #   §"Pre-commit step ordering" — the gates wired here mirror the
 #   spec-required ordering: 00-lint-autofix-staged, 01-commit-pairs-
 #   source-and-test, 02-check-pre-commit at pre-commit;

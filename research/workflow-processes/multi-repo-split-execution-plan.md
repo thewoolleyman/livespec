@@ -25,10 +25,10 @@ Then:
    - `li-xjp` (Phase B epic; closed)
    - `li-jsl` (Phase C epic; closed)
    - `li-xgj`, `li-ag3`, `li-d5w`, `li-1ow`, `li-liv`, `li-ekf`,
-     `li-716`, `li-9pf`, `li-f1w`, `li-zbd` (Phase D sub-tasks)
-   - `li-6t5` (Phase D epic — only after all 10 sub-tasks close)
-   - `li-9l5` (Phase E epic — only after Phase D closes;
-     decompose at pickup)
+     `li-716`, `li-9pf`, `li-f1w`, `li-zbd` (Phase D sub-tasks; closed)
+   - `li-6t5` (Phase D epic; closed)
+   - `li-9l5` (Phase E epic; retired as `wontfix` per the
+     `retire-livespec-core-rename` propose-change)
    - `li-qyk` (Phase F — deferred indefinitely; skip unless reviving)
 
    If `bd ready` shows none of these IDs, this plan is complete.
@@ -70,11 +70,14 @@ stop after one cycle so the user can review each PR independently.
 
 ---
 
-**Status:** Phases A, B, C, D complete. The dogfooding cutover at D.10 moved
-livespec-core's own tracking from beads to livespec-impl-plaintext;
-all 45 historical beads issues are migrated into work-items.jsonl
-and the .beads/ scaffolding is retired from this repo. Phase E
-(rename livespec → livespec-core) and Phase F (deferred) remain.
+**Status:** Phases A, B, C, D complete. The dogfooding cutover at D.10
+moved livespec's own tracking from beads to livespec-impl-plaintext;
+all 45 historical beads issues are migrated into work-items.jsonl and
+the .beads/ scaffolding is retired from this repo. Phase E (rename)
+RETIRED 2026-05-19 — see `SPECIFICATION/history/vNNN/proposed_changes/
+retire-livespec-core-rename.md` for the decision; the project keeps
+the name `livespec`. Only Phase F (deferred) remains as a recognized
+future variant.
 **Last updated:** 2026-05-19
 **Spec basis:** SPECIFICATION/ as of v067 (the four post-orchestration
 proposed-changes landed across v064–v067).
@@ -272,29 +275,22 @@ backlog and historical issue history are both queryable via
 livespec-impl-plaintext's skills; the project's beads dependency is
 removed from livespec-core; doctor static across both repos is green.
 
-### Phase E — Rename `livespec` → `livespec-core`
+### Phase E — Rename `livespec` → `livespec-core` (RETIRED)
 
-**Beads tracking moves to livespec-impl-plaintext at end of D; this
-phase's tracking is in JSONL.** Priority P3. Depends on Phase D.
+**Retired 2026-05-19** per `SPECIFICATION/proposed_changes/
+retire-livespec-core-rename.md` (now in `SPECIFICATION/history/v068/`).
 
-Most disruptive externally but mechanically simple. Touches:
+The original rationale for the rename was to distinguish the
+spec-lifecycle authority from the `livespec-impl-<X>` family of
+implementation plugins. The `-impl-` infix on the satellites already
+encodes that asymmetry, so the rename was mostly aesthetic. Vacating
+the `livespec` plugin / marketplace name also leaves it available for
+unrelated plugins, which the canonical project would have to defend
+against (e.g., with a dormant pointer plugin) — additional ongoing cost
+for no real upside.
 
-- `.claude-plugin/marketplace.json` — name `livespec-core`.
-- `.claude-plugin/plugin.json` — name `livespec-core`, description.
-- GitHub repository rename `thewoolleyman/livespec` →
-  `thewoolleyman/livespec-core` (GitHub auto-redirect preserves the
-  old URL for some grace period).
-- All 8 slash commands renamespace from `/livespec:*` to
-  `/livespec-core:*` — affects skill prompt cross-references and any
-  agent-facing documentation.
-- The Codex dogfooding compatibility section.
-- README, contributing docs, install instructions.
-
-**Acceptance:** `/plugin marketplace add thewoolleyman/livespec-core`
-followed by `/plugin install livespec-core@livespec-core` works
-end-to-end against the new install path; the eight `/livespec-core:*`
-commands work as before; release-please cuts the rename as a major
-version bump per Conventional Commits.
+The project keeps the name `livespec`. The work-item `li-9l5` closes
+as `wontfix` in `work-items.jsonl`.
 
 ### Phase F — `livespec-impl-beads` sibling repo (deferred)
 
@@ -316,9 +312,8 @@ Phase A (P1, no deps)
 Phase B (P2)        Phase C (P2)        — independent of each other; can run in parallel
                           ↓
                        Phase D (P2; depends on C)
-                          ↓
-                       Phase E (P3; depends on D)
 
+Phase E (RETIRED 2026-05-19 — rename canceled)
 Phase F (P4, deferred)
 ```
 
