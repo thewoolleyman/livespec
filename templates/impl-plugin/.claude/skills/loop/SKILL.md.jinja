@@ -1,0 +1,78 @@
+---
+name: loop
+description: Layer 3 orchestration driver for {{ plugin_full_name }}. Composes /livespec-core:next and /{{ plugin_namespace }}:next, dispatches to the appropriate heavyweight skill, runs the project's janitor (typically `just check` plus `/livespec-core:doctor`) as a hard gate, and loops until the queue drains or the configured budget exhausts. Hand-tuned per repo — local divergence is expected and exempt from copier-update drift detection.
+---
+
+# Layer 3 loop driver — {{ plugin_full_name }} starter
+
+This skill is the project-local Layer 3 orchestration driver per
+`livespec-core/SPECIFICATION/spec.md` §"Three-layer orchestration
+architecture" and `non-functional-requirements.md` §"Layer 3 loop
+driver — required shape and discipline".
+
+It is generated from
+`livespec-core/templates/impl-plugin/.claude/skills/loop/SKILL.md.jinja`
+as a STARTER scaffold. Per
+`livespec-core/SPECIFICATION/contracts.md` §"Shared content sync —
+copier template", this file is EXEMPT from `copier update --dry-run`
+drift detection — local divergence is expected and load-bearing.
+
+## Contract
+
+The driver MUST:
+
+1. **Accept a `mode` parameter** with at minimum two recognized
+   values:
+   - `interactive` — human approves spec-side mutations and reviews
+     each work-item closure. MUST be the default for spec-side
+     dispatches.
+   - `autonomous` — driver runs end-to-end without per-iteration
+     approval; human review happens at PR boundaries. MUST be the
+     default for impl-side dispatches.
+
+2. **Accept a `budget` parameter** bounding the loop. MUST recognize
+   at minimum one of: iteration count, wallclock duration, token
+   consumption. Default budget is implementation-defined but MUST be
+   finite (no unbounded loops).
+
+3. **Run the janitor as a hard gate** on every mutating iteration.
+   Janitor for this repo: `just check` plus
+   `/livespec-core:doctor`. A non-zero janitor exit MUST prevent
+   the commit for that iteration. Recovery policy (retry, escalate
+   to interactive, halt, etc.) is per-project.
+
+4. **Emit a structured iteration journal** recording each iteration's
+   pick (from `next`), dispatched skill, janitor result, commit SHA
+   (or rollback), and exit reason. Machine-readable for post-hoc
+   audit.
+
+## Cross-side composition
+
+Compose `/livespec-core:next` (spec-side ranking) and
+`/{{ plugin_namespace }}:next` (impl-side ranking) into a unified
+"what to work on now" answer. The weighting between spec-side and
+impl-side work is a per-project judgment — neither `livespec-core`
+nor `{{ plugin_full_name }}` bakes one in. Adjust the heuristic
+below to match this repo's bottleneck profile (whether spec
+evolution or impl execution is currently load-bearing).
+
+## Starter dispatch table
+
+| Action from `next` | Skill to invoke |
+|---|---|
+| `revise` (spec-side) | `/livespec-core:revise` |
+| `propose-change` (spec-side) | `/livespec-core:propose-change` |
+| `critique` (spec-side) | `/livespec-core:critique` |
+| `prune-history` (spec-side) | `/livespec-core:prune-history` |
+| `implement` (impl-side) | `/{{ plugin_namespace }}:implement` |
+| `capture-impl-gaps` (impl-side) | `/{{ plugin_namespace }}:capture-impl-gaps` |
+| `capture-spec-drift` (impl-side) | `/{{ plugin_namespace }}:capture-spec-drift` |
+| `process-memos` (impl-side) | `/{{ plugin_namespace }}:process-memos` |
+| `none` | exit cleanly |
+
+## Hand-tune freely
+
+Customize the dispatch table, mode/budget defaults, janitor
+invocation, escalation policy, commit conventions, and journal
+format to fit this repo. The starter exists to anchor the
+contract; the shape is whatever serves this project.
