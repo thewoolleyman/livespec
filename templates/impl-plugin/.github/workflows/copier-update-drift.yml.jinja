@@ -1,0 +1,60 @@
+# Copier-update drift detection for {{ plugin_full_name }}.
+#
+# Generated from livespec-core/templates/impl-plugin/.github/workflows/
+# copier-update-drift.yml.jinja at copier-copy time; re-sync via
+# `copier update` when livespec-core publishes a new release.
+#
+# Authority: livespec-core/SPECIFICATION/contracts.md
+#   §"Shared content sync — copier template" — each impl repo's CI
+#   SHOULD run `copier update --dry-run` and fail or warn on detected
+#   drift. `.claude/skills/loop/SKILL.md` MUST be excluded from drift
+#   detection because local divergence of the Layer 3 loop driver is
+#   expected and load-bearing.
+#
+# Authority: livespec-core/SPECIFICATION/non-functional-requirements.md
+#   §"Project-local orchestration layer" — the loop SKILL exemption
+#   rationale.
+#
+# This workflow surfaces drift between {{ plugin_full_name }}'s
+# generated content and livespec-core's current template. To re-sync
+# after detected drift: run `copier update` locally and resolve any
+# 3-way merge conflicts.
+
+name: copier-update-drift
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  schedule:
+    # Weekly drift sweep — catches livespec-core template changes
+    # that haven't been propagated to {{ plugin_full_name }} via PR yet.
+    - cron: "0 12 * * 1"
+
+jobs:
+  drift:
+    name: copier update --dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned binaries via mise
+        uses: jdx/mise-action@v2
+
+      - name: Install Python dev deps via uv (includes copier)
+        run: uv sync --all-groups
+
+      - name: copier update --dry-run
+        run: |
+          set -uo pipefail
+          # Exclude .claude/skills/loop/SKILL.md from drift detection
+          # — per spec, local divergence of the Layer 3 loop driver
+          # is expected and load-bearing.
+          uv run copier update \
+            --dry-run \
+            --defaults \
+            --skip-answered \
+            --exclude '.claude/skills/loop/SKILL.md'
