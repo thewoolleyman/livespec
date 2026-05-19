@@ -1,3 +1,24 @@
+// Project-local livespec configuration for livespec-core (this repo).
+//
+// Authority: SPECIFICATION/contracts.md
+//   §"Cross-repo coordination — pin-and-bump"
 {
-  "template": "livespec"
+  "template": "livespec",
+  "spec_root": "SPECIFICATION",
+  "implementation": { "plugin": "livespec-impl-plaintext" },
+  "livespec-impl-plaintext": {
+    "format": "jsonl",
+    "compat": {
+      // livespec-impl-plaintext is v0.1.0. The pinned tag is the placeholder
+      // "master" until Phase E renames livespec → livespec-core and cuts its
+      // own first release tag; the bump-pin PR after that lands sets these
+      // to real values. Doctor's contract-version-compatibility invariant
+      // currently fires `warn` against the master pin (expected during
+      // bootstrap, not a hard failure).
+      "livespec_core": ">=0.1.0,<1.0.0",
+      "pinned": "master"
+    },
+    "work_items_path": "work-items.jsonl",
+    "memos_path": "memos.jsonl"
+  }
 }
