@@ -99,6 +99,7 @@ check:
         check-claude-md-coverage
         check-vendor-manifest
         check-no-direct-tool-invocation
+        check-copier-template-smoke
         check-heading-coverage
         check-rop-pipeline-shape
         check-public-api-result-typed
@@ -240,6 +241,7 @@ check-pre-commit-doc-only:
         check-heading-coverage
         check-vendor-manifest
         check-no-direct-tool-invocation
+        check-copier-template-smoke
         check-tools
     )
     failed=()
@@ -342,6 +344,14 @@ check-vendor-manifest:
 
 check-no-direct-tool-invocation:
     uv run python3 dev-tooling/checks/no_direct_tool_invocation.py
+
+# Smoke test for templates/impl-plugin/ — runs copier copy against a
+# stock answers fixture and verifies the generated tree contains the
+# expected file set. Acceptance gate for the C.6 sub-task of the
+# Phase C multi-repo-split epic. Repo-metadata check: not gated by
+# .py changeset.
+check-copier-template-smoke:
+    uv run python3 dev-tooling/checks/copier_template_smoke.py
 
 check-tools:
     uv run python3 dev-tooling/checks/check_tools.py
