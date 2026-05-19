@@ -51,7 +51,7 @@ _STOCK_ANSWERS: tuple[tuple[str, str], ...] = (
     ("github_owner", "thewoolleyman"),
     ("github_repo", "livespec-impl-smoketest"),
     ("python_version", "3.13"),
-    ("livespec_core_release_tag", "v0.1.0"),
+    ("livespec_release_tag", "v0.1.0"),
 )
 
 _EXPECTED_FILES: tuple[str, ...] = (

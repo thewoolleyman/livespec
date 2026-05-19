@@ -39,7 +39,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "TODO",
-    "reason": "Landed in v067 (orchestration-layer-and-memo-paradigm proposal accept). Test ID populated in the impl follow-up PR that exercises the three-layer structure end-to-end (e.g., a project-local loop driver invoking livespec-core and impl-plugin next skills)."
+    "reason": "Landed in v067 (orchestration-layer-and-memo-paradigm proposal accept). Test ID populated in the impl follow-up PR that exercises the three-layer structure end-to-end (e.g., a project-local loop driver invoking livespec and impl-plugin next skills)."
   },
   {
     "heading": "## Versioning",
@@ -167,7 +167,7 @@
     "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR that scaffolds the nine canonical impl-plugin skills (six heavyweight authored + three thin-transport query) under the livespec-impl-plaintext namespace and wires the five cross-boundary handoffs into doctor's invariant catalog."
   },
   {
-    "heading": "## `/livespec-core:next` spec-side thin-transport skill",
+    "heading": "## `/livespec:next` spec-side thin-transport skill",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.commands.test_next.test_next_emits_schema_conformant_json",
