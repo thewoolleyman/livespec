@@ -1,0 +1,51 @@
+# lefthook.yml — {{ plugin_full_name }} git hook configuration.
+#
+# Generated from livespec-core/templates/impl-plugin/lefthook.yml.jinja
+# at copier-copy time; re-sync via `copier update` when livespec-core
+# publishes a new release.
+#
+# Authority: livespec-core/SPECIFICATION/contracts.md
+#   §"Pre-commit step ordering" — pre-commit runs three commands in
+#   order (00-lint-autofix-staged, 01-commit-pairs-source-and-test,
+#   02-check-pre-commit); commit-msg runs no-commit-on-master then
+#   red-green-replay (v034 D3); pre-push runs the full aggregate.
+#
+# Authority: livespec-core/SPECIFICATION/non-functional-requirements.md
+#   §"Toolchain pins" — `run:` fields MUST delegate to `just <target>`
+#   and MUST NOT shell out to underlying tools directly (the spec's
+#   lefthook-must-delegate-to-just rule, enforced by
+#   dev-tooling/checks/no_direct_tool_invocation.py).
+#
+# Activation: `just bootstrap` installs the git-hook-wrapper from
+# dev-tooling/git-hook-wrapper.sh into .git/hooks/pre-commit,
+# .git/hooks/pre-push, and .git/hooks/commit-msg. The wrapper
+# invokes `mise exec lefthook -- lefthook run <hook-name> "$@"` so
+# the gate fires regardless of shell config and commit-msg argv[1]
+# (the commit-message file path) reaches the red-green-replay hook.
+
+pre-commit:
+  commands:
+    00-lint-autofix-staged:
+      run: just lint-autofix-staged
+    01-commit-pairs-source-and-test:
+      run: just check-commit-pairs-source-and-test
+    02-check-pre-commit:
+      run: just check-pre-commit
+
+commit-msg:
+  commands:
+    00-no-commit-on-master:
+      run: |
+        branch=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$branch" = "master" ]; then
+          printf 'ERROR: direct commits to master are forbidden; create a feature branch first\n' >&2
+          printf 'Hint: git checkout -b <branch-name>\n' >&2
+          exit 1
+        fi
+    01-red-green-replay:
+      run: just check-red-green-replay {1}
+
+pre-push:
+  commands:
+    check:
+      run: just check-pre-push
