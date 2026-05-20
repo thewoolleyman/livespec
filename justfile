@@ -51,6 +51,15 @@ bootstrap:
     # config-loading semantics that consumers care about). Run only
     # if the value isn't already present.
     git config --get-all remote.origin.fetch | grep -qx '+refs/notes/*:refs/notes/*' || git config --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
+    just ensure-plugins
+
+# Idempotent: `claude plugin marketplace add` and `claude plugin install`
+# both exit 0 when the target is already present.
+ensure-plugins:
+    claude plugin marketplace add thewoolleyman/livespec
+    claude plugin marketplace add thewoolleyman/livespec-impl-plaintext
+    claude plugin install livespec@livespec
+    claude plugin install livespec-impl-plaintext@livespec-impl-plaintext
 
 # ---------------------------------------------------------------
 # Aggregate check — runs every check below sequentially. Continues
