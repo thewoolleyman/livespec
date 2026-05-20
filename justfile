@@ -9,10 +9,6 @@
 # call `just <target>`.
 #
 # Phase deferrals (per PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md):
-#   - `just bootstrap` recreates the `.claude/skills ->
-#     ../.claude-plugin/skills` symlink (added at Phase 2 sub-step
-#     8 once the target directory exists). The `lefthook install`
-#     step is added at Phase 5's exit.
 #   - Most check-* recipes delegate to dev-tooling/checks/<name>.py
 #     scripts authored in Phase 4. They will fail until Phase 4
 #     lands them; this is expected during Phases 1-3.
@@ -43,7 +39,6 @@ bootstrap:
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-push
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/commit-msg
     chmod +x .git/hooks/pre-commit .git/hooks/pre-push .git/hooks/commit-msg
-    ln -sfn ../.claude-plugin/skills .claude/skills
     # v034 D4: notes refspec for `refs/notes/commits` advisory cache.
     # Idempotent — git config --add tolerates duplicate values across
     # repeated bootstrap invocations (the value is checked literally;
