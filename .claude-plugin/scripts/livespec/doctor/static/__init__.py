@@ -42,6 +42,7 @@ from livespec.doctor.static import (
     bcp14_keyword_wellformedness,
     gherkin_blank_line_format,
     livespec_jsonc_valid,
+    no_stalled_epic,
     out_of_band_edits,
     proposed_change_topic_format,
     proposed_changes_and_history_dirs,
@@ -72,6 +73,7 @@ STATIC_CHECKS = (
     anchor_reference_resolution,
     out_of_band_edits,
     accept_decision_snapshot_consistency,
+    no_stalled_epic,
 )
 
 
