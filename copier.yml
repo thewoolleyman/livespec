@@ -6,4 +6,18 @@
 # repos can use the repo root URL rather than a non-standard
 # `gh:owner/repo/subdir` path (which copier parses as owner/repo=
 # "owner/repo/subdir" — a broken GitHub URL).
+#
+# _envops and _templates_suffix are set here (as well as in the
+# subdirectory's copier.yml) because the root config governs Jinja2
+# env setup — the subdirectory config is used only for questions.
 _subdirectory: templates/impl-plugin
+_templates_suffix: .jinja
+_envops:
+  comment_start_string: "[#"
+  comment_end_string: "#]"
+_exclude:
+  - copier.yml
+  - .git
+  - __pycache__
+  - "*.pyc"
+  - "*.pyo"
