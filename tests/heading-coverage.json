@@ -130,7 +130,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
-    "reason": "Landed in v066 (doctor-invariant-catalog-expansion proposal accept). Real test ID populated in the impl follow-up PR(s) that wire the four work-item structural invariants (gap-tracking-one-to-one, no-orphan-blocker, no-stale-gap-tied, no-duplicate-gap-id) and contract-version-compatibility into the livespec.doctor.static registry, drive them against the active impl-plugin's list-work-items / capture-impl-gaps query surface, and assert the cross-boundary missing-surface-fires-fail semantics."
+    "reason": "Landed in v066 (doctor-invariant-catalog-expansion proposal accept). Real test ID populated in the impl follow-up PR(s) that wire the five work-item structural invariants (gap-tracking-one-to-one, no-orphan-blocker, no-stale-gap-tied, no-duplicate-gap-id, no-stalled-epic) and contract-version-compatibility into the livespec.doctor.static registry, drive them against the active impl-plugin's list-work-items / capture-impl-gaps query surface, and assert the cross-boundary missing-surface-fires-fail semantics."
   },
   {
     "heading": "## Resolved-template stdout contract",
