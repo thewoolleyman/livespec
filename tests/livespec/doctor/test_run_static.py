@@ -209,6 +209,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-anchor-reference-resolution",
         "doctor-out-of-band-edits",
         "doctor-accept-decision-snapshot-consistency",
+        "doctor-no-stalled-epic",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -237,6 +238,14 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             assert (
                 finding["status"] == "skipped"
             ), f"expected skipped for out-of-band-edits in non-git fixture; got {finding}"
+        elif finding["check_id"] == "doctor-no-stalled-epic":
+            # The no-stalled-epic check requires .livespec.jsonc to declare an
+            # impl-plugin in its v1 supported set (livespec-impl-plaintext);
+            # this test fixture's minimal .livespec.jsonc omits the
+            # implementation block, so the check correctly skips.
+            assert (
+                finding["status"] == "skipped"
+            ), f"expected skipped for no-stalled-epic in fixture without impl-plugin; got {finding}"
         else:
             assert finding["status"] == "pass", f"non-pass finding: {finding}"
         findings_by_spec_root.setdefault(finding["spec_root"], set()).add(
