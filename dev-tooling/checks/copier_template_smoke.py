@@ -70,11 +70,13 @@ _EXPECTED_FILES: tuple[str, ...] = (
     ".claude-plugin/plugin.json",
     "SPECIFICATION/README.md",
     ".claude/skills/loop/SKILL.md",
+    ".claude/settings.json",
 )
 
 _JSON_FILES: tuple[str, ...] = (
     ".claude-plugin/marketplace.json",
     ".claude-plugin/plugin.json",
+    ".claude/settings.json",
 )
 
 
