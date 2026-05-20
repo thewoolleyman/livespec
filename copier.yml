@@ -1,0 +1,9 @@
+# Root copier manifest for the livespec monorepo.
+#
+# The impl-plugin template lives at templates/impl-plugin/. This file
+# routes `copier copy gh:thewoolleyman/livespec` and
+# `copier update` to that subdirectory so _src_path in generated
+# repos can use the repo root URL rather than a non-standard
+# `gh:owner/repo/subdir` path (which copier parses as owner/repo=
+# "owner/repo/subdir" — a broken GitHub URL).
+_subdirectory: templates/impl-plugin
