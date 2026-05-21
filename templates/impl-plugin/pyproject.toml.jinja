@@ -49,7 +49,16 @@ dev = [
     "hypothesis-jsonschema==0.23.1",
     "mutmut==3.2.3",
     "import-linter==2.1",
+    "livespec-dev-tooling",
 ]
+
+# livespec-dev-tooling is consumed from the github.com sibling-library
+# repo via uv git source per
+# livespec/SPECIFICATION/contracts.md §"Shared code sync — livespec-dev-tooling".
+# Bump-pin PRs against this repo land each new tag per
+# livespec/SPECIFICATION/contracts.md §"Cross-repo coordination — pin-and-bump".
+[tool.uv.sources]
+livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.1.0" }
 
 # ---------------------------------------------------------------------------
 # Ruff — sole linter, formatter, import-sorter, complexity checker.

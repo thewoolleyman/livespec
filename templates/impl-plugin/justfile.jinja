@@ -170,7 +170,7 @@ check-pre-push:
 # Requires dev-tooling/checks/red_green_replay.py — populate when
 # adopting the Red→Green replay discipline.
 check-red-green-replay msg_path:
-    uv run python3 dev-tooling/checks/red_green_replay.py {{ '{{' }}msg_path{{ '}}' }}
+    uv run python -m livespec_dev_tooling.checks.red_green_replay {{ '{{' }}msg_path{{ '}}' }}
 
 # ---------------------------------------------------------------
 # Pre-commit auxiliary gates.
@@ -195,7 +195,7 @@ lint-autofix-staged:
 # tests. Requires dev-tooling/checks/commit_pairs_source_and_test.py
 # — populate when adopting the pair-with-test discipline.
 check-commit-pairs-source-and-test:
-    uv run python3 dev-tooling/checks/commit_pairs_source_and_test.py
+    uv run python -m livespec_dev_tooling.checks.commit_pairs_source_and_test
 
 # ---------------------------------------------------------------
 # Mutating targets (opt-in; not run in CI).
