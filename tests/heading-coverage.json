@@ -188,6 +188,13 @@
     "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that publishes templates/impl-plugin/ as the canonical copier scaffold and pins copier via uv against pyproject.toml [dependency-groups.dev]."
   },
   {
+    "heading": "## Shared code sync — livespec-dev-tooling",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v070 (declare-livespec-dev-tooling-shared-code-mechanism proposal accept) per epic li-fgqgnk Phase G.1. Real test ID populated in the impl follow-up PRs (epic phases G.2–G.7) that hand-author the livespec-dev-tooling repo scaffold, migrate the shared enforcement-suite checks out of livespec-core, and wire every consumer (livespec-core itself + every livespec-impl-* plugin) to consume the new package via uv git source plus the composite Actions / reusable workflows."
+  },
+  {
     "heading": "## Pre-commit step ordering",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
