@@ -48,13 +48,22 @@ bootstrap:
     git config --get-all remote.origin.fetch | grep -qx '+refs/notes/*:refs/notes/*' || git config --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
     just ensure-plugins
 
-# Idempotent: `claude plugin marketplace add` and `claude plugin install`
-# both exit 0 when the target is already present.
+# Idempotent: `claude plugin marketplace add` / `install` / `update` all exit 0
+# when the target is already present / already at latest. The `update` calls
+# after each `install` are required because `install` is a no-op when any
+# version is already present locally — without `update`, a bumped upstream
+# release never reaches a previously-bootstrapped working copy. The pin in
+# `.livespec.jsonc` `compat.pinned` is advisory per
+# `SPECIFICATION/contracts.md` §"Cross-repo coordination — pin-and-bump"
+# (drift is doctor's `contract-version-compatibility` invariant); the install
+# itself always resolves to the marketplace's current advertised version.
 ensure-plugins:
     claude plugin marketplace add thewoolleyman/livespec
     claude plugin marketplace add thewoolleyman/livespec-impl-plaintext
     claude plugin install livespec@livespec
     claude plugin install livespec-impl-plaintext@livespec-impl-plaintext
+    claude plugin update livespec@livespec
+    claude plugin update livespec-impl-plaintext@livespec-impl-plaintext
 
 # ---------------------------------------------------------------
 # Aggregate check — runs every check below sequentially. Continues
