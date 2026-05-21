@@ -20,7 +20,7 @@ lives at `SPECIFICATION/` and is itself maintained via the plugin's
 
 ## Slash commands and skills
 
-The plugin exposes seven sub-commands; each is backed by a skill at
+The plugin exposes eight sub-commands; each is backed by a skill at
 `.claude-plugin/skills/<name>/SKILL.md`:
 
 | Command | Skill | Purpose |
@@ -31,6 +31,7 @@ The plugin exposes seven sub-commands; each is backed by a skill at
 | `/livespec:revise` | `skills/revise/SKILL.md` | Accept, modify, or reject pending proposed changes |
 | `/livespec:doctor` | `skills/doctor/SKILL.md` | Run static + LLM-driven validation against a spec tree |
 | `/livespec:prune-history` | `skills/prune-history/SKILL.md` | Collapse old `history/vNNN/` entries into a pruned-marker |
+| `/livespec:next` | `skills/next/SKILL.md` | Rank the next spec-side action (revise, propose-change, critique, prune-history, or none) over the current proposed_changes/ and history/ state |
 | `/livespec:help` | `skills/help/SKILL.md` | Overview + routing to the right sub-command |
 
 Each skill orchestrates dialogue capture, prompt-driven content
@@ -69,7 +70,7 @@ The plugin is distributed via a Claude Code marketplace at
 /plugin install livespec@livespec
 ```
 
-After install, the seven `/livespec:*` slash commands become available
+After install, the eight `/livespec:*` slash commands become available
 with the `livespec:` namespace prefix.
 
 ## Daily dogfooding (maintainer development)

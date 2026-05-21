@@ -12,7 +12,7 @@ validating, and versioning.
 ```
 
 After install, restart Claude Code (or run `/reload-plugins`).
-The seven slash commands below become available with the
+The eight slash commands below become available with the
 `livespec:` namespace prefix.
 
 ## Slash commands
@@ -23,6 +23,7 @@ The seven slash commands below become available with the
 - `/livespec:revise` — accept or reject pending proposed changes
 - `/livespec:doctor` — run static + LLM-driven validation
 - `/livespec:prune-history` — collapse old `history/vNNN/` entries
+- `/livespec:next` — rank the next spec-side action (revise, propose-change, critique, prune-history, or none)
 - `/livespec:help` — overview + routing to the right sub-command
 
 ## Dogfooding (editing the plugin source in this repo)
