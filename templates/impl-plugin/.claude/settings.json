@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "just ensure-plugins"
+            "command": "mise exec -- just ensure-plugins"
           }
         ]
       }
