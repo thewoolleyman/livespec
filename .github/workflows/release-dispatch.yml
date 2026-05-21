@@ -1,0 +1,106 @@
+# Release-dispatch workflow — fire repository_dispatch at every consumer
+# repo when livespec ships a new release tag.
+#
+# Authority: SPECIFICATION/contracts.md
+#   §"Cross-repo coordination — pin-and-bump"
+#
+# Lights up the previously-deferred "auto-merge bot architecture" half-
+# sentence in that section. Each consumer repo runs its own
+# `bump-pin-from-dispatch.yml` handler (added per consumer, not in this
+# repo) which receives the dispatch, edits its `.livespec.jsonc`
+# `compat.pinned` value to the new tag, and opens an auto-merge PR.
+#
+# Trigger discipline: `on: release: types: [published]` — fires only when
+# a release is explicitly published in GitHub's UI / API, NOT on every tag
+# push. Pre-release tags and tag-rewrites do not fire bumps. This matches
+# the contract's "ships a new release tag" language: a release is the
+# audited cut, not a transient tag.
+#
+# Auth model: uses the same GitHub App that powers `auto-enable-merge.yml`
+# (APP_ID + APP_PRIVATE_KEY secrets). The App MUST be installed on every
+# consumer repo this workflow dispatches to; otherwise dispatch returns
+# 404. Required consumer-side App permissions: `contents: write`,
+# `pull-requests: write`, `metadata: read`.
+#
+# Dispatch payload contract (consumer handlers MUST read this shape):
+#
+#   event_type: "livespec-released"
+#   client_payload:
+#     tag: "v1.2.3"            # the released tag name (with leading v)
+#     source_repo: "livespec"  # constant — identifies the upstream
+#     release_url: "<URL>"     # GitHub release page (for PR descriptions)
+#
+# Failure semantics: a 404 from one consumer (e.g., App not yet installed
+# there) MUST NOT fail the others. The dispatch loop is fail-soft — each
+# target gets its own job in a matrix with `fail-fast: false`. A 404 is
+# surfaced as a workflow annotation, not a failure.
+
+name: Release dispatch
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: dispatch → ${{ matrix.repo }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Owner is fixed to `thewoolleyman` for v1; expanding to other
+        # owners (e.g., a future @livespec-bot org) requires extending
+        # the matrix to carry an owner field per row.
+        repo:
+          # The set of repos that pin against livespec per
+          # SPECIFICATION/contracts.md §"Cross-repo coordination — pin-and-bump".
+          # New consumers join by adding their repo here AND adding
+          # `bump-pin-from-dispatch.yml` in their own repo.
+          - livespec
+          - livespec-impl-plaintext
+          - livespec-dev-tooling
+    env:
+      OWNER: thewoolleyman
+    steps:
+      - name: Mint App installation token for ${{ env.OWNER }}/${{ matrix.repo }}
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ env.OWNER }}
+          repositories: ${{ matrix.repo }}
+
+      - name: Dispatch livespec-released → ${{ env.OWNER }}/${{ matrix.repo }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          CONSUMER: ${{ env.OWNER }}/${{ matrix.repo }}
+          TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          set -uo pipefail
+          # `gh api` returns 0 on 2xx, non-zero on 4xx/5xx.
+          # 404 = App not installed on consumer or repo missing handler;
+          # treat as soft failure (annotate, don't fail the job).
+          rc=0
+          response=$(gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/$CONSUMER/dispatches" \
+            -f event_type="livespec-released" \
+            -f "client_payload[tag]=$TAG" \
+            -f "client_payload[source_repo]=livespec" \
+            -f "client_payload[release_url]=$RELEASE_URL" \
+            2>&1) || rc=$?
+          if [[ "$rc" -eq 0 ]]; then
+            echo "::notice::dispatched livespec-released to $CONSUMER (tag=$TAG)"
+          elif echo "$response" | grep -q "Not Found"; then
+            echo "::warning::dispatch to $CONSUMER returned 404 — App not installed or repo missing handler. Soft-failing per release-dispatch.yml contract."
+          else
+            echo "::error::dispatch to $CONSUMER failed: $response"
+            exit 1
+          fi
