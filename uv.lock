@@ -1,5 +1,5 @@
 version = 1
-requires-python = "==3.10.*"
+requires-python = ">=3.10.16, <3.11"
 
 [[package]]
 name = "annotated-types"
@@ -311,6 +311,7 @@ dev = [
     { name = "hypothesis" },
     { name = "hypothesis-jsonschema" },
     { name = "import-linter" },
+    { name = "livespec-dev-tooling" },
     { name = "mutmut" },
     { name = "pyright" },
     { name = "pytest" },
@@ -328,6 +329,7 @@ dev = [
     { name = "hypothesis", specifier = "==6.122.3" },
     { name = "hypothesis-jsonschema", specifier = "==0.23.1" },
     { name = "import-linter", specifier = "==2.1" },
+    { name = "livespec-dev-tooling", git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v0.1.0" },
     { name = "mutmut", specifier = "==3.2.3" },
     { name = "pyright", specifier = "==1.1.391" },
     { name = "pytest", specifier = "==8.3.4" },
@@ -336,6 +338,11 @@ dev = [
     { name = "pytest-xdist", specifier = "==3.8.0" },
     { name = "ruff", specifier = "==0.8.6" },
 ]
+
+[[package]]
+name = "livespec-dev-tooling"
+version = "0.1.0"
+source = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v0.1.0#e1d0a6831c30c2dc3a2b2f028f4d9c49668261b1" }
 
 [[package]]
 name = "markdown-it-py"
