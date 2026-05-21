@@ -153,7 +153,7 @@ check-complexity:
     set -uo pipefail
     rc=0
     uv run ruff check --select C90,PLR . || rc=$?
-    uv run python3 dev-tooling/checks/file_lloc.py || rc=$?
+    uv run python -m livespec_dev_tooling.checks.file_lloc || rc=$?
     exit $rc
 
 check-imports-architecture:
@@ -192,7 +192,7 @@ check-coverage:
     # from ~3.5min serial to under ~1min on a typical multi-core
     # developer machine.
     uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
-    uv run python3 dev-tooling/checks/per_file_coverage.py
+    uv run python -m livespec_dev_tooling.checks.per_file_coverage
 
 # Per v036 D1: Red-mode-aware pre-commit aggregate. Classifies the
 # staged tree shape via `git diff --cached --name-only --diff-filter=AM`
@@ -284,70 +284,70 @@ check-pre-push:
 # ---------------------------------------------------------------
 
 check-private-calls:
-    uv run python3 dev-tooling/checks/private_calls.py
+    uv run python -m livespec_dev_tooling.checks.private_calls
 
 check-global-writes:
-    uv run python3 dev-tooling/checks/global_writes.py
+    uv run python -m livespec_dev_tooling.checks.global_writes
 
 check-rop-pipeline-shape:
-    uv run python3 dev-tooling/checks/rop_pipeline_shape.py
+    uv run python -m livespec_dev_tooling.checks.rop_pipeline_shape
 
 check-supervisor-discipline:
-    uv run python3 dev-tooling/checks/supervisor_discipline.py
+    uv run python -m livespec_dev_tooling.checks.supervisor_discipline
 
 check-no-raise-outside-io:
-    uv run python3 dev-tooling/checks/no_raise_outside_io.py
+    uv run python -m livespec_dev_tooling.checks.no_raise_outside_io
 
 check-no-except-outside-io:
-    uv run python3 dev-tooling/checks/no_except_outside_io.py
+    uv run python -m livespec_dev_tooling.checks.no_except_outside_io
 
 check-public-api-result-typed:
-    uv run python3 dev-tooling/checks/public_api_result_typed.py
+    uv run python -m livespec_dev_tooling.checks.public_api_result_typed
 
 check-schema-dataclass-pairing:
     uv run python3 dev-tooling/checks/schema_dataclass_pairing.py
 
 check-main-guard:
-    uv run python3 dev-tooling/checks/main_guard.py
+    uv run python -m livespec_dev_tooling.checks.main_guard
 
 check-wrapper-shape:
-    uv run python3 dev-tooling/checks/wrapper_shape.py
+    uv run python -m livespec_dev_tooling.checks.wrapper_shape
 
 check-keyword-only-args:
-    uv run python3 dev-tooling/checks/keyword_only_args.py
+    uv run python -m livespec_dev_tooling.checks.keyword_only_args
 
 check-match-keyword-only:
-    uv run python3 dev-tooling/checks/match_keyword_only.py
+    uv run python -m livespec_dev_tooling.checks.match_keyword_only
 
 check-no-inheritance:
-    uv run python3 dev-tooling/checks/no_inheritance.py
+    uv run python -m livespec_dev_tooling.checks.no_inheritance
 
 check-assert-never-exhaustiveness:
-    uv run python3 dev-tooling/checks/assert_never_exhaustiveness.py
+    uv run python -m livespec_dev_tooling.checks.assert_never_exhaustiveness
 
 check-newtype-domain-primitives:
-    uv run python3 dev-tooling/checks/newtype_domain_primitives.py
+    uv run python -m livespec_dev_tooling.checks.newtype_domain_primitives
 
 check-all-declared:
-    uv run python3 dev-tooling/checks/all_declared.py
+    uv run python -m livespec_dev_tooling.checks.all_declared
 
 check-no-write-direct:
-    uv run python3 dev-tooling/checks/no_write_direct.py
+    uv run python -m livespec_dev_tooling.checks.no_write_direct
 
 check-pbt-coverage-pure-modules:
-    uv run python3 dev-tooling/checks/pbt_coverage_pure_modules.py
+    uv run python -m livespec_dev_tooling.checks.pbt_coverage_pure_modules
 
 check-claude-md-coverage:
-    uv run python3 dev-tooling/checks/claude_md_coverage.py
+    uv run python -m livespec_dev_tooling.checks.claude_md_coverage
 
 check-heading-coverage:
-    uv run python3 dev-tooling/checks/heading_coverage.py
+    uv run python -m livespec_dev_tooling.checks.heading_coverage
 
 check-vendor-manifest:
-    uv run python3 dev-tooling/checks/vendor_manifest.py
+    uv run python -m livespec_dev_tooling.checks.vendor_manifest
 
 check-no-direct-tool-invocation:
-    uv run python3 dev-tooling/checks/no_direct_tool_invocation.py
+    uv run python -m livespec_dev_tooling.checks.no_direct_tool_invocation
 
 # Smoke test for templates/impl-plugin/ — runs copier copy against a
 # stock answers fixture and verifies the generated tree contains the
@@ -358,7 +358,7 @@ check-copier-template-smoke:
     uv run python3 dev-tooling/checks/copier_template_smoke.py
 
 check-tools:
-    uv run python3 dev-tooling/checks/check_tools.py
+    uv run python -m livespec_dev_tooling.checks.check_tools
 
 # Guard Layer 1 mechanical checks. Both shell out to `gh api` to
 # read remote GitHub state; they exit 0 with a structured warning
@@ -366,10 +366,10 @@ check-tools:
 # pre-commit runs are not blocked. CI with GH_TOKEN exercises the
 # full enforcement path.
 check-branch-protection-alignment:
-    uv run python3 dev-tooling/checks/branch_protection_alignment.py
+    uv run python -m livespec_dev_tooling.checks.branch_protection_alignment
 
 check-master-ci-green:
-    uv run python3 dev-tooling/checks/master_ci_green.py
+    uv run python -m livespec_dev_tooling.checks.master_ci_green
 
 # ---------------------------------------------------------------
 # E2E + prompt verification (part of `just check`).
@@ -407,13 +407,13 @@ e2e-test-claude-code-real:
 # ---------------------------------------------------------------
 
 check-mutation:
-    uv run python3 dev-tooling/checks/check_mutation.py
+    uv run python -m livespec_dev_tooling.checks.check_mutation
 
 check-no-todo-registry:
-    uv run python3 dev-tooling/checks/no_todo_registry.py
+    uv run python -m livespec_dev_tooling.checks.no_todo_registry
 
 check-comment-line-anchors:
-    uv run python3 dev-tooling/checks/comment_line_anchors.py
+    uv run python -m livespec_dev_tooling.checks.comment_line_anchors
 
 # Per v039 D3: path-scoped fast-feedback variant of check-coverage.
 # Takes `--paths <impl_path> [<impl_path>...]` (repo-root-relative)
@@ -430,14 +430,14 @@ check-comment-line-anchors:
 # loop to surface defensive-branch coverage gaps proactively,
 # BEFORE the Green amend triggers a multi-minute aggregate retry.
 check-coverage-incremental *args:
-    uv run python3 dev-tooling/checks/check_coverage_incremental.py {{args}}
+    uv run python -m livespec_dev_tooling.checks.check_coverage_incremental {{args}}
 
 # Release-gate ONLY — paired with check-mutation + check-no-todo-registry
 # on the release-tag CI workflow. NOT in `just check`; does NOT run
 # per-commit. Closes the M3 soft-band drift loophole: forces refactor
 # work to land before any v* tag push when any file is in 201-250 LLOC.
 check-no-lloc-soft-warnings:
-    uv run python3 dev-tooling/checks/no_lloc_soft_warnings.py
+    uv run python -m livespec_dev_tooling.checks.no_lloc_soft_warnings
 
 # v034 D3 hard gate: trailer-based Red→Green replay verification.
 # Invoked by lefthook commit-msg stage (NOT pre-commit) — the hook
@@ -449,19 +449,19 @@ check-no-lloc-soft-warnings:
 # (writes to the commit-message file; distinguishes Red/Green via
 # HEAD~0 inspection), not pre-commit.
 check-red-green-replay msg_path:
-    uv run python3 dev-tooling/checks/red_green_replay.py {{msg_path}}
+    uv run python -m livespec_dev_tooling.checks.red_green_replay {{msg_path}}
 
 # v033 D1 mirror-pairing: every covered .py under livespec/, bin/,
 # and dev-tooling/checks/ has a paired tests/<mirror>/test_<name>.py.
 # In `just check` aggregate (per v033 D1).
 check-tests-mirror-pairing:
-    uv run python3 dev-tooling/checks/tests_mirror_pairing.py
+    uv run python -m livespec_dev_tooling.checks.tests_mirror_pairing
 
 # v033 D3 commit-pair gate: every commit touching livespec/**, bin/**,
 # or dev-tooling/checks/** also touches tests/**. Lefthook pre-commit
 # only; NOT in `just check` aggregate (per-commit, not per-tree).
 check-commit-pairs-source-and-test:
-    uv run python3 dev-tooling/checks/commit_pairs_source_and_test.py
+    uv run python -m livespec_dev_tooling.checks.commit_pairs_source_and_test
 
 # Phase 7 sub-step 2 mini-track item M1: ruff fix + format on staged
 # Python files BEFORE the rest of the pre-commit gate runs. Saves the
