@@ -160,6 +160,13 @@
     "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that wires the per-plugin compat block schema fragment into .livespec.jsonc validation and adds the contract-version-compatibility doctor invariant."
   },
   {
+    "heading": "## Cross-repo work-item dependencies",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v071 (cross-repo-work-item-dep-awareness proposal modify, with corrections integrated from -critique proposal). Real test ID populated in the impl follow-up PR(s) that wire the cross_repo_targets block schema fragment into .livespec.jsonc validation, the resolve_cross_repo_deps wrapper + paired Python command/dataclass, the cross-repo-work-item-dep-wellformedness doctor invariant, and the work-item-record schema additions (depends_on_external + external_dep_cache) in livespec-impl-plaintext."
+  },
+  {
     "heading": "## Implementation-plugin contract — the 9-skill surface",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
