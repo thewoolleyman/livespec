@@ -46,7 +46,7 @@ __all__: list[str] = ["build_parser", "main"]
 
 _BUNDLE_ROOT = Path(__file__).resolve().parents[3]
 _BUILTIN_TEMPLATES_DIR = _BUNDLE_ROOT / "specification-templates"
-_BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "minimal"})
+_BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "livespec-with-diagrams", "minimal"})
 
 
 def build_parser() -> argparse.ArgumentParser:
