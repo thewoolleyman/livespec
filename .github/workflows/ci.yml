@@ -42,10 +42,10 @@ jobs:
             # the base ref tip, so `git diff origin/${BASE_REF}...HEAD`
             # would intermittently fail with "no merge base" when the
             # local clone's history didn't reach the divergence point.
-            # No `|| true` — surface fetch failures explicitly rather
-            # than letting a missing remote-tracking ref masquerade as
-            # an empty diff (li-9i8, folded into li-6du).
-            git fetch origin "$BASE_REF"
+            # Keep `|| true` as a fallback: when fetch fails (auth,
+            # network) we still try the diff against whatever
+            # origin/${BASE_REF} ref the checkout already populated.
+            git fetch origin "$BASE_REF" || true
             changeset=$(git diff --name-only "origin/${BASE_REF}...HEAD")
             if echo "$changeset" | grep -qE '\.py$'; then
               echo "py_changed=true" >> "$GITHUB_OUTPUT"
