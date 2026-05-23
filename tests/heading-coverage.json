@@ -195,6 +195,13 @@
     "reason": "Landed in v070 (declare-livespec-dev-tooling-shared-code-mechanism proposal accept) per epic li-fgqgnk Phase G.1. Real test ID populated in the impl follow-up PRs (epic phases G.2–G.7) that hand-author the livespec-dev-tooling repo scaffold, migrate the shared enforcement-suite checks out of livespec-core, and wire every consumer (livespec-core itself + every livespec-impl-* plugin) to consume the new package via uv git source plus the composite Actions / reusable workflows."
   },
   {
+    "heading": "## Shared runtime — livespec-runtime",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Added directly by work-item li-ufvfmb under epic li-6d2wpj (cross-repo dependency awareness consolidated v071+ design). The runtime sibling library exists at github.com/thewoolleyman/livespec-runtime v0.1.0+; the full cross_repo implementation lands as v0.2.0 via work-item li-aclzfe. The propose-change cycle filed via li-e7h6ki (proposed_changes/cross-repo-dependency-awareness.md) defines the consumer-facing cross_repo contract in detail under a future §\"Cross-repo dependency awareness\" H2. Real test ID populated in the impl follow-up PRs that wire livespec-core's doctor (li-f2fbkl) and livespec-impl-plaintext's next ranker + cleanup invariants (li-f5wmjr) against the runtime."
+  },
+  {
     "heading": "## Pre-commit step ordering",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
