@@ -1279,6 +1279,64 @@ def test_run_revision_front_matter_validates_against_schema(
     assert parsed.author_llm == "livespec-doctor"
 
 
+def test_run_writes_into_v_next_above_working_tree_max_not_clobbering_uncommitted_v_dir(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) writes into v(max(HEAD_n, working_tree_n) + 1), preserving uncommitted v-dirs.
+
+    Regression for memo mm-gzi7ej: an in-flight revise can leave a
+    non-empty `history/v(N+1)/` directory in the working tree before
+    its commit lands. The doctor's auto-backfill previously used the
+    HEAD-derived label to compute `v_next = v(N+1)` and wrote into
+    that working-tree directory, clobbering the freshly-cut revise
+    snapshot bytes with HEAD-active bytes.
+
+    Fixture: HEAD has `history/v001/spec.md` (original) and a
+    diverged HEAD-active `spec.md`. The working tree additionally
+    carries an UNCOMMITTED `history/v002/contracts.md` with the
+    in-flight revise's new bytes. With the fix in place, the
+    auto-backfill MUST write into `history/v003/` and the
+    uncommitted `v002/contracts.md` bytes MUST be preserved
+    byte-for-byte.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(b"# Active\n\nNew text after OOB edit.\n")
+    snapshot_v001 = history_v001 / "spec.md"
+    _ = snapshot_v001.write_bytes(b"# Active\n\nOriginal text.\n")
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot_v001])
+
+    history_v002 = spec_root / "history" / "v002"
+    history_v002.mkdir(parents=True)
+    uncommitted_revise_bytes = b"# In-flight revise snapshot\n\nlegit revise output\n"
+    uncommitted_snapshot = history_v002 / "contracts.md"
+    _ = uncommitted_snapshot.write_bytes(uncommitted_revise_bytes)
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    _ = out_of_band_edits.run(ctx=ctx)
+
+    artifact = _find_oob_artifact_in_v_dir(
+        spec_root=spec_root,
+        version_label="v003",
+        suffix=".md",
+    )
+    assert artifact.is_file(), (
+        "auto-backfill must write proposed-change artifact under v003 (above the "
+        "uncommitted v002), not into the in-flight v002 directory; got missing artifact"
+    )
+    assert (
+        uncommitted_snapshot.read_bytes() == uncommitted_revise_bytes
+    ), "uncommitted v002/contracts.md bytes must be preserved byte-for-byte"
+
+
 def test_run_writes_to_sub_spec_root_not_main_spec_root(
     *,
     tmp_path: Path,

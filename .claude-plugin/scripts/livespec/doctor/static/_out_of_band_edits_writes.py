@@ -83,6 +83,31 @@ _HISTORY_SUBDIR_NAME: str = "history"
 _PROPOSED_CHANGES_SUBDIR_NAME: str = "proposed_changes"
 
 
+def _next_available_version_slot(
+    *,
+    spec_root: Path,
+    head_latest_label: str,
+) -> str:
+    """Compute the v(N+1) slot, scanning past any working-tree v-dirs above HEAD.
+
+    Per memo mm-gzi7ej: the HEAD-only computation in
+    `_next_version_label` clobbered an in-flight revise's freshly-cut
+    `history/v(N+1)/` snapshot when the auto-backfill fired between
+    the revise wrapper's writes and the revise's commit landing.
+    The fix starts from the HEAD-derived `v(N+1)` and walks forward
+    on disk, returning the first slot whose directory does NOT yet
+    exist. This guarantees the backfill never writes into a slot
+    the working tree has already claimed (empty leftover, in-flight
+    revise, or otherwise).
+    """
+    head_next_n = int(_next_version_label(latest_version_label=head_latest_label)[1:])
+    history = spec_root / _HISTORY_SUBDIR_NAME
+    candidate_n = head_next_n
+    while (history / f"v{candidate_n:03d}").exists():
+        candidate_n += 1
+    return f"v{candidate_n:03d}"
+
+
 def _show_or_none(
     *,
     ctx: DoctorContext,
@@ -215,7 +240,10 @@ def write_auto_backfill_artifacts(
     (`_enumerate_union_file_basenames`) used for the divergence
     decision, so the same set drives both diff body and snapshot.
     """
-    next_label = _next_version_label(latest_version_label=latest_version_label)
+    next_label = _next_available_version_slot(
+        spec_root=ctx.spec_root,
+        head_latest_label=latest_version_label,
+    )
     filename_timestamp = _now_utc_filename_timestamp()
     field_timestamp = _now_utc_field_timestamp()
     topic = f"out-of-band-edit-{filename_timestamp}"
