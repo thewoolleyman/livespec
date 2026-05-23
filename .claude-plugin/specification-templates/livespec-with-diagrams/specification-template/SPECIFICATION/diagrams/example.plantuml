@@ -1,0 +1,12 @@
+@startuml example
+title Example architecture diagram
+
+[Client] --> [Service]
+[Service] --> [Store]
+
+note bottom of Client
+  Replace this starter diagram with
+  your project's actual architecture.
+end note
+
+@enduml

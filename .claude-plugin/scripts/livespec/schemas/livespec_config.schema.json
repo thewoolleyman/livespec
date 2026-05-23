@@ -8,7 +8,7 @@
   "properties": {
     "template": {
       "type": "string",
-      "description": "Active template — built-in name (e.g. 'livespec', 'minimal') or path-as-string to a custom template directory relative to the project root.",
+      "description": "Active template — built-in name (e.g. 'livespec', 'livespec-with-diagrams', 'minimal') or path-as-string to a custom template directory relative to the project root.",
       "default": "livespec"
     },
     "template_format_version": {
@@ -31,6 +31,19 @@
       "type": "boolean",
       "description": "When true, sub-commands skip the pre-step static check. Intended for emergency recovery only; the skill MUST narrate a warning every time pre-step is skipped.",
       "default": false
+    },
+    "render_commands": {
+      "type": "object",
+      "description": "Per contracts.md §\".livespec.jsonc render-commands shape\": maps each diagram-source kind to the argv-form command livespec invokes during revise to render that source. Each value is an array of strings forming a complete argv; the strings `{source}` and `{output_dir}` are substituted literally (project-root-relative paths) before invocation. The command runs with cwd at the project root; non-zero exit fails the revise. REQUIRED iff the active template's manifest declares any `diagram_source` entry — the cross-config consistency invariant is enforced by a doctor static check, NOT by this schema (JSON Schema cannot reach across config files).",
+      "additionalProperties": false,
+      "properties": {
+        "diagram_source": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form render command for `kind: diagram_source` files. Example: [\"plantuml\", \"-tsvg\", \"-o\", \"{output_dir}\", \"{source}\"]."
+        }
+      }
     }
   }
 }
