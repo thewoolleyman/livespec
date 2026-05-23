@@ -100,15 +100,15 @@ The static-check registry per v022 D7 is a narrowed enumeration in `livespec/doc
 
 Doctor's responsibilities MUST include structural invariants that cross the spec / impl boundary by querying the active impl-plugin's machine surface (the `<impl-plugin>:list-work-items --json` and `<impl-plugin>:capture-impl-gaps` thin-transport / heavyweight skills defined by §"Implementation-plugin contract — the 9-skill surface"), plus a cross-repo coordination invariant that reads the active impl-plugin's `compat` block from `.livespec.jsonc` per §"Cross-repo coordination — pin-and-bump". All entries in this catalogue are STRUCTURAL invariants per the **transient vs durable-pending** principle articulated in `spec.md` §"Terminology" — binary, contract-level, mechanically checkable. Doctor MUST NOT add productivity-heuristic invariants (work-item staleness, work-item pile-up counts, etc.); those concerns belong to the impl-plugin's `next` skill and to the project-local orchestration layer.
 
-The catalogue MUST include the five work-item invariants, the contract-version-compatibility invariant, and the `depends_on-ref-wellformedness` invariant defined below.
+The catalogue MUST include the five work-item invariants and the contract-version-compatibility invariant below.
 
 ### `gap-tracking-one-to-one`
 
 Every gap surfaced by a fresh impl-plugin gap-detection run (i.e., invoking the active impl-plugin's `capture-impl-gaps` skill in a non-mutating dry-run mode at check time) MUST correspond to exactly one tracked work item across all statuses (open, in-progress, closed). The check is a SNAPSHOT — gap detection runs at check time and the resulting gap-id set is compared against the work-items store's current set of gap-id labels. The check fires `fail` when a gap-id appears zero times (untracked gap) or two-or-more times (duplicated tracking) in the work-items store. This invariant replaces the gap-tied invariant content previously embedded in the pre-`multi-repo-distribution-and-coordination` "Beads invariants" / "Gap-tied issue closure verification" sections (removed by that propose-change cycle).
 
-### `no-orphan-dependency`
+### `no-orphan-blocker`
 
-Every work item's declared `depends_on` entries MUST resolve cleanly. The check fires `fail` when any `DependsOnEntry` with `kind == "local"` references a `work_item_id` that does not exist in the materialized work-items store. For `kind` values `sibling_work_item`, `pull_request`, and `branch`, the invariant defers to `livespec_runtime.cross_repo.resolve_ref` and fires `fail` only when the runtime returns `unknown` AND the target is declared resolvable (i.e., the entry's `repo` key is present in `cross_repo_targets`); a successful `open` or `closed` resolution is NOT a doctor failure (open dependencies are expected during in-flight work). Closed dependencies are NOT orphans — their depends-on relationship is historically valid. The `kind`-discriminator and the per-kind required-fields well-formedness are enforced separately by `### depends_on-ref-wellformedness`.
+Every work item's declared `blocked_by` reference MUST resolve to an existing work item in the same impl-plugin's store. The check fires `fail` when a `blocked_by` reference targets a non-existent work-item id. Closed blockers are NOT orphans (their blocked-by relationship is historically valid); only missing-from-store ids fire the check.
 
 ### `no-stale-gap-tied`
 
@@ -120,7 +120,7 @@ No two open work items MAY claim the same gap-id label. The check fires `fail` w
 
 ### `no-stalled-epic`
 
-A work item with `type == "epic"` and `status` in `{open, in_progress}` MUST be closed (or its `depends_on` extended) when every entry in its `depends_on` array resolves to an existing work-item with `status == "closed"`. The check fires `fail` when an open or in-progress epic has a NON-EMPTY `depends_on` array AND every resolved entry is closed. The check MUST NOT fire when `depends_on` is the empty list — a freshly filed epic with no declared sub-tasks is not in the same logical state as an epic whose declared sub-tasks have all closed, and the vacuous-truth case would otherwise flag every newly-filed open epic. Unresolvable `depends_on` entries (referenced ids missing from the store) MUST NOT fire `no-stalled-epic`; that drift class is the existing `no-orphan-dependency` invariant's domain and continues to surface there. When the epic's own `depends_on` array includes entries with `kind` other than `local`, the invariant MUST walk those entries via `livespec_runtime.cross_repo.resolve_ref` and treat any `open` external dependency as a legitimate stall reason (suppressing the fail). The `fail` (not `warn`) classification reflects that this is a structural contract violation rather than a productivity-grade nudge: the epic↔sub-task aggregation is a load-bearing data-model invariant, and `warn` is reserved per the existing `no-stale-gap-tied` precedent for productivity heuristics. On `fail`, the check's narration MUST direct the user to either close the epic with an appropriate `resolution` (when the work is genuinely complete) OR add fresh `depends_on` entries (when the original sub-tasks were not the complete set of blockers).
+A work item with `type == "epic"` and `status` in `{open, in_progress}` MUST be closed (or its `depends_on` extended) when every entry in its `depends_on` array resolves to an existing work-item with `status == "closed"`. The check fires `fail` when an open or in-progress epic has a NON-EMPTY `depends_on` array AND every resolved entry is closed. The check MUST NOT fire when `depends_on` is the empty list — a freshly filed epic with no declared sub-tasks is not in the same logical state as an epic whose declared sub-tasks have all closed, and the vacuous-truth case would otherwise flag every newly-filed open epic. Unresolvable `depends_on` entries (referenced ids missing from the store) MUST NOT fire `no-stalled-epic`; that drift class is the existing `no-orphan-blocker` invariant's domain and continues to surface there. The `fail` (not `warn`) classification reflects that this is a structural contract violation rather than a productivity-grade nudge: the epic↔sub-task aggregation is a load-bearing data-model invariant, and `warn` is reserved per the existing `no-stale-gap-tied` precedent for productivity heuristics. On `fail`, the check's narration MUST direct the user to either close the epic with an appropriate `resolution` (when the work is genuinely complete) OR add fresh `depends_on` entries (when the original sub-tasks were not the complete set of blockers).
 
 ### `contract-version-compatibility`
 
@@ -132,16 +132,6 @@ The `contract-version-compatibility` doctor invariant reads the active impl-plug
 A missing or malformed `compat` block on the active impl-plugin MUST fire `fail` — the pin-and-bump mechanism is REQUIRED, not optional. Consumers using a `livespec-impl-*` plugin without declaring `compat` are running out-of-contract.
 
 A missing `livespec` installation MUST be detected by doctor's existing pre-step lifecycle (the `pre_check` static phase that runs before each invariant check; doctor's wrapper resolves the installed `livespec` version once and fails fast if it cannot be located), NOT by this invariant. This invariant assumes `livespec` is installed and reports the version it finds via the pre-step resolution.
-
-### `depends_on-ref-wellformedness`
-
-For every open work-item's `depends_on` array, the invariant enforces:
-
-1. **Discriminator present.** Every entry MUST have a `kind` field whose value is one of `local`, `sibling_work_item`, `pull_request`, `branch`. Missing or unknown `kind` fires `fail`.
-2. **Per-kind required fields present.** `local` requires `work_item_id`; `sibling_work_item` requires `repo` and `work_item_id`; `pull_request` requires `repo` and `number`; `branch` requires `repo` and `name`. Missing required fields fire `fail` with the entry's index in the array.
-3. **`repo` resolves to a configured target.** For every entry with a `repo` field, the value MUST be a key in `.livespec.jsonc`'s `cross_repo_targets` block. Unresolvable `repo` values fire `fail` with the value and a hint pointing to the manifest.
-
-This invariant is structural per the catalogue's intro principles (binary, contract-level, mechanically checkable); it does NOT rank or judge work-item readiness, only the well-formedness of the typed dependency machinery.
 
 ## Resolved-template stdout contract
 
@@ -207,89 +197,6 @@ Example `.livespec.jsonc` excerpt (illustrative; the canonical schema lives in `
 
 A subsequent propose-change cycle defining doctor's expanded invariant catalog MUST include a `contract-version-compatibility` invariant that fires when `livespec` semver range OR `pinned` tag drift exceeds the configured threshold; the threshold value itself is out of scope for this proposal.
 
-## Cross-repo dependency awareness
-
-The mechanism is parallel-and-complementary to the cross-repo version coordination of §"Cross-repo coordination — pin-and-bump": version pin-and-bump is the coarse-grained release-level coordination; this section codifies the fine-grained per-work-item coordination for cases when an in-flight work-item depends on specific state in another repo. The two operate at different granularities and are independent.
-
-v1 supports GitHub-hosted repos exclusively. GitLab and other forges are deferred to a future propose-change cycle; the `providers` package shape in `livespec_runtime.cross_repo` is structured so adding a `providers.gitlab` module is a non-breaking extension.
-
-### `cross_repo_targets` manifest in `.livespec.jsonc`
-
-Projects participating in cross-repo work-item dependency coordination MUST declare a top-level `cross_repo_targets` block in `.livespec.jsonc`. The block is an object whose keys are short repo slugs (used as the `repo` field in every typed `depends_on` entry) and whose values are objects with the following fields:
-
-- `github_url` — string, REQUIRED. The canonical `https://github.com/<owner>/<name>` URL (no trailing `.git`). Doctor's `cross-repo-targets-wellformedness` invariant MUST verify it parses as a GitHub URL.
-- `local_clone` — string, OPTIONAL. Filesystem path to the consumer's local clone of the target repo. MAY be absolute or relative to the containing project's root. When set, the runtime walks the local clone for branch and worktree state. When absent (CI case), the runtime silently drops the local-clone view and falls back to GitHub-only queries. The path is NOT required to exist at config-load time; missing-path is a runtime-degraded-view condition, not a precondition failure.
-- `default_branch` — string, OPTIONAL, default `"master"`. The repo's default branch name used by the runtime for "branch merged into default" derivations. Projects whose default branch is not `master` MUST set this explicitly.
-
-The `cross_repo_targets` block is OPTIONAL at the top level — projects with no cross-repo work-item dependencies omit it entirely.
-
-The `cross_repo_targets` block MUST NOT be conflated with the per-consumer `compat` block defined in §"Cross-repo coordination — pin-and-bump", which handles version pin-and-bump.
-
-### Typed `DependsOnEntry` union for the work-item `depends_on` field
-
-The impl-plugin contract's work-item record schema (per §"Implementation-plugin contract — the 9-skill surface") gains a typed object shape for entries in the existing `depends_on` array, replacing the prior string-only `<work-item-id>` shape. Each entry MUST be one of the four typed variants below, discriminated on the `kind` field:
-
-- `kind: "local"` — a same-repo work-item dependency. Carries `work_item_id` (string, e.g. `"li-abc123"`). The runtime resolves this against the active impl-plugin's local work-items store; no cross-repo walk.
-- `kind: "sibling_work_item"` — a work-item in a configured sibling repo. Carries `repo` (string, MUST match a key in `.livespec.jsonc`'s `cross_repo_targets` block) and `work_item_id` (string). Resolved via the sibling repo's `local_clone/<impl-plugin>.work_items_path` if available, falling back to dropping the dependency view if neither local nor GitHub-queryable.
-- `kind: "pull_request"` — a specific GitHub pull request. Carries `repo` (string, MUST match `cross_repo_targets`) and `number` (positive integer). Resolved via `gh pr view <number> --repo <github_url>`.
-- `kind: "branch"` — a specific GitHub branch. Carries `repo` (string, MUST match `cross_repo_targets`) and `name` (string, the branch name without the `refs/heads/` prefix). Resolved via the exhaustive walk's branch-tip query.
-
-A `depends_on` entry's `kind` field is REQUIRED non-null. The previous string-only shape (`"li-abc123"`) is NOT a valid v1 entry; the impl-side data-migration step MUST convert every prior string entry to `{"kind": "local", "work_item_id": "li-abc123"}` form before this contract takes effect.
-
-The `blocked_by` field is REMOVED from the work-item record schema. Its prior role — "this work-item is currently blocked by N other work-items / PRs / branches" — folds into the typed `depends_on` union; the runtime's open/closed derivation per entry is what the consumer's ranker, doctor invariants, and hooks consult. The alternative of keeping `blocked_by` as a parallel field was rejected because it would have required two stores of truth that could drift.
-
-### Exhaustive live-walk resolution semantics
-
-The runtime's `resolve_ref(entry, manifest)` function MUST return a `RefStatus` (`open` | `closed` | `unknown`) for every `DependsOnEntry`, computed from an exhaustive query of every extant view the runtime can access:
-
-- For `kind: "local"` — read the local work-items store via the active impl-plugin's list-work-items interface; return `closed` iff the materialized status is `closed`, else `open`.
-- For `kind: "sibling_work_item"` — when `local_clone` is configured AND the path exists AND the path contains a parseable `.livespec.jsonc` with an impl-plugin config, walk the sibling's work-items store. Otherwise fall back to GitHub-queried state when the impl-plugin surface exposes a remote-queryable form (impl-plugin-dependent; the runtime calls into the impl-plugin's surface when present, returns `unknown` when not). The runtime MUST NOT cache; each call walks fresh state.
-- For `kind: "pull_request"` — query `gh pr view <number> --repo <github_url> --json state`. Return `closed` iff `state == "MERGED"` OR `state == "CLOSED"` (the work-item depending on the PR is unblocked when the PR is resolved either way; the consumer ranker decides whether closed-but-unmerged warrants a different urgency). Return `open` for any other state. Return `unknown` if the GitHub query exits non-zero after retry exhaustion.
-- For `kind: "branch"` — walk in this order until a derivation succeeds: (a) when `local_clone` is configured, query `git -C <local_clone> rev-parse refs/heads/<name>` to determine if the branch exists locally and has merged into `default_branch`; (b) query `gh api repos/<owner>/<name>/branches/<name>` for the remote branch tip + `gh api repos/<owner>/<name>/compare/<default_branch>...<name>` for the merged-into-default determination. Return `closed` iff the branch's tip is reachable from `default_branch` (i.e., merged) OR the branch is absent on the remote AND was previously seen merged in a local fetch. Return `open` otherwise; `unknown` on retry exhaustion.
-
-The runtime MUST include the CURRENT repo's uncommitted state when relevant (e.g., for `kind: "local"` against the current repo, the materialized view is the latest JSONL line, including the just-appended one if the consumer is mid-revise).
-
-Missing local clones, missing remote branches, and `gh` CLI auth failures are NOT precondition errors — they degrade the view (the runtime returns `unknown` for that entry and the consumer surfaces the degradation). The exhaustive-walk discipline tolerates partial visibility.
-
-### `livespec_runtime.cross_repo` contract surface
-
-The `livespec_runtime.cross_repo` subpackage's public API is the contract surface for this section. The subpackage exports:
-
-- `DependsOnEntry` union types — one dataclass per `kind` value (`local`, `sibling_work_item`, `pull_request`, `branch`) per the typed-union shape defined above.
-- `CrossRepoManifest` dataclass — the in-memory representation of the `.livespec.jsonc` `cross_repo_targets` block.
-- `RefStatus` enum — `open` | `closed` | `unknown`.
-- `resolve_ref(entry: DependsOnEntry, manifest: CrossRepoManifest) -> RefStatus` — the exhaustive-live-walk resolver entry point.
-
-Module structure: `livespec_runtime.cross_repo.{types, providers.github, retry, resolve_ref}`. Breaking changes to these exported names or shapes require a MAJOR version bump per the semver discipline codified in §"Shared runtime — livespec-runtime".
-
-Library-level concerns (governance, dependency consumption shape, network-I/O policy, Python floor, semver discipline) are codified in §"Shared runtime — livespec-runtime" and are NOT restated here.
-
-### Retry policy
-
-The `livespec_runtime.cross_repo` retry policy is fixed at three attempts with 1s / 2s / 4s exponential backoff between attempts. On every-attempt failure (including subprocess timeouts on `gh` CLI calls), the runtime returns `RefStatus.unknown` rather than raising; the consumer is responsible for surfacing degraded-view findings.
-
-The retry policy is NOT user-configurable in v1. Projects with bandwidth-constrained CI environments MAY pre-fetch sibling repos to local clones to avoid the GitHub-query path entirely.
-
-### Consumer surface (livespec core + impl-plugins)
-
-The runtime is consumed by:
-
-- The spec-side `/livespec:doctor` invariants (per the doctor catalogue extensions in §"Doctor cross-boundary invariants").
-- The impl-side `<impl-plugin>:next` ranker — which MUST exclude any work-item with at least one open `DependsOnEntry` from the candidate list. Excluded candidates do NOT appear in the ranked list (they are not surfaced with lower urgency; they are absent entirely).
-- Project-local hooks and CI workflows that need to gate behavior on cross-repo state (e.g., a pre-merge hook that refuses to merge a PR whose underlying work-item still has open external dependencies).
-
-Consumer projects MUST declare `livespec-runtime` as a dependency in `pyproject.toml` via `[tool.uv.sources]` pinning the target tag, identical to how they consume `livespec-dev-tooling`.
-
-### GitHub CLI authentication
-
-The runtime invokes the `gh` CLI for all GitHub queries. The CLI MUST be installed and authenticated (`gh auth status` returning success) in any environment where the runtime is consumed.
-
-In CI environments, the standard pattern is `GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}` (for read-only queries) or an App installation token (for queries against private sibling repos or higher rate-limit needs). The runtime does NOT manage auth; it surfaces auth-failure findings via `RefStatus.unknown` and lets the consumer decide how to handle.
-
-### Hook integration
-
-Project-local hooks (lefthook pre-push, pre-merge, etc.) MAY invoke `python -m livespec_runtime.cross_repo.resolve --work-item-id <id> --manifest <path>` to gate hook behavior on the work-item's external-dependency state. The CLI emits a JSON status object suitable for shell-level dispatch. This CLI is the same surface the impl-plugin `next` ranker invokes internally; no parallel CLI is required.
-
 ## Implementation-plugin contract — the 9-skill surface
 
 Every `livespec-impl-*` plugin MUST expose these nine skills under its own namespace prefix (`/livespec-impl-<X>:<skill>`). Six are heavyweight authored skills (dialogue, detection logic, judgment calls); three are thin-transport skills (CLI pass-through per §"Thin-transport skill doctrine"). Consumer projects, doctor's cross-boundary invariants, and the project-local orchestration layer all consume the surface uniformly via skills.
@@ -298,7 +205,7 @@ Every `livespec-impl-*` plugin MUST expose these nine skills under its own names
 
 - **`capture-impl-gaps`** — detect spec → impl gaps mechanically via the Spec Reader; file gap-tied work items into the plugin's Work Items store with per-gap user consent. Collapses the prior `refresh-gaps` + `plan` skill pair into one ephemeral-detection skill. Detection state is in-memory and discarded at skill exit; no persistent intermediate artifact.
 - **`capture-spec-drift`** — detect impl → spec drift heuristically (LLM-driven); per finding, with user consent, route to `/livespec:propose-change` via the cross-boundary handoff. Asymmetric counterpart to `capture-impl-gaps`: mechanical detection is on the spec → impl side; heuristic detection is on the impl → spec side.
-- **`capture-work-item`** — freeform direct filing of an impl-side work item (bugs, refactors, tactical tasks). The resulting work item carries NO `gap-id` label and closes via the freeform fix path. Work-items carry a typed `depends_on` array per §"Cross-repo dependency awareness"; the prior string-only `<work-item-id>` shape and the parallel `blocked_by` field are NOT v1 valid forms. The impl-plugin's data-migration step MUST convert prior records before this contract takes effect.
+- **`capture-work-item`** — freeform direct filing of an impl-side work item (bugs, refactors, tactical tasks). The resulting work item carries NO `gap-id` label and closes via the freeform fix path.
 - **`implement`** — drive Red → Green for a single work item. For gap-tied items, verify closure by re-running `capture-impl-gaps` in dry-run mode and confirming the `gap-id` is no longer detected; for freeform items, close with a simple `--reason`. Closure branches on origin × disposition: gap-tied fix (verify + audit fields), freeform fix (simple reason), non-fix (administrative — `wontfix`, `duplicate`, `spec-revised`, `no-longer-applicable`, `resolved-out-of-band`).
 - **`capture-memo`** — low-friction free-text deposit of an in-flight observation that the user is not yet ready to classify. Memos are transient by construction.
 - **`process-memos`** — per-memo handholding dialogue with four dispositions: spec-bound (→ `/livespec:propose-change` cross-boundary handoff), impl-bound (→ freeform work item in the plugin's Work Items store), persistent-knowledge (→ Persistent Agent Knowledge store; the form is implementation-dependent), discard.
@@ -306,8 +213,8 @@ Every `livespec-impl-*` plugin MUST expose these nine skills under its own names
 ### Thin-transport skills (3) — required machine query surface
 
 - **`list-memos`** — required (promoted from discretionary). Supports `--filter` flags (most notably `--filter=untriaged`) and `--json` output. Consumed by doctor's memo-hygiene invariant and by users for queue inspection.
-- **`list-work-items`** — required (new). Supports filter flags (`--gap-tied`, `--blocked`, `--with-gap-id`, etc.) and `--json` output. Consumed by doctor's five work-item structural invariants (defined by a subsequent propose-change cycle), by the project-local loop driver for routing decisions, and by users for queue inspection. Work-items carry a typed `depends_on` array per §"Cross-repo dependency awareness"; the prior string-only `<work-item-id>` shape and the parallel `blocked_by` field are NOT v1 valid forms. The impl-plugin's data-migration step MUST convert prior records before this contract takes effect.
-- **`next`** — required (new). Ranks the most ripe impl-side action using whatever native primitives the backend provides (e.g., `bd ready` for a beads-backed impl, JSONL traversal for a plaintext impl, GitLab API for a gitlab impl). Pure function of impl-side state; no LLM in the ranking path. Asymmetric counterpart to `/livespec:next`. The ranker MUST consult `livespec_runtime.cross_repo.resolve_ref` for every candidate work-item's `depends_on` entries and MUST exclude any candidate with at least one entry resolving to `open`. Excluded candidates do NOT appear in the ranked list (they are not surfaced with a lower urgency; they are absent entirely). MUST accept the same `--limit <count>` (default `5`) and `--offset <count>` (default `0`) flags as the spec-side `next` skill, with the same validation rules and exit-2-on-bad-flags behavior. MUST emit a JSON object of the same shape as the spec-side `next` skill's output (per §"`/livespec:next` spec-side thin-transport skill" → "Output schema"): top-level `candidates[]` and `pagination` keys. Each candidate object MUST carry at minimum `action`, `reason`, `urgency`, AND the impl-side-specific `work_item_ref` field. The candidate object MAY include additional impl-side-specific fields (e.g., `blocked_by`, `epic`) provided they are documented by the impl-plugin's own per-implementation contract. The cross-plugin contract MUST NOT prescribe `additionalProperties` discipline on the candidate object: impl-plugin authors own their per-implementation schema, and the cross-plugin contract surface MUST remain agnostic to per-implementation field additions.
+- **`list-work-items`** — required (new). Supports filter flags (`--gap-tied`, `--blocked`, `--with-gap-id`, etc.) and `--json` output. Consumed by doctor's five work-item structural invariants (defined by a subsequent propose-change cycle), by the project-local loop driver for routing decisions, and by users for queue inspection.
+- **`next`** — required (new). Ranks the most ripe impl-side action using whatever native primitives the backend provides (e.g., `bd ready` for a beads-backed impl, JSONL traversal for a plaintext impl, GitLab API for a gitlab impl). Pure function of impl-side state; no LLM in the ranking path. Asymmetric counterpart to `/livespec:next`. MUST accept the same `--limit <count>` (default `5`) and `--offset <count>` (default `0`) flags as the spec-side `next` skill, with the same validation rules and exit-2-on-bad-flags behavior. MUST emit a JSON object of the same shape as the spec-side `next` skill's output (per §"`/livespec:next` spec-side thin-transport skill" → "Output schema"): top-level `candidates[]` and `pagination` keys. Each candidate object MUST carry at minimum `action`, `reason`, `urgency`, AND the impl-side-specific `work_item_ref` field. The candidate object MAY include additional impl-side-specific fields (e.g., `blocked_by`, `epic`) provided they are documented by the impl-plugin's own per-implementation contract. The cross-plugin contract MUST NOT prescribe `additionalProperties` discipline on the candidate object: impl-plugin authors own their per-implementation schema, and the cross-plugin contract surface MUST remain agnostic to per-implementation field additions.
 
 ### Cross-boundary handoffs (red edges in the workflow diagrams)
 
@@ -316,16 +223,6 @@ Every `livespec-impl-*` plugin MUST expose these nine skills under its own names
 3. `/livespec:doctor` → `<impl-plugin>:list-memos --filter=untriaged --json` (memo-hygiene invariant).
 4. `/livespec:doctor` → `<impl-plugin>:list-work-items --json` (work-item structural invariants).
 5. The project-local Layer 3 loop driver invokes both `/livespec:next` and `<impl-plugin>:next` to compose cross-side recommendations; the cross-side composition itself is defined by a separate propose-change cycle for the orchestration layer.
-
-### Impl-side cleanup invariants (cross-boundary)
-
-The active impl-plugin MUST realize three impl-side cleanup invariants that surface stale local-Git or local-worktree state. Each fires `warn` (not `fail`) because the underlying state is recoverable by user action; the invariants' role is to surface the housekeeping items to the user, not to block the build.
-
-- **`no-stale-merged-branch`** — for every local branch whose tip is reachable from the default branch (i.e., merged), the invariant fires `warn` with corrective action `git branch -d <name>`. Excludes the default branch itself. Excludes any branch the user has explicitly tagged via project-local config to skip.
-- **`no-stale-merged-pr-branch`** — for every GitHub branch in `gh api repos/<owner>/<name>/branches` that is fronted by a `state == "MERGED"` PR (queried via `gh pr list --state merged --json headRefName,state`), the invariant fires `warn` with corrective action `gh api -X DELETE repos/<owner>/<name>/git/refs/heads/<name>`. The check runs against the CURRENT repo only; sibling-repo cleanup is the sibling-repo project's responsibility.
-- **`no-stale-worktree`** — for every git worktree (per `git worktree list --porcelain`) whose underlying branch is either (a) merged into default and locally deleted, or (b) absent from the remote, the invariant fires `warn` with corrective action `git worktree remove <path>`. Excludes the primary worktree.
-
-The three invariants MAY be implemented entirely within the impl-plugin's doctor-realization surface (extending the `<impl-plugin>:list-work-items` consumers' invariant set), OR may dispatch to a `livespec_runtime` helper module if a future version provides one — the choice is the impl-plugin author's. The contract is the invariant set and its narration shape; the implementation seam is implementation-dependent.
 
 ### Backend-variability asymmetry
 
