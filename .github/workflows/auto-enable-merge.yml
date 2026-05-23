@@ -44,11 +44,11 @@
 # SPECIFICATION/non-functional-requirements.md §"Commit and merge
 # discipline") to be hands-off.
 #
-# auto-update-branches.yml continues to use the auto-injected
-# GITHUB_TOKEN — its `gh api PUT /pulls/{N}/update-branch` call
-# works with bot tokens, so we keep that workflow on the most
-# restricted credential per the principle of least privilege.
-# Only this workflow needs the App.
+# auto-update-branches.yml also uses the same App token (li-6du):
+# GITHUB_TOKEN-authored pushes do NOT trigger downstream workflows,
+# so update-branch's merge-commit push left every auto-updated PR
+# with zero CI check-runs and permanent BLOCKED+MERGEABLE state.
+# App-token pushes are treated as external and fire CI normally.
 
 name: Auto-enable merge
 

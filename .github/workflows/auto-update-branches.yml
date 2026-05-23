@@ -18,6 +18,28 @@
 # Why not GitHub Merge Queue: only available on org repos (and Team/
 # Enterprise plans). This repo is a personal-account public repo, where
 # merge queue is not surfaced in the UI or accepted by the rulesets API.
+#
+# Auth model (li-6du):
+#   - Uses a GitHub App installation token instead of GITHUB_TOKEN.
+#   - actions/create-github-app-token@v1 mints a fresh token at
+#     runtime (lasts ~1 hour, discarded after the run).
+#   - The App's private key has no calendar expiration, so this
+#     workflow never silently breaks on token expiry.
+#   - Required repo secrets: APP_ID, APP_PRIVATE_KEY (managed via
+#     `gh secret set`; same App used by auto-enable-merge.yml).
+#
+# Why an App instead of GITHUB_TOKEN: GitHub's workflow-recursion
+# ceiling. Pushes authored by GITHUB_TOKEN do NOT trigger downstream
+# workflows. The `update-branch` REST endpoint creates a merge-commit
+# push on the PR head — when that push is GITHUB_TOKEN-authored, the
+# PR's CI workflow never re-runs against the new head SHA. Combined
+# with branch protection's strict required_status_checks, the PR
+# ends up permanently BLOCKED+MERGEABLE with zero check-runs on the
+# updated head. App-token pushes are treated as external and fire
+# CI normally. The same diagnosis grounded the auto-enable-merge.yml
+# App-token adoption (li-8f3) — the recursion ceiling and the
+# GraphQL admin requirement are independent reasons converging on
+# the same solution.
 
 name: Auto-update behind PRs
 
@@ -42,9 +64,16 @@ jobs:
   update-branches:
     runs-on: ubuntu-latest
     steps:
+      - name: Mint App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Update PRs behind master
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
         run: |
           set -uo pipefail
