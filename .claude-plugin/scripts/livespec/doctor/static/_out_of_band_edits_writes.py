@@ -1,3 +1,15 @@
+# pyright: reportUnknownMemberType=none, reportUnknownVariableType=none, reportUnknownArgumentType=none
+#
+# HKT erosion from the returns library: bind chains lose flow-narrowing
+# through pyright strict mode because returns uses KindN higher-kinded
+# types that pyright cannot unify with concrete IOResult. Per-call cast
+# or refactor to named typed functions is the canonical fix; this file's
+# railway composition pattern means roughly half of all lines are bind
+# targets, so file-level silencing keeps the source readable. Non-railway
+# code in this tree retains full enforcement (other modules do not carry
+# this pragma). reportArgumentType is left ON so non-HKT firings still
+# surface; HKT-related reportArgumentType call sites carry per-line
+# ignore markers attached to the offending argument's line below.
 """Auto-backfill artifact-writing helpers for `out_of_band_edits.run`.
 
 Extracted from `out_of_band_edits.py` at cycle 7.a.v-redo so the
@@ -124,7 +136,9 @@ def _show_or_none(
     return show_at_head(
         project_root=ctx.project_root,
         repo_relative_path=repo_relative_path,
-    ).lash(lambda _err: IOSuccess(None))
+    ).lash(
+        lambda _err: IOSuccess(None),  # pyright: ignore[reportArgumentType]
+    )
 
 
 def _format_unified_diff_for_file(

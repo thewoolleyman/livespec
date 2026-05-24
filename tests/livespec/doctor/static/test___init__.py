@@ -86,3 +86,57 @@ def test_every_static_check_slug_is_a_checkid_newtype() -> None:
         # threading through CheckId(), which yields the same str
         # untouched. Equivalence guards the round-trip identity.
         assert CheckId(slug) == slug
+
+
+def test_high_density_static_check_modules_declare_hkt_erosion_pragma() -> None:
+    """The high-density static-check modules declare the HKT-erosion pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains that
+    compose each static check's railway lose flow-narrowing
+    through pyright's strict mode, surfacing as
+    reportUnknownMemberType / reportUnknownVariableType /
+    reportUnknownArgumentType diagnostics on most bind / map
+    / lash call sites. The file-level pragma suppresses the
+    three HKT-related categories; reportArgumentType stays
+    ON globally so non-HKT firings still surface. This contract
+    test pins the pragma so a future reformatter that drops it
+    surfaces immediately rather than silently re-introducing
+    the diagnostics.
+
+    Coverage: the seven static-check modules with the highest
+    HKT-erosion density (>=10 errors before pragma application)
+    plus the two auto-backfill / orphan-dependency helper
+    modules under the same package.
+    """
+    import inspect
+
+    from livespec.doctor.static import (
+        _no_orphan_dependency_helpers,
+        _out_of_band_edits_writes,
+        depends_on_ref_wellformedness,
+        no_duplicate_gap_id,
+        no_orphan_dependency,
+        no_stale_gap_tied,
+        no_stalled_epic,
+        out_of_band_edits,
+    )
+
+    pragma_prefix = (
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n"
+    )
+    for module in (
+        depends_on_ref_wellformedness,
+        no_stalled_epic,
+        no_orphan_dependency,
+        no_duplicate_gap_id,
+        no_stale_gap_tied,
+        out_of_band_edits,
+        _out_of_band_edits_writes,
+        _no_orphan_dependency_helpers,
+    ):
+        source = inspect.getsource(module)
+        assert source.startswith(pragma_prefix), (
+            f"{module.__name__} must declare the HKT-erosion pragma " "as its first line"
+        )

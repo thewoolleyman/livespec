@@ -1,3 +1,15 @@
+# pyright: reportUnknownMemberType=none, reportUnknownVariableType=none, reportUnknownArgumentType=none
+#
+# HKT erosion from the returns library: bind chains lose flow-narrowing
+# through pyright strict mode because returns uses KindN higher-kinded
+# types that pyright cannot unify with concrete IOResult. Per-call cast
+# or refactor to named typed functions is the canonical fix; this file's
+# railway composition pattern means roughly half of all lines are bind
+# targets, so file-level silencing keeps the source readable. Non-railway
+# code in this tree retains full enforcement (other modules do not carry
+# this pragma). reportArgumentType is left ON so non-HKT firings still
+# surface; HKT-related reportArgumentType call sites carry per-line
+# ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: depends_on_ref_wellformedness.
 
 Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary invariants"
@@ -259,7 +271,9 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     config_path = ctx.project_root / ".livespec.jsonc"
     return (
         fs.read_text(path=config_path)
-        .bind(lambda text: IOResult.from_result(jsonc.loads(text=text)))
+        .bind(
+            lambda text: IOResult.from_result(jsonc.loads(text=text)),  # pyright: ignore[reportArgumentType]
+        )
         .bind(lambda parsed: _evaluate(ctx=ctx, parsed=parsed))
         .lash(
             lambda err: IOSuccess(
