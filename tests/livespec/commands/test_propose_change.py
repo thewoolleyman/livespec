@@ -584,3 +584,32 @@ def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_f
     assert exit_code == 0
     out = project_root / "SPECIFICATION" / "proposed_changes" / "demo-topic.md"
     assert out.exists(), f"expected {out} to be written"
+
+
+def test_propose_change_module_declares_hkt_erosion_pragma() -> None:
+    """`commands/propose_change.py` carries the file-level HKT-erosion pyright pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains that
+    compose the propose-change supervisor's railway lose flow-
+    narrowing through pyright's strict mode, surfacing as
+    reportUnknownMemberType / reportUnknownVariableType /
+    reportUnknownArgumentType diagnostics on most bind / map
+    / unsafe_perform_io call sites. The file-level pragma
+    suppresses the three HKT-related categories;
+    reportArgumentType stays ON globally so non-HKT firings
+    still surface. This contract test pins the pragma so a
+    future reformatter / accidental top-comment edit / mass
+    rewrite that drops it surfaces immediately rather than
+    silently re-introducing the ~18 pyright errors at the
+    next `just check-types` run.
+    """
+    import inspect
+
+    from livespec.commands import propose_change as propose_change_command
+
+    source = inspect.getsource(propose_change_command)
+    assert source.startswith(
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n",
+    ), "commands/propose_change.py must declare the HKT-erosion pragma as its first line"
