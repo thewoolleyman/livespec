@@ -243,6 +243,19 @@ reportUnnecessaryIsInstance = "error"
 # formatter conflict, ISC002/ISC003 remain active.
 reportImplicitStringConcatenation = "warning"
 
+# Disabled (li-xxjopf Step 3b): the project's privacy model is
+# package-private, not module-private. Underscore-prefixed helpers
+# in `livespec/commands/_*.py` modules (e.g. `_revise_helpers`,
+# `_revise_railway_emits`) exist precisely to be imported by their
+# sibling top-level command modules (e.g. `revise.py`) — that is
+# the documented modularization pattern for keeping each top-level
+# command file under the 250-LLOC ceiling. Pyright's strict-mode
+# default treats `_x` as module-private, conflicting with this
+# convention and producing exclusively false positives on intentional
+# same-package access. Cross-class private access is independently
+# enforced by ruff's SLF rule (selected above).
+reportPrivateUsage = "none"
+
 # NO pluginPaths entry: per v025 D1, pyright has no plugin
 # system (microsoft/pyright#607: maintainer rejected plugin
 # support in 2020, formalized 2021, reaffirmed 2024) and no
