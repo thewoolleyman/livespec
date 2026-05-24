@@ -685,3 +685,127 @@ def test_list_merged_branches_returns_failure_when_into_ref_missing(
             return
         case _:
             raise AssertionError(f"expected IOFailure, got {result!r}")
+
+
+def test_list_worktrees_returns_primary_only_for_fresh_repo(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOSuccess with a single primary Worktree for a fresh repo.
+
+    A repo with one commit but no secondary worktrees yields
+    one porcelain record: the primary worktree. is_primary is
+    True for it.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "seed.md", content=b"# Seed\n")
+    default_branch = _current_branch_for_test(cwd=tmp_path)
+
+    result = io_git.list_worktrees(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert len(value) == 1
+            assert value[0].path == tmp_path
+            assert value[0].branch == default_branch
+            assert value[0].is_primary is True
+        case _:
+            raise AssertionError(f"expected IOSuccess(...), got {result!r}")
+
+
+def test_list_worktrees_includes_secondary_worktree(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOSuccess with primary + secondary worktree records.
+
+    Creates a feature branch and adds a secondary worktree on
+    it; assertion pins primary first (is_primary=True) and the
+    secondary worktree second with the feature branch name and
+    is_primary=False.
+    """
+    # Scrub inherited GIT_* env vars so `git worktree add` doesn't
+    # consult the surrounding repo's index when this test runs as
+    # part of a lefthook pre-commit invocation.
+    for var in (
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_COMMON_DIR",
+        "GIT_NAMESPACE",
+        "GIT_LITERAL_PATHSPECS",
+        "GIT_PREFIX",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "seed.md", content=b"# Seed\n")
+    _ = subprocess.run(
+        ["git", "branch", "feature/done"],
+        cwd=tmp_path,
+        check=True,
+    )
+    wt_path = tmp_path / "wt-feature"
+    _ = subprocess.run(
+        ["git", "worktree", "add", str(wt_path), "feature/done"],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    result = io_git.list_worktrees(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert len(value) == 2
+            assert value[0].is_primary is True
+            assert value[1].is_primary is False
+            assert value[1].path == wt_path
+            assert value[1].branch == "feature/done"
+        case _:
+            raise AssertionError(f"expected IOSuccess(...), got {result!r}")
+
+
+def test_list_worktrees_returns_failure_when_not_a_repo(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOFailure when `project_root` is not a git working tree.
+
+    `git worktree list` exits non-zero on a non-repo. The
+    doctor's no-stale-worktree check folds this into a skipped
+    finding via the lash branch.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    result = io_git.list_worktrees(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure, got {result!r}")
+
+
+def _current_branch_for_test(*, cwd: Path) -> str:
+    """Return the short name of the current branch (test helper)."""
+    completed = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return completed.stdout.strip()

@@ -46,6 +46,7 @@ from livespec.doctor.static import (
     no_duplicate_gap_id,
     no_orphan_dependency,
     no_stale_merged_branch,
+    no_stale_worktree,
     no_stalled_epic,
     out_of_band_edits,
     proposed_change_topic_format,
@@ -82,6 +83,7 @@ STATIC_CHECKS = (
     no_duplicate_gap_id,
     depends_on_ref_wellformedness,
     no_stale_merged_branch,
+    no_stale_worktree,
 )
 
 
