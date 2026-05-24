@@ -279,3 +279,30 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
     assert findings_by_spec_root.get(str(main_spec_root)) == main_check_ids
     assert findings_by_spec_root.get(str(livespec_sub)) == sub_spec_check_ids
     assert findings_by_spec_root.get(str(minimal_sub)) == sub_spec_check_ids
+
+
+def test_run_static_declares_hkt_erosion_pragma() -> None:
+    """run_static.py declares the file-level HKT-erosion pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains in the
+    supervisor's railway composition lose flow-narrowing through
+    pyright's strict mode. The file-level pragma suppresses the
+    three HKT-related categories at file scope;
+    reportArgumentType stays ON globally so non-HKT firings still
+    surface (the two `unsafe_perform_io(...)` call sites carry
+    per-line `# pyright: ignore[reportArgumentType]` markers).
+    This contract test pins the pragma so a future reformatter
+    that drops it surfaces immediately rather than silently
+    re-introducing the diagnostics.
+    """
+    import inspect
+
+    pragma_prefix = (
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n"
+    )
+    source = inspect.getsource(run_static)
+    assert source.startswith(
+        pragma_prefix,
+    ), "doctor/run_static.py must declare the HKT-erosion pragma as its first line"
