@@ -1803,3 +1803,32 @@ def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_skips_loose_path_entrie
     assert not any(
         project_root.rglob(".gitkeep")
     ), "should not write any .gitkeep when all paths are loose"
+
+
+def test_seed_module_declares_hkt_erosion_pragma() -> None:
+    """`commands/seed.py` carries the file-level HKT-erosion pyright pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains that
+    compose the seed supervisor's railway lose flow-narrowing
+    through pyright's strict mode, surfacing as
+    reportUnknownMemberType / reportUnknownVariableType /
+    reportUnknownArgumentType diagnostics on most bind / map
+    / unsafe_perform_io call sites. The file-level pragma
+    suppresses the three HKT-related categories;
+    reportArgumentType stays ON globally so non-HKT firings
+    still surface. This contract test pins the pragma so a
+    future reformatter / accidental top-comment edit / mass
+    rewrite that drops it surfaces immediately rather than
+    silently re-introducing the ~26 pyright errors at the
+    next `just check-types` run.
+    """
+    import inspect
+
+    from livespec.commands import seed as seed_command
+
+    source = inspect.getsource(seed_command)
+    assert source.startswith(
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n",
+    ), "commands/seed.py must declare the HKT-erosion pragma as its first line"
