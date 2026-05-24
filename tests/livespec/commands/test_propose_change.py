@@ -613,3 +613,45 @@ def test_propose_change_module_declares_hkt_erosion_pragma() -> None:
         "reportUnknownVariableType=none, "
         "reportUnknownArgumentType=none\n",
     ), "commands/propose_change.py must declare the HKT-erosion pragma as its first line"
+
+
+def test_propose_change_rejects_non_list_target_spec_files_at_schema(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Schema validation rejects `target_spec_files` that is not an array.
+
+    Per `schemas/proposal_findings.schema.json`: every finding's
+    `target_spec_files` field MUST be a JSON array of strings.
+    When the payload supplies a non-list value (e.g., a bare
+    string), the wrapper rejects the payload with exit 4
+    (wire-format violation) before the railway reaches
+    `_compose_proposed_change_body`. The compose helper is
+    therefore safe to iterate the field without runtime defensive
+    narrowing — the schema is the validation seam.
+    """
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = {
+        "findings": [
+            {
+                "name": "Sample finding",
+                "target_spec_files": "not-a-list",
+                "summary": "Demo summary.",
+                "motivation": "Demo motivation.",
+                "proposed_changes": "Demo changes prose.",
+            },
+        ],
+    }
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 4

@@ -271,10 +271,11 @@ def main() -> int:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     _ = report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
+    gaps = report["gaps"]
     log.info(
         "implementation-gap report regenerated",
         path=str(report_path),
-        gap_count=len(report["gaps"]) if isinstance(report["gaps"], list) else 0,
+        gap_count=len(gaps) if isinstance(gaps, list) else 0,  # pyright: ignore[reportUnknownArgumentType]
         run_id=report["inspection"]["run_id"] if isinstance(report["inspection"], dict) else None,
     )
     return 0

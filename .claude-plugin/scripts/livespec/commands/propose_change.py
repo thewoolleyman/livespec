@@ -293,7 +293,9 @@ def _compose_proposed_change_body(
         name = str(finding.get("name", ""))
         target_files = finding.get("target_spec_files", [])
         target_files_text = "\n".join(
-            f"- {entry}" for entry in target_files if isinstance(entry, str)
+            f"- {entry}"
+            for entry in target_files  # pyright: ignore[reportGeneralTypeIssues]
+            if isinstance(entry, str)
         )
         summary = str(finding.get("summary", ""))
         motivation = str(finding.get("motivation", ""))

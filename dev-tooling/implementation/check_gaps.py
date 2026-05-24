@@ -112,10 +112,12 @@ def main() -> int:
         )
         return 1
 
+    gaps = report.get("gaps", [])
+    gap_count = len(gaps) if isinstance(gaps, list) else 0  # pyright: ignore[reportUnknownArgumentType]
     log.info(
         "implementation-gap report conforms to schema",
         report=str(_REPORT_PATH),
-        gap_count=len(report.get("gaps", [])) if isinstance(report.get("gaps"), list) else 0,
+        gap_count=gap_count,
     )
     return 0
 
