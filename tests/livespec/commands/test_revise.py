@@ -1569,3 +1569,32 @@ def test_revise_verify_in_flight_proposals_present_fails_on_empty_children(
             assert "no in-flight" in str(err)
         case _:
             raise AssertionError(f"expected Failure(PreconditionError), got {unwrapped!r}")
+
+
+def test_revise_module_declares_hkt_erosion_pragma() -> None:
+    """`commands/revise.py` carries the file-level HKT-erosion pyright pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains that
+    compose the revise supervisor's railway lose flow-narrowing
+    through pyright's strict mode, surfacing as
+    reportUnknownMemberType / reportUnknownVariableType /
+    reportUnknownArgumentType diagnostics on most bind / map
+    / unsafe_perform_io call sites. The file-level pragma
+    suppresses the three HKT-related categories;
+    reportArgumentType stays ON globally so non-HKT firings
+    still surface. This contract test pins the pragma so a
+    future reformatter / accidental top-comment edit / mass
+    rewrite that drops it surfaces immediately rather than
+    silently re-introducing the ~19 pyright errors at the
+    next `just check-types` run.
+    """
+    import inspect
+
+    from livespec.commands import revise as revise_command
+
+    source = inspect.getsource(revise_command)
+    assert source.startswith(
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n",
+    ), "commands/revise.py must declare the HKT-erosion pragma as its first line"
