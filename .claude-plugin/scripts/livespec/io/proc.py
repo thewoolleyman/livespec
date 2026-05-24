@@ -25,6 +25,7 @@ per style doc.
 from __future__ import annotations
 
 import subprocess  # subprocess is the documented io/ surface (style doc)
+from pathlib import Path
 
 from returns.io import IOResult, impure_safe
 
@@ -34,7 +35,11 @@ __all__: list[str] = ["run_subprocess"]
 
 
 @impure_safe(exceptions=(OSError,))
-def _raw_run_subprocess(*, argv: list[str]) -> subprocess.CompletedProcess[str]:
+def _raw_run_subprocess(
+    *,
+    argv: list[str],
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
     """Decorator-lifted call into subprocess.run with stdout/stderr capture.
 
     Captures stdout + stderr as text (UTF-8 implied via `text=True`)
@@ -44,6 +49,12 @@ def _raw_run_subprocess(*, argv: list[str]) -> subprocess.CompletedProcess[str]:
     decode step. `check=False` keeps non-zero exits on the
     IOSuccess track — the SUBPROCESS RAN; the IO operation
     succeeded; the caller folds returncode into its own railway.
+
+    `cwd` is the optional working directory for the child process.
+    The git facade pins repo scope via `git -C <path>`; the gh
+    facade lacks an equivalent flag and instead relies on the
+    inherited cwd to resolve the local origin remote, so the gh
+    facade passes `cwd=project_root` here.
     """
     # S603: argv is a fixed list provided by the caller (no shell
     # expansion); the only public consumer is seed.main composing
@@ -54,12 +65,14 @@ def _raw_run_subprocess(*, argv: list[str]) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         text=True,
         check=False,
+        cwd=cwd,
     )
 
 
 def run_subprocess(
     *,
     argv: list[str],
+    cwd: Path | None = None,
 ) -> IOResult[subprocess.CompletedProcess[str], LivespecError]:
     """Run a subprocess and return its CompletedProcess on the IO track.
 
@@ -78,7 +91,11 @@ def run_subprocess(
     finding from post-step doctor aborts the wrapper with exit 3,
     but the doctor subprocess itself ran correctly — the failure
     is on the wrapper's own railway, not the io boundary.
+
+    `cwd` is the optional working directory for the child process;
+    None inherits the parent process's cwd. The gh facade pins
+    repo scope via `cwd=project_root` since gh lacks a `-C` flag.
     """
-    return _raw_run_subprocess(argv=argv).alt(
+    return _raw_run_subprocess(argv=argv, cwd=cwd).alt(
         lambda exc: PreconditionError(f"proc.run_subprocess: {exc}"),
     )
