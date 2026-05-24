@@ -40,6 +40,7 @@ from livespec.doctor.static import (
     accept_decision_snapshot_consistency,
     anchor_reference_resolution,
     bcp14_keyword_wellformedness,
+    depends_on_ref_wellformedness,
     gherkin_blank_line_format,
     livespec_jsonc_valid,
     no_duplicate_gap_id,
@@ -78,6 +79,7 @@ STATIC_CHECKS = (
     no_stalled_epic,
     no_orphan_dependency,
     no_duplicate_gap_id,
+    depends_on_ref_wellformedness,
 )
 
 
