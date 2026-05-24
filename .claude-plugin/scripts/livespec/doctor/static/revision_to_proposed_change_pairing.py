@@ -18,11 +18,12 @@ from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-revision-to-proposed-change-pairing"
+SLUG: CheckId = CheckId("doctor-revision-to-proposed-change-pairing")
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
@@ -33,7 +34,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="every history/vNNN/proposed_changes/<topic>.md has a paired -revision.md",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

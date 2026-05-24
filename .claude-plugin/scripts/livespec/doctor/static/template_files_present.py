@@ -20,11 +20,12 @@ from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-template-files-present"
+SLUG: CheckId = CheckId("doctor-template-files-present")
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
@@ -35,7 +36,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="canonical template-materialized files are present",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

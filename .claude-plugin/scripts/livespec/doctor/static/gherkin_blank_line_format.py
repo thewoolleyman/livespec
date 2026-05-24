@@ -71,11 +71,12 @@ from livespec.doctor.static._gherkin_helpers import (
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-gherkin-blank-line-format"
+SLUG: CheckId = CheckId("doctor-gherkin-blank-line-format")
 _ = (
     _CLOSING_FENCE_PATTERN,
     _OPENING_FENCE_PATTERN,
@@ -93,7 +94,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="fenced gherkin blocks are surrounded by blank lines",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -114,7 +115,7 @@ def _skipped_finding(*, ctx: DoctorContext) -> Finding:
         message=("minimal-shape spec_root has no fenced ```gherkin " "blocks — exemption applies"),
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -139,7 +140,7 @@ def _opening_fence_finding(
         ),
         path=str(file_path),
         line=line_number,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -164,7 +165,7 @@ def _closing_fence_finding(
         ),
         path=str(file_path),
         line=line_number,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

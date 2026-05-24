@@ -6,6 +6,7 @@ from pathlib import Path
 
 from livespec.context import DoctorContext
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = [
     "_is_empty_dir",
@@ -14,7 +15,7 @@ __all__: list[str] = [
 ]
 
 
-_SLUG: str = "doctor-out-of-band-edits"
+_SLUG: CheckId = CheckId("doctor-out-of-band-edits")
 _VERSION_DIR_PREFIX: str = "v"
 
 
@@ -37,7 +38,7 @@ def _make_finding(
         message=message,
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

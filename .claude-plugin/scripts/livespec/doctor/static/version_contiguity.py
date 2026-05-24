@@ -19,11 +19,12 @@ from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-version-contiguity"
+SLUG: CheckId = CheckId("doctor-version-contiguity")
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
@@ -34,7 +35,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="history/vNNN/ numbers form a contiguous sequence starting at v001",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

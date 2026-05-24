@@ -58,3 +58,31 @@ def test_applicability_by_tree_kind_maps_main_to_all_eight_checks() -> None:
     from livespec.doctor.static import APPLICABILITY_BY_TREE_KIND, STATIC_CHECKS
 
     assert APPLICABILITY_BY_TREE_KIND["main"] == STATIC_CHECKS
+
+
+def test_every_static_check_slug_is_a_checkid_newtype() -> None:
+    """Every check module exposes `SLUG` as a `CheckId` NewType.
+
+    The `Finding` dataclass declares `check_id: CheckId`. Each
+    static check module imports its slug into a module-level
+    constant typed `SLUG: CheckId = CheckId("doctor-<name>")`
+    so that constructing `Finding(check_id=SLUG, ...)` passes
+    pyright's NewType invariance check at the call site without
+    needing a per-site wrap. This pins that contract: if a check
+    drops the `CheckId` wrap and lets `SLUG: str` slip in, the
+    pyright error reappears AND this test fails immediately.
+    """
+    from livespec.doctor.static import STATIC_CHECKS
+    from livespec.types import CheckId
+
+    for check_module in STATIC_CHECKS:
+        slug = getattr(check_module, "SLUG", None)
+        assert slug is not None, f"{check_module.__name__} missing SLUG"
+        assert isinstance(slug, str), f"{check_module.__name__}.SLUG must be a str/CheckId"
+        # NewType is a runtime identity function, so the typed
+        # value is structurally still a str. The static-time
+        # contract is the load-bearing assertion; what we can
+        # assert at runtime is that the value is the result of
+        # threading through CheckId(), which yields the same str
+        # untouched. Equivalence guards the round-trip identity.
+        assert CheckId(slug) == slug

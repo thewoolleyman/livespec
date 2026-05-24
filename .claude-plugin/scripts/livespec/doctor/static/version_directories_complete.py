@@ -32,11 +32,12 @@ from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-version-directories-complete"
+SLUG: CheckId = CheckId("doctor-version-directories-complete")
 PRUNED_MARKER_FILENAME: str = "PRUNED_HISTORY.json"
 
 
@@ -48,7 +49,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="every history/vNNN/ contains its proposed_changes/ subdir",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -72,7 +73,7 @@ def _malformed_marker_finding(*, ctx: DoctorContext, version_path: Path) -> Find
         ),
         path=str(version_path),
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

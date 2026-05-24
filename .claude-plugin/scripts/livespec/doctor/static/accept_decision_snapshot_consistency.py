@@ -29,11 +29,12 @@ from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.parse import front_matter
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-accept-decision-snapshot-consistency"
+SLUG: CheckId = CheckId("doctor-accept-decision-snapshot-consistency")
 
 _VERSION_RE = re.compile(r"^v(\d+)$")
 _REVISION_SUFFIX = "-revision.md"
@@ -59,7 +60,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         ),
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -85,7 +86,7 @@ def _fail_finding(
         ),
         path=f"{_HISTORY_SUBDIR}/{version_label}/{_PROPOSED_CHANGES_DIR}/{revision_filename}",
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
