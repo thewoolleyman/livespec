@@ -401,3 +401,30 @@ def test_round_trip_serialize_then_parse_returns_input(
     text = f"---\n{body}---\n"
     result = parse_front_matter(text=text)
     assert result == Success(keys_values)
+
+
+def test_front_matter_module_declares_hkt_erosion_pragma() -> None:
+    """parse/front_matter.py declares the file-level HKT-erosion pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains in
+    the parser's railway composition lose flow-narrowing through
+    pyright's strict mode. The file-level pragma suppresses the
+    three HKT-related categories at file scope;
+    reportArgumentType stays ON globally so non-HKT firings
+    still surface. This contract test pins the pragma so a
+    future reformatter that drops it surfaces immediately rather
+    than silently re-introducing the diagnostics.
+    """
+    import inspect
+
+    from livespec.parse import front_matter
+
+    pragma_prefix = (
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n"
+    )
+    source = inspect.getsource(front_matter)
+    assert source.startswith(
+        pragma_prefix,
+    ), "parse/front_matter.py must declare the HKT-erosion pragma as its first line"
