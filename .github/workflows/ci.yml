@@ -66,6 +66,7 @@ jobs:
         target:
           - check-lint
           - check-format
+          - check-types
           - check-complexity
           - check-imports-architecture
           - check-private-calls
