@@ -90,8 +90,11 @@ check:
     # is at 100% line+branch) and `check-tests-mirror-pairing`
     # (rejoined post-Phase-7 sub-step 2 mini-track item M4 — the
     # private-helper + pure-declaration exemptions are wired in)
-    # + `check-lint`/`check-format`/`check-types`
-    # (deferred until config-tier-fix cycles land).
+    # + `check-lint`/`check-format` (rejoined when ruff config
+    # stabilized) + `check-types` (rejoined post-li-xxjopf Step 3
+    # — every HKT-erosion error in returns-library bind chains is
+    # silenced by per-file pragma; the 3 stale-residual non-HKT
+    # firings are fixed at Step 3f; baseline is 0 errors).
     # `check-prompts` and `e2e-test-claude-code-mock` rejoined at Phase 9.
     targets=(
         check-imports-architecture
@@ -124,6 +127,7 @@ check:
         check-complexity
         check-lint
         check-format
+        check-types
         check-tools
         check-branch-protection-alignment
         check-master-ci-green
