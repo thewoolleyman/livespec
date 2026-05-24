@@ -44,6 +44,7 @@ exception widening as `_raw_show_at_head`.
 from __future__ import annotations
 
 import subprocess  # subprocess is the documented io/ surface (style doc)
+from dataclasses import dataclass
 from pathlib import Path
 
 from returns.io import IOResult, impure_safe
@@ -51,7 +52,34 @@ from returns.io import IOResult, impure_safe
 from livespec.errors import LivespecError, PreconditionError
 from livespec.io.proc import run_subprocess
 
-__all__: list[str] = ["get_git_user", "is_git_repo", "list_at_head", "show_at_head"]
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class Worktree:
+    """A single entry in `git worktree list --porcelain` output.
+
+    `path` is the absolute worktree directory; `branch` is the
+    short branch name (e.g., `master`) when the worktree is on a
+    branch, or `None` when the worktree is in detached-HEAD
+    state. The primary (main) worktree is the first entry in
+    porcelain order; consumers MUST exclude it from cleanup
+    enumeration via the `is_primary` flag.
+    """
+
+    path: Path
+    branch: str | None
+    is_primary: bool
+
+
+__all__: list[str] = [
+    "Worktree",
+    "get_default_branch_name",
+    "get_git_user",
+    "is_git_repo",
+    "list_at_head",
+    "list_merged_branches",
+    "list_worktrees",
+    "show_at_head",
+]
 
 
 # Column index of the type field (`blob`, `tree`, `commit`) in the
@@ -263,6 +291,179 @@ def list_at_head(
         repo_relative_dir=repo_relative_dir,
     ).alt(
         lambda exc: PreconditionError(f"git.list_at_head: {exc}"),
+    )
+
+
+_ORIGIN_PREFIX: str = "origin/"
+
+
+def get_default_branch_name(*, project_root: Path) -> IOResult[str, LivespecError]:
+    """Return the repo's default branch name (e.g., `master` or `main`).
+
+    Reads `git symbolic-ref --short refs/remotes/origin/HEAD`,
+    which returns `origin/<default>` when the remote's HEAD has
+    been recorded locally (the canonical case for clones). The
+    `origin/` prefix is stripped before returning. Returns the
+    stripped name on the IOSuccess track.
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - `origin/HEAD` is not set locally (returncode != 0). This
+        happens on bare-init repos with no remote, or on clones
+        that never set the symbolic-ref. The doctor's
+        no-stale-merged-branch check folds this into a `skipped`
+        finding rather than treating it as an invariant violation.
+      - The `git` binary itself missing: lifts via the proc seam.
+    """
+    return run_subprocess(
+        argv=[
+            "git",
+            "-C",
+            str(project_root),
+            "symbolic-ref",
+            "--short",
+            "refs/remotes/origin/HEAD",
+        ],
+    ).bind(
+        lambda completed: (
+            IOResult.from_value(completed.stdout.strip().removeprefix(_ORIGIN_PREFIX))
+            if completed.returncode == 0
+            else IOResult.from_failure(
+                PreconditionError(
+                    f"git.get_default_branch_name: "
+                    f"`git symbolic-ref refs/remotes/origin/HEAD` exited "
+                    f"{completed.returncode}; default branch undetermined",
+                ),
+            )
+        ),
+    )
+
+
+def list_merged_branches(
+    *,
+    project_root: Path,
+    into_ref: str,
+) -> IOResult[tuple[str, ...], LivespecError]:
+    """Return local branch names whose tips are reachable from `into_ref`.
+
+    Composes `git -C <project_root> for-each-ref --format='%(refname:short)'
+    --merged refs/heads/<into_ref> refs/heads`. The result is a
+    tuple of local-branch short-names (one per line, in
+    for-each-ref's lexicographic order); INCLUDES `into_ref`
+    itself (a branch is trivially reachable from itself), so
+    callers MUST filter it out before reporting cleanup
+    candidates.
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - `into_ref` does not exist as a local branch (returncode
+        != 0). The doctor's no-stale-merged-branch check folds
+        this into a `skipped` finding.
+      - The `git` binary itself missing: lifts via the proc seam.
+    """
+    return run_subprocess(
+        argv=[
+            "git",
+            "-C",
+            str(project_root),
+            "for-each-ref",
+            "--format=%(refname:short)",
+            "--merged",
+            f"refs/heads/{into_ref}",
+            "refs/heads",
+        ],
+    ).bind(
+        lambda completed: (
+            IOResult.from_value(
+                tuple(line for line in completed.stdout.splitlines() if line.strip()),
+            )
+            if completed.returncode == 0
+            else IOResult.from_failure(
+                PreconditionError(
+                    f"git.list_merged_branches: "
+                    f"`git for-each-ref --merged refs/heads/{into_ref}` exited "
+                    f"{completed.returncode}",
+                ),
+            )
+        ),
+    )
+
+
+_REFS_HEADS_PREFIX: str = "refs/heads/"
+
+
+def _parse_worktree_porcelain(*, text: str) -> tuple[Worktree, ...]:
+    """Parse `git worktree list --porcelain` text into Worktree records.
+
+    Porcelain format: records separated by blank lines; each
+    record is a sequence of `<key> <value>` lines. The first
+    record is the primary worktree (per `git-worktree(1)`); we
+    set `is_primary=True` for it and `False` for the rest.
+    Unrecognized record lines (`bare`, `detached`, `locked`,
+    `prunable`, etc.) are tolerated — only `worktree` and
+    `branch` lines influence the parsed value.
+    """
+    records: list[Worktree] = []
+    current_path: Path | None = None
+    current_branch: str | None = None
+    blocks = text.split("\n\n")
+    for index, block in enumerate(blocks):
+        for line in block.splitlines():
+            key, _sep, value = line.partition(" ")
+            if key == "worktree":
+                current_path = Path(value)
+            elif key == "branch":
+                current_branch = value.removeprefix(_REFS_HEADS_PREFIX)
+        if current_path is not None:
+            records.append(
+                Worktree(
+                    path=current_path,
+                    branch=current_branch,
+                    is_primary=(index == 0),
+                ),
+            )
+        current_path = None
+        current_branch = None
+    return tuple(records)
+
+
+def list_worktrees(
+    *,
+    project_root: Path,
+) -> IOResult[tuple[Worktree, ...], LivespecError]:
+    """Return the list of git worktrees attached to `project_root`'s repo.
+
+    Composes `git -C <project_root> worktree list --porcelain`
+    and parses the output into Worktree records. The first
+    record is the primary worktree; subsequent records are
+    secondary worktrees that the doctor's no-stale-worktree
+    invariant considers for cleanup candidacy.
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - `git worktree list` exits non-zero (e.g., not a git
+        working tree). The doctor folds this into a skipped
+        finding.
+      - The `git` binary itself missing: lifts via the proc seam.
+    """
+    return run_subprocess(
+        argv=[
+            "git",
+            "-C",
+            str(project_root),
+            "worktree",
+            "list",
+            "--porcelain",
+        ],
+    ).bind(
+        lambda completed: (
+            IOResult.from_value(_parse_worktree_porcelain(text=completed.stdout))
+            if completed.returncode == 0
+            else IOResult.from_failure(
+                PreconditionError(
+                    f"git.list_worktrees: "
+                    f"`git worktree list --porcelain` exited "
+                    f"{completed.returncode}",
+                ),
+            )
+        ),
     )
 
 

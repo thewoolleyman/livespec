@@ -213,6 +213,8 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-no-orphan-dependency",
         "doctor-no-duplicate-gap-id",
         "doctor-depends_on-ref-wellformedness",
+        "doctor-no-stale-merged-branch",
+        "doctor-no-stale-worktree",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -241,6 +243,16 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             assert (
                 finding["status"] == "skipped"
             ), f"expected skipped for out-of-band-edits in non-git fixture; got {finding}"
+        elif finding["check_id"] in (
+            "doctor-no-stale-merged-branch",
+            "doctor-no-stale-worktree",
+        ):
+            # The cleanup invariants require project_root to be a git
+            # working tree; the tmp_path fixtures here are NOT initialized
+            # as git repos, so the skip is the correct outcome.
+            assert (
+                finding["status"] == "skipped"
+            ), f"expected skipped for {finding['check_id']} in non-git fixture; got {finding}"
         elif finding["check_id"] in (
             "doctor-no-stalled-epic",
             "doctor-no-orphan-dependency",
