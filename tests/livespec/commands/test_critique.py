@@ -399,3 +399,32 @@ def test_critique_main_truncates_long_author_stem_preserving_critique_suffix(
     expected_stem = "a" * 55
     out = spec_target / "proposed_changes" / f"{expected_stem}-critique.md"
     assert out.exists(), f"expected {out} to be written"
+
+
+def test_critique_module_declares_hkt_erosion_pragma() -> None:
+    """`commands/critique.py` carries the file-level HKT-erosion pyright pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains that
+    compose the critique supervisor's railway lose flow-narrowing
+    through pyright's strict mode, surfacing as
+    reportUnknownMemberType / reportUnknownVariableType /
+    reportUnknownArgumentType diagnostics on most bind / map
+    / unsafe_perform_io call sites. The file-level pragma
+    suppresses the three HKT-related categories;
+    reportArgumentType stays ON globally so non-HKT firings
+    still surface. This contract test pins the pragma so a
+    future reformatter / accidental top-comment edit / mass
+    rewrite that drops it surfaces immediately rather than
+    silently re-introducing the ~19 pyright errors at the
+    next `just check-types` run.
+    """
+    import inspect
+
+    from livespec.commands import critique as critique_command
+
+    source = inspect.getsource(critique_command)
+    assert source.startswith(
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n",
+    ), "commands/critique.py must declare the HKT-erosion pragma as its first line"
