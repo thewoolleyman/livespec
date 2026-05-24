@@ -11,7 +11,7 @@
   "properties": {
     "findings": {
       "type": "array",
-      "description": "All findings from the orchestrator pass. Empty array means doctor ran zero checks (an unusual state worth investigating in itself); a non-empty array with all status='pass' means a clean run. Any status='fail' triggers exit 3.",
+      "description": "All findings from the orchestrator pass. Empty array means doctor ran zero checks (an unusual state worth investigating in itself); a non-empty array with all status in {pass, skipped, warn} means a clean run (exit 0). Any status='fail' triggers exit 3. status='warn' findings are surfaced via SKILL.md narration but do NOT lift the exit code.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -30,7 +30,7 @@
           },
           "status": {
             "type": "string",
-            "enum": ["pass", "fail", "skipped"]
+            "enum": ["pass", "fail", "skipped", "warn"]
           },
           "message": {
             "type": "string"

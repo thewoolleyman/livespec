@@ -111,6 +111,29 @@ def test_validate_finding_round_trips_message_text(*, message: str) -> None:
             raise AssertionError(msg)
 
 
+def test_validate_finding_accepts_warn_status() -> None:
+    """A `warn`-status payload validates (v074: warn added for housekeeping nudges)."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "check_id": "doctor-no-stale-gap-tied",
+        "status": "warn",
+        "message": "gap-tied work item li-abc123 references missing gap",
+        "path": None,
+        "line": None,
+        "spec_root": "SPECIFICATION",
+    }
+    result = finding.validate_finding(payload=payload, schema=schema)
+    expected = Finding(
+        check_id=CheckId("doctor-no-stale-gap-tied"),
+        status="warn",
+        message="gap-tied work item li-abc123 references missing gap",
+        path=None,
+        line=None,
+        spec_root=SpecRoot("SPECIFICATION"),
+    )
+    assert result == Success(expected)
+
+
 def test_validate_finding_carries_path_and_line_when_present() -> None:
     """When `path` and `line` are populated, the dataclass carries them through."""
     schema = _SCHEMA

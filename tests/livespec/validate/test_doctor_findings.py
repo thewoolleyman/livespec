@@ -75,6 +75,30 @@ def test_validate_doctor_findings_returns_success_for_one_finding() -> None:
             raise AssertionError(msg)
 
 
+def test_validate_doctor_findings_accepts_warn_status_finding() -> None:
+    """A finding with `warn` status validates (v074: warn added for housekeeping nudges)."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "findings": [
+            {
+                "check_id": "doctor-no-stale-merged-branch",
+                "status": "warn",
+                "message": "local branch `feature/x` is merged; run `git branch -d feature/x`",
+                "path": None,
+                "line": None,
+                "spec_root": "SPECIFICATION",
+            },
+        ],
+    }
+    result = doctor_findings.validate_doctor_findings(payload=payload, schema=schema)
+    match result:
+        case Success(value):
+            assert value.findings[0]["status"] == "warn"
+        case _:
+            msg = f"expected Success(DoctorFindings), got {result}"
+            raise AssertionError(msg)
+
+
 def test_validate_doctor_findings_returns_failure_on_missing_findings_field() -> None:
     """A payload without `findings` returns Failure(ValidationError)."""
     schema = _SCHEMA
