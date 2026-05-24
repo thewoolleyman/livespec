@@ -6,11 +6,12 @@ Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary invariants" → §"`no
   cleanly. The check fires `fail` when any `DependsOnEntry` with
   `kind == "local"` references a `work_item_id` that does not
   exist in the materialized work-items store. For `kind` values
-  `sibling_work_item`, `pull_request`, and `branch`, the invariant
-  defers to `livespec_runtime.cross_repo.resolve_ref` — full
-  cross-repo resolution lands in a follow-up PR; v1 of this rename
-  parses typed entries and validates the local-kind subset while
-  the resolver wiring is finished.
+  `sibling_work_item`, `pull_request`, and `branch`, the
+  invariant defers to `livespec_runtime.cross_repo.resolve_ref`
+  and fires `fail` ONLY when the runtime returns `unknown` AND
+  the entry's `repo` key is present in `cross_repo_targets`; a
+  successful `open` or `closed` resolution is NOT a doctor
+  failure.
 
 Cross-boundary mechanism: direct JSONL read of the active impl-
 plugin's work-items store. Only `livespec-impl-plaintext` is
@@ -23,11 +24,9 @@ typed-dict form. The impl-plugin's data-migration step is the
 proper place to convert legacy entries; this tolerance exists to
 keep historical records readable.
 
-Cross-repo resolution scope: when an open record's typed
-`depends_on` entry carries a non-`local` `kind`, the check fires
-`fail` with a "cross-repo resolution not yet wired" narration.
-Wiring `livespec_runtime.cross_repo.resolve_ref` into this check
-is tracked as a follow-up.
+The helper extraction in `_no_orphan_dependency_helpers.py`
+keeps this module under the 250-LLOC hard ceiling enforced by
+`dev-tooling/checks/file_lloc.py`.
 """
 
 from __future__ import annotations
@@ -35,14 +34,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from livespec_runtime.cross_repo.types import LocalDependency
 from returns.io import IOResult, IOSuccess
 from returns.result import Success
 
 from livespec.context import DoctorContext
+from livespec.doctor.static._no_orphan_dependency_helpers import (
+    extract_manifest,
+    find_orphans,
+)
 from livespec.errors import LivespecError
 from livespec.io import fs
-from livespec.parse import cross_repo as cross_repo_parse
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.finding import Finding
 from livespec.types import CheckId, SpecRoot
@@ -91,86 +92,6 @@ def _materialize_records(*, jsonl_text: str) -> dict[str, dict[str, Any]]:
             continue
         index[item_id] = parsed
     return index
-
-
-def _orphan(*, item_id: str, dep_id: str, kind: str) -> tuple[str, str]:
-    """Format the (item_id, dep_label) pair used in the fail narration."""
-    return (item_id, f"{dep_id} (kind={kind})")
-
-
-def _check_str_entry(
-    *,
-    item_id: str,
-    record_status: str,
-    raw: str,
-    index: dict[str, dict[str, Any]],
-) -> tuple[str, str] | None:
-    """Handle a legacy bare-string entry — fail for open records, tolerate closed."""
-    if record_status != "closed":
-        return _orphan(item_id=item_id, dep_id=raw, kind="bare-string (data-migration pending)")
-    if raw not in index:
-        return _orphan(item_id=item_id, dep_id=raw, kind="local-legacy")
-    return None
-
-
-def _check_dict_entry(
-    *,
-    item_id: str,
-    record_status: str,
-    raw: dict[str, Any],
-    index: dict[str, dict[str, Any]],
-) -> tuple[str, str] | None:
-    """Handle a typed-dict entry: parse, then dispatch on kind."""
-    parsed_result = cross_repo_parse.parse_entry(parsed=raw)
-    if not isinstance(parsed_result, Success):
-        if record_status == "closed":
-            return None
-        return _orphan(item_id=item_id, dep_id=str(raw), kind="schema-error")
-    entry = parsed_result.unwrap()
-    if isinstance(entry, LocalDependency):
-        if entry.work_item_id in index:
-            return None
-        return _orphan(item_id=item_id, dep_id=entry.work_item_id, kind="local")
-    if record_status == "closed":
-        return None
-    return _orphan(
-        item_id=item_id,
-        dep_id=str(raw),
-        kind=f"{entry.kind} (cross-repo resolver wiring deferred)",
-    )
-
-
-def _check_raw(
-    *,
-    item_id: str,
-    record_status: str,
-    raw: Any,
-    index: dict[str, dict[str, Any]],
-) -> tuple[str, str] | None:
-    """Dispatch on raw entry shape (str / dict / other)."""
-    if isinstance(raw, str):
-        return _check_str_entry(item_id=item_id, record_status=record_status, raw=raw, index=index)
-    if isinstance(raw, dict):
-        return _check_dict_entry(item_id=item_id, record_status=record_status, raw=raw, index=index)
-    if record_status == "closed":
-        return None
-    return _orphan(item_id=item_id, dep_id=str(raw), kind="malformed (non-dict)")
-
-
-def _find_orphans(*, index: dict[str, dict[str, Any]]) -> list[tuple[str, str]]:
-    """Walk every record's depends_on; return sorted orphan pairs."""
-    orphans: list[tuple[str, str]] = []
-    for item_id, record in index.items():
-        deps = record.get("depends_on")
-        if not isinstance(deps, list):
-            continue
-        status_value = record.get("status")
-        record_status = status_value if isinstance(status_value, str) else ""
-        for raw in deps:
-            orphan = _check_raw(item_id=item_id, record_status=record_status, raw=raw, index=index)
-            if orphan is not None:
-                orphans.append(orphan)
-    return sorted(orphans)
 
 
 def _resolve_work_items_path(*, ctx: DoctorContext, config: dict[str, Any]) -> Path | None:
@@ -225,17 +146,29 @@ def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecE
                 ),
             )
         )
+    manifest = extract_manifest(config=parsed)
     return fs.read_text(path=work_items_path).bind(
         lambda text: IOSuccess(
-            _evaluate_text(ctx=ctx, jsonl_text=text, work_items_path=work_items_path)
+            _evaluate_text(
+                ctx=ctx,
+                jsonl_text=text,
+                work_items_path=work_items_path,
+                manifest=manifest,
+            )
         )
     )
 
 
-def _evaluate_text(*, ctx: DoctorContext, jsonl_text: str, work_items_path: Path) -> Finding:
+def _evaluate_text(
+    *,
+    ctx: DoctorContext,
+    jsonl_text: str,
+    work_items_path: Path,
+    manifest: Any,
+) -> Finding:
     """Apply the invariant against the JSONL text content."""
     index = _materialize_records(jsonl_text=jsonl_text)
-    orphans = _find_orphans(index=index)
+    orphans = find_orphans(index=index, manifest=manifest)
     if not orphans:
         return _make_finding(
             ctx=ctx,

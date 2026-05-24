@@ -1,25 +1,38 @@
 """Tests for livespec.doctor.static.no_orphan_dependency.
 
-Per `SPECIFICATION/contracts.md` §"`no-orphan-dependency`": every work-
-item's typed `depends_on` entries MUST resolve cleanly. For
+Per `SPECIFICATION/contracts.md` §"`no-orphan-dependency`": every
+work-item's typed `depends_on` entries MUST resolve cleanly. For
 `kind == "local"` the check fails when the referenced `work_item_id`
 is absent from the store; non-local kinds (sibling_work_item,
-pull_request, branch) currently fire fail with a "cross-repo resolver
-wiring deferred" narration — the runtime wiring is a follow-up PR.
+pull_request, branch) defer to
+`livespec_runtime.cross_repo.resolve_ref` and fire `fail` ONLY when
+the runtime returns `unknown` AND the entry's `repo` is configured
+in `cross_repo_targets`.
 
 Legacy bare-string entries are tolerated for closed records (treated
 as implicit local lookups); open records with bare-string entries
 fire `fail` because v072 requires the typed form.
+
+Provider calls (`gh_provider.query_pull_request_state`,
+`gh_provider.branch_exists_on_remote`,
+`gh_provider.branch_merged_into_default`) are monkeypatched at the
+module attribute level so the tests don't shell out to `gh`.
+`time.sleep` is monkeypatched in retry-exhaustion tests so they
+don't burn real wall-clock backoff.
 """
 
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
+from typing import Any
 
+import pytest
 from livespec.context import DoctorContext
 from livespec.doctor.static import no_orphan_dependency
 from livespec.schemas.dataclasses.finding import Finding
+from livespec_runtime.cross_repo.providers import github as gh_provider
 from returns.io import IOSuccess
 
 __all__: list[str] = []
@@ -36,6 +49,25 @@ _CONFIG_TEXT = """// minimal livespec config
   }
 }
 """
+
+_CONFIG_TEXT_WITH_MANIFEST = """// livespec config with cross_repo_targets
+{
+  "template": "livespec",
+  "spec_root": "SPECIFICATION",
+  "implementation": { "plugin": "livespec-impl-plaintext" },
+  "livespec-impl-plaintext": {
+    "format": "jsonl",
+    "work_items_path": "work-items.jsonl"
+  },
+  "cross_repo_targets": {
+    "runtime": { "github_url": "https://github.com/example/runtime" }
+  }
+}
+"""
+
+
+def _raise_runtime_error(*_args: Any, **_kwargs: Any) -> Any:
+    raise RuntimeError("simulated gh failure")
 
 
 def _setup_project(*, tmp_path: Path, jsonl_lines: list[dict[str, object]]) -> tuple[Path, Path]:
@@ -203,16 +235,90 @@ def test_closed_record_with_bare_string_missing_target_still_fails(*, tmp_path: 
     assert result == IOSuccess(expected)
 
 
-def test_open_record_with_non_local_kind_fires_fail_deferred(*, tmp_path: Path) -> None:
-    """Open records with non-local typed entries fire fail (resolver wiring deferred)."""
+def _setup_project_with_manifest(
+    *,
+    tmp_path: Path,
+    jsonl_lines: list[dict[str, object]],
+) -> tuple[Path, Path]:
+    """Same as _setup_project but writes a config with a `cross_repo_targets` block."""
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT_WITH_MANIFEST, encoding="utf-8")
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    jsonl_text = "".join(
+        json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n" for record in jsonl_lines
+    )
+    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
+    return project_root, spec_root
+
+
+def test_pull_request_open_dependency_passes(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An open PR dependency resolves to OPEN — not an orphan (work in flight)."""
+    monkeypatch.setattr(gh_provider, "query_pull_request_state", lambda **_kwargs: "OPEN")
     records = [
         _record(
             item_id="a",
             status="open",
-            depends_on=[{"kind": "sibling_work_item", "repo": "runtime", "work_item_id": "li-x"}],
+            depends_on=[{"kind": "pull_request", "repo": "runtime", "number": 5}],
         ),
     ]
-    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
+    project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_orphan_dependency.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-no-orphan-dependency",
+        status="pass",
+        message="no-orphan-dependency: every depends_on reference resolves (1 work-items scanned)",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_pull_request_merged_dependency_passes(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A merged PR dependency resolves to CLOSED — not an orphan (historically valid)."""
+    monkeypatch.setattr(gh_provider, "query_pull_request_state", lambda **_kwargs: "MERGED")
+    records = [
+        _record(
+            item_id="a",
+            status="open",
+            depends_on=[{"kind": "pull_request", "repo": "runtime", "number": 5}],
+        ),
+    ]
+    project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_orphan_dependency.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-no-orphan-dependency",
+        status="pass",
+        message="no-orphan-dependency: every depends_on reference resolves (1 work-items scanned)",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_unknown_with_configured_target_fires_fail(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """UNKNOWN + repo configured in manifest fires `fail`."""
+    monkeypatch.setattr(time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(gh_provider, "query_pull_request_state", _raise_runtime_error)
+    records = [
+        _record(
+            item_id="a",
+            status="open",
+            depends_on=[{"kind": "pull_request", "repo": "runtime", "number": 5}],
+        ),
+    ]
+    project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
@@ -220,11 +326,162 @@ def test_open_record_with_non_local_kind_fires_fail_deferred(*, tmp_path: Path) 
         status="fail",
         message=(
             "no-orphan-dependency: 1 unresolved depends_on reference(s): "
-            "a→{'kind': 'sibling_work_item', 'repo': 'runtime', 'work_item_id': 'li-x'} "
-            "(kind=sibling_work_item (cross-repo resolver wiring deferred)). "
+            "a→runtime#PR5 (kind=pull_request (unresolved by runtime)). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
         path=str(project_root / "work-items.jsonl"),
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_unknown_with_unconfigured_target_passes(*, tmp_path: Path) -> None:
+    """UNKNOWN + repo absent from manifest is NOT an orphan here (wellformedness's domain)."""
+    records = [
+        _record(
+            item_id="a",
+            status="open",
+            depends_on=[{"kind": "sibling_work_item", "repo": "missing", "work_item_id": "li-x"}],
+        ),
+    ]
+    # Use the default config WITHOUT cross_repo_targets — missing repo can't be configured.
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_orphan_dependency.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-no-orphan-dependency",
+        status="pass",
+        message="no-orphan-dependency: every depends_on reference resolves (1 work-items scanned)",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_branch_present_and_not_merged_passes(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A branch present on remote and not merged resolves to OPEN — not an orphan."""
+    monkeypatch.setattr(gh_provider, "branch_exists_on_remote", lambda **_kwargs: True)
+    monkeypatch.setattr(gh_provider, "branch_merged_into_default", lambda **_kwargs: False)
+    records = [
+        _record(
+            item_id="a",
+            status="open",
+            depends_on=[{"kind": "branch", "repo": "runtime", "name": "feat/x"}],
+        ),
+    ]
+    project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_orphan_dependency.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-no-orphan-dependency",
+        status="pass",
+        message="no-orphan-dependency: every depends_on reference resolves (1 work-items scanned)",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_sibling_without_lookup_unknown_fires_fail_when_configured(*, tmp_path: Path) -> None:
+    """sibling_work_item with no runtime lookup → UNKNOWN; configured target → fail."""
+    records = [
+        _record(
+            item_id="a",
+            status="open",
+            depends_on=[{"kind": "sibling_work_item", "repo": "runtime", "work_item_id": "li-x"}],
+        ),
+    ]
+    project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_orphan_dependency.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-no-orphan-dependency",
+        status="fail",
+        message=(
+            "no-orphan-dependency: 1 unresolved depends_on reference(s): "
+            "a→runtime#li-x (kind=sibling_work_item (unresolved by runtime)). "
+            "Either add the missing work-item(s) or remove the stale depends_on entry."
+        ),
+        path=str(project_root / "work-items.jsonl"),
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_branch_unknown_with_configured_target_fires_fail(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A branch entry that exhausts retries with a configured target fires `fail`."""
+    monkeypatch.setattr(time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(gh_provider, "branch_exists_on_remote", _raise_runtime_error)
+    records = [
+        _record(
+            item_id="a",
+            status="open",
+            depends_on=[{"kind": "branch", "repo": "runtime", "name": "feat/y"}],
+        ),
+    ]
+    project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_orphan_dependency.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-no-orphan-dependency",
+        status="fail",
+        message=(
+            "no-orphan-dependency: 1 unresolved depends_on reference(s): "
+            "a→runtime@feat/y (kind=branch (unresolved by runtime)). "
+            "Either add the missing work-item(s) or remove the stale depends_on entry."
+        ),
+        path=str(project_root / "work-items.jsonl"),
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_malformed_cross_repo_manifest_treated_as_empty(*, tmp_path: Path) -> None:
+    """A malformed cross_repo_targets block falls back to an empty manifest (wellformedness's domain)."""
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    config_text = (
+        "{\n"
+        '  "template": "livespec",\n'
+        '  "implementation": { "plugin": "livespec-impl-plaintext" },\n'
+        '  "livespec-impl-plaintext": { "work_items_path": "work-items.jsonl" },\n'
+        '  "cross_repo_targets": { "runtime": { "missing": "github_url" } }\n'
+        "}\n"
+    )
+    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    _ = (project_root / "work-items.jsonl").write_text(
+        json.dumps(
+            {
+                "id": "a",
+                "type": "task",
+                "status": "open",
+                "depends_on": [
+                    {"kind": "sibling_work_item", "repo": "runtime", "work_item_id": "li-x"}
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_orphan_dependency.run(ctx=ctx)
+    # Empty manifest → repo not in manifest → not an orphan here.
+    expected = Finding(
+        check_id="doctor-no-orphan-dependency",
+        status="pass",
+        message="no-orphan-dependency: every depends_on reference resolves (1 work-items scanned)",
+        path=None,
         line=None,
         spec_root=str(spec_root),
     )
