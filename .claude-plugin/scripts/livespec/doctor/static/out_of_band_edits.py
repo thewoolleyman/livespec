@@ -1,3 +1,15 @@
+# pyright: reportUnknownMemberType=none, reportUnknownVariableType=none, reportUnknownArgumentType=none
+#
+# HKT erosion from the returns library: bind chains lose flow-narrowing
+# through pyright strict mode because returns uses KindN higher-kinded
+# types that pyright cannot unify with concrete IOResult. Per-call cast
+# or refactor to named typed functions is the canonical fix; this file's
+# railway composition pattern means roughly half of all lines are bind
+# targets, so file-level silencing keeps the source readable. Non-railway
+# code in this tree retains full enforcement (other modules do not carry
+# this pragma). reportArgumentType is left ON so non-HKT firings still
+# surface; HKT-related reportArgumentType call sites carry per-line
+# ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: out_of_band_edits.
 
 Per Plan Phase 7 sub-step 7.a +: the `out-of-band-edits` check detects
@@ -159,7 +171,7 @@ def _show_or_none(*, ctx: DoctorContext, path: Path) -> IOResult[bytes | None, L
     a None marker on the success rail.
     """
     return show_at_head(project_root=ctx.project_root, repo_relative_path=path).lash(
-        lambda _err: IOSuccess(None),
+        lambda _err: IOSuccess(None),  # pyright: ignore[reportArgumentType]
     )
 
 
