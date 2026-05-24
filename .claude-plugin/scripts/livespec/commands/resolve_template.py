@@ -110,7 +110,7 @@ def _emit_resolved_path(*, path: Path) -> IOResult[Path, LivespecError]:
     """Emit the resolved path on stdout per the v1-frozen contract.:
     exactly one line, absolute POSIX path, trailing `\\n`.
     """
-    sys.stdout.write(f"{path}\n")
+    _ = sys.stdout.write(f"{path}\n")
     return IOSuccess(path)
 
 

@@ -11,7 +11,7 @@ strongest precise types pyright can flow-check against.
 from collections.abc import Callable
 from typing import Any
 
-__all__ = ["JsonSchemaValueException", "compile"]
+__all__ = ["JsonSchemaDefinitionException", "JsonSchemaValueException", "compile"]
 
 def compile(
     definition: dict[str, Any],
@@ -37,3 +37,6 @@ class JsonSchemaValueException(Exception):  # noqa: N818 — upstream library ex
         definition: dict[str, Any] | None = ...,
         rule: str = ...,
     ) -> None: ...
+
+class JsonSchemaDefinitionException(Exception):  # noqa: N818 — upstream library exception name; stubs MUST match.
+    """Raised by `compile()` when the schema itself is invalid."""

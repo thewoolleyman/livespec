@@ -111,7 +111,7 @@ def _raw_move(*, source: Path, target: Path) -> None:
     file content byte-for-byte (atomic on the same filesystem).
     """
     target.parent.mkdir(parents=True, exist_ok=True)
-    source.rename(target)
+    _ = source.rename(target)
 
 
 def move(*, source: Path, target: Path) -> IOResult[None, LivespecError]:

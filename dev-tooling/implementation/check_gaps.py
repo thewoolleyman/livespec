@@ -101,7 +101,7 @@ def main() -> int:
         return 1
 
     try:
-        validate(report)
+        _ = validate(report)
     except fastjsonschema.JsonSchemaValueException as exc:
         log.exception(
             "implementation-gap report failed schema validation",

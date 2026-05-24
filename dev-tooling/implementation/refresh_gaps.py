@@ -255,7 +255,7 @@ def main() -> int:
 
     try:
         validate = fastjsonschema.compile(schema)
-        validate(report)
+        _ = validate(report)
     except fastjsonschema.JsonSchemaDefinitionException as exc:
         log.exception("schema is itself invalid", path=str(schema_path), message=str(exc))
         return 1
@@ -269,7 +269,7 @@ def main() -> int:
 
     report_path = cwd / _REPORT_PATH
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    _ = report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
     log.info(
         "implementation-gap report regenerated",
