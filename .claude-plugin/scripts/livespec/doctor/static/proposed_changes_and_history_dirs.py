@@ -17,11 +17,12 @@ from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-proposed-changes-and-history-dirs"
+SLUG: CheckId = CheckId("doctor-proposed-changes-and-history-dirs")
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
@@ -32,7 +33,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="proposed_changes/ and history/ directories are present",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

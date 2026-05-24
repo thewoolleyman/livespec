@@ -48,11 +48,12 @@ from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-bcp14-keyword-wellformedness"
+SLUG: CheckId = CheckId("doctor-bcp14-keyword-wellformedness")
 
 # The four RFC 2119 modal-verb keywords whose mixed-case
 # standalone-word forms (capital first letter, lowercase
@@ -88,7 +89,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="BCP 14 normative keywords are well-formed",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -118,7 +119,7 @@ def _fail_finding(
         ),
         path=str(file_path),
         line=line_number,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

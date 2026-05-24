@@ -30,11 +30,12 @@ from livespec.errors import LivespecError, ValidationError
 from livespec.io import fs
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-livespec-jsonc-valid"
+SLUG: CheckId = CheckId("doctor-livespec-jsonc-valid")
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
@@ -45,7 +46,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="livespec config parses as valid JSONC",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -61,7 +62,7 @@ def _fail_finding(*, ctx: DoctorContext, config_path: Path, message: str) -> Fin
         message=message,
         path=str(config_path),
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

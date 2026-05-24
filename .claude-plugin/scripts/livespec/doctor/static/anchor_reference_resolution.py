@@ -53,11 +53,12 @@ from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-anchor-reference-resolution"
+SLUG: CheckId = CheckId("doctor-anchor-reference-resolution")
 
 # The minimal-template's single-file end-user output marker (per
 # the sibling gherkin-blank-line-format check's same convention).
@@ -125,7 +126,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="every anchor reference resolves to a heading in the same file",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -152,7 +153,7 @@ def _fail_finding(
         ),
         path=str(file_path),
         line=line_number,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

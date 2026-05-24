@@ -19,11 +19,12 @@ from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-proposed-change-topic-format"
+SLUG: CheckId = CheckId("doctor-proposed-change-topic-format")
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
@@ -34,7 +35,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="every proposed_changes/<topic>.md filename uses the canonical slug format",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

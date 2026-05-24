@@ -23,11 +23,12 @@ from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = ["SLUG", "run"]
 
 
-SLUG: str = "doctor-template-exists"
+SLUG: CheckId = CheckId("doctor-template-exists")
 BUILTIN_TEMPLATES: frozenset[str] = frozenset({"livespec", "minimal"})
 
 
@@ -39,7 +40,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
         message="template resolves to a known builtin or existing path",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 
@@ -51,7 +52,7 @@ def _fail_finding(*, ctx: DoctorContext, template_value: str) -> Finding:
         message=f"template '{template_value}' is neither a builtin nor an existing path",
         path=None,
         line=None,
-        spec_root=str(ctx.spec_root),
+        spec_root=SpecRoot(str(ctx.spec_root)),
     )
 
 

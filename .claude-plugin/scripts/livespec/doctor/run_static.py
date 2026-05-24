@@ -46,6 +46,7 @@ from livespec.doctor.static import APPLICABILITY_BY_TREE_KIND, TreeKind
 from livespec.errors import LivespecError
 from livespec.io import cli
 from livespec.schemas.dataclasses.finding import Finding
+from livespec.types import SpecRoot
 
 __all__: list[str] = ["build_parser", "main"]
 
@@ -91,7 +92,7 @@ def _run_one_check(*, ctx: DoctorContext, module: Any) -> Finding:
                 message=f"check process error: {err}",
                 path=None,
                 line=None,
-                spec_root=str(ctx.spec_root),
+                spec_root=SpecRoot(str(ctx.spec_root)),
             )
         case _:
             assert_never(unwrapped)
