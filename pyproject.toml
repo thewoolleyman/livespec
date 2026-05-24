@@ -120,6 +120,15 @@ select = [
 ]
 ignore = [
     "ISC001",  # implicit-str-concat on one line; conflicts with the formatter
+    # PLC0414 (useless-import-alias) conflicts with the explicit
+    # `<name> as <name>` re-export pattern that pyright (and mypy /
+    # PEP 484) recognize as the canonical way to declare an
+    # intentional cross-module re-export. The project uses this
+    # pattern in `livespec/commands/revise.py` to expose private
+    # sibling-helper symbols on the supervisor module surface for
+    # paired test access without falling back to `# noqa: F401`
+    # (which pyright does not honor for reportUnusedImport).
+    "PLC0414",
 ]
 
 [tool.ruff.lint.pylint]
