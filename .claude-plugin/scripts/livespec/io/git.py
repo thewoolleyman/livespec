@@ -51,7 +51,14 @@ from returns.io import IOResult, impure_safe
 from livespec.errors import LivespecError, PreconditionError
 from livespec.io.proc import run_subprocess
 
-__all__: list[str] = ["get_git_user", "is_git_repo", "list_at_head", "show_at_head"]
+__all__: list[str] = [
+    "get_default_branch_name",
+    "get_git_user",
+    "is_git_repo",
+    "list_at_head",
+    "list_merged_branches",
+    "show_at_head",
+]
 
 
 # Column index of the type field (`blob`, `tree`, `commit`) in the
@@ -263,6 +270,99 @@ def list_at_head(
         repo_relative_dir=repo_relative_dir,
     ).alt(
         lambda exc: PreconditionError(f"git.list_at_head: {exc}"),
+    )
+
+
+_ORIGIN_PREFIX: str = "origin/"
+
+
+def get_default_branch_name(*, project_root: Path) -> IOResult[str, LivespecError]:
+    """Return the repo's default branch name (e.g., `master` or `main`).
+
+    Reads `git symbolic-ref --short refs/remotes/origin/HEAD`,
+    which returns `origin/<default>` when the remote's HEAD has
+    been recorded locally (the canonical case for clones). The
+    `origin/` prefix is stripped before returning. Returns the
+    stripped name on the IOSuccess track.
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - `origin/HEAD` is not set locally (returncode != 0). This
+        happens on bare-init repos with no remote, or on clones
+        that never set the symbolic-ref. The doctor's
+        no-stale-merged-branch check folds this into a `skipped`
+        finding rather than treating it as an invariant violation.
+      - The `git` binary itself missing: lifts via the proc seam.
+    """
+    return run_subprocess(
+        argv=[
+            "git",
+            "-C",
+            str(project_root),
+            "symbolic-ref",
+            "--short",
+            "refs/remotes/origin/HEAD",
+        ],
+    ).bind(
+        lambda completed: (
+            IOResult.from_value(completed.stdout.strip().removeprefix(_ORIGIN_PREFIX))
+            if completed.returncode == 0
+            else IOResult.from_failure(
+                PreconditionError(
+                    f"git.get_default_branch_name: "
+                    f"`git symbolic-ref refs/remotes/origin/HEAD` exited "
+                    f"{completed.returncode}; default branch undetermined",
+                ),
+            )
+        ),
+    )
+
+
+def list_merged_branches(
+    *,
+    project_root: Path,
+    into_ref: str,
+) -> IOResult[tuple[str, ...], LivespecError]:
+    """Return local branch names whose tips are reachable from `into_ref`.
+
+    Composes `git -C <project_root> for-each-ref --format='%(refname:short)'
+    --merged refs/heads/<into_ref> refs/heads`. The result is a
+    tuple of local-branch short-names (one per line, in
+    for-each-ref's lexicographic order); INCLUDES `into_ref`
+    itself (a branch is trivially reachable from itself), so
+    callers MUST filter it out before reporting cleanup
+    candidates.
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - `into_ref` does not exist as a local branch (returncode
+        != 0). The doctor's no-stale-merged-branch check folds
+        this into a `skipped` finding.
+      - The `git` binary itself missing: lifts via the proc seam.
+    """
+    return run_subprocess(
+        argv=[
+            "git",
+            "-C",
+            str(project_root),
+            "for-each-ref",
+            "--format=%(refname:short)",
+            "--merged",
+            f"refs/heads/{into_ref}",
+            "refs/heads",
+        ],
+    ).bind(
+        lambda completed: (
+            IOResult.from_value(
+                tuple(line for line in completed.stdout.splitlines() if line.strip()),
+            )
+            if completed.returncode == 0
+            else IOResult.from_failure(
+                PreconditionError(
+                    f"git.list_merged_branches: "
+                    f"`git for-each-ref --merged refs/heads/{into_ref}` exited "
+                    f"{completed.returncode}",
+                ),
+            )
+        ),
     )
 
 

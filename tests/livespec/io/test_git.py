@@ -499,3 +499,189 @@ def test_list_at_head_returns_failure_when_no_head(
             return
         case _:
             raise AssertionError(f"expected IOFailure, got {result!r}")
+
+
+def _git_set_origin_head(*, cwd: Path, default_branch: str) -> None:
+    """Stage a fake `origin` remote pointing at the local repo + set `origin/HEAD`.
+
+    Used by `get_default_branch_name` tests to give
+    `git symbolic-ref refs/remotes/origin/HEAD` a defined value
+    without needing an external remote. The composition:
+    `git remote add origin <local-path>` (the local repo points
+    at itself, but that's fine for the symbolic-ref query that
+    doesn't actually fetch); then
+    `git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/<default>`
+    sets the per-remote HEAD pointer.
+    """
+    _ = subprocess.run(
+        ["git", "remote", "add", "origin", str(cwd)],
+        cwd=cwd,
+        check=True,
+    )
+    _ = subprocess.run(
+        [
+            "git",
+            "update-ref",
+            f"refs/remotes/origin/{default_branch}",
+            "HEAD",
+        ],
+        cwd=cwd,
+        check=True,
+    )
+    _ = subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            f"refs/remotes/origin/{default_branch}",
+        ],
+        cwd=cwd,
+        check=True,
+    )
+
+
+def test_get_default_branch_name_returns_stripped_branch(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOSuccess(<branch>) when `origin/HEAD` is set; strips `origin/` prefix.
+
+    Initial commit on the default branch, fake-origin pointed at
+    self, symbolic-ref set to `refs/remotes/origin/<default>`.
+    `get_default_branch_name` reads the symbolic-ref and strips
+    the `origin/` prefix.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "seed.md", content=b"# Seed\n")
+    # Capture whatever git chose as the local default (env-dependent: `master`
+    # or `main` depending on `init.defaultBranch`); set origin/HEAD to match.
+    completed = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    default_branch = completed.stdout.strip()
+    _git_set_origin_head(cwd=tmp_path, default_branch=default_branch)
+
+    result = io_git.get_default_branch_name(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value == default_branch
+        case _:
+            raise AssertionError(f"expected IOSuccess({default_branch!r}), got {result!r}")
+
+
+def test_get_default_branch_name_returns_failure_when_origin_head_unset(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOFailure(PreconditionError) when `origin/HEAD` is unset.
+
+    A fresh `git init` with no remote has no `refs/remotes/origin/HEAD`;
+    `git symbolic-ref` exits non-zero. The doctor's
+    no-stale-merged-branch check folds this into a skipped
+    finding rather than failing the build.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    result = io_git.get_default_branch_name(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure, got {result!r}")
+
+
+def test_list_merged_branches_returns_default_and_merged_branches(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOSuccess with default branch + any branch merged into it.
+
+    Fresh repo with one commit on the default branch + a feature
+    branch with no extra commits (so it's trivially merged into
+    default). The result tuple includes both branch names; the
+    doctor check filters out the default-itself before
+    reporting.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "seed.md", content=b"# Seed\n")
+    completed = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    default_branch = completed.stdout.strip()
+    _ = subprocess.run(
+        ["git", "branch", "feature/merged-already"],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    result = io_git.list_merged_branches(
+        project_root=tmp_path,
+        into_ref=default_branch,
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert set(value) == {default_branch, "feature/merged-already"}
+        case _:
+            raise AssertionError(f"expected IOSuccess, got {result!r}")
+
+
+def test_list_merged_branches_returns_failure_when_into_ref_missing(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOFailure when `into_ref` does not exist as a local branch.
+
+    A fresh repo with one commit on the default branch but no
+    branch named `nonexistent-branch`. `git for-each-ref
+    --merged refs/heads/nonexistent-branch` exits non-zero
+    (the ref doesn't resolve). The doctor folds this into a
+    skipped finding via the lash branch.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "seed.md", content=b"# Seed\n")
+
+    result = io_git.list_merged_branches(
+        project_root=tmp_path,
+        into_ref="nonexistent-branch",
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure, got {result!r}")
