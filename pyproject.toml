@@ -219,8 +219,9 @@ ban-relative-imports = "all"
 
 [tool.pyright]
 include = [".claude-plugin/scripts", "dev-tooling"]
-exclude = ["**/_vendor/**", "**/__pycache__/**"]
+exclude = ["**/_vendor/**", "**/__pycache__/**", "**/_stubs/**"]
 extraPaths = [".claude-plugin/scripts", ".claude-plugin/scripts/_vendor"]
+stubPath = ".claude-plugin/scripts/_stubs"
 pythonVersion = "3.10"
 typeCheckingMode = "strict"
 
