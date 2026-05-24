@@ -22,7 +22,8 @@ class Finding:
 
     Mirrors finding.schema.json: `check_id` is the
     `doctor-<slug>` canonical id; `status` is one of
-    `pass` / `fail` / `skipped`; `message` is human-readable;
+    `pass` / `fail` / `skipped` / `warn`; `message` is
+    human-readable;
     `path` and `line` are optional file-locality fields (None
     when the check is tree-level rather than file-level);
     `spec_root` discriminates per-tree origin per v018 Q1.

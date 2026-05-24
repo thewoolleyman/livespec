@@ -115,8 +115,12 @@ def _derive_exit_code(*, findings: list[Finding]) -> int:
 
     Per:
     no findings or every finding pass => exit 0; at least one
-    fail => exit 3. The skipped status is treated as pass for
-    exit-code derivation.
+    fail => exit 3. Statuses `skipped` and `warn` are both
+    treated as pass for exit-code derivation: `skipped`
+    indicates bootstrap-lenience or content-aware skip; `warn`
+    indicates a productivity-grade housekeeping nudge that the
+    SKILL.md narration phase surfaces to the user but that does
+    NOT block the wrapper exit.
     """
     if any(finding.status == "fail" for finding in findings):
         return 3
