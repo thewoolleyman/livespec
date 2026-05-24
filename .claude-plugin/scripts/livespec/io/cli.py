@@ -1,3 +1,15 @@
+# pyright: reportUnknownMemberType=none, reportUnknownVariableType=none, reportUnknownArgumentType=none
+#
+# HKT erosion from the returns library: bind chains lose flow-narrowing
+# through pyright strict mode because returns uses KindN higher-kinded
+# types that pyright cannot unify with concrete IOResult. Per-call cast
+# or refactor to named typed functions is the canonical fix; this file's
+# railway composition pattern means roughly half of all lines are bind
+# targets, so file-level silencing keeps the source readable. Non-railway
+# code in this tree retains full enforcement (other modules do not carry
+# this pragma). reportArgumentType is left ON so non-HKT firings still
+# surface; HKT-related reportArgumentType call sites carry per-line
+# ignore markers attached to the offending argument's line below.
 """argparse boundary facade.
 
 Per style doc §"CLI argument parsing seam": construction lives
@@ -25,7 +37,7 @@ from livespec.errors import UsageError
 __all__: list[str] = ["parse_argv"]
 
 
-@impure_safe(exceptions=(argparse.ArgumentError, SystemExit))
+@impure_safe(exceptions=(argparse.ArgumentError, SystemExit))  # pyright: ignore[reportArgumentType]
 def _raw_parse_argv(
     *,
     parser: argparse.ArgumentParser,
@@ -60,5 +72,5 @@ def parse_argv(
     the canonical pattern in `livespec/parse/jsonc.py`.
     """
     return _raw_parse_argv(parser=parser, argv=argv).alt(
-        lambda exc: UsageError(f"argparse: {exc}"),
+        lambda exc: UsageError(f"argparse: {exc}"),  # pyright: ignore[reportUnknownLambdaType]
     )
