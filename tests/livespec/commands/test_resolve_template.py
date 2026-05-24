@@ -212,3 +212,26 @@ def test_resolve_template_default_project_root_is_cwd(
     captured = capsys.readouterr()
     line = captured.out.rstrip("\n")
     assert Path(line) == template_dir.resolve()
+
+
+def test_resolve_template_module_declares_hkt_erosion_pragma() -> None:
+    """`commands/resolve_template.py` carries the file-level HKT-erosion pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains lose
+    flow-narrowing through pyright strict mode. The file-level
+    pragma suppresses the three HKT-related categories;
+    reportArgumentType stays ON globally. This contract test
+    pins the pragma so a future reformatter that drops it
+    surfaces immediately rather than silently re-introducing
+    the 8 pyright errors.
+    """
+    import inspect
+
+    from livespec.commands import resolve_template as resolve_template_command
+
+    source = inspect.getsource(resolve_template_command)
+    assert source.startswith(
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n",
+    ), "commands/resolve_template.py must declare the HKT-erosion pragma as its first line"
