@@ -1,21 +1,29 @@
 """Static-phase doctor check: no_stalled_epic.
 
-Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary invariants" → §"`no-stalled-epic`" (v069):
+Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary invariants" → §"`no-stalled-epic`":
 
   A work-item with `type == "epic"` AND `status` in `{open, in_progress}`
   whose `depends_on` is non-empty AND every entry resolves to a closed
-  work-item is "stalled" — the work it represents is logically complete
-  but the epic record has not been transitioned to `closed`. The check
-  fires `fail` (not `warn`) per the structural-not-staleness
-  classification: an epic semantically aggregates its sub-tasks, so all
-  blockers closed + epic open is a data-model contradiction.
+  work-item / PR / branch is "stalled" — the work it represents is
+  logically complete but the epic record has not been transitioned to
+  `closed`. The check fires `fail` (not `warn`) per the structural-not-
+  staleness classification: an epic semantically aggregates its sub-
+  tasks, so all blockers closed + epic open is a data-model
+  contradiction.
 
   Empty `depends_on` is EXEMPT (vacuous-truth guard) — a freshly filed
   epic with no declared sub-tasks is not yet stalled.
 
   Unresolvable `depends_on` entries (referenced ids missing from the
-  store) MUST NOT fire `no-stalled-epic` — that drift class is
+  store, schema-malformed entries, or cross-repo entries resolving to
+  `unknown`) MUST NOT fire `no-stalled-epic` — that drift class is
   `no-orphan-dependency`'s domain.
+
+  When the epic's `depends_on` carries non-local typed entries
+  (sibling_work_item / pull_request / branch), the check walks them
+  via `livespec_runtime.cross_repo.resolve_ref` and treats any `open`
+  external dependency as a legitimate stall reason (suppressing the
+  fail). Resolved `closed` counts toward all-closed.
 
 Cross-boundary mechanism:
 
@@ -23,31 +31,28 @@ Cross-boundary mechanism:
   machine surface (the `list-work-items --json` thin-transport skill)".
   In v1 (this implementation), the check reads the impl-plugin's
   configured work-items store directly via the path declared in
-  `.livespec.jsonc`. This is mechanically equivalent to the thin-
-  transport skill (the skill is itself a pass-through to a JSONL
-  read) but skips the cross-process invocation. A future refinement
-  MAY add subprocess-based skill invocation when the cross-plugin
-  abstraction layer lands; the invariant's semantics are stable
-  regardless.
+  `.livespec.jsonc`.
 
   Only the `livespec-impl-plaintext` backend is supported in v1
   (JSONL store at the path declared by `<plugin>.work_items_path`).
-  Other impl-plugin backends (e.g., `livespec-impl-beads`) would need
-  their own work-items-shape adapter; the check skips when the
-  active plugin isn't recognized.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from livespec_runtime.cross_repo.resolve import resolve_ref
+from livespec_runtime.cross_repo.types import CrossRepoManifest, RefStatus
 from returns.io import IOResult, IOSuccess
 from returns.result import Success
 
 from livespec.context import DoctorContext
+from livespec.doctor.static._no_orphan_dependency_helpers import extract_manifest
 from livespec.errors import LivespecError
 from livespec.io import fs
+from livespec.parse import cross_repo as cross_repo_parse
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.finding import Finding
 from livespec.types import CheckId, SpecRoot
@@ -125,8 +130,58 @@ def _materialize_records(*, jsonl_text: str) -> dict[str, dict[str, Any]]:
     return index
 
 
-def _find_stalled_epics(*, index: dict[str, dict[str, Any]]) -> list[str]:
-    """Return the sorted ids of epics that satisfy the stalled-epic predicate."""
+def _local_status(*, work_item_id: str, index: dict[str, dict[str, Any]]) -> RefStatus:
+    """Return RefStatus for a same-repo id by scanning the materialized index."""
+    record = index.get(work_item_id)
+    if record is None:
+        return RefStatus.UNKNOWN
+    if record.get("status") == "closed":
+        return RefStatus.CLOSED
+    return RefStatus.OPEN
+
+
+def _make_local_lookup(*, index: dict[str, dict[str, Any]]) -> Callable[[str], RefStatus]:
+    """Build the local_status_lookup callable resolve_ref expects."""
+    return lambda work_item_id: _local_status(work_item_id=work_item_id, index=index)
+
+
+def _resolve_typed_dep(
+    *,
+    raw: dict[str, Any],
+    index: dict[str, dict[str, Any]],
+    manifest: CrossRepoManifest,
+) -> RefStatus:
+    """Parse a typed-dict entry and dispatch through resolve_ref."""
+    parsed_result = cross_repo_parse.parse_entry(parsed=raw)
+    if not isinstance(parsed_result, Success):
+        return RefStatus.UNKNOWN
+    return resolve_ref(
+        entry=parsed_result.unwrap(),
+        manifest=manifest,
+        local_status_lookup=_make_local_lookup(index=index),
+    )
+
+
+def _resolve_dep(
+    *,
+    raw: Any,
+    index: dict[str, dict[str, Any]],
+    manifest: CrossRepoManifest,
+) -> RefStatus:
+    """Return RefStatus for a single depends_on entry (bare-string or typed-dict)."""
+    if isinstance(raw, str):
+        return _local_status(work_item_id=raw, index=index)
+    if isinstance(raw, dict):
+        return _resolve_typed_dep(raw=raw, index=index, manifest=manifest)
+    return RefStatus.UNKNOWN
+
+
+def _find_stalled_epics(
+    *,
+    index: dict[str, dict[str, Any]],
+    manifest: CrossRepoManifest,
+) -> list[str]:
+    """Return sorted ids of epics whose every depends_on entry resolves to CLOSED."""
     stalled: list[str] = []
     for item_id, record in index.items():
         if record.get("type") != "epic":
@@ -138,15 +193,8 @@ def _find_stalled_epics(*, index: dict[str, dict[str, Any]]) -> list[str]:
         if not isinstance(deps, list) or len(deps) == 0:
             continue
         all_closed = True
-        for dep_id in deps:
-            if not isinstance(dep_id, str):
-                all_closed = False
-                break
-            dep_record = index.get(dep_id)
-            if dep_record is None:
-                all_closed = False
-                break
-            if dep_record.get("status") != "closed":
+        for raw in deps:
+            if _resolve_dep(raw=raw, index=index, manifest=manifest) != RefStatus.CLOSED:
                 all_closed = False
                 break
         if all_closed:
@@ -207,17 +255,29 @@ def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecE
                 ),
             ),
         )
+    manifest = extract_manifest(config=parsed)
     return fs.read_text(path=work_items_path).bind(
         lambda text: IOSuccess(
-            _evaluate_text(ctx=ctx, jsonl_text=text, work_items_path=work_items_path)
+            _evaluate_text(
+                ctx=ctx,
+                jsonl_text=text,
+                work_items_path=work_items_path,
+                manifest=manifest,
+            )
         ),
     )
 
 
-def _evaluate_text(*, ctx: DoctorContext, jsonl_text: str, work_items_path: Path) -> Finding:
+def _evaluate_text(
+    *,
+    ctx: DoctorContext,
+    jsonl_text: str,
+    work_items_path: Path,
+    manifest: CrossRepoManifest,
+) -> Finding:
     """Apply the invariant against the JSONL text content."""
     index = _materialize_records(jsonl_text=jsonl_text)
-    stalled = _find_stalled_epics(index=index)
+    stalled = _find_stalled_epics(index=index, manifest=manifest)
     if not stalled:
         return _pass(
             ctx=ctx,
