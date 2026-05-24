@@ -167,7 +167,7 @@
     "reason": "Landed in v072 (cross-repo-dependency-awareness propose-change accept-with-modify) per epic li-6d2wpj. Codifies the cross_repo_targets manifest, typed DependsOnEntry union (local | sibling_work_item | pull_request | branch), exhaustive live-walk resolution semantics, livespec_runtime.cross_repo contract surface, retry policy, consumer surface, GitHub CLI auth, and hook integration. Real test ID populated in the impl follow-up PRs that wire livespec-core's doctor (li-f2fbkl) and livespec-impl-plaintext's next ranker + cleanup invariants + data migration (li-f5wmjr) against the runtime."
   },
   {
-    "heading": "## Implementation-plugin contract \u2014 the 9-skill surface",
+    "heading": "## Implementation-plugin contract \u2014 the 10-skill surface",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
