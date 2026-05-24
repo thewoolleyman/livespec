@@ -214,6 +214,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-no-duplicate-gap-id",
         "doctor-depends_on-ref-wellformedness",
         "doctor-no-stale-merged-branch",
+        "doctor-no-stale-merged-pr-branch",
         "doctor-no-stale-worktree",
     }
     sub_spec_check_ids = {
@@ -245,6 +246,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             ), f"expected skipped for out-of-band-edits in non-git fixture; got {finding}"
         elif finding["check_id"] in (
             "doctor-no-stale-merged-branch",
+            "doctor-no-stale-merged-pr-branch",
             "doctor-no-stale-worktree",
         ):
             # The cleanup invariants require project_root to be a git
