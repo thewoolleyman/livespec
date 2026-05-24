@@ -34,22 +34,38 @@ from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
 from livespec.commands._revise_helpers import (
-    _compose_resulting_changes_section,  # re-exported for the paired test surface  # noqa: F401
+    _compose_resulting_changes_section as _compose_resulting_changes_section,
+)
+from livespec.commands._revise_helpers import (
     _now_utc_iso8601,
     _resolve_author,
 )
 from livespec.commands._revise_railway_emits import (
-    _bind_resulting_files,  # re-exported for the paired test surface  # noqa: F401
-    _format_next_version_name,  # re-exported for the paired test surface  # noqa: F401
+    _bind_resulting_files as _bind_resulting_files,
+)
+from livespec.commands._revise_railway_emits import (
+    _format_next_version_name as _format_next_version_name,
+)
+from livespec.commands._revise_railway_emits import (
     _process_decisions,
 )
 from livespec.commands._revise_validation import (
-    _iter_proposal_topics,  # noqa: F401  # re-exported for tests
-    _iter_resulting_files_paths,  # noqa: F401  # re-exported for tests
-    _validate_proposal_topics_exist,  # noqa: F401  # re-exported for tests
+    _iter_proposal_topics as _iter_proposal_topics,
+)
+from livespec.commands._revise_validation import (
+    _iter_resulting_files_paths as _iter_resulting_files_paths,
+)
+from livespec.commands._revise_validation import (
+    _validate_proposal_topics_exist as _validate_proposal_topics_exist,
+)
+from livespec.commands._revise_validation import (
     _validate_resulting_files,
-    _validate_resulting_files_paths,  # noqa: F401  # re-exported for tests
-    _validate_resulting_files_targets_exist,  # noqa: F401  # re-exported for tests
+)
+from livespec.commands._revise_validation import (
+    _validate_resulting_files_paths as _validate_resulting_files_paths,
+)
+from livespec.commands._revise_validation import (
+    _validate_resulting_files_targets_exist as _validate_resulting_files_targets_exist,
 )
 from livespec.errors import LivespecError, UsageError
 from livespec.io import cli, fs

@@ -18,6 +18,33 @@ from livespec.commands import revise
 __all__: list[str] = []
 
 
+def test_revise_module_reexports_private_helpers_for_paired_tests() -> None:
+    """Pins the `<name> as <name>` re-export contract for test access.
+
+    revise.py imports the private helpers `_compose_resulting_changes_section`,
+    `_bind_resulting_files`, `_format_next_version_name`,
+    `_iter_proposal_topics`, `_iter_resulting_files_paths`,
+    `_validate_proposal_topics_exist`, `_validate_resulting_files_paths`,
+    and `_validate_resulting_files_targets_exist` from sibling helper
+    modules (`_revise_helpers`, `_revise_railway_emits`, `_revise_validation`)
+    using the explicit `<name> as <name>` re-export form so paired tests
+    in this module can reach them via the public `revise.<name>` surface
+    without bypassing the supervisor module. Pyright recognizes this
+    form as an intentional re-export and does NOT flag `reportUnusedImport`.
+    """
+    for symbol in (
+        "_compose_resulting_changes_section",
+        "_bind_resulting_files",
+        "_format_next_version_name",
+        "_iter_proposal_topics",
+        "_iter_resulting_files_paths",
+        "_validate_proposal_topics_exist",
+        "_validate_resulting_files_paths",
+        "_validate_resulting_files_targets_exist",
+    ):
+        assert hasattr(revise, symbol), f"revise must re-export {symbol!r} for paired-test access"
+
+
 def test_revise_main_exists_and_returns_int() -> None:
     """The supervisor entry point exists and returns an int exit code.
 
