@@ -9,7 +9,7 @@ Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary invariants" → §"`no
   work-items-store side.
 
 Cross-boundary mechanism: same v1 scope as `no_stalled_epic` and
-`no_orphan_blocker` — direct JSONL read of the active impl-plugin's
+`no_orphan_dependency` — direct JSONL read of the active impl-plugin's
 work-items store. Only livespec-impl-plaintext is supported in v1;
 other plugins receive a `skipped` Finding.
 """
