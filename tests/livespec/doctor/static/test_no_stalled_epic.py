@@ -1,11 +1,22 @@
 """Tests for livespec.doctor.static.no_stalled_epic.
 
-Per `SPECIFICATION/contracts.md` (v069) §"`no-stalled-epic`": the
-check fires `fail` when an epic carries `status` in `{open,
-in_progress}` AND has a non-empty `depends_on` AND every `depends_on`
-entry resolves to a closed work-item. Empty `depends_on` is exempt
-(vacuous-truth guard); unresolvable `depends_on` entries delegate to
-`no-orphan-blocker`; closed/non-epic items are out of scope.
+Per `SPECIFICATION/contracts.md` §"`no-stalled-epic`": the check
+fires `fail` when an epic carries `status` in `{open, in_progress}`
+AND has a non-empty `depends_on` AND every `depends_on` entry
+resolves to a closed work-item / PR / branch. Empty `depends_on` is
+exempt (vacuous-truth guard); unresolvable entries delegate to
+`no-orphan-dependency`; closed/non-epic items are out of scope.
+
+When the epic's depends_on contains non-local typed entries
+(sibling_work_item / pull_request / branch), the check walks them
+via `livespec_runtime.cross_repo.resolve_ref`. OPEN external deps
+suppress fail (legitimate stall reason); CLOSED count toward
+all-closed; UNKNOWN suppresses (no-orphan-dependency's domain).
+
+Provider calls (`gh_provider.query_pull_request_state`,
+`gh_provider.branch_exists_on_remote`,
+`gh_provider.branch_merged_into_default`) are monkeypatched at the
+module attribute level so the tests don't shell out to `gh`.
 
 The check reads `.livespec.jsonc` to find the impl-plugin's
 work-items JSONL path. v1 supports only `livespec-impl-plaintext`;
@@ -17,12 +28,30 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from livespec.context import DoctorContext
 from livespec.doctor.static import no_stalled_epic
 from livespec.schemas.dataclasses.finding import Finding
+from livespec_runtime.cross_repo.providers import github as gh_provider
 from returns.io import IOSuccess
 
 __all__: list[str] = []
+
+
+_CONFIG_TEXT_WITH_MANIFEST = """// livespec config with cross_repo_targets
+{
+  "template": "livespec",
+  "spec_root": "SPECIFICATION",
+  "implementation": { "plugin": "livespec-impl-plaintext" },
+  "livespec-impl-plaintext": {
+    "format": "jsonl",
+    "work_items_path": "work-items.jsonl"
+  },
+  "cross_repo_targets": {
+    "runtime": { "github_url": "https://github.com/example/runtime" }
+  }
+}
+"""
 
 
 _CONFIG_TEXT = """// minimal livespec config
@@ -160,11 +189,173 @@ def test_passes_when_epic_has_empty_depends_on(
     assert result == IOSuccess(expected_finding)
 
 
+def _setup_project_with_manifest(
+    *,
+    tmp_path: Path,
+    jsonl_lines: list[dict[str, object]],
+) -> tuple[Path, Path]:
+    """Same as _setup_project but writes a config with a cross_repo_targets block."""
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT_WITH_MANIFEST, encoding="utf-8")
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    jsonl_text = "".join(
+        json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n" for record in jsonl_lines
+    )
+    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
+    return project_root, spec_root
+
+
+def test_passes_when_typed_local_dep_is_open(*, tmp_path: Path) -> None:
+    """A typed-dict local dep that points at an open work-item suppresses fail."""
+    records = [
+        _record(item_id="sub-1", status="open"),
+        _record(
+            item_id="epic-G",
+            item_type="epic",
+            status="open",
+            depends_on=[{"kind": "local", "work_item_id": "sub-1"}],
+        ),
+    ]
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_stalled_epic.run(ctx=ctx)
+    expected_finding = Finding(
+        check_id="doctor-no-stalled-epic",
+        status="pass",
+        message="no-stalled-epic: no epics with all-closed depends_on detected (2 work-items scanned)",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected_finding)
+
+
+def test_fails_when_typed_local_deps_all_closed(*, tmp_path: Path) -> None:
+    """Typed-dict local deps that all point at closed work-items fire `fail`."""
+    records = [
+        _record(item_id="sub-1", status="closed"),
+        _record(
+            item_id="epic-H",
+            item_type="epic",
+            status="open",
+            depends_on=[{"kind": "local", "work_item_id": "sub-1"}],
+        ),
+    ]
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_stalled_epic.run(ctx=ctx)
+    expected_finding = Finding(
+        check_id="doctor-no-stalled-epic",
+        status="fail",
+        message=(
+            "no-stalled-epic: 1 epic(s) with all depends_on entries closed "
+            "but epic still open/in_progress: epic-H. "
+            "Close the epic with an appropriate resolution OR add fresh depends_on entries."
+        ),
+        path=str(project_root / "work-items.jsonl"),
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected_finding)
+
+
+def test_passes_when_open_pr_dep_suppresses_fail(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An OPEN PR dep is a legitimate stall reason — MUST NOT fire."""
+    monkeypatch.setattr(gh_provider, "query_pull_request_state", lambda **_kwargs: "OPEN")
+    records = [
+        _record(item_id="sub-1", status="closed"),
+        _record(
+            item_id="epic-I",
+            item_type="epic",
+            status="open",
+            depends_on=[
+                {"kind": "local", "work_item_id": "sub-1"},
+                {"kind": "pull_request", "repo": "runtime", "number": 5},
+            ],
+        ),
+    ]
+    project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_stalled_epic.run(ctx=ctx)
+    expected_finding = Finding(
+        check_id="doctor-no-stalled-epic",
+        status="pass",
+        message="no-stalled-epic: no epics with all-closed depends_on detected (2 work-items scanned)",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected_finding)
+
+
+def test_fails_when_all_deps_closed_including_merged_pr(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When a MERGED PR + closed local both resolve closed, the epic stalls."""
+    monkeypatch.setattr(gh_provider, "query_pull_request_state", lambda **_kwargs: "MERGED")
+    records = [
+        _record(item_id="sub-1", status="closed"),
+        _record(
+            item_id="epic-J",
+            item_type="epic",
+            status="open",
+            depends_on=[
+                {"kind": "local", "work_item_id": "sub-1"},
+                {"kind": "pull_request", "repo": "runtime", "number": 5},
+            ],
+        ),
+    ]
+    project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_stalled_epic.run(ctx=ctx)
+    expected_finding = Finding(
+        check_id="doctor-no-stalled-epic",
+        status="fail",
+        message=(
+            "no-stalled-epic: 1 epic(s) with all depends_on entries closed "
+            "but epic still open/in_progress: epic-J. "
+            "Close the epic with an appropriate resolution OR add fresh depends_on entries."
+        ),
+        path=str(project_root / "work-items.jsonl"),
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected_finding)
+
+
+def test_passes_when_typed_dep_is_schema_malformed(*, tmp_path: Path) -> None:
+    """A typed dict with no `kind` is unresolvable — suppresses fail (no-orphan-dep's domain)."""
+    records = [
+        _record(
+            item_id="epic-K",
+            item_type="epic",
+            status="open",
+            depends_on=[{"work_item_id": "missing-kind"}],
+        ),
+    ]
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_stalled_epic.run(ctx=ctx)
+    expected_finding = Finding(
+        check_id="doctor-no-stalled-epic",
+        status="pass",
+        message="no-stalled-epic: no epics with all-closed depends_on detected (1 work-items scanned)",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected_finding)
+
+
 def test_passes_when_depends_on_entry_unresolvable(
     *,
     tmp_path: Path,
 ) -> None:
-    """Unresolvable depends_on entries delegate to no-orphan-blocker — MUST NOT fire here."""
+    """Unresolvable depends_on entries delegate to no-orphan-dependency — MUST NOT fire here."""
     records = [
         _record(item_id="sub-1", status="closed"),
         _record(
