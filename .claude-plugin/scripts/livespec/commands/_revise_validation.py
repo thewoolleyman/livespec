@@ -1,3 +1,15 @@
+# pyright: reportUnknownMemberType=none, reportUnknownVariableType=none, reportUnknownArgumentType=none
+#
+# HKT erosion from the returns library: bind chains lose flow-narrowing
+# through pyright strict mode because returns uses KindN higher-kinded
+# types that pyright cannot unify with concrete IOResult. Per-call cast
+# or refactor to named typed functions is the canonical fix; this file's
+# railway composition pattern means roughly half of all lines are bind
+# targets, so file-level silencing keeps the source readable. Non-railway
+# code in this tree retains full enforcement (other modules do not carry
+# this pragma). reportArgumentType is left ON so non-HKT firings still
+# surface; HKT-related reportArgumentType call sites carry per-line
+# ignore markers attached to the offending argument's line below.
 """Pre-write validation helpers for `livespec.commands.revise`.
 
 Per `SPECIFICATION/spec.md` §"Sub-command lifecycle":
@@ -37,7 +49,7 @@ from returns.result import Failure, Result, Success
 from livespec.errors import LivespecError, PreconditionError, UsageError
 from livespec.schemas.dataclasses.revise_input import RevisionInput
 
-__all__: list[str] = []
+__all__: list[str] = ["_validate_resulting_files"]
 
 
 def _iter_resulting_files_paths(
