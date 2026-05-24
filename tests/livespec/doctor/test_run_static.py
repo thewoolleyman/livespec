@@ -212,6 +212,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-no-stalled-epic",
         "doctor-no-orphan-dependency",
         "doctor-no-duplicate-gap-id",
+        "doctor-no-stale-gap-tied",
         "doctor-depends_on-ref-wellformedness",
         "doctor-no-stale-merged-branch",
         "doctor-no-stale-merged-pr-branch",
@@ -259,6 +260,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             "doctor-no-stalled-epic",
             "doctor-no-orphan-dependency",
             "doctor-no-duplicate-gap-id",
+            "doctor-no-stale-gap-tied",
             "doctor-depends_on-ref-wellformedness",
         ):
             # These cross-boundary work-item invariants require
