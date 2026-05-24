@@ -43,7 +43,7 @@ from livespec.doctor.static import (
     gherkin_blank_line_format,
     livespec_jsonc_valid,
     no_duplicate_gap_id,
-    no_orphan_blocker,
+    no_orphan_dependency,
     no_stalled_epic,
     out_of_band_edits,
     proposed_change_topic_format,
@@ -76,7 +76,7 @@ STATIC_CHECKS = (
     out_of_band_edits,
     accept_decision_snapshot_consistency,
     no_stalled_epic,
-    no_orphan_blocker,
+    no_orphan_dependency,
     no_duplicate_gap_id,
 )
 

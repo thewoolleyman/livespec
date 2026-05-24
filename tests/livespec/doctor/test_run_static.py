@@ -210,7 +210,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-out-of-band-edits",
         "doctor-accept-decision-snapshot-consistency",
         "doctor-no-stalled-epic",
-        "doctor-no-orphan-blocker",
+        "doctor-no-orphan-dependency",
         "doctor-no-duplicate-gap-id",
     }
     sub_spec_check_ids = {
@@ -242,7 +242,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             ), f"expected skipped for out-of-band-edits in non-git fixture; got {finding}"
         elif finding["check_id"] in (
             "doctor-no-stalled-epic",
-            "doctor-no-orphan-blocker",
+            "doctor-no-orphan-dependency",
             "doctor-no-duplicate-gap-id",
         ):
             # These cross-boundary work-item invariants require

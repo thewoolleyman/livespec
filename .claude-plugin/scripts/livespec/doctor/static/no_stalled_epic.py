@@ -15,7 +15,7 @@ Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary invariants" → §"`no
 
   Unresolvable `depends_on` entries (referenced ids missing from the
   store) MUST NOT fire `no-stalled-epic` — that drift class is
-  `no-orphan-blocker`'s domain.
+  `no-orphan-dependency`'s domain.
 
 Cross-boundary mechanism:
 
