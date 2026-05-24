@@ -434,3 +434,33 @@ def test_next_emits_schema_conformant_json(
 
     validator = fastjsonschema.compile(schema)
     _ = validator(payload)
+
+
+def test_next_module_declares_hkt_erosion_pragma() -> None:
+    """`commands/next.py` carries the file-level HKT-erosion pyright pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains that
+    compose the next supervisor's railway lose flow-narrowing
+    through pyright's strict mode, surfacing as
+    reportUnknownMemberType / reportUnknownVariableType /
+    reportUnknownArgumentType diagnostics on most bind / map
+    / unsafe_perform_io call sites. Per-call cast() or refactor
+    to named typed functions is the canonical fix but is
+    infeasible at scale; the project-local trade-off is a
+    file-level pragma that suppresses the three HKT-related
+    categories. This contract test pins the pragma so a future
+    reformatter / accidental top-comment edit / mass-rewrite
+    that drops the pragma surfaces immediately rather than
+    silently re-introducing ~27 pyright errors at the next
+    `just check-types` run.
+    """
+    import inspect
+
+    from livespec.commands import next as next_command
+
+    source = inspect.getsource(next_command)
+    assert source.startswith(
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n",
+    ), "commands/next.py must declare the HKT-erosion pragma as its first line"
