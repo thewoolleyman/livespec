@@ -2007,3 +2007,27 @@ def test_prune_history_invoke_pre_step_doctor_returns_iofailure_when_findings_is
     err = unwrapped.failure()
     assert isinstance(err, PreconditionError)
     assert "'findings' is not a list" in str(err)
+
+
+def test_prune_history_module_declares_hkt_erosion_pragma() -> None:
+    """`commands/prune_history.py` carries the file-level HKT-erosion pyright pragma.
+
+    Per li-xxjopf Step 3e: the returns-library bind chains that
+    compose the prune-history supervisor's railway lose flow-
+    narrowing through pyright's strict mode. The file-level
+    pragma suppresses the three HKT-related categories;
+    reportArgumentType stays ON globally so non-HKT firings
+    still surface. This contract test pins the pragma so a
+    future reformatter that drops it surfaces immediately
+    rather than silently re-introducing the ~14 pyright errors.
+    """
+    import inspect
+
+    from livespec.commands import prune_history as prune_history_command
+
+    source = inspect.getsource(prune_history_command)
+    assert source.startswith(
+        "# pyright: reportUnknownMemberType=none, "
+        "reportUnknownVariableType=none, "
+        "reportUnknownArgumentType=none\n",
+    ), "commands/prune_history.py must declare the HKT-erosion pragma as its first line"
