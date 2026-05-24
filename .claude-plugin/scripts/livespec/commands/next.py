@@ -431,7 +431,7 @@ def _rank_pipeline(*, spec_target: Path) -> IOResult[NextOutput, LivespecError]:
 
 def _emit_payload(*, payload: str) -> IOResult[str, LivespecError]:
     """Write the JSON payload + newline to stdout per the wire contract."""
-    sys.stdout.write(f"{payload}\n")
+    _ = sys.stdout.write(f"{payload}\n")
     return IOSuccess(payload)
 
 

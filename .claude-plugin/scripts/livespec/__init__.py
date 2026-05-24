@@ -45,4 +45,4 @@ structlog.configure(
     logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
     cache_logger_on_first_use=True,
 )
-structlog.contextvars.bind_contextvars(run_id=str(uuid.uuid4()))
+_ = structlog.contextvars.bind_contextvars(run_id=str(uuid.uuid4()))

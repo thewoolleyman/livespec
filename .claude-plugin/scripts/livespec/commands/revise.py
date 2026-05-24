@@ -183,7 +183,13 @@ def _check_decisions_nonempty(
     key, wrong type) fall through to schema validation
     unchanged.
     """
-    if isinstance(payload, dict):
+    # The isinstance(payload, dict) guard remains for runtime
+    # defense-in-depth: jsonc.loads upstream returns Any, and
+    # while pyright's bind-chain widening surfaces a narrower
+    # dict type here, the runtime payload can still be a top-
+    # level non-dict (e.g. a JSON array) that needs to fall
+    # through to schema validation without crashing.
+    if isinstance(payload, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
         decisions = payload.get("decisions")
         if isinstance(decisions, list) and len(decisions) == 0:
             return Failure(

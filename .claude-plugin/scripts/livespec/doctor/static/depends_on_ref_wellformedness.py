@@ -68,7 +68,7 @@ def _make_finding(
     """Build a Finding with the check's SLUG + spec_root."""
     return Finding(
         check_id=SLUG,
-        status=status,  # type: ignore[arg-type]
+        status=status,
         message=message,
         path=path,
         line=None,

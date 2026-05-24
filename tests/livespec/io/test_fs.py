@@ -19,6 +19,24 @@ from returns.unsafe import unsafe_perform_io
 __all__: list[str] = []
 
 
+def test_fs_move_discards_path_rename_result() -> None:
+    """`fs._move_or_rename` discards `source.rename()`'s return value.
+
+    Path.rename returns the target Path (since Python 3.8) but the
+    `move` facade only emits IOSuccess(None) to its IOResult track.
+    The implementation assigns the discarded result to `_` (per
+    pyright's reportUnusedCallResult), making the discard explicit
+    rather than implicit. This test pins that the discard does not
+    leak the Path return into the IOResult Success track.
+    """
+    import inspect
+
+    source_code = inspect.getsource(fs)
+    assert (
+        "_ = source.rename(target)" in source_code
+    ), "fs._move_or_rename must explicitly discard the Path.rename result"
+
+
 def test_fs_read_text_returns_iosuccess_with_file_contents(*, tmp_path: Path) -> None:
     """`read_text(path=existing)` returns IOSuccess(<content-string>).
 
