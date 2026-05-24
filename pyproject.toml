@@ -235,7 +235,13 @@ reportUninitializedInstanceVariable = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 reportUnnecessaryCast = "error"
 reportUnnecessaryIsInstance = "error"
-reportImplicitStringConcatenation = "error"
+# Relaxed from "error" to "warning" (li-xxjopf Step 3a): the 20
+# in-tree sites are all readable multi-line f-string assembly in
+# error messages where the formatter-driven wrapping is intentional.
+# The genuine typo-risk subset (single-line implicit concat) is
+# already covered by ruff's ISC category — ISC001 is off only due to
+# formatter conflict, ISC002/ISC003 remain active.
+reportImplicitStringConcatenation = "warning"
 
 # NO pluginPaths entry: per v025 D1, pyright has no plugin
 # system (microsoft/pyright#607: maintainer rejected plugin
