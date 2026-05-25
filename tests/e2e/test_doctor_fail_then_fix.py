@@ -1,7 +1,7 @@
 """E2E doctor-fail-then-fix test.
 
 Per SPECIFICATION/contracts.md §"E2E harness contract §"Error paths": a
-pre-seeded SPECIFICATION/spec.md with a mixed-case `Must` trips
+pre-seeded SPECIFICATION/spec.md with a mixed-case `Shall` trips
 bcp14-keyword-wellformedness; propose-change + revise with --skip-pre-check
 fixes it; second doctor invocation exits 0.
 """
@@ -25,7 +25,7 @@ _BAD_SPEC_CONTENT = """\
 
 <!-- region:project-intent -->
 
-This project Must comply with its own spec. The change MUST flow through revise.
+This project Shall comply with its own spec. The change MUST flow through revise.
 
 <!-- /region:project-intent -->
 
@@ -41,7 +41,7 @@ _FIXED_SPEC_CONTENT = """\
 
 <!-- region:project-intent -->
 
-This project MUST comply with its own spec. The change MUST flow through revise.
+This project SHALL comply with its own spec. The change MUST flow through revise.
 
 <!-- /region:project-intent -->
 
@@ -84,7 +84,7 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     _git(cwd=tmp_path, args=["commit", "-m", "seed with bad spec"])
 
     doctor_bad = fake_claude.doctor_static(project_root=tmp_path)
-    assert doctor_bad.returncode != 0, "doctor_static should fail on mixed-case 'Must' in spec"
+    assert doctor_bad.returncode != 0, "doctor_static should fail on mixed-case 'Shall' in spec"
     bad_findings = json.loads(doctor_bad.stdout)
     fail_ids = [f["check_id"] for f in bad_findings["findings"] if f["status"] == "fail"]
     assert "doctor-bcp14-keyword-wellformedness" in fail_ids
@@ -92,12 +92,12 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     findings_payload: dict[str, object] = {
         "findings": [
             {
-                "name": "Fix mixed-case Must to MUST",
+                "name": "Fix mixed-case Shall to SHALL",
                 "target_spec_files": ["SPECIFICATION/spec.md"],
-                "summary": "The spec uses mixed-case 'Must' which MUST be uppercase 'MUST'.",
+                "summary": "The spec uses mixed-case 'Shall' which MUST be uppercase 'SHALL'.",
                 "motivation": "bcp14-keyword-wellformedness doctor check failed.",
                 "proposed_changes": (
-                    "Replace 'Must' with 'MUST' throughout SPECIFICATION/spec.md."
+                    "Replace 'Shall' with 'SHALL' throughout SPECIFICATION/spec.md."
                 ),
             }
         ]
@@ -118,7 +118,7 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
             str(tmp_path / "SPECIFICATION"),
             "--project-root",
             str(tmp_path),
-            "fix-must-case",
+            "fix-shall-case",
         ],
         cwd=str(_REPO_ROOT),
         capture_output=True,
@@ -130,9 +130,9 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     revise_payload: dict[str, object] = {
         "decisions": [
             {
-                "proposal_topic": "fix-must-case",
+                "proposal_topic": "fix-shall-case",
                 "decision": "accept",
-                "rationale": "Accepted: fix mixed-case Must to uppercase MUST.",
+                "rationale": "Accepted: fix mixed-case Shall to uppercase SHALL.",
                 "resulting_files": [{"path": "spec.md", "content": _FIXED_SPEC_CONTENT}],
             }
         ]
@@ -161,7 +161,7 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     assert revise_result.returncode == 0, f"revise failed: {revise_result.stderr!r}"
 
     _git(cwd=tmp_path, args=["add", "-A"])
-    _git(cwd=tmp_path, args=["commit", "-m", "fix bcp14 Must -> MUST"])
+    _git(cwd=tmp_path, args=["commit", "-m", "fix bcp14 Shall -> SHALL"])
 
     doctor_good = fake_claude.doctor_static(project_root=tmp_path)
     assert (
