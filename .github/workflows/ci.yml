@@ -87,6 +87,7 @@ jobs:
           - check-no-write-direct
           - check-pbt-coverage-pure-modules
           - check-coverage
+          - check-comment-no-historical-refs
     steps:
       # Per-step `if:` (not job-level) so each matrix entry still
       # reports a status check named `${{ matrix.target }}`. With
