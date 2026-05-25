@@ -177,6 +177,48 @@ def test_seed_main_writes_livespec_jsonc_at_project_root_on_success(
     assert "livespec" in config_path.read_text(encoding="utf-8")
 
 
+def test_seed_main_preserves_existing_livespec_jsonc_with_compat_metadata(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Pre-authored `.livespec.jsonc` is preserved verbatim across seed.
+
+    Per memo `mm-8xcq3s` / work-item `li-2qjqen`: seed wrapper used
+    to clobber any hand-authored content (compat blocks,
+    `implementation` key, `cross_repo_targets`, user comments) by
+    rewriting to a minimal `{"template": ...}` skeleton on every
+    invocation. Sibling-library bootstrap (e.g., livespec-runtime
+    PR #3) needs to pre-author `.livespec.jsonc` with compat
+    metadata before invoking `/livespec:seed`; the seed wrapper
+    MUST preserve the existing content verbatim.
+    """
+    project_root = tmp_path / "proj"
+    project_root.mkdir()
+    pre_authored = (
+        "// Pre-authored config with sibling-library scaffolding.\n"
+        "{\n"
+        '  "template": "livespec",\n'
+        '  "implementation": {"plugin": "livespec-impl-plaintext"},\n'
+        '  "livespec-impl-plaintext": {\n'
+        '    "format": "jsonl",\n'
+        '    "compat": {\n'
+        '      "livespec_core": ">=0.1.0,<1.0.0",\n'
+        '      "pinned": "master"\n'
+        "    }\n"
+        "  }\n"
+        "}\n"
+    )
+    config_path = project_root / ".livespec.jsonc"
+    _ = config_path.write_text(pre_authored, encoding="utf-8")
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
+    _ = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    assert (
+        config_path.read_text(encoding="utf-8") == pre_authored
+    ), "pre-authored .livespec.jsonc must be preserved verbatim across seed"
+
+
 def test_seed_main_writes_main_spec_files_at_their_paths(
     *,
     tmp_path: Path,
