@@ -1,23 +1,11 @@
 # justfile — livespec dev-tooling task runner.
 #
-# Authoritative source: python-skill-script-style-requirements.md
-# §"Enforcement suite — Canonical target list". All recipes
-# delegate to their underlying tool or to a dev-tooling check
-# script. Per,
 # `just` is the single source of truth for every dev-tooling
 # invocation; lefthook.yml and .github/workflows/*.yml only
-# call `just <target>`.
-#
-# Phase deferrals (per PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md):
-#   - Most check-* recipes delegate to dev-tooling/checks/<name>.py
-#     scripts authored in Phase 4. They will fail until Phase 4
-#     lands them; this is expected during Phases 1-3.
-#   - The lefthook hook is NOT installed into .git/hooks/ until
-#     `just bootstrap` is fleshed out at Phase 5 exit. Pre-commit
-#     `just check` invocations therefore do not block commits
-#     during Phases 2-4.
+# call `just <target>`. Authoritative source for the canonical
+# target list: python-skill-script-style-requirements.md
+# §"Enforcement suite — Canonical target list".
 
-# Default to listing targets when no recipe is invoked.
 default:
     @just --list
 
@@ -26,25 +14,21 @@ default:
 # ---------------------------------------------------------------
 
 bootstrap:
-    # v033 D5a Option-3 (cycle 61) + v034 step 3 (this commit):
-    # install the repo-tracked git-hook-wrapper.sh as
-    # .git/hooks/pre-commit, .git/hooks/pre-push, AND
-    # .git/hooks/commit-msg (v034 D3 replay-hook stage). The wrapper
-    # invokes `mise exec lefthook -- lefthook run <hook-name> "$@"`
-    # so the gate fires regardless of the user's shell config and
-    # the commit-msg stage receives the commit-message file path as
-    # the first argument (the value lefthook passes to {1}).
+    # Install the repo-tracked git-hook-wrapper.sh as pre-commit,
+    # pre-push, and commit-msg hooks. The wrapper invokes
+    # `mise exec lefthook -- lefthook run <hook-name> "$@"` so the
+    # gate fires regardless of the user's shell config and the
+    # commit-msg stage receives the commit-message file path as the
+    # first argument (the value lefthook passes to {1}).
     mkdir -p .git/hooks
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-commit
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-push
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/commit-msg
     chmod +x .git/hooks/pre-commit .git/hooks/pre-push .git/hooks/commit-msg
-    # v034 D4: notes refspec for `refs/notes/commits` advisory cache.
-    # Idempotent — git config --add tolerates duplicate values across
-    # repeated bootstrap invocations (the value is checked literally;
-    # if already present at this exact text, --add is a no-op for the
-    # config-loading semantics that consumers care about). Run only
-    # if the value isn't already present.
+    # Idempotent notes-refspec install for the `refs/notes/commits`
+    # advisory cache. `git config --add` tolerates duplicate values,
+    # but the literal-equality grep is the cheapest skip-path on
+    # repeated bootstrap invocations.
     git config --get-all remote.origin.fetch | grep -qx '+refs/notes/*:refs/notes/*' || git config --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
     just ensure-plugins
 
@@ -74,28 +58,10 @@ ensure-plugins:
 check:
     #!/usr/bin/env bash
     set -uo pipefail
-    # v033 D5a + D5b transition: aggregate is thinned to the
-    # currently-passing target set so lefthook can install at
-    # the end of D5a step 5. Each second-redo cycle that
-    # restores a check script (or fixes a config-tier failure)
-    # ALSO re-adds its target to this list in the same commit.
-    # By the end of the second redo the list returns to the
-    # full canonical-target enumeration (per
-    # python-skill-script-style-requirements.md §"Canonical
-    # target list"). Targets removed here but still defined in
-    # this file (recipes intact, just not aggregated) are: every
-    # `check-*`-backed dev-tooling/checks/*.py target except the
-    # four v033-D5a guardrails plus `check-coverage` (now
-    # rejoined post-cycle-117 — every measured first-party file
-    # is at 100% line+branch) and `check-tests-mirror-pairing`
-    # (rejoined post-Phase-7 sub-step 2 mini-track item M4 — the
-    # private-helper + pure-declaration exemptions are wired in)
-    # + `check-lint`/`check-format` (rejoined when ruff config
-    # stabilized) + `check-types` (rejoined post-li-xxjopf Step 3
-    # — every HKT-erosion error in returns-library bind chains is
-    # silenced by per-file pragma; the 3 stale-residual non-HKT
-    # firings are fixed at Step 3f; baseline is 0 errors).
-    # `check-prompts` and `e2e-test-claude-code-mock` rejoined at Phase 9.
+    # Canonical target list — see python-skill-script-style-requirements.md
+    # §"Canonical target list". Aggregator continues on failure
+    # (matches CI fail-fast: false) and exits non-zero with the
+    # failure list if any target failed.
     targets=(
         check-imports-architecture
         check-coverage
@@ -175,19 +141,19 @@ check-imports-architecture:
 check-coverage:
     #!/usr/bin/env bash
     set -uo pipefail
-    # Per v036 D1: when invoked under the pre-commit Red-mode-aware
-    # aggregate (`check-pre-commit` sets LIVESPEC_PRECOMMIT_RED_MODE
-    # if the staged tree matches Red mode), skip pytest entirely.
-    # The commit-msg replay hook (`check-red-green-replay`) is the
-    # load-bearing verifier in Red mode — it runs pytest on the
-    # staged test file and expects non-zero exit. Pre-push, CI,
-    # and manual `just check-coverage` invocations don't set the env
-    # var and run normally. Per v039 D1, `check-coverage` is the
-    # sole pytest-running aggregate target (check-tests was dropped
-    # because pytest already runs as a side effect of pytest --cov,
-    # so the standalone check-tests target was double-counting).
+    # Red-mode pre-commit skip: when the Red-mode-aware aggregate
+    # (`check-pre-commit`) sets LIVESPEC_PRECOMMIT_RED_MODE for the
+    # staged tree, skip pytest entirely — the commit-msg replay
+    # hook (`check-red-green-replay`) is the load-bearing verifier
+    # in Red mode (it runs pytest on the staged test file and
+    # expects non-zero exit). Pre-push, CI, and manual
+    # `just check-coverage` invocations don't set the env var and
+    # run normally. `check-coverage` is the sole pytest-running
+    # aggregate target — a separate `check-tests` would
+    # double-count pytest invocations that run as a side effect of
+    # `pytest --cov`.
     if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
-        echo ":: check-coverage skipped (v036 D1 Red-mode pre-commit; verified at Green amend)"
+        echo ":: check-coverage skipped (Red-mode pre-commit; verified at Green amend)"
         exit 0
     fi
     # pytest-cov defaults `--cov-config` to `.coveragerc`, which
@@ -197,29 +163,28 @@ check-coverage:
     # under `pytest --cov`. Without this, structlog (transitively
     # imported by livespec modules) is measured and inflates the
     # report with sub-100% files that aren't first-party code.
-    # `-n auto` (pytest-xdist) parallelizes the suite across cores.
-    # pytest-cov auto-runs `coverage combine` at session-end to merge
-    # the per-worker `.coverage.<host>.<pid>.<rand>` files into the
-    # single `.coverage` that `per_file_coverage.py` reads on the
-    # next line. Per v039 D2 wall-clock target: drops `check-coverage`
-    # from ~3.5min serial to under ~1min on a typical multi-core
-    # developer machine.
+    # `-n auto` (pytest-xdist) parallelizes the suite across cores;
+    # pytest-cov auto-runs `coverage combine` at session-end to
+    # merge the per-worker `.coverage.<host>.<pid>.<rand>` files
+    # into the single `.coverage` that `per_file_coverage.py` reads
+    # on the next line. Wall-clock budget on a typical multi-core
+    # machine: under ~1min (versus ~3.5min serial).
     uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
     uv run python -m livespec_dev_tooling.checks.per_file_coverage
 
-# Per v036 D1: Red-mode-aware pre-commit aggregate. Classifies the
-# staged tree shape via `git diff --cached --name-only --diff-filter=AM`
-# (broadened from `--diff-filter=A` per v037 D1 — modified test files
-# extending pre-existing mirror-pairs are valid Red commits too):
-# Red mode = exactly one test file added or modified under `tests/`
+# Red-mode-aware pre-commit aggregate. Classifies the staged tree
+# shape via `git diff --cached --name-only --diff-filter=AM`. Red
+# mode = exactly one test file added or modified under `tests/`
 # AND zero implementation files added or modified under
 # `.claude-plugin/scripts/livespec/**`,
-# `.claude-plugin/scripts/bin/**`, or `dev-tooling/checks/**`.
-# In Red mode, sets LIVESPEC_PRECOMMIT_RED_MODE=1 and runs `just
-# check`; check-coverage observes the env var and skips (commit-msg
-# replay hook is the load-bearing test-verifier in Red mode). In
-# all other modes (Green amend, test:/chore:/etc., non-Red
-# feat:/fix:), runs `just check` unconditionally.
+# `.claude-plugin/scripts/bin/**`, or `dev-tooling/checks/**`
+# (modified test files extending pre-existing mirror-pairs are
+# valid Red commits too, so the diff-filter includes M as well as
+# A). In Red mode, sets LIVESPEC_PRECOMMIT_RED_MODE=1 and runs
+# `just check`; check-coverage observes the env var and skips
+# (commit-msg replay hook is the load-bearing test-verifier in
+# Red mode). In all other modes (Green amend, test:/chore:/etc.,
+# non-Red feat:/fix:), runs `just check` unconditionally.
 #
 # Pre-push and CI keep invoking `just check` directly (no Red-mode
 # classifier; full suite always).
@@ -428,18 +393,18 @@ check-no-todo-registry:
 check-comment-line-anchors:
     uv run python -m livespec_dev_tooling.checks.comment_line_anchors
 
-# Per v039 D3: path-scoped fast-feedback variant of check-coverage.
-# Takes `--paths <impl_path> [<impl_path>...]` (repo-root-relative)
-# and applies the per-file 100% line+branch coverage gate to the
-# named impls only. Resolves each impl's mirror-paired test per
-# v033 D1, runs pytest --cov on the combined test set with full
-# instrumentation (path-scoped --cov=<dir> breaks under subprocess
-# instrumentation, so the recipe runs unfiltered --cov and applies
-# the per-file scoping at REPORT time), then applies
+# Path-scoped fast-feedback variant of check-coverage. Takes
+# `--paths <impl_path> [<impl_path>...]` (repo-root-relative) and
+# applies the per-file 100% line+branch coverage gate to the named
+# impls only. Resolves each impl's mirror-paired test, runs pytest
+# --cov on the combined test set with full instrumentation
+# (path-scoped --cov=<dir> breaks under subprocess instrumentation,
+# so the recipe runs unfiltered --cov and applies the per-file
+# scoping at REPORT time), then applies
 # `coverage report --include=<impl_paths> --fail-under=100`.
 # NOT in `just check` aggregate — interactive developer tool, not
-# per-commit gate. Wall-clock target: under 10 seconds for a typical
-# single-file pair. Used during the v039 D4 Red→Green authoring
+# per-commit gate. Wall-clock target: under 10 seconds for a
+# typical single-file pair. Used during the Red→Green authoring
 # loop to surface defensive-branch coverage gaps proactively,
 # BEFORE the Green amend triggers a multi-minute aggregate retry.
 check-coverage-incremental *args:
@@ -452,10 +417,10 @@ check-coverage-incremental *args:
 check-no-lloc-soft-warnings:
     uv run python -m livespec_dev_tooling.checks.no_lloc_soft_warnings
 
-# v034 D3 hard gate: trailer-based Red→Green replay verification.
-# Invoked by lefthook commit-msg stage (NOT pre-commit) — the hook
-# requires the commit-message file path as argv[1] to write trailers
-# via `git interpret-trailers --in-place`. NOT in `just check`
+# Trailer-based Red→Green replay verification (hard gate). Invoked
+# by lefthook commit-msg stage (NOT pre-commit) — the hook requires
+# the commit-message file path as argv[1] to write trailers via
+# `git interpret-trailers --in-place`. NOT in `just check`
 # aggregate (per-commit, not per-tree).
 #
 # Note on lefthook stage: the design is fundamentally `commit-msg`
@@ -464,30 +429,29 @@ check-no-lloc-soft-warnings:
 check-red-green-replay msg_path:
     uv run python -m livespec_dev_tooling.checks.red_green_replay {{msg_path}}
 
-# v033 D1 mirror-pairing: every covered .py under livespec/, bin/,
-# and dev-tooling/checks/ has a paired tests/<mirror>/test_<name>.py.
-# In `just check` aggregate (per v033 D1).
+# Mirror-pairing: every covered .py under livespec/, bin/, and
+# dev-tooling/checks/ has a paired tests/<mirror>/test_<name>.py.
+# In `just check` aggregate.
 check-tests-mirror-pairing:
     uv run python -m livespec_dev_tooling.checks.tests_mirror_pairing
 
-# v033 D3 commit-pair gate: every commit touching livespec/**, bin/**,
-# or dev-tooling/checks/** also touches tests/**. Lefthook pre-commit
+# Commit-pair gate: every commit touching livespec/**, bin/**, or
+# dev-tooling/checks/** also touches tests/**. Lefthook pre-commit
 # only; NOT in `just check` aggregate (per-commit, not per-tree).
 check-commit-pairs-source-and-test:
     uv run python -m livespec_dev_tooling.checks.commit_pairs_source_and_test
 
-# Phase 7 sub-step 2 mini-track item M1: ruff fix + format on staged
-# Python files BEFORE the rest of the pre-commit gate runs. Saves the
-# ~5min retry on auto-fixable lint trivia. Runs as lefthook
-# `00-lint-autofix-staged` step ahead of the existing checks.
-# Per SPECIFICATION/spec.md §"Developer-tooling layout" + contracts.md
-# §"Pre-commit step ordering" (post-v003). Non-blocking — unfixable
-# issues fall through to be caught by check-lint / check-format inside
-# the `just check` aggregate at the `02-check-pre-commit` step.
-# v034 D2-D3 interaction: autofix runs BEFORE the commit-msg replay
-# hook computes the Red trailer's test-file SHA-256 checksum, so the
-# recorded checksum reflects post-autofix bytes. Green amend stages
-# impl files only (not the test), preserving the
+# Ruff fix + format on staged Python files BEFORE the rest of the
+# pre-commit gate runs. Saves the ~5min retry on auto-fixable lint
+# trivia. Runs as lefthook `00-lint-autofix-staged` step ahead of
+# the existing checks. Non-blocking — unfixable issues fall through
+# to be caught by check-lint / check-format inside the `just check`
+# aggregate at the `02-check-pre-commit` step.
+#
+# Interaction with the commit-msg replay hook: autofix runs BEFORE
+# the hook computes the Red trailer's test-file SHA-256 checksum,
+# so the recorded checksum reflects post-autofix bytes. Green amend
+# stages impl files only (not the test), preserving the
 # test-file-byte-identical invariant.
 lint-autofix-staged:
     #!/usr/bin/env bash
