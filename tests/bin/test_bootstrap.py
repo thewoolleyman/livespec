@@ -1,10 +1,11 @@
 """Tests for .claude-plugin/scripts/bin/_bootstrap.py.
 
-Covers `_bootstrap.bootstrap()` per Phase 5 plan: both sides of the
+Covers `_bootstrap.bootstrap()`: both sides of the
 `sys.version_info < (3, 10)` check are exercised via
 `monkeypatch.setattr(sys, "version_info", ...)`. Pragma exclusions
-on `bin/*.py` are forbidden by v011 K3, so branch coverage of the
-exit-127 path is achieved exclusively through monkeypatching.
+on `bin/*.py` are forbidden by the coverage-thresholds spec, so
+branch coverage of the exit-127 path is achieved exclusively
+through monkeypatching.
 """
 
 from __future__ import annotations

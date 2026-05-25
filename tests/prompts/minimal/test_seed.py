@@ -7,12 +7,12 @@ asserts the fixture's declared properties hold for its
 `replayed_response`.
 
 Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
-semantic-property catalogue → prompts/seed.md", the
-bootstrap-minimum catalogue is two properties (`sub_specs: []`
-regardless of input per the v020 Q2 opt-out; single `files[]`
-entry at path `SPECIFICATION.md`). Phase 7 item (d)'s per-prompt
-regeneration cycle widens the catalogue and adds matching
-assertion functions; until then, fixtures may declare empty
+semantic-property catalogue → prompts/seed.md", the catalogue
+starts at two properties (`sub_specs: []` regardless of input
+per the minimal-template sub-spec opt-out; single `files[]`
+entry at path `SPECIFICATION.md`). Per-prompt regeneration
+cycles widen the catalogue and add matching assertion functions;
+until then, fixtures may declare empty
 `expected_semantic_properties` lists.
 """
 

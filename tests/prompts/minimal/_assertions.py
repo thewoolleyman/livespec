@@ -3,8 +3,8 @@
 Maps each property name from a fixture's
 `expected_semantic_properties` array to a function that
 asserts the property holds for the fixture's `replayed_response`.
-Per SPECIFICATION/contracts.md §"Prompt-QA harness contract"
-(v014), the registry is populated via explicit imports per the
+Per SPECIFICATION/contracts.md §"Prompt-QA harness contract",
+the registry is populated via explicit imports per the
 static-enumeration discipline (no `glob+importlib` dynamic
 discovery). Each assertion function MUST accept keyword-only
 arguments `*, replayed_response: object, input_context: object`
@@ -12,9 +12,8 @@ and raise `AssertionError` on any property violation.
 
 Property names match
 SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
-semantic-property catalogue". Phase 7 item (d) per-prompt
-regeneration cycles widen this registry alongside the catalogue
-per the in-line widening rule (Plan §3543-3550).
+semantic-property catalogue". Per-prompt regeneration cycles
+widen this registry alongside the catalogue.
 """
 
 from __future__ import annotations
@@ -35,7 +34,7 @@ def _sub_specs_always_empty(
 
     Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
     semantic-property catalogue → prompts/seed.md", the minimal
-    template implements the v020 Q2 opt-out — sub_specs MUST be
+    template implements the sub-spec opt-out — sub_specs MUST be
     empty regardless of any pre-seed dialogue input.
     """
     del input_context
@@ -44,7 +43,7 @@ def _sub_specs_always_empty(
     if len(sub_specs) != 0:
         raise AssertionError(
             f"minimal-template seed replayed_response.sub_specs "
-            f"MUST be empty per the v020 Q2 opt-out, but has "
+            f"MUST be empty per the sub-spec opt-out, but has "
             f"{len(sub_specs)} entries",
         )
 
@@ -136,7 +135,7 @@ def _decisions_reference_pending_proposals(
     """Every `replayed_response.decisions[].proposal_topic` references an actually-pending proposal.
 
     Same shape as livespec-template `_decisions_reference_pending_proposals`;
-    per-template registry independence per v014 fixture pattern.
+    per-template registry independence is the fixture-pattern invariant.
     """
     ctx = cast(dict[str, Any], input_context)
     payload = cast(dict[str, Any], replayed_response)

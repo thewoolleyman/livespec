@@ -1,19 +1,19 @@
 """Prompt-QA harness shared by every per-template test module.
 
-Per SPECIFICATION/contracts.md §"Prompt-QA harness contract"
-(v014). The harness is a dedicated test-infrastructure module
-(scope-distinct from the v014 N9 e2e tier at tests/e2e/) that
-performs no LLM round-trip and no wrapper invocation. It loads
-a fixture file, validates the fixture format, validates the
-fixture's `replayed_response` against the named wire-contract
-schema, and dispatches each name in the fixture's
+Per SPECIFICATION/contracts.md §"Prompt-QA harness contract".
+The harness is a dedicated test-infrastructure module
+(scope-distinct from the e2e tier at tests/e2e/) that performs
+no LLM round-trip and no wrapper invocation. It loads a fixture
+file, validates the fixture format, validates the fixture's
+`replayed_response` against the named wire-contract schema, and
+dispatches each name in the fixture's
 `expected_semantic_properties` array to a per-template
 `ASSERTIONS` dict supplied by the calling test module.
 
 Coverage scope: this module lives under `tests/prompts/` which
 is OUT of the unit-tier coverage source list per
-SPECIFICATION/spec.md §"Testing approach" (v014); the per-file
-100% line+branch gate does not extend here. The harness's
+SPECIFICATION/spec.md §"Testing approach"; the per-file 100%
+line+branch gate does not extend here. The harness's
 correctness is exercised functionally by the per-template
 prompt-QA tests that consume it.
 """

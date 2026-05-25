@@ -1,19 +1,16 @@
-"""Phase-3 exit-criterion round-trip integration test.
+"""End-to-end round-trip integration test for the six wrappers.
 
-Per Plan §"Exit criterion (narrow Phase-3 gate)"
-and / §"`propose-change`" / §"`critique`"
-/ §"`revise`" / §"`prune-history`" / §"`doctor`": this module
-exercises the full Phase-3 mechanically-achievable round-trip
+This module exercises the full mechanically-achievable round-trip
 in one pytest run by invoking each shebang wrapper as a real
-subprocess (mirroring v032 cycle 30 commit 1b8e81a's pattern).
+subprocess.
 
 Steps pinned:
 
 1. seed → `.livespec.jsonc` + main spec tree + auto-captured
    seed.md / seed-revision.md beneath history/v001/, plus
    skill-owned `<spec-root>/proposed_changes/README.md`. Seed's
-   own post-step doctor (cycle 145) runs in-band and exits 0
-   on the doctor-clean tree.
+   own post-step doctor runs in-band and exits 0 on the
+   doctor-clean tree.
 2. propose-change against MAIN tree → working
    `<spec-root>/proposed_changes/<topic>.md` exists.
 3. critique → delegates to propose-change with `-critique`
@@ -23,8 +20,8 @@ Steps pinned:
    from `<spec-root>/proposed_changes/` into
    `<spec-root>/history/v002/proposed_changes/`, and writes
    the paired revision files for each.
-5. prune-history → Phase-3 stub, returns exit 0 (full prune
-   mechanic is Phase-7 scope).
+5. prune-history → exit 0 (stub mechanic at this composition
+   tier; the full prune mechanic has its own unit-test coverage).
 6. doctor_static → exit 0 with every finding `status: "pass"`
    on the final round-trip state.
 
@@ -77,33 +74,29 @@ def _run_wrapper(
 
 
 def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: PLR0915
-    """Full Phase-3 round-trip: seed -> propose-change -> critique -> revise -> prune-history -> doctor.
+    """Full round-trip: seed -> propose-change -> critique -> revise -> prune-history -> doctor.
 
-    Pins the composed behavior the cycles 65-145 ladder authored
-    incrementally. Per Plan §"Exit criterion (narrow Phase-3
-    gate)": the gate fires when all five
-    sub-commands compose into a clean round-trip exiting at
-    each stage with the documented exit code, and the final
-    doctor static check sees zero fail-status findings.
+    Pins the composed behavior. The round-trip succeeds when all
+    sub-commands compose into a clean run exiting at each stage
+    with the documented exit code, and the final doctor static
+    check sees zero fail-status findings.
 
-    Phase-3 minimum scope: single main-spec tree, no sub-spec
-    trees (sub-spec routing was the v020 Q3 ratchet that v032
-    cycle 30 carried; it lands in Phase 7 hardening for v033
-    per the briefing's "Phase-3 minimum subset" framing). Seed's
-    payload here exercises only the main `SPECIFICATION/` tree.
+    Scope: single main-spec tree, no sub-spec trees. Seed's
+    payload here exercises only the main `SPECIFICATION/` tree;
+    sub-spec routing is exercised by dedicated unit tests.
 
-    PLR0915 noqa rationale (cycle 4d, 2026-05-02): integration
-    tests of multi-step round-trips inherently exceed ruff's
-    default 30-statement budget — this test has 49 statements
-    across 6 sequential sub-command invocations + their
-    assertions. Extracting each step into a helper function would
-    obscure the round-trip's sequential reading order without
-    materially improving testability (the steps share state via
-    the shared `tmp_path` filesystem and are tested as a
-    composed pipeline, not individually). The noqa is targeted
-    to this single function rather than a tests/**.py-wide
-    PLR0915 exemption (no other test exceeds the 30-statement
-    threshold; widening would mask future test bloat).
+    PLR0915 noqa rationale: integration tests of multi-step
+    round-trips inherently exceed ruff's default 30-statement
+    budget — this test has 49 statements across 6 sequential
+    sub-command invocations + their assertions. Extracting each
+    step into a helper function would obscure the round-trip's
+    sequential reading order without materially improving
+    testability (the steps share state via the shared `tmp_path`
+    filesystem and are tested as a composed pipeline, not
+    individually). The noqa is targeted to this single function
+    rather than a tests/**.py-wide PLR0915 exemption (no other
+    test exceeds the 30-statement threshold; widening would mask
+    future test bloat).
     """
     project_root = tmp_path
 

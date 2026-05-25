@@ -7,13 +7,13 @@ asserts the fixture's declared properties hold for its
 `replayed_response`.
 
 Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-semantic-property catalogue → prompts/seed.md", the bootstrap-
-minimum catalogue is two properties (headings derived from
-intent nouns; v020 Q2 sub-spec-emission question is asked).
-Phase 7 item (c)'s per-prompt regeneration cycle widens the
-catalogue and adds matching assertion functions; until then,
-fixtures may declare empty `expected_semantic_properties` lists
-to assert schema-conformance only.
+semantic-property catalogue → prompts/seed.md", the catalogue
+starts at two properties (headings derived from intent nouns;
+sub-spec-emission question is asked). Per-prompt regeneration
+cycles widen the catalogue and add matching assertion functions;
+until then, fixtures may declare empty
+`expected_semantic_properties` lists to assert schema-conformance
+only.
 """
 
 from __future__ import annotations
