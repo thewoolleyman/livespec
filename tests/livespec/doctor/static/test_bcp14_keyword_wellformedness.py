@@ -1,9 +1,9 @@
 """Tests for livespec.doctor.static.bcp14_keyword_wellformedness.
 
-Per Plan Phase 7 sub-step 7.b +: the `bcp14-keyword-wellformedness` check
+The `bcp14-keyword-wellformedness` check
 detects malformed BCP 14 (RFC 2119 + RFC 8174) normative keyword
 usage in spec-text-bearing markdown files. This is one of four
-remaining doctor static checks landing at Phase 7 (alongside
+remaining doctor static checks landing at the per-prompt regeneration (alongside
 `out-of-band-edits`, `gherkin-blank-line-format`, and
 `anchor-reference-resolution`).
 
@@ -16,7 +16,7 @@ minimum scope authored here is the mixed-case standalone-word
 rule. Sentence-level context-dependent checks (lowercase `must`
 in normative passages) move to the LLM-driven phase per.
 
-Per v018 Q1: this check applies to all spec-text-bearing trees
+This check applies to all spec-text-bearing trees
 (main + each sub-spec). The check walks `<spec_root>/*.md`
 top-level files only — it does NOT recurse into `history/`,
 `proposed_changes/`, or `templates/` subtrees (those are
@@ -49,7 +49,6 @@ Detection rules (v1 minimum scope):
     untouched — the rule only flags the BCP 14 keywords
     themselves.
 
-Cycle 7.b lands the Red→Green pair for this check.
 """
 
 from __future__ import annotations
@@ -516,7 +515,7 @@ def test_run_passes_for_minimal_template_sub_spec_layout(
 ) -> None:
     """run(ctx) handles the minimal sub-spec layout (well-formed text).
 
-    Per v018 Q1: this check applies to sub-spec trees too. The
+    This check applies to sub-spec trees too. The
     minimal sub-spec under `<main_spec_root>/templates/minimal/`
     uses the multi-file livespec layout per
     SPECIFICATION/templates/minimal/constraints.md

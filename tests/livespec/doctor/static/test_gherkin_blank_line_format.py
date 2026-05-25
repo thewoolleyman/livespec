@@ -1,6 +1,6 @@
 """Tests for livespec.doctor.static.gherkin_blank_line_format.
 
-Per Plan Phase 7 sub-step 7.c +: the `gherkin-blank-line-format` check
+The `gherkin-blank-line-format` check
 verifies that fenced ` ```gherkin ` blocks in spec-text-bearing
 markdown files are surrounded by blank lines (one blank line
 above the opening fence, one blank line below the closing
@@ -15,7 +15,7 @@ avoids false-positive failures for spec content that has no
 scenario-style narrative. When `SPECIFICATION.md` does contain
 gherkin blocks, the check applies normally.
 
-Per v018 Q1: applies to all spec-text-bearing trees (main +
+Applies to all spec-text-bearing trees (main +
 each sub-spec). For multi-file livespec-shape spec_roots, the
 check walks `<spec_root>/*.md` top-level files only — it does
 NOT recurse into `history/`, `proposed_changes/`, or
@@ -44,7 +44,6 @@ fenced-block detection algorithm):
     circuits on the first hit so the user sees one offense
     at a time.
 
-Cycle 7.c lands the Red→Green pair for this check.
 """
 
 from __future__ import annotations

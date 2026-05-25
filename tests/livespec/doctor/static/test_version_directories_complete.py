@@ -1,6 +1,6 @@
 """Tests for livespec.doctor.static.version_directories_complete.
 
-Per Plan Phase 3 +: this is the fifth of the eight Phase-3
+ this is the fifth of the eight Phase-3
 minimum-subset doctor checks. It asserts that every
 `<spec_root>/history/vNNN/` directory contains its expected
 sub-structure (the main-file + the `proposed_changes/`
@@ -9,10 +9,10 @@ subdirectory).
 Phase-3 minimum scope: pass arm. The check verifies that every
 existing `history/v*/` directory has a `proposed_changes/`
 subdirectory. The "main-file" presence (template-specific) is
-template-aware and lands at Phase 7. Cycle 138 lands the success
+template-aware and lands at the per-prompt regeneration.  lands the success
 arm; subsequent cycles add the missing-subdirectory failure arm.
 
-Phase 7 prereq.B widens the rule with the pruned-marker
+the per-prompt regeneration prereq.B widens the rule with the pruned-marker
 exemption per SPECIFICATION/v013 spec.md §"Pruning history":
 a v-directory whose contents are EXACTLY `PRUNED_HISTORY.json`
 (single file at the directory root, no subdirs, no other
@@ -78,7 +78,7 @@ def test_version_directories_complete_run_skips_non_version_entries_in_history(
     """run(ctx) ignores non-`v*` entries (files + dirs) under history/.
 
     Per the seed wrapper's per-tree skill-owned `history/README.md`
-    directory-description (Plan Phase 6, 3174-3175,
+    directory-description (Plan , 3174-3175,
     3194-3195), the seeded `<spec_root>/history/` directory contains
     a `README.md` file alongside the `vNNN/` version directories.
     The check must walk only `v*` directories when verifying the

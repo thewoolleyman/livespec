@@ -1,12 +1,12 @@
 """Tests for livespec.doctor.static.revision_to_proposed_change_pairing.
 
-Per Plan Phase 3 +: this is the seventh of the eight Phase-3
+ this is the seventh of the eight Phase-3
 minimum-subset doctor checks. It asserts that every
 `history/vNNN/proposed_changes/<topic>.md` has a paired
 `<topic>-revision.md` in the same directory (the canonical
 revise output shape per).
 
-Cycle 140 lands the pass arm for a well-paired layout.
+ lands the pass arm for a well-paired layout.
 The fail arm (orphan proposed-change with no revision) lands
 in a subsequent cycle.
 """
