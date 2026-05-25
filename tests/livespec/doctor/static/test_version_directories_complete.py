@@ -30,11 +30,8 @@ from pathlib import Path
 
 from livespec.context import DoctorContext
 from livespec.doctor.static import version_directories_complete
-from livespec.errors import PreconditionError
 from livespec.schemas.dataclasses.finding import Finding
 from returns.io import IOSuccess
-from returns.result import Failure
-from returns.unsafe import unsafe_perform_io
 
 __all__: list[str] = []
 
@@ -236,17 +233,16 @@ def test_version_directories_complete_run_fails_for_standard_v_dir_missing_propo
     *,
     tmp_path: Path,
 ) -> None:
-    """run(ctx) returns IOFailure(PreconditionError) for non-marker v-dir without proposed_changes/.
+    """run(ctx) returns IOSuccess(fail-Finding) for non-marker v-dir without proposed_changes/.
 
-    Pins the existing failure-arm behavior: a v-dir that does NOT
-    carry `PRUNED_HISTORY.json` (so the pruned-marker exemption
-    does NOT apply) and ALSO lacks the `proposed_changes/` subdir
-    fails the standard rule. The IOFailure(PreconditionError)
-    track is the existing behavior — the orchestrator's
-    pattern-match treats this as a check-level error rather than
-    a fail-Finding. This test pins that behavior so the
-    pruned-marker widening doesn't accidentally swallow the
-    non-marker missing-proposed_changes failure into a pass.
+    Per li-uh5ht2: a v-dir that does NOT carry `PRUNED_HISTORY.json`
+    (so the pruned-marker exemption does NOT apply) and ALSO lacks
+    the `proposed_changes/` subdir yields a clean IOSuccess(fail-
+    Finding) naming the offending v-dir. Before li-uh5ht2 this
+    branch surfaced as IOFailure(PreconditionError) via the
+    `fs.list_dir` OSError, which appeared in the user-facing output
+    as a cryptic "check process error" wrapper instead of an
+    actionable Finding.
     """
     project_root = tmp_path / "project"
     project_root.mkdir()
@@ -254,14 +250,15 @@ def test_version_directories_complete_run_fails_for_standard_v_dir_missing_propo
     spec_root.mkdir()
     history_path = spec_root / "history"
     history_path.mkdir()
-    (history_path / "v001").mkdir()
+    v001 = history_path / "v001"
+    v001.mkdir()
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = version_directories_complete.run(ctx=ctx)
-    unwrapped = unsafe_perform_io(result)
-    match unwrapped:
-        case Failure(PreconditionError()):
-            pass
-        case _:
-            raise AssertionError(
-                f"expected IOFailure(PreconditionError), got {result!r}",
-            )
+    expected = Finding(
+        check_id="doctor-version-directories-complete",
+        status="fail",
+        message="history/v001/ is missing required subdir proposed_changes/",
+        path=str(v001),
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert version_directories_complete.run(ctx=ctx) == IOSuccess(expected)
