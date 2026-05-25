@@ -1,9 +1,7 @@
 """Tests for livespec.commands.revise.
 
-Per and Plan Phase 3
-: revise is minimum-viable per v019 Q1 —
-validate `--revise-json` payload, process per-proposal
-`decisions[]` in payload order, write paired
+Minimum-viable scope: validate `--revise-json` payload, process
+per-proposal `decisions[]` in payload order, write paired
 `<stem>-revision.md`, move processed proposed-change files into
 `history/vNNN/proposed_changes/`, cut new `history/vNNN/`.
 """
@@ -593,18 +591,16 @@ def test_revise_main_writes_full_5key_front_matter_for_reject_decision(
     tmp_path: Path,
     monkeypatch: object,
 ) -> None:
-    """The revision-md front-matter has all 5 required keys per v038/v011 spec.
+    """The revision-md front-matter has all 5 required keys per spec.
 
     Per `SPECIFICATION/spec.md` §"Proposed-change and revision file
     formats" §"Revision file format" + `revision_front_matter.schema.json`:
-    `proposal`, `decision`, `revised_at`, `author_human`, `author_llm`.
-    Drives the widening of `_compose_revision_body` from the
-    Phase-3-minimum 2-key shape (proposal + decision) to the full
-    5-key shape. The `author_human` value is composed via
-    `io.git.get_git_user` (cycle 5.c.1 landed at `9547caa`); the
-    `author_llm` is resolved per the unified 4-step precedence
-    via a new `_resolve_author` helper analogous to
-    propose_change/critique. The `revised_at` is computed via
+    `proposal`, `decision`, `revised_at`, `author_human`,
+    `author_llm`. The `author_human` value is composed via
+    `io.git.get_git_user`; the `author_llm` is resolved per the
+    unified 4-step precedence via a `_resolve_author` helper
+    analogous to propose_change/critique. The `revised_at` is
+    computed via
     `datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")`
     matching propose_change's `created_at` shape.
     """
@@ -1005,9 +1001,9 @@ def test_revise_main_emits_rejection_notes_section_for_reject_decision(
     Per `SPECIFICATION/spec.md` §"Revision file format" item (5):
     `## Rejection Notes` is REQUIRED when `decision: reject`;
     explains what would need to change about the proposal for it
-    to be acceptable in a future revision. This is the
-    rejection-flow audit-trail richness Plan Phase 7
-    mandates ("rejection flow preserving audit trail").
+    to be acceptable in a future revision. This pins the
+    rejection-flow audit-trail richness the spec mandates
+    ("rejection flow preserving audit trail").
     """
     import pytest
 
@@ -1057,13 +1053,13 @@ def test_revise_main_snapshots_working_spec_files_into_history_vnnn(
     *,
     tmp_path: Path,
 ) -> None:
-    """Per v011 Proposal 3 item d, every successful revise snapshots
+    """Per the snapshot-on-every-successful-revise invariant, every revise snapshots
     every spec-root file byte-identically into `<spec-target>/history/vNNN/`.
 
     Subdirectories at the spec-root (`history/`, `proposed_changes/`,
     `templates/`) are NOT snapshotted — only the template-declared spec
     files (immediate file children of `<spec-target>/`). Implements
-    v038 D1 Statement B's "version cut on every successful revise"
+    the "version cut on every successful revise" rule
     contract: the new `history/vNNN/` carries byte-identical copies of
     the working-spec files as they stand post-revise.
     """
@@ -1118,7 +1114,7 @@ def test_revise_main_snapshot_captures_post_resulting_files_content_for_accept_d
     *,
     tmp_path: Path,
 ) -> None:
-    """Per v011 Proposal 3 item d, snapshot reflects post-update content.
+    """Per the snapshot-on-every-successful-revise invariant, snapshot reflects post-update content.
 
     For an `accept` decision, `resulting_files` materialize into the
     working spec BEFORE the snapshot is taken; the snapshot's `spec.md`
@@ -1169,7 +1165,7 @@ def test_revise_main_returns_precondition_exit_code_when_proposed_changes_only_h
     *,
     tmp_path: Path,
 ) -> None:
-    """Per v011 Proposal 3 item a, revise fails on README-only proposed_changes/.
+    """Per the no-empty-revise-batch invariant, revise fails on README-only proposed_changes/.
 
     When `<spec-target>/proposed_changes/` contains only the
     skill-owned `README.md` (zero in-flight proposal files), revise
@@ -1216,7 +1212,7 @@ def test_revise_main_returns_precondition_exit_code_when_proposed_changes_comple
     *,
     tmp_path: Path,
 ) -> None:
-    """Per v011 Proposal 3 item a, revise fails on completely empty proposed_changes/.
+    """Per the no-empty-revise-batch invariant, revise fails on completely empty proposed_changes/.
 
     Variant of the README-only test: `proposed_changes/` exists
     but has zero entries (not even `README.md`). Same exit-3
