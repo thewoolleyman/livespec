@@ -24,26 +24,31 @@ covered by their own checks; the per-version snapshots inherit
 the well-formedness via the seed/revise byte-identical write
 discipline).
 
-Detection rules (v1 minimum scope):
-  - Mixed-case BCP 14 modal-verb keywords as standalone words:
-    `Must`, `Should`, `May`, `Shall` (capitalized first letter,
-    lowercase remainder) flag as malformed.
+Detection rules (post-li-mrtoei narrowing):
+  - Only mixed-case `Shall` as a standalone word flags as
+    malformed. `Shall` is vanishingly rare in descriptive
+    English prose, so sentence-initial occurrences are
+    overwhelmingly likely to be botched normative usage.
+  - The other three modal-verb keywords (`Must`, `Should`,
+    `May`) were dropped from the static set per li-mrtoei
+    because their sentence-initial forms overlap with
+    descriptive English prose (e.g., "depends_on — array of
+    id strings. May be empty."). Their case-discipline
+    detection moves to the LLM-driven phase, which can
+    disambiguate normative from descriptive usage from
+    sentence context.
   - Synonymous adjective keywords (`Required`, `Recommended`,
-    `Optional`) are NOT flagged by the static check. They are
-    common English words (column headers like
-    `| Required flags |`, descriptive prose like `Deployment
-    is Recommended`) that risk significant false-positive
-    rates without sentence-level context. Their case-
-    discipline detection moves to the LLM-driven phase per.
-  - Token-boundary respecting: `Mustang`, `Bust`, `Maybe`,
-    `Shallow` etc. do NOT trip the rule (must be a complete
-    word per `\\b<keyword>\\b`).
+    `Optional`) are NOT flagged by the static check (same
+    common-English-overlap reason).
+  - Token-boundary respecting: `Shallow`, `Marshall` etc. do
+    NOT trip the rule (must be a complete word per
+    `\\b<keyword>\\b`).
   - Full-uppercase forms (`MUST`, `SHALL NOT`) are well-formed
     and do not trip.
-  - Full-lowercase forms (`must`, `should`) are NOT detected
-    by the static check (deferred to the LLM-driven phase);
-    spec text using lowercase `must` in descriptive prose
-    passes.
+  - Full-lowercase forms (`must`, `should`, `shall`) are NOT
+    detected by the static check (deferred to the LLM-driven
+    phase); spec text using lowercase `must` in descriptive
+    prose passes.
   - Non-keyword embedded uppercase words (`GitHub MUST
     validate`) leave the `MUST` intact and the `GitHub`
     untouched — the rule only flags the BCP 14 keywords
@@ -227,18 +232,18 @@ def test_run_returns_pass_for_token_boundary_non_keyword_words(
     assert bcp14_keyword_wellformedness.run(ctx=ctx) == IOSuccess(expected)
 
 
-def test_run_returns_fail_for_mixed_case_must(
+def test_run_returns_pass_for_mixed_case_must_descriptive_prose(
     *,
     tmp_path: Path,
 ) -> None:
-    """run(ctx) returns IOSuccess(fail-Finding) for mixed-case `Must`.
+    """run(ctx) does NOT flag mixed-case `Must` (deferred to LLM phase per li-mrtoei).
 
-    Fail-arm seed: the spec text contains a standalone-word
-    `Must` (capital M, lowercase rest) in a clearly normative
-    context. Per
-    `bcp14-keyword-wellformedness`: mixed-case BCP 14 keywords
-    as standalone words are malformed. The check yields a
-    fail-Finding naming the offending file and line.
+    Pass-arm seed: post-li-mrtoei, mixed-case `Must` is NOT
+    flagged at the static layer because sentence-initial
+    `Must` overlaps with descriptive English usage. Case-
+    discipline for `Must` moves to the LLM-driven phase,
+    which can disambiguate normative from descriptive intent
+    from sentence context.
     """
     project_root = tmp_path / "project"
     project_root.mkdir()
@@ -248,28 +253,26 @@ def test_run_returns_fail_for_mixed_case_must(
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     expected = Finding(
         check_id="doctor-bcp14-keyword-wellformedness",
-        status="fail",
-        message=(
-            "spec.md:3 mixed-case BCP 14 keyword 'Must' "
-            "(use uppercase 'MUST' for normative usage)"
-        ),
-        path=str(spec_root / "spec.md"),
-        line=3,
+        status="pass",
+        message="BCP 14 normative keywords are well-formed",
+        path=None,
+        line=None,
         spec_root=str(spec_root),
     )
     assert bcp14_keyword_wellformedness.run(ctx=ctx) == IOSuccess(expected)
 
 
-def test_run_returns_fail_for_mixed_case_should(
+def test_run_returns_pass_for_mixed_case_should_descriptive_prose(
     *,
     tmp_path: Path,
 ) -> None:
-    """run(ctx) returns IOSuccess(fail-Finding) for mixed-case `Should`.
+    """run(ctx) does NOT flag mixed-case `Should` (deferred to LLM phase per li-mrtoei).
 
-    Fail-arm seed: pinning a second mixed-case keyword (`Should`)
-    to confirm the keyword set is enumerated correctly. The
-    check yields the canonical fail-Finding shape pointing at
-    the offending file + line.
+    Pass-arm seed: post-li-mrtoei, mixed-case `Should` is NOT
+    flagged at the static layer because sentence-initial
+    `Should` overlaps with descriptive English usage
+    (e.g., "Should the caller need…"). Case-discipline for
+    `Should` moves to the LLM-driven phase.
     """
     project_root = tmp_path / "project"
     project_root.mkdir()
@@ -279,13 +282,40 @@ def test_run_returns_fail_for_mixed_case_should(
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     expected = Finding(
         check_id="doctor-bcp14-keyword-wellformedness",
-        status="fail",
-        message=(
-            "spec.md:3 mixed-case BCP 14 keyword 'Should' "
-            "(use uppercase 'SHOULD' for normative usage)"
-        ),
-        path=str(spec_root / "spec.md"),
-        line=3,
+        status="pass",
+        message="BCP 14 normative keywords are well-formed",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert bcp14_keyword_wellformedness.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_run_returns_pass_for_mixed_case_may_descriptive_prose(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) does NOT flag mixed-case `May` (li-mrtoei root cause).
+
+    Pass-arm seed: this is the exact descriptive-prose pattern
+    from the li-mrtoei bug report — `depends_on — array of id
+    strings. May be empty.` The sentence describes a permitted
+    data shape, not normative force on an implementer. Forcing
+    `May` → `MAY` would be wrong. Post-li-mrtoei, mixed-case
+    `May` is not flagged at the static layer.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    spec_root = project_root / "SPECIFICATION"
+    spec_text = "# Contracts\n" "\n" "- depends_on — array of id strings. May be empty.\n"
+    _seed_spec_root(spec_root=spec_root, files={"contracts.md": spec_text})
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = Finding(
+        check_id="doctor-bcp14-keyword-wellformedness",
+        status="pass",
+        message="BCP 14 normative keywords are well-formed",
+        path=None,
+        line=None,
         spec_root=str(spec_root),
     )
     assert bcp14_keyword_wellformedness.run(ctx=ctx) == IOSuccess(expected)
@@ -298,7 +328,7 @@ def test_run_returns_fail_first_violation_when_multiple_files_offend(
     """run(ctx) returns IOSuccess(fail-Finding) for the first offending file.
 
     Multi-file fixture: `contracts.md` is well-formed,
-    `spec.md` has a mixed-case `May`. Files are walked in
+    `spec.md` has a mixed-case `Shall`. Files are walked in
     sorted order so the deterministic first violation is the
     one the check surfaces. This pins the multi-file walk
     behavior and the sorted-order discriminator.
@@ -310,7 +340,7 @@ def test_run_returns_fail_first_violation_when_multiple_files_offend(
         spec_root=spec_root,
         files={
             "contracts.md": "# Contracts\n\nThe API MUST be stable.\n",
-            "spec.md": "# Spec\n\nClients May retry on failure.\n",
+            "spec.md": "# Spec\n\nClients Shall retry on failure.\n",
         },
     )
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
@@ -318,7 +348,8 @@ def test_run_returns_fail_first_violation_when_multiple_files_offend(
         check_id="doctor-bcp14-keyword-wellformedness",
         status="fail",
         message=(
-            "spec.md:3 mixed-case BCP 14 keyword 'May' " "(use uppercase 'MAY' for normative usage)"
+            "spec.md:3 mixed-case BCP 14 keyword 'Shall' "
+            "(use uppercase 'SHALL' for normative usage)"
         ),
         path=str(spec_root / "spec.md"),
         line=3,
@@ -334,13 +365,13 @@ def test_run_preserves_first_violation_when_later_file_also_offends(
     """run(ctx) preserves the first-violation Finding when a later file also offends.
 
     First-violation-precedence fixture: BOTH `contracts.md`
-    AND `spec.md` carry mixed-case BCP 14 violations
-    (`Should` and `Must`). Files are walked sorted; the first
-    violation found (in `contracts.md`) MUST remain the
-    surfaced Finding even though `spec.md` is scanned later.
-    Pins the accumulator-precedence rule against the case
-    where a naive last-write-wins fold would surface
-    `spec.md`'s violation instead.
+    AND `spec.md` carry mixed-case `Shall` violations. Files
+    are walked sorted; the first violation found (in
+    `contracts.md`) MUST remain the surfaced Finding even
+    though `spec.md` is scanned later. Pins the accumulator-
+    precedence rule against the case where a naive
+    last-write-wins fold would surface `spec.md`'s violation
+    instead.
     """
     project_root = tmp_path / "project"
     project_root.mkdir()
@@ -348,8 +379,8 @@ def test_run_preserves_first_violation_when_later_file_also_offends(
     _seed_spec_root(
         spec_root=spec_root,
         files={
-            "contracts.md": "# Contracts\n\nThe API Should be stable.\n",
-            "spec.md": "# Spec\n\nClients Must retry on failure.\n",
+            "contracts.md": "# Contracts\n\nThe API Shall be stable.\n",
+            "spec.md": "# Spec\n\nClients Shall retry on failure.\n",
         },
     )
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
@@ -357,8 +388,8 @@ def test_run_preserves_first_violation_when_later_file_also_offends(
         check_id="doctor-bcp14-keyword-wellformedness",
         status="fail",
         message=(
-            "contracts.md:3 mixed-case BCP 14 keyword 'Should' "
-            "(use uppercase 'SHOULD' for normative usage)"
+            "contracts.md:3 mixed-case BCP 14 keyword 'Shall' "
+            "(use uppercase 'SHALL' for normative usage)"
         ),
         path=str(spec_root / "contracts.md"),
         line=3,
@@ -377,7 +408,7 @@ def test_run_only_walks_top_level_md_files(
     (, generalized to every
     doctor static check that walks `<spec-root>/`), the BCP14
     check inspects only top-level `<spec_root>/*.md` files. A
-    `Must`-violation seeded inside `<spec_root>/history/v001/
+    `Shall`-violation seeded inside `<spec_root>/history/v001/
     spec.md` MUST NOT trip the check (history snapshots are
     byte-identical copies that inherit the live spec's
     well-formedness via the seed/revise discipline).
@@ -392,13 +423,13 @@ def test_run_only_walks_top_level_md_files(
     history_v001 = spec_root / "history" / "v001"
     history_v001.mkdir(parents=True)
     _ = (history_v001 / "spec.md").write_text(
-        "# Spec\n\nThe API Must be stable.\n",
+        "# Spec\n\nThe API Shall be stable.\n",
         encoding="utf-8",
     )
     proposed_changes = spec_root / "proposed_changes"
     proposed_changes.mkdir()
     _ = (proposed_changes / "draft.md").write_text(
-        "# Draft\n\nClients Should retry.\n",
+        "# Draft\n\nClients Shall retry.\n",
         encoding="utf-8",
     )
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)

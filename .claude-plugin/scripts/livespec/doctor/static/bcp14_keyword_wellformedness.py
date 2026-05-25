@@ -29,17 +29,25 @@ inherit the live spec's well-formedness via the seed/revise
 byte-identical write discipline.
 
 Detection rules:
-- Mixed-case BCP 14 modal-verb keywords as standalone words
-  flag as malformed: `Must`, `Should`, `May`, `Shall`. The
-  rule is `\\b<keyword>\\b` so token-boundary non-keywords
-  (`Mustang`, `Maybe`, etc.) do NOT trip.
+- Mixed-case `Shall` as a standalone word flags as malformed.
+  `Shall` is vanishingly rare in descriptive English prose, so
+  any sentence-initial occurrence is overwhelmingly likely to
+  be a botched normative usage. The rule is `\\b<keyword>\\b`
+  so token-boundary non-keywords (`Shallow`, `Marshall`, etc.)
+  do NOT trip.
+- The other three modal-verb keywords (`Must`, `Should`, `May`)
+  are NOT flagged at the static layer. They overlap with common
+  English usage: sentence-initial `May` is a calendar month,
+  `Must` and `Should` appear in descriptive prose without
+  normative force (e.g., "depends_on — array of id strings.
+  May be empty."). Their case-discipline detection moves to
+  the LLM-driven phase, which can disambiguate normative from
+  descriptive usage from sentence context.
 - The synonymous adjective forms (`Required`, `Recommended`,
-  `Optional`) are NOT flagged at the static layer. They are
-  common English words (column headers, descriptive prose,
-  etc.) that risk significant false-positive rates without
-  sentence-level context. Their case-discipline detection
-  moves to the LLM-driven phase along with the broader case-
-  inconsistency rules.
+  `Optional`) are NOT flagged at the static layer for the same
+  reason — they are common English words (column headers,
+  descriptive prose, etc.) that risk significant false-positive
+  rates without sentence-level context.
 - Full-uppercase forms (`MUST`, `SHALL NOT`) are well-formed
   and pass.
 - Full-lowercase forms (`must`, `should`) pass at the static
@@ -67,23 +75,21 @@ __all__: list[str] = ["SLUG", "run"]
 
 SLUG: CheckId = CheckId("doctor-bcp14-keyword-wellformedness")
 
-# The four RFC 2119 modal-verb keywords whose mixed-case
-# standalone-word forms (capital first letter, lowercase
-# remainder) flag as malformed. `MUST NOT`, `SHALL NOT`,
-# `SHOULD NOT` decompose into their individual keywords for
-# detection — flagging the leading `Must`/`Shall`/`Should` is
-# sufficient to surface the violation. The synonymous adjective
-# keywords (`Required`, `Recommended`, `Optional`) are NOT in
-# this set: they are common English words that risk
-# false-positives in column headers + descriptive prose; their
-# case-discipline moves to the LLM-driven phase along with the
-# broader case-inconsistency rules.
-_MIXED_CASE_KEYWORDS: tuple[str, ...] = (
-    "Must",
-    "Shall",
-    "Should",
-    "May",
-)
+# RFC 2119 modal-verb keyword whose mixed-case standalone-word
+# form flags as malformed at the static layer. `Shall` is the
+# only modal verb in this set because it has no common-English
+# descriptive use — sentence-initial `Shall` is overwhelmingly
+# likely to be a botched normative usage. `Must`, `Should`, and
+# `May` were dropped from this set (li-mrtoei) because their
+# sentence-initial forms overlap with descriptive English prose
+# (e.g., "May be empty.", "Should the caller need…") and the
+# static rule cannot disambiguate without sentence-level context.
+# `SHALL NOT` decomposes into the leading `Shall` for detection.
+# The synonymous adjective keywords (`Required`, `Recommended`,
+# `Optional`) are also excluded for the same reason — common
+# English words. All deferred keywords' case-discipline moves to
+# the LLM-driven phase.
+_MIXED_CASE_KEYWORDS: tuple[str, ...] = ("Shall",)
 
 # Pre-compiled boundary-respecting alternation. `\b` enforces token
 # boundaries so embedded forms (`Mustang`, `Maybe`, `Shallow`,
