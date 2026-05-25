@@ -119,9 +119,18 @@ def _write_livespec_config(
     seed_input: SeedInput,
     project_root: Path,
 ) -> IOResult[SeedInput, LivespecError]:
-    """Write `<project-root>/.livespec.jsonc` from the validated seed input."""
-    skeleton = '{\n  "template": "' + seed_input.template + '"\n}\n'
+    """Write `<project-root>/.livespec.jsonc` from the validated seed input.
+
+    Preserves any pre-existing `.livespec.jsonc` verbatim — sibling-
+    library bootstrap (livespec-runtime, livespec-dev-tooling, etc.)
+    pre-authors the config with compat metadata, implementation-plugin
+    declarations, and user comments that the seed wrapper MUST NOT
+    clobber. Per memo `mm-8xcq3s` / work-item `li-2qjqen`.
+    """
     config_path = project_root / ".livespec.jsonc"
+    if config_path.exists():
+        return IOResult.from_value(seed_input)
+    skeleton = '{\n  "template": "' + seed_input.template + '"\n}\n'
     return fs.write_text(path=config_path, text=skeleton).map(lambda _: seed_input)
 
 
