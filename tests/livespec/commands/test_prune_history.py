@@ -1,6 +1,6 @@
 """Tests for livespec.commands.prune_history.
 
-Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle" prune-history
+Per SPECIFICATION/spec.md §"Sub-command lifecycle" prune-history
 paragraph: the wrapper resolves the spec root from `--project-root`,
 enumerates `<spec-root>/history/`, and short-circuits with a
 `prune-history-no-op` skipped JSON finding when the no-op
@@ -23,12 +23,11 @@ __all__: list[str] = []
 def _stub_pre_step_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
     """Default-stub `_invoke_pre_step_doctor` to a no-op pass for every test.
 
-    Cycle 6.c.10 wires the pre-step doctor static invocation per
-    v012 SPECIFICATION/spec.md §"Sub-command lifecycle". When the
+    Per SPECIFICATION/spec.md §"Sub-command lifecycle", when the
     resolved skip value is False, the wrapper invokes
     `bin/doctor_static.py` as a subprocess via
     `livespec.io.proc.run_subprocess`. Pre-existing tests in this
-    file did NOT design fixtures that the real doctor would
+    file do NOT design fixtures that the real doctor would
     consider valid (most use `_make_v001_only_spec_root` which
     lacks `spec.md`, `.livespec.jsonc`, etc.) — the real doctor
     would emit fail findings and short-circuit the wrapper before
@@ -41,12 +40,11 @@ def _stub_pre_step_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
     interfering. Tests that specifically cover the pre-step doctor
     wiring opt out by re-monkeypatching with their own stub.
 
-    `raising=False` is required so the fixture is lenient when
-    the helper does not yet exist (Red commit at cycle 6.c.10
-    adds the test surface BEFORE the impl lands the helper; the
-    first-stage Red tests reference `_invoke_pre_step_doctor`
-    via direct attribute access and FAIL with AttributeError —
-    that's the intentional Red signal).
+    `raising=False` is required so the fixture is lenient if
+    `_invoke_pre_step_doctor` doesn't yet exist on a Red commit
+    that adds this test surface before the impl lands the helper
+    (direct attribute access FAILs with AttributeError — that's
+    the intentional Red signal).
     """
 
     def _passing_no_op(*, project_root: Path) -> IOResult[None, object]:
@@ -94,7 +92,7 @@ def test_prune_history_main_returns_zero_on_valid_argv(
 ) -> None:
     """prune-history with no flags + only v001 in history returns exit code 0.
 
-    Per v012 spec.md no-op short-circuit (i): only-v001 case
+    Per spec.md no-op short-circuit (i): only-v001 case
     emits the skipped finding and exits 0. Drives the cwd-fallback
     `_resolve_spec_root` branch + the no-op path.
     """
@@ -124,12 +122,12 @@ def test_prune_history_main_accepts_skip_pre_check_flag(
 ) -> None:
     """`--skip-pre-check` is a recognized optional flag (exit 0).
 
-    Per v012 §"Wrapper CLI surface" prune-history row: the wrapper
+    Per spec.md §"Wrapper CLI surface" prune-history row: the wrapper
     accepts `--skip-pre-check` as one half of the mutually-exclusive
-    flag pair codified in v012 spec.md §"Pre-step skip control".
-    The body widening at cycle 6.c.3 means the wrapper now requires
-    a valid `<spec-root>/history/` to short-circuit on; this test
-    sets up a v001-only history and drives the no-op path.
+    flag pair codified in spec.md §"Pre-step skip control".
+    The wrapper requires a valid `<spec-root>/history/` to
+    short-circuit on; this test sets up a v001-only history and
+    drives the no-op path.
     """
     project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
     exit_code = prune_history.main(
@@ -144,7 +142,7 @@ def test_prune_history_main_accepts_run_pre_check_flag(
 ) -> None:
     """`--run-pre-check` is a recognized optional flag (exit 0).
 
-    Per v012 §"Wrapper CLI surface" prune-history row: the wrapper
+    Per spec.md §"Wrapper CLI surface" prune-history row: the wrapper
     accepts `--run-pre-check` as the override-config half of the
     mutually-exclusive flag pair codified in v012 spec.md
     §"Pre-step skip control".
@@ -159,7 +157,7 @@ def test_prune_history_main_accepts_run_pre_check_flag(
 def test_prune_history_main_rejects_both_skip_and_run_pre_check_flags_together() -> None:
     """Passing both `--skip-pre-check` AND `--run-pre-check` exits 2.
 
-    Per v012 spec.md §"Pre-step skip control" rule (4): both flags
+    Per spec.md §"Pre-step skip control" rule (4): both flags
     set together MUST result in argparse mutually-exclusive usage
     error, lifting to exit 2 via `IOFailure(UsageError)`. Drives
     the `add_mutually_exclusive_group` enforcement. The
@@ -175,7 +173,7 @@ def test_prune_history_main_emits_no_op_finding_when_only_v001_exists(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md no-op short-circuit (i): only v001 exists.
+    """Per spec.md no-op short-circuit (i): only v001 exists.
 
     When `<spec-root>/history/` contains only `v001`, the wrapper
     emits a single-finding `{"findings": [{"check_id": "prune-
@@ -305,7 +303,7 @@ def test_prune_history_main_emits_no_op_finding_when_oldest_surviving_is_pruned_
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md no-op short-circuit (ii): oldest surviving has PRUNED_HISTORY.json.
+    """Per spec.md no-op short-circuit (ii): oldest surviving has PRUNED_HISTORY.json.
 
     When `<spec-root>/history/` has multiple v* dirs and the
     smallest-K (oldest surviving) v-dir already contains a
@@ -492,7 +490,7 @@ def test_prune_history_resolve_first_returns_pruned_range_zero_when_marker_text_
 ) -> None:
     """`_resolve_first` returns `pruned_range[0]` when prior-marker text is supplied.
 
-    Per v012 spec.md §"Sub-command lifecycle" prune-history
+    Per spec.md §"Sub-command lifecycle" prune-history
     paragraph step (b): if `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json`
     exists, the wrapper reads its `pruned_range[0]` and uses it as
     the carry-forward `first` field. Drives the marker-present
@@ -518,7 +516,7 @@ def test_prune_history_resolve_first_returns_smallest_v_dir_when_marker_text_abs
 ) -> None:
     """`_resolve_first` returns smallest-numbered v-dir when no marker text supplied.
 
-    Per v012 spec.md prune-history paragraph step (b): when no
+    Per spec.md prune-history paragraph step (b): when no
     prior `PRUNED_HISTORY.json` marker exists at v(N-1), `first`
     is the smallest-numbered v-directory currently under
     `<spec-root>/history/`. Drives the marker-absent branch of
@@ -643,7 +641,7 @@ def test_prune_history_main_resolves_first_via_marker_at_n_minus_1(
 ) -> None:
     """When v(N-1) has PRUNED_HISTORY.json and (ii) no-op does NOT fire, marker is read.
 
-    Per v012 spec.md prune-history paragraph step (b): the
+    Per spec.md prune-history paragraph step (b): the
     wrapper resolves the carry-forward `first` field from
     `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json`'s
     `pruned_range[0]`. Fixture is constructed so the (ii) no-op
@@ -692,7 +690,7 @@ def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent
 ) -> None:
     """When v(N-1) has NO PRUNED_HISTORY.json, `first` falls back to smallest-numbered v-dir.
 
-    Per v012 spec.md prune-history paragraph step (b)'s `else`
+    Per spec.md prune-history paragraph step (b)'s `else`
     clause: when the v(N-1) marker is absent, `first` is the
     smallest-numbered v-directory currently under
     `<spec-root>/history/`. Fixture is constructed so the (ii)
@@ -700,13 +698,13 @@ def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent
     below max=5 — has NO marker) AND v(N-1)=v004 has NO marker
     either. The resolver path runs through the marker-absent
     impure branch (no `fs.read_text` is invoked) and the pure
-    resolver is called with `prior_marker_text=None`. At cycle
-    6.c.6b the deletion mechanic widens; v002/v003 (K < N-1 = 4)
-    are removed, v004 + v005 remain. At cycle 6.c.7 the
-    full step (d) marker write replaces v004's contents with a
-    single `PRUNED_HISTORY.json` file containing
-    `{"pruned_range": [first, N-1]}` and the supervisor emits
-    the `prune-history-pruned` `pass` finding instead of the
+    resolver is called with `prior_marker_text=None`. The
+    deletion mechanic removes every vK directory with K < N-1
+    (here v002/v003), leaving v004 + v005. Step (d) marker write
+    then replaces v004's contents with a single
+    `PRUNED_HISTORY.json` file containing
+    `{"pruned_range": [first, N-1]}` and the supervisor emits the
+    `prune-history-pruned` `pass` finding instead of the
     `prune-history-no-op` placeholder.
     """
     spec_root = tmp_path / "SPECIFICATION"
@@ -720,14 +718,14 @@ def test_prune_history_main_resolves_first_via_smallest_v_dir_when_marker_absent
     payload = json.loads(captured.out)
     assert payload["findings"][0]["check_id"] == "prune-history-pruned"
     assert payload["findings"][0]["status"] == "pass"
-    # Per v012 spec.md prune-history paragraph step (c): every
+    # Per spec.md prune-history paragraph step (c): every
     # `<spec-root>/history/vK/` with K < N-1 is deleted. With
     # N=5, that means v002 + v003 are gone; v004 + v005 remain.
     assert not (spec_root / "history" / "v002").exists()
     assert not (spec_root / "history" / "v003").exists()
     assert (spec_root / "history" / "v004").is_dir()
     assert (spec_root / "history" / "v005").is_dir()
-    # Per v012 spec.md prune-history paragraph step (d): v(N-1)
+    # Per spec.md prune-history paragraph step (d): v(N-1)
     # contents are replaced with a single PRUNED_HISTORY.json
     # carrying `{"pruned_range": [first, N-1]}`. With first=2
     # (smallest surviving v-dir, marker-absent branch) and N=5,
@@ -910,7 +908,7 @@ def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_4(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md prune-history step (c)+(d): with N=4, v001+v002 deleted, v003 marker-replaced.
+    """Per spec.md prune-history step (c)+(d): with N=4, v001+v002 deleted, v003 marker-replaced.
 
     Fixture sets up v001/v002/v003/v004 (N=4) with sub-content
     in v001 + v002 + v003 to confirm recursive deletion. After
@@ -974,7 +972,7 @@ def test_prune_history_main_deletes_v_dirs_below_threshold_with_n_equal_3(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md prune-history step (c)+(d): with N=3, only v001 deleted, v002 marker-replaced.
+    """Per spec.md prune-history step (c)+(d): with N=3, only v001 deleted, v002 marker-replaced.
 
     Fixture sets up v001/v002/v003 (N=3); after prune-history
     runs, step (c) removes v001 (K=1<2); step (d) replaces v002's
@@ -1006,7 +1004,7 @@ def test_prune_history_main_replaces_v_n_minus_one_when_prior_marker_present(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md step (d) with prior marker: v003 marker-replaced carrying first=1.
+    """Per spec.md step (d) with prior marker: v003 marker-replaced carrying first=1.
 
     Fixture sets up v001/PRUNED_HISTORY.json (carrying
     `{"pruned_range": [1, 1]}`), v002, v003, v004 (N=4). The (ii)
@@ -1079,7 +1077,7 @@ def test_prune_history_main_writes_marker_when_history_starts_at_v005(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md step (d): non-1-based history → marker first reflects smallest v-dir.
+    """Per spec.md step (d): non-1-based history → marker first reflects smallest v-dir.
 
     Fixture sets up v005/v006/v007 (history begins at v005, no
     prior marker, max=7, max-1=6). The (ii) no-op short-circuit
@@ -1115,7 +1113,7 @@ def test_prune_history_build_pruned_history_marker_with_first_one_last_three(
 ) -> None:
     """`_build_pruned_history_marker` returns the canonical JSON shape.
 
-    Per v012 spec.md prune-history paragraph step (d): the marker
+    Per spec.md prune-history paragraph step (d): the marker
     contains exactly `{"pruned_range": [first, N-1]}` with no
     timestamps, git SHAs, or identity fields (no-metadata
     invariant). Drives the pure helper with first=1, last=3.
@@ -1219,7 +1217,7 @@ def test_prune_history_emit_pre_step_skipped_finding_writes_canonical_json(
 ) -> None:
     """`_emit_pre_step_skipped_finding` writes the canonical JSON document.
 
-    Per v012 spec.md §"Pre-step skip control": when the resolved
+    Per spec.md §"Pre-step skip control": when the resolved
     skip value is True, the wrapper MUST emit a single-finding
     `{"findings": [{"check_id": "pre-step-skipped", "status":
     "skipped", "message": "pre-step checks skipped by user config
@@ -1246,7 +1244,7 @@ def test_prune_history_main_emits_pre_step_skipped_finding_when_skip_pre_check_f
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control": --skip-pre-check emits the finding.
+    """Per spec.md §"Pre-step skip control": --skip-pre-check emits the finding.
 
     When the supervisor parses `--skip-pre-check`, the wrapper
     emits a single-finding `pre-step-skipped` skipped JSON
@@ -1280,7 +1278,7 @@ def test_prune_history_main_does_not_emit_pre_step_skipped_finding_when_run_pre_
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control" rule (2): --run-pre-check forces skip=False.
+    """Per spec.md §"Pre-step skip control" rule (2): --run-pre-check forces skip=False.
 
     When the supervisor parses `--run-pre-check`, the resolved
     skip value is False (the override-config half of the
@@ -1308,16 +1306,13 @@ def test_prune_history_main_does_not_emit_pre_step_skipped_finding_when_neither_
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control" rule (3): neither flag falls through.
+    """Per spec.md §"Pre-step skip control" rule (3): neither flag falls through.
 
     When neither `--skip-pre-check` nor `--run-pre-check` is
-    passed, the resolved skip value defers to the
-    `.livespec.jsonc` `pre_step_skip_static_checks` config key
-    (default False). At cycle 6.c.8 the config-key fallback is
-    not yet wired (6.c.9 scope), so the resolved value defaults
-    to False and the `pre-step-skipped` finding is NOT emitted.
-    Stdout contains exactly ONE JSON line — the body's
-    `prune-history-no-op` finding.
+    passed, the resolved skip value defaults to False and the
+    `pre-step-skipped` finding is NOT emitted. Stdout contains
+    exactly ONE JSON line — the body's `prune-history-no-op`
+    finding.
     """
     project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
     exit_code = prune_history.main(argv=["--project-root", str(project_root)])
@@ -1335,7 +1330,7 @@ def test_prune_history_main_run_pre_check_overrides_config_key_true(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control" rule (2): --run-pre-check overrides config.
+    """Per spec.md §"Pre-step skip control" rule (2): --run-pre-check overrides config.
 
     Fixture sets `pre_step_skip_static_checks: true` in
     `.livespec.jsonc` AND passes `--run-pre-check` on the CLI.
@@ -1367,7 +1362,7 @@ def test_prune_history_main_emits_skipped_finding_when_config_key_true_and_no_fl
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control" rule (3): config key true → skip = true.
+    """Per spec.md §"Pre-step skip control" rule (3): config key true → skip = true.
 
     Fixture sets `pre_step_skip_static_checks: true` in
     `.livespec.jsonc` and passes neither flag. Per rule (3), the
@@ -1398,7 +1393,7 @@ def test_prune_history_main_does_not_emit_skipped_finding_when_config_key_false_
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control" rule (3): config key false → skip = false.
+    """Per spec.md §"Pre-step skip control" rule (3): config key false → skip = false.
 
     Fixture sets `pre_step_skip_static_checks: false` explicitly
     in `.livespec.jsonc` and passes neither flag. Per rule (3),
@@ -1429,7 +1424,7 @@ def test_prune_history_main_does_not_emit_skipped_finding_when_config_key_absent
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control" rule (3): config key absent → skip = false default.
+    """Per spec.md §"Pre-step skip control" rule (3): config key absent → skip = false default.
 
     Fixture writes `.livespec.jsonc` WITHOUT the
     `pre_step_skip_static_checks` key (an unrelated key only) and
@@ -1459,7 +1454,7 @@ def test_prune_history_main_does_not_emit_skipped_finding_when_jsonc_file_missin
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control" rule (3): missing `.livespec.jsonc` → skip = false default.
+    """Per spec.md §"Pre-step skip control" rule (3): missing `.livespec.jsonc` → skip = false default.
 
     Fixture has NO `.livespec.jsonc` at the project root and
     passes neither flag. Per spec rule (3) the default skip
@@ -1637,12 +1632,11 @@ def test_prune_history_main_invokes_pre_step_doctor_when_skip_resolves_false(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Sub-command lifecycle": skip=False invokes pre-step doctor.
+    """Per spec.md §"Sub-command lifecycle": skip=False invokes pre-step doctor.
 
-    Cycle 6.c.10 wires the pre-step doctor static invocation. When
-    `--run-pre-check` forces `skip=false`, the wrapper MUST invoke
-    `bin/doctor_static.py` as a subprocess BEFORE running the
-    prune-history body. This test re-monkeypatches the helper
+    When `--run-pre-check` forces `skip=false`, the wrapper MUST
+    invoke `bin/doctor_static.py` as a subprocess BEFORE running
+    the prune-history body. This test re-monkeypatches the helper
     (overriding the autouse no-op default) with a recorder stub
     that captures the `project_root` it was called with; the test
     then asserts the recorder fired exactly once with the spec'd
@@ -1678,7 +1672,7 @@ def test_prune_history_main_does_not_invoke_pre_step_doctor_when_skip_pre_check_
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Per v012 spec.md §"Pre-step skip control": skip=True suppresses doctor invocation.
+    """Per spec.md §"Pre-step skip control": skip=True suppresses doctor invocation.
 
     When `--skip-pre-check` resolves skip=True, the wrapper MUST
     emit the `pre-step-skipped` finding and proceed WITHOUT

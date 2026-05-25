@@ -1,9 +1,8 @@
 """Tests for livespec.commands.seed.
 
-The seed sub-command is the Phase 3 outermost rail per the
-briefing's outside-in walking direction. Cycles drive its
-behavior step-by-step from the supervisor entrypoint
-(`main(argv)`) inward.
+The seed sub-command is the outermost rail per the outside-in
+walking direction. Tests drive its behavior step-by-step from
+the supervisor entrypoint (`main(argv)`) inward.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ def _write_valid_seed_payload(
     railway reaches the file-shaping stages without short-
     circuiting on the earlier failure rails. When `sub_specs`
     is supplied, the payload's sub_specs[] carries those entries
-    (otherwise empty per the v020 Q2 default).
+    (otherwise empty per the default sub-spec-emission opt-out).
     """
     payload_dict = {
         "template": "livespec",
@@ -457,8 +456,8 @@ def test_write_sub_spec_history_v001_skips_non_dict_entry_inside_files_list(
 
     Per `_write_sub_spec_history_v001` guard: the
     inner-loop `if not isinstance(entry, dict): continue`. Mirror
-    of cycle 109's pattern in the sub-spec history-materialization
-    helper. Tested by calling the helper directly with a sub-spec
+    of the sub-spec history-materialization helper's defensive
+    pattern. Tested by calling the helper directly with a sub-spec
     whose `files` list mixes a non-dict (None) with a well-formed
     entry — the IOResult is Success, the well-formed entry's v001
     snapshot still lands, the None is silently skipped.
@@ -504,13 +503,13 @@ def test_write_sub_spec_history_v001_skips_entries_with_non_list_files_field(
     """A sub_spec whose `files` is not a list is skipped from history/v001/.
 
     Per `_write_sub_spec_history_v001` guard: same
-    type-defensive pattern as cycle 108's `_write_sub_spec_files`,
-    but in the sub-spec-history-materialization helper. The
-    dataclass surface still types each sub-spec's `files` value as
-    `object` even though schema validation guarantees a list.
-    Tested by calling the helper directly with a malformed sub-spec
-    (`files` is a string); the IOResult is Success and the
-    well-formed second sub-spec's history copy still lands.
+    type-defensive pattern as `_write_sub_spec_files`, but in the
+    sub-spec-history-materialization helper. The dataclass surface
+    still types each sub-spec's `files` value as `object` even
+    though schema validation guarantees a list. Tested by calling
+    the helper directly with a malformed sub-spec (`files` is a
+    string); the IOResult is Success and the well-formed second
+    sub-spec's history copy still lands.
     """
     from livespec.commands.seed import _write_sub_spec_history_v001
     from livespec.schemas.dataclasses.seed_input import SeedInput
@@ -667,9 +666,9 @@ def test_seed_main_skips_seed_md_emission_when_files_array_is_empty(
     the seed file-shaping flow complete; only the seed.md /
     seed-revision.md history artifacts are omitted.
 
-    With post-step doctor wired (cycle 145), the supervisor exit
-    code is 3 (NOT 0): the empty `files[]` payload produces a
-    skeletal `<project-root>/.livespec.jsonc` with NO spec tree
+    With the post-step doctor wired in, the supervisor exit code
+    is 3 (NOT 0): the empty `files[]` payload produces a skeletal
+    `<project-root>/.livespec.jsonc` with NO spec tree
     materialized, so the doctor's `template_files_present` check
     fails when reading `<spec-root>/spec.md`. The defensive
     guards' contract is preserved (no IndexError, no malformed
@@ -725,15 +724,15 @@ def test_seed_main_skips_main_spec_history_for_single_component_paths(
     path. Only the history copy of that loose file is omitted
     (the well-formed entry's history still lands).
 
-    With post-step doctor wired (cycle 145), the supervisor exit
-    code is 3 (NOT 0): the skill-owned README emission anchors
-    on `seed_input.files[0]["path"]`, which is the loose
+    With the post-step doctor wired in, the supervisor exit code
+    is 3 (NOT 0): the skill-owned README emission anchors on
+    `seed_input.files[0]["path"]`, which is the loose
     single-component file in this fixture, so the README's
     early-return guard fires and `<spec-root>/proposed_changes/`
     is never materialized. The doctor's
-    `proposed_changes_and_history_dirs` check therefore fails
-    on the seeded tree. The test still pins the file-shaping
-    guard's selectivity: the well-formed entry's
+    `proposed_changes_and_history_dirs` check therefore fails on
+    the seeded tree. The test still pins the file-shaping guard's
+    selectivity: the well-formed entry's
     SPECIFICATION/history/v001/spec.md DOES land, and the loose
     file's spurious history dir does NOT.
     """
@@ -930,8 +929,8 @@ def test_seed_main_invokes_post_step_doctor_and_returns_exit_three_on_fail_findi
     "fail"` finding from post-step, the wrapper aborts with exit
     3 after sub-command logic has already mutated on-disk state.
 
-    Composition mechanism (cycle 144 + cycle 145): the supervisor
-    invokes `bin/doctor_static.py` as a subprocess via
+    Composition mechanism: the supervisor invokes
+    `bin/doctor_static.py` as a subprocess via
     `livespec.io.proc.run_subprocess` — chosen over direct
     in-process import because the layered-architecture import-
     linter contract `livespec.commands | livespec.doctor`
@@ -1037,12 +1036,11 @@ def test_emit_skill_owned_history_readme_writes_main_spec_history_readme(
     *,
     tmp_path: Path,
 ) -> None:
-    """The new helper writes <main-spec-root>/history/README.md per Phase 7 sub-step 1.
+    """`_emit_skill_owned_history_readme` writes <main-spec-root>/history/README.md.
 
-    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
-    (post-v002): the seed wrapper writes the skill-owned
-    history/README.md for every spec tree. This unit-tests the
-    main-spec helper.
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism":
+    the seed wrapper writes the skill-owned history/README.md for
+    every spec tree. This unit-tests the main-spec helper.
     """
     from livespec.commands._seed_railway_emits import _emit_skill_owned_history_readme
     from livespec.schemas.dataclasses.seed_input import SeedInput
@@ -1137,13 +1135,12 @@ def test_emit_skill_owned_sub_spec_proposed_changes_readmes_writes_one_per_sub_s
 ) -> None:
     """The new helper writes proposed_changes/README.md for every sub-spec.
 
-    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
-    (post-v002): the seed wrapper writes the skill-owned
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism":
+    the seed wrapper writes the skill-owned
     proposed_changes/README.md for every spec tree, including each
-    sub-spec. Cycle 2 of Phase 7 sub-step 1.c — the matching
-    main-spec helper already exists at
-    `_emit_skill_owned_proposed_changes_readme`; this new helper
-    closes the per-sub-spec gap.
+    sub-spec. The matching main-spec helper is
+    `_emit_skill_owned_proposed_changes_readme`; this helper closes
+    the per-sub-spec gap.
     """
     from livespec.commands._seed_railway_emits import (
         _emit_skill_owned_sub_spec_proposed_changes_readmes,
@@ -1369,13 +1366,11 @@ def test_emit_skill_owned_sub_spec_history_readmes_writes_one_per_sub_spec(
 ) -> None:
     """The new helper writes history/README.md for every sub-spec.
 
-    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
-    (post-v002): the seed wrapper writes the skill-owned
-    history/README.md for every spec tree, including each
-    sub-spec. Cycle 3 of Phase 7 sub-step 1.c — the matching
-    main-spec helper already exists at
-    `_emit_skill_owned_history_readme` (cycle 1); this new helper
-    closes the per-sub-spec gap.
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism":
+    the seed wrapper writes the skill-owned history/README.md for
+    every spec tree, including each sub-spec. The matching
+    main-spec helper is `_emit_skill_owned_history_readme`; this
+    helper closes the per-sub-spec gap.
     """
     from livespec.commands._seed_railway_emits import (
         _emit_skill_owned_sub_spec_history_readmes,
@@ -1580,11 +1575,11 @@ def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_writes_one_per_sub_spec
 ) -> None:
     """The new helper writes history/v001/proposed_changes/.gitkeep per sub-spec.
 
-    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism"
-    (post-v002): the seed wrapper writes `.gitkeep` markers under
-    each sub-spec's `history/v001/proposed_changes/` so the empty
-    dir survives `git add`. Sub-specs do NOT receive auto-captured
-    seed.md proposed-changes per v018 Q1, so the history/v001/
+    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism":
+    the seed wrapper writes `.gitkeep` markers under each
+    sub-spec's `history/v001/proposed_changes/` so the empty dir
+    survives `git add`. Sub-specs do NOT receive auto-captured
+    seed.md proposed-changes, so the history/v001/
     proposed_changes/ directory is otherwise empty for sub-specs.
     """
     from livespec.commands._seed_railway_emits import (

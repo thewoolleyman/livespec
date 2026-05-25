@@ -1,13 +1,9 @@
 """Tests for livespec.commands.propose_change.
 
-Per and Plan
-Phase 3, propose-change is the second
-sub-command authored under TDD. Phase-3 minimum-viable scope:
-validate the inbound `--findings-json <path>` payload against
-proposal_findings.schema.json, compose a proposed-change file
-from the findings, write it to
-`<spec-target>/proposed_changes/<topic>.md`. Topic-canonical-
-ization is OUT OF SCOPE for Phase 3.
+Minimum-viable scope: validate the inbound `--findings-json <path>`
+payload against proposal_findings.schema.json, compose a
+proposed-change file from the findings, write it to
+`<spec-target>/proposed_changes/<topic>.md`.
 """
 
 from __future__ import annotations
@@ -159,7 +155,7 @@ def test_propose_change_canonicalizes_topic_lowercase_and_hyphens(
 ) -> None:
     """Inbound topic with uppercase + spaces canonicalizes to slug filename.
 
-    Per SPECIFICATION/spec.md "Topic canonicalization (v015 O3)": the
+    Per SPECIFICATION/spec.md "Topic canonicalization": the
     wrapper canonicalizes the inbound topic before filename selection
     via lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip-edges ->
     truncate-64. Drives the canonicalization helper into propose_change
@@ -188,7 +184,7 @@ def test_propose_change_main_returns_usage_exit_code_on_empty_after_canonicaliza
 ) -> None:
     """Topic that canonicalizes to empty string returns exit 2 (UsageError).
 
-    Per SPECIFICATION/spec.md "Topic canonicalization (v015 O3)": "If the
+    Per SPECIFICATION/spec.md "Topic canonicalization": "If the
     result is empty, the wrapper exits 2 with `UsageError`." A topic of
     only non-[a-z0-9] characters (e.g. `"!!!"`) canonicalizes through
     the regex to a string of hyphens, which strip("-") empties; the
@@ -215,8 +211,8 @@ def test_propose_change_appends_reserve_suffix_to_canonical_topic(
 ) -> None:
     """`--reserve-suffix critique` produces `<canonical-hint>-critique.md`.
 
-    Per SPECIFICATION/spec.md "Reserve-suffix canonicalization (v016 P3 /
-    v017 Q1)" and the deferred-items.md "Reserve-suffix topic
+    Per SPECIFICATION/spec.md "Reserve-suffix canonicalization"
+    and the deferred-items.md "Reserve-suffix topic
     canonicalization" algorithm: when the flag is supplied, the wrapper
     canonicalizes the hint, canonicalizes the suffix, and re-appends the
     canonical suffix verbatim. Drives `--reserve-suffix` parser wiring
@@ -246,7 +242,7 @@ def test_propose_change_with_reserve_suffix_strips_pre_attached_suffix(
 ) -> None:
     """A topic hint pre-ending with the reserve suffix is not duplicated.
 
-    Per the v016 P3 algorithm step 3: "If <canonical-hint> already ends
+    Per the reserve-suffix algorithm step 3: "If <canonical-hint> already ends
     in <canonical-suffix>, strip the trailing suffix from
     <canonical-hint> before truncation." Drives the endswith branch
     of the reserve-suffix path.
@@ -275,7 +271,7 @@ def test_propose_change_with_reserve_suffix_truncates_to_sixty_four_chars(
 ) -> None:
     """Long hint + reserve suffix yields a result of at most 64 chars.
 
-    Per the v016 P3 algorithm step 4: "Truncate the resulting non-suffix
+    Per the reserve-suffix algorithm step 4: "Truncate the resulting non-suffix
     portion to `64 - len(<canonical-suffix>)` characters; strip
     trailing hyphens left behind by the truncation." With suffix
     `-critique` (9 chars), the non-suffix budget is 55 chars; the
@@ -311,7 +307,7 @@ def test_propose_change_with_reserve_suffix_returns_usage_on_empty_hint(
 ) -> None:
     """Empty-after-canonicalization hint with reserve-suffix exits 2.
 
-    Per the v016 P3 algorithm: when the truncated non-suffix portion
+    Per the reserve-suffix algorithm: when the truncated non-suffix portion
     is empty, the resulting filename would consist only of the
     reserve-suffix and would not anchor to a meaningful artifact name;
     the wrapper short-circuits to UsageError on the railway. Drives the
@@ -493,7 +489,7 @@ def test_propose_change_disambiguates_first_collision_with_dash_two_suffix(
 ) -> None:
     """First name-collision yields `<topic>-2.md`, not an overwrite.
 
-    Per SPECIFICATION/spec.md "Collision disambiguation (v014 N6)":
+    Per SPECIFICATION/spec.md "Collision disambiguation":
     when `<canonical-topic>.md` already exists, the wrapper writes
     to `<canonical-topic>-2.md`. No user prompt, no zero-padding,
     no overwrite of the pre-existing file. Drives the
@@ -527,7 +523,7 @@ def test_propose_change_disambiguates_second_collision_with_dash_three_suffix(
 ) -> None:
     """Second name-collision yields `<topic>-3.md` (counter increments past 2).
 
-    Per v014 N6's monotonic-integer-starting-at-2 rule, with both
+    Per the monotonic-integer-starting-at-2 collision rule, with both
     `<topic>.md` AND `<topic>-2.md` already on disk, the wrapper
     walks the counter to 3 and writes `<topic>-3.md`. Drives the
     iterating branch of `_resolve_target_path`'s while-loop body.
@@ -561,7 +557,7 @@ def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_f
     """Without --spec-target or --project-root, falls back to `cwd()/SPECIFICATION`.
 
     Per Plan
-    Phase 3: when neither --spec-target nor --project-root is
+    When neither --spec-target nor --project-root is
     supplied, project_root defaults to Path.cwd() and the spec
     target derives as `<cwd>/SPECIFICATION`. Drives
     `_resolve_spec_target`'s cwd-fallback branch

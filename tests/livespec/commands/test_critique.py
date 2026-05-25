@@ -1,10 +1,8 @@
 """Tests for livespec.commands.critique.
 
-Per and Plan Phase 3
-: critique is minimum-viable per v019 Q1 —
-invokes propose_change internally with the `-critique`
-reserve-suffix appended. Full LLM-driven critique flow lives at
-SKILL.md prose level, not in the wrapper.
+Critique is minimum-viable: it invokes propose_change internally
+with the `-critique` reserve-suffix appended. Full LLM-driven
+critique flow lives at SKILL.md prose level, not in the wrapper.
 """
 
 from __future__ import annotations
@@ -157,11 +155,10 @@ def test_critique_main_writes_proposed_change_with_critique_suffix(
 ) -> None:
     """Successful critique writes `<spec-target>/proposed_changes/<author>-critique.md`.
 
-     Per Plan Phase 3
-    : critique delegates to propose_change with
-     topic hint `<author>` plus the reserve-suffix `"-critique"`.
-     Phase-3 minimum-viable scope: with `--author claude-opus-4-7`
-     (already canonical), the resulting filename is
+    Critique delegates to propose_change with topic hint `<author>`
+    plus the reserve-suffix `"-critique"`. With
+    `--author claude-opus-4-7` (already canonical), the resulting
+    filename is
      `claude-opus-4-7-critique.md`. The body is the same one-
      proposal-section-per-finding shape as propose_change's
      output (field-copy mapping).
@@ -367,10 +364,10 @@ def test_critique_main_truncates_long_author_stem_preserving_critique_suffix(
     passes the un-slugged resolved-author stem as topic-hint AND
     the literal `"-critique"` as the reserve-suffix parameter to
     propose_change. propose_change's reserve-suffix
-    canonicalization (v016 P3 / v017 Q1) truncates the
-    non-suffix portion to `64 - len("-critique")` = 55 chars
-    then re-appends the suffix, guaranteeing the suffix is
-    preserved intact at the 64-char cap. With `--author` =
+    canonicalization truncates the non-suffix portion to
+    `64 - len("-critique")` = 55 chars then re-appends the
+    suffix, guaranteeing the suffix is preserved intact at the
+    64-char cap. With `--author` =
     70 'a' chars (already canonical), the post-widening
     filename is `("a" * 55) + "-critique.md"` (64-char stem +
     .md). The pre-widening pre-attached-then-truncate path
