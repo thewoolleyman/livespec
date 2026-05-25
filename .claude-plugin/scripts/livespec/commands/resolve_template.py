@@ -13,19 +13,19 @@
 """Resolve-template sub-command supervisor.
 
 
-and v028 D1: emits the resolved template directory path on
+and emits the resolved template directory path on
 stdout. The path-computation formula
 `Path(__file__).resolve().parents[3]` derives the bundle root
 from this file's location: parents[0]=commands/,
 parents[1]=livespec/, parents[2]=scripts/,
 parents[3]=.claude-plugin/.
 
-Phase 3 minimum-viable scope: only the --template flow is
-implemented (the pre-seed flow per v017 Q2). The default
-`.livespec.jsonc`-walking flow is deferred to Phase 7 — no
-consumer in Phase 6's seed self-application; the seed/SKILL.md
+ minimum-viable scope: only the --template flow is
+implemented (the pre-seed flow per the spec Q2). The default
+`.livespec.jsonc`-walking flow is deferred to  — no
+consumer in 's seed self-application; the seed/SKILL.md
 prose uses --template livespec pre-seed. With --template
-required at this phase, the seed unblocks for Phase 6.
+required at this phase, the seed unblocks for .
 
 `build_parser()` is the pure argparse factory per style doc
 §"CLI argument parsing seam"; `main()` is the supervisor that

@@ -11,7 +11,7 @@ declared here.
 NewType is structural: at runtime each NewType is the
 underlying `str`, so `isinstance(CheckId("x"), str)` is True
 and existing code passing string literals where a NewType is
-expected works unchanged. pyright (reactivated at Phase 7)
+expected works unchanged. pyright (reactivated at )
 treats them as distinct nominal types; mistaking a `CheckId`
 for a `SpecRoot` is caught at type-check time.
 """

@@ -12,15 +12,15 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: template_files_present.
 
-Per Plan Phase 3 +: this check asserts that the canonical
+Per Plan  +: this check asserts that the canonical
 template-materialized files are present in the spec_root.
 
 Phase-3 minimum scope: verifies that `<spec_root>/spec.md` (the
-file every livespec-template seed materializes per step 2) is present on disk. Phase 7 widens
+file every livespec-template seed materializes per step 2) is present on disk.  widens
 this to walk the template's full declared file manifest
 (template.json + recursively-discovered template-source files).
 
-Cycle 136 lands the success arm. Subsequent cycles add the
+This work lands the success arm. Subsequent cycles add the
 missing-file failure arm.
 """
 

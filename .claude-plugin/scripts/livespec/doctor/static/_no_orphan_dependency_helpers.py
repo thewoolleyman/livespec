@@ -18,7 +18,7 @@ hard ceiling enforced by `dev-tooling/checks/file_lloc.py`. The
 split is purely an LLOC-budget concern; the public surface is
 re-exported through `no_orphan_dependency.py`.
 
-Resolve_ref dispatch (added v072 phase 2): every typed dict entry
+Resolve_ref dispatch: every typed dict entry
 flows through `livespec_runtime.cross_repo.resolve_ref`, which
 dispatches LocalDependency to the in-store lookup and non-local
 kinds to the gh-CLI provider. Per

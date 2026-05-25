@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Prune-history sub-command supervisor.
 
-Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle"
+Per SPECIFICATION/spec.md §"Sub-command lifecycle"
 prune-history paragraph: the wrapper resolves the spec root from
 `--project-root` and `.livespec.jsonc` (the main spec tree only —
 no `--spec-target` flag in v1) and performs deterministic
@@ -25,10 +25,9 @@ stdout and exits 0.
 
 `build_parser()` is the pure argparse factory; `main()` is the
 supervisor that threads argv through the railway and pattern-
-matches the final IOResult to derive the exit code. Cycle 6.c.3
-landed the no-op short-circuit (i); subsequent cycles widen to
-no-op (ii), the prune mechanic itself, and pre-step doctor
-invocation.
+matches the final IOResult to derive the exit code. The wrapper
+composes the no-op short-circuits, the prune mechanic itself, and
+the pre-step doctor invocation.
 """
 
 from __future__ import annotations
@@ -64,7 +63,7 @@ __all__: list[str] = ["build_parser", "main"]
 def build_parser() -> argparse.ArgumentParser:
     """Construct the prune-history argparse parser without parsing.
 
-    Per v012 spec.md §"Pre-step skip control" rule: the wrapper
+    Per spec.md §"Pre-step skip control" rule: the wrapper
     declares an `add_mutually_exclusive_group` carrying the two
     flags `--skip-pre-check` / `--run-pre-check`; passing both
     together lifts to argparse usage error → exit 2 via
@@ -122,13 +121,13 @@ def main(*, argv: list[str] | None = None) -> int:
 def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError]:
     """Resolve the spec root and dispatch to the prune mechanic.
 
-    Per v012 spec.md prune-history paragraph: spec-root resolution
+    Per spec.md prune-history paragraph: spec-root resolution
     is `<project-root>/SPECIFICATION/` (no `--spec-target` in v1).
     Lists `<spec-root>/history/` and dispatches to the no-op
     detection path; subsequent cycles widen the dispatch to the
     full 5-step prune mechanic.
 
-    Per v012 spec.md §"Pre-step skip control": the supervisor
+    Per spec.md §"Pre-step skip control": the supervisor
     threads `_resolve_skip` through the railway to derive the
     effective skip value from the 4-rule matrix (skip-flag,
     run-flag, `.livespec.jsonc` config key, default False).
@@ -138,7 +137,7 @@ def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError
     `prune-history-no-op` / `prune-history-pruned` finding, so
     stdout carries TWO JSON lines on the skip path.
 
-    Per v012 spec.md §"Sub-command lifecycle" (cycle 6.c.10):
+    Per spec.md §"Sub-command lifecycle" ():
     when the resolved skip value is False, the wrapper invokes
     `bin/doctor_static.py` as a subprocess via
     `_invoke_pre_step_doctor` BEFORE running the body. On any
@@ -174,7 +173,7 @@ def _dispatch_pre_step(
 
     When `skip` is True, the wrapper emits the canonical
     `pre-step-skipped` finding and proceeds without invoking the
-    pre-step doctor static phase per v012 spec.md §"Pre-step skip
+    pre-step doctor static phase per spec.md §"Pre-step skip
     control" emit-and-proceed contract.
 
     When `skip` is False (the default per the 4-rule matrix), the
@@ -193,7 +192,7 @@ def _dispatch_pre_step(
 def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
     """Resolve `<project-root>` from `--project-root` or cwd.
 
-    Per v012 contracts.md §"Wrapper CLI surface" prune-history row
+    Per the spec contracts.md §"Wrapper CLI surface" prune-history row
     + the universal `--project-root <path>` baseline. Defaults to
     `Path.cwd()` when `--project-root` is omitted. The spec root
     `<project-root>/SPECIFICATION` is derived at the call site;
@@ -213,7 +212,7 @@ def _maybe_no_op_or_resolve(
 ) -> IOResult[None, LivespecError]:
     """Detect either no-op short-circuit; else resolve the carry-forward `first` field.
 
-    Per v012 spec.md prune-history no-op short-circuits: (i) only
+    Per spec.md prune-history no-op short-circuits: (i) only
     `v001` exists; (ii) the oldest surviving v-directory already
     contains a `PRUNED_HISTORY.json` marker. On either, the
     wrapper emits a single-finding skipped JSON document to
@@ -221,7 +220,7 @@ def _maybe_no_op_or_resolve(
     fires, this dispatches to the carry-forward `first`
     resolution per spec.md step (b), threading the
     `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json` marker
-    (when present) through `_resolve_first`. Cycle 6.c.5 only
+    (when present) through `_resolve_first`. only
     EXERCISES the resolver — it does not yet act on the
     resolved `first`. Subsequent cycles widen the dispatch to
     the full 5-step prune mechanic.
@@ -261,7 +260,7 @@ def _resolve_first_via_marker_or_children(
 ) -> IOResult[int, LivespecError]:
     """Read the v(N-1) marker (when present) and call `_resolve_first` to compute `first`.
 
-    Per v012 spec.md prune-history paragraph step (b): if
+    Per spec.md prune-history paragraph step (b): if
     `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json` exists, the
     wrapper reads its `pruned_range[0]` and uses it as `first`;
     otherwise `first` is the smallest-numbered v-directory
@@ -295,7 +294,7 @@ def _resolve_first(
     max_version: int,  # noqa: ARG001
     prior_marker_text: str | None,
 ) -> int:
-    """Resolve the carry-forward `first` field per v012 spec.md step (b).
+    """Resolve the carry-forward `first` field per spec.md step (b).
 
     When `prior_marker_text` is provided (the v(N-1)
     `PRUNED_HISTORY.json` contents), parse it as JSON and return
@@ -335,7 +334,7 @@ def _delete_old_v_dirs(
 ) -> IOResult[None, LivespecError]:
     """Delete every `<spec-root>/history/vK/` where K < max_version - 1.
 
-    Per v012 spec.md prune-history paragraph step (c): the
+    Per spec.md prune-history paragraph step (c): the
     wrapper recursively removes each old v-directory below the
     K < N-1 threshold via the `fs.rmtree` boundary primitive.
     Threads the per-path deletions sequentially through the
@@ -358,7 +357,7 @@ def _replace_v_n_minus_one_with_marker(
 ) -> IOResult[None, LivespecError]:
     """Replace v(N-1)/ contents with a single PRUNED_HISTORY.json marker.
 
-    Per v012 spec.md prune-history paragraph step (d): rmtree
+    Per spec.md prune-history paragraph step (d): rmtree
     `<spec-root>/history/v(N-1)/` (clearing any leftover content
     including a stale prior marker), then write the fresh marker
     at `<spec-root>/history/v(N-1)/PRUNED_HISTORY.json`. The

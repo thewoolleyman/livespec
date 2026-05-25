@@ -12,8 +12,8 @@
 # ignore markers attached to the offending argument's line below.
 """Revise sub-command supervisor.
 
-Per and Plan Phase 3
-: revise is minimum-viable per v019 Q1 —
+Per and Plan
+: revise is minimum-viable per the spec Q1 —
 validates `--revise-json <path>` against revise_input.schema.json,
 processes per-proposal `decisions[]` in payload order, writes
 the paired `<stem>-revision.md` per decision, moves each
@@ -28,7 +28,7 @@ template's versioned spec files. Accepts `--spec-target <path>`.
 threads argv through the railway and pattern-matches the final
 IOResult to derive the exit code. The file-shaping railway
 helpers live in the sibling private module
-`_revise_railway_emits.py` (extracted at cycle 5.c.4 to keep
+`_revise_railway_emits.py` (extracted at to keep
 this file under the 250-LLOC hard ceiling).
 """
 
@@ -243,7 +243,7 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
 
-    Per Plan Phase 3 +:
+    Per Plan  +:
     `<spec-target>` is selected via --spec-target, defaulting to
     the project's main spec root (`<project-root>/SPECIFICATION/`
     under the built-in livespec template).

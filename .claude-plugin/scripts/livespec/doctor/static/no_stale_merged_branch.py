@@ -15,26 +15,26 @@
 Per `SPECIFICATION/contracts.md` §"Impl-side cleanup invariants
 (cross-boundary)" → §"`no-stale-merged-branch`":
 
-  For every local branch whose tip is reachable from the default
-  branch (i.e., merged), the invariant fires `warn` with
-  corrective action `git branch -d <name>`. Excludes the default
-  branch itself. Excludes any branch the user has explicitly
-  tagged via project-local config to skip (deferred to a future
-  refinement; v1 has no skip-list config key).
+For every local branch whose tip is reachable from the default
+branch (i.e., merged), the invariant fires `warn` with
+corrective action `git branch -d <name>`. Excludes the default
+branch itself. Excludes any branch the user has explicitly
+tagged via project-local config to skip (deferred to a future
+refinement; v1 has no skip-list config key).
 
-  The check fires `warn` (not `fail`) per v074: the underlying
-  state is recoverable by user action, so the invariant's role is
-  to surface the housekeeping item to the user, not to block the
-  build.
+The check fires `warn` (not `fail`) per the spec: the underlying
+state is recoverable by user action, so the invariant's role is
+to surface the housekeeping item to the user, not to block the
+build.
 
-  Skip conditions (Finding.status='skipped'):
-    - `project_root` is not a git working tree (`is_git_repo`
-      returns False).
-    - `git symbolic-ref refs/remotes/origin/HEAD` is unset (no
-      remote tracking or no clone), so the default branch is
-      undetermined.
-    - `git for-each-ref --merged refs/heads/<default>` fails for
-      any other reason (lifted via the io.git seam).
+Skip conditions (Finding.status='skipped'):
+  - `project_root` is not a git working tree (`is_git_repo`
+    returns False).
+  - `git symbolic-ref refs/remotes/origin/HEAD` is unset (no
+    remote tracking or no clone), so the default branch is
+    undetermined.
+  - `git for-each-ref --merged refs/heads/<default>` fails for
+    any other reason (lifted via the io.git seam).
 """
 
 from __future__ import annotations

@@ -12,11 +12,11 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: revision_to_proposed_change_pairing.
 
-Per Plan Phase 3 +: this check asserts that every
+Per Plan  +: this check asserts that every
 `history/vNNN/proposed_changes/<topic>.md` has a paired
 `<topic>-revision.md` in the same directory.
 
-Cycle 140 lands the pass arm. Subsequent cycles add the
+This work lands the pass arm. Subsequent cycles add the
 fail arm (orphan proposed-change with no revision).
 """
 
@@ -57,7 +57,7 @@ def _evaluate(
 ) -> IOResult[Finding, LivespecError]:
     """Evaluate the version directories for revision-pairing.
 
-    Cycle 140 lands the smallest viable behavior: any list
+    This work lands the smallest viable behavior: any list
     yields a pass-Finding. The actual orphan-discovery
     discriminator lands in the next cycle when its fail-arm
     test forces it into existence.

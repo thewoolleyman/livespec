@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """File-shaping railway stages for the `revise` sub-command.
 
-Extracted from `revise.py` at cycle 5.c.4 so the parent file's
+Extracted from `revise.py` at so the parent file's
 LLOC stays under the 250-LLOC hard ceiling enforced by
 `dev-tooling/checks/file_lloc.py`. The split is purely
 organizational; the behavior is identical to the inline original.
@@ -65,7 +65,7 @@ def _process_decisions(
     (3) on accept/modify, materialize `resulting_files[]` into the
     working-spec files. After all decisions, snapshot every
     spec-root file byte-identically into `<spec-target>/history/
-    vNNN/` per v011 Proposal 3 item d / v038 D1 Statement B.
+    vNNN/` per the spec Proposal 3 item d / Statement B.
     Threads `author_human`, `author_llm`, and `revised_at` into
     every per-decision body composition.
     """
@@ -98,7 +98,7 @@ def _check_proposed_changes_nonempty(
 ) -> IOResult[None, LivespecError]:
     """Fail with PreconditionError when proposed_changes/ has no in-flight proposals.
 
-    Per v011 Proposal 3 item a: revise MUST fail hard with
+    Per the spec Proposal 3 item a: revise MUST fail hard with
     PreconditionError (exit 3) when `<spec-target>/proposed_changes/`
     contains no in-flight proposal files. The skill-owned
     `proposed_changes/README.md` does not count as an in-flight
@@ -267,7 +267,7 @@ def _snapshot_working_spec_files(
 ) -> IOResult[list[Path], LivespecError]:
     """Snapshot every immediate spec-root file byte-identically into `version_dir`.
 
-    Per v011 Proposal 3 item d ("on every cut, `<spec-target>/
+    Per the spec Proposal 3 item d ("on every cut, `<spec-target>/
     history/vNNN/` snapshots every template-declared spec file
     byte-identically"). "Template-declared" is approximated as
     every immediate file child of `<spec-target>/` — directory

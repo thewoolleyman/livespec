@@ -12,10 +12,10 @@
 # ignore markers attached to the offending argument's line below.
 """Per-spec-tree skill-owned README emissions for the `seed` sub-command.
 
-Phase 7 sub-step 1.c: holds the per-tree skill-owned file
+ sub-step 1.c: holds the per-tree skill-owned file
 emissions that the v002 spec edit mandates — `history/README.md`
-for the main spec (cycle 1) plus `proposed_changes/README.md`
-per sub-spec (cycle 2) and (in subsequent cycles)
+for the main spec () plus `proposed_changes/README.md`
+per sub-spec () and (in subsequent cycles)
 `history/README.md` per sub-spec plus the empty-
 `history/v001/proposed_changes/` `.gitkeep` marker per sub-spec.
 

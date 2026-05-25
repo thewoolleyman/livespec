@@ -12,18 +12,18 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: version_directories_complete.
 
-Per Plan Phase 3 +: this check asserts that every
+Per Plan  +: this check asserts that every
 `<spec_root>/history/vNNN/` directory contains its expected
 sub-structure.
 
 Phase-3 minimum scope: verifies every existing `history/v*/`
 directory contains a `proposed_changes/` subdirectory. The
-template-specific "main-file" presence is deferred to Phase 7.
+template-specific "main-file" presence is deferred to .
 
-Cycle 138 lands the pass arm. Subsequent cycles add the
+This work lands the pass arm. Subsequent cycles add the
 fail arm for version-directory shape violations.
 
-Phase 7 prereq.B widens the rule with the pruned-marker
+ prereq.B widens the rule with the pruned-marker
 exemption per SPECIFICATION/v013 spec.md §"`version-directories-complete`
 pruned-marker exemption". A v-directory whose contents are
 EXACTLY `PRUNED_HISTORY.json` (single file at the directory
@@ -168,7 +168,7 @@ def _select_version_dirs(*, children: list[Path]) -> list[Path]:
 
     The `v*`-name + `is_dir()` filter excludes the skill-owned
     `<spec_root>/history/README.md` directory-description file
-    (Plan Phase 6, 3174-3175, 3194-3195) along
+    (Plan , 3174-3175, 3194-3195) along
     with any other non-version sibling that may live alongside
     the `vNNN/` snapshots. Without this filter the per-version
     `proposed_changes/` probe would fire against

@@ -4,10 +4,10 @@ Per style doc §"Skill layout — schemas/dataclasses/": fields
 match the schema one-to-one in name and Python type. The
 dataclass is the type that flows through the railway after
 schema validation:
-    Result[SubSpecPayload, ValidationError]
+  Result[SubSpecPayload, ValidationError]
 from validate.sub_spec_payload.validate_sub_spec_payload.
 
-Per v018 Q1 + v020 Q2: each sub-spec payload entry inside
+Per the spec Q1 + each sub-spec payload entry inside
 `seed_input.sub_specs[]` carries the sub-spec template's
 directory name + the spec-file content for atomic emission
 alongside the main spec tree. `template_name` is a

@@ -4,11 +4,11 @@ Per style doc §"Skill layout — schemas/dataclasses/": fields
 match the schema one-to-one in name and Python type. The
 dataclass is the type that flows through the railway after
 schema validation:
-    Result[DoctorFindings, ValidationError]
+  Result[DoctorFindings, ValidationError]
 from validate.doctor_findings.validate_doctor_findings.
 
 The wire shape wraps a list of finding entries (one per check
-per spec tree per v014 N2 standalone). Mirroring
+per spec tree per the spec N2 standalone). Mirroring
 RevisionInput.decisions, the nested `findings` items stay as
 dicts at validation time — consumers that need typed Finding
 instances can validate each item separately via

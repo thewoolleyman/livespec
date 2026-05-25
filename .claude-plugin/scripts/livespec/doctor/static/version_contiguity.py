@@ -12,11 +12,11 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: version_contiguity.
 
-Per Plan Phase 3 +: this check asserts that the
+Per Plan  +: this check asserts that the
 `<spec_root>/history/vNNN/` directory numbers form a
 contiguous sequence starting from `v001` with no gaps.
 
-Cycle 139 lands the pass arm for a well-formed contiguous
+This work lands the pass arm for a well-formed contiguous
 sequence. The fail arm (gap detected) lands in a subsequent
 cycle.
 """
@@ -58,7 +58,7 @@ def _evaluate(
 ) -> IOResult[Finding, LivespecError]:
     """Evaluate the directory list for contiguity.
 
-    Cycle 139 lands the smallest viable behavior: as long as
+    This work lands the smallest viable behavior: as long as
     fs.list_dir returned a list (success), produce the
     pass-Finding. The actual contiguity discriminator (gap
     detection) lands in the next cycle when its test forces

@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: livespec_jsonc_valid.
 
-Per Plan Phase 3 +: this check asserts that the project's
+Per Plan  +: this check asserts that the project's
 `.livespec.jsonc` config file exists and parses as valid JSONC.
 First-of-eight in the Phase-3 minimum-subset registry.
 
@@ -25,10 +25,10 @@ stdout contract is uniform across pass and fail outcomes (the
 "check ran and detected a violation" semantics in
 finding.schema.json's status enum). Two distinct fail messages
 discriminate the two failure modes:
-  - PreconditionError (file missing / unreadable) ->
-    "livespec config file is missing or unreadable"
-  - ValidationError (malformed JSONC) ->
-    "livespec config is not valid JSONC"
+- PreconditionError (file missing / unreadable) ->
+  "livespec config file is missing or unreadable"
+- ValidationError (malformed JSONC) ->
+  "livespec config is not valid JSONC"
 """
 
 from __future__ import annotations

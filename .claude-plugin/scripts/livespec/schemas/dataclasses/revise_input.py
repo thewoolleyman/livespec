@@ -4,7 +4,7 @@ Per style doc §"Skill layout — schemas/dataclasses/": fields
 match the schema one-to-one in name and Python type. The
 dataclass is the type that flows through the railway after
 schema validation:
-    Result[RevisionInput, ValidationError]
+  Result[RevisionInput, ValidationError]
 from validate.revise_input.validate_revise_input.
 """
 
@@ -28,8 +28,8 @@ class RevisionInput:
     optional `resulting_files` (list of `{path, content}`
     objects).
 
-    Per `check-newtype-domain-primitives` (v034 D7 drain
-    cycle 2): `author` uses the `Author` NewType from
+    Per `check-newtype-domain-primitives` (drain
+    ): `author` uses the `Author` NewType from
     `livespec.types`.
     """
 

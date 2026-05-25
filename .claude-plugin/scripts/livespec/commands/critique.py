@@ -19,8 +19,8 @@ resolves the author identifier via the unified four-step precedence
 (`--author <id>` > `LIVESPEC_AUTHOR_LLM` env > payload `author` field
 > `"unknown-llm"`) and delegates to `propose-change` with the
 un-slugged resolved-author stem as topic-hint AND the literal string
-`"-critique"` as the reserve-suffix parameter. propose-change's v016
-P3 / v017 Q1 reserve-suffix canonicalization composes the two so the
+`"-critique"` as the reserve-suffix parameter. propose-change's
+reserve-suffix canonicalization composes the two so the
 `-critique` suffix is preserved intact at the 64-char filename cap.
 
 `build_parser()` is the pure argparse factory per style doc
@@ -114,7 +114,7 @@ def _build_delegated_argv(
     Per spec.md §"`critique` internal delegation": the un-slugged
     resolved-author stem is the trailing positional topic-hint;
     `--reserve-suffix=-critique` is the separate parameter so
-    propose_change's v016 P3 / v017 Q1 algorithm preserves the
+    propose_change's / algorithm preserves the
     suffix at the 64-char cap; `--author=<resolved>` ensures
     propose_change's own front-matter author resolution
     short-circuits at step 1 and matches critique's resolved

@@ -12,13 +12,13 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: template_exists.
 
-Per Plan Phase 3 + + livespec_config.schema.json §"template":
+Per Plan  + + livespec_config.schema.json §"template":
 this check asserts that the `.livespec.jsonc` `template` field
 resolves to either a built-in template name (one of
 `{livespec, minimal}`) or a path-as-string to a custom template
 directory present on disk relative to the project root.
 
-Cycle 134 lands the success arm for the built-in branch.
+This work lands the success arm for the built-in branch.
 Subsequent cycles add the failure arm (unknown name, missing
 custom-template directory) and the on-disk path-resolution
 branch under outside-in pressure.
@@ -71,7 +71,7 @@ def _fail_finding(*, ctx: DoctorContext, template_value: str) -> Finding:
 def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecError]:
     """Evaluate the parsed config against the template-exists rule.
 
-    Cycle 135 splits the evaluation into two arms: the
+    This work splits the evaluation into two arms: the
     `template` value is checked against BUILTIN_TEMPLATES and
     yields a pass-Finding on hit; otherwise (unknown name)
     yields a fail-Finding naming the offending value. The

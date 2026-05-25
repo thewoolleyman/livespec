@@ -12,14 +12,14 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: gherkin_blank_line_format.
 
-Per Plan Phase 7 sub-step 7.c +: this check verifies that fenced
+Per Plan  this check verifies that fenced
 ` ```gherkin ` blocks in spec-text-bearing markdown files are
 surrounded by blank lines (one blank line above the opening
 fence, one blank line below the closing fence). Start-of-file
 is implicit-blank-above; end-of-file is implicit-blank-below.
 
 Per `SPECIFICATION/templates/minimal/constraints.md`
-§"Gherkin blank-line format check exemption" (Phase 7
+§"Gherkin blank-line format check exemption" (
 widening): the check MUST exempt `minimal`-rooted spec_roots
 (single-file `SPECIFICATION.md` shape per `spec_root: "./"`)
 whose `SPECIFICATION.md` does NOT contain any fenced
@@ -27,7 +27,7 @@ whose `SPECIFICATION.md` does NOT contain any fenced
 `SPECIFICATION.md` does contain gherkin blocks, the check
 applies normally and may yield pass or fail.
 
-Per v018 Q1: applies to all spec-text-bearing trees (main +
+Per applies to all spec-text-bearing trees (main +
 each sub-spec). The walk-set semantic matches
 `bcp14-keyword-wellformedness`: livespec-shape spec_roots
 (multi-file layout) walk `<spec_root>/*.md` top-level files
@@ -40,25 +40,25 @@ the seed/revise byte-identical write discipline.
 Detection rules (v1 minimum scope per the deferred-items.md
 `static-check-semantics` entry on `gherkin-blank-line-format`'s
 fenced-block detection algorithm):
-  - For every line opening a fenced ` ```gherkin ` block:
-      - The line immediately before the opening fence MUST
-        be blank, OR the opening fence MUST be the very first
-        line of the file (start-of-file is implicit-blank-
-        above).
-      - The line immediately after the matching closing
-        fence MUST be blank, OR the closing fence MUST be
-        the very last line of the file (end-of-file is
-        implicit-blank-below).
-  - The closing fence is the next line whose content is
-    exactly ` ``` ` (three backticks, optional trailing
-    whitespace).
-  - An unmatched opening fence (no closing fence found before
-    end-of-file) yields no closing-side violation; the v1
-    minimum scope treats the broader markdown well-formedness
-    as out of scope for this check.
-  - The first violation found (lexicographically-sorted file,
-    first matching line) is surfaced; the check short-circuits
-    on the first hit so the user sees one offense at a time.
+- For every line opening a fenced ` ```gherkin ` block:
+    - The line immediately before the opening fence MUST
+      be blank, OR the opening fence MUST be the very first
+      line of the file (start-of-file is implicit-blank-
+      above).
+    - The line immediately after the matching closing
+      fence MUST be blank, OR the closing fence MUST be
+      the very last line of the file (end-of-file is
+      implicit-blank-below).
+- The closing fence is the next line whose content is
+  exactly ` ``` ` (three backticks, optional trailing
+  whitespace).
+- An unmatched opening fence (no closing fence found before
+  end-of-file) yields no closing-side violation; the v1
+  minimum scope treats the broader markdown well-formedness
+  as out of scope for this check.
+- The first violation found (lexicographically-sorted file,
+  first matching line) is surfaced; the check short-circuits
+  on the first hit so the user sees one offense at a time.
 """
 
 from __future__ import annotations
