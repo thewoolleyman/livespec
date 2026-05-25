@@ -5,9 +5,9 @@ Per style doc §"Skill layout — `validate/`": validator at
 `validate_template_config(payload, schema)` returning
 `Result[TemplateConfig, ValidationError]`.
 
-Per v011 K5: a template's `template.json` declares its format
-version, spec_root location, optional doctor extensibility
-hooks, and optional LLM-prompt paths. v1 livespec supports only
+A template's `template.json` declares its format version,
+spec_root location, optional doctor extensibility hooks, and
+optional LLM-prompt paths. v1 livespec supports only
 `template_format_version: 1`.
 """
 
@@ -35,7 +35,7 @@ _SCHEMA_PATH = (
     / "template_config.schema.json"
 )
 
-# Module-level schema cache (v040 D1): hypothesis-based @given
+# Module-level schema cache: hypothesis-based @given
 # tests run the body ~100 times per invocation; reloading the schema
 # from disk on each example pushes individual examples over the
 # default 200ms hypothesis deadline under `pytest -n auto` xdist

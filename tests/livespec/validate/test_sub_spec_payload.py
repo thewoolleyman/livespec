@@ -5,10 +5,10 @@ Per style doc §"Skill layout — `validate/`": validator at
 `validate_sub_spec_payload(payload, schema)` returning
 `Result[SubSpecPayload, ValidationError]`.
 
-Per v018 Q1 + v020 Q2: each sub-spec payload carries a
-`template_name` marker (the sub-spec template's directory name)
-and a `files` array (path/content pairs for atomic emission
-alongside the main spec tree).
+Each sub-spec payload carries a `template_name` marker (the
+sub-spec template's directory name) and a `files` array
+(path/content pairs for atomic emission alongside the main spec
+tree).
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ _SCHEMA_PATH = (
     / "sub_spec_payload.schema.json"
 )
 
-# Module-level schema cache (v040 D1): hypothesis-based @given
+# Module-level schema cache: hypothesis-based @given
 # tests run the body ~100 times per invocation; reloading the schema
 # from disk on each example pushes individual examples over the
 # default 200ms hypothesis deadline under `pytest -n auto` xdist

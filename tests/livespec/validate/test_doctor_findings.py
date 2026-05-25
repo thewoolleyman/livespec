@@ -6,7 +6,7 @@ Per style doc §"Skill layout — `validate/`": validator at
 `Result[DoctorFindings, ValidationError]`. The doctor_findings
 wire payload wraps a `findings` list (per
 `schemas/doctor_findings.schema.json`); each entry mirrors the
-finding schema (per v014 N2 standalone).
+finding schema as a standalone payload.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ _SCHEMA_PATH = (
     / "doctor_findings.schema.json"
 )
 
-# Module-level schema cache (v040 D1): hypothesis-based @given
+# Module-level schema cache: hypothesis-based @given
 # tests run the body ~100 times per invocation; reloading the schema
 # from disk on each example pushes individual examples over the
 # default 200ms hypothesis deadline under `pytest -n auto` xdist

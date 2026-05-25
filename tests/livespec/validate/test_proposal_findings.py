@@ -4,8 +4,7 @@ Per style doc §"Skill layout — `validate/`": validator at
 `validate/proposal_findings.py` exports
 `validate_proposal_findings(payload, schema)` returning
 `Result[ProposalFindings, ValidationError]`. Mirrors the
-finding / seed_input validator shape (per v013 M6 +
-the validator-as-factory-style decision).
+finding / seed_input validator-as-factory-style shape.
 """
 
 from __future__ import annotations
