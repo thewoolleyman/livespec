@@ -181,14 +181,14 @@ def test_fs_rmtree_removes_populated_directory_and_returns_iosuccess(
 ) -> None:
     """`rmtree(path)` recursively deletes `path` and returns IOSuccess(None).
 
-    Per cycle 6.c.6 consumer pressure from prune-history: per
-    v012 SPECIFICATION/spec.md §"Sub-command lifecycle"
-    prune-history paragraph step (c), the wrapper deletes every
-    `<spec-root>/history/vK/` where K < N-1. The fixture sets up
-    a populated v-style directory tree (nested files +
-    subdirectories) and asserts the directory is gone after
-    rmtree returns. Mirrors the byte-identical-move primitive
-    `fs.move`'s success-arm shape.
+    Per SPECIFICATION/spec.md §"Sub-command lifecycle" prune-history
+    paragraph step (c), the wrapper deletes every
+    `<spec-root>/history/vK/` where K < N-1, so io.fs needs a
+    recursive directory-removal primitive that participates in the
+    railway. The fixture sets up a populated v-style directory tree
+    (nested files + subdirectories) and asserts the directory is
+    gone after rmtree returns. Mirrors the byte-identical-move
+    primitive `fs.move`'s success-arm shape.
     """
     target = tmp_path / "v001"
     target.mkdir()

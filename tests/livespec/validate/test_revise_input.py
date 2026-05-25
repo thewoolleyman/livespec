@@ -6,9 +6,9 @@ Per style doc §"Skill layout — `validate/`": each validator at
 where `<Dataclass>` is the paired dataclass at
 `schemas/dataclasses/<name>.py`.
 
-Cycle 126 lands the success + rejection paths: a well-formed
-revise-input payload validates and produces a RevisionInput
-dataclass instance; a schema-violating payload returns
+Covers success + rejection paths: a well-formed revise-input
+payload validates and produces a RevisionInput dataclass
+instance; a schema-violating payload returns
 Failure(ValidationError).
 """
 
@@ -35,7 +35,7 @@ _SCHEMA_PATH = (
     / "revise_input.schema.json"
 )
 
-# Module-level schema cache (v040 D1): hypothesis-based @given
+# Module-level schema cache: hypothesis-based @given
 # tests run the body ~100 times per invocation; reloading the schema
 # from disk on each example pushes individual examples over the
 # default 200ms hypothesis deadline under `pytest -n auto` xdist

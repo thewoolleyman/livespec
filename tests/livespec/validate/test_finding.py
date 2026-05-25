@@ -3,8 +3,7 @@
 Per style doc §"Skill layout — `validate/`": validator at
 `validate/finding.py` exports `validate_finding(payload, schema)`
 returning `Result[Finding, ValidationError]`. Mirrors the
-seed_input / revise_input validator shape (per v013 M6 +
-the validator-as-factory-style decision).
+seed_input / revise_input validator-as-factory-style shape.
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ _SCHEMA_PATH = (
     / "finding.schema.json"
 )
 
-# Module-level schema cache (v040 D1): hypothesis-based @given
+# Module-level schema cache: hypothesis-based @given
 # tests run the body ~100 times per invocation; reloading the schema
 # from disk on each example pushes individual examples over the
 # default 200ms hypothesis deadline under `pytest -n auto` xdist
