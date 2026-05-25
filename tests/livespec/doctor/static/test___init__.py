@@ -5,7 +5,7 @@ check module gets pulled into existence via consumer pressure
 (see SPECIFICATION/contracts.md §"Per-sub-spec doctor
 parameterization"). Until any check module is authored under
 TDD, the package's `__init__.py`
-holds only the canonical no-op preamble (the v033 D1
+holds only the canonical no-op preamble (the the mirror-pairing rule
 mirror-pairing-rule's `__init__.py` carve-out: a file whose body
 is `from __future__ import annotations` + `__all__: list[str] = []`
 is exempt from requiring a paired non-trivial test, but the
@@ -28,7 +28,7 @@ __all__: list[str] = []
 def test_static_package_is_importable() -> None:
     """The doctor.static package imports without raising.
 
-    Cycle 103 drives the package's __init__.py from its prior
+     drives the package's __init__.py from its prior
     Phase-3-aspirational form (which imported eight check modules
     that haven't been re-authored yet under the v033 D5b second
     redo, plus `livespec.context` which doesn't exist) down to a
@@ -47,7 +47,7 @@ def test_applicability_by_tree_kind_maps_main_to_all_eight_checks() -> None:
     """APPLICABILITY_BY_TREE_KIND['main'] enumerates every Phase-3 check.
 
     Per Plan
-    Phase 3: the applicability table is
+    : the applicability table is
     orchestrator-owned and decides which checks apply to which
     tree kind. The 'main' entry must include every member of
     the 8-check minimum subset; the 'sub_spec' entry is a

@@ -1,10 +1,10 @@
 """Tests for livespec.doctor.static.anchor_reference_resolution.
 
-Per Plan Phase 7 sub-step 7.d +: the `anchor-reference-resolution` check
+The `anchor-reference-resolution` check
 verifies that every Markdown intra-document anchor reference (a
 link of the form `[text](#slug)`) resolves to an actual heading
 in the same file via the GFM slug algorithm. This is the last of
-four remaining doctor static checks landing at Phase 7 (alongside
+four remaining doctor static checks landing at the per-prompt regeneration (alongside
 `out-of-band-edits`, `bcp14-keyword-wellformedness`, and
 `gherkin-blank-line-format`).
 
@@ -16,7 +16,7 @@ consecutive hyphens collapse to one. Headings inside fenced code
 blocks (` ``` ` or `~~~`) are NOT considered headings. Explicit
 `{#custom-id}` syntax is NOT supported in v1."
 
-Per v018 Q1: this check applies to all spec-text-bearing trees
+This check applies to all spec-text-bearing trees
 (main + each sub-spec). The walk-set semantic matches the
 sibling Phase-7 checks: livespec-shape spec_roots walk
 `<spec_root>/*.md` top-level files only; minimal-shape
@@ -39,7 +39,6 @@ Detection rules (v1 minimum scope):
     circuits on the first hit so the user sees one offense at
     a time.
 
-Cycle 7.d lands the Red→Green pair for this check.
 """
 
 from __future__ import annotations
@@ -438,7 +437,7 @@ def test_run_only_walks_top_level_md_files(
 ) -> None:
     """run(ctx) does NOT recurse into history/proposed_changes/templates subtrees.
 
-    Per the v018 Q1 walk-set semantic shared with sibling
+    Per the the sub-spec-aware doctor parameterization walk-set semantic shared with sibling
     Phase-7 checks, the anchor-reference-resolution check
     inspects only top-level `<spec_root>/*.md` files (livespec-
     shape) or only `<spec_root>/SPECIFICATION.md` (minimal-

@@ -1,12 +1,12 @@
 """Tests for livespec.doctor.static.proposed_change_topic_format.
 
-Per Plan Phase 3 +: this is the eighth and final Phase-3
+ this is the eighth and final Phase-3
 minimum-subset doctor check. It asserts that every
 `<spec_root>/proposed_changes/<topic>.md` filename follows the
 canonical topic-slug format (lowercase letters, digits, and
 hyphens only).
 
-Cycle 141 lands the pass arm for a well-named proposed-change
+ lands the pass arm for a well-named proposed-change
 topic. The fail arm (uppercase or invalid characters in topic
 slug) lands in a subsequent cycle.
 """

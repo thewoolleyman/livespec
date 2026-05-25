@@ -1,12 +1,12 @@
 """Tests for livespec.doctor.static.version_contiguity.
 
-Per Plan Phase 3 +: this is the sixth of the eight Phase-3
+ this is the sixth of the eight Phase-3
 minimum-subset doctor checks. It asserts that the
 `<spec_root>/history/vNNN/` directory numbers are contiguous
 starting from `v001` with no gaps (e.g., v001, v002, v003 is
 valid; v001, v003 is a gap).
 
-Cycle 139 lands the pass arm for a contiguous v001..vN
+ lands the pass arm for a contiguous v001..vN
 sequence. The fail arm (gap detected) lands in a subsequent
 cycle.
 """

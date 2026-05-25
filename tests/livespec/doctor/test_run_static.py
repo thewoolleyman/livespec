@@ -1,11 +1,11 @@
 """Tests for livespec.doctor.run_static.
 
-Per and Plan Phase 3
+Per and Plan
 : run_static is the static-phase orchestrator.
 It enumerates `(spec_root, template_name)` pairs, builds a
 per-tree DoctorContext, and runs the applicable check subset
 per the orchestrator-owned applicability table. Phase-3 minimum
-subset registers 8 checks; the rest land at Phase 7.
+subset registers 8 checks; the rest land at the per-prompt regeneration.
 """
 
 from __future__ import annotations
@@ -29,12 +29,12 @@ def test_run_static_main_exists_and_returns_int(
 
     Smallest possible cycle: drives livespec/doctor/run_static.py
     into existence with the canonical `main(*, argv) -> int`
-    supervisor signature. Cycle 142 widened the orchestrator
+    supervisor signature.  widened the orchestrator
     to actually exercise STATIC_CHECKS against the resolved
     project_root; calling with argv=[] hits the cwd-fallback
     branch via _resolve_project_root. monkeypatch.chdir(tmp_path)
     isolates that branch so checks don't read the actual repo
-    tree (per the cycle 122 cleanup lesson). capsys silences
+    tree (per the  cleanup lesson). capsys silences
     the JSON payload the orchestrator writes to stdout.
     """
     monkeypatch.chdir(tmp_path)
@@ -146,11 +146,11 @@ def _seed_sub_spec_tree(*, sub_spec_root: Path) -> None:
 
     Sub-spec trees skip the project-root-only checks
     (`livespec_jsonc_valid` + `template_exists`) per
-    APPLICABILITY_BY_TREE_KIND['sub_spec'] (Plan Phase 6 +
-    static/__init__.py cycle 143). The 6 remaining checks need
+    APPLICABILITY_BY_TREE_KIND['sub_spec'] (Plan  +
+    static/__init__.py ). The 6 remaining checks need
     `<sub_spec_root>/{spec.md, proposed_changes/, history/v001/
     proposed_changes/}` plus the skill-owned `history/README.md`
-    that v037 D1's cycle (ii) Red→Green established as the
+    that the Red-mode shape rule's cycle (ii) Red→Green established as the
     valid-and-skipped non-version sibling.
     """
     sub_spec_root.mkdir(parents=True, exist_ok=True)
@@ -172,7 +172,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
 ) -> None:
     """run_static.main enumerates main + sub-spec trees in one invocation.
 
-    Per Plan §"Phase 6" exit criterion ("/livespec:doctor's
+    Per Plan §"" exit criterion ("/livespec:doctor's
     static phase runs cleanly against every spec tree — one
     wrapper invocation, exit 0 overall, with per-tree findings
     emitted and all marked pass"): a project that ships
