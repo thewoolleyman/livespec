@@ -3,8 +3,8 @@
 Maps each property name from a fixture's
 `expected_semantic_properties` array to a function that
 asserts the property holds for the fixture's `replayed_response`.
-Per SPECIFICATION/contracts.md §"Prompt-QA harness contract"
-(v014), the registry is populated via explicit imports per the
+Per SPECIFICATION/contracts.md §"Prompt-QA harness contract",
+the registry is populated via explicit imports per the
 static-enumeration discipline (no `glob+importlib` dynamic
 discovery). Each assertion function MUST accept keyword-only
 arguments `*, replayed_response: object, input_context: object`
@@ -12,9 +12,8 @@ and raise `AssertionError` on any property violation.
 
 Property names match
 SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-semantic-property catalogue". Phase 7 item (c) per-prompt
-regeneration cycles widen this registry alongside the catalogue
-per the in-line widening rule (Plan §3543-3550); fixtures
+semantic-property catalogue". Per-prompt regeneration cycles
+widen this registry alongside the catalogue; fixtures'
 `expected_semantic_properties` lists land in the same revise
 commit as their matching assertion functions.
 """
@@ -60,7 +59,7 @@ def _asks_v020_q2_question(
     replayed_response: object,
     input_context: object,
 ) -> None:
-    """`replayed_response.sub_specs[]` reflects the v020 Q2 dialogue answer.
+    """`replayed_response.sub_specs[]` reflects the dialogue answer for `ships_own_templates`.
 
     Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
     semantic-property catalogue → prompts/seed.md", when the input

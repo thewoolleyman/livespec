@@ -8,12 +8,11 @@ and asserts the fixture's declared properties hold for its
 
 Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
 semantic-property catalogue → prompts/critique.md", the
-bootstrap-minimum catalogue is two properties (findings grounded
-in the spec target's current state; ambiguity/contradiction
-prioritization). Phase 7 item (c)'s per-prompt regeneration
-cycle widens the catalogue and adds matching assertion
-functions; until then, fixtures may declare empty
-`expected_semantic_properties` lists.
+catalogue starts at two properties (findings grounded in the
+spec target's current state; ambiguity/contradiction
+prioritization). Per-prompt regeneration cycles widen the
+catalogue and add matching assertion functions; until then,
+fixtures may declare empty `expected_semantic_properties` lists.
 """
 
 from __future__ import annotations

@@ -22,11 +22,10 @@ The wrapper's behavioral contract:
 - Forwards `$@` (the args git passes to the hook, typically
   empty for pre-commit but populated for pre-push) verbatim.
 
-Cycle 61 pins the dispatch contract: when the wrapper is
-invoked under the name `pre-commit` with two trailing
-arguments, it must `exec` `mise` with the canonical argv
-`["mise", "exec", "lefthook", "--", "lefthook", "run",
-"pre-commit", <arg1>, <arg2>]`.
+Dispatch contract: when the wrapper is invoked under the name
+`pre-commit` with two trailing arguments, it must `exec` `mise`
+with the canonical argv `["mise", "exec", "lefthook", "--",
+"lefthook", "run", "pre-commit", <arg1>, <arg2>]`.
 """
 
 from __future__ import annotations
