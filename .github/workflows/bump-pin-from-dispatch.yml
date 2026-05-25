@@ -1,0 +1,32 @@
+# bump-pin-from-dispatch.yml — sibling-released handler shim.
+#
+# Authority: livespec-dev-tooling SPECIFICATION/contracts.md
+#   §"Cross-repo coordination automation surface" §"reusable-bump-pin-from-dispatch.yml".
+#
+# On every `repository_dispatch` event of type `sibling-released`,
+# this shim delegates to the upstream reusable workflow which:
+#   - runs pin-autodiscovery for the source_repo against this repo's
+#     four pin formats (.livespec.jsonc compat.pinned, pyproject.toml
+#     [tool.uv.sources], .vendor.jsonc, .copier-answers.yml _commit),
+#   - rewrites every matching pin to the new tag,
+#   - runs `just check` to verify the consumer's checks still pass,
+#   - commits with the `chore(deps):` convention (excluded from
+#     release-please MINOR/PATCH bumps to avoid auto-bump cycles),
+#   - opens an auto-merge PR via the livespec GitHub App.
+#
+# Required secrets: `APP_ID`, `APP_PRIVATE_KEY` (inherited).
+
+name: Bump pin from sibling dispatch
+
+on:
+  repository_dispatch:
+    types: [sibling-released]
+
+jobs:
+  bump:
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-bump-pin-from-dispatch.yml@master
+    secrets: inherit
+    with:
+      source_repo: ${{ github.event.client_payload.source_repo }}
+      tag: ${{ github.event.client_payload.tag }}
+      release_url: ${{ github.event.client_payload.release_url }}
