@@ -1,20 +1,15 @@
 """Tests for livespec.commands.resolve_template.
 
+resolve_template emits the resolved template directory path on
+stdout. The path-computation formula derives the bundle root
+from this file's location: parents[0]=commands/,
+parents[1]=livespec/, parents[2]=scripts/,
+parents[3]=.claude-plugin/.
 
-and Plan Phase 3 sub-step 12 (codified at v028 D1 with the
-`Path(__file__).resolve().parents[3]` formula): resolve_template
-emits the resolved template directory path on stdout. The path-
-computation formula derives the bundle root from this file's
-location: parents[0]=commands/, parents[1]=livespec/,
-parents[2]=scripts/, parents[3]=.claude-plugin/.
-
-Phase 3 minimum-viable scope (Phase 6 in-band gap-fix per
-2026-05-03T01:31:03Z user gate): only the --template flow is
-implemented; the default `.livespec.jsonc`-walking flow is
-deferred to Phase 7 (no consumer in Phase 6's seed self-
-application — the seed/SKILL.md prose uses --template livespec
-pre-seed per v017 Q2). With --template required, the seed
-unblocks for Phase 6.
+Minimum-viable scope: only the --template flow is implemented;
+the default `.livespec.jsonc`-walking flow is not yet wired
+(seed/SKILL.md prose uses --template livespec pre-seed). With
+--template required, the seed unblocks for any consumer.
 """
 
 from __future__ import annotations
@@ -177,12 +172,12 @@ def test_resolve_template_unknown_flag_returns_2() -> None:
 
 
 def test_resolve_template_missing_template_flag_returns_2() -> None:
-    """Missing --template (Phase-3-min required flag) → exit 2 (UsageError).
+    """Missing --template (required flag) → exit 2 (UsageError).
 
-    Phase 3 minimum-viable scope: --template is required (the
-    default `.livespec.jsonc`-walking flow is Phase 7 work). lists
-    --template as OPTIONAL; this Phase-3-minimum deviates by
-    making it required (the default flow is Phase 7 work).
+    Minimum-viable scope: --template is required (the default
+    `.livespec.jsonc`-walking flow is not yet wired). The spec
+    lists --template as OPTIONAL; this minimum-viable surface
+    deviates by making it required.
     """
     exit_code = resolve_template.main(argv=[])
     assert exit_code == 2
