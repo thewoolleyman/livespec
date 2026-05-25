@@ -10,30 +10,28 @@ revision-file `author_human` field and `revision_front_matter.schema.json`.
 
 The seam is named `io.git.get_git_user` per the
 `revision_front_matter.schema.json` description on the
-`author_human` property. Cycle 5.c.1 lands the smallest
-viable surface: a single `get_git_user` primitive that returns
+`author_human` property. `get_git_user` returns
 `"Name <email>"` from local git config when both values are
-set; later cycles (or consumer pressure) widen the unset/missing-
-git fallbacks under a fully-typed Failure carrier.
+set; unset/missing-git fallbacks are lifted to a fully-typed
+Failure carrier.
 
-Phase 7 sub-step 7.a.i adds two more git primitives:
-`is_git_repo(*, project_root)` returns IOSuccess(True/False)
-without lifting the non-repo case to IOFailure (non-repo is an
-expected business outcome for the doctor's out-of-band-edits
-check), and `show_at_head(*, project_root, repo_relative_path)`
-returns the raw bytes of a path at HEAD so the doctor can
-byte-compare against the working tree without a decode step
-that could corrupt non-ASCII content.
+Two additional primitives serve the doctor's out-of-band-edits
+divergence detection: `is_git_repo(*, project_root)` returns
+IOSuccess(True/False) without lifting the non-repo case to
+IOFailure (non-repo is an expected business outcome for the
+out-of-band-edits check), and `show_at_head(*, project_root,
+repo_relative_path)` returns the raw bytes of a path at HEAD so
+the doctor can byte-compare against the working tree without a
+decode step that could corrupt non-ASCII content.
 
-Phase 7 sub-step 7.a.iv (redo) adds `list_at_head(*,
-project_root, repo_relative_dir)` returning the immediate file
-basenames at HEAD under a given repo-relative directory. The
-out-of-band-edits divergence detection composes this primitive
-with `show_at_head` to compare HEAD-active spec content against
-HEAD-history-vN snapshot content. Empty subtree and
-missing-subtree cases both return IOSuccess(()) — the underlying
-`git ls-tree HEAD <dir>/` does not distinguish them — and the
-no-HEAD-yet case lifts to IOFailure.
+`list_at_head(*, project_root, repo_relative_dir)` returns the
+immediate file basenames at HEAD under a given repo-relative
+directory. The out-of-band-edits divergence detection composes
+this primitive with `show_at_head` to compare HEAD-active spec
+content against HEAD-history-vN snapshot content. Empty subtree
+and missing-subtree cases both return IOSuccess(()) — the
+underlying `git ls-tree HEAD <dir>/` does not distinguish them
+— and the no-HEAD-yet case lifts to IOFailure.
 """
 
 from __future__ import annotations
@@ -137,12 +135,11 @@ def test_is_git_repo_returns_true_inside_repo(
 ) -> None:
     """`is_git_repo(project_root=tmp_path)` returns IOSuccess(True).
 
-    Phase 7 sub-step 7.a.i: the doctor's out-of-band-edits
-    static check needs a typed primitive that distinguishes
-    "this project is in a git working tree" from
-    "this project is NOT in a git working tree" (a freshly
-    extracted tarball, a non-versioned dir). A real
-    `git init`-ed `tmp_path` exercises the `IOSuccess(True)`
+    The doctor's out-of-band-edits static check needs a typed
+    primitive that distinguishes "this project is in a git
+    working tree" from "this project is NOT in a git working
+    tree" (a freshly extracted tarball, a non-versioned dir). A
+    real `git init`-ed `tmp_path` exercises the `IOSuccess(True)`
     path. Per the cwd-fallback isolation rule, monkeypatch.chdir
     is held even though `is_git_repo` operates on the explicit
     `project_root` (defense-in-depth: if the impl ever falls
@@ -338,16 +335,15 @@ def test_list_at_head_returns_immediate_file_children(
 ) -> None:
     """`list_at_head` returns the immediate file basenames at HEAD under a directory.
 
-    Phase 7 sub-step 7.a.iv (redo): the doctor's
-    out-of-band-edits static check needs a typed primitive
-    that enumerates files at HEAD under a given directory so
-    the active-vs-history-vN comparison can iterate over the
-    HEAD-committed spec files without a working-tree walk.
-    The fixture commits two immediate file children under
+    The doctor's out-of-band-edits static check needs a typed
+    primitive that enumerates files at HEAD under a given
+    directory so the active-vs-history-vN comparison can iterate
+    over the HEAD-committed spec files without a working-tree
+    walk. The fixture commits two immediate file children under
     `SPECIFICATION/` plus a subdirectory's file; the assertion
     pins `list_at_head` returning only the two immediate file
-    basenames, NOT the subdir name and NOT the file inside
-    the subdir.
+    basenames, NOT the subdir name and NOT the file inside the
+    subdir.
     """
     _git_init_with_user(
         cwd=tmp_path,

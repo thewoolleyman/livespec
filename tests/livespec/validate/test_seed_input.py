@@ -6,8 +6,8 @@ Per style doc §"Skill layout — `validate/`": each validator at
 where `<Dataclass>` is the paired dataclass at
 `schemas/dataclasses/<name>.py`.
 
-Cycle 75 lands the success path: a well-formed seed-input
-payload validates and produces a SeedInput dataclass instance.
+Covers the success path: a well-formed seed-input payload
+validates and produces a SeedInput dataclass instance.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ _SCHEMA_PATH = (
     / "seed_input.schema.json"
 )
 
-# Module-level schema cache (v040 D1): hypothesis-based @given
+# Module-level schema cache: hypothesis-based @given
 # tests run the body ~100 times per invocation; reloading the schema
 # from disk on each example pushes individual examples over the
 # default 200ms hypothesis deadline under `pytest -n auto` xdist
@@ -44,9 +44,9 @@ _SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
 def test_validate_seed_input_returns_success_with_dataclass_for_valid_payload() -> None:
     """A well-formed seed-input payload validates to Success(SeedInput).
 
-    Payload mirrors the example in: a `livespec` template choice with one main-spec
-    file and an empty sub_specs list (the user-answered-no
-    branch of the v020 Q2 dialogue).
+    Payload mirrors the example: a `livespec` template choice with
+    one main-spec file and an empty sub_specs list (the
+    user-answered-no branch of the sub-spec-emission dialogue).
     """
     schema = _SCHEMA
     payload: dict[str, object] = {
