@@ -1,16 +1,16 @@
 """Tests for livespec.doctor.static.template_files_present.
 
-Per Plan Phase 3 +: this is the third of the eight Phase-3
+ this is the third of the eight Phase-3
 minimum-subset doctor checks. It asserts that the canonical
 template-materialized files are present in the spec_root.
 
 Phase-3 minimum scope: the check verifies that the canonical
 `<spec_root>/spec.md` file (the file every livespec-template
 seed materializes step 2) is present
-on disk. Phase 7 widens this to walk the template's full
+on disk. the per-prompt regeneration widens this to walk the template's full
 declared file manifest (template.json + recursively-discovered
-template-source files). Cycle 136 lands the success arm only;
-cycle 137 lands the missing-file failure arm.
+template-source files).  lands the success arm only;
+ lands the missing-file failure arm.
 """
 
 from __future__ import annotations

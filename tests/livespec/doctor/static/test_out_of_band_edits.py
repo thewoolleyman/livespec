@@ -1,14 +1,14 @@
 """Tests for livespec.doctor.static.out_of_band_edits.
 
-Per Plan Phase 7 sub-step 7.a +: the `out-of-band-edits` check detects
+The `out-of-band-edits` check detects
 HEAD-committed spec files whose contents have diverged from
 their HEAD-committed `history/vN/` snapshot. It is the only
 check whose `run()` has a narrow auto-backfill write path (per
 `static/CLAUDE.md`); auto-backfill on detected drift lands in
-sub-step 7.a.v. Cycle 7.a.iv (redo) lands ONLY the detection
+sub-step 7.a.v. lands ONLY the detection
 half — no writes.
 
-Cycle 7.a.ii lands the skeleton + registry wiring + the first
+lands the skeleton + registry wiring + the first
 two pinned behaviors:
 
   - When `ctx.spec_root` is NOT inside a git working tree, the
@@ -22,14 +22,14 @@ two pinned behaviors:
     emits a placeholder pass-Finding. Divergence detection lands
     in 7.a.iv; until then the placeholder keeps the aggregate
     `just check` gate green for the project itself (which IS a
-    git repo). Cycle 7.a.iv (redo) replaces this placeholder
+    git repo). replaces this placeholder
     with real HEAD-active-vs-HEAD-history-vN divergence
     detection.
 
 The SLUG ↔ check_id literal mapping (`doctor-out-of-band-edits`)
 is also pinned per the `static/CLAUDE.md` registry convention.
 
-Cycle 7.a.iii widens the in-git-repo branch with a pre-backfill
+widens the in-git-repo branch with a pre-backfill
 guard → out-of-band-edits
 → "Pre-backfill guard — uncommitted prior backfill present".
 The guard detects two leftover-from-prior-run shapes BEFORE
@@ -57,7 +57,7 @@ feedback_domain_errors_vs_bugs the leftover state is an EXPECTED
 business outcome, not a bug, so it stays on the IOSuccess track
 with `status="skipped"` rather than lifting to IOFailure.
 
-Cycle 7.a.iv (redo) replaces the placeholder pass-Finding with
+replaces the placeholder pass-Finding with
 HEAD-committed-active-vs-HEAD-committed-history-vN comparison
 (: "diffs `git show HEAD:<spec-root>/<spec-file>`
 against `git show HEAD:<spec-root>/history/vN/<spec-file>` for
@@ -737,7 +737,7 @@ def test_run_returns_pass_when_history_dir_is_absent_at_head(
 
 
 # --------------------------------------------------------------------------
-# Cycle 7.a.v-redo: auto-backfill write path on detected divergence.
+# -redo: auto-backfill write path on detected divergence.
 #
 # Per: when divergence is detected, the check writes
 # three classes of artifacts before emitting the fail Finding:
