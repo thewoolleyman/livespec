@@ -1,22 +1,21 @@
 # Release-tag workflow — runs the release-gate targets on tag push.
 #
-# Authoritative source: justfile release-gate recipes
-# (`check-mutation`, `check-no-todo-registry`,
-# `check-no-lloc-soft-warnings`). These targets are NOT part of
-# `just check` (not run per-commit); they fire only on tag push
-# to gate releases.
+# Surfaces the release-gate recipes from justfile (`check-mutation`,
+# `check-no-todo-registry`, `check-no-lloc-soft-warnings`). These
+# targets are NOT part of `just check` (not run per-commit); they
+# fire only on tag push to gate releases.
 #
 #   - check-mutation: mutmut against livespec/parse/ + validate/.
-#     Threshold = ratchet against .mutmut-baseline.json (v013 M3)
-#     bounded by absolute 80% ceiling. The ratchet logic lives in
-#     the recipe, NOT in pyproject.toml's [tool.mutmut].
+#     Threshold = ratchet against .mutmut-baseline.json bounded by
+#     an absolute 80% ceiling. The ratchet logic lives in the
+#     recipe, NOT in pyproject.toml's [tool.mutmut].
 #   - check-no-todo-registry: rejects any test: "TODO" entry in
-#     tests/heading-coverage.json (v013 M8). Ensures every release
-#     ships with full rule-test coverage.
+#     tests/heading-coverage.json. Ensures every release ships with
+#     full rule-test coverage.
 #   - check-no-lloc-soft-warnings: rejects any first-party .py file
-#     in the 201-250 LLOC soft band (post-v008 M6). Closes the M3
-#     soft-band drift loophole: per-commit ergonomic (warning), but
-#     tag-push enforcement blocks release until clean.
+#     in the 201-250 LLOC soft band. Closes the soft-band drift
+#     loophole: per-commit ergonomic (warning), but tag-push
+#     enforcement blocks release until clean.
 
 name: Release tag
 
