@@ -1,13 +1,13 @@
 """Tests for livespec.doctor.static.template_exists.
 
-Per Plan Phase 3 +: this is the second of the eight Phase-3
+ this is the second of the eight Phase-3
 minimum-subset doctor checks. It asserts that the project's
 `.livespec.jsonc` `template` field resolves to a known template
 — either a built-in template name (one of {`livespec`,
 `minimal`}) or a path-as-string to a custom template directory
 present on disk relative to the project root.
 
-Cycle 134 lands the success arm for the built-in template
+This test lands the success arm for the built-in template
 resolution: a config declaring `template: "livespec"` yields
 IOSuccess(Finding(status='pass', ...)). Subsequent cycles
 extend to cover the failure arm (unknown template, missing
