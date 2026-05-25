@@ -21,7 +21,7 @@ The git facade exposes `get_git_user` returning the conventional
 capture path) to populate the revision-file `author_human`
 front-matter field and `revision_front_matter.schema.json`.
 
-Cycle 5.c.1 lands the smallest viable surface: the happy path
+lands the smallest viable surface: the happy path
 where both `git config --get user.name` and
 `git config --get user.email` return non-empty values. Subsequent
 cycles widen the unset/missing-git fallbacks (the `"unknown"`
@@ -36,14 +36,14 @@ single OSError → PreconditionError mapping in one place per the
 io/ layer's "exception-to-LivespecError mapping is the io/
 boundary's responsibility" rule.
 
-Phase 7 sub-step 7.a.i adds `is_git_repo` + `show_at_head`. The
+ sub-step 7.a.i adds `is_git_repo` + `show_at_head`. The
 former composes on top of `run_subprocess` (text-mode capture is
 fine — only the returncode matters). The latter needs binary
 stdout capture (text mode would corrupt non-UTF-8 bytes), so it
 uses a dedicated `@impure_safe` raw helper with
 `subprocess.run(..., stdout=PIPE)` returning bytes.
 
-Phase 7 sub-step 7.a.iv (redo) adds `list_at_head`. It enumerates
+ sub-step 7.a.iv (redo) adds `list_at_head`. It enumerates
 immediate file basenames at HEAD under a given repo-relative
 directory via `git ls-tree HEAD <dir>/`, parsing the canonical
 `<mode> SP <type> SP <object-id> TAB <name>` shape and filtering
@@ -110,7 +110,7 @@ def get_git_user() -> IOResult[str, LivespecError]:
     facade, bind the user.email read on top, map the two
     captured stdouts into the conventional Git author format.
 
-    Cycle 5.c.1 happy-path-only: when either git config value is
+    happy-path-only: when either git config value is
     unset (returncode != 0) or empty (whitespace-only stdout),
     the literal substring is emitted as-is. Later cycles widen
     this to the `"unknown"` fallback + the PreconditionError lift

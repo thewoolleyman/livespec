@@ -12,11 +12,11 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: proposed_changes_and_history_dirs.
 
-Per Plan Phase 3 +: this check asserts that
+Per Plan  +: this check asserts that
 `<spec_root>/proposed_changes/` and `<spec_root>/history/`
 directories both exist (the canonical seeded-revise tree shape steps 4-5).
 
-Cycle 137 lands the pass arm. Subsequent cycles add the
+This work lands the pass arm. Subsequent cycles add the
 fail arms (one or both directories missing) under outside-in
 consumer pressure.
 """

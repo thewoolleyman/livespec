@@ -15,28 +15,28 @@
 Per `SPECIFICATION/contracts.md` §"Impl-side cleanup invariants
 (cross-boundary)" → §"`no-stale-merged-pr-branch`":
 
-  For every GitHub branch in `gh api repos/<owner>/<name>/branches`
-  that is fronted by a `state == "MERGED"` PR (queried via
-  `gh pr list --state merged --json headRefName,state`), the
-  invariant fires `warn` with corrective action
-  `gh api -X DELETE repos/<owner>/<name>/git/refs/heads/<name>`.
-  The check runs against the CURRENT repo only; sibling-repo
-  cleanup is the sibling-repo project's responsibility. The
-  default branch is excluded.
+For every GitHub branch in `gh api repos/<owner>/<name>/branches`
+that is fronted by a `state == "MERGED"` PR (queried via
+`gh pr list --state merged --json headRefName,state`), the
+invariant fires `warn` with corrective action
+`gh api -X DELETE repos/<owner>/<name>/git/refs/heads/<name>`.
+The check runs against the CURRENT repo only; sibling-repo
+cleanup is the sibling-repo project's responsibility. The
+default branch is excluded.
 
-  The check fires `warn` (not `fail`) per v074: the underlying
-  state is recoverable by user action; the invariant's role is to
-  surface the housekeeping item, not to block the build.
+The check fires `warn` (not `fail`) per the spec: the underlying
+state is recoverable by user action; the invariant's role is to
+surface the housekeeping item, not to block the build.
 
-  Skip conditions (Finding.status='skipped'):
-    - `project_root` is not a git working tree
-      (`io_git.is_git_repo` returns False).
-    - `gh` CLI unavailable or unauthenticated (proc seam lifts to
-      PreconditionError; the lash branch catches it).
-    - The repo has no origin remote on GitHub (gh exits non-zero;
-      same lash branch).
-    - The local origin's default branch is undetermined
-      (`io_git.get_default_branch_name` failure).
+Skip conditions (Finding.status='skipped'):
+  - `project_root` is not a git working tree
+    (`io_git.is_git_repo` returns False).
+  - `gh` CLI unavailable or unauthenticated (proc seam lifts to
+    PreconditionError; the lash branch catches it).
+  - The repo has no origin remote on GitHub (gh exits non-zero;
+    same lash branch).
+  - The local origin's default branch is undetermined
+    (`io_git.get_default_branch_name` failure).
 """
 
 from __future__ import annotations

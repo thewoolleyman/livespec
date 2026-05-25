@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Auto-backfill artifact-writing helpers for `out_of_band_edits.run`.
 
-Extracted from `out_of_band_edits.py` at cycle 7.a.v-redo so the
+Extracted from `out_of_band_edits.py` at .a.v-redo so the
 parent file's LLOC stays under the 250-LLOC hard ceiling enforced
 by `dev-tooling/checks/file_lloc.py`. Mirrors the
 `_seed_railway_emits.py` / `_revise_railway_emits.py` precedent
@@ -23,16 +23,16 @@ Per: when divergence is detected against the HEAD-history-vN
 baseline, the check writes three classes of artifacts under
 `<spec_root>/history/v(N+1)/`:
 
-  1. `proposed_changes/out-of-band-edit-<TIMESTAMP>.md` — paired
-     proposed-change file, livespec-doctor authored, body carries
-     the unified diff per file.
-  2. `proposed_changes/out-of-band-edit-<TIMESTAMP>-revision.md` —
-     paired revision file, decision: accept, both authors
-     livespec-doctor.
-  3. `<file>` — for every file present at HEAD-active under the
-     enumeration domain, copy HEAD-committed bytes byte-identically.
-     Files NOT at HEAD-active (i.e., divergence kind is missing-
-     active) are skipped.
+1. `proposed_changes/out-of-band-edit-<TIMESTAMP>.md` — paired
+   proposed-change file, livespec-doctor authored, body carries
+   the unified diff per file.
+2. `proposed_changes/out-of-band-edit-<TIMESTAMP>-revision.md` —
+   paired revision file, decision: accept, both authors
+   livespec-doctor.
+3. `<file>` — for every file present at HEAD-active under the
+   enumeration domain, copy HEAD-committed bytes byte-identically.
+   Files NOT at HEAD-active (i.e., divergence kind is missing-
+   active) are skipped.
 
 The auto-backfill writes directly into
 `history/v(N+1)/proposed_changes/` (no top-level intermediate

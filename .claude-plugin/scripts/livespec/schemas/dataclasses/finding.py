@@ -26,10 +26,10 @@ class Finding:
     human-readable;
     `path` and `line` are optional file-locality fields (None
     when the check is tree-level rather than file-level);
-    `spec_root` discriminates per-tree origin per v018 Q1.
+    `spec_root` discriminates per-tree origin per the spec Q1.
 
-    Per `check-newtype-domain-primitives` (v034 D7 drain
-    cycle 2): `check_id` and `spec_root` use the `CheckId`
+    Per `check-newtype-domain-primitives` (drain
+    ): `check_id` and `spec_root` use the `CheckId`
     and `SpecRoot` NewTypes from `livespec.types`.
     """
 

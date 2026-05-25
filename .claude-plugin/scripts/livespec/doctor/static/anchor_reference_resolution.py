@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: anchor_reference_resolution.
 
-Per Plan Phase 7 sub-step 7.d +: this check verifies that every Markdown
+Per Plan  this check verifies that every Markdown
 intra-document anchor reference (a link of the form
 `[text](#slug)`) resolves to an actual heading in the SAME file
 via the GFM slug algorithm. Cross-file references and external
@@ -20,12 +20,12 @@ links are out of scope at the static layer (their resolution
 moves to the LLM-driven phase per).
 
 GFM slug algorithm (per):
-  1. Lowercase the heading text.
-  2. Strip punctuation EXCEPT `-` and `_` (whitespace is preserved
-     for the next step).
-  3. Replace internal whitespace with single hyphens.
-  4. Collapse consecutive hyphens to a single hyphen.
-  5. Strip leading and trailing hyphens.
+1. Lowercase the heading text.
+2. Strip punctuation EXCEPT `-` and `_` (whitespace is preserved
+   for the next step).
+3. Replace internal whitespace with single hyphens.
+4. Collapse consecutive hyphens to a single hyphen.
+5. Strip leading and trailing hyphens.
 
 Headings inside fenced code blocks (` ``` ` or `~~~`) are NOT
 considered headings. Explicit `{#custom-id}` syntax is NOT
@@ -41,17 +41,17 @@ those snapshots inherit the live spec's well-formedness via the
 seed/revise byte-identical write discipline.
 
 Detection rules (v1 minimum scope):
-  - For every Markdown link `[text](#slug)` whose target starts
-    with `#`, compute the set of valid slugs from every
-    heading in the SAME file (excluding headings inside fenced
-    code blocks). The reference resolves iff its `#`-stripped
-    target is in that set.
-  - Cross-file references (target containing `/` or starting
-    with a non-`#` character before any `#`) are ignored.
-  - The first violation found (lexicographically-sorted file,
-    first matching reference) is surfaced; the check short-
-    circuits on the first hit so the user sees one offense at
-    a time.
+- For every Markdown link `[text](#slug)` whose target starts
+  with `#`, compute the set of valid slugs from every
+  heading in the SAME file (excluding headings inside fenced
+  code blocks). The reference resolves iff its `#`-stripped
+  target is in that set.
+- Cross-file references (target containing `/` or starting
+  with a non-`#` character before any `#`) are ignored.
+- The first violation found (lexicographically-sorted file,
+  first matching reference) is surfaced; the check short-
+  circuits on the first hit so the user sees one offense at
+  a time.
 """
 
 from __future__ import annotations
@@ -359,7 +359,7 @@ def _list_top_level_md_files(
 ) -> IOResult[list[Path], LivespecError]:
     """List `<spec_root>/*.md` top-level files in sorted order.
 
-    Per the v018 Q1 walk-set semantic: the check inspects only
+    Per the walk-set semantic: the check inspects only
     the top-level `*.md` files at `spec_root`. `fs.list_dir`
     yields every immediate child sorted by name; this helper
     filters to `.md` files and excludes directories.

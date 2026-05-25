@@ -12,11 +12,11 @@
 # ignore markers attached to the offending argument's line below.
 """Doctor static-phase orchestrator.
 
-Per and Plan Phase 3: the orchestrator enumerates (spec_root,
+Per and Plan : the orchestrator enumerates (spec_root,
 template_name) pairs at startup; per pair it builds a per-tree
 DoctorContext and runs the applicable check subset decided by
 the orchestrator-owned applicability table
-(`APPLICABILITY_BY_TREE_KIND` in `static/__init__.py` per v022
+(`APPLICABILITY_BY_TREE_KIND` in `static/__init__.py` per the spec
 D7).
 
 Phase-3 minimum subset registers 8 implemented checks
@@ -24,9 +24,9 @@ Phase-3 minimum subset registers 8 implemented checks
 template_files_present, proposed_changes_and_history_dirs,
 version_directories_complete, version_contiguity,
 revision_to_proposed_change_pairing,
-proposed_change_topic_format). Cycle 142 lands the
+proposed_change_topic_format). This work lands the
 single-tree dispatch pathway; the v037-era cycle (iii) Phase-6
-gap-fix widens the orchestrator to multi-tree per the Phase 6
+gap-fix widens the orchestrator to multi-tree per the
 exit-criterion ("one wrapper invocation, exit 0 overall, with
 per-tree findings emitted"): the main spec at
 `<project_root>/SPECIFICATION` runs the `main` applicability
@@ -89,7 +89,7 @@ def _run_one_check(*, ctx: DoctorContext, module: Any) -> Finding:
     `IOResult[Finding, LivespecError]`. The orchestrator
     consumes the IOResult by pattern-matching: Success wraps
     the Finding directly; Failure wraps a LivespecError that
-    represents a check-process bug (cycle 142 maps that to a
+    represents a check-process bug ( maps that to a
     fail-status Finding so the JSON output remains uniform).
     """
     io_result: IOResult[Finding, LivespecError] = module.run(ctx=ctx)
@@ -143,8 +143,8 @@ def _derive_exit_code(*, findings: list[Finding]) -> int:
 def _enumerate_sub_spec_roots(*, main_spec_root: Path) -> list[Path]:
     """Enumerate sub-spec tree roots under `<main_spec_root>/templates/<name>/`.
 
-    Per Plan §"Phase 6" (sub-spec trees materialized at
-    `SPECIFICATION/templates/<name>/`) + v018 Q1 + v020 Q1
+    Per Plan §"" (sub-spec trees materialized at
+    `SPECIFICATION/templates/<name>/`) + +
     (uniform livespec-internal multi-file layout), each
     immediate subdirectory of `<main_spec_root>/templates/`
     is treated as a sub-spec tree. Missing templates/ directory
@@ -180,7 +180,7 @@ def _orchestrate(*, namespace: argparse.Namespace) -> int:
     `<main_spec_root>/templates/<name>/` and run the `sub_spec`
     applicability subset (6 checks; project-root-only checks
     `livespec_jsonc_valid` + `template_exists` are skipped) per
-    the v022 D7 narrowed-registry policy. Emit one aggregated
+    the narrowed-registry policy. Emit one aggregated
     `{"findings": [...]}` JSON payload; derive exit code from
     the union of statuses.
     """

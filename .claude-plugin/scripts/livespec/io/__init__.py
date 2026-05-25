@@ -7,7 +7,7 @@ flow through `IOResult`. Vendored libraries (`returns`,
 through the typed facades below; `Any` is confined to this package
 boundary.
 
-Phase 2 placeholder. Concrete operations are added by later phases
+ placeholder. Concrete operations are added by later phases
 as the supervisor and command modules need them.
 """
 

@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """File-shaping + skip-resolution railway stages for prune-history.
 
-Extracted from `prune_history.py` at cycle 6.c.9 so the parent
+Extracted from `prune_history.py` at so the parent
 file's LLOC stays under the 250-LLOC hard ceiling enforced by
 `dev-tooling/checks/file_lloc.py`. The split is purely
 organizational; the behavior is identical to the inline original.
@@ -20,7 +20,7 @@ organizational; the behavior is identical to the inline original.
 Stages: stdout-finding emitters (`_emit_*_finding`), the
 `_resolve_skip` helper that implements the v012 spec.md
 §"Pre-step skip control" 4-rule resolution matrix, and the
-`_invoke_pre_step_doctor` helper (cycle 6.c.10) that fires
+`_invoke_pre_step_doctor` helper () that fires
 `bin/doctor_static.py` as a subprocess and folds fail-status
 findings onto the IOFailure track.
 """
@@ -82,7 +82,7 @@ def _find_max_version(*, children: list[Path]) -> int:
 def _oldest_below_has_pruned_marker(*, children: list[Path], max_version: int) -> bool:
     """Whether the smallest-K v-directory (K < max_version) holds a PRUNED_HISTORY.json.
 
-    Per v012 spec.md no-op short-circuit (ii): when the oldest
+    Per spec.md no-op short-circuit (ii): when the oldest
     surviving v-directory below the current max already carries a
     `PRUNED_HISTORY.json` marker, no full versions remain to prune
     below the prior marker. `children` is pre-sorted by
@@ -110,7 +110,7 @@ def _oldest_below_has_pruned_marker(*, children: list[Path], max_version: int) -
 def _v_dirs_below_threshold(*, children: list[Path], max_version: int) -> list[Path]:
     """Return the list of `vK/` paths in `children` where K < max_version - 1.
 
-    Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle"
+    Per SPECIFICATION/spec.md §"Sub-command lifecycle"
     prune-history paragraph step (c): the wrapper deletes every
     `<spec-root>/history/vK/` where K < N-1. With N=4, that
     means K ∈ {1, 2} (v003 = v(N-1) is preserved at this cycle;
@@ -139,7 +139,7 @@ def _v_dirs_below_threshold(*, children: list[Path], max_version: int) -> list[P
 
 
 def _build_pruned_history_marker(*, first: int, last: int) -> str:
-    """Build the canonical `PRUNED_HISTORY.json` body per v012 spec.md step (d).
+    """Build the canonical `PRUNED_HISTORY.json` body per spec.md step (d).
 
     The marker is exactly `{"pruned_range": [first, N-1]}` — no
     timestamps, git SHAs, or identity fields (no-metadata
@@ -153,7 +153,7 @@ def _build_pruned_history_marker(*, first: int, last: int) -> str:
 def _emit_pruned_finding(*, first: int, last: int) -> None:
     """Write the canonical `prune-history-pruned` pass finding to stdout.
 
-    Per v012 spec.md prune-history paragraph: the wrapper emits a
+    Per spec.md prune-history paragraph: the wrapper emits a
     single-finding JSON document to stdout describing the
     completed prune. The `commands/`-tree exemption in the
     `check-no-write-direct` allowlist permits this stdout-write.
@@ -178,7 +178,7 @@ def _emit_pruned_finding(*, first: int, last: int) -> None:
 def _emit_no_op_finding() -> None:
     """Write the canonical prune-history-no-op skipped finding to stdout.
 
-    Per v012 spec.md prune-history paragraph: the wrapper emits a
+    Per spec.md prune-history paragraph: the wrapper emits a
     single-finding `{"findings": [{"check_id": "prune-history-
     no-op", "status": "skipped", "message": "..."}]}` JSON document
     to stdout. The commands/-tree exemption in the
@@ -201,10 +201,10 @@ def _emit_no_op_finding() -> None:
 def _emit_pre_step_skipped_finding() -> None:
     """Write the canonical pre-step-skipped finding to stdout.
 
-    Per v012 spec.md §"Pre-step skip control": when the resolved
+    Per spec.md §"Pre-step skip control": when the resolved
     skip value is True (either via the `--skip-pre-check` flag at
-    cycle 6.c.8 or via the `.livespec.jsonc`
-    `pre_step_skip_static_checks` config key at cycle 6.c.9), the
+    or via the `.livespec.jsonc`
+    `pre_step_skip_static_checks` config key at ), the
     wrapper MUST emit a single-finding `{"findings": [{"check_id":
     "pre-step-skipped", "status": "skipped", "message":
     "pre-step checks skipped by user config or
@@ -227,7 +227,7 @@ def _emit_pre_step_skipped_finding() -> None:
 def _resolve_skip_from_config_text(*, text: str) -> bool:
     """Parse `.livespec.jsonc` body and extract `pre_step_skip_static_checks`.
 
-    Per v012 spec.md §"Pre-step skip control" rule (3): default is
+    Per spec.md §"Pre-step skip control" rule (3): default is
     False when the key is absent. Malformed JSONC is treated as
     default-False defensively — `livespec_jsonc_valid` is the
     dedicated mechanism for surfacing malformed configs to the
@@ -246,7 +246,7 @@ def _resolve_skip(
     namespace: argparse.Namespace,
     project_root: Path,
 ) -> IOResult[bool, LivespecError]:
-    """Resolve the effective skip value per v012 spec.md §"Pre-step skip control".
+    """Resolve the effective skip value per spec.md §"Pre-step skip control".
 
     Implements the 4-rule resolution matrix: (1) `--skip-pre-
     check` → True; (2) `--run-pre-check` → False (overrides
@@ -329,7 +329,7 @@ def _fold_pre_step_doctor_completed_process(
 def _invoke_pre_step_doctor(*, project_root: Path) -> IOResult[None, LivespecError]:
     """Invoke `bin/doctor_static.py` as a subprocess; fold fail findings -> Failure.
 
-    Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle": when
+    Per SPECIFICATION/spec.md §"Sub-command lifecycle": when
     the resolved skip value is False, the prune-history wrapper
     MUST run the pre-step doctor static check before its action.
     Composition mechanism mirrors the post-step doctor invocation

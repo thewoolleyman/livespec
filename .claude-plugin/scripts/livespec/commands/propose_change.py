@@ -12,15 +12,15 @@
 # ignore markers attached to the offending argument's line below.
 """Propose-change sub-command supervisor.
 
-Per and Plan Phase 3
+Per and Plan
 : the wrapper validates the inbound
 `--findings-json <path>` payload, composes a proposed-change
 file from the findings, and writes it to
-`<spec-target>/proposed_changes/<canonical-topic>.md`. Phase 7
+`<spec-target>/proposed_changes/<canonical-topic>.md`.
 sub-step 3.c widens the wrapper to full feature parity per
-SPECIFICATION/spec.md "Topic canonicalization (v015 O3)",
-"Reserve-suffix canonicalization (v016 P3 / v017 Q1)", and the
-remaining v014 N5/N6 + v016 P4 rules (collision disambiguation
+SPECIFICATION/spec.md "Topic canonicalization",
+"Reserve-suffix canonicalization", and the
+remaining/N6 + rules (collision disambiguation
 and unified author precedence land in subsequent cycles).
 
 `build_parser()` is the pure argparse factory per style doc
@@ -157,9 +157,9 @@ def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError
 
 
 def _canonical_alnum_run_strip(*, text: str) -> str:
-    """Apply v015 O3 steps 1-3: lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip edges.
+    """Apply steps 1-3: lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip edges.
 
-    Shared by both the v015 O3 base canonicalization and the v016 P3
+    Shared by both the base canonicalization and the
     reserve-suffix algorithm (per deferred-items.md "Reserve-suffix
     topic canonicalization", which composes against this primitive).
     """
@@ -171,9 +171,9 @@ def _canonical_alnum_run_strip(*, text: str) -> str:
 def _canonicalize_topic(*, hint: str, reserve_suffix: str | None = None) -> str | None:
     """Canonicalize a topic hint, optionally preserving a reserve suffix.
 
-    With reserve_suffix=None (default), applies v015 O3 verbatim:
+    With reserve_suffix=None (default), applies verbatim:
     lowercase -> non-[a-z0-9]-runs-to-hyphen -> strip edges -> truncate
-    to 64. With a non-None reserve_suffix, applies v016 P3 (deferred-
+    to 64. With a non-None reserve_suffix, applies (deferred-
     items.md "Reserve-suffix topic canonicalization"): canonicalize
     hint and suffix; strip pre-attached suffix from hint tail; truncate
     the non-suffix portion to 64 - len(<canonical-suffix>); rstrip
@@ -197,7 +197,7 @@ def _canonicalize_topic(*, hint: str, reserve_suffix: str | None = None) -> str 
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
 
-    Per Plan Phase 3: the `<spec-target>` is
+    Per Plan : the `<spec-target>` is
     selected via the --spec-target flag, defaulting to the
     project's main spec root. With the built-in `livespec`
     template, that's <project-root>/SPECIFICATION/.
@@ -214,7 +214,7 @@ def _resolve_target_path(
     canonical_topic: str,
     existing_filenames: set[str],
 ) -> Path:
-    """Resolve the next non-colliding proposed-change file path per v014 N6.
+    """Resolve the next non-colliding proposed-change file path per the spec N6.
 
     First file at `<canonical-topic>` is suffix-less; each collision
     appends a hyphen-separated monotonic integer suffix starting at
@@ -222,7 +222,7 @@ def _resolve_target_path(
     `<canonical-topic>-2.md`, the third is `<canonical-topic>-3.md`,
     and so on). No zero-padding; no user prompt. The front-matter
     `topic` field carries the canonical topic without the `-N`
-    suffix per v017 Q7.
+    suffix per the spec Q7.
     """
     base_name = f"{canonical_topic}.md"
     if base_name not in existing_filenames:
@@ -322,7 +322,7 @@ def _write_proposed_change(
 ) -> IOResult[ProposalFindings, LivespecError]:
     """Write the composed proposed-change file to disk.
 
-    Per spec.md "Topic canonicalization (v015 O3)": the inbound `<topic>`
+    Per spec.md "Topic canonicalization": the inbound `<topic>`
     is canonicalized before filename selection; an empty result lifts to
     UsageError on the railway. Writes to
     `<spec-target>/proposed_changes/<canonical-topic>.md`.

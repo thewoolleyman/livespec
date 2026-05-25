@@ -1,12 +1,12 @@
 """DoctorContext — per-tree context value-object for static-phase checks.
 
-Per Plan Phase 3 +: the orchestrator enumerates
+Per Plan  +: the orchestrator enumerates
 `(spec_root, template_name)` pairs and builds one
 `DoctorContext` per pair. Each static-phase check's `run()`
 takes the context and returns a `Finding`.
 
 Frozen + slots-+-kw_only per the project-wide dataclass rule.
-Fields widen under consumer pressure: cycle 131 lands the
+Fields widen under consumer pressure:  lands the
 minimal pair (project_root + spec_root) that
 `livespec_jsonc_valid` needs; later cycles add
 `template_name`, `template_resolved_path`, etc. as additional

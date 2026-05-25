@@ -6,19 +6,19 @@ static-phase check modules. Each check is registered
 explicitly (no dynamic discovery); adding or removing a check is
 one explicit edit to this file.
 
-Cycle 131 lands the first registry entry; cycles 134-141 add
+This work lands the first registry entry; cycles 134-141 add
 the remaining seven Phase-3 minimum-subset checks
 (`template_exists`, `template_files_present`,
 `proposed_changes_and_history_dirs`,
 `version_directories_complete`, `version_contiguity`,
 `revision_to_proposed_change_pairing`,
-`proposed_change_topic_format`). Phase 7 (sub-steps 7.b/7.c/
+`proposed_change_topic_format`).  (sub-steps 7.b/7.c/
 7.d/7.a.ii) registers the remaining four checks
 (`bcp14_keyword_wellformedness`, `gherkin_blank_line_format`,
 `anchor_reference_resolution`, `out_of_band_edits`); all
 twelve are now wired.
 
-Cycle 143 makes the orchestrator-owned applicability mapping
+This work makes the orchestrator-owned applicability mapping
 explicit: APPLICABILITY_BY_TREE_KIND maps each `tree_kind`
 ('main' or 'sub_spec') to the tuple of check modules that
 apply to that kind of tree. Phase-3 minimum subset: every

@@ -4,12 +4,12 @@ Per style doc §"Skill layout — schemas/dataclasses/": fields
 match the schema one-to-one in name and Python type. The
 dataclass is the type that flows through the railway after
 schema validation:
-    Result[ProposedChangeFrontMatter, ValidationError]
+  Result[ProposedChangeFrontMatter, ValidationError]
 from validate.proposed_change_front_matter.validate_proposed_change_front_matter.
 
 Per `check-newtype-domain-primitives`: `topic` uses the
 `TopicSlug` NewType (added at cycle 3d) and `author` uses the
-`Author` NewType (added at cycle 2). `created_at` is plain
+`Author` NewType (added at ). `created_at` is plain
 `str` (ISO 8601 datetime; no canonical NewType for timestamps
 in this iteration).
 """

@@ -1,15 +1,12 @@
 """Tests for livespec.types — domain-primitive NewTypes.
 
-Per `python-skill-script-style-requirements.md` §"Skill layout"
-+: the module exposes a
-small set of `typing.NewType`-defined domain primitives that
-the canonical-target `check-newtype-domain-primitives`
-(per `dev-tooling/checks/newtype_domain_primitives.py`)
-requires for specific field names in
-`schemas/dataclasses/*.py`. NewType is structural — at
-runtime each NewType is the underlying `str`, so isinstance
-checks pass; pyright treats them as distinct types so
-mistaking a `CheckId` for a `SpecRoot` is caught at type-
+The module exposes a small set of `typing.NewType`-defined
+domain primitives that `check-newtype-domain-primitives` (per
+`dev-tooling/checks/newtype_domain_primitives.py`) requires for
+specific field names in `schemas/dataclasses/*.py`. NewType is
+structural — at runtime each NewType is the underlying `str`,
+so isinstance checks pass; pyright treats them as distinct types
+so mistaking a `CheckId` for a `SpecRoot` is caught at type-
 check time.
 """
 

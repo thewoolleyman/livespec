@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: bcp14_keyword_wellformedness.
 
-Per Plan Phase 7 sub-step 7.b +: this check detects malformed BCP 14
+Per Plan  this check detects malformed BCP 14
 (RFC 2119 + RFC 8174) normative keyword usage in spec-text-
 bearing markdown files. The v1 minimum scope is the mixed-case
 standalone-word rule (`Must`, `Should`, `May`, etc.). Sentence-
@@ -29,24 +29,24 @@ inherit the live spec's well-formedness via the seed/revise
 byte-identical write discipline.
 
 Detection rules:
-  - Mixed-case BCP 14 modal-verb keywords as standalone words
-    flag as malformed: `Must`, `Should`, `May`, `Shall`. The
-    rule is `\\b<keyword>\\b` so token-boundary non-keywords
-    (`Mustang`, `Maybe`, etc.) do NOT trip.
-  - The synonymous adjective forms (`Required`, `Recommended`,
-    `Optional`) are NOT flagged at the static layer. They are
-    common English words (column headers, descriptive prose,
-    etc.) that risk significant false-positive rates without
-    sentence-level context. Their case-discipline detection
-    moves to the LLM-driven phase along with the broader case-
-    inconsistency rules.
-  - Full-uppercase forms (`MUST`, `SHALL NOT`) are well-formed
-    and pass.
-  - Full-lowercase forms (`must`, `should`) pass at the static
-    layer (deferred to the LLM-driven phase).
-  - The first violation found (lexicographically-sorted file,
-    first matching line) is surfaced; the check short-circuits
-    on the first hit so the user sees one offense at a time.
+- Mixed-case BCP 14 modal-verb keywords as standalone words
+  flag as malformed: `Must`, `Should`, `May`, `Shall`. The
+  rule is `\\b<keyword>\\b` so token-boundary non-keywords
+  (`Mustang`, `Maybe`, etc.) do NOT trip.
+- The synonymous adjective forms (`Required`, `Recommended`,
+  `Optional`) are NOT flagged at the static layer. They are
+  common English words (column headers, descriptive prose,
+  etc.) that risk significant false-positive rates without
+  sentence-level context. Their case-discipline detection
+  moves to the LLM-driven phase along with the broader case-
+  inconsistency rules.
+- Full-uppercase forms (`MUST`, `SHALL NOT`) are well-formed
+  and pass.
+- Full-lowercase forms (`must`, `should`) pass at the static
+  layer (deferred to the LLM-driven phase).
+- The first violation found (lexicographically-sorted file,
+  first matching line) is surfaced; the check short-circuits
+  on the first hit so the user sees one offense at a time.
 """
 
 from __future__ import annotations
@@ -161,7 +161,7 @@ def _list_top_level_md_files(
 ) -> IOResult[list[Path], LivespecError]:
     """List `<spec_root>/*.md` top-level files in sorted order.
 
-    Per the v018 Q1 walk-set semantic: the check inspects only
+    Per the walk-set semantic: the check inspects only
     the top-level `*.md` files at `spec_root`. `fs.list_dir`
     yields every immediate child sorted by name; this helper
     filters to `.md` files and excludes directories. Returns an

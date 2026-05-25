@@ -12,36 +12,36 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: out_of_band_edits.
 
-Per Plan Phase 7 sub-step 7.a +: the `out-of-band-edits` check detects
+Per Plan  the `out-of-band-edits` check detects
 HEAD-committed spec files whose contents have diverged from
 their HEAD-committed `history/vN/` snapshot (i.e., edits made
 to the active spec without the propose-change → revise pipeline
 that would otherwise land a paired snapshot at history/v(N+1)).
 It is the only doctor check whose `run()` has a narrow
 auto-backfill write path (per `static/CLAUDE.md`); auto-backfill
-on detected drift lands in cycle 7.a.v.
+on detected drift lands in .a.v.
 
-Cycle 7.a.ii landed the smallest viable skeleton: it
+This work.a.ii landed the smallest viable skeleton: it
 discriminates on whether `ctx.spec_root` is inside a git
 working tree.
 
-Cycle 7.a.iii widens the in-git-repo branch with a pre-backfill
+This work.a.iii widens the in-git-repo branch with a pre-backfill
 guard. Per, the
 guard fires on either of two leftover-from-prior-run shapes
 BEFORE the divergence comparison or the auto-backfill write
 path:
 
-  - Condition A: any `<spec-root>/proposed_changes/
-    out-of-band-edit-*.md` file is on disk (a prior auto-
-    backfill artifact the user did not commit).
-  - Condition B: `<spec-root>/history/v(N+1)/` is on disk,
-    where N is the highest committed version-snapshot.
-    Empty v-dirs are NOT counted as committed prior versions
-    — they ARE the leftover-from-prior-backfill candidate. If
-    `<spec-root>/history/` itself is absent, condition B is
-    FALSE (no prior versions for any v(N+1) to claim). If
-    `history/` exists but contains no v-dirs (only README.md
-    or similar), N=0 and the guard checks v001.
+- Condition A: any `<spec-root>/proposed_changes/
+  out-of-band-edit-*.md` file is on disk (a prior auto-
+  backfill artifact the user did not commit).
+- Condition B: `<spec-root>/history/v(N+1)/` is on disk,
+  where N is the highest committed version-snapshot.
+  Empty v-dirs are NOT counted as committed prior versions
+  — they ARE the leftover-from-prior-backfill candidate. If
+  `<spec-root>/history/` itself is absent, condition B is
+  FALSE (no prior versions for any v(N+1) to claim). If
+  `history/` exists but contains no v-dirs (only README.md
+  or similar), N=0 and the guard checks v001.
 
 Either condition emits IOSuccess(Finding(status="skipped")).
 Per memory feedback_domain_errors_vs_bugs the leftover state
@@ -71,13 +71,13 @@ comparison target.
 
 Edge case decisions (codified here):
 
-  - No `<spec-root>/history/` at HEAD: emits `status="pass"`
-    with a "no HEAD history baseline" message. Benign post-
-    seed pre-revise state — nothing to compare against. The
-    pre-backfill guard already covers leftover cases.
-  - `history/` at HEAD with no `vNNN/` subdirs at HEAD: same.
-    Without a vN snapshot to diff against, "no drift" is the
-    correct outcome.
+- No `<spec-root>/history/` at HEAD: emits `status="pass"`
+  with a "no HEAD history baseline" message. Benign post-
+  seed pre-revise state — nothing to compare against. The
+  pre-backfill guard already covers leftover cases.
+- `history/` at HEAD with no `vNNN/` subdirs at HEAD: same.
+  Without a vN snapshot to diff against, "no drift" is the
+  correct outcome.
 
 NO writes happen in this cycle — the auto-backfill write path
 (`<spec-root>/proposed_changes/out-of-band-edit-<UTC>.md` +
@@ -377,9 +377,9 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     Composes `is_git_repo(project_root=ctx.spec_root)` with
     the in-git-repo dispatcher. Non-repo case yields
     IOSuccess(skipped-Finding). In-git-repo case runs the
-    pre-backfill guard (cycle 7.a.iii); when the guard
+    pre-backfill guard (.a.iii); when the guard
     clears, runs HEAD-active-vs-HEAD-history-vN divergence
-    detection (cycle 7.a.iv-redo). No-drift → pass-Finding;
+    detection (.a.iv-redo). No-drift → pass-Finding;
     drift → fail-Finding listing every diverging basename.
     No-history-baseline → no-baseline pass-Finding.
 

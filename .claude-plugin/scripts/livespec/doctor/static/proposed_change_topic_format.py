@@ -12,12 +12,12 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: proposed_change_topic_format.
 
-Per Plan Phase 3 +: this check asserts that every
+Per Plan  +: this check asserts that every
 `<spec_root>/proposed_changes/<topic>.md` filename follows the
 canonical topic-slug format (lowercase letters, digits, and
 hyphens only — pattern `^[a-z0-9-]+$`).
 
-Cycle 141 lands the pass arm. Subsequent cycles add the
+This work lands the pass arm. Subsequent cycles add the
 fail arm (invalid topic slug — uppercase, underscores, etc.).
 """
 
@@ -58,7 +58,7 @@ def _evaluate(
 ) -> IOResult[Finding, LivespecError]:
     """Evaluate the proposed-change filenames against the slug regex.
 
-    Cycle 141 lands the smallest viable behavior: any list
+    This work lands the smallest viable behavior: any list
     yields a pass-Finding. The actual slug-pattern
     discriminator lands in the next cycle when its fail-arm
     test forces it into existence.

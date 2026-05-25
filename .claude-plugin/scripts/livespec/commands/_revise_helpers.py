@@ -18,7 +18,7 @@ underscore-prefixed names re-exported from revise.py) is consumed
 only by `revise.main`'s railway and (transitively, via re-export)
 the paired test surface at `tests/livespec/commands/test_revise.py`.
 
-Cycle 5.c.2 extracted the helpers from `revise.py` to keep the
+extracted the helpers from `revise.py` to keep the
 supervisor file under the 250-LLOC hard ceiling enforced by
 `dev-tooling/checks/file_lloc.py` (per `SPECIFICATION/constraints.md`
 §"File LLOC ceiling"). This precedent matches
@@ -105,7 +105,7 @@ def _compose_revision_body(
     `## Decision and Rationale` always; `## Modifications` when
     `decision: modify`; `## Resulting Changes` when `decision:
     accept` or `modify`; `## Rejection Notes` when `decision:
-    reject` (the rejection-flow audit-trail richness Plan Phase 7
+    reject` (the rejection-flow audit-trail richness Plan
     mandates).
     """
     topic = str(decision.get("proposal_topic", ""))

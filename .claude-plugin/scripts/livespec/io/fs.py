@@ -142,7 +142,7 @@ def _raw_rmtree(*, path: Path) -> None:
 def rmtree(*, path: Path) -> IOResult[None, LivespecError]:
     """Recursively remove `path` and all contents; return IOSuccess(None).
 
-    Per v012 SPECIFICATION/spec.md §"Sub-command lifecycle"
+    Per SPECIFICATION/spec.md §"Sub-command lifecycle"
     prune-history paragraph step (c): the wrapper deletes every
     `<spec-root>/history/vK/` where K < N-1. OSError
     (FileNotFoundError on a missing path, permission denied)

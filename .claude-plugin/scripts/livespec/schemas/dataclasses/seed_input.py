@@ -4,7 +4,7 @@ Per style doc §"Skill layout — schemas/dataclasses/": fields
 match the schema one-to-one in name and Python type. The
 dataclass is the type that flows through the railway after
 schema validation:
-    Result[SeedInput, ValidationError]
+  Result[SeedInput, ValidationError]
 from validate.seed_input.validate_seed_input.
 """
 
@@ -22,9 +22,9 @@ class SeedInput:
     """The seed-input wire dataclass.
 
     Mirrors seed_input.schema.json: top-level `template` /
-    `intent` / `files` / `sub_specs` (per v018 Q1 + v020 Q2).
-    Per `check-newtype-domain-primitives` (v034 D7 drain
-    cycle 2): `template` uses the `TemplateName` NewType from
+    `intent` / `files` / `sub_specs` (per the spec Q1 +).
+    Per `check-newtype-domain-primitives` (drain
+    ): `template` uses the `TemplateName` NewType from
     `livespec.types`.
     """
 

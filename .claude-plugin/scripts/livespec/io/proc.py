@@ -7,7 +7,7 @@ Mirrors the shape of `livespec.io.fs` (every operation is a thin
 wrapper over one side-effecting call; OSError lifts to
 PreconditionError).
 
-Cycle 144 lands the smallest viable surface: a single
+This work lands the smallest viable surface: a single
 `run_subprocess` primitive that captures stdout/stderr and
 yields the `subprocess.CompletedProcess` carrier on the
 IOSuccess track. Future cycles widen this under consumer

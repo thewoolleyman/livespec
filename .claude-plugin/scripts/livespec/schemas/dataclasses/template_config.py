@@ -4,10 +4,10 @@ Per style doc §"Skill layout — schemas/dataclasses/": fields
 match the schema one-to-one in name and Python type. The
 dataclass is the type that flows through the railway after
 schema validation:
-    Result[TemplateConfig, ValidationError]
+  Result[TemplateConfig, ValidationError]
 from validate.template_config.validate_template_config.
 
-Per v011 K5: a template's `template.json` declares its format
+Per a template's `template.json` declares its format
 version, spec_root location, optional doctor extensibility
 hooks (static check modules), and optional LLM-prompt paths
 (objective + subjective checks). v1 livespec supports only
