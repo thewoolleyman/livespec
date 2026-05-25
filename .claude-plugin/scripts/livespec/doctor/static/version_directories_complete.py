@@ -89,6 +89,26 @@ def _malformed_marker_finding(*, ctx: DoctorContext, version_path: Path) -> Find
     )
 
 
+def _missing_proposed_changes_finding(*, ctx: DoctorContext, version_path: Path) -> Finding:
+    """Construct a fail-status Finding for a standard v-dir lacking proposed_changes/.
+
+    Per li-mrtoei sibling bug li-uh5ht2: when a standard (non-marker)
+    v-dir lacks its required `proposed_changes/` subdir, surface a
+    clean fail-Finding naming the offending v-dir rather than letting
+    `fs.list_dir`'s OSError bubble up as a cryptic "check process
+    error" wrapper. The Finding's `path` field embeds the offending
+    v-dir so the user can locate it without re-scanning.
+    """
+    return Finding(
+        check_id=SLUG,
+        status="fail",
+        message=(f"history/{version_path.name}/ is missing required subdir " f"proposed_changes/"),
+        path=str(version_path),
+        line=None,
+        spec_root=SpecRoot(str(ctx.spec_root)),
+    )
+
+
 def _classify_version_dir(*, version_path: Path) -> str:
     """Classify a v-directory's pruned-marker shape.
 
@@ -129,20 +149,23 @@ def _verify_version_dirs(
     For each v-directory the check classifies the pruned-marker
     shape via `_classify_version_dir`:
       - "pruned_marker" → exempt; advance to the next v-dir.
-      - "malformed_marker" → short-circuit with a fail-Finding
-        naming the offending v-dir.
-      - "standard" → list `<vNNN>/proposed_changes/` to assert
-        presence (existing behavior; missing dir lifts to
-        IOFailure(PreconditionError) via fs.list_dir).
+      - "malformed_marker" → replace accumulator with a fail-
+        Finding naming the offending v-dir.
+      - "standard" → check `<vNNN>/proposed_changes/` is a dir;
+        missing dir replaces accumulator with a clean fail-Finding
+        (li-uh5ht2). Present dir leaves accumulator unchanged.
 
     The accumulator carries the pass-Finding through the fold;
-    a malformed-marker v-dir replaces the accumulator with a
-    fail-Finding (short-circuiting via the `bind` chain — once
-    a fail-Finding lands, subsequent `bind` calls observe the
-    fail-Finding accumulator but still skip pruned-marker v-dirs
-    correctly because each iteration evaluates its own classify
-    + branch). The first failing standard v-dir short-circuits
-    the fold via fs.list_dir's PreconditionError.
+    a malformed-marker OR missing-proposed-changes v-dir replaces
+    the accumulator with a fail-Finding. First-violation-precedence
+    is preserved: once a fail-Finding lands, subsequent classify
+    branches still evaluate but the accumulator is not overwritten
+    by later fails (later malformed-marker assignments would
+    overwrite — see the accumulator-replacement rule's deliberate
+    last-write-wins semantics for marker fails; the missing-
+    proposed_changes branch checks `is_dir()` directly to avoid
+    the OSError that the prior implementation surfaced as a
+    "check process error" wrapper).
     """
     accumulator: IOResult[Finding, LivespecError] = IOSuccess(_pass_finding(ctx=ctx))
     for version_path in version_paths:
@@ -155,11 +178,11 @@ def _verify_version_dirs(
             )
             continue
         proposed_changes_path = version_path / "proposed_changes"
-        accumulator = accumulator.bind(
-            lambda finding, p=proposed_changes_path: fs.list_dir(path=p).map(
-                lambda _: finding,
-            ),
-        )
+        if not proposed_changes_path.is_dir():
+            accumulator = IOSuccess(
+                _missing_proposed_changes_finding(ctx=ctx, version_path=version_path),
+            )
+            continue
     return accumulator
 
 
@@ -185,12 +208,11 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     Lists `<ctx.spec_root>/history/`, filters to `v*`-named
     directories, then for each verifies the per-v-dir contents
     shape: pruned-marker v-dirs are exempt, malformed-marker
-    v-dirs yield a fail-Finding, standard v-dirs must contain
-    `proposed_changes/`. On all-present (no malformed markers,
+    v-dirs yield a fail-Finding, standard v-dirs lacking
+    `proposed_changes/` yield a fail-Finding naming the offending
+    v-dir (li-uh5ht2). On all-present (no malformed markers,
     every standard v-dir has `proposed_changes/`) yields
-    IOSuccess(Finding(status='pass')). The standard-rule fail
-    arm (missing `proposed_changes/`) lands as
-    IOFailure(PreconditionError) via fs.list_dir.
+    IOSuccess(Finding(status='pass')).
     """
     history_path = ctx.spec_root / "history"
     return fs.list_dir(path=history_path).bind(
