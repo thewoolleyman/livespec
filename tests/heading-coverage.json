@@ -98,7 +98,7 @@
     "reason": "Landed in v063. Test ID populated in the impl follow-up PR that bumps template_config.schema.json to v2 + paired dataclass + adds .livespec.jsonc render_commands schema."
   },
   {
-    "heading": "## Skill \u2194 template JSON contracts",
+    "heading": "## Skill ↔ template JSON contracts",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.commands.test_seed",
@@ -130,7 +130,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
-    "reason": "Landed in v066 (doctor-invariant-catalog-expansion proposal accept) and widened in v069 with no-stalled-epic. Real test ID will be populated once the full catalogue lands. Partial impl (three of five wired): tests.livespec.doctor.static.test_no_stalled_epic covers no-stalled-epic, tests.livespec.doctor.static.test_no_orphan_dependency covers no-orphan-dependency, tests.livespec.doctor.static.test_no_duplicate_gap_id covers no-duplicate-gap-id \u2014 all three are direct JSONL reads of the impl-plugin's work-items store (plaintext only). Still TODO: gap-tracking-one-to-one + no-stale-gap-tied need a Python dry-run entry point on the impl-plugin's capture-impl-gaps heavyweight skill (currently LLM-driven only); contract-version-compatibility needs the pin-and-bump readout against the installed plugin version. A generalized cross-boundary skill-invocation mechanism for plugins beyond livespec-impl-plaintext is also still pending; the cross-boundary missing-surface-fires-fail semantics will be wired alongside that."
+    "reason": "Landed in v066 (doctor-invariant-catalog-expansion proposal accept) and widened in v069 with no-stalled-epic. Real test ID will be populated once the full catalogue lands. Partial impl (three of five wired): tests.livespec.doctor.static.test_no_stalled_epic covers no-stalled-epic, tests.livespec.doctor.static.test_no_orphan_dependency covers no-orphan-dependency, tests.livespec.doctor.static.test_no_duplicate_gap_id covers no-duplicate-gap-id — all three are direct JSONL reads of the impl-plugin's work-items store (plaintext only). Still TODO: gap-tracking-one-to-one + no-stale-gap-tied need a Python dry-run entry point on the impl-plugin's capture-impl-gaps heavyweight skill (currently LLM-driven only); contract-version-compatibility needs the pin-and-bump readout against the installed plugin version. A generalized cross-boundary skill-invocation mechanism for plugins beyond livespec-impl-plaintext is also still pending; the cross-boundary missing-surface-fires-fail semantics will be wired alongside that."
   },
   {
     "heading": "## Resolved-template stdout contract",
@@ -153,7 +153,7 @@
     "test": "tests.test_plugin_distribution"
   },
   {
-    "heading": "## Cross-repo coordination \u2014 pin-and-bump",
+    "heading": "## Cross-repo coordination — pin-and-bump",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
@@ -167,7 +167,7 @@
     "reason": "Landed in v072 (cross-repo-dependency-awareness propose-change accept-with-modify) per epic li-6d2wpj. Codifies the cross_repo_targets manifest, typed DependsOnEntry union (local | sibling_work_item | pull_request | branch), exhaustive live-walk resolution semantics, livespec_runtime.cross_repo contract surface, retry policy, consumer surface, GitHub CLI auth, and hook integration. Real test ID populated in the impl follow-up PRs that wire livespec-core's doctor (li-f2fbkl) and livespec-impl-plaintext's next ranker + cleanup invariants + data migration (li-f5wmjr) against the runtime."
   },
   {
-    "heading": "## Implementation-plugin contract \u2014 the 10-skill surface",
+    "heading": "## Implementation-plugin contract — the 10-skill surface",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
@@ -178,7 +178,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.commands.test_next.test_next_emits_schema_conformant_json",
-    "reason": "Phase B.1 (li-3ax) \u2014 authored bin/next.py + commands/next.py (pure-function-of-file-state ranker) + next_output.schema.json wire contract + paired dataclass + validator. The schema-conformance test exercises the full pipeline against a real spec tree and asserts the stdout payload validates against next_output.schema.json. Doctor-cache integration deferred to a follow-on once the cache format is formalized via propose-change."
+    "reason": "Phase B.1 (li-3ax) — authored bin/next.py + commands/next.py (pure-function-of-file-state ranker) + next_output.schema.json wire contract + paired dataclass + validator. The schema-conformance test exercises the full pipeline against a real spec tree and asserts the stdout payload validates against next_output.schema.json. Doctor-cache integration deferred to a follow-on once the cache format is formalized via propose-change."
   },
   {
     "heading": "## Spec Reader required-capability surface",
@@ -188,25 +188,25 @@
     "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR(s) that implement the Spec Reader adapter inside each livespec-impl-* plugin and assert the four required capabilities (read current spec, read history, report current version, read or summarize cross-version differences) against a uniform conformance harness."
   },
   {
-    "heading": "## Shared content sync \u2014 copier template",
+    "heading": "## Shared content sync — copier template",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that publishes templates/impl-plugin/ as the canonical copier scaffold and pins copier via uv against pyproject.toml [dependency-groups.dev]."
   },
   {
-    "heading": "## Shared code sync \u2014 livespec-dev-tooling",
+    "heading": "## Shared code sync — livespec-dev-tooling",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
-    "reason": "Landed in v070 (declare-livespec-dev-tooling-shared-code-mechanism proposal accept) per epic li-fgqgnk Phase G.1. Real test ID populated in the impl follow-up PRs (epic phases G.2\u2013G.7) that hand-author the livespec-dev-tooling repo scaffold, migrate the shared enforcement-suite checks out of livespec-core, and wire every consumer (livespec-core itself + every livespec-impl-* plugin) to consume the new package via uv git source plus the composite Actions / reusable workflows."
+    "reason": "Landed in v070 (declare-livespec-dev-tooling-shared-code-mechanism proposal accept) per epic li-fgqgnk Phase G.1. Real test ID populated in the impl follow-up PRs (epic phases G.2–G.7) that hand-author the livespec-dev-tooling repo scaffold, migrate the shared enforcement-suite checks out of livespec-core, and wire every consumer (livespec-core itself + every livespec-impl-* plugin) to consume the new package via uv git source plus the composite Actions / reusable workflows."
   },
   {
-    "heading": "## Shared runtime \u2014 livespec-runtime",
+    "heading": "## Shared runtime — livespec-runtime",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
-    "reason": "Added directly by work-item li-ufvfmb under epic li-6d2wpj (cross-repo dependency awareness consolidated v071+ design). The runtime sibling library exists at github.com/thewoolleyman/livespec-runtime v0.1.0+; the full cross_repo implementation lands as v0.2.0 via work-item li-aclzfe. The propose-change cycle filed via li-e7h6ki (proposed_changes/cross-repo-dependency-awareness.md) defines the consumer-facing cross_repo contract in detail under a future \u00a7\"Cross-repo dependency awareness\" H2. Real test ID populated in the impl follow-up PRs that wire livespec-core's doctor (li-f2fbkl) and livespec-impl-plaintext's next ranker + cleanup invariants (li-f5wmjr) against the runtime."
+    "reason": "Added directly by work-item li-ufvfmb under epic li-6d2wpj (cross-repo dependency awareness consolidated v071+ design). The runtime sibling library exists at github.com/thewoolleyman/livespec-runtime v0.1.0+; the full cross_repo implementation lands as v0.2.0 via work-item li-aclzfe. The propose-change cycle filed via li-e7h6ki (proposed_changes/cross-repo-dependency-awareness.md) defines the consumer-facing cross_repo contract in detail under a future §\"Cross-repo dependency awareness\" H2. Real test ID populated in the impl follow-up PRs that wire livespec-core's doctor (li-f2fbkl) and livespec-impl-plaintext's next ranker + cleanup invariants (li-f5wmjr) against the runtime."
   },
   {
     "heading": "## Pre-commit step ordering",
@@ -220,14 +220,14 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md \u00a7\"Scope\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md §\"Scope\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Non-interactive execution",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md \u00a7\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md §\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Python runtime constraint",
@@ -241,7 +241,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md \u00a7\"Runtime dependencies \u2192 End-user install\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md §\"Runtime dependencies → End-user install\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Renderer non-vendoring",
@@ -300,28 +300,28 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 1 \u2014 propose-change against a non-existent spec target",
+    "heading": "## Error path 1 — propose-change against a non-existent spec target",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 2 \u2014 schema-violation in inbound seed payload",
+    "heading": "## Error path 2 — schema-violation in inbound seed payload",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_retry_on_exit_4.test_retry_on_exit_4",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 3 \u2014 version-contiguity gap in history",
+    "heading": "## Error path 3 — version-contiguity gap in history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.livespec.doctor.static.test_version_contiguity",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Recovery path \u2014 pruning history",
+    "heading": "## Recovery path — pruning history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_prune_history_noop.test_prune_history_noop",
@@ -447,14 +447,14 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview \u2014 \"no\" branch (default)",
+    "heading": "## Happy-path seed interview — \"no\" branch (default)",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "tests.prompts.livespec.test_seed",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview \u2014 \"yes\" branch (meta-project)",
+    "heading": "## Happy-path seed interview — \"yes\" branch (meta-project)",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "tests.prompts.livespec.test_seed",
@@ -482,7 +482,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Edge case \u2014 seed against non-empty SPECIFICATION/",
+    "heading": "## Edge case — seed against non-empty SPECIFICATION/",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "tests.livespec.commands.test_seed",
@@ -622,7 +622,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end critique \u2192 propose-change handoff",
+    "heading": "## End-to-end critique → propose-change handoff",
     "spec_root": "SPECIFICATION/templates/minimal",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_happy_path.test_happy_path_minimal",
@@ -654,21 +654,21 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 18 addition: \u00a7\"Exit code contract\" migrated via SPECIFICATION/v033."
+    "reason": "Phase 8 item 2 cycle 18 addition: §\"Exit code contract\" migrated via SPECIFICATION/v033."
   },
   {
     "heading": "## Structured logging",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.livespec.commands.test_seed",
-    "reason": "Phase 8 item 2 cycles 17+19 combined: \u00a7\"Structured logging\" migrated via SPECIFICATION/v034."
+    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"Structured logging\" migrated via SPECIFICATION/v034."
   },
   {
     "heading": "## File naming and invocation",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_wrapper_shape",
-    "reason": "Phase 8 item 2 cycles 17+19 combined: \u00a7\"File naming and invocation\" migrated via SPECIFICATION/v034."
+    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"File naming and invocation\" migrated via SPECIFICATION/v034."
   },
   {
     "heading": "## Prior Art",
@@ -767,5 +767,12 @@
     "spec_file": "constraints.md",
     "test": "tests.prompts.livespec.test_seed",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Sibling spec ownership",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Added by the revise pass landing the propose-change at proposed_changes/delegate-cross-repo-coordination-impl-to-dev-tooling.md (paired with livespec-dev-tooling PR #5). The meta-principle generalizes the existing §\"Shared code sync — livespec-dev-tooling\" partition rule across every sibling library. Real test follows in the post-revise implementation cycle that captures the cross-tree narration behavior (revise/critique narrate pending proposals across all sibling trees)."
   }
 ]
