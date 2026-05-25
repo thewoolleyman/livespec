@@ -90,6 +90,7 @@ check:
         check-schema-dataclass-pairing
         check-tests-mirror-pairing
         check-comment-line-anchors
+        check-comment-no-historical-refs
         check-complexity
         check-lint
         check-format
@@ -392,6 +393,9 @@ check-no-todo-registry:
 
 check-comment-line-anchors:
     uv run python -m livespec_dev_tooling.checks.comment_line_anchors
+
+check-comment-no-historical-refs:
+    uv run python3 dev-tooling/checks/comment_no_historical_refs.py
 
 # Path-scoped fast-feedback variant of check-coverage. Takes
 # `--paths <impl_path> [<impl_path>...]` (repo-root-relative) and
