@@ -1,0 +1,29 @@
+# pin-freshness.yml — periodic pin-staleness safety-net shim.
+#
+# Authority: livespec-dev-tooling SPECIFICATION/contracts.md
+#   §"Cross-repo coordination automation surface" §"reusable-pin-freshness.yml".
+#
+# Daily (13:00 UTC) and on manual trigger, this shim delegates to the
+# upstream reusable workflow which:
+#   - runs pin-autodiscovery (all source repos),
+#   - queries each discovered source's latest release tag via
+#     `gh release view`,
+#   - opens a bump PR per stale (source, current_pin, latest_tag) triple
+#     where the latest tag is at least `staleness_threshold_releases`
+#     ahead of the current pin (default 1).
+#
+# This is the safety net for missed `release-dispatch` events,
+# releases that occurred before this surface was wired in, and any
+# future class of dispatch failure that does not auto-recover.
+
+name: Pin freshness sweep
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 13:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  freshness:
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-pin-freshness.yml@master
+    secrets: inherit
