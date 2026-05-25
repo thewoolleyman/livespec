@@ -8,9 +8,9 @@ and asserts the fixture's declared properties hold for its
 
 Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
 semantic-property catalogue → prompts/critique.md", the
-bootstrap-minimum catalogue is a single placeholder property;
-Phase 7 item (d)'s per-prompt regeneration cycle widens the
-catalogue and adds matching assertion functions.
+catalogue starts at a single placeholder property; per-prompt
+regeneration cycles widen the catalogue and add matching
+assertion functions.
 """
 
 from __future__ import annotations

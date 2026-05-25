@@ -7,9 +7,8 @@ the check verifies a paired dataclass at
 `schemas/dataclasses/<name>.py` AND a paired validator at
 `validate/<name>.py` exists.
 
-Cycle 170 (minimum-viable) implements the file-presence
-triplet check. Subsequent cycles add field-by-field type
-verification (the v013 M6 three-way walker).
+The current minimum-viable scope is the file-presence triplet
+check; the field-by-field three-way walker is tracked separately.
 """
 
 from __future__ import annotations

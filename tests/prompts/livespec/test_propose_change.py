@@ -8,12 +8,12 @@ for its `replayed_response`.
 
 Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
 semantic-property catalogue → prompts/propose-change.md", the
-bootstrap-minimum catalogue is two properties (per-finding
+catalogue starts at two properties (per-finding
 `target_spec_files` referencing the spec-target tree; BCP14
-normative language in `proposed_changes`). Phase 7 item (c)'s
-per-prompt regeneration cycle widens the catalogue and adds
-matching assertion functions; until then, fixtures may declare
-empty `expected_semantic_properties` lists to assert
+normative language in `proposed_changes`). Per-prompt
+regeneration cycles widen the catalogue and add matching
+assertion functions; until then, fixtures may declare empty
+`expected_semantic_properties` lists to assert
 schema-conformance only.
 """
 

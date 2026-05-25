@@ -7,12 +7,12 @@ and asserts the fixture's declared properties hold for its
 `replayed_response`.
 
 Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-semantic-property catalogue → prompts/revise.md", the
-bootstrap-minimum catalogue is two properties (walk every
-pending proposed-change file; emit per-proposal disposition).
-Phase 7 item (c)'s per-prompt regeneration cycle widens the
-catalogue and adds matching assertion functions; until then,
-fixtures may declare empty `expected_semantic_properties` lists.
+semantic-property catalogue → prompts/revise.md", the catalogue
+starts at two properties (walk every pending proposed-change
+file; emit per-proposal disposition). Per-prompt regeneration
+cycles widen the catalogue and add matching assertion functions;
+until then, fixtures may declare empty
+`expected_semantic_properties` lists.
 """
 
 from __future__ import annotations
