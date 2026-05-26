@@ -31,7 +31,7 @@ __all__: list[str] = ["LivespecConfig"]
 class LivespecConfig:
     """The `.livespec.jsonc` config wire dataclass.
 
-    Mirrors livespec_config.schema.json: five optional fields
+    Mirrors livespec_config.schema.json: six optional fields
     matching the schema's defaults.
     """
 
@@ -45,3 +45,4 @@ class LivespecConfig:
     post_step_skip_doctor_llm_subjective_checks: bool = False
     post_step_skip_capture_impl_gaps: bool = False
     pre_step_skip_static_checks: bool = False
+    pre_step_skip_stale_branch_check: bool = False
