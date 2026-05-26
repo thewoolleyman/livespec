@@ -248,6 +248,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-primary-checkout-bare-flag-set",
         "doctor-copier-template-workflow-coverage",
         "doctor-master-direct-uncommitted-spec-edits",
+        "doctor-parent-proposed-change-resolves",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -261,6 +262,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-anchor-reference-resolution",
         "doctor-out-of-band-edits",
         "doctor-accept-decision-snapshot-consistency",
+        "doctor-parent-proposed-change-resolves",
     }
     payload = json.loads(out)
     findings = payload["findings"]

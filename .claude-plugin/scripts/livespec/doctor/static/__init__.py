@@ -53,6 +53,7 @@ from livespec.doctor.static import (
     no_stale_worktree,
     no_stalled_epic,
     out_of_band_edits,
+    parent_proposed_change_resolves,
     primary_checkout_bare_flag_set,
     proposed_change_topic_format,
     proposed_changes_and_history_dirs,
@@ -94,6 +95,7 @@ STATIC_CHECKS = (
     primary_checkout_bare_flag_set,
     copier_template_workflow_coverage,
     master_direct_uncommitted_spec_edits,
+    parent_proposed_change_resolves,
 )
 
 
@@ -111,5 +113,6 @@ APPLICABILITY_BY_TREE_KIND: dict[TreeKind, tuple[object, ...]] = {
         anchor_reference_resolution,
         out_of_band_edits,
         accept_decision_snapshot_consistency,
+        parent_proposed_change_resolves,
     ),
 }
