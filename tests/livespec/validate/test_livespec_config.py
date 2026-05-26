@@ -52,6 +52,7 @@ def test_validate_livespec_config_returns_success_with_defaults_for_empty_payloa
         post_step_skip_doctor_llm_subjective_checks=False,
         post_step_skip_capture_impl_gaps=False,
         pre_step_skip_static_checks=False,
+        pre_step_skip_stale_branch_check=False,
     )
     assert result == Success(expected)
 
@@ -93,6 +94,7 @@ def test_validate_livespec_config_returns_failure_on_unknown_field() -> None:
     skip_subjective=st.booleans(),
     skip_capture_impl_gaps=st.booleans(),
     skip_static=st.booleans(),
+    skip_stale_branch=st.booleans(),
 )
 def test_validate_livespec_config_round_trips_skip_flags(
     *,
@@ -100,6 +102,7 @@ def test_validate_livespec_config_round_trips_skip_flags(
     skip_subjective: bool,
     skip_capture_impl_gaps: bool,
     skip_static: bool,
+    skip_stale_branch: bool,
 ) -> None:
     """For arbitrary skip-flag combinations, the success path preserves them verbatim."""
     schema = _SCHEMA
@@ -108,6 +111,7 @@ def test_validate_livespec_config_round_trips_skip_flags(
         "post_step_skip_doctor_llm_subjective_checks": skip_subjective,
         "post_step_skip_capture_impl_gaps": skip_capture_impl_gaps,
         "pre_step_skip_static_checks": skip_static,
+        "pre_step_skip_stale_branch_check": skip_stale_branch,
     }
     result = livespec_config.validate_livespec_config(payload=payload, schema=schema)
     match result:
@@ -116,6 +120,7 @@ def test_validate_livespec_config_round_trips_skip_flags(
             assert value.post_step_skip_doctor_llm_subjective_checks is skip_subjective
             assert value.post_step_skip_capture_impl_gaps is skip_capture_impl_gaps
             assert value.pre_step_skip_static_checks is skip_static
+            assert value.pre_step_skip_stale_branch_check is skip_stale_branch
         case _:
             msg = f"expected Success(LivespecConfig), got {result}"
             raise AssertionError(msg)

@@ -46,6 +46,7 @@ def _raw_validate(
         topic=TopicSlug(validated["topic"]),
         author=Author(validated["author"]),
         created_at=validated["created_at"],
+        parent_proposed_change=validated.get("parent_proposed_change"),
     )
 
 
