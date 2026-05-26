@@ -58,6 +58,12 @@
       "upstream_url": "https://github.com/python/typing_extensions",
       "upstream_ref": "4.12.2",
       "vendored_at": "2026-04-26T06:05:33Z"
+    },
+    {
+      "name": "livespec_runtime",
+      "upstream_url": "https://github.com/thewoolleyman/livespec-runtime",
+      "upstream_ref": "v0.3.0",
+      "vendored_at": "2026-05-26T23:33:12Z"
     }
   ]
 }

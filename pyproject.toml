@@ -221,6 +221,11 @@ ban-relative-imports = "all"
 # noise. S105 covers TRAILER-token constants whose names trip
 # the password heuristic.
 "dev-tooling/checks/*.py" = ["S603", "S607", "S404", "S105"]
+# dev-tooling/ mutating tools (vendor_update.py and any future peer)
+# shell out to git via subprocess.run with a fixed argv list per the
+# vendoring-procedure invocation contract. Same S603/S607/S404
+# carve-out shape as dev-tooling/checks/*.py above.
+"dev-tooling/vendor_update.py" = ["S603", "S607", "S404"]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.
