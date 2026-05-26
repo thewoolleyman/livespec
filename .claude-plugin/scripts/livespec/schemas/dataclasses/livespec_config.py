@@ -43,4 +43,5 @@ class LivespecConfig:
     template_format_version: int = 1
     post_step_skip_doctor_llm_objective_checks: bool = False
     post_step_skip_doctor_llm_subjective_checks: bool = False
+    post_step_skip_capture_impl_gaps: bool = False
     pre_step_skip_static_checks: bool = False

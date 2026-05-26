@@ -31,6 +31,11 @@
       "type": "boolean",
       "description": "When true, sub-commands skip the pre-step static check. Intended for emergency recovery only; the skill MUST narrate a warning every time pre-step is skipped.",
       "default": false
+    },
+    "post_step_skip_capture_impl_gaps": {
+      "type": "boolean",
+      "description": "When true, the revise sub-command skips the end-of-revise `capture-impl-gaps` post-step invocation against the active impl plugin. The revise SKILL.md prose MUST narrate a warning every time the post-step is silently skipped (config key true with no CLI flag).",
+      "default": false
     }
   }
 }

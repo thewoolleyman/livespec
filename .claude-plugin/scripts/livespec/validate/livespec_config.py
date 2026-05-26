@@ -51,6 +51,7 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> Livespe
         post_step_skip_doctor_llm_subjective_checks=validated[
             "post_step_skip_doctor_llm_subjective_checks"
         ],
+        post_step_skip_capture_impl_gaps=validated["post_step_skip_capture_impl_gaps"],
         pre_step_skip_static_checks=validated["pre_step_skip_static_checks"],
     )
 
