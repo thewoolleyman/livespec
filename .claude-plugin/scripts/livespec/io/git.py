@@ -90,6 +90,7 @@ __all__: list[str] = [
     "is_git_repo",
     "list_at_head",
     "list_merged_branches",
+    "list_status_porcelain",
     "list_worktrees",
     "show_at_head",
 ]
@@ -518,6 +519,51 @@ def show_at_head(
         repo_relative_path=repo_relative_path,
     ).alt(
         lambda exc: PreconditionError(f"git.show_at_head: {exc}"),
+    )
+
+
+def list_status_porcelain(
+    *,
+    project_root: Path,
+    pathspec: Path,
+) -> IOResult[tuple[str, ...], LivespecError]:
+    """Return `git status --porcelain` lines scoped to `pathspec`.
+
+    Composes `git -C <project_root> status --porcelain -- <pathspec>`.
+    Each line of the captured stdout (without trailing newline) is
+    one tuple entry. Empty stdout yields an empty tuple. The
+    porcelain v1 format is one line per modified/untracked entry,
+    with a fixed 2-char status field, a space, and the path
+    relative to the worktree root.
+
+    The `--` separator is included so `pathspec` is unambiguously
+    treated as a path even if it begins with a dash or matches a
+    flag. The caller is responsible for ensuring `pathspec`
+    resolves under the worktree at `project_root` (e.g., by
+    relativizing the spec-root path against the worktree root
+    before invocation).
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - `git status` exits non-zero (e.g., not a git working
+        tree). The doctor's
+        master-direct-uncommitted-spec-edits check folds this
+        into a skipped finding via its `is_git_repo` gate.
+      - The `git` binary itself missing: lifts via the proc seam.
+    """
+    argv = ["git", "-C", str(project_root), "status", "--porcelain", "--", str(pathspec)]
+    return run_subprocess(
+        argv=argv
+    ).bind(
+        lambda completed: (  # pyright: ignore[reportArgumentType]
+            IOResult.from_value(tuple(line for line in completed.stdout.splitlines() if line))
+            if completed.returncode == 0
+            else IOResult.from_failure(
+                PreconditionError(
+                    f"git.list_status_porcelain: `git status --porcelain -- {pathspec}` "
+                    f"exited {completed.returncode}",
+                ),
+            )
+        ),
     )
 
 
