@@ -925,3 +925,63 @@ def test_get_core_bare_returns_false_when_not_a_repo(
             assert value is False
         case _:
             raise AssertionError(f"expected IOSuccess(False), got {result!r}")
+
+
+def test_list_status_porcelain_returns_empty_tuple_when_clean(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOSuccess(()) when no files are modified under `pathspec`."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    subdir = tmp_path / "SPECIFICATION"
+    subdir.mkdir()
+    _git_commit_file(cwd=tmp_path, path=subdir / "spec.md", content=b"# Spec\n")
+
+    result = io_git.list_status_porcelain(project_root=tmp_path, pathspec=Path("SPECIFICATION"))
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value == ()
+        case _:
+            raise AssertionError(f"expected IOSuccess(()), got {result!r}")
+
+
+def test_list_status_porcelain_returns_modified_lines(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOSuccess with one porcelain line per modified file under `pathspec`."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    subdir = tmp_path / "SPECIFICATION"
+    subdir.mkdir()
+    _git_commit_file(cwd=tmp_path, path=subdir / "spec.md", content=b"# Spec\n")
+    _ = (subdir / "spec.md").write_bytes(b"# Spec\nmodified\n")
+
+    result = io_git.list_status_porcelain(project_root=tmp_path, pathspec=Path("SPECIFICATION"))
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value == (" M SPECIFICATION/spec.md",)
+        case _:
+            raise AssertionError(f"expected IOSuccess(...), got {result!r}")
+
+
+def test_list_status_porcelain_returns_failure_when_not_a_repo(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOFailure when `project_root` is not a git working tree (exit 128)."""
+    monkeypatch.chdir(tmp_path)
+
+    result = io_git.list_status_porcelain(project_root=tmp_path, pathspec=Path())
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure(...), got {result!r}")

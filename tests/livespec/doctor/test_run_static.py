@@ -218,6 +218,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-no-stale-merged-pr-branch",
         "doctor-no-stale-worktree",
         "doctor-primary-checkout-bare-flag-set",
+        "doctor-master-direct-uncommitted-spec-edits",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -251,6 +252,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             "doctor-no-stale-merged-pr-branch",
             "doctor-no-stale-worktree",
             "doctor-primary-checkout-bare-flag-set",
+            "doctor-master-direct-uncommitted-spec-edits",
         ):
             # The cleanup + bare-flag invariants require project_root to be a
             # git working tree; the tmp_path fixtures here are NOT initialized
