@@ -26,6 +26,10 @@ The eight slash commands below become available with the
 - `/livespec:next` — rank the next spec-side action (revise, propose-change, critique, prune-history, or none)
 - `/livespec:help` — overview + routing to the right sub-command
 
+## Fresh-clone setup
+
+After cloning, run `just bootstrap` once. The target idempotently sets `core.bare = true` on the primary checkout (per `SPECIFICATION/non-functional-requirements.md` §"Bare-flag bootstrap procedure"), forcing every edit through `git worktree add`, then installs lefthook hooks and resolves plugin dependencies.
+
 ## Dogfooding (editing the plugin source in this repo)
 
 Two paths:
