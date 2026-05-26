@@ -60,6 +60,7 @@ from livespec.doctor.static import (
     revision_to_proposed_change_pairing,
     template_exists,
     template_files_present,
+    unresolved_spec_commitment,
     version_contiguity,
     version_directories_complete,
 )
@@ -96,6 +97,7 @@ STATIC_CHECKS = (
     copier_template_workflow_coverage,
     master_direct_uncommitted_spec_edits,
     parent_proposed_change_resolves,
+    unresolved_spec_commitment,
 )
 
 
