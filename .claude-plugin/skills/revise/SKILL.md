@@ -97,6 +97,16 @@ The wrapper `bin/revise.py` accepts the following flags in v1:
   static phase to run even if `pre_step_skip_static_checks`
   is `true` in `.livespec.jsonc`. Mutually exclusive with
   `--skip-pre-check`.
+- `--skip-stale-branch-check` (optional). Skips the Step 3.5
+  stale-branch precondition check (see Steps below).
+  Mutually exclusive with `--run-stale-branch-check`. When
+  used, the SKILL.md prose MUST surface a warning narration
+  acknowledging the skip; silent override is forbidden.
+- `--run-stale-branch-check` (optional). Forces the Step 3.5
+  stale-branch precondition check to run even if
+  `pre_step_skip_stale_branch_check` is `true` in
+  `.livespec.jsonc`. Mutually exclusive with
+  `--skip-stale-branch-check`.
 
 Effective skip resolution for the pre-step (per
 SPECIFICATION/spec.md §"Sub-command lifecycle"):
@@ -204,6 +214,64 @@ and exit code is `0` (NOT an error).
    narration MUST NOT gate the wrapper, MUST NOT add
    any pre-step or post-step doctor check, and MUST
    NOT block downstream wrapper invocations.
+
+3.5. **Stale-branch precondition check.** Run the
+   `no_stale_revise_branches` shared check (shipped by
+   livespec-dev-tooling per the cross-cutting epic
+   `coordinating-epic-stale-revise-enforcement`) against
+   the project root. The check:
+
+   - Enumerates local refs matching `refs/heads/spec/*` via
+     `git for-each-ref`.
+   - For each, computes ahead-count vs
+     `origin/<canonical_branch>` via
+     `git rev-list --left-right --count`.
+   - Returns `fail` findings for every branch that is ahead
+     by one or more commits.
+
+   If the check returns any `fail` finding, STOP. Surface
+   every stale branch to the user with its name,
+   ahead-count, and most recent commit subject. Direct the
+   user to merge, abandon (push to a backup ref + delete),
+   or re-invoke revise with the explicit
+   `--skip-stale-branch-check` flag to override. If the
+   check returns clean, proceed to Step 4.
+
+   **Skip resolution.** The effective skip for this
+   precondition resolves per the precedence chain:
+
+   1. `--skip-stale-branch-check` on the CLI → skip = true.
+   2. `--run-stale-branch-check` on the CLI → skip = false
+      (overrides config).
+   3. Neither flag → use config key
+      `pre_step_skip_stale_branch_check` from
+      `.livespec.jsonc` (default `false`).
+   4. Both flags set → argparse usage error (exit 2).
+
+   **Narration rule (silent override forbidden).** Whenever
+   the precondition is skipped, the SKILL.md prose MUST
+   surface a warning narration acknowledging the skip:
+
+   - When the skip came from the config key with no CLI
+     flag passed (silent override): "Step 3.5 stale-branch
+     precondition was skipped because
+     `pre_step_skip_stale_branch_check` is set to `true`
+     in `.livespec.jsonc`. Run with
+     `--run-stale-branch-check` to force the precondition."
+   - When the skip came from
+     `--skip-stale-branch-check` explicitly: "Step 3.5
+     stale-branch precondition skipped via
+     `--skip-stale-branch-check`; any stale `spec/*`
+     branches are NOT being surfaced this pass."
+
+   When the user passed `--run-stale-branch-check`, the
+   precondition ran; no narration needed.
+
+   The shared check `no_stale_revise_branches` itself is
+   owned by livespec-dev-tooling. Until that check ships,
+   this SKILL.md prose + the flag pair + the config key
+   document the contract; the precondition becomes
+   load-bearing once the sibling check is available.
 
 4. **Capture optional steering intent.** Ask the user
    (optional, single free-text prompt): "Any steering
