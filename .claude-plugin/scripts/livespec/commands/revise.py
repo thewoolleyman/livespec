@@ -101,12 +101,25 @@ def build_parser() -> argparse.ArgumentParser:
      parser exposes `--revise-json <path>` (required), and the
      optional `--author`, `--spec-target`, `--project-root` flags
     .
+
+    The Step 3.5 stale-branch precondition (per PC
+    `coordinating-epic-stale-revise-enforcement` Layer 1) is
+    owned by the SKILL.md prose; the wrapper accepts the flag
+    pair `--skip-stale-branch-check` / `--run-stale-branch-check`
+    as a mutually-exclusive group so the skill's forwarded argv
+    parses cleanly even though the wrapper does not act on the
+    flags itself. The shared check `no_stale_revise_branches`
+    that the SKILL.md prose invokes is owned by
+    livespec-dev-tooling per the cross-cutting epic.
     """
     parser = argparse.ArgumentParser(prog="revise", exit_on_error=False)
     _ = parser.add_argument("--revise-json", required=True)
     _ = parser.add_argument("--author", default=None)
     _ = parser.add_argument("--spec-target", default=None)
     _ = parser.add_argument("--project-root", default=None)
+    stale_branch_group = parser.add_mutually_exclusive_group()
+    _ = stale_branch_group.add_argument("--skip-stale-branch-check", action="store_true")
+    _ = stale_branch_group.add_argument("--run-stale-branch-check", action="store_true")
     return parser
 
 

@@ -36,6 +36,11 @@
       "type": "boolean",
       "description": "When true, the revise sub-command skips the end-of-revise `capture-impl-gaps` post-step invocation against the active impl plugin. The revise SKILL.md prose MUST narrate a warning every time the post-step is silently skipped (config key true with no CLI flag).",
       "default": false
+    },
+    "pre_step_skip_stale_branch_check": {
+      "type": "boolean",
+      "description": "When true, the revise sub-command skips the Step 3.5 stale-branch precondition check (which enumerates local `spec/*` branches ahead of `origin/<canonical_branch>` via the `no_stale_revise_branches` shared check shipped by livespec-dev-tooling). The revise SKILL.md prose MUST narrate a warning every time the precondition is silently skipped (config key true with no CLI flag).",
+      "default": false
     }
   }
 }
