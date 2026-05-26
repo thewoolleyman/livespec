@@ -108,21 +108,28 @@ SPECIFICATION/spec.md §"Sub-command lifecycle"):
    `pre_step_skip_static_checks` (default `false`).
 4. Both flags set → argparse usage error (exit 2).
 
-Two LLM-layer flag pairs ALSO apply during the post-step
-LLM-driven phase but are NEVER passed to the Python wrapper
+Three LLM-layer flag pairs ALSO apply during the post-step
+phases but are NEVER passed to the Python wrapper
 (per):
 
 - `--skip-doctor-llm-objective-checks` /
   `--run-doctor-llm-objective-checks` (mutually exclusive).
 - `--skip-doctor-llm-subjective-checks` /
   `--run-doctor-llm-subjective-checks` (mutually exclusive).
+- `--skip-post-step-capture-impl-gaps` /
+  `--run-post-step-capture-impl-gaps` (mutually exclusive).
+  Controls the end-of-revise `capture-impl-gaps` post-step
+  invocation against the active impl plugin (Step 13). Same
+  precedence chain as the doctor-LLM flag pairs; resolves
+  against the `post_step_skip_capture_impl_gaps` config key
+  in `.livespec.jsonc` (default `false`).
 
-When the user supplies either flag in the same invocation,
-the SKILL.md prose forwards the choice to the post-step
-LLM-driven phase and never to `bin/revise.py`. Both-flags-
-in-the-same-pair is a usage error; surface and abort the
-LLM-driven phase. See `doctor/SKILL.md` for the full
-LLM-driven-phase contract.
+When the user supplies any of these flags in the same
+invocation, the SKILL.md prose forwards the choice to the
+relevant post-step phase and never to `bin/revise.py`.
+Both-flags-in-the-same-pair is a usage error; surface and
+abort the affected post-step phase. See `doctor/SKILL.md`
+for the full LLM-driven-phase contract.
 
 `--help` / `-h` is honored at the wrapper level via the
 `HelpRequested` supervisor path; help text goes to stdout
@@ -322,6 +329,95 @@ and exit code is `0` (NOT an error).
     config (or its `"unknown"` fallback) regardless of
     whether `author_llm` resolved cleanly.
 
+13. **Post-step `capture-impl-gaps` invocation.** AFTER the
+    wrapper exit 0 (Step 9), AFTER the wrapper's post-step
+    doctor static phase has completed inside that wrapper
+    invocation, AND AFTER the accepted proposed-change files
+    have been archived into
+    `<spec-target>/history/v<N+1>/proposed_changes/` per
+    `## Post-wrapper`, the skill prose MUST invoke the
+    active impl plugin's `capture-impl-gaps` skill against
+    this revise pass's `--spec-target` per
+    SPECIFICATION/spec.md §"Sub-command lifecycle".
+
+    Resolution sequence:
+
+    (a) **Skip control.** Resolve the post-step skip
+    decision per the precedence chain in §"Skip control"
+    below. When the resolved skip is `true`, narrate per
+    the rule there and SKIP this step entirely. Otherwise
+    proceed.
+
+    (b) **Read active impl plugin.** Read
+    `.livespec.jsonc` (via the upward walk from
+    `--project-root`) and capture the value of
+    `implementation.plugin`. When the key is absent or
+    the file does not exist, silently skip this step —
+    no impl plugin is configured.
+
+    (c) **Plugin-advertisement check.** The active impl
+    plugin MUST advertise a `capture-impl-gaps` skill
+    under the plugin's namespace prefix (per
+    SPECIFICATION/contracts.md §"Heavyweight authored
+    skills (6)"). If the plugin does NOT advertise the
+    skill, silently skip this step — not every impl
+    plugin must implement gap detection.
+
+    (d) **Compute `<prior-vN>`.** Read the `vNNN`
+    directory names under `<spec-target>/history/` and
+    identify the just-cut `v<N+1>`. The `<prior-vN>` is
+    the version immediately preceding it — the highest
+    `vNNN` BEFORE this revise pass cut `v<N+1>`. When
+    `v<N+1>` is the first version present (no prior
+    version exists), silently skip — there is no prior
+    version to diff against.
+
+    (e) **Invoke the skill.** Invoke
+    `/<plugin-namespace>:capture-impl-gaps
+    --since-version <prior-vN> --spec-target <spec-target>
+    --project-root <project-root>` via the skill-namespace
+    dispatch. The invoked skill owns its own per-gap
+    consent dialogue; this skill MUST NOT gate or wrap
+    that dialogue and MUST NOT re-prompt the user once
+    `capture-impl-gaps` is invoked.
+
+## Skip control
+
+The post-step `capture-impl-gaps` LLM-layer flag pair
+(Step 13) resolves to a `skip` boolean per the precedence
+chain (mirroring doctor's LLM-driven-phase precedence
+chain in `doctor/SKILL.md` §"Skip control"):
+
+1. **CLI flag.** If `--skip-post-step-capture-impl-gaps`
+   is on the invocation: `skip = true`. If
+   `--run-post-step-capture-impl-gaps` is on:
+   `skip = false` (overrides config).
+2. **Config key.** Otherwise read
+   `post_step_skip_capture_impl_gaps` from
+   `.livespec.jsonc`. Default is `false`.
+3. **Both flags present.** Argparse-style usage error:
+   surface and abort the post-step. Do NOT proceed.
+
+**Narration rule** (mirroring the doctor LLM-driven phase
+silent-skip narration in `doctor/SKILL.md` §"Skip
+control"): the skill MUST surface a warning via LLM
+narration whenever this post-step is SILENTLY skipped
+(the skip came from the config key with no CLI flag
+passed): "Post-step `capture-impl-gaps` was skipped
+because `post_step_skip_capture_impl_gaps` is set to
+`true` in `.livespec.jsonc`. Run with
+`--run-post-step-capture-impl-gaps` to force the
+post-step." When a `--skip-post-step-capture-impl-gaps`
+CLI flag is passed explicitly, the skip is self-evident
+to the user and no narration fires. When a
+`--run-post-step-capture-impl-gaps` CLI flag overrides a
+config default of `true`, no narration fires either —
+the explicit flag makes the override self-evident.
+
+Plugin-not-advertised skips (Step 13(c)) and
+no-prior-version skips (Step 13(d)) are silent by
+contract and MUST NOT narrate.
+
 ## Post-wrapper
 
 On exit 0, the wrapper has:
@@ -384,8 +480,12 @@ in-flight proposals; the skill-owned
 `proposed_changes/README.md` persists).
 
 The LLM-driven post-step phase then runs per
-`doctor/SKILL.md`, honoring the two LLM-layer flag pairs
-from Inputs.
+`doctor/SKILL.md`, honoring the two doctor-LLM flag pairs
+from Inputs. After the LLM-driven post-step phase
+completes, Step 13 invokes the active impl plugin's
+`capture-impl-gaps` skill (when advertised), honoring the
+third LLM-layer flag pair and the
+`post_step_skip_capture_impl_gaps` config key.
 
 ## Failure handling
 

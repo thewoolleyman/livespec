@@ -2,6 +2,6 @@
   "template_format_version": 1,
   "spec_root": "SPECIFICATION/",
   "doctor_static_check_modules": [],
-  "doctor_llm_objective_checks_prompt": null,
+  "doctor_llm_objective_checks_prompt": "prompts/doctor-llm-objective-checks.md",
   "doctor_llm_subjective_checks_prompt": "prompts/doctor-llm-subjective-checks.md"
 }
