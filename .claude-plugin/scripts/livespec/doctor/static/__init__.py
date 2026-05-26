@@ -43,6 +43,7 @@ from livespec.doctor.static import (
     depends_on_ref_wellformedness,
     gherkin_blank_line_format,
     livespec_jsonc_valid,
+    master_direct_uncommitted_spec_edits,
     no_duplicate_gap_id,
     no_orphan_dependency,
     no_stale_gap_tied,
@@ -90,6 +91,7 @@ STATIC_CHECKS = (
     no_stale_merged_pr_branch,
     no_stale_worktree,
     primary_checkout_bare_flag_set,
+    master_direct_uncommitted_spec_edits,
 )
 
 
