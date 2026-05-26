@@ -21,11 +21,33 @@ from returns.result import Result, safe
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.proposed_change_front_matter import (
+    ImplFollowup,
     ProposedChangeFrontMatter,
+    SpecCommitments,
 )
 from livespec.types import Author, TopicSlug
 
 __all__: list[str] = ["validate_proposed_change_front_matter"]
+
+
+def _build_spec_commitments(*, raw: dict[str, Any] | None) -> SpecCommitments | None:
+    """Construct the optional SpecCommitments dataclass from a validated payload sub-tree.
+
+    li-8mj2lz, PC #4 sub-proposal 1: the schema enforces shape
+    (required `impl_followups[]` list, each entry's `id_hint`
+    kebab-case + `description` non-empty, optional `supersedes[]`
+    list of kebab-case strings) before this function runs.
+    Returns None when the front-matter omits `spec_commitments`
+    entirely (the zero-commitment path).
+    """
+    if raw is None:
+        return None
+    impl_followups = [
+        ImplFollowup(id_hint=entry["id_hint"], description=entry["description"])
+        for entry in raw["impl_followups"]
+    ]
+    supersedes = list(raw.get("supersedes", []))
+    return SpecCommitments(impl_followups=impl_followups, supersedes=supersedes)
 
 
 @safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
@@ -38,7 +60,9 @@ def _raw_validate(
 
     Promotes `topic` to `TopicSlug` and `author` to `Author` per
     `check-newtype-domain-primitives`. `created_at` stays plain
-    `str` (ISO 8601 datetime).
+    `str` (ISO 8601 datetime). The optional `spec_commitments`
+    block lands as the nested `SpecCommitments` dataclass when
+    present (li-8mj2lz, PC #4 sub-proposal 1).
     """
     validator = fastjsonschema.compile(schema)
     validated = validator(payload)
@@ -47,6 +71,7 @@ def _raw_validate(
         author=Author(validated["author"]),
         created_at=validated["created_at"],
         parent_proposed_change=validated.get("parent_proposed_change"),
+        spec_commitments=_build_spec_commitments(raw=validated.get("spec_commitments")),
     )
 
 

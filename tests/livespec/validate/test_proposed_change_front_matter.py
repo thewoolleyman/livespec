@@ -21,7 +21,9 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.proposed_change_front_matter import (
+    ImplFollowup,
     ProposedChangeFrontMatter,
+    SpecCommitments,
 )
 from livespec.types import Author, TopicSlug
 from livespec.validate import proposed_change_front_matter
@@ -131,6 +133,9 @@ def test_validate_proposed_change_front_matter_round_trips_author_text(
         case _:
             msg = f"expected Success(ProposedChangeFrontMatter), got {result}"
             raise AssertionError(msg)
+
+
+# li-ymwpk2: parent_proposed_change validation cases.
 
 
 def test_validate_proposed_change_front_matter_accepts_local_parent_proposed_change() -> None:
@@ -302,6 +307,87 @@ def test_validate_proposed_change_front_matter_rejects_null_parent_proposed_chan
     match result:
         case Failure(ValidationError()):
             pass
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+# li-8mj2lz, PC #4 sub-proposal 1: spec_commitments validation
+# also covers the front-matter validator so previously-written
+# files are checkable on the way back in (e.g., by future
+# `unresolved-spec-commitment` doctor read paths).
+
+
+def test_validate_proposed_change_front_matter_accepts_spec_commitments_block() -> None:
+    """A well-formed spec_commitments block round-trips through the front-matter validator."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "demo",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "spec_commitments": {
+            "impl_followups": [
+                {"id_hint": "wire-skill", "description": "Wire the new skill."},
+            ],
+            "supersedes": ["older-hint"],
+        },
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    expected = ProposedChangeFrontMatter(
+        topic=TopicSlug("demo"),
+        author=Author("claude-opus-4-7"),
+        created_at="2026-05-02T09:30:00Z",
+        spec_commitments=SpecCommitments(
+            impl_followups=[
+                ImplFollowup(id_hint="wire-skill", description="Wire the new skill."),
+            ],
+            supersedes=["older-hint"],
+        ),
+    )
+    assert result == Success(expected)
+
+
+def test_validate_proposed_change_front_matter_treats_absent_spec_commitments_as_none() -> None:
+    """Front-matter without spec_commitments produces dataclass with spec_commitments=None."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "demo",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Success(value):
+            assert value.spec_commitments is None
+        case _:
+            msg = f"expected Success(ProposedChangeFrontMatter), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_rejects_malformed_spec_commitments() -> None:
+    """A malformed spec_commitments block (empty description) returns Failure(ValidationError)."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "demo",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "spec_commitments": {
+            "impl_followups": [{"id_hint": "wire-skill", "description": ""}],
+        },
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Failure(ValidationError() as err):
+            assert "proposed_change_front_matter:" in str(err)
         case _:
             msg = f"expected Failure(ValidationError), got {result}"
             raise AssertionError(msg)

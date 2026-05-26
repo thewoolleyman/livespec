@@ -13,6 +13,44 @@
       "type": "string",
       "description": "Optional file-level LLM-self-declared author identifier. Consumed by the unified author-precedence chain (CLI flag > LIVESPEC_AUTHOR_LLM env > this field > 'unknown-llm') in propose-change/critique/revise."
     },
+    "spec_commitments": {
+      "type": "object",
+      "description": "Optional spec→impl commitment declaration per spec.md §'Proposed-change and revision file formats' → 'Spec→impl commitment declaration'. When present, each impl_followups[] entry declares one impl-side work-item that MUST be filed in the active impl-plugin's store before the propose-change is considered closed; supersedes[] (optional) lists earlier id_hint values whose commitments this propose-change absorbs or revokes.",
+      "additionalProperties": false,
+      "required": ["impl_followups"],
+      "properties": {
+        "impl_followups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id_hint", "description"],
+            "properties": {
+              "id_hint": {
+                "type": "string",
+                "description": "Author-chosen kebab-case slug pairing the eventual impl-side work-item back to this propose-change via the impl-plugin's spec_commitment_hint field. NOT a generated work-item id.",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string",
+                "description": "One-paragraph description of the impl change required after this propose-change is revised in.",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "supersedes": {
+          "type": "array",
+          "description": "Optional list of earlier id_hint values whose commitments this propose-change absorbs or revokes. The unresolved-spec-commitment doctor invariant exempts the listed id_hints from its work-item-coverage check.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "findings": {
       "type": "array",
       "items": {

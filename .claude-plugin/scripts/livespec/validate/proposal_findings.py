@@ -10,6 +10,15 @@ the schema via fastjsonschema, and returns
 The vendored fastjsonschema raises `JsonSchemaValueException` on
 violation; `@safe(exceptions=...)` lifts that onto the Result
 track per the canonical pattern.
+
+li-8mj2lz, PC #4 sub-proposal 1: the optional `spec_commitments`
+top-level field's shape (kebab-case id_hint, non-empty description,
+optional supersedes[]) is enforced by the JSON Schema itself; the
+schema-violation path therefore lifts to exit 4 via the existing
+`@safe(exceptions=...)` envelope without bespoke wrapper-side
+checks. On success this validator constructs the nested
+`SpecCommitments` + `ImplFollowup` dataclasses from the validated
+payload.
 """
 
 from __future__ import annotations
@@ -21,9 +30,33 @@ from returns.result import Result, safe
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.proposal_findings import ProposalFindings
+from livespec.schemas.dataclasses.proposed_change_front_matter import (
+    ImplFollowup,
+    SpecCommitments,
+)
 from livespec.types import Author
 
 __all__: list[str] = ["validate_proposal_findings"]
+
+
+def _build_spec_commitments(*, raw: dict[str, Any] | None) -> SpecCommitments | None:
+    """Construct the optional SpecCommitments dataclass from a validated payload sub-tree.
+
+    The schema enforces shape (required `impl_followups[]` list,
+    each entry's `id_hint` kebab-case + `description` non-empty,
+    optional `supersedes[]` list of kebab-case strings) before
+    this function runs — no defensive narrowing required here.
+    Returns None when the wrapper input omits `spec_commitments`
+    entirely (the zero-commitment path).
+    """
+    if raw is None:
+        return None
+    impl_followups = [
+        ImplFollowup(id_hint=entry["id_hint"], description=entry["description"])
+        for entry in raw["impl_followups"]
+    ]
+    supersedes = list(raw.get("supersedes", []))
+    return SpecCommitments(impl_followups=impl_followups, supersedes=supersedes)
 
 
 @safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
@@ -38,9 +71,11 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> Proposa
     validator = fastjsonschema.compile(schema)
     validated = validator(payload)
     raw_author = validated.get("author")
+    raw_spec_commitments = validated.get("spec_commitments")
     return ProposalFindings(
         findings=validated["findings"],
         author=Author(raw_author) if raw_author is not None else None,
+        spec_commitments=_build_spec_commitments(raw=raw_spec_commitments),
     )
 
 

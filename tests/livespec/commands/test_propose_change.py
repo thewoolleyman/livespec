@@ -651,3 +651,294 @@ def test_propose_change_rejects_non_list_target_spec_files_at_schema(
         ],
     )
     assert exit_code == 4
+
+
+# li-8mj2lz, PC #4 sub-proposal 1: spec_commitments validation at
+# the wrapper boundary. The wrapper exits 4 on any malformed
+# spec_commitments shape (missing id_hint, empty description,
+# non-kebab id_hint, non-list impl_followups, etc.). Successful
+# payloads render the block into the resulting file's YAML
+# front-matter so the post-revise doctor invariant
+# (unresolved-spec-commitment, sibling work-item li-7jniti) can
+# read it back from the vNNN/ snapshot. Per
+# `SPECIFICATION/contracts.md` §"Sub-command wire contracts" →
+# "`propose-change` payload validation", the wrapper does NOT
+# cross-check id_hint uniqueness across the spec tree; that is
+# the doctor invariant's responsibility.
+
+
+def _spec_commitments_payload_with(*, spec_commitments: dict[str, object]) -> dict[str, object]:
+    """Helper: build a schema-valid findings payload carrying a spec_commitments block."""
+    return {
+        "findings": [
+            {
+                "name": "Sample finding",
+                "target_spec_files": ["SPECIFICATION/spec.md"],
+                "summary": "Demo summary.",
+                "motivation": "Demo motivation.",
+                "proposed_changes": "Demo changes prose.",
+            },
+        ],
+        "spec_commitments": spec_commitments,
+    }
+
+
+def test_propose_change_writes_spec_commitments_into_front_matter(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A well-formed spec_commitments payload lands as YAML inside the front-matter block."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = _spec_commitments_payload_with(
+        spec_commitments={
+            "impl_followups": [
+                {"id_hint": "wire-skill", "description": "Wire the new skill."},
+                {
+                    "id_hint": "doctor-check",
+                    "description": "Add the doctor invariant.",
+                },
+            ],
+            "supersedes": ["older-hint"],
+        },
+    )
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    text = (spec_target / "proposed_changes" / "demo-topic.md").read_text(encoding="utf-8")
+    assert "spec_commitments:" in text
+    assert "  impl_followups:" in text
+    assert "    - id_hint: wire-skill" in text
+    assert "      description: |" in text
+    assert "        Wire the new skill." in text
+    assert "    - id_hint: doctor-check" in text
+    assert "        Add the doctor invariant." in text
+    assert "  supersedes:" in text
+    assert "    - older-hint" in text
+
+
+def test_propose_change_omits_spec_commitments_when_payload_lacks_it(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A payload without spec_commitments produces front-matter that omits the block entirely."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    text = (spec_target / "proposed_changes" / "demo-topic.md").read_text(encoding="utf-8")
+    assert "spec_commitments:" not in text
+
+
+def test_propose_change_omits_supersedes_when_list_is_empty(
+    *,
+    tmp_path: Path,
+) -> None:
+    """An empty supersedes[] (or omitted) emits no `supersedes:` line in the YAML block."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = _spec_commitments_payload_with(
+        spec_commitments={
+            "impl_followups": [
+                {"id_hint": "wire-skill", "description": "Wire the new skill."},
+            ],
+        },
+    )
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    text = (spec_target / "proposed_changes" / "demo-topic.md").read_text(encoding="utf-8")
+    assert "spec_commitments:" in text
+    assert "supersedes:" not in text
+
+
+def test_propose_change_rejects_spec_commitments_missing_id_hint(
+    *,
+    tmp_path: Path,
+) -> None:
+    """An impl_followups[] entry without id_hint causes the wrapper to exit 4."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = _spec_commitments_payload_with(
+        spec_commitments={
+            "impl_followups": [{"description": "Missing the slug."}],
+        },
+    )
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 4
+    assert not (spec_target / "proposed_changes" / "demo-topic.md").exists()
+
+
+def test_propose_change_rejects_spec_commitments_empty_description(
+    *,
+    tmp_path: Path,
+) -> None:
+    """An impl_followups[] entry with an empty description causes the wrapper to exit 4."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = _spec_commitments_payload_with(
+        spec_commitments={
+            "impl_followups": [{"id_hint": "wire-skill", "description": ""}],
+        },
+    )
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 4
+
+
+def test_propose_change_rejects_spec_commitments_non_kebab_id_hint(
+    *,
+    tmp_path: Path,
+) -> None:
+    """An id_hint that isn't kebab-case causes the wrapper to exit 4."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = _spec_commitments_payload_with(
+        spec_commitments={
+            "impl_followups": [{"id_hint": "Not Kebab", "description": "ok"}],
+        },
+    )
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 4
+
+
+def test_propose_change_rejects_spec_commitments_non_list_impl_followups(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A non-list impl_followups value causes the wrapper to exit 4."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = _spec_commitments_payload_with(
+        spec_commitments={"impl_followups": "not-a-list"},
+    )
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 4
+
+
+def test_propose_change_rejects_spec_commitments_non_kebab_supersedes(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A supersedes[] entry violating the kebab pattern causes the wrapper to exit 4."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = _spec_commitments_payload_with(
+        spec_commitments={
+            "impl_followups": [{"id_hint": "wire-skill", "description": "ok"}],
+            "supersedes": ["Bad Slug"],
+        },
+    )
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 4
+
+
+def test_propose_change_renders_multiline_description_as_yaml_block_scalar(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A multi-line description renders as a YAML literal block scalar (`|`) with indented lines."""
+    spec_target = tmp_path / "spec-root"
+    spec_target.mkdir()
+    payload_dict = _spec_commitments_payload_with(
+        spec_commitments={
+            "impl_followups": [
+                {
+                    "id_hint": "wire-skill",
+                    "description": "First line of the description.\nSecond line continues.",
+                },
+            ],
+        },
+    )
+    payload_path = tmp_path / "findings.json"
+    _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+            "demo-topic",
+        ],
+    )
+    assert exit_code == 0
+    text = (spec_target / "proposed_changes" / "demo-topic.md").read_text(encoding="utf-8")
+    assert "      description: |" in text
+    assert "        First line of the description." in text
+    assert "        Second line continues." in text
