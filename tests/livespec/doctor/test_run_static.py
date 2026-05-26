@@ -249,6 +249,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-copier-template-workflow-coverage",
         "doctor-master-direct-uncommitted-spec-edits",
         "doctor-parent-proposed-change-resolves",
+        "doctor-unresolved-spec-commitment",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -297,6 +298,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             "doctor-no-duplicate-gap-id",
             "doctor-no-stale-gap-tied",
             "doctor-depends_on-ref-wellformedness",
+            "doctor-unresolved-spec-commitment",
         ):
             # These cross-boundary work-item invariants require
             # .livespec.jsonc to declare an impl-plugin in the v1 supported
