@@ -1,0 +1,72 @@
+# Auto-enable-merge workflow — set --auto --rebase on PRs from the
+# user-or-agent identity allowlist, when not draft and not flagged
+# do-not-merge.
+#
+# Generated from livespec/templates/impl-plugin/.github/workflows/
+# auto-enable-merge.yml.jinja at copier-copy time; re-sync via
+# `copier update` when livespec publishes a new release.
+#
+# Authority: livespec/SPECIFICATION/contracts.md
+#   §"Shared content sync — copier template" — enumerated required
+#   workflow file set every livespec-impl-* repo MUST carry.
+#
+# Auth model:
+#   - Uses a GitHub App installation token instead of GITHUB_TOKEN.
+#   - actions/create-github-app-token@v1 mints a fresh token at
+#     runtime (lasts ~1 hour, discarded after the run).
+#   - Required repo secrets: APP_ID, APP_PRIVATE_KEY (managed via
+#     `gh secret set`).
+#
+# Why an App instead of GITHUB_TOKEN: the GraphQL
+# `enablePullRequestAutoMerge` mutation requires admin-level repo
+# access that `github-actions[bot]` lacks regardless of declared
+# `permissions:` scopes. Apps installed on the repo are granted
+# the access by the install grant itself.
+
+name: Auto-enable merge
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - synchronize
+      - unlabeled
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: auto-enable-merge-${{ '{{' }} github.event.pull_request.number {{ '}}' }}
+  cancel-in-progress: true
+
+jobs:
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.pull_request.draft == false
+      && contains(fromJSON('["{{ github_owner }}"]'), github.event.pull_request.user.login)
+      && !contains(github.event.pull_request.labels.*.name, 'do-not-merge')
+    steps:
+      - name: Mint App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ '{{' }} secrets.APP_ID {{ '}}' }}
+          private-key: ${{ '{{' }} secrets.APP_PRIVATE_KEY {{ '}}' }}
+
+      - name: "Enable auto-merge (rebase) on PR #${{ '{{' }} github.event.pull_request.number {{ '}}' }}"
+        env:
+          GH_TOKEN: ${{ '{{' }} steps.app-token.outputs.token {{ '}}' }}
+          REPO: ${{ '{{' }} github.repository {{ '}}' }}
+          PR: ${{ '{{' }} github.event.pull_request.number {{ '}}' }}
+        run: |
+          set -uo pipefail
+          if gh pr merge "$PR" --repo "$REPO" --auto --rebase; then
+            echo "Auto-merge enabled on PR #$PR (rebase strategy)"
+          else
+            echo "::error::failed to enable auto-merge on PR #$PR"
+            exit 1
+          fi
