@@ -130,6 +130,11 @@ proceed to §"Failure handling".
    - Dangling / unresolvable references that escaped the
      `anchor-reference-resolution` static check (e.g.,
      case-variant spellings, alias forms).
+   - **Open spec-PR status** (skill-baked, GitHub-hosted
+     projects only). Surfaces findings for open `spec/*`
+     PRs whose state warrants attention per
+     `doctor-llm-objective-checks.md` §"Open spec-PR
+     status".
 
    For each finding, capture: `check_id` (a stable
    identifier matching the check's name), `spec_root`
