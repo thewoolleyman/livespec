@@ -53,6 +53,33 @@ _PRUNE_HISTORY_WRAPPER = _BIN_DIR / "prune_history.py"
 _DOCTOR_STATIC_WRAPPER = _BIN_DIR / "doctor_static.py"
 
 
+_REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
+    "auto-enable-merge.yml",
+    "auto-update-branches.yml",
+    "bump-pin-from-dispatch.yml",
+    "ci.yml",
+    "copier-update-drift.yml",
+    "pin-freshness.yml",
+    "release-dispatch.yml",
+)
+
+
+def _seed_required_workflow_files(*, project_root: Path) -> None:
+    """Create the seven required `.github/workflows/` files in `project_root`.
+
+    Mirrors `tests/e2e/fake_claude.py.seed_required_workflow_files`
+    so the post-step doctor passes per the
+    copier-template-workflow-coverage cross-boundary invariant.
+    """
+    workflows_dir = project_root / ".github" / "workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    for name in _REQUIRED_WORKFLOW_FILES:
+        _ = (workflows_dir / name).write_text(
+            "# round-trip fixture workflow stub\n",
+            encoding="utf-8",
+        )
+
+
 def _run_wrapper(
     *,
     argv: list[str],
@@ -99,6 +126,12 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
     future test bloat).
     """
     project_root = tmp_path
+    # Per the copier-template-workflow-coverage doctor invariant
+    # (contracts.md §"Doctor cross-boundary invariants"), every
+    # livespec-governed consumer MUST carry the seven required
+    # `.github/workflows/` files. The round-trip fixture models
+    # the post-`copier copy` state so the post-step doctor pass.
+    _seed_required_workflow_files(project_root=project_root)
 
     # Step 1: seed.
     seed_payload: dict[str, object] = {

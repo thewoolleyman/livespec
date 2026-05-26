@@ -76,6 +76,9 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     # working-tree commits override bare-mode via `--work-tree`/
     # `--git-dir`.
     _git(cwd=tmp_path, args=["config", "--local", "core.bare", "true"])
+    # Per the copier-template-workflow-coverage doctor invariant,
+    # the e2e fixture also models the post-`copier copy` state.
+    fake_claude.seed_required_workflow_files(project_root=tmp_path)
 
     seed_result = fake_claude.seed(
         project_root=tmp_path, intent="Doctor fail-then-fix test project"
