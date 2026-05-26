@@ -1594,3 +1594,159 @@ def test_revise_module_declares_hkt_erosion_pragma() -> None:
         "reportUnknownVariableType=none, "
         "reportUnknownArgumentType=none\n",
     ), "commands/revise.py must declare the HKT-erosion pragma as its first line"
+
+
+def test_revise_main_exits_3_when_post_step_doctor_reports_fail(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Post-step doctor fail-status finding -> exit 3 per spec contract.
+
+    Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
+    → "`revise` payload validation": "Revise's post-step doctor
+    MUST run the `unresolved-spec-commitment` invariant against
+    the freshly-cut `vNNN/` snapshot." On `status: "fail"`, the
+    wrapper exits 3 per the existing exit-code table — per the
+    work-item description (li-f2dk3t): "the snapshot is already
+    cut by the time post-step runs; the exit 3 surfaces the
+    gap." This is SCENARIO 1 from the work-item brief tested at
+    the supervisor end-to-end (post-step fail path: revise cuts
+    vNNN, post-step fails on unresolved id_hint, exit 3
+    surfaced).
+
+    Fixture: minimal spec-target with v001 + a pending PC.
+    `--post-step-doctor` is passed to gate the doctor invocation;
+    the doctor subprocess is monkeypatched to return a fail
+    finding for `doctor-unresolved-spec-commitment`. The
+    supervisor pattern-matches the lifted PreconditionError to
+    exit 3.
+    """
+    import pytest
+    from livespec.errors import PreconditionError
+    from livespec.io import proc
+    from returns.io import IOResult
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
+    )
+    revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
+    fail_message = (
+        "unresolved-spec-commitment: 1 declared "
+        "spec_commitments.impl_followups[] id_hint(s) have no matching "
+        "work-item with spec_commitment_hint: alpha-hint (from v005/foo.md)"
+    )
+    findings_payload = {
+        "findings": [
+            {
+                "check_id": "doctor-unresolved-spec-commitment",
+                "status": "fail",
+                "message": fail_message,
+                "path": "/tmp/work-items.jsonl",
+                "line": None,
+                "spec_root": str(spec_target),
+            },
+        ],
+    }
+
+    def fake_run_subprocess(
+        *,
+        argv: list[str],
+        cwd: Path | None = None,
+    ) -> IOResult[object, PreconditionError]:
+        _ = cwd
+        import subprocess as _sub
+
+        completed = _sub.CompletedProcess[str](
+            args=argv,
+            returncode=1,
+            stdout=json.dumps(findings_payload),
+            stderr="",
+        )
+        return IOResult.from_value(completed)
+
+    monkeypatch.setattr(proc, "run_subprocess", fake_run_subprocess)
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(revise_path),
+            "--spec-target",
+            str(spec_target),
+            "--project-root",
+            str(tmp_path),
+            "--post-step-doctor",
+        ],
+    )
+    assert exit_code == 3, f"expected exit 3 on post-step fail, got {exit_code}"
+    # The vNNN snapshot IS already cut by the time post-step runs
+    # (per the work-item description); verify it landed on disk.
+    cut_version = spec_target / "history" / "v002" / "proposed_changes" / "demo.md"
+    assert cut_version.exists(), (
+        "expected v002 snapshot to be cut BEFORE post-step doctor short-circuits "
+        "the supervisor — per spec contract, exit 3 is INFORMATIONAL after the cut"
+    )
+
+
+def test_revise_main_exits_0_when_post_step_doctor_passes(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Green post-step doctor path -> exit 0 with vNNN cut.
+
+    Mirrors the parallel exit-0 path: when the post-step
+    doctor emits no fail-status findings, the supervisor returns
+    0 and the freshly-cut `vNNN/` snapshot is the green-state
+    artifact.
+    """
+    import pytest
+    from livespec.errors import PreconditionError
+    from livespec.io import proc
+    from returns.io import IOResult
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
+    )
+    revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
+
+    def fake_run_subprocess(
+        *,
+        argv: list[str],
+        cwd: Path | None = None,
+    ) -> IOResult[object, PreconditionError]:
+        _ = cwd
+        import subprocess as _sub
+
+        completed = _sub.CompletedProcess[str](
+            args=argv,
+            returncode=0,
+            stdout='{"findings": []}',
+            stderr="",
+        )
+        return IOResult.from_value(completed)
+
+    monkeypatch.setattr(proc, "run_subprocess", fake_run_subprocess)
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(revise_path),
+            "--spec-target",
+            str(spec_target),
+            "--project-root",
+            str(tmp_path),
+            "--post-step-doctor",
+        ],
+    )
+    assert exit_code == 0, f"expected exit 0 on green post-step, got {exit_code}"

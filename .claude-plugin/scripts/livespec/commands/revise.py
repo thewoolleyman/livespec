@@ -45,6 +45,9 @@ from returns.result import Failure, Result, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec.commands._revise_doctor import (
+    _run_post_step_doctor,
+)
 from livespec.commands._revise_helpers import (
     _compose_resulting_changes_section as _compose_resulting_changes_section,
 )
@@ -111,12 +114,29 @@ def build_parser() -> argparse.ArgumentParser:
     flags itself. The shared check `no_stale_revise_branches`
     that the SKILL.md prose invokes is owned by
     livespec-dev-tooling per the cross-cutting epic.
+
+    `--post-step-doctor` (default off) gates the post-step
+    doctor static invocation per `SPECIFICATION/contracts.md`
+    §"Sub-command wire contracts" → "`revise` payload
+    validation". When set, the wrapper invokes
+    `bin/doctor_static.py` after the freshly-cut `vNNN/`
+    snapshot lands; any `status: "fail"` finding (including the
+    `unresolved-spec-commitment` invariant added in PR #281)
+    short-circuits the railway with `IOFailure(PreconditionError)`
+    so the supervisor lifts to exit 3 — but per the work-item
+    description, the `vNNN/` snapshot is already on disk; exit 3
+    is INFORMATIONAL, directing the user to file the declared
+    work-items via the active impl-plugin's `capture-work-item`
+    skill, then re-run doctor to verify resolution. SKILL.md
+    prose passes the flag on every production invocation;
+    file-shaping unit tests omit it.
     """
     parser = argparse.ArgumentParser(prog="revise", exit_on_error=False)
     _ = parser.add_argument("--revise-json", required=True)
     _ = parser.add_argument("--author", default=None)
     _ = parser.add_argument("--spec-target", default=None)
     _ = parser.add_argument("--project-root", default=None)
+    _ = parser.add_argument("--post-step-doctor", action="store_true")
     stale_branch_group = parser.add_mutually_exclusive_group()
     _ = stale_branch_group.add_argument("--skip-stale-branch-check", action="store_true")
     _ = stale_branch_group.add_argument("--run-stale-branch-check", action="store_true")
@@ -185,9 +205,51 @@ def main(*, argv: list[str] | None = None) -> int:
                     ),
                 ),
             )
+            .bind(
+                lambda revise_input: _maybe_run_post_step_doctor(
+                    revise_input=revise_input,
+                    namespace=namespace,
+                ),
+            )
         ),
     )
     return _pattern_match_io_result(io_result=railway)
+
+
+def _maybe_run_post_step_doctor(
+    *,
+    revise_input: Any,
+    namespace: argparse.Namespace,
+) -> IOResult[Any, LivespecError]:
+    """Conditionally invoke the post-step doctor static phase.
+
+    Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
+    → "`revise` payload validation": "Revise's post-step doctor
+    MUST run the `unresolved-spec-commitment` invariant against
+    the freshly-cut `vNNN/` snapshot." The full static-phase
+    doctor registry is exercised; the gating semantics are exit
+    3 on any fail-status finding (the
+    `unresolved-spec-commitment` invariant is one such fail).
+
+    The post-step doctor invocation is gated on the
+    `--post-step-doctor` flag (default off) so existing
+    file-shaping unit tests continue to compose without needing
+    a full doctor-clean project root. SKILL.md prose passes the
+    flag explicitly on every production invocation; unit tests
+    that scope-down to file-shaping concerns may omit it.
+
+    Per the work-item description (li-f2dk3t): "the snapshot is
+    already cut by the time post-step runs; the exit 3 surfaces
+    the gap and the user's corrective action is to file the
+    declared work-items then re-run doctor to verify
+    resolution."
+    """
+    if not getattr(namespace, "post_step_doctor", False):
+        return IOResult.from_value(revise_input)
+    return _run_post_step_doctor(
+        revise_input=revise_input,
+        project_root=_resolve_project_root(namespace=namespace),
+    )
 
 
 def _check_decisions_nonempty(
@@ -263,5 +325,19 @@ def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """
     if namespace.spec_target is not None:
         return Path(namespace.spec_target)
-    project_root = Path.cwd() if namespace.project_root is None else Path(namespace.project_root)
+    project_root = _resolve_project_root(namespace=namespace)
     return project_root / "SPECIFICATION"
+
+
+def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
+    """Resolve --project-root to a Path, defaulting to Path.cwd().
+
+    The post-step doctor invocation in `_revise_doctor._run_post_step_doctor`
+    forwards `--project-root` to `bin/doctor_static.py` so the doctor
+    resolves the spec root from the same project root the revise
+    wrapper resolved. Per `SPECIFICATION/contracts.md` §"Wrapper CLI
+    surface": `--project-root <path>` (default `Path.cwd()`).
+    """
+    if namespace.project_root is None:
+        return Path.cwd()
+    return Path(namespace.project_root)

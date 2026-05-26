@@ -103,7 +103,9 @@ def test_validate_next_output_returns_failure_on_unknown_field() -> None:
 
 @settings(deadline=None)
 @given(
-    action=st.sampled_from(["revise", "propose-change", "critique", "prune-history", "none"]),
+    action=st.sampled_from(
+        ["revise", "propose-change", "critique", "prune-history", "capture-work-item", "none"],
+    ),
     urgency=st.sampled_from(["high", "medium", "low"]),
     reason=st.text(min_size=1, max_size=80),
 )
