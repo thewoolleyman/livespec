@@ -20,5 +20,17 @@
     },
     "work_items_path": "work-items.jsonl",
     "memos_path": "memos.jsonl"
+  },
+  "cross_repo_targets": {
+    "livespec": {
+      "github_url": "https://github.com/thewoolleyman/livespec",
+      "local_clone": "/data/projects/livespec",
+      "default_branch": "master"
+    },
+    "livespec-impl-plaintext": {
+      "github_url": "https://github.com/thewoolleyman/livespec-impl-plaintext",
+      "local_clone": "/data/projects/livespec-impl-plaintext",
+      "default_branch": "master"
+    }
   }
 }
