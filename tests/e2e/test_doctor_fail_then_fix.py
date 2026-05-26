@@ -71,6 +71,11 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     _git(cwd=tmp_path, args=["init"])
     _git(cwd=tmp_path, args=["config", "user.email", "e2e-test@example.com"])
     _git(cwd=tmp_path, args=["config", "user.name", "E2E Test"])
+    # Per the primary-checkout-bare-flag-set doctor invariant, the
+    # e2e fixture models the post-bootstrap state; subsequent
+    # working-tree commits override bare-mode via `--work-tree`/
+    # `--git-dir`.
+    _git(cwd=tmp_path, args=["config", "--local", "core.bare", "true"])
 
     seed_result = fake_claude.seed(
         project_root=tmp_path, intent="Doctor fail-then-fix test project"
@@ -80,8 +85,11 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     spec_path = tmp_path / "SPECIFICATION" / "spec.md"
     spec_path.write_text(_BAD_SPEC_CONTENT, encoding="utf-8")
 
-    _git(cwd=tmp_path, args=["add", "-A"])
-    _git(cwd=tmp_path, args=["commit", "-m", "seed with bad spec"])
+    _git(cwd=tmp_path, args=["--work-tree=.", "--git-dir=.git", "add", "-A"])
+    _git(
+        cwd=tmp_path,
+        args=["--work-tree=.", "--git-dir=.git", "commit", "-m", "seed with bad spec"],
+    )
 
     doctor_bad = fake_claude.doctor_static(project_root=tmp_path)
     assert doctor_bad.returncode != 0, "doctor_static should fail on mixed-case 'Shall' in spec"
@@ -160,8 +168,11 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     )
     assert revise_result.returncode == 0, f"revise failed: {revise_result.stderr!r}"
 
-    _git(cwd=tmp_path, args=["add", "-A"])
-    _git(cwd=tmp_path, args=["commit", "-m", "fix bcp14 Shall -> SHALL"])
+    _git(cwd=tmp_path, args=["--work-tree=.", "--git-dir=.git", "add", "-A"])
+    _git(
+        cwd=tmp_path,
+        args=["--work-tree=.", "--git-dir=.git", "commit", "-m", "fix bcp14 Shall -> SHALL"],
+    )
 
     doctor_good = fake_claude.doctor_static(project_root=tmp_path)
     assert (

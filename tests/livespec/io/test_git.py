@@ -805,3 +805,123 @@ def _current_branch_for_test(*, cwd: Path) -> str:
         check=True,
     )
     return completed.stdout.strip()
+
+
+def test_get_core_bare_returns_true_when_flag_set(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`get_core_bare` returns IOSuccess(True) when `core.bare = true` is set.
+
+    The doctor's primary-checkout-bare-flag-set check composes
+    this primitive against the resolved primary `.git/config`.
+    A real `git init`-ed `tmp_path` with `core.bare = true`
+    configured locally exercises the IOSuccess(True) path.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    _ = subprocess.run(
+        ["git", "config", "--local", "core.bare", "true"],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    result = io_git.get_core_bare(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value is True
+        case _:
+            raise AssertionError(f"expected IOSuccess(True), got {result!r}")
+
+
+def test_get_core_bare_returns_false_when_flag_absent(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`get_core_bare` returns IOSuccess(False) when `core.bare` is absent.
+
+    `git config --get core.bare` exits 1 with empty stdout when
+    the key is absent; the helper folds that into IOSuccess(False)
+    rather than IOFailure. Absent and explicit-`false` MUST NOT
+    be distinguished per the primary-checkout-bare-flag-set
+    invariant contract.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    _ = subprocess.run(
+        ["git", "config", "--local", "--unset", "core.bare"],
+        cwd=tmp_path,
+        check=False,
+    )
+
+    result = io_git.get_core_bare(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value is False
+        case _:
+            raise AssertionError(f"expected IOSuccess(False), got {result!r}")
+
+
+def test_get_core_bare_returns_false_when_flag_explicitly_false(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`get_core_bare` returns IOSuccess(False) when `core.bare = false`."""
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    _ = subprocess.run(
+        ["git", "config", "--local", "core.bare", "false"],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    result = io_git.get_core_bare(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value is False
+        case _:
+            raise AssertionError(f"expected IOSuccess(False), got {result!r}")
+
+
+def test_get_core_bare_returns_false_when_not_a_repo(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`get_core_bare` returns IOSuccess(False) when `project_root` is not a repo.
+
+    `git config --get core.bare` from outside a repo falls back to
+    the global config (which doesn't set `core.bare`) and exits 1
+    with empty stdout. The helper folds exit 0 and exit 1 into
+    IOSuccess(bool); only unexpected exit codes lift to IOFailure.
+    The doctor's primary-checkout-bare-flag-set check gates on
+    `is_git_repo` separately and surfaces a `skipped` finding when
+    the project isn't versioned.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    result = io_git.get_core_bare(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value is False
+        case _:
+            raise AssertionError(f"expected IOSuccess(False), got {result!r}")
