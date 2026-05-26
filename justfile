@@ -14,6 +14,17 @@ default:
 # ---------------------------------------------------------------
 
 bootstrap:
+    # Idempotent `core.bare = true` on the primary checkout's
+    # git-common-dir config (per
+    # `SPECIFICATION/non-functional-requirements.md`
+    # §"Bare-flag bootstrap procedure"). The flag is the
+    # load-bearing setting that forces every edit through
+    # `git worktree add`. Runs FIRST so partial failure of any
+    # later step cannot leave the bare-flag unset. Targets
+    # `git rev-parse --git-common-dir` so the recipe writes the
+    # right file when invoked from the primary checkout AND from
+    # secondary worktrees.
+    git config --file "$(git rev-parse --git-common-dir)/config" core.bare true
     # Install the repo-tracked git-hook-wrapper.sh as pre-commit,
     # pre-push, and commit-msg hooks. The wrapper invokes
     # `mise exec lefthook -- lefthook run <hook-name> "$@"` so the
