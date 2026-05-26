@@ -49,6 +49,7 @@ from livespec.errors import LivespecError, UsageError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
 from livespec.schemas.dataclasses.proposal_findings import ProposalFindings
+from livespec.schemas.dataclasses.proposed_change_front_matter import SpecCommitments
 from livespec.validate import proposal_findings as validate_proposal_findings_module
 
 __all__: list[str] = ["build_parser", "main"]
@@ -260,16 +261,53 @@ def _resolve_author(
     return "unknown-llm"
 
 
-def _compose_front_matter(*, topic: str, author: str, created_at: str) -> str:
+def _render_spec_commitments_yaml(*, spec_commitments: SpecCommitments) -> str:
+    """Render the optional spec_commitments block as YAML inside the front-matter.
+
+    li-8mj2lz, PC #4 sub-proposal 1: the block contract is in spec.md
+    §"Spec→impl commitment declaration". Each `impl_followups[]` entry
+    emits `id_hint` as a bare slug and `description` as a YAML literal
+    block scalar (`|`) so multi-line descriptions round-trip without
+    needing per-line quoting. The optional `supersedes[]` list emits as
+    a YAML flow-sequence-free block list of bare slugs; omitted when
+    empty so the resulting front-matter matches the omit-empty-shape
+    convention used by the rest of this wrapper.
+    """
+    lines: list[str] = ["spec_commitments:", "  impl_followups:"]
+    for entry in spec_commitments.impl_followups:
+        lines.append(f"    - id_hint: {entry.id_hint}")
+        lines.append("      description: |")
+        for description_line in entry.description.splitlines() or [""]:
+            lines.append(f"        {description_line}")
+    if spec_commitments.supersedes:
+        lines.append("  supersedes:")
+        for slug in spec_commitments.supersedes:
+            lines.append(f"    - {slug}")
+    return "\n".join(lines) + "\n"
+
+
+def _compose_front_matter(
+    *,
+    topic: str,
+    author: str,
+    created_at: str,
+    spec_commitments: SpecCommitments | None = None,
+) -> str:
     """Compose the YAML front-matter block per the proposed-change front-matter schema.
 
     Required keys: `topic`, `author`, `created_at`. Values are emitted
     unquoted; `topic` is canonical kebab-case (matches the schema's
     `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` pattern); `created_at` is UTC
     ISO-8601 seconds (e.g., `2026-04-26T09:30:00Z`); `author` is the
-    resolved identifier from `_resolve_author`.
+    resolved identifier from `_resolve_author`. Optional
+    `spec_commitments` block (li-8mj2lz, PC #4 sub-proposal 1) is
+    rendered immediately after `created_at` when present; omitted
+    entirely on the zero-commitment path.
     """
-    return "---\n" f"topic: {topic}\n" f"author: {author}\n" f"created_at: {created_at}\n" "---\n\n"
+    base = "---\n" f"topic: {topic}\n" f"author: {author}\n" f"created_at: {created_at}\n"
+    if spec_commitments is None:
+        return base + "---\n\n"
+    return base + _render_spec_commitments_yaml(spec_commitments=spec_commitments) + "---\n\n"
 
 
 def _compose_proposed_change_body(
@@ -311,6 +349,7 @@ def _compose_proposed_change_body(
         topic=canonical_topic,
         author=author,
         created_at=created_at,
+        spec_commitments=findings.spec_commitments,
     )
     return front_matter + "\n".join(sections)
 
