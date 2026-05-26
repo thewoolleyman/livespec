@@ -4,30 +4,6 @@ author: claude-opus-4-7
 created_at: 2026-05-26T08:34:26Z
 ---
 
-## Proposal: Migrate tmp/ ownership convention into non-functional-requirements.md
-
-### Target specification files
-
-- non-functional-requirements.md
-
-### Summary
-
-Codify the existing project convention (currently held only in auto-memory project_tmp_directory_ownership.md) that the repo-root tmp/ directory is user-owned personal scratch space and MUST NOT be deleted, cleared, or treated as transient by any tooling, agent, or skill; tooling-owned scratch MUST scope under a subdirectory such as tmp/bootstrap/.
-
-### Motivation
-
-Auto-memory entry project_tmp_directory_ownership.md documents a long-standing convention (established 2026-04-25) that the user's personal scratch at tmp/ is sacred. This belongs in non-functional-requirements.md as a contributor-facing architectural invariant on the repo layout, so future agents and tooling discover it without depending on per-agent auto-memory. Per livespec memory's own discipline 'Spec is for contracts, not tracking', a persistent layout invariant IS a contract and belongs in spec.
-
-Migration audit context for the entire propose-change file (file-level review per feedback_revise_decisions_are_per_file): three project_*.md auto-memory entries are migrated by this file (this finding, plus the research/workflow-processes/ split and the vendored-lib pyright resolution findings below). Five auto-memory entries were considered and deliberately NOT migrated: (a) project_enforcement_suite_framing.md, project_mise_for_tool_versions.md, project_uv_python_toolchain.md — already covered by existing spec at non-functional-requirements.md §Enforcement-suite invocation and §Toolchain pins; (b) project_li_xxjopf_pyright_epic.md, project_li_nhz_comment_discipline_epic.md — completion-log entries that belong in git log per the 'Spec is for contracts, not tracking' rule, NOT in spec. All feedback_*.md and user_*.md entries are excluded by category — they are agent-collaboration preferences and user-role profile, not project architectural commitments.
-
-### Proposed Changes
-
-Add a new H3 subsection under non-functional-requirements.md §Constraints (sibling to §Developer-tooling layout, §Package layout, etc.) titled '### Repo-root tmp/ ownership':
-
-> The repo-root `tmp/` directory is user-owned personal scratch space. Tooling, agents, and skills MUST NOT delete, clear, or otherwise mutate files under `tmp/` directly; `rm -r tmp/`, `rm tmp/*`, and assumptions that `tmp/` is empty or disposable are forbidden. Tooling-owned scratch MUST scope under a named subdirectory (typically `tmp/bootstrap/` for bootstrap scaffolding, or another scoped name) that the tooling MAY freely create, write, and clear. `tmp/` itself MUST remain git-untracked.
-
-No `tests/heading-coverage.json` change is needed (the addition is an H3-level subsection under existing H2 sections), but verify against the file's current state at revise time.
-
 ## Proposal: Codify research/workflow-processes/ tool-agnostic-vs-implementation split
 
 ### Target specification files
@@ -41,6 +17,8 @@ Codify the existing project convention (currently held only in auto-memory proje
 ### Motivation
 
 Auto-memory entry project_tool_agnostic_vs_workflow_docs.md documents a deliberate authoring discipline that prevents the conceptual model from being recursively tangled with livespec implementation names. Without spec codification, future revisions of either doc can silently collapse the split. The convention is architectural (it shapes which content can promote into SPECIFICATION/ and which is implementation-local) and belongs in non-functional-requirements.md.
+
+Migration audit context for the entire propose-change file (file-level review per feedback_revise_decisions_are_per_file): **two** project_*.md auto-memory entries are migrated by this file (this finding, plus the vendored-lib pyright resolution finding below). Six auto-memory entries were considered and deliberately NOT migrated: (a) project_enforcement_suite_framing.md, project_mise_for_tool_versions.md, project_uv_python_toolchain.md — already covered by existing spec at non-functional-requirements.md §Enforcement-suite invocation and §Toolchain pins; (b) project_li_xxjopf_pyright_epic.md, project_li_nhz_comment_discipline_epic.md — completion-log entries that belong in git log per the 'Spec is for contracts, not tracking' rule, NOT in spec; (c) project_tmp_directory_ownership.md — user clarified 2026-05-27 that the convention is transient scaffolding during canonical-workflow evolution, not a permanent architectural commitment, so it does NOT belong in spec (see feedback_no_codifying_transient_conventions.md). All feedback_*.md and user_*.md entries are excluded by category — they are agent-collaboration preferences and user-role profile, not project architectural commitments.
 
 ### Proposed Changes
 
