@@ -1,45 +1,36 @@
-# E2E real-claude workflow — DORMANT (real harness unimplemented).
+# E2E real-claude workflow — live claude-agent-sdk against the Anthropic API.
 #
-# Status: This workflow is currently a no-op. The "real" harness
-# tier described below is documented but UNIMPLEMENTED:
-# tests/e2e/fake_claude.py runs identically in both LIVESPEC_E2E_HARNESS
-# modes ("mock" and "real"); no code reads the env var, no
-# claude-agent-sdk integration exists. The workflow runs the mock
-# harness regardless of secret state.
+# Implementation: li-949 superseded li-7c0's dormant-stub state.
+# `tests/e2e/real_claude.py` is the real-tier counterpart to
+# `tests/e2e/fake_claude.py`; `tests/e2e/harness.py` selects via
+# `LIVESPEC_E2E_HARNESS`. The recipe defaults to the `e2e_golden`-marked
+# flagship flows (test_happy_path_minimal + test_doctor_fail_then_fix) so
+# each run executes both seed → propose-change → critique → revise → doctor
+# → prune-history end-to-end AND the doctor-fail-then-fix cycle through the
+# live SDK.
 #
-# Implications:
-#   - Setting ANTHROPIC_API_KEY does NOT unlock real claude-agent-sdk
-#     coverage today. The skip-when-secret-unset gate below is
-#     load-bearing only as a fork-PR carve-out; it does NOT enable
-#     live-API regression testing when the secret IS set.
-#   - Treat green runs of this workflow as "the wrappers don't
-#     crash on the mock-harness payloads" — not as "live SDK is
-#     compatible". The actual live-SDK regression coverage is an
-#     unimplemented beads issue tracked separately (the successor
-#     to li-7c0).
+# Cadence (Q4): weekly cron + workflow_dispatch. NOT every master push —
+# per-run cost with Haiku 4.5 is the load-bearing reason. Estimated weekly
+# cost: 2 e2e_golden tests × ~6 LLM calls × ~5000 tokens/call × Haiku 4.5
+# pricing (~$1/MTok input, $5/MTok output) ≈ /usr/bin/zsh.30/week on the high
+# end, /usr/bin/zsh.05-0.15/week typical. Manual workflow_dispatch runs add at the
+# same rate — bound runtime spend by not auto-dispatching from PRs.
 #
-# Original intent (still the design target, just not yet built):
-#   - Run the real-claude E2E target against the minimal template
-#     via the live claude-agent-sdk.
-#   - Authoritative source: justfile recipe `e2e-test-claude-code-real`
-#     (alternate-cadence target NOT in `just check`).
+# Auth (Q3): `ANTHROPIC_API_KEY` is required as a repo secret. The job
+# fails loudly on `schedule` / `workflow_dispatch` runs when the secret is
+# unset (no false-green silent-skip). The fork-PR carve-out is preserved
+# by NOT triggering on `pull_request` — fork contributors cannot trigger
+# this workflow.
 #
-# Triggers per plan:
-#   - merge_group (pre-merge via merge queue)
-#   - push to master (every master commit)
-#   - workflow_dispatch (manual)
-#
-# Gated on the ANTHROPIC_API_KEY repo secret. The job no-ops if
-# the secret is absent (forks, fresh clones without the secret
-# configured), so that PRs from forks do not fail the workflow
-# on a missing-secret error. Currently moot — see Status above.
+# Required CLI: the SDK shells out to `@anthropic-ai/claude-code`, installed
+# via npm in the "Install Claude Code CLI" step below.
 
 name: E2E (real Claude)
 
 on:
-  push:
-    branches: [master]
-  merge_group:
+  schedule:
+    # Monday 09:00 UTC — weekday morning so failures land before the work week.
+    - cron: '0 9 * * 1'
   workflow_dispatch:
 
 jobs:
@@ -49,28 +40,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Skip if ANTHROPIC_API_KEY is unset
-        id: gate
+      - name: Require ANTHROPIC_API_KEY
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "${ANTHROPIC_API_KEY}" ]; then
-            echo "ANTHROPIC_API_KEY unset; skipping e2e-test-claude-code-real."
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "::error::ANTHROPIC_API_KEY repo secret is required for e2e-real runs."
+            echo "Set it via: gh secret set ANTHROPIC_API_KEY --repo thewoolleyman/livespec"
+            exit 1
           fi
+          echo "ANTHROPIC_API_KEY is set (length=${#ANTHROPIC_API_KEY})."
+
+      - name: Setup Node.js (for claude CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude --version
 
       - name: Install pinned binaries via mise
-        if: steps.gate.outputs.should_run == 'true'
         uses: jdx/mise-action@v2
 
       - name: Install Python dev deps via uv
-        if: steps.gate.outputs.should_run == 'true'
         run: uv sync --all-groups
 
       - name: just e2e-test-claude-code-real
-        if: steps.gate.outputs.should_run == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: just e2e-test-claude-code-real

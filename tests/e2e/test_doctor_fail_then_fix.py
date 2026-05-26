@@ -13,7 +13,8 @@ import subprocess  # documented integration-test usage
 import sys
 from pathlib import Path
 
-import fake_claude
+import harness
+import pytest
 
 __all__: list[str] = []
 
@@ -62,6 +63,7 @@ def _git(*, cwd: Path, args: list[str]) -> None:
     )
 
 
+@pytest.mark.e2e_golden
 def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     """Pre-seed bad spec → doctor fails → propose-change + revise fix → doctor passes.
 
@@ -78,11 +80,9 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     _git(cwd=tmp_path, args=["config", "--local", "core.bare", "true"])
     # Per the copier-template-workflow-coverage doctor invariant,
     # the e2e fixture also models the post-`copier copy` state.
-    fake_claude.seed_required_workflow_files(project_root=tmp_path)
+    harness.seed_required_workflow_files(project_root=tmp_path)
 
-    seed_result = fake_claude.seed(
-        project_root=tmp_path, intent="Doctor fail-then-fix test project"
-    )
+    seed_result = harness.seed(project_root=tmp_path, intent="Doctor fail-then-fix test project")
     assert seed_result.returncode == 0, f"seed failed: {seed_result.stderr!r}"
 
     spec_path = tmp_path / "SPECIFICATION" / "spec.md"
@@ -94,7 +94,7 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
         args=["--work-tree=.", "--git-dir=.git", "commit", "-m", "seed with bad spec"],
     )
 
-    doctor_bad = fake_claude.doctor_static(project_root=tmp_path)
+    doctor_bad = harness.doctor_static(project_root=tmp_path)
     assert doctor_bad.returncode != 0, "doctor_static should fail on mixed-case 'Shall' in spec"
     bad_findings = json.loads(doctor_bad.stdout)
     fail_ids = [f["check_id"] for f in bad_findings["findings"] if f["status"] == "fail"]
@@ -177,7 +177,7 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
         args=["--work-tree=.", "--git-dir=.git", "commit", "-m", "fix bcp14 Shall -> SHALL"],
     )
 
-    doctor_good = fake_claude.doctor_static(project_root=tmp_path)
+    doctor_good = harness.doctor_static(project_root=tmp_path)
     assert (
         doctor_good.returncode == 0
     ), f"doctor_static should pass after fix; stdout={doctor_good.stdout!r}"

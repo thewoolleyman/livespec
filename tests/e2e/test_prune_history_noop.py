@@ -11,7 +11,7 @@ import json
 import subprocess  # documented integration-test usage
 from pathlib import Path
 
-import fake_claude
+import harness
 
 __all__: list[str] = []
 
@@ -37,14 +37,14 @@ def test_prune_history_noop(*, tmp_path: Path) -> None:
     _git(cwd=tmp_path, args=["config", "--local", "core.bare", "true"])
     # Per the copier-template-workflow-coverage doctor invariant,
     # the e2e fixture also models the post-`copier copy` state.
-    fake_claude.seed_required_workflow_files(project_root=tmp_path)
+    harness.seed_required_workflow_files(project_root=tmp_path)
 
-    seed_result = fake_claude.seed(project_root=tmp_path, intent="Prune-history no-op test project")
+    seed_result = harness.seed(project_root=tmp_path, intent="Prune-history no-op test project")
     assert seed_result.returncode == 0, f"seed failed: {seed_result.stderr!r}"
     _git(cwd=tmp_path, args=["--work-tree=.", "--git-dir=.git", "add", "-A"])
     _git(cwd=tmp_path, args=["--work-tree=.", "--git-dir=.git", "commit", "-m", "seed"])
 
-    prune_result = fake_claude.prune_history(project_root=tmp_path)
+    prune_result = harness.prune_history(project_root=tmp_path)
     assert prune_result.returncode == 0, (
         f"prune-history exited {prune_result.returncode}; " f"stderr={prune_result.stderr!r}"
     )
