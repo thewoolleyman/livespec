@@ -43,6 +43,33 @@ def test_run_static_main_exists_and_returns_int(
     assert isinstance(exit_code, int)
 
 
+_REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
+    "auto-enable-merge.yml",
+    "auto-update-branches.yml",
+    "bump-pin-from-dispatch.yml",
+    "ci.yml",
+    "copier-update-drift.yml",
+    "pin-freshness.yml",
+    "release-dispatch.yml",
+)
+
+
+def _seed_required_workflow_files(*, project_root: Path) -> None:
+    """Create the seven required `.github/workflows/` files in `project_root`.
+
+    Mirrors `tests/e2e/fake_claude.py.seed_required_workflow_files`
+    so the orchestrator's `copier-template-workflow-coverage`
+    static check passes per the cross-boundary invariant.
+    """
+    workflows_dir = project_root / ".github" / "workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    for name in _REQUIRED_WORKFLOW_FILES:
+        _ = (workflows_dir / name).write_text(
+            "# test fixture workflow stub\n",
+            encoding="utf-8",
+        )
+
+
 def _seed_fully_valid_project(*, project_root: Path) -> Path:
     """Seed a project root with a fully-valid spec tree all 8 checks pass.
 
@@ -55,6 +82,7 @@ def _seed_fully_valid_project(*, project_root: Path) -> Path:
     project_root.mkdir(parents=True, exist_ok=True)
     config_text = '{\n  "template": "livespec"\n}\n'
     _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
+    _seed_required_workflow_files(project_root=project_root)
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
     _ = (spec_root / "spec.md").write_text("# Spec\n", encoding="utf-8")
@@ -218,6 +246,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-no-stale-merged-pr-branch",
         "doctor-no-stale-worktree",
         "doctor-primary-checkout-bare-flag-set",
+        "doctor-copier-template-workflow-coverage",
         "doctor-master-direct-uncommitted-spec-edits",
     }
     sub_spec_check_ids = {

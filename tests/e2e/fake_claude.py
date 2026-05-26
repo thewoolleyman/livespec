@@ -32,8 +32,40 @@ __all__ = [
     "prune_history",
     "revise",
     "seed",
+    "seed_required_workflow_files",
 ]
 # _command_from_prompt_file and _HARNESS_COMMAND_PATTERN are private helpers (not in __all__).
+
+
+_REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
+    "auto-enable-merge.yml",
+    "auto-update-branches.yml",
+    "bump-pin-from-dispatch.yml",
+    "ci.yml",
+    "copier-update-drift.yml",
+    "pin-freshness.yml",
+    "release-dispatch.yml",
+)
+
+
+def seed_required_workflow_files(*, project_root: Path) -> None:
+    """Create the seven required `.github/workflows/` files in `project_root`.
+
+    Per the copier-template-workflow-coverage doctor invariant
+    (contracts.md §"Doctor cross-boundary invariants"), every
+    livespec-governed consumer MUST carry the enumerated workflow
+    file set under `.github/workflows/`. The e2e fixture models
+    the post-`copier copy` state so the wrapper-chain's post-step
+    doctor passes; the file bodies are inert stubs since the
+    invariant only inspects presence, not content.
+    """
+    workflows_dir = project_root / ".github" / "workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    for name in _REQUIRED_WORKFLOW_FILES:
+        path = workflows_dir / name
+        if not path.exists():
+            _ = path.write_text("# e2e fixture workflow stub\n", encoding="utf-8")
+
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BIN_DIR = _REPO_ROOT / ".claude-plugin" / "scripts" / "bin"

@@ -15,6 +15,33 @@ from livespec.commands import seed
 __all__: list[str] = []
 
 
+_REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
+    "auto-enable-merge.yml",
+    "auto-update-branches.yml",
+    "bump-pin-from-dispatch.yml",
+    "ci.yml",
+    "copier-update-drift.yml",
+    "pin-freshness.yml",
+    "release-dispatch.yml",
+)
+
+
+def _seed_required_workflow_files(*, project_root: Path) -> None:
+    """Create the seven required `.github/workflows/` files in `project_root`.
+
+    Mirrors `tests/e2e/fake_claude.py.seed_required_workflow_files`
+    so the supervisor's post-step doctor passes per the
+    copier-template-workflow-coverage cross-boundary invariant.
+    """
+    workflows_dir = project_root / ".github" / "workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    for name in _REQUIRED_WORKFLOW_FILES:
+        _ = (workflows_dir / name).write_text(
+            "# test fixture workflow stub\n",
+            encoding="utf-8",
+        )
+
+
 def _write_valid_seed_payload(
     *,
     tmp_path: Path,
@@ -410,6 +437,7 @@ def test_seed_main_returns_exit_zero_on_successful_seed(
     """
     project_root = tmp_path / "proj"
     project_root.mkdir()
+    _seed_required_workflow_files(project_root=project_root)
     payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
     exit_code = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
@@ -1045,6 +1073,7 @@ def test_seed_main_defaults_project_root_to_cwd_when_flag_omitted(
     assert isinstance(monkeypatch, pytest.MonkeyPatch)
     project_root = tmp_path / "proj"
     project_root.mkdir()
+    _seed_required_workflow_files(project_root=project_root)
     payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
     monkeypatch.chdir(project_root)
     exit_code = seed.main(argv=["--seed-json", str(payload_path)])

@@ -40,6 +40,7 @@ from livespec.doctor.static import (
     accept_decision_snapshot_consistency,
     anchor_reference_resolution,
     bcp14_keyword_wellformedness,
+    copier_template_workflow_coverage,
     depends_on_ref_wellformedness,
     gherkin_blank_line_format,
     livespec_jsonc_valid,
@@ -91,6 +92,7 @@ STATIC_CHECKS = (
     no_stale_merged_pr_branch,
     no_stale_worktree,
     primary_checkout_bare_flag_set,
+    copier_template_workflow_coverage,
     master_direct_uncommitted_spec_edits,
 )
 

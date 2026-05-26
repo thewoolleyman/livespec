@@ -36,6 +36,9 @@ def _git_init_and_configure(*, project_root: Path) -> None:
     # true` set. The e2e fixture models the post-bootstrap state
     # so the wrapper-chain's post-step doctor passes.
     _git(cwd=project_root, args=["config", "--local", "core.bare", "true"])
+    # Per the copier-template-workflow-coverage doctor invariant,
+    # the e2e fixture also models the post-`copier copy` state.
+    fake_claude.seed_required_workflow_files(project_root=project_root)
 
 
 def _git_add_all_and_commit(*, project_root: Path, message: str) -> None:
