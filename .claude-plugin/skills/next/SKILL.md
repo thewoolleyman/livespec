@@ -51,12 +51,58 @@ is `0` (NOT an error).
 
 ## Steps
 
-1. **Invoke the wrapper.** Run
+1. **Surface the Layer 3 discoverability nudge.** On
+   direct user invocation (the user typed
+   `/livespec:next` or asked for the next spec-side
+   move in plain language), before invoking the
+   wrapper, surface a one-time nudge per
+   `SPECIFICATION/contracts.md` §"`/livespec:next`
+   spec-side thin-transport skill" → §"Layer 3
+   discoverability nudge". The nudge MUST:
+
+   - Inform the user that
+     `.claude/skills/loop/SKILL.md` (the project-local
+     Layer 3 loop driver per `spec.md`
+     §"Three-layer orchestration architecture" →
+     "Layer 3 — Project-local composition") is the
+     cohesive cross-side composition surface that
+     combines `/livespec:next` with the active
+     impl-plugin's `next`.
+   - Ask the user to confirm they want to run
+     `/livespec:next` directly rather than via the
+     project's Layer 3 driver.
+
+   SKIP the nudge when `/livespec:next` is invoked by
+   another skill (e.g., the Layer 3 driver itself, the
+   `doctor` cross-boundary surface) rather than by a
+   direct user request. The detection mechanism is
+   per-harness; this skill simply gates the nudge on
+   whether the entry path is a direct user invocation.
+
+   When `.claude/skills/loop/SKILL.md` is absent in the
+   current project (the file is OPTIONAL per `spec.md`
+   §"Layer 3 — Project-local composition"), the nudge
+   MAY soften to a documentation pointer (e.g.,
+   "consider authoring a Layer 3 loop driver per
+   `spec.md` §...") rather than being suppressed. The
+   discoverability discipline applies whenever direct
+   user invocation is the entry path, regardless of
+   whether the driver exists.
+
+   The nudge is informational only — it points the
+   user at the Layer 3 surface but never selects the
+   cross-side weighting itself, preserving the
+   §"Cross-side composition exclusion" invariant. The
+   wrapper at `bin/next.py` MUST NOT accrete any
+   confirmation dialogue or opt-in flag; the nudge is
+   SKILL.md-prose discipline only.
+
+2. **Invoke the wrapper.** Run
    `bin/next.py [--spec-target <path>] [--project-root <path>]`
    via the Bash tool. Capture stdout (the JSON payload)
    and exit code.
 
-2. **Present the JSON verbatim.** On exit `0`, surface
+3. **Present the JSON verbatim.** On exit `0`, surface
    the captured stdout to the user without
    re-interpretation, re-summarization, or judgment. The
    payload conforms to `next_output.schema.json` with
@@ -77,7 +123,7 @@ Wrapper exit-code-to-narration mapping per
 table":
 
 - Exit `0` → success. Surface the stdout JSON verbatim
-  per Step 2.
+  per Step 3.
 - Exit `1` → internal bug; surface stderr (including
   any structured-error JSON line and traceback) and
   abort. Do NOT retry.
