@@ -97,6 +97,7 @@ skills load with the correct `/livespec:*` namespace.
 
 ## Daily commands
 
+- `just bootstrap` — first-touch setup on fresh clones; idempotently sets `core.bare = true` on the primary checkout (per `SPECIFICATION/non-functional-requirements.md` §"Bare-flag bootstrap procedure") plus installs lefthook hooks and resolves plugin dependencies.
 - `just check` — full enforcement aggregate (lint, types, tests, coverage, AST checks).
 - `just check-pre-commit-doc-only` — fast subset for doc-only commits.
 
