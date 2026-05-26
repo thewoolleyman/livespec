@@ -131,3 +131,177 @@ def test_validate_proposed_change_front_matter_round_trips_author_text(
         case _:
             msg = f"expected Success(ProposedChangeFrontMatter), got {result}"
             raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_accepts_local_parent_proposed_change() -> None:
+    """A `parent_proposed_change` in local-topic form is preserved as-is."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "child-topic",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "parent_proposed_change": "some-topic-name",
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Success(value):
+            assert value.parent_proposed_change == "some-topic-name"
+        case _:
+            msg = f"expected Success(ProposedChangeFrontMatter), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_accepts_cross_repo_parent_proposed_change() -> None:
+    """A `parent_proposed_change` in `<repo>#<topic>` form is preserved as-is."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "child-topic",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "parent_proposed_change": "sibling-repo#some-topic",
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Success(value):
+            assert value.parent_proposed_change == "sibling-repo#some-topic"
+        case _:
+            msg = f"expected Success(ProposedChangeFrontMatter), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_defaults_parent_proposed_change_to_none() -> None:
+    """When `parent_proposed_change` is omitted, the dataclass field defaults to None."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "child-topic",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Success(value):
+            assert value.parent_proposed_change is None
+        case _:
+            msg = f"expected Success(ProposedChangeFrontMatter), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_rejects_camel_case_parent_proposed_change() -> None:
+    """A `parent_proposed_change` value with uppercase letters fails the pattern."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "child-topic",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "parent_proposed_change": "BadCamelCase",
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Failure(ValidationError() as err):
+            assert "parent_proposed_change" in str(err) or "pattern" in str(err).lower()
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_rejects_whitespace_parent_proposed_change() -> None:
+    """A `parent_proposed_change` value containing spaces fails the pattern."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "child-topic",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "parent_proposed_change": "with spaces",
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Failure(ValidationError()):
+            pass
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_rejects_trailing_hyphen_parent_proposed_change() -> (
+    None
+):
+    """A `parent_proposed_change` value ending in a trailing hyphen fails the pattern."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "child-topic",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "parent_proposed_change": "trailing-",
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Failure(ValidationError()):
+            pass
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_rejects_empty_parent_proposed_change() -> None:
+    """An empty-string `parent_proposed_change` fails the pattern."""
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "child-topic",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "parent_proposed_change": "",
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Failure(ValidationError()):
+            pass
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_proposed_change_front_matter_rejects_null_parent_proposed_change() -> None:
+    """`parent_proposed_change: null` fails the `type: string` constraint.
+
+    The schema admits only string values; widening to permit null
+    is intentionally out of scope (omitting the field is the
+    canonical way to express "no parent").
+    """
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "topic": "child-topic",
+        "author": "claude-opus-4-7",
+        "created_at": "2026-05-02T09:30:00Z",
+        "parent_proposed_change": None,
+    }
+    result = proposed_change_front_matter.validate_proposed_change_front_matter(
+        payload=payload,
+        schema=schema,
+    )
+    match result:
+        case Failure(ValidationError()):
+            pass
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)

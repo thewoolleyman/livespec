@@ -24,6 +24,11 @@
       "type": "string",
       "format": "date-time",
       "description": "Creation timestamp in UTC ISO-8601 seconds (e.g., '2026-04-26T09:30:00Z')."
+    },
+    "parent_proposed_change": {
+      "type": "string",
+      "pattern": "^([a-z][a-z0-9-]*#)?[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "description": "Canonical topic of a parent / coordinating-epic proposed change. Format '<repo-short-name>#<topic>' for sibling repos, '<topic>' for local references."
     }
   }
 }

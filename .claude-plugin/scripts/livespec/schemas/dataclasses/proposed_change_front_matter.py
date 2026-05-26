@@ -29,9 +29,13 @@ class ProposedChangeFrontMatter:
 
     Mirrors proposed_change_front_matter.schema.json: required
     `topic` (kebab-case slug), `author` identifier, and
-    `created_at` UTC ISO-8601 datetime.
+    `created_at` UTC ISO-8601 datetime. Optional
+    `parent_proposed_change` carries the canonical topic of a
+    parent / coordinating-epic proposed change (per PC #2 of
+    v081, coordinating-epic-stale-revise-enforcement).
     """
 
     topic: TopicSlug
     author: Author
     created_at: str
+    parent_proposed_change: str | None = None
