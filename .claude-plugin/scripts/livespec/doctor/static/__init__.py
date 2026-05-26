@@ -51,6 +51,7 @@ from livespec.doctor.static import (
     no_stale_worktree,
     no_stalled_epic,
     out_of_band_edits,
+    primary_checkout_bare_flag_set,
     proposed_change_topic_format,
     proposed_changes_and_history_dirs,
     revision_to_proposed_change_pairing,
@@ -88,6 +89,7 @@ STATIC_CHECKS = (
     no_stale_merged_branch,
     no_stale_merged_pr_branch,
     no_stale_worktree,
+    primary_checkout_bare_flag_set,
 )
 
 

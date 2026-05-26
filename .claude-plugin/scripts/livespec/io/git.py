@@ -84,6 +84,7 @@ class Worktree:
 
 __all__: list[str] = [
     "Worktree",
+    "get_core_bare",
     "get_default_branch_name",
     "get_git_user",
     "is_git_repo",
@@ -517,4 +518,48 @@ def show_at_head(
         repo_relative_path=repo_relative_path,
     ).alt(
         lambda exc: PreconditionError(f"git.show_at_head: {exc}"),
+    )
+
+
+def get_core_bare(*, project_root: Path) -> IOResult[bool, LivespecError]:
+    """Return whether `core.bare = true` is set on the PRIMARY checkout's config.
+
+    Composes `git -C <project_root> config --get core.bare`. The
+    `git config` command reads the standard config-resolution
+    chain rooted at the common-dir's `config` file; in a secondary
+    worktree `--git-common-dir` resolves to the bare repo's
+    `.git`, and `core.bare` is read from the common config (not
+    the per-worktree config), so this single invocation correctly
+    reads the PRIMARY checkout's setting regardless of which
+    worktree it is invoked from.
+
+    Returns IOSuccess(True) when the literal value is `true`,
+    IOSuccess(False) when the value is anything else OR when the
+    `core.bare` key is absent entirely (`git config --get` exits
+    1 on absent keys, which is folded into IOSuccess(False)).
+    The two cases are deliberately not distinguished per the
+    `primary-checkout-bare-flag-set` doctor invariant contract
+    in `SPECIFICATION/contracts.md` §"Doctor cross-boundary
+    invariants".
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - `git config` exits with any code other than 0 or 1 (e.g.,
+        not a git working tree, exit 128). The doctor's
+        primary-checkout-bare-flag-set check folds this into a
+        skipped finding via its `is_git_repo` gate.
+      - The `git` binary itself missing: lifts via the proc seam.
+    """
+    return run_subprocess(
+        argv=["git", "-C", str(project_root), "config", "--get", "core.bare"],
+    ).bind(
+        lambda completed: (  # pyright: ignore[reportArgumentType]
+            IOResult.from_value(completed.stdout.strip() == "true")
+            if completed.returncode in (0, 1)
+            else IOResult.from_failure(
+                PreconditionError(
+                    f"git.get_core_bare: `git config --get core.bare` exited "
+                    f"{completed.returncode}",
+                ),
+            )
+        ),
     )

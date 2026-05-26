@@ -30,11 +30,16 @@ def test_prune_history_noop(*, tmp_path: Path) -> None:
     _git(cwd=tmp_path, args=["init"])
     _git(cwd=tmp_path, args=["config", "user.email", "e2e-test@example.com"])
     _git(cwd=tmp_path, args=["config", "user.name", "E2E Test"])
+    # Per the primary-checkout-bare-flag-set doctor invariant, the
+    # e2e fixture models the post-bootstrap state; subsequent
+    # working-tree commits override bare-mode via `--work-tree`/
+    # `--git-dir`.
+    _git(cwd=tmp_path, args=["config", "--local", "core.bare", "true"])
 
     seed_result = fake_claude.seed(project_root=tmp_path, intent="Prune-history no-op test project")
     assert seed_result.returncode == 0, f"seed failed: {seed_result.stderr!r}"
-    _git(cwd=tmp_path, args=["add", "-A"])
-    _git(cwd=tmp_path, args=["commit", "-m", "seed"])
+    _git(cwd=tmp_path, args=["--work-tree=.", "--git-dir=.git", "add", "-A"])
+    _git(cwd=tmp_path, args=["--work-tree=.", "--git-dir=.git", "commit", "-m", "seed"])
 
     prune_result = fake_claude.prune_history(project_root=tmp_path)
     assert prune_result.returncode == 0, (
