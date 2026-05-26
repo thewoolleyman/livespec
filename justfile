@@ -374,19 +374,33 @@ check-prompts:
 # ---------------------------------------------------------------
 # Alternate-cadence target (NOT in `just check`).
 #
-# WARNING: the "real" harness is currently UNIMPLEMENTED. The
-# LIVESPEC_E2E_HARNESS=real env var is set here but no code reads
-# it — tests/e2e/fake_claude.py runs identically in both `mock`
-# and `real` modes (no claude-agent-sdk integration exists yet).
-# This recipe and the corresponding e2e-real.yml workflow are
-# therefore dormant: they execute the mock-harness tests, not
-# any live claude-agent-sdk path. Tracked as a separate beads
-# issue for actual implementation; do NOT trust e2e-real CI runs
-# as live-API regression coverage today.
+# Routes tests/e2e/ through the real harness tier (tests/e2e/real_claude.py),
+# which uses claude-agent-sdk + the `@anthropic-ai/claude-code` CLI against
+# the live Anthropic API. Per SPECIFICATION/contracts.md §"E2E harness
+# contract §"Harness mode selection".
+#
+# Requirements:
+#   - `ANTHROPIC_API_KEY` env var set.
+#   - `claude` CLI on PATH (`npm install -g @anthropic-ai/claude-code`).
+#
+# Selection: by default this recipe runs ONLY the `e2e_golden`-marked
+# tests (the flagship multi-sub-command flows) for cost control. The
+# e2e_golden tests cover seed → propose-change → critique → revise →
+# doctor → prune-history in `test_happy_path_minimal`, plus the
+# doctor-fail-then-fix flow. `mock_only` tests are skipped automatically
+# via the conftest hook. Run with `JUST_E2E_PYTEST_ARGS='-m ""'` to
+# exercise the full suite.
 # ---------------------------------------------------------------
 
 e2e-test-claude-code-real:
-    LIVESPEC_E2E_HARNESS=real uv run pytest tests/e2e/
+    #!/usr/bin/env bash
+    set -uo pipefail
+    # Default selection: -m e2e_golden (flagship multi-sub-command flows).
+    # Override by exporting JUST_E2E_PYTEST_ARGS, e.g.:
+    #   JUST_E2E_PYTEST_ARGS='-m ""' just e2e-test-claude-code-real   # full suite
+    #   JUST_E2E_PYTEST_ARGS='-k happy' just e2e-test-claude-code-real # name filter
+    args="${JUST_E2E_PYTEST_ARGS:--m e2e_golden}"
+    LIVESPEC_E2E_HARNESS=real uv run pytest tests/e2e/ ${args}
 
 # ---------------------------------------------------------------
 # Release-gate targets (NOT in `just check`; run on release-tag CI

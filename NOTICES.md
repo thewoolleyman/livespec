@@ -17,14 +17,19 @@ in place; the 1 shim is hand-authored at Phase 2. Until Phase
 yet exist.
 
 The library list and license metadata below are authoritative
-(five entries: 4 upstream-sourced + 1 shim). Notable historical
+(six entries: 5 upstream-sourced + 1 shim). Notable historical
 choices: `pyright` has no plugin system, so no `returns_pyright_plugin`
 ships; `jsoncomment` is a hand-authored shim because its canonical
 upstream (`bitbucket.org/Dando_Real_ITA/json-comment`) was sunset
 and no live git mirror exists; `typing_extensions` is vendored
 upstream verbatim because vendored libs' transitive use of variadic
 generics requires full upstream backports that a minimal shim
-cannot synthesize on Python 3.10.
+cannot synthesize on Python 3.10; `livespec_runtime` is vendored
+to satisfy `SPECIFICATION/constraints.md` §"End-user runtime
+dependencies" — bare invocation of the doctor wrapper imports
+`livespec_runtime.cross_repo.types` transitively, so the package
+MUST resolve under the bundle's `_vendor/` tree rather than via a
+project-local venv install.
 
 ---
 
@@ -110,3 +115,30 @@ needs (`override` for pyright's `reportImplicitOverride`;
 hand-authored minimal shim cannot satisfy `Generic[...,
 Unpack[TypeVarTuple(...)]]` variadic-generics usage on Python
 3.10 (the dev-env minimum), so the full upstream is vendored.
+
+---
+
+## `livespec_runtime`
+
+- **Upstream:** thewoolleyman/livespec-runtime
+  (https://github.com/thewoolleyman/livespec-runtime)
+- **License:** MIT (per upstream pyproject.toml `[project].license`
+  declaration; upstream ships no top-level LICENSE file at the
+  vendored tag, so the verbatim MIT text with attribution to the
+  upstream author is recorded in
+  `.claude-plugin/scripts/_vendor/livespec_runtime/LICENSE`)
+- **License file:** `.claude-plugin/scripts/_vendor/livespec_runtime/LICENSE`
+
+Shared runtime library for livespec-governed projects: typed
+`DependsOnEntry` union, `CrossRepoManifest`, `resolve_ref`, and
+the `livespec_runtime.cross_repo.{types, providers.github, retry,
+resolve}` subpackages. Vendored so bare invocation of doctor's
+static-phase wrapper (`bin/doctor_static.py`) does not require a
+project-local `uv` venv with `livespec-runtime` installed — the
+bundle's `_vendor/` tree IS the runtime per
+`SPECIFICATION/constraints.md` §"End-user runtime dependencies".
+Re-vendoring on every upstream release is automated by
+`livespec-dev-tooling`'s
+`reusable-bump-pin-from-dispatch.yml` workflow, which detects the
+`.vendor.jsonc` entry and invokes `just vendor-update livespec_runtime`
+to land the new tag's source tree.

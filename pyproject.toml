@@ -44,6 +44,13 @@ dev = [
     "copier==9.6.0",
     "livespec-dev-tooling",
     "livespec-runtime",
+    # claude-agent-sdk is consumed by tests/e2e/real_claude.py per
+    # SPECIFICATION/contracts.md §"E2E harness contract §"Harness
+    # mode selection" (the `real` tier). Dev-only — the shipped
+    # plugin runtime carries nothing from this package. The SDK
+    # itself shells out to the `@anthropic-ai/claude-code` CLI,
+    # which the e2e-real workflow installs separately via npm.
+    "claude-agent-sdk==0.2.87",
 ]
 
 # livespec-dev-tooling is consumed from the github.com sibling-library
@@ -221,6 +228,11 @@ ban-relative-imports = "all"
 # noise. S105 covers TRAILER-token constants whose names trip
 # the password heuristic.
 "dev-tooling/checks/*.py" = ["S603", "S607", "S404", "S105"]
+# dev-tooling/ mutating tools (vendor_update.py and any future peer)
+# shell out to git via subprocess.run with a fixed argv list per the
+# vendoring-procedure invocation contract. Same S603/S607/S404
+# carve-out shape as dev-tooling/checks/*.py above.
+"dev-tooling/vendor_update.py" = ["S603", "S607", "S404"]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.
@@ -319,6 +331,7 @@ addopts = [
 ]
 markers = [
     "mock_only: test runs only in mock tier (LIVESPEC_E2E_HARNESS=mock); skipped in real tier",
+    "e2e_golden: flagship multi-turn dialogue e2e test; per li-949's Q2 hybrid prompt strategy, the real-tier recipe runs golden tests in addition to the single-shot happy-path tests",
 ]
 
 # ---------------------------------------------------------------------------
