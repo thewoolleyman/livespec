@@ -107,6 +107,19 @@ The wrapper `bin/revise.py` accepts the following flags in v1:
   `pre_step_skip_stale_branch_check` is `true` in
   `.livespec.jsonc`. Mutually exclusive with
   `--skip-stale-branch-check`.
+- `--post-step-doctor` (default-off; SKILL.md prose MUST pass
+  on every production invocation). Gates the post-step doctor
+  static invocation per `SPECIFICATION/contracts.md`
+  §"Sub-command wire contracts" → "`revise` payload
+  validation". When set, after the freshly-cut `vNNN/`
+  snapshot lands the wrapper invokes `bin/doctor_static.py` as
+  a subprocess; any `status: "fail"` finding (including the
+  `unresolved-spec-commitment` invariant per PR #281
+  li-7jniti) lifts the wrapper to exit 3. Per the spec
+  contract: "The post-step run is the gating point; pre-step
+  provides early visibility but does NOT block revise's
+  execution." File-shaping unit tests omit the flag for
+  test-scoping; the SKILL.md production invocation includes it.
 
 Effective skip resolution for the pre-step (per
 SPECIFICATION/spec.md §"Sub-command lifecycle"):
@@ -348,17 +361,26 @@ and exit code is `0` (NOT an error).
    narration step below.
 
 9. **Invoke the wrapper.** Run
-   `bin/revise.py --revise-json <tempfile> [flags]` via
-   the Bash tool with explicit argv (forwarding
-   `--author`, `--spec-target`, `--project-root`,
-   `--skip-pre-check` / `--run-pre-check` as applicable).
-   Capture exit code. The wrapper validates the payload
-   internally, runs pre-step doctor static (unless
-   skipped), performs the deterministic file-shaping work
-   (cut new `vNNN`, snapshot working spec files,
-   move + pair proposed-changes into history, apply
-   `resulting_files` updates), and runs post-step doctor
-   static.
+   `bin/revise.py --revise-json <tempfile>
+   --post-step-doctor [other flags]` via the Bash tool
+   with explicit argv (forwarding `--author`,
+   `--spec-target`, `--project-root`, `--skip-pre-check`
+   / `--run-pre-check` as applicable). The
+   `--post-step-doctor` flag MUST be passed on every
+   production invocation per
+   `SPECIFICATION/contracts.md` §"Sub-command wire
+   contracts" → "`revise` payload validation" — it gates
+   the post-step doctor static phase that exercises the
+   `unresolved-spec-commitment` invariant against the
+   freshly-cut `vNNN/` snapshot. Capture exit code. The
+   wrapper validates the payload internally, performs
+   the deterministic file-shaping work (cut new `vNNN`,
+   snapshot working spec files, move + pair
+   proposed-changes into history, apply
+   `resulting_files` updates), and (when
+   `--post-step-doctor` is set) runs post-step doctor
+   static; any `status: "fail"` finding lifts the
+   wrapper to exit 3.
 
 10. **Narrate skipped pre-step (when silent).** If the
     effective resolution was `skip = true` AND the user
@@ -540,7 +562,24 @@ On exit 0, the wrapper has:
   walks filename stems — for every `<stem>-revision.md`,
   the check verifies `<stem>.md` exists in the same
   directory.
-- Run post-step doctor static.
+- Run post-step doctor static (when `--post-step-doctor`
+  was passed). Per
+  `SPECIFICATION/contracts.md` §"Sub-command wire
+  contracts" → "`revise` payload validation":
+  "Revise's post-step doctor MUST run the
+  `unresolved-spec-commitment` invariant against the
+  freshly-cut `vNNN/` snapshot." The full static
+  registry is exercised; any `status: "fail"` finding
+  (including but not limited to
+  `unresolved-spec-commitment`) lifts the wrapper to
+  exit 3. Per the spec contract, the snapshot is
+  already cut by the time post-step runs; exit 3 is
+  INFORMATIONAL — the user's corrective action is to
+  file the declared work-items via the active
+  impl-plugin's `capture-work-item` skill (passing
+  `--spec-commitment-hint <id_hint>` so the work-item
+  carries the pairing field), then re-run doctor to
+  verify resolution.
 
 After successful completion,
 `<spec-target>/proposed_changes/` MUST be empty (of

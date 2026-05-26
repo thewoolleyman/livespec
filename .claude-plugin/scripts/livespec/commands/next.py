@@ -61,10 +61,17 @@ from pathlib import Path
 from typing import Any
 
 from returns.io import IOResult, IOSuccess
-from returns.result import Failure, Result, Success, safe
+from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec.commands._next_ranking import (
+    _collect_oldest_age_days,
+    _rank,
+)
+from livespec.commands._next_unresolved_check import (
+    _maybe_swap_to_capture_work_item,
+)
 from livespec.errors import LivespecError, PreconditionError, ValidationError
 from livespec.io import cli, fs
 from livespec.parse import front_matter, jsonc
@@ -77,11 +84,6 @@ __all__: list[str] = ["build_parser", "main"]
 _SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
 _NEXT_OUTPUT_SCHEMA_PATH = _SCHEMAS_DIR / "next_output.schema.json"
 _PROPOSED_CHANGES_README = "README.md"
-_HIGH_URGENCY_COUNT_THRESHOLD = 3
-_MEDIUM_URGENCY_COUNT_THRESHOLD = 2
-_HIGH_URGENCY_AGE_DAYS = 7.0
-_MEDIUM_URGENCY_AGE_DAYS = 1.0
-_PRUNE_HISTORY_THRESHOLD = 20
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -181,69 +183,6 @@ def _proposal_created_at(*, path: Path) -> IOResult[str, LivespecError]:
     )
 
 
-@safe(exceptions=(ValueError,))
-def _raw_fromisoformat(*, normalized: str) -> datetime.datetime:
-    """Decorator-lifted call into `datetime.fromisoformat`.
-
-    `@safe` from returns lifts the ValueError that
-    fromisoformat raises on a malformed input into the Result
-    track without an explicit `try/except` in livespec/** —
-    keeping the no-except-outside-io invariant intact.
-    """
-    return datetime.datetime.fromisoformat(normalized)
-
-
-def _parse_iso_age_days(*, created_at: str, now: datetime.datetime) -> Result[float, LivespecError]:
-    """Compute the age in days between `created_at` (ISO 8601) and `now`.
-
-    Accepts the canonical `YYYY-MM-DDTHH:MM:SSZ` shape per
-    `proposed_change_front_matter.schema.json`'s `date-time`
-    format. The trailing `Z` is stripped and `+00:00` is
-    appended before `datetime.fromisoformat` (stdlib 3.10 does
-    not accept the `Z` suffix directly). Empty / missing
-    `created_at` values arrive here as `""`, which fails the
-    ISO parse and surfaces as `Failure(PreconditionError)` —
-    the same exit-3 channel as a malformed YAML front-matter.
-    """
-    base = created_at.rstrip("Z")
-    normalized = f"{base}+00:00"
-    return (
-        _raw_fromisoformat(normalized=normalized)
-        .alt(
-            lambda exc: PreconditionError(f"next: unparseable created_at {created_at!r}: {exc}"),
-        )
-        .map(
-            lambda parsed: (now - parsed).total_seconds() / 86400.0,
-        )
-    )
-
-
-def _collect_oldest_age_days(
-    *,
-    created_ats: list[str],
-    now: datetime.datetime,
-) -> Result[float | None, LivespecError]:
-    """Compute the maximum age-days across all proposal `created_at` values.
-
-    Returns `Success(None)` when the input list is empty (no
-    proposals → no oldest age). Aggregates per-proposal age
-    Results via accumulator-style `.bind` so the first failure
-    short-circuits and surfaces as `Failure(PreconditionError)`
-    — the supervisor maps that to exit 3 per the §"Lifecycle
-    exit-code table".
-    """
-    if not created_ats:
-        return Success(None)
-    aggregate: Result[list[float], LivespecError] = Success([])
-    for created_at in created_ats:
-        aggregate = aggregate.bind(
-            lambda ages, c=created_at: _parse_iso_age_days(created_at=c, now=now).map(
-                lambda age, _ages=ages: [*_ages, age],
-            ),
-        )
-    return aggregate.map(max)
-
-
 def _history_version_count(*, spec_target: Path) -> IOResult[int, LivespecError]:
     """Count `<spec-target>/history/v*/` directories.
 
@@ -260,63 +199,6 @@ def _history_version_count(*, spec_target: Path) -> IOResult[int, LivespecError]
             1 for entry in entries if entry.is_dir() and entry.name.startswith("v")
         ),
     )
-
-
-def _rank_revise(
-    *,
-    proposal_count: int,
-    oldest_age_days: float | None,
-) -> NextOutput:
-    """Construct the `action=revise` NextOutput with urgency-bucket logic.
-
-    Two axes feed urgency: queue depth and oldest-proposal age.
-    `high` when either axis trips the high threshold; `medium`
-    when either trips the medium threshold; otherwise `low`.
-    The two axes are OR-ed so a deep queue lifts urgency even
-    when each proposal is fresh, and a single stale proposal
-    lifts urgency even when the queue is otherwise shallow.
-    """
-    if proposal_count >= _HIGH_URGENCY_COUNT_THRESHOLD or (
-        oldest_age_days is not None and oldest_age_days >= _HIGH_URGENCY_AGE_DAYS
-    ):
-        urgency = "high"
-    elif proposal_count >= _MEDIUM_URGENCY_COUNT_THRESHOLD or (
-        oldest_age_days is not None and oldest_age_days >= _MEDIUM_URGENCY_AGE_DAYS
-    ):
-        urgency = "medium"
-    else:
-        urgency = "low"
-    age_phrase = (
-        f"oldest is ~{oldest_age_days:.1f} days old"
-        if oldest_age_days is not None
-        else "age unknown"
-    )
-    reason = f"{proposal_count} proposed change(s) pending; {age_phrase}"
-    return NextOutput(action="revise", reason=reason, urgency=urgency)
-
-
-def _rank(
-    *,
-    proposal_count: int,
-    oldest_age_days: float | None,
-    history_version_count: int,
-) -> NextOutput:
-    """Pure ranker — compose a NextOutput from the three input counts.
-
-    Dispatch order matches the heuristic in the module docstring:
-    revise (queue) wins; prune-history (history accretion) is the
-    fallback when the queue is empty; none is the
-    nothing-pressing terminal.
-    """
-    if proposal_count >= 1:
-        return _rank_revise(proposal_count=proposal_count, oldest_age_days=oldest_age_days)
-    if history_version_count >= _PRUNE_HISTORY_THRESHOLD:
-        return NextOutput(
-            action="prune-history",
-            reason=f"{history_version_count} unpruned history versions; consider pruning",
-            urgency="low",
-        )
-    return NextOutput(action="none", reason="No pending spec-side work", urgency="low")
 
 
 def _now_utc() -> datetime.datetime:
@@ -412,12 +294,26 @@ def _verify_spec_target(*, spec_target: Path) -> IOResult[Path, LivespecError]:
     return IOSuccess(spec_target)
 
 
-def _rank_pipeline(*, spec_target: Path) -> IOResult[NextOutput, LivespecError]:
+def _rank_pipeline(
+    *,
+    spec_target: Path,
+    project_root: Path,
+) -> IOResult[NextOutput, LivespecError]:
     """Compose the file-state reads into a NextOutput.
 
     Sequence: verify spec target → list proposal paths → read
     each proposal's `created_at` → count history versions →
-    compute oldest age → pure rank.
+    compute oldest age → pure rank → (if action == "revise")
+    probe unresolved-spec-commitment → final NextOutput.
+
+    Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
+    thin-transport skill" → "Ranker semantics": the ranker MUST
+    NOT emit `revise` candidates whose pre-step doctor would
+    `fail` on the `unresolved-spec-commitment` invariant; the
+    ranker surfaces this as a `capture-work-item` candidate
+    instead. The probe is invoked ONLY when the unconstrained
+    rank would emit `revise`, keeping the no-op path subprocess-
+    free.
     """
     return (
         _verify_spec_target(spec_target=spec_target)
@@ -438,6 +334,12 @@ def _rank_pipeline(*, spec_target: Path) -> IOResult[NextOutput, LivespecError]:
                         ),
                     ),
                 ),
+            ),
+        )
+        .bind(
+            lambda output: _maybe_swap_to_capture_work_item(
+                output=output,
+                project_root=project_root,
             ),
         )
     )
@@ -467,6 +369,7 @@ def main(*, argv: list[str] | None = None) -> int:
                 namespace=namespace,
                 project_root=_resolve_project_root(namespace=namespace),
             ),
+            project_root=_resolve_project_root(namespace=namespace),
         ).bind(lambda output: _validate_and_serialize(output=output)),
     ).bind(
         lambda payload: _emit_payload(payload=payload),  # pyright: ignore[reportArgumentType]
