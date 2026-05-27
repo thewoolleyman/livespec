@@ -40,6 +40,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # Need the base ref reachable for the PR diff below.
           fetch-depth: 0
 
       - name: Detect Python file changes
@@ -50,7 +51,15 @@ jobs:
         run: |
           set -uo pipefail
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
+            # Full-depth fetch (checkout already set fetch-depth: 0) — a
+            # shallow `--depth=1` fetch doesn't bring in commits prior to
+            # the base ref tip, so `git diff origin/${BASE_REF}...HEAD`
+            # would intermittently fail with "no merge base" when the
+            # local clone's history didn't reach the divergence point.
+            # Keep `|| true` as a fallback: when fetch fails (auth,
+            # network) we still try the diff against whatever
+            # origin/${BASE_REF} ref the checkout already populated.
+            git fetch origin "$BASE_REF" || true
             changeset=$(git diff --name-only "origin/${BASE_REF}...HEAD")
             if echo "$changeset" | grep -qE '\.py$'; then
               echo "py_changed=true" >> "$GITHUB_OUTPUT"
