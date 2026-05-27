@@ -85,6 +85,56 @@ def test_revise_main_returns_precondition_exit_code_on_missing_revise_path(
     assert exit_code == 3
 
 
+def test_revise_main_emits_diagnostic_on_failure_before_exit(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Non-zero exit MUST emit a structlog ERROR-level event (li-revslnt).
+
+    Per work-item li-revslnt: `bin/revise.py` previously exited
+    non-zero silently at the default `LIVESPEC_LOG_LEVEL=WARNING`,
+    leaving users staring at a wrapper that returned an unknown
+    failure code with no explanation. The supervisor's
+    `_pattern_match_io_result` MUST surface the underlying
+    `LivespecError` via `log.error(...)` (which renders at level
+    ERROR, above the default WARNING threshold) before returning
+    `err.exit_code`. Per `SPECIFICATION/constraints.md`
+    §"Structured logging": structlog writes JSON to stderr, so
+    the diagnostic appears on stderr at default log level.
+
+    Drives the PreconditionError arm (missing --revise-json
+    file, exit 3). Asserts via `structlog.testing.capture_logs`
+    (the framework-canonical capture path; bypasses the
+    `PrintLoggerFactory(file=sys.stderr)` import-time `sys.stderr`
+    binding that defeats pytest's `capsys` / `capfd` fixtures
+    after configuration is cached) that the failure surface
+    emits at least one ERROR-level entry whose payload mentions
+    the underlying `LivespecError` subclass name AND the
+    err.exit_code so the user can self-correct without re-
+    running with `LIVESPEC_LOG_LEVEL=DEBUG`.
+    """
+    import structlog
+
+    missing = tmp_path / "no-such-revise.json"
+    with structlog.testing.capture_logs() as captured:
+        exit_code = revise.main(argv=["--revise-json", str(missing)])
+    assert exit_code == 3
+    error_entries = [entry for entry in captured if entry.get("log_level") == "error"]
+    assert error_entries, (
+        "expected revise.main to emit at least one ERROR-level structlog entry "
+        "before non-zero exit; got no error entries (li-revslnt silent-exit regression)"
+    )
+    serialized = " ".join(str(entry) for entry in error_entries)
+    assert "PreconditionError" in serialized, (
+        "ERROR-level diagnostic must identify the LivespecError subclass; "
+        f"got entries: {error_entries!r}"
+    )
+    assert any(entry.get("exit_code") == 3 for entry in error_entries), (
+        "ERROR-level diagnostic must include the exit_code so the user can "
+        f"correlate to the wrapper return code; got entries: {error_entries!r}"
+    )
+
+
 def _write_valid_revise_payload(*, tmp_path: Path) -> Path:
     """Helper: write a schema-valid revise-input payload to tmp_path.
 
