@@ -133,6 +133,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The doctor-static phase enforces `core.bare = true` on the primary
+      # checkout per SPECIFICATION/non-functional-requirements.md
+      # §"Bare-flag bootstrap procedure". `actions/checkout` clones a
+      # non-bare working tree; flipping the flag here satisfies the
+      # `doctor-primary-checkout-bare-flag-set` invariant. Only the
+      # check-doctor-static matrix entry needs this — other check-metadata
+      # entries are unaffected by `core.bare`.
+      - name: Set core.bare = true (satisfy doctor invariant)
+        if: matrix.target == 'check-doctor-static'
+        run: git config core.bare true
+
       - name: Install pinned binaries via mise
         uses: jdx/mise-action@v2
 
