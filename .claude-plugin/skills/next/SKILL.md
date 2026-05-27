@@ -1,6 +1,6 @@
 ---
 name: next
-description: Rank the next spec-side action (revise, propose-change, critique, prune-history, or none) over the current `<spec-target>/proposed_changes/` and `<spec-target>/history/` state, emitting structured JSON. Invoked by /livespec:next, "what should I work on next on the spec side", or as a Layer 3 loop-driver primitive.
+description: Rank the next spec-side action (revise, propose-change, critique, prune-history, or none) over the current `<spec-target>/proposed_changes/` and `<spec-target>/history/` state, emitting structured JSON. Invoked by /livespec:next, "what should I work on next on the spec side", or as a primitive composed by livespec's Layer 3 loop driver.
 allowed-tools: Bash
 ---
 
@@ -14,8 +14,8 @@ Python wrapper. The skill body MUST NOT accrete logic.
 
 The wrapper is a pure function of spec-side file state —
 no LLM in the ranking path; no impl-side store reads
-(cross-side composition is the project-local Layer 3
-loop driver's job per `SPECIFICATION/spec.md`
+(cross-side composition is livespec's Layer 3 loop
+driver's job per `SPECIFICATION/spec.md`
 §"Three-layer orchestration architecture"). The skill is
 exempt from the pre-step / post-step doctor static
 lifecycle and has no LLM-driven post-step phase per
@@ -27,10 +27,10 @@ lifecycle and has no LLM-driven post-step phase per
   work on next on the spec side", "what's the next spec
   move", or otherwise asks for the most ripe spec-side
   action against the current queue + history state.
-- The project-local Layer 3 loop driver
-  (`.claude/skills/loop/SKILL.md`) calls this skill as
-  one of two `next` primitives it composes (the other
-  being the active impl-plugin's `next`).
+- livespec's Layer 3 loop driver
+  (`livespec/.claude/skills/loop/SKILL.md`) calls this
+  skill as one of two `next` primitives it composes
+  (the other being the active impl-plugin's `next`).
 
 ## Inputs
 
@@ -60,17 +60,17 @@ is `0` (NOT an error).
    spec-side thin-transport skill" → §"Layer 3
    discoverability nudge". The nudge MUST:
 
-   - Inform the user that
-     `.claude/skills/loop/SKILL.md` (the project-local
-     Layer 3 loop driver per `spec.md`
-     §"Three-layer orchestration architecture" →
-     "Layer 3 — Project-local composition") is the
+   - Inform the user that livespec's
+     `.claude/skills/loop/SKILL.md` (the Layer 3 loop
+     driver per `spec.md` §"Three-layer orchestration
+     architecture" → "Layer 3 — Cross-repo
+     orchestration (livespec-resident)") is the
      cohesive cross-side composition surface that
      combines `/livespec:next` with the active
      impl-plugin's `next`.
    - Ask the user to confirm they want to run
      `/livespec:next` directly rather than via the
-     project's Layer 3 driver.
+     Layer 3 driver.
 
    SKIP the nudge when `/livespec:next` is invoked by
    another skill (e.g., the Layer 3 driver itself, the
@@ -78,16 +78,6 @@ is `0` (NOT an error).
    direct user request. The detection mechanism is
    per-harness; this skill simply gates the nudge on
    whether the entry path is a direct user invocation.
-
-   When `.claude/skills/loop/SKILL.md` is absent in the
-   current project (the file is OPTIONAL per `spec.md`
-   §"Layer 3 — Project-local composition"), the nudge
-   MAY soften to a documentation pointer (e.g.,
-   "consider authoring a Layer 3 loop driver per
-   `spec.md` §...") rather than being suppressed. The
-   discoverability discipline applies whenever direct
-   user invocation is the entry path, regardless of
-   whether the driver exists.
 
    The nudge is informational only — it points the
    user at the Layer 3 surface but never selects the
@@ -107,7 +97,7 @@ is `0` (NOT an error).
    re-interpretation, re-summarization, or judgment. The
    payload conforms to `next_output.schema.json` with
    fields `action`, `reason`, and `urgency`; downstream
-   consumers (the Layer 3 loop driver, automated
+   consumers (livespec's Layer 3 loop driver, automated
    tooling, or the user reading the recommendation) own
    the dispatch. The skill body does NOT recommend a
    follow-up sub-command beyond what the `action` field
