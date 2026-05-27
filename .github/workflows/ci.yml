@@ -129,19 +129,21 @@ jobs:
           - check-copier-template-smoke
           - check-tools
           - check-doctor-static
+          - check-primary-checkout-bare-flag-set
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The doctor-static phase enforces `core.bare = true` on the primary
+      # The doctor-static phase and the shared livespec-dev-tooling
+      # bare-flag check both enforce `core.bare = true` on the primary
       # checkout per SPECIFICATION/non-functional-requirements.md
-      # §"Bare-flag bootstrap procedure". `actions/checkout` clones a
-      # non-bare working tree; flipping the flag here satisfies the
-      # `doctor-primary-checkout-bare-flag-set` invariant. Only the
-      # check-doctor-static matrix entry needs this — other check-metadata
+      # §"Bare-flag enforcement" / §"Bare-flag bootstrap procedure".
+      # `actions/checkout` clones a non-bare working tree; flipping the
+      # flag here satisfies the family-wide invariant. Only the two
+      # bare-flag-aware matrix entries need this — other check-metadata
       # entries are unaffected by `core.bare`.
-      - name: Set core.bare = true (satisfy doctor invariant)
-        if: matrix.target == 'check-doctor-static'
+      - name: Set core.bare = true (satisfy bare-flag invariant)
+        if: matrix.target == 'check-doctor-static' || matrix.target == 'check-primary-checkout-bare-flag-set'
         run: git config core.bare true
 
       - name: Install pinned binaries via mise
