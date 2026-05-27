@@ -111,6 +111,7 @@ check:
         check-master-ci-green
         check-prompts
         check-doctor-static
+        check-primary-checkout-bare-flag-set
         e2e-test-claude-code-mock
     )
     failed=()
@@ -383,6 +384,19 @@ check-prompts:
 # phases are OUT of scope (interactive-only via /livespec:doctor).
 check-doctor-static:
     uv run --no-project .claude-plugin/scripts/bin/doctor_static.py
+
+# Shared bare-flag invariant from livespec-dev-tooling. Per
+# SPECIFICATION/contracts.md §"`primary-checkout-bare-flag-set`" and
+# §"Shared code sync — livespec-dev-tooling", the bare-flag rule is
+# family-wide-by-intent and its canonical implementation ships in the
+# shared inventory (available since livespec-dev-tooling v0.3.0). The
+# local plugin-doctor static-phase instance at .claude-plugin/scripts/
+# livespec/doctor/static/primary_checkout_bare_flag_set.py is retained
+# for defense-in-depth (it runs per spec tree under each /livespec:doctor
+# invocation); this recipe is the project-root-scoped CI/just-check
+# adoption that the spec mandates for every consumer repo.
+check-primary-checkout-bare-flag-set:
+    uv run python -m livespec_dev_tooling.checks.primary_checkout_bare_flag_set
 
 # ---------------------------------------------------------------
 # Alternate-cadence target (NOT in `just check`).
