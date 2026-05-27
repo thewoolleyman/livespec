@@ -170,10 +170,9 @@ def test_smoke_check_fails_when_generated_json_invalid(*, tmp_path: Path) -> Non
     spec_dir = template_dir / "SPECIFICATION"
     spec_dir.mkdir()
     (spec_dir / "README.md.jinja").write_text("# README\n", encoding="utf-8")
-    loop_dir = template_dir / ".claude" / "skills" / "loop"
-    loop_dir.mkdir(parents=True)
-    (loop_dir / "SKILL.md.jinja").write_text("# loop\n", encoding="utf-8")
-    (template_dir / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
+    claude_dir = template_dir / ".claude"
+    claude_dir.mkdir(parents=True)
+    (claude_dir / "settings.json").write_text("{}\n", encoding="utf-8")
 
     result = subprocess.run(
         [sys.executable, str(_COPIER_TEMPLATE_SMOKE)],
