@@ -29,12 +29,15 @@ The eight slash commands below become available with the
 ## Cross-repo orchestration
 
 The Layer 3 cross-repo orchestration driver lives at
-[`.claude/skills/loop/SKILL.md`](.claude/skills/loop/SKILL.md) per
-`SPECIFICATION/spec.md` §"Three-layer orchestration architecture". It
-is a project-local skill (loaded as `/loop` when working inside this
-repo) — NOT a namespaced plugin skill — and it is the single Layer 3
-driver across the whole livespec family of repos (livespec,
-livespec-impl-*, livespec-dev-tooling, livespec-runtime).
+[`.claude/skills/livespec-orchestrate/SKILL.md`](.claude/skills/livespec-orchestrate/SKILL.md)
+per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture". It
+is a project-local skill (loaded as `/livespec-orchestrate` when
+working inside this repo) — NOT a namespaced plugin skill; the
+`livespec-` prefix is a manual visual scoping convention to avoid
+colliding with the harness's built-in `/loop` recurring-task skill —
+and it is the single Layer 3 driver across the whole livespec family
+of repos (livespec, livespec-impl-*, livespec-dev-tooling,
+livespec-runtime).
 
 The driver composes `/livespec:next` and the active impl-plugin's
 `next` into a cross-side ranking, dispatches sub-agents (with
