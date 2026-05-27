@@ -1,6 +1,6 @@
 ---
-name: loop
-description: Layer 3 cross-repo orchestration driver for the livespec family. Composes /livespec:next and the active impl-plugin's next; dispatches sub-agents (with worktree isolation) into livespec, livespec-impl-*, livespec-dev-tooling, and livespec-runtime; runs `just check` + /livespec:doctor as a hard gate; emits a structured iteration journal; halts on architectural ambiguity, broken state, or context-budget exhaustion. Per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture" and §"Layer 3 loop driver — required shape and discipline" in non-functional-requirements.md, this skill is the SINGLE Layer 3 driver across the livespec family — impl-plugin repos do NOT carry their own.
+name: livespec-orchestrate
+description: Layer 3 cross-repo orchestration driver for the livespec family (invoked as /livespec-orchestrate). Composes /livespec:next and the active impl-plugin's next; dispatches sub-agents (with worktree isolation) into livespec, livespec-impl-*, livespec-dev-tooling, and livespec-runtime; runs `just check` + /livespec:doctor as a hard gate; emits a structured iteration journal; halts on architectural ambiguity, broken state, or context-budget exhaustion. Per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture" and §"Layer 3 loop driver — required shape and discipline" in non-functional-requirements.md, this skill is the SINGLE Layer 3 driver across the livespec family — impl-plugin repos do NOT carry their own. The directory name carries a `livespec-` visual prefix to disambiguate from the harness's built-in `/loop` skill (recurring-task scheduler); project-local skills have no real namespace mechanism, so the prefix is a convention, not enforcement.
 ---
 
 # Layer 3 cross-repo orchestration driver
@@ -23,7 +23,7 @@ being added to the cross-repo state aggregation step below.
 ## Inputs
 
 The driver accepts these parameters; the user supplies them inline or
-via the `/loop` invocation argument:
+via the `/livespec-orchestrate` invocation argument:
 
 - **`mode`** (`interactive` | `autonomous`). Default `interactive`
   when the next picked action is spec-side (revise, propose-change,

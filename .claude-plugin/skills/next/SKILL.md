@@ -28,9 +28,10 @@ lifecycle and has no LLM-driven post-step phase per
   move", or otherwise asks for the most ripe spec-side
   action against the current queue + history state.
 - livespec's Layer 3 loop driver
-  (`livespec/.claude/skills/loop/SKILL.md`) calls this
-  skill as one of two `next` primitives it composes
-  (the other being the active impl-plugin's `next`).
+  (`livespec/.claude/skills/livespec-orchestrate/SKILL.md`)
+  calls this skill as one of two `next` primitives it
+  composes (the other being the active impl-plugin's
+  `next`).
 
 ## Inputs
 
@@ -61,13 +62,13 @@ is `0` (NOT an error).
    discoverability nudge". The nudge MUST:
 
    - Inform the user that livespec's
-     `.claude/skills/loop/SKILL.md` (the Layer 3 loop
-     driver per `spec.md` §"Three-layer orchestration
-     architecture" → "Layer 3 — Cross-repo
-     orchestration (livespec-resident)") is the
-     cohesive cross-side composition surface that
-     combines `/livespec:next` with the active
-     impl-plugin's `next`.
+     `.claude/skills/livespec-orchestrate/SKILL.md`
+     (the Layer 3 loop driver per `spec.md` §"Three-layer
+     orchestration architecture" → "Layer 3 — Cross-repo
+     orchestration (livespec-resident)") is the cohesive
+     cross-side composition surface that combines
+     `/livespec:next` with the active impl-plugin's
+     `next`.
    - Ask the user to confirm they want to run
      `/livespec:next` directly rather than via the
      Layer 3 driver.
