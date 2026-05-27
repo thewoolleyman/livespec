@@ -40,6 +40,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import structlog
 from returns.io import IOResult
 from returns.result import Failure, Result, Success
 from returns.unsafe import unsafe_perform_io
@@ -90,6 +91,8 @@ from livespec.validate import revise_input as validate_revise_input_module
 
 __all__: list[str] = ["build_parser", "main"]
 
+
+_log = structlog.get_logger(__name__)
 
 _SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
 _REVISE_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "revise_input.schema.json"
@@ -152,12 +155,27 @@ def _pattern_match_io_result(
     Success(<value>) -> exit 0 per style doc §"Exit code
     contract". Failure(LivespecError) lifts via err.exit_code;
     assert_never closes the match.
+
+    Per work-item li-revslnt + `SPECIFICATION/constraints.md`
+    §"Structured logging" + the style spec's canonical
+    `match`-arm example: the Failure arm MUST emit a
+    `log.error(...)` diagnostic BEFORE returning the exit code.
+    At the default `LIVESPEC_LOG_LEVEL=WARNING` the call renders
+    as a JSON line on stderr (ERROR > WARNING), so the user
+    sees the `LivespecError` subclass name + structured context
+    rather than an unexplained non-zero wrapper exit.
     """
     unwrapped = unsafe_perform_io(io_result)  # pyright: ignore[reportArgumentType]
     match unwrapped:
         case Success(_):
             return 0
         case Failure(LivespecError() as err):
+            _log.error(
+                "revise failed",
+                error_type=type(err).__name__,
+                error=str(err),
+                exit_code=err.exit_code,
+            )
             return err.exit_code
         case _:
             assert_never(unwrapped)
