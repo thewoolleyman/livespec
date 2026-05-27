@@ -11,7 +11,7 @@ from __future__ import annotations
 import subprocess  # documented integration-test usage
 from pathlib import Path
 
-import fake_claude
+import harness
 import pytest
 
 __all__: list[str] = []
@@ -38,7 +38,7 @@ def _git_init_and_configure(*, project_root: Path) -> None:
     _git(cwd=project_root, args=["config", "--local", "core.bare", "true"])
     # Per the copier-template-workflow-coverage doctor invariant,
     # the e2e fixture also models the post-`copier copy` state.
-    fake_claude.seed_required_workflow_files(project_root=project_root)
+    harness.seed_required_workflow_files(project_root=project_root)
 
 
 def _git_add_all_and_commit(*, project_root: Path, message: str) -> None:
@@ -54,9 +54,10 @@ def _git_add_all_and_commit(*, project_root: Path, message: str) -> None:
     )
 
 
+@pytest.mark.e2e_golden
 @pytest.mark.skipif(
     condition=False,
-    reason="Runs in both mock and real tiers.",
+    reason="Runs in both mock and real tiers; flagship golden-flow test per li-949 Q2.",
 )
 def test_happy_path_minimal(*, tmp_path: Path) -> None:
     """Full happy-path round-trip: seed → propose-change → critique → revise → doctor → prune.
@@ -69,7 +70,7 @@ def test_happy_path_minimal(*, tmp_path: Path) -> None:
     _git_init_and_configure(project_root=tmp_path)
 
     # Step 1: seed
-    seed_result = fake_claude.seed(project_root=tmp_path, intent="E2E happy-path test project")
+    seed_result = harness.seed(project_root=tmp_path, intent="E2E happy-path test project")
     assert seed_result.returncode == 0, (
         f"seed exited {seed_result.returncode}; "
         f"stdout={seed_result.stdout!r} stderr={seed_result.stderr!r}"
@@ -81,7 +82,7 @@ def test_happy_path_minimal(*, tmp_path: Path) -> None:
     _git_add_all_and_commit(project_root=tmp_path, message="seed")
 
     # Step 2: propose-change
-    propose_result = fake_claude.propose_change(
+    propose_result = harness.propose_change(
         project_root=tmp_path,
         intent="Add a constraint that all changes MUST be reviewed",
         topic="review-constraint",
@@ -93,7 +94,7 @@ def test_happy_path_minimal(*, tmp_path: Path) -> None:
     assert (tmp_path / "SPECIFICATION" / "proposed_changes" / "review-constraint.md").is_file()
 
     # Step 3: critique
-    critique_result = fake_claude.critique(
+    critique_result = harness.critique(
         project_root=tmp_path,
         intent="Review the pending proposal for ambiguities",
     )
@@ -105,7 +106,7 @@ def test_happy_path_minimal(*, tmp_path: Path) -> None:
     assert len(critique_files) == 1, "expected exactly one critique proposal"
 
     # Step 4: revise
-    revise_result = fake_claude.revise(project_root=tmp_path)
+    revise_result = harness.revise(project_root=tmp_path)
     assert revise_result.returncode == 0, (
         f"revise exited {revise_result.returncode}; "
         f"stdout={revise_result.stdout!r} stderr={revise_result.stderr!r}"
@@ -115,14 +116,14 @@ def test_happy_path_minimal(*, tmp_path: Path) -> None:
     _git_add_all_and_commit(project_root=tmp_path, message="revise")
 
     # Step 5: doctor (static phase only; minimal template has no LLM-driven checks)
-    doctor_result = fake_claude.doctor_static(project_root=tmp_path)
+    doctor_result = harness.doctor_static(project_root=tmp_path)
     assert doctor_result.returncode == 0, (
         f"doctor_static exited {doctor_result.returncode}; "
         f"stdout={doctor_result.stdout!r} stderr={doctor_result.stderr!r}"
     )
 
     # Step 6: prune-history (v001 + v002 exist → prunes v001)
-    prune_result = fake_claude.prune_history(project_root=tmp_path)
+    prune_result = harness.prune_history(project_root=tmp_path)
     assert prune_result.returncode == 0, (
         f"prune-history exited {prune_result.returncode}; "
         f"stdout={prune_result.stdout!r} stderr={prune_result.stderr!r}"
