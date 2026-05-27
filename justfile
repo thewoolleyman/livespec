@@ -110,6 +110,7 @@ check:
         check-branch-protection-alignment
         check-master-ci-green
         check-prompts
+        check-doctor-static
         e2e-test-claude-code-mock
     )
     failed=()
@@ -370,6 +371,18 @@ e2e-test-claude-code-mock:
 
 check-prompts:
     uv run pytest tests/prompts/
+
+# Doctor deterministic static-phase coverage gate. Per SPECIFICATION/
+# non-functional-requirements.md §"Enforcement-suite invocation" →
+# §"Doctor static-phase coverage", this target MUST run doctor's
+# static phase against the main SPECIFICATION/ tree + every sub-spec
+# under SPECIFICATION/templates/<name>/, exiting non-zero (exit 3) on
+# any fail-status finding. The wrapper at .claude-plugin/scripts/bin/
+# doctor_static.py auto-walks the main spec + every templates/<name>/
+# sub-spec in a single invocation. LLM-driven objective + subjective
+# phases are OUT of scope (interactive-only via /livespec:doctor).
+check-doctor-static:
+    uv run --no-project .claude-plugin/scripts/bin/doctor_static.py
 
 # ---------------------------------------------------------------
 # Alternate-cadence target (NOT in `just check`).
