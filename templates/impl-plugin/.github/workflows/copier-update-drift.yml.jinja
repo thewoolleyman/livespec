@@ -7,13 +7,7 @@
 # Authority: livespec/SPECIFICATION/contracts.md
 #   §"Shared content sync — copier template" — each impl repo's CI
 #   SHOULD run `copier update --dry-run` and fail or warn on detected
-#   drift. `.claude/skills/loop/SKILL.md` MUST be excluded from drift
-#   detection because local divergence of the Layer 3 loop driver is
-#   expected and load-bearing.
-#
-# Authority: livespec/SPECIFICATION/non-functional-requirements.md
-#   §"Project-local orchestration layer" — the loop SKILL exemption
-#   rationale.
+#   drift.
 #
 # This workflow surfaces drift between {{ plugin_full_name }}'s
 # generated content and livespec's current template. To re-sync
@@ -50,11 +44,7 @@ jobs:
       - name: copier update --dry-run
         run: |
           set -uo pipefail
-          # Exclude .claude/skills/loop/SKILL.md from drift detection
-          # — per spec, local divergence of the Layer 3 loop driver
-          # is expected and load-bearing.
           uv run copier update \
             --dry-run \
             --defaults \
-            --skip-answered \
-            --exclude '.claude/skills/loop/SKILL.md'
+            --skip-answered

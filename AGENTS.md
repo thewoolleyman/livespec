@@ -10,6 +10,7 @@ lives at `SPECIFICATION/` and is itself maintained via the plugin's
 | Path | Purpose |
 |---|---|
 | `.claude-plugin/` | Plugin manifest, skill prompts, Python scripts, vendored libs, built-in templates |
+| `.claude/skills/loop/SKILL.md` | The Layer 3 cross-repo orchestration driver (project-local skill loaded as `/loop` when working inside this repo; NOT a namespaced plugin skill). Single driver across the livespec family. |
 | `SPECIFICATION/` | The live livespec specification (dogfooded; `spec.md`, `contracts.md`, `constraints.md`, `scenarios.md`, `history/`) |
 | `dev-tooling/` | Standalone enforcement-suite Python scripts (run via `just check`) |
 | `tests/` | pytest suite — mirrors the `.claude-plugin/scripts/` and `dev-tooling/` trees one-to-one |
@@ -37,6 +38,26 @@ The plugin exposes eight sub-commands; each is backed by a skill at
 Each skill orchestrates dialogue capture, prompt-driven content
 generation, wrapper invocation against `.claude-plugin/scripts/bin/<sub-command>.py`,
 and structured-finding interpretation.
+
+### Layer 3 orchestration driver — `.claude/skills/loop/`
+
+Per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture",
+this repo ALSO carries a project-local Layer 3 loop driver at
+`.claude/skills/loop/SKILL.md`. This is the single cross-repo
+orchestrator across the livespec family of repos (livespec,
+livespec-impl-*, livespec-dev-tooling, livespec-runtime); sibling
+repos do NOT carry their own. It is invoked as `/loop` when working
+inside this repo (project-local skill discovery, not namespaced).
+
+The driver composes the eight `/livespec:*` Layer 2 skills above
+with the active impl-plugin's `next` / `implement` / `capture-*` /
+`process-memos` skills, dispatches sub-agents with worktree
+isolation into the sibling repos for end-to-end PR-merging
+execution, runs `just check` plus `/livespec:doctor` as a hard
+janitor gate, and emits a structured iteration journal. See the
+skill body for inputs (`mode`, `budget`, `epic`, `scope-file`),
+dispatch table, halt conditions, resume protocol, and the
+wave-plan grammar used to author epic `scope-file`s.
 
 ## Agent prerequisites for plugin work
 
@@ -100,6 +121,7 @@ skills load with the correct `/livespec:*` namespace.
 - `just bootstrap` — first-touch setup on fresh clones; idempotently sets `core.bare = true` on the primary checkout (per `SPECIFICATION/non-functional-requirements.md` §"Bare-flag bootstrap procedure") plus installs lefthook hooks and resolves plugin dependencies.
 - `just check` — full enforcement aggregate (lint, types, tests, coverage, AST checks).
 - `just check-pre-commit-doc-only` — fast subset for doc-only commits.
+- `/loop` — invoke the Layer 3 cross-repo orchestration driver to drive an epic (or the open queue across all family repos) end-to-end. See `.claude/skills/loop/SKILL.md` for inputs and behavior.
 
 `just check` is the load-bearing safety net; it runs locally, in
 pre-push, and in CI. The doc-only subset is invoked only by lefthook

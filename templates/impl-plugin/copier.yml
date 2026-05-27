@@ -13,10 +13,7 @@
 # Generated repos MUST carry a .copier-answers.yml at the repo root tracking
 # the template version they were last generated from, and SHOULD re-sync via
 # `copier update` when livespec publishes a new release. CI in each
-# generated repo SHOULD run `copier update --dry-run` to surface drift, with
-# .claude/skills/loop/SKILL.md explicitly excluded from drift detection
-# because local divergence of the Layer 3 driver is expected and
-# load-bearing.
+# generated repo SHOULD run `copier update --dry-run` to surface drift.
 #
 # Secrets MUST NOT be templated through copier; secret material lives only in
 # environment variables, OS keyring, or a secret manager.
@@ -57,9 +54,6 @@ _message_after_copy: |
     2. Run `mise install && uv sync` to install the pinned toolchain.
     3. Run `just check` to verify the scaffold is green.
     4. Initialize git and push to {{ github_owner }}/{{ github_repo }}.
-    5. Hand-tune .claude/skills/loop/SKILL.md to your project's needs
-       (this file is exempt from copier-update drift detection per
-       livespec's spec — local divergence is expected).
 
 # -----------------------------------------------------------------------------
 # Questions

@@ -26,6 +26,28 @@ The eight slash commands below become available with the
 - `/livespec:next` — rank the next spec-side action (revise, propose-change, critique, prune-history, or none)
 - `/livespec:help` — overview + routing to the right sub-command
 
+## Cross-repo orchestration
+
+The Layer 3 cross-repo orchestration driver lives at
+[`.claude/skills/loop/SKILL.md`](.claude/skills/loop/SKILL.md) per
+`SPECIFICATION/spec.md` §"Three-layer orchestration architecture". It
+is a project-local skill (loaded as `/loop` when working inside this
+repo) — NOT a namespaced plugin skill — and it is the single Layer 3
+driver across the whole livespec family of repos (livespec,
+livespec-impl-*, livespec-dev-tooling, livespec-runtime).
+
+The driver composes `/livespec:next` and the active impl-plugin's
+`next` into a cross-side ranking, dispatches sub-agents (with
+worktree isolation) into the sibling repos, runs `just check` plus
+`/livespec:doctor` as a hard janitor gate, and emits a structured
+iteration journal. It accepts `mode` (interactive | autonomous),
+`budget` (iteration count | wallclock | tokens), an optional `epic`
+work-item ID, and an optional `scope-file` carrying epic-specific
+pre-authorization rules.
+
+Halt conditions, dispatch table, and the wave-plan grammar for
+`scope-file` are documented in the skill body.
+
 ## Fresh-clone setup
 
 After cloning, run `just bootstrap` once. The target idempotently sets `core.bare = true` on the primary checkout (per `SPECIFICATION/non-functional-requirements.md` §"Bare-flag bootstrap procedure"), forcing every edit through `git worktree add`, then installs lefthook hooks and resolves plugin dependencies.
