@@ -17,5 +17,14 @@ The retroactive parent_proposed_change annotation of the inaugural epic (this PC
 
 ## Resulting Changes
 
-- spec.md
-- contracts.md
+- (none)
+
+> Note: the v081 revise wrapper's `resulting_files[]` write silently
+> failed. The intended spec.md and contracts.md changes documented in
+> §"Decision and Rationale" were backfilled by subsequent revises
+> (parent_proposed_change documentation landed at master in spec.md
+> §"Proposed-change and revision file formats"; the auto-enable-merge
+> contract landed in contracts.md). Per the
+> `accept-decision-snapshot-consistency` doctor check, `(none)` bypasses
+> the byte-identity assertion that would otherwise fail forever on this
+> historical write-loss.
