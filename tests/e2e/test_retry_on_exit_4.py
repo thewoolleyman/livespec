@@ -31,19 +31,18 @@ def test_retry_on_exit_4(*, tmp_path: Path) -> None:
     _git(["init"])
     _git(["config", "user.email", "e2e-test@example.com"])
     _git(["config", "user.name", "E2E Test"])
-    # Per the primary-checkout-bare-flag-set doctor invariant, the
-    # e2e fixture models the post-bootstrap state; subsequent
-    # working-tree commits override bare-mode via `--work-tree`/
-    # `--git-dir`.
-    _git(["config", "--local", "core.bare", "true"])
+    # Post-v095: normal working-tree clone; the bare-flag mechanism
+    # has been retired in favor of the commit-refuse-hook
+    # invariant, which fires only against the configured primary
+    # path (this tmp_path fixture is not a configured primary).
     # Per the copier-template-workflow-coverage doctor invariant,
     # the e2e fixture also models the post-`copier copy` state.
     harness.seed_required_workflow_files(project_root=tmp_path)
 
     seed_result = harness.seed(project_root=tmp_path, intent="Retry-on-exit-4 test project")
     assert seed_result.returncode == 0, f"seed failed: {seed_result.stderr!r}"
-    _git(["--work-tree=.", "--git-dir=.git", "add", "-A"])
-    _git(["--work-tree=.", "--git-dir=.git", "commit", "-m", "seed"])
+    _git(["add", "-A"])
+    _git(["commit", "-m", "seed"])
 
     invalid_result = harness.propose_change_invalid(
         project_root=tmp_path,

@@ -44,15 +44,25 @@ This helpers module owns:
 - `build_aggregate_finding` — construct the pass/fail Finding
   payload from the full (sibling, missing-slug) set.
 - `make_finding` — build a Finding bound to the check's SLUG.
+- `resolve_effective_local_clone` — apply the
+  `LIVESPEC_SIBLING_CLONES_ROOT` env-var override (when set) on top
+  of the manifest's `local_clone` field. CI sets the env var to a
+  freshly-cloned siblings-root so the check passes against
+  ephemeral GitHub Actions runners that do not have
+  `/data/projects/<sibling>/` populated.
 
 All functions in this module are pure (no I/O, no global state);
-the IO boundary lives in the parent module's `run()`.
+the IO boundary lives in the parent module's `run()`. The env-var
+read in `resolve_effective_local_clone` is a process-state read
+(read-only); the cross-boundary policy classifies env-var reads
+alongside config-file reads — both pure.
 """
 
 from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -64,6 +74,7 @@ from livespec.schemas.dataclasses.finding import Finding
 from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = [
+    "CLONES_ROOT_ENV_VAR",
     "GithubRepoIdentity",
     "build_aggregate_finding",
     "compute_missing_slugs",
@@ -74,7 +85,19 @@ __all__: list[str] = [
     "is_host_repo",
     "make_finding",
     "parse_owner_name_from_github_url",
+    "resolve_effective_local_clone",
 ]
+
+
+# Env-var override for sibling local-clone roots. When set, the
+# cross-repo wiring check resolves a sibling's clone path as
+# `<env-var-value>/<sibling-slug>` regardless of the manifest's
+# `local_clone` field. CI sets this to a fresh clones-root the
+# workflow populates with `git clone --depth 1` of each sibling at
+# its default branch; locally, the env var is normally unset and
+# the manifest's `local_clone` path (e.g. `/data/projects/<sibling>`)
+# is used directly.
+CLONES_ROOT_ENV_VAR: str = "LIVESPEC_SIBLING_CLONES_ROOT"
 
 
 _SLUG: CheckId = CheckId("doctor-wiring-completeness-cross-repo")
@@ -268,26 +291,73 @@ def _raw_path_resolve(*, path: Path) -> Path:
     return path.resolve()
 
 
-def is_host_repo(*, target: dict[str, Any], project_root: Path) -> bool:
-    """Return True when `target.local_clone` is the same repo as `project_root`.
+def resolve_effective_local_clone(
+    *,
+    sibling_slug: str,
+    target: dict[str, Any],
+    env: dict[str, str] | None = None,
+) -> str | None:
+    """Return the effective `local_clone` path for `sibling_slug`.
+
+    Precedence:
+      1. When the `LIVESPEC_SIBLING_CLONES_ROOT` env var is set to a
+         non-empty value, return `<value>/<sibling_slug>`. This is
+         the CI path — the workflow clones siblings to a freshly-
+         provisioned root and points the check at it via the env var.
+      2. Otherwise, return `target.local_clone` when present and
+         non-empty (the local-dev path against
+         `/data/projects/<sibling>`).
+      3. Otherwise, return `None` to signal Path A is unavailable.
+
+    `env` defaults to `os.environ` — accepting an explicit dict
+    keeps the helper testable without monkeypatching the process
+    environment.
+    """
+    effective_env = os.environ if env is None else env
+    clones_root = effective_env.get(CLONES_ROOT_ENV_VAR, "")
+    if clones_root != "":
+        return str(Path(clones_root) / sibling_slug)
+    local_clone_raw = target.get("local_clone")
+    if isinstance(local_clone_raw, str) and local_clone_raw != "":
+        return local_clone_raw
+    return None
+
+
+def is_host_repo(
+    *,
+    sibling_slug: str,
+    target: dict[str, Any],
+    project_root: Path,
+    env: dict[str, str] | None = None,
+) -> bool:
+    """Return True when the effective clone path is the same repo as `project_root`.
+
+    The "effective" path consults `resolve_effective_local_clone`
+    so the env-var override is honored — when CI's clones-root
+    contains an entry matching the host repo's slug, it is still
+    excluded from sibling iteration.
 
     Two paths refer to the same repo when either:
       - they resolve to the same path (host primary checkout case), OR
-      - `project_root` resolves to a path under `local_clone` (the
-        worktree-under-primary case — the doctor is being invoked
-        from a secondary worktree of the primary checkout at
-        `local_clone`, e.g., `project_root=/repo/.claude/worktrees/li-X`
-        and `local_clone=/repo`).
+      - `project_root` resolves to a path under the effective clone
+        (the worktree-under-primary case — the doctor is being
+        invoked from a secondary worktree of the primary checkout,
+        e.g., `project_root=/repo/.claude/worktrees/li-X` and the
+        effective clone is `/repo`).
 
     Path.resolve can raise OSError on filesystems with strict-symlink
     or permission-denied edge cases; the `@safe`-lifted helper
     converts the raise-path to a Result. A failed resolve (either
     side) yields False — the entry is treated as a non-host sibling.
     """
-    local_clone_raw = target.get("local_clone")
-    if not isinstance(local_clone_raw, str) or local_clone_raw == "":
+    effective = resolve_effective_local_clone(
+        sibling_slug=sibling_slug,
+        target=target,
+        env=env,
+    )
+    if effective is None:
         return False
-    local_resolved = _raw_path_resolve(path=Path(local_clone_raw))
+    local_resolved = _raw_path_resolve(path=Path(effective))
     project_resolved = _raw_path_resolve(path=project_root)
     if not isinstance(local_resolved, Success) or not isinstance(project_resolved, Success):
         return False
@@ -302,13 +372,19 @@ def filter_sibling_targets(
     *,
     cross_repo_targets: dict[str, Any],
     project_root: Path,
+    env: dict[str, str] | None = None,
 ) -> list[tuple[str, dict[str, Any]]]:
     """Drop non-dict and host-repo entries from the manifest."""
     sibling_targets: list[tuple[str, dict[str, Any]]] = []
     for slug, target in cross_repo_targets.items():
         if not isinstance(target, dict):
             continue
-        if is_host_repo(target=target, project_root=project_root):
+        if is_host_repo(
+            sibling_slug=slug,
+            target=target,
+            project_root=project_root,
+            env=env,
+        ):
             continue
         sibling_targets.append((slug, target))
     return sibling_targets

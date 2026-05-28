@@ -9,8 +9,8 @@ Also auto-scrubs inherited `GIT_*` environment variables (set by lefthook
 when tests run as a pre-commit hook) so the wrapper-chain's internal git
 calls operate on the tmp_path fixture's `.git` directory rather than the
 surrounding repo's. Without this scrub, e2e tests that invoke wrappers
-running `git config --local core.bare true` would silently mutate the
-surrounding repo's config or its working-tree commits.
+running `git config --local ...` would silently mutate the surrounding
+repo's config or its working-tree commits.
 
 Honors `LIVESPEC_E2E_HARNESS=real` by auto-skipping every `@pytest.mark.mock_only`
 test (per the contract: mock-only scenarios MUST be skipped in real mode).

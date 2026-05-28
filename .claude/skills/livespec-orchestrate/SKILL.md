@@ -293,10 +293,13 @@ is absent, the driver falls back to the default safety rules in
 
 - `mise exec -- git ...` for commit / push so lefthook hooks fire
   (per `feedback_mise_exec_for_git_hooks`).
-- The primary checkout in each family repo is `core.bare = true`;
+- The primary checkout in each family repo carries a
+  commit-refuse hook at `.git/hooks/pre-commit` and
+  `.git/hooks/pre-push` that exits 1 when invoked at the primary;
   all edits happen in secondary worktrees via `git worktree add`
   (per `feedback_worktree_discipline_mechanical_enforcement` and
-  the codified `primary-checkout-bare-flag-set` doctor invariant).
+  the codified `primary-checkout-commit-refuse-hook-installed`
+  doctor invariant).
 - Use `chore(spec):` prefix for spec-only commits (per
   `feedback_chore_spec_for_spec_only_commits`); the red-green-replay
   commit-msg hook rejects `fix:`/`feat:` for spec-only changes.

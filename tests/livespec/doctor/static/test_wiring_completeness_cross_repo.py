@@ -69,11 +69,30 @@ from typing import Any
 import pytest
 from livespec.context import DoctorContext
 from livespec.doctor.static import wiring_completeness_cross_repo
+from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
+    CLONES_ROOT_ENV_VAR,
+    resolve_effective_local_clone,
+)
 from livespec.io import proc as io_proc
 from livespec.schemas.dataclasses.finding import Finding
 from returns.io import IOResult, IOSuccess
 
 __all__: list[str] = []
+
+
+@pytest.fixture(autouse=True)
+def _scrub_clones_root_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure tests run with no inherited `LIVESPEC_SIBLING_CLONES_ROOT`.
+
+    The cross-repo wiring check honors the env var override at the
+    helper layer; tests that want the override active opt in via
+    `monkeypatch.setenv(CLONES_ROOT_ENV_VAR, ...)` explicitly. Other
+    tests use the manifest's `local_clone` paths against tmp_path
+    fixtures — a leaked env var would redirect those reads to
+    `<env-value>/<sibling-slug>` (a nonexistent path) and silently
+    fall through to Path B, breaking every fixture-driven assertion.
+    """
+    monkeypatch.delenv(CLONES_ROOT_ENV_VAR, raising=False)
 
 
 def _write_livespec_jsonc(
@@ -1534,25 +1553,26 @@ def test_path_a_reads_via_git_db_on_bare_flag_clone(
 ) -> None:
     """Path A reads the justfile via `git show HEAD:` on a bare-flag clone.
 
-    The family-wide bare-flag invariant per
-    `SPECIFICATION/non-functional-requirements.md` §"Bare-flag
-    bootstrap procedure": primary checkouts in the livespec
-    family carry `core.bare = true`, which makes the working
-    tree intentionally stale. A filesystem read of
-    `<clone>/justfile` would return the stale content; the git
-    db `git show HEAD:justfile` returns the canonical
-    master-tip content.
+    Although the post-v095 family-wide invariant is the
+    commit-refuse hook (not `core.bare = true`), bare clones
+    remain valid as cross-repo siblings — a freshly-cloned
+    repo carrying `core.bare = true` (e.g., a CI worker that
+    only needs read access to a sibling's git db) MUST still
+    resolve through Path A. A filesystem read of
+    `<clone>/justfile` would return stale or empty content on
+    such a clone; the git db `git show HEAD:justfile` returns
+    the canonical master-tip content regardless.
 
-    This test simulates the bare-flag-set primary checkout by
-    creating a working clone, committing a wired justfile, then
-    flipping `core.bare = true` on the clone's config and
-    overwriting the working-tree justfile with stale content.
-    The Path A code must return the COMMITTED slug set
-    (canonical), not the stale-working-tree set (empty).
+    This test simulates that case by creating a working clone,
+    committing a wired justfile, then flipping
+    `core.bare = true` on the clone's config and overwriting
+    the working-tree justfile with stale content. The Path A
+    code must return the COMMITTED slug set (canonical), not
+    the stale-working-tree set (empty).
 
     This is the CRITICAL test case — the architectural pivot
     from filesystem read to git db read was driven by exactly
-    this invariant conflict.
+    this stale-on-disk concern.
     """
     canonical = _get_canonical_slugs()
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
@@ -1591,6 +1611,142 @@ def test_path_a_reads_via_git_db_on_bare_flag_clone(
     # None (= `:no-check-recipe`), and the status would be
     # `fail`. The `pass` status here proves Path A reads the
     # git db, not the working tree.
+    expected = Finding(
+        check_id="doctor-wiring-completeness-cross-repo",
+        status="pass",
+        message=(
+            "wiring-completeness-cross-repo: every registered sibling's "
+            "`check` aggregate wires every canonical slug"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+# --- resolve_effective_local_clone helper tests ---
+
+
+def test_resolve_effective_local_clone_returns_manifest_path_when_env_unset() -> None:
+    """When LIVESPEC_SIBLING_CLONES_ROOT is unset, manifest value wins.
+
+    The local-dev path against `/data/projects/<sibling>` is preserved
+    via the manifest's `local_clone` field; the env-var override is
+    the CI-only path.
+    """
+    result = resolve_effective_local_clone(
+        sibling_slug="livespec-impl-plaintext",
+        target={"local_clone": "/data/projects/livespec-impl-plaintext"},
+        env={},
+    )
+    assert result == "/data/projects/livespec-impl-plaintext"
+
+
+def test_resolve_effective_local_clone_returns_none_when_no_path_available() -> None:
+    """When neither env var nor manifest provides a path, return None.
+
+    The caller treats None as "Path A unavailable, fall through to
+    Path B (GitHub API)."
+    """
+    result = resolve_effective_local_clone(
+        sibling_slug="livespec-impl-plaintext",
+        target={"github_url": "https://github.com/x/y"},
+        env={},
+    )
+    assert result is None
+
+
+def test_resolve_effective_local_clone_returns_none_when_manifest_value_empty() -> None:
+    """Empty-string `local_clone` is treated as absent (None)."""
+    result = resolve_effective_local_clone(
+        sibling_slug="livespec-impl-plaintext",
+        target={"local_clone": ""},
+        env={},
+    )
+    assert result is None
+
+
+def test_resolve_effective_local_clone_uses_env_var_when_set(*, tmp_path: Path) -> None:
+    """When the env var is set, it overrides the manifest's local_clone.
+
+    The result is `<env-var-value>/<sibling-slug>` regardless of what
+    the manifest's `local_clone` field says. This is the CI path:
+    the workflow clones siblings to a fresh root and points the
+    check at it via the env var.
+    """
+    clones_root = tmp_path / "ci-clones"
+    result = resolve_effective_local_clone(
+        sibling_slug="livespec-impl-plaintext",
+        target={"local_clone": "/data/projects/livespec-impl-plaintext"},
+        env={CLONES_ROOT_ENV_VAR: str(clones_root)},
+    )
+    assert result == str(clones_root / "livespec-impl-plaintext")
+
+
+def test_resolve_effective_local_clone_env_var_overrides_missing_manifest(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The env var even applies when the manifest lacks a local_clone."""
+    clones_root = tmp_path / "ci-clones"
+    result = resolve_effective_local_clone(
+        sibling_slug="livespec-runtime",
+        target={"github_url": "https://github.com/thewoolleyman/livespec-runtime"},
+        env={CLONES_ROOT_ENV_VAR: str(clones_root)},
+    )
+    assert result == str(clones_root / "livespec-runtime")
+
+
+def test_resolve_effective_local_clone_empty_env_var_falls_back_to_manifest() -> None:
+    """A set-but-empty env var is treated as unset (manifest wins)."""
+    result = resolve_effective_local_clone(
+        sibling_slug="livespec-impl-plaintext",
+        target={"local_clone": "/data/projects/livespec-impl-plaintext"},
+        env={CLONES_ROOT_ENV_VAR: ""},
+    )
+    assert result == "/data/projects/livespec-impl-plaintext"
+
+
+def test_env_var_override_makes_path_a_resolve_via_env_root(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end: env var redirects Path A to a fresh clones-root.
+
+    Simulates CI: the manifest declares a bogus `local_clone` path
+    that doesn't exist on the runner, BUT the env var points to a
+    freshly-cloned siblings-root where the sibling DOES exist with
+    a wired justfile. The check MUST pass because the env-var
+    override redirects Path A to the fresh clone.
+    """
+    canonical = _get_canonical_slugs()
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    clones_root = tmp_path / "ci-clones"
+    clones_root.mkdir()
+    sibling_clone = clones_root / "livespec-impl-plaintext"
+    sibling_clone.mkdir()
+    _git_init_and_commit(
+        clone=sibling_clone,
+        justfile_text=_make_justfile_text(slugs=canonical),
+    )
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "livespec-impl-plaintext": {
+                "github_url": "https://github.com/example/sibling",
+                # Bogus path that does NOT exist on the test runner —
+                # without the env-var override, Path A would fall
+                # through to Path B (GitHub fallback).
+                "local_clone": "/nonexistent/path/to/sibling",
+            },
+        },
+    )
+    monkeypatch.setenv(CLONES_ROOT_ENV_VAR, str(clones_root))
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = wiring_completeness_cross_repo.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-wiring-completeness-cross-repo",
         status="pass",

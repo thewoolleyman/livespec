@@ -14,23 +14,40 @@ default:
 # ---------------------------------------------------------------
 
 bootstrap:
-    # Idempotent `core.bare = true` on the primary checkout's
+    # Idempotent `livespec.primaryPath` on the primary checkout's
     # git-common-dir config (per
     # `SPECIFICATION/non-functional-requirements.md`
-    # §"Bare-flag bootstrap procedure"). The flag is the
-    # load-bearing setting that forces every edit through
-    # `git worktree add`. Runs FIRST so partial failure of any
-    # later step cannot leave the bare-flag unset. Targets
+    # §"Primary-checkout commit-refuse hook" /
+    # §"Commit-refuse hook bootstrap procedure"). The commit-refuse
+    # hook reads this config key to decide whether the current
+    # toplevel is the primary checkout and the commit should be
+    # refused. Runs FIRST so partial failure of any later step
+    # cannot leave the primary-path config unset. Targets
     # `git rev-parse --git-common-dir` so the recipe writes the
     # right file when invoked from the primary checkout AND from
-    # secondary worktrees.
-    git config --file "$(git rev-parse --git-common-dir)/config" core.bare true
+    # secondary worktrees; the value is `git rev-parse --show-toplevel`
+    # of the primary (the common-dir's parent, when invoked at the
+    # primary) — for the primary, `git rev-parse --show-toplevel`
+    # gives the right answer directly; for worktrees, this recipe
+    # is intended to run only at first-touch on a fresh primary
+    # clone (the usual bootstrap idiom).
+    git config --file "$(git rev-parse --git-common-dir)/config" livespec.primaryPath "$(git rev-parse --show-toplevel)"
     # Install the repo-tracked git-hook-wrapper.sh as pre-commit,
-    # pre-push, and commit-msg hooks. The wrapper invokes
-    # `mise exec lefthook -- lefthook run <hook-name> "$@"` so the
-    # gate fires regardless of the user's shell config and the
-    # commit-msg stage receives the commit-message file path as the
-    # first argument (the value lefthook passes to {1}).
+    # pre-push, and commit-msg hooks. The wrapper now carries
+    # BOTH the canonical commit-refuse hook body (marker comment
+    # + `git rev-parse --show-toplevel` check + `exit 1` branch,
+    # recognized by the `primary-checkout-commit-refuse-hook-installed`
+    # invariant) AND the mise-managed lefthook delegation, so the
+    # same file satisfies the canonical fingerprint check on the
+    # primary AND fires lefthook gates on secondary worktrees.
+    # `mise exec lefthook -- lefthook run --no-auto-install ...` is
+    # what fires the gate regardless of the user's shell config and
+    # is the only mechanism that survives lefthook's auto-install
+    # clobber (`--no-auto-install` is load-bearing; without it,
+    # lefthook backs up the wrapper to `<name>.old` on every fire
+    # and replaces it with its PATH-searching stub, which both
+    # silently no-ops in Claude Code's bash AND defeats the
+    # commit-refuse-hook invariant).
     mkdir -p .git/hooks
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-commit
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-push
@@ -109,7 +126,7 @@ check:
         check-no-write-direct
         check-pbt-coverage-pure-modules
         check-per-file-coverage
-        check-primary-checkout-bare-flag-set
+        check-primary-checkout-commit-refuse-hook-installed
         check-private-calls
         check-public-api-result-typed
         check-red-green-replay
@@ -411,18 +428,17 @@ check-prompts:
 check-doctor-static:
     uv run --no-project .claude-plugin/scripts/bin/doctor_static.py
 
-# Shared bare-flag invariant from livespec-dev-tooling. Per
-# SPECIFICATION/contracts.md §"`primary-checkout-bare-flag-set`" and
-# §"Shared code sync — livespec-dev-tooling", the bare-flag rule is
-# family-wide-by-intent and its canonical implementation ships in the
-# shared inventory (available since livespec-dev-tooling v0.3.0). The
-# local plugin-doctor static-phase instance at .claude-plugin/scripts/
-# livespec/doctor/static/primary_checkout_bare_flag_set.py is retained
-# for defense-in-depth (it runs per spec tree under each /livespec:doctor
-# invocation); this recipe is the project-root-scoped CI/just-check
-# adoption that the spec mandates for every consumer repo.
-check-primary-checkout-bare-flag-set:
-    uv run python -m livespec_dev_tooling.checks.primary_checkout_bare_flag_set
+# Shared commit-refuse-hook invariant from livespec-dev-tooling. Per
+# SPECIFICATION/contracts.md §"`primary-checkout-commit-refuse-hook-installed`"
+# and §"Shared code sync — livespec-dev-tooling", the commit-refuse-hook
+# rule is family-wide-by-intent and its canonical implementation ships
+# in the shared inventory (available since livespec-dev-tooling v0.5.0).
+# This recipe is the project-root-scoped CI/just-check adoption that the
+# spec mandates for every consumer repo. Supersedes the v091-v094
+# `primary-checkout-bare-flag-set` mechanism (which caused stale-on-disk
+# reads at primaries that the hook mechanism does not).
+check-primary-checkout-commit-refuse-hook-installed:
+    uv run python -m livespec_dev_tooling.checks.primary_checkout_commit_refuse_hook_installed
 
 # In-repo gate for the wiring-completeness invariant
 # (SPECIFICATION/contracts.md v094 §"Shared code sync —

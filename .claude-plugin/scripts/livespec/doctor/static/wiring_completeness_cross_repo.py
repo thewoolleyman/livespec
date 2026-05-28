@@ -35,17 +35,23 @@ cross-boundary invariants":
 
 Cross-boundary mechanism:
 
-  - Path A (preferred): `cross_repo_targets[<slug>].local_clone`
-    is set and the path resolves to a git repository → read the
-    justfile from the git database via
-    `git -C <local_clone> show HEAD:justfile`. NOT a working-tree
-    filesystem read: per `SPECIFICATION/non-functional-requirements.md`
-    §"Bare-flag bootstrap procedure", primary checkouts in the
-    livespec family carry `core.bare = true`, which makes the
-    working tree intentionally stale. The git db is the
-    canonical source of truth for the cross-repo invariant.
-  - Path B (fallback): Path A fails (no `local_clone`, path is
-    not a git repo, `justfile` absent at HEAD, etc.) → GitHub
+  - Path A (preferred): the effective local-clone path is set and
+    resolves to a git repository → read the justfile from the git
+    database via `git -C <local_clone> show HEAD:justfile`. The
+    "effective" local-clone path is the value returned by the
+    `resolve_effective_local_clone` helper: the
+    `LIVESPEC_SIBLING_CLONES_ROOT` env-var override (`<root>/<sibling-slug>`)
+    when set, otherwise the manifest's
+    `cross_repo_targets[<slug>].local_clone` field. CI sets the
+    env var to a freshly-cloned siblings-root so the check passes
+    on ephemeral GitHub Actions runners; local-dev usage leaves it
+    unset and reads from `/data/projects/<sibling>` via the
+    manifest. Either way the read uses `git show HEAD:justfile`,
+    so the read is git-db-backed and works on bare clones (the
+    primary-checkout commit-refuse hook supersedes the bare-flag
+    mechanism but bare clones remain valid as siblings).
+  - Path B (fallback): Path A fails (no effective local_clone, path
+    is not a git repo, `justfile` absent at HEAD, etc.) → GitHub
     API query via `gh api repos/<owner>/<name>/contents/justfile?ref=<default_branch>`
     with base64-decoding of the returned `content` field.
 
@@ -85,6 +91,7 @@ from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
     interpret_justfile_text,
     make_finding,
     parse_owner_name_from_github_url,
+    resolve_effective_local_clone,
 )
 from livespec.errors import LivespecError
 from livespec.io import fs, proc
@@ -105,11 +112,11 @@ def _read_justfile_from_local_clone(
     """Read `<local_clone>`'s justfile from the git database at HEAD.
 
     Uses `git -C <local_clone> show HEAD:justfile` rather than a
-    direct filesystem read. The latter would return STALE content
-    on primary checkouts carrying `core.bare = true` per the
-    family-wide bare-flag invariant (the working tree is
-    intentionally not kept in sync with master under the bootstrap
-    procedure). The git db is the canonical source of truth.
+    direct filesystem read. The git db is the canonical source of
+    truth for the cross-repo invariant — the working tree may lag
+    HEAD on any of the configurations the check accepts (bare
+    clones, shallow clones, normal working-tree clones with
+    uncommitted local edits).
 
     Returns `IOSuccess(<text>)` on the happy path (git show
     succeeds, stdout is the justfile body). Returns
@@ -190,6 +197,7 @@ def _resolve_via_github(
 
 def _resolve_sibling_justfile(
     *,
+    sibling_slug: str,
     target: dict[str, Any],
 ) -> IOResult[str | None, LivespecError]:
     """Resolve a single sibling's justfile text via local-clone-then-GitHub.
@@ -198,18 +206,25 @@ def _resolve_sibling_justfile(
     read by either path; `IOSuccess(None)` when neither path
     succeeded.
 
-    Path A: `git -C <local_clone> show HEAD:justfile`. Bare-flag-
-    compatible — reads the git db rather than the working tree.
-    A non-zero git exit (no .git, no HEAD, missing justfile,
-    corrupted repo) yields `IOSuccess(None)` and the railway
-    falls through to Path B below.
+    Path A: `git -C <local_clone> show HEAD:justfile`. The effective
+    `local_clone` is resolved via
+    `resolve_effective_local_clone` so the
+    `LIVESPEC_SIBLING_CLONES_ROOT` env-var override is honored (the
+    CI workflow clones siblings to a fresh root and points the
+    check at it via the env var). A non-zero git exit (no .git, no
+    HEAD, missing justfile, corrupted repo) yields
+    `IOSuccess(None)` and the railway falls through to Path B
+    below.
 
     Path B: `gh api repos/<owner>/<name>/contents/justfile?ref=<branch>`
     with base64-decoding.
     """
-    local_clone_raw = target.get("local_clone")
-    if isinstance(local_clone_raw, str) and local_clone_raw != "":
-        local_clone = Path(local_clone_raw)
+    effective_local_clone = resolve_effective_local_clone(
+        sibling_slug=sibling_slug,
+        target=target,
+    )
+    if effective_local_clone is not None:
+        local_clone = Path(effective_local_clone)
         return _read_justfile_from_local_clone(local_clone=local_clone).bind(
             lambda local_text: (
                 IOResult.from_value(local_text)
@@ -227,7 +242,7 @@ def _evaluate_sibling(
     canonical_slugs: tuple[str, ...],
 ) -> IOResult[list[tuple[str, str]], LivespecError]:
     """Compute (sibling, missing-slug) pairs for one sibling on the IO track."""
-    return _resolve_sibling_justfile(target=target).bind(
+    return _resolve_sibling_justfile(sibling_slug=sibling_slug, target=target).bind(
         lambda justfile_text: IOResult.from_value(
             interpret_justfile_text(
                 sibling_slug=sibling_slug,
