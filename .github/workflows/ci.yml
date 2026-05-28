@@ -129,22 +129,57 @@ jobs:
           - check-copier-template-smoke
           - check-tools
           - check-doctor-static
-          - check-primary-checkout-bare-flag-set
+          - check-primary-checkout-commit-refuse-hook-installed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The doctor-static phase and the shared livespec-dev-tooling
-      # bare-flag check both enforce `core.bare = true` on the primary
-      # checkout per SPECIFICATION/non-functional-requirements.md
-      # §"Bare-flag enforcement" / §"Bare-flag bootstrap procedure".
-      # `actions/checkout` clones a non-bare working tree; flipping the
-      # flag here satisfies the family-wide invariant. Only the two
-      # bare-flag-aware matrix entries need this — other check-metadata
-      # entries are unaffected by `core.bare`.
-      - name: Set core.bare = true (satisfy bare-flag invariant)
-        if: matrix.target == 'check-doctor-static' || matrix.target == 'check-primary-checkout-bare-flag-set'
-        run: git config core.bare true
+      # The shared livespec-dev-tooling commit-refuse-hook check
+      # verifies that `.git/hooks/pre-commit` and `.git/hooks/pre-push`
+      # contain the canonical refuse-at-primary body. CI's
+      # actions/checkout clone does NOT install the hook, so we
+      # install it here for the one matrix entry that exercises the
+      # check. Per SPECIFICATION/non-functional-requirements.md
+      # §"Primary-checkout commit-refuse hook" the canonical hook
+      # body carries the marker `# livespec commit-refuse hook`, a
+      # `git rev-parse --show-toplevel` invocation, and an `exit 1`
+      # branch — the substring fingerprint the check verifies.
+      - name: Install commit-refuse hook (satisfy invariant)
+        if: matrix.target == 'check-primary-checkout-commit-refuse-hook-installed'
+        run: |
+          mkdir -p .git/hooks
+          for hook in pre-commit pre-push; do
+            {
+              printf '%s\n' '#!/bin/sh'
+              printf '%s\n' '# livespec commit-refuse hook'
+              printf '%s\n' 'toplevel="$(git rev-parse --show-toplevel)"'
+              printf '%s\n' 'primary="$(git config --get livespec.primaryPath || true)"'
+              printf '%s\n' 'if [ -n "$primary" ] && [ "$toplevel" = "$primary" ]; then'
+              printf '%s\n' '  echo "livespec: refusing commit/push at primary checkout" >&2'
+              printf '%s\n' '  exit 1'
+              printf '%s\n' 'fi'
+              printf '%s\n' 'exit 0'
+            } > ".git/hooks/$hook"
+            chmod 755 ".git/hooks/$hook"
+          done
+
+      # The cross-repo wiring-completeness invariant (run inside
+      # check-doctor-static) walks every registered sibling repo and
+      # reads its `justfile` via `git show HEAD:justfile`. In CI the
+      # /data/projects/<sibling> paths from .livespec.jsonc do not
+      # exist, so the check would fall through to the GitHub Path B
+      # — which can be flaky / unauthenticated. Cloning siblings
+      # to a fresh root and pointing the check at it via the
+      # LIVESPEC_SIBLING_CLONES_ROOT env var keeps Path A active in
+      # CI without committing the path into the manifest.
+      - name: Clone sibling repos for cross-repo wiring check
+        if: matrix.target == 'check-doctor-static'
+        run: |
+          mkdir -p "$RUNNER_TEMP/sibling-clones"
+          for sibling in livespec-impl-plaintext livespec-dev-tooling livespec-runtime; do
+            git clone --depth 1 "https://github.com/thewoolleyman/$sibling.git" \
+              "$RUNNER_TEMP/sibling-clones/$sibling"
+          done
 
       - name: Install pinned binaries via mise
         uses: jdx/mise-action@v2
@@ -153,4 +188,6 @@ jobs:
         run: uv sync --all-groups
 
       - name: just ${{ matrix.target }}
+        env:
+          LIVESPEC_SIBLING_CLONES_ROOT: ${{ runner.temp }}/sibling-clones
         run: just ${{ matrix.target }}

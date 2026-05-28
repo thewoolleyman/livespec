@@ -121,7 +121,7 @@ skills load with the correct `/livespec:*` namespace.
 
 ## Daily commands
 
-- `just bootstrap` — first-touch setup on fresh clones; idempotently sets `core.bare = true` on the primary checkout (per `SPECIFICATION/non-functional-requirements.md` §"Bare-flag bootstrap procedure") plus installs lefthook hooks and resolves plugin dependencies.
+- `just bootstrap` — first-touch setup on fresh clones; idempotently sets `livespec.primaryPath` on the primary checkout and installs the canonical commit-refuse hook at `.git/hooks/pre-commit` + `.git/hooks/pre-push` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure") plus installs lefthook hooks and resolves plugin dependencies.
 - `just check` — full enforcement aggregate (lint, types, tests, coverage, AST checks).
 - `just check-pre-commit-doc-only` — fast subset for doc-only commits.
 - `/livespec-orchestrate` — invoke the Layer 3 cross-repo orchestration driver to drive an epic (or the open queue across all family repos) end-to-end. See `.claude/skills/livespec-orchestrate/SKILL.md` for inputs and behavior.

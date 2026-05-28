@@ -31,10 +31,13 @@ invariants" → §"`master-direct-uncommitted-spec-edits`":
   (`git checkout -- <files>`) if they were unintentional.
 
   The check covers the secondary-worktree-on-master bypass that
-  the sibling `primary-checkout-bare-flag-set` invariant cannot
-  physically prevent (the bare-flag is scoped to the primary
-  checkout only; secondary worktrees on master are still
-  possible via `git worktree add --force <path> master`).
+  the sibling `primary-checkout-commit-refuse-hook-installed`
+  invariant cannot physically prevent (the commit-refuse hook
+  fires only when `git rev-parse --show-toplevel` equals the
+  configured primary path; secondary worktrees on master pass
+  that comparison and proceed to commit, so a
+  `git worktree add /path master` + edit + commit at the
+  secondary worktree bypasses the hook).
 
   Committed-and-then-discovered violations (the user committed
   on master and now the commit needs to be moved) are out of

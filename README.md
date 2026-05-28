@@ -53,7 +53,7 @@ Halt conditions, dispatch table, and the wave-plan grammar for
 
 ## Fresh-clone setup
 
-After cloning, run `just bootstrap` once. The target idempotently sets `core.bare = true` on the primary checkout (per `SPECIFICATION/non-functional-requirements.md` §"Bare-flag bootstrap procedure"), forcing every edit through `git worktree add`, then installs lefthook hooks and resolves plugin dependencies.
+After cloning, run `just bootstrap` once. The target idempotently sets `livespec.primaryPath` on the primary checkout and installs the canonical commit-refuse hook at `.git/hooks/pre-commit` + `.git/hooks/pre-push` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure"), forcing every edit through `git worktree add` while still allowing reads/fetches at the primary, then installs lefthook hooks and resolves plugin dependencies.
 
 ## Dogfooding (editing the plugin source in this repo)
 

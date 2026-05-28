@@ -19,8 +19,8 @@ description):
     under `<spec-root>/` → `pass` (HEAD not default branch).
 (d) Secondary worktree HEAD on `master` (created via
     `git worktree add --force <path> master`), with spec-tree
-    mods → `warn`. Bypass case primary-checkout-bare-flag-set
-    cannot prevent.
+    mods → `warn`. Bypass case
+    primary-checkout-commit-refuse-hook-installed cannot prevent.
 (e) Multiple worktrees all on master, mixed state → one `warn`
     finding summarizing every non-empty-status worktree.
 """
@@ -230,7 +230,8 @@ def test_master_direct_uncommitted_spec_edits_warns_when_secondary_on_master_mod
     can take master via `git worktree add --force`. The check MUST
     flag the secondary worktree on master even though the primary
     is clean — this is the bypass case the
-    `primary-checkout-bare-flag-set` invariant cannot prevent.
+    `primary-checkout-commit-refuse-hook-installed` invariant
+    cannot prevent.
     """
     project_root = tmp_path / "project"
     project_root.mkdir()

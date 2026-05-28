@@ -30,28 +30,17 @@ def _git_init_and_configure(*, project_root: Path) -> None:
     _git(cwd=project_root, args=["init"])
     _git(cwd=project_root, args=["config", "user.email", "e2e-test@example.com"])
     _git(cwd=project_root, args=["config", "user.name", "E2E Test"])
-    # Per the primary-checkout-bare-flag-set doctor invariant
-    # (contracts.md §"Doctor cross-boundary invariants"), every
-    # livespec-governed primary checkout MUST have `core.bare =
-    # true` set. The e2e fixture models the post-bootstrap state
-    # so the wrapper-chain's post-step doctor passes.
-    _git(cwd=project_root, args=["config", "--local", "core.bare", "true"])
     # Per the copier-template-workflow-coverage doctor invariant,
     # the e2e fixture also models the post-`copier copy` state.
     harness.seed_required_workflow_files(project_root=project_root)
 
 
 def _git_add_all_and_commit(*, project_root: Path, message: str) -> None:
-    # `core.bare = true` blocks `git add` / `git commit` from the
-    # working tree by default; explicitly setting `--work-tree`
-    # and `--git-dir` bypasses the bare-mode gate so the e2e
-    # fixture can commit spec edits while still satisfying the
-    # primary-checkout-bare-flag-set doctor invariant.
-    _git(cwd=project_root, args=["--work-tree=.", "--git-dir=.git", "add", "-A"])
-    _git(
-        cwd=project_root,
-        args=["--work-tree=.", "--git-dir=.git", "commit", "-m", message],
-    )
+    # Normal working-tree clone (post-v095 commit-refuse-hook
+    # invariant supersedes the prior bare-flag mechanism); a plain
+    # `git add` / `git commit` against the fixture is sufficient.
+    _git(cwd=project_root, args=["add", "-A"])
+    _git(cwd=project_root, args=["commit", "-m", message])
 
 
 @pytest.mark.e2e_golden
