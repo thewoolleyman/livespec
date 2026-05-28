@@ -63,6 +63,7 @@ from livespec.doctor.static import (
     unresolved_spec_commitment,
     version_contiguity,
     version_directories_complete,
+    wiring_completeness_cross_repo,
 )
 
 __all__: list[str] = ["APPLICABILITY_BY_TREE_KIND", "STATIC_CHECKS"]
@@ -98,6 +99,7 @@ STATIC_CHECKS = (
     master_direct_uncommitted_spec_edits,
     parent_proposed_change_resolves,
     unresolved_spec_commitment,
+    wiring_completeness_cross_repo,
 )
 
 

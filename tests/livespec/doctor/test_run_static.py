@@ -250,6 +250,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-master-direct-uncommitted-spec-edits",
         "doctor-parent-proposed-change-resolves",
         "doctor-unresolved-spec-commitment",
+        "doctor-wiring-completeness-cross-repo",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -308,6 +309,14 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             assert (
                 finding["status"] == "skipped"
             ), f"expected skipped for {finding['check_id']} in fixture without impl-plugin; got {finding}"
+        elif finding["check_id"] == "doctor-wiring-completeness-cross-repo":
+            # The cross-repo wiring-completeness invariant requires
+            # .livespec.jsonc to declare a `cross_repo_targets` block;
+            # this test fixture's minimal .livespec.jsonc omits it,
+            # so the check correctly skips.
+            assert (
+                finding["status"] == "skipped"
+            ), f"expected skipped for {finding['check_id']} without cross_repo_targets; got {finding}"
         else:
             assert finding["status"] == "pass", f"non-pass finding: {finding}"
         findings_by_spec_root.setdefault(finding["spec_root"], set()).add(
