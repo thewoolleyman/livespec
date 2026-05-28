@@ -20,6 +20,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 __all__: list[str] = []
 
 
@@ -130,6 +132,91 @@ def test_smoke_check_fails_when_expected_files_missing(*, tmp_path: Path) -> Non
     )
     assert "copier-template-smoke-missing-output" in result.stderr, (
         f"expected 'copier-template-smoke-missing-output' check_id in stderr; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
+def test_smoke_check_emits_canonical_slug_drift_when_targets_block_mismatches(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Fail case: justfile.jinja stamps a stale canonical-slug set; check emits drift diagnostic.
+
+    The template's `justfile.jinja` is replaced with a recipe whose
+    `targets=(...)` array contains a single bogus slug
+    (`check-stale-slug`). When the smoke check verifies the stamped
+    aggregate against `livespec_dev_tooling.canonical_checks.
+    canonical_check_slugs()`, it MUST surface the
+    `copier-template-smoke-canonical-slug-drift` diagnostic on stderr.
+
+    This test only runs when `livespec_dev_tooling.canonical_checks`
+    is importable (post-bump state). When the pin still points at a
+    release without the module, the check's graceful-skip path is
+    exercised instead and this test is skipped via pytest.importorskip
+    at the top of the test body.
+    """
+    _ = pytest.importorskip("livespec_dev_tooling.canonical_checks")
+
+    template_dir = tmp_path / "templates" / "impl-plugin"
+    template_dir.mkdir(parents=True)
+    # No `_jinja_extensions:` registered so copier copy succeeds
+    # without the extension; the stamped targets list is hand-rolled
+    # to a stale single-slug shape that the canonical-slug check MUST
+    # reject.
+    (template_dir / "copier.yml").write_text(
+        "_templates_suffix: .jinja\n_exclude:\n  - copier.yml\n",
+        encoding="utf-8",
+    )
+    # Minimal stubs for every file in _EXPECTED_FILES so the missing-
+    # output branch doesn't fire and the JSON-parse branch passes.
+    (template_dir / ".python-version.jinja").write_text("3.13\n", encoding="utf-8")
+    (template_dir / ".mise.toml.jinja").write_text("[tools]\n", encoding="utf-8")
+    (template_dir / "pyproject.toml.jinja").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+    # Hand-rolled justfile with a `check:` recipe whose `targets=(...)`
+    # array carries a single stale slug. The eight-space indentation
+    # matches the canonical Jinja-loop output shape so the smoke
+    # check's regex reliably extracts the offending list.
+    (template_dir / "justfile.jinja").write_text(
+        "check:\n"
+        "    #!/usr/bin/env bash\n"
+        "    set -uo pipefail\n"
+        "    targets=(\n"
+        "        check-stale-slug\n"
+        "    )\n",
+        encoding="utf-8",
+    )
+    (template_dir / "lefthook.yml.jinja").write_text(
+        "pre-commit:\n  commands: {}\n", encoding="utf-8"
+    )
+    workflows = template_dir / ".github" / "workflows"
+    workflows.mkdir(parents=True)
+    (workflows / "ci.yml.jinja").write_text("name: ci\n", encoding="utf-8")
+    (workflows / "copier-update-drift.yml.jinja").write_text("name: drift\n", encoding="utf-8")
+    plugin_dir = template_dir / ".claude-plugin"
+    plugin_dir.mkdir()
+    (plugin_dir / "marketplace.json.jinja").write_text("{}\n", encoding="utf-8")
+    (plugin_dir / "plugin.json.jinja").write_text("{}\n", encoding="utf-8")
+    spec_dir = template_dir / "SPECIFICATION"
+    spec_dir.mkdir()
+    (spec_dir / "README.md.jinja").write_text("# README\n", encoding="utf-8")
+    claude_dir = template_dir / ".claude"
+    claude_dir.mkdir(parents=True)
+    (claude_dir / "settings.json").write_text("{}\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(_COPIER_TEMPLATE_SMOKE)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"smoke check should reject canonical-slug drift; "
+        f"got returncode={result.returncode} stderr={result.stderr!r}"
+    )
+    assert "copier-template-smoke-canonical-slug-drift" in result.stderr, (
+        f"expected 'copier-template-smoke-canonical-slug-drift' check_id in stderr; "
         f"got stderr={result.stderr!r}"
     )
 

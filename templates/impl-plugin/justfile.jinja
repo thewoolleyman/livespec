@@ -52,18 +52,31 @@ ensure-plugins:
     claude plugin install {{ plugin_full_name }}@{{ plugin_full_name }}
 
 # ---------------------------------------------------------------
-# Aggregate check — tool-backed targets only. Add dev-tooling-
-# backed targets as {{ plugin_full_name }} populates the scripts.
+# Aggregate check — canonical full-set stamped at copier-copy time.
+#
+# The `targets=(...)` array below is Jinja-generated from
+# `livespec_dev_tooling.canonical_checks.canonical_check_slugs()` via
+# the `copier_extensions.canonical_checks:CanonicalChecksExtension`
+# Jinja extension registered in `copier.yml`. Per
+# livespec/SPECIFICATION/contracts.md §"Shared code sync —
+# livespec-dev-tooling", every newly-generated `livespec-impl-*`
+# sibling inherits the full canonical aggregate from inception;
+# existing siblings see canonical-set growth as merge conflicts on
+# `copier update` (3-way merge surfaces canonical drift).
+#
+# Slugs are stamped in alphabetical order (sorted at the source in
+# `_discover_slugs`). DO NOT hand-edit this list — extend the
+# canonical set by adding `livespec_dev_tooling/checks/<name>.py` in
+# the dev-tooling sibling repo, then re-running `copier update` here.
 # ---------------------------------------------------------------
 
 check:
     #!/usr/bin/env bash
     set -uo pipefail
     targets=(
-        check-lint
-        check-format
-        check-types
-        check-coverage
+{%- for slug in canonical_check_slugs %}
+        {{ slug }}
+{%- endfor %}
     )
     failed=()
     for t in "${targets[@]}"; do
