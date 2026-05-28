@@ -1708,6 +1708,69 @@ def test_resolve_effective_local_clone_empty_env_var_falls_back_to_manifest() ->
     assert result == "/data/projects/livespec-impl-plaintext"
 
 
+def test_host_repo_detected_by_slug_basename_match_when_manifest_path_mismatches(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Host detection via slug-vs-basename when manifest path doesn't match cwd.
+
+    Simulates the CI case: the manifest declares
+    `cross_repo_targets.livespec.local_clone = /data/projects/livespec`
+    but the actual `project_root` is
+    `/home/runner/work/livespec/livespec` (GitHub Actions's clone
+    location). The path-comparison tier would NOT match, but the
+    slug-vs-basename tier MUST recognize the `livespec` slug as the
+    host because `project_root.name == "livespec"`.
+
+    Without this tier, the CI host repo would be walked as a sibling
+    and (because the CI workflow deliberately clones only NON-host
+    siblings into the env-var-pointed root) would fall through to
+    Path B (GitHub fallback), which can flake. The slug-keyed
+    identity check avoids the round-trip entirely.
+    """
+    canonical = _get_canonical_slugs()
+    # Use a tmp_path subdir whose basename matches the slug —
+    # simulates the CI fixture where project_root.name == sibling_slug.
+    project_root = tmp_path / "livespec"
+    project_root.mkdir()
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    # The manifest declares a local_clone path that does NOT match
+    # the project_root (simulating /data/projects/livespec vs
+    # /home/runner/work/livespec/livespec in CI).
+    sibling_clone = _setup_sibling_clone(tmp_path=tmp_path, slug="sibling-a", slugs=canonical)
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "livespec": {
+                "github_url": "https://github.com/example/livespec",
+                "local_clone": "/data/projects/livespec",
+            },
+            "sibling-a": {
+                "github_url": "https://github.com/example/sibling-a",
+                "local_clone": str(sibling_clone),
+            },
+        },
+    )
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = wiring_completeness_cross_repo.run(ctx=ctx)
+    # The host `livespec` target MUST be excluded; only `sibling-a`
+    # is walked, and it wires the full canonical set → pass.
+    expected = Finding(
+        check_id="doctor-wiring-completeness-cross-repo",
+        status="pass",
+        message=(
+            "wiring-completeness-cross-repo: every registered sibling's "
+            "`check` aggregate wires every canonical slug"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
 def test_env_var_override_makes_path_a_resolve_via_env_root(
     *,
     tmp_path: Path,
