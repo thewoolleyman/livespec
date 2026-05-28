@@ -30,6 +30,20 @@ _envops:
   comment_start_string: "[#"
   comment_end_string: "#]"
 
+# Register the canonical-check-slug Jinja global so `justfile.jinja`
+# can stamp the full enforcement-aggregate set at copy time. Per
+# livespec/SPECIFICATION/contracts.md §"Shared code sync —
+# livespec-dev-tooling", the slug list is derived from
+# `livespec_dev_tooling.canonical_checks` (the single source of truth)
+# at every `copier copy` / `copier update`, NOT from a hand-maintained
+# template list. Resolution: the extension module lives at
+# `dev-tooling/copier_extensions/canonical_checks.py` in livespec;
+# livespec's `dev-tooling/checks/copier_template_smoke.py` injects
+# `<repo-root>/dev-tooling` on PYTHONPATH when invoking the subprocess
+# so the dotted path resolves.
+_jinja_extensions:
+  - copier_extensions.canonical_checks:CanonicalChecksExtension
+
 _exclude:
   - copier.yml
   - .git
