@@ -27,3 +27,7 @@ Consumers:
 - `dev-tooling/checks/copier_template_smoke.py` (the smoke check
   that verifies the stamped aggregate matches the source-of-truth
   list).
+- `.claude-plugin/scripts/livespec/doctor/static/wiring_completeness_cross_repo.py`
+  (the cross-repo backstop doctor invariant that walks every
+  registered sibling's justfile aggregate and fires fail on any
+  sibling missing any canonical slug).
