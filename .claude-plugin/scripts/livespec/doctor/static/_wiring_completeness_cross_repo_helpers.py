@@ -369,7 +369,7 @@ def is_host_repo(
     converts the raise-path to a Result. A failed resolve (either
     side) yields False — the entry is treated as a non-host sibling.
     """
-    _ = env  # noqa: ARG001 — env retained for signature symmetry
+    _ = env  # env retained for signature symmetry with resolve_effective_local_clone
     if sibling_slug == project_root.name:
         return True
     local_clone_raw = target.get("local_clone")
