@@ -1,6 +1,6 @@
 ---
 name: livespec-orchestrate
-description: Layer 3 cross-repo orchestration driver for the livespec family (invoked as /livespec-orchestrate). Composes /livespec:next and the active impl-plugin's next; dispatches sub-agents (with worktree isolation) into livespec, livespec-impl-*, livespec-dev-tooling, and livespec-runtime; runs `just check` + /livespec:doctor as a hard gate; emits a structured iteration journal; halts on architectural ambiguity, broken state, or context-budget exhaustion. Per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture" and §"Layer 3 loop driver — required shape and discipline" in non-functional-requirements.md, this skill is the SINGLE Layer 3 driver across the livespec family — impl-plugin repos do NOT carry their own. The directory name carries a `livespec-` visual prefix to disambiguate from the harness's built-in `/loop` skill (recurring-task scheduler); project-local skills have no real namespace mechanism, so the prefix is a convention, not enforcement.
+description: Layer 3 cross-repo orchestration driver for the livespec family (invoked as /livespec-orchestrate). Composes /livespec:next and the active impl-plugin's next; dispatches sub-agents (with worktree isolation) into livespec, livespec-impl-*, livespec-dev-tooling, and livespec-runtime; runs `just check` + /livespec:doctor as a hard gate; emits a structured iteration journal; halts on architectural ambiguity, broken state, destructive ops, phase boundaries (default; can be pre-authorized), or (defensive) context-budget exhaustion. Per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture" and §"Layer 3 loop driver — required shape and discipline" in non-functional-requirements.md, this skill is the SINGLE Layer 3 driver across the livespec family — impl-plugin repos do NOT carry their own. The directory name carries a `livespec-` visual prefix to disambiguate from the harness's built-in `/loop` skill (recurring-task scheduler); project-local skills have no real namespace mechanism, so the prefix is a convention, not enforcement.
 ---
 
 # Layer 3 cross-repo orchestration driver
@@ -33,8 +33,23 @@ via the `/livespec-orchestrate` invocation argument:
 
 - **`budget`** (one of: iteration count, wallclock duration, token
   consumption — or a composition). The driver MUST honor a finite
-  budget; an unbounded loop is forbidden. Default: 6 iterations OR
-  context usage approaches ~300K tokens (whichever fires first).
+  budget; an unbounded loop is forbidden. Default: **drive the
+  resolved scope to completion** (every work-item in the epic /
+  scope-file / open queue), capped at 30 iterations and ~300K
+  orchestrator-context tokens as defensive safety nets — not as the
+  primary stop condition. The primary stop condition is "scope
+  drained or halt condition fired."
+
+  Because the driver dispatches each work-item via Agent tool with
+  `isolation: "worktree"` (see §"Steps" → §"Dispatch"), orchestrator
+  context grows only from state-checks, the iteration journal, and
+  short sub-agent return summaries — NOT from the work the
+  sub-agents do. Sub-agents have their own independent context
+  budgets. For a typical 5-10 work-item epic the orchestrator's own
+  context consumption is in the tens of thousands of tokens. The
+  iteration and context caps above are safety nets for degenerate
+  dispatch malfunction (a runaway journal, a dispatch loop that's
+  actually doing the work itself), not the typical-case gate.
 
 - **`epic`** (optional work-item ID — e.g., `li-univck`). When set,
   the driver scopes work to that epic and its `depends_on[]`
@@ -140,10 +155,13 @@ The driver MUST halt (write resume snapshot + exit) when:
    blocked commit whose root cause isn't obvious; master red on
    any family repo.
 
-3. **Context-budget exhaustion.** Token usage approaching ~300K
-   (one-third of the 1M context window) — write a one-paragraph
-   resume snapshot naming the next concrete step from which to
-   resume, then exit cleanly.
+3. **Context-budget exhaustion (defensive safety net).**
+   Orchestrator context usage approaching ~300K tokens — under the
+   dispatch model this should NOT fire in normal operation (see
+   §"Inputs" → `budget`); if it does, that indicates a dispatch
+   malfunction or runaway journal, not normal epic progression.
+   Write a one-paragraph resume snapshot naming the next concrete
+   step from which to resume, then exit cleanly.
 
 4. **Destructive ops not pre-authorized.** Force-push, branch
    delete on shared infrastructure, schema migration without prior
@@ -151,9 +169,16 @@ The driver MUST halt (write resume snapshot + exit) when:
    ops codified in `scope-file` are pre-authorized; ops outside
    that scope require user judgment.
 
-5. **Phase-boundary advance.** Per `feedback_phase_advance_is_pr_boundary`,
-   when work crosses a phase boundary (e.g., Phase N → N+1), the
-   PR boundary is the natural halt for re-orientation.
+5. **Phase-boundary advance — DEFAULT halt with explicit opt-out.**
+   Per `feedback_phase_advance_is_pr_boundary`, a Phase N → N+1 PR
+   boundary is a natural re-orientation point and the DEFAULT halt
+   for multi-phase epics. The driver MAY push through a phase
+   boundary without halting when (a) the `scope-file` enumerates
+   the spanning phases under §"Pre-authorized for autonomous
+   dispatch", OR (b) the user invocation explicitly authorizes the
+   multi-phase span (e.g., "drive the full epic" or "through Phase
+   N"). Outside those, halt at every phase boundary and write a
+   resume snapshot.
 
 The driver MUST NOT halt on:
 
