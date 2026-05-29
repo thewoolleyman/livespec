@@ -62,6 +62,12 @@ from pathlib import Path
 from returns.io import IOResult, impure_safe
 
 from livespec.errors import LivespecError, PreconditionError
+
+# `list_remote_branches` lives in the private sibling `_git_remote`
+# module (extracted to keep this file under the per-file LLOC
+# ceiling) and is re-exported here so the public seam stays
+# `io.git.list_remote_branches` for the no-stale-worktree consumer.
+from livespec.io._git_remote import list_remote_branches
 from livespec.io.proc import run_subprocess
 
 
@@ -89,6 +95,7 @@ __all__: list[str] = [
     "is_git_repo",
     "list_at_head",
     "list_merged_branches",
+    "list_remote_branches",
     "list_status_porcelain",
     "list_worktrees",
     "show_at_head",
