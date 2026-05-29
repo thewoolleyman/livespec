@@ -233,6 +233,11 @@ ban-relative-imports = "all"
 # vendoring-procedure invocation contract. Same S603/S607/S404
 # carve-out shape as dev-tooling/checks/*.py above.
 "dev-tooling/vendor_update.py" = ["S603", "S607", "S404"]
+# reap_stale_worktrees.py is the orchestrator's worktree-reaper
+# action tool; it shells out to git via subprocess.run with fixed
+# argv lists. Same S603/S607/S404 carve-out shape as the peer
+# mutating tool above.
+"dev-tooling/reap_stale_worktrees.py" = ["S603", "S607", "S404"]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.
