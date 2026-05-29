@@ -15,6 +15,12 @@ doctor static runs before critique; post-step doctor static
 runs after the wrapper exits, followed by the LLM-driven
 post-step phase.
 
+## Invocation
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/critique.py" --findings-json <path> [--author <id>] [--spec-target <path>] [--project-root <path>]
+```
+
 ## When to invoke
 
 - The user types `/livespec:critique`, says "critique the

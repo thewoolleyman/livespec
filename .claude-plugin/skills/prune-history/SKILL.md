@@ -17,6 +17,12 @@ contiguity is preserved by the doctor `version-contiguity`
 check, which treats the marker's `pruned_range` as intentional
 missing history.
 
+## Invocation
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/prune_history.py" [--project-root <path>]
+```
+
 ## When to invoke
 
 - The user types `/livespec:prune-history`, says "prune the

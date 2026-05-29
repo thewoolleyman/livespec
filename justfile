@@ -97,7 +97,7 @@ check:
     # Aggregator continues on failure (matches CI fail-fast: false)
     # and exits non-zero with the failure list if any target failed.
     targets=(
-        # ---- Canonical block (37 slugs, alphabetical) ----
+        # ---- Canonical block (38 slugs, alphabetical) ----
         check-aggregate-completeness
         check-all-declared
         check-assert-never-exhaustiveness
@@ -131,6 +131,7 @@ check:
         check-public-api-result-typed
         check-red-green-replay
         check-rop-pipeline-shape
+        check-skill-invocation-paths
         check-supervisor-discipline
         check-tests-mirror-pairing
         check-vendor-manifest
@@ -326,6 +327,9 @@ check-global-writes:
 
 check-rop-pipeline-shape:
     uv run python -m livespec_dev_tooling.checks.rop_pipeline_shape
+
+check-skill-invocation-paths:
+    uv run python -m livespec_dev_tooling.checks.skill_invocation_paths
 
 check-supervisor-discipline:
     uv run python -m livespec_dev_tooling.checks.supervisor_discipline
