@@ -23,4 +23,11 @@
 # and `.git/hooks/pre-push`; the basename of `$0` distinguishes which hook
 # is firing so lefthook can dispatch the right command list from `lefthook.yml`.
 HOOK_NAME="$(basename "$0")"
+# git injects GIT_DIR=<worktree-gitdir> (plus GIT_INDEX_FILE/GIT_WORK_TREE/
+# GIT_PREFIX) into the hook environment when a hook fires inside a worktree.
+# lefthook run with that env set misreads the repo as bare and writes
+# `core.bare=true` into the shared `.git/config`, corrupting every checkout
+# that shares it (root cause li-iroguc). Clearing these vars makes lefthook
+# detect the repo from the current working directory instead.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX
 exec mise exec lefthook -- lefthook run --no-auto-install "$HOOK_NAME" "$@"

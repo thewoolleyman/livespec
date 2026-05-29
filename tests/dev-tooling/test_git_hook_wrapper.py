@@ -36,11 +36,17 @@ import stat
 import subprocess
 from pathlib import Path
 
+import pytest
+
 __all__: list[str] = []
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _GIT_HOOK_WRAPPER = _REPO_ROOT / "dev-tooling" / "git-hook-wrapper.sh"
+_TEMPLATE_GIT_HOOK_WRAPPER = (
+    _REPO_ROOT / "templates" / "impl-plugin" / "dev-tooling" / "git-hook-wrapper.sh"
+)
+_BOTH_WRAPPERS = (_GIT_HOOK_WRAPPER, _TEMPLATE_GIT_HOOK_WRAPPER)
 
 
 def test_git_hook_wrapper_dispatches_to_mise_with_basename_hook_name(*, tmp_path: Path) -> None:
@@ -110,4 +116,57 @@ def test_git_hook_wrapper_dispatches_to_mise_with_basename_hook_name(*, tmp_path
     assert recorded_argv == expected_argv, (
         f"git-hook-wrapper did not dispatch with canonical argv; "
         f"expected={expected_argv!r} got={recorded_argv!r}"
+    )
+
+
+@pytest.mark.parametrize("wrapper_path", _BOTH_WRAPPERS, ids=["dev-tooling", "template"])
+def test_git_hook_wrapper_unsets_git_dir_env_before_lefthook(*, wrapper_path: Path) -> None:
+    """Wrapper clears git-injected GIT_DIR env before invoking lefthook (core.bare-flip fix).
+
+    When git fires a commit hook inside a worktree, it injects
+    `GIT_DIR=.git/worktrees/<name>` (plus `GIT_INDEX_FILE`,
+    `GIT_WORK_TREE`, `GIT_PREFIX`) into the hook environment.
+    The wrapper delegates to `mise exec lefthook -- lefthook
+    run …`; lefthook run with `GIT_DIR` pointing at a worktree
+    gitdir misreads the repo as bare and writes
+    `core.bare=true` into the shared `.git/config`, corrupting
+    every checkout that shares it (root cause li-iroguc). The
+    fix unsets those vars on their own line immediately before
+    the `lefthook run` exec, so lefthook detects the repo from
+    cwd instead.
+
+    Both wrapper files (the dev-tooling source and the
+    impl-plugin template copy) MUST carry the unset, and it MUST
+    appear BEFORE the `lefthook run` exec line. Failure here
+    means a wrapper lost the unset (regressing the core.bare
+    flip) or the two wrappers drifted out of sync.
+    """
+    text = wrapper_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    unset_line_indices = [
+        i
+        for i, line in enumerate(lines)
+        if line.strip() == "unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX"
+    ]
+    assert unset_line_indices, (
+        f"{wrapper_path} is missing the "
+        f"'unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX' line; "
+        f"without it lefthook (run with the git-injected GIT_DIR) writes "
+        f"core.bare=true to the shared config (li-iroguc)."
+    )
+
+    lefthook_exec_indices = [
+        i for i, line in enumerate(lines) if "lefthook run --no-auto-install" in line
+    ]
+    assert lefthook_exec_indices, (
+        f"{wrapper_path} is missing the 'lefthook run --no-auto-install' exec line; "
+        f"the wrapper's dispatch contract is broken."
+    )
+
+    assert min(unset_line_indices) < min(lefthook_exec_indices), (
+        f"{wrapper_path} has the unset line AFTER the 'lefthook run' exec line; "
+        f"it must come BEFORE so the env is cleared before lefthook resolves the repo. "
+        f"unset at line {min(unset_line_indices) + 1}, "
+        f"lefthook exec at line {min(lefthook_exec_indices) + 1}."
     )
