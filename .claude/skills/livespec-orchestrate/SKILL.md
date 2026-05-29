@@ -303,8 +303,26 @@ is absent, the driver falls back to the default safety rules in
 - Use `chore(spec):` prefix for spec-only commits (per
   `feedback_chore_spec_for_spec_only_commits`); the red-green-replay
   commit-msg hook rejects `fix:`/`feat:` for spec-only changes.
-- After every PR merges, switch every touched repo back to master
-  and pull (per `feedback_end_on_main_branch`).
+- Ending-on-master is the ORCHESTRATOR's job, not the sub-agent's.
+  A dispatched worktree-isolated sub-agent MUST NOT `git checkout
+  master` in its own worktree (master is held by the primary, which
+  occupies `refs/heads/master`) and MUST NOT run `git config
+  core.bare true` under any circumstances — that re-introduces the
+  eliminated bare flag (per `contracts.md`
+  §`primary-checkout-commit-refuse-hook-installed`: `core.bare` MUST
+  NOT be set on the primary). After a sub-agent's PR merges
+  server-side, it LEAVES its worktree on its feature branch (or lets
+  the worktree be torn down) and reports the merge — it does NOT
+  switch the worktree to master.
+- The orchestrator refreshes each touched primary itself via `git -C
+  /data/projects/<repo> pull --ff-only origin master` (per
+  `feedback_end_on_main_branch`; the bind-mounted
+  `/home/ubuntu/workspace/<repo>` shares the same `.git`, so one pull
+  updates both views). After EVERY merging sub-agent that touched a
+  family repo, the orchestrator MUST re-verify `git -C <primary>
+  config --get core.bare` is empty; if it regressed to `true`, remove
+  any master-squatting worktree, `git config --unset core.bare`, and
+  `git reset --hard origin/master` to repopulate the working tree.
 - For cross-repo dep awareness: the impl-plugin's `next` ranker
   excludes candidates whose `depends_on[]` resolves to any open
   upstream item via `livespec_runtime.cross_repo.resolve_ref` (per
