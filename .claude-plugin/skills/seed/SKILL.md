@@ -18,6 +18,12 @@ doctor static (the green-field repo has no spec for pre-step to
 inspect); post-step doctor static runs after the wrapper exits,
 followed by the LLM-driven post-step phase.
 
+## Invocation
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/seed.py" --seed-json <path> [--project-root <path>]
+```
+
 ## When to invoke
 
 - The user types `/livespec:seed`, says "seed a livespec spec",

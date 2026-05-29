@@ -15,6 +15,12 @@ resulting file. Pre-step doctor static runs before the wrapper;
 post-step doctor static runs after the wrapper exits, followed by
 the LLM-driven post-step phase.
 
+## Invocation
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/propose_change.py" <topic> --findings-json <path> [--author <id>] [--reserve-suffix <text>] [--spec-target <path>] [--project-root <path>]
+```
+
 ## When to invoke
 
 - The user types `/livespec:propose-change`, says "propose a

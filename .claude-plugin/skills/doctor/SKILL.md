@@ -31,6 +31,14 @@ There is no `bin/doctor.py` wrapper; the user invokes `/livespec:doctor` (or
 expresses intent in dialogue) and the LLM follows this skill's
 prose end-to-end.
 
+## Invocation
+
+The static phase is driven by the `doctor_static.py` wrapper:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/doctor_static.py" [--project-root <path>]
+```
+
 ## When to invoke
 
 - **Direct user request.** The user types `/livespec:doctor`,

@@ -21,6 +21,12 @@ exempt from the pre-step / post-step doctor static
 lifecycle and has no LLM-driven post-step phase per
 `SPECIFICATION/spec.md` §"Sub-command lifecycle".
 
+## Invocation
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/next.py" [--spec-target <path>] [--project-root <path>]
+```
+
 ## When to invoke
 
 - The user types `/livespec:next`, says "what should I

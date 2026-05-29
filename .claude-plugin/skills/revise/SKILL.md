@@ -16,6 +16,12 @@ doctor static runs before revise; post-step doctor static runs
 after the wrapper exits, followed by the LLM-driven post-step
 phase.
 
+## Invocation
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/revise.py" --revise-json <path> [--author <id>] [--spec-target <path>] [--project-root <path>]
+```
+
 ## When to invoke
 
 - The user types `/livespec:revise`, says "revise the spec",
