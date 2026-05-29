@@ -1,6 +1,6 @@
 ---
 name: livespec-orchestrate
-description: Layer 3 cross-repo orchestration driver for the livespec family (invoked as /livespec-orchestrate). Composes /livespec:next and the active impl-plugin's next; dispatches sub-agents (with worktree isolation) into livespec, livespec-impl-*, livespec-dev-tooling, and livespec-runtime; runs `just check` + /livespec:doctor as a hard gate; emits a structured iteration journal; halts on architectural ambiguity, broken state, destructive ops, phase boundaries (default; can be pre-authorized), or (defensive) context-budget exhaustion. Per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture" and §"Layer 3 loop driver — required shape and discipline" in non-functional-requirements.md, this skill is the SINGLE Layer 3 driver across the livespec family — impl-plugin repos do NOT carry their own. The directory name carries a `livespec-` visual prefix to disambiguate from the harness's built-in `/loop` skill (recurring-task scheduler); project-local skills have no real namespace mechanism, so the prefix is a convention, not enforcement.
+description: Layer 3 cross-repo orchestration driver for the livespec family (invoked as /livespec-orchestrate). Composes /livespec:next and the active impl-plugin's next; dispatches sub-agents (each working in its own self-managed secondary worktree, NOT the harness isolation mechanism) into livespec, livespec-impl-*, livespec-dev-tooling, and livespec-runtime; reaps merged worktrees via `just reap-stale-worktrees`; runs `just check` + /livespec:doctor as a hard gate; emits a structured iteration journal; halts on architectural ambiguity, broken state, destructive ops, phase boundaries (default; can be pre-authorized), or (defensive) context-budget exhaustion. Per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture" and §"Layer 3 loop driver — required shape and discipline" in non-functional-requirements.md, this skill is the SINGLE Layer 3 driver across the livespec family — impl-plugin repos do NOT carry their own. The directory name carries a `livespec-` visual prefix to disambiguate from the harness's built-in `/loop` skill (recurring-task scheduler); project-local skills have no real namespace mechanism, so the prefix is a convention, not enforcement.
 ---
 
 # Layer 3 cross-repo orchestration driver
@@ -40,16 +40,16 @@ via the `/livespec-orchestrate` invocation argument:
   primary stop condition. The primary stop condition is "scope
   drained or halt condition fired."
 
-  Because the driver dispatches each work-item via Agent tool with
-  `isolation: "worktree"` (see §"Steps" → §"Dispatch"), orchestrator
-  context grows only from state-checks, the iteration journal, and
-  short sub-agent return summaries — NOT from the work the
-  sub-agents do. Sub-agents have their own independent context
-  budgets. For a typical 5-10 work-item epic the orchestrator's own
-  context consumption is in the tens of thousands of tokens. The
-  iteration and context caps above are safety nets for degenerate
-  dispatch malfunction (a runaway journal, a dispatch loop that's
-  actually doing the work itself), not the typical-case gate.
+  Because the driver dispatches each work-item to a sub-agent that
+  does the work in its OWN secondary worktree (see §"Steps" →
+  §"Dispatch"), orchestrator context grows only from state-checks,
+  the iteration journal, and short sub-agent return summaries — NOT
+  from the work the sub-agents do. Sub-agents have their own
+  independent context budgets. For a typical 5-10 work-item epic the
+  orchestrator's own context consumption is in the tens of thousands
+  of tokens. The iteration and context caps above are safety nets for
+  degenerate dispatch malfunction (a runaway journal, a dispatch loop
+  that's actually doing the work itself), not the typical-case gate.
 
 - **`epic`** (optional work-item ID — e.g., `li-univck`). When set,
   the driver scopes work to that epic and its `depends_on[]`
@@ -76,6 +76,18 @@ via the `/livespec-orchestrate` invocation argument:
    red MUST be surfaced at session-start; do NOT proceed silently
    on a broken family.
 
+   Also reconcile orphaned worktrees left by prior or crashed
+   sessions: for each family repo, run the reaper
+   `mise exec -- just reap-stale-worktrees /data/projects/<repo>`
+   (run from the livespec primary; the recipe takes a repo-path
+   arg). This is what catches the async-merge-after-exit leftovers —
+   a sub-agent's PR `--auto`-merges server-side AFTER the agent has
+   exited, so the agent cannot self-clean its own worktree (see
+   §"Worktree hygiene (reaper)"). The reaper is idempotent and only
+   removes non-primary worktrees whose branch is remote-gone/merged
+   AND clean AND not live-locked, so it is safe to run unconditionally
+   at session start.
+
 2. **Resolve the work scope.** Based on `epic` / `scope-file` inputs,
    produce the iteration's candidate work set:
    - If `epic` is set: union of {epic, recursive `depends_on[]`}.
@@ -93,20 +105,38 @@ via the `/livespec-orchestrate` invocation argument:
       Apply the dispatch table in §"Dispatch table" below to map
       action → skill invocation.
 
-   b. **Dispatch.** For work that mutates a repo, dispatch via the
-      Agent tool with `isolation: "worktree"` (the primary
-      checkout is bare; edits MUST happen in secondaries). The
-      sub-agent does the work end-to-end: edits, tests,
+   b. **Dispatch.** For work that mutates a repo, dispatch a
+      sub-agent that creates its OWN secondary worktree in the
+      target repo via `git -C /data/projects/<repo> worktree add
+      <repo>/.claude/worktrees/<slug> -b <branch> origin/master`
+      and works inside it. Do NOT use the harness `isolation:
+      "worktree"` mechanism — it only auto-removes UNCHANGED
+      worktrees, so any worktree carrying committed work is left
+      permanently orphaned, and it has been observed to flip
+      `core.bare`. The primary is NOT bare (epic li-unbare
+      eliminated the bare flag; `core.bare` MUST stay unset);
+      edits happen in the self-managed secondary because the
+      primary carries a commit-refuse hook, not because it is bare.
+      The sub-agent does the work end-to-end: edits, tests,
       `mise exec -- git commit`, `gh pr create`, `gh pr merge
       --auto --rebase --delete-branch`. The driver does NOT
-      perform the edits inline; it dispatches and tracks.
+      perform the edits inline; it dispatches and tracks. The
+      ORCHESTRATOR — not the sub-agent — owns reaping the
+      sub-agent's worktree once the PR confirms merged (Step 3c).
 
    c. **Run janitor.** After the sub-agent reports completion AND
-      the PR auto-merges, run the janitor as a hard gate:
+      the orchestrator has CONFIRMED the PR merged (poll
+      `gh pr view <PR#> --json state` until `MERGED`; the
+      sub-agent reports only that auto-merge is armed — see
+      §"Tooling reminders"), run the janitor as a hard gate:
       `just check` + `/livespec:doctor`. A non-zero janitor exit
       MUST prevent the next iteration from proceeding. Recovery:
       surface findings to the user (interactive mode) or halt
-      with a resume snapshot (autonomous mode).
+      with a resume snapshot (autonomous mode). Once the janitor
+      passes, run the reaper against that repo —
+      `mise exec -- just reap-stale-worktrees /data/projects/<repo>`
+      — to remove the just-merged sub-agent worktree (its branch
+      is now remote-gone). See §"Worktree hygiene (reaper)".
 
    d. **Journal.** Append one record to the iteration journal
       (§"Iteration journal" below) capturing pick, dispatched
@@ -117,7 +147,12 @@ via the `/livespec-orchestrate` invocation argument:
    epic complete, or budget exhausted), surface the journal
    summary to the user. When the loop exits on a halt condition,
    write a resume snapshot (§"Resume protocol" below) naming the
-   next concrete step.
+   next concrete step. Either way, run a final reaper sweep across
+   every touched family repo —
+   `mise exec -- just reap-stale-worktrees /data/projects/<repo>`
+   per repo — so no merged sub-agent worktree (including any whose
+   `--auto` merge landed after the per-iteration Step 3c poll) is
+   left orphaned. See §"Worktree hygiene (reaper)".
 
 ## Dispatch table
 
@@ -289,6 +324,43 @@ epic; the driver MUST NOT improvise beyond it. When `scope-file`
 is absent, the driver falls back to the default safety rules in
 §"Halt conditions" above.
 
+## Worktree hygiene (reaper)
+
+Sub-agents dispatched per §"Steps" → §"Dispatch" create their own
+secondary worktrees and CANNOT self-clean them, because each PR
+`--auto`-merges server-side after the sub-agent has usually exited.
+The orchestrator therefore OWNS the cleanup ACTION via the reaper:
+
+```
+mise exec -- just reap-stale-worktrees /data/projects/<repo>
+mise exec -- just reap-stale-worktrees /data/projects/<repo> --dry-run
+```
+
+backed by `dev-tooling/reap_stale_worktrees.py`. The reaper is
+livespec-resident and operates on any family repo by path; the
+recipe takes a repo-path argument (defaults to `.`). It is
+deterministic and idempotent: it removes ONLY non-primary worktrees
+whose branch is remote-gone/merged-PR AND whose working tree is
+clean AND which are not held by a live process lock — never the
+primary, never dirty/remote-present/live-locked worktrees. It is
+safe to run unconditionally.
+
+The orchestrator runs the reaper at three points:
+
+1. **Session start (Step 1):** sweep every family repo to reconcile
+   orphans left by prior or crashed sessions — this is what catches
+   the async-merge-after-exit leftovers.
+2. **Post-merge (Step 3c):** after a sub-agent's PR is CONFIRMED
+   merged and the janitor passes, reap that repo to remove the
+   just-merged worktree.
+3. **Post-loop (Step 4):** a final sweep across every touched repo.
+
+DETECTION is the counterpart, owned by the doctor `no-stale-worktree`
+check, which warns when a worktree's branch is done — case (a)
+merged-into-default OR case (b) remote-gone. The doctor check only
+WARNS; the reaper is the deterministic ACTION the orchestrator owns
+to clean the orphans the check surfaces.
+
 ## Tooling reminders (carried-forward conventions)
 
 - `mise exec -- git ...` for commit / push so lefthook hooks fire
@@ -304,16 +376,20 @@ is absent, the driver falls back to the default safety rules in
   `feedback_chore_spec_for_spec_only_commits`); the red-green-replay
   commit-msg hook rejects `fix:`/`feat:` for spec-only changes.
 - Ending-on-master is the ORCHESTRATOR's job, not the sub-agent's.
-  A dispatched worktree-isolated sub-agent MUST NOT `git checkout
-  master` in its own worktree (master is held by the primary, which
-  occupies `refs/heads/master`) and MUST NOT run `git config
-  core.bare true` under any circumstances — that re-introduces the
-  eliminated bare flag (per `contracts.md`
+  A dispatched sub-agent MUST NOT `git checkout master` in its own
+  worktree (master is held by the primary, which occupies
+  `refs/heads/master`) and MUST NOT run `git config core.bare true`
+  under any circumstances — that re-introduces the eliminated bare
+  flag (per `contracts.md`
   §`primary-checkout-commit-refuse-hook-installed`: `core.bare` MUST
-  NOT be set on the primary). After a sub-agent's PR merges
-  server-side, it LEAVES its worktree on its feature branch (or lets
-  the worktree be torn down) and reports the merge — it does NOT
-  switch the worktree to master.
+  NOT be set on the primary). The sub-agent self-manages its own
+  worktree and does NOT attempt to clean it up post-merge: the merge
+  is async/server-side (`gh pr merge --auto` lands AFTER the sub-agent
+  has usually already exited), so the agent CANNOT reliably self-clean
+  its worktree. The ORCHESTRATOR owns worktree reaping (Step 3c +
+  Step 4 + the session-start sweep in Step 1; see §"Worktree hygiene
+  (reaper)"). The sub-agent just reports the PR number and that
+  auto-merge is armed.
 - The orchestrator refreshes each touched primary itself via `git -C
   /data/projects/<repo> pull --ff-only origin master` (per
   `feedback_end_on_main_branch`; the bind-mounted
@@ -323,6 +399,11 @@ is absent, the driver falls back to the default safety rules in
   config --get core.bare` is empty; if it regressed to `true`, remove
   any master-squatting worktree, `git config --unset core.bare`, and
   `git reset --hard origin/master` to repopulate the working tree.
+  This re-verify+repair is STILL required even with self-managed
+  worktrees: `core.bare` has been observed to regress even without
+  the harness `isolation: "worktree"` mechanism (tracked as
+  li-iroguc), so dropping that mechanism does NOT fix it. Keep this
+  guard on every merging dispatch.
 - For cross-repo dep awareness: the impl-plugin's `next` ranker
   excludes candidates whose `depends_on[]` resolves to any open
   upstream item via `livespec_runtime.cross_repo.resolve_ref` (per
