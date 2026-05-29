@@ -715,6 +715,23 @@ lint-fix:
 vendor-update lib:
     uv run python3 dev-tooling/vendor_update.py {{lib}}
 
+# Deterministic, idempotent worktree REAPER — the ACTION counterpart
+# to doctor's detection-only `no-stale-worktree` check. The Layer 3
+# orchestrator runs this to mechanically clean up orphaned worktrees
+# in any family repo after their PRs rebase-merge (remote branch gone).
+# Reaps a NON-primary worktree only when its branch is "done"
+# (remote-gone), its working tree is clean, and it is not held by a
+# LIVE process lock; never touches the primary worktree. NOT part of
+# `just check` (it is an action, not a check). The first positional
+# arg is the target repo (default: cwd); any trailing args pass
+# through to the script (e.g. `--dry-run`):
+#   just reap-stale-worktrees                          # reap cwd repo
+#   just reap-stale-worktrees /path/to/repo            # reap a sibling
+#   just reap-stale-worktrees . --dry-run              # preview cwd repo
+#   just reap-stale-worktrees /path/to/repo --dry-run  # preview a sibling
+reap-stale-worktrees repo="." *args="":
+    uv run python3 dev-tooling/reap_stale_worktrees.py --repo {{repo}} {{args}}
+
 # ---------------------------------------------------------------
 # Implementation workflow — repo-local livespec-implementation layer
 # (non-functional-requirements.md §Contracts §"Implementation justfile
