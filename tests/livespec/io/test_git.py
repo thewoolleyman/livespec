@@ -683,6 +683,108 @@ def test_list_merged_branches_returns_failure_when_into_ref_missing(
             raise AssertionError(f"expected IOFailure, got {result!r}")
 
 
+def test_list_remote_branches_returns_remote_head_short_names(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOSuccess with the short-names of every head on `origin`.
+
+    Wires a SEPARATE bare upstream as `origin`, pushes the default
+    branch plus a slash-containing feature branch, and asserts the
+    result tuple carries both short-names with the `refs/heads/`
+    prefix stripped (and NOT split on the embedded `/`).
+    """
+    upstream = tmp_path / "upstream.git"
+    work = tmp_path / "work"
+    work.mkdir()
+    _git_init_with_user(cwd=work, name="Test User", email="test@example.com")
+    monkeypatch.chdir(work)
+    _git_commit_file(cwd=work, path=work / "seed.md", content=b"# Seed\n")
+    default_branch = _current_branch_for_test(cwd=work)
+    _ = subprocess.run(
+        ["git", "init", "--quiet", "--bare", str(upstream)],
+        cwd=work,
+        check=True,
+    )
+    _ = subprocess.run(["git", "remote", "add", "origin", str(upstream)], cwd=work, check=True)
+    _ = subprocess.run(["git", "push", "--quiet", "origin", default_branch], cwd=work, check=True)
+    _ = subprocess.run(["git", "branch", "feature/pushed"], cwd=work, check=True)
+    _ = subprocess.run(["git", "push", "--quiet", "origin", "feature/pushed"], cwd=work, check=True)
+
+    result = io_git.list_remote_branches(project_root=work)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert set(value) == {default_branch, "feature/pushed"}
+        case _:
+            raise AssertionError(f"expected IOSuccess, got {result!r}")
+
+
+def test_list_remote_branches_excludes_unpushed_local_branch(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A local branch never pushed to `origin` is ABSENT from the result.
+
+    This is the remote-gone (case b) signal: against a SEPARATE
+    bare upstream, a local-only branch has no corresponding remote
+    head, so `git ls-remote --heads origin` omits it. The
+    no-stale-worktree check reads this absence to flag the
+    rebase-merged-then-deleted worktree.
+    """
+    upstream = tmp_path / "upstream.git"
+    work = tmp_path / "work"
+    work.mkdir()
+    _git_init_with_user(cwd=work, name="Test User", email="test@example.com")
+    monkeypatch.chdir(work)
+    _git_commit_file(cwd=work, path=work / "seed.md", content=b"# Seed\n")
+    default_branch = _current_branch_for_test(cwd=work)
+    _ = subprocess.run(
+        ["git", "init", "--quiet", "--bare", str(upstream)],
+        cwd=work,
+        check=True,
+    )
+    _ = subprocess.run(["git", "remote", "add", "origin", str(upstream)], cwd=work, check=True)
+    _ = subprocess.run(["git", "push", "--quiet", "origin", default_branch], cwd=work, check=True)
+    _ = subprocess.run(["git", "branch", "feature/local-only"], cwd=work, check=True)
+
+    result = io_git.list_remote_branches(project_root=work)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert "feature/local-only" not in value
+            assert default_branch in value
+        case _:
+            raise AssertionError(f"expected IOSuccess, got {result!r}")
+
+
+def test_list_remote_branches_returns_failure_when_no_origin(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Returns IOFailure when no `origin` remote is configured.
+
+    `git ls-remote --heads origin` exits non-zero when `origin`
+    does not resolve. The doctor's no-stale-worktree check folds
+    this into a skipped finding via the lash branch (no reachable
+    origin).
+    """
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "seed.md", content=b"# Seed\n")
+
+    result = io_git.list_remote_branches(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure, got {result!r}")
+
+
 def test_list_worktrees_returns_primary_only_for_fresh_repo(
     *,
     tmp_path: Path,

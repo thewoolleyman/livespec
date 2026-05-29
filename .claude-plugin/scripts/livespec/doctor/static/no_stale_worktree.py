@@ -21,20 +21,28 @@ Per `SPECIFICATION/contracts.md` §"Impl-side cleanup invariants
   fires `warn` with corrective action `git worktree remove <path>`.
   Excludes the primary worktree.
 
-  v1 implementation: surface case (a) only — worktrees whose
-  branch is merged into the default branch. Case (b) (remote
-  absence) is deferred to the gh-CLI integration of
-  `no-stale-merged-pr-branch`; the two checks share the same
-  "remote branch missing" signal but address different cleanup
-  artifacts (`gh api -X DELETE refs/heads/<name>` vs
-  `git worktree remove <path>`). A future cycle MAY widen this
-  check to also surface case (b) once the gh facade lands.
+  The check surfaces the UNION of both cases. A secondary
+  worktree is stale when its branch is either (a) in the
+  `git branch --merged <default>` set (reachable from default)
+  OR (b) absent from the remote head set
+  (`git ls-remote --heads origin`). Case (b) is load-bearing for
+  the family's `gh pr merge --rebase` flow: a rebase-merge lands a
+  DISTINCT SHA on default, so the merged branch is NOT an ancestor
+  and never lists under `--merged` — case (a) is blind to it. Its
+  only durable cleanup signal is remote absence (the branch was
+  deleted on the remote after its PR merged). This case-(b)
+  coverage is the regression the uncaught orphan worktrees
+  exposed; the sibling `no-stale-merged-pr-branch` check addresses
+  the DIFFERENT cleanup artifact (`gh api -X DELETE
+  refs/heads/<name>`) and is unaffected.
 
   The check fires `warn` (v074) when stale worktrees exist;
   fires `pass` when the only worktree is primary OR all
-  secondary worktrees are on unmerged branches; fires `skipped`
-  when the project is not a git repo OR when `origin/HEAD` is
-  unset (default branch undetermined).
+  secondary worktrees are on branches that are both unmerged AND
+  still present on the remote; fires `skipped` when the project
+  is not a git repo, when `origin/HEAD` is unset (default branch
+  undetermined), or when the remote head query fails (no reachable
+  origin).
 """
 
 from __future__ import annotations
@@ -94,14 +102,20 @@ def _evaluate(
     ctx: DoctorContext,
     default_branch: str,
     merged: tuple[str, ...],
+    remote_branches: tuple[str, ...],
     worktrees: tuple[io_git.Worktree, ...],
 ) -> Finding:
-    """Build the pass-or-warn Finding from the worktree + merged-branch sets.
+    """Build the pass-or-warn Finding from the worktree, merged, and remote sets.
 
-    Secondary worktrees whose branch is in the merged-into-default
-    set (excluding the default branch itself; the primary worktree
-    is typically on the default branch) are flagged as stale. The
-    primary worktree is always excluded per the contract.
+    A secondary worktree is flagged stale when its branch is
+    either (a) in the `merged`-into-default set OR (b) absent from
+    the `remote_branches` head set. The default branch itself is
+    excluded from case (a) (a branch is trivially reachable from
+    itself; the primary worktree is typically on the default
+    branch). Case (b) is the rebase-merged-then-deleted signal —
+    the merged branch is not a default-ancestor, so it never lists
+    under `--merged`, but the remote head is gone. The primary
+    worktree is always excluded per the contract.
     """
     stale_paths = sorted(
         str(wt.path)
@@ -109,14 +123,15 @@ def _evaluate(
         if not wt.is_primary
         and wt.branch is not None
         and wt.branch != default_branch
-        and wt.branch in merged
+        and (wt.branch in merged or wt.branch not in remote_branches)
     )
     if not stale_paths:
         return _pass(
             ctx=ctx,
             message=(
                 f"no-stale-worktree: no secondary worktrees on branches merged "
-                f"into `{default_branch}` ({len(worktrees)} worktree(s) scanned)"
+                f"into `{default_branch}` or absent from the remote "
+                f"({len(worktrees)} worktree(s) scanned)"
             ),
         )
     paths_joined = ", ".join(stale_paths)
@@ -125,8 +140,8 @@ def _evaluate(
         ctx=ctx,
         message=(
             f"no-stale-worktree: {len(stale_paths)} secondary worktree(s) on "
-            f"branches merged into `{default_branch}` and ready to clean up: "
-            f"{paths_joined}. Corrective action: {corrective}"
+            f"branches merged into `{default_branch}` or absent from the remote "
+            f"and ready to clean up: {paths_joined}. Corrective action: {corrective}"
         ),
     )
 
@@ -135,9 +150,13 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     """Run no-stale-worktree against `ctx`.
 
     Composes is_git_repo → get_default_branch_name →
-    list_merged_branches + list_worktrees → _evaluate. Any
-    failure on the IO track is lashed into a skipped-status
-    Finding so the orchestrator's stdout contract stays uniform.
+    list_merged_branches → list_remote_branches → list_worktrees →
+    _evaluate. The merged set drives case (a); the remote head set
+    drives case (b) (a worktree branch absent from the remote is
+    stale). Any failure on the IO track — including a failed
+    `ls-remote` (no reachable origin) — is lashed into a
+    skipped-status Finding so the orchestrator's stdout contract
+    stays uniform.
     """
     project_root = ctx.project_root
     return (
@@ -149,14 +168,19 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
                         project_root=project_root,
                         into_ref=default_branch,
                     ).bind(
-                        lambda merged: io_git.list_worktrees(
+                        lambda merged: io_git.list_remote_branches(
                             project_root=project_root,
-                        ).map(
-                            lambda worktrees: _evaluate(
-                                ctx=ctx,
-                                default_branch=default_branch,
-                                merged=merged,
-                                worktrees=worktrees,
+                        ).bind(
+                            lambda remote_branches: io_git.list_worktrees(
+                                project_root=project_root,
+                            ).map(
+                                lambda worktrees: _evaluate(
+                                    ctx=ctx,
+                                    default_branch=default_branch,
+                                    merged=merged,
+                                    remote_branches=remote_branches,
+                                    worktrees=worktrees,
+                                ),
                             ),
                         ),
                     ),

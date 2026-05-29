@@ -2,13 +2,19 @@
 
 Per `SPECIFICATION/contracts.md` §"Impl-side cleanup invariants
 (cross-boundary)" → §"`no-stale-worktree`": for every git
-worktree whose underlying branch is merged into default, the
+worktree whose underlying branch is either (a) merged into
+default and locally deleted, or (b) absent from the remote, the
 invariant fires `warn` with corrective action `git worktree
 remove <path>`. Excludes the primary worktree.
 
-v1 implementation surfaces case (a) (merged-into-default) only;
-case (b) (remote absence) is deferred to the gh-CLI integration
-of no-stale-merged-pr-branch.
+The check unions case (a) (branch reachable from default per
+`git branch --merged`) and case (b) (branch absent from the
+remote per `git ls-remote --heads origin <branch>`). Case (b) is
+the rebase-merged-then-deleted signal: `gh pr merge --rebase`
+puts a DISTINCT SHA on default, so the merged branch is NOT an
+ancestor and never lists under `--merged`; the only durable
+"this worktree's branch is gone" signal is its absence from the
+remote.
 """
 
 from __future__ import annotations
@@ -59,6 +65,50 @@ def _git_set_origin_head(*, cwd: Path, default_branch: str) -> None:
     """Stage a fake `origin` remote + set `origin/HEAD` to point at `default_branch`."""
     _ = subprocess.run(
         ["git", "remote", "add", "origin", str(cwd)],
+        cwd=cwd,
+        check=True,
+    )
+    _ = subprocess.run(
+        ["git", "update-ref", f"refs/remotes/origin/{default_branch}", "HEAD"],
+        cwd=cwd,
+        check=True,
+    )
+    _ = subprocess.run(
+        [
+            "git",
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            f"refs/remotes/origin/{default_branch}",
+        ],
+        cwd=cwd,
+        check=True,
+    )
+
+
+def _git_set_bare_origin_head(*, cwd: Path, bare_upstream: Path, default_branch: str) -> None:
+    """Wire `cwd` to a SEPARATE bare upstream at `bare_upstream` as `origin`.
+
+    Unlike `_git_set_origin_head` (which points `origin` at the
+    repo's OWN working directory, so every local branch trivially
+    appears on the remote), this stages a distinct bare upstream so
+    a local branch can exist WITHOUT a corresponding remote head —
+    the rebase-merged-then-deleted (case b) condition. Only the
+    default branch is pushed to the upstream; later-created local
+    branches are remote-gone until explicitly pushed. `origin/HEAD`
+    is set so the default-branch derivation resolves.
+    """
+    _ = subprocess.run(
+        ["git", "init", "--quiet", "--bare", str(bare_upstream)],
+        cwd=cwd,
+        check=True,
+    )
+    _ = subprocess.run(
+        ["git", "remote", "add", "origin", str(bare_upstream)],
+        cwd=cwd,
+        check=True,
+    )
+    _ = subprocess.run(
+        ["git", "push", "--quiet", "origin", default_branch],
         cwd=cwd,
         check=True,
     )
@@ -141,7 +191,8 @@ def test_no_stale_worktree_passes_when_only_primary_worktree(
         status="pass",
         message=(
             f"no-stale-worktree: no secondary worktrees on branches merged "
-            f"into `{default_branch}` (1 worktree(s) scanned)"
+            f"into `{default_branch}` or absent from the remote "
+            f"(1 worktree(s) scanned)"
         ),
         path=None,
         line=None,
@@ -185,8 +236,80 @@ def test_no_stale_worktree_warns_when_secondary_on_merged_branch(
         status="warn",
         message=(
             f"no-stale-worktree: 1 secondary worktree(s) on branches merged "
-            f"into `{default_branch}` and ready to clean up: {wt_path}. "
-            f"Corrective action: git worktree remove {wt_path}"
+            f"into `{default_branch}` or absent from the remote and ready to "
+            f"clean up: {wt_path}. Corrective action: git worktree remove {wt_path}"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_no_stale_worktree_warns_when_secondary_branch_remote_gone(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`warn` for a secondary worktree whose branch is remote-gone (case b).
+
+    Regression for the rebase-merged-then-deleted blind spot: the
+    family merges with `gh pr merge --rebase`, which lands a DISTINCT
+    SHA on the default branch, so the merged branch is NOT an
+    ancestor and never lists under `git branch --merged` (case a
+    misses it). The worktree's branch carries its own commit (so it
+    is genuinely unmerged-by-ancestry) and was never pushed to the
+    separate upstream, so it is absent from the remote — case (b)
+    MUST fire `warn`.
+    """
+    _scrub_git_env(monkeypatch=monkeypatch)
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    _git_init_with_user(cwd=project_root, name="Test User", email="test@example.com")
+    monkeypatch.chdir(project_root)
+    _git_commit_file(cwd=project_root, path=project_root / "seed.md", content=b"# Seed\n")
+    default_branch = _current_branch(cwd=project_root)
+    _git_set_bare_origin_head(
+        cwd=project_root,
+        bare_upstream=tmp_path / "upstream.git",
+        default_branch=default_branch,
+    )
+    # Create a branch with its own commit so it is NOT reachable from
+    # default (case a stays silent), then move back to default. The
+    # branch is never pushed to the upstream → remote-gone (case b).
+    _ = subprocess.run(
+        ["git", "checkout", "--quiet", "-b", "feature/rebase-merged"],
+        cwd=project_root,
+        check=True,
+    )
+    _git_commit_file(
+        cwd=project_root,
+        path=project_root / "feature.md",
+        content=b"# Feature\n",
+    )
+    _ = subprocess.run(
+        ["git", "checkout", "--quiet", default_branch],
+        cwd=project_root,
+        check=True,
+    )
+    wt_path = tmp_path / "wt-rebase-merged"
+    _ = subprocess.run(
+        ["git", "worktree", "add", str(wt_path), "feature/rebase-merged"],
+        cwd=project_root,
+        check=True,
+    )
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = no_stale_worktree.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-no-stale-worktree",
+        status="warn",
+        message=(
+            f"no-stale-worktree: 1 secondary worktree(s) on branches merged "
+            f"into `{default_branch}` or absent from the remote and ready to "
+            f"clean up: {wt_path}. Corrective action: git worktree remove {wt_path}"
         ),
         path=None,
         line=None,
