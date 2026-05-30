@@ -67,9 +67,12 @@ via the `/livespec-orchestrate` invocation argument:
 ## Steps
 
 1. **Verify session state (cross-repo).** For each repo in the
-   family, fetch origin/master, materialize work-items.jsonl via
-   the impl-plugin's `materialize_work_items` (last-wins reducer),
-   and tabulate truly-open work-items. Also surface: open PRs
+   family, fetch origin/master and tabulate truly-open work-items
+   via the impl-plugin's `list_work_items` thin-transport wrapper
+   against canonical `origin/master:work-items.jsonl` (the exact,
+   copy-pasteable invocation — including the wrapper path and the
+   common mistakes it avoids — is in §"Cross-repo state aggregation"
+   below; do NOT hand-roll the reducer). Also surface: open PRs
    across the family, pending PCs in each repo's `proposed_changes/`,
    any current worktrees on master with uncommitted spec edits, any
    master red CI. Per `feedback_master_red_is_not_deferral`, master
@@ -272,30 +275,62 @@ may have moved since), and re-enters the loop at the named step.
 
 ## Cross-repo state aggregation
 
-The driver materializes work-item state from each repo's
-`work-items.jsonl` using the impl-plugin's `materialize_work_items`
-reducer (last-wins per ID). The verified pattern:
+The driver materializes work-item state from each repo via the
+impl-plugin's `list_work_items` **thin-transport wrapper** — NOT a
+hand-rolled reducer. The wrapper internally runs
+`materialize_work_items(read_work_items(path=…))` (last-wins per ID,
+schema-validated) and emits a top-level JSON **array** of work-item
+views. It is the supported machine-query surface (per impl-plaintext
+`contracts.md` §"Thin-transport skills (3) — required machine query
+surface") and needs NO venv and NO `PYTHONPATH` — invoke it with a
+plain `python3`.
 
-```bash
-git -C /data/projects/<repo> show origin/master:work-items.jsonl \
-  | <impl-plugin-venv>/bin/python -c "
-    import json, sys
-    from livespec_impl_plaintext.store import materialize_work_items
-    records = [json.loads(line) for line in sys.stdin if line.strip()]
-    open_items = [r for r in materialize_work_items(records=records).values()
-                  if r.status == 'open']
-    print(json.dumps([asdict(r) for r in open_items]))
-  "
+The wrapper lives at (note: filename uses **underscores**):
+
+```
+/data/projects/livespec-impl-plaintext/.claude-plugin/scripts/bin/list_work_items.py
 ```
 
-The canonical impl-plugin venv for invoking the reducer across any
-repo's JSONL store is
-`/data/projects/livespec-impl-plaintext/.venv/bin/python`.
+Per `feedback_read_canonical_state_via_git_show`, read canonical
+committed state from `origin/master`, not the on-disk working tree
+(which can lag or carry edits): dump the canonical file to a temp path
+and feed it via `--work-items-path`. There is **no `open` filter** —
+valid `--filter` choices are `all|gap-tied|freeform|blocked|ready|closed`;
+pass `--filter all` and select `status == "open"` yourself (or use
+`--filter ready` for open-with-all-deps-closed):
 
-Per `feedback_verify_fix_landed_before_memo_disposition` and
-`feedback_no_reproducibility_in_dogfooding`, the aggregation reads
-`origin/master:work-items.jsonl` directly (not on-disk bare-repo
-files, which may be stale).
+```bash
+WRAPPER=/data/projects/livespec-impl-plaintext/.claude-plugin/scripts/bin/list_work_items.py
+for repo in livespec livespec-impl-plaintext livespec-dev-tooling livespec-runtime; do
+  git -C /data/projects/$repo show origin/master:work-items.jsonl \
+    > /tmp/$repo-wi.jsonl
+  echo "=== $repo (open) ==="
+  python3 "$WRAPPER" --work-items-path /tmp/$repo-wi.jsonl --filter all --json \
+    | python3 -c "import json,sys
+items = json.load(sys.stdin)                       # top-level ARRAY
+opens = [w for w in items if w['status'] == 'open']
+for w in sorted(opens, key=lambda x: (str(x['priority']), x['id'])):
+    print(f\"  {w['id']:24} p{w['priority']} {str(w.get('type','')):9} {w['title'][:54]}\")
+print(f'  OPEN={len(opens)}')"
+done
+```
+
+Common mistakes this pattern avoids (all observed live; see memo
+`mm-7lvwm7`): passing `json.loads(line)` **dicts** to
+`materialize_work_items` (it wants an `Iterator[WorkItem]` →
+`AttributeError: 'dict' object has no attribute 'id'`); using the
+impl-plaintext `.venv/bin/python` (it has no editable install of its
+own package → `ModuleNotFoundError`); `--filter open` (not a valid
+choice); and the hyphenated filename `list-work-items.py` (the script
+is `list_work_items.py`).
+
+> NOTE (separate, still open): the CI half of this Step-1 survey is
+> tracked by work-item **li-bxhwh3** — a bare `gh run list --branch
+> master` can mask red CI when a more-recent non-CI workflow ran, so
+> filter with `--workflow CI` (or call dev-tooling's
+> `master_ci_green.py`) per `feedback_master_ci_query_must_filter_workflow`.
+> That fix is NOT included here; this section fixes only the work-item
+> aggregation.
 
 ## Wave-plan grammar (for `scope-file`)
 
