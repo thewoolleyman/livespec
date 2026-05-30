@@ -788,5 +788,12 @@
     "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Added by the revise pass landing the propose-change at proposed_changes/doctor-uniform-per-finding-disposition.md. Codifies that doctor's per-finding disposition dialogue MUST apply uniformly to every non-pass finding regardless of phase, with a five-option menu (fix-now, capture-as-work-item, propose-change, defer, dismiss). Real test ID populated in the impl follow-up that regenerates .claude-plugin/skills/doctor/SKILL.md to expand Step 11 from three options to five and wire the dialogue into the Exit 3 static-fail path."
+  },
+  {
+    "heading": "## CLI end-to-end harness contract",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v097 (cli-end-to-end-harness-contract proposal accept, epic li-e2ecli Phase 1). The contract mandates a top-of-pyramid CLI-driven user-surface e2e tier. Real test ID populated by Epic D Waves 11-12: the harness ships from livespec-dev-tooling (li-e2ecdt) and each consumer repo wires tests/e2e-cli/ fixtures (li-e2eclv livespec, li-e2ecpx impl-plaintext)."
   }
 ]
