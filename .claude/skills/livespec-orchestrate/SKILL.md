@@ -79,6 +79,35 @@ via the `/livespec-orchestrate` invocation argument:
    red MUST be surfaced at session-start; do NOT proceed silently
    on a broken family.
 
+   For the master-red-CI check, do NOT hand-roll a `gh run list`
+   query: a bare `gh run list --branch master --limit 1` returns the
+   most-recent run of ANY workflow, so a more-recent non-CI run
+   ("Auto-update behind PRs", "Pin freshness sweep", "Bump pin from
+   sibling dispatch", "Release Please") MASKS an older red CI run
+   (the li-bxhwh3 mistake-pattern, per
+   `feedback_master_ci_query_must_filter_workflow`). Instead run
+   dev-tooling's canonical `master_ci_green` check from INSIDE each
+   family repo — it already scopes the query to `--workflow CI`, so a
+   non-CI run can never mask a red CI conclusion, and `gh` infers the
+   repo from that repo's git remote (the check takes no repo arg):
+
+   ```bash
+   for repo in livespec livespec-impl-plaintext \
+               livespec-dev-tooling livespec-runtime; do
+     ( cd "/data/projects/$repo" \
+       && uv run python -m livespec_dev_tooling.checks.master_ci_green ) \
+       || echo "RED master CI in $repo — HALT (master red is not a deferral)"
+   done
+   ```
+
+   It exits 1 on a red conclusion (`failure` / `cancelled` /
+   `timed_out` / `action_required` / `stale` / `startup_failure`) and
+   0 on `success` / pending / no-run / `gh`-unavailable. It is
+   import-clean in every family repo (`livespec_dev_tooling` is a
+   pinned dependency of each), so the same invocation scales to
+   future siblings — add the repo to the loop. Any repo's exit 1 is
+   the highest-severity halt for the survey.
+
    Also reconcile orphaned worktrees left by prior or crashed
    sessions: for each family repo, run the reaper
    `mise exec -- just reap-stale-worktrees /data/projects/<repo>`
@@ -324,13 +353,15 @@ own package → `ModuleNotFoundError`); `--filter open` (not a valid
 choice); and the hyphenated filename `list-work-items.py` (the script
 is `list_work_items.py`).
 
-> NOTE (separate, still open): the CI half of this Step-1 survey is
-> tracked by work-item **li-bxhwh3** — a bare `gh run list --branch
-> master` can mask red CI when a more-recent non-CI workflow ran, so
-> filter with `--workflow CI` (or call dev-tooling's
-> `master_ci_green.py`) per `feedback_master_ci_query_must_filter_workflow`.
-> That fix is NOT included here; this section fixes only the work-item
-> aggregation.
+> NOTE: the CI half of this Step-1 survey (work-item **li-bxhwh3**)
+> is now mechanically fixed — a bare `gh run list --branch master`
+> could mask a red CI run when a more-recent non-CI workflow ran. The
+> fix is in Step 1 above: the survey runs dev-tooling's canonical
+> `master_ci_green` check from inside each family repo, and that check
+> hardcodes `--workflow CI`, so a non-CI run can never mask a red CI
+> conclusion. Do NOT hand-roll the `gh run list` query in the survey;
+> run the per-repo check (per
+> `feedback_master_ci_query_must_filter_workflow`).
 
 ## Wave-plan grammar (for `scope-file`)
 
