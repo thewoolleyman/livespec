@@ -138,18 +138,29 @@ via the `/livespec-orchestrate` invocation argument:
       action → skill invocation.
 
    b. **Dispatch.** For work that mutates a repo, dispatch a
-      sub-agent that creates its OWN secondary worktree in the
-      target repo via `git -C /data/projects/<repo> worktree add
-      <repo>/.claude/worktrees/<slug> -b <branch> origin/master`
-      and works inside it. Do NOT use the harness `isolation:
-      "worktree"` mechanism — it only auto-removes UNCHANGED
-      worktrees, so any worktree carrying committed work is left
-      permanently orphaned, and it has been observed to flip
-      `core.bare`. The primary is NOT bare (epic li-unbare
-      eliminated the bare flag; `core.bare` MUST stay unset);
-      edits happen in the self-managed secondary because the
-      primary carries a commit-refuse hook, not because it is bare.
-      The sub-agent does the work end-to-end: edits, tests,
+      sub-agent with `agentType: livespec-implementer` (the custom
+      subagent defined at `.claude/agents/livespec-implementer.md`;
+      see §"Dispatch table") rather than a bare general-purpose
+      agent. Because that agent's definition carries the standing
+      dispatch contract ONCE, the per-dispatch brief shrinks to a
+      SHORT task line — "implement <work-item-id> in <repo>" — PLUS a
+      one-line binding-rules handoff naming the exact path, e.g.
+      "binding repo rules: <worktree>/AGENTS.md — read first." Do NOT
+      re-paste the Red-Green-Replay protocol or the worktree /
+      mise-exec / no-`--no-verify` disciplines into the brief; they
+      live in the agent definition (this is the whole purpose of epic
+      li-dispatch-agents — kill the per-dispatch re-derivation tax).
+      The agent creates its OWN secondary worktree in the target repo
+      via `git -C /data/projects/<repo> worktree add
+      <repo>/.claude/worktrees/<slug> -b <branch> origin/master` and
+      works inside it. Do NOT use the harness `isolation: "worktree"`
+      mechanism — it only auto-removes UNCHANGED worktrees, so any
+      worktree carrying committed work is left permanently orphaned,
+      and it has been observed to flip `core.bare`. The primary is NOT
+      bare (epic li-unbare eliminated the bare flag; `core.bare` MUST
+      stay unset); edits happen in the self-managed secondary because
+      the primary carries a commit-refuse hook, not because it is
+      bare. The sub-agent does the work end-to-end: edits, tests,
       `mise exec -- git commit`, `gh pr create`, `gh pr merge
       --auto --rebase --delete-branch`. The driver does NOT
       perform the edits inline; it dispatches and tracks. The
@@ -188,19 +199,32 @@ via the `/livespec-orchestrate` invocation argument:
 
 ## Dispatch table
 
-| Action from `next` / scope | Skill / mechanism |
-|---|---|
-| `revise` (spec-side, livespec) | `/livespec:revise --spec-target <path>` |
-| `propose-change` (spec-side) | `/livespec:propose-change` |
-| `critique` (spec-side) | `/livespec:critique` |
-| `prune-history` (spec-side) | `/livespec:prune-history` |
-| `implement` (impl-side, plaintext) | `/livespec-impl-plaintext:implement <work-item-id>` |
-| `capture-impl-gaps` (impl-side) | `/livespec-impl-plaintext:capture-impl-gaps` |
-| `capture-spec-drift` (impl-side) | `/livespec-impl-plaintext:capture-spec-drift` |
-| `process-memos` (impl-side) | `/livespec-impl-plaintext:process-memos` |
-| Bug fix (no spec change) | sub-agent: edit + test + commit + PR in the relevant repo's worktree |
-| Cross-repo coordinated change | sub-agent per repo, dispatched in parallel where independent and sequential where one PR blocks another |
-| `none` | exit cleanly with journal summary |
+Every mutating dispatch (any row whose mechanism is "sub-agent …" or
+an impl-side skill that commits + PRs) MUST be dispatched as
+`agentType: livespec-implementer` — the custom subagent defined at
+`.claude/agents/livespec-implementer.md` — NOT a bare general-purpose
+agent. That agent carries the standing dispatch contract (worktree
+discipline, the Red-Green-Replay commit ritual, `mise exec -- git`,
+never `--no-verify` / `core.bare true`, the PR handoff) ONCE, so the
+per-dispatch brief shrinks to "implement work-item X in repo Y" plus a
+one-line binding-rules handoff (see §"Steps" → 3b). Spec-side
+`/livespec:*` rows that run in the orchestrator's OWN session
+(revise / propose-change / critique / prune-history) are NOT dispatched
+this way — they compose inline.
+
+| Action from `next` / scope | Skill / mechanism | Dispatch as |
+|---|---|---|
+| `revise` (spec-side, livespec) | `/livespec:revise --spec-target <path>` | inline (orchestrator session) |
+| `propose-change` (spec-side) | `/livespec:propose-change` | inline (orchestrator session) |
+| `critique` (spec-side) | `/livespec:critique` | inline (orchestrator session) |
+| `prune-history` (spec-side) | `/livespec:prune-history` | inline (orchestrator session) |
+| `implement` (impl-side, plaintext) | `/livespec-impl-plaintext:implement <work-item-id>` | `agentType: livespec-implementer` |
+| `capture-impl-gaps` (impl-side) | `/livespec-impl-plaintext:capture-impl-gaps` | `agentType: livespec-implementer` |
+| `capture-spec-drift` (impl-side) | `/livespec-impl-plaintext:capture-spec-drift` | `agentType: livespec-implementer` |
+| `process-memos` (impl-side) | `/livespec-impl-plaintext:process-memos` | `agentType: livespec-implementer` |
+| Bug fix (no spec change) | sub-agent: edit + test + commit + PR in the relevant repo's worktree | `agentType: livespec-implementer` |
+| Cross-repo coordinated change | sub-agent per repo, dispatched in parallel where independent and sequential where one PR blocks another | `agentType: livespec-implementer` (one per repo) |
+| `none` | exit cleanly with journal summary | — |
 
 Per `feedback_cross_repo_epic_driving`, NEVER defer multi-repo work
 to "follow-up PRs in another session" — frame as epic, file per-repo
