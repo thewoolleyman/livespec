@@ -84,12 +84,21 @@ def test_git_hook_wrapper_dispatches_to_mise_with_basename_hook_name(*, tmp_path
 
     # S603: argv is a fixed list (literal wrapper path + literal
     # arg strings); no untrusted shell input.
+    # cwd is pinned to the isolated tmp_path so the wrapper's
+    # `git rev-parse --show-toplevel` cannot resolve to the real
+    # primary checkout — otherwise (when pytest runs from the
+    # primary) the wrapper's refuse-at-primary guard fires, exits 1,
+    # and this dispatch test fails spuriously. tmp_path is outside
+    # any livespec checkout, so toplevel != livespec.primaryPath and
+    # the guard is skipped, letting the wrapper proceed to the fake
+    # mise exec the argv assertions below depend on.
     result = subprocess.run(
         [str(pre_commit_path), "foo", "bar"],
         capture_output=True,
         text=True,
         check=False,
         env=env,
+        cwd=tmp_path,
     )
 
     assert result.returncode == 0, (
