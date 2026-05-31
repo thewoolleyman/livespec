@@ -1,0 +1,4 @@
+# /livespec:doctor is a read-only validation pass — it creates no new
+# files. The post-condition asserted here is that the spec tree it
+# inspected remains intact (the main spec file still exists).
+SPECIFICATION/spec.md

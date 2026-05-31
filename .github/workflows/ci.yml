@@ -88,6 +88,12 @@ jobs:
           - check-pbt-coverage-pure-modules
           - check-coverage
           - check-comment-no-historical-refs
+          # CLI end-to-end harness — mock tier. Real plugin discovery +
+          # real fail-closed coverage gate; only the `claude -p`
+          # subprocess is mocked. Runs in the .py-gated check-python
+          # matrix because the wiring lives under tests/e2e-cli/*.py. The
+          # real tier (e2e-real.yml) is a separate, scheduled workflow.
+          - e2e-cli-test-claude-code-mock
     steps:
       # Per-step `if:` (not job-level) so each matrix entry still
       # reports a status check named `${{ matrix.target }}`. With
@@ -130,6 +136,13 @@ jobs:
           - check-tools
           - check-doctor-static
           - check-primary-checkout-commit-refuse-hook-installed
+          # Tool-backed-check completeness meta-check. Parses the justfile
+          # + workflow matrices — repo-metadata, no .py source — so it
+          # lives in the always-run check-metadata matrix. Both-surfaces
+          # wiring: this slug is a literal member of the `just check` array
+          # (required by check-aggregate-completeness) AND of this CI
+          # matrix.
+          - check-tool-backed-check-completeness
     steps:
       - name: Checkout
         uses: actions/checkout@v4

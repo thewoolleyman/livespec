@@ -134,6 +134,7 @@ check:
         check-skill-invocation-paths
         check-supervisor-discipline
         check-tests-mirror-pairing
+        check-tool-backed-check-completeness
         check-vendor-manifest
         check-wrapper-shape
         # ---- Livespec-private block (extends after canonical) ----
@@ -149,6 +150,14 @@ check:
         # running the same module twice.
         check-comment-no-historical-refs
         check-copier-template-smoke
+        # check-coverage is the aggregate (total) `fail_under = 100`
+        # coverage gate. It is a LITERAL member here (and of the CI
+        # check-python matrix) so the check-tool-backed-check-completeness
+        # meta-check's both-surfaces invariant is satisfied. To avoid a
+        # DUPLICATE pytest run it gates off the `.coverage` data file that
+        # the canonical check-per-file-coverage slug already produced (see
+        # the recipe below), so wiring it adds no second suite run locally.
+        check-coverage
         check-doctor-static
         check-format
         check-imports-architecture
@@ -156,6 +165,7 @@ check:
         check-prompts
         check-schema-dataclass-pairing
         check-types
+        e2e-cli-test-claude-code-mock
         e2e-test-claude-code-mock
     )
     failed=()
@@ -206,28 +216,49 @@ check-coverage:
     # in Red mode (it runs pytest on the staged test file and
     # expects non-zero exit). Pre-push, CI, and manual
     # `just check-coverage` invocations don't set the env var and
-    # run normally. `check-coverage` is the sole pytest-running
-    # aggregate target — a separate `check-tests` would
-    # double-count pytest invocations that run as a side effect of
-    # `pytest --cov`.
+    # run normally.
     if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
         echo ":: check-coverage skipped (Red-mode pre-commit; verified at Green amend)"
         exit 0
     fi
+    # check-coverage is the aggregate (total) `fail_under = 100`
+    # coverage gate (pyproject.toml [tool.coverage.report]). It is a
+    # LITERAL member of both the `just check` array and the CI
+    # check-python matrix so the check-tool-backed-check-completeness
+    # meta-check's both-surfaces invariant is satisfied. To avoid a
+    # DUPLICATE full pytest run when
+    # invoked inside the `just check` aggregate, this recipe gates off
+    # the EXISTING `.coverage` data file when present: the canonical
+    # check-per-file-coverage slug runs `pytest --cov` upfront and
+    # alphabetically before this repo-private extra, so `.coverage` is
+    # already produced by the time this runs locally. When `.coverage`
+    # is ABSENT — the CI check-python matrix runs check-coverage as a
+    # standalone job in its own runner with no prior pytest — the
+    # recipe runs the suite itself so the aggregate gate still fires.
+    # Either way the result is the `fail_under = 100` assertion with NO
+    # duplicate suite run in `just check`.
+    #
     # pytest-cov defaults `--cov-config` to `.coveragerc`, which
-    # bypasses pyproject.toml's `[tool.coverage.run]` (including
-    # the `omit = ["*/_vendor/*"]` carve-out). Pass the config
-    # path explicitly so the vendored-tree exclusion takes effect
-    # under `pytest --cov`. Without this, structlog (transitively
-    # imported by livespec modules) is measured and inflates the
-    # report with sub-100% files that aren't first-party code.
-    # `-n auto` (pytest-xdist) parallelizes the suite across cores;
-    # pytest-cov auto-runs `coverage combine` at session-end to
-    # merge the per-worker `.coverage.<host>.<pid>.<rand>` files
-    # into the single `.coverage` that `per_file_coverage.py` reads
-    # on the next line. Wall-clock budget on a typical multi-core
-    # machine: under ~1min (versus ~3.5min serial).
-    uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
+    # bypasses pyproject.toml's `[tool.coverage.run]` (including the
+    # `omit = ["*/_vendor/*"]` carve-out). Pass the config path
+    # explicitly so the vendored-tree exclusion takes effect under
+    # `pytest --cov`. `-n auto` (pytest-xdist) parallelizes the suite;
+    # pytest-cov auto-runs `coverage combine` at session-end.
+    if [[ -f .coverage ]]; then
+        echo ":: check-coverage: reading existing .coverage (produced by check-per-file-coverage); no duplicate suite run"
+        uv run coverage report --fail-under=100
+    else
+        echo ":: check-coverage: no .coverage data file (CI standalone job); running the suite"
+        uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
+    fi
+    # Per-file 100% line+branch gate. In `just check` this reads the
+    # `.coverage` that check-per-file-coverage already wrote (cheap, no
+    # suite re-run); in the CI standalone check-coverage job (the only
+    # coverage job in livespec's CI matrix — check-per-file-coverage is
+    # NOT a matrix entry) it reads the `.coverage` produced two lines
+    # above. Retaining this step preserves livespec's pre-bump CI
+    # per-file enforcement, which the previous single-step check-coverage
+    # provided.
     uv run python -m livespec_dev_tooling.checks.per_file_coverage
 
 # Red-mode-aware pre-commit aggregate. Classifies the staged tree
@@ -417,6 +448,20 @@ check-master-ci-green:
 e2e-test-claude-code-mock:
     LIVESPEC_E2E_HARNESS=mock uv run pytest tests/e2e/
 
+# CLI end-to-end harness — the top-of-pyramid, user-surface tier whose
+# sole interaction surface is the `claude` CLI binary (per
+# SPECIFICATION/contracts.md §"CLI end-to-end harness contract"). The
+# harness ships from livespec-dev-tooling (livespec_dev_tooling.testing
+# .cli_e2e) and is consumed here via the pin-bump dependency flow; the
+# wiring lives at tests/e2e-cli/test_cli_e2e.py. The `mock` tier still
+# does the REAL plugin discovery + REAL fail-closed coverage gate (only
+# the `claude -p` subprocess is mocked via an injected runner), so it
+# catches install-shape and discovery bugs deterministically with no
+# API key. Part of `just check`. The `real` tier (drives the actual
+# `claude` binary; needs ANTHROPIC_API_KEY) is NOT in `just check`.
+e2e-cli-test-claude-code-mock:
+    LIVESPEC_E2E_HARNESS=mock uv run pytest tests/e2e-cli/
+
 check-prompts:
     uv run pytest tests/prompts/
 
@@ -455,6 +500,16 @@ check-primary-checkout-commit-refuse-hook-installed:
 # it would fail this check on the next run.
 check-aggregate-completeness:
     uv run python -m livespec_dev_tooling.checks.aggregate_completeness
+
+# Tool-backed-check completeness meta-check. Enforces that the four
+# tool-backed slugs (check-lint, check-format, check-types,
+# check-coverage) are LITERAL members of BOTH the `just check` targets
+# array AND a CI matrix's matrix.target list. Canonical slug (lives
+# under livespec_dev_tooling/checks/), so check-aggregate-completeness
+# forces it into the aggregate; it in turn forces the four tool-backed
+# slugs onto both enforcement surfaces.
+check-tool-backed-check-completeness:
+    uv run python -m livespec_dev_tooling.checks.tool_backed_check_completeness
 
 # Canonical-slug alias for the shared `check-tools` discoverability
 # check. The canonical slug derived from the module name

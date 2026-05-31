@@ -1,0 +1,3 @@
+# The /livespec:critique turn lands a `*-critique.md` proposal under
+# the main spec's proposed_changes/ directory (one critique file).
+SPECIFICATION/proposed_changes/review-constraint-critique.md

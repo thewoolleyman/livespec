@@ -1,0 +1,5 @@
+# /livespec:next is a pure read-and-rank pass over proposed_changes/ and
+# history/ — it emits a ranked JSON recommendation to stdout and creates
+# no files. The post-condition asserted here is that the spec state it
+# ranked over remains intact (the main spec file still exists).
+SPECIFICATION/spec.md
