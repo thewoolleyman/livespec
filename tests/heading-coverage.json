@@ -317,8 +317,8 @@
     "heading": "## Error path 3 — version-contiguity gap in history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "tests.livespec.doctor.static.test_version_contiguity",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "test": "TODO",
+    "reason": "scenarios.md tier rule (epic li-scetier, dev-tooling v0.9.0): scenario entries MUST point at an integration-tier test (tests.e2e / tests.prompts / tests.integration / tests.consumer / tests.bin), not a unit test. The prior pointer tests.livespec.doctor.static.test_version_contiguity is unit-tier and exercises the version-contiguity predicate in isolation, not the end-to-end /livespec:doctor invocation against a real v001/v003-no-v002 history gap. No existing e2e/integration test seeds a history gap and asserts the version-contiguity fail finding: tests.e2e.test_doctor_fail_then_fix exercises doctor static-fail-then-fix but trips bcp14-keyword-wellformedness, not version-contiguity. Honest TODO bridge pending a new e2e doctor-version-contiguity test."
   },
   {
     "heading": "## Recovery path — pruning history",
@@ -485,8 +485,8 @@
     "heading": "## Edge case — seed against non-empty SPECIFICATION/",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
-    "test": "tests.livespec.commands.test_seed",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "test": "TODO",
+    "reason": "scenarios.md tier rule (epic li-scetier, dev-tooling v0.9.0): scenario entries MUST point at an integration-tier test (tests.e2e / tests.prompts / tests.integration / tests.consumer / tests.bin), not a unit test. The prior pointer tests.livespec.commands.test_seed is unit-tier and asserts the PreconditionError exit-3 idempotency-refusal at the function boundary, not the end-to-end /livespec:seed invocation against a pre-populated SPECIFICATION/. No existing e2e/cli test exercises seed-refusal on a non-empty SPECIFICATION/: tests.e2e.test_happy_path and tests.e2e-cli seed both exercise the brand-new happy-path seed. Honest TODO bridge pending a new e2e seed-idempotency-refusal test."
   },
   {
     "heading": "## Template root layout",
