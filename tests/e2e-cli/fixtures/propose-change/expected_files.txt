@@ -1,0 +1,3 @@
+# The /livespec:propose-change turn lands a proposal file under the
+# main spec's proposed_changes/ directory.
+SPECIFICATION/proposed_changes/review-constraint.md

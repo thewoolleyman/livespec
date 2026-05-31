@@ -1,0 +1,4 @@
+# /livespec:help is a pure routing/overview pass — it emits guidance to
+# stdout and creates no files. The post-condition asserted here is that
+# the spec tree it describes remains intact (the main spec file exists).
+SPECIFICATION/spec.md

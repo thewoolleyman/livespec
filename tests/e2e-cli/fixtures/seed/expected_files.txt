@@ -1,0 +1,7 @@
+# Files the /livespec:seed turn MUST materialize, per the happy-path
+# round-trip (SPECIFICATION/contracts.md §"Sub-spec structural mechanism").
+# Paths are project-root-relative (the cwd the slash command runs against).
+SPECIFICATION/spec.md
+.livespec.jsonc
+SPECIFICATION/proposed_changes/README.md
+SPECIFICATION/history/v001

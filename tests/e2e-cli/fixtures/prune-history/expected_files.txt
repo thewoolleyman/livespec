@@ -1,0 +1,3 @@
+# The /livespec:prune-history turn leaves a pruned-history marker where
+# the collapsed v001 entry was. The retained v002 revision stays intact.
+SPECIFICATION/history/v002
