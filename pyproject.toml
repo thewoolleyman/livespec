@@ -70,8 +70,24 @@ dev = [
 # SPECIFICATION/contracts.md §"`livespec_runtime.cross_repo` contract
 # surface". Bump-pin PRs follow the same shape as livespec-dev-tooling.
 [tool.uv.sources]
-livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.8.0" }
+livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.9.0" }
 livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.git", tag = "v0.3.0" }
+
+# ---------------------------------------------------------------------------
+# livespec-dev-tooling — shared-suite configuration (epic li-scetier).
+# ---------------------------------------------------------------------------
+#
+# `scenario_tiers` is the allowlist the shared `check-heading-coverage`
+# (livespec-dev-tooling v0.9.0 Phase 1) enforces against every
+# scenarios.md entry: each scenario heading MUST map to a test whose
+# dotted module path begins with one of these integration-tier prefixes
+# (scenarios describe end-to-end behavior, so unit-tier pointers are
+# rejected). Authority: SPECIFICATION/scenarios.md §"Granular scenario
+# coverage" (v098, epic li-scetier). `tests.bin` is included
+# deliberately — livespec's one tests.bin scenario entry is the phase-3
+# round-trip/integration test, legitimately integration-tier.
+[tool.livespec_dev_tooling]
+scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.consumer", "tests.bin"]
 
 # ---------------------------------------------------------------------------
 # Ruff — sole linter, formatter, import-sorter, complexity checker.
