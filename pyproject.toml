@@ -70,7 +70,7 @@ dev = [
 # SPECIFICATION/contracts.md §"`livespec_runtime.cross_repo` contract
 # surface". Bump-pin PRs follow the same shape as livespec-dev-tooling.
 [tool.uv.sources]
-livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.6.0" }
+livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.8.0" }
 livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.git", tag = "v0.3.0" }
 
 # ---------------------------------------------------------------------------
@@ -221,6 +221,14 @@ ban-relative-imports = "all"
 "tests/**.py" = [
     "S101", "PLR2004", "S603", "S607", "PT018", "S108", "S105", "TRY003", "E501",
 ]
+# The CLI end-to-end test directory is named `tests/e2e-cli/` by
+# contract (SPECIFICATION/contracts.md §"CLI end-to-end harness
+# contract" requirement 7b mandates a `tests/e2e-cli/` directory). The
+# hyphen is not a valid Python module-name character, so N999
+# ("Invalid module name") fires on every `.py` under it. The directory
+# name is the contract-fixed convention, not a stylistic choice — the
+# ignore is scoped to this subtree only.
+"tests/e2e-cli/**.py" = ["N999"]
 # dev-tooling/checks/ scripts shell out to git, ruff, python via
 # subprocess.run with fixed argv lists per the canonical-target
 # invocation contract. S603/S607/S404 are over-strict for this
@@ -381,8 +389,12 @@ omit = [
     "*/__pycache__/*",
     # E2E and prompt-QA test infrastructure is excluded from coverage
     # per SPECIFICATION/contracts.md §"E2E harness contract" and
-    # §"Prompt-QA harness contract §"Python-rule compliance".
+    # §"Prompt-QA harness contract §"Python-rule compliance". The
+    # CLI end-to-end tier (tests/e2e-cli/) is excluded on the same
+    # basis per §"CLI end-to-end harness contract" — it is top-of-
+    # pyramid test infrastructure, not first-party livespec source.
     "tests/e2e/*",
+    "tests/e2e-cli/*",
     "tests/prompts/*",
     # pytest tmp_path fixture directories — test helpers written into
     # /tmp/pytest-*/... (Linux) or /private/var/folders/.../T/pytest-*/...
