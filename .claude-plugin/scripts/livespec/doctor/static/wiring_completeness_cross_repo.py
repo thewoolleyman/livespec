@@ -79,7 +79,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from livespec_dev_tooling.canonical_checks import canonical_check_slugs
 from returns.io import IOResult, IOSuccess
 
 from livespec.context import DoctorContext
@@ -272,13 +271,53 @@ def _fold_pairs(
     )
 
 
+def _resolve_canonical_slugs() -> tuple[str, ...] | None:
+    """Resolve the canonical-slug set, lazily importing its dev-tooling substrate.
+
+    `livespec_dev_tooling.canonical_checks.canonical_check_slugs` is the
+    single source of truth for the fleet-wide canonical-check set, but
+    `livespec_dev_tooling` is a NON-bundled sibling package: it is
+    importable under `uv` (dev/CI) yet absent under bare `python3` (the
+    `python3 bin/doctor_static.py` plugin flow the revise wrapper spawns
+    via `sys.executable`) and in the installed-plugin bundle. Importing it
+    at module top-level therefore crashed the ENTIRE static phase with a
+    `ModuleNotFoundError` in those contexts, silently bypassing every
+    static check (li-rvdctr).
+
+    This helper imports the slug accessor lazily inside a
+    `try/except ModuleNotFoundError` and returns `None` when the substrate
+    is unimportable — the caller degrades the fleet-wide cross-repo
+    backstop to a `skipped` finding (rather than crashing the whole phase)
+    in exactly those bundle / bare-python3 contexts where it cannot run.
+    When the substrate IS present, it returns the resolved slug tuple and
+    the check proceeds exactly as before.
+    """
+    try:
+        from livespec_dev_tooling.canonical_checks import canonical_check_slugs
+    except ModuleNotFoundError:
+        return None
+    return canonical_check_slugs()
+
+
 def _evaluate_manifest(
     *,
     ctx: DoctorContext,
     cross_repo_targets: dict[str, Any],
 ) -> IOResult[Finding, LivespecError]:
     """Walk every non-host sibling, aggregate per-sibling drift, build Finding."""
-    canonical_slugs = canonical_check_slugs()
+    canonical_slugs = _resolve_canonical_slugs()
+    if canonical_slugs is None:
+        return IOSuccess(
+            make_finding(
+                ctx=ctx,
+                status="skipped",
+                message=(
+                    "wiring-completeness-cross-repo: livespec_dev_tooling is "
+                    "not importable (cross-repo canonical-slug set "
+                    "unavailable); check skipped"
+                ),
+            ),
+        )
     sibling_targets = filter_sibling_targets(
         cross_repo_targets=cross_repo_targets, project_root=ctx.project_root
     )

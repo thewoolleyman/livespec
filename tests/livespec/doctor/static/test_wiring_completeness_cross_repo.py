@@ -61,6 +61,7 @@ response map. Real `gh` CLI is never invoked.
 from __future__ import annotations
 
 import base64
+import builtins
 import json
 import subprocess
 from pathlib import Path
@@ -1545,6 +1546,75 @@ def test_path_a_falls_through_when_justfile_not_at_head(
         spec_root=str(spec_root),
     )
     assert result == IOSuccess(expected)
+
+
+def test_skipped_when_dev_tooling_substrate_unimportable(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`skipped` (not crash) when `livespec_dev_tooling` is unimportable.
+
+    Regression for li-rvdctr: the check's canonical-slug source,
+    `livespec_dev_tooling.canonical_checks.canonical_check_slugs`, lives in
+    a NON-bundled sibling package — importable under `uv`/CI but absent
+    under bare `python3` (the `python3 bin/doctor_static.py` plugin flow the
+    revise wrapper spawns via `sys.executable`) and in the installed-plugin
+    bundle. A top-level import of it crashed the WHOLE static phase with a
+    `ModuleNotFoundError` in those contexts, so `_revise_doctor` saw empty
+    stdout, reported "malformed JSON", and silently bypassed every static
+    check. The fix makes the import lazy + graceful: when the substrate is
+    unimportable, the cross-repo backstop degrades to a `skipped` finding
+    while the rest of the static phase runs normally.
+
+    The fixture uses a `.livespec.jsonc` with a NON-host sibling so the
+    walk reaches `_evaluate_manifest` (where the slug resolution happens),
+    then patches `builtins.__import__` to raise `ModuleNotFoundError` for
+    `livespec_dev_tooling.canonical_checks`. Both the `status == "skipped"`
+    AND the `livespec_dev_tooling`-naming assertions are made so that a Red
+    that happens to produce a skipped finding for some OTHER reason cannot
+    pass.
+    """
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "sibling-a": {
+                "github_url": "https://github.com/example/sibling-a",
+                "local_clone": str(tmp_path / "sibling-a"),
+                "default_branch": "master",
+            },
+        },
+    )
+
+    real_import = builtins.__import__
+
+    def fake_import(
+        name: str,
+        globals_: Any = None,
+        locals_: Any = None,
+        fromlist: Any = (),
+        level: int = 0,
+    ) -> Any:
+        if name == "livespec_dev_tooling.canonical_checks" or (
+            name == "livespec_dev_tooling" and fromlist
+        ):
+            raise ModuleNotFoundError(name)
+        return real_import(name, globals_, locals_, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    io_result = wiring_completeness_cross_repo.run(ctx=ctx)
+    from returns.unsafe import unsafe_perform_io
+
+    inner = unsafe_perform_io(io_result)
+    from returns.result import Success
+
+    assert isinstance(inner, Success)
+    finding = inner.unwrap()
+    assert finding.status == "skipped"
+    assert "livespec_dev_tooling" in finding.message
 
 
 def test_path_a_reads_via_git_db_on_bare_flag_clone(
