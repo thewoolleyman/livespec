@@ -6,6 +6,20 @@
 # target list: python-skill-script-style-requirements.md
 # §"Enforcement suite — Canonical target list".
 
+# `skip` — space-separated list of `check:` aggregate targets to omit
+# from a single run (epic li-cvaudit, cvredmd). Default empty: the full
+# aggregate runs. The Red-mode pre-commit overrides it on the command
+# line — `just skip="check-coverage check-per-file-coverage" check` —
+# so the coverage gates are not run at the Red commit (coverage is
+# verified at the Green amend). The Green-amend pre-commit overrides it
+# with `just skip="check-red-green-replay" check` so the no-arg
+# aggregate replay variant does not reject the in-progress Green amend
+# (the commit-msg hook is the load-bearing per-commit verifier). This
+# is a self-contained just variable; it replaces the prior ambient
+# `LIVESPEC_PRECOMMIT_RED_MODE` env var with no env var and no spec
+# change.
+skip := ""
+
 default:
     @just --list
 
@@ -96,6 +110,21 @@ check:
     #
     # Aggregator continues on failure (matches CI fail-fast: false)
     # and exits non-zero with the failure list if any target failed.
+    #
+    # `skip` is a just VARIABLE (declared at the top of this justfile,
+    # default empty): a space-separated list of target names to omit
+    # from this run (epic li-cvaudit, cvredmd). The Red-mode pre-commit
+    # invokes `just skip="check-coverage check-per-file-coverage" check`
+    # so coverage is not gated at the Red commit (verified at the Green
+    # amend); the Green-amend pre-commit invokes
+    # `just skip="check-red-green-replay" check` so the no-arg replay
+    # aggregate variant does not reject the in-progress Green amend.
+    # These replace the prior ambient `LIVESPEC_PRECOMMIT_RED_MODE` env
+    # var. The recipe header stays the bare `check:` that the
+    # wiring-completeness checks parse for. Pre-push and CI invoke
+    # `just check` with no `skip`, so the full aggregate stays the
+    # load-bearing safety net.
+    read -ra skip_targets <<< "{{skip}}"
     targets=(
         # ---- Canonical block (38 slugs, alphabetical) ----
         check-aggregate-completeness
@@ -121,7 +150,6 @@ check:
         check-no-inheritance
         check-no-lloc-soft-warnings
         check-no-raise-outside-io
-        check-no-stale-revise-branches
         check-no-todo-registry
         check-no-write-direct
         check-pbt-coverage-pure-modules
@@ -169,7 +197,20 @@ check:
         e2e-test-claude-code-mock
     )
     failed=()
+    ran=0
     for t in "${targets[@]}"; do
+        skip_this=0
+        for s in "${skip_targets[@]:-}"; do
+            if [[ "$t" == "$s" ]]; then
+                skip_this=1
+                break
+            fi
+        done
+        if [[ "$skip_this" -eq 1 ]]; then
+            printf '\n::: just %s (skipped)\n' "$t"
+            continue
+        fi
+        ran=$((ran + 1))
         printf '\n::: just %s\n' "$t"
         if ! just "$t"; then
             failed+=("$t")
@@ -180,7 +221,7 @@ check:
         printf '  - %s\n' "${failed[@]}"
         exit 1
     fi
-    printf '\nAll %d targets passed.\n' "${#targets[@]}"
+    printf '\nAll %d targets passed.\n' "$ran"
 
 # ---------------------------------------------------------------
 # Tool-backed checks.
@@ -209,18 +250,15 @@ check-imports-architecture:
 check-coverage:
     #!/usr/bin/env bash
     set -uo pipefail
-    # Red-mode pre-commit skip: when the Red-mode-aware aggregate
-    # (`check-pre-commit`) sets LIVESPEC_PRECOMMIT_RED_MODE for the
-    # staged tree, skip pytest entirely — the commit-msg replay
-    # hook (`check-red-green-replay`) is the load-bearing verifier
-    # in Red mode (it runs pytest on the staged test file and
-    # expects non-zero exit). Pre-push, CI, and manual
-    # `just check-coverage` invocations don't set the env var and
-    # run normally.
-    if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
-        echo ":: check-coverage skipped (Red-mode pre-commit; verified at Green amend)"
-        exit 0
-    fi
+    # Red-mode pre-commit omits this target via `check-pre-commit`'s
+    # `just skip="check-coverage check-per-file-coverage" check`
+    # argument (a self-contained just variable — there is NO ambient
+    # env var). The commit-msg replay hook (`check-red-green-replay`)
+    # is the load-bearing verifier in Red mode; coverage is checked at
+    # the Green amend. Pre-push, CI, and manual `just check-coverage`
+    # invocations run the full aggregate with no `skip`, so this target
+    # runs normally there (epic li-cvaudit, cvredmd).
+    #
     # check-coverage is the aggregate (total) `fail_under = 100`
     # coverage gate (pyproject.toml [tool.coverage.report]). It is a
     # LITERAL member of both the `just check` array and the CI
@@ -269,11 +307,14 @@ check-coverage:
 # `.claude-plugin/scripts/bin/**`, or `dev-tooling/checks/**`
 # (modified test files extending pre-existing mirror-pairs are
 # valid Red commits too, so the diff-filter includes M as well as
-# A). In Red mode, sets LIVESPEC_PRECOMMIT_RED_MODE=1 and runs
-# `just check`; check-coverage observes the env var and skips
-# (commit-msg replay hook is the load-bearing test-verifier in
-# Red mode). In all other modes (Green amend, test:/chore:/etc.,
-# non-Red feat:/fix:), runs `just check` unconditionally.
+# A). In Red mode, runs `just skip="check-coverage
+# check-per-file-coverage" check` so the coverage gates are omitted
+# (the commit-msg replay hook is the load-bearing test-verifier in
+# Red mode; coverage is checked at the Green amend). This is a
+# self-contained recipe argument — there is NO ambient env var
+# (epic li-cvaudit, cvredmd). In all other modes (test:/chore:/etc.,
+# non-Red feat:/fix:), runs `just check` unconditionally — EXCEPT
+# the Green-amend shape below.
 #
 # Pre-push and CI keep invoking `just check` directly (no Red-mode
 # classifier; full suite always).
@@ -295,9 +336,30 @@ check-pre-commit:
         exit $?
     fi
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
-        echo ":: v037 D1 Red-mode shape detected: $test_staged"
-        echo ":: skipping check-coverage (commit-msg replay hook is the verifier)"
-        export LIVESPEC_PRECOMMIT_RED_MODE=1
+        echo ":: Red-mode shape detected: $test_staged"
+        echo ":: skipping coverage gates (commit-msg replay hook is the verifier; coverage runs at Green amend)"
+        just skip="check-coverage check-per-file-coverage" check
+        exit $?
+    fi
+    # Green-amend shape: impl staged while HEAD still carries Red-only
+    # trailers (the Green amend has not yet written its TDD-Green-*
+    # trailers — the commit-msg `check-red-green-replay {1}` hook writes
+    # AND verifies them immediately after this pre-commit pass). The
+    # no-arg `check-red-green-replay` aggregate variant validates HEAD,
+    # which during a Green amend is the in-progress Red commit; it would
+    # otherwise reject a perfectly valid Green amend. Skip the aggregate
+    # variant here (the commit-msg hook is the load-bearing per-commit
+    # verifier); pre-push + CI re-run the full no-arg aggregate against
+    # the completed Red->Green HEAD as the safety net (epic li-cvaudit,
+    # cvnoarg — mirrors livespec-dev-tooling's check-pre-commit).
+    head_msg=$(git log -1 --format=%B 2>/dev/null || true)
+    if [[ "$impl_count" -ge 1 ]] \
+        && grep -q 'TDD-Red-Test-File-Checksum:' <<< "$head_msg" \
+        && ! grep -q 'TDD-Green-Verified-At:' <<< "$head_msg"; then
+        echo ":: Green-amend shape detected (impl staged; HEAD carries Red-only trailers)"
+        echo ":: skipping no-arg check-red-green-replay (commit-msg replay hook verifies the Green amend)"
+        just skip="check-red-green-replay" check
+        exit $?
     fi
     just check
 
@@ -529,38 +591,19 @@ check-check-tools:
 check-file-lloc:
     uv run python -m livespec_dev_tooling.checks.file_lloc
 
-# Refuse new revise passes while a stale spec/* branch is ahead of
-# master. Invoked by livespec's /livespec:revise SKILL.md pre-step
-# refusal; included in the canonical aggregate for cross-cutting
-# self-host coverage (per SPECIFICATION/contracts.md wiring-
-# completeness invariant).
-#
-# In livespec's primary bare checkout, in-flight spec/* worktrees
-# are a natural part of the dogfooded revise workflow — every
-# /livespec:revise pass creates a spec/<topic> branch. The
-# `--allow-stale-branches` flag surfaces the diagnostics as info
-# rather than gating the aggregate; the load-bearing enforcement
-# remains at the /livespec:revise pre-step refusal. See
-# work-item li-stalebr for the longer-term semantic resolution
-# (worktree-aware exemption or matrix gating).
-check-no-stale-revise-branches:
-    uv run python -m livespec_dev_tooling.checks.no_stale_revise_branches --allow-stale-branches
-
 # Canonical-slug alias for the full per-file 100% line+branch
 # coverage gate. The canonical slug derived from the module name
 # `per_file_coverage.py` is `check-per-file-coverage`. Same logic
 # as the livespec-private `check-coverage` recipe (kept for CI
 # job-name + branch-protection.json compatibility); this is the
-# canonical-aggregate entry. Red-mode pre-commit skip preserved
-# (commit-msg replay hook is the verifier; aggregate-time coverage
-# is not load-bearing in Red mode).
+# canonical-aggregate entry. In Red-mode pre-commit this target is
+# omitted by `check-pre-commit` via the `just skip=...` argument
+# (coverage is verified at the Green amend; the commit-msg replay hook
+# is the load-bearing verifier in Red mode), so no ambient env-var read
+# is needed here (epic li-cvaudit, cvredmd).
 check-per-file-coverage:
     #!/usr/bin/env bash
     set -uo pipefail
-    if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
-        echo ":: check-per-file-coverage skipped (Red-mode pre-commit; verified at Green amend)"
-        exit 0
-    fi
     # See check-coverage above for the rationale on the cov-config
     # path + pytest-xdist parallelism.
     uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
@@ -611,37 +654,24 @@ check-mutation:
 # Canonical-slug alias for the release-gate mutation check. The
 # canonical slug derived from the module name `check_mutation.py`
 # (per `livespec_dev_tooling.canonical_checks`) is `check-check-
-# mutation`. Gated by LIVESPEC_RELEASE_GATE so the canonical
-# aggregate (`just check`) can wire the slug per the wiring-
-# completeness invariant (SPECIFICATION/contracts.md §"Shared code
-# sync — livespec-dev-tooling" v094) without making per-commit
-# `just check` runs choke on the multi-minute mutation suite. The
-# release-tag workflow MUST set LIVESPEC_RELEASE_GATE=1 before
-# invoking this target.
+# mutation`. Always invoked plainly; the module self-manages its
+# RUN/SKIP lever (epic li-cvaudit, cvtodo). `LIVESPEC_RUN_MUTATION`
+# unset → the check logs "skipped" and exits 0; set to a non-empty
+# value (the release-tag workflow sets it to `true`) → the mutmut
+# suite runs. No external gate, no silent skip — replaces the prior
+# `LIVESPEC_RELEASE_GATE` skip carve-out.
 check-check-mutation:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    if [[ -z "${LIVESPEC_RELEASE_GATE:-}" ]]; then
-        echo ":: check-check-mutation skipped (LIVESPEC_RELEASE_GATE unset; release-gate-only check)"
-        exit 0
-    fi
     uv run python -m livespec_dev_tooling.checks.check_mutation
 
-# Release-gate ONLY — paired with check-check-mutation and
-# check-no-lloc-soft-warnings on the release-tag CI workflow. Gated
-# by LIVESPEC_RELEASE_GATE so the canonical aggregate can wire the
-# slug (per SPECIFICATION/contracts.md §"Shared code sync —
-# livespec-dev-tooling" wiring-completeness) without making per-
-# commit `just check` runs choke on TODO entries that are
-# legitimate authoring placeholders. The release-tag workflow
-# MUST set LIVESPEC_RELEASE_GATE=1 before invoking this target.
+# Always invoked plainly; the module self-manages its severity lever
+# (epic li-cvaudit, cvtodo). The heading-coverage.json TODO scan
+# ALWAYS runs; `LIVESPEC_FAIL_IF_HEADING_COVERAGE_TODOS_EXIST` unset
+# → TODO offenders warn + exit 0 (authoring placeholders surface
+# without blocking per-commit `just check`); set (the release-tag
+# workflow sets it to `true`) → they fail. Replaces the prior
+# `LIVESPEC_RELEASE_GATE` skip carve-out, which silently skipped the
+# scan entirely when the gate was unset.
 check-no-todo-registry:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    if [[ -z "${LIVESPEC_RELEASE_GATE:-}" ]]; then
-        echo ":: check-no-todo-registry skipped (LIVESPEC_RELEASE_GATE unset; release-gate-only check)"
-        exit 0
-    fi
     uv run python -m livespec_dev_tooling.checks.no_todo_registry
 
 check-comment-line-anchors:
@@ -670,57 +700,42 @@ check-coverage-incremental *args:
 # Canonical-slug alias for the path-scoped incremental coverage
 # check. The canonical slug derived from the module name
 # `check_coverage_incremental.py` is `check-check-coverage-
-# incremental`. Wired into the canonical aggregate (per the
-# wiring-completeness invariant, SPECIFICATION/contracts.md v094)
-# but short-circuits when called with no args — the full-tree
-# per-file 100% gate is enforced by check-per-file-coverage.
+# incremental`. With explicit `--paths <impl_path> [<impl_path>...]`
+# (repo-root-relative) it scopes the per-file 100% gate to those
+# paths. With NO args (the canonical aggregate / `just check`
+# invocation) the check DERIVES the changed impl-`.py` set from
+# `git diff --name-only origin/master...HEAD` and gates those — no
+# longer a no-op (epic li-cvaudit, cvnoarg). The interactive
+# developer use case still passes `--paths` explicitly.
 check-check-coverage-incremental *args:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    if [[ -z "{{args}}" ]]; then
-        echo ":: check-check-coverage-incremental skipped (no --paths provided; aggregate-mode no-op)"
-        echo ":: full-tree per-file 100% gate is enforced by check-per-file-coverage"
-        exit 0
-    fi
     uv run python -m livespec_dev_tooling.checks.check_coverage_incremental {{args}}
 
-# Release-gate ONLY — paired with check-check-mutation + check-no-
-# todo-registry on the release-tag CI workflow. Wired into the
-# canonical aggregate (per the wiring-completeness invariant,
-# SPECIFICATION/contracts.md v094) but short-circuits unless
-# LIVESPEC_RELEASE_GATE is set so per-commit `just check` runs do
-# NOT choke on legitimate authoring placeholders in the 201-250
-# LLOC soft band. Closes the M3 soft-band drift loophole: forces
-# refactor work to land before any v* tag push when any file is
-# in 201-250 LLOC.
+# Always invoked plainly; the module self-manages its severity lever
+# (epic li-cvaudit, cvtodo). The 201-250 LLOC soft-band scan ALWAYS
+# runs; `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST` unset → soft-band
+# offenders warn + exit 0 (per-commit `just check` stays green); set
+# (the release-tag workflow sets it to `true`) → they fail. Closes
+# the soft-band drift loophole: per-commit ergonomic (warning), but
+# tag-push enforcement blocks release until clean. Replaces the prior
+# `LIVESPEC_RELEASE_GATE` skip carve-out.
 check-no-lloc-soft-warnings:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    if [[ -z "${LIVESPEC_RELEASE_GATE:-}" ]]; then
-        echo ":: check-no-lloc-soft-warnings skipped (LIVESPEC_RELEASE_GATE unset; release-gate-only check)"
-        exit 0
-    fi
     uv run python -m livespec_dev_tooling.checks.no_lloc_soft_warnings
 
 # Trailer-based Red→Green replay verification (hard gate). Invoked
-# by lefthook commit-msg stage (NOT pre-commit) — the hook requires
-# the commit-message file path as argv[1] to write trailers via
-# `git interpret-trailers --in-place`. Wired into the canonical
-# aggregate (per SPECIFICATION/contracts.md v094 wiring-completeness)
-# but the recipe short-circuits when called with no args — the
-# load-bearing verifier is the commit-msg hook, not `just check`.
+# by lefthook commit-msg stage with the commit-message file path as
+# argv[1] (the load-bearing per-commit verifier) — the hook writes
+# trailers via `git interpret-trailers --in-place`. The canonical
+# aggregate / `just check` invokes this with NO msg_path; the module
+# then DERIVES the message from `git log -1 --format=%B` (HEAD) and
+# validates it — no longer a no-op (epic li-cvaudit, cvnoarg). The
+# Green-amend pre-commit shape omits this aggregate variant via
+# `check-pre-commit`'s `just skip="check-red-green-replay" check`
+# (the commit-msg hook verifies the in-progress Green amend).
 #
 # Note on lefthook stage: the design is fundamentally `commit-msg`
 # (writes to the commit-message file; distinguishes Red/Green via
 # HEAD~0 inspection), not pre-commit.
 check-red-green-replay *args:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    if [[ -z "{{args}}" ]]; then
-        echo ":: check-red-green-replay skipped (no msg_path provided; aggregate-mode no-op)"
-        echo ":: load-bearing verifier is the commit-msg hook (lefthook)"
-        exit 0
-    fi
     uv run python -m livespec_dev_tooling.checks.red_green_replay {{args}}
 
 # Mirror-pairing: every covered .py under livespec/, bin/, and

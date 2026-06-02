@@ -238,7 +238,12 @@ and exit code is `0` (NOT an error).
    `no_stale_revise_branches` shared check (shipped by
    livespec-dev-tooling per the cross-cutting epic
    `coordinating-epic-stale-revise-enforcement`) against
-   the project root. The check:
+   the project root by invoking
+   `python -m livespec_dev_tooling.workflow_checks.no_stale_revise_branches`.
+   It is a revise-workflow check (module
+   `livespec_dev_tooling.workflow_checks.no_stale_revise_branches`),
+   invoked by this revise pre-step — NOT a member of the
+   `just check` aggregate. The check:
 
    - Enumerates local refs matching `refs/heads/spec/*` via
      `git for-each-ref`.
