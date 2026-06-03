@@ -1,18 +1,14 @@
 # LiveSpec as a contract with reference implementations
 
-**Status:** open / pre-formal research capture (per
-`research/workflow-processes/CLAUDE.md` graduation rule — NOT yet
-codified into `SPECIFICATION/`).
+**Status:** open / pre-formal research capture (per `research/workflow-processes/CLAUDE.md` graduation rule — NOT yet codified into `SPECIFICATION/`).
+
 **Date:** 2026-06-02.
+
 **Authored from:** branch `master`, multi-session design discussion.
-**Evolves:** the two-tier spec-vs-implementation framing in
-`tool-agnostic-workflow.md` and the diagrams in `diagrams/`
-(especially `core-vs-impl-api-surface.svg` and
-`orchestration-layers.svg`).
-**Companion captures:** the orchestrator-agnostic three-layer
-exploration that preceded this (Gas City / Beads / Dolt; StrongDM
-Dark Factory / Kilroy / Attractor; holdout scenarios). This doc is
-the convergence of that thread.
+
+**Evolves:** the two-tier spec-vs-implementation framing in `tool-agnostic-workflow.md` and the diagrams in `diagrams/` (especially `core-vs-impl-api-surface.svg` and `orchestration-layers.svg`).
+
+**Companion captures:** the orchestrator-agnostic three-layer exploration that preceded this (Gas City / Beads / Dolt; StrongDM Dark Factory / Kilroy / Attractor; holdout scenarios). This doc is the convergence of that thread.
 
 > This is a **re-steering of the whole project**, not an increment.
 > It reframes "implementation" from a peer tier into the *work
