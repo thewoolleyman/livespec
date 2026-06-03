@@ -50,8 +50,12 @@ and an L1/L2/L3 "layer" stack. Both are **rejected**:
   API**, and **orchestrators that consume it**. Implementation is
   the output of the latter.
 - "Layer" (CLI / skill / loop) is retired. The loop moves into the
-  orchestrator; "skills" become an optional harness veneer over the
-  CLI. With no loop in core, there is no stack to layer.
+  orchestrator. A "skill" decomposes into **(prose, in core) +
+  (CLI, the contract)**: the prose backing the LLM portions stays a
+  first-class **core** artifact (DRY, shared across all harnesses);
+  only the harness-specific *binding* of that prose to a tool runtime
+  (e.g. Claude's `/livespec:*` slash commands) lives in the harness.
+  With no loop in core, there is no stack to layer.
 
 ---
 
@@ -342,9 +346,12 @@ CLI contract. Decompose skills into (prose in core) + (CLI). Strip
 Claude-Code specifics from core.
 
 **Phase 3 — Extract harness: `livespec-harness-claude`.** Move the
-`/livespec:*` slash commands + SKILL.md veneer out of core into the
-first harness repo; it vendors core and reads prose by relative path.
-Core now has no `.claude/`.
+Claude-specific *binding* — the `/livespec:*` slash commands and the
+SKILL.md wrappers that point Claude at the shared prose — out of core
+into the first harness repo. The shared LLM-backing **prose stays in
+core**; the harness vendors core and reads that prose by relative
+path. Core now has no `.claude/`, but retains the harness-neutral
+prose.
 
 **Phase 4 — Rebuild the default orchestrator as
 `livespec-impl-git-jsonl`.** Rename from `livespec-impl-plaintext`;
