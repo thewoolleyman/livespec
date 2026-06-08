@@ -70,6 +70,18 @@ before reading `docs/SYNC_SETUP.md` and finding the architecture.
 
 ### Status
 
+- **2026-06-08 (li-mwwdws / v1.0.5 gate): FIXED — but only in the gated
+  v1.0.5.** Issue [#3688](https://github.com/gastownhall/beads/issues/3688)
+  is **CLOSED/completed** (2026-05-13), fixed by PR
+  [#3909](https://github.com/gastownhall/beads/pull/3909) "fix(init): use
+  git origin as default Dolt remote" (merged 2026-05-13). The
+  `main`-branch DOLT.md confirms `bd init` now "auto-detects `git origin`
+  and persists it as `sync.remote`." **Release-ancestry caveat:** PR
+  #3909's merge commit is `ahead` of the v1.0.4 tag and `behind` v1.0.5,
+  so the fix is **NOT in the stable v1.0.4 release — it ships only in the
+  gated/do-not-upgrade v1.0.5.** On v1.0.4 the `sync.remote` workaround
+  (`setup-beads.sh`) must stay. On v1.0.5 it can be dropped, but v1.0.5
+  itself is unsafe to run multi-machine (see banner #4259).
 - 2026-05-05: filed our comment; upstream maintainer hasn't yet
   responded. Issue remains OPEN. Workaround in place.
 
@@ -101,6 +113,21 @@ and the `setup:all` PHASE 6 smoke.
 
 ### Status
 
+- **2026-06-08 (li-mwwdws / v1.0.5 gate): STILL-OPEN upstream;
+  WORKAROUND-AVAILABLE (ours); N/A in server mode.** Issue
+  [#3597](https://github.com/gastownhall/beads/issues/3597) is **OPEN**.
+  The maintainer's latest comment (2026-05-11) leans toward *not*
+  supporting database-coupled `bd doctor` in embedded mode at all:
+  *"`bd doctor`'s value in embedded mode still needs investigation and
+  scoping, since its output won't yield anything actionable … except
+  possibly introducing a foot gun."* So there is no upstream fix in
+  v1.0.4 or v1.0.5. We carry `scripts/bd-doctor.sh` as the workaround
+  (so this is NOT a no-workaround blocker). **Crucially for the cutover:
+  livespec's `dolt-server` tenant runs in SERVER mode, not embedded
+  mode** (`beads-schema-mapping.md` §2), so the embedded-mode doctor
+  limitation does not apply to the cutover deployment — confirm in
+  li-srbpds that `bd doctor` (or the bd-doctor.sh equivalent) behaves in
+  server mode.
 - 2026-05-05: filed our comment; OPEN. Workaround in place; remove
   the script + the wrapper-table row when upstream lands the fix.
 
@@ -136,6 +163,23 @@ third-party tool surprises us.
 
 ### Status
 
+- **2026-06-08 (li-mwwdws / v1.0.5 gate): FIXED — but only in the gated
+  v1.0.5.** Issue [#3135](https://github.com/gastownhall/beads/issues/3135)
+  is **CLOSED/completed** (2026-05-13). Two PRs address it: PR
+  [#3909](https://github.com/gastownhall/beads/pull/3909) (init defaults to
+  git-origin remote) and PR
+  [#4063](https://github.com/gastownhall/beads/pull/4063) "fix(init): make
+  JSONL auto-export opt-in" (merged 2026-05-21). The v1.0.5 Upgrade Notes
+  state it unambiguously: *"Dolt is the primary datastore.
+  `.beads/issues.jsonl` is now treated as an optional export … It is not
+  the canonical git-tracked source of truth, not cross-machine sync, and
+  not a full database backup."* **Release-ancestry caveat:** both #3909
+  and #4063 are `ahead` of v1.0.4 and `behind` v1.0.5 — the
+  source-of-truth clarification + opt-in export land **only in the gated
+  v1.0.5, NOT v1.0.4.** Behavioral note for the bridge: on v1.0.5,
+  `export.auto`/`export.git-add` default to **off**; if any livespec
+  tooling still reads `.beads/issues.jsonl`, it must explicitly set those
+  on (li-srbpds).
 - 2026-05-05: filed our comment; OPEN. Suggested fix in our comment
   is to auto-include a one-line architecture statement in the
   bd-init-generated AGENTS.md preamble so agents/operators don't
@@ -169,6 +213,18 @@ covers both the install side and the bootstrap side.
 
 ### Status
 
+- **2026-06-08 (li-mwwdws / v1.0.5 gate): FIXED — but only in the gated
+  v1.0.5.** Issue [#3419](https://github.com/gastownhall/beads/issues/3419)
+  is **CLOSED/completed** (2026-05-13), fixed by the same PR
+  [#3909](https://github.com/gastownhall/beads/pull/3909) as Problem 1
+  (the synthesize-remote-at-init and rehydrate-remote-on-bootstrap fixes
+  landed together, exactly the "close the loop natively" combination
+  predicted below). The `main` DOLT.md confirms `bd bootstrap`
+  auto-detects `refs/dolt/data` on origin and clones from it, with
+  `sync.remote` taking precedence. **Release-ancestry caveat:** #3909 is
+  `ahead` of v1.0.4 / `behind` v1.0.5 → **NOT in v1.0.4, only in the
+  gated v1.0.5.** Keep the `.beads/config.yaml` `sync.remote` workaround
+  on v1.0.4.
 - 2026-05-05: filed our comment with the workaround as a possible
   fix shape. OPEN. The combination of fixing #3688 (synthesize
   remote at `bd init`) + this issue (rehydrate remote on bootstrap)
@@ -200,6 +256,17 @@ projects.
 
 ### Status
 
+- **2026-06-08 (li-mwwdws / v1.0.5 gate): FIXED (docs).** Issue
+  [#3683](https://github.com/gastownhall/beads/issues/3683) is
+  **CLOSED/completed** (2026-05-10). Maintainer: *"PR #3820 and #3842
+  address the substantive part of the missing and bad docs."* PR
+  [#3820](https://github.com/gastownhall/beads/pull/3820) is **in
+  v1.0.4** (merged ~1h before the v1.0.4 tag, `behind` v1.0.4); PR
+  [#3842](https://github.com/gastownhall/beads/pull/3842) is **only in
+  v1.0.5** (`ahead` of v1.0.4). Lowest-severity of the eight (docs only,
+  no behavior). Note: `bd dream` is not a real command in the v1.0.5 CLI
+  reference; the memory family is `bd remember`/`memories`/`recall`/
+  `forget` — the original AGENTS.md reference was likely stale.
 - 2026-05-05: filed our comment with concrete suggestions
   (consolidated "How cross-machine sync works" entry-point doc;
   auto-include architecture statement in generated AGENTS.md).
@@ -238,6 +305,19 @@ Two-layer self-heal:
 
 ### Status
 
+- **2026-06-08 (li-mwwdws / v1.0.5 gate): FIXED (main path);
+  sibling-path STILL-OPEN.** PR
+  [#3483](https://github.com/gastownhall/beads/pull/3483) (chmod existing
+  `.beads/` to 0700, GH#3391) merged 2026-04-28 and its merge commit is
+  **`behind` the v1.0.4 tag → the fix IS in stable v1.0.4** (so the
+  on-every-call warning for the primary `.beads/` is resolved without
+  needing v1.0.5). **However the sibling issue
+  [#3593](https://github.com/gastownhall/beads/issues/3593)** ("`bd
+  worktree create`: chmod new worktree's `.beads/` to 0700") **is still
+  OPEN** — the worktree code path is unfixed in both v1.0.4 and v1.0.5.
+  Keep the chmod-700 self-heal in `setup-beads.sh` + the hook template
+  until #3593 lands (it is also the safety belt against #3593). Low
+  severity: warning noise only, no data loss; not a cutover blocker.
 - 2026-04-28: PR #3483 merged upstream. Fix is in master but no
   release tag past `v1.0.3` (which was tagged 2026-04-24, four days
   before the merge).
@@ -331,6 +411,28 @@ recovery.
 
 ### Status
 
+- **2026-06-08 (li-mwwdws / v1.0.5 gate): STILL-OPEN;
+  WORKAROUND-AVAILABLE (reversible); NEEDS-LIVE-REPRO for server mode
+  (after Phase 1).** Issue
+  [#3733](https://github.com/gastownhall/beads/issues/3733) is **OPEN**
+  as of 2026-05-27 (maintainer drift-check: *"still open and unlabeled …
+  #4173 partially mitigates the same failure class by treating
+  `--from-jsonl` as local-source intent and refusing to silently diverge
+  … reduces one path to accidental `project_id` …"*). So **only a partial
+  mitigation** exists, in neither v1.0.4 nor a safe release; the silent
+  rewrite + no-detection-in-doctor + no-recovery-story gaps are not fully
+  closed. The related identity issue
+  [#3476](https://github.com/gastownhall/beads/issues/3476) (global-memory
+  sentinel-UUID rejection) IS closed/completed (2026-05-29). Our
+  mv-and-rebootstrap auto-recovery in `setup-beads.sh` is the workaround,
+  so this is NOT a no-workaround blocker — but it was authored for
+  EMBEDDED mode. **livespec's cutover uses server mode, where the tenant
+  identity is server-owned (`beads-schema-mapping.md` §2.3), which
+  *should* side-step the embedded `metadata.json` rewrite trap — but this
+  is UNVERIFIED. Mark NEEDS-LIVE-REPRO: confirm against a running
+  `dolt-server` (Phase 1) that the server-mode tenant is not subject to
+  an analogous identity mismatch before li-zmigvx cuts over.** Do NOT
+  assert server-mode-safe without a live repro.
 - 2026-05-06: filed Problem 7 in this index. Workaround landed in
   `setup-beads.sh` (commit `414a9df`) — auto-detect + mv-and-rebootstrap
   recovery. Cross-reference comments added (commits `d6b3000`,
@@ -376,6 +478,24 @@ The upstream maintainer position on lefthook#198 is that uninstalling the npm pa
 
 ### Status
 
+- **2026-06-08 (li-mwwdws / v1.0.5 gate): WORKAROUND-AVAILABLE
+  (ours, pin-independent); upstream marker fix present but does NOT
+  address our vector; server-mode init structurally avoids it.** The
+  bd-side section-markers feature
+  ([#1380](https://github.com/gastownhall/beads/issues/1380), PR
+  [#2222](https://github.com/gastownhall/beads/pull/2222)) shipped in
+  v0.57.0 and is therefore in v1.0.4 and v1.0.5 — but it only makes bd's
+  OWN hook writes marker-safe; it does NOT stop lefthook's npm
+  postinstall from re-asserting `core.hooksPath=.git/hooks` (the actual
+  antagonist we hit). lefthook still declines an npm-postinstall opt-out.
+  So our **mise-pinned-not-npm-installed lefthook** workaround stands and
+  is **independent of the bd version pin** — a v1.0.4 vs v1.0.5 choice
+  does not change it. **For the cutover specifically:** the `dolt-server`
+  server-mode tenant model uses `bd init --server --quiet --stealth`
+  (no git hooks injected into the consuming repo,
+  `beads-schema-mapping.md` §2.2/§2.3), which structurally avoids the
+  `core.hooksPath` ownership race entirely — there are no `.beads/hooks/`
+  to fight over. Not a cutover blocker.
 - 2026-05-07: filed our Problem 8 entry. Workaround landed in commit TBD (ob-5i4) — mise pin + npm removal + bd:doctor checks. **Just watching upstream from here.**
 - The bd-side fix (beads#1380 section markers) is the convergence path: once bd ships section markers natively, third-party hook managers that respect markers (which lefthook does NOT, today) could coexist without an arms race. Until then, our mise-pinned-not-npm-installed approach removes the antagonist entirely and is more durable than waiting on either side to land a fix.
 - Re-evaluate this workaround if lefthook ever ships an opt-out for the npm postinstall (a recurring community request that the maintainer has explicitly declined). Until then, no urgency to revisit.
@@ -403,3 +523,79 @@ in the Status entry too.
 When a new bd problem surfaces, add a new H2 section at the bottom
 (numbered, so the order tells the chronology) with the same
 subsection structure.
+
+---
+
+## v1.0.5 re-verification (li-mwwdws, 2026-06-08) — BEADS-BUG-EXPOSURE GATE
+
+This is the **Known-upstream-bug envelope gate** required by
+`dolt-server` §"Beads-tenant contract" before any beads tenant is cut
+over for production tracking (`beads-schema-mapping.md` §2.3). It
+re-verifies each of Problems 1–8 against the target version.
+Per-problem verdicts are recorded inline in each Problem's **Status**
+subsection below (entries dated 2026-06-08); this banner is the
+gate summary. Evidence: beads `CHANGELOG.md`, GitHub issue/PR states,
+and release-tag ancestry (`gh api .../compare/<tag>...<sha>`) — all
+read on 2026-06-08.
+
+### Release-landscape finding (CUTOVER-AFFECTING)
+
+The task names **v1.0.5** as the pinned target, but the live release
+landscape makes that pin unsafe:
+
+- **v1.0.5 is a GATED pre-release** (`prerelease: true`, published
+  2026-05-29). Its release notes say: *"🚨 This release is gated — do
+  not upgrade. v1.0.5 contains a migration (`0043`) that can silently
+  and unrecoverably break multi-machine `bd dolt` sync after both
+  clones upgrade. See
+  [#4259](https://github.com/gastownhall/beads/issues/4259)."*
+  Homebrew was reverted to v1.0.4.
+- **#4259 is still OPEN/reopened** as of 2026-06-07 ("reopening as
+  #4266 is only one of the necessary fixes"). **No v1.0.6 exists** —
+  v1.0.5 remains the latest tag (verified 2026-06-08).
+- The latest *stable, safe* release is **v1.0.4** (2026-05-09).
+
+Release-tag ancestry shows the fixes for Problems **1, 3, 4, 5 land
+ONLY in v1.0.5**, NOT in v1.0.4 (the relevant fix commits are `ahead`
+of the v1.0.4 tag and `behind` the v1.0.5 tag). So the operator faces
+a hard fork:
+
+- Run **v1.0.4 (safe sync)** → Problems 1/3/4/5 are NOT fixed; their
+  workarounds must stay carried.
+- Run **v1.0.5 (Problems 1/3/4/5 fixed)** → exposes the #4259
+  multi-machine sync-corruption migration (do-not-upgrade).
+
+**Either way, no single currently-available release is both safe to
+sync across machines AND carries the Problem 1/3/4/5 fixes.** This is
+the headline blocker the orchestrator must surface; the recommended
+posture is to **pin v1.0.4 + keep the existing workarounds and wait
+for v1.0.6**, re-running this gate when v1.0.6 ships.
+
+> Server-mode note: livespec's intended deployment is the
+> `dolt-server` **server-mode** tenant model
+> (`beads-schema-mapping.md` §2), not the embedded mode in which most
+> of Problems 1–8 were originally hit. Several embedded-mode problems
+> (1, 2, 4, 6) are structurally side-stepped by server mode, but that
+> is a *scope* argument, not an upstream fix — flagged per-problem
+> below.
+
+### Per-problem gate verdict table
+
+| # | Problem | v1.0.5 verdict | Fix lands in |
+|---|---|---|---|
+| 1 | `bd init` doesn't synthesize Dolt remote at git origin | **FIXED** (#3688 closed; PR #3909) | v1.0.5 only (NOT v1.0.4) |
+| 2 | `bd doctor` unsupported in embedded mode | **STILL-OPEN-NO-WORKAROUND** upstream (#3597 OPEN, maintainer leaning won't-support); livespec carries `bd-doctor.sh` workaround; **N/A in server mode** | — |
+| 3 | git-vs-Dolt source-of-truth confusion | **FIXED** (#3135 closed; PRs #3909 + #4063 make JSONL opt-in / Dolt canonical) | v1.0.5 only (NOT v1.0.4) |
+| 4 | `bd bootstrap` doesn't wire remote on fresh embedded init | **FIXED** (#3419 closed; PR #3909) | v1.0.5 only (NOT v1.0.4) |
+| 5 | Docs gaps (`bd prime`/`remember`/`dream`/`edit`) | **FIXED** (#3683 closed; docs PRs #3820 in v1.0.4, #3842 in v1.0.5) | partially v1.0.4, fully v1.0.5 |
+| 6 | `.beads/` perms warning on every invocation | **FIXED** (#3391/#3483 merged; in v1.0.4) — sibling **#3593** (worktree path) **STILL-OPEN** | v1.0.4 |
+| 7 | workspace identity mismatch / silent `project_id` rewrite / no recovery | **STILL-OPEN** (#3733 OPEN as of 2026-05-27; #4173 only *partially* mitigates); **needs server-mode live-repro** (Phase 1) to confirm server-mode is not subject to an analogous mismatch | — |
+| 8 | `core.hooksPath` ownership race (lefthook vs `.beads/hooks/`) | upstream section-markers fix (#1380) shipped (v0.57.0, in v1.0.4), but it does NOT resolve livespec's lefthook-npm-postinstall vector; livespec's mise-not-npm workaround stands and is **independent of the bd pin**; server-mode `--stealth`/no-hooks init structurally avoids it | v1.0.4 (markers); workaround stands regardless |
+
+**Gate outcome:** No `STILL-OPEN-NO-WORKAROUND` problem is an
+*unconditional* blocker (Problem 2 is N/A in server mode; Problem 7
+has a destructive-but-reversible workaround and is server-mode-suspect
+pending live-repro). The **binding blocker is the release-landscape
+fork above**, not any single Problem 1–8.
+
+---
