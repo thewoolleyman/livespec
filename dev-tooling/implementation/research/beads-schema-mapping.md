@@ -204,33 +204,131 @@ li-mwwdws / honored by li-srbpds:
   no-git-hooks init above is the structural avoidance; the bridge must
   never install beads git hooks into a livespec-family repo.
 
-## UNVERIFIED beads-side assumptions (route to li-mwwdws / li-srbpds)
+## RESOLVED beads-side assumptions (li-mwwdws, 2026-06-08)
 
-The orchestrator should route these open beads-side questions before
-li-srbpds asserts a final mapping or li-zmigvx migrates real data:
+The nine open beads-side questions below were resolved by **li-mwwdws**
+against the v1.0.5 source/docs (the schema migrations under
+`internal/storage/schema/migrations/`, `docs/CLI_REFERENCE.md`,
+`docs/DEPENDENCIES.md`, `docs/JSON_SCHEMA.md`, and the GitHub issue
+tracker — all read 2026-06-08). Eight of nine are **RESOLVED from
+source**; one (#9, server-mode epic rollup) is **NEEDS-LIVE-REPRO**.
 
-1. Whether `bd create` accepts an **operator-supplied id suffix** (to
-   preserve the legacy `li-<suffix>` across the prefix change), or
-   beads always mints its own id (→ li-zmigvx needs an id remap table).
-2. The **beads priority direction** (is `0` highest?) vs the livespec
-   `priority` convention — needed before claiming identity.
-3. Whether **`assignee` is a first-class beads issue field** or must
-   fall back to a label.
-4. Whether beads exposes any **structured free-text custom field**
-   (`notes` / `design` / `acceptance_criteria`) usable to carry the
-   serialized `AuditRecord`, or whether `audit` must live in a
-   livespec-side sidecar.
-5. Whether **`bd import` / JSONL ingest honors a supplied
-   `created_at`** (else `captured_at` must be label-encoded to avoid
-   server-clock collision).
-6. The **edge direction** of the `supersedes` and `parent-child`
-   relationships (which issue is the source of the edge).
-7. Whether **`--parent` is settable post-hoc** on an existing issue
-   (needed by li-zmigvx for already-existing epics).
-8. The **exact, exhaustive beads issue record field list** in the
-   pinned `bd` v1.0.5 JSONL export (the public docs publish only an
-   illustrative subset) — pin this from `bd export` output or source on
-   the actual pinned version in li-srbpds.
-9. The **beads epic status-rollup sharp edge** (completed epics showing
-   BLOCKED with "0 dependencies") — verify against the pin in
-   li-mwwdws before relying on `parent-child` epic rollup.
+> **Headline for li-srbpds: the mapping is in much better shape than the
+> spike feared.** beads accepts operator-supplied ids, agrees on
+> priority direction, has a first-class `assignee`, has *multiple*
+> structured free-text fields **plus a generic `metadata JSON` column**
+> (so the `AuditRecord` has a real carrier — the "biggest gap" in §1.3
+> is no longer forced into a sidecar), and `bd import` **preserves
+> supplied timestamps**. The only residual risk is a server-mode
+> epic-children rollup display bug (#3445).
+
+1. **`bd create` operator-supplied id — RESOLVED: SUPPORTED.**
+   `bd create --id string` is documented as "Explicit issue ID (e.g.,
+   `bd-42` for partitioning)" (`docs/CLI_REFERENCE.md`). Combined with
+   the tenant prefix == DB rule (§1.1), the legacy `li-<suffix>` random
+   suffix CAN be preserved as `livespec-<suffix>` by passing
+   `--id livespec-<suffix>` at create/import time. **No id-remap table is
+   needed for li-zmigvx** — but the bridge MUST emit the explicit id
+   (and `bd import` honors the `id` field per
+   §"bd import → Common fields"). Note the id column is
+   `VARCHAR(255) PRIMARY KEY` (migration `0001`).
+2. **beads priority direction — RESOLVED: `0` IS highest.**
+   `docs/CLI_REFERENCE.md`: "`--priority string  Priority (0-4 or P0-P4,
+   0=highest) (default 2)`"; `bd priority` examples show `0 = Critical`,
+   `2 = Medium`. Schema: `priority INT NOT NULL DEFAULT 2`. The `bd
+   import` doc adds "`priority 0-4 (0 = critical). 0 is preserved (no
+   omitempty)`." **Action for li-srbpds:** confirm the *livespec* side
+   also treats 0 as highest; if so this is identity, else the bridge
+   inverts once. (livespec `priority` is a bare `int` with no
+   spec-pinned scale — that is the only remaining unknown, and it is
+   livespec-side, not beads-side.)
+3. **`assignee` first-class? — RESOLVED: YES, first-class.** Migration
+   `0001_create_issues.up.sql` declares `assignee VARCHAR(255)` with an
+   index `idx_issues_assignee`; `bd ready --assignee` / `--unassigned`
+   filters and `bd assign` exist (`docs/DEPENDENCIES.md`,
+   `docs/CLI_REFERENCE.md`). The §1.2 label fallback is unnecessary —
+   map `assignee` → `assignee` identity (null when absent).
+4. **Structured free-text custom field for `AuditRecord` —
+   RESOLVED: AMPLE carriers exist.** The issues table has **three**
+   dedicated free-text columns — `design TEXT`, `acceptance_criteria
+   TEXT`, `notes TEXT` (all `NOT NULL`) — **and a generic `metadata JSON
+   DEFAULT (JSON_OBJECT())` column**. `bd import` documents `metadata` as
+   "Arbitrary JSON object preserved verbatim." **Recommendation for
+   li-srbpds: serialize the whole `AuditRecord` into the `metadata` JSON
+   column** (lossless for `commits[]` / `files_changed[]` arrays and
+   round-trips cleanly), rather than the §1.3 option-(c) livespec-side
+   sidecar. This RESOLVES the spike's "biggest gap." The merge-evidence
+   static check (li-tenpup) can then parse `merge_sha`/`pr_number` back
+   out of `metadata` reliably. (`notes`/`design` remain available for
+   human-readable spillover if desired.)
+5. **`bd import` honors supplied `created_at` — RESOLVED: YES.**
+   `docs/CLI_REFERENCE.md` (bd import): "Timestamps (`created_at`,
+   `updated_at`, `started_at`, `closed_at`) **are preserved when present
+   in the JSONL** and otherwise filled in by the importer." Schema:
+   `created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP` — a normal
+   settable column. **So livespec `captured_at` maps directly to
+   `created_at` on import; no `captured-at:<iso>` label workaround is
+   needed** to dodge the server clock.
+6. **`supersedes` / `parent-child` edge direction — RESOLVED.**
+   `docs/DEPENDENCIES.md`: `bd dep add issue-2 issue-1` means "issue-2
+   depends on issue-1 (issue-1 blocks issue-2)" — i.e. `bd dep add
+   <FROM> <TO>` stores the edge as *FROM depends-on TO*. The
+   `dependencies` table (migration `0002`) is `(issue_id,
+   depends_on_id, type)`. Therefore, matching the spike's stated
+   intent: for `superseded_by` (B supersedes A), `bd dep add B A --type
+   supersedes` (source = the superseding issue). `supersedes` is a
+   confirmed non-blocking type and `parent-child` a confirmed blocking
+   type in the v1.0.5 dependency-type table.
+7. **`--parent` settable post-hoc — RESOLVED: YES.**
+   `docs/CLI_REFERENCE.md` (bd update): "`--parent string  New parent
+   issue ID (reparents the issue, use empty string to remove parent)`."
+   So li-zmigvx can attach already-existing epics' children to the epic
+   after creation via `bd update <child> --parent <epic>` (and detach
+   with `--parent ""`). The create-time `bd create --parent` also exists.
+8. **Exhaustive v1.0.5 issue field list — RESOLVED from source.**
+   The authoritative column set is `migrations/0001_create_issues.up.sql`
+   at the `v1.0.5` tag. Issue-relevant columns: `id, content_hash,
+   title, description, design, acceptance_criteria, notes, status,
+   priority, issue_type, assignee, estimated_minutes, created_at,
+   created_by, owner, updated_at, closed_at, closed_by_session,
+   external_ref, spec_id, … metadata (JSON), source_repo, close_reason,
+   due_at, defer_until` (plus wisp/event/agent-protocol columns livespec
+   never writes: `ephemeral, wisp_type, pinned, is_template, mol_type,
+   work_type, event_kind, actor, target, payload, await_*, hook_bead,
+   role_bead, agent_state, rig, …`). Note: `issue_type` (not `type`) is
+   the column name; the JSON/CLI surface exposes it as `issue_type`.
+   Also note `spec_id VARCHAR(1024)` exists as a native field — a cleaner
+   home for `spec_commitment_hint` than the §1.2 label
+   (`spec-commitment:<id_hint>`); **li-srbpds should evaluate
+   `spec_id` vs the label.** The dependency row schema is `(issue_id,
+   depends_on_id, type, created_at, created_by, metadata, thread_id)`.
+9. **Epic status-rollup sharp edge — RESOLVED for the named bug;
+   NEEDS-LIVE-REPRO for server mode.** The specific symptom named in the
+   spike (completed epics showing BLOCKED with "0 dependencies", child
+   tasks leaking into `bd ready`) is issue
+   [#1495](https://github.com/gastownhall/beads/issues/1495), **CLOSED/
+   completed** (2026-03-12, fixed in v0.60.0 commits `21e23bc5` +
+   `6155b6cd`) — so it is fixed in both v1.0.4 and v1.0.5. **However a
+   related, currently-OPEN server-mode rollup bug exists:**
+   [#3445](https://github.com/gastownhall/beads/issues/3445) "`bd show
+   <epic>` CHILDREN renders 0/12/24 children depending on
+   `wisp_dependencies` state (**server mode**)". Because livespec's
+   cutover runs in server mode (§2), **mark NEEDS-LIVE-REPRO (after Phase
+   1):** before li-srbpds relies on `parent-child` epic rollup / `bd show
+   <epic>` child counts in server mode, repro #3445 against the running
+   `dolt-server` on the pinned version and confirm child rollup is
+   stable. If unstable, prefer deriving epic membership from the
+   `parent` field / `bd list --parent` query rather than the rollup
+   display.
+
+### Release-version caveat (cross-reference)
+
+The above answers are version-stable across v1.0.4/v1.0.5 (schema +
+CLI surface unchanged for these fields). But per
+[`beads-problems.md`](./beads-problems.md) §"v1.0.5 re-verification",
+**the pinned target version itself is contested**: v1.0.5 is a gated
+do-not-upgrade pre-release (multi-machine sync corruptor #4259, no
+v1.0.6 yet), while v1.0.4 lacks the Problem 1/3/4/5 init/sync fixes.
+li-srbpds / li-zmigvx must resolve the bd-version pin (recommended:
+v1.0.4 + carried workarounds, pending v1.0.6) before cutover — this is
+a release-landscape decision, not a schema-mapping blocker.
