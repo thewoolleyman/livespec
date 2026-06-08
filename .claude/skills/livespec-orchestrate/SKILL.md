@@ -17,8 +17,14 @@ the livespec family of repos:
 - `/data/projects/livespec-dev-tooling/`
 - `/data/projects/livespec-runtime/`
 
-Future sibling repos (e.g., `livespec-impl-beads`) join the family by
-being added to the cross-repo state aggregation step below.
+The active impl-plugin is now `livespec-impl-beads` (its
+`list_work_items` wrapper and `/livespec-impl-beads:*` skills are what
+the dispatch table and §"Cross-repo state aggregation" invoke); the
+whole family's work-items live in beads-on-Dolt tenants, one per repo.
+Note `livespec-impl-plaintext` above is the still-present family REPO
+directory (itself now a beads tenant), distinct from the retired
+plaintext impl-plugin. Future sibling repos join the family by being
+added to the cross-repo state aggregation step below.
 
 ## Inputs
 
@@ -69,10 +75,14 @@ via the `/livespec-orchestrate` invocation argument:
 1. **Verify session state (cross-repo).** For each repo in the
    family, fetch origin/master and tabulate truly-open work-items
    via the impl-plugin's `list_work_items` thin-transport wrapper
-   against canonical `origin/master:work-items.jsonl` (the exact,
-   copy-pasteable invocation — including the wrapper path and the
-   common mistakes it avoids — is in §"Cross-repo state aggregation"
-   below; do NOT hand-roll the reducer). Also surface: open PRs
+   against the live per-repo beads tenant (work-items are no longer
+   a git-tracked file — the old root `work-items.jsonl` is frozen at
+   `archive/work-items.jsonl`; canonical work-item state is now the
+   running Dolt tenant). The exact, copy-pasteable invocation —
+   including the wrapper path, the `.beads/{config.yaml,metadata.json}`
+   + `BEADS_DOLT_PASSWORD` connection prerequisites, and the common
+   mistakes it avoids — is in §"Cross-repo state aggregation" below;
+   do NOT hand-roll the reducer. Also surface: open PRs
    across the family, pending PCs in each repo's `proposed_changes/`,
    any current worktrees on master with uncommitted spec edits, any
    master red CI. Per `feedback_master_red_is_not_deferral`, master
@@ -218,10 +228,10 @@ this way — they compose inline.
 | `propose-change` (spec-side) | `/livespec:propose-change` | inline (orchestrator session) |
 | `critique` (spec-side) | `/livespec:critique` | inline (orchestrator session) |
 | `prune-history` (spec-side) | `/livespec:prune-history` | inline (orchestrator session) |
-| `implement` (impl-side, plaintext) | `/livespec-impl-plaintext:implement <work-item-id>` | `agentType: livespec-implementer` |
-| `capture-impl-gaps` (impl-side) | `/livespec-impl-plaintext:capture-impl-gaps` | `agentType: livespec-implementer` |
-| `capture-spec-drift` (impl-side) | `/livespec-impl-plaintext:capture-spec-drift` | `agentType: livespec-implementer` |
-| `process-memos` (impl-side) | `/livespec-impl-plaintext:process-memos` | `agentType: livespec-implementer` |
+| `implement` (impl-side, beads) | `/livespec-impl-beads:implement <work-item-id>` | `agentType: livespec-implementer` |
+| `capture-impl-gaps` (impl-side) | `/livespec-impl-beads:capture-impl-gaps` | `agentType: livespec-implementer` |
+| `capture-spec-drift` (impl-side) | `/livespec-impl-beads:capture-spec-drift` | `agentType: livespec-implementer` |
+| `process-memos` (impl-side) | `/livespec-impl-beads:process-memos` | `agentType: livespec-implementer` |
 | Bug fix (no spec change) | sub-agent: edit + test + commit + PR in the relevant repo's worktree | `agentType: livespec-implementer` |
 | Cross-repo coordinated change | sub-agent per repo, dispatched in parallel where independent and sequential where one PR blocks another | `agentType: livespec-implementer` (one per repo) |
 | `none` | exit cleanly with journal summary | — |
@@ -328,37 +338,82 @@ may have moved since), and re-enters the loop at the named step.
 
 ## Cross-repo state aggregation
 
-The driver materializes work-item state from each repo via the
-impl-plugin's `list_work_items` **thin-transport wrapper** — NOT a
-hand-rolled reducer. The wrapper internally runs
-`materialize_work_items(read_work_items(path=…))` (last-wins per ID,
-schema-validated) and emits a top-level JSON **array** of work-item
-views. It is the supported machine-query surface (per impl-plaintext
-`contracts.md` §"Thin-transport skills (3) — required machine query
-surface") and needs NO venv and NO `PYTHONPATH` — invoke it with a
-plain `python3`.
+The driver materializes work-item state from each repo via the active
+impl-plugin's (`livespec-impl-beads`) `list_work_items`
+**thin-transport wrapper** — NOT a hand-rolled reducer. The wrapper
+emits a top-level JSON **array** of work-item views. It is the
+supported machine-query surface (per impl-beads `contracts.md`
+§"Thin-transport skills (3) — required machine query surface") and
+needs NO venv and NO `PYTHONPATH` — invoke it with a plain `python3`.
 
 The wrapper lives at (note: filename uses **underscores**):
 
 ```
-/data/projects/livespec-impl-plaintext/.claude-plugin/scripts/bin/list_work_items.py
+/data/projects/livespec-impl-beads/.claude-plugin/scripts/bin/list_work_items.py
 ```
 
-Per `feedback_read_canonical_state_via_git_show`, read canonical
-committed state from `origin/master`, not the on-disk working tree
-(which can lag or carry edits): dump the canonical file to a temp path
-and feed it via `--work-items-path`. There is **no `open` filter** —
-valid `--filter` choices are `all|gap-tied|freeform|blocked|ready|closed`;
-pass `--filter all` and select `status == "open"` yourself (or use
-`--filter ready` for open-with-all-deps-closed):
+**Canonical-state caveat (scope of `feedback_read_canonical_state_via_git_show`).**
+For SPEC and CODE state, still read canonical committed state from
+`origin/master`, not the on-disk working tree (which can lag or carry
+edits). But work-item canonical state is NO LONGER a git file: the
+family flipped from the plaintext JSONL store to beads-on-Dolt (server
+mode), so there is no `origin/master:work-items.jsonl` to read — the
+old root file is frozen at `archive/work-items.jsonl`. Canonical
+work-item state is the LIVE per-repo Dolt tenant (one tenant DB per
+repo, server mode on TCP `127.0.0.1:3307`). The git-show rule keeps
+applying to spec/code; for work-items, the live tenant IS canonical.
+
+**Connection model (under beads).** The wrapper takes NO
+`--work-items-path` — its `work_items_arg` is accepted-and-ignored.
+Connection comes from the CWD's `.beads/{config.yaml,metadata.json}`
+plus `BEADS_DOLT_PASSWORD` in the environment, so each enumeration runs
+with `cd /data/projects/$repo`. Prerequisites per repo:
+
+- `.beads/config.yaml` — checked in; the server/tenant pointer.
+- `.beads/metadata.json` — the local workspace pointer. It is
+  **gitignored** (a per-machine file — do NOT commit it). If a repo
+  lacks it, it is REGENERABLE from `.beads/config.yaml` + the live
+  tenant; `project_id` is SERVER-STABLE (re-running `bd init` yields
+  the identical `project_id`). Regenerate WITHOUT touching the
+  primary's git (`bd init` auto-commits inside a git repo — never run
+  it inside a primary or worktree) via a `/tmp` scratch dir:
+
+  ```bash
+  establish_meta() {
+    repo="$1"; tenant="$1"            # tenant DB name == repo directory name
+    probe="/tmp/bd-ws/$repo"; rm -rf "$probe"; mkdir -p "$probe/.beads"
+    cp "/data/projects/$repo/.beads/config.yaml" "$probe/.beads/"
+    ( cd "$probe" && BEADS_DOLT_PASSWORD="$pw" /usr/local/bin/bd init --server --external \
+        --server-host 127.0.0.1 --server-port 3307 --server-user "$tenant" \
+        --database "$tenant" --prefix "$tenant" --skip-agents --skip-hooks \
+        --non-interactive --quiet )
+    cp "$probe/.beads/metadata.json" "/data/projects/$repo/.beads/metadata.json"
+  }
+  ```
+
+- `BEADS_DOLT_PASSWORD` — per-tenant secret sourced from the mode-600
+  file `/home/ubuntu/workspace/dolt-server/tenant-secrets.env.local`.
+  The key is `BEADS_DOLT_PASSWORD_<tenant>` with dots/hyphens mapped to
+  underscores.
+- `LIVESPEC_BD_PATH=/usr/local/bin/bd` — the pinned `bd` v1.0.5
+  binary; NEVER the mise shim.
+
+There is **no `open` filter** — valid `--filter` choices are
+`all|gap-tied|freeform|blocked|ready|closed`; pass `--filter all` and
+select `status == "open"` yourself (or use `--filter ready` for
+open-with-all-deps-closed). `bd list` is read-only and does NOT
+auto-commit, so running it against the primaries is safe:
 
 ```bash
-WRAPPER=/data/projects/livespec-impl-plaintext/.claude-plugin/scripts/bin/list_work_items.py
+set -a; . /home/ubuntu/workspace/dolt-server/tenant-secrets.env.local; set +a  # mode-600
+export LIVESPEC_BD_PATH=/usr/local/bin/bd     # pinned v1.0.5; NEVER the mise shim
+WRAPPER=/data/projects/livespec-impl-beads/.claude-plugin/scripts/bin/list_work_items.py
 for repo in livespec livespec-impl-plaintext livespec-dev-tooling livespec-runtime; do
-  git -C /data/projects/$repo show origin/master:work-items.jsonl \
-    > /tmp/$repo-wi.jsonl
+  cd "/data/projects/$repo"                    # bd reads connection from CWD's .beads/
+  # password key: BEADS_DOLT_PASSWORD_<tenant with dots/hyphens -> underscores>
+  export BEADS_DOLT_PASSWORD="$(eval echo \"\$BEADS_DOLT_PASSWORD_$(echo $repo | tr '.-' '__')\")"
   echo "=== $repo (open) ==="
-  python3 "$WRAPPER" --work-items-path /tmp/$repo-wi.jsonl --filter all --json \
+  python3 "$WRAPPER" --project-root "/data/projects/$repo" --filter all --json \
     | python3 -c "import json,sys
 items = json.load(sys.stdin)                       # top-level ARRAY
 opens = [w for w in items if w['status'] == 'open']
@@ -368,14 +423,13 @@ print(f'  OPEN={len(opens)}')"
 done
 ```
 
-Common mistakes this pattern avoids (all observed live; see memo
-`mm-7lvwm7`): passing `json.loads(line)` **dicts** to
-`materialize_work_items` (it wants an `Iterator[WorkItem]` →
-`AttributeError: 'dict' object has no attribute 'id'`); using the
-impl-plaintext `.venv/bin/python` (it has no editable install of its
-own package → `ModuleNotFoundError`); `--filter open` (not a valid
-choice); and the hyphenated filename `list-work-items.py` (the script
-is `list_work_items.py`).
+Common mistakes this pattern avoids: `--filter open` (not a valid
+choice — use `--filter all` + select, or `--filter ready`); the
+hyphenated filename `list-work-items.py` (the script is
+`list_work_items.py`); using the mise `bd` shim instead of the pinned
+`/usr/local/bin/bd` v1.0.5; and treating `--work-items-path` as
+load-bearing (under beads it is accepted-and-ignored — connection comes
+from `.beads/` + `BEADS_DOLT_PASSWORD`, not a file path).
 
 > NOTE: the CI half of this Step-1 survey (work-item **li-bxhwh3**)
 > is now mechanically fixed — a bare `gh run list --branch master`
