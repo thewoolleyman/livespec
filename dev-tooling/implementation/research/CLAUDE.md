@@ -14,6 +14,10 @@ Contents:
   preface note was added explaining the provenance and the fact
   that Open Brain-specific issue ids (`ob-*`) are historical
   artifacts preserved for upstream-citation continuity.
+- `beads-schema-mapping.md` — design spike (li-itxqga) mapping the
+  livespec `WorkItem` JSONL schema onto the beads issue schema, plus
+  the per-repo beads-tenant connection model against `dolt-server`.
+  Consumed by li-srbpds (bridge build) and li-zmigvx (migration).
 
 Why this lives here rather than in the spec:
 `SPECIFICATION/non-functional-requirements.md` §Constraints
