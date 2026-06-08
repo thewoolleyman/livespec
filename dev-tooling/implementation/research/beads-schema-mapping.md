@@ -151,22 +151,71 @@ MUST match the beads prefix when the tenant is a beads client").
 
 ### 2.1 Exact connection parameters a per-repo tenant uses
 
-Set via environment (per the `dolt-server` Beads-tenant contract table),
-preferring the Unix socket transport for sandboxed agents:
+> **CORRECTION (li-srbpds, live-repro 2026-06-08).** The
+> `BEADS_DOLT_SERVER_*` env-var surface this section originally assumed
+> is **WRONG for v1.0.5**. v1.0.5 server-mode connects via **`bd init`
+> FLAGS**, not those env vars. A live-repro against the running
+> `dolt-server` (one throwaway tenant, server mode, `bd` v1.0.5)
+> established the verified surface below. The pre-correction env-var
+> table is dropped; do NOT set `BEADS_DOLT_SERVER_MODE` /
+> `BEADS_DOLT_SERVER_HOST` / `BEADS_DOLT_SERVER_PORT` /
+> `BEADS_DOLT_SERVER_SOCKET` / `BEADS_DOLT_SERVER_USER` — they are not
+> the v1.0.5 connection interface.
 
-| `bd` setting | Env var | Value for a per-repo tenant |
-|---|---|---|
-| server mode | `BEADS_DOLT_SERVER_MODE` | `1` |
-| host | `BEADS_DOLT_SERVER_HOST` | `127.0.0.1` |
-| port | `BEADS_DOLT_SERVER_PORT` | `${DOLT_PORT}` (default `3307`) |
-| socket (preferred) | `BEADS_DOLT_SERVER_SOCKET` | `${DOLT_SOCKET}` (default `/var/lib/doltdb/dolt.sock`) |
-| user | `BEADS_DOLT_SERVER_USER` | the tenant `${USER}` (least-privilege, scoped to `${DB}` only) |
-| password | `BEADS_DOLT_PASSWORD` | the tenant `${PASSWORD}` (secret, never committed) |
+**Verified v1.0.5 server-mode connection surface (FLAGS, not env vars):**
 
-The tenant DB is selected explicitly — the server infers no default
-tenant. The **`--prefix` doubles as the tenant database name `${DB}`**:
-for the livespec repo, prefix == DB == (e.g.) `livespec`, so issue ids
-become `livespec-…`.
+- **Only env var:** `BEADS_DOLT_PASSWORD` (the tenant password; secret,
+  never committed). All other connection inputs are flags.
+- **Flags:**
+  - `--server` — select server mode.
+  - `--external` — the server is **externally managed**; bd MUST NOT
+    manage the server lifecycle (no auto-start/stop).
+  - `--server-host 127.0.0.1`
+  - `--server-port 3307`
+  - `--server-user <tenant>` — the least-privilege tenant user, scoped to
+    `${DB}` only.
+  - `--server-socket <path>` — **overrides host/port** when supplied.
+    We used **TCP** (`--server-host`/`--server-port`) for the live-repro
+    because sandboxed agents lack `0750` socket-directory access; the
+    socket transport remains available for non-sandboxed callers.
+  - `--database <tenant>` — select the tenant DB explicitly (the server
+    infers no default tenant).
+  - `--prefix <tenant>` — the **prefix doubles as the tenant database
+    name `${DB}`** (load-bearing identity rule): for the livespec repo,
+    prefix == DB == (e.g.) `livespec`, so issue ids become `livespec-…`.
+  - `--skip-agents --skip-hooks` — family rule; **both flags exist** in
+    v1.0.5 and MUST both be passed (no agent files / git hooks injected
+    into the consuming repo).
+  - `--non-interactive --quiet` — noninteractive-only bd rule.
+- **Config-key equivalent:** `dolt.mode=server`.
+- **The exact working init command (verified live-repro):**
+
+  ```
+  bd init --server --external \
+    --server-host 127.0.0.1 --server-port 3307 \
+    --server-user <tenant> \
+    --database <tenant> --prefix <tenant> \
+    --skip-agents --skip-hooks \
+    --non-interactive --quiet
+  ```
+
+- **Set `dolt.auto-start: false`** in bd config so `bd dolt status`
+  truthfully reports `running (external)` (works around #3550); without
+  it, `bd dolt status` cosmetically says "not running" even though all
+  ops succeed (`bd ping` confirms liveness).
+- **`bd init` still creates a local `.beads/` + `.gitignore` in CWD.**
+  Run it **only inside the consuming repo** with `--skip-hooks` (and
+  `--stealth` where applicable) so it never injects git hooks. See §2.2.
+- **Pin the binary by content:** sha256
+  `24706f65…aacf3` for `beads_1.0.5_linux_amd64.tar.gz`. **AVOID the
+  stale mise shim** at `~/.local/share/mise/shims/bd` (it resolves to
+  "not installed") — invoke by **absolute path** or a properly-managed
+  pin.
+
+The tenant DB is selected explicitly via `--database` (the server infers
+no default tenant), and the tenant is onboarded against an
+**already-created** tenant DB (§2.2) — the per-repo client never does
+`CREATE DATABASE`.
 
 ### 2.2 Initialization invariants (from the `dolt-server` contract)
 
@@ -195,11 +244,19 @@ That re-verification is **li-mwwdws**, NOT this spike. Two of those
 problems directly shape decisions above and should be checked by
 li-mwwdws / honored by li-srbpds:
 
-- **Problem 7** (silent `project_id` rewrite + no recovery story): the
-  tenant-DB identity is server-owned in server mode, which sidesteps
-  the embedded-mode `metadata.json` rewrite trap — but li-mwwdws should
-  confirm the server-mode path is not subject to an analogous identity
-  mismatch on the pinned version before li-zmigvx cuts over.
+- **Problem 7** (silent `project_id` rewrite + no recovery story):
+  **RESOLVED — server mode is IMMUNE (live-repro 2026-06-08, `bd`
+  v1.0.5).** `bd init --server` writes a local `.beads/metadata.json`
+  whose `project_id` is **server-sourced** (adopts the tenant DB's
+  existing `metadata._project_id`, per bd PR #2925), not locally minted.
+  A second workspace init'd against the same tenant DB adopted the
+  **identical** `project_id` and cross-updated issues with **zero
+  `workspace identity mismatch` errors**. The embedded-mode silent-
+  rewrite trap does not occur in server mode. Confirmed by live repro,
+  not merely scope-argued — see
+  [`beads-problems.md`](./beads-problems.md) Problem 7 Status
+  (2026-06-08). li-zmigvx may cut over without the embedded-mode
+  identity-mismatch concern.
 - **Problem 8** (`core.hooksPath` ownership race): the `--stealth` /
   no-git-hooks init above is the structural avoidance; the bridge must
   never install beads git hooks into a livespec-family repo.
@@ -210,8 +267,11 @@ The nine open beads-side questions below were resolved by **li-mwwdws**
 against the v1.0.5 source/docs (the schema migrations under
 `internal/storage/schema/migrations/`, `docs/CLI_REFERENCE.md`,
 `docs/DEPENDENCIES.md`, `docs/JSON_SCHEMA.md`, and the GitHub issue
-tracker — all read 2026-06-08). Eight of nine are **RESOLVED from
-source**; one (#9, server-mode epic rollup) is **NEEDS-LIVE-REPRO**.
+tracker — all read 2026-06-08). Eight of nine were **RESOLVED from
+source**; the ninth (#9, server-mode epic rollup) was
+NEEDS-LIVE-REPRO and is now **RESOLVED by the 2026-06-08 live-repro**
+(server-mode epic rollup is stable — see item 9). **All nine are now
+resolved.**
 
 > **Headline for li-srbpds: the mapping is in much better shape than the
 > spike feared.** beads accepts operator-supplied ids, agrees on
@@ -219,8 +279,10 @@ source**; one (#9, server-mode epic rollup) is **NEEDS-LIVE-REPRO**.
 > structured free-text fields **plus a generic `metadata JSON` column**
 > (so the `AuditRecord` has a real carrier — the "biggest gap" in §1.3
 > is no longer forced into a sidecar), and `bd import` **preserves
-> supplied timestamps**. The only residual risk is a server-mode
-> epic-children rollup display bug (#3445).
+> supplied timestamps**. The one residual risk (a server-mode
+> epic-children rollup display bug, #3445) was **cleared by the
+> 2026-06-08 live-repro** — server-mode epic rollup is stable (see
+> item 9).
 
 1. **`bd create` operator-supplied id — RESOLVED: SUPPORTED.**
    `bd create --id string` is documented as "Explicit issue ID (e.g.,
@@ -302,33 +364,42 @@ source**; one (#9, server-mode epic rollup) is **NEEDS-LIVE-REPRO**.
    (`spec-commitment:<id_hint>`); **li-srbpds should evaluate
    `spec_id` vs the label.** The dependency row schema is `(issue_id,
    depends_on_id, type, created_at, created_by, metadata, thread_id)`.
-9. **Epic status-rollup sharp edge — RESOLVED for the named bug;
-   NEEDS-LIVE-REPRO for server mode.** The specific symptom named in the
-   spike (completed epics showing BLOCKED with "0 dependencies", child
-   tasks leaking into `bd ready`) is issue
+9. **Epic status-rollup sharp edge — RESOLVED: stable & correct in
+   server mode (live-repro 2026-06-08, `bd` v1.0.5).** The specific
+   symptom named in the spike (completed epics showing BLOCKED with "0
+   dependencies", child tasks leaking into `bd ready`) is issue
    [#1495](https://github.com/gastownhall/beads/issues/1495), **CLOSED/
    completed** (2026-03-12, fixed in v0.60.0 commits `21e23bc5` +
-   `6155b6cd`) — so it is fixed in both v1.0.4 and v1.0.5. **However a
-   related, currently-OPEN server-mode rollup bug exists:**
-   [#3445](https://github.com/gastownhall/beads/issues/3445) "`bd show
+   `6155b6cd`) — fixed in both v1.0.4 and v1.0.5. The related
+   currently-OPEN server-mode rollup bug
+   [#3445](https://github.com/gastownhall/beads/issues/3445) ("`bd show
    <epic>` CHILDREN renders 0/12/24 children depending on
-   `wisp_dependencies` state (**server mode**)". Because livespec's
-   cutover runs in server mode (§2), **mark NEEDS-LIVE-REPRO (after Phase
-   1):** before li-srbpds relies on `parent-child` epic rollup / `bd show
-   <epic>` child counts in server mode, repro #3445 against the running
-   `dolt-server` on the pinned version and confirm child rollup is
-   stable. If unstable, prefer deriving epic membership from the
-   `parent` field / `bd list --parent` query rather than the rollup
-   display.
+   `wisp_dependencies` state, **server mode**") was the NEEDS-LIVE-REPRO
+   risk. **Live-repro result: NO flapping — server-mode epic rollup is
+   stable and correct.** An epic + 6 children created via `bd create
+   --parent` (hierarchical ids `<epic>.1…6`); `bd show <epic>` rollup
+   tracked `0/6 → 2/6 → 4/6 → 3/6` across child state changes with **no
+   flapping**, stable across repeated calls; `bd children` and `bd list
+   --parent` **agreed** with the rollup. Root cause sidestepped:
+   membership is tracked via `type='parent-child'` dependency rows, and
+   the `wisp_dependencies` table that #3445 implicates **was empty for
+   real (non-wisp) beads**. **li-srbpds may rely on `parent-child` epic
+   rollup / `bd show <epic>` child counts in server mode.** (The
+   `parent` field / `bd list --parent` query also agrees, so it remains
+   available as a belt-and-suspenders source if ever needed.)
 
 ### Release-version caveat (cross-reference)
 
 The above answers are version-stable across v1.0.4/v1.0.5 (schema +
-CLI surface unchanged for these fields). But per
-[`beads-problems.md`](./beads-problems.md) §"v1.0.5 re-verification",
-**the pinned target version itself is contested**: v1.0.5 is a gated
-do-not-upgrade pre-release (multi-machine sync corruptor #4259, no
-v1.0.6 yet), while v1.0.4 lacks the Problem 1/3/4/5 init/sync fixes.
-li-srbpds / li-zmigvx must resolve the bd-version pin (recommended:
-v1.0.4 + carried workarounds, pending v1.0.6) before cutover — this is
-a release-landscape decision, not a schema-mapping blocker.
+CLI surface unchanged for these fields). The pinned target version was
+previously contested (v1.0.5 a gated do-not-upgrade pre-release per
+multi-machine sync corruptor #4259; v1.0.4 lacking the Problem 1/3/4/5
+init/sync fixes). **RESOLVED 2026-06-08 (live-repro): pin v1.0.5.** Per
+[`beads-problems.md`](./beads-problems.md) §"Release-landscape finding"
+(2026-06-08 SUPERSEDED banner), the #4259/`0043` corruptor only breaks
+`bd dolt` multi-machine sync between embedded stores; the `dolt-server`
+**standalone** model (one server, bd as plain SQL client, no Dolt remote
+on the tenant) never invokes that path, so the fork does not bind.
+v1.0.5 carries the Problem 1/3/4/5 fixes, and v1.0.4↔v1.0.5 mixing
+against one server is unsafe (#4152 forward schema-skew guard) — so
+li-srbpds / li-zmigvx **standardize the whole family on v1.0.5**.
