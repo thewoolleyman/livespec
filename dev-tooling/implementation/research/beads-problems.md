@@ -411,6 +411,24 @@ recovery.
 
 ### Status
 
+- **2026-06-08 (live-repro, post Phase-1 dolt-server standup): RESOLVED
+  — server mode is IMMUNE to the embedded `project_id` rewrite trap.** A
+  live repro on `bd` **v1.0.5** in server mode against the running
+  `dolt-server` confirms the NEEDS-LIVE-REPRO below is closed. `bd init
+  --server` writes a local `.beads/metadata.json` whose `project_id` is
+  **server-sourced** — it adopts the tenant DB's existing
+  `metadata._project_id` (per bd PR
+  [#2925](https://github.com/gastownhall/beads/pull/2925)), not a
+  locally-minted UUID. A second workspace init'd against the same tenant
+  DB **adopted the identical `project_id`** and cross-updated issues with
+  **zero `workspace identity mismatch` errors**. The embedded-mode
+  silent-rewrite trap (commit `934900c` narrative below) does NOT occur
+  in server mode because the server-owned identity is the single source
+  of truth both workspaces read. **Verdict for li-zmigvx/li-srbpds:
+  server-mode-safe — confirmed by live repro, not merely scope-argued.**
+  The embedded-mode `setup-beads.sh` mv-and-rebootstrap recovery remains
+  the workaround for any embedded usage, but is N/A to the server-mode
+  cutover.
 - **2026-06-08 (li-mwwdws / v1.0.5 gate): STILL-OPEN;
   WORKAROUND-AVAILABLE (reversible); NEEDS-LIVE-REPRO for server mode
   (after Phase 1).** Issue
@@ -540,8 +558,28 @@ read on 2026-06-08.
 
 ### Release-landscape finding (CUTOVER-AFFECTING)
 
+> **2026-06-08 SUPERSEDED for our architecture — pin v1.0.5.** A
+> live-repro (post Phase-1 dolt-server standup, `bd` v1.0.5 in server
+> mode) demonstrated that the v1.0.4-vs-v1.0.5 fork below does NOT bind
+> the `dolt-server` **standalone** model. The #4259 / migration-`0043`
+> corruptor only breaks `bd dolt` **multi-machine sync between embedded
+> stores**; our model is **one dolt-server, bd is a plain SQL client, no
+> Dolt remote on the tenant, durability via Dolt-native `remotesapi`
+> replication** — that sync path is never invoked. Live-repro evidence:
+> migration `0043` applied cleanly to the single-server store
+> (`schema_migrations` advanced **1→49**); `bd dolt remote list` reported
+> **"No remotes configured"**; **zero sync activity under `--verbose`**;
+> writes land as native Dolt commits (committer **"beads"**). Mixing
+> v1.0.4 and v1.0.5 against one server is **UNSAFE** — v1.0.5's forward
+> schema-skew guard (#4152) hard-fails a v1.0.4 binary against a
+> v1.0.5-migrated DB — so **standardize the whole family on v1.0.5**.
+> The "pin v1.0.4 + wait for v1.0.6" recommendation later in this
+> section is retained for the historical record but is **no longer the
+> recommended posture** for the standalone server architecture.
+
 The task names **v1.0.5** as the pinned target, but the live release
-landscape makes that pin unsafe:
+landscape (as assessed 2026-05-29 → 2026-06-08, embedded-sync framing)
+made that pin look unsafe:
 
 - **v1.0.5 is a GATED pre-release** (`prerelease: true`, published
   2026-05-29). Its release notes say: *"🚨 This release is gated — do
@@ -566,10 +604,18 @@ a hard fork:
   multi-machine sync-corruption migration (do-not-upgrade).
 
 **Either way, no single currently-available release is both safe to
-sync across machines AND carries the Problem 1/3/4/5 fixes.** This is
-the headline blocker the orchestrator must surface; the recommended
-posture is to **pin v1.0.4 + keep the existing workarounds and wait
-for v1.0.6**, re-running this gate when v1.0.6 ships.
+sync across machines AND carries the Problem 1/3/4/5 fixes.** This was
+the headline blocker under the *embedded multi-machine sync* framing,
+and the posture then was to **pin v1.0.4 + keep the existing workarounds
+and wait for v1.0.6**. **2026-06-08 update: SUPERSEDED for the
+`dolt-server` standalone architecture (see the banner at the top of this
+section).** Because the standalone model never invokes the `bd dolt`
+multi-machine sync path that #4259/`0043` corrupts, the fork does not
+bind — **pin v1.0.5** (it carries the Problem 1/3/4/5 fixes) and
+standardize the whole family on it; v1.0.4↔v1.0.5 mixing against one
+server is unsafe per the #4152 forward schema-skew guard. The "wait for
+v1.0.6" path remains valid only for any future *embedded multi-machine*
+usage, which the cutover does not use.
 
 > Server-mode note: livespec's intended deployment is the
 > `dolt-server` **server-mode** tenant model
@@ -589,13 +635,19 @@ for v1.0.6**, re-running this gate when v1.0.6 ships.
 | 4 | `bd bootstrap` doesn't wire remote on fresh embedded init | **FIXED** (#3419 closed; PR #3909) | v1.0.5 only (NOT v1.0.4) |
 | 5 | Docs gaps (`bd prime`/`remember`/`dream`/`edit`) | **FIXED** (#3683 closed; docs PRs #3820 in v1.0.4, #3842 in v1.0.5) | partially v1.0.4, fully v1.0.5 |
 | 6 | `.beads/` perms warning on every invocation | **FIXED** (#3391/#3483 merged; in v1.0.4) — sibling **#3593** (worktree path) **STILL-OPEN** | v1.0.4 |
-| 7 | workspace identity mismatch / silent `project_id` rewrite / no recovery | **STILL-OPEN** (#3733 OPEN as of 2026-05-27; #4173 only *partially* mitigates); **needs server-mode live-repro** (Phase 1) to confirm server-mode is not subject to an analogous mismatch | — |
+| 7 | workspace identity mismatch / silent `project_id` rewrite / no recovery | **RESOLVED for server mode (live-repro 2026-06-08): IMMUNE** — `bd init --server` adopts the tenant DB's server-sourced `project_id` (bd #2925); a second workspace adopted the identical id with zero mismatch errors. Embedded-mode #3733 stays OPEN (workaround carried) but is N/A to the server-mode cutover. | — |
 | 8 | `core.hooksPath` ownership race (lefthook vs `.beads/hooks/`) | upstream section-markers fix (#1380) shipped (v0.57.0, in v1.0.4), but it does NOT resolve livespec's lefthook-npm-postinstall vector; livespec's mise-not-npm workaround stands and is **independent of the bd pin**; server-mode `--stealth`/no-hooks init structurally avoids it | v1.0.4 (markers); workaround stands regardless |
 
 **Gate outcome:** No `STILL-OPEN-NO-WORKAROUND` problem is an
-*unconditional* blocker (Problem 2 is N/A in server mode; Problem 7
-has a destructive-but-reversible workaround and is server-mode-suspect
-pending live-repro). The **binding blocker is the release-landscape
-fork above**, not any single Problem 1–8.
+*unconditional* blocker (Problem 2 is N/A in server mode; Problem 7 is
+now **RESOLVED for server mode** — live-repro 2026-06-08 confirmed
+server-mode immunity to the `project_id` rewrite trap). The
+release-landscape fork above was the binding blocker under the
+embedded-sync framing; **as of the 2026-06-08 live-repro it is
+SUPERSEDED** for the `dolt-server` standalone architecture (the
+#4259/`0043` corruptor never fires on the standalone single-server, no-
+remote model — verified empirically). **Resolved gate posture: pin
+v1.0.5 family-wide.** No remaining unconditional blocker for the
+server-mode cutover.
 
 ---
