@@ -26,6 +26,16 @@ Acceptance scenarios from work-item li-dctwfc:
     is identical to the partial-miss case; emitting N
     per-file findings would be noisy and would not change the
     user's remediation step.
+
+Consumer-only scoping (work-item li-k4gio6): the invariant
+applies ONLY to project roots that are copier-template
+consumers, detected by a `.copier-answers.yml` file at the
+project root. A root lacking `.copier-answers.yml` is out of
+scope: the check emits a single non-failing `skipped` finding
+WITHOUT inspecting `.github/workflows/`. The pass/fail tests
+below seed `.copier-answers.yml` via `_seed_project` so they
+exercise the consumer path; the absent-marker test below seeds
+its own root without the marker to exercise the skip path.
 """
 
 from __future__ import annotations
@@ -45,11 +55,24 @@ __all__: list[str] = []
 
 
 def _seed_project(*, tmp_path: Path) -> tuple[Path, Path]:
-    """Create a fresh project root + spec root pair under tmp_path."""
+    """Create a fresh project root + spec root pair under tmp_path.
+
+    The project root is seeded as a copier-template CONSUMER: a
+    `.copier-answers.yml` marker file is written at the project
+    root so the check's consumer-only precondition (per
+    contracts.md §"`copier-template-workflow-coverage`") is
+    satisfied and the workflow-coverage logic runs. Tests that
+    exercise the non-consumer (absent-marker) path seed their own
+    project root explicitly without calling this helper.
+    """
     project_root = tmp_path / "project"
     project_root.mkdir()
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
+    _ = (project_root / ".copier-answers.yml").write_text(
+        "# fixture copier-answers marker\n_src_path: gh:thewoolleyman/livespec\n",
+        encoding="utf-8",
+    )
     return project_root, spec_root
 
 
@@ -324,6 +347,85 @@ def test_copier_template_workflow_coverage_pure_no_monkeypatch_needed(
         "re-sync the copier template (see `contracts.md` "
         '§"Shared content sync — copier template" for the canonical '
         "required-file list)."
+    )
+    expected = Finding(
+        check_id="doctor-copier-template-workflow-coverage",
+        status="fail",
+        message=expected_message,
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_copier_template_workflow_coverage_skips_when_no_copier_answers_marker(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Non-consumer root (no `.copier-answers.yml`) → non-failing `skipped`.
+
+    Consumer-only scoping (work-item li-k4gio6): a project root
+    that does NOT carry a `.copier-answers.yml` marker is out of
+    scope for this invariant. The check MUST emit a single
+    non-failing `skipped` finding and MUST NOT inspect
+    `.github/workflows/`. This fixture deliberately seeds NEITHER
+    the marker NOR any workflow directory: the absence of all
+    seven required workflow files would otherwise fire `fail`, so
+    asserting `skipped` here proves the check short-circuits on
+    the missing marker before touching the workflow set.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    # No .copier-answers.yml and no .github/workflows/ at all.
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = copier_template_workflow_coverage.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-copier-template-workflow-coverage",
+        status="skipped",
+        message=(
+            "copier-template-workflow-coverage: project root is not a "
+            "copier-template consumer (`.copier-answers.yml` is absent); "
+            "the invariant applies only to `livespec-impl-*` consumers "
+            "generated from the impl-plugin copier template, so the "
+            "workflow-coverage check is not applicable here."
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_copier_template_workflow_coverage_fails_for_consumer_missing_required_file(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Consumer root WITH marker + a missing required file → `fail` as before.
+
+    The presence of `.copier-answers.yml` puts the root in scope,
+    so the workflow-coverage logic runs and fires `fail` naming
+    the missing required file. This complements the skip test
+    above: marker present → enforce; marker absent → skip. The
+    `_seed_project` helper writes the marker, so this test simply
+    omits one required workflow file and asserts the fail finding.
+    """
+    project_root, spec_root = _seed_project(tmp_path=tmp_path)
+    present = tuple(name for name in REQUIRED_WORKFLOW_FILES if name != "ci.yml")
+    _seed_workflows(project_root=project_root, names=present)
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = copier_template_workflow_coverage.run(ctx=ctx)
+    expected_message = (
+        "copier-template-workflow-coverage: "
+        "1 required workflow file(s) missing from "
+        "`.github/workflows/`: ci.yml. Corrective action: run "
+        "`copier update` to re-sync the copier template (see "
+        '`contracts.md` §"Shared content sync — copier template" for '
+        "the canonical required-file list)."
     )
     expected = Finding(
         check_id="doctor-copier-template-workflow-coverage",
