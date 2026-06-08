@@ -15,8 +15,19 @@
 Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
 invariants" → §"`copier-template-workflow-coverage`":
 
-Every consumer repository governed by livespec MUST contain a
-`.github/workflows/` directory whose set of workflow files is a
+The invariant applies ONLY to project roots that are
+copier-template consumers, detected by the presence of a
+`.copier-answers.yml` file at the project root. A project root
+that does NOT carry `.copier-answers.yml` is out of scope: the
+check emits a single non-failing `skipped` finding and does NOT
+inspect `.github/workflows/`. Only `livespec-impl-*` consumers
+generated from the impl-plugin copier template carry that marker;
+`livespec` itself, `livespec-dev-tooling`, `livespec-runtime`,
+and other non-consumer repos legitimately carry a different
+workflow set and are exempt.
+
+For consumer repositories (marker present), the repo MUST contain
+a `.github/workflows/` directory whose set of workflow files is a
 SUPERSET of the required-file list enumerated in §"Shared
 content sync — copier template". The check fires `fail` for
 every required workflow file that is missing from the
@@ -87,17 +98,55 @@ def _fail(*, ctx: DoctorContext, message: str) -> Finding:
     )
 
 
-def _evaluate(*, ctx: DoctorContext) -> Finding:
-    """Build the pass-or-fail Finding from the project root's workflow dir.
+def _skipped(*, ctx: DoctorContext, message: str) -> Finding:
+    """Build a skipped-status Finding (non-failing precondition-not-met).
 
-    The check walks `<project_root>/.github/workflows/` and
-    compares its file set against `REQUIRED_WORKFLOW_FILES`. When
-    every required file is present, the check passes. When one or
-    more required files are missing — including the case where
-    `.github/workflows/` does not exist at all — the check fires
-    a single `fail` finding naming the missing files and
-    directing the user to `copier update`.
+    Emitted when the project root is not a copier-template
+    consumer (no `.copier-answers.yml` marker), so the
+    workflow-coverage invariant does not apply.
     """
+    return Finding(
+        check_id=SLUG,
+        status="skipped",
+        message=message,
+        path=None,
+        line=None,
+        spec_root=SpecRoot(str(ctx.spec_root)),
+    )
+
+
+def _evaluate(*, ctx: DoctorContext) -> Finding:
+    """Build the skip-or-pass-or-fail Finding for the project root.
+
+    Per `SPECIFICATION/contracts.md`
+    §"`copier-template-workflow-coverage`", the invariant applies
+    ONLY to copier-template consumers, detected by a
+    `.copier-answers.yml` file at the project root. When that
+    marker is absent the project root is out of scope: the check
+    returns a single non-failing `skipped` finding WITHOUT
+    inspecting `.github/workflows/`.
+
+    For consumer roots (marker present) the check walks
+    `<project_root>/.github/workflows/` and compares its file set
+    against `REQUIRED_WORKFLOW_FILES`. When every required file is
+    present, the check passes. When one or more required files are
+    missing — including the case where `.github/workflows/` does
+    not exist at all — the check fires a single `fail` finding
+    naming the missing files and directing the user to
+    `copier update`.
+    """
+    copier_answers = ctx.project_root / ".copier-answers.yml"
+    if not copier_answers.exists():
+        return _skipped(
+            ctx=ctx,
+            message=(
+                "copier-template-workflow-coverage: project root is not a "
+                "copier-template consumer (`.copier-answers.yml` is absent); "
+                "the invariant applies only to `livespec-impl-*` consumers "
+                "generated from the impl-plugin copier template, so the "
+                "workflow-coverage check is not applicable here."
+            ),
+        )
     workflows_dir = ctx.project_root / ".github" / "workflows"
     if not workflows_dir.is_dir():
         missing = list(REQUIRED_WORKFLOW_FILES)

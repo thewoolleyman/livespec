@@ -307,14 +307,20 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             assert (
                 finding["status"] == "skipped"
             ), f"expected skipped for {finding['check_id']} in fixture without impl-plugin; got {finding}"
-        elif finding["check_id"] == "doctor-wiring-completeness-cross-repo":
-            # The cross-repo wiring-completeness invariant requires
-            # .livespec.jsonc to declare a `cross_repo_targets` block;
-            # this test fixture's minimal .livespec.jsonc omits it,
-            # so the check correctly skips.
+        elif finding["check_id"] in (
+            # doctor-wiring-completeness-cross-repo requires .livespec.jsonc to
+            # declare a `cross_repo_targets` block, which this fixture's minimal
+            # .livespec.jsonc omits. doctor-copier-template-workflow-coverage
+            # applies only to copier-template consumers, detected by a
+            # `.copier-answers.yml` file at the project root (work-item
+            # li-k4gio6), which these tmp_path fixtures do not carry. Both
+            # correctly skip on their missing precondition.
+            "doctor-wiring-completeness-cross-repo",
+            "doctor-copier-template-workflow-coverage",
+        ):
             assert (
                 finding["status"] == "skipped"
-            ), f"expected skipped for {finding['check_id']} without cross_repo_targets; got {finding}"
+            ), f"expected skipped for {finding['check_id']} on missing precondition; got {finding}"
         else:
             assert finding["status"] == "pass", f"non-pass finding: {finding}"
         findings_by_spec_root.setdefault(finding["spec_root"], set()).add(
