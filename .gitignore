@@ -34,13 +34,13 @@ htmlcov/
 # only top-level entry is the credential key, which is global rather
 # than per-project.
 .beads-credential-key
-# .beads/config.yaml carries the host-specific dolt remote URL
-# (HTTPS on Linux/VPS, SSH on macOS) — tracking it would cause
-# per-machine diff thrash. dev-tooling/implementation/setup-beads.sh
-# touches the file defensively on each run and re-asserts the two
-# required bd-config keys (`dolt.auto-commit=on`, `export.auto=true`),
-# so a per-clone config.yaml is fully reproducible.
-.beads/config.yaml
+# NOTE: `.beads/config.yaml` is now TRACKED (epic li-ws2iv4 cutover to
+# the per-repo livespec-impl-beads Dolt tenant). The committed config
+# carries the server-mode connection block with NO per-machine
+# project_id and NO password (the tenant password is supplied via the
+# BEADS_DOLT_PASSWORD env var at bd-call time). Per-clone bd runtime
+# state stays excluded by .beads/.gitignore. The prior per-machine
+# remote-URL thrash rationale no longer applies under server mode.
 
 ### macOS template
 # General

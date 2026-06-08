@@ -5,21 +5,23 @@
 {
   "template": "livespec",
   "spec_root": "SPECIFICATION",
-  "implementation": { "plugin": "livespec-impl-plaintext" },
-  "livespec-impl-plaintext": {
-    "format": "jsonl",
-    "compat": {
-      // livespec-impl-plaintext is v0.1.0. The pinned tag is the placeholder
-      // "master" until Phase E renames livespec → livespec-core and cuts its
-      // own first release tag; the bump-pin PR after that lands sets these
-      // to real values. Doctor's contract-version-compatibility invariant
-      // currently fires `warn` against the master pin (expected during
-      // bootstrap, not a hard failure).
-      "livespec_core": ">=0.1.0,<1.0.0",
-      "pinned": "master"
-    },
-    "work_items_path": "work-items.jsonl",
-    "memos_path": "memos.jsonl"
+  "implementation": { "plugin": "livespec-impl-beads" },
+  "livespec-impl-beads": {
+    "format": "beads",
+    "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "master" },
+    // Per-repo beads tenant CONNECTION block. prefix==tenant==database==server_user is the
+    // load-bearing identity rule. The tenant PASSWORD is deliberately ABSENT — supplied only via
+    // the BEADS_DOLT_PASSWORD env var at bd-call time, never committed. TCP-only (the dolt.sock is
+    // not reachable by sandboxed callers), so no `socket` key.
+    "connection": {
+      "tenant": "livespec",
+      "prefix": "livespec",
+      "database": "livespec",
+      "server_user": "livespec",
+      "server_host": "127.0.0.1",
+      "server_port": 3307,
+      "fake": false
+    }
   },
   "cross_repo_targets": {
     "livespec": {
