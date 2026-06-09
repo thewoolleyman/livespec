@@ -67,17 +67,43 @@ _CONFIG_TEXT = """// minimal livespec config
 """
 
 
+_WRAPPER_NAME = "fake_wrapper.py"
+
+
+def _write_provider(*, project_root: Path, records: list[dict[str, object]]) -> Path:
+    """Write a fake list-work-items wrapper emitting `records` as a JSON array."""
+    data_path = project_root / "provider_data.json"
+    _ = data_path.write_text(json.dumps(records), encoding="utf-8")
+    wrapper = project_root / _WRAPPER_NAME
+    _ = wrapper.write_text(
+        "import pathlib, sys\n" f"sys.stdout.write(pathlib.Path({str(data_path)!r}).read_text())\n",
+        encoding="utf-8",
+    )
+    return wrapper
+
+
+def _ctx(*, project_root: Path, spec_root: Path) -> DoctorContext:
+    """Build a DoctorContext whose provider points at the fixture wrapper."""
+    return DoctorContext(
+        project_root=project_root,
+        spec_root=spec_root,
+        work_items_provider=project_root / _WRAPPER_NAME,
+    )
+
+
+def _provider_path(*, project_root: Path) -> str:
+    """Return the fixture wrapper path as the str the fail-Finding `path` carries."""
+    return str(project_root / _WRAPPER_NAME)
+
+
 def _setup_project(*, tmp_path: Path, jsonl_lines: list[dict[str, object]]) -> tuple[Path, Path]:
-    """Create a project root with .livespec.jsonc and a work-items.jsonl."""
+    """Create a project root with .livespec.jsonc and a fixture provider wrapper."""
     project_root = tmp_path / "project"
     project_root.mkdir()
     _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    jsonl_text = "".join(
-        json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n" for record in jsonl_lines
-    )
-    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
+    _ = _write_provider(project_root=project_root, records=jsonl_lines)
     return project_root, spec_root
 
 
@@ -117,7 +143,7 @@ def test_fails_when_epic_open_and_all_depends_on_closed(
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -126,7 +152,7 @@ def test_fails_when_epic_open_and_all_depends_on_closed(
             "no-stalled-epic: 1 epic(s) with all depends_on entries closed but epic still open/in_progress: epic-A. "
             "Close the epic with an appropriate resolution OR add fresh depends_on entries."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -149,7 +175,7 @@ def test_passes_when_epic_has_open_dependency(
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -176,7 +202,7 @@ def test_passes_when_epic_has_empty_depends_on(
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -200,10 +226,7 @@ def _setup_project_with_manifest(
     _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT_WITH_MANIFEST, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    jsonl_text = "".join(
-        json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n" for record in jsonl_lines
-    )
-    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
+    _ = _write_provider(project_root=project_root, records=jsonl_lines)
     return project_root, spec_root
 
 
@@ -219,7 +242,7 @@ def test_passes_when_typed_local_dep_is_open(*, tmp_path: Path) -> None:
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -244,7 +267,7 @@ def test_fails_when_typed_local_deps_all_closed(*, tmp_path: Path) -> None:
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -254,7 +277,7 @@ def test_fails_when_typed_local_deps_all_closed(*, tmp_path: Path) -> None:
             "but epic still open/in_progress: epic-H. "
             "Close the epic with an appropriate resolution OR add fresh depends_on entries."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -279,7 +302,7 @@ def test_passes_when_open_pr_dep_suppresses_fail(
         ),
     ]
     project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -310,7 +333,7 @@ def test_fails_when_all_deps_closed_including_merged_pr(
         ),
     ]
     project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -320,7 +343,7 @@ def test_fails_when_all_deps_closed_including_merged_pr(
             "but epic still open/in_progress: epic-J. "
             "Close the epic with an appropriate resolution OR add fresh depends_on entries."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -338,7 +361,7 @@ def test_passes_when_typed_dep_is_schema_malformed(*, tmp_path: Path) -> None:
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -366,7 +389,7 @@ def test_passes_when_depends_on_entry_unresolvable(
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -394,7 +417,7 @@ def test_passes_when_epic_is_closed(
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -422,7 +445,7 @@ def test_passes_when_non_epic_has_all_closed_depends_on(
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -453,145 +476,12 @@ def test_materializes_latest_record_per_id(
         _record(item_id="epic-F", item_type="epic", status="closed", depends_on=["sub-1"]),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
         status="pass",
         message="no-stalled-epic: no epics with all-closed depends_on detected (2 work-items scanned)",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected_finding)
-
-
-def test_skips_when_active_plugin_unrecognized(
-    *,
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    """When the active impl-plugin is outside the v1 supported set, the check skips.
-
-    monkeypatch.chdir(tmp_path) isolates cwd so no project artifacts
-    leak into the repo per the cwd-fallback test discipline.
-    """
-    monkeypatch.chdir(tmp_path)
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    config_text = (
-        "{\n"
-        '  "template": "livespec",\n'
-        '  "implementation": { "plugin": "livespec-impl-beads" }\n'
-        "}\n"
-    )
-    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stalled_epic.run(ctx=ctx)
-    expected_finding = Finding(
-        check_id="doctor-no-stalled-epic",
-        status="skipped",
-        message=(
-            "no-stalled-epic: active impl-plugin is not in the v1 supported set "
-            "(livespec-impl-plaintext); check skipped"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected_finding)
-
-
-def test_skips_when_livespec_jsonc_missing(
-    *,
-    tmp_path: Path,
-) -> None:
-    """When .livespec.jsonc is missing, the railway lashes back into a skipped Finding."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stalled_epic.run(ctx=ctx)
-    expected_finding = Finding(
-        check_id="doctor-no-stalled-epic",
-        status="skipped",
-        message="no-stalled-epic: precondition not met (PreconditionError); check skipped",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected_finding)
-
-
-def test_passes_when_work_items_jsonl_not_yet_present(
-    *,
-    tmp_path: Path,
-) -> None:
-    """When the work-items.jsonl path is configured but the file doesn't exist yet, the check passes.
-
-    A fresh project before any work-items exist has nothing to check;
-    the absence of the file is normal (the impl-plugin creates it on
-    first append).
-    """
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    # No work-items.jsonl on disk.
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stalled_epic.run(ctx=ctx)
-    work_items_path = project_root / "work-items.jsonl"
-    expected_finding = Finding(
-        check_id="doctor-no-stalled-epic",
-        status="pass",
-        message=(
-            f"no-stalled-epic: work-items store at {work_items_path} not present yet; "
-            "no epics to check"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected_finding)
-
-
-def test_tolerates_malformed_jsonl_lines(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Malformed JSONL lines (blank, non-JSON, non-object, no `id`) are skipped silently.
-
-    Exercises the four defensive `continue` branches in `_materialize_records`:
-    blank line, parse failure, non-object value, missing-id record.
-    """
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    jsonl_text = (
-        # 1. Blank line — exercises empty-stripped continue
-        "\n"
-        # 2. Malformed JSON (unterminated string)
-        '{"id": "bad-line\n'
-        # 3. Valid JSON but non-object (array at root)
-        "[1, 2, 3]\n"
-        # 4. Object but no `id` field
-        '{"type": "task", "status": "open"}\n'
-        # 5. Valid record (so the rest of the check has something to scan)
-        '{"id": "task-only", "type": "task", "status": "closed", "depends_on": []}\n'
-    )
-    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stalled_epic.run(ctx=ctx)
-    expected_finding = Finding(
-        check_id="doctor-no-stalled-epic",
-        status="pass",
-        message="no-stalled-epic: no epics with all-closed depends_on detected (1 work-items scanned)",
         path=None,
         line=None,
         spec_root=str(spec_root),
@@ -604,19 +494,18 @@ def test_passes_when_depends_on_entry_is_not_a_string(
     tmp_path: Path,
 ) -> None:
     """Non-string depends_on entries are treated as unresolvable — MUST NOT fire."""
-    records = [
+    records: list[dict[str, object]] = [
         _record(item_id="sub-1", status="closed"),
-        # The "epic" depends_on a non-string (number). The check's _find_stalled_epics
-        # walks the list looking for type errors and bails to all_closed=False.
+        # The "epic" depends on a non-string (number) → unresolvable → not stalled.
+        {
+            "id": "epic-malformed",
+            "type": "epic",
+            "status": "open",
+            "depends_on": ["sub-1", 42],
+        },
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    # Append a malformed-deps epic record (raw json dump bypasses _record's typing).
-    epic_record_text = (
-        '{"id":"epic-malformed","type":"epic","status":"open","depends_on":["sub-1",42]}\n'
-    )
-    with (project_root / "work-items.jsonl").open("a", encoding="utf-8") as fh:
-        _ = fh.write(epic_record_text)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
@@ -629,38 +518,15 @@ def test_passes_when_depends_on_entry_is_not_a_string(
     assert result == IOSuccess(expected_finding)
 
 
-def test_uses_default_work_items_path_when_plugin_section_missing(
-    *,
-    tmp_path: Path,
-) -> None:
-    """When the impl-plugin section is absent or work_items_path is non-string, falls back to default.
-
-    Covers the two `_resolve_work_items_path` fallback branches: missing
-    plugin section, and a non-string `work_items_path`.
-    """
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    config_text = (
-        "// minimal config — no plugin section, no work_items_path override\n"
-        "{\n"
-        '  "template": "livespec",\n'
-        '  "implementation": { "plugin": "livespec-impl-plaintext" }\n'
-        "}\n"
-    )
-    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    # Default path `work-items.jsonl` at project root with a benign record.
-    _ = (project_root / "work-items.jsonl").write_text(
-        '{"id":"x","type":"task","status":"closed","depends_on":[]}\n',
-        encoding="utf-8",
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+def test_passes_when_provider_emits_empty_array(*, tmp_path: Path) -> None:
+    """An empty work-items store passes vacuously (no epics to check)."""
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=[])
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
         status="pass",
-        message="no-stalled-epic: no epics with all-closed depends_on detected (1 work-items scanned)",
+        message="no-stalled-epic: no epics with all-closed depends_on detected (0 work-items scanned)",
         path=None,
         line=None,
         spec_root=str(spec_root),
@@ -668,28 +534,21 @@ def test_uses_default_work_items_path_when_plugin_section_missing(
     assert result == IOSuccess(expected_finding)
 
 
-def test_skips_when_implementation_section_absent(
-    *,
-    tmp_path: Path,
-) -> None:
-    """When `.livespec.jsonc` has no `implementation` key, the check skips.
-
-    Exercises the `not isinstance(impl_section, dict)` guard (None case).
-    """
+def test_skips_when_provider_unset(*, tmp_path: Path) -> None:
+    """No configured provider (work_items_provider is None) yields a skipped Finding."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    config_text = '{\n  "template": "livespec"\n}\n'
-    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root, work_items_provider=None)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
         status="skipped",
         message=(
-            "no-stalled-epic: active impl-plugin is not in the v1 supported set "
-            "(livespec-impl-plaintext); check skipped"
+            "no-stalled-epic: no live work-item provider configured "
+            "(set LIVESPEC_IMPL_LIST_WORK_ITEMS to the active impl-plugin's "
+            "list-work-items wrapper to enforce); check skipped"
         ),
         path=None,
         line=None,
@@ -698,87 +557,22 @@ def test_skips_when_implementation_section_absent(
     assert result == IOSuccess(expected_finding)
 
 
-def test_skips_when_plugin_name_is_not_string(
-    *,
-    tmp_path: Path,
-) -> None:
-    """When `implementation.plugin` is a non-string value, the check skips.
-
-    Exercises the `not isinstance(plugin_name, str)` half of the
-    plugin-resolution guard.
-    """
+def test_skips_when_provider_unreachable(*, tmp_path: Path) -> None:
+    """A provider that exits nonzero is a connection failure → skipped, not fail."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    config_text = "{\n" '  "template": "livespec",\n' '  "implementation": { "plugin": 42 }\n' "}\n"
-    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    wrapper = project_root / _WRAPPER_NAME
+    _ = wrapper.write_text("import sys\nsys.exit(1)\n", encoding="utf-8")
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root, work_items_provider=wrapper)
     result = no_stalled_epic.run(ctx=ctx)
     expected_finding = Finding(
         check_id="doctor-no-stalled-epic",
         status="skipped",
         message=(
-            "no-stalled-epic: active impl-plugin is not in the v1 supported set "
-            "(livespec-impl-plaintext); check skipped"
+            "no-stalled-epic: work-item store unreachable " "(wrapper exited 1); check skipped"
         ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected_finding)
-
-
-def test_falls_back_to_default_path_when_work_items_path_is_not_string(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Non-string `work_items_path` falls back to the default rather than crashing."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    config_text = (
-        "{\n"
-        '  "template": "livespec",\n'
-        '  "implementation": { "plugin": "livespec-impl-plaintext" },\n'
-        '  "livespec-impl-plaintext": { "work_items_path": 42 }\n'
-        "}\n"
-    )
-    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    _ = (project_root / "work-items.jsonl").write_text(
-        '{"id":"only","type":"task","status":"closed","depends_on":[]}\n',
-        encoding="utf-8",
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stalled_epic.run(ctx=ctx)
-    expected_finding = Finding(
-        check_id="doctor-no-stalled-epic",
-        status="pass",
-        message="no-stalled-epic: no epics with all-closed depends_on detected (1 work-items scanned)",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected_finding)
-
-
-def test_skips_when_livespec_jsonc_root_is_not_object(
-    *,
-    tmp_path: Path,
-) -> None:
-    """When .livespec.jsonc parses to a non-object (e.g., a JSON array at root), the check skips."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text("[1, 2, 3]\n", encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stalled_epic.run(ctx=ctx)
-    expected_finding = Finding(
-        check_id="doctor-no-stalled-epic",
-        status="skipped",
-        message="no-stalled-epic: .livespec.jsonc root is not an object; check skipped",
         path=None,
         line=None,
         spec_root=str(spec_root),

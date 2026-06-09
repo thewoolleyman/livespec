@@ -31,52 +31,45 @@ invariants" → §"`unresolved-spec-commitment`":
   Propose-changes with `decision: reject` are exempt; PCs that
   omit `spec_commitments` entirely are exempt vacuously.
   Supersession: later PCs declaring `spec_commitments.supersedes:
-  [<earlier-id_hint>, ...]` exempt the listed id_hints. When
-  `.livespec.jsonc` lacks an impl-plugin in `SUPPORTED_PLUGINS`,
-  the invariant surfaces a `skipped` finding rather than fail.
+  [<earlier-id_hint>, ...]` exempt the listed id_hints.
 
 Cross-boundary mechanism:
 
-  The spec describes this check as "querying the active impl-
-  plugin's `list-work-items --json` thin-transport skill". In v1
-  (matching no-stalled-epic / no-orphan-dependency /
-  no-duplicate-gap-id), the check reads the impl-plugin's
-  configured work-items store directly via the path declared in
-  `.livespec.jsonc`. Only the `livespec-impl-plaintext` backend
-  is supported in v1.
-
-Cross-repo dependency:
-
-  The `spec_commitment_hint` field on impl-plaintext work-item
-  records is delivered by sibling work-item li-4szyct (impl-
-  plaintext-side, not yet landed at the time this check is
-  authored). The check queries by JSON path; absence-from-record
-  is no-match (= fail finding). Once li-4szyct lands, records
-  start carrying the hint and the check resolves successfully.
+  The work-items are acquired by invoking the ACTIVE impl-plugin's
+  `list-work-items` thin-transport wrapper (resolved from
+  `LIVESPEC_IMPL_LIST_WORK_ITEMS` into `ctx.work_items_provider`),
+  NOT a direct JSONL file read. This is plugin-agnostic (plaintext +
+  beads + any future backend): every impl-plugin's `--json` view
+  exposes the `spec_commitment_hint` field this check matches
+  against. When no live provider is configured, or the provider is
+  unreachable, the check returns a `skipped` Finding (never `fail`).
+  See `_work_items_provider.py`.
 
 Helper module: see `_unresolved_spec_commitment_helpers.py` for
-the front-matter parser, history walker, and JSONL hint
-materializer. This module orchestrates the railway and renders
-the Finding messages.
+the front-matter parser, history walker, and hint extractor. This
+module orchestrates the railway and renders the Finding messages.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
-from returns.io import IOResult, IOSuccess
+from returns.io import IOResult
+from typing_extensions import assert_never
 
 from livespec.context import DoctorContext
 from livespec.doctor.static._unresolved_spec_commitment_helpers import (
     Unresolved,
     collect_obligations_and_supersedes,
-    materialize_work_item_hints,
-    resolve_work_items_path,
+    hints_from_index,
+)
+from livespec.doctor.static._work_items_provider import (
+    ProviderOutcome,
+    ProviderUnreachable,
+    ProviderUnset,
+    WorkItemsIndex,
+    load_work_items_index,
+    skip_message,
 )
 from livespec.errors import LivespecError
-from livespec.io import fs
-from livespec.parse import jsonc
 from livespec.schemas.dataclasses.finding import Finding
 from livespec.types import CheckId, SpecRoot
 
@@ -84,6 +77,7 @@ __all__: list[str] = ["SLUG", "run"]
 
 
 SLUG: CheckId = CheckId("doctor-unresolved-spec-commitment")
+_SLUG_PREFIX: str = "unresolved-spec-commitment"
 
 
 def _pass(*, ctx: DoctorContext, message: str) -> Finding:
@@ -149,7 +143,6 @@ def _render_pass_all_resolved(*, ctx: DoctorContext, obligation_count: int) -> F
 def _render_fail(
     *,
     ctx: DoctorContext,
-    work_items_path: Path,
     unresolved: list[Unresolved],
 ) -> Finding:
     """Fail finding: at least one obligation unresolved + not superseded."""
@@ -161,20 +154,19 @@ def _render_fail(
         message=(
             f"unresolved-spec-commitment: {len(unresolved)} declared "
             f"spec_commitments.impl_followups[] id_hint(s) have no matching "
-            f"work-item with spec_commitment_hint in "
-            f"{work_items_path}: {summaries}. Corrective action: file each "
+            f"work-item with spec_commitment_hint in the active impl-plugin's "
+            f"work-items store: {summaries}. Corrective action: file each "
             f"missing work-item via the active impl-plugin's "
             f"`capture-work-item` skill, passing `--spec-commitment-hint "
             f"<id_hint>` so the work-item carries the pairing field."
         ),
-        path=str(work_items_path),
+        path=str(ctx.work_items_provider),
     )
 
 
-def _evaluate_against_work_items(
+def _evaluate_against_hints(
     *,
     ctx: DoctorContext,
-    work_items_path: Path,
     work_item_hints: set[str],
 ) -> Finding:
     """Compute the final Finding from collected obligations + work-item hint set."""
@@ -188,82 +180,39 @@ def _evaluate_against_work_items(
     ]
     if not unresolved:
         return _render_pass_all_resolved(ctx=ctx, obligation_count=len(obligations))
-    return _render_fail(ctx=ctx, work_items_path=work_items_path, unresolved=unresolved)
+    return _render_fail(ctx=ctx, unresolved=unresolved)
 
 
-def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecError]:
-    """Resolve the work-items path and evaluate the invariant."""
-    if not isinstance(parsed, dict):
-        return IOSuccess(
-            _skipped(
+def _interpret(*, ctx: DoctorContext, outcome: ProviderOutcome) -> Finding:
+    """Map the provider outcome to a Finding (skip on unset/unreachable)."""
+    match outcome:
+        case ProviderUnset() | ProviderUnreachable():
+            return _skipped(
                 ctx=ctx,
-                message=(
-                    "unresolved-spec-commitment: .livespec.jsonc root is not an "
-                    "object; check skipped"
-                ),
-            ),
-        )
-    work_items_path = resolve_work_items_path(project_root=ctx.project_root, config=parsed)
-    if work_items_path is None:
-        return IOSuccess(
-            _skipped(
+                message=skip_message(slug_prefix=_SLUG_PREFIX, outcome=outcome),
+            )
+        case WorkItemsIndex(index=index):
+            return _evaluate_against_hints(
                 ctx=ctx,
-                message=(
-                    "unresolved-spec-commitment: active impl-plugin is not in the "
-                    "v1 supported set (livespec-impl-plaintext) or .livespec.jsonc "
-                    "lacks an `implementation` block; check skipped"
-                ),
-            ),
-        )
-    if not work_items_path.exists():
-        return IOSuccess(
-            _evaluate_against_work_items(
-                ctx=ctx,
-                work_items_path=work_items_path,
-                work_item_hints=set(),
-            ),
-        )
-    return fs.read_text(path=work_items_path).bind(
-        lambda text: IOSuccess(
-            _evaluate_against_work_items(
-                ctx=ctx,
-                work_items_path=work_items_path,
-                work_item_hints=materialize_work_item_hints(jsonl_text=text),
-            ),
-        ),
-    )
+                work_item_hints=hints_from_index(index=index),
+            )
+        case _:
+            assert_never(outcome)
 
 
 def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     """Run unresolved-spec-commitment against `ctx`.
 
-    Reads `<ctx.project_root>/.livespec.jsonc`, resolves the
-    active impl-plugin's work-items JSONL path, materializes the
+    Acquires work-items via the active impl-plugin's `list-work-items`
+    wrapper (per `ctx.work_items_provider`), materializes the
     `spec_commitment_hint` set, walks every `<spec-root>/history/
     vNNN/proposed_changes/<stem>.md` whose paired
     `<stem>-revision.md` carries `decision: accept` or `decision:
     modify`, extracts each declared `spec_commitments.impl_followups[]`
     id_hint, exempts those listed in any later `supersedes[]`, and
-    fires `fail` for the remainder. Failures on the IO track are
-    lashed into a skipped-status Finding so the orchestrator's
-    stdout contract stays uniform.
+    fires `fail` for the remainder. A connection-class failure or an
+    unset provider yields a `skipped` Finding.
     """
-    config_path = ctx.project_root / ".livespec.jsonc"
-    return (
-        fs.read_text(path=config_path)
-        .bind(
-            lambda text: IOResult.from_result(jsonc.loads(text=text)),  # pyright: ignore[reportArgumentType]
-        )
-        .bind(lambda parsed: _evaluate(ctx=ctx, parsed=parsed))
-        .lash(
-            lambda err: IOSuccess(
-                _skipped(
-                    ctx=ctx,
-                    message=(
-                        f"unresolved-spec-commitment: precondition not met "
-                        f"({err.__class__.__name__}); check skipped"
-                    ),
-                ),
-            ),
-        )
+    return load_work_items_index(ctx=ctx).map(
+        lambda outcome: _interpret(ctx=ctx, outcome=outcome),
     )

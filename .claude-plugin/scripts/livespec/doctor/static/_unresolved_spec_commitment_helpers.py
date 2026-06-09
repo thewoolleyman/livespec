@@ -28,25 +28,19 @@ from typing import Any
 from returns.result import Success
 
 from livespec.parse import front_matter as front_matter_parse
-from livespec.parse import jsonc
 
 __all__: list[str] = [
-    "DEFAULT_WORK_ITEMS_PATH",
     "HISTORY_SUBDIR",
     "PROPOSED_CHANGES_DIR",
     "PRUNED_MARKER",
     "REVISION_SUFFIX",
-    "SUPPORTED_PLUGINS",
     "ParsedCommitments",
     "Unresolved",
     "collect_obligations_and_supersedes",
-    "materialize_work_item_hints",
-    "resolve_work_items_path",
+    "hints_from_index",
 ]
 
 
-SUPPORTED_PLUGINS: frozenset[str] = frozenset({"livespec-impl-plaintext"})
-DEFAULT_WORK_ITEMS_PATH: str = "work-items.jsonl"
 HISTORY_SUBDIR = "history"
 PROPOSED_CHANGES_DIR = "proposed_changes"
 REVISION_SUFFIX = "-revision.md"
@@ -265,60 +259,21 @@ def _list_pc_stems(*, version_dir: Path) -> list[str]:
     return stems
 
 
-def materialize_work_item_hints(*, jsonl_text: str) -> set[str]:
-    """Parse JSONL text and return the set of non-null `spec_commitment_hint` values.
+def hints_from_index(*, index: dict[str, dict[str, Any]]) -> set[str]:
+    """Return the set of non-null `spec_commitment_hint` values in `index`.
 
-    Matches `livespec_impl_plaintext.store.materialize_work_items`
-    semantics: last record per `id` wins (append-only store
-    invariant). Records lacking the field, or carrying `null`, or
-    carrying a non-string value contribute nothing.
+    `index` is the materialized latest-record-per-id work-items view
+    acquired from the active impl-plugin's `list-work-items` wrapper
+    (per `_work_items_provider.py`). Records lacking the field, or
+    carrying `null`, or carrying a non-string value contribute
+    nothing.
     """
-    index: dict[str, dict[str, Any]] = {}
-    for raw_line in jsonl_text.splitlines():
-        stripped = raw_line.strip()
-        if stripped == "":
-            continue
-        parsed_result = jsonc.loads(text=stripped)
-        if not isinstance(parsed_result, Success):
-            continue
-        parsed = parsed_result.unwrap()
-        if not isinstance(parsed, dict):
-            continue
-        item_id = parsed.get("id")
-        if not isinstance(item_id, str):
-            continue
-        index[item_id] = parsed
     hints: set[str] = set()
     for record in index.values():
         hint = record.get("spec_commitment_hint")
         if isinstance(hint, str) and hint:
             hints.add(hint)
     return hints
-
-
-def resolve_work_items_path(*, project_root: Path, config: dict[str, Any]) -> Path | None:
-    """Return the resolved work-items.jsonl path, or None if the active impl is unsupported.
-
-    The `implementation.plugin` key names the active impl-plugin.
-    When the plugin is in `SUPPORTED_PLUGINS`, the per-plugin
-    section's `work_items_path` (relative to project_root) names
-    the JSONL store. Missing key falls back to the default
-    `work-items.jsonl`. Returns None for absent `implementation`
-    block or unsupported plugin.
-    """
-    impl_section = config.get("implementation")
-    if not isinstance(impl_section, dict):
-        return None
-    plugin_name = impl_section.get("plugin")
-    if not isinstance(plugin_name, str) or plugin_name not in SUPPORTED_PLUGINS:
-        return None
-    plugin_section = config.get(plugin_name)
-    raw_path: object = DEFAULT_WORK_ITEMS_PATH
-    if isinstance(plugin_section, dict):
-        candidate = plugin_section.get("work_items_path", DEFAULT_WORK_ITEMS_PATH)
-        if isinstance(candidate, str):
-            raw_path = candidate
-    return project_root / str(raw_path)
 
 
 def collect_obligations_and_supersedes(

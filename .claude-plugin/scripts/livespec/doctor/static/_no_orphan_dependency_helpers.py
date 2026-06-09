@@ -43,14 +43,20 @@ from livespec_runtime.cross_repo.types import (
     RefStatus,
     SiblingWorkItemDependency,
 )
+from returns.io import IOResult, IOSuccess
 from returns.result import Success
 from typing_extensions import assert_never
 
+from livespec.context import DoctorContext
+from livespec.errors import LivespecError
+from livespec.io import fs
 from livespec.parse import cross_repo as cross_repo_parse
+from livespec.parse import jsonc
 
 __all__: list[str] = [
     "extract_manifest",
     "find_orphans",
+    "load_manifest_io",
 ]
 
 
@@ -227,3 +233,33 @@ def extract_manifest(*, config: dict[str, Any]) -> CrossRepoManifest:
     if not isinstance(parsed_result, Success):
         return CrossRepoManifest(targets={})
     return parsed_result.unwrap()
+
+
+def _manifest_from_config_text(*, text: str) -> CrossRepoManifest:
+    """Parse `.livespec.jsonc` text into a manifest; empty on any parse failure."""
+    parsed_result = jsonc.loads(text=text)
+    if not isinstance(parsed_result, Success):
+        return CrossRepoManifest(targets={})
+    parsed = parsed_result.unwrap()
+    if not isinstance(parsed, dict):
+        return CrossRepoManifest(targets={})
+    return extract_manifest(config=parsed)
+
+
+def load_manifest_io(*, ctx: DoctorContext) -> IOResult[CrossRepoManifest, LivespecError]:
+    """Read `.livespec.jsonc`'s `cross_repo_targets` manifest on the IO track.
+
+    The manifest only affects non-local-ref resolution; an absent or
+    unreadable config yields an empty manifest (the conservative
+    default — non-local refs with unconfigured repos do not fire).
+    The config read is best-effort: a read failure is lashed back to
+    an `IOSuccess(empty-manifest)` so it never aborts the consuming
+    check's railway. Shared by `no_orphan_dependency`,
+    `no_stalled_epic`, and `depends_on_ref_wellformedness`.
+    """
+    config_path = ctx.project_root / ".livespec.jsonc"
+    return (
+        fs.read_text(path=config_path)
+        .map(lambda text: _manifest_from_config_text(text=text))
+        .lash(lambda _err: IOSuccess(CrossRepoManifest(targets={})))
+    )

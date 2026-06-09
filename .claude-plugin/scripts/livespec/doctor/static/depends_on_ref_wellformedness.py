@@ -39,26 +39,38 @@ Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary invariants"
   `no-orphan-dependency`'s data-migration narration but the two
   signals are complementary (well-formedness vs resolvability).
 
-Cross-boundary mechanism: direct JSONL read of the active impl-
-plugin's work-items store. Only `livespec-impl-plaintext` is
-supported in v1; other plugins receive a `skipped` Finding.
+Cross-boundary mechanism: the work-items are acquired by invoking
+the ACTIVE impl-plugin's `list-work-items` thin-transport wrapper
+(resolved from `LIVESPEC_IMPL_LIST_WORK_ITEMS` into
+`ctx.work_items_provider`), NOT a direct JSONL file read. This is
+plugin-agnostic (plaintext + beads + any future backend). When no
+live provider is configured, or the provider is unreachable, the
+check returns a `skipped` Finding (never `fail`). See
+`_work_items_provider.py`. The `cross_repo_targets` manifest is
+still read from `.livespec.jsonc` (best-effort).
 """
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from livespec_runtime.cross_repo.types import CrossRepoManifest
 from returns.io import IOResult, IOSuccess
 from returns.result import Success
+from typing_extensions import assert_never
 
 from livespec.context import DoctorContext
-from livespec.doctor.static._no_orphan_dependency_helpers import extract_manifest
+from livespec.doctor.static._no_orphan_dependency_helpers import load_manifest_io
+from livespec.doctor.static._work_items_provider import (
+    ProviderOutcome,
+    ProviderUnreachable,
+    ProviderUnset,
+    WorkItemsIndex,
+    load_work_items_index,
+    skip_message,
+)
 from livespec.errors import LivespecError
-from livespec.io import fs
 from livespec.parse import cross_repo as cross_repo_parse
-from livespec.parse import jsonc
 from livespec.schemas.dataclasses.finding import Finding
 from livespec.types import CheckId, SpecRoot
 
@@ -66,8 +78,7 @@ __all__: list[str] = ["SLUG", "run"]
 
 
 SLUG: CheckId = CheckId("doctor-depends_on-ref-wellformedness")
-_SUPPORTED_PLUGINS: frozenset[str] = frozenset({"livespec-impl-plaintext"})
-_DEFAULT_WORK_ITEMS_PATH: str = "work-items.jsonl"
+_SLUG_PREFIX: str = "depends_on-ref-wellformedness"
 
 
 def _make_finding(
@@ -86,43 +97,6 @@ def _make_finding(
         line=None,
         spec_root=SpecRoot(str(ctx.spec_root)),
     )
-
-
-def _materialize_records(*, jsonl_text: str) -> dict[str, dict[str, Any]]:
-    """Parse JSONL text and return latest-record-per-id index."""
-    index: dict[str, dict[str, Any]] = {}
-    for raw_line in jsonl_text.splitlines():
-        stripped = raw_line.strip()
-        if stripped == "":
-            continue
-        parsed_result = jsonc.loads(text=stripped)
-        if not isinstance(parsed_result, Success):
-            continue
-        parsed = parsed_result.unwrap()
-        if not isinstance(parsed, dict):
-            continue
-        item_id = parsed.get("id")
-        if not isinstance(item_id, str):
-            continue
-        index[item_id] = parsed
-    return index
-
-
-def _resolve_work_items_path(*, ctx: DoctorContext, config: dict[str, Any]) -> Path | None:
-    """Return the work-items.jsonl path when impl-plugin is in the supported set."""
-    impl_section = config.get("implementation")
-    if not isinstance(impl_section, dict):
-        return None
-    plugin_name = impl_section.get("plugin")
-    if not isinstance(plugin_name, str) or plugin_name not in _SUPPORTED_PLUGINS:
-        return None
-    plugin_section = config.get(plugin_name)
-    raw_path: object = _DEFAULT_WORK_ITEMS_PATH
-    if isinstance(plugin_section, dict):
-        candidate = plugin_section.get("work_items_path", _DEFAULT_WORK_ITEMS_PATH)
-        if isinstance(candidate, str):
-            raw_path = candidate
-    return ctx.project_root / str(raw_path)
 
 
 def _entry_repo(*, entry: object) -> str | None:
@@ -186,64 +160,13 @@ def _find_failures(
     return sorted(failures)
 
 
-def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecError]:
-    """Resolve the work-items path and evaluate the invariant."""
-    if not isinstance(parsed, dict):
-        return IOSuccess(
-            _make_finding(
-                ctx=ctx,
-                status="skipped",
-                message=(
-                    "depends_on-ref-wellformedness: .livespec.jsonc root is not an "
-                    "object; check skipped"
-                ),
-            )
-        )
-    work_items_path = _resolve_work_items_path(ctx=ctx, config=parsed)
-    if work_items_path is None:
-        return IOSuccess(
-            _make_finding(
-                ctx=ctx,
-                status="skipped",
-                message=(
-                    "depends_on-ref-wellformedness: active impl-plugin is not in the v1 "
-                    "supported set (livespec-impl-plaintext); check skipped"
-                ),
-            )
-        )
-    if not work_items_path.exists():
-        return IOSuccess(
-            _make_finding(
-                ctx=ctx,
-                status="pass",
-                message=(
-                    f"depends_on-ref-wellformedness: work-items store at "
-                    f"{work_items_path} not present yet; no entries to check"
-                ),
-            )
-        )
-    manifest = extract_manifest(config=parsed)
-    return fs.read_text(path=work_items_path).bind(
-        lambda text: IOSuccess(
-            _evaluate_text(
-                ctx=ctx,
-                jsonl_text=text,
-                work_items_path=work_items_path,
-                manifest=manifest,
-            )
-        )
-    )
-
-
-def _evaluate_text(
+def _evaluate_index(
     *,
     ctx: DoctorContext,
-    jsonl_text: str,
-    work_items_path: Path,
+    index: dict[str, dict[str, Any]],
     manifest: CrossRepoManifest,
 ) -> Finding:
-    """Apply the invariant against the JSONL text content."""
-    index = _materialize_records(jsonl_text=jsonl_text)
+    """Apply the invariant against the materialized work-items index."""
     failures = _find_failures(index=index, manifest=manifest)
     if not failures:
         return _make_finding(
@@ -262,19 +185,49 @@ def _evaluate_text(
             f"depends_on-ref-wellformedness: {len(failures)} ill-formed depends_on "
             f"entry(ies): {joined}."
         ),
-        path=str(work_items_path),
+        path=str(ctx.work_items_provider),
     )
 
 
+def _interpret(
+    *,
+    ctx: DoctorContext,
+    outcome: ProviderOutcome,
+    manifest: CrossRepoManifest,
+) -> Finding:
+    """Map the provider outcome to a Finding (skip on unset/unreachable)."""
+    match outcome:
+        case ProviderUnset() | ProviderUnreachable():
+            return _make_finding(
+                ctx=ctx,
+                status="skipped",
+                message=skip_message(slug_prefix=_SLUG_PREFIX, outcome=outcome),
+            )
+        case WorkItemsIndex(index=index):
+            return _evaluate_index(ctx=ctx, index=index, manifest=manifest)
+        case _:
+            assert_never(outcome)
+
+
 def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
-    """Run depends_on-ref-wellformedness against `ctx`."""
-    config_path = ctx.project_root / ".livespec.jsonc"
+    """Run depends_on-ref-wellformedness against `ctx`.
+
+    Reads the `cross_repo_targets` manifest from `.livespec.jsonc`
+    (best-effort), acquires work-items via the active impl-plugin's
+    `list-work-items` wrapper (per `ctx.work_items_provider`), and
+    applies the well-formedness predicate. A connection-class failure
+    or an unset provider yields a `skipped` Finding; only an actual
+    ill-formed entry yields `fail`. The IO track is lashed back to a
+    `skipped` Finding so the orchestrator's stdout contract stays
+    uniform.
+    """
     return (
-        fs.read_text(path=config_path)
+        load_manifest_io(ctx=ctx)
         .bind(
-            lambda text: IOResult.from_result(jsonc.loads(text=text)),  # pyright: ignore[reportArgumentType]
+            lambda manifest: load_work_items_index(ctx=ctx).map(
+                lambda outcome: _interpret(ctx=ctx, outcome=outcome, manifest=manifest),
+            ),
         )
-        .bind(lambda parsed: _evaluate(ctx=ctx, parsed=parsed))
         .lash(
             lambda err: IOSuccess(
                 _make_finding(
