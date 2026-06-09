@@ -26,19 +26,50 @@ Authoritative sources (pre-formal research captures, per
   producers; "harness" → Driver rename; disposition of the recast
   Layer-3 propose-change).
 
-**RESERVED DECISIONS.** Seven naming/architecture calls are reserved
-for the user and are NOT decided by this draft. Where the draft needs a
-word it uses the research docs' leaning as a working name, marked
-`[RESERVED #N]`: #1 Driver-vs-Adapter-vs-Binding (working name:
-**Driver**); #2 Loop-noun Mill-vs-production-loop (working name:
-**Loop**); #3 pin-and-bump / `compat` home; #4 `cross_repo_targets`
-split; #5 fate of the pending `recast-layer3-standalone-orchestrate-plugin`
-propose-change (recommendation: formally REJECT at revise; its
-surviving content is folded into this proposal); #6 fate of the pending
-`append-only-store-legibility-and-merge-safe-reduction` propose-change
-(recommendation: withdraw as orchestrator-private); #7 interactive
-gap/drift dialogue ownership (Driver vs orchestrator CLI — needs a
-worked example; this draft leaves it an explicit open question).
+**DECISION RECORD (2026-06-09).** The seven naming/architecture calls
+that earlier drafts of this file marked `[RESERVED #N]` were all
+decided by the user on 2026-06-09 and are now NORMATIVE in this
+proposal:
+
+1. The thin agent-runtime-specific wrapper is named **Driver**
+   (repos: `livespec-driver-{claude,codex,...}`).
+2. The orchestrator-internal producer is named **Loop** (the
+   descriptive long form "production loop" remains acceptable prose;
+   "Mill" is not adopted).
+3. Pin-and-bump RELOCATES: the `compat` block schema and bump-pin
+   policy move to the family/dev-tooling coordination surface
+   (`livespec-dev-tooling`'s spec, which already owns the automation);
+   the `contract-version-compatibility` doctor invariant is DROPPED
+   from core's catalogue (Proposal 3).
+4. `cross_repo_targets` SPLITS and leaves core's config contract
+   entirely: the work-item-resolution use goes orchestrator-private;
+   the release-coordination use goes to the family/dev-tooling
+   coordination surface alongside pin-and-bump (Proposal 4).
+5. The pending `recast-layer3-standalone-orchestrate-plugin`
+   propose-change is **formally REJECTED** at the revise session that
+   processes this file, with this proposal named as the successor for
+   its surviving content.
+6. The pending `append-only-store-legibility-and-merge-safe-reduction`
+   propose-change is **formally REJECTED** at the same revise session,
+   with its content MIGRATING to the git-jsonl orchestrator's own
+   SPECIFICATION (Phase-4 work) — the store disciplines are
+   orchestrator-private, not lost.
+7. The interactive gap/drift dialogue is **orchestrator-owned**: each
+   orchestrator ships its own standard SKILL.md skill interfaces
+   in-repo (usable from the supported agent runtimes — Claude Code,
+   Codex CLI, Pi); publication as a per-orchestrator installable
+   plugin is DEFERRED future work. The Driver ↔ orchestrator
+   zero-dependency invariant is preserved (Proposal 2).
+
+**Reference orchestrators (decided 2026-06-09).** Exactly two
+orchestrators are currently being built: (a) **git-jsonl** — the
+serial-use reference, carrying the existing homegrown orchestration
+logic, and optionally driven directly by a human via a coding agent
+runtime; (b) **Beads/Dolt (Ledger) + Fabro (Loop)** — the
+parallel-capable reference, which the livespec family itself dogfoods
+for ALL internal repos. Other fills named in the research docs
+(Gas City fleets, Kilroy) are possible future alternates, not current
+work.
 
 Relationship to the two OTHER pending proposed-changes: this proposal
 folds the SURVIVING parts of `recast-layer3-standalone-orchestrate-plugin.md`
@@ -46,8 +77,8 @@ folds the SURVIVING parts of `recast-layer3-standalone-orchestrate-plugin.md`
 dispatchable-verb property, per-repo addressability) and relocates its
 loop discipline to the orchestrator-internal Dispatcher guidance
 (Proposal 5). It does NOT revise or absorb the append-only-store
-proposal; that file's disposition is `[RESERVED #6]` and is exercised
-at the same revise session that processes this file.
+proposal; both pending files are formally rejected at the same revise
+session that processes this file, per decision-record items 5 and 6.
 
 ## Proposal: replace-three-layer-architecture-with-contract-plus-reference-implementations
 
@@ -60,8 +91,8 @@ at the same revise session that processes this file.
 Replace §"Three-layer orchestration architecture" with a new
 §"Contract + reference implementations architecture" that states the
 re-steered model: LiveSpec is a contract plus reference implementations
-at every seam. Core is agnostic to the **Driver** `[RESERVED #1]` (the
-thin, agent-runtime-specific wrapper through which a human drives the
+at every seam. Core is agnostic to the **Driver** (the thin,
+agent-runtime-specific wrapper through which a human drives the
 spec lifecycle interactively — Claude Code, Codex, OpenCode, Pi) and to
 the **orchestrator** (the pluggable producer that consumes the spec and
 produces the implementation). "Implementation" is recast from a peer
@@ -92,7 +123,7 @@ layer.
 2. Add §"Contract + reference implementations architecture" stating:
    - **The thesis.** LiveSpec is a contract plus reference
      implementations. The core `livespec` library is agnostic to the
-     Driver `[RESERVED #1]` and the orchestrator; the product is the
+     Driver and the orchestrator; the product is the
      contract plus reference implementations at each seam (reference
      spec-side CLIs, reference Driver bindings, reference
      orchestrators).
@@ -118,7 +149,7 @@ layer.
    - **Orchestrator internal decomposition (guidance, NOT contract).**
      A working orchestrator decomposes internally into a **Ledger**
      (work-item store + dependency graph; the authoritative
-     concurrent-write system of record), a **Loop** `[RESERVED #2]`
+     concurrent-write system of record), a **Loop**
      (the per-work-item producer that consumes a ready work-item and
      emits implementation artifacts), and a **Dispatcher** (polls the
      Ledger, invokes the Loop, writes results back; owns parallelism).
@@ -136,10 +167,26 @@ layer.
      structural merge (e.g. Beads on Dolt). Code artifacts stay in git
      (branch-per-run is already correct there); the contention problem
      is specific to the shared ledger.
+   - **Reference orchestrators.** Exactly two are current work:
+     **git-jsonl** (serial use; the existing homegrown orchestration
+     logic; optionally driven directly by a human via a coding agent
+     runtime) and **Beads/Dolt + Fabro** (Beads/Dolt Ledger + Fabro
+     Loop with a thin Dispatcher; parallel-capable; the assembly the
+     livespec family itself dogfoods for ALL internal repos). Other
+     fills (Gas City fleets, Kilroy) are possible future alternates
+     the decomposition admits, not commitments.
    - **Vocabulary.** "Layer 1/2/3" is retired. "Harness" is NOT used
      for the thin agent wrapper (it collides with the established
      wider meaning: everything in an agent except the model); the
-     wrapper's name is `[RESERVED #1]`, working name Driver.
+     wrapper is the **Driver**.
+   - **Canonical architecture diagram.** The section MUST embed or
+     reference the canonical architecture diagram (PlantUML source at
+     `research/workflow-processes/diagrams/contract-and-reference-implementations.plantuml`
+     until Phase 6 graduates the diagrams into the SPECIFICATION
+     template; rendered SVG alongside). The repo README MUST link the
+     rendered form prominently. Phase 6 adds the doctor drift-check
+     that keeps source and render in lockstep; until then the pairing
+     is maintained by review.
 3. Update §"Terminology" and any other spec.md cross-references that
    name the three-layer architecture, "Layer 3", or the
    livespec-resident driver, to point at the new section. The
@@ -167,7 +214,7 @@ shape conventions replace the skill-namespace invocation doctrine.
 
 "Skills" tie the contract to one agent runtime. A CLI is the common
 interface every runtime and every orchestrator can drive; the Driver
-`[RESERVED #1]` wraps it for interactive use. The 10-skill surface,
+wraps it for interactive use. The 10-skill surface,
 its work-item record schema obligations, and the skill-namespace
 cross-plugin invocation rule are all artifacts of the
 plugin-as-contract model this re-steering deletes. The surviving
@@ -243,6 +290,22 @@ at all.
    (The wholesale decomposition of each skill into prose + CLI is
    Phase 2 implementation work; this proposal re-states the CONTRACT,
    and Phase 2 realizes it.)
+7. Add §"Interactive dialogue ownership (orchestrator-side)" codifying
+   decision-record item 7: the interactive gap/drift dialogue (per-
+   finding human review and consent) is OWNED BY THE ORCHESTRATOR.
+   Each orchestrator ships its own standard SKILL.md skill interfaces
+   in its own repo as the interactive front-end to its capture CLIs,
+   usable from the supported agent runtimes (Claude Code, Codex CLI,
+   Pi). These front-ends are orchestrator-INTERNAL: core's contract
+   does not name them, the Driver does not depend on them, and they
+   MUST NOT call back into the Driver. Publication as per-orchestrator
+   installable plugins is deferred future work — for now the skills
+   are local in-repo. This preserves the load-bearing zero-dependency
+   property between Driver and orchestrator: the Driver binds CORE's
+   CLIs and prose only; everything orchestrator-interactive ships with
+   the orchestrator. (The current `livespec-impl-beads` consent-
+   dialogue skills are, reinterpreted, exactly such orchestrator-
+   shipped front-ends.)
 
 ## Proposal: shrink-doctor-cross-boundary-job-to-cli-callability
 
@@ -292,14 +355,16 @@ follow-on refinement, not part of this change.
    `copier-template-workflow-coverage`, and the whole static-phase
    spec-tree catalogue (version contiguity, out-of-band edits, heading
    taxonomy, etc.).
-3. `contract-version-compatibility` `[RESERVED #3]`: the draft's
-   leaning is to RELOCATE the `compat`/pin-and-bump enforcement to the
+3. `contract-version-compatibility` (decision-record item 3, DECIDED):
+   the `compat`/pin-and-bump enforcement RELOCATES to the
    family/dev-tooling coordination surface (`livespec-dev-tooling`
-   already owns the bump-pin automation) and drop this invariant from
-   core's catalogue — it is not "is a named CLI callable". If the user
-   decides retention instead, the invariant stays with its current
-   text. The revise session executes whichever disposition #3 lands
-   on.
+   already owns the bump-pin automation; its spec gains the `compat`
+   schema + bump policy via that sibling's own propose-change cycle —
+   a cross-repo follow-up of this change), and this invariant is
+   DROPPED from core's catalogue — it is not "is a named CLI
+   callable". contracts.md §"Cross-repo coordination — pin-and-bump"
+   is correspondingly reduced to a pointer at the family-coordination
+   surface.
 4. The memo-hygiene invariant (doctor → `list-memos`) is removed with
    the 10-skill surface: memos are orchestrator-private queue state.
 
@@ -349,12 +414,12 @@ natively or not at all.
    orchestrator selection + the three named orchestrator CLIs (exact
    key naming is Phase-2 implementation detail; the contract here is
    that config names an orchestrator and its three CLIs).
-3. `cross_repo_targets` `[RESERVED #4]`: the draft's leaning is the
-   split the research doc proposes — the work-item-resolution use
-   moves to the orchestrator; any release-coordination use moves to
-   the family-coordination surface alongside pin-and-bump
-   `[RESERVED #3]`. Until #3/#4 are decided, this proposal records the
-   leaning and the revise session executes the decided cut.
+3. `cross_repo_targets` (decision-record item 4, DECIDED): the block
+   SPLITS and leaves core's config contract entirely — the
+   work-item-resolution use moves to the orchestrator (whose Ledger
+   owns the `depends_on` graph the slugs resolve against); the
+   release-coordination use moves to the family-coordination surface
+   alongside pin-and-bump (decision-record item 3).
 4. Remove §"Spec Reader required-capability surface"; the spec-reader
    CLI (Proposal 2) supersedes it. The four required capabilities
    (read current spec, read history, report version, diff versions)
@@ -403,10 +468,10 @@ debate dissolves. What survives is (a) the
 published-surface-only discipline (folded into Proposal 2) and (b) the
 loop discipline, which is exactly the Dispatcher's specification and
 belongs inside the orchestrator repo's own spec, not core's.
-`[RESERVED #5]` records the recommendation that the pending recast
-propose-change is formally REJECTED at revise (rather than revised
-into a model with no layers), with this proposal as the named
-successor for its surviving content.
+Decision-record item 5 (DECIDED): the pending recast propose-change is
+formally REJECTED at revise (rather than revised into a model with no
+layers), with this proposal as the named successor for its surviving
+content.
 
 ### Proposed Changes
 
