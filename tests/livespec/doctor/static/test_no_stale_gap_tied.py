@@ -5,6 +5,11 @@ fires `warn` (not `fail`) when an open gap-tied work-item's gap-id
 is no longer present in a fresh impl-plugin gap-detection run. The
 implementation shortcuts in v1 by replicating the gap-detection
 logic from `livespec-impl-plaintext`'s `detect-impl-gaps` skill.
+
+Work-items are acquired via the active impl-plugin's `list-work-items`
+wrapper (resolved into `ctx.work_items_provider`); the fixture wrapper
+emits a fixed JSON array. When no provider is configured the check
+surfaces a `skipped` Finding.
 """
 
 from __future__ import annotations
@@ -35,21 +40,6 @@ _CONFIG_TEXT = """// minimal livespec config
 """
 
 
-_CONFIG_UNSUPPORTED_PLUGIN = """{
-  "template": "livespec",
-  "spec_root": "SPECIFICATION",
-  "implementation": { "plugin": "livespec-impl-other" }
-}
-"""
-
-
-_CONFIG_NO_IMPL_SECTION = """{
-  "template": "livespec",
-  "spec_root": "SPECIFICATION"
-}
-"""
-
-
 def _derive_gap_id(*, spec_file: str, heading_path: str, rule_text: str) -> str:
     payload = f"{spec_file}\x1f{heading_path}\x1f{rule_text}".encode()
     digest = hashlib.sha256(payload).digest()
@@ -57,13 +47,43 @@ def _derive_gap_id(*, spec_file: str, heading_path: str, rule_text: str) -> str:
     return f"gap-{suffix}"
 
 
+_WRAPPER_NAME = "fake_wrapper.py"
+
+
+def _write_provider(*, project_root: Path, records: list[dict[str, object]]) -> Path:
+    """Write a fake list-work-items wrapper emitting `records` as a JSON array."""
+    data_path = project_root / "provider_data.json"
+    _ = data_path.write_text(json.dumps(records), encoding="utf-8")
+    wrapper = project_root / _WRAPPER_NAME
+    _ = wrapper.write_text(
+        "import pathlib, sys\n" f"sys.stdout.write(pathlib.Path({str(data_path)!r}).read_text())\n",
+        encoding="utf-8",
+    )
+    return wrapper
+
+
+def _ctx(*, project_root: Path, spec_root: Path) -> DoctorContext:
+    """Build a DoctorContext whose provider points at the fixture wrapper."""
+    return DoctorContext(
+        project_root=project_root,
+        spec_root=spec_root,
+        work_items_provider=project_root / _WRAPPER_NAME,
+    )
+
+
+def _provider_path(*, project_root: Path) -> str:
+    """Return the fixture wrapper path as the str the fail-Finding `path` carries."""
+    return str(project_root / _WRAPPER_NAME)
+
+
 def _setup_project(
     *,
     tmp_path: Path,
-    jsonl_lines: list[dict[str, object]] | None,
+    jsonl_lines: list[dict[str, object]],
     spec_files: dict[str, str] | None = None,
     config_text: str = _CONFIG_TEXT,
 ) -> tuple[Path, Path]:
+    """Create a project root with .livespec.jsonc, spec files, and a fixture provider."""
     project_root = tmp_path / "project"
     project_root.mkdir()
     _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
@@ -72,12 +92,7 @@ def _setup_project(
     if spec_files is not None:
         for name, content in spec_files.items():
             _ = (spec_root / name).write_text(content, encoding="utf-8")
-    if jsonl_lines is not None:
-        jsonl_text = "".join(
-            json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n"
-            for record in jsonl_lines
-        )
-        _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
+    _ = _write_provider(project_root=project_root, records=jsonl_lines)
     return project_root, spec_root
 
 
@@ -103,7 +118,7 @@ def test_warns_when_open_gap_tied_item_has_stale_gap_id(*, tmp_path: Path) -> No
         jsonl_lines=records,
         spec_files={"spec.md": "# T\n\nSome unrelated rule MUST exist.\n"},
     )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stale_gap_tied.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-stale-gap-tied",
@@ -114,7 +129,7 @@ def test_warns_when_open_gap_tied_item_has_stale_gap_id(*, tmp_path: Path) -> No
             "Close each via a non-fix disposition (spec-revised, no-longer-applicable, "
             "resolved-out-of-band, or equivalent administrative reason)."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -133,7 +148,7 @@ def test_passes_when_open_gap_tied_item_has_current_gap_id(*, tmp_path: Path) ->
         jsonl_lines=records,
         spec_files={"spec.md": "# T\n\nReaders MUST cope.\n"},
     )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stale_gap_tied.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-stale-gap-tied",
@@ -151,117 +166,15 @@ def test_passes_when_open_gap_tied_item_has_current_gap_id(*, tmp_path: Path) ->
 
 def test_passes_when_no_open_gap_tied_items(*, tmp_path: Path) -> None:
     records = [_record(item_id="li-closed", status="closed", gap_id="gap-anything")]
-    project_root, spec_root = _setup_project(
-        tmp_path=tmp_path, jsonl_lines=records, spec_files={"spec.md": "# T\n"}
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    # No spec_files: with zero open gap-tied items the detection pass never runs,
+    # so the `spec_files is None` branch of _setup_project is exercised here.
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stale_gap_tied.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-stale-gap-tied",
         status="pass",
         message="no-stale-gap-tied: no open gap-tied work-items (1 work-items scanned)",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_passes_when_work_items_store_absent(*, tmp_path: Path) -> None:
-    project_root, spec_root = _setup_project(
-        tmp_path=tmp_path, jsonl_lines=None, spec_files={"spec.md": "# T\n"}
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="pass",
-        message=(
-            f"no-stale-gap-tied: work-items store at {project_root / 'work-items.jsonl'} "
-            "not present yet; no gap-tied items to check"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skipped_when_impl_plugin_unsupported(*, tmp_path: Path) -> None:
-    project_root, spec_root = _setup_project(
-        tmp_path=tmp_path,
-        jsonl_lines=None,
-        config_text=_CONFIG_UNSUPPORTED_PLUGIN,
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="skipped",
-        message=(
-            "no-stale-gap-tied: active impl-plugin is not in the v1 supported set "
-            "(livespec-impl-plaintext); check skipped"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skipped_when_implementation_section_missing(*, tmp_path: Path) -> None:
-    project_root, spec_root = _setup_project(
-        tmp_path=tmp_path,
-        jsonl_lines=None,
-        spec_files={"spec.md": "# T\n"},
-        config_text=_CONFIG_NO_IMPL_SECTION,
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="skipped",
-        message=(
-            "no-stale-gap-tied: active impl-plugin is not in the v1 supported set "
-            "(livespec-impl-plaintext); check skipped"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skipped_when_livespec_jsonc_missing(*, tmp_path: Path) -> None:
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="skipped",
-        message="no-stale-gap-tied: precondition not met (PreconditionError); check skipped",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skipped_when_livespec_jsonc_root_is_not_object(*, tmp_path: Path) -> None:
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text("[1, 2, 3]", encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="skipped",
-        message="no-stale-gap-tied: .livespec.jsonc root is not an object; check skipped",
         path=None,
         line=None,
         spec_root=str(spec_root),
@@ -278,7 +191,7 @@ def test_ignores_freeform_items_and_malformed_records(*, tmp_path: Path) -> None
     project_root, spec_root = _setup_project(
         tmp_path=tmp_path, jsonl_lines=records, spec_files={"spec.md": "# T\n"}
     )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stale_gap_tied.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-stale-gap-tied",
@@ -303,7 +216,7 @@ def test_detection_excludes_proposed_changes_and_history(*, tmp_path: Path) -> N
     proposed = spec_root / "proposed_changes"
     proposed.mkdir()
     _ = (proposed / "draft.md").write_text("# T\n\nDraft rule MUST exist.\n")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stale_gap_tied.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-stale-gap-tied",
@@ -314,57 +227,7 @@ def test_detection_excludes_proposed_changes_and_history(*, tmp_path: Path) -> N
             "Close each via a non-fix disposition (spec-revised, no-longer-applicable, "
             "resolved-out-of-band, or equivalent administrative reason)."
         ),
-        path=str(project_root / "work-items.jsonl"),
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_detection_skips_code_fences(*, tmp_path: Path) -> None:
-    project_root, spec_root = _setup_project(
-        tmp_path=tmp_path,
-        jsonl_lines=None,
-        spec_files={
-            "spec.md": (
-                "# T\n\n"
-                "Live rule MUST exist.\n\n"
-                "```python\n"
-                "# this MUST be excluded\n"
-                "```\n\n"
-                "After fence: SHOULD pass.\n"
-            )
-        },
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="pass",
-        message=(
-            f"no-stale-gap-tied: work-items store at {project_root / 'work-items.jsonl'} "
-            "not present yet; no gap-tied items to check"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skipped_when_jsonc_parse_fails(*, tmp_path: Path) -> None:
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text("this is not jsonc", encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="skipped",
-        message="no-stale-gap-tied: precondition not met (ValidationError); check skipped",
-        path=None,
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -374,9 +237,9 @@ def test_skipped_when_jsonc_parse_fails(*, tmp_path: Path) -> None:
 def test_detection_traverses_headings_and_code_fences_when_evaluated(*, tmp_path: Path) -> None:
     """End-to-end test exercising _detect_gap_ids and _push_heading branches.
 
-    Requires both a work-items store (with at least one open gap-tied item)
-    AND a spec with multi-level headings + code fences to exercise the
-    full detection path.
+    Requires both an open gap-tied work-item AND a spec with multi-level
+    headings + code fences to exercise the full detection path (including
+    the code-fence-skip branch).
     """
     records = [_record(item_id="li-keep", gap_id="gap-irrelevant-stale")]
     project_root, spec_root = _setup_project(
@@ -399,7 +262,7 @@ def test_detection_traverses_headings_and_code_fences_when_evaluated(*, tmp_path
             )
         },
     )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stale_gap_tied.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-stale-gap-tied",
@@ -410,7 +273,7 @@ def test_detection_traverses_headings_and_code_fences_when_evaluated(*, tmp_path
             "Close each via a non-fix disposition (spec-revised, no-longer-applicable, "
             "resolved-out-of-band, or equivalent administrative reason)."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -429,101 +292,50 @@ def test_detection_handles_level_jump_headings(*, tmp_path: Path) -> None:
             )
         },
     )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_stale_gap_tied.run(ctx=ctx)
     assert isinstance(result, IOSuccess)
 
 
-def test_uses_default_path_when_plugin_section_missing(*, tmp_path: Path) -> None:
-    """Config has supported plugin but no plugin-specific section.
-
-    Exercises the `isinstance(plugin_section, dict)` False branch.
-    """
-    config_text = """{
-      "implementation": { "plugin": "livespec-impl-plaintext" }
-    }
-    """
-    project_root, spec_root = _setup_project(
-        tmp_path=tmp_path,
-        jsonl_lines=None,
-        spec_files={"spec.md": "# T\n"},
-        config_text=config_text,
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="pass",
-        message=(
-            f"no-stale-gap-tied: work-items store at {project_root / 'work-items.jsonl'} "
-            "not present yet; no gap-tied items to check"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_uses_default_path_when_work_items_path_not_string(*, tmp_path: Path) -> None:
-    """Config has plugin section but work_items_path is wrong type.
-
-    Exercises the `isinstance(candidate, str)` False branch.
-    """
-    config_text = """{
-      "implementation": { "plugin": "livespec-impl-plaintext" },
-      "livespec-impl-plaintext": {
-        "work_items_path": 42
-      }
-    }
-    """
-    project_root, spec_root = _setup_project(
-        tmp_path=tmp_path,
-        jsonl_lines=None,
-        spec_files={"spec.md": "# T\n"},
-        config_text=config_text,
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_stale_gap_tied.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-stale-gap-tied",
-        status="pass",
-        message=(
-            f"no-stale-gap-tied: work-items store at {project_root / 'work-items.jsonl'} "
-            "not present yet; no gap-tied items to check"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_jsonl_skips_blank_lines_and_non_object_lines(*, tmp_path: Path) -> None:
+def test_skips_when_provider_unset(*, tmp_path: Path) -> None:
+    """No configured provider (work_items_provider is None) yields a skipped Finding."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    _ = (spec_root / "spec.md").write_text("# T\n", encoding="utf-8")
-    bad_object = json.dumps({"origin": "gap-tied", "status": "open", "gap_id": "gap-x"})
-    good_record = json.dumps({"id": "li-real", "origin": "freeform", "status": "open"})
-    raw_text = "".join(
-        [
-            "\n",
-            "not-json-at-all\n",
-            json.dumps([1, 2, 3]) + "\n",
-            bad_object + "\n",
-            good_record + "\n",
-        ]
-    )
-    _ = (project_root / "work-items.jsonl").write_text(raw_text, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root, work_items_provider=None)
     result = no_stale_gap_tied.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-stale-gap-tied",
-        status="pass",
-        message="no-stale-gap-tied: no open gap-tied work-items (1 work-items scanned)",
+        status="skipped",
+        message=(
+            "no-stale-gap-tied: no live work-item provider configured "
+            "(set LIVESPEC_IMPL_LIST_WORK_ITEMS to the active impl-plugin's "
+            "list-work-items wrapper to enforce); check skipped"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_skips_when_provider_unreachable(*, tmp_path: Path) -> None:
+    """A provider that exits nonzero is a connection failure → skipped, not warn."""
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    wrapper = project_root / _WRAPPER_NAME
+    _ = wrapper.write_text("import sys\nsys.exit(1)\n", encoding="utf-8")
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root, work_items_provider=wrapper)
+    result = no_stale_gap_tied.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-no-stale-gap-tied",
+        status="skipped",
+        message=(
+            "no-stale-gap-tied: work-item store unreachable " "(wrapper exited 1); check skipped"
+        ),
         path=None,
         line=None,
         spec_root=str(spec_root),

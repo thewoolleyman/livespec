@@ -32,7 +32,20 @@ class DoctorContext:
     sub-spec tree. Both are absolute Paths; the orchestrator
     is responsible for resolving relative inputs before
     constructing the context.
+
+    `work_items_provider` is the resolved absolute path to the
+    ACTIVE impl-plugin's `list-work-items` thin-transport wrapper
+    (per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
+    invariants"), or `None` when no live work-item provider is
+    configured. `run_static.py` resolves it once from the
+    `LIVESPEC_IMPL_LIST_WORK_ITEMS` env var and threads it through
+    so the cross-boundary work-item checks acquire their data
+    plugin-agnostically (via the wrapper) instead of a direct
+    JSONL file read. `None` makes those checks surface a
+    `skipped` Finding. The field widens the context per the
+    documented "fields widen under consumer pressure" rule.
     """
 
     project_root: Path
     spec_root: Path
+    work_items_provider: Path | None = None

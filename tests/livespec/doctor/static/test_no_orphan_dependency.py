@@ -70,17 +70,50 @@ def _raise_runtime_error(*_args: Any, **_kwargs: Any) -> Any:
     raise RuntimeError("simulated gh failure")
 
 
+_WRAPPER_NAME = "fake_wrapper.py"
+
+
+def _write_provider(*, project_root: Path, records: list[dict[str, object]]) -> Path:
+    """Write a fake list-work-items wrapper emitting `records` as a JSON array.
+
+    The check acquires work-items by running this wrapper as a
+    subprocess and parsing its top-level JSON array (per
+    `_work_items_provider.py`). The wrapper reads a sibling
+    `provider_data.json` and prints it verbatim so the array content
+    is fixture-driven.
+    """
+    data_path = project_root / "provider_data.json"
+    _ = data_path.write_text(json.dumps(records), encoding="utf-8")
+    wrapper = project_root / _WRAPPER_NAME
+    _ = wrapper.write_text(
+        "import pathlib, sys\n" f"sys.stdout.write(pathlib.Path({str(data_path)!r}).read_text())\n",
+        encoding="utf-8",
+    )
+    return wrapper
+
+
+def _ctx(*, project_root: Path, spec_root: Path) -> DoctorContext:
+    """Build a DoctorContext whose provider points at the fixture wrapper."""
+    return DoctorContext(
+        project_root=project_root,
+        spec_root=spec_root,
+        work_items_provider=project_root / _WRAPPER_NAME,
+    )
+
+
+def _provider_path(*, project_root: Path) -> str:
+    """Return the fixture wrapper path as the str the fail-Finding `path` carries."""
+    return str(project_root / _WRAPPER_NAME)
+
+
 def _setup_project(*, tmp_path: Path, jsonl_lines: list[dict[str, object]]) -> tuple[Path, Path]:
-    """Create a project root with .livespec.jsonc and a work-items.jsonl."""
+    """Create a project root with .livespec.jsonc and a fixture provider wrapper."""
     project_root = tmp_path / "project"
     project_root.mkdir()
     _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    jsonl_text = "".join(
-        json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n" for record in jsonl_lines
-    )
-    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
+    _ = _write_provider(project_root=project_root, records=jsonl_lines)
     return project_root, spec_root
 
 
@@ -111,7 +144,7 @@ def test_fails_when_typed_local_references_missing_id(*, tmp_path: Path) -> None
         _record(item_id="b", status="open", depends_on=[_local("a"), _local("missing-2")]),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -121,7 +154,7 @@ def test_fails_when_typed_local_references_missing_id(*, tmp_path: Path) -> None
             "a→missing-1 (kind=local), b→missing-2 (kind=local). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -135,7 +168,7 @@ def test_passes_when_all_typed_local_resolve(*, tmp_path: Path) -> None:
         _record(item_id="b", status="open", depends_on=[_local("a")]),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -155,7 +188,7 @@ def test_passes_when_all_depends_on_empty(*, tmp_path: Path) -> None:
         _record(item_id="b", status="open"),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -175,7 +208,7 @@ def test_open_record_with_bare_string_fires_fail(*, tmp_path: Path) -> None:
         _record(item_id="b", status="closed"),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -185,7 +218,7 @@ def test_open_record_with_bare_string_fires_fail(*, tmp_path: Path) -> None:
             "a→b (kind=bare-string (data-migration pending)). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -199,7 +232,7 @@ def test_closed_record_with_bare_string_resolving_passes(*, tmp_path: Path) -> N
         _record(item_id="b", status="closed"),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -218,7 +251,7 @@ def test_closed_record_with_bare_string_missing_target_still_fails(*, tmp_path: 
         _record(item_id="a", status="closed", depends_on=["missing"]),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -228,7 +261,7 @@ def test_closed_record_with_bare_string_missing_target_still_fails(*, tmp_path: 
             "a→missing (kind=local-legacy). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -246,10 +279,7 @@ def _setup_project_with_manifest(
     _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT_WITH_MANIFEST, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    jsonl_text = "".join(
-        json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n" for record in jsonl_lines
-    )
-    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
+    _ = _write_provider(project_root=project_root, records=jsonl_lines)
     return project_root, spec_root
 
 
@@ -266,7 +296,7 @@ def test_pull_request_open_dependency_passes(
         ),
     ]
     project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -292,7 +322,7 @@ def test_pull_request_merged_dependency_passes(
         ),
     ]
     project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -319,7 +349,7 @@ def test_unknown_with_configured_target_fires_fail(
         ),
     ]
     project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -329,7 +359,7 @@ def test_unknown_with_configured_target_fires_fail(
             "a→runtime#PR5 (kind=pull_request (unresolved by runtime)). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -347,7 +377,7 @@ def test_unknown_with_unconfigured_target_passes(*, tmp_path: Path) -> None:
     ]
     # Use the default config WITHOUT cross_repo_targets — missing repo can't be configured.
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -374,7 +404,7 @@ def test_branch_present_and_not_merged_passes(
         ),
     ]
     project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -397,7 +427,7 @@ def test_sibling_without_lookup_unknown_fires_fail_when_configured(*, tmp_path: 
         ),
     ]
     project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -407,7 +437,7 @@ def test_sibling_without_lookup_unknown_fires_fail_when_configured(*, tmp_path: 
             "a→runtime#li-x (kind=sibling_work_item (unresolved by runtime)). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -428,7 +458,7 @@ def test_branch_unknown_with_configured_target_fires_fail(
         ),
     ]
     project_root, spec_root = _setup_project_with_manifest(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -438,7 +468,7 @@ def test_branch_unknown_with_configured_target_fires_fail(
             "a→runtime@feat/y (kind=branch (unresolved by runtime)). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -460,8 +490,9 @@ def test_malformed_cross_repo_manifest_treated_as_empty(*, tmp_path: Path) -> No
     _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    _ = (project_root / "work-items.jsonl").write_text(
-        json.dumps(
+    _ = _write_provider(
+        project_root=project_root,
+        records=[
             {
                 "id": "a",
                 "type": "task",
@@ -470,11 +501,9 @@ def test_malformed_cross_repo_manifest_treated_as_empty(*, tmp_path: Path) -> No
                     {"kind": "sibling_work_item", "repo": "runtime", "work_item_id": "li-x"}
                 ],
             }
-        )
-        + "\n",
-        encoding="utf-8",
+        ],
     )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     # Empty manifest → repo not in manifest → not an orphan here.
     expected = Finding(
@@ -498,7 +527,7 @@ def test_closed_record_with_non_local_kind_tolerated(*, tmp_path: Path) -> None:
         ),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -518,9 +547,13 @@ def test_open_record_with_schema_error_entry_fires_fail(*, tmp_path: Path) -> No
     _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    raw = '{"id":"a","type":"task","status":"open","depends_on":[{"work_item_id":"x"}]}\n'
-    _ = (project_root / "work-items.jsonl").write_text(raw, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    _ = _write_provider(
+        project_root=project_root,
+        records=[
+            {"id": "a", "type": "task", "status": "open", "depends_on": [{"work_item_id": "x"}]}
+        ],
+    )
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -530,7 +563,7 @@ def test_open_record_with_schema_error_entry_fires_fail(*, tmp_path: Path) -> No
             "a→{'work_item_id': 'x'} (kind=schema-error). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -545,8 +578,11 @@ def test_closed_record_with_schema_error_entry_tolerated(*, tmp_path: Path) -> N
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
     raw = '{"id":"a","type":"task","status":"closed","depends_on":[{"bad":"shape"}]}\n'
-    _ = (project_root / "work-items.jsonl").write_text(raw, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    _ = _write_provider(
+        project_root=project_root,
+        records=[json.loads(line) for line in raw.splitlines() if line.strip()],
+    )
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -567,8 +603,11 @@ def test_open_record_with_non_dict_non_string_entry_fires_fail(*, tmp_path: Path
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
     raw = '{"id":"a","type":"task","status":"open","depends_on":[42]}\n'
-    _ = (project_root / "work-items.jsonl").write_text(raw, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    _ = _write_provider(
+        project_root=project_root,
+        records=[json.loads(line) for line in raw.splitlines() if line.strip()],
+    )
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -578,7 +617,7 @@ def test_open_record_with_non_dict_non_string_entry_fires_fail(*, tmp_path: Path
             "a→42 (kind=malformed (non-dict)). "
             "Either add the missing work-item(s) or remove the stale depends_on entry."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -593,8 +632,11 @@ def test_closed_record_with_non_dict_non_string_entry_tolerated(*, tmp_path: Pat
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
     raw = '{"id":"a","type":"task","status":"closed","depends_on":[42]}\n'
-    _ = (project_root / "work-items.jsonl").write_text(raw, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    _ = _write_provider(
+        project_root=project_root,
+        records=[json.loads(line) for line in raw.splitlines() if line.strip()],
+    )
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -607,16 +649,11 @@ def test_closed_record_with_non_dict_non_string_entry_tolerated(*, tmp_path: Pat
     assert result == IOSuccess(expected)
 
 
-def test_skips_when_depends_on_is_not_a_list(*, tmp_path: Path) -> None:
+def test_ignores_record_when_depends_on_is_not_a_list(*, tmp_path: Path) -> None:
     """When `depends_on` is malformed (not a list), the check ignores the record."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    raw_jsonl = '{"id":"a","type":"task","status":"open","depends_on":"not-a-list"}\n'
-    _ = (project_root / "work-items.jsonl").write_text(raw_jsonl, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    records = [{"id": "a", "type": "task", "status": "open", "depends_on": "not-a-list"}]
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -629,23 +666,15 @@ def test_skips_when_depends_on_is_not_a_list(*, tmp_path: Path) -> None:
     assert result == IOSuccess(expected)
 
 
-def test_skips_when_active_plugin_unrecognized(*, tmp_path: Path) -> None:
-    """When the active impl-plugin is outside the v1 supported set, the check skips."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    config_text = '{\n  "implementation": { "plugin": "livespec-impl-beads" }\n}\n'
-    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+def test_passes_when_provider_emits_empty_array(*, tmp_path: Path) -> None:
+    """An empty work-items store is a clean pass (no dependencies to check)."""
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=[])
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
-        status="skipped",
-        message=(
-            "no-orphan-dependency: active impl-plugin is not in the v1 "
-            "supported set (livespec-impl-plaintext); check skipped"
-        ),
+        status="pass",
+        message="no-orphan-dependency: every depends_on reference resolves (0 work-items scanned)",
         path=None,
         line=None,
         spec_root=str(spec_root),
@@ -653,41 +682,22 @@ def test_skips_when_active_plugin_unrecognized(*, tmp_path: Path) -> None:
     assert result == IOSuccess(expected)
 
 
-def test_skips_when_livespec_jsonc_missing(*, tmp_path: Path) -> None:
-    """When .livespec.jsonc is missing, the railway lashes back into a skipped Finding."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_orphan_dependency.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-orphan-dependency",
-        status="skipped",
-        message="no-orphan-dependency: precondition not met (PreconditionError); check skipped",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_passes_when_work_items_jsonl_not_yet_present(*, tmp_path: Path) -> None:
-    """When the work-items.jsonl is configured but the file doesn't exist yet, check passes."""
+def test_skips_when_provider_unset(*, tmp_path: Path) -> None:
+    """No configured provider (work_items_provider is None) yields a skipped Finding."""
     project_root = tmp_path / "project"
     project_root.mkdir()
     _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root, work_items_provider=None)
     result = no_orphan_dependency.run(ctx=ctx)
-    work_items_path = project_root / "work-items.jsonl"
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
-        status="pass",
+        status="skipped",
         message=(
-            f"no-orphan-dependency: work-items store at {work_items_path} "
-            "not present yet; no dependencies to check"
+            "no-orphan-dependency: no live work-item provider configured "
+            "(set LIVESPEC_IMPL_LIST_WORK_ITEMS to the active impl-plugin's "
+            "list-work-items wrapper to enforce); check skipped"
         ),
         path=None,
         line=None,
@@ -696,41 +706,22 @@ def test_passes_when_work_items_jsonl_not_yet_present(*, tmp_path: Path) -> None
     assert result == IOSuccess(expected)
 
 
-def test_skips_when_livespec_jsonc_root_is_not_object(*, tmp_path: Path) -> None:
-    """When .livespec.jsonc root parses to a non-object, the check skips."""
+def test_skips_when_provider_unreachable(*, tmp_path: Path) -> None:
+    """A provider that exits nonzero is a connection failure → skipped, not fail."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text("[1,2,3]\n", encoding="utf-8")
+    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_orphan_dependency.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-orphan-dependency",
-        status="skipped",
-        message="no-orphan-dependency: .livespec.jsonc root is not an object; check skipped",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skips_when_implementation_section_absent(*, tmp_path: Path) -> None:
-    """When `implementation` key is absent, the check skips."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text('{"template":"livespec"}\n', encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    wrapper = project_root / _WRAPPER_NAME
+    _ = wrapper.write_text("import sys\nsys.exit(1)\n", encoding="utf-8")
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root, work_items_provider=wrapper)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
         status="skipped",
         message=(
-            "no-orphan-dependency: active impl-plugin is not in the v1 "
-            "supported set (livespec-impl-plaintext); check skipped"
+            "no-orphan-dependency: work-item store unreachable " "(wrapper exited 1); check skipped"
         ),
         path=None,
         line=None,
@@ -739,46 +730,18 @@ def test_skips_when_implementation_section_absent(*, tmp_path: Path) -> None:
     assert result == IOSuccess(expected)
 
 
-def test_skips_when_plugin_name_is_not_string(*, tmp_path: Path) -> None:
-    """Non-string `implementation.plugin` value triggers skip."""
+def test_manifest_empty_when_livespec_jsonc_missing(*, tmp_path: Path) -> None:
+    """A missing .livespec.jsonc yields an empty manifest (best-effort) — check still runs."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(
-        '{"implementation":{"plugin":42}}\n', encoding="utf-8"
-    )
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_orphan_dependency.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-orphan-dependency",
-        status="skipped",
-        message=(
-            "no-orphan-dependency: active impl-plugin is not in the v1 "
-            "supported set (livespec-impl-plaintext); check skipped"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
+    # No .livespec.jsonc on disk → load_manifest_io lashes to an empty manifest.
+    _ = _write_provider(
+        project_root=project_root,
+        records=[_record(item_id="a", status="closed", depends_on=[])],
     )
-    assert result == IOSuccess(expected)
-
-
-def test_uses_default_work_items_path_when_section_absent(*, tmp_path: Path) -> None:
-    """Falls back to default `work-items.jsonl` when plugin section is absent."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(
-        '{"implementation":{"plugin":"livespec-impl-plaintext"}}\n',
-        encoding="utf-8",
-    )
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    _ = (project_root / "work-items.jsonl").write_text(
-        '{"id":"a","type":"task","status":"closed","depends_on":[]}\n',
-        encoding="utf-8",
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -791,22 +754,18 @@ def test_uses_default_work_items_path_when_section_absent(*, tmp_path: Path) -> 
     assert result == IOSuccess(expected)
 
 
-def test_falls_back_when_work_items_path_is_not_string(*, tmp_path: Path) -> None:
-    """Non-string `work_items_path` falls back to default."""
+def test_manifest_empty_when_livespec_jsonc_malformed(*, tmp_path: Path) -> None:
+    """Malformed .livespec.jsonc JSON yields an empty manifest (parse-failure branch)."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(
-        '{"implementation":{"plugin":"livespec-impl-plaintext"},'
-        '"livespec-impl-plaintext":{"work_items_path":42}}\n',
-        encoding="utf-8",
-    )
+    _ = (project_root / ".livespec.jsonc").write_text('{"unterminated', encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    _ = (project_root / "work-items.jsonl").write_text(
-        '{"id":"a","type":"task","status":"closed","depends_on":[]}\n',
-        encoding="utf-8",
+    _ = _write_provider(
+        project_root=project_root,
+        records=[_record(item_id="a", status="closed", depends_on=[])],
     )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",
@@ -819,22 +778,18 @@ def test_falls_back_when_work_items_path_is_not_string(*, tmp_path: Path) -> Non
     assert result == IOSuccess(expected)
 
 
-def test_tolerates_malformed_jsonl_lines(*, tmp_path: Path) -> None:
-    """Malformed JSONL lines are silently skipped."""
+def test_manifest_empty_when_livespec_jsonc_root_not_object(*, tmp_path: Path) -> None:
+    """A non-object .livespec.jsonc root yields an empty manifest (non-dict branch)."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
+    _ = (project_root / ".livespec.jsonc").write_text("[1, 2, 3]\n", encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    jsonl_text = (
-        "\n"
-        '{"id": "bad-line\n'  # malformed JSON
-        "[1, 2, 3]\n"  # non-object
-        '{"type": "task", "status": "open"}\n'  # no id
-        '{"id":"x","type":"task","status":"closed","depends_on":[]}\n'  # valid
+    _ = _write_provider(
+        project_root=project_root,
+        records=[_record(item_id="a", status="closed", depends_on=[])],
     )
-    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_orphan_dependency.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-orphan-dependency",

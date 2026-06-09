@@ -31,17 +31,43 @@ _CONFIG_TEXT = """// minimal livespec config
 """
 
 
+_WRAPPER_NAME = "fake_wrapper.py"
+
+
+def _write_provider(*, project_root: Path, records: list[dict[str, object]]) -> Path:
+    """Write a fake list-work-items wrapper emitting `records` as a JSON array."""
+    data_path = project_root / "provider_data.json"
+    _ = data_path.write_text(json.dumps(records), encoding="utf-8")
+    wrapper = project_root / _WRAPPER_NAME
+    _ = wrapper.write_text(
+        "import pathlib, sys\n" f"sys.stdout.write(pathlib.Path({str(data_path)!r}).read_text())\n",
+        encoding="utf-8",
+    )
+    return wrapper
+
+
+def _ctx(*, project_root: Path, spec_root: Path) -> DoctorContext:
+    """Build a DoctorContext whose provider points at the fixture wrapper."""
+    return DoctorContext(
+        project_root=project_root,
+        spec_root=spec_root,
+        work_items_provider=project_root / _WRAPPER_NAME,
+    )
+
+
+def _provider_path(*, project_root: Path) -> str:
+    """Return the fixture wrapper path as the str the fail-Finding `path` carries."""
+    return str(project_root / _WRAPPER_NAME)
+
+
 def _setup_project(*, tmp_path: Path, jsonl_lines: list[dict[str, object]]) -> tuple[Path, Path]:
-    """Create a project root with .livespec.jsonc and work-items.jsonl."""
+    """Create a project root with .livespec.jsonc and a fixture provider wrapper."""
     project_root = tmp_path / "project"
     project_root.mkdir()
     _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    jsonl_text = "".join(
-        json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n" for record in jsonl_lines
-    )
-    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
+    _ = _write_provider(project_root=project_root, records=jsonl_lines)
     return project_root, spec_root
 
 
@@ -71,7 +97,7 @@ def test_fails_when_two_open_items_share_gap_id(
         _record(item_id="b", status="open", gap_id="gap-1"),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_duplicate_gap_id.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-duplicate-gap-id",
@@ -80,7 +106,7 @@ def test_fails_when_two_open_items_share_gap_id(
             "no-duplicate-gap-id: 1 gap-id(s) claimed by multiple open work-items: "
             "gap-1: [a, b]. Consolidate or close the duplicates."
         ),
-        path=str(project_root / "work-items.jsonl"),
+        path=_provider_path(project_root=project_root),
         line=None,
         spec_root=str(spec_root),
     )
@@ -97,7 +123,7 @@ def test_passes_when_closed_item_shares_gap_id_with_open(
         _record(item_id="b", status="open", gap_id="gap-1"),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_duplicate_gap_id.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-duplicate-gap-id",
@@ -122,7 +148,7 @@ def test_passes_when_no_gap_ids(
         _record(item_id="b", status="open"),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_duplicate_gap_id.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-duplicate-gap-id",
@@ -148,7 +174,7 @@ def test_passes_when_open_items_have_distinct_gap_ids(
         _record(item_id="c", status="in_progress", gap_id="gap-3"),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_duplicate_gap_id.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-duplicate-gap-id",
@@ -173,7 +199,7 @@ def test_skips_non_string_gap_id_values(
         _record(item_id="b", status="open", gap_id=None),
     ]
     project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=records)
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_duplicate_gap_id.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-duplicate-gap-id",
@@ -188,184 +214,16 @@ def test_skips_non_string_gap_id_values(
     assert result == IOSuccess(expected)
 
 
-def test_skips_when_active_plugin_unrecognized(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Unsupported impl-plugin triggers skip."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(
-        '{"implementation":{"plugin":"livespec-impl-beads"}}\n', encoding="utf-8"
-    )
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_duplicate_gap_id.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-duplicate-gap-id",
-        status="skipped",
-        message=(
-            "no-duplicate-gap-id: active impl-plugin is not in the v1 supported set "
-            "(livespec-impl-plaintext); check skipped"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skips_when_livespec_jsonc_missing(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Missing .livespec.jsonc triggers skip via lash recovery."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_duplicate_gap_id.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-duplicate-gap-id",
-        status="skipped",
-        message="no-duplicate-gap-id: precondition not met (PreconditionError); check skipped",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_passes_when_work_items_jsonl_not_yet_present(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Configured but absent work-items.jsonl is normal — pass."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_duplicate_gap_id.run(ctx=ctx)
-    work_items_path = project_root / "work-items.jsonl"
-    expected = Finding(
-        check_id="doctor-no-duplicate-gap-id",
-        status="pass",
-        message=(
-            f"no-duplicate-gap-id: work-items store at {work_items_path} not present yet; "
-            "no gap-ids to check"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skips_when_livespec_jsonc_root_is_not_object(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Non-object root in .livespec.jsonc triggers skip."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text("[1,2,3]\n", encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_duplicate_gap_id.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-duplicate-gap-id",
-        status="skipped",
-        message="no-duplicate-gap-id: .livespec.jsonc root is not an object; check skipped",
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skips_when_implementation_section_absent(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Missing `implementation` key triggers skip."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text('{"template":"livespec"}\n', encoding="utf-8")
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_duplicate_gap_id.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-duplicate-gap-id",
-        status="skipped",
-        message=(
-            "no-duplicate-gap-id: active impl-plugin is not in the v1 supported set "
-            "(livespec-impl-plaintext); check skipped"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_skips_when_plugin_name_is_not_string(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Non-string plugin name triggers skip."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(
-        '{"implementation":{"plugin":42}}\n', encoding="utf-8"
-    )
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    result = no_duplicate_gap_id.run(ctx=ctx)
-    expected = Finding(
-        check_id="doctor-no-duplicate-gap-id",
-        status="skipped",
-        message=(
-            "no-duplicate-gap-id: active impl-plugin is not in the v1 supported set "
-            "(livespec-impl-plaintext); check skipped"
-        ),
-        path=None,
-        line=None,
-        spec_root=str(spec_root),
-    )
-    assert result == IOSuccess(expected)
-
-
-def test_uses_default_work_items_path_when_section_absent(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Falls back to default when plugin section is absent."""
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(
-        '{"implementation":{"plugin":"livespec-impl-plaintext"}}\n',
-        encoding="utf-8",
-    )
-    spec_root = project_root / "SPECIFICATION"
-    spec_root.mkdir()
-    _ = (project_root / "work-items.jsonl").write_text(
-        '{"id":"a","type":"task","status":"open","depends_on":[],"gap_id":null}\n',
-        encoding="utf-8",
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+def test_passes_when_provider_emits_empty_array(*, tmp_path: Path) -> None:
+    """An empty work-items store passes vacuously."""
+    project_root, spec_root = _setup_project(tmp_path=tmp_path, jsonl_lines=[])
+    ctx = _ctx(project_root=project_root, spec_root=spec_root)
     result = no_duplicate_gap_id.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-duplicate-gap-id",
         status="pass",
         message=(
-            "no-duplicate-gap-id: every open work-item's gap-id is unique " "(1 work-items scanned)"
+            "no-duplicate-gap-id: every open work-item's gap-id is unique " "(0 work-items scanned)"
         ),
         path=None,
         line=None,
@@ -374,31 +232,21 @@ def test_uses_default_work_items_path_when_section_absent(
     assert result == IOSuccess(expected)
 
 
-def test_falls_back_when_work_items_path_is_not_string(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Non-string `work_items_path` falls back to default."""
+def test_skips_when_provider_unset(*, tmp_path: Path) -> None:
+    """No configured provider (work_items_provider is None) yields a skipped Finding."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(
-        '{"implementation":{"plugin":"livespec-impl-plaintext"},'
-        '"livespec-impl-plaintext":{"work_items_path":42}}\n',
-        encoding="utf-8",
-    )
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    _ = (project_root / "work-items.jsonl").write_text(
-        '{"id":"a","type":"task","status":"open","depends_on":[],"gap_id":null}\n',
-        encoding="utf-8",
-    )
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root, work_items_provider=None)
     result = no_duplicate_gap_id.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-duplicate-gap-id",
-        status="pass",
+        status="skipped",
         message=(
-            "no-duplicate-gap-id: every open work-item's gap-id is unique " "(1 work-items scanned)"
+            "no-duplicate-gap-id: no live work-item provider configured "
+            "(set LIVESPEC_IMPL_LIST_WORK_ITEMS to the active impl-plugin's "
+            "list-work-items wrapper to enforce); check skipped"
         ),
         path=None,
         line=None,
@@ -407,31 +255,21 @@ def test_falls_back_when_work_items_path_is_not_string(
     assert result == IOSuccess(expected)
 
 
-def test_tolerates_malformed_jsonl_lines(
-    *,
-    tmp_path: Path,
-) -> None:
-    """Malformed JSONL lines are silently skipped."""
+def test_skips_when_provider_unreachable(*, tmp_path: Path) -> None:
+    """A provider that exits nonzero is a connection failure → skipped, not fail."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    _ = (project_root / ".livespec.jsonc").write_text(_CONFIG_TEXT, encoding="utf-8")
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
-    jsonl_text = (
-        "\n"
-        '{"id": "bad-line\n'
-        "[1, 2]\n"
-        '{"type":"task"}\n'
-        '{"id":"x","type":"task","status":"closed","depends_on":[],"gap_id":null}\n'
-    )
-    _ = (project_root / "work-items.jsonl").write_text(jsonl_text, encoding="utf-8")
-    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    wrapper = project_root / _WRAPPER_NAME
+    _ = wrapper.write_text("import sys\nsys.exit(1)\n", encoding="utf-8")
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root, work_items_provider=wrapper)
     result = no_duplicate_gap_id.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-no-duplicate-gap-id",
-        status="pass",
+        status="skipped",
         message=(
-            "no-duplicate-gap-id: every open work-item's gap-id is unique " "(1 work-items scanned)"
+            "no-duplicate-gap-id: work-item store unreachable " "(wrapper exited 1); check skipped"
         ),
         path=None,
         line=None,
