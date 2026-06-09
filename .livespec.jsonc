@@ -23,6 +23,13 @@
       "fake": false
     }
   },
+  // Allowlist for cross-repo spec-heading references per
+  // SPECIFICATION/constraints.md §"Allowlist mechanism".
+  "external_references": {
+    "livespec-dev-tooling": [
+      "SPECIFICATION/contracts.md §\"Shared check inventory\""
+    ]
+  },
   "cross_repo_targets": {
     "livespec": {
       "github_url": "https://github.com/thewoolleyman/livespec",
