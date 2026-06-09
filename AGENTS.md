@@ -121,6 +121,33 @@ PROJECT-level without the namespace prefix) was removed in v049. The
 marketplace install or `--plugin-dir` is now the only way the plugin's
 skills load with the correct `/livespec:*` namespace.
 
+## Beads runtime prerequisites (what `just bootstrap` does NOT provision)
+
+`just ensure-plugins` installs the `livespec-impl-beads` *plugin*, but the beads
+backend also needs host-level runtime that bootstrap canNOT provision. A fresh
+clone connects to its beads tenant only when all of the following are present:
+
+- **`bd` CLI, pinned v1.0.5**, at `/usr/local/bin/bd`, with `LIVESPEC_BD_PATH`
+  pointing at it (the impl-beads wrappers shell out to `$LIVESPEC_BD_PATH`).
+- **A running Dolt `sql-server`** reachable over **TCP `127.0.0.1:3307`**. The
+  family tenants force TCP (not the unix socket): `/var/lib/doltdb/` is `0750
+  dolt:dolt` and untraversable by the sandboxed caller, so `.beads/config.yaml`
+  carries `dolt.*` host/port keys with NO `socket` key.
+- **The per-tenant password** in env as `BEADS_DOLT_PASSWORD`, exported from the
+  gitignored mode-600 `/home/ubuntu/workspace/dolt-server/tenant-secrets.env.local`
+  (keyed `BEADS_DOLT_PASSWORD_<tenant_underscores>`; tenant DB name == repo name).
+  Secrets are NEVER committed to `.livespec.jsonc` or `.beads/`.
+- **The `.beads/` pointer files** in the repo: `config.yaml` (committed; carries
+  the `dolt.*` server keys) and `metadata.json` (gitignored). `metadata.json` is
+  REGENERABLE — `project_id` is server-stable, so re-running `bd init --server …`
+  in a `/tmp` scratch dir with the repo's `config.yaml` yields the identical
+  `project_id`; copy its `metadata.json` into the repo. NEVER run `bd init` inside
+  a primary checkout or worktree — it auto-commits and clobbers `.beads/`.
+
+This is the bridge between "plugin installed" and "backend actually connects":
+without the Dolt server + bd binary + tenant secret + `.beads/` pointers, `bd
+list` fails with "no beads database found" even though the plugin is present.
+
 ## Daily commands
 
 - `just bootstrap` — first-touch setup on fresh clones; idempotently sets `livespec.primaryPath` on the primary checkout and installs the canonical commit-refuse hook at `.git/hooks/pre-commit` + `.git/hooks/pre-push` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure") plus installs lefthook hooks and resolves plugin dependencies.
