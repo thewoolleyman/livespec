@@ -85,11 +85,11 @@ bootstrap:
 # itself always resolves to the marketplace's current advertised version.
 ensure-plugins:
     claude plugin marketplace add thewoolleyman/livespec
-    claude plugin marketplace add thewoolleyman/livespec-impl-plaintext
+    claude plugin marketplace add thewoolleyman/livespec-impl-beads
     claude plugin install livespec@livespec
-    claude plugin install livespec-impl-plaintext@livespec-impl-plaintext
+    claude plugin install livespec-impl-beads@livespec-impl-beads
     claude plugin update livespec@livespec
-    claude plugin update livespec-impl-plaintext@livespec-impl-plaintext
+    claude plugin update livespec-impl-beads@livespec-impl-beads
 
 # ---------------------------------------------------------------
 # Aggregate check — runs every check below sequentially. Continues
