@@ -35,11 +35,11 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Three-layer orchestration architecture",
+    "heading": "## Contract + reference implementations architecture",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "TODO",
-    "reason": "Landed in v067 (orchestration-layer-and-memo-paradigm proposal accept). Test ID populated in the impl follow-up PR that exercises the three-layer structure end-to-end (e.g., a project-local loop driver invoking livespec and impl-plugin next skills)."
+    "reason": "Renamed from '## Three-layer orchestration architecture' in v103 (contract-and-reference-implementations-phase-1 proposal accept). Test ID populated in the Phase-2+ impl follow-up that exercises the contract + reference implementations seams (Driver-agnostic spec-side CLIs; an orchestrator consuming the three config-named CLIs)."
   },
   {
     "heading": "## Versioning",
@@ -105,11 +105,32 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Thin-transport skill doctrine",
+    "heading": "## Orchestrator CLI contract — the three named CLIs",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
-    "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR that adds the thin-transport SKILL.md brevity / no-accretion lint rule and the cross-plugin-invocation-via-skill-namespace contract assertion."
+    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). Real test ID populated in the Phase-2 impl follow-up that wires the three orchestrator-side CLIs (spec-reader, gap-capture, drift-capture) through .livespec.jsonc and asserts the config-named-cli-callability invariant against them."
+  },
+  {
+    "heading": "## Spec-side CLI contract",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). Real test ID populated in the Phase-2 impl follow-up that decomposes each spec-side skill into prose + CLI and asserts per-CLI config naming, reference-default pre-population, and individual overridability."
+  },
+  {
+    "heading": "## CLI shape conventions",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). Real test ID populated in the Phase-2 impl follow-up that asserts the one-binary-per-side subcommand shape, --json stable schemas, stdin/stdout payload handling, exit-code-table reuse, and explicit project-root addressing across the named CLIs."
+  },
+  {
+    "heading": "## Interactive dialogue ownership (orchestrator-side)",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). Real test ID populated in the Phase-4 reference-orchestrator follow-up that ships the orchestrator-internal SKILL.md front-ends and asserts the Driver-to-orchestrator zero-dependency invariant."
   },
   {
     "heading": "## Sub-spec structural mechanism",
@@ -160,32 +181,11 @@
     "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that wires the per-plugin compat block schema fragment into .livespec.jsonc validation and adds the contract-version-compatibility doctor invariant."
   },
   {
-    "heading": "## Cross-repo dependency awareness",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v072 (cross-repo-dependency-awareness propose-change accept-with-modify) per epic li-6d2wpj. Codifies the cross_repo_targets manifest, typed DependsOnEntry union (local | sibling_work_item | pull_request | branch), exhaustive live-walk resolution semantics, livespec_runtime.cross_repo contract surface, retry policy, consumer surface, GitHub CLI auth, and hook integration. Real test ID populated in the impl follow-up PRs that wire livespec-core's doctor (li-f2fbkl) and livespec-impl-plaintext's next ranker + cleanup invariants + data migration (li-f5wmjr) against the runtime."
-  },
-  {
-    "heading": "## Implementation-plugin contract — the 10-skill surface",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR that scaffolds the nine canonical impl-plugin skills (six heavyweight authored + three thin-transport query) under the livespec-impl-plaintext namespace and wires the five cross-boundary handoffs into doctor's invariant catalog."
-  },
-  {
     "heading": "## `/livespec:next` spec-side thin-transport skill",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.commands.test_next.test_next_emits_schema_conformant_json",
     "reason": "Phase B.1 (li-3ax) — authored bin/next.py + commands/next.py (pure-function-of-file-state ranker) + next_output.schema.json wire contract + paired dataclass + validator. The schema-conformance test exercises the full pipeline against a real spec tree and asserts the stdout payload validates against next_output.schema.json. Doctor-cache integration deferred to a follow-on once the cache format is formalized via propose-change."
-  },
-  {
-    "heading": "## Spec Reader required-capability surface",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v065 (implementation-plugin-contract-9-skill-surface proposal accept). Real test ID populated in the impl follow-up PR(s) that implement the Spec Reader adapter inside each livespec-impl-* plugin and assert the four required capabilities (read current spec, read history, report current version, read or summarize cross-version differences) against a uniform conformance harness."
   },
   {
     "heading": "## Shared content sync — copier template",
