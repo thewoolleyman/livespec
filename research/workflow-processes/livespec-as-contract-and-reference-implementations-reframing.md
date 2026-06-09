@@ -1,10 +1,12 @@
 # LiveSpec as a contract with reference implementations -- reframing
 
-**Status:** open / pre-formal research capture (per
-`research/workflow-processes/CLAUDE.md` graduation rule -- NOT yet codified
-into `SPECIFICATION/`).
+**Status:** decisions recorded 2026-06-09 (see §8 "Decision record" at the
+bottom); formalization in flight via
+`SPECIFICATION/proposed_changes/contract-and-reference-implementations-phase-1.md`
+(pre-formal research capture per the `research/workflow-processes/CLAUDE.md`
+graduation rule -- the load-bearing rules land in `SPECIFICATION/` at revise).
 
-**Date:** 2026-06-08.
+**Date:** 2026-06-08 (decision record appended 2026-06-09).
 
 **Authored from:** branch `master`, multi-session design discussion (tool
 evaluation + terminology audit).
@@ -390,3 +392,46 @@ Canonical links for everything referenced in this discussion.
 - The Software Factory: A Practitioner's Guide to Specification-Driven
   Development for Enterprise Services --
   <https://github.com/thewoolleyman/software-factory-practitioners-guide>
+
+---
+
+## 8. Decision record (2026-06-09)
+
+All open naming/architecture calls from this doc and the prior doc were
+decided by the user on 2026-06-09. The normative home for these decisions is
+`SPECIFICATION/proposed_changes/contract-and-reference-implementations-phase-1.md`
+(pending `/livespec:revise`); this section records them in the research trail.
+
+1. **Driver** is the name of the thin agent-runtime wrapper (over Adapter /
+   Binding). Repos: `livespec-driver-{claude,codex,...}`.
+2. **Loop** is the producer noun (over Mill); "production loop" remains
+   acceptable long-form prose.
+3. **Pin-and-bump relocates**: the `compat` schema + bump policy move to the
+   family/dev-tooling coordination surface; the
+   `contract-version-compatibility` doctor invariant is dropped from core.
+4. **`cross_repo_targets` splits** and leaves core's config contract:
+   work-item-resolution use -> orchestrator-private; release-coordination
+   use -> family-coordination surface.
+5. **Recast PC**: formally REJECTED at revise; the Phase-1 propose-change is
+   the named successor for its surviving content (Section 6's split holds).
+6. **Append-only-store PC**: formally REJECTED at revise; its content
+   migrates to the git-jsonl orchestrator's own SPECIFICATION (Phase 4).
+7. **Interactive gap/drift dialogue is orchestrator-owned** (Section 7's
+   carried-forward open question, now closed): each orchestrator ships its
+   own standard SKILL.md front-ends in-repo, usable from the supported agent
+   runtimes (Claude Code / Codex CLI / Pi); publication as per-orchestrator
+   installable plugins is deferred future work. The Driver <-> orchestrator
+   zero-dependency invariant is preserved.
+
+**Reference orchestrator cohort (decided the same session):** exactly two
+orchestrators are current work -- **git-jsonl** (serial; the existing
+homegrown orchestration logic; optionally human-driven directly via a coding
+agent runtime) and **Beads/Dolt + Fabro** (parallel-capable; the assembly the
+livespec family dogfoods for ALL internal repos). Gas City fleets and Kilroy
+remain possible future alternates, not commitments.
+
+**Canonical diagram:** the decided architecture is captured at
+`diagrams/contract-and-reference-implementations.plantuml` (+ rendered
+`.svg`), superseding `diagrams/orchestration-layers.*` as the architecture
+picture of record; the Phase-1 propose-change requires the spec to reference
+it and the repo README to link the rendered form.

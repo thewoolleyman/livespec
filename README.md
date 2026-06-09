@@ -26,6 +26,30 @@ The eight slash commands below become available with the
 - `/livespec:next` — rank the next spec-side action (revise, propose-change, critique, prune-history, or none)
 - `/livespec:help` — overview + routing to the right sub-command
 
+## Architecture — contract + reference implementations
+
+![LiveSpec — contract + reference implementations](research/workflow-processes/diagrams/contract-and-reference-implementations.svg)
+
+The decided target architecture (2026-06-09): LiveSpec core is a
+**CLI contract** wired by `.livespec.jsonc`, agnostic to both the
+**Driver** (the thin per-agent-runtime wrapper — Claude Code, Codex,
+Pi) and the **orchestrator** (the pluggable producer whose work
+product is the implementation; internally a Ledger + Loop +
+Dispatcher). There are ZERO direct dependencies between Driver and
+orchestrator. Reference orchestrators: **git-jsonl** (serial) and
+**Beads/Dolt + Fabro** (parallel; dogfooded family-wide).
+
+Diagram source:
+[`contract-and-reference-implementations.plantuml`](research/workflow-processes/diagrams/contract-and-reference-implementations.plantuml).
+Normative spec change (pending revise):
+[`SPECIFICATION/proposed_changes/contract-and-reference-implementations-phase-1.md`](SPECIFICATION/proposed_changes/contract-and-reference-implementations-phase-1.md).
+Design rationale:
+[`research/workflow-processes/livespec-as-contract-and-reference-implementations.md`](research/workflow-processes/livespec-as-contract-and-reference-implementations.md)
+(+ the
+[reframing follow-up](research/workflow-processes/livespec-as-contract-and-reference-implementations-reframing.md)).
+The §"Cross-repo orchestration" section below describes the CURRENT
+(pre-migration) state and is superseded as the phases land.
+
 ## Cross-repo orchestration
 
 The Layer 3 cross-repo orchestration driver lives at
