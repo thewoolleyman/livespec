@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="557px" preserveAspectRatio="none" style="width:504px;height:557px;" version="1.1" viewBox="0 0 504 557" width="504px" zoomAndPan="magnify"><defs><filter height="300%" id="f18rkx4e6jxs9o" width="300%" x="-1" y="-1"><feGaussianBlur result="blurOut" stdDeviation="2.0"/><feColorMatrix in="blurOut" result="blurOut2" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .4 0"/><feOffset dx="4.0" dy="4.0" in="blurOut2" result="blurOut3"/><feBlend in="SourceGraphic" in2="blurOut3" mode="normal"/></filter></defs><g><text fill="#000000" font-family="sans-serif" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="490" x="2" y="16.708">Example deployment diagram (PlantUML escape hatch)</text><!--MD5=[0cfffe5ee6e8c2167d5387a608c5a154]
+cluster App host--><polygon fill="#FFFFFF" filter="url(#f18rkx4e6jxs9o)" points="180,147.9531,190,137.9531,327,137.9531,327,222.9531,317,232.9531,180,232.9531,180,147.9531" style="stroke: #000000; stroke-width: 1.5;"/><line style="stroke: #000000; stroke-width: 1.5;" x1="317" x2="326" y1="147.9531" y2="138.9531"/><line style="stroke: #000000; stroke-width: 1.5;" x1="180" x2="317" y1="147.9531" y2="147.9531"/><line style="stroke: #000000; stroke-width: 1.5;" x1="317" x2="317" y1="147.9531" y2="232.9531"/><text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="71" x="214" y="163.9482">App host</text><!--MD5=[684f6347fee5c5ae5446d99f51d150f1]
+cluster Data host--><polygon fill="#FFFFFF" filter="url(#f18rkx4e6jxs9o)" points="166,291.9531,176,281.9531,317,281.9531,317,372.9531,307,382.9531,166,382.9531,166,291.9531" style="stroke: #000000; stroke-width: 1.5;"/><line style="stroke: #000000; stroke-width: 1.5;" x1="307" x2="316" y1="291.9531" y2="282.9531"/><line style="stroke: #000000; stroke-width: 1.5;" x1="166" x2="307" y1="291.9531" y2="291.9531"/><line style="stroke: #000000; stroke-width: 1.5;" x1="307" x2="307" y1="291.9531" y2="382.9531"/><text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="75" x="200" y="307.9482">Data host</text><!--MD5=[253793ac12dc71b5b3661728e8dc2147]
+entity svc--><rect fill="#FEFECE" filter="url(#f18rkx4e6jxs9o)" height="39.2969" style="stroke: #000000; stroke-width: 1.5;" width="79" x="201.5" y="177.9531"/><polygon fill="#FEFECE" points="263.5,182.9531,263.5,196.9531,275.5,196.9531,275.5,188.9531,269.5,182.9531,263.5,182.9531" style="stroke: #000000; stroke-width: 1.5;"/><line style="stroke: #000000; stroke-width: 1.5;" x1="269.5" x2="269.5" y1="182.9531" y2="188.9531"/><line style="stroke: #000000; stroke-width: 1.5;" x1="275.5" x2="269.5" y1="188.9531" y2="188.9531"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="49" x="211.5" y="203.9482">service</text><!--MD5=[7468467f3b6b392f1d176d828c753b77]
+entity db--><path d="M186,331.9531 C186,321.9531 241,321.9531 241,321.9531 C241,321.9531 296,321.9531 296,331.9531 L296,357.25 C296,367.25 241,367.25 241,367.25 C241,367.25 186,367.25 186,357.25 L186,331.9531 " fill="#FEFECE" filter="url(#f18rkx4e6jxs9o)" style="stroke: #000000; stroke-width: 1.5;"/><path d="M186,331.9531 C186,341.9531 241,341.9531 241,341.9531 C241,341.9531 296,341.9531 296,331.9531 " fill="none" style="stroke: #000000; stroke-width: 1.5;"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="90" x="196" y="358.9482">primary store</text><!--MD5=[8fb4f905147ca31c25b1e567ee08a5b2]
+entity cdn--><path d="M220.1198,38.522 C222.2827,32.8199 227.2985,31.5597 231.2098,36.7403 C233.6266,31.7745 237.745,30.7459 241.6898,35.0045 C245.8008,30.1709 250.7456,32.4611 252.5681,37.5209 C255.8861,31.3708 259.8565,32.598 263.6834,36.984 C272.8001,40.0397 275.2672,46.1094 267.8948,53.3962 C274.2857,59.5397 273.437,64.2623 265.4377,67.9816 C264.6703,75.5186 259.893,77.8101 253.6011,73.502 C251.4778,80.0659 247.3489,82.2667 241.1609,78.307 C235.2792,82.4177 232.0428,80.3956 230.5135,73.9267 C224.7979,76.2767 220.3836,75.4397 220.2991,68.0321 C211.8057,65.0586 210.1598,57.6227 217.9352,52.2174 C212.2217,46.8203 213.8384,42.0057 220.1198,38.522 " fill="#FEFECE" style="stroke: #000000; stroke-width: 1.5;"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="31" x="225.5" y="56.9482">CDN</text><path d="M20,429.9531 L20,545.8828 A0,0 0 0 0 20,545.8828 L462,545.8828 A0,0 0 0 0 462,545.8828 L462,439.9531 L452,429.9531 L245,429.9531 L241,367.2531 L237,429.9531 L20,429.9531 A0,0 0 0 0 20,429.9531 " fill="#FBFB77" filter="url(#f18rkx4e6jxs9o)" style="stroke: #A80036; stroke-width: 1.0;"/><path d="M452,429.9531 L452,439.9531 L462,439.9531 L452,429.9531 " fill="#FBFB77" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="343" x="26" y="447.02">Replace this starter diagram with your project's actual</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="421" x="26" y="462.1528">deployment topology. Deployment diagrams are an escape-hatch</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="391" x="26" y="477.2856">type: Mermaid has no first-class deployment diagram, so this</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="350" x="26" y="492.4185">file stays PlantUML and is re-rendered by revise via the</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="382" x="26" y="507.5513">project-declared render command. Common diagram types</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="364" x="26" y="522.6841">(sequence, class, state, ER, flowchart, light C4) belong as</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="403" x="26" y="537.8169">fenced mermaid blocks inside the markdown spec files instead.</text><!--MD5=[c3f0c1ce401bb68792cdaabc401c2dbb]
+link cdn to svc--><path d="M241,75.0631 C241,101.4431 241,145.4031 241,172.5531 " fill="none" id="cdn-&gt;svc" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="241,177.7531,245,168.7531,241,172.7531,237,168.7531,241,177.7531" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="41" x="242" y="118.02">HTTPS</text><!--MD5=[f826a86f1a7769e259ec80f055f6215a]
+link svc to db--><path d="M241,217.1131 C241,242.3131 241,287.4031 241,316.3431 " fill="none" id="svc-&gt;db" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="241,321.5531,245,312.5531,241,316.5531,237,312.5531,241,321.5531" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="26" x="242" y="262.02">SQL</text><!--MD5=[f64e7e44b03c1ac701599b527d23ce60]
+@startuml example
+title Example deployment diagram (PlantUML escape hatch)
+
+cloud "CDN" as cdn
+
+node "App host" {
+  artifact "service" as svc
+}
+
+node "Data host" {
+  database "primary store" as db
+}
+
+cdn - -> svc : HTTPS
+svc - -> db : SQL
+
+note bottom of db
+  Replace this starter diagram with your project's actual
+  deployment topology. Deployment diagrams are an escape-hatch
+  type: Mermaid has no first-class deployment diagram, so this
+  file stays PlantUML and is re-rendered by revise via the
+  project-declared render command. Common diagram types
+  (sequence, class, state, ER, flowchart, light C4) belong as
+  fenced mermaid blocks inside the markdown spec files instead.
+end note
+
+@enduml
+
+PlantUML version 1.2020.02(Sun Mar 01 11:22:07 CET 2020)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 21.0.11+10-1-25.10.2-Ubuntu
+Operating System: Linux
+Default Encoding: UTF-8
+Language: en
+Country: null
+--></g></svg>
