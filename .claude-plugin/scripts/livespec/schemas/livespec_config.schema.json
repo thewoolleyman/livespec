@@ -41,6 +41,19 @@
       "type": "boolean",
       "description": "When true, the revise sub-command skips the Step 3.5 stale-branch precondition check (which enumerates local `spec/*` branches ahead of `origin/<canonical_branch>` via the `no_stale_revise_branches` shared check shipped by livespec-dev-tooling). The revise SKILL.md prose MUST narrate a warning every time the precondition is silently skipped (config key true with no CLI flag).",
       "default": false
+    },
+    "render_commands": {
+      "type": "object",
+      "description": "Per contracts.md §\".livespec.jsonc render-commands shape\": maps each diagram-source kind to the argv-form command livespec invokes during revise to render that source. Each value is an array of strings forming a complete argv; the strings `{source}` and `{output_dir}` are substituted literally (project-root-relative paths) before invocation. The command runs with cwd at the project root; non-zero exit fails the revise. REQUIRED iff the active template's manifest declares any `diagram_source` entry — the cross-config consistency invariant is enforced by a doctor static check, NOT by this schema (JSON Schema cannot reach across config files).",
+      "additionalProperties": false,
+      "properties": {
+        "diagram_source": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form render command for `kind: diagram_source` files. Example: [\"plantuml\", \"-tsvg\", \"-o\", \"{output_dir}\", \"{source}\"]."
+        }
+      }
     }
   }
 }

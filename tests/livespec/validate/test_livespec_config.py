@@ -6,6 +6,15 @@ Per style doc §"Skill layout — `validate/`": validator at
 `Result[LivespecConfig, ValidationError]`. The schema marks
 all fields optional with documented defaults; an empty `{}`
 payload validates and produces the all-defaults dataclass.
+
+`render_commands` is the extension point introduced alongside
+the template-manifest v2 mechanism: when the active template's
+spec_files declares any `diagram_source` entry,
+`render_commands.diagram_source` MUST be present at the project
+level. The cross-config consistency is enforced by a doctor
+static check, not by this schema (JSON Schema cannot reach
+across .livespec.jsonc and the resolved template's
+template.json).
 """
 
 from __future__ import annotations
@@ -16,7 +25,7 @@ from pathlib import Path
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
-from livespec.schemas.dataclasses.livespec_config import LivespecConfig
+from livespec.schemas.dataclasses.livespec_config import LivespecConfig, RenderCommands
 from livespec.types import TemplateName
 from livespec.validate import livespec_config
 from returns.result import Failure, Success
@@ -53,8 +62,59 @@ def test_validate_livespec_config_returns_success_with_defaults_for_empty_payloa
         post_step_skip_capture_impl_gaps=False,
         pre_step_skip_static_checks=False,
         pre_step_skip_stale_branch_check=False,
+        render_commands=RenderCommands(),
     )
     assert result == Success(expected)
+
+
+def test_validate_livespec_config_accepts_render_commands_diagram_source() -> None:
+    """An explicit render_commands.diagram_source argv flows through to the dataclass."""
+    schema = _SCHEMA
+    argv = ["plantuml", "-tsvg", "-o", "{output_dir}", "{source}"]
+    payload: dict[str, object] = {
+        "render_commands": {"diagram_source": argv},
+    }
+    result = livespec_config.validate_livespec_config(payload=payload, schema=schema)
+    match result:
+        case Success(value):
+            assert value.render_commands.diagram_source == argv
+        case _:
+            msg = f"expected Success(LivespecConfig), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_rejects_render_commands_empty_argv() -> None:
+    """An empty diagram_source argv returns Failure(ValidationError).
+
+    The schema constrains `diagram_source` to `minItems: 1` — an
+    empty argv has no executable to invoke.
+    """
+    schema = _SCHEMA
+    payload: dict[str, object] = {"render_commands": {"diagram_source": []}}
+    result = livespec_config.validate_livespec_config(payload=payload, schema=schema)
+    match result:
+        case Failure(ValidationError() as err):
+            assert "livespec_config:" in str(err)
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_rejects_render_commands_unknown_kind() -> None:
+    """An unknown render_commands kind returns Failure.
+
+    `additionalProperties: false` on the render_commands object
+    rejects future-kind names until they're added to the schema.
+    """
+    schema = _SCHEMA
+    payload: dict[str, object] = {"render_commands": {"future_kind": ["echo"]}}
+    result = livespec_config.validate_livespec_config(payload=payload, schema=schema)
+    match result:
+        case Failure(ValidationError() as err):
+            assert "livespec_config:" in str(err)
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
 
 
 def test_validate_livespec_config_returns_success_for_explicit_template() -> None:
