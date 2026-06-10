@@ -19,10 +19,10 @@ railway flows through `IOResult`. Mirrors the shape of
 proc facade handles OSError → PreconditionError; non-zero exits
 lift to a typed PreconditionError on the IOFailure track.
 
-The gh facade exposes three operations used by the
-no-stale-merged-pr-branch doctor invariant per
-`SPECIFICATION/contracts.md` §"Impl-side cleanup invariants
-(cross-boundary)":
+The gh facade exposes three operations for merged-PR/branch
+introspection (originally pulled into existence by the retired
+stale-cleanup doctor checks; cleanup discipline moved to the
+orchestrator at v105, and these remain general-purpose reads):
 
   - `get_repo_name_with_owner` — resolves `<owner>/<name>` for the
     current repo via `gh repo view --json nameWithOwner`. Used to
@@ -66,8 +66,8 @@ def get_repo_name_with_owner(
 
     Composes `gh repo view --json nameWithOwner --jq .nameWithOwner`
     with `cwd=project_root`. The result is the canonical
-    `owner/name` string (e.g., `thewoolleyman/livespec`) that the
-    no-stale-merged-pr-branch corrective action templates into the
+    `owner/name` string (e.g., `thewoolleyman/livespec`) that
+    cleanup tooling templates into the
     `gh api -X DELETE repos/<owner>/<name>/git/refs/heads/<branch>`
     narration.
 
@@ -161,9 +161,9 @@ def list_merged_pull_request_head_refs(
     Composes `gh pr list --state merged --json headRefName --limit
     1000 --jq '.[].headRefName'` with `cwd=project_root`. The
     `--limit 1000` matches gh's documented ceiling for the pr-list
-    surface; the no-stale-merged-pr-branch check assumes a project
-    will not accumulate more than 1000 unprocessed merged PRs
-    awaiting branch deletion before the user runs cleanup.
+    surface; consumers assume a project will not accumulate more
+    than 1000 unprocessed merged PRs awaiting branch deletion
+    before cleanup runs.
 
     Failure modes lifted to IOFailure(PreconditionError):
       - `gh pr list` exits non-zero (gh unauthenticated, network

@@ -114,7 +114,7 @@ def test_validate_finding_accepts_warn_status() -> None:
     """A `warn`-status payload validates (v074: warn added for housekeeping nudges)."""
     schema = _SCHEMA
     payload: dict[str, object] = {
-        "check_id": "doctor-no-stale-merged-branch",
+        "check_id": "doctor-master-direct-uncommitted-spec-edits",
         "status": "warn",
         "message": "local branch spec/foo is merged into origin/master but not deleted",
         "path": None,
@@ -123,7 +123,7 @@ def test_validate_finding_accepts_warn_status() -> None:
     }
     result = finding.validate_finding(payload=payload, schema=schema)
     expected = Finding(
-        check_id=CheckId("doctor-no-stale-merged-branch"),
+        check_id=CheckId("doctor-master-direct-uncommitted-spec-edits"),
         status="warn",
         message="local branch spec/foo is merged into origin/master but not deleted",
         path=None,

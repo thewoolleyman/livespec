@@ -121,6 +121,54 @@ def test_work_items_provider_acquisition_seam_is_removed() -> None:
     assert "work_items_provider" not in field_names
 
 
+def test_registry_excludes_retired_stale_cleanup_checks() -> None:
+    """The registry carries NONE of the retired stale-cleanup checks.
+
+    Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
+    invariants" (v105): the catalogue comprises the single
+    cross-boundary invariant `config-named-cli-callability` plus
+    the repo-tier invariants defined in that section. The v103
+    re-steering (Proposal 5.4) removed the impl-side cleanup
+    invariants from core's contract — branch/worktree janitor
+    discipline is Dispatcher/orchestrator territory, so the
+    `no-stale-merged-branch`, `no-stale-merged-pr-branch`, and
+    `no-stale-worktree` checks are retired from the shipped
+    catalogue (the orchestrator MAY adopt them privately).
+    """
+    from livespec.doctor.static import STATIC_CHECKS
+
+    retired = {
+        "doctor-no-stale-merged-branch",
+        "doctor-no-stale-merged-pr-branch",
+        "doctor-no-stale-worktree",
+    }
+    slugs = {check_module.SLUG for check_module in STATIC_CHECKS}
+    still_registered = slugs & retired
+    assert (
+        not still_registered
+    ), f"retired stale-cleanup checks still registered: {still_registered}"
+
+
+def test_stale_cleanup_check_modules_are_removed() -> None:
+    """The retired stale-cleanup check modules are deleted from the package.
+
+    Retirement is module deletion, not mere de-registration: per
+    the preservation directive the logic relocates to the
+    orchestrator/Dispatcher side (recoverable via the pre-deletion
+    SHA cited in the retiring PR), so core MUST NOT keep shipping
+    dead check modules.
+    """
+    import importlib.util
+
+    for module_name in (
+        "livespec.doctor.static.no_stale_merged_branch",
+        "livespec.doctor.static.no_stale_merged_pr_branch",
+        "livespec.doctor.static.no_stale_worktree",
+    ):
+        spec = importlib.util.find_spec(module_name)
+        assert spec is None, f"{module_name} must be deleted"
+
+
 def test_every_static_check_slug_is_a_checkid_newtype() -> None:
     """Every check module exposes `SLUG` as a `CheckId` NewType.
 

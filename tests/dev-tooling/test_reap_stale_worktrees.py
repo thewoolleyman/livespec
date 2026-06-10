@@ -1,7 +1,8 @@
 """Outside-in test for `dev-tooling/reap_stale_worktrees.py` — worktree reaper.
 
-The reaper is the ACTION counterpart to doctor's detection-only
-`no-stale-worktree` check. For every NON-primary worktree in a
+The reaper is the orchestrator-side janitor action (the doctor-side
+detection-only `no-stale-worktree` check was retired at v105 —
+cleanup discipline is Dispatcher territory). For every NON-primary worktree in a
 target repo it removes the worktree + deletes its local branch +
 prunes, IF AND ONLY IF the branch is "done" (remote branch absent,
 the reliable rebase-merge signal), the working tree is clean, and
