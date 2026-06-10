@@ -2,25 +2,67 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "next_output.schema.json",
   "title": "next_output",
-  "description": "Schema for the JSON payload emitted on stdout by `/livespec:next` (the spec-side thin-transport ranker). Pure function of `<spec-target>/proposed_changes/` queue depth + oldest-proposal age + `<spec-target>/history/` unpruned version count. No LLM in the ranking path; no impl-side store reads.",
+  "description": "Schema for the JSON payload emitted on stdout by `/livespec:next` (the spec-side thin-transport ranker), per `SPECIFICATION/contracts.md` §\"/livespec:next spec-side thin-transport skill\" → \"Output schema\". Two top-level keys: `candidates` (ALL ripe candidates after offset/limit slicing) and `pagination` (the offset/limit echo plus total + has_more). Pure function of `<spec-target>/proposed_changes/` queue state + `<spec-target>/history/` unpruned version count. No LLM in the ranking path; no impl-side store reads. An empty `candidates` array IS the no-work signal.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["action", "reason", "urgency"],
+  "required": ["candidates", "pagination"],
   "properties": {
-    "action": {
-      "type": "string",
-      "enum": ["revise", "propose-change", "critique", "prune-history", "none"],
-      "description": "The most ripe action to invoke next, or `none` when no spec-side work is pressing. The enumeration matches the action set in `SPECIFICATION/contracts.md` §\"/livespec:next spec-side thin-transport skill\" → \"Output schema\"; the ranker is a pure function of spec-side file state with no impl-side store reads."
+    "candidates": {
+      "type": "array",
+      "description": "Ranked candidate actions, sorted by action tier (prune-history strictly last), urgency descending, then `target` lexicographic, with `--offset`/`--limit` applied last.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "reason", "urgency"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["revise", "propose-change", "critique", "prune-history", "none"],
+            "description": "The action this candidate recommends. The enumeration matches the action set in `SPECIFICATION/contracts.md` §\"/livespec:next spec-side thin-transport skill\" → \"Output schema\"."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable narration of why this candidate is ripe (queue depth, proposal age, history version count)."
+          },
+          "urgency": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "Bucketed urgency derived from queue depth and per-proposal age. `prune-history` candidates always emit `low`."
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Spec-target-relative path or identifier naming the specific item the candidate refers to (e.g. the proposed_change filename for a `revise` candidate). MAY be omitted when the candidate has no specific target."
+          }
+        }
+      }
     },
-    "reason": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Human-readable narration of the ranking decision (queue depth, oldest-proposal age, history version count)."
-    },
-    "urgency": {
-      "type": "string",
-      "enum": ["high", "medium", "low"],
-      "description": "Bucketed urgency derived from queue depth and oldest-proposal age. `none`-action payloads always emit `low`."
+    "pagination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "limit", "total", "has_more"],
+      "properties": {
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Echoed from `--offset`."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Echoed from `--limit`."
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total count of ripe candidates BEFORE `offset` and `limit` are applied."
+        },
+        "has_more": {
+          "type": "boolean",
+          "description": "`true` iff `offset + len(candidates) < total`."
+        }
+      }
     }
   }
 }

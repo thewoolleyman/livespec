@@ -39,9 +39,9 @@
       "local_clone": "/data/projects/livespec",
       "default_branch": "master"
     },
-    "livespec-impl-plaintext": {
-      "github_url": "https://github.com/thewoolleyman/livespec-impl-plaintext",
-      "local_clone": "/data/projects/livespec-impl-plaintext",
+    "livespec-impl-git-jsonl": {
+      "github_url": "https://github.com/thewoolleyman/livespec-impl-git-jsonl",
+      "local_clone": "/data/projects/livespec-impl-git-jsonl",
       "default_branch": "master"
     }
   }

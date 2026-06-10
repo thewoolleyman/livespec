@@ -12,7 +12,7 @@ Result track per the canonical pattern shared with the other
 validators in this directory. The supervisor uses this
 validator to round-trip the ranker's emitted dataclass against
 the schema before writing JSON to stdout, so a drift between
-the schema and the dataclass surfaces as ValidationError
+the schema and the dataclasses surfaces as ValidationError
 (exit 4) rather than a silently-malformed stdout payload.
 """
 
@@ -24,9 +24,29 @@ import fastjsonschema
 from returns.result import Result, safe
 
 from livespec.errors import ValidationError
-from livespec.schemas.dataclasses.next_output import NextOutput
+from livespec.schemas.dataclasses.next_output import (
+    NextCandidate,
+    NextOutput,
+    NextPagination,
+)
 
 __all__: list[str] = ["validate_next_output"]
+
+
+def _candidate_from_validated(*, item: dict[str, Any]) -> NextCandidate:
+    """Construct one NextCandidate from a schema-validated item dict.
+
+    `target` is optional in the schema (`candidates.items` lists
+    only `action`/`reason`/`urgency` as required); a missing key
+    maps to `None` on the dataclass so the serializer can omit it
+    symmetrically.
+    """
+    return NextCandidate(
+        action=item["action"],
+        reason=item["reason"],
+        urgency=item["urgency"],
+        target=item.get("target"),
+    )
 
 
 @safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
@@ -34,18 +54,23 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> NextOut
     """Decorator-lifted validate-and-construct call.
 
     fastjsonschema.compile returns a validator function that
-    raises JsonSchemaValueException on violation. Each of the
-    three schema fields is required (`additionalProperties:
-    false`); the compiled validator therefore returns a dict
-    populated with exactly those keys, which the dataclass
-    constructor consumes positionally.
+    raises JsonSchemaValueException on violation. Both top-level
+    keys are required (`additionalProperties: false`); the
+    compiled validator therefore returns a dict populated with
+    exactly the `candidates` array and the `pagination` object,
+    which the nested dataclass constructors consume.
     """
     validator = fastjsonschema.compile(schema)
     validated = validator(payload)
+    pagination = validated["pagination"]
     return NextOutput(
-        action=validated["action"],
-        reason=validated["reason"],
-        urgency=validated["urgency"],
+        candidates=tuple(_candidate_from_validated(item=item) for item in validated["candidates"]),
+        pagination=NextPagination(
+            offset=pagination["offset"],
+            limit=pagination["limit"],
+            total=pagination["total"],
+            has_more=pagination["has_more"],
+        ),
     )
 
 
