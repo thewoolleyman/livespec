@@ -13,7 +13,7 @@ required shape and discipline". It is the single Layer 3 driver across
 the livespec family of repos:
 
 - `/data/projects/livespec/` (this repo)
-- `/data/projects/livespec-impl-plaintext/`
+- `/data/projects/livespec-impl-git-jsonl/`
 - `/data/projects/livespec-dev-tooling/`
 - `/data/projects/livespec-runtime/`
 
@@ -21,7 +21,7 @@ The active impl-plugin is now `livespec-impl-beads` (its
 `list_work_items` wrapper and `/livespec-impl-beads:*` skills are what
 the dispatch table and §"Cross-repo state aggregation" invoke); the
 whole family's work-items live in beads-on-Dolt tenants, one per repo.
-Note `livespec-impl-plaintext` above is the still-present family REPO
+Note `livespec-impl-git-jsonl` above is the still-present family REPO
 directory (itself now a beads tenant), distinct from the retired
 plaintext impl-plugin. Future sibling repos join the family by being
 added to the cross-repo state aggregation step below.
@@ -112,7 +112,7 @@ via the `/livespec-orchestrate` invocation argument:
    repo from that repo's git remote (the check takes no repo arg):
 
    ```bash
-   for repo in livespec livespec-impl-plaintext \
+   for repo in livespec livespec-impl-git-jsonl \
                livespec-dev-tooling livespec-runtime; do
      ( cd "/data/projects/$repo" \
        && uv run python -m livespec_dev_tooling.checks.master_ci_green ) \
@@ -418,7 +418,7 @@ auto-commit, so running it against the primaries is safe:
 set -a; . /home/ubuntu/workspace/dolt-server/tenant-secrets.env.local; set +a  # mode-600
 export LIVESPEC_BD_PATH=/usr/local/bin/bd     # pinned v1.0.5; NEVER the mise shim
 WRAPPER=/data/projects/livespec-impl-beads/.claude-plugin/scripts/bin/list_work_items.py
-for repo in livespec livespec-impl-plaintext livespec-dev-tooling livespec-runtime; do
+for repo in livespec livespec-impl-git-jsonl livespec-dev-tooling livespec-runtime; do
   cd "/data/projects/$repo"                    # bd reads connection from CWD's .beads/
   # password key: BEADS_DOLT_PASSWORD_<tenant with dots/hyphens -> underscores>
   export BEADS_DOLT_PASSWORD="$(eval echo \"\$BEADS_DOLT_PASSWORD_$(echo $repo | tr '.-' '__')\")"
