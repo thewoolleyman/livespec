@@ -66,7 +66,7 @@ from livespec.errors import LivespecError, PreconditionError
 # `list_remote_branches` lives in the private sibling `_git_remote`
 # module (extracted to keep this file under the per-file LLOC
 # ceiling) and is re-exported here so the public seam stays
-# `io.git.list_remote_branches` for the no-stale-worktree consumer.
+# `io.git.list_remote_branches` for remote-branch-reading consumers.
 from livespec.io._git_remote import list_remote_branches
 from livespec.io.proc import run_subprocess
 
@@ -329,9 +329,9 @@ def get_default_branch_name(*, project_root: Path) -> IOResult[str, LivespecErro
     Failure modes lifted to IOFailure(PreconditionError):
       - `origin/HEAD` is not set locally (returncode != 0). This
         happens on bare-init repos with no remote, or on clones
-        that never set the symbolic-ref. The doctor's
-        no-stale-merged-branch check folds this into a `skipped`
-        finding rather than treating it as an invariant violation.
+        that never set the symbolic-ref. Branch-reading
+        consumers fold this into a `skipped`/no-op outcome
+        rather than treating it as an invariant violation.
       - The `git` binary itself missing: lifts via the proc seam.
     """
     return run_subprocess(
@@ -375,8 +375,8 @@ def list_merged_branches(
 
     Failure modes lifted to IOFailure(PreconditionError):
       - `into_ref` does not exist as a local branch (returncode
-        != 0). The doctor's no-stale-merged-branch check folds
-        this into a `skipped` finding.
+        != 0). Branch-comparing consumers fold this into a
+        `skipped`/no-op outcome.
       - The `git` binary itself missing: lifts via the proc seam.
     """
     return run_subprocess(
@@ -454,8 +454,8 @@ def list_worktrees(
     Composes `git -C <project_root> worktree list --porcelain`
     and parses the output into Worktree records. The first
     record is the primary worktree; subsequent records are
-    secondary worktrees that the doctor's no-stale-worktree
-    invariant considers for cleanup candidacy.
+    secondary worktrees (the orchestrator-side janitor considers
+    those for cleanup candidacy).
 
     Failure modes lifted to IOFailure(PreconditionError):
       - `git worktree list` exits non-zero (e.g., not a git

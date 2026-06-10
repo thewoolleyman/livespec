@@ -54,8 +54,9 @@ class SpecCommitments:
     `impl_followups` is the required (when the block is present) list
     of `ImplFollowup` entries. `supersedes` is the optional list of
     earlier `id_hint` values this propose-change absorbs or revokes;
-    the `unresolved-spec-commitment` doctor invariant honors this
-    list when computing coverage.
+    orchestrator-side commitment-coverage tracking honors this list
+    (the doctor-side unresolved-spec-commitment invariant was
+    retired with the v103 cross-boundary shrink).
     """
 
     impl_followups: list[ImplFollowup]

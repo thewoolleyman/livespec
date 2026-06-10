@@ -584,9 +584,9 @@ def test_get_default_branch_name_returns_failure_when_origin_head_unset(
     """Returns IOFailure(PreconditionError) when `origin/HEAD` is unset.
 
     A fresh `git init` with no remote has no `refs/remotes/origin/HEAD`;
-    `git symbolic-ref` exits non-zero. The doctor's
-    no-stale-merged-branch check folds this into a skipped
-    finding rather than failing the build.
+    `git symbolic-ref` exits non-zero. Branch-reading consumers
+    fold this into a skipped/no-op outcome rather than failing
+    the build.
     """
     _git_init_with_user(
         cwd=tmp_path,
@@ -731,8 +731,8 @@ def test_list_remote_branches_excludes_unpushed_local_branch(
     This is the remote-gone (case b) signal: against a SEPARATE
     bare upstream, a local-only branch has no corresponding remote
     head, so `git ls-remote --heads origin` omits it. The
-    no-stale-worktree check reads this absence to flag the
-    rebase-merged-then-deleted worktree.
+    orchestrator-side worktree janitor reads this absence to flag
+    the rebase-merged-then-deleted worktree.
     """
     upstream = tmp_path / "upstream.git"
     work = tmp_path / "work"
@@ -768,9 +768,8 @@ def test_list_remote_branches_returns_failure_when_no_origin(
     """Returns IOFailure when no `origin` remote is configured.
 
     `git ls-remote --heads origin` exits non-zero when `origin`
-    does not resolve. The doctor's no-stale-worktree check folds
-    this into a skipped finding via the lash branch (no reachable
-    origin).
+    does not resolve. Consumers fold this into a skipped/no-op
+    outcome via the lash branch (no reachable origin).
     """
     _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
     monkeypatch.chdir(tmp_path)
@@ -882,9 +881,8 @@ def test_list_worktrees_returns_failure_when_not_a_repo(
 ) -> None:
     """Returns IOFailure when `project_root` is not a git working tree.
 
-    `git worktree list` exits non-zero on a non-repo. The
-    doctor's no-stale-worktree check folds this into a skipped
-    finding via the lash branch.
+    `git worktree list` exits non-zero on a non-repo. Consumers
+    fold this into a skipped/no-op outcome via the lash branch.
     """
     monkeypatch.chdir(tmp_path)
 
