@@ -1,0 +1,20 @@
+{
+  "template_format_version": 2,
+  "spec_root": "SPECIFICATION/",
+  "doctor_static_check_modules": [],
+  "doctor_llm_objective_checks_prompt": "prompts/doctor-llm-objective-checks.md",
+  "doctor_llm_subjective_checks_prompt": "prompts/doctor-llm-subjective-checks.md",
+  "spec_files": {
+    "spec.md": {"kind": "markdown"},
+    "contracts.md": {"kind": "markdown"},
+    "constraints.md": {"kind": "markdown"},
+    "non-functional-requirements.md": {"kind": "markdown"},
+    "scenarios.md": {"kind": "markdown"},
+    "README.md": {"kind": "markdown"},
+    "diagrams/example.plantuml": {"kind": "diagram_source"},
+    "diagrams/example.svg": {
+      "kind": "diagram_rendered",
+      "derived_from": "diagrams/example.plantuml"
+    }
+  }
+}
