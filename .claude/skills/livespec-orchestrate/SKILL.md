@@ -26,6 +26,16 @@ directory (itself now a beads tenant), distinct from the retired
 plaintext impl-plugin. Future sibling repos join the family by being
 added to the cross-repo state aggregation step below.
 
+This driver is the INTERIM Dispatcher of the v105 contract +
+reference-implementations model (per `SPECIFICATION/spec.md`
+§"Contract + reference implementations architecture" it is slated for
+retirement when the reference orchestrator realizes the Dispatcher).
+Until then it MUST consume the orchestrator's three CONTRACT CLIs —
+spec-reader / gap-capture / drift-capture, config-named in
+livespec-impl-beads' `.livespec.jsonc` `orchestrator` section — for
+spec reading and machine-path gap/drift capture, instead of bespoke
+equivalents. See §"Orchestrator contract CLIs (impl-beads)" below.
+
 ## Inputs
 
 The driver accepts these parameters; the user supplies them inline or
@@ -440,6 +450,59 @@ from `.beads/` + `BEADS_DOLT_PASSWORD`, not a file path).
 > conclusion. Do NOT hand-roll the `gh run list` query in the survey;
 > run the per-repo check (per
 > `feedback_master_ci_query_must_filter_workflow`).
+
+## Orchestrator contract CLIs (impl-beads)
+
+Per livespec `SPECIFICATION/contracts.md` §"Orchestrator CLI contract
+— the three named CLIs", the active orchestrator
+(`livespec-impl-beads`) exposes ONE binary with three subcommands,
+config-named in argv form in that repo's `.livespec.jsonc`
+`orchestrator` section and verified callable by the
+`config-named-cli-callability` doctor invariant:
+
+```
+ORCH=/data/projects/livespec-impl-beads/.claude-plugin/scripts/bin/orchestrator.py
+
+# Spec content, BY CATEGORY (categorizes, never conceals). Use this —
+# not ad-hoc spec-file reads — whenever the driver needs spec CONTENT
+# for a family repo (e.g. briefing a sub-agent on what is a scenario
+# vs a contract). Excludes proposed_changes/ (pending != ratified).
+python3 "$ORCH" spec-reader --project-root /data/projects/<repo> --json
+
+# Machine-path gap filing: findings (detected upstream — usually
+# LLM-driven, e.g. by this driver or a dispatched agent) land as
+# gap-tied work-items in that repo's beads tenant. Do NOT hand-roll
+# `bd create` for gap filing. Needs the tenant env (BEADS_DOLT_PASSWORD
+# + LIVESPEC_BD_PATH) like every store write.
+echo '{"gaps": [{"gap_id": "<id>", "title": "<title>", "description": "<prose>"}]}' \
+  | python3 "$ORCH" gap-capture --gaps-json - --project-root /data/projects/<repo> --json
+
+# Machine-path drift routing: findings route to the INJECTED
+# propose-change CLI and land in <spec-root>/proposed_changes/ for
+# human adjudication at the next revise. Do NOT hand-assemble
+# proposed-change files for machine-detected drift.
+echo '{"drifts": [{"topic": "<topic>", "name": "<name>", "target_spec_files": ["SPECIFICATION/<f>.md"], "summary": "<s>", "motivation": "<m>", "proposed_changes": "<p>"}]}' \
+  | python3 "$ORCH" drift-capture --drifts-json - --project-root /data/projects/<repo> \
+      --propose-change-cli '["python3", "/data/projects/livespec/.claude-plugin/scripts/bin/propose_change.py"]' --json
+```
+
+Exit codes follow livespec's lifecycle exit-code table (0 success, 2
+usage, 3 precondition / failed injected CLI, 4 payload-shape
+validation). All three accept `--spec-target` for sub-spec trees and
+`--dry-run` (capture CLIs) for verification passes.
+
+Division of labor: the `/livespec-impl-beads:capture-impl-gaps` and
+`:capture-spec-drift` HEAVYWEIGHT SKILLS remain the interactive
+per-finding consent front-ends (per livespec `contracts.md`
+§"Interactive dialogue ownership (orchestrator-side)") — the dispatch
+table keeps routing interactive capture through them. The contract
+CLIs above are the non-interactive capture interfaces those
+front-ends (and this driver, when capture is pre-authorized in a
+wave-plan) write through. When `mode=autonomous` with capture
+pre-authorized, the driver MAY invoke the capture CLIs directly;
+otherwise capture stays behind the skill front-ends' consent
+dialogue (store writes on the user's behalf are per-operation
+consented unless the operation class was explicitly waived).
 
 ## Wave-plan grammar (for `scope-file`)
 
