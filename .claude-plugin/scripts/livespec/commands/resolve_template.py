@@ -58,7 +58,7 @@ __all__: list[str] = ["build_parser", "main"]
 
 _BUNDLE_ROOT = Path(__file__).resolve().parents[3]
 _BUILTIN_TEMPLATES_DIR = _BUNDLE_ROOT / "specification-templates"
-_BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "minimal"})
+_BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "livespec-with-diagrams", "minimal"})
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -92,7 +92,8 @@ def _resolve_template_value(
 ) -> IOResult[Path, LivespecError]:
     """Resolve a --template value to an absolute directory path.
 
-    Built-in names (`livespec`, `minimal`) resolve to
+    Built-in names (`livespec`, `livespec-with-diagrams`,
+    `minimal`) resolve to
     `<bundle-root>/specification-templates/<name>` via
     `_BUILTIN_TEMPLATES_DIR`. Other strings are treated as paths
     relative to --project-root and validated to (a) exist as a
