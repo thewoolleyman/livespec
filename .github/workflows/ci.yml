@@ -88,12 +88,11 @@ jobs:
           - check-pbt-coverage-pure-modules
           - check-coverage
           - check-comment-no-historical-refs
-          # CLI end-to-end harness — mock tier. Real plugin discovery +
-          # real fail-closed coverage gate; only the `claude -p`
-          # subprocess is mocked. Runs in the .py-gated check-python
-          # matrix because the wiring lives under tests/e2e-cli/*.py. The
-          # real tier (e2e-real.yml) is a separate, scheduled workflow.
-          - e2e-cli-test-claude-code-mock
+          # The CLI end-to-end harness consumer (mock tier) relocated to
+          # the livespec-driver-claude repo together with the /livespec:*
+          # skill bindings; its matrix entry moved with it. The wrapper-
+          # chain real tier (e2e-real.yml) remains a separate, scheduled
+          # workflow here.
     steps:
       # Per-step `if:` (not job-level) so each matrix entry still
       # reports a status check named `${{ matrix.target }}`. With

@@ -1,2 +1,0 @@
-# The /livespec:revise turn snapshots a new history/vNNN/ revision.
-SPECIFICATION/history/v002

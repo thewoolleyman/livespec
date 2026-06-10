@@ -1,15 +1,22 @@
 # livespec — repo orientation
 
-`livespec` is a Claude Code plugin that governs a living natural-language
-specification. The repo dogfoods its own design: the plugin's own spec
-lives at `SPECIFICATION/` and is itself maintained via the plugin's
-`/livespec:*` slash commands.
+`livespec` is a system that governs a living natural-language
+specification. This repo is livespec CORE: the contract, the
+harness-neutral driving prose, the reference spec-side CLIs, the
+schemas, and the built-in templates, distributed as the `livespec`
+Claude Code plugin (an artifact carrier — it exposes no slash
+commands itself). The interactive `/livespec:*` surface ships from
+the per-agent-runtime Driver plugin repo
+[`livespec-driver-claude`](https://github.com/thewoolleyman/livespec-driver-claude).
+The repo dogfoods its own design: livespec's own spec lives at
+`SPECIFICATION/` and is itself maintained via the `/livespec:*`
+slash commands.
 
 ## Repo layout
 
 | Path | Purpose |
 |---|---|
-| `.claude-plugin/` | Plugin manifest, skill prompts, Python scripts, vendored libs, built-in templates |
+| `.claude-plugin/` | Plugin manifest, harness-neutral prose (`prose/`), Python scripts, vendored libs, built-in templates — NO skill bindings (extracted to `livespec-driver-claude`) |
 | `.claude/skills/livespec-orchestrate/SKILL.md` | The Layer 3 cross-repo orchestration driver (project-local skill loaded as `/livespec-orchestrate` when working inside this repo; NOT a namespaced plugin skill — the `livespec-` prefix is a manual visual scoping convention to avoid colliding with the harness's built-in `/loop`). Single driver across the livespec family. |
 | `SPECIFICATION/` | The live livespec specification (dogfooded; `spec.md`, `contracts.md`, `constraints.md`, `scenarios.md`, `history/`) |
 | `dev-tooling/` | Standalone enforcement-suite Python scripts (run via `just check`) |
@@ -19,33 +26,37 @@ lives at `SPECIFICATION/` and is itself maintained via the plugin's
 | `pyproject.toml`, `justfile`, `lefthook.yml`, `.mise.toml`, `.python-version`, `.vendor.jsonc`, `.livespec.jsonc` | Toolchain configuration |
 | `NOTICES.md` | Third-party vendoring notices |
 
-## Slash commands and skills
+## Slash commands and prose
 
-The plugin exposes eight sub-commands; each is backed by a skill at
-`.claude-plugin/skills/<name>/SKILL.md`:
+The `/livespec:*` surface exposes eight sub-commands; each is driven
+by a harness-neutral prose artifact CORE ships at
+`.claude-plugin/prose/<name>.md`:
 
-| Command | Skill | Purpose |
+| Command | Core prose | Purpose |
 |---|---|---|
-| `/livespec:seed` | `skills/seed/SKILL.md` | Author the initial natural-language spec |
-| `/livespec:propose-change` | `skills/propose-change/SKILL.md` | File a proposed change against an existing spec |
-| `/livespec:critique` | `skills/critique/SKILL.md` | Surface issues in an existing spec |
-| `/livespec:revise` | `skills/revise/SKILL.md` | Accept, modify, or reject pending proposed changes |
-| `/livespec:doctor` | `skills/doctor/SKILL.md` | Run static + LLM-driven validation against a spec tree |
-| `/livespec:prune-history` | `skills/prune-history/SKILL.md` | Collapse old `history/vNNN/` entries into a pruned-marker |
-| `/livespec:next` | `skills/next/SKILL.md` | Rank the next spec-side action (revise, propose-change, critique, prune-history, or none) over the current proposed_changes/ and history/ state |
-| `/livespec:help` | `skills/help/SKILL.md` | Overview + routing to the right sub-command |
+| `/livespec:seed` | `prose/seed.md` | Author the initial natural-language spec |
+| `/livespec:propose-change` | `prose/propose-change.md` | File a proposed change against an existing spec |
+| `/livespec:critique` | `prose/critique.md` | Surface issues in an existing spec |
+| `/livespec:revise` | `prose/revise.md` | Accept, modify, or reject pending proposed changes |
+| `/livespec:doctor` | `prose/doctor.md` | Run static + LLM-driven validation against a spec tree |
+| `/livespec:prune-history` | `prose/prune-history.md` | Collapse old `history/vNNN/` entries into a pruned-marker |
+| `/livespec:next` | `prose/next.md` | Rank the next spec-side action (revise, propose-change, critique, prune-history, or none) over the current proposed_changes/ and history/ state |
+| `/livespec:help` | `prose/help.md` | Overview + routing to the right sub-command |
 
 Per `SPECIFICATION/spec.md` §"Contract + reference implementations
-architecture", each skill is decomposed into (a) a harness-neutral
-core prose artifact at `.claude-plugin/prose/<name>.md` carrying the
-dialogue capture, prompt-driven content generation, CLI invocation
-flow, and structured-finding interpretation, and (b) a THIN Claude
-Code binding at `.claude-plugin/skills/<name>/SKILL.md` (frontmatter,
-a reference to the prose, and a runtime-binding table mapping the
-prose's neutral vocabulary to tools and
-`${CLAUDE_PLUGIN_ROOT}/scripts/bin/<sub-command>.py` invocations).
-Edit the prose for behavior; edit the SKILL.md only for
-Claude-runtime mechanics.
+architecture", each operation is decomposed into (a) the
+harness-neutral core prose artifact above carrying the dialogue
+capture, prompt-driven content generation, CLI invocation flow, and
+structured-finding interpretation, and (b) a THIN per-agent-runtime
+Driver binding. The Claude Code bindings live in the
+`livespec-driver-claude` repo (`.claude-plugin/skills/<name>/SKILL.md`
+there); each binding resolves CORE's plugin root at runtime (env
+override → governed-project checkout → installed `livespec@livespec`
+cache), reads the prose, and dispatches the spec-side CLI named in
+the governed project's `.livespec.jsonc` `spec_clis` section. Edit
+the prose here for behavior; edit the Driver repo's SKILL.md only
+for Claude-runtime mechanics. Core ships NO `.claude-plugin/skills/`
+tree (guarded by `tests/test_plugin_distribution.py`).
 
 ### Layer 3 orchestration driver — `.claude/skills/livespec-orchestrate/`
 
@@ -95,27 +106,37 @@ This prevents wasted effort on changes that have no effect on the actual problem
 
 ## Plugin install (end users)
 
-The plugin is distributed via a Claude Code marketplace at
+Core is distributed via a Claude Code marketplace at
 `.claude-plugin/marketplace.json` (per `SPECIFICATION/contracts.md`
-§"Plugin distribution"). Install with:
+§"Plugin distribution"); the `/livespec:*` commands ship from the
+`livespec-driver-claude` Driver marketplace. Install BOTH:
 
 ```
 /plugin marketplace add thewoolleyman/livespec
 /plugin install livespec@livespec
+/plugin marketplace add thewoolleyman/livespec-driver-claude
+/plugin install livespec@livespec-driver-claude
 ```
 
 After install, the eight `/livespec:*` slash commands become available
-with the `livespec:` namespace prefix.
+with the `livespec:` namespace prefix (the Driver plugin is
+deliberately NAMED `livespec` so the established surface is
+preserved; core's plugin carries the prose, CLIs, and templates the
+Driver resolves at runtime).
 
 ## Daily dogfooding (maintainer development)
 
 When editing the plugin source in this repo, two workflows:
 
 - **Live-reload mode**: launch Claude Code with `claude --plugin-dir .`
-  from the repo root. Plugin loads directly from local source; edits to
-  `.claude-plugin/skills/<name>/SKILL.md` and `.claude-plugin/scripts/...`
-  are picked up via `/reload-plugins` without re-installing. This is the
-  daily-edit path.
+  from the repo root. The core plugin loads directly from local source;
+  edits to `.claude-plugin/prose/<name>.md` and
+  `.claude-plugin/scripts/...` are picked up via `/reload-plugins`
+  without re-installing. This is the daily-edit path. The Driver's
+  bindings resolve THIS checkout's `.claude-plugin/` automatically
+  when the governed project is this repo, so prose/CLI edits take
+  effect without touching the installed core cache. (Binding edits
+  themselves happen in the `livespec-driver-claude` repo.)
 - **Marketplace install path** (verifies the published flow): use the
   install commands above, or
   `/plugin marketplace add ./.claude-plugin/marketplace.json` for the
@@ -124,10 +145,10 @@ When editing the plugin source in this repo, two workflows:
   pull changes after editing. Use this path to verify the install flow
   end-to-end before pushing.
 
-The `.claude/skills` symlink (which used to load the plugin's skills as
+The `.claude/skills` symlink (which used to load the skills as
 PROJECT-level without the namespace prefix) was removed in v049. The
-marketplace install or `--plugin-dir` is now the only way the plugin's
-skills load with the correct `/livespec:*` namespace.
+Driver-plugin marketplace install is now the way the `/livespec:*`
+skills load with the correct namespace.
 
 ## Beads runtime prerequisites (what `just bootstrap` does NOT provision)
 

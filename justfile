@@ -85,10 +85,13 @@ bootstrap:
 # itself always resolves to the marketplace's current advertised version.
 ensure-plugins:
     claude plugin marketplace add thewoolleyman/livespec
+    claude plugin marketplace add thewoolleyman/livespec-driver-claude
     claude plugin marketplace add thewoolleyman/livespec-impl-beads
     claude plugin install livespec@livespec
+    claude plugin install livespec@livespec-driver-claude
     claude plugin install livespec-impl-beads@livespec-impl-beads
     claude plugin update livespec@livespec
+    claude plugin update livespec@livespec-driver-claude
     claude plugin update livespec-impl-beads@livespec-impl-beads
 
 # ---------------------------------------------------------------
@@ -193,7 +196,6 @@ check:
         check-prompts
         check-schema-dataclass-pairing
         check-types
-        e2e-cli-test-claude-code-mock
         e2e-test-claude-code-mock
     )
     failed=()
@@ -510,19 +512,13 @@ check-master-ci-green:
 e2e-test-claude-code-mock:
     LIVESPEC_E2E_HARNESS=mock uv run pytest tests/e2e/
 
-# CLI end-to-end harness — the top-of-pyramid, user-surface tier whose
-# sole interaction surface is the `claude` CLI binary (per
-# SPECIFICATION/contracts.md §"CLI end-to-end harness contract"). The
-# harness ships from livespec-dev-tooling (livespec_dev_tooling.testing
-# .cli_e2e) and is consumed here via the pin-bump dependency flow; the
-# wiring lives at tests/e2e-cli/test_cli_e2e.py. The `mock` tier still
-# does the REAL plugin discovery + REAL fail-closed coverage gate (only
-# the `claude -p` subprocess is mocked via an injected runner), so it
-# catches install-shape and discovery bugs deterministically with no
-# API key. Part of `just check`. The `real` tier (drives the actual
-# `claude` binary; needs ANTHROPIC_API_KEY) is NOT in `just check`.
-e2e-cli-test-claude-code-mock:
-    LIVESPEC_E2E_HARNESS=mock uv run pytest tests/e2e-cli/
+# The CLI end-to-end harness consumer (former tests/e2e-cli/ +
+# e2e-cli-test-claude-code-mock target) relocated to the
+# livespec-driver-claude repo together with the /livespec:* skill
+# bindings: structural skill discovery + the fail-closed fixture
+# coverage gate run where the skills live (per SPECIFICATION/
+# contracts.md §"CLI end-to-end harness contract", the harness itself
+# still ships from livespec-dev-tooling).
 
 check-prompts:
     uv run pytest tests/prompts/
