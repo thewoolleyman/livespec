@@ -9,8 +9,8 @@
   "properties": {
     "action": {
       "type": "string",
-      "enum": ["revise", "propose-change", "critique", "prune-history", "capture-work-item", "none"],
-      "description": "The most ripe action to invoke next, or `none` when no spec-side work is pressing. `capture-work-item` is the cross-boundary exception — emitted by the ranker per `SPECIFICATION/contracts.md` §\"/livespec:next spec-side thin-transport skill\" → \"Ranker semantics\" when a `revise` candidate would fail the `unresolved-spec-commitment` invariant; the action value names the impl-plugin's `capture-work-item` skill (not a livespec-side action), and the user resolves by filing the named work-items via that skill before re-invoking revise."
+      "enum": ["revise", "propose-change", "critique", "prune-history", "none"],
+      "description": "The most ripe action to invoke next, or `none` when no spec-side work is pressing. The enumeration matches the action set in `SPECIFICATION/contracts.md` §\"/livespec:next spec-side thin-transport skill\" → \"Output schema\"; the ranker is a pure function of spec-side file state with no impl-side store reads."
     },
     "reason": {
       "type": "string",

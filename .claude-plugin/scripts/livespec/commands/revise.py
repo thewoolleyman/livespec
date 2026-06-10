@@ -123,16 +123,13 @@ def build_parser() -> argparse.ArgumentParser:
     §"Sub-command wire contracts" → "`revise` payload
     validation". When set, the wrapper invokes
     `bin/doctor_static.py` after the freshly-cut `vNNN/`
-    snapshot lands; any `status: "fail"` finding (including the
-    `unresolved-spec-commitment` invariant added in PR #281)
+    snapshot lands; any `status: "fail"` finding
     short-circuits the railway with `IOFailure(PreconditionError)`
-    so the supervisor lifts to exit 3 — but per the work-item
-    description, the `vNNN/` snapshot is already on disk; exit 3
-    is INFORMATIONAL, directing the user to file the declared
-    work-items via the active impl-plugin's `capture-work-item`
-    skill, then re-run doctor to verify resolution. SKILL.md
-    prose passes the flag on every production invocation;
-    file-shaping unit tests omit it.
+    so the supervisor lifts to exit 3 — but the `vNNN/` snapshot
+    is already on disk; exit 3 is INFORMATIONAL, directing the
+    user to resolve the named findings, then re-run doctor to
+    verify resolution. SKILL.md prose passes the flag on every
+    production invocation; file-shaping unit tests omit it.
     """
     parser = argparse.ArgumentParser(prog="revise", exit_on_error=False)
     _ = parser.add_argument("--revise-json", required=True)
@@ -241,13 +238,11 @@ def _maybe_run_post_step_doctor(
 ) -> IOResult[Any, LivespecError]:
     """Conditionally invoke the post-step doctor static phase.
 
-    Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
-    → "`revise` payload validation": "Revise's post-step doctor
-    MUST run the `unresolved-spec-commitment` invariant against
-    the freshly-cut `vNNN/` snapshot." The full static-phase
-    doctor registry is exercised; the gating semantics are exit
-    3 on any fail-status finding (the
-    `unresolved-spec-commitment` invariant is one such fail).
+    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle": revise
+    runs a post-step doctor static check against the freshly-cut
+    `vNNN/` snapshot. The full static-phase doctor registry is
+    exercised; the gating semantics are exit 3 on any
+    fail-status finding.
 
     The post-step doctor invocation is gated on the
     `--post-step-doctor` flag (default off) so existing

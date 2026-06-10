@@ -119,9 +119,8 @@ The wrapper `bin/revise.py` accepts the following flags in v1:
   §"Sub-command wire contracts" → "`revise` payload
   validation". When set, after the freshly-cut `vNNN/`
   snapshot lands the wrapper invokes `bin/doctor_static.py` as
-  a subprocess; any `status: "fail"` finding (including the
-  `unresolved-spec-commitment` invariant per PR #281
-  li-7jniti) lifts the wrapper to exit 3. Per the spec
+  a subprocess; any `status: "fail"` finding lifts the wrapper
+  to exit 3. Per the spec
   contract: "The post-step run is the gating point; pre-step
   provides early visibility but does NOT block revise's
   execution." File-shaping unit tests omit the flag for
@@ -381,8 +380,8 @@ and exit code is `0` (NOT an error).
    production invocation per
    `SPECIFICATION/contracts.md` §"Sub-command wire
    contracts" → "`revise` payload validation" — it gates
-   the post-step doctor static phase that exercises the
-   `unresolved-spec-commitment` invariant against the
+   the post-step doctor static phase that runs the full
+   static registry against the
    freshly-cut `vNNN/` snapshot. Capture exit code. The
    wrapper validates the payload internally, performs
    the deterministic file-shaping work (cut new `vNNN`,
@@ -574,22 +573,13 @@ On exit 0, the wrapper has:
   the check verifies `<stem>.md` exists in the same
   directory.
 - Run post-step doctor static (when `--post-step-doctor`
-  was passed). Per
-  `SPECIFICATION/contracts.md` §"Sub-command wire
-  contracts" → "`revise` payload validation":
-  "Revise's post-step doctor MUST run the
-  `unresolved-spec-commitment` invariant against the
-  freshly-cut `vNNN/` snapshot." The full static
-  registry is exercised; any `status: "fail"` finding
-  (including but not limited to
-  `unresolved-spec-commitment`) lifts the wrapper to
-  exit 3. Per the spec contract, the snapshot is
+  was passed). The full static
+  registry is exercised against the freshly-cut `vNNN/`
+  snapshot; any `status: "fail"` finding lifts the
+  wrapper to exit 3. The snapshot is
   already cut by the time post-step runs; exit 3 is
   INFORMATIONAL — the user's corrective action is to
-  file the declared work-items via the active
-  impl-plugin's `capture-work-item` skill (passing
-  `--spec-commitment-hint <id_hint>` so the work-item
-  carries the pairing field), then re-run doctor to
+  resolve the named findings, then re-run doctor to
   verify resolution.
 
 After successful completion,

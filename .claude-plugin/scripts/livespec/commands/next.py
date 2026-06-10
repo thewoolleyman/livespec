@@ -69,9 +69,6 @@ from livespec.commands._next_ranking import (
     _collect_oldest_age_days,
     _rank,
 )
-from livespec.commands._next_unresolved_check import (
-    _maybe_swap_to_capture_work_item,
-)
 from livespec.errors import LivespecError, PreconditionError, ValidationError
 from livespec.io import cli, fs
 from livespec.parse import front_matter, jsonc
@@ -297,23 +294,17 @@ def _verify_spec_target(*, spec_target: Path) -> IOResult[Path, LivespecError]:
 def _rank_pipeline(
     *,
     spec_target: Path,
-    project_root: Path,
 ) -> IOResult[NextOutput, LivespecError]:
     """Compose the file-state reads into a NextOutput.
 
     Sequence: verify spec target → list proposal paths → read
     each proposal's `created_at` → count history versions →
-    compute oldest age → pure rank → (if action == "revise")
-    probe unresolved-spec-commitment → final NextOutput.
+    compute oldest age → pure rank → final NextOutput.
 
     Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
-    thin-transport skill" → "Ranker semantics": the ranker MUST
-    NOT emit `revise` candidates whose pre-step doctor would
-    `fail` on the `unresolved-spec-commitment` invariant; the
-    ranker surfaces this as a `capture-work-item` candidate
-    instead. The probe is invoked ONLY when the unconstrained
-    rank would emit `revise`, keeping the no-op path subprocess-
-    free.
+    thin-transport skill": the ranker is a pure function of
+    spec-side file state — no impl-side store reads and no
+    subprocess probes in the ranking path.
     """
     return (
         _verify_spec_target(spec_target=spec_target)
@@ -334,12 +325,6 @@ def _rank_pipeline(
                         ),
                     ),
                 ),
-            ),
-        )
-        .bind(
-            lambda output: _maybe_swap_to_capture_work_item(
-                output=output,
-                project_root=project_root,
             ),
         )
     )
@@ -369,7 +354,6 @@ def main(*, argv: list[str] | None = None) -> int:
                 namespace=namespace,
                 project_root=_resolve_project_root(namespace=namespace),
             ),
-            project_root=_resolve_project_root(namespace=namespace),
         ).bind(lambda output: _validate_and_serialize(output=output)),
     ).bind(
         lambda payload: _emit_payload(payload=payload),  # pyright: ignore[reportArgumentType]

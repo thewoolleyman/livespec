@@ -55,7 +55,6 @@ from typing_extensions import assert_never
 
 from livespec.context import DoctorContext
 from livespec.doctor.static import APPLICABILITY_BY_TREE_KIND, TreeKind
-from livespec.doctor.static._work_items_provider import resolve_provider_path
 from livespec.errors import LivespecError
 from livespec.io import cli
 from livespec.schemas.dataclasses.finding import Finding
@@ -184,28 +183,18 @@ def _orchestrate(*, namespace: argparse.Namespace) -> int:
     the narrowed-registry policy. Emit one aggregated
     `{"findings": [...]}` JSON payload; derive exit code from
     the union of statuses.
-
-    The active impl-plugin's `list-work-items` wrapper path is
-    resolved once from `LIVESPEC_IMPL_LIST_WORK_ITEMS` (via
-    `resolve_provider_path`) and threaded into every
-    `DoctorContext` so the cross-boundary work-item checks acquire
-    their data plugin-agnostically through the wrapper. When the
-    env var is unset those checks surface a `skipped` Finding.
     """
     project_root = _resolve_project_root(namespace=namespace)
     main_spec_root = project_root / "SPECIFICATION"
-    work_items_provider = resolve_provider_path()
     main_ctx = DoctorContext(
         project_root=project_root,
         spec_root=main_spec_root,
-        work_items_provider=work_items_provider,
     )
     findings = _run_tree(ctx=main_ctx, tree_kind="main")
     for sub_spec_root in _enumerate_sub_spec_roots(main_spec_root=main_spec_root):
         sub_ctx = DoctorContext(
             project_root=project_root,
             spec_root=sub_spec_root,
-            work_items_provider=work_items_provider,
         )
         findings.extend(_run_tree(ctx=sub_ctx, tree_kind="sub_spec"))
     _emit_findings_json(findings=findings)

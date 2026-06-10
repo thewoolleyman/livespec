@@ -12,21 +12,18 @@
 # ignore markers attached to the offending argument's line below.
 """Post-step doctor invocation railway stages for the `revise` sub-command.
 
-Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts" →
-"`revise` payload validation": "Revise's post-step doctor MUST
-run the `unresolved-spec-commitment` invariant against the
-freshly-cut `vNNN/` snapshot." The full static-phase doctor
-registry is exercised; the new `unresolved-spec-commitment`
-invariant lands in the registry per the PR #281 sibling
-(li-7jniti) landing.
+Per `SPECIFICATION/spec.md` §"Sub-command lifecycle": `revise`
+runs a post-step doctor static check after its action. The full
+static-phase doctor registry is exercised against the
+freshly-cut `vNNN/` snapshot.
 
 On any fail-status finding from post-step → IOFailure(
 PreconditionError), which the supervisor pattern-match in
 `revise.py` lifts to exit 3 per the existing exit-code table.
-Per the work-item description (li-f2dk3t): "the snapshot is
-already cut by the time post-step runs; the exit 3 surfaces the
-gap and the user's corrective action is to file the declared
-work-items then re-run doctor to verify resolution."
+The snapshot is already cut by the time post-step runs; the
+exit 3 surfaces the violation and the user's corrective action
+is to resolve the named findings then re-run doctor to verify
+resolution.
 
 Extracted from `revise.py` so the parent file's LLOC stays
 under the 250-LLOC hard ceiling enforced by
@@ -74,17 +71,14 @@ def _fold_post_step_doctor_completed_process(
     """Parse the post-step doctor subprocess's stdout JSON; fold fail findings -> Failure.
 
     Mirror of `_seed_railway_emits._fold_doctor_completed_process`
-    specialized to revise's RevisionInput threading. Per
-    `SPECIFICATION/contracts.md` §"`revise` payload validation":
-    when one or more findings carry `status == "fail"`, the
-    supervisor MUST short-circuit with `IOFailure(
-    PreconditionError)` so the supervisor pattern-match lifts to
-    exit 3.
+    specialized to revise's RevisionInput threading. When one or
+    more findings carry `status == "fail"`, the supervisor MUST
+    short-circuit with `IOFailure(PreconditionError)` so the
+    supervisor pattern-match lifts to exit 3.
 
     The freshly-cut `vNNN/` snapshot is already on disk by the
     time post-step runs; exit 3 is INFORMATIONAL — the user's
-    corrective action is to file the declared work-items via
-    the active impl-plugin's `capture-work-item` skill, then
+    corrective action is to resolve the named findings, then
     re-invoke doctor to verify resolution.
     """
     parsed = _safe_json_loads(text=completed.stdout)
@@ -128,10 +122,8 @@ def _run_post_step_doctor(
 
     Per `SPECIFICATION/spec.md` §"Sub-command lifecycle":
     `revise` MUST run a post-step doctor static check after its
-    action. Per `SPECIFICATION/contracts.md` §"Sub-command wire
-    contracts" → "`revise` payload validation": "Revise's
-    post-step doctor MUST run the `unresolved-spec-commitment`
-    invariant against the freshly-cut `vNNN/` snapshot."
+    action; the full static registry runs against the
+    freshly-cut `vNNN/` snapshot.
 
     Composition mechanism mirrors the post-step doctor invocation
     in `_seed_railway_emits._run_post_step_doctor` — `subprocess`
