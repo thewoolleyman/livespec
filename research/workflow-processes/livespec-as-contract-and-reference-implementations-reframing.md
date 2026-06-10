@@ -435,3 +435,6 @@ remain possible future alternates, not commitments.
 `.svg`), superseding `diagrams/orchestration-layers.*` as the architecture
 picture of record; the Phase-1 propose-change requires the spec to reference
 it and the repo README to link the rendered form.
+
+*Update (v105):* the canonical diagram moved to the repo README as an
+embedded fenced Mermaid block; the `.plantuml`/`.svg` pair above was removed.
