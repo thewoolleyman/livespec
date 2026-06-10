@@ -35,9 +35,17 @@ The plugin exposes eight sub-commands; each is backed by a skill at
 | `/livespec:next` | `skills/next/SKILL.md` | Rank the next spec-side action (revise, propose-change, critique, prune-history, or none) over the current proposed_changes/ and history/ state |
 | `/livespec:help` | `skills/help/SKILL.md` | Overview + routing to the right sub-command |
 
-Each skill orchestrates dialogue capture, prompt-driven content
-generation, wrapper invocation against `.claude-plugin/scripts/bin/<sub-command>.py`,
-and structured-finding interpretation.
+Per `SPECIFICATION/spec.md` §"Contract + reference implementations
+architecture", each skill is decomposed into (a) a harness-neutral
+core prose artifact at `.claude-plugin/prose/<name>.md` carrying the
+dialogue capture, prompt-driven content generation, CLI invocation
+flow, and structured-finding interpretation, and (b) a THIN Claude
+Code binding at `.claude-plugin/skills/<name>/SKILL.md` (frontmatter,
+a reference to the prose, and a runtime-binding table mapping the
+prose's neutral vocabulary to tools and
+`${CLAUDE_PLUGIN_ROOT}/scripts/bin/<sub-command>.py` invocations).
+Edit the prose for behavior; edit the SKILL.md only for
+Claude-runtime mechanics.
 
 ### Layer 3 orchestration driver — `.claude/skills/livespec-orchestrate/`
 
