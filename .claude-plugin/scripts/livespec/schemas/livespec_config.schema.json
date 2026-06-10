@@ -2,14 +2,19 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "livespec_config.schema.json",
   "title": "livespec_config",
-  "description": "Schema for the project's `.livespec.jsonc` configuration file. All fields are optional; absence of the file or any field is equivalent to its documented default.",
+  "description": "Schema for the project's `.livespec.jsonc` configuration file. All fields are optional; absence of the file or any field is equivalent to its documented default. The root is `additionalProperties: true` per contracts.md §\"Plugin distribution\": each plugin or sibling consumer owns a top-level section named for itself; core validates only the keys it owns and tolerates unknown sections.",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "template": {
       "type": "string",
       "description": "Active template — built-in name (e.g. 'livespec', 'livespec-with-diagrams', 'minimal') or path-as-string to a custom template directory relative to the project root.",
       "default": "livespec"
+    },
+    "spec_root": {
+      "type": "string",
+      "description": "Project-root-relative directory holding the governed spec tree. Spec-tier fact per contracts.md §\"Spec-side CLI contract\".",
+      "default": "SPECIFICATION"
     },
     "template_format_version": {
       "type": "integer",
@@ -41,6 +46,93 @@
       "type": "boolean",
       "description": "When true, the revise sub-command skips the Step 3.5 stale-branch precondition check (which enumerates local `spec/*` branches ahead of `origin/<canonical_branch>` via the `no_stale_revise_branches` shared check shipped by livespec-dev-tooling). The revise SKILL.md prose MUST narrate a warning every time the precondition is silently skipped (config key true with no CLI flag).",
       "default": false
+    },
+    "spec_clis": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per contracts.md §\"Spec-side CLI contract\": each spec-side lifecycle operation is named here as an argv-form array (NOT a shell string), pre-populated with core's reference default and individually overridable. The literal substring `${CLAUDE_PLUGIN_ROOT}` in any argv entry is expanded at dispatch time to the installed livespec plugin root (the `CLAUDE_PLUGIN_ROOT` env var when set; the running package's plugin root otherwise). Callability of every named entry is verified by the `config-named-cli-callability` doctor invariant per contracts.md §\"Doctor cross-boundary invariants\". When the section (or any key) is absent the validator materializes the documented per-key defaults.",
+      "properties": {
+        "seed": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form CLI for the `seed` operation.",
+          "default": ["python3", "${CLAUDE_PLUGIN_ROOT}/scripts/bin/seed.py"]
+        },
+        "propose_change": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form CLI for the `propose-change` operation (the one spec-side CLI injected into the orchestrator's drift-capture CLI).",
+          "default": ["python3", "${CLAUDE_PLUGIN_ROOT}/scripts/bin/propose_change.py"]
+        },
+        "revise": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form CLI for the `revise` operation.",
+          "default": ["python3", "${CLAUDE_PLUGIN_ROOT}/scripts/bin/revise.py"]
+        },
+        "critique": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form CLI for the `critique` operation.",
+          "default": ["python3", "${CLAUDE_PLUGIN_ROOT}/scripts/bin/critique.py"]
+        },
+        "doctor": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form CLI for the `doctor` operation. NOT privileged: config-named and overridable like any other spec-side CLI.",
+          "default": ["python3", "${CLAUDE_PLUGIN_ROOT}/scripts/bin/doctor_static.py"]
+        },
+        "prune_history": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form CLI for the `prune-history` operation.",
+          "default": ["python3", "${CLAUDE_PLUGIN_ROOT}/scripts/bin/prune_history.py"]
+        },
+        "next": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form CLI for the `next` operation.",
+          "default": ["python3", "${CLAUDE_PLUGIN_ROOT}/scripts/bin/next.py"]
+        }
+      }
+    },
+    "orchestrator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "spec_reader", "gap_capture", "drift_capture"],
+      "description": "Per contracts.md §\"Orchestrator CLI contract — the three named CLIs\": selects the orchestrator that consumes the spec and produces the implementation, and names its three orchestrator-side CLIs as argv-form arrays. LiveSpec defines NONE of their behavior — only that they are named here and callable (verified by the `config-named-cli-callability` doctor invariant). OPTIONAL: when the section is absent, no orchestrator is configured and only the spec-side CLIs are verified. Orchestrator-private configuration (store formats, store paths, …) lives in the orchestrator's own top-level section, which core's schema does not know.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The orchestrator's name (e.g. 'livespec-impl-beads'). By convention the orchestrator owns the top-level config section bearing this name."
+        },
+        "spec_reader": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form spec-reader CLI. Reads the spec however it wants; MUST expose spec content by template category (categorizes, never conceals)."
+        },
+        "gap_capture": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form gap-capture CLI. Detects spec → impl gaps and writes them to the orchestrator's private work-item mechanism; the spec-reader CLI is injected as a reference."
+        },
+        "drift_capture": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "argv-form drift-capture CLI. Routes impl → spec drift to propose-change; the spec-reader CLI and the propose-change CLI are injected as references."
+        }
+      }
     },
     "render_commands": {
       "type": "object",
