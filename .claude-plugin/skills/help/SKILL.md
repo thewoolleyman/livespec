@@ -4,68 +4,23 @@ description: Explain what livespec does and route the user to the right sub-comm
 allowed-tools: Read
 ---
 
-# help
+# help — Claude Code binding
 
-Explain what livespec does at a high level and route the user to
-the right sub-command for their intent. There is no Python
-wrapper for `help` — the response is composed by the LLM in
-narration, no `bin/*.py` invocation, no JSON.
+This file is the thin Claude Code binding for the `help` operation.
+The complete harness-neutral driving prose is the core artifact at
+`${CLAUDE_PLUGIN_ROOT}/prose/help.md` — `../../prose/help.md`
+relative to this SKILL.md (the relative layout is identical in the
+flattened installed cache and in `--plugin-dir .` dev mode). FIRST
+read that prose file in full, then execute it end-to-end, binding its
+harness-neutral vocabulary to this runtime as follows.
 
-## When to invoke
+## Runtime bindings
 
-- The user types `/livespec:help`, says "what can livespec do",
-  "how do I use livespec", or asks for an overview of livespec
-  capabilities.
-- The user describes a goal (e.g., "I want to start a spec"
-  or "I want to file a change") and is unsure which
-  sub-command to invoke.
-
-## Steps
-
-1. **Brief overview.** Explain in 1-2 sentences:
-   "livespec is an LLM-mediated specification toolchain.
-   You author natural-language specifications, and livespec's
-   sub-commands govern the workflow: seeding the initial spec,
-   filing proposed changes, critiquing, revising into version
-   snapshots, and running structural-invariant checks."
-
-2. **Route to the right sub-command.** Map the user's goal to
-   one of:
-   - **seed** (`/livespec:seed`) — start a brand-new spec in
-     an empty project. The skill walks a 3-question pre-seed
-     dialogue (template, sub-specs?, intent), then generates
-     and writes the initial `SPECIFICATION/` tree plus
-     auto-captured seed proposed-change.
-   - **propose-change** (`/livespec:propose-change`) — file a
-     proposed change against an existing spec. Lands at
-     `<spec-target>/proposed_changes/<topic>.md`.
-   - **critique** (`/livespec:critique`) — file a critique-
-     style proposed-change (delegates to propose-change with
-     `-critique` reserve-suffix appended).
-   - **revise** (`/livespec:revise`) — process all pending
-     proposed-changes with per-proposal accept/modify/reject
-     decisions, cut a new history/vNNN/ snapshot.
-   - **doctor** (`/livespec:doctor`) — run static-invariant
-     checks across the main spec + each sub-spec tree. The
-     LLM-driven objective + subjective post-step phases are
-     not yet wired; only the static phase runs today.
-   - **prune-history** (`/livespec:prune-history`) — destructively
-     collapse old `history/vNNN/` snapshots into a single
-     `PRUNED_HISTORY.json` marker. Requires explicit user
-     invocation; the LLM MUST NOT auto-activate this sub-command.
-
-3. **Pointer to per-sub-command help.** Mention that each
-   sub-command's wrapper supports `-h` / `--help` (e.g.,
-   `bin/seed.py --help` via Bash) for the CLI flag details.
-
-## Post-wrapper
-
-No wrapper invocation; no post-step LLM-driven phase.
-
-## Failure handling
-
-No wrapper exit codes — this skill is pure LLM narration. If
-the user asks about a capability that is not yet wired
-(e.g., the LLM-driven objective/subjective doctor phases),
-say so directly and point at the static phase as the
-currently-available behavior.
+- **"the seed / propose-change / critique / revise / doctor /
+  prune-history / next operation"** — the corresponding
+  `/livespec:<name>` skill in this plugin; route the user to the
+  slash command by that name.
+- **"running the seed CLI named in config with `--help`"** — e.g.
+  `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/seed.py" --help` via
+  the Bash tool (same pattern for every other operation's wrapper
+  under `${CLAUDE_PLUGIN_ROOT}/scripts/bin/`).
