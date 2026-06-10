@@ -225,6 +225,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
     assert exit_code == 0, f"expected exit 0, got {exit_code}; stdout: {out}"
     main_check_ids = {
         "doctor-livespec-jsonc-valid",
+        "doctor-config-named-cli-callability",
         "doctor-template-exists",
         "doctor-template-files-present",
         "doctor-proposed-changes-and-history-dirs",
