@@ -1,19 +1,23 @@
 """Tests for livespec.commands.next.
 
-Per `SPECIFICATION/contracts.md` §"`/livespec-core:next`
-spec-side thin-transport skill" + §"Wrapper CLI surface": the
-`next` sub-command reads spec-side state (Proposed Changes
-queue + Specification History) and emits JSON on stdout with
-fields `action` (one of `revise` / `propose-change` /
-`critique` / `prune-history` / `none`), `reason`, `urgency`
-(one of `high` / `medium` / `low`). Pure function of file
+Per `SPECIFICATION/contracts.md` §"`/livespec:next` spec-side
+thin-transport skill" → §"Wrapper CLI flags" + §"Output schema":
+the `next` sub-command reads spec-side state (Proposed Changes
+queue + Specification History) and emits JSON on stdout with two
+top-level keys — `candidates` (array of `{action, reason,
+urgency, target?}` objects) and `pagination` (`{offset, limit,
+total, has_more}`). The wrapper accepts `--limit <count>`
+(positive integer, default 5) and `--offset <count>`
+(non-negative integer, default 0) in addition to the
+§"Wrapper CLI surface" flags; non-positive `--limit` or
+negative `--offset` exits 2 (UsageError). Pure function of file
 state; no LLM in the ranking path.
 
-Doctor-cache integration is deferred per the Phase B.1 scope
-question (`research/workflow-processes/multi-repo-split-execution-plan.md`
-§Phase B sub-tasks). The MVP ranking covers Proposed Changes
-queue depth + age + History recency; the cached-doctor-findings
-input lands in a follow-on once the cache format is formalized.
+Per §"Ranker semantics": the ranker enumerates ALL ripe
+candidates, sorts within each action tier by urgency descending
+then target lexicographic, and applies offset/limit last. Per
+§"`prune-history` ordering invariant": prune-history sorts
+strictly below every other action.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ from __future__ import annotations
 import datetime
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from livespec.commands import next as next_command
@@ -74,6 +79,19 @@ def _make_history_versions(*, target: Path, count: int) -> None:
         (target / "history" / f"v{index:03d}").mkdir()
 
 
+def _run_and_load(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+) -> dict[str, Any]:
+    """Run the supervisor with `argv`, assert exit 0, and parse stdout JSON."""
+    exit_code = next_command.main(argv=argv)
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    payload: dict[str, Any] = json.loads(captured.out)
+    return payload
+
+
 def test_next_main_returns_int(
     *,
     capsys: pytest.CaptureFixture[str],
@@ -81,9 +99,8 @@ def test_next_main_returns_int(
 ) -> None:
     """The supervisor entry point exists and returns an int exit code.
 
-    Smallest possible cycle: drives livespec/commands/next.py
-    into existence with the canonical `main(*, argv) -> int`
-    supervisor signature.
+    Smallest possible cycle: pins the canonical
+    `main(*, argv) -> int` supervisor signature.
     """
     _ = _make_spec_target(root=tmp_path)
     exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
@@ -91,37 +108,40 @@ def test_next_main_returns_int(
     _ = capsys.readouterr()
 
 
-def test_next_empty_queue_short_history_returns_none(
+def test_next_empty_queue_short_history_returns_empty_candidates(
     *,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    """No pending proposals + short history → action=none, urgency=low.
+    """No pending proposals + short history → `candidates: []`.
 
-    The advisory output is the "nothing pressing" signal: the
-    project's spec-side queue is drained and the history hasn't
-    accreted enough versions to warrant pruning.
+    Per §"Output schema": the empty array IS the no-work signal —
+    the payload does not degrade to any legacy single-output
+    shape. The pagination block echoes the defaults
+    (`offset=0`, `limit=5`) with `total=0` and `has_more=false`.
     """
     _ = _make_spec_target(root=tmp_path)
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "none"
-    assert payload["urgency"] == "low"
-    assert isinstance(payload["reason"], str)
-    assert len(payload["reason"]) > 0
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["candidates"] == []
+    assert payload["pagination"] == {
+        "offset": 0,
+        "limit": 5,
+        "total": 0,
+        "has_more": False,
+    }
 
 
-def test_next_pending_proposal_returns_revise_action(
+def test_next_pending_proposal_returns_revise_candidate(
     *,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    """One pending proposed change → action=revise.
+    """One pending proposed change → one `revise` candidate naming it.
 
     A non-empty Proposed Changes queue is the strongest signal
-    for the spec-side ranker: revise drains it.
+    for the spec-side ranker: revise drains it. Per §"Output
+    schema" the candidate's `target` is the spec-target-relative
+    proposed_change path.
     """
     target = _make_spec_target(root=tmp_path)
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -130,11 +150,13 @@ def test_next_pending_proposal_returns_revise_action(
         topic="topic-x",
         created_at=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "revise"
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["pagination"]["total"] == 1
+    candidate = payload["candidates"][0]
+    assert candidate["action"] == "revise"
+    assert candidate["target"] == "proposed_changes/topic-x.md"
+    assert isinstance(candidate["reason"], str)
+    assert len(candidate["reason"]) > 0
 
 
 def test_next_old_pending_proposal_returns_high_urgency(
@@ -155,12 +177,10 @@ def test_next_old_pending_proposal_returns_high_urgency(
         topic="topic-old",
         created_at=long_ago.strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "revise"
-    assert payload["urgency"] == "high"
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    candidate = payload["candidates"][0]
+    assert candidate["action"] == "revise"
+    assert candidate["urgency"] == "high"
 
 
 def test_next_medium_age_pending_proposal_returns_medium_urgency(
@@ -180,12 +200,10 @@ def test_next_medium_age_pending_proposal_returns_medium_urgency(
         topic="topic-middle",
         created_at=middling.strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "revise"
-    assert payload["urgency"] == "medium"
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    candidate = payload["candidates"][0]
+    assert candidate["action"] == "revise"
+    assert candidate["urgency"] == "medium"
 
 
 def test_next_fresh_pending_proposal_returns_low_urgency(
@@ -195,9 +213,9 @@ def test_next_fresh_pending_proposal_returns_low_urgency(
 ) -> None:
     """Single pending proposal aged less than 1 day → urgency=low.
 
-    A just-filed proposal isn't urgent; the ranker emits revise
-    with low urgency so the loop driver knows the queue is
-    non-empty but not pressuring drain.
+    A just-filed proposal isn't urgent; the ranker emits a revise
+    candidate with low urgency so the loop driver knows the queue
+    is non-empty but not pressuring drain.
     """
     target = _make_spec_target(root=tmp_path)
     just_now = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)
@@ -206,24 +224,24 @@ def test_next_fresh_pending_proposal_returns_low_urgency(
         topic="topic-fresh",
         created_at=just_now.strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "revise"
-    assert payload["urgency"] == "low"
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    candidate = payload["candidates"][0]
+    assert candidate["action"] == "revise"
+    assert candidate["urgency"] == "low"
 
 
-def test_next_many_pending_proposals_returns_high_urgency(
+def test_next_enumerates_one_candidate_per_proposal(
     *,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    """Three or more pending proposals → urgency=high regardless of age.
+    """Three pending proposals → three revise candidates, all high urgency.
 
-    Queue-depth-based urgency: even if every proposal is fresh,
-    a deep queue is itself a high-urgency signal — the spec is
-    accreting un-decided changes.
+    Per §"Ranker semantics": the ranker enumerates ALL ripe
+    candidates, not just the top one. Queue-depth-based urgency:
+    even if every proposal is fresh, a deep queue lifts every
+    revise candidate to high. Ties sort by `target`
+    lexicographic (the deterministic secondary key).
     """
     target = _make_spec_target(root=tmp_path)
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -233,12 +251,49 @@ def test_next_many_pending_proposals_returns_high_urgency(
             topic=f"topic-{index}",
             created_at=now,
         )
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "revise"
-    assert payload["urgency"] == "high"
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["pagination"]["total"] == 3
+    assert [c["action"] for c in payload["candidates"]] == ["revise"] * 3
+    assert [c["urgency"] for c in payload["candidates"]] == ["high"] * 3
+    assert [c["target"] for c in payload["candidates"]] == [
+        "proposed_changes/topic-0.md",
+        "proposed_changes/topic-1.md",
+        "proposed_changes/topic-2.md",
+    ]
+
+
+def test_next_sorts_by_urgency_descending_within_tier(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """Within the revise tier, higher-urgency candidates sort first.
+
+    Per §"Ranker semantics": sort within each action tier by
+    urgency descending, then by `target` lexicographic. An old
+    proposal (high urgency via the age axis) outranks a fresh
+    one (medium via the depth axis) even though the fresh one's
+    target sorts earlier lexicographically.
+    """
+    target = _make_spec_target(root=tmp_path)
+    long_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=14)
+    just_now = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)
+    _ = _write_proposed_change(
+        target=target,
+        topic="a-fresh",
+        created_at=just_now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    _ = _write_proposed_change(
+        target=target,
+        topic="z-old",
+        created_at=long_ago.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert [c["target"] for c in payload["candidates"]] == [
+        "proposed_changes/z-old.md",
+        "proposed_changes/a-fresh.md",
+    ]
+    assert [c["urgency"] for c in payload["candidates"]] == ["high", "medium"]
 
 
 def test_next_excludes_proposed_changes_readme(
@@ -258,11 +313,8 @@ def test_next_excludes_proposed_changes_readme(
         "Skill-owned README.\n",
         encoding="utf-8",
     )
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "none"
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["candidates"] == []
 
 
 def test_next_long_history_with_empty_queue_returns_prune_history(
@@ -270,20 +322,197 @@ def test_next_long_history_with_empty_queue_returns_prune_history(
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    """Empty queue + ≥20 history versions → action=prune-history, urgency=low.
+    """Empty queue + ≥20 history versions → one prune-history candidate.
 
-    The prune-history recommendation surfaces only when the
-    queue is empty (revise dominates) and the history has
-    accreted enough versions to make pruning worth a cycle.
+    The prune-history candidate carries `urgency: low` and omits
+    `target` (pruning addresses a version range, not one item;
+    per §"Output schema" `target` MAY be omitted).
     """
     target = _make_spec_target(root=tmp_path)
     _make_history_versions(target=target, count=25)
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "prune-history"
-    assert payload["urgency"] == "low"
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["pagination"]["total"] == 1
+    candidate = payload["candidates"][0]
+    assert candidate["action"] == "prune-history"
+    assert candidate["urgency"] == "low"
+    assert "target" not in candidate
+
+
+def test_next_ranks_prune_history_strictly_below_revise(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """Pending proposals + long history → revise first, prune-history last.
+
+    Per §"`prune-history` ordering invariant": when ANY ripe
+    candidate exists with `action != prune-history`, the ranker
+    MUST NOT emit prune-history as the primary recommendation —
+    it sorts strictly below every other action tier regardless
+    of urgency.
+    """
+    target = _make_spec_target(root=tmp_path)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    _ = _write_proposed_change(
+        target=target,
+        topic="topic-x",
+        created_at=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    _make_history_versions(target=target, count=25)
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["pagination"]["total"] == 2
+    assert payload["candidates"][0]["action"] == "revise"
+    assert payload["candidates"][-1]["action"] == "prune-history"
+
+
+def test_next_limit_slices_and_reports_has_more(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """--limit 2 over 3 candidates → 2 returned, total=3, has_more=true.
+
+    Per §"Wrapper CLI flags" + §"Output schema": `limit` caps the
+    returned slice; `total` counts ripe candidates BEFORE
+    offset/limit; `has_more` is true iff
+    `offset + len(candidates) < total`.
+    """
+    target = _make_spec_target(root=tmp_path)
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for index in range(3):
+        _ = _write_proposed_change(
+            target=target,
+            topic=f"topic-{index}",
+            created_at=now,
+        )
+    payload = _run_and_load(
+        capsys=capsys,
+        argv=["--project-root", str(tmp_path), "--limit", "2"],
+    )
+    assert len(payload["candidates"]) == 2
+    assert payload["pagination"] == {
+        "offset": 0,
+        "limit": 2,
+        "total": 3,
+        "has_more": True,
+    }
+
+
+def test_next_offset_skips_ranked_candidates(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """--offset 1 skips the front of the ranked list before slicing.
+
+    Per §"Wrapper CLI flags": offset is applied to the ranked
+    list before limit. The remaining slice drains the list, so
+    `has_more` is false.
+    """
+    target = _make_spec_target(root=tmp_path)
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for index in range(3):
+        _ = _write_proposed_change(
+            target=target,
+            topic=f"topic-{index}",
+            created_at=now,
+        )
+    payload = _run_and_load(
+        capsys=capsys,
+        argv=["--project-root", str(tmp_path), "--offset", "1"],
+    )
+    assert [c["target"] for c in payload["candidates"]] == [
+        "proposed_changes/topic-1.md",
+        "proposed_changes/topic-2.md",
+    ]
+    assert payload["pagination"] == {
+        "offset": 1,
+        "limit": 5,
+        "total": 3,
+        "has_more": False,
+    }
+
+
+def test_next_offset_at_or_beyond_total_returns_empty_window(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """--offset >= total → `candidates: []` and `has_more: false`.
+
+    Pinned verbatim by §"Output schema": "When `offset >= total`,
+    the wrapper MUST emit `candidates: []` and `has_more:
+    false`."
+    """
+    target = _make_spec_target(root=tmp_path)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    _ = _write_proposed_change(
+        target=target,
+        topic="topic-x",
+        created_at=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    payload = _run_and_load(
+        capsys=capsys,
+        argv=["--project-root", str(tmp_path), "--offset", "9"],
+    )
+    assert payload["candidates"] == []
+    assert payload["pagination"] == {
+        "offset": 9,
+        "limit": 5,
+        "total": 1,
+        "has_more": False,
+    }
+
+
+def test_next_non_positive_limit_returns_2(
+    *,
+    tmp_path: Path,
+) -> None:
+    """--limit 0 → exit 2 (UsageError).
+
+    Per §"Wrapper CLI flags": "Non-positive `--limit` or negative
+    `--offset` MUST cause the wrapper to exit `2` with a
+    `UsageError`."
+    """
+    _ = _make_spec_target(root=tmp_path)
+    exit_code = next_command.main(
+        argv=["--project-root", str(tmp_path), "--limit", "0"],
+    )
+    assert exit_code == 2
+
+
+def test_next_negative_offset_returns_2(
+    *,
+    tmp_path: Path,
+) -> None:
+    """--offset -1 → exit 2 (UsageError).
+
+    The negative-offset twin of the non-positive-limit gate per
+    §"Wrapper CLI flags".
+    """
+    _ = _make_spec_target(root=tmp_path)
+    exit_code = next_command.main(
+        argv=["--project-root", str(tmp_path), "--offset", "-1"],
+    )
+    assert exit_code == 2
+
+
+def test_next_non_integer_limit_returns_2(
+    *,
+    tmp_path: Path,
+) -> None:
+    """--limit not-a-number → exit 2 (UsageError).
+
+    Drives the argparse type-conversion failure path: with
+    `exit_on_error=False`, the int conversion failure raises
+    `argparse.ArgumentError`, which io/cli's `@impure_safe`
+    maps to UsageError; the supervisor lifts exit 2.
+    """
+    _ = _make_spec_target(root=tmp_path)
+    exit_code = next_command.main(
+        argv=["--project-root", str(tmp_path), "--limit", "not-a-number"],
+    )
+    assert exit_code == 2
 
 
 def test_next_unknown_flag_returns_2(
@@ -345,11 +574,8 @@ def test_next_default_project_root_is_cwd(
     """
     _ = _make_spec_target(root=tmp_path)
     monkeypatch.chdir(tmp_path)
-    exit_code = next_command.main(argv=[])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "none"
+    payload = _run_and_load(capsys=capsys, argv=[])
+    assert payload["candidates"] == []
 
 
 def test_next_explicit_spec_target(
@@ -367,7 +593,8 @@ def test_next_explicit_spec_target(
     custom_root = tmp_path / "templates" / "custom-spec"
     (custom_root / "proposed_changes").mkdir(parents=True)
     (custom_root / "history").mkdir()
-    exit_code = next_command.main(
+    payload = _run_and_load(
+        capsys=capsys,
         argv=[
             "--project-root",
             str(tmp_path),
@@ -375,10 +602,7 @@ def test_next_explicit_spec_target(
             str(custom_root),
         ],
     )
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert payload["action"] == "none"
+    assert payload["candidates"] == []
 
 
 def test_next_malformed_proposal_front_matter_returns_3(
@@ -414,13 +638,18 @@ def test_next_emits_schema_conformant_json(
     invokes fastjsonschema on the captured stdout payload —
     if the dataclass-to-JSON serialization drifts from the
     schema, this test fails before the schema-dataclass-
-    pairing check ever runs.
+    pairing check ever runs. A pending proposal is included so
+    the payload exercises the non-empty `candidates` branch.
     """
-    _ = _make_spec_target(root=tmp_path)
-    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
+    target = _make_spec_target(root=tmp_path)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    _ = _write_proposed_change(
+        target=target,
+        topic="topic-x",
+        created_at=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["candidates"] != []
     schema_path = (
         Path(__file__).resolve().parents[3]
         / ".claude-plugin"
@@ -456,9 +685,9 @@ def test_next_module_declares_hkt_erosion_pragma() -> None:
     """
     import inspect
 
-    from livespec.commands import next as next_command
+    from livespec.commands import next as module_under_test
 
-    source = inspect.getsource(next_command)
+    source = inspect.getsource(module_under_test)
     assert source.startswith(
         "# pyright: reportUnknownMemberType=none, "
         "reportUnknownVariableType=none, "

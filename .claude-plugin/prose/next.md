@@ -49,6 +49,12 @@ The next CLI accepts only:
   `<main-spec-root>/templates/<name>/`) to rank against.
 - `--project-root <path>` (optional; defaults to
   `Path.cwd()`).
+- `--limit <count>` (optional; positive integer, default
+  `5`). Maximum number of candidates returned in the
+  `candidates` array.
+- `--offset <count>` (optional; non-negative integer,
+  default `0`). Number of ranked candidates to skip from
+  the front of the ranked list before returning.
 
 No JSON payload input, no pre-step / post-step flags
 (the operation is lifecycle-exempt). `--help` / `-h` is
@@ -90,20 +96,23 @@ is `0` (NOT an error).
    flag; the nudge is prose-level discipline only.
 
 2. **Invoke the next CLI.** Run the next CLI named in
-   config with `[--spec-target <path>] [--project-root <path>]`
-   and explicit argv. Capture stdout (the JSON payload)
-   and the exit code.
+   config with `[--spec-target <path>] [--project-root <path>]
+   [--limit <count>] [--offset <count>]` and explicit argv.
+   Capture stdout (the JSON payload) and the exit code.
 
 3. **Present the JSON verbatim.** On exit `0`, surface
    the captured stdout to the user without
    re-interpretation, re-summarization, or judgment. The
-   payload conforms to `next_output.schema.json` with
-   fields `action`, `reason`, and `urgency`; downstream
-   consumers (a composing loop driver, automated
-   tooling, or the user reading the recommendation) own
-   the dispatch. This prose does NOT recommend a
-   follow-up operation beyond what the `action` field
-   already names.
+   payload conforms to `next_output.schema.json` with two
+   top-level keys: `candidates` (the ranked candidate
+   array — each entry carrying `action`, `reason`,
+   `urgency`, and optionally `target`; an empty array IS
+   the no-work signal) and `pagination` (`offset`,
+   `limit`, `total`, `has_more`); downstream consumers (a
+   composing loop driver, automated tooling, or the user
+   reading the recommendation) own the dispatch. This
+   prose does NOT recommend a follow-up operation beyond
+   what each candidate's `action` field already names.
 
 This operation MUST NOT dispatch any template prompt, run
 any post-step phase, or mutate spec-side state.
@@ -119,7 +128,8 @@ table":
 - Exit `1` → internal bug; surface stderr (including
   any structured-error JSON line and traceback) and
   abort. Do NOT retry.
-- Exit `2` → usage error (e.g., unknown flag). Restate
+- Exit `2` → usage error (e.g., unknown flag,
+  non-positive `--limit`, negative `--offset`). Restate
   the expected invocation shape per `## Inputs` above
   and abort.
 - Exit `3` → `PreconditionError` (e.g.,

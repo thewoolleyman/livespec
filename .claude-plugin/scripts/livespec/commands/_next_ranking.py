@@ -2,41 +2,58 @@
 #
 # HKT erosion from the returns library: see sibling next.py for the
 # full prelude. Same pragma applies here for consistency.
-"""Pure ranking + ISO-age helpers extracted from `next.py`.
+"""Pure ranking, pagination, and ISO-age helpers for `next.py`.
 
-Extracted at li-f2dk3t so the parent file's LLOC stays under
+Extracted from `next.py` so the parent file's LLOC stays under
 the 250-LLOC hard ceiling enforced by
-`livespec_dev_tooling.checks.file_lloc`. The split is purely
-organizational; the behavior is identical to the inline
-original.
+`livespec_dev_tooling.checks.file_lloc`.
+
+Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
+thin-transport skill" → §"Ranker semantics" + §"`prune-history`
+ordering invariant": the ranker enumerates ALL ripe candidates
+(one `revise` candidate per pending proposal, plus one
+`prune-history` candidate when the unpruned history version
+count reaches the threshold), sorts by action tier
+(prune-history strictly below every other action), urgency
+descending, then `target` lexicographic, and applies
+offset/limit last to produce the returned slice.
 
 Stages: ISO age parsing (`_raw_fromisoformat`,
-`_parse_iso_age_days`), oldest-age aggregation
-(`_collect_oldest_age_days`), urgency-bucket ranking
-(`_rank_revise`, `_rank`), and history-version threshold
-constants.
+`_parse_iso_age_days`), per-proposal age aggregation
+(`_collect_proposal_ages`), candidate enumeration + sorting
+(`_revise_urgency`, `_enumerate_candidates`), pagination
+(`_paginate`), and payload shaping (`_output_payload`).
 """
 
 from __future__ import annotations
 
 import datetime
+from typing import Any
 
 from returns.result import Result, Success, safe
 
 from livespec.errors import LivespecError, PreconditionError
-from livespec.schemas.dataclasses.next_output import NextOutput
+from livespec.schemas.dataclasses.next_output import (
+    NextCandidate,
+    NextOutput,
+    NextPagination,
+)
 
 __all__: list[str] = [
+    "ACTION_TIER",
     "HIGH_URGENCY_AGE_DAYS",
     "HIGH_URGENCY_COUNT_THRESHOLD",
     "MEDIUM_URGENCY_AGE_DAYS",
     "MEDIUM_URGENCY_COUNT_THRESHOLD",
     "PRUNE_HISTORY_THRESHOLD",
-    "_collect_oldest_age_days",
+    "URGENCY_RANK",
+    "_collect_proposal_ages",
+    "_enumerate_candidates",
+    "_output_payload",
+    "_paginate",
     "_parse_iso_age_days",
-    "_rank",
-    "_rank_revise",
     "_raw_fromisoformat",
+    "_revise_urgency",
 ]
 
 
@@ -45,6 +62,23 @@ MEDIUM_URGENCY_COUNT_THRESHOLD = 2
 HIGH_URGENCY_AGE_DAYS = 7.0
 MEDIUM_URGENCY_AGE_DAYS = 1.0
 PRUNE_HISTORY_THRESHOLD = 20
+
+# Sort tier per action, per §"`prune-history` ordering invariant":
+# prune-history sorts strictly below EVERY other action in the
+# enumeration, independent of urgency. The reference ranker emits
+# only `revise` and `prune-history` candidates; the remaining
+# actions carry tiers so the comparator is total over the schema
+# enumeration.
+ACTION_TIER: dict[str, int] = {
+    "revise": 0,
+    "propose-change": 1,
+    "critique": 2,
+    "none": 3,
+    "prune-history": 4,
+}
+
+# Urgency descending: high sorts before medium sorts before low.
+URGENCY_RANK: dict[str, int] = {"high": 0, "medium": 1, "low": 2}
 
 
 @safe(exceptions=(ValueError,))
@@ -79,67 +113,145 @@ def _parse_iso_age_days(
     )
 
 
-def _collect_oldest_age_days(
+def _collect_proposal_ages(
     *,
-    created_ats: list[str],
+    entries: list[tuple[str, str]],
     now: datetime.datetime,
-) -> Result[float | None, LivespecError]:
-    """Compute the maximum age-days across all proposal `created_at` values.
+) -> Result[list[tuple[str, float]], LivespecError]:
+    """Map each `(target, created_at)` entry to `(target, age_days)`.
 
-    Returns `Success(None)` when the input list is empty. Per-
+    Returns `Success([])` when the input list is empty. Per-
     proposal age Results are aggregated via accumulator-style
     `.bind` so the first failure short-circuits.
     """
-    if not created_ats:
-        return Success(None)
-    aggregate: Result[list[float], LivespecError] = Success([])
-    for created_at in created_ats:
+    aggregate: Result[list[tuple[str, float]], LivespecError] = Success([])
+    for target, created_at in entries:
         aggregate = aggregate.bind(
-            lambda ages, c=created_at: _parse_iso_age_days(created_at=c, now=now).map(
-                lambda age, _ages=ages: [*_ages, age],
+            lambda ages, t=target, c=created_at: _parse_iso_age_days(
+                created_at=c,
+                now=now,
+            ).map(
+                lambda age, _ages=ages, _t=t: [*_ages, (_t, age)],
             ),
         )
-    return aggregate.map(max)
+    return aggregate
 
 
-def _rank_revise(
+def _revise_urgency(
     *,
     proposal_count: int,
-    oldest_age_days: float | None,
-) -> NextOutput:
-    """Construct the `action=revise` NextOutput with urgency-bucket logic."""
-    if proposal_count >= HIGH_URGENCY_COUNT_THRESHOLD or (
-        oldest_age_days is not None and oldest_age_days >= HIGH_URGENCY_AGE_DAYS
-    ):
-        urgency = "high"
-    elif proposal_count >= MEDIUM_URGENCY_COUNT_THRESHOLD or (
-        oldest_age_days is not None and oldest_age_days >= MEDIUM_URGENCY_AGE_DAYS
-    ):
-        urgency = "medium"
-    else:
-        urgency = "low"
-    age_phrase = (
-        f"oldest is ~{oldest_age_days:.1f} days old"
-        if oldest_age_days is not None
-        else "age unknown"
-    )
-    reason = f"{proposal_count} proposed change(s) pending; {age_phrase}"
-    return NextOutput(action="revise", reason=reason, urgency=urgency)
+    age_days: float,
+) -> str:
+    """Bucket one revise candidate's urgency from queue depth + its age.
+
+    The two axes are OR-ed so either a deep queue OR a long-
+    stale proposal lifts urgency: count ≥ 3 OR age ≥ 7 days →
+    `high`; count ≥ 2 OR age ≥ 1 day → `medium`; otherwise
+    `low`. The depth axis applies the full queue depth to every
+    candidate; the age axis is per-proposal.
+    """
+    if proposal_count >= HIGH_URGENCY_COUNT_THRESHOLD or age_days >= HIGH_URGENCY_AGE_DAYS:
+        return "high"
+    if proposal_count >= MEDIUM_URGENCY_COUNT_THRESHOLD or age_days >= MEDIUM_URGENCY_AGE_DAYS:
+        return "medium"
+    return "low"
 
 
-def _rank(
+def _enumerate_candidates(
     *,
-    proposal_count: int,
-    oldest_age_days: float | None,
+    proposal_ages: list[tuple[str, float]],
     history_version_count: int,
-) -> NextOutput:
-    """Pure ranker — compose a NextOutput from the three input counts."""
-    if proposal_count >= 1:
-        return _rank_revise(proposal_count=proposal_count, oldest_age_days=oldest_age_days)
-    if history_version_count >= PRUNE_HISTORY_THRESHOLD:
-        return NextOutput(
-            action="prune-history",
-            reason=f"{history_version_count} unpruned history versions; consider pruning",
-            urgency="low",
+) -> list[NextCandidate]:
+    """Enumerate ALL ripe candidates, sorted per §"Ranker semantics".
+
+    One `revise` candidate per pending proposal (target = the
+    spec-target-relative proposal path) plus one `prune-history`
+    candidate when the history version count reaches the
+    threshold (no target — pruning addresses a version range).
+    Sort key: action tier (prune-history strictly last), urgency
+    descending, then target lexicographic. An empty result IS
+    the no-work signal.
+    """
+    proposal_count = len(proposal_ages)
+    candidates = [
+        NextCandidate(
+            action="revise",
+            reason=(
+                f"proposed change {target} pending; ~{age_days:.1f} days old; "
+                f"queue depth {proposal_count}"
+            ),
+            urgency=_revise_urgency(proposal_count=proposal_count, age_days=age_days),
+            target=target,
         )
-    return NextOutput(action="none", reason="No pending spec-side work", urgency="low")
+        for target, age_days in proposal_ages
+    ]
+    if history_version_count >= PRUNE_HISTORY_THRESHOLD:
+        candidates.append(
+            NextCandidate(
+                action="prune-history",
+                reason=f"{history_version_count} unpruned history versions; consider pruning",
+                urgency="low",
+            ),
+        )
+    return sorted(
+        candidates,
+        key=lambda candidate: (
+            ACTION_TIER[candidate.action],
+            URGENCY_RANK[candidate.urgency],
+            candidate.target or "",
+        ),
+    )
+
+
+def _paginate(
+    *,
+    candidates: list[NextCandidate],
+    offset: int,
+    limit: int,
+) -> NextOutput:
+    """Apply offset/limit to the ranked list and build the NextOutput.
+
+    Per §"Output schema": `total` counts ripe candidates BEFORE
+    the slice; `has_more` is `true` iff
+    `offset + len(candidates) < total`; `offset >= total` yields
+    an empty window with `has_more: false`.
+    """
+    total = len(candidates)
+    window = candidates[offset : offset + limit]
+    return NextOutput(
+        candidates=tuple(window),
+        pagination=NextPagination(
+            offset=offset,
+            limit=limit,
+            total=total,
+            has_more=offset + len(window) < total,
+        ),
+    )
+
+
+def _output_payload(*, output: NextOutput) -> dict[str, Any]:
+    """Shape the NextOutput dataclass into the wire payload dict.
+
+    Candidate dicts omit the `target` key when the dataclass
+    field is None (the schema marks `target` optional; emitting
+    `"target": null` would violate `type: string`).
+    """
+    candidates: list[dict[str, Any]] = []
+    for candidate in output.candidates:
+        item: dict[str, Any] = {
+            "action": candidate.action,
+            "reason": candidate.reason,
+            "urgency": candidate.urgency,
+        }
+        if candidate.target is not None:
+            item["target"] = candidate.target
+        candidates.append(item)
+    return {
+        "candidates": candidates,
+        "pagination": {
+            "offset": output.pagination.offset,
+            "limit": output.pagination.limit,
+            "total": output.pagination.total,
+            "has_more": output.pagination.has_more,
+        },
+    }

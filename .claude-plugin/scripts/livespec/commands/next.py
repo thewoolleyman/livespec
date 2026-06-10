@@ -12,34 +12,28 @@
 # ignore markers attached to the offending argument's line below.
 """Next sub-command supervisor.
 
-Per `SPECIFICATION/contracts.md` §"`/livespec-core:next`
-spec-side thin-transport skill" + §"Wrapper CLI surface": a
-pure-function-of-file-state ranker over the spec-side queue
-state. Reads `<spec-target>/proposed_changes/` (count of
-in-flight proposals + oldest `created_at` from each proposal's
-restricted-YAML front-matter) and `<spec-target>/history/`
-(count of `vNNN/` version directories), and emits a
-`next_output.schema.json`-conforming JSON payload on stdout
-with `{action, reason, urgency}`. No LLM in the ranking path;
-no impl-side store reads (cross-side composition is the
-project-local orchestration layer's job per `spec.md` §"Three-
-layer orchestration architecture").
+Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
+thin-transport skill" → §"Wrapper CLI flags" + §"Output schema"
++ §"Ranker semantics": a pure-function-of-file-state ranker over
+the spec-side queue state. Reads `<spec-target>/proposed_changes/`
+(one entry per pending proposal, with `created_at` from each
+proposal's restricted-YAML front-matter) and
+`<spec-target>/history/` (count of `vNNN/` version directories),
+enumerates ALL ripe candidates, and emits a
+`next_output.schema.json`-conforming JSON payload on stdout with
+top-level `candidates` (array of `{action, reason, urgency,
+target?}`) and `pagination` (`{offset, limit, total, has_more}`).
+No LLM in the ranking path; no impl-side store reads (cross-side
+composition is the project-local orchestration layer's job per
+`spec.md` §"Three-layer orchestration architecture").
 
-Ranking heuristic (MVP — doctor-cache integration deferred to a
-follow-on once the cache format is formalized via propose-
-change):
-
-- Non-empty Proposed Changes queue → action=`revise`. Urgency
-  rolls up via two axes (queue depth and oldest-proposal age):
-  count ≥ 3 OR oldest ≥ 7 days → `high`; count == 2 OR oldest
-  ≥ 1 day → `medium`; otherwise `low`. The two axes are OR-ed
-  so either a deep queue OR a long-stale single proposal lifts
-  urgency.
-- Empty queue AND ≥ `_PRUNE_HISTORY_THRESHOLD` unpruned history
-  versions → action=`prune-history`, urgency=`low`. The threshold
-  is set conservatively so the recommendation surfaces only when
-  history accretion is substantial.
-- Empty queue AND short history → action=`none`, urgency=`low`.
+In addition to the §"Wrapper CLI surface" flags, the wrapper
+accepts `--limit <count>` (positive integer, default 5) and
+`--offset <count>` (non-negative integer, default 0); a
+non-positive limit or negative offset exits 2 (UsageError). The
+candidate enumeration, urgency bucketing, sorting, and pagination
+live in the sibling `_next_ranking` module; an empty `candidates`
+array is the no-work signal.
 
 `build_parser()` is the pure argparse factory per style doc
 §"CLI argument parsing seam"; `main()` is the supervisor that
@@ -66,13 +60,15 @@ from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
 from livespec.commands._next_ranking import (
-    _collect_oldest_age_days,
-    _rank,
+    _collect_proposal_ages,
+    _enumerate_candidates,
+    _output_payload,
+    _paginate,
 )
-from livespec.errors import LivespecError, PreconditionError, ValidationError
+from livespec.errors import LivespecError, PreconditionError, UsageError, ValidationError
 from livespec.io import cli, fs
 from livespec.parse import front_matter, jsonc
-from livespec.schemas.dataclasses.next_output import NextOutput
+from livespec.schemas.dataclasses.next_output import NextCandidate, NextOutput
 from livespec.validate import next_output as validate_next_output_module
 
 __all__: list[str] = ["build_parser", "main"]
@@ -81,22 +77,27 @@ __all__: list[str] = ["build_parser", "main"]
 _SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
 _NEXT_OUTPUT_SCHEMA_PATH = _SCHEMAS_DIR / "next_output.schema.json"
 _PROPOSED_CHANGES_README = "README.md"
+_DEFAULT_LIMIT = 5
+_DEFAULT_OFFSET = 0
 
 
 def build_parser() -> argparse.ArgumentParser:
     """Construct the next argparse parser without parsing.
 
-    Per `SPECIFICATION/contracts.md` §"Wrapper CLI surface":
-    `--project-root <path>` (default `Path.cwd()`) and
-    `--spec-target <path>` (defaults to
-    `<project-root>/SPECIFICATION/` when omitted).
-    `exit_on_error=False` lets argparse signal errors via
-    `argparse.ArgumentError` rather than `SystemExit`, per style
-    doc §"CLI argument parsing seam".
+    Per `SPECIFICATION/contracts.md` §"Wrapper CLI surface" +
+    §"Wrapper CLI flags": `--project-root <path>` (default
+    `Path.cwd()`), `--spec-target <path>` (defaults to
+    `<project-root>/SPECIFICATION/` when omitted),
+    `--limit <count>` (default 5), and `--offset <count>`
+    (default 0). `exit_on_error=False` lets argparse signal
+    errors via `argparse.ArgumentError` rather than `SystemExit`,
+    per style doc §"CLI argument parsing seam".
     """
     parser = argparse.ArgumentParser(prog="next", exit_on_error=False)
     _ = parser.add_argument("--project-root", default=None)
     _ = parser.add_argument("--spec-target", default=None)
+    _ = parser.add_argument("--limit", type=int, default=_DEFAULT_LIMIT)
+    _ = parser.add_argument("--offset", type=int, default=_DEFAULT_OFFSET)
     return parser
 
 
@@ -116,6 +117,31 @@ def _resolve_spec_target(*, namespace: argparse.Namespace, project_root: Path) -
     if namespace.spec_target is None:
         return project_root / "SPECIFICATION"
     return Path(namespace.spec_target)
+
+
+def _validate_window_flags(
+    *,
+    namespace: argparse.Namespace,
+) -> IOResult[tuple[int, int], LivespecError]:
+    """Gate --offset/--limit values per §"Wrapper CLI flags".
+
+    Returns `IOSuccess((offset, limit))` when both are in range.
+    A non-positive `--limit` or negative `--offset` lifts a
+    UsageError (exit 2) naming the offending flag and value;
+    non-integer values never reach here (argparse's int
+    conversion fails at the parse_argv seam, also exit 2).
+    """
+    limit = int(namespace.limit)
+    offset = int(namespace.offset)
+    if limit < 1:
+        return IOResult.from_failure(
+            UsageError(f"next: --limit must be a positive integer, got {limit}"),
+        )
+    if offset < 0:
+        return IOResult.from_failure(
+            UsageError(f"next: --offset must be a non-negative integer, got {offset}"),
+        )
+    return IOSuccess((offset, limit))
 
 
 def _proposal_paths(*, spec_target: Path) -> IOResult[list[Path], LivespecError]:
@@ -161,9 +187,11 @@ def _front_matter_to_io(
             assert_never(parse_result)  # pyright: ignore[reportArgumentType]
 
 
-def _proposal_created_at(*, path: Path) -> IOResult[str, LivespecError]:
-    """Read a proposal file and return its `created_at` ISO timestamp string.
+def _proposal_entry(*, path: Path) -> IOResult[tuple[str, str], LivespecError]:
+    """Read one proposal and return its `(target, created_at)` pair.
 
+    `target` is the spec-target-relative proposal path
+    (`proposed_changes/<name>.md`) per §"Output schema".
     Composes fs.read_text -> front_matter parse, then coerces
     the `created_at` field to `str` via `str(... or "")`. A
     missing key or `null` value becomes the empty string, which
@@ -176,7 +204,7 @@ def _proposal_created_at(*, path: Path) -> IOResult[str, LivespecError]:
     return (
         fs.read_text(path=path)
         .bind(lambda text: _front_matter_to_io(text=text, path=path))
-        .map(lambda fm: str(fm.get("created_at") or ""))
+        .map(lambda fm: (f"proposed_changes/{path.name}", str(fm.get("created_at") or "")))
     )
 
 
@@ -187,8 +215,8 @@ def _history_version_count(*, spec_target: Path) -> IOResult[int, LivespecError]
     directory; pruned-marker directories (containing
     `PRUNED_HISTORY.json`) still count toward the unpruned-
     against-threshold comparison — the marker is the previous
-    floor and the surviving versions sit above it. The MVP
-    ranker uses raw count; a future widening MAY subtract the
+    floor and the surviving versions sit above it. The ranker
+    uses raw count; a future widening MAY subtract the
     pruned-marker contribution.
     """
     return fs.list_dir(path=spec_target / "history").map(
@@ -216,6 +244,7 @@ def _validate_and_serialize(*, output: NextOutput) -> IOResult[str, LivespecErro
     a `ValidationError` (exit 4) before the supervisor writes a
     malformed payload to stdout.
     """
+    payload = _output_payload(output=output)
     return (
         fs.read_text(path=_NEXT_OUTPUT_SCHEMA_PATH)
         .bind(
@@ -224,34 +253,22 @@ def _validate_and_serialize(*, output: NextOutput) -> IOResult[str, LivespecErro
         .bind(
             lambda schema_dict: IOResult.from_result(  # pyright: ignore[reportArgumentType]
                 validate_next_output_module.validate_next_output(
-                    payload={
-                        "action": output.action,
-                        "reason": output.reason,
-                        "urgency": output.urgency,
-                    },
+                    payload=payload,
                     schema=schema_dict,
                 ),
             ),
         )
         .map(
-            lambda validated: json.dumps(
-                {
-                    "action": validated.action,
-                    "reason": validated.reason,
-                    "urgency": validated.urgency,
-                },
-                separators=(",", ":"),
-                sort_keys=True,
-            ),
+            lambda _validated: json.dumps(payload, separators=(",", ":"), sort_keys=True),
         )
     )
 
 
-def _collect_proposal_created_ats(
+def _collect_proposal_entries(
     *,
     paths: list[Path],
-) -> IOResult[list[str], LivespecError]:
-    """Read each proposal file and return its `created_at` value.
+) -> IOResult[list[tuple[str, str]], LivespecError]:
+    """Read each proposal file and return its `(target, created_at)` pair.
 
     Aggregates per-proposal IOResults via short-circuiting:
     the first failure halts iteration and propagates to the
@@ -259,9 +276,9 @@ def _collect_proposal_created_ats(
     `Fold.collect` but spelled out to keep the type annotations
     legible.
     """
-    out: list[str] = []
+    out: list[tuple[str, str]] = []
     for path in paths:
-        result = _proposal_created_at(path=path)
+        result = _proposal_entry(path=path)
         unwrapped = unsafe_perform_io(result)  # pyright: ignore[reportArgumentType]
         match unwrapped:
             case Success(value):
@@ -294,12 +311,13 @@ def _verify_spec_target(*, spec_target: Path) -> IOResult[Path, LivespecError]:
 def _rank_pipeline(
     *,
     spec_target: Path,
-) -> IOResult[NextOutput, LivespecError]:
-    """Compose the file-state reads into a NextOutput.
+) -> IOResult[list[NextCandidate], LivespecError]:
+    """Compose the file-state reads into the ranked candidate list.
 
     Sequence: verify spec target → list proposal paths → read
-    each proposal's `created_at` → count history versions →
-    compute oldest age → pure rank → final NextOutput.
+    each proposal's `(target, created_at)` → count history
+    versions → compute per-proposal ages → pure candidate
+    enumeration + sort.
 
     Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
     thin-transport skill": the ranker is a pure function of
@@ -310,16 +328,15 @@ def _rank_pipeline(
         _verify_spec_target(spec_target=spec_target)
         .bind(lambda _path: _proposal_paths(spec_target=spec_target))
         .bind(
-            lambda paths: _collect_proposal_created_ats(paths=paths).bind(
-                lambda created_ats: _history_version_count(spec_target=spec_target).bind(
+            lambda paths: _collect_proposal_entries(paths=paths).bind(
+                lambda entries: _history_version_count(spec_target=spec_target).bind(
                     lambda history_count: IOResult.from_result(
-                        _collect_oldest_age_days(
-                            created_ats=created_ats,
+                        _collect_proposal_ages(
+                            entries=entries,
                             now=_now_utc(),
                         ).map(
-                            lambda oldest_age_days: _rank(
-                                proposal_count=len(created_ats),
-                                oldest_age_days=oldest_age_days,
+                            lambda proposal_ages: _enumerate_candidates(
+                                proposal_ages=proposal_ages,
                                 history_version_count=history_count,
                             ),
                         ),
@@ -339,22 +356,29 @@ def _emit_payload(*, payload: str) -> IOResult[str, LivespecError]:
 def main(*, argv: list[str] | None = None) -> int:
     """Next supervisor entry point. Returns the exit code.
 
-    Threads argv through parse_argv → resolve spec-target →
-    file-state reads → rank → schema-validate → JSON-serialize →
-    stdout emit. Failure(LivespecError) lifts via err.exit_code;
-    Success exits 0 after the JSON payload + trailing newline
-    is written.
+    Threads argv through parse_argv → window-flag gate → resolve
+    spec-target → file-state reads → candidate enumeration →
+    pagination → schema-validate → JSON-serialize → stdout emit.
+    Failure(LivespecError) lifts via err.exit_code; Success
+    exits 0 after the JSON payload + trailing newline is
+    written.
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
     parse_result = cli.parse_argv(parser=parser, argv=resolved_argv)
     railway: IOResult[str, LivespecError] = parse_result.bind(
-        lambda namespace: _rank_pipeline(  # pyright: ignore[reportArgumentType]
-            spec_target=_resolve_spec_target(
-                namespace=namespace,
-                project_root=_resolve_project_root(namespace=namespace),
+        lambda namespace: _validate_window_flags(namespace=namespace).bind(  # pyright: ignore[reportArgumentType]
+            lambda window: _rank_pipeline(
+                spec_target=_resolve_spec_target(
+                    namespace=namespace,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            ).bind(
+                lambda candidates: _validate_and_serialize(
+                    output=_paginate(candidates=candidates, offset=window[0], limit=window[1]),
+                ),
             ),
-        ).bind(lambda output: _validate_and_serialize(output=output)),
+        ),
     ).bind(
         lambda payload: _emit_payload(payload=payload),  # pyright: ignore[reportArgumentType]
     )
