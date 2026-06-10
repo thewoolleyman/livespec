@@ -22,7 +22,7 @@
     "status": {
       "type": "string",
       "enum": ["pass", "fail", "skipped", "warn"],
-      "description": "Outcome. 'pass' = check ran and asserted invariant holds; 'fail' = check ran and detected a violation (triggers exit 3); 'skipped' = bootstrap-lenience (v014 N3) or content-aware skip per the static-check-semantics deferred entry; 'warn' = check ran and detected a productivity-grade housekeeping nudge that the user should address but that does NOT lift the wrapper exit (reserved for cleanup invariants like `no-stale-gap-tied`, `no-stale-merged-branch`, `no-stale-merged-pr-branch`, `no-stale-worktree`, and the optional pinned-tag drift check)."
+      "description": "Outcome. 'pass' = check ran and asserted invariant holds; 'fail' = check ran and detected a violation (triggers exit 3); 'skipped' = bootstrap-lenience (v014 N3) or content-aware skip per the static-check-semantics deferred entry; 'warn' = check ran and detected a productivity-grade housekeeping nudge that the user should address but that does NOT lift the wrapper exit (reserved for cleanup invariants like `no-stale-merged-branch`, `no-stale-merged-pr-branch`, `no-stale-worktree`, and the optional pinned-tag drift check)."
     },
     "message": {
       "type": "string",

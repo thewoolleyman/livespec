@@ -191,42 +191,6 @@ via the `/livespec-orchestrate` invocation argument:
       — to remove the just-merged sub-agent worktree (its branch
       is now remote-gone). See §"Worktree hygiene (reaper)".
 
-      **Live work-item enforcement at the `/livespec:doctor` gate.**
-      The six cross-boundary work-item integrity invariants
-      (`no-orphan-dependency`, `no-stalled-epic`,
-      `no-duplicate-gap-id`, `no-stale-gap-tied`,
-      `depends_on-ref-wellformedness`, `unresolved-spec-commitment`)
-      acquire their work-items by invoking the active impl-plugin's
-      `list-work-items` wrapper (per livespec `contracts.md`
-      §"Doctor cross-boundary invariants" → "Work-item integrity
-      invariants — plugin-agnostic data acquisition"). For these
-      invariants to RUN live (pass/fail/warn) rather than skip, the
-      `/livespec:doctor` invocation MUST be run with
-      `LIVESPEC_IMPL_LIST_WORK_ITEMS` pointing at the active impl-
-      plugin's wrapper PLUS the per-tenant beads connection in the
-      environment — the SAME env the §"Cross-repo state aggregation"
-      read-path already establishes (source the mode-600
-      `tenant-secrets.env.local`, export `BEADS_DOLT_PASSWORD` for
-      the repo's tenant, export `LIVESPEC_BD_PATH=/usr/local/bin/bd`,
-      and run from `cwd=/data/projects/<repo>` so `bd` reads
-      `.beads/{config.yaml,metadata.json}`). Reuse that section's
-      recipe verbatim; do not duplicate it. Concretely, prefix the
-      doctor run with:
-
-      ```bash
-      # env already sourced per §"Cross-repo state aggregation":
-      #   set -a; . .../tenant-secrets.env.local; set +a
-      #   export LIVESPEC_BD_PATH=/usr/local/bin/bd
-      #   export BEADS_DOLT_PASSWORD="$(eval echo \"\$BEADS_DOLT_PASSWORD_$(echo $repo | tr '.-' '__')\")"
-      #   cd /data/projects/$repo
-      export LIVESPEC_IMPL_LIST_WORK_ITEMS=/data/projects/livespec-impl-beads/.claude-plugin/scripts/bin/list_work_items.py
-      ```
-
-      When `LIVESPEC_IMPL_LIST_WORK_ITEMS` is unset (e.g. a hermetic
-      CI run), the six invariants `skip` cleanly — that is the
-      intended no-regression default; the live janitor gate is where
-      they ENFORCE.
-
    d. **Journal.** Append one record to the iteration journal
       (§"Iteration journal" below) capturing pick, dispatched
       skill, sub-agent outcome (PR URL / commit SHA / rollback),

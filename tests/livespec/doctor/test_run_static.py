@@ -237,18 +237,12 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-anchor-reference-resolution",
         "doctor-out-of-band-edits",
         "doctor-accept-decision-snapshot-consistency",
-        "doctor-no-stalled-epic",
-        "doctor-no-orphan-dependency",
-        "doctor-no-duplicate-gap-id",
-        "doctor-no-stale-gap-tied",
-        "doctor-depends_on-ref-wellformedness",
         "doctor-no-stale-merged-branch",
         "doctor-no-stale-merged-pr-branch",
         "doctor-no-stale-worktree",
         "doctor-copier-template-workflow-coverage",
         "doctor-master-direct-uncommitted-spec-edits",
         "doctor-parent-proposed-change-resolves",
-        "doctor-unresolved-spec-commitment",
         "doctor-wiring-completeness-cross-repo",
     }
     sub_spec_check_ids = {
@@ -291,22 +285,6 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             assert (
                 finding["status"] == "skipped"
             ), f"expected skipped for {finding['check_id']} in non-git fixture; got {finding}"
-        elif finding["check_id"] in (
-            "doctor-no-stalled-epic",
-            "doctor-no-orphan-dependency",
-            "doctor-no-duplicate-gap-id",
-            "doctor-no-stale-gap-tied",
-            "doctor-depends_on-ref-wellformedness",
-            "doctor-unresolved-spec-commitment",
-        ):
-            # These cross-boundary work-item invariants require
-            # .livespec.jsonc to declare an impl-plugin in the v1 supported
-            # set (livespec-impl-plaintext); this test fixture's minimal
-            # .livespec.jsonc omits the implementation block, so the checks
-            # correctly skip.
-            assert (
-                finding["status"] == "skipped"
-            ), f"expected skipped for {finding['check_id']} in fixture without impl-plugin; got {finding}"
         elif finding["check_id"] in (
             # doctor-wiring-completeness-cross-repo requires .livespec.jsonc to
             # declare a `cross_repo_targets` block, which this fixture's minimal

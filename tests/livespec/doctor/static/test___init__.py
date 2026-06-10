@@ -18,6 +18,17 @@ that author `livespec/doctor/static/<check_name>.py` modules will
 add per-check tests under `tests/livespec/doctor/static/test_
 <check_name>.py` (one-to-one mirror pairing) and re-register
 each new module in the registry as consumer pressure pulls it in.
+
+Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
+invariants": doctor's entire cross-boundary job is wiring
+soundness. Doctor MUST NOT inspect gaps, work-items, dependency
+graphs, memos, or any other orchestrator-private state. The
+semantic work-item invariants formerly registered here
+(`no-stalled-epic`, `no-orphan-dependency`, `no-duplicate-gap-id`,
+`no-stale-gap-tied`, `depends_on-ref-wellformedness`,
+`unresolved-spec-commitment`) and their work-item-provider
+acquisition seam are retired from the shipped catalogue; the
+absence tests below pin that contract.
 """
 
 from __future__ import annotations
@@ -60,6 +71,56 @@ def test_applicability_by_tree_kind_maps_main_to_all_eight_checks() -> None:
     assert APPLICABILITY_BY_TREE_KIND["main"] == STATIC_CHECKS
 
 
+def test_registry_excludes_retired_cross_boundary_work_item_invariants() -> None:
+    """The registry carries NONE of the retired work-item invariants.
+
+    Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
+    invariants": "Doctor MUST NOT inspect gaps, work-items,
+    dependency graphs, memos, or any other orchestrator-private
+    state — those disciplines are owned by the orchestrator."
+    The catalogue comprises `config-named-cli-callability` plus
+    the repo-tier invariants; the six semantic work-item
+    invariants are retired from the shipped catalogue.
+    """
+    from livespec.doctor.static import STATIC_CHECKS
+
+    retired = {
+        "doctor-no-stalled-epic",
+        "doctor-no-orphan-dependency",
+        "doctor-no-duplicate-gap-id",
+        "doctor-no-stale-gap-tied",
+        "doctor-depends_on-ref-wellformedness",
+        "doctor-unresolved-spec-commitment",
+    }
+    slugs = {check_module.SLUG for check_module in STATIC_CHECKS}
+    still_registered = slugs & retired
+    assert not still_registered, f"retired invariants still registered: {still_registered}"
+
+
+def test_work_items_provider_acquisition_seam_is_removed() -> None:
+    """The work-item-provider acquisition seam is gone from the doctor.
+
+    The retired invariants acquired orchestrator-private
+    work-items through `_work_items_provider.resolve_provider_path`
+    (the `LIVESPEC_IMPL_LIST_WORK_ITEMS` env seam) threaded via
+    `DoctorContext.work_items_provider`. Per
+    `SPECIFICATION/contracts.md` §"Doctor cross-boundary
+    invariants" doctor no longer reads any orchestrator-private
+    state, so both the module and the context field MUST be gone.
+    """
+    import importlib.util
+    from dataclasses import fields
+
+    from livespec.context import DoctorContext
+
+    provider_spec = importlib.util.find_spec(
+        "livespec.doctor.static._work_items_provider",
+    )
+    assert provider_spec is None, "_work_items_provider module must be deleted"
+    field_names = {field.name for field in fields(DoctorContext)}
+    assert "work_items_provider" not in field_names
+
+
 def test_every_static_check_slug_is_a_checkid_newtype() -> None:
     """Every check module exposes `SLUG` as a `CheckId` NewType.
 
@@ -93,7 +154,7 @@ def test_every_static_check_module_declares_hkt_erosion_pragma() -> None:
 
     Per li-xxjopf Step 3e: the returns-library bind chains that
     compose each static check's railway lose flow-narrowing
-    through pyright's strict mode, surfacing as
+    through pyright strict mode, surfacing as
     reportUnknownMemberType / reportUnknownVariableType /
     reportUnknownArgumentType diagnostics on most bind / map
     / lash call sites. The file-level pragma suppresses the
@@ -105,8 +166,8 @@ def test_every_static_check_module_declares_hkt_erosion_pragma() -> None:
 
     Coverage: every member of the canonical STATIC_CHECKS
     registry (one entry per registered check module) plus the
-    two private helper modules under the same package
-    (`_out_of_band_edits_writes`, `_no_orphan_dependency_helpers`).
+    private helper module under the same package
+    (`_out_of_band_edits_writes`).
     Newly registered checks inherit the contract automatically —
     they just need to declare the pragma like every existing
     sibling.
@@ -119,7 +180,6 @@ def test_every_static_check_module_declares_hkt_erosion_pragma() -> None:
 
     from livespec.doctor.static import (
         STATIC_CHECKS,
-        _no_orphan_dependency_helpers,
         _out_of_band_edits_writes,
         accept_decision_snapshot_consistency,
     )
@@ -131,7 +191,7 @@ def test_every_static_check_module_declares_hkt_erosion_pragma() -> None:
     )
     exempt_modules = (accept_decision_snapshot_consistency,)
     modules_to_check: list[object] = [m for m in STATIC_CHECKS if m not in exempt_modules]
-    modules_to_check.extend([_out_of_band_edits_writes, _no_orphan_dependency_helpers])
+    modules_to_check.append(_out_of_band_edits_writes)
     for module in modules_to_check:
         source = inspect.getsource(module)
         assert source.startswith(
