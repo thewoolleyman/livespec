@@ -25,7 +25,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "TODO",
-    "reason": "Landed in v063 (template-manifest-additional-files proposal accept). Test ID populated in the impl follow-up PR that bumps template_config.schema.json to v2, adds spec_files blocks to both built-in templates' template.json, and widens template_files_present.py + heading_coverage.py to consult the manifest."
+    "reason": "Landed in v063 (template-manifest-additional-files proposal accept); revised at v105 (Mermaid-first). The W0b PR landed the v2 template_config schema + spec_files manifest + the livespec-with-diagrams built-in (tests.livespec.validate.test_template_config covers the manifest wire semantics). Still TODO before the full-section test ID: widening template_files_present.py + heading_coverage.py to consult the manifest, and the revise-lifecycle render integration."
   },
   {
     "heading": "## Sub-command lifecycle",
@@ -94,8 +94,8 @@
     "heading": "## Template manifest wire contract",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v063. Test ID populated in the impl follow-up PR that bumps template_config.schema.json to v2 + paired dataclass + adds .livespec.jsonc render_commands schema."
+    "test": "tests.livespec.validate.test_template_config.test_validate_template_config_accepts_v2_with_spec_files",
+    "reason": "Landed in v063; implemented in the W0b PR (template_config.schema.json v2 + paired dataclass + .livespec.jsonc render_commands schema). The named test covers the v2 spec_files wire shape; siblings in the same module cover the derived_from cross-property invariant, multi-render-per-source, and the v1/v2 if-then-else; tests.livespec.validate.test_livespec_config covers the render_commands shape."
   },
   {
     "heading": "## Skill ↔ template JSON contracts",
