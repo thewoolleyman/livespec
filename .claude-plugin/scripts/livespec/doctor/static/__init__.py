@@ -40,6 +40,7 @@ from livespec.doctor.static import (
     accept_decision_snapshot_consistency,
     anchor_reference_resolution,
     bcp14_keyword_wellformedness,
+    config_named_cli_callability,
     copier_template_workflow_coverage,
     gherkin_blank_line_format,
     livespec_jsonc_valid,
@@ -67,6 +68,7 @@ TreeKind = Literal["main", "sub_spec"]
 
 STATIC_CHECKS = (
     livespec_jsonc_valid,
+    config_named_cli_callability,
     template_exists,
     template_files_present,
     proposed_changes_and_history_dirs,
