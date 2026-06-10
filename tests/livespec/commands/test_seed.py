@@ -225,8 +225,8 @@ def test_seed_main_preserves_existing_livespec_jsonc_with_compat_metadata(
         "// Pre-authored config with sibling-library scaffolding.\n"
         "{\n"
         '  "template": "livespec",\n'
-        '  "implementation": {"plugin": "livespec-impl-plaintext"},\n'
-        '  "livespec-impl-plaintext": {\n'
+        '  "implementation": {"plugin": "livespec-impl-git-jsonl"},\n'
+        '  "livespec-impl-git-jsonl": {\n'
         '    "format": "jsonl",\n'
         '    "compat": {\n'
         '      "livespec_core": ">=0.1.0,<1.0.0",\n'

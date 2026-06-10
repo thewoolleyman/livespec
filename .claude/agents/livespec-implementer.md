@@ -99,7 +99,7 @@ it with `--no-verify`.
 ## 4. Implementing a tracked work-item
 
 For a tracked work-item, invoke
-`/livespec-impl-plaintext:implement <work-item-id>` via the Skill tool.
+`/livespec-impl-beads:implement <work-item-id>` via the Skill tool.
 That skill COMPOSES with this contract — it does NOT replace it; you
 still own the worktree, the commit ritual, and the PR handoff in this
 prompt.
