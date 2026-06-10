@@ -34,8 +34,7 @@ field is optional). A spec_root with no PCs anywhere yields a
 single pass-Finding for the check.
 
 The supervisor surfaces one Finding per check per spec_root
-(per `livespec/doctor/run_static.py._run_one_check`); per the
-existing pattern in `no_orphan_dependency.py`, multiple
+(per `livespec/doctor/run_static.py._run_one_check`); multiple
 violations are aggregated into a single fail-Finding whose
 message enumerates each unresolved citation. The path field
 names the FIRST violating PC; the message lists every

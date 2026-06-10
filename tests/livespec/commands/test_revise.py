@@ -1654,21 +1654,21 @@ def test_revise_main_exits_3_when_post_step_doctor_reports_fail(
     """Post-step doctor fail-status finding -> exit 3 per spec contract.
 
     Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
-    → "`revise` payload validation": "Revise's post-step doctor
-    MUST run the `unresolved-spec-commitment` invariant against
-    the freshly-cut `vNNN/` snapshot." On `status: "fail"`, the
-    wrapper exits 3 per the existing exit-code table — per the
-    work-item description (li-f2dk3t): "the snapshot is already
-    cut by the time post-step runs; the exit 3 surfaces the
-    gap." This is SCENARIO 1 from the work-item brief tested at
-    the supervisor end-to-end (post-step fail path: revise cuts
-    vNNN, post-step fails on unresolved id_hint, exit 3
-    surfaced).
+    → "`revise` payload validation", the post-step doctor static
+    run against the freshly-cut `vNNN/` snapshot is the gating
+    point: on any `status: "fail"` finding, the wrapper exits 3
+    per the existing exit-code table — per the work-item
+    description (li-f2dk3t): "the snapshot is already cut by the
+    time post-step runs; the exit 3 surfaces the gap." This is
+    SCENARIO 1 from the work-item brief tested at the supervisor
+    end-to-end (post-step fail path: revise cuts vNNN, post-step
+    reports a fail-status finding, exit 3 surfaced).
 
     Fixture: minimal spec-target with v001 + a pending PC.
     `--post-step-doctor` is passed to gate the doctor invocation;
     the doctor subprocess is monkeypatched to return a fail
-    finding for `doctor-unresolved-spec-commitment`. The
+    finding for `doctor-version-contiguity` (any registered
+    static check's fail finding exercises the same fold). The
     supervisor pattern-matches the lifted PreconditionError to
     exit 3.
     """
@@ -1688,17 +1688,16 @@ def test_revise_main_exits_3_when_post_step_doctor_reports_fail(
     )
     revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
     fail_message = (
-        "unresolved-spec-commitment: 1 declared "
-        "spec_commitments.impl_followups[] id_hint(s) have no matching "
-        "work-item with spec_commitment_hint: alpha-hint (from v005/foo.md)"
+        "version-contiguity: history/ has a gap in the version "
+        "sequence: v001 is followed by v003 (v002 is missing)"
     )
     findings_payload = {
         "findings": [
             {
-                "check_id": "doctor-unresolved-spec-commitment",
+                "check_id": "doctor-version-contiguity",
                 "status": "fail",
                 "message": fail_message,
-                "path": "/tmp/work-items.jsonl",
+                "path": "history",
                 "line": None,
                 "spec_root": str(spec_target),
             },

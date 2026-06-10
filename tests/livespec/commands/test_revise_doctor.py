@@ -1,17 +1,17 @@
 """Tests for livespec.commands._revise_doctor.
 
 Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
-→ "`revise` payload validation": "Revise's post-step doctor
-MUST run the `unresolved-spec-commitment` invariant against
-the freshly-cut `vNNN/` snapshot." When any fail-status
-finding is reported, the supervisor lifts to exit 3 — the
-gating mechanism is `_fold_post_step_doctor_completed_process`
-folding fail-status findings to `IOFailure(PreconditionError)`.
+→ "`revise` payload validation", the post-step doctor static
+run against the freshly-cut `vNNN/` snapshot is the gating
+point. When any fail-status finding is reported, the supervisor
+lifts to exit 3 — the gating mechanism is
+`_fold_post_step_doctor_completed_process` folding fail-status
+findings to `IOFailure(PreconditionError)`.
 
 Per the work-item description (li-f2dk3t): "the snapshot is
 already cut by the time post-step runs; the exit 3 surfaces
-the gap and the user's corrective action is to file the
-declared work-items then re-run doctor to verify resolution."
+the gap" and the user's corrective action is to resolve the
+named findings, then re-run doctor to verify resolution.
 """
 
 from __future__ import annotations
@@ -133,21 +133,21 @@ def test_fold_post_step_doctor_returns_failure_on_non_list_findings(
             raise AssertionError(msg)
 
 
-def test_fold_post_step_doctor_returns_failure_on_unresolved_spec_commitment_fail(
+def test_fold_post_step_doctor_returns_failure_on_fail_status_finding(
     *,
     tmp_path: Path,
     capsys: object,
 ) -> None:
-    """Post-step fail on unresolved-spec-commitment lifts to Failure(PreconditionError).
+    """Post-step fail-status finding lifts to Failure(PreconditionError).
 
     Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
-    → "`revise` payload validation": when the `unresolved-spec-
-    commitment` invariant fires `fail`, the revise wrapper exits
-    3 — the post-step is the gating point.
+    → "`revise` payload validation": when any static check fires
+    `fail` during the post-step run, the revise wrapper exits 3 —
+    the post-step is the gating point.
 
     This is the SCENARIO 1 test from the brief: "Post-step fail
-    path (revise cuts vNNN, post-step fails on unresolved
-    id_hint, exit 3 surfaced)." Tested at the fold-helper layer
+    path (revise cuts vNNN, post-step reports a fail-status
+    finding, exit 3 surfaced)." Tested at the fold-helper layer
     so we don't need a full doctor subprocess invocation; the
     supervisor exit-code derivation is covered by the pattern-
     match in revise.py's _pattern_match_io_result.
@@ -160,15 +160,14 @@ def test_fold_post_step_doctor_returns_failure_on_unresolved_spec_commitment_fai
     findings_payload = {
         "findings": [
             {
-                "check_id": "doctor-unresolved-spec-commitment",
+                "check_id": "doctor-version-contiguity",
                 "status": "fail",
                 "message": (
-                    "unresolved-spec-commitment: 1 declared "
-                    "spec_commitments.impl_followups[] id_hint(s) have no "
-                    "matching work-item with spec_commitment_hint: "
-                    "alpha-hint (from v005/commitments.md)"
+                    "version-contiguity: history/ has a gap in the "
+                    "version sequence: v001 is followed by v003 "
+                    "(v002 is missing)"
                 ),
-                "path": "/tmp/work-items.jsonl",
+                "path": "history",
                 "line": None,
                 "spec_root": "/tmp/SPECIFICATION",
             },
@@ -199,7 +198,7 @@ def test_fold_post_step_doctor_returns_failure_on_unresolved_spec_commitment_fai
     # prose can narrate the findings to the user.
     captured = capsys.readouterr()
     assert (
-        "doctor-unresolved-spec-commitment" in captured.out
+        "doctor-version-contiguity" in captured.out
     ), "expected doctor stdout to be forwarded for SKILL.md narration"
 
 
@@ -213,9 +212,9 @@ def test_fold_post_step_doctor_returns_success_on_no_fail_findings(
     findings_payload = {
         "findings": [
             {
-                "check_id": "doctor-unresolved-spec-commitment",
+                "check_id": "doctor-version-contiguity",
                 "status": "pass",
-                "message": "unresolved-spec-commitment: every declared id_hint resolves",
+                "message": "version-contiguity: the version sequence is contiguous",
                 "path": None,
                 "line": None,
                 "spec_root": "/tmp/SPECIFICATION",
@@ -241,36 +240,32 @@ def test_fold_post_step_doctor_returns_success_on_no_fail_findings(
             raise AssertionError(msg)
 
 
-def test_fold_post_step_doctor_returns_success_when_supersession_exempts_id_hint(
+def test_fold_post_step_doctor_returns_success_on_descriptive_pass_message(
     *,
     tmp_path: Path,
 ) -> None:
-    """Supersession exemption: post-step pass when later PC supersedes earlier id_hint.
+    """Post-step pass with a long descriptive message folds to Success.
 
-    This is SCENARIO 2 from the brief: "Supersession exemption
-    (later vNNN with `supersedes[]` exempts previously-failing
-    id_hint)." Mirrors the unresolved-spec-commitment unit test
-    `test_passes_when_id_hint_is_superseded_in_a_later_version`
-    — at the doctor static layer that produces the pass finding,
-    the post-step fold returns Success.
-
-    The fixture simulates the doctor's stdout under the
-    supersession scenario: only a `pass` finding for
-    unresolved-spec-commitment. The post-step fold treats this
-    identically to any pass-status finding.
+    Historically this was SCENARIO 2 from the brief (the
+    supersession-exemption case of the since-retired
+    `unresolved-spec-commitment` invariant). The fold semantics
+    it pins remain load-bearing: a single `pass` finding — even
+    one carrying a long, multi-clause message — is treated
+    identically to any pass-status finding and the post-step
+    fold returns Success.
     """
     _ = tmp_path
     revise_input = _build_revise_input()
     findings_payload = {
         "findings": [
             {
-                "check_id": "doctor-unresolved-spec-commitment",
+                "check_id": "doctor-version-contiguity",
                 "status": "pass",
                 "message": (
-                    "unresolved-spec-commitment: every declared spec_commitments."
-                    "impl_followups[] id_hint resolves to a work-item with matching "
-                    "spec_commitment_hint or has been superseded "
-                    "(2 obligation(s) scanned)"
+                    "version-contiguity: every version directory in "
+                    "history/ follows its predecessor with no gaps, "
+                    "honoring the PRUNED_HISTORY.json marker exemption "
+                    "(5 version(s) scanned)"
                 ),
                 "path": None,
                 "line": None,
@@ -293,7 +288,7 @@ def test_fold_post_step_doctor_returns_success_when_supersession_exempts_id_hint
         case Success(returned):
             assert returned == revise_input
         case _:
-            msg = f"expected Success(RevisionInput) on supersession exemption, got {unwrapped!r}"
+            msg = f"expected Success(RevisionInput) on descriptive pass finding, got {unwrapped!r}"
             raise AssertionError(msg)
 
 
