@@ -1,21 +1,27 @@
 """Rule test for SPECIFICATION/contracts.md §"Plugin distribution".
 
 Asserts the on-disk plugin-bundle artifacts match the live spec's
-plugin-distribution contract:
+plugin-distribution contract, as realized after the Claude-binding
+extraction (the Phase-3 work the contract's packaging parenthetical
+anticipates — the `/livespec:*` SKILL.md bindings ship from the
+`livespec-driver-claude` Driver repo; core retains the harness-neutral
+prose, the reference CLIs, the schemas, and the templates):
 
 - `.claude-plugin/marketplace.json` exists at the repo-root path
   the spec mandates.
 - Marketplace name = `livespec`; single plugin entry name = `livespec`;
-  source = `.` (same directory as the marketplace catalog).
+  source = `./.claude-plugin` (the plugin-root directory).
 - `marketplace.json`'s plugin description duplicates `plugin.json`'s
   description verbatim (the SoT rule: `plugin.json` wins, marketplace
   duplicates manually for v1).
-- The seven `/livespec:*` slash commands the spec enumerates each have
-  a corresponding SKILL.md under `.claude-plugin/skills/<name>/SKILL.md`.
+- Each of the eight spec-side operations ships its harness-neutral
+  prose artifact at `.claude-plugin/prose/<name>.md` (the core half of
+  the prose + thin-binding decomposition).
+- Core ships NO `.claude-plugin/skills/` bindings — the Claude Code
+  Driver bindings live in the `livespec-driver-claude` repo.
 - The `.claude/skills` symlink is NOT present (its presence would cause
-  Claude Code to discover the plugin's skills as PROJECT-level without
-  the `livespec:` namespace prefix, which the spec mandates the plugin
-  exposes).
+  Claude Code to discover skills as PROJECT-level without the
+  `livespec:` namespace prefix).
 
 Paired with the `## Plugin distribution` heading registered in
 `tests/heading-coverage.json`.
@@ -35,16 +41,18 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 _PLUGIN_DIR = _REPO_ROOT / ".claude-plugin"
 _MARKETPLACE_JSON = _PLUGIN_DIR / "marketplace.json"
 _PLUGIN_JSON = _PLUGIN_DIR / "plugin.json"
+_PROSE_DIR = _PLUGIN_DIR / "prose"
 _SKILLS_DIR = _PLUGIN_DIR / "skills"
 _CLAUDE_SKILLS_SYMLINK = _REPO_ROOT / ".claude" / "skills"
 
-_SLASH_COMMANDS_PER_SPEC: tuple[str, ...] = (
+_OPERATIONS_PER_SPEC: tuple[str, ...] = (
     "seed",
     "propose-change",
     "critique",
     "revise",
     "doctor",
     "prune-history",
+    "next",
     "help",
 )
 
@@ -107,14 +115,34 @@ def test_marketplace_description_duplicates_plugin_json() -> None:
     )
 
 
-@pytest.mark.parametrize("command", _SLASH_COMMANDS_PER_SPEC)
-def test_skill_md_exists_for_each_slash_command(*, command: str) -> None:
-    """Each of the seven /livespec:* commands enumerated in the spec has a SKILL.md."""
-    skill_path = _SKILLS_DIR / command / "SKILL.md"
-    assert skill_path.is_file(), (
-        f'SPECIFICATION/contracts.md §"Plugin distribution" enumerates '
-        f"/livespec:{command}; missing SKILL.md at "
-        f"{skill_path.relative_to(_REPO_ROOT)}"
+@pytest.mark.parametrize("operation", _OPERATIONS_PER_SPEC)
+def test_prose_exists_for_each_operation(*, operation: str) -> None:
+    """Each of the eight spec-side operations ships its core prose artifact.
+
+    Per spec.md §"Contract + reference implementations architecture",
+    the harness-neutral driving prose is CORE's artifact; Drivers (e.g.
+    livespec-driver-claude) read it at runtime and bind it to their
+    agent runtime.
+    """
+    prose_path = _PROSE_DIR / f"{operation}.md"
+    assert prose_path.is_file(), (
+        f"core MUST retain the harness-neutral prose for {operation!r}; "
+        f"missing {prose_path.relative_to(_REPO_ROOT)}"
+    )
+
+
+def test_no_skill_bindings_in_core() -> None:
+    """Core ships NO Claude Code skill bindings post-extraction.
+
+    The `/livespec:*` SKILL.md bindings are Driver surface and ship from
+    the `livespec-driver-claude` repo (plugin `livespec@livespec-driver-claude`).
+    A reappearing `.claude-plugin/skills/` tree here would re-couple core
+    to one agent runtime and shadow the Driver's bindings.
+    """
+    assert not _SKILLS_DIR.exists(), (
+        f"{_SKILLS_DIR.relative_to(_REPO_ROOT)} exists; the Claude Code skill "
+        f"bindings were extracted to the livespec-driver-claude repo — add new "
+        f"bindings there, and keep core's plugin bundle binding-free."
     )
 
 
@@ -122,14 +150,15 @@ def test_claude_skills_symlink_absent() -> None:
     """`.claude/skills` MUST NOT be a symlink — it bypasses the plugin loader.
 
     A `.claude/skills` symlink (typically pointing at `../.claude-plugin/skills`)
-    causes Claude Code to discover the plugin's skills as PROJECT-level skills
-    (no `livespec:` namespace prefix), defeating the `/livespec:*` invocation
-    surface the spec mandates. The plugin must be loaded via the marketplace
-    install mechanism instead.
+    causes Claude Code to discover skills as PROJECT-level skills (no
+    `livespec:` namespace prefix), defeating the `/livespec:*` invocation
+    surface the spec mandates. The Driver plugin must be loaded via the
+    marketplace install mechanism instead.
     """
     assert not _CLAUDE_SKILLS_SYMLINK.is_symlink(), (
         f"{_CLAUDE_SKILLS_SYMLINK.relative_to(_REPO_ROOT)} is a symlink; remove it. "
-        f"The plugin's skills MUST be loaded via the marketplace install mechanism "
-        f"(`/plugin marketplace add ...` + `/plugin install livespec@livespec`) so "
+        f"The /livespec:* skills MUST be loaded via the marketplace install mechanism "
+        f"(`/plugin marketplace add thewoolleyman/livespec-driver-claude` + "
+        f"`/plugin install livespec@livespec-driver-claude`) so "
         f"they receive the `livespec:` namespace prefix per the spec."
     )

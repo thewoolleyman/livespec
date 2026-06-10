@@ -1,19 +1,30 @@
 # livespec
 
-A Claude Code plugin for governing a living natural-language
-specification — seeding, proposing changes, critiquing, revising,
-validating, and versioning.
+A system for governing a living natural-language specification —
+seeding, proposing changes, critiquing, revising, validating, and
+versioning. This repo is livespec CORE: the contract, the
+harness-neutral driving prose, the reference spec-side CLIs, the
+schemas, and the built-in templates. The interactive slash-command
+surface ships separately as a per-agent-runtime **Driver** plugin
+(the first is [livespec-driver-claude](https://github.com/thewoolleyman/livespec-driver-claude)
+for Claude Code).
 
 ## Install
+
+Two plugins — core (this repo: prose + CLIs + templates) and the
+Claude Code Driver (the `/livespec:*` commands):
 
 ```
 /plugin marketplace add thewoolleyman/livespec
 /plugin install livespec@livespec
+/plugin marketplace add thewoolleyman/livespec-driver-claude
+/plugin install livespec@livespec-driver-claude
 ```
 
 After install, restart Claude Code (or run `/reload-plugins`).
 The eight slash commands below become available with the
-`livespec:` namespace prefix.
+`livespec:` namespace prefix (the Driver plugin is deliberately
+named `livespec` to preserve the established surface).
 
 ## Slash commands
 
@@ -159,10 +170,14 @@ After cloning, run `just bootstrap` once. The target idempotently sets `livespec
 Two paths:
 
 - **Live-reload mode** (daily dev): launch Claude Code with
-  `claude --plugin-dir .` from the repo root. The plugin loads
-  directly from the local source; edits to `.claude-plugin/skills/<name>/SKILL.md`
+  `claude --plugin-dir .` from the repo root. The core plugin loads
+  directly from the local source; edits to `.claude-plugin/prose/<name>.md`
   and `.claude-plugin/scripts/...` are picked up via `/reload-plugins`
-  without re-installing.
+  without re-installing. (The Driver's SKILL.md bindings resolve a
+  local core checkout automatically when the governed project IS this
+  repo; edit the bindings themselves in the
+  [livespec-driver-claude](https://github.com/thewoolleyman/livespec-driver-claude)
+  repo.)
 - **Marketplace install path** (verifies the published flow):
   use the install commands above (or
   `/plugin marketplace add ./.claude-plugin/marketplace.json`
