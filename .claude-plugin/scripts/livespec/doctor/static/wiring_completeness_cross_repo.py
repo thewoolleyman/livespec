@@ -156,16 +156,23 @@ def _fetch_justfile_from_github(
 ) -> IOResult[str | None, LivespecError]:
     """Fetch `<repo>/justfile` at `default_branch` via the GitHub API.
 
-    Uses `gh api repos/<owner>/<name>/contents/justfile?ref=<branch>`
-    and base64-decodes the returned `content` field. Returns
-    `IOSuccess(<text>)` on the happy path, `IOSuccess(None)` on
-    any non-zero exit (gh not authenticated, repo private,
-    network down, justfile absent in repo).
+    Uses `gh api --method GET repos/<owner>/<name>/contents/justfile
+    -f ref=<branch>` and base64-decodes the returned `content`
+    field. Returns `IOSuccess(<text>)` on the happy path,
+    `IOSuccess(None)` on any non-zero exit (gh not authenticated,
+    repo private, network down, justfile absent in repo).
     """
     argv = [
         "gh",
         "api",
         f"repos/{identity.owner}/{identity.name}/contents/justfile",
+        # `--method GET` is load-bearing: `gh api` flips its default
+        # method to POST whenever a `-f` field flag is present, and
+        # POST on the contents endpoint is the create-file call
+        # (answers 404 on this read). The contents endpoint stays at
+        # argv[2] — the position consumers index on.
+        "--method",
+        "GET",
         "-f",
         f"ref={default_branch}",
     ]

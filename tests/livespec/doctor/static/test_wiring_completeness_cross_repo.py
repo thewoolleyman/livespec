@@ -1892,3 +1892,70 @@ def test_env_var_override_makes_path_a_resolve_via_env_root(
         spec_root=str(spec_root),
     )
     assert result == IOSuccess(expected)
+
+
+def test_fetch_justfile_from_github_forces_explicit_get_method(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Path B's `gh api` argv MUST carry an explicit GET method pin.
+
+    `gh api <endpoint> -f key=value` switches the default HTTP
+    method from GET to POST whenever a field flag is present;
+    `POST /repos/<owner>/<name>/contents/justfile` is the
+    create-file endpoint and answers 404, so the fallback silently
+    failed on every invocation (masked for as long as Path A's
+    local clone resolved). The argv MUST pin the method with an
+    adjacent `--method GET` pair, and the contents endpoint MUST
+    stay at argv[2] (the position the gh fake in this suite — and
+    any consumer matching on it — indexes).
+    """
+    canonical = _get_canonical_slugs()
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "sibling-a": {
+                "github_url": "https://github.com/example/sibling-a",
+                "default_branch": "master",
+            },
+        },
+    )
+    justfile_text = _make_justfile_text(slugs=canonical)
+    captured: list[list[str]] = []
+
+    def fake_run_subprocess(
+        *,
+        argv: list[str],
+        cwd: Path | None = None,
+    ) -> IOResult[subprocess.CompletedProcess[str], Any]:
+        _ = cwd
+        captured.append(argv)
+        return IOResult.from_value(
+            _completed(stdout=_gh_contents_payload(justfile_text=justfile_text)),
+        )
+
+    monkeypatch.setattr(io_proc, "run_subprocess", fake_run_subprocess)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = wiring_completeness_cross_repo.run(ctx=ctx)
+    assert captured, "gh api was never invoked"
+    argv = captured[0]
+    assert argv[0] == "gh"
+    assert argv[1] == "api"
+    assert argv[2] == "repos/example/sibling-a/contents/justfile"
+    assert "--method" in argv, f"argv lacks an explicit method pin: {argv}"
+    method_index = argv.index("--method")
+    assert argv[method_index + 1] == "GET", f"method is not GET: {argv}"
+    expected = Finding(
+        check_id="doctor-wiring-completeness-cross-repo",
+        status="pass",
+        message=(
+            "wiring-completeness-cross-repo: every registered sibling's "
+            "`check` aggregate wires every canonical slug"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
