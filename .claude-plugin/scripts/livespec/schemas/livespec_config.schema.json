@@ -8,7 +8,7 @@
   "properties": {
     "template": {
       "type": "string",
-      "description": "Active template — built-in name (e.g. 'livespec', 'minimal') or path-as-string to a custom template directory relative to the project root.",
+      "description": "Active template — built-in name (e.g. 'livespec', 'livespec-with-diagrams', 'minimal') or path-as-string to a custom template directory relative to the project root.",
       "default": "livespec"
     },
     "template_format_version": {

@@ -85,6 +85,30 @@ def test_resolve_template_emits_bundle_path_for_builtin_minimal(
     assert path.is_dir()
 
 
+def test_resolve_template_emits_bundle_path_for_builtin_livespec_with_diagrams(
+    *,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--template livespec-with-diagrams → resolves to the bundled v2 template directory.
+
+    The third built-in template name (alongside `livespec` and
+    `minimal`). Ships the v2 spec_files manifest with the
+    Mermaid-first seeded spec files plus the PlantUML
+    escape-hatch source + rendered SVG pair demonstrating the
+    diagram_source / diagram_rendered file kinds.
+    """
+    exit_code = resolve_template.main(argv=["--template", "livespec-with-diagrams"])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    line = captured.out.rstrip("\n")
+    path = Path(line)
+    assert path.is_absolute()
+    assert path.name == "livespec-with-diagrams"
+    assert path.parent.name == "specification-templates"
+    assert path.is_dir()
+    assert (path / "template.json").is_file()
+
+
 def test_resolve_template_resolves_user_path_with_template_json(
     *,
     capsys: pytest.CaptureFixture[str],
