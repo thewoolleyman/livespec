@@ -156,6 +156,86 @@ exit code is `0` (NOT an error).
    resolution CLI, then read the prompt file) and works
    uniformly for built-in and custom templates.
 
+2.5. **Survey in-flight spec work (in-flight-survey
+   narration).** Per SPECIFICATION/spec.md
+   §"`propose-change` skill-prose responsibilities", BEFORE
+   the change-authoring dialogue begins (i.e., before
+   Step 3), surface every piece of concurrent in-flight
+   spec design work:
+
+   (a) **Remote propose-change branches.** Refresh remote
+   refs (`git fetch <remote>`), then enumerate every remote
+   branch matching the project's propose-change branch
+   prefix (default `spec/*`), e.g.
+   `git ls-remote --heads <remote> 'spec/*'` or
+   `git branch -r --list '<remote>/spec/*'` after the
+   fetch.
+
+   (b) **Open spec-touching pull requests.** Query the
+   project's code-hosting service (e.g. `gh pr list
+   --state open --json number,title,headRefName,files`)
+   for every open pull request whose diff touches the
+   spec tree — any changed file under `<spec-root>/`.
+
+   For each surfaced item (branch or PR), narrate one
+   informational line carrying: the canonical topic slug
+   when derivable (the branch-name remainder after the
+   prefix, or a canonicalized form of the PR title;
+   omit when not derivable) plus a brief characterization
+   of which spec sections the item touches (from the
+   branch's diff against the default branch or the PR's
+   changed-file list — e.g. "touches `spec.md`
+   §'Sub-command lifecycle' and `contracts.md`"). When
+   the survey finds nothing, narrate a single line saying
+   no in-flight spec work was detected, so the user knows
+   the survey ran.
+
+   **Degraded-survey tolerance.** Network failures —
+   `git fetch` or the pull-request query exiting non-zero,
+   missing auth, the hosting CLI being absent, no network —
+   MUST be surfaced as a degraded-survey warning naming
+   what failed (e.g. "in-flight survey degraded: `git
+   fetch` failed; remote branches and open PRs were not
+   surveyed — concurrent spec work may exist that this
+   session cannot see") and MUST NOT block propose-change;
+   continue to Step 2.6 with whatever portion of the
+   survey succeeded.
+
+   This cross-branch + open-PR visibility is symmetric to
+   the in-tree stale-pending-proposal narration in the
+   revise prose (which surfaces local-FS pending state);
+   together the two narrations close the loop between
+   revise-time and propose-change-time visibility of
+   in-flight design work. The narration MUST NOT gate the
+   CLI (the propose-change CLI runs regardless), MUST NOT
+   add any pre-step or post-step doctor check, and MUST
+   NOT block downstream CLI invocations — its sole purpose
+   is in-flight-design-drift prevention.
+
+2.6. **Capture alignment intent.** For each in-flight item
+   surfaced in Step 2.5, elicit the user's intended
+   relationship between the new proposal and that item —
+   exactly one of:
+
+   - **align** — the new proposal conforms to the
+     in-flight design;
+   - **modify-to-accommodate** — the new proposal
+     partially supersedes the in-flight design; capture
+     an explicit rationale for what is superseded and
+     why;
+   - **explicitly supersede** — the new proposal replaces
+     the in-flight design; the in-flight branch SHOULD be
+     closed/abandoned upstream (note this to the user —
+     closing it is upstream housekeeping, not this
+     operation's job).
+
+   The captured alignment intent feeds the propose-change
+   template prompt as steering context for the authoring
+   dialogue (Step 5); it is NOT serialized into the
+   resulting proposed-change findings JSON. When Step 2.5
+   surfaced zero items (or the survey was fully degraded),
+   skip this step.
+
 3. **Capture user intent.** Ask the user: "What change do you
    want to propose? Describe the intent — what should the spec
    say differently, and why." Capture free-text intent. The
@@ -172,7 +252,11 @@ exit code is `0` (NOT an error).
    the `<topic>` positional argument.
 
 5. **Generate findings JSON.** Run the propose-change prompt
-   against the user-described intent. The prompt MUST emit
+   against the user-described intent, including any
+   alignment intent captured in Step 2.6 as steering
+   context (so the authored proposal aligns with,
+   accommodates, or supersedes the surfaced in-flight
+   designs as the user directed). The prompt MUST emit
    JSON conforming to `proposal_findings.schema.json`:
    top-level `findings[]` array, each entry carrying `name`,
    `target_spec_files`, `summary`, `motivation`, and
