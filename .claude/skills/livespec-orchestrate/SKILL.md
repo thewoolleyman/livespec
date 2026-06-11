@@ -277,11 +277,18 @@ The driver MUST halt (write resume snapshot + exit) when:
    Write a one-paragraph resume snapshot naming the next concrete
    step from which to resume, then exit cleanly.
 
-4. **Destructive ops not pre-authorized.** Force-push, branch
-   delete on shared infrastructure, schema migration without prior
-   sign-off, etc. Per `feedback_plan_prescribed_ops_dont_need_auth`,
-   ops codified in `scope-file` are pre-authorized; ops outside
-   that scope require user judgment.
+4. **Destructive ops not pre-authorized.** Force-push to SHARED or
+   PROTECTED refs (master, release branches, any ref another agent
+   or human is building on), branch delete on shared
+   infrastructure, schema migration without prior sign-off, etc.
+   The force-push prohibition scopes to shared/protected refs ONLY:
+   rewriting an UNMERGED feature branch the dispatching agent owns
+   (e.g., `git push --force-with-lease` after rewriting the branch
+   into the Red→Green commit shape to fix RGR-shape CI failures) is
+   the PRESCRIBED remedy, not a destructive op, and needs no halt.
+   Per `feedback_plan_prescribed_ops_dont_need_auth`, ops codified
+   in `scope-file` are pre-authorized; ops outside that scope
+   require user judgment.
 
 5. **Phase-boundary advance — DEFAULT halt with explicit opt-out.**
    Per `feedback_phase_advance_is_pr_boundary`, a Phase N → N+1 PR

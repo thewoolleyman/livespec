@@ -129,7 +129,7 @@ check:
     # load-bearing safety net.
     read -ra skip_targets <<< "{{skip}}"
     targets=(
-        # ---- Canonical block (38 slugs, alphabetical) ----
+        # ---- Canonical block (39 slugs, alphabetical) ----
         check-aggregate-completeness
         check-all-declared
         check-assert-never-exhaustiveness
@@ -148,6 +148,7 @@ check:
         check-master-ci-green
         check-match-keyword-only
         check-newtype-domain-primitives
+        check-no-direct-destructive-cli
         check-no-direct-tool-invocation
         check-no-except-outside-io
         check-no-inheritance
@@ -484,6 +485,16 @@ check-heading-coverage:
 
 check-vendor-manifest:
     uv run python -m livespec_dev_tooling.checks.vendor_manifest
+
+# Destructive-default CLI wrapping gate (SPECIFICATION/
+# non-functional-requirements.md §"Destructive-default CLI wrapping"):
+# greps the agent-facing trees (dev-tooling/, .claude-plugin/,
+# .claude/plugins/) for direct invocations of known-destructive-default
+# CLIs (bd init, git push --force/-f, git reset --hard, gh repo delete)
+# outside the explicit `[tool.livespec_dev_tooling].
+# destructive_cli_allowlist` path-prefix allowlist.
+check-no-direct-destructive-cli:
+    uv run python -m livespec_dev_tooling.checks.no_direct_destructive_cli
 
 check-no-direct-tool-invocation:
     uv run python -m livespec_dev_tooling.checks.no_direct_tool_invocation
