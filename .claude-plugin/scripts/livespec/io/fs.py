@@ -22,7 +22,7 @@ from returns.io import IOResult, impure_safe
 
 from livespec.errors import LivespecError, PreconditionError
 
-__all__: list[str] = ["list_dir", "move", "read_text", "rmtree", "write_text"]
+__all__: list[str] = ["list_dir", "move", "read_text", "rmtree", "stat_mtime", "write_text"]
 
 
 @impure_safe(exceptions=(OSError,))
@@ -125,6 +125,26 @@ def move(*, source: Path, target: Path) -> IOResult[None, LivespecError]:
     """
     return _raw_move(source=source, target=target).alt(
         lambda exc: PreconditionError(f"fs.move: {exc}"),
+    )
+
+
+@impure_safe(exceptions=(OSError,))
+def _raw_stat_mtime(*, path: Path) -> float:
+    """Decorator-lifted call into pathlib's stat for the mtime field."""
+    return path.stat().st_mtime
+
+
+def stat_mtime(*, path: Path) -> IOResult[float, LivespecError]:
+    """Read `path`'s modification time (epoch seconds) on the IO track.
+
+    FileNotFoundError lifts to PreconditionError (exit 3) per the
+    canonical mapping at the io boundary. Consumer: the
+    diagram-source-rendered-drift doctor check compares a rendered
+    output's mtime against its diagram_source's mtime (the
+    spec-sanctioned cheap drift proxy).
+    """
+    return _raw_stat_mtime(path=path).alt(
+        lambda exc: PreconditionError(f"fs.stat_mtime: {exc}"),
     )
 
 
