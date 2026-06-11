@@ -221,3 +221,36 @@ def test_fs_rmtree_returns_precondition_error_on_missing_path(
             raise AssertionError(
                 f"expected IOFailure(PreconditionError), got {result!r}",
             )
+
+
+def test_fs_stat_mtime_returns_iosuccess_with_mtime(*, tmp_path: Path) -> None:
+    """stat_mtime returns the file's modification time on the IO track.
+
+    Consumer: the diagram-source-rendered-drift doctor check
+    compares a rendered output's mtime against its source's mtime
+    (the spec-sanctioned cheap drift proxy). Pins the value against
+    an explicitly-set os.utime so the assertion is deterministic.
+    """
+    import os
+
+    target = tmp_path / "example.svg"
+    _ = target.write_text("<svg/>\n", encoding="utf-8")
+    os.utime(target, (1_500_000_000, 1_500_000_000))
+    result = fs.stat_mtime(path=target)
+    assert result == IOSuccess(1_500_000_000.0)
+
+
+def test_fs_stat_mtime_returns_precondition_error_on_missing_file(
+    *,
+    tmp_path: Path,
+) -> None:
+    """stat_mtime on a missing path lifts to PreconditionError (exit 3)."""
+    missing = tmp_path / "no-such-file.svg"
+    io_result = fs.stat_mtime(path=missing)
+    unwrapped = unsafe_perform_io(io_result)
+    match unwrapped:
+        case Failure(PreconditionError() as err):
+            assert "fs.stat_mtime" in str(err)
+        case _:
+            msg = f"expected Failure(PreconditionError), got {unwrapped}"
+            raise AssertionError(msg)

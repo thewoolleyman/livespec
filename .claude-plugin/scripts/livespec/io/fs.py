@@ -22,7 +22,15 @@ from returns.io import IOResult, impure_safe
 
 from livespec.errors import LivespecError, PreconditionError
 
-__all__: list[str] = ["list_dir", "move", "read_text", "rmtree", "write_text"]
+__all__: list[str] = [
+    "copy_file",
+    "list_dir",
+    "move",
+    "read_text",
+    "rmtree",
+    "stat_mtime",
+    "write_text",
+]
 
 
 @impure_safe(exceptions=(OSError,))
@@ -125,6 +133,54 @@ def move(*, source: Path, target: Path) -> IOResult[None, LivespecError]:
     """
     return _raw_move(source=source, target=target).alt(
         lambda exc: PreconditionError(f"fs.move: {exc}"),
+    )
+
+
+@impure_safe(exceptions=(OSError,))
+def _raw_copy_file(*, source: Path, target: Path) -> None:
+    """Decorator-lifted byte-identical copy via shutil.copyfile.
+
+    Parent directories of the target are created on demand so the
+    revise render/snapshot stages can copy into nested
+    `history/vNNN/diagrams/` paths without a separate mkdir stage.
+    `shutil.copyfile` is binary-safe (no text decode), which the
+    rendered-artifact copies require.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _ = shutil.copyfile(source, target)
+
+
+def copy_file(*, source: Path, target: Path) -> IOResult[None, LivespecError]:
+    """Copy `source` to `target` byte-identically; return IOSuccess(None).
+
+    OSError (source missing, permission denied) lifts to
+    PreconditionError (exit 3). Consumers: the revise render
+    lifecycle (staged rendered outputs into the spec tree) and the
+    manifest-aware history snapshot (subdirectory spec files, which
+    may be binary rendered artifacts).
+    """
+    return _raw_copy_file(source=source, target=target).alt(
+        lambda exc: PreconditionError(f"fs.copy_file: {exc}"),
+    )
+
+
+@impure_safe(exceptions=(OSError,))
+def _raw_stat_mtime(*, path: Path) -> float:
+    """Decorator-lifted call into pathlib's stat for the mtime field."""
+    return path.stat().st_mtime
+
+
+def stat_mtime(*, path: Path) -> IOResult[float, LivespecError]:
+    """Read `path`'s modification time (epoch seconds) on the IO track.
+
+    FileNotFoundError lifts to PreconditionError (exit 3) per the
+    canonical mapping at the io boundary. Consumer: the
+    diagram-source-rendered-drift doctor check compares a rendered
+    output's mtime against its diagram_source's mtime (the
+    spec-sanctioned cheap drift proxy).
+    """
+    return _raw_stat_mtime(path=path).alt(
+        lambda exc: PreconditionError(f"fs.stat_mtime: {exc}"),
     )
 
 
