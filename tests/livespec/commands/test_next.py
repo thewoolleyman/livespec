@@ -29,6 +29,9 @@ from typing import Any
 
 import pytest
 from livespec.commands import next as next_command
+from livespec.commands._next_ranking import _threshold_from_config_text
+from livespec.errors import PreconditionError
+from returns.result import Failure
 
 __all__: list[str] = []
 
@@ -663,6 +666,206 @@ def test_next_emits_schema_conformant_json(
 
     validator = fastjsonschema.compile(schema)
     _ = validator(payload)
+
+
+def _write_livespec_config(*, root: Path, body: str) -> None:
+    """Write `<root>/.livespec.jsonc` verbatim for the threshold tests.
+
+    The next wrapper reads `next.prune_history_threshold` from the
+    project-root-level `.livespec.jsonc` on each invocation per
+    `SPECIFICATION/contracts.md` §"`.livespec.jsonc` configuration".
+    """
+    (root / ".livespec.jsonc").write_text(body, encoding="utf-8")
+
+
+def test_next_lowered_threshold_config_triggers_prune_history(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """`next.prune_history_threshold: 5` + 5 versions → prune-history.
+
+    Per §"`.livespec.jsonc` configuration": the wrapper MUST read
+    the key on each invocation; a project MAY lower the threshold
+    to surface pruning sooner. Five history versions would never
+    trip the default threshold of 20, so the candidate appearing
+    proves the configured value is read and applied.
+    """
+    target = _make_spec_target(root=tmp_path)
+    _make_history_versions(target=target, count=5)
+    _write_livespec_config(
+        root=tmp_path,
+        body='{"next": {"prune_history_threshold": 5}}',
+    )
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["pagination"]["total"] == 1
+    assert payload["candidates"][0]["action"] == "prune-history"
+
+
+def test_next_raised_threshold_config_defers_prune_history(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """`next.prune_history_threshold: 30` + 25 versions → no candidates.
+
+    Per §"`.livespec.jsonc` configuration": a project MAY raise
+    the threshold to defer prune-history recommendations on
+    long-lived specs. Twenty-five versions trips the default of
+    20, so an empty candidates array proves the configured value
+    overrides the default.
+    """
+    target = _make_spec_target(root=tmp_path)
+    _make_history_versions(target=target, count=25)
+    _write_livespec_config(
+        root=tmp_path,
+        body='{"next": {"prune_history_threshold": 30}}',
+    )
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["candidates"] == []
+
+
+def test_next_non_positive_threshold_config_returns_3(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`next.prune_history_threshold: 0` → exit 3 (PreconditionError).
+
+    Pinned verbatim by §"`.livespec.jsonc` configuration": "a
+    non-positive value MUST cause the wrapper to exit `3` with a
+    `PreconditionError` naming the offending key and value."
+    """
+    _ = _make_spec_target(root=tmp_path)
+    _write_livespec_config(
+        root=tmp_path,
+        body='{"next": {"prune_history_threshold": 0}}',
+    )
+    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
+    assert exit_code == 3
+
+
+def test_next_non_integer_threshold_config_returns_3(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`next.prune_history_threshold: "20"` (a string) → exit 3.
+
+    Per §"`.livespec.jsonc` configuration": "The key value MUST
+    be a positive integer" — a string value is a
+    non-positive-integer value and takes the same exit-3
+    PreconditionError channel as a non-positive integer.
+    """
+    _ = _make_spec_target(root=tmp_path)
+    _write_livespec_config(
+        root=tmp_path,
+        body='{"next": {"prune_history_threshold": "20"}}',
+    )
+    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
+    assert exit_code == 3
+
+
+def test_next_boolean_threshold_config_returns_3(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`next.prune_history_threshold: true` → exit 3.
+
+    JSON `true` parses to Python `bool`, which is an `int`
+    subclass — without an explicit bool gate it would silently
+    coerce to threshold 1. The contract requires a positive
+    integer, and a boolean is not one.
+    """
+    _ = _make_spec_target(root=tmp_path)
+    _write_livespec_config(
+        root=tmp_path,
+        body='{"next": {"prune_history_threshold": true}}',
+    )
+    exit_code = next_command.main(argv=["--project-root", str(tmp_path)])
+    assert exit_code == 3
+
+
+def test_next_threshold_failure_names_key_and_value() -> None:
+    """A rejected threshold's PreconditionError names the key and value.
+
+    Pinned verbatim by §"`.livespec.jsonc` configuration": the
+    PreconditionError must name "the offending key and value" so
+    the user can locate and fix the config entry without
+    spelunking the wrapper source.
+    """
+    result = _threshold_from_config_text(
+        text='{"next": {"prune_history_threshold": -3}}',
+    )
+    match result:
+        case Failure(PreconditionError() as err):
+            assert "next.prune_history_threshold" in str(err)
+            assert "-3" in str(err)
+        case _:
+            msg = f"expected Failure(PreconditionError), got {result!r}"
+            raise AssertionError(msg)
+
+
+def test_next_threshold_key_absent_in_next_section_defaults_to_20(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """A `next` section without the key falls back to the default of 20.
+
+    Per §"`.livespec.jsonc` configuration": "When the key is
+    absent, the wrapper MUST fall back to a default value of
+    `20`." Exactly 20 versions sits on the trigger boundary, so
+    the prune-history candidate appearing proves the default
+    applied.
+    """
+    target = _make_spec_target(root=tmp_path)
+    _make_history_versions(target=target, count=20)
+    _write_livespec_config(root=tmp_path, body='{"next": {}}')
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["pagination"]["total"] == 1
+    assert payload["candidates"][0]["action"] == "prune-history"
+
+
+def test_next_threshold_section_not_object_defaults_to_20(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """A non-object `next` value means the key is absent → default 20.
+
+    A top-level `next` key holding a scalar carries no
+    `prune_history_threshold` member, so the key-absent fallback
+    of §"`.livespec.jsonc` configuration" applies rather than the
+    exit-3 channel (which is reserved for a present-but-invalid
+    threshold value).
+    """
+    target = _make_spec_target(root=tmp_path)
+    _make_history_versions(target=target, count=25)
+    _write_livespec_config(root=tmp_path, body='{"next": 7}')
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["pagination"]["total"] == 1
+    assert payload["candidates"][0]["action"] == "prune-history"
+
+
+def test_next_malformed_livespec_config_defaults_to_20(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """Malformed `.livespec.jsonc` is treated as key-absent → default 20.
+
+    Mirrors the prune-history wrapper's
+    `_resolve_skip_from_config_text` precedent: the
+    `livespec_jsonc_valid` doctor check is the dedicated
+    mechanism for surfacing malformed configs; the next wrapper's
+    body-level concern is only the threshold resolution, so a
+    parse failure collapses to the key-absent default.
+    """
+    target = _make_spec_target(root=tmp_path)
+    _make_history_versions(target=target, count=25)
+    _write_livespec_config(root=tmp_path, body='{"next": {"prune_history_')
+    payload = _run_and_load(capsys=capsys, argv=["--project-root", str(tmp_path)])
+    assert payload["pagination"]["total"] == 1
+    assert payload["candidates"][0]["action"] == "prune-history"
 
 
 def test_next_module_declares_hkt_erosion_pragma() -> None:

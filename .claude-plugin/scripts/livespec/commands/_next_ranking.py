@@ -18,7 +18,9 @@ count reaches the threshold), sorts by action tier
 descending, then `target` lexicographic, and applies
 offset/limit last to produce the returned slice.
 
-Stages: ISO age parsing (`_raw_fromisoformat`,
+Stages: threshold extraction from the `.livespec.jsonc` body
+(`_threshold_from_config_text`, per §"`.livespec.jsonc`
+configuration"), ISO age parsing (`_raw_fromisoformat`,
 `_parse_iso_age_days`), per-proposal age aggregation
 (`_collect_proposal_ages`), candidate enumeration + sorting
 (`_revise_urgency`, `_enumerate_candidates`), pagination
@@ -30,9 +32,10 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from returns.result import Result, Success, safe
+from returns.result import Failure, Result, Success, safe
 
 from livespec.errors import LivespecError, PreconditionError
+from livespec.parse import jsonc
 from livespec.schemas.dataclasses.next_output import (
     NextCandidate,
     NextOutput,
@@ -54,6 +57,7 @@ __all__: list[str] = [
     "_parse_iso_age_days",
     "_raw_fromisoformat",
     "_revise_urgency",
+    "_threshold_from_config_text",
 ]
 
 
@@ -61,6 +65,11 @@ HIGH_URGENCY_COUNT_THRESHOLD = 3
 MEDIUM_URGENCY_COUNT_THRESHOLD = 2
 HIGH_URGENCY_AGE_DAYS = 7.0
 MEDIUM_URGENCY_AGE_DAYS = 1.0
+# Default per `SPECIFICATION/contracts.md` §"`.livespec.jsonc`
+# configuration": applies when `next.prune_history_threshold` is
+# absent from the project's `.livespec.jsonc` (or the config file
+# itself is absent). A present key overrides it per invocation via
+# `_threshold_from_config_text`.
 PRUNE_HISTORY_THRESHOLD = 20
 
 # Sort tier per action, per §"`prune-history` ordering invariant":
@@ -79,6 +88,37 @@ ACTION_TIER: dict[str, int] = {
 
 # Urgency descending: high sorts before medium sorts before low.
 URGENCY_RANK: dict[str, int] = {"high": 0, "medium": 1, "low": 2}
+
+
+def _threshold_from_config_text(*, text: str) -> Result[int, LivespecError]:
+    """Extract `next.prune_history_threshold` from a `.livespec.jsonc` body.
+
+    Per `SPECIFICATION/contracts.md` §"`.livespec.jsonc`
+    configuration": the key value MUST be a positive integer; a
+    present-but-non-positive-integer value (including a boolean —
+    a `bool` is an `int` subclass that would otherwise coerce
+    silently) yields `Failure(PreconditionError)` naming the
+    offending key and value, which the supervisor lifts to exit
+    3. When the key is absent the default
+    `PRUNE_HISTORY_THRESHOLD` (20) applies. Malformed JSONC is
+    treated as key-absent defensively — `livespec_jsonc_valid`
+    is the dedicated doctor mechanism for surfacing malformed
+    configs (mirrors the prune-history wrapper's
+    `_resolve_skip_from_config_text` precedent).
+    """
+    parsed: dict[str, object] = jsonc.loads(text=text).value_or({})
+    section = parsed.get("next")
+    if not isinstance(section, dict) or "prune_history_threshold" not in section:
+        return Success(PRUNE_HISTORY_THRESHOLD)
+    value = section["prune_history_threshold"]
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        return Failure(
+            PreconditionError(
+                "next: .livespec.jsonc key next.prune_history_threshold "
+                f"must be a positive integer, got {value!r}",
+            ),
+        )
+    return Success(value)
 
 
 @safe(exceptions=(ValueError,))
@@ -161,16 +201,20 @@ def _enumerate_candidates(
     *,
     proposal_ages: list[tuple[str, float]],
     history_version_count: int,
+    prune_history_threshold: int = PRUNE_HISTORY_THRESHOLD,
 ) -> list[NextCandidate]:
     """Enumerate ALL ripe candidates, sorted per §"Ranker semantics".
 
     One `revise` candidate per pending proposal (target = the
     spec-target-relative proposal path) plus one `prune-history`
-    candidate when the history version count reaches the
-    threshold (no target — pruning addresses a version range).
-    Sort key: action tier (prune-history strictly last), urgency
-    descending, then target lexicographic. An empty result IS
-    the no-work signal.
+    candidate when the history version count reaches
+    `prune_history_threshold` (no target — pruning addresses a
+    version range). The threshold is resolved per invocation from
+    `.livespec.jsonc`'s `next.prune_history_threshold` key by the
+    supervisor (default `PRUNE_HISTORY_THRESHOLD` when absent,
+    per §"`.livespec.jsonc` configuration"). Sort key: action
+    tier (prune-history strictly last), urgency descending, then
+    target lexicographic. An empty result IS the no-work signal.
     """
     proposal_count = len(proposal_ages)
     candidates = [
@@ -185,7 +229,7 @@ def _enumerate_candidates(
         )
         for target, age_days in proposal_ages
     ]
-    if history_version_count >= PRUNE_HISTORY_THRESHOLD:
+    if history_version_count >= prune_history_threshold:
         candidates.append(
             NextCandidate(
                 action="prune-history",
