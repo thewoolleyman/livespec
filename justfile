@@ -326,7 +326,12 @@ check-pre-commit:
     staged=$(git diff --cached --name-only --diff-filter=AM)
     py_staged=$(echo "$staged" | grep -E '\.py$' || true)
     test_staged=$(echo "$staged" | grep -E '^tests/.*\.py$' || true)
-    impl_staged=$(echo "$staged" | grep -E '^(\.claude-plugin/scripts/livespec|\.claude-plugin/scripts/bin|dev-tooling/checks)/.*\.py$' || true)
+    # `dev-tooling` (the whole tree, not just `dev-tooling/checks/`)
+    # mirrors the red_green_replay check module's _IMPL_PREFIXES:
+    # top-level dev-tooling tools (reap_stale_worktrees.py,
+    # git_hook_wrapper.py) are impl too, and must trigger the same
+    # Red-/Green-shape handling as dev-tooling/checks/ members.
+    impl_staged=$(echo "$staged" | grep -E '^(\.claude-plugin/scripts/livespec|\.claude-plugin/scripts/bin|dev-tooling)/.*\.py$' || true)
     test_count=0
     impl_count=0
     [[ -n "$test_staged" ]] && test_count=$(echo "$test_staged" | wc -l)
