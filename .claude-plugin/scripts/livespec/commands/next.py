@@ -30,10 +30,15 @@ composition is the project-local orchestration layer's job per
 In addition to the §"Wrapper CLI surface" flags, the wrapper
 accepts `--limit <count>` (positive integer, default 5) and
 `--offset <count>` (non-negative integer, default 0); a
-non-positive limit or negative offset exits 2 (UsageError). The
-candidate enumeration, urgency bucketing, sorting, and pagination
-live in the sibling `_next_ranking` module; an empty `candidates`
-array is the no-work signal.
+non-positive limit or negative offset exits 2 (UsageError). Per
+§"`.livespec.jsonc` configuration" the wrapper reads
+`next.prune_history_threshold` from the project root's
+`.livespec.jsonc` on each invocation (positive integer; default
+20 when absent; exit 3 with a PreconditionError naming the
+offending key and value otherwise). The candidate enumeration,
+urgency bucketing, sorting, and pagination live in the sibling
+`_next_ranking` module; an empty `candidates` array is the
+no-work signal.
 
 `build_parser()` is the pure argparse factory per style doc
 §"CLI argument parsing seam"; `main()` is the supervisor that
@@ -60,10 +65,12 @@ from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
 from livespec.commands._next_ranking import (
+    PRUNE_HISTORY_THRESHOLD,
     _collect_proposal_ages,
     _enumerate_candidates,
     _output_payload,
     _paginate,
+    _threshold_from_config_text,
 )
 from livespec.errors import LivespecError, PreconditionError, UsageError, ValidationError
 from livespec.io import cli, fs
@@ -308,16 +315,42 @@ def _verify_spec_target(*, spec_target: Path) -> IOResult[Path, LivespecError]:
     return IOSuccess(spec_target)
 
 
+def _resolve_prune_history_threshold(
+    *,
+    project_root: Path,
+) -> IOResult[int, LivespecError]:
+    """Resolve the prune-history threshold per §"`.livespec.jsonc` configuration".
+
+    Reads `<project-root>/.livespec.jsonc` on each invocation. A
+    missing config file means the key is absent, so the default
+    `PRUNE_HISTORY_THRESHOLD` (20) applies; a present file is
+    read and the pure `_threshold_from_config_text` extraction
+    yields either the configured positive integer or
+    `Failure(PreconditionError)` naming the offending key and
+    value (exit 3 at the supervisor) on a
+    non-positive-integer value.
+    """
+    config_path = project_root / ".livespec.jsonc"
+    if not config_path.is_file():
+        return IOSuccess(PRUNE_HISTORY_THRESHOLD)
+    return fs.read_text(path=config_path).bind(
+        lambda text: IOResult.from_result(_threshold_from_config_text(text=text)),
+    )
+
+
 def _rank_pipeline(
     *,
     spec_target: Path,
+    prune_history_threshold: int,
 ) -> IOResult[list[NextCandidate], LivespecError]:
     """Compose the file-state reads into the ranked candidate list.
 
     Sequence: verify spec target → list proposal paths → read
     each proposal's `(target, created_at)` → count history
     versions → compute per-proposal ages → pure candidate
-    enumeration + sort.
+    enumeration + sort. `prune_history_threshold` is the
+    per-invocation value resolved from `.livespec.jsonc` by
+    `_resolve_prune_history_threshold`.
 
     Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
     thin-transport skill": the ranker is a pure function of
@@ -338,6 +371,7 @@ def _rank_pipeline(
                             lambda proposal_ages: _enumerate_candidates(
                                 proposal_ages=proposal_ages,
                                 history_version_count=history_count,
+                                prune_history_threshold=prune_history_threshold,
                             ),
                         ),
                     ),
@@ -353,12 +387,45 @@ def _emit_payload(*, payload: str) -> IOResult[str, LivespecError]:
     return IOSuccess(payload)
 
 
+def _ranked_payload(
+    *,
+    namespace: argparse.Namespace,
+    window: tuple[int, int],
+) -> IOResult[str, LivespecError]:
+    """Resolve config + spec target, then rank, paginate, and serialize.
+
+    Composes the per-invocation `.livespec.jsonc` threshold read
+    (`next.prune_history_threshold` per §"`.livespec.jsonc`
+    configuration") with the file-state rank pipeline so the
+    supervisor's bind chain in `main()` stays shallow. `window`
+    is the validated `(offset, limit)` pair from
+    `_validate_window_flags`.
+    """
+    project_root = _resolve_project_root(namespace=namespace)
+    spec_target = _resolve_spec_target(namespace=namespace, project_root=project_root)
+    return (
+        _resolve_prune_history_threshold(project_root=project_root)
+        .bind(
+            lambda threshold: _rank_pipeline(
+                spec_target=spec_target,
+                prune_history_threshold=threshold,
+            ),
+        )
+        .bind(
+            lambda candidates: _validate_and_serialize(
+                output=_paginate(candidates=candidates, offset=window[0], limit=window[1]),
+            ),
+        )
+    )
+
+
 def main(*, argv: list[str] | None = None) -> int:
     """Next supervisor entry point. Returns the exit code.
 
     Threads argv through parse_argv → window-flag gate → resolve
-    spec-target → file-state reads → candidate enumeration →
-    pagination → schema-validate → JSON-serialize → stdout emit.
+    `.livespec.jsonc` threshold → resolve spec-target →
+    file-state reads → candidate enumeration → pagination →
+    schema-validate → JSON-serialize → stdout emit.
     Failure(LivespecError) lifts via err.exit_code; Success
     exits 0 after the JSON payload + trailing newline is
     written.
@@ -368,16 +435,7 @@ def main(*, argv: list[str] | None = None) -> int:
     parse_result = cli.parse_argv(parser=parser, argv=resolved_argv)
     railway: IOResult[str, LivespecError] = parse_result.bind(
         lambda namespace: _validate_window_flags(namespace=namespace).bind(  # pyright: ignore[reportArgumentType]
-            lambda window: _rank_pipeline(
-                spec_target=_resolve_spec_target(
-                    namespace=namespace,
-                    project_root=_resolve_project_root(namespace=namespace),
-                ),
-            ).bind(
-                lambda candidates: _validate_and_serialize(
-                    output=_paginate(candidates=candidates, offset=window[0], limit=window[1]),
-                ),
-            ),
+            lambda window: _ranked_payload(namespace=namespace, window=window),
         ),
     ).bind(
         lambda payload: _emit_payload(payload=payload),  # pyright: ignore[reportArgumentType]
