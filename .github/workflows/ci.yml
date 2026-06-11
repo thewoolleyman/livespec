@@ -131,6 +131,20 @@ jobs:
           - check-heading-coverage
           - check-vendor-manifest
           - check-no-direct-tool-invocation
+          # check-no-direct-destructive-cli greps the agent-facing trees
+          # for direct destructive-default CLI invocations
+          # (SPECIFICATION/non-functional-requirements.md
+          # §"Destructive-default CLI wrapping") so a violation fails CI.
+          - check-no-direct-destructive-cli
+          # check-red-green-replay (no-arg) validates the COMMIT RANGE
+          # origin/master..HEAD — every non-merge commit touching product
+          # impl .py must carry EITHER the TDD-Red-*/TDD-Green-* pair
+          # shape OR the TDD-Suite-Green-* green-verified shape,
+          # regardless of subject prefix (livespec-dev-tooling v0.11.0
+          # commit-range mode). It runs unconditionally: on zero-.py PRs
+          # the range carries no product .py and trivially passes; on
+          # master pushes the range is empty.
+          - check-red-green-replay
           - check-copier-template-smoke
           - check-tools
           - check-doctor-static
@@ -145,6 +159,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history for ALL matrix entries: the
+          # check-red-green-replay range validation enumerates
+          # origin/master..HEAD and needs origin/master plus the merge
+          # base in the clone — a fetch-depth: 1 checkout would make
+          # the base unresolvable and fail the check actionably (it
+          # never silently passes). Cheap for this repo; harmless for
+          # the other metadata entries.
+          fetch-depth: 0
 
       # The shared livespec-dev-tooling commit-refuse-hook check
       # verifies that `.git/hooks/pre-commit` and `.git/hooks/pre-push`

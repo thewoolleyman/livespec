@@ -70,7 +70,7 @@ dev = [
 # SPECIFICATION/contracts.md §"`livespec_runtime.cross_repo` contract
 # surface". Bump-pin PRs follow the same shape as livespec-dev-tooling.
 [tool.uv.sources]
-livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.10.0" }
+livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.11.0" }
 livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.git", tag = "v0.3.0" }
 
 # ---------------------------------------------------------------------------
@@ -86,8 +86,20 @@ livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.gi
 # coverage" (v098, epic li-scetier). `tests.bin` is included
 # deliberately — livespec's one tests.bin scenario entry is the phase-3
 # round-trip/integration test, legitimately integration-tier.
+#
+# `destructive_cli_allowlist` is the path-prefix exemption list for the
+# shared `check-no-direct-destructive-cli` (livespec-dev-tooling
+# v0.11.0): entries below DOCUMENT destructive-default CLI behavior
+# (research notes / observed-state blueprints about `bd init`) rather
+# than instructing an agent to invoke one. Authority:
+# SPECIFICATION/non-functional-requirements.md §"Destructive-default
+# CLI wrapping".
 [tool.livespec_dev_tooling]
 scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.consumer", "tests.bin"]
+destructive_cli_allowlist = [
+    "dev-tooling/implementation/gap_blueprints.json",
+    "dev-tooling/implementation/research/",
+]
 
 # ---------------------------------------------------------------------------
 # Ruff — sole linter, formatter, import-sorter, complexity checker.
