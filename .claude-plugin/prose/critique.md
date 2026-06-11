@@ -115,10 +115,13 @@ and exit code is `0` (NOT an error).
 ## Steps
 
 1. **Resolve the active template.** Run the template-resolution
-   CLI (core reference `bin/resolve_template.py`; no
-   `--template` flag — uses the standard `.livespec.jsonc`
-   upward walk). Capture the resolved template directory path
-   from stdout.
+   CLI (core reference `bin/resolve_template.py`) with
+   `--template <name>`, where `<name>` is the value of
+   `.livespec.jsonc`'s `template` field (or the per-tree
+   `template_name` when `--spec-target` names a sub-spec
+   tree). The flag is required per SPECIFICATION/contracts.md
+   §"Wrapper CLI surface". Capture the resolved template
+   directory path from stdout.
 
 2. **Read the critique prompt.** Read
    `<resolved-path>/prompts/critique.md`. Use its contents

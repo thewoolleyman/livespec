@@ -146,15 +146,18 @@ exit code is `0` (NOT an error).
 2. **Resolve the chosen template (pre-seed dispatch; v017 Q2).**
    Run the template-resolution CLI (core reference
    `bin/resolve_template.py`) with `--project-root .
-   --template <chosen>`. The `--template` flag bypasses the
-   `.livespec.jsonc` upward walk (which does not exist yet)
-   and resolves built-in names (`livespec`, `minimal`) to the
-   bundle's `specification-templates/<name>/` path or treats
-   any other value as a path relative to `--project-root`.
-   Capture the resolved absolute template directory path from
-   stdout. This is seed's only deviation from the standard
-   template-resolution contract — every other operation runs
-   the template-resolution CLI WITHOUT `--template`.
+   --template <chosen>`. `--template` is a required flag for
+   every operation (per SPECIFICATION/contracts.md §"Wrapper
+   CLI surface"); it resolves built-in names (`livespec`,
+   `livespec-with-diagrams`, `minimal`) to the bundle's
+   `specification-templates/<name>/` path or treats any other
+   value as a path relative to `--project-root`. Capture the
+   resolved absolute template directory path from stdout.
+   Seed's deviation from the other operations is the SOURCE
+   of the name: seed passes the user's chosen value directly
+   because `.livespec.jsonc` does not exist yet; every other
+   operation passes the `template` value read from
+   `.livespec.jsonc`.
 
 3. **Read the seed prompt.** Read
    `<resolved-path>/prompts/seed.md`. Use its contents as the
