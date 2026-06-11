@@ -31,9 +31,8 @@ lifecycle".
   work on next on the spec side", "what's the next spec
   move", or otherwise asks for the most ripe spec-side
   action against the current queue + history state.
-- A composing loop driver (e.g. livespec's repo-local
-  cross-repo orchestration driver — non-contract working
-  tooling per `SPECIFICATION/spec.md` §"Contract + reference
+- A composing loop driver (non-contract working tooling
+  per `SPECIFICATION/spec.md` §"Contract + reference
   implementations architecture" → "No required cross-repo
   loop driver") calls this operation as one of the `next`
   primitives it composes (the other being the active
@@ -64,43 +63,12 @@ is `0` (NOT an error).
 
 ## Steps
 
-1. **Surface the loop-driver discoverability nudge.** On
-   direct user invocation (the user invoked the next
-   operation directly or asked for the next spec-side
-   move in plain language), before invoking the
-   CLI, surface a one-time nudge. The nudge MUST:
-
-   - Inform the user that a cross-repo loop driver
-     (when the project carries one — e.g. livespec's
-     repo-local orchestration driver, which is
-     non-contract working tooling) is the cohesive
-     cross-side composition surface that combines
-     spec-side `next` with the active orchestrator's
-     own ranking surface.
-   - Ask the user to confirm they want to run the
-     spec-side next operation directly rather than via
-     such a loop driver.
-
-   SKIP the nudge when the next operation is invoked by
-   another operation or composing driver (e.g. a loop
-   driver itself, or the doctor surface) rather than by
-   a direct user request. The detection mechanism is
-   per-Driver; this prose simply gates the nudge on
-   whether the entry path is a direct user invocation.
-
-   The nudge is informational only — it points the
-   user at the composition surface but never selects the
-   cross-side weighting itself (core performs no
-   cross-side ranking composition). The next CLI
-   MUST NOT accrete any confirmation dialogue or opt-in
-   flag; the nudge is prose-level discipline only.
-
-2. **Invoke the next CLI.** Run the next CLI named in
+1. **Invoke the next CLI.** Run the next CLI named in
    config with `[--spec-target <path>] [--project-root <path>]
    [--limit <count>] [--offset <count>]` and explicit argv.
    Capture stdout (the JSON payload) and the exit code.
 
-3. **Present the JSON verbatim.** On exit `0`, surface
+2. **Present the JSON verbatim.** On exit `0`, surface
    the captured stdout to the user without
    re-interpretation, re-summarization, or judgment. The
    payload conforms to `next_output.schema.json` with two
@@ -124,7 +92,7 @@ CLI exit-code-to-narration mapping per
 table":
 
 - Exit `0` → success. Surface the stdout JSON verbatim
-  per Step 3.
+  per Step 2.
 - Exit `1` → internal bug; surface stderr (including
   any structured-error JSON line and traceback) and
   abort. Do NOT retry.
