@@ -19,11 +19,12 @@ re-export in `tests/livespec/io/test_git.py`). Extracted from
 `git.py` so that file stays under the per-file LLOC ceiling per
 `SPECIFICATION/constraints.md` §"File LLOC ceiling".
 
-Holds `list_remote_branches`, the case (b) signal for the doctor's
-no-stale-worktree invariant: a secondary worktree whose branch is
-absent from the remote head set is stale even when `git branch
---merged` is blind to it (a `gh pr merge --rebase` lands a distinct
-SHA on default, so the merged branch is not a default-ancestor).
+Holds `list_remote_branches`, the case (b) staleness signal for
+the orchestrator-side worktree janitor: a secondary worktree whose
+branch is absent from the remote head set is stale even when `git
+branch --merged` is blind to it (a `gh pr merge --rebase` lands a
+distinct SHA on default, so the merged branch is not a
+default-ancestor).
 """
 
 from __future__ import annotations

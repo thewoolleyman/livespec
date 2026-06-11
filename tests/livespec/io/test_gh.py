@@ -3,8 +3,8 @@
 Per style doc §"Skill layout — `io/`": every operation that
 touches the gh CLI binary lives at this seam under @impure_safe so
 the railway flows through IOResult. The gh facade exposes three
-operations the no-stale-merged-pr-branch doctor invariant
-composes against: get_repo_name_with_owner, list_remote_branches,
+merged-PR/branch introspection operations:
+get_repo_name_with_owner, list_remote_branches,
 list_merged_pull_request_head_refs.
 
 Tests monkeypatch `livespec.io.gh.run_subprocess` to a fake that

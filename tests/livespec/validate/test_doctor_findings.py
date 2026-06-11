@@ -81,7 +81,7 @@ def test_validate_doctor_findings_accepts_warn_status_finding() -> None:
     payload: dict[str, object] = {
         "findings": [
             {
-                "check_id": "doctor-no-stale-merged-branch",
+                "check_id": "doctor-master-direct-uncommitted-spec-edits",
                 "status": "warn",
                 "message": "local branch `feature/x` is merged; run `git branch -d feature/x`",
                 "path": None,

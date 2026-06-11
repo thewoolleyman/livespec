@@ -59,7 +59,7 @@
         },
         "supersedes": {
           "type": "array",
-          "description": "Optional list of earlier id_hint values whose commitments this propose-change absorbs or revokes. The unresolved-spec-commitment doctor invariant exempts the listed id_hints from its work-item-coverage check.",
+          "description": "Optional list of earlier id_hint values whose commitments this propose-change absorbs or revokes. Commitment-coverage tracking is orchestrator-side (the doctor-side unresolved-spec-commitment invariant was retired with the v103 cross-boundary shrink); consumers computing coverage treat the listed id_hints as superseded — no work-item is owed for them.",
           "items": {
             "type": "string",
             "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
