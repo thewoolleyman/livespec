@@ -25,5 +25,5 @@ on:
 
 jobs:
   freshness:
-    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-pin-freshness.yml@master
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-pin-freshness.yml@v0.12.0
     secrets: inherit
