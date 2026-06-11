@@ -1799,3 +1799,106 @@ def test_revise_main_exits_0_when_post_step_doctor_passes(
         ],
     )
     assert exit_code == 0, f"expected exit 0 on green post-step, got {exit_code}"
+
+
+def test_revise_render_diagram_source_writes_skips_malformed_decisions() -> None:
+    """`_diagram_source_writes` skips reject decisions and malformed entries.
+
+    Schema validation prevents malformed shapes from reaching the
+    helper in production, but the runtime isinstance-guards keep
+    the enumeration total: reject decisions contribute nothing,
+    non-list `resulting_files` values are skipped, non-dict
+    entries are skipped, and only manifest-declared
+    `kind: diagram_source` paths are collected.
+    """
+    from livespec.commands import _revise_render
+    from livespec.schemas.dataclasses.revise_input import RevisionInput
+    from livespec.schemas.dataclasses.template_config import SpecFileDecl
+
+    spec_files = {
+        "diagrams/example.puml": SpecFileDecl(kind="diagram_source", derived_from=None),
+        "spec.md": SpecFileDecl(kind="markdown", derived_from=None),
+    }
+    revise_input = RevisionInput(
+        author=None,
+        decisions=[
+            {"proposal_topic": "a", "decision": "reject", "rationale": "r"},
+            {
+                "proposal_topic": "b",
+                "decision": "accept",
+                "rationale": "r",
+                "resulting_files": "not-a-list",
+            },
+            {
+                "proposal_topic": "c",
+                "decision": "accept",
+                "rationale": "r",
+                "resulting_files": [
+                    "not-a-dict",
+                    {"path": "spec.md", "content": "# md\n"},
+                    {"path": "diagrams/example.puml", "content": "@startuml\n@enduml\n"},
+                ],
+            },
+        ],
+    )
+    writes = _revise_render._diagram_source_writes(  # noqa: SLF001
+        revise_input=revise_input,
+        spec_files=spec_files,
+    )
+    assert writes == [("diagrams/example.puml", "@startuml\n@enduml\n")]
+
+
+def test_revise_render_verify_staged_outputs_fails_on_missing_output(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`_verify_staged_outputs` fails naming outputs the renderer never produced.
+
+    A render command can exit 0 without producing the
+    manifest-declared output name (manifest/render mismatch); the
+    verification arm converts that into a PreconditionError BEFORE
+    any spec-tree mutation.
+    """
+    from livespec.commands import _revise_render
+    from livespec.errors import PreconditionError
+    from returns.result import Failure
+    from returns.unsafe import unsafe_perform_io
+
+    missing_staged = tmp_path / "staging" / "diagrams" / "example.svg"
+    io_result = _revise_render._verify_staged_outputs(  # noqa: SLF001
+        rendered_copies=((missing_staged, tmp_path / "final.svg"),),
+    )
+    unwrapped = unsafe_perform_io(io_result)
+    match unwrapped:
+        case Failure(PreconditionError() as err):
+            assert "were not produced" in str(err)
+            assert str(missing_staged) in str(err)
+        case _:
+            msg = f"expected Failure(PreconditionError), got {unwrapped}"
+            raise AssertionError(msg)
+
+
+def test_revise_snapshot_skips_absent_manifest_subdir_paths(*, tmp_path: Path) -> None:
+    """`_snapshot_working_spec_files` skips manifest subdir paths absent on disk.
+
+    A v2 manifest can declare a diagrams/ pairing the spec tree
+    does not (yet) carry — presence is template-files-present's
+    invariant, so the snapshot quietly skips the absent path
+    rather than failing the cut.
+    """
+    from livespec.commands import _revise_railway_emits
+    from returns.unsafe import unsafe_perform_io
+
+    spec_target = tmp_path / "SPECIFICATION"
+    spec_target.mkdir()
+    _ = (spec_target / "spec.md").write_text("# Spec\n", encoding="utf-8")
+    version_dir = spec_target / "history" / "v002"
+    io_result = _revise_railway_emits._snapshot_working_spec_files(  # noqa: SLF001
+        spec_target=spec_target,
+        version_dir=version_dir,
+        manifest_paths=("spec.md", "diagrams/missing.puml"),
+    )
+    unwrapped = unsafe_perform_io(io_result)
+    assert not isinstance(unwrapped, Exception)
+    assert (version_dir / "spec.md").is_file()
+    assert not (version_dir / "diagrams").exists()
