@@ -24,7 +24,7 @@ on:
 
 jobs:
   bump:
-    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-bump-pin-from-dispatch.yml@master
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-bump-pin-from-dispatch.yml@v0.12.0
     secrets: inherit
     with:
       source_repo: ${{ github.event.client_payload.source_repo }}
