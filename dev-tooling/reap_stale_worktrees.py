@@ -14,12 +14,21 @@ worktree (per `git worktree list --porcelain`), it reaps the worktree
 (`git worktree remove` + `git branch -D <branch>` + `git worktree
 prune`) IF AND ONLY IF ALL of the following hold:
 
+  - The branch was PUSHED at some point: it carries upstream config
+    (`branch.<name>.merge`, written by `git push -u` and surviving
+    `fetch --prune`) OR a remote-tracking ref
+    (`refs/remotes/origin/<name>`, written by plain push/fetch and
+    surviving until `fetch --prune`). A local-only branch with
+    NEITHER signal was never pushed: its worktree is a dispatched
+    agent's in-progress work, NOT an orphan, and is SKIPPED —
+    remote-absence alone is ambiguous between "merged then deleted"
+    and "not pushed yet".
   - The branch is "done": its remote branch is ABSENT
     (`git ls-remote --heads origin <branch>` succeeds with empty
-    output). Remote-gone is the reliable rebase-merge signal. If
-    `ls-remote` errors (no `origin`, network failure), done-ness is
-    UNDETERMINED and the worktree is SKIPPED — never reaped on an
-    ambiguous signal.
+    output). Pushed-then-remote-gone is the reliable rebase-merge
+    signal. If `ls-remote` errors (no `origin`, network failure),
+    done-ness is UNDETERMINED and the worktree is SKIPPED — never
+    reaped on an ambiguous signal.
   - The working tree is CLEAN (`git status --porcelain` empty).
   - It is NOT held by a LIVE process lock. A locked worktree's reason
     string may carry a `(pid N)` token; if pid N is still alive the
@@ -28,8 +37,9 @@ prune`) IF AND ONLY IF ALL of the following hold:
     whose reason carries no parseable pid is treated as LIVE
     (conservative) and SKIPPED.
 
-Safety + idempotency: the primary worktree is NEVER touched; dirty,
-remote-present, live-locked, and detached-HEAD worktrees are skipped.
+Safety + idempotency: the primary worktree is NEVER touched;
+never-pushed, dirty, remote-present, live-locked, and detached-HEAD
+worktrees are skipped.
 `--dry-run` reports the would-reap set without mutating anything.
 
 This is a maintainer/orchestrator action tool, invoked via
@@ -181,14 +191,45 @@ def _worktree_is_clean(*, worktree_path: str) -> bool:
     return result.stdout.strip() == ""
 
 
+def _branch_was_pushed(*, repo: Path, branch: str) -> bool:
+    """Return True if `branch` carries local evidence of ever having been pushed.
+
+    Two signals, either sufficient:
+
+      - upstream config (`branch.<name>.merge`), written by
+        `git push -u` / `--set-upstream`; it persists after the
+        remote branch is deleted and after `fetch --prune`;
+      - a remote-tracking ref (`refs/remotes/origin/<name>`),
+        written by a plain `git push origin <name>` (and by fetch)
+        and lingering until `fetch --prune` removes it.
+
+    A branch with NEITHER signal is local-only never-pushed work:
+    its absence from origin means "not pushed yet", not "merged and
+    remote-deleted", so the caller must treat the worktree as a
+    dispatched agent's in-progress work rather than as a reapable
+    orphan.
+    """
+    upstream = _run_git(repo=repo, args=["config", "--get", f"branch.{branch}.merge"], check=False)
+    if upstream.returncode == 0 and upstream.stdout.strip() != "":
+        return True
+    tracking = _run_git(
+        repo=repo,
+        args=["rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}"],
+        check=False,
+    )
+    return tracking.returncode == 0
+
+
 def _branch_is_done(*, repo: Path, branch: str) -> bool:
     """Return True if `branch`'s remote-tracking head is ABSENT on origin.
 
     Remote-gone is the reliable rebase-merge signal (the remote
-    branch is deleted on merge). If `git ls-remote` errors (no
-    `origin` configured, network failure), done-ness is
-    UNDETERMINED and this returns False so the caller skips the
-    worktree rather than reaping on an ambiguous signal.
+    branch is deleted on merge) — but ONLY once `_branch_was_pushed`
+    has established the branch ever reached origin; the caller gates
+    on that first. If `git ls-remote` errors (no `origin`
+    configured, network failure), done-ness is UNDETERMINED and this
+    returns False so the caller skips the worktree rather than
+    reaping on an ambiguous signal.
     """
     result = _run_git(repo=repo, args=["ls-remote", "--heads", "origin", branch], check=False)
     if result.returncode != 0:
@@ -256,8 +297,10 @@ def _reapable_branch(
     """Return the branch name if `worktree` is reapable, else None.
 
     Returns None (skip) for the primary worktree, detached-HEAD
-    worktrees, dirty worktrees, worktrees whose branch is not
-    "done" (remote-present or undetermined), and live-locked
+    worktrees, dirty worktrees, worktrees whose branch was never
+    pushed (no upstream config, no remote-tracking ref — a
+    dispatched agent's in-progress work), worktrees whose branch is
+    not "done" (remote-present or undetermined), and live-locked
     worktrees. Returning the narrowed branch name lets the caller
     delete it without re-narrowing `str | None`.
     """
@@ -266,11 +309,18 @@ def _reapable_branch(
     branch = worktree.branch
     if branch is None:
         return None
+    skip_reason: str | None = None
     if not _worktree_is_clean(worktree_path=worktree.path):
-        log.info("worktree dirty; skipping", path=worktree.path)
-        return None
-    if not _branch_is_done(repo=repo, branch=branch):
-        log.info("branch not done (remote present or undetermined); skipping", path=worktree.path)
+        skip_reason = "worktree dirty; skipping"
+    elif not _branch_was_pushed(repo=repo, branch=branch):
+        skip_reason = (
+            "branch never pushed (no upstream config, no remote-tracking ref); "
+            "in-progress work, skipping"
+        )
+    elif not _branch_is_done(repo=repo, branch=branch):
+        skip_reason = "branch not done (remote present or undetermined); skipping"
+    if skip_reason is not None:
+        log.info(skip_reason, path=worktree.path)
         return None
     if _lock_blocks_reap(worktree=worktree, log=log):
         return None
