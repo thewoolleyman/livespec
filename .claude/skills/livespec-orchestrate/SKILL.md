@@ -136,9 +136,12 @@ via the `/livespec-orchestrate` invocation argument:
    a sub-agent's PR `--auto`-merges server-side AFTER the agent has
    exited, so the agent cannot self-clean its own worktree (see
    §"Worktree hygiene (reaper)"). The reaper is idempotent and only
-   removes non-primary worktrees whose branch is remote-gone/merged
-   AND clean AND not live-locked, so it is safe to run unconditionally
-   at session start.
+   removes non-primary worktrees whose branch was PUSHED and is now
+   remote-gone/merged AND clean AND not live-locked — never-pushed
+   local-only branches are in-progress work and are skipped — so the
+   session-start sweep is safe: no sub-agent of THIS session is
+   dispatched yet, and prior sessions' in-progress leftovers are
+   protected by the never-pushed guard.
 
 2. **Resolve the work scope.** Based on `epic` / `scope-file` inputs,
    produce the iteration's candidate work set:
@@ -547,12 +550,18 @@ backed by `dev-tooling/reap_stale_worktrees.py`. The reaper is
 livespec-resident and operates on any family repo by path; the
 recipe takes a repo-path argument (defaults to `.`). It is
 deterministic and idempotent: it removes ONLY non-primary worktrees
-whose branch is remote-gone/merged-PR AND whose working tree is
-clean AND which are not held by a live process lock — never the
-primary, never dirty/remote-present/live-locked worktrees. It is
-safe to run unconditionally.
+whose branch was PUSHED (upstream config or a remote-tracking ref
+as local evidence) and is now remote-gone/merged-PR AND whose
+working tree is clean AND which are not held by a live process
+lock — never the primary, never a never-pushed, dirty,
+remote-present, or live-locked worktree. A clean worktree on a
+local-only branch with no upstream is a dispatched agent's
+in-progress work (worktree created, nothing pushed yet), NOT an
+orphan; the reaper skips it (work-item livespec-reapwt).
 
-The orchestrator runs the reaper at three points:
+The orchestrator runs the reaper at exactly three points — and
+NEVER while a sub-agent is actively dispatched into the target repo
+(per `feedback_no_reap_during_active_dispatch`):
 
 1. **Session start (Step 1):** sweep every family repo to reconcile
    orphans left by prior or crashed sessions — this is what catches
@@ -562,11 +571,14 @@ The orchestrator runs the reaper at three points:
    just-merged worktree.
 3. **Post-loop (Step 4):** a final sweep across every touched repo.
 
-DETECTION is the counterpart, owned by the doctor `no-stale-worktree`
-check, which warns when a worktree's branch is done — case (a)
-merged-into-default OR case (b) remote-gone. The doctor check only
-WARNS; the reaper is the deterministic ACTION the orchestrator owns
-to clean the orphans the check surfaces.
+Mid-dispatch sweeps are banned even though the reaper's guards
+(never-pushed skip, remote-present skip) protect the common
+in-flight states: timing discipline is the first line of defense,
+and every legitimate reap target is already covered by the three
+points above — a mid-dispatch sweep adds race surface for zero
+benefit. (The doctor-side `no-stale-worktree` DETECTION check was
+retired at v105; the reaper is the single owner of worktree
+cleanup.)
 
 ## Tooling reminders (carried-forward conventions)
 
