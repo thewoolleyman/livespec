@@ -4,11 +4,16 @@ The reaper is the orchestrator-side janitor action (the doctor-side
 detection-only `no-stale-worktree` check was retired at v105 —
 cleanup discipline is Dispatcher territory). For every NON-primary worktree in a
 target repo it removes the worktree + deletes its local branch +
-prunes, IF AND ONLY IF the branch is "done" (remote branch absent,
-the reliable rebase-merge signal), the working tree is clean, and
-the worktree is not held by a LIVE process lock. It is idempotent
-and safe-by-default: it skips dirty, remote-present, live-locked,
-and primary worktrees, and `--dry-run` mutates nothing.
+prunes, IF AND ONLY IF the branch is "done" (it was PUSHED at some
+point — upstream config or a remote-tracking ref survives as local
+evidence — and the remote branch is now absent, the reliable
+rebase-merge signal), the working tree is clean, and the worktree
+is not held by a LIVE process lock. A local-only branch that was
+NEVER pushed is a dispatched agent's in-progress work, not an
+orphan: remote-absence alone must not reap it. The reaper is
+idempotent and safe-by-default: it skips never-pushed, dirty,
+remote-present, live-locked, and primary worktrees, and
+`--dry-run` mutates nothing.
 
 These tests construct real tmp git repos (with a local bare repo
 standing in for `origin` so `git ls-remote` resolves without the
@@ -88,6 +93,39 @@ def _add_worktree(*, primary: Path, name: str, branch: str) -> Path:
     wt = primary.parent / name
     _ = _git(cwd=primary, args=["worktree", "add", "-q", str(wt), "-b", branch])
     return wt
+
+
+def _push_branch(*, cwd: Path, branch: str, set_upstream: bool) -> None:
+    """Push `branch` to origin, optionally recording upstream config (`-u`)."""
+    if set_upstream:
+        _ = _git(cwd=cwd, args=["push", "-q", "-u", "origin", branch])
+    else:
+        _ = _git(cwd=cwd, args=["push", "-q", "origin", branch])
+
+
+def _delete_on_origin(*, origin: Path, branch: str) -> None:
+    """Delete `branch` directly in the bare origin (as the forge does on rebase-merge).
+
+    Deleting in the bare repo — rather than via `git push --delete`
+    from the clone — leaves the clone's remote-tracking state
+    untouched, faithfully simulating a server-side delete the local
+    repo has not yet observed.
+    """
+    _ = _git(cwd=origin, args=["branch", "-D", branch])
+
+
+def _make_branch_done(*, primary: Path, push_from: Path, origin: Path, branch: str) -> None:
+    """Give `branch` the full merged-PR lifecycle signal.
+
+    Pushed with upstream (`-u`), remote branch deleted server-side
+    (directly in the bare origin), remote-tracking refs pruned. The
+    surviving upstream config (`branch.<name>.merge`) is the local
+    "was pushed" evidence that lets remote-absence mean merged
+    rather than never-pushed.
+    """
+    _push_branch(cwd=push_from, branch=branch, set_upstream=True)
+    _delete_on_origin(origin=origin, branch=branch)
+    _ = _git(cwd=primary, args=["fetch", "-q", "--prune", "origin"])
 
 
 def test_parse_worktrees_extracts_primary_branch_and_lock() -> None:
@@ -190,12 +228,19 @@ def test_skips_detached_head_secondary(*, tmp_path: Path) -> None:
     assert wt.is_dir()
 
 
-def test_reaps_clean_remote_gone_worktree(*, tmp_path: Path) -> None:
-    """A clean worktree whose remote branch is absent IS reaped (removed + branch deleted)."""
+def test_reaps_pushed_then_remote_deleted_worktree(*, tmp_path: Path) -> None:
+    """A clean worktree whose branch was pushed (`-u`) and is now remote-gone IS reaped.
+
+    Simulates the full rebase-merge lifecycle: push with upstream,
+    server-side remote-branch delete, `fetch --prune` (so even the
+    remote-tracking ref is gone). The surviving upstream config
+    (`branch.<name>.merge`) is the "was pushed" evidence that makes
+    remote-absence mean merged rather than never-pushed.
+    """
     module = _load_module()
-    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
     wt = _add_worktree(primary=primary, name="wt-done", branch="feat-done")
-    # Branch was never pushed to origin -> remote-gone -> "done".
+    _make_branch_done(primary=primary, push_from=wt, origin=origin, branch="feat-done")
     assert wt.is_dir()
 
     reaped = module.reap_worktrees(repo=primary, dry_run=False)
@@ -206,11 +251,55 @@ def test_reaps_clean_remote_gone_worktree(*, tmp_path: Path) -> None:
     assert branches.strip() == ""
 
 
-def test_skips_dirty_worktree(*, tmp_path: Path) -> None:
-    """A worktree with uncommitted changes is SKIPPED even when remote-gone."""
+def test_skips_clean_never_pushed_worktree(*, tmp_path: Path) -> None:
+    """A clean worktree on a local-only NEVER-PUSHED branch is SKIPPED (in-progress work).
+
+    Regression for the dispatch race: a dispatched agent's worktree
+    starts clean on a local-only branch with no upstream config and
+    no remote-tracking ref. `git ls-remote` reports the branch
+    absent from origin — the same raw signal as a merged-then-
+    deleted branch — but absent-because-never-pushed means the work
+    has not landed yet. Reaping here deletes the branch + worktree
+    out from under the live agent.
+    """
     module = _load_module()
     primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    wt = _add_worktree(primary=primary, name="wt-inprogress", branch="feat-inprogress")
+
+    reaped = module.reap_worktrees(repo=primary, dry_run=False)
+
+    assert str(wt) not in reaped
+    assert wt.is_dir()
+    branches = _git(cwd=primary, args=["branch", "--list", "feat-inprogress"]).stdout
+    assert branches.strip() != ""
+
+
+def test_reaps_remote_gone_worktree_with_lingering_tracking_ref(*, tmp_path: Path) -> None:
+    """A branch pushed WITHOUT `-u` (tracking ref only) that is now remote-gone IS reaped.
+
+    A plain `git push origin <branch>` writes the remote-tracking
+    ref but no upstream config; until `fetch --prune` runs, that
+    ref is the only local "was pushed" evidence after the server
+    deletes the branch. Either pushed-signal alone must qualify.
+    """
+    module = _load_module()
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
+    wt = _add_worktree(primary=primary, name="wt-tracked", branch="feat-tracked")
+    _push_branch(cwd=wt, branch="feat-tracked", set_upstream=False)
+    _delete_on_origin(origin=origin, branch="feat-tracked")
+
+    reaped = module.reap_worktrees(repo=primary, dry_run=False)
+
+    assert str(wt) in reaped
+    assert not wt.exists()
+
+
+def test_skips_dirty_worktree(*, tmp_path: Path) -> None:
+    """A worktree with uncommitted changes is SKIPPED even when its branch is done."""
+    module = _load_module()
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
     wt = _add_worktree(primary=primary, name="wt-dirty", branch="feat-dirty")
+    _make_branch_done(primary=primary, push_from=wt, origin=origin, branch="feat-dirty")
     _ = (wt / "dirty.txt").write_text("uncommitted\n", encoding="utf-8")
 
     reaped = module.reap_worktrees(repo=primary, dry_run=False)
@@ -234,10 +323,11 @@ def test_skips_worktree_whose_remote_branch_exists(*, tmp_path: Path) -> None:
 
 
 def test_skips_live_locked_worktree(*, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A worktree locked by a LIVE pid is SKIPPED."""
+    """A worktree locked by a LIVE pid is SKIPPED even when its branch is done."""
     module = _load_module()
-    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
     wt = _add_worktree(primary=primary, name="wt-locked", branch="feat-locked")
+    _make_branch_done(primary=primary, push_from=wt, origin=origin, branch="feat-locked")
     _ = _git(cwd=primary, args=["worktree", "lock", str(wt), "--reason", "session (pid 4242)"])
 
     # Treat pid 4242 as alive -> reaper must skip.
@@ -255,10 +345,11 @@ def test_skips_live_locked_worktree(*, tmp_path: Path, monkeypatch: pytest.Monke
 def test_dead_locked_worktree_is_unlocked_and_reaped(
     *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A worktree locked by a DEAD pid is unlocked and reaped."""
+    """A done-branch worktree locked by a DEAD pid is unlocked and reaped."""
     module = _load_module()
-    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
     wt = _add_worktree(primary=primary, name="wt-deadlock", branch="feat-deadlock")
+    _make_branch_done(primary=primary, push_from=wt, origin=origin, branch="feat-deadlock")
     _ = _git(cwd=primary, args=["worktree", "lock", str(wt), "--reason", "session (pid 4242)"])
 
     # No pid is alive -> dead lock -> unlock + reap.
@@ -276,8 +367,9 @@ def test_dead_locked_worktree_is_unlocked_and_reaped(
 def test_locked_without_pid_is_treated_as_live_and_skipped(*, tmp_path: Path) -> None:
     """A lock whose reason carries no parseable pid is treated as LIVE and SKIPPED."""
     module = _load_module()
-    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
     wt = _add_worktree(primary=primary, name="wt-nopid", branch="feat-nopid")
+    _make_branch_done(primary=primary, push_from=wt, origin=origin, branch="feat-nopid")
     _ = _git(cwd=primary, args=["worktree", "lock", str(wt), "--reason", "manual hold"])
 
     reaped = module.reap_worktrees(repo=primary, dry_run=False)
@@ -289,18 +381,19 @@ def test_locked_without_pid_is_treated_as_live_and_skipped(*, tmp_path: Path) ->
 def test_never_reaps_primary(*, tmp_path: Path) -> None:
     """The primary worktree is never reaped even alongside an actively-reaped secondary.
 
-    The primary sits on a branch (`work`) that is absent from
-    origin — the same remote-gone signal that marks a secondary
-    "done" — proving the primary is excluded by the is-primary
-    guard, not merely because its branch happens to be remote-
-    present. A reapable secondary is reaped in the same pass to
-    show reaping is live.
+    The primary sits on a branch (`work`) carrying the full "done"
+    signal — pushed with upstream, then remote-deleted — the same
+    signal that marks a secondary reapable, proving the primary is
+    excluded by the is-primary guard alone. A reapable secondary is
+    reaped in the same pass to show reaping is live.
     """
     module = _load_module()
-    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
-    # Move the primary onto a branch that was never pushed to origin.
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
+    # Move the primary onto a pushed-then-remote-deleted branch.
     _ = _git(cwd=primary, args=["checkout", "-q", "-b", "work"])
+    _make_branch_done(primary=primary, push_from=primary, origin=origin, branch="work")
     secondary = _add_worktree(primary=primary, name="wt-sec", branch="feat-sec")
+    _make_branch_done(primary=primary, push_from=secondary, origin=origin, branch="feat-sec")
 
     reaped = module.reap_worktrees(repo=primary, dry_run=False)
 
@@ -313,8 +406,9 @@ def test_never_reaps_primary(*, tmp_path: Path) -> None:
 def test_dry_run_mutates_nothing(*, tmp_path: Path) -> None:
     """`dry_run=True` reports the would-reap set but removes no worktree and deletes no branch."""
     module = _load_module()
-    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
     wt = _add_worktree(primary=primary, name="wt-dry", branch="feat-dry")
+    _make_branch_done(primary=primary, push_from=wt, origin=origin, branch="feat-dry")
 
     reaped = module.reap_worktrees(repo=primary, dry_run=True)
 
@@ -325,10 +419,13 @@ def test_dry_run_mutates_nothing(*, tmp_path: Path) -> None:
 
 
 def test_skips_when_ls_remote_errors(*, tmp_path: Path) -> None:
-    """When `git ls-remote origin` errors (no origin configured), the worktree is SKIPPED.
+    """When `git ls-remote origin` errors (unreachable origin), the worktree is SKIPPED.
 
     A failing ls-remote means done-ness is UNDETERMINED; the safe
-    default is to skip rather than reap on an ambiguous signal.
+    default is to skip rather than reap on an ambiguous signal. The
+    branch carries upstream config (the "was pushed" evidence) so
+    the skip is attributable to the ls-remote error, not to the
+    never-pushed guard.
     """
     module = _load_module()
     primary = tmp_path / "no-origin"
@@ -336,7 +433,10 @@ def test_skips_when_ls_remote_errors(*, tmp_path: Path) -> None:
     _ = _git(cwd=primary, args=["config", "user.email", "t@example.com"])
     _ = _git(cwd=primary, args=["config", "user.name", "Test"])
     _ = _git(cwd=primary, args=["commit", "-q", "--allow-empty", "-m", "init"])
+    _ = _git(cwd=primary, args=["remote", "add", "origin", str(tmp_path / "missing-origin.git")])
     wt = _add_worktree(primary=primary, name="wt-noremote", branch="feat-noremote")
+    _ = _git(cwd=primary, args=["config", "branch.feat-noremote.remote", "origin"])
+    _ = _git(cwd=primary, args=["config", "branch.feat-noremote.merge", "refs/heads/feat-noremote"])
 
     reaped = module.reap_worktrees(repo=primary, dry_run=False)
 
