@@ -1,0 +1,38 @@
+// fleet-manifest.jsonc — the livespec fleet membership manifest.
+//
+// Authority: SPECIFICATION/non-functional-requirements.md
+//   §"Fleet membership contract" (accepted v108). This committed file
+//   in livespec core enumerates every family repo and its repo class.
+//   Livespec core owns fleet-level facts (precedent: the copier
+//   template at `templates/impl-plugin/` is already core-hosted and
+//   sibling-consumed per `contracts.md` §"Shared content sync — copier
+//   template"); per-repo facts stay in consumer-local config.
+//
+// Consumers (both fetch this file from livespec master at run time):
+//   - the dev-tooling fleet-conformance check (assert mode), which
+//     derives each member's per-class obligations from the shared
+//     contract definition in livespec-dev-tooling;
+//   - the release fan-out (reusable-release-dispatch.yml), with the
+//     GitHub `livespec-sibling` topic demoted to a discovery safety
+//     net (a repo matching `livespec-*` naming or carrying the topic
+//     but absent here is a conformance finding).
+//
+// Repo birth procedure (per the same spec section): scaffold (via the
+// copier template where the class has one) → register HERE first →
+// run `wire-fleet-member` → fleet conformance green. Register-first
+// makes a half-wired new repo red fleet CI rather than an invisible
+// straggler.
+//
+// `class` is one of: core / enforcement-suite / impl-plugin /
+// driver-plugin / library.
+{
+  "owner": "thewoolleyman",
+  "members": [
+    { "repo": "livespec", "class": "core" },
+    { "repo": "livespec-dev-tooling", "class": "enforcement-suite" },
+    { "repo": "livespec-driver-claude", "class": "driver-plugin" },
+    { "repo": "livespec-impl-beads", "class": "impl-plugin" },
+    { "repo": "livespec-impl-git-jsonl", "class": "impl-plugin" },
+    { "repo": "livespec-runtime", "class": "library" }
+  ]
+}
