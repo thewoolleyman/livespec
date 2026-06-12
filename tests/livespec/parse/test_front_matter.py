@@ -22,7 +22,7 @@ test (enforced by `check-pbt-coverage-pure-modules`).
 
 from __future__ import annotations
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
 from livespec.parse.front_matter import parse_front_matter
@@ -363,6 +363,11 @@ def test_value_quoted_with_trailing_garbage_rejected() -> None:
 # ---------------------------------------------------------------------------
 
 
+# The property does only in-memory string work, so the default
+# 200ms hypothesis deadline asserts nothing domain-meaningful;
+# wall-clock deadlines are load-sensitive under `pytest -n auto`
+# xdist worker contention, so the deadline is disabled.
+@settings(deadline=None)
 @given(
     keys_values=st.dictionaries(
         keys=st.from_regex(r"^[a-zA-Z_][a-zA-Z0-9_]{0,15}$", fullmatch=True),
