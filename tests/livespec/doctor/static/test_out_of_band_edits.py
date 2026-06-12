@@ -95,7 +95,7 @@ from pathlib import Path
 
 import pytest
 from livespec.context import DoctorContext
-from livespec.doctor.static import out_of_band_edits
+from livespec.doctor.static import accept_decision_snapshot_consistency, out_of_band_edits
 from livespec.schemas.dataclasses.finding import Finding
 from returns.io import IOSuccess
 
@@ -1399,6 +1399,132 @@ def _parse_flat_front_matter(*, text: str) -> dict[str, str]:
         key, _sep, value = line.partition(": ")
         payload[key.strip()] = value.strip()
     return payload
+
+
+def _seed_one_diverged_one_unchanged(
+    *,
+    repo_root: Path,
+    spec_root: Path,
+    unchanged_bytes: bytes,
+) -> None:
+    """Seed HEAD with one diverged file (spec.md) and one unchanged file (contracts.md).
+
+    `spec.md` carries different bytes at HEAD-active vs
+    HEAD-history-v001 (genuine out-of-band drift); `contracts.md`
+    carries `unchanged_bytes` byte-identically on both sides. The
+    enumeration union is {contracts.md, spec.md} while the
+    diverging set is only {spec.md} — the fixture shape for
+    pinning that the auto-backfill's `## Resulting Changes`
+    listing covers ONLY the genuinely-diverged files (work-item
+    livespec-6p9e defect 1).
+    """
+    spec_root.mkdir()
+    history_v = spec_root / "history" / "v001"
+    history_v.mkdir(parents=True)
+    diverged_active = spec_root / "spec.md"
+    _ = diverged_active.write_bytes(b"# Spec ACTIVE\n\nedited out-of-band\n")
+    diverged_snapshot = history_v / "spec.md"
+    _ = diverged_snapshot.write_bytes(b"# Spec ORIGINAL\n")
+    unchanged_active = spec_root / "contracts.md"
+    _ = unchanged_active.write_bytes(unchanged_bytes)
+    unchanged_snapshot = history_v / "contracts.md"
+    _ = unchanged_snapshot.write_bytes(unchanged_bytes)
+    _git_commit_paths(
+        repo_root=repo_root,
+        paths=[diverged_active, diverged_snapshot, unchanged_active, unchanged_snapshot],
+    )
+
+
+def test_run_backfill_revision_lists_only_diverging_files_in_resulting_changes(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The backfilled revision's `## Resulting Changes` lists ONLY diverging files.
+
+    Work-item livespec-6p9e defect 1: the auto-backfill listed the
+    FULL enumeration union under `## Resulting Changes` instead of
+    only the genuinely-diverged files. Any unchanged file in the
+    listing deterministically trips
+    `accept-decision-snapshot-consistency` (the unchanged file is
+    byte-identical between v(N+1) and vN by construction, yet the
+    listing claims it changed).
+
+    Fixture: spec.md diverged, contracts.md byte-identical on both
+    sides. The revision artifact MUST list spec.md and MUST NOT
+    list contracts.md — while the v002/ snapshot still carries the
+    FULL enumeration (history versions are full snapshots; future
+    comparisons need the unchanged files present).
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    unchanged_bytes = b"# Contracts\n\nIdentical on both sides.\n"
+    _seed_one_diverged_one_unchanged(
+        repo_root=tmp_path,
+        spec_root=spec_root,
+        unchanged_bytes=unchanged_bytes,
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    _ = out_of_band_edits.run(ctx=ctx)
+    revision = _find_oob_artifact_in_v_dir(
+        spec_root=spec_root,
+        version_label="v002",
+        suffix="-revision.md",
+    )
+    text = revision.read_text(encoding="utf-8")
+    heading_index = text.find("## Resulting Changes")
+    assert heading_index != -1, f"expected `## Resulting Changes` section; got:\n{text}"
+    section = text[heading_index:]
+    assert "- spec.md" in section, f"diverged file must be listed; got:\n{section}"
+    assert "contracts.md" not in section, (
+        "non-diverging files must NOT appear in ## Resulting Changes "
+        f"(over-listing trips accept-decision-snapshot-consistency); got:\n{section}"
+    )
+    snapshot_unchanged = spec_root / "history" / "v002" / "contracts.md"
+    assert snapshot_unchanged.is_file(), "v002 must still snapshot ALL enumerated files"
+    assert snapshot_unchanged.read_bytes() == unchanged_bytes
+
+
+def test_run_backfilled_tree_passes_accept_decision_snapshot_consistency(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A freshly-backfilled tree passes `accept-decision-snapshot-consistency`.
+
+    End-to-end pin of the livespec-6p9e defect-1 incident: the
+    auto-backfilled v(N+1) revision must not claim unchanged files
+    in `## Resulting Changes`, because that check fails any listed
+    file that is byte-identical between v(N+1) and vN. Runs the
+    out-of-band-edits check (which writes the v002 backfill), then
+    runs accept_decision_snapshot_consistency over the same tree
+    and asserts the canonical pass-Finding.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    _seed_one_diverged_one_unchanged(
+        repo_root=tmp_path,
+        spec_root=spec_root,
+        unchanged_bytes=b"# Contracts\n\nIdentical on both sides.\n",
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    _ = out_of_band_edits.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-accept-decision-snapshot-consistency",
+        status="pass",
+        message=(
+            "every history/vNNN/ accept|modify revision produces a "
+            "non-byte-identical snapshot vs v(NNN-1)/ for each listed file"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert accept_decision_snapshot_consistency.run(ctx=ctx) == IOSuccess(expected)
 
 
 def _load_schema(*, name: str) -> dict[str, object]:

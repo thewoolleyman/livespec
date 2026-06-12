@@ -25,12 +25,17 @@ baseline, the check writes three classes of artifacts under
 
 1. `proposed_changes/out-of-band-edit-<TIMESTAMP>.md` — paired
    proposed-change file, livespec-doctor authored, body carries
-   the unified diff per file.
+   the unified diff per DIVERGING file.
 2. `proposed_changes/out-of-band-edit-<TIMESTAMP>-revision.md` —
    paired revision file, decision: accept, both authors
-   livespec-doctor.
+   livespec-doctor; its `## Resulting Changes` lists ONLY the
+   diverging files (work-item livespec-6p9e defect 1 — listing
+   non-diverging files trips
+   `accept-decision-snapshot-consistency`, which fails any listed
+   file byte-identical between v(N+1) and vN).
 3. `<file>` — for every file present at HEAD-active under the
-   enumeration domain, copy HEAD-committed bytes byte-identically.
+   enumeration domain, copy HEAD-committed bytes byte-identically
+   (the FULL enumeration: history versions are full snapshots).
    Files NOT at HEAD-active (i.e., divergence kind is missing-
    active) are skipped.
 
@@ -171,11 +176,17 @@ def _collect_full_diff(
     ctx: DoctorContext,
     spec_root_repo_rel: Path,
     history_repo_rel: Path,
-    enumerated_files: tuple[str, ...],
+    file_basenames: tuple[str, ...],
 ) -> IOResult[str, LivespecError]:
-    """Aggregate per-file unified diffs into one diff text for the proposal body."""
+    """Aggregate per-file unified diffs into one diff text for the proposal body.
+
+    `file_basenames` is the DIVERGING set: non-diverging files
+    yield an empty unified diff anyway, so restricting the walk to
+    diverging files keeps the body identical while skipping
+    pointless HEAD lookups.
+    """
     accumulator: IOResult[str, LivespecError] = IOSuccess("")
-    for basename in enumerated_files:
+    for basename in file_basenames:
         active_path = spec_root_repo_rel / basename
         history_path = history_repo_rel / basename
         accumulator = accumulator.bind(
@@ -235,24 +246,28 @@ def write_auto_backfill_artifacts(
     ctx: DoctorContext,
     latest_version_label: str,
     enumerated_files: tuple[str, ...],
+    diverging_files: tuple[str, ...],
 ) -> IOResult[None, LivespecError]:
     """Write proposed-change + revision + per-file snapshots for the auto-backfill.
 
     Composes:
       1. resolve the v(N+1) directory name + the OOB topic +
          filenames + timestamps;
-      2. collect the unified diff for every enumerated file;
+      2. collect the unified diff for every DIVERGING file;
       3. write the proposed-change file under
          `<spec_root>/history/v(N+1)/proposed_changes/`;
-      4. write the paired revision file alongside it;
-      5. snapshot every HEAD-active-present file into
+      4. write the paired revision file alongside it (its
+         `## Resulting Changes` lists only `diverging_files`);
+      5. snapshot every HEAD-active-present ENUMERATED file into
          `<spec_root>/history/v(N+1)/<file>`.
 
     `enumerated_files` is the comparison's union enumeration of
-    file basenames present at HEAD on either side. The caller
-    (`out_of_band_edits.run`) computes this via the same primitive
-    (`_enumerate_union_file_basenames`) used for the divergence
-    decision, so the same set drives both diff body and snapshot.
+    file basenames present at HEAD on either side — it drives the
+    snapshot walk only (history versions are full snapshots).
+    `diverging_files` is the subset that genuinely differs; it
+    drives the diff body and the `## Resulting Changes` listing
+    (work-item livespec-6p9e defect 1: listing non-diverging
+    files trips `accept-decision-snapshot-consistency`).
     """
     next_label = _next_available_version_slot(
         spec_root=ctx.spec_root,
@@ -276,7 +291,7 @@ def write_auto_backfill_artifacts(
         proposal_filename=proposal_filename,
         revised_at=field_timestamp,
         resulting_files_listing=_resulting_files_listing(
-            enumerated_files=enumerated_files,
+            diverging_files=diverging_files,
         ),
     )
 
@@ -285,7 +300,7 @@ def write_auto_backfill_artifacts(
             ctx=ctx,
             spec_root_repo_rel=spec_root_repo_rel,
             history_repo_rel=history_repo_rel,
-            enumerated_files=enumerated_files,
+            file_basenames=diverging_files,
         )
         .bind(
             lambda diff_text: fs.write_text(
@@ -345,6 +360,7 @@ def route_drift_outcome(
         ctx=ctx,
         latest_version_label=latest_version_label,
         enumerated_files=enumerated_files,
+        diverging_files=tuple(diverging_files),
     ).map(
         lambda _value: make_finding(
             ctx=ctx,

@@ -116,15 +116,20 @@ def _compose_revision_body(
     )
 
 
-def _resulting_files_listing(*, enumerated_files: tuple[str, ...]) -> str:
+def _resulting_files_listing(*, diverging_files: tuple[str, ...]) -> str:
     """Render the `## Resulting Changes` body lines as a Markdown bullet list.
 
-    `enumerated_files` is non-empty in every reachable call site —
+    The listing covers ONLY the genuinely-diverged files, never the
+    full enumeration union: `accept-decision-snapshot-consistency`
+    fails any listed file that is byte-identical between v(N+1) and
+    vN, and non-diverging files are byte-identical by construction
+    (work-item livespec-6p9e defect 1).
+
+    `diverging_files` is non-empty in every reachable call site —
     `route_drift_outcome` only invokes the writer on a non-empty
-    `diverging_files`, and divergence presupposes a non-empty
-    enumeration union — so the empty-list `(none)` fallback that
+    diverging set — so the empty-list `(none)` fallback that
     `_compose_resulting_changes_section` carries in
     `_revise_helpers.py` is unreachable here and intentionally
     omitted.
     """
-    return "\n".join(f"- {name}" for name in enumerated_files)
+    return "\n".join(f"- {name}" for name in diverging_files)
