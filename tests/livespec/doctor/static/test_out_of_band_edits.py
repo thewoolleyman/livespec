@@ -90,6 +90,7 @@ repo's `.git/` directory cannot leak into the assertion target.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -1279,27 +1280,68 @@ def test_run_revision_front_matter_validates_against_schema(
     assert parsed.author_llm == "livespec-doctor"
 
 
-def test_run_writes_into_v_next_above_working_tree_max_not_clobbering_uncommitted_v_dir(
+def _assert_no_backfill_artifacts(*, spec_root: Path) -> None:
+    """Assert no `out-of-band-edit-*.md` auto-backfill artifact exists under spec_root."""
+    leftovers = sorted(spec_root.rglob("out-of-band-edit-*.md"))
+    assert leftovers == [], f"expected no auto-backfill artifacts; got {leftovers}"
+
+
+def _expected_unabsorbed_refuse_skipped(*, spec_root: Path, fresh_label: str) -> Finding:
+    """Construct the skipped-Finding refusing to backfill above an unabsorbing fresh cut."""
+    return Finding(
+        check_id="doctor-out-of-band-edits",
+        status="skipped",
+        message=(
+            f"uncommitted history/{fresh_label} does not absorb the HEAD divergence; "
+            f"auto-backfill refused — the backfill must precede the fresh revision: "
+            f"relocate history/{fresh_label} one version slot up, re-run doctor so the "
+            f"backfill claims the slot beneath it, then commit both"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+
+
+def _expected_absorbed_skipped(*, spec_root: Path, fresh_label: str) -> Finding:
+    """Construct the skipped-Finding for a divergence already absorbed by a fresh cut."""
+    return Finding(
+        check_id="doctor-out-of-band-edits",
+        status="skipped",
+        message=(
+            f"HEAD divergence already absorbed by uncommitted history/{fresh_label}; "
+            f"auto-backfill skipped — commit the in-flight revision and re-run"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+
+
+def test_run_refuses_backfill_when_fresh_working_tree_revision_does_not_absorb_divergence(
     *,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """run(ctx) writes into v(max(HEAD_n, working_tree_n) + 1), preserving uncommitted v-dirs.
+    """run(ctx) refuses (skipped-Finding) instead of backfilling ABOVE an in-flight revise.
 
-    Regression for memo mm-gzi7ej: an in-flight revise can leave a
-    non-empty `history/v(N+1)/` directory in the working tree before
-    its commit lands. The doctor's auto-backfill previously used the
-    HEAD-derived label to compute `v_next = v(N+1)` and wrote into
-    that working-tree directory, clobbering the freshly-cut revise
-    snapshot bytes with HEAD-active bytes.
+    Work-item livespec-6p9e defect 2. Supersedes the memo mm-gzi7ej
+    regression pin, which expected the backfill to land at v003 above
+    the in-flight v002: a backfill records PRE-EXISTING HEAD state,
+    so writing it above a freshly-cut revision snapshots stale HEAD
+    content as the newest version, REVERTING the freshly accepted
+    files. When the fresh revision does not byte-absorb the
+    divergence, the check must refuse with an actionable
+    backfill-first prescription and write NOTHING. The mm-gzi7ej
+    non-clobbering guarantee is preserved (strengthened: no write at
+    all).
 
     Fixture: HEAD has `history/v001/spec.md` (original) and a
     diverged HEAD-active `spec.md`. The working tree additionally
-    carries an UNCOMMITTED `history/v002/contracts.md` with the
-    in-flight revise's new bytes. With the fix in place, the
-    auto-backfill MUST write into `history/v003/` and the
-    uncommitted `v002/contracts.md` bytes MUST be preserved
-    byte-for-byte.
+    carries an UNCOMMITTED non-empty `history/v002/` (only
+    `contracts.md` — it does NOT absorb the spec.md divergence),
+    plus non-candidate `history/` children (a README.md file and a
+    `notes/` dir) the fresh-revision scan must ignore.
     """
     monkeypatch.chdir(tmp_path)
     _git_init(repo_root=tmp_path)
@@ -1314,27 +1356,293 @@ def test_run_writes_into_v_next_above_working_tree_max_not_clobbering_uncommitte
     _ = snapshot_v001.write_bytes(b"# Active\n\nOriginal text.\n")
     _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot_v001])
 
-    history_v002 = spec_root / "history" / "v002"
-    history_v002.mkdir(parents=True)
+    history = spec_root / "history"
+    _ = (history / "README.md").write_text("# history dir description\n")
+    notes_dir = history / "notes"
+    notes_dir.mkdir()
+    _ = (notes_dir / "note.md").write_text("# notes\n")
+
+    history_v002 = history / "v002"
+    history_v002.mkdir()
     uncommitted_revise_bytes = b"# In-flight revise snapshot\n\nlegit revise output\n"
     uncommitted_snapshot = history_v002 / "contracts.md"
     _ = uncommitted_snapshot.write_bytes(uncommitted_revise_bytes)
 
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
-    _ = out_of_band_edits.run(ctx=ctx)
+    result = out_of_band_edits.run(ctx=ctx)
 
-    artifact = _find_oob_artifact_in_v_dir(
-        spec_root=spec_root,
-        version_label="v003",
-        suffix=".md",
-    )
-    assert artifact.is_file(), (
-        "auto-backfill must write proposed-change artifact under v003 (above the "
-        "uncommitted v002), not into the in-flight v002 directory; got missing artifact"
-    )
+    expected = _expected_unabsorbed_refuse_skipped(spec_root=spec_root, fresh_label="v002")
+    assert result == IOSuccess(expected)
+    _assert_no_backfill_artifacts(spec_root=spec_root)
+    assert not (history / "v003").exists(), "refusal must not claim a v003 slot"
     assert (
         uncommitted_snapshot.read_bytes() == uncommitted_revise_bytes
     ), "uncommitted v002/contracts.md bytes must be preserved byte-for-byte"
+
+
+def test_run_skips_backfill_when_fresh_working_tree_revision_absorbs_divergence(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) skips the backfill when an in-flight revise already absorbed the drift.
+
+    Work-item livespec-6p9e defect 2 (absorbed shape, the impl-beads
+    v003 incident): the freshly-cut working-tree `history/v002/`
+    already records the HEAD-active bytes for every diverging file
+    (the revise ratified the out-of-band edit). A backfill would
+    duplicate that drift one slot up; the check must skip with a
+    notice and write NOTHING.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    active_bytes = b"# Active\n\nNew text ratified by the in-flight revise.\n"
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(active_bytes)
+    snapshot_v001 = history_v001 / "spec.md"
+    _ = snapshot_v001.write_bytes(b"# Original\n")
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot_v001])
+
+    history_v002 = spec_root / "history" / "v002"
+    history_v002.mkdir()
+    _ = (history_v002 / "spec.md").write_bytes(active_bytes)
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+
+    expected = _expected_absorbed_skipped(spec_root=spec_root, fresh_label="v002")
+    assert result == IOSuccess(expected)
+    _assert_no_backfill_artifacts(spec_root=spec_root)
+    assert not (spec_root / "history" / "v003").exists(), "skip must not claim a v003 slot"
+
+
+def test_run_skips_backfill_when_fresh_revision_absorbs_a_missing_active_divergence(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) treats a deletion as absorbed when the fresh revision also drops the file.
+
+    Missing-active divergence shape: `removed.md` is snapshotted at
+    HEAD-history-v001 but deleted at HEAD-active. The in-flight
+    working-tree `history/v002/` also omits `removed.md` (and carries
+    the unchanged spec.md), so the fresh revision byte-absorbs the
+    divergence — absorption for a deleted file means the fresh
+    snapshot dropped it too. The check must skip with the absorbed
+    notice and write nothing.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    spec_bytes = b"# Spec\n"
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(spec_bytes)
+    snapshot_paired = history_v001 / "spec.md"
+    _ = snapshot_paired.write_bytes(spec_bytes)
+    snapshot_removed = history_v001 / "removed.md"
+    _ = snapshot_removed.write_bytes(b"# Removed since v001\n")
+    _git_commit_paths(
+        repo_root=tmp_path,
+        paths=[active, snapshot_paired, snapshot_removed],
+    )
+
+    history_v002 = spec_root / "history" / "v002"
+    history_v002.mkdir()
+    _ = (history_v002 / "spec.md").write_bytes(spec_bytes)
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+
+    expected = _expected_absorbed_skipped(spec_root=spec_root, fresh_label="v002")
+    assert result == IOSuccess(expected)
+    _assert_no_backfill_artifacts(spec_root=spec_root)
+
+
+def test_run_refuses_backfill_when_fresh_revision_carries_different_bytes_for_diverged_file(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) refuses when the fresh revision's snapshot differs from HEAD-active.
+
+    The in-flight `history/v002/spec.md` carries bytes that match
+    NEITHER side of the divergence (the revise changed the file
+    further): the HEAD-active out-of-band state was never recorded
+    as a version, so the backfill is genuinely needed — but it must
+    land BENEATH the fresh cut, so the check refuses with the
+    backfill-first prescription.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(b"# Active OOB state\n")
+    snapshot_v001 = history_v001 / "spec.md"
+    _ = snapshot_v001.write_bytes(b"# Original\n")
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot_v001])
+
+    history_v002 = spec_root / "history" / "v002"
+    history_v002.mkdir()
+    _ = (history_v002 / "spec.md").write_bytes(b"# Even newer revise output\n")
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+
+    expected = _expected_unabsorbed_refuse_skipped(spec_root=spec_root, fresh_label="v002")
+    assert result == IOSuccess(expected)
+    _assert_no_backfill_artifacts(spec_root=spec_root)
+
+
+def test_run_skips_backfill_when_newest_of_multiple_fresh_revisions_absorbs(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) checks absorption against the NEWEST fresh revision when several exist.
+
+    Two uncommitted working-tree revisions sit above the HEAD
+    baseline: v002 (stale intermediate bytes) and v003 (matching
+    HEAD-active). The absorption check must target v003 — the
+    newest — so the outcome is the absorbed skip naming v003, not
+    the refuse naming v002.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    active_bytes = b"# Active\n\nratified by the newest in-flight revision\n"
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(active_bytes)
+    snapshot_v001 = history_v001 / "spec.md"
+    _ = snapshot_v001.write_bytes(b"# Original\n")
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot_v001])
+
+    history_v002 = spec_root / "history" / "v002"
+    history_v002.mkdir()
+    _ = (history_v002 / "spec.md").write_bytes(b"# stale intermediate\n")
+    history_v003 = spec_root / "history" / "v003"
+    history_v003.mkdir()
+    _ = (history_v003 / "spec.md").write_bytes(active_bytes)
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+
+    expected = _expected_absorbed_skipped(spec_root=spec_root, fresh_label="v003")
+    assert result == IOSuccess(expected)
+    _assert_no_backfill_artifacts(spec_root=spec_root)
+
+
+def test_run_writes_backfill_when_working_tree_history_dir_is_absent(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) still backfills into v002 when the working tree deleted `history/`.
+
+    The comparison is HEAD-based, so a working tree whose `history/`
+    directory is absent (e.g., deleted but not yet committed) has no
+    fresh revision to defer to — the fresh-revision scan yields
+    nothing, and the write path recreates the directory tree for the
+    v(N+1) artifacts.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(b"# Active\n")
+    snapshot_v001 = history_v001 / "spec.md"
+    _ = snapshot_v001.write_bytes(b"# Original\n")
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot_v001])
+
+    shutil.rmtree(spec_root / "history")
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+
+    expected = Finding(
+        check_id="doctor-out-of-band-edits",
+        status="fail",
+        message="out-of-band edits detected at HEAD against history/v001: spec.md",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+    artifact = _find_oob_artifact_in_v_dir(
+        spec_root=spec_root,
+        version_label="v002",
+        suffix=".md",
+    )
+    assert artifact.is_file()
+
+
+def test_run_writes_backfill_into_v002_when_only_an_empty_v003_leads(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) ignores an empty non-leading v-dir and backfills into the v(N+1) slot.
+
+    An EMPTY `history/v003/` (with no v002 at all) is not a fresh
+    revision — empty v-dirs are leftover shapes, not freshly-cut
+    snapshots — and it is also not the pre-backfill guard's
+    condition-B candidate (that checks v002 here). The fresh-revision
+    scan must filter it out so the backfill lands in the HEAD-derived
+    v002 slot.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    history_v001 = spec_root / "history" / "v001"
+    history_v001.mkdir(parents=True)
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(b"# Active\n")
+    snapshot_v001 = history_v001 / "spec.md"
+    _ = snapshot_v001.write_bytes(b"# Original\n")
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot_v001])
+
+    (spec_root / "history" / "v003").mkdir()
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+
+    expected = Finding(
+        check_id="doctor-out-of-band-edits",
+        status="fail",
+        message="out-of-band edits detected at HEAD against history/v001: spec.md",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+    artifact = _find_oob_artifact_in_v_dir(
+        spec_root=spec_root,
+        version_label="v002",
+        suffix=".md",
+    )
+    assert artifact.is_file()
 
 
 def test_run_writes_to_sub_spec_root_not_main_spec_root(

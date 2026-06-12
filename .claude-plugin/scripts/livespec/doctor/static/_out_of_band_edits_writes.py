@@ -45,6 +45,16 @@ write + move) — the destination is the same and the single-write
 path is cleaner. The pre-backfill guard's leftover-detection
 covers any partial-write case.
 
+Ordering invariant (work-item livespec-6p9e defect 2): the
+backfill records PRE-EXISTING HEAD state, so it always claims the
+HEAD-derived v(N+1) slot — chronologically BENEATH any freshly-cut
+working-tree revision. When a non-empty working-tree v-dir above
+the HEAD baseline exists (an in-flight revise), `route_drift_outcome`
+never writes: it skips when the fresh revision already byte-absorbs
+the divergence, and refuses with a backfill-first prescription when
+it does not. Both outcomes are skipped-Findings on the IOSuccess
+track, mirroring the pre-backfill guard idiom.
+
 TIMESTAMP-FILENAME format: `%Y-%m-%dt%H-%M-%Sz` (lowercase t/z,
 all hyphens) so the resulting filename satisfies both the topic
 schema's kebab-case regex (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`) and
@@ -81,6 +91,10 @@ from livespec.doctor.static._out_of_band_edits_compose import (
     _now_utc_filename_timestamp,
     _resulting_files_listing,
 )
+from livespec.doctor.static._out_of_band_edits_fresh import (
+    _newest_fresh_working_tree_revision,
+    _route_fresh_revision_outcome,
+)
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.io.git import show_at_head
@@ -98,31 +112,6 @@ _MakeFinding = Callable[..., Finding]
 
 _HISTORY_SUBDIR_NAME: str = "history"
 _PROPOSED_CHANGES_SUBDIR_NAME: str = "proposed_changes"
-
-
-def _next_available_version_slot(
-    *,
-    spec_root: Path,
-    head_latest_label: str,
-) -> str:
-    """Compute the v(N+1) slot, scanning past any working-tree v-dirs above HEAD.
-
-    Per memo mm-gzi7ej: the HEAD-only computation in
-    `_next_version_label` clobbered an in-flight revise's freshly-cut
-    `history/v(N+1)/` snapshot when the auto-backfill fired between
-    the revise wrapper's writes and the revise's commit landing.
-    The fix starts from the HEAD-derived `v(N+1)` and walks forward
-    on disk, returning the first slot whose directory does NOT yet
-    exist. This guarantees the backfill never writes into a slot
-    the working tree has already claimed (empty leftover, in-flight
-    revise, or otherwise).
-    """
-    head_next_n = int(_next_version_label(latest_version_label=head_latest_label)[1:])
-    history = spec_root / _HISTORY_SUBDIR_NAME
-    candidate_n = head_next_n
-    while (history / f"v{candidate_n:03d}").exists():
-        candidate_n += 1
-    return f"v{candidate_n:03d}"
 
 
 def _show_or_none(
@@ -269,10 +258,11 @@ def write_auto_backfill_artifacts(
     (work-item livespec-6p9e defect 1: listing non-diverging
     files trips `accept-decision-snapshot-consistency`).
     """
-    next_label = _next_available_version_slot(
-        spec_root=ctx.spec_root,
-        head_latest_label=latest_version_label,
-    )
+    # Always the HEAD-derived v(N+1): any working-tree claim on or
+    # above that slot is routed to a skipped-Finding (pre-backfill
+    # guard or `_route_fresh_revision_outcome`) before this writer
+    # runs, so the slot is free by construction.
+    next_label = _next_version_label(latest_version_label=latest_version_label)
     filename_timestamp = _now_utc_filename_timestamp()
     field_timestamp = _now_utc_field_timestamp()
     topic = f"out-of-band-edit-{filename_timestamp}"
@@ -336,9 +326,13 @@ def route_drift_outcome(
 ) -> IOResult[Finding, LivespecError]:
     """Translate the drift-outcome list into a Finding, auto-backfilling on drift.
 
-    No drift → IOSuccess(pass-Finding). Drift → write artifacts
-    (proposed-change + revision + v(N+1)/ snapshots) then return
-    IOSuccess(fail-Finding). The
+    No drift → IOSuccess(pass-Finding). Drift with a freshly-cut
+    (non-empty, above-HEAD) working-tree revision present →
+    skipped-Finding via `_route_fresh_revision_outcome` (absorbed ⇒
+    skip notice; unabsorbed ⇒ refuse with backfill-first
+    prescription) — never a write above the fresh cut. Otherwise
+    drift → write artifacts (proposed-change + revision + v(N+1)/
+    snapshots) then return IOSuccess(fail-Finding). The
     `make_finding` callable is the parent module's Finding-construction
     formula so this module does not duplicate the per-check check_id +
     spec_root payload shape.
@@ -350,6 +344,17 @@ def route_drift_outcome(
                 status="pass",
                 message=("no out-of-band edits detected (HEAD-active matches HEAD-history-vN)"),
             ),
+        )
+    fresh_dir = _newest_fresh_working_tree_revision(
+        spec_root=ctx.spec_root,
+        head_latest_label=latest_version_label,
+    )
+    if fresh_dir is not None:
+        return _route_fresh_revision_outcome(
+            ctx=ctx,
+            make_finding=make_finding,
+            fresh_dir=fresh_dir,
+            diverging_files=diverging_files,
         )
     files_csv = ", ".join(diverging_files)
     fail_message = (
