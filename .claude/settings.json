@@ -1,4 +1,8 @@
 {
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "600000",
+    "BASH_MAX_TIMEOUT_MS": "1200000"
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -7,6 +11,30 @@
           {
             "type": "command",
             "command": "mise exec -- just ensure-plugins"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mise exec -- uv run --no-sync python -m livespec_dev_tooling.agent_hooks.pretooluse_background_guard",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mise exec -- uv run --no-sync python -m livespec_dev_tooling.agent_hooks.subagent_stop_guard",
+            "timeout": 30
           }
         ]
       }

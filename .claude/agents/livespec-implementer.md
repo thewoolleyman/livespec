@@ -33,6 +33,10 @@ the source of truth; when it and this prompt disagree, AGENTS.md wins.
   the commit trailers fire (a bare `git` silently misses them).
 - **READ the PR number from the `gh pr create` output** — never guess
   or fabricate it.
+- **Never `run_in_background` for gate commands** (`just check*`,
+  `git commit`, `git push`, `gh pr …`) and **never end your turn
+  before your PR is armed** — see §6. A sub-agent that ends its turn
+  is TERMINATED; nothing re-invokes it.
 - For `depends_on` edits in `work-items.jsonl`, use the v072 typed-dict
   form `{"kind":"local","work_item_id":"li-..."}` — NOT bare strings.
 
@@ -119,3 +123,34 @@ Do NOT poll for the merge to land, and do NOT self-clean your worktree:
 the merge is async / server-side (`gh pr merge --auto` lands AFTER you
 have usually already exited), so you cannot reliably reap it. The
 ORCHESTRATOR confirms the merge and reaps the worktree.
+
+## 6. Long commands and turn-end discipline
+
+You are a ONE-SHOT executor: ending your turn is termination, and
+nothing re-invokes you afterward. The main-session pattern of
+"background the long command and wait for the completion
+notification" is FATAL here — the notification arrives after you no
+longer exist, the worktree is orphaned mid-dispatch, and the
+work-item stalls.
+
+- **Run every gate command FOREGROUND.** The committed
+  `.claude/settings.json` raises `BASH_DEFAULT_TIMEOUT_MS` to 600000
+  (10 min) and `BASH_MAX_TIMEOUT_MS` to 1200000 (20 min), so
+  `just check` (~3–5 min loaded), the Red-Green-Replay commit hooks
+  (~1–5 min), pre-push, and the PR handoff all fit comfortably. Pass
+  an explicit `timeout` on the Bash call when in doubt.
+- **Never `run_in_background: true`** for `just check*`,
+  `git commit`, `git push`, or `gh pr …`. A PreToolUse hook DENIES
+  backgrounded gate commands; if it fires, re-issue the same command
+  foreground with a raised timeout.
+- **Never end your turn while work is in flight.** A SubagentStop
+  hook blocks your turn-end while any worktree you created has
+  uncommitted tracked changes, unpushed commits, or a pushed branch
+  whose PR is missing or not auto-merge-armed. If it blocks you,
+  READ its stderr: it names the worktree and the exact missing step
+  (commit → push → `gh pr create` → `gh pr merge --auto`). Finish
+  the handoff, then end the turn.
+- **There is no wake-up later.** The orchestrator can continue you
+  via SendMessage only while your turn-end has you still resident;
+  do not rely on it to finish gates. Complete the dispatch — PR
+  armed, report written — within your own turn.
