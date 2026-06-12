@@ -76,10 +76,14 @@ _STOCK_ANSWERS: tuple[tuple[str, str], ...] = (
 )
 
 _EXPECTED_FILES: tuple[str, ...] = (
-    # `.copier-answers.yml` is omitted from local-path copies (copier
-    # writes it when generating from a git/remote source). The smoke
-    # test invokes copier against a local path, so this file is not
-    # expected in the generated tree.
+    # `.copier-answers.yml` is rendered from the template's answers-file
+    # boilerplate (`{{ _copier_conf.answers_file }}.jinja`) on EVERY
+    # copy, regardless of source kind — local-path copies merely omit
+    # the `_commit` key (no VCS version to record). Pinning it here
+    # makes the smoke gate fail loudly if the boilerplate is ever
+    # dropped, which would re-introduce the stuck-`_commit` re-sync
+    # defect (livespec-n9f0).
+    ".copier-answers.yml",
     ".python-version",
     ".mise.toml",
     "pyproject.toml",

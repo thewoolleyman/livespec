@@ -169,6 +169,11 @@ def test_smoke_check_emits_canonical_slug_drift_when_targets_block_mismatches(
     )
     # Minimal stubs for every file in _EXPECTED_FILES so the missing-
     # output branch doesn't fire and the JSON-parse branch passes.
+    # The answers-file boilerplate renders to `.copier-answers.yml`
+    # (copier's default `_answers_file`), mirroring the real template.
+    (template_dir / "{{ _copier_conf.answers_file }}.jinja").write_text(
+        "{{ _copier_answers|to_nice_yaml -}}\n", encoding="utf-8"
+    )
     (template_dir / ".python-version.jinja").write_text("3.13\n", encoding="utf-8")
     (template_dir / ".mise.toml.jinja").write_text("[tools]\n", encoding="utf-8")
     (template_dir / "pyproject.toml.jinja").write_text("[project]\nname = 'x'\n", encoding="utf-8")
@@ -237,7 +242,12 @@ def test_smoke_check_fails_when_generated_json_invalid(*, tmp_path: Path) -> Non
     )
     # Minimal stubs for every file in _EXPECTED_FILES so the
     # missing-output branch doesn't fire. Each file is intentionally
-    # trivial; only marketplace.json is malformed.
+    # trivial; only marketplace.json is malformed. The answers-file
+    # boilerplate renders to `.copier-answers.yml` (copier's default
+    # `_answers_file`), mirroring the real template.
+    (template_dir / "{{ _copier_conf.answers_file }}.jinja").write_text(
+        "{{ _copier_answers|to_nice_yaml -}}\n", encoding="utf-8"
+    )
     (template_dir / ".python-version.jinja").write_text("3.13\n", encoding="utf-8")
     (template_dir / ".mise.toml.jinja").write_text("[tools]\n", encoding="utf-8")
     (template_dir / "pyproject.toml.jinja").write_text("[project]\nname = 'x'\n", encoding="utf-8")
@@ -277,3 +287,29 @@ def test_smoke_check_fails_when_generated_json_invalid(*, tmp_path: Path) -> Non
         f"expected 'copier-template-smoke-invalid-json' check_id in stderr; "
         f"got stderr={result.stderr!r}"
     )
+
+
+def test_expected_files_pin_generated_copier_answers_file() -> None:
+    """`.copier-answers.yml` is pinned in the smoke check's expected output set.
+
+    Regression guard (livespec-n9f0): the template ships the copier
+    answers-file boilerplate (`{{ _copier_conf.answers_file }}.jinja`),
+    so every generated tree — including the smoke check's local-path
+    copy — carries a `.copier-answers.yml` recording the applied
+    answers (and, for git-sourced copies, the `_commit` template
+    version). Pinning membership in `_EXPECTED_FILES` makes the smoke
+    check fail loudly if the boilerplate template is ever dropped,
+    which would re-introduce the stuck-`_commit` re-sync defect
+    (consumers regenerate files on `copier update` but never record
+    the template version they synced to).
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "copier_template_smoke_for_expected_files_test",
+        str(_COPIER_TEMPLATE_SMOKE),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert ".copier-answers.yml" in module._EXPECTED_FILES  # noqa: SLF001
