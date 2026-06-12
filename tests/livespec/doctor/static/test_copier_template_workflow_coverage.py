@@ -8,7 +8,8 @@ SUPERSET of the required-file list enumerated in §"Shared
 content sync — copier template". The check fires `fail` for
 every required file missing from the consumer's
 `.github/workflows/`; each fail finding names the missing
-file(s) and directs the user to run `copier update`.
+file(s) and directs the user to run
+`copier update --vcs-ref=master`.
 
 Acceptance scenarios from work-item li-dctwfc:
 
@@ -22,7 +23,8 @@ Acceptance scenarios from work-item li-dctwfc:
   - Edge case: project with `.github/workflows/` absent
     entirely → one `fail` finding naming every required file.
     Documented choice: bundle all required files into one
-    finding because the corrective action (`copier update`)
+    finding because the corrective action (`copier update
+    --vcs-ref=master`)
     is identical to the partial-miss case; emitting N
     per-file findings would be noisy and would not change the
     user's remediation step.
@@ -175,7 +177,7 @@ def test_copier_template_workflow_coverage_fails_when_one_required_file_missing(
         "copier-template-workflow-coverage: "
         "1 required workflow file(s) missing from "
         "`.github/workflows/`: auto-enable-merge.yml. Corrective action: run "
-        "`copier update` to re-sync the copier template (see "
+        "`copier update --vcs-ref=master` to re-sync the copier template (see "
         '`contracts.md` §"Shared content sync — copier template" for '
         "the canonical required-file list)."
     )
@@ -219,7 +221,7 @@ def test_copier_template_workflow_coverage_fails_when_multiple_files_missing(
         "`.github/workflows/`: "
         "auto-enable-merge.yml, auto-update-branches.yml, pin-freshness.yml. "
         "Corrective action: run "
-        "`copier update` to re-sync the copier template (see "
+        "`copier update --vcs-ref=master` to re-sync the copier template (see "
         '`contracts.md` §"Shared content sync — copier template" for '
         "the canonical required-file list)."
     )
@@ -243,7 +245,7 @@ def test_copier_template_workflow_coverage_fails_when_workflows_dir_absent(
     Documented choice: when the workflows directory does not
     exist at all, the check emits one `fail` finding listing
     every required file. The corrective action (run `copier
-    update` to re-sync) is identical to the partial-miss case,
+    update --vcs-ref=master` to re-sync) is identical to the partial-miss case,
     so emitting N per-file findings would be noisy. The message
     explicitly calls out that the directory is absent so the
     user sees the structural cause, not only the file list.
@@ -257,7 +259,7 @@ def test_copier_template_workflow_coverage_fails_when_workflows_dir_absent(
         "copier-template-workflow-coverage: "
         "`.github/workflows/` directory is absent from project root; "
         f"all {len(REQUIRED_WORKFLOW_FILES)} required workflow file(s) are missing: "
-        f"{missing_joined}. Corrective action: run `copier update` to "
+        f"{missing_joined}. Corrective action: run `copier update --vcs-ref=master` to "
         "re-sync the copier template (see `contracts.md` "
         '§"Shared content sync — copier template" for the canonical '
         "required-file list)."
@@ -343,7 +345,7 @@ def test_copier_template_workflow_coverage_pure_no_monkeypatch_needed(
         "copier-template-workflow-coverage: "
         "`.github/workflows/` directory is absent from project root; "
         f"all {len(REQUIRED_WORKFLOW_FILES)} required workflow file(s) are missing: "
-        f"{missing_joined}. Corrective action: run `copier update` to "
+        f"{missing_joined}. Corrective action: run `copier update --vcs-ref=master` to "
         "re-sync the copier template (see `contracts.md` "
         '§"Shared content sync — copier template" for the canonical '
         "required-file list)."
@@ -423,7 +425,7 @@ def test_copier_template_workflow_coverage_fails_for_consumer_missing_required_f
         "copier-template-workflow-coverage: "
         "1 required workflow file(s) missing from "
         "`.github/workflows/`: ci.yml. Corrective action: run "
-        "`copier update` to re-sync the copier template (see "
+        "`copier update --vcs-ref=master` to re-sync the copier template (see "
         '`contracts.md` §"Shared content sync — copier template" for '
         "the canonical required-file list)."
     )
