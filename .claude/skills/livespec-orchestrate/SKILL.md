@@ -601,6 +601,26 @@ cleanup.)
 - Use `chore(spec):` prefix for spec-only commits (per
   `feedback_chore_spec_for_spec_only_commits`); the red-green-replay
   commit-msg hook rejects `fix:`/`feat:` for spec-only changes.
+- CI retry semantics: `gh run rerun <id> --failed` is for FLAKES
+  ONLY — the same-SHA retry is the point (e.g. GitHub release-CDN
+  504s, uv cache hardlink failures). A rerun re-executes the
+  ORIGINAL event payload, and `actions/checkout` maps that event's
+  pinned `github.sha` onto the branch ref — so a rerun can NEVER
+  pick up commits merged after the event fired. After fixing the
+  target branch, fire a FRESH event instead. For the bump fan-out:
+
+  ```bash
+  gh api repos/thewoolleyman/<repo>/dispatches \
+    -f event_type=sibling-released \
+    -f 'client_payload[source_repo]=<source>' \
+    -f 'client_payload[tag]=<tag>' \
+    -f 'client_payload[release_url]=<url>'
+  ```
+
+  The normative home for this distinction is livespec-dev-tooling
+  `SPECIFICATION/contracts.md` §"Cross-repo coordination automation
+  surface" → retry-semantics clause (propose-change
+  `workflow-retry-semantics.md` pending there as of 2026-06-12).
 - Ending-on-master is the ORCHESTRATOR's job, not the sub-agent's.
   A dispatched sub-agent MUST NOT `git checkout master` in its own
   worktree (master is held by the primary, which occupies
