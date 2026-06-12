@@ -7,17 +7,33 @@
 #   §"Project-local orchestration layer"
 #
 # Every livespec-impl-* repo MUST be generated from this template via:
-#   copier copy gh:thewoolleyman/livespec/templates/impl-plugin <target> \
-#     --vcs-ref=<core-release-tag>
+#   copier copy gh:thewoolleyman/livespec <target> --vcs-ref=master
 #
 # Generated repos MUST carry a .copier-answers.yml at the repo root tracking
 # the template version they were last generated from, and SHOULD re-sync via
-# `copier update` when livespec publishes a new release. CI in each
-# generated repo SHOULD run `copier update --dry-run` to surface drift.
+# `copier update --vcs-ref=master` when the template changes. The
+# `--vcs-ref=master` pin is load-bearing: a bare `copier update` resolves the
+# latest git TAG (livespec's v1.0.0, which predates the template workflow
+# set) — the family's blessed re-sync ref is master. CI in each generated
+# repo SHOULD run `copier update --dry-run --vcs-ref=master` to surface
+# drift.
+#
+# NOTE: this file is the template config ONLY when copier is pointed
+# directly at templates/impl-plugin/ (the smoke-check flow). The consumer
+# flow (`_src_path: gh:thewoolleyman/livespec`) reads the repo-root
+# copier.yml instead, which routes here via `_subdirectory`. The question
+# set is single-sourced in copier-questions.yml and !include'd by both
+# configs; settings (underscore keys) are declared per-config because the
+# consumer flow must NOT declare `_jinja_extensions` (the canonical-checks
+# extension is only importable from a livespec checkout with dev-tooling/
+# on PYTHONPATH — copier extend-merges `_jinja_extensions` across included
+# documents, so it cannot be neutralized downstream).
 #
 # Secrets MUST NOT be templated through copier; secret material lives only in
 # environment variables, OS keyring, or a secret manager.
-
+---
+!include copier-questions.yml
+---
 _templates_suffix: .jinja
 
 # Override Jinja2's default comment delimiters so they don't collide
@@ -46,6 +62,7 @@ _jinja_extensions:
 
 _exclude:
   - copier.yml
+  - copier-questions.yml
   - .git
   - __pycache__
   - "*.pyc"
@@ -68,69 +85,3 @@ _message_after_copy: |
     2. Run `mise install && uv sync` to install the pinned toolchain.
     3. Run `just check` to verify the scaffold is green.
     4. Initialize git and push to {{ github_owner }}/{{ github_repo }}.
-
-# -----------------------------------------------------------------------------
-# Questions
-# -----------------------------------------------------------------------------
-
-plugin_short_name:
-  type: str
-  help: |
-    Short identifier for this implementation plugin (lowercase, hyphen-
-    separated). Used to form livespec-impl-<plugin_short_name>. Examples:
-    plaintext, beads, gitlab, gascity, darkfactory-kilroy.
-
-plugin_full_name:
-  type: str
-  default: "livespec-impl-{{ plugin_short_name }}"
-  help: |
-    Full plugin name (used in marketplace.json, plugin.json, and as the
-    repo name by default). Defaults to livespec-impl-<plugin_short_name>.
-
-plugin_description:
-  type: str
-  help: |
-    One-line description of the plugin's tracking-mechanism focus
-    (e.g., "JSONL-backed implementation plugin for livespec"). Used
-    for plugin.json and marketplace.json descriptions.
-
-plugin_namespace:
-  type: str
-  default: "{{ plugin_full_name }}"
-  help: |
-    Claude Code namespace under which the plugin's slash commands are
-    exposed (e.g., /<plugin_namespace>:capture-memo). Defaults to
-    plugin_full_name.
-
-author_name:
-  type: str
-  help: Author name to embed in plugin.json and pyproject.toml.
-
-author_email:
-  type: str
-  help: Author email to embed in plugin.json and pyproject.toml.
-
-github_owner:
-  type: str
-  help: GitHub owner or organization for the repo (e.g., thewoolleyman).
-
-github_repo:
-  type: str
-  default: "{{ plugin_full_name }}"
-  help: GitHub repository name. Defaults to plugin_full_name.
-
-python_version:
-  type: str
-  default: "3.13"
-  help: |
-    Python version to pin via .python-version and .mise.toml. Should
-    match livespec's pinned Python version for the release tag this
-    template was generated against.
-
-livespec_release_tag:
-  type: str
-  help: |
-    livespec release tag this template was generated against
-    (e.g., v1.0.0). Used to seed the compat.pinned field in the generated
-    repo's .livespec.jsonc per livespec/SPECIFICATION/contracts.md
-    §"Cross-repo coordination — pin-and-bump".

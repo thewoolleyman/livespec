@@ -1,0 +1,80 @@
+# Shared question set for the impl-plugin copier template.
+#
+# Single source of truth for the template's questions, !include'd by
+# BOTH copier entry points:
+#
+#   - the repo-root `copier.yml` (the consumer flow: `_src_path:
+#     gh:thewoolleyman/livespec` + `_subdirectory` routing) — copier
+#     reads ONLY the config at the template ROOT, so without this
+#     include the consumer flow would see zero declared questions and
+#     `copier update` would silently DROP every recorded answer from
+#     `.copier-answers.yml` when regenerating it;
+#   - `templates/impl-plugin/copier.yml` (the smoke-check flow, which
+#     uses templates/impl-plugin/ itself as the template root).
+#
+# This file is excluded from generated output via `_exclude` in both
+# configs. Do not add settings (underscore-prefixed keys) here —
+# settings stay in the two copier.yml files; this file carries
+# questions ONLY.
+
+plugin_short_name:
+  type: str
+  help: |
+    Short identifier for this implementation plugin (lowercase, hyphen-
+    separated). Used to form livespec-impl-<plugin_short_name>. Examples:
+    plaintext, beads, gitlab, gascity, darkfactory-kilroy.
+
+plugin_full_name:
+  type: str
+  default: "livespec-impl-{{ plugin_short_name }}"
+  help: |
+    Full plugin name (used in marketplace.json, plugin.json, and as the
+    repo name by default). Defaults to livespec-impl-<plugin_short_name>.
+
+plugin_description:
+  type: str
+  help: |
+    One-line description of the plugin's tracking-mechanism focus
+    (e.g., "JSONL-backed implementation plugin for livespec"). Used
+    for plugin.json and marketplace.json descriptions.
+
+plugin_namespace:
+  type: str
+  default: "{{ plugin_full_name }}"
+  help: |
+    Claude Code namespace under which the plugin's slash commands are
+    exposed (e.g., /<plugin_namespace>:capture-memo). Defaults to
+    plugin_full_name.
+
+author_name:
+  type: str
+  help: Author name to embed in plugin.json and pyproject.toml.
+
+author_email:
+  type: str
+  help: Author email to embed in plugin.json and pyproject.toml.
+
+github_owner:
+  type: str
+  help: GitHub owner or organization for the repo (e.g., thewoolleyman).
+
+github_repo:
+  type: str
+  default: "{{ plugin_full_name }}"
+  help: GitHub repository name. Defaults to plugin_full_name.
+
+python_version:
+  type: str
+  default: "3.13"
+  help: |
+    Python version to pin via .python-version and .mise.toml. Should
+    match livespec's pinned Python version for the release tag this
+    template was generated against.
+
+livespec_release_tag:
+  type: str
+  help: |
+    livespec release tag this template was generated against
+    (e.g., v1.0.0). Used to seed the compat.pinned field in the generated
+    repo's .livespec.jsonc per livespec/SPECIFICATION/contracts.md
+    §"Cross-repo coordination — pin-and-bump".

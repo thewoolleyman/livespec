@@ -2,7 +2,7 @@
 #
 # Generated from livespec/templates/impl-plugin/.github/workflows/
 # copier-update-drift.yml.jinja at copier-copy time; re-sync via
-# `copier update` when livespec publishes a new release.
+# `copier update --vcs-ref=master` when the livespec template changes.
 #
 # Authority: livespec/SPECIFICATION/contracts.md
 #   §"Shared content sync — copier template" — each impl repo's CI
@@ -11,8 +11,13 @@
 #
 # This workflow surfaces drift between {{ plugin_full_name }}'s
 # generated content and livespec's current template. To re-sync
-# after detected drift: run `copier update` locally and resolve any
-# 3-way merge conflicts.
+# after detected drift: run `copier update --vcs-ref=master` locally
+# and resolve any 3-way merge conflicts.
+#
+# The `--vcs-ref=master` pin is load-bearing: a bare `copier update`
+# resolves the latest git TAG on the template repo (livespec's v1.0.0,
+# which predates the entire template workflow set); the family's
+# blessed re-sync ref is master.
 
 name: copier-update-drift
 
@@ -27,7 +32,7 @@ on:
 
 jobs:
   drift:
-    name: copier update --dry-run
+    name: copier update --dry-run --vcs-ref=master
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,10 +46,11 @@ jobs:
       - name: Install Python dev deps via uv (includes copier)
         run: uv sync --all-groups
 
-      - name: copier update --dry-run
+      - name: copier update --dry-run --vcs-ref=master
         run: |
           set -uo pipefail
           uv run copier update \
             --dry-run \
             --defaults \
-            --skip-answered
+            --skip-answered \
+            --vcs-ref=master
