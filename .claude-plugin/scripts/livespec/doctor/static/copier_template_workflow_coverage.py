@@ -33,7 +33,7 @@ content sync — copier template". The check fires `fail` for
 every required workflow file that is missing from the
 consumer's `.github/workflows/`. Each fail finding names the
 specific missing file(s) and directs the user to run
-`copier update` to re-sync from the template.
+`copier update --vcs-ref=master` to re-sync from the template.
 
 The required-file list is hard-coded in this module per the v1
 contract clause: "for v1, the doctor invariant MAY hard-code
@@ -44,7 +44,8 @@ that sibling propose-change lands.
 
 When `.github/workflows/` is absent entirely the check fires a
 single `fail` finding naming every required file, since the
-corrective action (run `copier update`) is identical to the
+corrective action (run `copier update --vcs-ref=master`) is
+identical to the
 "one or more missing files" case.
 """
 
@@ -133,7 +134,7 @@ def _evaluate(*, ctx: DoctorContext) -> Finding:
     missing — including the case where `.github/workflows/` does
     not exist at all — the check fires a single `fail` finding
     naming the missing files and directing the user to
-    `copier update`.
+    `copier update --vcs-ref=master`.
     """
     copier_answers = ctx.project_root / ".copier-answers.yml"
     if not copier_answers.exists():
@@ -157,7 +158,7 @@ def _evaluate(*, ctx: DoctorContext) -> Finding:
                 f"copier-template-workflow-coverage: "
                 f"`.github/workflows/` directory is absent from project root; "
                 f"all {len(missing)} required workflow file(s) are missing: "
-                f"{missing_joined}. Corrective action: run `copier update` to "
+                f"{missing_joined}. Corrective action: run `copier update --vcs-ref=master` to "
                 f"re-sync the copier template (see `contracts.md` "
                 f'§"Shared content sync — copier template" for the canonical '
                 f"required-file list)."
@@ -181,7 +182,7 @@ def _evaluate(*, ctx: DoctorContext) -> Finding:
             f"copier-template-workflow-coverage: "
             f"{len(missing)} required workflow file(s) missing from "
             f"`.github/workflows/`: {missing_joined}. Corrective action: run "
-            f"`copier update` to re-sync the copier template (see "
+            f"`copier update --vcs-ref=master` to re-sync the copier template (see "
             f'`contracts.md` §"Shared content sync — copier template" for '
             f"the canonical required-file list)."
         ),
