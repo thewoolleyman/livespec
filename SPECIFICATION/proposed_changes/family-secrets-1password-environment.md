@@ -12,7 +12,7 @@ created_at: 2026-06-12T03:52:30Z
 
 ### Summary
 
-Add a new section §"Family secrets — 1Password Environment as canonical source" to SPECIFICATION/non-functional-requirements.md establishing the livespec 1Password Environment as the single canonical source for every family-scoped secret, prohibiting standing secret-bearing files at rest on the host (with one sealed bootstrap exception), permitting run-scoped transient projections only where a consumer interface physically cannot read environment variables, defining GitHub Actions secrets as derived projections pushed under the wrapper, recording the write-side constraint (canonical values are operator-managed in the 1Password UI), and forbidding secret values from ever being committed or echoed into transcripts or logs.
+Add a new section §"Family secrets — 1Password Environment as canonical source" to SPECIFICATION/non-functional-requirements.md establishing the livespec 1Password Environment as the single canonical source for every family-scoped secret, prohibiting standing secret-bearing files at rest on the host (with one sealed bootstrap exception), permitting run-scoped transient projections only where a consumer interface physically cannot read environment variables, defining GitHub Actions secrets as derived projections pushed under the wrapper, recording the write-side constraint (canonical values are operator-managed in the 1Password UI), forbidding secret values from ever being committed or echoed into transcripts or logs, and establishing per-consumer Anthropic API key naming (`ANTHROPIC_API_KEY_<CONSUMER>`, mapped to the SDK's `ANTHROPIC_API_KEY` env var only at the consuming workflow's env hop).
 
 ### Motivation
 
@@ -22,7 +22,7 @@ A 2026-06-12 audit found every family secret loose: raw `gh secret set` pushes w
 
 A new section §"Family secrets — 1Password Environment as canonical source" MUST be added to SPECIFICATION/non-functional-requirements.md carrying the following normative rules (decided 2026-06-12):
 
-1. **Canonical source.** The livespec 1Password Environment — consumed via the installed `with-livespec-env.sh` wrapper from the 1password-env-wrapper project — is the SINGLE canonical source for every family-scoped secret: the GitHub App bump-bot credentials (`APP_ID`, `APP_PRIVATE_KEY` — one canonical App private key shared by all family repos), the per-tenant beads/Dolt passwords, the Fabro-dispatch Claude Code OAuth token, and `ANTHROPIC_API_KEY`.
+1. **Canonical source.** The livespec 1Password Environment — consumed via the installed `with-livespec-env.sh` wrapper from the 1password-env-wrapper project — is the SINGLE canonical source for every family-scoped secret: the GitHub App bump-bot credentials (`APP_ID`, `APP_PRIVATE_KEY` — one canonical App private key shared by all family repos), the per-tenant beads/Dolt passwords, the Fabro-dispatch Claude Code OAuth token, and the per-consumer Anthropic API keys (`ANTHROPIC_API_KEY_<CONSUMER>`; first consumer: the weekly e2e canary's `ANTHROPIC_API_KEY_LIVESPEC_E2E`).
 
 2. **Local consumption rule.** Processes MUST consume secrets via environment injection — invoked under the wrapper. Standing secret-bearing files at rest on the host are PROHIBITED. The single permitted at-rest secret is the wrapper's own 1Password service-account token, sealed via systemd-creds; that token is the bootstrap root of trust.
 
@@ -33,3 +33,5 @@ A new section §"Family secrets — 1Password Environment as canonical source" M
 5. **Write-side constraint (verified 2026-06-12).** The `op` CLI has no Environment write surface (`op environment read` only) and the family service account holds zero vault grants; adding or rotating canonical values is a manual operator step in the 1Password UI.
 
 6. **No leakage.** Secret values are never committed and never echoed into transcripts or logs — they are referenced by variable name only.
+
+7. **Per-consumer Anthropic API key naming (decided 2026-06-12).** One Anthropic API key per consumer. The key is named `ANTHROPIC_API_KEY_<CONSUMER>` both in the 1Password Environment and as the GitHub Actions secret name, and the key is named after its consumer in the Anthropic console; it is mapped to the SDK's required `ANTHROPIC_API_KEY` env var only at the consuming workflow's `env:` hop. First consumer: the weekly e2e canary → `ANTHROPIC_API_KEY_LIVESPEC_E2E`.

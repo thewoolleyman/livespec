@@ -16,11 +16,17 @@
 # end, /usr/bin/zsh.05-0.15/week typical. Manual workflow_dispatch runs add at the
 # same rate — bound runtime spend by not auto-dispatching from PRs.
 #
-# Auth (Q3): `ANTHROPIC_API_KEY` is required as a repo secret. The job
-# fails loudly on `schedule` / `workflow_dispatch` runs when the secret is
-# unset (no false-green silent-skip). The fork-PR carve-out is preserved
-# by NOT triggering on `pull_request` — fork contributors cannot trigger
-# this workflow.
+# Auth (Q3): `ANTHROPIC_API_KEY_LIVESPEC_E2E` is required as a repo
+# secret, following the per-consumer key convention: one Anthropic API key
+# per consumer, named `ANTHROPIC_API_KEY_<CONSUMER>` in the livespec
+# 1Password Environment (the canonical source, projected to Actions via
+# `gh secret set` under with-livespec-env.sh) and in the Actions secret
+# store, with the console key named after its consumer. The secret is
+# mapped to the SDK's required `ANTHROPIC_API_KEY` env var only at the
+# consuming step's `env:` hop below. The job fails loudly on `schedule` /
+# `workflow_dispatch` runs when the secret is unset (no false-green
+# silent-skip). The fork-PR carve-out is preserved by NOT triggering on
+# `pull_request` — fork contributors cannot trigger this workflow.
 #
 # Required CLI: the SDK shells out to `@anthropic-ai/claude-code`, installed
 # via npm in the "Install Claude Code CLI" step below.
@@ -40,16 +46,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Require ANTHROPIC_API_KEY
+      - name: Require ANTHROPIC_API_KEY_LIVESPEC_E2E
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY_LIVESPEC_E2E: ${{ secrets.ANTHROPIC_API_KEY_LIVESPEC_E2E }}
         run: |
-          if [ -z "${ANTHROPIC_API_KEY}" ]; then
-            echo "::error::ANTHROPIC_API_KEY repo secret is required for e2e-real runs."
-            echo "Set it via: gh secret set ANTHROPIC_API_KEY --repo thewoolleyman/livespec"
+          if [ -z "${ANTHROPIC_API_KEY_LIVESPEC_E2E}" ]; then
+            echo "::error::ANTHROPIC_API_KEY_LIVESPEC_E2E repo secret is required for e2e-real runs."
+            echo "Set it via: gh secret set ANTHROPIC_API_KEY_LIVESPEC_E2E --repo thewoolleyman/livespec"
             exit 1
           fi
-          echo "ANTHROPIC_API_KEY is set (length=${#ANTHROPIC_API_KEY})."
+          echo "ANTHROPIC_API_KEY_LIVESPEC_E2E is set (length=${#ANTHROPIC_API_KEY_LIVESPEC_E2E})."
 
       - name: Setup Node.js (for claude CLI)
         uses: actions/setup-node@v4
@@ -69,5 +75,5 @@ jobs:
 
       - name: just e2e-test-claude-code-real
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_LIVESPEC_E2E }}
         run: just e2e-test-claude-code-real
