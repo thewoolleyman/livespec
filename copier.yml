@@ -2,21 +2,41 @@
 #
 # The impl-plugin template lives at templates/impl-plugin/. This file
 # routes `copier copy gh:thewoolleyman/livespec` and
-# `copier update` to that subdirectory so _src_path in generated
-# repos can use the repo root URL rather than a non-standard
+# `copier update --vcs-ref=master` to that subdirectory so _src_path in
+# generated repos can use the repo root URL rather than a non-standard
 # `gh:owner/repo/subdir` path (which copier parses as owner/repo=
 # "owner/repo/subdir" — a broken GitHub URL).
 #
-# _envops and _templates_suffix are set here (as well as in the
-# subdirectory's copier.yml) because the root config governs Jinja2
-# env setup — the subdirectory config is used only for questions.
+# IMPORTANT: when the template source is the repo root (the consumer
+# flow), copier reads ONLY this file — templates/impl-plugin/copier.yml
+# is NOT consulted. The question set is therefore single-sourced in
+# templates/impl-plugin/copier-questions.yml and !include'd both here
+# and there; without it, consumer-side `copier update` would see zero
+# declared questions and silently DROP every recorded answer when
+# regenerating .copier-answers.yml.
+#
+# `_jinja_extensions` is deliberately NOT declared here: the
+# canonical-checks extension is importable only from a livespec
+# checkout with dev-tooling/ on PYTHONPATH (the smoke-check flow);
+# consumer-side `copier update` clones the template to an ephemeral
+# directory where the dotted path cannot resolve, and copier
+# extend-merges `_jinja_extensions` across included documents, so it
+# cannot be declared in a shared include and neutralized here. The
+# consumer flow therefore renders without the extension (status quo:
+# `canonical_check_slugs` falls back to Jinja's ChainableUndefined and
+# the justfile's canonical block survives via copier's 3-way merge).
+---
+!include templates/impl-plugin/copier-questions.yml
+---
 _subdirectory: templates/impl-plugin
 _templates_suffix: .jinja
+_answers_file: .copier-answers.yml
 _envops:
   comment_start_string: "[#"
   comment_end_string: "#]"
 _exclude:
   - copier.yml
+  - copier-questions.yml
   - .git
   - __pycache__
   - "*.pyc"

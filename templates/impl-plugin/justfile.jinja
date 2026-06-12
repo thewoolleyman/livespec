@@ -1,7 +1,7 @@
 # justfile — {{ plugin_full_name }} dev-tooling task runner.
 #
 # Generated from livespec/templates/impl-plugin/justfile.jinja at
-# copier-copy time; re-sync via `copier update` when livespec
+# copier-copy time; re-sync via `copier update --vcs-ref=master` when livespec
 # publishes a new release.
 #
 # Authority: livespec/SPECIFICATION/non-functional-requirements.md
@@ -73,7 +73,7 @@ ensure-plugins:
 # Slugs are stamped in alphabetical order (sorted at the source in
 # `_discover_slugs`). DO NOT hand-edit this list — extend the
 # canonical set by adding `livespec_dev_tooling/checks/<name>.py` in
-# the dev-tooling sibling repo, then re-running `copier update` here.
+# the dev-tooling sibling repo, then re-running `copier update --vcs-ref=master` here.
 # ---------------------------------------------------------------
 
 check:
