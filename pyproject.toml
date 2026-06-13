@@ -505,6 +505,39 @@ layers = [
 # ratchet-with-ceiling semantics (floor = baseline_kill_rate, capped at 80%)
 # live entirely in `just check-mutation`, which reads .mutmut-baseline.json
 # and computes the floor at runtime.
+#
+# NESTED-LAYOUT NOTE (epic livespec-mutreal, item livespec-mutreal.1).
+# livespec's package lives at the nested path
+# `.claude-plugin/scripts/livespec/`, not at a flat import root or under
+# `src/`. mutmut 3.2.3 assumes flat-or-`src/`: it derives each mutant's KEY
+# from the dotted FILE PATH (stripping only a literal `src.` prefix) while
+# the runtime trampoline records hits keyed by the import MODULE NAME. From
+# the repo root those namespaces never intersect
+# (`.claude-plugin.scripts.livespec.validate.X` vs. `livespec.validate.X`),
+# so EVERY mutant is unkillable and the run records 0 mutants — the silent
+# no-op this epic fixes.
+#
+# The validated fix runs mutmut with cwd = an IMPORT-ROOT staging dir whose
+# `livespec/` is the package (so file-path-dotted == module name → keys
+# match) and whose `.claude-plugin/` + paired-test subtree satisfy the
+# root-relative fixture reads (`Path(__file__).resolve().parents[3] /
+# ".claude-plugin" / ...`) without dragging in the whole `tests/` tree (whose
+# `commands/` modules import source mutmut never copies → the ModuleNotFound
+# collection failure). The two paired-test fragilities handled in the same
+# leg: the one `inspect.getsource`-based test in
+# `tests/livespec/parse/test_front_matter.py` is guarded with
+# `@pytest.mark.skipif(os.environ.get("MUTANT_UNDER_TEST"), ...)` (mutmut
+# prepends trampoline boilerplate so the first-line pragma assertion cannot
+# hold under instrumentation), and the validate fixtures' support closure
+# (`livespec/{__init__,errors,types,context}.py`, `livespec/schemas/`,
+# `.claude-plugin/specification-templates/`) is copied into `mutants/`.
+#
+# Measured locally (LIVESPEC_RUN_MUTATION=true) over `parse/` + `validate/`:
+# 201 mutants, 182 killed, 19 survived → 90.55% kill rate (≥ the 80% floor).
+#
+# `paths_to_mutate` below names the pure-logic core. `tests_dir` is a
+# mutmut-2.x vestige (ignored by 3.x; the `tests/` copy is unconditional)
+# and is retained only as documentation of the paired-test scope.
 # ---------------------------------------------------------------------------
 
 [tool.mutmut]

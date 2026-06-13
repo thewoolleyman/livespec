@@ -22,6 +22,9 @@ test (enforced by `check-pbt-coverage-pure-modules`).
 
 from __future__ import annotations
 
+import os
+
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from livespec.errors import ValidationError
@@ -408,6 +411,14 @@ def test_round_trip_serialize_then_parse_returns_input(
     assert result == Success(keys_values)
 
 
+@pytest.mark.skipif(
+    bool(os.environ.get("MUTANT_UNDER_TEST")),
+    reason=(
+        "inspect.getsource sees mutmut's trampoline boilerplate prepended to the "
+        "instrumented copy, so the first-line pragma assertion cannot hold under "
+        "mutation; the contract is still enforced on every non-mutation run."
+    ),
+)
 def test_front_matter_module_declares_hkt_erosion_pragma() -> None:
     """parse/front_matter.py declares the file-level HKT-erosion pragma.
 
