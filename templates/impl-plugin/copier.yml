@@ -23,11 +23,19 @@
 # flow (`_src_path: gh:thewoolleyman/livespec`) reads the repo-root
 # copier.yml instead, which routes here via `_subdirectory`. The question
 # set is single-sourced in copier-questions.yml and !include'd by both
-# configs; settings (underscore keys) are declared per-config because the
-# consumer flow must NOT declare `_jinja_extensions` (the canonical-checks
-# extension is only importable from a livespec checkout with dev-tooling/
-# on PYTHONPATH — copier extend-merges `_jinja_extensions` across included
-# documents, so it cannot be neutralized downstream).
+# configs.
+#
+# The canonical enforcement-check aggregate that justfile.jinja stamps is
+# delivered as committed STATIC DATA (canonical-slugs.yml, a release-time
+# projection of livespec_dev_tooling.canonical_checks regenerated via
+# `just stamp-canonical-slugs` in livespec), `{% include %}`'d by
+# justfile.jinja. This config therefore declares NO `_jinja_extensions`:
+# the canonical block renders import-free on BOTH this smoke-check flow
+# AND the consumer `copier update` flow (per
+# livespec/SPECIFICATION/contracts.md §"Shared code sync —
+# livespec-dev-tooling" → Template gate, a render-time extension importing
+# the dev-tooling module is PROHIBITED for this gate because copier clones
+# the template to an ephemeral checkout with no PYTHONPATH injection).
 #
 # Secrets MUST NOT be templated through copier; secret material lives only in
 # environment variables, OS keyring, or a secret manager.
@@ -46,23 +54,12 @@ _envops:
   comment_start_string: "[#"
   comment_end_string: "#]"
 
-# Register the canonical-check-slug Jinja global so `justfile.jinja`
-# can stamp the full enforcement-aggregate set at copy time. Per
-# livespec/SPECIFICATION/contracts.md §"Shared code sync —
-# livespec-dev-tooling", the slug list is derived from
-# `livespec_dev_tooling.canonical_checks` (the single source of truth)
-# at every `copier copy` / `copier update`, NOT from a hand-maintained
-# template list. Resolution: the extension module lives at
-# `dev-tooling/copier_extensions/canonical_checks.py` in livespec;
-# livespec's `dev-tooling/checks/copier_template_smoke.py` injects
-# `<repo-root>/dev-tooling` on PYTHONPATH when invoking the subprocess
-# so the dotted path resolves.
-_jinja_extensions:
-  - copier_extensions.canonical_checks:CanonicalChecksExtension
-
 _exclude:
   - copier.yml
   - copier-questions.yml
+  # canonical-slugs.yml is render-time DATA `{% include %}`'d by
+  # justfile.jinja, never copied into the generated repo verbatim.
+  - canonical-slugs.yml
   - .git
   - __pycache__
   - "*.pyc"

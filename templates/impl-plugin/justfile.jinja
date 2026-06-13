@@ -66,20 +66,37 @@ ensure-plugins:
 # ---------------------------------------------------------------
 # Aggregate check — canonical full-set stamped at copier-copy time.
 #
-# The `targets=(...)` array below is Jinja-generated from
-# `livespec_dev_tooling.canonical_checks.canonical_check_slugs()` via
-# the `copier_extensions.canonical_checks:CanonicalChecksExtension`
-# Jinja extension registered in `copier.yml`. Per
-# livespec/SPECIFICATION/contracts.md §"Shared code sync —
-# livespec-dev-tooling", every newly-generated `livespec-impl-*`
-# sibling inherits the full canonical aggregate from inception;
-# existing siblings see canonical-set growth as merge conflicts on
-# `copier update` (3-way merge surfaces canonical drift).
+# The `targets=(...)` array below is Jinja-rendered from the committed
+# copier-template DATA file `canonical-slugs.yml`, which is a
+# release-time projection of
+# `livespec_dev_tooling.canonical_checks.canonical_check_slugs()` (the
+# single source of truth) regenerated in livespec via
+# `just stamp-canonical-slugs`. The block is Jinja-included from that
+# data file and line-parsed below — import-free, so it renders
+# correctly on BOTH the smoke-check flow AND the consumer
+# `copier update` flow (copier clones the template to an ephemeral
+# checkout with no PYTHONPATH injection, where a render-time copier
+# jinja-extension importing the dev-tooling module cannot resolve).
+# Per livespec/SPECIFICATION/contracts.md
+# §"Shared code sync — livespec-dev-tooling" → Template gate, every
+# newly-generated `livespec-impl-*` sibling inherits the full canonical
+# aggregate from inception; existing siblings see canonical-set growth
+# as a real reviewable diff on `copier update` (3-way merge surfaces
+# canonical drift).
 #
-# Slugs are stamped in alphabetical order (sorted at the source in
-# `_discover_slugs`). DO NOT hand-edit this list — extend the
-# canonical set by adding `livespec_dev_tooling/checks/<name>.py` in
-# the dev-tooling sibling repo, then re-running `copier update --vcs-ref=master` here.
+# The data file resolves at the Jinja loader root, which differs
+# between the two flows (smoke-check flow: loader root is
+# templates/impl-plugin/; consumer flow: loader root is the repo/clone
+# root, with _subdirectory routing). A Jinja list-include tries
+# "canonical-slugs.yml" then "templates/impl-plugin/canonical-slugs.yml"
+# and uses the first that exists, so one physical data file serves both
+# flows import-free.
+#
+# Slugs are stamped in alphabetical order (sorted at the source). DO
+# NOT hand-edit this list — extend the canonical set by adding
+# `livespec_dev_tooling/checks/<name>.py` in the dev-tooling sibling
+# repo, re-run `just stamp-canonical-slugs` in livespec, cut a template
+# release, then re-run `copier update --vcs-ref=master` here.
 # ---------------------------------------------------------------
 
 check:
@@ -104,9 +121,13 @@ check:
         exit 1
     fi
     export UV_NO_SYNC=1
+{%- set canonical_slugs_raw %}{% include ["canonical-slugs.yml", "templates/impl-plugin/canonical-slugs.yml"] %}{% endset %}
     targets=(
-{%- for slug in canonical_check_slugs %}
-        {{ slug }}
+{%- for canonical_slug_line in canonical_slugs_raw.split("\n") %}
+{%- set canonical_slug = canonical_slug_line.strip() %}
+{%- if canonical_slug.startswith("- ") %}
+        {{ canonical_slug[2:] | trim }}
+{%- endif %}
 {%- endfor %}
     )
     failed=()

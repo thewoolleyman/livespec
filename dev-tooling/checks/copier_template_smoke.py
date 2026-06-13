@@ -16,15 +16,20 @@ load-bearing acceptance gate for the C.6 sub-task of the Phase C
 epic (li-jsl / li-vyj).
 
 Per livespec-core/SPECIFICATION/contracts.md §"Shared code sync —
-livespec-dev-tooling", the template's
-`justfile.jinja` stamps the full canonical check-slug aggregate at
-copier-copy time via the
-`copier_extensions.canonical_checks:CanonicalChecksExtension` Jinja
-extension. This check verifies (a) the extension resolves at copy
-time by injecting `<repo-root>/dev-tooling` onto the subprocess
-PYTHONPATH, and (b) the generated `justfile` contains every slug
-from `livespec_dev_tooling.canonical_checks.canonical_check_slugs()`
-in alphabetical order.
+livespec-dev-tooling" → Template gate, the template's `justfile.jinja`
+stamps the full canonical check-slug aggregate at copier-copy time
+from the committed STATIC DATA file `canonical-slugs.yml` (a
+release-time projection of
+`livespec_dev_tooling.canonical_checks.canonical_check_slugs()`,
+regenerated via `just stamp-canonical-slugs` and `{% include %}`'d by
+`justfile.jinja`). This check verifies the generated `justfile`
+contains every slug from
+`livespec_dev_tooling.canonical_checks.canonical_check_slugs()` in
+alphabetical order. The stamping is import-free — there is no copier
+Jinja extension and no PYTHONPATH injection — so this check exercises
+the same render path the consumer `copier update` flow uses (the
+`canonical-slugs-projection` check separately gates that the committed
+`canonical-slugs.yml` matches the source of truth).
 
 Output discipline: per spec, `print` (T20) and
 `sys.stderr.write` (`check-no-write-direct`) are banned in
@@ -36,7 +41,6 @@ _vendor/structlog` is added to `sys.path` at module import time.
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -53,13 +57,12 @@ __all__: list[str] = []
 
 
 _TEMPLATE_PATH_REL = Path("templates") / "impl-plugin"
-_DEV_TOOLING_REL = Path("dev-tooling")
 # Regex matching the bash array entry shape inside the `check:`
 # recipe's `targets=(...)` block. Each canonical slug is rendered
 # as 8-space-indented bareword on its own line by `justfile.jinja`'s
-# `{%- for slug in canonical_check_slugs %}` loop. The check matches
-# only `check-*` identifiers to avoid accidentally catching shell
-# keywords or comment text that might appear in other recipes.
+# include-then-line-parse loop over the committed canonical-slugs.yml
+# data file. The check matches only `check-*` identifiers to avoid
+# accidentally catching shell keywords or comment text in other recipes.
 _TARGETS_LINE_RE = re.compile(r"^ {8}(check-[a-z0-9-]+)$", re.MULTILINE)
 
 _STOCK_ANSWERS: tuple[tuple[str, str], ...] = (
@@ -116,27 +119,15 @@ def _configure_logger() -> structlog.stdlib.BoundLogger:
     return structlog.get_logger("copier_template_smoke")
 
 
-def _build_copier_env(*, repo_root: Path) -> dict[str, str]:
-    """Build the env dict for the `copier copy` subprocess.
+def _run_copier_copy(*, template_path: Path, target: Path) -> subprocess.CompletedProcess[str]:
+    """Run `copier copy` against the template with the stock answers.
 
-    Injects `<repo-root>/dev-tooling` onto `PYTHONPATH` so the
-    `copier_extensions.canonical_checks:CanonicalChecksExtension`
-    Jinja extension referenced by `templates/impl-plugin/copier.yml`
-    resolves under `uv run copier copy`. Without this, copier's
-    Jinja2 environment construction raises `ExtensionNotFoundError`
-    because `uv run` does not auto-add the project root to
-    `sys.path`.
+    The subprocess inherits the ambient environment unchanged: the
+    canonical `check:` aggregate is stamped from the committed
+    `canonical-slugs.yml` data file via a `{% include %}` (no copier
+    Jinja extension, no PYTHONPATH injection), so this render path is
+    identical to the consumer `copier update` flow.
     """
-    env = dict(os.environ)
-    dev_tooling_abs = str(repo_root / _DEV_TOOLING_REL)
-    existing = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = f"{dev_tooling_abs}{os.pathsep}{existing}" if existing else dev_tooling_abs
-    return env
-
-
-def _run_copier_copy(
-    *, template_path: Path, target: Path, repo_root: Path
-) -> subprocess.CompletedProcess[str]:
     data_args: list[str] = []
     for key, value in _STOCK_ANSWERS:
         data_args.extend(["--data", f"{key}={value}"])
@@ -156,7 +147,6 @@ def _run_copier_copy(
         capture_output=True,
         text=True,
         check=False,
-        env=_build_copier_env(repo_root=repo_root),
     )
 
 
@@ -217,7 +207,7 @@ def main() -> int:
         return 1
     with tempfile.TemporaryDirectory(prefix="livespec-copier-smoke-") as tmp_str:
         target = Path(tmp_str) / "generated"
-        result = _run_copier_copy(template_path=template_path, target=target, repo_root=repo_root)
+        result = _run_copier_copy(template_path=template_path, target=target)
         if result.returncode != 0:
             log.error(
                 "copier copy failed",
@@ -315,10 +305,9 @@ def _verify_canonical_slug_stamping(
         extra=sorted(set(stamped) - set(expected_slugs)),
         out_of_order=stamped != tuple(sorted(stamped)),
         hint=(
-            "Verify the copier Jinja extension at "
-            "dev-tooling/copier_extensions/canonical_checks.py "
-            "resolves and that justfile.jinja loops over "
-            "canonical_check_slugs."
+            "Run `just stamp-canonical-slugs` to regenerate "
+            "templates/impl-plugin/canonical-slugs.yml from the source of "
+            "truth, and verify justfile.jinja includes + line-parses it."
         ),
     )
     return None

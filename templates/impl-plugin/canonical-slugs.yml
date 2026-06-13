@@ -1,0 +1,51 @@
+# Canonical check-slug aggregate — release-time projection of
+# livespec_dev_tooling.canonical_checks (the single source of truth).
+#
+# DO NOT hand-edit. Regenerate via `just stamp-canonical-slugs`; the
+# `check-canonical-slugs-projection` gate fails if this file drifts from
+# livespec_dev_tooling.canonical_checks.canonical_check_slugs().
+#
+# Consumed by templates/impl-plugin/justfile.jinja as committed copier
+# template DATA so the canonical `check:` aggregate renders import-free on
+# both the smoke-check flow AND the consumer `copier update` flow. See
+# livespec/SPECIFICATION/contracts.md §"Shared code sync —
+# livespec-dev-tooling" → Template gate.
+- check-aggregate-completeness
+- check-all-declared
+- check-assert-never-exhaustiveness
+- check-branch-protection-alignment
+- check-check-coverage-incremental
+- check-check-mutation
+- check-check-tools
+- check-claude-md-coverage
+- check-comment-line-anchors
+- check-commit-pairs-source-and-test
+- check-file-lloc
+- check-global-writes
+- check-heading-coverage
+- check-keyword-only-args
+- check-main-guard
+- check-master-ci-green
+- check-match-keyword-only
+- check-newtype-domain-primitives
+- check-no-direct-destructive-cli
+- check-no-direct-tool-invocation
+- check-no-except-outside-io
+- check-no-inheritance
+- check-no-lloc-soft-warnings
+- check-no-raise-outside-io
+- check-no-todo-registry
+- check-no-write-direct
+- check-pbt-coverage-pure-modules
+- check-per-file-coverage
+- check-primary-checkout-commit-refuse-hook-installed
+- check-private-calls
+- check-public-api-result-typed
+- check-red-green-replay
+- check-rop-pipeline-shape
+- check-skill-invocation-paths
+- check-supervisor-discipline
+- check-tests-mirror-pairing
+- check-tool-backed-check-completeness
+- check-vendor-manifest
+- check-wrapper-shape
