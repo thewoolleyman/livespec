@@ -80,10 +80,19 @@ def query_pull_request_state(*, github_url: str, number: int) -> str:
 def branch_exists_on_remote(*, github_url: str, name: str) -> bool:
     """Return True iff the named branch exists on the remote.
 
-    Uses `gh api repos/<owner>/<name>/branches/<branch>`. A 404 (caught
-    via subprocess.CalledProcessError with `HTTP 404` in stderr)
-    translates to `False`; any other CalledProcessError propagates so
-    the retry-wrap layer can decide whether to back off and retry.
+    Uses `gh api repos/<owner>/<name>/branches/<branch>`. A 404 is
+    detected via the structured `gh: <message> (HTTP 404)` line that
+    `gh` emits to stderr on a 4xx response — the trailing
+    `(HTTP 404)` marker on any stderr line is the discriminator,
+    NOT a bare `'404'` substring (which can collide with unrelated
+    content such as a URL fragment in an error body). Any other
+    CalledProcessError propagates so the retry-wrap layer can decide
+    whether to back off and retry.
+
+    Per livespec/SPECIFICATION/history/v003/contracts.md
+    §"livespec_runtime.cross_repo.providers.github" /
+    "branch_exists_on_remote": the 404 SHOULD be detected via `gh`'s
+    structured response, not a substring match on stderr.
     """
     owner_name = _split_owner_name(github_url=github_url)
     try:
@@ -94,10 +103,25 @@ def branch_exists_on_remote(*, github_url: str, name: str) -> bool:
             text=True,
         )
     except subprocess.CalledProcessError as exc:
-        if exc.stderr and "404" in exc.stderr:
+        if _stderr_indicates_http_404(stderr=exc.stderr):
             return False
         raise
     return True
+
+
+def _stderr_indicates_http_404(*, stderr: str | None) -> bool:
+    """Return True iff any stderr line carries the structured `HTTP 404` marker.
+
+    `gh` formats 4xx responses as `gh: <message> (HTTP <code>)` on a
+    dedicated stderr line. Matching on the trailing `(HTTP 404)`
+    marker — rather than a bare `404` substring — avoids
+    mis-categorizing unrelated content (URL fragments, body text
+    referencing 404 pages, etc.) as a real not-found response.
+    """
+    if not stderr:
+        return False
+    marker = "(HTTP 404)"
+    return any(line.rstrip().endswith(marker) for line in stderr.splitlines())
 
 
 def branch_merged_into_default(
