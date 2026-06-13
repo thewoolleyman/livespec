@@ -214,6 +214,7 @@ check:
         # remain defined (CI job names + branch-protection.json
         # reference them) but are not wired in the aggregate to avoid
         # running the same module twice.
+        check-canonical-slugs-projection
         check-comment-no-historical-refs
         check-copier-template-smoke
         # check-coverage is the aggregate (total) `fail_under = 100`
@@ -545,6 +546,25 @@ check-no-direct-tool-invocation:
 # .py changeset.
 check-copier-template-smoke:
     uv run python3 dev-tooling/checks/copier_template_smoke.py
+
+# Release-time projection of the canonical check-slug aggregate into the
+# committed copier-template DATA file templates/impl-plugin/
+# canonical-slugs.yml. Reads livespec_dev_tooling.canonical_checks (the
+# single source of truth) and writes the alphabetically-sorted slug set.
+# Re-run after the canonical set changes in livespec-dev-tooling, then
+# cut a template release so consumers re-sync via copier update. Per
+# SPECIFICATION/contracts.md §"Shared code sync — livespec-dev-tooling"
+# → Template gate.
+stamp-canonical-slugs:
+    uv run python3 dev-tooling/checks/canonical_slugs_projection.py --write
+
+# Anti-drift gate: verify the committed templates/impl-plugin/
+# canonical-slugs.yml equals livespec_dev_tooling.canonical_checks.
+# canonical_check_slugs(), so the release-time projection can never
+# silently drift from the source of truth. Livespec-private; wired into
+# the `just check` aggregate (after the canonical block) and CI.
+check-canonical-slugs-projection:
+    uv run python3 dev-tooling/checks/canonical_slugs_projection.py
 
 check-tools:
     uv run python -m livespec_dev_tooling.checks.check_tools

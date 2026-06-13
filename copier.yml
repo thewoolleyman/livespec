@@ -15,16 +15,20 @@
 # declared questions and silently DROP every recorded answer when
 # regenerating .copier-answers.yml.
 #
-# `_jinja_extensions` is deliberately NOT declared here: the
-# canonical-checks extension is importable only from a livespec
-# checkout with dev-tooling/ on PYTHONPATH (the smoke-check flow);
-# consumer-side `copier update` clones the template to an ephemeral
-# directory where the dotted path cannot resolve, and copier
-# extend-merges `_jinja_extensions` across included documents, so it
-# cannot be declared in a shared include and neutralized here. The
-# consumer flow therefore renders without the extension (status quo:
-# `canonical_check_slugs` falls back to Jinja's ChainableUndefined and
-# the justfile's canonical block survives via copier's 3-way merge).
+# No `_jinja_extensions` is declared on EITHER copier config. The
+# canonical enforcement-check aggregate that justfile.jinja stamps is
+# delivered as committed STATIC DATA: templates/impl-plugin/
+# canonical-slugs.yml is a release-time projection of
+# livespec_dev_tooling.canonical_checks (regenerated via
+# `just stamp-canonical-slugs` in livespec and `{% include %}`'d by
+# justfile.jinja). The consumer `copier update` clones the template to
+# an ephemeral checkout with no PYTHONPATH injection, so a render-time
+# extension importing the dev-tooling module could never resolve here;
+# the committed data file makes the canonical block render import-free
+# and CORRECT on the consumer flow, so canonical-set growth propagates
+# as a real reviewable diff through copier's 3-way merge (per
+# SPECIFICATION/contracts.md §"Shared code sync — livespec-dev-tooling"
+# → Template gate).
 ---
 !include templates/impl-plugin/copier-questions.yml
 ---
@@ -37,6 +41,9 @@ _envops:
 _exclude:
   - copier.yml
   - copier-questions.yml
+  # canonical-slugs.yml is render-time DATA `{% include %}`'d by
+  # justfile.jinja, never copied into the generated repo verbatim.
+  - canonical-slugs.yml
   - .git
   - __pycache__
   - "*.pyc"
