@@ -75,9 +75,11 @@ class SiblingWorkItemDependency:
     """A work-item in a configured sibling repo.
 
     `repo` MUST match a key in `.livespec.jsonc`'s `cross_repo_targets`
-    block. Resolved via the sibling's `local_clone/<impl-plugin>.work_items_path`
-    when available, falling back to dropping the view if neither local
-    nor GitHub-queryable.
+    block. Resolved via the caller-supplied `sibling_status_lookup`
+    callback passed to `resolve_ref`. When the callback is absent or
+    `repo` is not in the manifest, `resolve_ref` returns
+    `RefStatus.UNKNOWN` (v1 ships no runtime-side sibling-walking
+    surface; consumers wire local-clone reading through the callback).
     """
 
     repo: str
@@ -105,8 +107,10 @@ class BranchDependency:
     """A specific GitHub branch.
 
     `name` MUST be the branch name without the `refs/heads/` prefix.
-    Resolved via the exhaustive walk's branch-tip query (local clone
-    first when configured, else `gh api` against the remote).
+    Resolved via `gh api` against the remote: a missing branch resolves
+    to `CLOSED` (assumes deleted-after-merge), a present branch is
+    further checked against the default branch with `gh api compare`
+    to derive merged-vs-unmerged.
     """
 
     repo: str
@@ -124,11 +128,17 @@ class CrossRepoTarget:
     """A single entry in `.livespec.jsonc`'s `cross_repo_targets` block.
 
     `github_url`     — REQUIRED; canonical `https://github.com/<owner>/<name>`
-                       URL (no trailing `.git`).
-    `local_clone`    — OPTIONAL; filesystem path to a local clone. When
-                       set, the runtime walks the clone for branch and
-                       worktree state. When absent (CI case), the runtime
-                       silently drops the local-clone view.
+                       URL. Trailing `.git` and/or trailing `/` are
+                       accepted (the provider's `_split_owner_name`
+                       strips both). Any other shape (ssh, git-protocol,
+                       bare owner/name, non-github host) raises
+                       `NonCanonicalGithubUrlError` at the provider
+                       boundary.
+    `local_clone`    — OPTIONAL; filesystem path to a local clone. Held
+                       on the typed manifest for consumer use (e.g.,
+                       routing a `sibling_status_lookup` callback to a
+                       local JSONL reader); the v1 runtime surface does
+                       NOT read local clones directly.
     `default_branch` — OPTIONAL; defaults to "master". The repo's default
                        branch name used for "branch merged into default"
                        derivations.
