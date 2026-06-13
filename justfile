@@ -259,6 +259,7 @@ check:
         exit 1
     fi
     printf '\nAll %d targets passed.\n' "$ran"
+    if [[ -z "{{skip}}" ]]; then uv run python -m livespec_dev_tooling.green_token write || true; fi
 
 # ---------------------------------------------------------------
 # Tool-backed checks.
@@ -447,6 +448,10 @@ check-pre-push:
         echo ":: doc-only push detected (zero .py changes vs ${upstream}): running check-pre-commit-doc-only"
         just check-pre-commit-doc-only
         exit $?
+    fi
+    if uv run python -m livespec_dev_tooling.green_token check 2>&1; then
+        echo ":: pre-push: green token matched — tree byte-identical to last green check; skipping full aggregate (CI is authoritative)"
+        exit 0
     fi
     just check
 
