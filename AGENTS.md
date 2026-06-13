@@ -162,10 +162,12 @@ clone connects to its beads tenant only when all of the following are present:
   family tenants force TCP (not the unix socket): `/var/lib/doltdb/` is `0750
   dolt:dolt` and untraversable by the sandboxed caller, so `.beads/config.yaml`
   carries `dolt.*` host/port keys with NO `socket` key.
-- **The per-tenant password** in env as `BEADS_DOLT_PASSWORD`, exported from the
-  gitignored mode-600 `/home/ubuntu/workspace/dolt-server/tenant-secrets.env.local`
-  (keyed `BEADS_DOLT_PASSWORD_<tenant_underscores>`; tenant DB name == repo name).
-  Secrets are NEVER committed to `.livespec.jsonc` or `.beads/`.
+- **The per-tenant password** in env as
+  `BEADS_DOLT_PASSWORD_<tenant_underscores>` (tenant DB name == repo name),
+  injected by the livespec 1Password Environment wrapper `with-livespec-env.sh`
+  (canonical copy at `/data/projects/1password-env-wrapper/with-livespec-env.sh`).
+  Secrets are probe-only — `printenv NAME | wc -c`, never echo values — and
+  NEVER committed to `.livespec.jsonc` or `.beads/`.
 - **The `.beads/` pointer files** in the repo: `config.yaml` (committed; carries
   the `dolt.*` server keys) and `metadata.json` (gitignored). `metadata.json` is
   REGENERABLE — `project_id` is server-stable, so re-running `bd init --server …`
