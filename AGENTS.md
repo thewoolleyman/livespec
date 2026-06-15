@@ -17,7 +17,6 @@ slash commands.
 | Path | Purpose |
 |---|---|
 | `.claude-plugin/` | Plugin manifest, harness-neutral prose (`prose/`), Python scripts, vendored libs, built-in templates — NO skill bindings (extracted to `livespec-driver-claude`) |
-| `.claude/skills/livespec-orchestrate/SKILL.md` | The Layer 3 cross-repo orchestration driver (project-local skill loaded as `/livespec-orchestrate` when working inside this repo; NOT a namespaced plugin skill — the `livespec-` prefix is a manual visual scoping convention to avoid colliding with the harness's built-in `/loop`). Single driver across the livespec family. |
 | `SPECIFICATION/` | The live livespec specification (dogfooded; `spec.md`, `contracts.md`, `constraints.md`, `scenarios.md`, `history/`) |
 | `dev-tooling/` | Standalone enforcement-suite Python scripts (run via `just check`) |
 | `tests/` | pytest suite — mirrors the `.claude-plugin/scripts/` and `dev-tooling/` trees one-to-one |
@@ -58,30 +57,31 @@ the prose here for behavior; edit the Driver repo's SKILL.md only
 for Claude-runtime mechanics. Core ships NO `.claude-plugin/skills/`
 tree (guarded by `tests/test_plugin_distribution.py`).
 
-### Layer 3 orchestration driver — `.claude/skills/livespec-orchestrate/`
+### Cross-repo orchestration — retired Layer-3 skill; now the Dispatcher
 
-Per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture",
-this repo ALSO carries a project-local Layer 3 loop driver at
-`.claude/skills/livespec-orchestrate/SKILL.md`. This is the single
-cross-repo orchestrator across the livespec family of repos
-(livespec, livespec-impl-*, livespec-dev-tooling, livespec-runtime);
-sibling repos do NOT carry their own. It is invoked as
-`/livespec-orchestrate` when working inside this repo (project-local
-skill discovery, not namespaced — the `livespec-` prefix is a manual
-visual scoping convention to avoid colliding with the harness's
-built-in `/loop` recurring-task skill).
+The project-local `/livespec-orchestrate` Layer-3 loop-driver skill
+(formerly `.claude/skills/livespec-orchestrate/SKILL.md`) and its
+`livespec-implementer` dispatch agent were **RETIRED at the W6
+dark-factory cutover** (user-declared 2026-06-15). Their successor is
+the reference **Beads/Dolt + Fabro orchestrator's Dispatcher**
+(`livespec-impl-beads`'s `dispatcher.py`): it polls the Beads ledger,
+dispatches each ready work-item into its own Fabro sandbox, runs
+`just check` + `/livespec:doctor` as a hard janitor gate, verifies the
+merge, and closes the item — carrying routine cross-repo work
+unattended.
 
-The driver composes the eight `/livespec:*` Layer 2 skills above
-with the active impl-plugin's `next` / `implement` / `capture-*` /
-`process-memos` skills, dispatches sub-agents that each create
-their OWN secondary worktree (via `git worktree add`) in the
-sibling repos for end-to-end PR-merging execution — the harness
-`isolation: worktree` mechanism is NOT used (it orphans changed
-worktrees and has flipped `core.bare`) — runs `just check` plus
-`/livespec:doctor` as a hard janitor gate, and emits a structured
-iteration journal. See the skill body for inputs (`mode`, `budget`,
-`epic`, `scope-file`), dispatch table, halt conditions, resume
-protocol, and the wave-plan grammar used to author epic `scope-file`s.
+Per `SPECIFICATION/spec.md` §"Contract + reference implementations
+architecture" and `non-functional-requirements.md` §"Orchestrator-internal
+Dispatcher guidance", no repository is REQUIRED to carry a cross-repo
+loop driver as core contract surface; the Dispatcher's invocation
+surface (`mode`/`budget`), janitor hard-gate, and structured iteration
+journal are codified in the orchestrator repo's own specification. The
+retired skill and agent are recoverable from git history; the duties
+they performed and their relocation homes are recorded in
+`research/dark-factory-operability/preconditions.md`. Spec-side
+`/livespec:*` lifecycle work and host-only self-machinery changes are
+driven directly by a maintainer (or surfaced by the Dispatcher for a
+human), not by a resident loop skill.
 
 ## Agent prerequisites for plugin work
 
@@ -184,7 +184,7 @@ list` fails with "no beads database found" even though the plugin is present.
 - `just bootstrap` — first-touch setup on fresh clones; idempotently sets `livespec.primaryPath` on the primary checkout and installs the canonical commit-refuse hook at `.git/hooks/pre-commit` + `.git/hooks/pre-push` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure") plus installs lefthook hooks and resolves plugin dependencies.
 - `just check` — full enforcement aggregate (lint, types, tests, coverage, AST checks).
 - `just check-pre-commit-doc-only` — fast subset for doc-only commits.
-- `/livespec-orchestrate` — invoke the Layer 3 cross-repo orchestration driver to drive an epic (or the open queue across all family repos) end-to-end. See `.claude/skills/livespec-orchestrate/SKILL.md` for inputs and behavior.
+- **Cross-repo orchestration** is carried by the reference **Beads/Dolt + Fabro Dispatcher** (`livespec-impl-beads`'s `dispatcher.py`), which retired the project-local `/livespec-orchestrate` Layer-3 skill at the W6 cutover (2026-06-15). The dark factory polls the ledger, dispatches ready work-items into Fabro sandboxes, gates each on `just check` + `/livespec:doctor`, and closes merged items unattended. See `### Cross-repo orchestration` above.
 
 `just check` is the load-bearing safety net; it runs locally, in
 pre-push, and in CI. The doc-only subset is invoked only by lefthook

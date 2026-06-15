@@ -133,33 +133,30 @@ Design rationale:
 [`research/workflow-processes/livespec-as-contract-and-reference-implementations.md`](research/workflow-processes/livespec-as-contract-and-reference-implementations.md)
 (+ the
 [reframing follow-up](research/workflow-processes/livespec-as-contract-and-reference-implementations-reframing.md)).
-The §"Cross-repo orchestration" section below describes the CURRENT
-(pre-migration) state and is superseded as the phases land.
+The §"Cross-repo orchestration" section below describes the
+post-cutover state: the resident Layer-3 loop driver has been retired
+in favor of the reference Dispatcher.
 
 ## Cross-repo orchestration
 
-The Layer 3 cross-repo orchestration driver lives at
-[`.claude/skills/livespec-orchestrate/SKILL.md`](.claude/skills/livespec-orchestrate/SKILL.md)
-per `SPECIFICATION/spec.md` §"Three-layer orchestration architecture". It
-is a project-local skill (loaded as `/livespec-orchestrate` when
-working inside this repo) — NOT a namespaced plugin skill; the
-`livespec-` prefix is a manual visual scoping convention to avoid
-colliding with the harness's built-in `/loop` recurring-task skill —
-and it is the single Layer 3 driver across the whole livespec family
-of repos (livespec, livespec-impl-*, livespec-dev-tooling,
-livespec-runtime).
+Cross-repo orchestration is carried by the reference **Beads/Dolt +
+Fabro orchestrator** — a Beads/Dolt Ledger, a Fabro Loop, and a thin
+Dispatcher (`livespec-impl-beads`'s `dispatcher.py`). The Dispatcher
+polls the ledger, dispatches each ready work-item into its own Fabro
+sandbox, runs `just check` plus `/livespec:doctor` as a hard janitor
+gate, verifies the merge, and closes the item — carrying routine
+cross-repo work unattended across the whole livespec family (livespec,
+livespec-impl-*, livespec-dev-tooling, livespec-runtime).
 
-The driver composes `/livespec:next` and the active impl-plugin's
-`next` into a cross-side ranking, dispatches sub-agents (with
-worktree isolation) into the sibling repos, runs `just check` plus
-`/livespec:doctor` as a hard janitor gate, and emits a structured
-iteration journal. It accepts `mode` (interactive | autonomous),
-`budget` (iteration count | wallclock | tokens), an optional `epic`
-work-item ID, and an optional `scope-file` carrying epic-specific
-pre-authorization rules.
-
-Halt conditions, dispatch table, and the wave-plan grammar for
-`scope-file` are documented in the skill body.
+The project-local `/livespec-orchestrate` Layer-3 loop-driver skill
+that previously filled this role was **retired at the W6 dark-factory
+cutover** (user-declared 2026-06-15), per `SPECIFICATION/spec.md`
+§"Contract + reference implementations architecture". No repository is
+required to carry a cross-repo loop driver as core contract surface;
+the Dispatcher's invocation surface (`mode`, `budget`), janitor
+hard-gate, and structured iteration journal are codified in the
+orchestrator repo's own specification. The retired skill is
+recoverable from git history.
 
 ## Fresh-clone setup
 
