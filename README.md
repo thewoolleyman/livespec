@@ -39,65 +39,12 @@ named `livespec` to preserve the established surface).
 
 ## Architecture — contract + reference implementations
 
-```mermaid
-flowchart TB
-    human(["HUMAN"])
-
-    subgraph driver["DRIVER (one per agent runtime)<br/>livespec-driver-{claude,codex,opencode,pi}"]
-        drv["interactive driver<br/>(thin: binds core's spec-side CLIs<br/>+ harness-neutral prose to ONE tool runtime)"]
-    end
-
-    subgraph core["CORE — livespec<br/>(agnostic to BOTH Driver and orchestrator)"]
-        spec["SPECIFICATION/ tree"]
-        scli["spec-side reference CLIs<br/>seed / propose-change / revise /<br/>critique / doctor / prune-history<br/>(config-named, each overridable)"]
-        prose["harness-neutral prose"]
-        cfg[".livespec.jsonc — single wiring table<br/>names spec-side CLIs (defaulted)<br/>+ the 3 orchestrator CLIs"]
-    end
-
-    subgraph orch["ORCHESTRATOR (one of N; self-contained)<br/>reference assemblies: git-jsonl (serial; homegrown logic)<br/>· Beads/Dolt + Fabro (parallel; the dogfood default)"]
-        rdr["spec-reader CLI<br/>(API undefined; exposes spec BY CATEGORY —<br/>categorizes, never conceals)"]
-        gap["gap-capture CLI<br/>(detection method private:<br/>mechanical / LLM / human)"]
-        drift["drift-capture CLI"]
-        subgraph internals["INTERNAL — invisible to core AND Driver"]
-            dispatcher["DISPATCHER<br/>polls Ledger, invokes Loop,<br/>writes status back; OWNS PARALLELISM"]
-            ledger["LEDGER<br/>work-items + depends_on graph;<br/>concurrent-write system of record<br/>(Beads/Dolt or git-jsonl)"]
-            loop["LOOP<br/>per-work-item producer<br/>(homegrown or Fabro)"]
-            oskills["orchestrator-shipped SKILL.md front-ends<br/>(interactive gap/drift consent dialogue;<br/>in-repo for now, plugin publication deferred)"]
-        end
-    end
-
-    impl(["IMPLEMENTATION<br/>(the work product: code / tests / config / infra<br/>the spec is FOR)"])
-
-    zerodep["ZERO direct Driver ↔ orchestrator dependencies<br/>(load-bearing invariant; forbidden both ways)"]
-
-    human -->|"drives the spec lifecycle<br/>interactively"| drv
-    human -->|"interactive gap/drift consent<br/>(orchestrator-owned)"| oskills
-
-    drv -.->|"[D1] vendors core, reads<br/>prose by relative path"| prose
-    drv -->|"[D2] wraps + invokes<br/>spec-side CLIs"| scli
-    cfg -.->|"[D3] names the<br/>spec-side CLIs"| drv
-
-    cfg -.->|"[O1] names the 3 orchestrator CLIs<br/>(core knows names + callability ONLY)"| orch
-    rdr -->|"[O2] reads BY CATEGORY"| spec
-    drift -->|"[O3] invokes the injected propose-change CLI<br/>(files proposed-changes;<br/>machine files, HUMAN accepts)"| scli
-    scli -.->|"[O4] doctor: every config-named CLI<br/>resolves + is callable<br/>(callability, nothing more)"| orch
-
-    rdr -.->|"spec-reader injected"| gap
-    rdr -.->|"spec-reader injected"| drift
-    gap -->|"writes gaps<br/>(gap CORRECTS the implementation)"| ledger
-    oskills -.->|"fronts"| gap
-    oskills -.->|"fronts"| drift
-    dispatcher <-->|"ready items /<br/>status writeback"| ledger
-    dispatcher -->|"invokes per<br/>work-item"| loop
-    loop -->|"produces"| impl
-    impl -.->|"realized artifact teaches back<br/>(drift CORRECTS the spec)"| drift
-
-    driver -.- zerodep
-    zerodep -.- orch
-
-    classDef noteStyle fill:#fff8c5,stroke:#b08800,color:#111
-    class zerodep noteStyle
-```
+The **canonical architecture diagram** (Mermaid) is the single source
+of truth in
+[`SPECIFICATION/spec.md` §"Contract + reference implementations architecture"](SPECIFICATION/spec.md#contract--reference-implementations-architecture)
+— it renders inline there on GitHub. To keep it DRY (one source, no
+duplication / rot / drift), this README **references** that diagram
+rather than embedding a second copy.
 
 The decided target architecture (2026-06-09): LiveSpec core is a
 **CLI contract** wired by `.livespec.jsonc`, agnostic to both the
@@ -127,8 +74,8 @@ Three invariants the diagram pins down:
   dependency graphs.
 
 Normative home: `SPECIFICATION/spec.md` §"Contract + reference
-implementations architecture" (the fenced Mermaid block above IS the
-canonical architecture diagram, per that section).
+implementations architecture", which carries the canonical Mermaid
+diagram itself (single source of truth).
 Design rationale:
 [`research/workflow-processes/livespec-as-contract-and-reference-implementations.md`](research/workflow-processes/livespec-as-contract-and-reference-implementations.md)
 (+ the
