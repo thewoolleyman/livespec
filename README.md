@@ -12,19 +12,45 @@ for Claude Code).
 ## Install
 
 Two plugins — core (this repo: prose + CLIs + templates) and the
-Claude Code Driver (the `/livespec:*` commands):
+Claude Code Driver (the `/livespec:*` commands). Enable them
+**per-project** by committing a `.claude/settings.json` to the repo
+you want livespec to govern, so the skills (and the Driver's bundled
+hooks) load **only** in that project — never machine-wide:
 
-```
-/plugin marketplace add thewoolleyman/livespec
-/plugin install livespec@livespec
-/plugin marketplace add thewoolleyman/livespec-driver-claude
-/plugin install livespec@livespec-driver-claude
+```jsonc
+{
+  "extraKnownMarketplaces": {
+    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec" } },
+    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude" } },
+    "livespec-impl-beads":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-impl-beads" } }
+  },
+  "enabledPlugins": {
+    "livespec@livespec": true,
+    "livespec@livespec-driver-claude": true,
+    "livespec-impl-beads@livespec-impl-beads": true
+  }
+}
 ```
 
-After install, restart Claude Code (or run `/reload-plugins`).
-The eight slash commands below become available with the
-`livespec:` namespace prefix (the Driver plugin is deliberately
-named `livespec` to preserve the established surface).
+Enable **core + Driver + the impl-plugin named by your project's
+`.livespec.jsonc`** `implementation.plugin` key — swap
+`livespec-impl-beads` for your impl (e.g. `livespec-impl-plaintext`)
+in both the `extraKnownMarketplaces` and `enabledPlugins` blocks.
+Because enablement is committed at **project scope**, clones, CI, and
+sandboxes all resolve the same remote-GitHub marketplaces, and
+unrelated projects on the same machine are untouched.
+
+After committing the settings, restart Claude Code (or run
+`/reload-plugins`). The eight slash commands below become available
+with the `livespec:` namespace prefix (the Driver plugin is
+deliberately named `livespec` to preserve the established surface).
+
+> Maintainer dogfooding loads the local source instead: launch with
+> `claude --plugin-dir .` from the repo root (see "Daily dogfooding"
+> in `.claude/CLAUDE.md`). A machine-wide `/plugin install
+> livespec@livespec` still works, but it enables the plugin in
+> **every** project on the host — prefer the committed project-scoped
+> settings above.
 
 ## Slash commands
 

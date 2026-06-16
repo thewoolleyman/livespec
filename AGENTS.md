@@ -109,20 +109,36 @@ This prevents wasted effort on changes that have no effect on the actual problem
 Core is distributed via a Claude Code marketplace at
 `.claude-plugin/marketplace.json` (per `SPECIFICATION/contracts.md`
 §"Plugin distribution"); the `/livespec:*` commands ship from the
-`livespec-driver-claude` Driver marketplace. Install BOTH:
+`livespec-driver-claude` Driver marketplace. Enable BOTH (plus the
+impl-plugin named by the project's `.livespec.jsonc`) **at project
+scope** by committing a `.claude/settings.json` — so the skills and
+the Driver's bundled hooks load only in the governed project, never
+machine-wide:
 
-```
-/plugin marketplace add thewoolleyman/livespec
-/plugin install livespec@livespec
-/plugin marketplace add thewoolleyman/livespec-driver-claude
-/plugin install livespec@livespec-driver-claude
+```jsonc
+{
+  "extraKnownMarketplaces": {
+    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec" } },
+    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude" } },
+    "livespec-impl-beads":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-impl-beads" } }
+  },
+  "enabledPlugins": {
+    "livespec@livespec": true,
+    "livespec@livespec-driver-claude": true,
+    "livespec-impl-beads@livespec-impl-beads": true
+  }
+}
 ```
 
-After install, the eight `/livespec:*` slash commands become available
-with the `livespec:` namespace prefix (the Driver plugin is
-deliberately NAMED `livespec` so the established surface is
-preserved; core's plugin carries the prose, CLIs, and templates the
-Driver resolves at runtime).
+After committing the settings (restart Claude Code or `/reload-plugins`),
+the eight `/livespec:*` slash commands become available with the
+`livespec:` namespace prefix (the Driver plugin is deliberately NAMED
+`livespec` so the established surface is preserved; core's plugin
+carries the prose, CLIs, and templates the Driver resolves at runtime).
+A machine-wide `/plugin install livespec@livespec` +
+`/plugin install livespec@livespec-driver-claude` still works but
+enables the plugins in EVERY project on the host; prefer the committed
+project-scoped form above.
 
 ## Daily dogfooding (maintainer development)
 

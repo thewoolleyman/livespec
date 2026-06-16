@@ -110,8 +110,14 @@ target-version = "py310"
 line-length = 100
 # Vendored third-party libraries are exempt from livespec's own style
 # rules per python-skill-script-style-requirements.md line 294-296.
-# `__pycache__/` mirrors `[tool.pyright].exclude`.
-extend-exclude = ["**/_vendor/**", "**/__pycache__/**", "mutants/**"]
+# `__pycache__/` mirrors `[tool.pyright].exclude`. `.claude/hooks/**`
+# holds Claude Code agent-runtime hook scripts (e.g. the git footgun
+# guard) whose contract is to emit JSON on stdout and fail open — they
+# are agent-runtime infra, not livespec product/dev-tooling Python, so
+# they are out of scope for livespec's own style rules (mirrors how the
+# Driver's `.sh` hooks are not linted). pyright already scopes them out
+# via `[tool.pyright].include`.
+extend-exclude = ["**/_vendor/**", "**/__pycache__/**", "mutants/**", ".claude/hooks/**"]
 
 [tool.ruff.lint]
 # 27 categories total. v011 baseline (11) + v012 additions (16).
