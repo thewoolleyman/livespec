@@ -3,6 +3,31 @@
     "BASH_DEFAULT_TIMEOUT_MS": "600000",
     "BASH_MAX_TIMEOUT_MS": "1200000"
   },
+  "enabledPlugins": {
+    "livespec@livespec": true,
+    "livespec@livespec-driver-claude": true,
+    "livespec-impl-beads@livespec-impl-beads": true
+  },
+  "extraKnownMarketplaces": {
+    "livespec": {
+      "source": {
+        "source": "github",
+        "repo": "thewoolleyman/livespec"
+      }
+    },
+    "livespec-driver-claude": {
+      "source": {
+        "source": "github",
+        "repo": "thewoolleyman/livespec-driver-claude"
+      }
+    },
+    "livespec-impl-beads": {
+      "source": {
+        "source": "github",
+        "repo": "thewoolleyman/livespec-impl-beads"
+      }
+    }
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -23,6 +48,11 @@
             "type": "command",
             "command": "mise exec -- uv run --no-sync python -m livespec_dev_tooling.agent_hooks.pretooluse_background_guard",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/livespec_footgun_guard.py\"",
+            "timeout": 10
           }
         ]
       }
