@@ -13,6 +13,16 @@ Dispatcher runs unattended and `/livespec-orchestrate` (livespec
   pre-gate vs post-gate sequencing correction, and the a8bb
   duty-relocation table (relocate-never-drop applied to
   responsibilities).
+- `work-breakdown.md` — **OPEN, actively iterating.** The human-led
+  front-end decomposition step: how a maintainer breaks/splits work
+  into manageable, factory-feedable chunks BEFORE autonomous dispatch
+  (at capture or in a grooming pass). Captures the 2026-06-16 deep
+  research (verified patterns + the unsolved sizing gap + refuted
+  claims), the tentative direction (unit = vertical slice anchored to
+  one scenario; agent-drafts/human-approves), and three live
+  workstreams (cut-line heuristic; grooming ritual; invent+instrument
+  sizing). The user flagged this as the largest open unknown in the
+  ecosystem — expect multi-session iteration.
 
 ## Conventions
 
