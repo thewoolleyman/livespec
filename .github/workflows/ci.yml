@@ -147,6 +147,7 @@ jobs:
           - check-red-green-replay
           - check-copier-template-smoke
           - check-canonical-slugs-projection
+          - check-codex-adapter-sync
           - check-tools
           - check-doctor-static
           - check-primary-checkout-commit-refuse-hook-installed
