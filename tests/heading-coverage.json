@@ -174,39 +174,11 @@
     "test": "tests.test_plugin_distribution"
   },
   {
-    "heading": "## Cross-repo coordination — pin-and-bump",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that wires the per-plugin compat block schema fragment into .livespec.jsonc validation and adds the contract-version-compatibility doctor invariant."
-  },
-  {
     "heading": "## `/livespec:next` spec-side thin-transport skill",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.commands.test_next.test_next_emits_schema_conformant_json",
     "reason": "Phase B.1 (li-3ax) — authored bin/next.py + commands/next.py (pure-function-of-file-state ranker) + next_output.schema.json wire contract + paired dataclass + validator. The schema-conformance test exercises the full pipeline against a real spec tree and asserts the stdout payload validates against next_output.schema.json. Doctor-cache integration deferred to a follow-on once the cache format is formalized via propose-change."
-  },
-  {
-    "heading": "## Shared content sync — copier template",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v064 (multi-repo-distribution-and-coordination proposal accept). Real test ID populated in the impl follow-up PR that publishes templates/impl-plugin/ as the canonical copier scaffold and pins copier via uv against pyproject.toml [dependency-groups.dev]."
-  },
-  {
-    "heading": "## Shared code sync — livespec-dev-tooling",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v070 (declare-livespec-dev-tooling-shared-code-mechanism proposal accept) per epic li-fgqgnk Phase G.1. Real test ID populated in the impl follow-up PRs (epic phases G.2–G.7) that hand-author the livespec-dev-tooling repo scaffold, migrate the shared enforcement-suite checks out of livespec-core, and wire every consumer (livespec-core itself + every livespec-impl-* plugin) to consume the new package via uv git source plus the composite Actions / reusable workflows."
-  },
-  {
-    "heading": "## Shared runtime — livespec-runtime",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Added directly by work-item li-ufvfmb under epic li-6d2wpj (cross-repo dependency awareness consolidated v071+ design). The runtime sibling library exists at github.com/thewoolleyman/livespec-runtime v0.1.0+; the full cross_repo implementation lands as v0.2.0 via work-item li-aclzfe. The propose-change cycle filed via li-e7h6ki (proposed_changes/cross-repo-dependency-awareness.md) defines the consumer-facing cross_repo contract in detail under a future §\"Cross-repo dependency awareness\" H2. Real test ID populated in the impl follow-up PRs that wire livespec-core's doctor (li-f2fbkl) and livespec-impl-plaintext's next ranker + cleanup invariants (li-f5wmjr) against the runtime."
   },
   {
     "heading": "## Pre-commit step ordering",
@@ -767,13 +739,6 @@
     "spec_file": "constraints.md",
     "test": "tests.prompts.livespec.test_seed",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
-  },
-  {
-    "heading": "## Sibling spec ownership",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Added by the revise pass landing the propose-change at proposed_changes/delegate-cross-repo-coordination-impl-to-dev-tooling.md (paired with livespec-dev-tooling PR #5). The meta-principle generalizes the existing §\"Shared code sync — livespec-dev-tooling\" partition rule across every sibling library. Real test follows in the post-revise implementation cycle that captures the cross-tree narration behavior (revise/critique narrate pending proposals across all sibling trees)."
   },
   {
     "heading": "## Reference discipline",
