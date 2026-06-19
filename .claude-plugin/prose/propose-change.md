@@ -239,6 +239,44 @@ exit code is `0` (NOT an error).
    surfaced zero items (or the survey was fully degraded),
    skip this step.
 
+### Authoring discipline — three splits every proposal MUST respect
+
+Before generating findings (Step 5), check the user-described
+intent against the three placement splits below; steer the
+authoring dialogue so the resulting proposal lands its content
+in the right shape and the right tree.
+
+(i) **Behavior ⇒ Gherkin scenario (+ clause).** Load-bearing
+behavior — an observable input→output, a state transition, an
+error path, or an invariant the implementation must honor — MUST
+be stated as a BCP14 `MUST`/`SHOULD` clause AND have a
+`## Scenario` in `scenarios.md` (Given/When/Then). Prose may only
+AUGMENT the clause+scenario, never CARRY the behavior alone. A
+behavior-introducing proposal's `resulting_files[]` MUST include
+the new/updated scenario (and, where the project links clauses to
+scenarios, the `tests/heading-coverage.json` link), co-edited
+atomically per `spec.md` §"Self-application". Behavioral prose
+with no scenario is malformed.
+
+(ii) **Functional vs non-functional placement.** Apply the
+§Boundary litmus (`non-functional-requirements.md` §"Boundary"):
+"does a project merely GOVERNED by livespec inherit this, or is it
+livespec's own infrastructure?" User-observable intent/behavior →
+`spec.md`; user-observable wire contracts → `contracts.md`;
+constraints whose violation an end user could observe →
+`constraints.md`; contributor-only concerns →
+`non-functional-requirements.md`. Resolve the constraints.md ↔
+non-functional-requirements.md call by user-observability, not
+topic.
+
+(iii) **Cross-repo placement (multi-repo projects).**
+Realization mechanism — how a specific orchestrator / impl plugin
+works (its Dispatcher, ledger, sandbox flow) — belongs in THAT
+repo's `SPECIFICATION/`, never core. Repo-agnostic guidance any
+consumer inherits belongs in core. A core-targeted proposal
+describing a specific tool's internals MUST be redirected to that
+tool's repo.
+
 3. **Capture user intent.** Ask the user: "What change do you
    want to propose? Describe the intent — what should the spec
    say differently, and why." Capture free-text intent. The
