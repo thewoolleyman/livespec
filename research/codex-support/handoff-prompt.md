@@ -40,7 +40,30 @@ The Codex adapter mechanical sync check landed on `master` via PR #460:
 - Date: 2026-06-19
 
 Do not redo the sync-check implementation unless new evidence contradicts it.
-Continue with the governed spec repair and work-item filing below.
+Continue with the next follow-up below.
+
+The governed Codex dogfooding spec repair is in progress in branch
+`codex-spec-repair`:
+
+- PR: `https://github.com/thewoolleyman/livespec/pull/465`
+- Worktree: `/data/projects/livespec-codex-spec-repair`
+- Beads work-item: `livespec-4moata.2`
+- Spec revisions cut: `SPECIFICATION/history/v117/` and
+  `SPECIFICATION/history/v118/` after rebasing on master, which already used
+  `SPECIFICATION/history/v116/` for the unrelated orchestrator grooming
+  proposal.
+- Local verification: `mise exec -- just check` passed all 52 targets after
+  `v118` on 2026-06-19, including 900 pytest cases at 100% coverage.
+
+This branch repairs `SPECIFICATION/non-functional-requirements.md` through the
+governed propose-change -> revise lifecycle. It removes the obsolete
+`.agents/skills/*` symlink-to-`.claude-plugin/skills/*` model and specifies the
+proven project-local `.agents/skills/livespec-*` adapter path over core prose
+and wrappers. It also repairs `SPECIFICATION/contracts.md` §"Daily dogfooding
+path" so core live-reload mode names `.claude-plugin/prose/<name>.md` and
+`.claude-plugin/scripts/...`, with Claude Driver binding edits explicitly owned
+by `livespec-driver-claude`. Finish landing this branch before starting another
+repo mutation if PR #465 is still open.
 
 ## Handoff protocol
 
@@ -68,8 +91,12 @@ At the end of any session that changes the Codex support state:
   `/data/projects/livespec-driver-claude`.
 - Core intentionally has no `.claude-plugin/skills/` tree. Do not reintroduce
   one.
-- The old Codex spec text is stale because it says `.agents/skills/*` should
-  symlink to `.claude-plugin/skills/*`.
+- The old Codex spec text was stale because it said `.agents/skills/*` should
+  symlink to `.claude-plugin/skills/*`; branch `codex-spec-repair` repairs this
+  through `SPECIFICATION/history/v117/`.
+- `SPECIFICATION/contracts.md` also had stale daily-dogfooding text that said
+  core live-reloads `.claude-plugin/skills/<name>/SKILL.md`; branch
+  `codex-spec-repair` repairs this through `SPECIFICATION/history/v118/`.
 - This repo now has committed project-local Codex adapters under
   `.agents/skills/` for `livespec-help`, `livespec-next`, and
   `livespec-doctor`.
@@ -99,6 +126,12 @@ At the end of any session that changes the Codex support state:
   `check-codex-adapter-sync` into `just check`, `check-pre-commit-doc-only`,
   and the CI check-metadata matrix, and verified the current three adapters
   remain thin over core prose/wrappers.
+- Beads follow-ups filed on 2026-06-19:
+  - `livespec-4moata.2` — Codex dogfooding spec repair.
+  - `livespec-4moata.3` — `doctor_static.py --help` prints help while exiting
+    `2`.
+  - `livespec-zkmn.1.1` — migrate parity-critical Claude operational memory
+    into committed instructions.
 
 ## Work discipline
 
@@ -127,23 +160,22 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 
 ## Next concrete action
 
-Repair the stale Codex dogfooding specification and file/attach the remaining
-work-items. The mechanical sync check is now landed, so the next change should
-use the governed livespec lifecycle for spec text, not direct edits to
-`SPECIFICATION/`.
+If PR #465 is still open, finish landing branch `codex-spec-repair`:
 
-Recommended next PR sequence:
+1. Commit the current worktree with `mise exec -- git ...`.
+2. Push and open a PR.
+3. Wait for checks; merge only after checks pass.
+4. Refresh `/data/projects/livespec` to `origin/master`.
+5. Remove `/data/projects/livespec-codex-spec-repair` and delete the local
+   branch.
 
-1. File or attach Beads work-items for the remaining follow-ups listed below.
-2. Use propose-change -> revise to repair
-   `SPECIFICATION/non-functional-requirements.md` so it no longer says Codex
-   adapters symlink to `.claude-plugin/skills/*`.
-3. Keep Codex support scoped to the proven project-local `.agents/skills`
-   adapter path over core prose and wrappers. Codex marketplace support remains
-   explicitly unclaimed.
-
-Keep mutating operations (`seed`, `propose-change`, `critique`, `revise`,
-`prune-history`) out of Codex adapters until the stale spec text is repaired.
+If PR #465 has already merged, the next Codex-support action is
+`livespec-zkmn.1.1`: migrate only parity-critical Claude operational memory into
+committed instructions. Keep the migration narrow: worktree discipline,
+`mise exec --` git operations, no `--no-verify`, end-on-master cleanup, Beads
+access, no primary-checkout edits, and no orphaned worktrees. Do not dump all
+Claude memory into `AGENTS.md`; route durable operational rules by audience and
+authority.
 
 ## Verification Already Completed
 
@@ -175,21 +207,55 @@ coverage. PR checks passed after rerunning one transient
 `uv sync`; the job passed on rerun. The new `check-codex-adapter-sync` CI job
 passed.
 
+Branch `codex-spec-repair` completed the governed spec repair locally:
+
+```bash
+mise exec -- git fetch origin
+mise exec -- git ls-remote --heads origin 'spec/*'
+gh pr list --state open --json number,title,headRefName,files
+/usr/bin/python3 .claude-plugin/scripts/bin/propose_change.py codex-dogfooding-adapters --findings-json tmp/codex-spec-repair-proposal.json --author codex-gpt-5 --project-root /data/projects/livespec-codex-spec-repair --spec-target /data/projects/livespec-codex-spec-repair/SPECIFICATION
+/usr/bin/python3 .claude-plugin/scripts/bin/revise.py --revise-json tmp/codex-spec-repair-revise.json --author codex-gpt-5 --project-root /data/projects/livespec-codex-spec-repair --spec-target /data/projects/livespec-codex-spec-repair/SPECIFICATION --post-step-doctor --run-stale-branch-check
+/usr/bin/python3 .claude-plugin/scripts/bin/propose_change.py codex-core-live-reload-paths --findings-json tmp/codex-contracts-live-reload-proposal.json --author codex-gpt-5 --project-root /data/projects/livespec-codex-spec-repair --spec-target /data/projects/livespec-codex-spec-repair/SPECIFICATION
+/usr/bin/python3 .claude-plugin/scripts/bin/revise.py --revise-json tmp/codex-contracts-live-reload-revise.json --author codex-gpt-5 --project-root /data/projects/livespec-codex-spec-repair --spec-target /data/projects/livespec-codex-spec-repair/SPECIFICATION --post-step-doctor --run-stale-branch-check
+mise exec -- just check
+```
+
+Notes:
+
+- Remote spec branch survey found no `spec/*` branches.
+- Open PR survey found no open PRs.
+- `origin/master` advanced during PR #465 with the unrelated
+  `orchestrator-grooming-guidance` proposal as `SPECIFICATION/history/v116/`;
+  the branch was rebased so the Codex repair history follows it.
+- `revise.py` cut `SPECIFICATION/history/v117/` and moved only
+  `codex-dogfooding-adapters.md`.
+- A sub-agent review then found one adjacent stale clause in
+  `SPECIFICATION/contracts.md` §"Daily dogfooding path"; after rebase this is
+  represented by `SPECIFICATION/history/v118/`, which moved only
+  `codex-core-live-reload-paths.md`.
+- The unrelated `orchestrator-grooming-guidance` proposal is no longer pending
+  after the rebase because it landed on `origin/master` as `v116`.
+- No `## ` heading set changed, so `tests/heading-coverage.json` was not
+  updated.
+- Direct attempts to run the stale-branch check outside the wrapper hit local
+  Python/mise environment issues, but the production `revise.py` invocation was
+  run with `--run-stale-branch-check` and exited 0.
+- Final rerun of `mise exec -- just check` after `v118` passed all 52 targets,
+  including 900 pytest cases at 100% coverage and 4 mock e2e tests.
+
 ## Follow-up work after adapter proof
 
-1. File or attach Beads work-items for:
-   - stale Codex dogfooding spec repair;
-   - `doctor_static.py --help` printing help while exiting `2`;
-   - Claude-memory-to-committed-instructions migration.
-2. Repair `SPECIFICATION/non-functional-requirements.md` through the governed
-   propose-change -> revise path:
-   - remove `.claude-plugin/skills/*` symlink requirements;
-   - define Codex adapters over core prose and wrappers;
-   - keep Codex marketplace support explicitly unclaimed until proven.
-3. Migrate only parity-critical Claude memory into committed instructions:
+1. Finish merging branch `codex-spec-repair` (Beads `livespec-4moata.2`).
+2. Migrate only parity-critical Claude memory into committed instructions
+   (Beads `livespec-zkmn.1.1`):
    worktree discipline, `mise exec --` git operations, no `--no-verify`,
-   end-on-main cleanup, Beads access, no primary-checkout edits, and no orphaned
+   end-on-master cleanup, Beads access, no primary-checkout edits, and no orphaned
    worktrees.
+3. Fix the wrapper help behavior (Beads `livespec-4moata.3`):
+   `/usr/bin/python3 .claude-plugin/scripts/bin/doctor_static.py --help` prints
+   argparse help but exits `2`; `revise.py --help` showed the same exit-2
+   pattern during the spec-repair session. Treat this as likely shared wrapper
+   supervisor behavior.
 
 ## Constraints
 

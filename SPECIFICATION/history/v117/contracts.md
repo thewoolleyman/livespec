@@ -244,7 +244,7 @@ Adding or removing a hook in the Driver bundle, renaming a hook surface, or chan
 
 ### Daily dogfooding path
 
-For maintainer development of the `livespec` plugin source in this repo, launch Claude Code with `--plugin-dir .` to load the core plugin directly from the local source. Live edits to core-owned `.claude-plugin/prose/<name>.md` and `.claude-plugin/scripts/...` are picked up via `/reload-plugins` without re-installing. Claude Driver binding edits happen in the `livespec-driver-claude` repository, not in core. The marketplace install path (`/plugin install livespec@livespec`) is for verifying the published install flow; it copies the plugin into `~/.claude/plugins/cache/` and does NOT live-reload.
+For maintainer development of the `livespec` plugin source in this repo, launch Claude Code with `--plugin-dir .` to load the plugin directly from the local source. Live edits to `.claude-plugin/skills/<name>/SKILL.md` and `.claude-plugin/scripts/...` are picked up via `/reload-plugins` without re-installing. The marketplace install path (`/plugin install livespec@livespec`) is for verifying the published install flow; it copies the plugin into `~/.claude/plugins/cache/` and does NOT live-reload.
 
 ## `/livespec:next` spec-side thin-transport skill
 
