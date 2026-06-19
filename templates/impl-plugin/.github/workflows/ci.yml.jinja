@@ -154,3 +154,31 @@ jobs:
     steps:
       - name: Placeholder
         run: echo "::notice::metadata-checks matrix is empty; populate as dev-tooling/checks/ scripts land"
+
+  # Closed-loop CI telemetry: export this run's per-job timings to Honeycomb
+  # (dataset github-ci) and FAIL if Honeycomb does not accept them, so a broken
+  # telemetry pipeline reddens master CI instead of dying silently. Master/
+  # merge_group only (PRs untouched, no added latency). REQUIRES the repo secret
+  # HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC (the livespec-family write-only
+  # ingest key). A freshly generated {{ plugin_full_name }} fails this job on its
+  # first master run until that secret is added — add it, or delete this job if
+  # {{ plugin_full_name }} does not send CI telemetry to Honeycomb.
+  export-telemetry:
+    name: export-telemetry
+    needs: [setup, check-python, check-metadata]
+    if: ${{ '{{' }} !cancelled() && (github.event_name == 'push' || github.event_name == 'merge_group') {{ '}}' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Export CI run telemetry to Honeycomb (closed-loop verified)
+        env:
+          GH_TOKEN: ${{ '{{' }} secrets.GITHUB_TOKEN {{ '}}' }}
+          REPO: ${{ '{{' }} github.repository {{ '}}' }}
+          RUN_ID: ${{ '{{' }} github.run_id {{ '}}' }}
+          HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC: ${{ '{{' }} secrets.HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC {{ '}}' }}
+        run: bash .github/scripts/export-ci-telemetry.sh
