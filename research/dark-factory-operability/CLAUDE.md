@@ -21,11 +21,11 @@ Dispatcher runs unattended and `/livespec-orchestrate` (livespec
   claims), the **2026-06-19 reframe** (cross-repo is a category error;
   the functional/non-functional split is the spine; grooming is
   Orchestrator-internal — non-functional core guidance + reference-
-  orchestrator-spec realization, never a core skill), and three named
-  threads: **cut-line** (two-mode "done": scenario-verified OR
-  gate-verified; plus a slice-size floor), **grooming ritual** (intake
+  orchestrator-spec realization, never a core skill), and three pieces:
+  **the slice cut-line** (two-mode "done": scenario-verified OR
+  gate-verified; plus a slice-size floor), **the grooming ritual** (intake
   checklist + optional regroom pass; agent-drafts/human-approves), and
-  **sizing calibration** (invent + instrument ceiling AND floor). The
+  **slice-size calibration** (invent + instrument ceiling AND floor). The
   user flagged this as the largest open unknown in the ecosystem —
   expect multi-session iteration.
 

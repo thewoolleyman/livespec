@@ -22,8 +22,8 @@ so we don't re-derive it).
 
 **Reading order:** the 2026-06-16 *research findings* below are durable and
 unchanged. The **2026-06-19 reframe** (next major section) **supersedes the
-earlier synthesis** wherever they conflict, and the **three named threads**
-(cut-line / grooming ritual / sizing calibration) carry the current state.
+earlier synthesis** wherever they conflict, and the **slice cut-line**, the
+**grooming ritual**, and **slice-size calibration** carry the current state.
 
 ---
 
@@ -245,17 +245,16 @@ the functional/non-functional split tells us which layer each lands in:
 They compose: **the functional spec/scenario layer supplies the cut-line and
 the acceptance; the orchestrator's Ledger supplies the unit, the dependency
 links, and mechanical readiness.** That composition is the spine of the
-three threads.
+three pieces below.
 
 ---
 
-## The three threads (where each landed / what's still open)
+## The three pieces — the slice cut-line, the grooming ritual, slice-size calibration
 
-Renamed from the old Workstreams A/B/C (no letter-labels). Thread A is
-largely landed; B has its structure but open details; C has an approach but
-no design yet.
+The slice cut-line is largely settled; the grooming ritual has its structure
+but open details; slice-size calibration has an approach but no design yet.
 
-### Thread A — The cut-line (where to split) — *largely landed*
+### The slice cut-line — where to split — *largely settled*
 
 Pressure-tested "one independently-testable scenario = one slice" against
 the real recent epic **`livespec-gy21`** (the project-scoping epic).
@@ -277,14 +276,14 @@ Findings:
 - **New finding — there must be a slice-size FLOOR, not just a ceiling.**
   gy21 bundled a config change + a hook relocation with the *same blast
   radius*; the strict rule would over-split them. Don't split below the point
-  where two slices cost more coordination than they save. The floor is a
-  sizing-calibration input (Thread C).
+  where two slices cost more coordination than they save. The floor is an
+  input to slice-size calibration (below).
 - **Autonomy-tier finding (routing, not cut-line):** spec-change slices are
   **human-gated** (they go through propose-change / revise); everything else
-  is **factory-dispatchable**. This feeds where the grooming gate sits
-  (Thread B).
+  is **factory-dispatchable**. This feeds where the grooming gate sits (the
+  grooming ritual, below).
 
-### Thread B — The grooming ritual (how the split gets drafted + approved) — *structure set, details open*
+### The grooming ritual — how the split gets drafted + approved — *structure set, details open*
 
 - **Two touchpoints, gated by a size test (both matter, not competitors):**
   1. **Intake cut at work-item creation** — a cheap readiness check: *is
@@ -295,7 +294,7 @@ Findings:
      actually splits the not-yet-actionable items (epics / too-big) into
      slices. This is the verified "agent drafts, human approves" pattern
      (Devin planner / Spec-Kit `/tasks`).
-- **Per-slice fields the aid drafts** (Thread A fills most of them):
+- **Per-slice fields the aid drafts** (the cut-line fills most of them):
   - *acceptance* — one scenario (behavioral) OR standing gates (gate-verified).
   - *governance scope* — autonomy tier (spec-change = human-gated; rest = auto).
   - *dependency links* — Beads blockers → Layer-0/1 parallelism.
@@ -318,7 +317,7 @@ Findings:
   checklist's precise gates; final confirmation of the home (non-functional
   core guidance + reference-orchestrator-spec realization).
 
-### Thread C — Sizing calibration (discover limits from real run data) — *approach set, design open*
+### Slice-size calibration — discovering the limits from real run data — *approach set, design open*
 
 - The field has **no quantitative agent-sizing rules** (all refuted as
   folklore). The honest move is to **invent + instrument**: pick provisional
@@ -327,11 +326,11 @@ Findings:
   empirically rather than guess them. Ties to the journal → Honeycomb leg
   already designed in `preconditions.md`.
 - **Now also calibrate a FLOOR** (minimum viable slice), not just a ceiling
-  — driven by Thread A's over-split finding.
+  — driven by the cut-line's over-split finding.
 - **Re-decomposition trigger = the agent fails to converge.** Devin re-plans
   per session; StrongDM iterates the spec until scenarios pass.
   Non-convergence *is the signal* the slice was too big — it routes back to a
-  human grooming pass (Thread B's regroom), not an infinite retry.
+  human grooming pass (the regroom step above), not an infinite retry.
 - **STILL OPEN:** the concrete Fabro-run instrumentation and the chosen
   slice-size proxies (ceiling AND floor).
 
@@ -341,8 +340,8 @@ Findings:
 
 1. **Quantitative sizing** — what numeric proxies actually predict
    "agent-one-shottable" *for our work* (mostly spec-governed Python +
-   cross-repo config)? Unsolved in the field; Thread C is our path to an
-   answer — and it now must yield both a ceiling and a floor.
+   cross-repo config)? Unsolved in the field; slice-size calibration is our
+   path to an answer — and it now must yield both a ceiling and a floor.
 2. **Capture vs. grooming trigger rituals** — who/what triggers
    re-decomposition? Tentative: non-convergence routes to a human regroom
    pass. Needs a concrete state model in the Ledger (a `needs-regroom`
@@ -362,7 +361,7 @@ Findings:
    decomposition (orchestrator Ledger slices)? In the reframe this is the
    functional/non-functional seam: the functional scenario concept supplies
    the cut-line; the orchestrator's Ledger consumes it. Under-specified — the
-   exact handoff mechanics are Thread B's remaining work.
+   exact handoff mechanics are the grooming ritual's remaining work.
 
 ---
 
@@ -373,10 +372,10 @@ Findings:
 - **2026-06-16** — Tentative direction: unit = vertical slice anchored to one
   scenario; agent-drafts/human-approves; dependency-layer for parallelism;
   DoR = deps + acceptance + governance; re-decomposition on non-convergence.
-  **NOT ratified** — pending the three threads.
+  **NOT ratified** — pending the three pieces below.
 - **2026-06-16** — "Skill?" answer evolved: a *drafting* grooming aid is
   justified for breakdown (was "probably not"); downstream stays policy, not
-  skill. Skill-vs-checklist deferred to Thread B.
+  skill. Skill-vs-checklist deferred to the grooming-ritual work.
 - **2026-06-19** — **Reframe: cross-repo is a category error here.** The
   functional / non-functional split is the spine; the grooming pattern is
   GENERAL (single- or multi-repo identical); cross-repo is livespec's own
@@ -393,17 +392,17 @@ Findings:
   principle reaches exactly ONE core functional concept — the scenario /
   acceptance. The earlier impl-layer-vs-livespec-layer cross-repo fork is
   **dissolved**.
-- **2026-06-19** — **Thread A two-mode cut-line:** a slice has exactly one
+- **2026-06-19** — **The slice cut-line, two modes:** a slice has exactly one
   coherent "done," either *scenario-verified* OR *gate-verified*; the
   verified "one scenario" rule is the scenario-verified special case. The five
   archetypes are worked examples, not a schema. Added a slice-size **FLOOR**
-  (anti-over-split), calibrated in Thread C. Autonomy tier: spec-change =
-  human-gated, rest = factory-dispatchable.
-- **2026-06-19** — **Thread B structure:** two touchpoints (intake checklist
-  at creation + optional later regroom pass); per-slice fields enumerated;
-  intake = checklist folded into capture front-ends, regroom = a single
-  orchestrator-shipped groom front-end (tentative). Exact draft/gates still
-  open. **NOT ratified.**
+  (anti-over-split), calibrated under slice-size calibration. Autonomy tier:
+  spec-change = human-gated, rest = factory-dispatchable.
+- **2026-06-19** — **The grooming ritual, structure:** two touchpoints
+  (intake checklist at creation + optional later regroom pass); per-slice
+  fields enumerated; intake = checklist folded into capture front-ends,
+  regroom = a single orchestrator-shipped groom front-end (tentative). Exact
+  draft/gates still open. **NOT ratified.**
 
 ---
 
