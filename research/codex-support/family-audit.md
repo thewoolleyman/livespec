@@ -103,7 +103,7 @@ Open Beads work summary relevant to Codex:
 | Tenant | Relevant open item | Why it matters |
 |---|---|---|
 | `livespec` | `livespec-zkmn.1` — W7 golden-master acceptance and orchestrator convergence | This is the high-level e2e/swap-proof thread. Its acceptance criteria were updated on 2026-06-19 to require Codex as an explicit supported agent-runtime dimension where runtime behavior is part of the proof. |
-| `livespec-impl-beads` | `livespec-impl-beads-dn9` — W7 step 2A Tier-2 containerized real-dispatch proof | This is the next Beads/Fabro implementation proof after closed DinD spike `livespec-impl-beads-o2f` and closed orchestrator image item `livespec-impl-beads-8bc`. It scopes one minimal dispatch from inside the container before the full golden-master harness, and carries the Codex runtime and tokens-primary telemetry requirements forward. |
+| `livespec-impl-beads` | `livespec-impl-beads-dn9` — W7 step 2A Tier-2 containerized real-dispatch proof | This is the next Beads/Fabro implementation proof after closed DinD spike `livespec-impl-beads-o2f` and closed orchestrator image item `livespec-impl-beads-8bc`. PR #78 added the repeatable proof runner and runbook; the item remains open until a deliberately tiny ready item is selected and dispatched from inside the container. |
 | `livespec-impl-beads` | `livespec-impl-beads-zbl` — multi-provider cost observability: tokens-primary + Codex + self-hosted | Codex telemetry/cost extraction is explicitly deferred here; do not assume Claude Code telemetry covers Codex. |
 | `livespec-dev-tooling` | `livespec-dev-tooling-e60` — agent-loop efficiency and Honeycomb observability | Cross-runtime agent observability belongs here or in a child item; Codex should be named when the item is refined, with raw tokens retained as the primary signal. |
 
@@ -252,6 +252,17 @@ path, proof that Fabro dispatches through the inner Docker daemon, secret-safe
 credential documentation, Codex runtime classification, and token-first
 telemetry evidence.
 
+The first `dn9` implementation slice landed in `livespec-impl-beads` PR #78
+(`4c460d188190995879ce056e7e018da2570991e9`). It added
+`orchestrator-image/tier2-dispatch-proof.sh`, a `just w7-tier2-dispatch-proof`
+target, and `research/w7-orchestrator-convergence/tier2-dispatch-proof.md`.
+Verification built `livespec-orchestrator:dev` through the new preflight path,
+confirmed the required secret env names were present without printing values,
+and confirmed the built image id
+`sha256:913eeda6955aa58dff51b6950f34a7d2342e6928b4a8df6894243b8d234543a2`.
+The actual Tier-2 `--run --item <tiny-ready-item>` dispatch remains open; do
+not use `dn9` itself as the dispatch target.
+
 The acceptance criteria now require:
 
 - Codex can load the repo instruction surface for each tested checkout;
@@ -304,9 +315,11 @@ Hook classification:
 
 ## Recommended next sequence
 
-1. Continue `livespec-impl-beads-dn9` as the next W7 Beads/Fabro implementation
-   slice: produce the Tier-2 containerized real-dispatch proof and feed its
-   evidence back into `livespec-zkmn.1` and this audit.
+1. Continue `livespec-impl-beads-dn9` by selecting or creating a deliberately
+   tiny isolated ready item, then running
+   `just w7-tier2-dispatch-proof -- --run --item <tiny-ready-item>` under the
+   1Password wrapper. Record the redacted dispatch evidence before closing
+   `dn9`.
 2. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60` as implementation begins; Codex should remain
    tokens-primary, not Claude-cost-derived.
