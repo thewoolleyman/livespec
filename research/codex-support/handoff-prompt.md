@@ -42,11 +42,11 @@ The Codex adapter mechanical sync check landed on `master` via PR #460:
 Do not redo the sync-check implementation unless new evidence contradicts it.
 Continue with the next follow-up below.
 
-The governed Codex dogfooding spec repair is in progress in branch
-`codex-spec-repair`:
+The governed Codex dogfooding spec repair landed on `master` via PR #465:
 
 - PR: `https://github.com/thewoolleyman/livespec/pull/465`
-- Worktree: `/data/projects/livespec-codex-spec-repair`
+- Merge commit: `e04e1abad9055e070c33531a9b3b1b54daf9924f`
+- Date: 2026-06-19
 - Beads work-item: `livespec-4moata.2`
 - Spec revisions cut: `SPECIFICATION/history/v117/` and
   `SPECIFICATION/history/v118/` after rebasing on master, which already used
@@ -54,16 +54,32 @@ The governed Codex dogfooding spec repair is in progress in branch
   proposal.
 - Local verification: `mise exec -- just check` passed all 52 targets after
   `v118` on 2026-06-19, including 900 pytest cases at 100% coverage.
+- PR checks passed before merge. After merge, the primary checkout was
+  fast-forwarded to `e04e1ab`, worktree
+  `/data/projects/livespec-codex-spec-repair` was removed, local branch
+  `codex-spec-repair` was deleted, and Beads item `livespec-4moata.2` was
+  closed.
 
-This branch repairs `SPECIFICATION/non-functional-requirements.md` through the
+This repair changed `SPECIFICATION/non-functional-requirements.md` through the
 governed propose-change -> revise lifecycle. It removes the obsolete
 `.agents/skills/*` symlink-to-`.claude-plugin/skills/*` model and specifies the
 proven project-local `.agents/skills/livespec-*` adapter path over core prose
 and wrappers. It also repairs `SPECIFICATION/contracts.md` §"Daily dogfooding
 path" so core live-reload mode names `.claude-plugin/prose/<name>.md` and
 `.claude-plugin/scripts/...`, with Claude Driver binding edits explicitly owned
-by `livespec-driver-claude`. Finish landing this branch before starting another
-repo mutation if PR #465 is still open.
+by `livespec-driver-claude`.
+
+The Codex/Claude operational memory migration is now in progress:
+
+- Worktree: `/data/projects/livespec-codex-memory-instructions`
+- Branch: `codex-memory-instructions`
+- Beads work-item: `livespec-zkmn.1.1`
+- Intended scope: migrate only parity-critical operational rules into
+  committed instructions: worktree discipline, `mise exec --` git operations,
+  no `--no-verify`, end-on-master cleanup, Beads access, no primary-checkout
+  edits, and no orphaned worktrees.
+- Do not dump all Claude memory into `AGENTS.md`; route durable operational
+  rules by audience and authority.
 
 ## Handoff protocol
 
@@ -92,11 +108,11 @@ At the end of any session that changes the Codex support state:
 - Core intentionally has no `.claude-plugin/skills/` tree. Do not reintroduce
   one.
 - The old Codex spec text was stale because it said `.agents/skills/*` should
-  symlink to `.claude-plugin/skills/*`; branch `codex-spec-repair` repairs this
-  through `SPECIFICATION/history/v117/`.
+  symlink to `.claude-plugin/skills/*`; PR #465 repaired this through
+  `SPECIFICATION/history/v117/`.
 - `SPECIFICATION/contracts.md` also had stale daily-dogfooding text that said
-  core live-reloads `.claude-plugin/skills/<name>/SKILL.md`; branch
-  `codex-spec-repair` repairs this through `SPECIFICATION/history/v118/`.
+  core live-reloads `.claude-plugin/skills/<name>/SKILL.md`; PR #465 repaired
+  this through `SPECIFICATION/history/v118/`.
 - This repo now has committed project-local Codex adapters under
   `.agents/skills/` for `livespec-help`, `livespec-next`, and
   `livespec-doctor`.
@@ -160,22 +176,17 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 
 ## Next concrete action
 
-If PR #465 is still open, finish landing branch `codex-spec-repair`:
+Finish `livespec-zkmn.1.1` in branch `codex-memory-instructions`:
 
-1. Commit the current worktree with `mise exec -- git ...`.
-2. Push and open a PR.
-3. Wait for checks; merge only after checks pass.
-4. Refresh `/data/projects/livespec` to `origin/master`.
-5. Remove `/data/projects/livespec-codex-spec-repair` and delete the local
-   branch.
-
-If PR #465 has already merged, the next Codex-support action is
-`livespec-zkmn.1.1`: migrate only parity-critical Claude operational memory into
-committed instructions. Keep the migration narrow: worktree discipline,
-`mise exec --` git operations, no `--no-verify`, end-on-master cleanup, Beads
-access, no primary-checkout edits, and no orphaned worktrees. Do not dump all
-Claude memory into `AGENTS.md`; route durable operational rules by audience and
-authority.
+1. Keep the `AGENTS.md` update narrowly focused on repo-mutation discipline.
+2. Keep the handoff update current with PR #465's landed state and this
+   branch's validation/PR status.
+3. Run `mise exec -- just check-pre-commit-doc-only` for the doc-only change.
+4. Commit with `mise exec -- git ...`, push, open a PR, wait for checks, merge
+   through the PR, refresh `/data/projects/livespec`, remove
+   `/data/projects/livespec-codex-memory-instructions`, delete local branch
+   `codex-memory-instructions`, and close Beads item `livespec-zkmn.1.1`.
+5. After that, continue to Beads item `livespec-4moata.3`.
 
 ## Verification Already Completed
 
@@ -245,13 +256,9 @@ Notes:
 
 ## Follow-up work after adapter proof
 
-1. Finish merging branch `codex-spec-repair` (Beads `livespec-4moata.2`).
-2. Migrate only parity-critical Claude memory into committed instructions
-   (Beads `livespec-zkmn.1.1`):
-   worktree discipline, `mise exec --` git operations, no `--no-verify`,
-   end-on-master cleanup, Beads access, no primary-checkout edits, and no orphaned
-   worktrees.
-3. Fix the wrapper help behavior (Beads `livespec-4moata.3`):
+1. Finish migrating only parity-critical Claude memory into committed
+   instructions (Beads `livespec-zkmn.1.1`).
+2. Fix the wrapper help behavior (Beads `livespec-4moata.3`):
    `/usr/bin/python3 .claude-plugin/scripts/bin/doctor_static.py --help` prints
    argparse help but exits `2`; `revise.py --help` showed the same exit-2
    pattern during the spec-repair session. Treat this as likely shared wrapper
