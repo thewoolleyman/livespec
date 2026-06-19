@@ -74,7 +74,13 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {
+        "gap_id": "gap-dez4u35o",
+        "scenario": "Behavior clause lacking a scenario link is surfaced"
+      }
+    ]
   },
   {
     "heading": "## Wrapper CLI surface",
@@ -234,7 +240,13 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_heading_coverage",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {
+        "gap_id": "gap-ys6buvpn",
+        "scenario": "Behavior clause lacking a scenario link is surfaced"
+      }
+    ]
   },
   {
     "heading": "## BCP14 normative language",
@@ -608,6 +620,13 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
+    "heading": "## Behavior clause lacking a scenario link is surfaced",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Acceptance for the behavior_scenario_link check. The exercising test is tests.dev-tooling.checks.test_behavior_scenario_link, a subprocess integration test of the check (warn/fail modes, link resolution). It sits in the dev-tooling tier, which is not in the scenario_tiers integration-tier prefix allowlist, so this entry stays TODO and explicitly acknowledges the integration-tier requirement until a tests.integration.* alias is added."
+  },
+  {
     "heading": "## Author identifier resolution",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
@@ -710,7 +729,17 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "non-functional-requirements.md",
     "test": "tests.prompts.livespec.test_seed",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {
+        "gap_id": "gap-mh27o2wq",
+        "scenario": "Behavior clause lacking a scenario link is surfaced"
+      },
+      {
+        "gap_id": "gap-eotwl7s4",
+        "scenario": "Behavior clause lacking a scenario link is surfaced"
+      }
+    ]
   },
   {
     "heading": "## Scenarios",
