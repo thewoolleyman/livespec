@@ -98,14 +98,14 @@
     "reason": "Landed in v063; implemented in the W0b PR (template_config.schema.json v2 + paired dataclass + .livespec.jsonc render_commands schema). The named test covers the v2 spec_files wire shape; siblings in the same module cover the derived_from cross-property invariant, multi-render-per-source, and the v1/v2 if-then-else; tests.livespec.validate.test_livespec_config covers the render_commands shape."
   },
   {
-    "heading": "## Skill ↔ template JSON contracts",
+    "heading": "## Operation prose \u2194 template JSON contracts",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.commands.test_seed",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Orchestrator CLI contract — the three named CLIs",
+    "heading": "## Orchestrator CLI contract \u2014 the three named CLIs",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
@@ -174,11 +174,11 @@
     "test": "tests.test_plugin_distribution"
   },
   {
-    "heading": "## `/livespec:next` spec-side thin-transport skill",
+    "heading": "## `/livespec:next` spec-side thin-transport binding",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.commands.test_next.test_next_emits_schema_conformant_json",
-    "reason": "Phase B.1 (li-3ax) — authored bin/next.py + commands/next.py (pure-function-of-file-state ranker) + next_output.schema.json wire contract + paired dataclass + validator. The schema-conformance test exercises the full pipeline against a real spec tree and asserts the stdout payload validates against next_output.schema.json. Doctor-cache integration deferred to a follow-on once the cache format is formalized via propose-change."
+    "reason": "Phase B.1 (li-3ax) \u2014 authored bin/next.py + commands/next.py (pure-function-of-file-state ranker) + next_output.schema.json wire contract + paired dataclass + validator. The schema-conformance test exercises the full pipeline against a real spec tree and asserts the stdout payload validates against next_output.schema.json. Doctor-cache integration deferred to a follow-on once the cache format is formalized via propose-change."
   },
   {
     "heading": "## Pre-commit step ordering",
@@ -192,14 +192,14 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md §\"Scope\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 1 migration of python-skill-script-style-requirements.md \u00a7\"Scope\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Non-interactive execution",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md §\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md \u00a7\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Python runtime constraint",
@@ -213,7 +213,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md §\"Runtime dependencies → End-user install\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 4 migration of python-skill-script-style-requirements.md \u00a7\"Runtime dependencies \u2192 End-user install\" into constraints.md. Real test pending release-gate test wiring."
   },
   {
     "heading": "## Renderer non-vendoring",
@@ -272,28 +272,28 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 1 — propose-change against a non-existent spec target",
+    "heading": "## Error path 1 \u2014 propose-change against a non-existent spec target",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 2 — schema-violation in inbound seed payload",
+    "heading": "## Error path 2 \u2014 schema-violation in inbound seed payload",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_retry_on_exit_4.test_retry_on_exit_4",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Error path 3 — version-contiguity gap in history",
+    "heading": "## Error path 3 \u2014 version-contiguity gap in history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
     "reason": "scenarios.md tier rule (epic li-scetier, dev-tooling v0.9.0): scenario entries MUST point at an integration-tier test (tests.e2e / tests.prompts / tests.integration / tests.consumer / tests.bin), not a unit test. The prior pointer tests.livespec.doctor.static.test_version_contiguity is unit-tier and exercises the version-contiguity predicate in isolation, not the end-to-end /livespec:doctor invocation against a real v001/v003-no-v002 history gap. No existing e2e/integration test seeds a history gap and asserts the version-contiguity fail finding: tests.e2e.test_doctor_fail_then_fix exercises doctor static-fail-then-fix but trips bcp14-keyword-wellformedness, not version-contiguity. Honest TODO bridge pending a new e2e doctor-version-contiguity test."
   },
   {
-    "heading": "## Recovery path — pruning history",
+    "heading": "## Recovery path \u2014 pruning history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_prune_history_noop.test_prune_history_noop",
@@ -419,14 +419,14 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview — \"no\" branch (default)",
+    "heading": "## Happy-path seed interview \u2014 \"no\" branch (default)",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "tests.prompts.livespec.test_seed",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Happy-path seed interview — \"yes\" branch (meta-project)",
+    "heading": "## Happy-path seed interview \u2014 \"yes\" branch (meta-project)",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "tests.prompts.livespec.test_seed",
@@ -454,7 +454,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## Edge case — seed against non-empty SPECIFICATION/",
+    "heading": "## Edge case \u2014 seed against non-empty SPECIFICATION/",
     "spec_root": "SPECIFICATION/templates/livespec",
     "spec_file": "scenarios.md",
     "test": "TODO",
@@ -594,7 +594,7 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
-    "heading": "## End-to-end critique → propose-change handoff",
+    "heading": "## End-to-end critique \u2192 propose-change handoff",
     "spec_root": "SPECIFICATION/templates/minimal",
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_happy_path.test_happy_path_minimal",
@@ -626,21 +626,21 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 18 addition: §\"Exit code contract\" migrated via SPECIFICATION/v033."
+    "reason": "Phase 8 item 2 cycle 18 addition: \u00a7\"Exit code contract\" migrated via SPECIFICATION/v033."
   },
   {
     "heading": "## Structured logging",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.livespec.commands.test_seed",
-    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"Structured logging\" migrated via SPECIFICATION/v034."
+    "reason": "Phase 8 item 2 cycles 17+19 combined: \u00a7\"Structured logging\" migrated via SPECIFICATION/v034."
   },
   {
     "heading": "## File naming and invocation",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.dev-tooling.checks.test_wrapper_shape",
-    "reason": "Phase 8 item 2 cycles 17+19 combined: §\"File naming and invocation\" migrated via SPECIFICATION/v034."
+    "reason": "Phase 8 item 2 cycles 17+19 combined: \u00a7\"File naming and invocation\" migrated via SPECIFICATION/v034."
   },
   {
     "heading": "## Prior Art",
@@ -745,7 +745,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "TODO",
-    "reason": "Added by the revise pass landing the propose-change at proposed_changes/reference-discipline-invariant.md. Codifies two paired invariants (SPECIFICATION/ tree cannot reference outside content except via an external_references allowlist in .livespec.jsonc; source code cannot cite spec sections via §\"…\"). Real test ID populated in the impl follow-up work-item that authors livespec/doctor/static/no_cross_spec_reference.py + no_spec_section_citation_in_code.py plus paired tests and retroactive sweep of existing violations."
+    "reason": "Added by the revise pass landing the propose-change at proposed_changes/reference-discipline-invariant.md. Codifies two paired invariants (SPECIFICATION/ tree cannot reference outside content except via an external_references allowlist in .livespec.jsonc; source code cannot cite spec sections via \u00a7\"\u2026\"). Real test ID populated in the impl follow-up work-item that authors livespec/doctor/static/no_cross_spec_reference.py + no_spec_section_citation_in_code.py plus paired tests and retroactive sweep of existing violations."
   },
   {
     "heading": "## Doctor per-finding disposition dialogue",
