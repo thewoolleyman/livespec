@@ -397,6 +397,38 @@ The Codex high-level e2e/runtime-matrix alignment pass ran on 2026-06-20:
     `54b09c6` from unrelated CI workflow work; the primary checkout was
     fast-forwarded to `54b09c6` before this follow-up handoff update began.
 
+The W7 Tier-2 follow-up item was filed after the runtime-matrix alignment:
+
+- Beads item: `livespec-impl-beads-dn9`
+- Tenant: `livespec-impl-beads`
+- Created: 2026-06-20 local time / 2026-06-19 UTC
+- Title: `W7 step 2A: Tier-2 containerized real-dispatch proof`
+- Labels: `codex-support`, `e2e-codex`, `w7`, `acceptance`
+- Why it exists:
+  - Closed item `livespec-impl-beads-o2f` completed the DinD spike.
+  - Closed item `livespec-impl-beads-8bc` completed the production
+    orchestrator image and Tier-1 verification, but explicitly deferred Tier 2:
+    one real dispatch from inside the container after the sandbox image and
+    per-dispatch credentials are available.
+  - `dn9` is now the tracked next mergeable Beads/Fabro proof before the full
+    W7 golden-master acceptance harness.
+- Acceptance summary:
+  - provide a checked-in script, `just` target, or research note for running
+    the Tier-2 containerized dispatch proof under the 1Password wrapper;
+  - prove the dispatch path uses the inner Docker daemon, not the host daemon;
+  - document sandbox-image and credential prerequisites without printing
+    secrets;
+  - classify Codex participation: instruction loading, verified adapters where
+    present, and explicit no-adapter classifications where appropriate;
+  - keep telemetry token-first and never infer Codex/OpenAI evidence from
+    Claude Code dollar spans;
+  - record the result in impl-beads and reference it back from this core audit
+    before closing the item.
+- Verification:
+  - `bd show livespec-impl-beads-dn9 --json` confirmed the item, labels, and
+    acceptance criteria. Beads emitted the known `.beads` permission warning
+    and `beads.role` warning, but the create/show operations succeeded.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -503,6 +535,9 @@ At the end of any session that changes the Codex support state:
 - Codex telemetry/cost evidence remains tokens-primary. Dollar figures are
   provider-specific overlays and must not be inferred from Claude Code cost
   spans.
+- W7 Beads/Fabro implementation now has an explicit next item:
+  `livespec-impl-beads-dn9`. Work that item before expanding to the full
+  golden-master harness.
 
 ## Work discipline
 
@@ -540,9 +575,10 @@ runtime-mechanism closure:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Continue `livespec-zkmn.1` high-level e2e/golden-master implementation with
-   Codex as a supported agent-runtime dimension. The W7 research plan now
-   records the required Claude/Codex/Pi runtime matrix.
+2. Continue `livespec-impl-beads-dn9` as the next W7 Beads/Fabro implementation
+   slice: produce the Tier-2 containerized real-dispatch proof and feed its
+   evidence back into `livespec-zkmn.1` and
+   `research/codex-support/family-audit.md`.
 3. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60` as implementation begins; Codex should remain
    tokens-primary, not Claude-cost-derived.

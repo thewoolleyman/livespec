@@ -103,6 +103,7 @@ Open Beads work summary relevant to Codex:
 | Tenant | Relevant open item | Why it matters |
 |---|---|---|
 | `livespec` | `livespec-zkmn.1` — W7 golden-master acceptance and orchestrator convergence | This is the high-level e2e/swap-proof thread. Its acceptance criteria were updated on 2026-06-19 to require Codex as an explicit supported agent-runtime dimension where runtime behavior is part of the proof. |
+| `livespec-impl-beads` | `livespec-impl-beads-dn9` — W7 step 2A Tier-2 containerized real-dispatch proof | This is the next Beads/Fabro implementation proof after closed DinD spike `livespec-impl-beads-o2f` and closed orchestrator image item `livespec-impl-beads-8bc`. It scopes one minimal dispatch from inside the container before the full golden-master harness, and carries the Codex runtime and tokens-primary telemetry requirements forward. |
 | `livespec-impl-beads` | `livespec-impl-beads-zbl` — multi-provider cost observability: tokens-primary + Codex + self-hosted | Codex telemetry/cost extraction is explicitly deferred here; do not assume Claude Code telemetry covers Codex. |
 | `livespec-dev-tooling` | `livespec-dev-tooling-e60` — agent-loop efficiency and Honeycomb observability | Cross-runtime agent observability belongs here or in a child item; Codex should be named when the item is refined, with raw tokens retained as the primary signal. |
 
@@ -242,6 +243,15 @@ Codex project-local adapters, and the future Pi harness. Codex evidence must
 show repository instruction loading, use verified project-local adapters where
 they exist, and state unsupported or Claude-only mechanics explicitly.
 
+Also on 2026-06-20 local time (2026-06-19 UTC in Beads), the missing
+impl-beads Tier-2 follow-up was filed as `livespec-impl-beads-dn9`. The closed
+step-1 image item `livespec-impl-beads-8bc` had deferred a "one real dispatch"
+proof; `dn9` now captures that as the next mergeable Beads/Fabro slice before
+the full golden-master harness. Its acceptance requires a repeatable host-run
+path, proof that Fabro dispatches through the inner Docker daemon, secret-safe
+credential documentation, Codex runtime classification, and token-first
+telemetry evidence.
+
 The acceptance criteria now require:
 
 - Codex can load the repo instruction surface for each tested checkout;
@@ -294,9 +304,9 @@ Hook classification:
 
 ## Recommended next sequence
 
-1. Continue `livespec-zkmn.1` high-level e2e/golden-master implementation with
-   Codex as a supported agent-runtime dimension and keep this document updated
-   with the evidence.
+1. Continue `livespec-impl-beads-dn9` as the next W7 Beads/Fabro implementation
+   slice: produce the Tier-2 containerized real-dispatch proof and feed its
+   evidence back into `livespec-zkmn.1` and this audit.
 2. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60` as implementation begins; Codex should remain
    tokens-primary, not Claude-cost-derived.
