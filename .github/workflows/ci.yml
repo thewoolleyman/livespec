@@ -181,6 +181,7 @@ jobs:
           # the range carries no product .py and trivially passes; on
           # master pushes the range is empty.
           - check-red-green-replay
+          - check-behavior-scenario-link
           - check-copier-template-smoke
           - check-canonical-slugs-projection
           - check-codex-adapter-sync

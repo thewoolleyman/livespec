@@ -214,6 +214,7 @@ check:
         # remain defined (CI job names + branch-protection.json
         # reference them) but are not wired in the aggregate to avoid
         # running the same module twice.
+        check-behavior-scenario-link
         check-canonical-slugs-projection
         check-codex-adapter-sync
         check-comment-no-historical-refs
@@ -639,6 +640,18 @@ stamp-canonical-slugs:
 # canonical_check_slugs(), so the release-time projection can never
 # silently drift from the source of truth. Livespec-private; wired into
 # the `just check` aggregate (after the canonical block) and CI.
+# Guardrail #1a — the mechanical clause→scenario link. Extracts
+# every MUST/SHOULD behavior clause from the live core spec, derives
+# its gap-id via the shared dev-tooling/spec_clauses.py primitive, and
+# surfaces any clause lacking a `clauses[]` link to an existing
+# scenarios.md H2 section in tests/heading-coverage.json. ALWAYS-WIRED
+# and ALWAYS-RUNNING with a self-documenting severity lever:
+# LIVESPEC_BEHAVIOR_SCENARIO_LINK=warn|fail (default warn — advisory
+# while the link backlog is backfilled; flips to fail later). Never
+# silently skipped.
+check-behavior-scenario-link:
+    uv run python3 dev-tooling/checks/behavior_scenario_link.py
+
 check-canonical-slugs-projection:
     uv run python3 dev-tooling/checks/canonical_slugs_projection.py
 
