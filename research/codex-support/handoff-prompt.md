@@ -140,9 +140,17 @@ inventory, Beads items relevant to Codex/e2e work, stale core spec wording,
 missing sibling Codex coverage, manual-verification gaps, hook/non-skill
 mechanism gaps, and reproduction commands for the Pi agent harness path.
 
-The stale core Driver/prose/binding wording identified by the audit was then
-repaired in the `codex-driver-spec-wording` worktree through the governed
-propose-change -> revise lifecycle:
+The stale core Driver/prose/binding wording identified by the audit landed on
+`master` via PR #471:
+
+- PR: `https://github.com/thewoolleyman/livespec/pull/471`
+- Merge commit: `b6a37b0d59e1a63207ad00f38727e3c3e798c929`
+- Date: 2026-06-19
+- Scope: repaired stale core spec wording that treated core as owning Claude
+  `SKILL.md` prompts / installed core skill trees, codified core prose plus
+  wrapper ownership with runtime-specific Driver bindings, updated the Claude
+  CLI e2e contract to inspect `livespec-driver-claude` rather than core, and
+  recorded the family Codex audit state.
 
 - `SPECIFICATION/history/v119/` accepted
   `codex-driver-spec-wording.md`, updating `SPECIFICATION/spec.md` and the
@@ -155,6 +163,10 @@ propose-change -> revise lifecycle:
   52 targets on 2026-06-19, including 903 pytest cases at 100% coverage, 52
   prompt tests, 4 mock e2e tests, import-linter, pyright, ruff format/check,
   doctor static checks, and the Codex adapter sync check.
+- Commit/pre-push hooks passed their doc-only aggregates, PR checks passed, the
+  primary checkout was fast-forwarded to `b6a37b0`, worktree
+  `/data/projects/livespec-codex-driver-spec-wording` was removed, and local
+  branch `codex-driver-spec-wording` was deleted.
 
 ## Handoff protocol
 
@@ -273,29 +285,27 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 ## Next concrete action
 
 Continue Codex support work from the expanded family-wide scope. Do NOT repeat
-the completed PR #452, #457, #460, #465, #466, and #467 work. Start by using
-the standard livespec processes now available to Codex:
+the completed PR #452, #457, #460, #465, #466, #467, #470, and #471 work. The
+next phase is sibling-repo support and e2e/hook coverage:
 
-1. Run the core `livespec next` flow from this repo and record its JSON output
-   in this handoff or the summary doc. On 2026-06-19, direct wrapper runs from
-   core returned one low-urgency spec-side candidate:
+1. Use `research/codex-support/family-audit.md` as the durable summary and keep
+   it current. On 2026-06-19, direct wrapper runs from core returned one
+   low-urgency spec-side candidate:
    `{"action":"prune-history","reason":"118 unpruned history versions; consider pruning","urgency":"low"}`.
-2. Query Beads for open work across the family using the documented
-   `with-livespec-env.sh`/`LIVESPEC_BD_PATH` path. The compact summary is now
-   recorded in `research/codex-support/family-audit.md`.
-3. Inventory each livespec-family repo under `/data/projects` and determine:
-   whether it has a governed `SPECIFICATION/`, whether it has agent/harness
-   adapters, whether Codex can load the relevant instructions, and whether any
-   Claude-only hooks or plugin assumptions block Codex.
+2. For each governed sibling repo (`livespec-dev-tooling`,
+   `livespec-impl-beads`, `livespec-impl-git-jsonl`, `livespec-runtime`), run
+   its repo-local `livespec next` / Beads state check and decide the minimum
+   Codex support surface: no project skill, read-only adapter, or impl-side
+   thin-transport adapter.
+3. Where a repo's spec needs Codex non-functional requirements or constraints,
+   use that repo's governed propose-change -> revise lifecycle and PR flow.
 4. Find the bead or research item about high-level end-to-end testing and
    update its plan/implementation so Codex is explicitly covered.
-5. Keep `research/codex-support/family-audit.md` current as the durable summary
-   document explaining every required change and the verification evidence,
-   with enough detail to reproduce the work for the Pi agent harness.
-6. Finish the `codex-driver-spec-wording` PR if it is not yet merged, then move
-   to the sibling-repo phase: for each governed family repo, decide and specify
-   the minimum Codex support surface, using repo-local propose-change -> revise
-   where the repo's spec needs new non-functional requirements.
+5. Audit Claude-only hooks one by one and classify each as: Codex replacement
+   required, AGENTS/repo-hook coverage sufficient, or Claude-driver-only by
+   design.
+6. Add manual Codex verification evidence for every changed repo before
+   claiming family-wide support.
 7. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
