@@ -31,7 +31,16 @@ The first read-only Codex adapter proof landed on `master` via PR #457:
 - Evidence: `research/codex-support/adapter-proof.md`
 
 Do not redo the adapter proof unless new evidence contradicts it. Continue with
-the mechanical sync checks and spec/instructions follow-up below.
+the spec/instructions follow-up below.
+
+The Codex adapter mechanical sync check landed on `master` via PR #460:
+
+- PR: `https://github.com/thewoolleyman/livespec/pull/460`
+- Merge commit: `791cd3818925193572394b592fb85e8fa3624db4`
+- Date: 2026-06-19
+
+Do not redo the sync-check implementation unless new evidence contradicts it.
+Continue with the governed spec repair and work-item filing below.
 
 ## Handoff protocol
 
@@ -85,6 +94,11 @@ At the end of any session that changes the Codex support state:
   `/usr/bin/python3 .claude-plugin/scripts/bin/doctor_static.py --help`
   printed argparse help but exited `2`. This did not block the read-only
   adapter proof, but it is worth filing or folding into follow-up work.
+- PR #460 added `dev-tooling/checks/codex_adapter_sync.py` and
+  `tests/dev-tooling/checks/test_codex_adapter_sync.py`, wired
+  `check-codex-adapter-sync` into `just check`, `check-pre-commit-doc-only`,
+  and the CI check-metadata matrix, and verified the current three adapters
+  remain thin over core prose/wrappers.
 
 ## Work discipline
 
@@ -113,30 +127,23 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 
 ## Next concrete action
 
-Implement the mechanical sync checks described in
-`research/codex-support/plan.md` so project-local Codex adapters stay thin over
-core prose and wrappers by test, not memory.
+Repair the stale Codex dogfooding specification and file/attach the remaining
+work-items. The mechanical sync check is now landed, so the next change should
+use the governed livespec lifecycle for spec text, not direct edits to
+`SPECIFICATION/`.
 
-Recommended next PR:
+Recommended next PR sequence:
 
-- Add a focused enforcement check, likely under `dev-tooling/checks/`, that
-  validates the committed `.agents/skills/livespec-*` adapter files.
-- Add pytest coverage under `tests/` matching the local one-to-one test layout.
-- Wire the check into `just check` and the relevant aggregate if the repo's
-  check taxonomy requires it.
-
-Minimum assertions:
-
-- every Codex adapter references an existing core prose file;
-- every wrapper-backed Codex adapter references the expected core wrapper;
-- Codex adapters do not contain copied core `## Steps`, failure-handling
-  tables, or output-schema narration;
-- adapter names stay namespaced as `livespec-help`, `livespec-next`, and
-  `livespec-doctor`.
+1. File or attach Beads work-items for the remaining follow-ups listed below.
+2. Use propose-change -> revise to repair
+   `SPECIFICATION/non-functional-requirements.md` so it no longer says Codex
+   adapters symlink to `.claude-plugin/skills/*`.
+3. Keep Codex support scoped to the proven project-local `.agents/skills`
+   adapter path over core prose and wrappers. Codex marketplace support remains
+   explicitly unclaimed.
 
 Keep mutating operations (`seed`, `propose-change`, `critique`, `revise`,
-`prune-history`) out of Codex adapters until the sync checks and spec repair
-are landed.
+`prune-history`) out of Codex adapters until the stale spec text is repaired.
 
 ## Verification Already Completed
 
@@ -155,22 +162,23 @@ mise exec -- just check-pre-commit-doc-only
 GitHub checks for PR #457 all passed before merge. See
 `research/codex-support/adapter-proof.md` for durable evidence.
 
-## Required DRY follow-up
+PR #460 completed the mechanical sync-check follow-up:
 
-The first read-only adapters are proven. Add mechanical sync checks rather than
-relying on humans to keep Claude and Codex skill text aligned:
+```bash
+mise exec -- just check
+gh pr checks 460 --watch --interval 10
+```
 
-- every Codex adapter references an existing core prose file;
-- every wrapper-backed Codex adapter references the expected core wrapper;
-- Codex adapters do not contain copied core `## Steps`, failure-handling tables,
-  or output-schema narration;
-- verification probes show Codex reads the adapter and then the core prose.
+Local `just check` passed all 52 targets, including 900 pytest cases at 100%
+coverage. PR checks passed after rerunning one transient
+`check-copier-template-smoke` failure caused by a broken-pipe download during
+`uv sync`; the job passed on rerun. The new `check-codex-adapter-sync` CI job
+passed.
 
 ## Follow-up work after adapter proof
 
 1. File or attach Beads work-items for:
    - stale Codex dogfooding spec repair;
-   - Codex read-only adapter proof follow-through / sync checks;
    - `doctor_static.py --help` printing help while exiting `2`;
    - Claude-memory-to-committed-instructions migration.
 2. Repair `SPECIFICATION/non-functional-requirements.md` through the governed
