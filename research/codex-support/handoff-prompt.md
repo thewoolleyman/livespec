@@ -39,6 +39,9 @@ the plan.
   `openai-curated` marketplace is configured.
 - The proven near-term path is project-local `.agents/skills` adapters that read
   core prose and invoke core wrappers. Do not claim Codex marketplace support.
+- The Claude/Codex DRY boundary is core prose plus wrapper CLIs, not copied
+  skill bodies. Claude Driver `SKILL.md` files and Codex project `SKILL.md`
+  files are both thin runtime adapters over the same core files.
 
 ## Work discipline
 
@@ -88,6 +91,9 @@ Adapter rules:
 - Each `SKILL.md` must have Codex YAML frontmatter.
 - Skill names should be `livespec-help`, `livespec-next`, and
   `livespec-doctor`, not bare `help`, `next`, or `doctor`.
+- Do not copy Claude Driver `SKILL.md` bodies. Do not create a new shared
+  cross-runtime skill body. The shared abstraction is already
+  `.claude-plugin/prose/<name>.md` plus `.claude-plugin/scripts/bin/<name>.py`.
 - The body should be a thin Codex runtime adapter:
   - read the matching `.claude-plugin/prose/<name>.md` completely;
   - follow that prose;
@@ -132,6 +138,17 @@ Expected:
 Record important command outputs in `research/codex-support/` if they add new
 evidence beyond `audit.md`.
 
+## Required DRY follow-up
+
+After the first read-only adapters are proven, add mechanical sync checks rather
+than relying on humans to keep Claude and Codex skill text aligned:
+
+- every Codex adapter references an existing core prose file;
+- every wrapper-backed Codex adapter references the expected core wrapper;
+- Codex adapters do not contain copied core `## Steps`, failure-handling tables,
+  or output-schema narration;
+- verification probes show Codex reads the adapter and then the core prose.
+
 ## Follow-up work after adapter proof
 
 1. File or attach Beads work-items for:
@@ -153,6 +170,8 @@ evidence beyond `audit.md`.
 - Do not reintroduce `.claude-plugin/skills/` into core.
 - Do not symlink `.agents/skills/*` to `.claude-plugin/skills/*`.
 - Do not duplicate core operation prose in Codex skills.
+- Do not copy Claude Driver skills into Codex skills; both runtimes bind to the
+  same core prose and wrappers.
 - Do not implement broad hooks/plugin machinery before the read-only adapter
   proof.
 - Do not mutate `SPECIFICATION/` directly unless using the governed LiveSpec

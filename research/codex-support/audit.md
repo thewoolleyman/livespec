@@ -18,6 +18,13 @@ adapter layer that references core's existing operation prose under
 `.claude-plugin/scripts/bin/`. It must not reintroduce core
 `.claude-plugin/skills/` or duplicate the operation prose.
 
+The DRY boundary between Claude and Codex is core's prose-plus-wrapper contract,
+not shared `SKILL.md` text. Claude Driver skills and Codex project skills should
+both stay thin runtime adapters over the same core files. Keeping them in sync
+means mechanically checking adapter references and behavior probes, not copying
+Claude `SKILL.md` bodies into Codex or creating a second cross-runtime skill
+source.
+
 ## Commands and evidence
 
 ### Project tree probe
