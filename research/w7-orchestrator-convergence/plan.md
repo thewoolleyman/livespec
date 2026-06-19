@@ -70,6 +70,11 @@ fixture spec through BOTH orchestrators, same asserted behavior.
   greeting) against the fixture spec. Behavioral assertion is robust to LLM non-determinism (the
   irreducibly non-deterministic core); only fails when the factory produces genuinely wrong software.
 - **Same fixture through both orchestrators ⇒ proves the swap.**
+- **Agent-runtime dimension:** the acceptance story also records which runtime is being exercised
+  by each tier: Claude Code Driver, OpenAI Codex project-local adapters, and the future Pi harness.
+  Codex is not treated as "Claude with different prompts": the fixture evidence must show that
+  Codex loaded the participating repository instruction surface, used verified project-local
+  adapters where they exist, and recorded any unsupported or Claude-only mechanism explicitly.
 - **Cadence:** dedicated `just` target, OUTSIDE the fast `just check` aggregate; wired as a
   **required CI check pre-merge** (branch protection already enforces required checks); on-demand
   locally as a safety net. NOT in the inner loop.
@@ -94,7 +99,9 @@ fixture spec through BOTH orchestrators, same asserted behavior.
 - **GitHub for the full-fidelity acceptance:** throwaway repo per run (create → factory → real `gh`
   PR open+auto-merge → validate behavior → delete). Exercises the REAL PR tail.
   - Dedicated Honeycomb **E2E environment** (separate ingest key) — keeps test spans out of `livespec`;
-    enables a telemetry assertion too.
+    enables a telemetry assertion too. Agent spans must keep raw tokens as the primary metric and
+    treat provider-specific dollar estimates as overlays, so Codex evidence is never derived from
+    Claude Code cost spans.
   - **Reaper** for leaked `livespec-e2e-*` repos (crash between create/delete).
 
 ---
@@ -113,7 +120,8 @@ fixture spec through BOTH orchestrators, same asserted behavior.
    injectable externals. Verify a dispatch runs against an ephemeral in-container ledger.
 2. **Golden-master acceptance harness.** Fixture spec; git-jsonl tier (local/hermetic, fast);
    Beads/Fabro tier (throwaway GitHub repo + E2E Honeycomb env + behavioral assertion + teardown +
-   reaper); `just acceptance` target + CI merge-gate wiring on both impl repos; on-demand local.
+   reaper); explicit agent-runtime matrix covering Claude Code, Codex, and the future Pi harness;
+   `just acceptance` target + CI merge-gate wiring on both impl repos; on-demand local.
    **= the executable swap-proof.**
 3. **Memo kill** (spec-first: propose-change → revise; then both impls + retarget
    `block-auto-memory.sh`). Guarded by step 2's net.
