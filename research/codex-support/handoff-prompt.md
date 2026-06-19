@@ -12,6 +12,7 @@ Read these files first:
 1. `AGENTS.md`
 2. `research/codex-support/audit.md`
 3. `research/codex-support/plan.md`
+4. `research/codex-support/adapter-proof.md`
 
 The audit and plan landed on `master` via PR #452:
 
@@ -21,6 +22,16 @@ The audit and plan landed on `master` via PR #452:
 
 Do not redo the initial audit unless new evidence contradicts it. Continue from
 the plan.
+
+The first read-only Codex adapter proof landed on `master` via PR #457:
+
+- PR: `https://github.com/thewoolleyman/livespec/pull/457`
+- Merge commit: `a2f41ce18541d51da602dd9eda4c5f510fffc8f2`
+- Date: 2026-06-19
+- Evidence: `research/codex-support/adapter-proof.md`
+
+Do not redo the adapter proof unless new evidence contradicts it. Continue with
+the mechanical sync checks and spec/instructions follow-up below.
 
 ## Handoff protocol
 
@@ -50,7 +61,9 @@ At the end of any session that changes the Codex support state:
   one.
 - The old Codex spec text is stale because it says `.agents/skills/*` should
   symlink to `.claude-plugin/skills/*`.
-- This repo currently has no committed `.agents/` or `.codex/` project tree.
+- This repo now has committed project-local Codex adapters under
+  `.agents/skills/` for `livespec-help`, `livespec-next`, and
+  `livespec-doctor`.
 - Codex CLI 0.141.0 does load project-local `.agents/skills/*/SKILL.md` files
   when each skill has valid YAML frontmatter with `name` and `description`.
 - Codex has no installed/configured livespec plugin marketplace entry; only the
@@ -60,6 +73,18 @@ At the end of any session that changes the Codex support state:
 - The Claude/Codex DRY boundary is core prose plus wrapper CLIs, not copied
   skill bodies. Claude Driver `SKILL.md` files and Codex project `SKILL.md`
   files are both thin runtime adapters over the same core files.
+- Adapter proof PR #457 verified:
+  - `codex debug prompt-input '/livespec:help'` lists the three project skills;
+  - the help probe read `.agents/skills/livespec-help/SKILL.md` and
+    `.claude-plugin/prose/help.md`;
+  - the next probe identified `.claude-plugin/scripts/bin/next.py` with
+    explicit `--project-root`, `--spec-target`, `--limit 5`, and `--offset 0`;
+  - the doctor probe identified
+    `.claude-plugin/scripts/bin/doctor_static.py --help`.
+- The doctor probe also exposed a pre-existing wrapper-help behavior:
+  `/usr/bin/python3 .claude-plugin/scripts/bin/doctor_static.py --help`
+  printed argparse help but exited `2`. This did not block the read-only
+  adapter proof, but it is worth filing or folding into follow-up work.
 
 ## Work discipline
 
@@ -88,51 +113,35 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 
 ## Next concrete action
 
-Implement the minimum read-only Codex adapter proof from
-`research/codex-support/plan.md`.
+Implement the mechanical sync checks described in
+`research/codex-support/plan.md` so project-local Codex adapters stay thin over
+core prose and wrappers by test, not memory.
 
-Recommended first PR:
+Recommended next PR:
 
-```text
-.agents/
-  skills/
-    livespec-help/
-      SKILL.md
-    livespec-next/
-      SKILL.md
-    livespec-doctor/
-      SKILL.md
-```
+- Add a focused enforcement check, likely under `dev-tooling/checks/`, that
+  validates the committed `.agents/skills/livespec-*` adapter files.
+- Add pytest coverage under `tests/` matching the local one-to-one test layout.
+- Wire the check into `just check` and the relevant aggregate if the repo's
+  check taxonomy requires it.
 
-Adapter rules:
+Minimum assertions:
 
-- Each `SKILL.md` must have Codex YAML frontmatter.
-- Skill names should be `livespec-help`, `livespec-next`, and
-  `livespec-doctor`, not bare `help`, `next`, or `doctor`.
-- Do not copy Claude Driver `SKILL.md` bodies. Do not create a new shared
-  cross-runtime skill body. The shared abstraction is already
-  `.claude-plugin/prose/<name>.md` plus `.claude-plugin/scripts/bin/<name>.py`.
-- The body should be a thin Codex runtime adapter:
-  - read the matching `.claude-plugin/prose/<name>.md` completely;
-  - follow that prose;
-  - invoke the matching wrapper under `.claude-plugin/scripts/bin/` when the
-    prose calls for a CLI;
-  - do not copy or restate operation behavior.
-
-Suggested mapping:
-
-| Codex skill | Core prose | Wrapper |
-|---|---|---|
-| `livespec-help` | `.claude-plugin/prose/help.md` | none |
-| `livespec-next` | `.claude-plugin/prose/next.md` | `.claude-plugin/scripts/bin/next.py` |
-| `livespec-doctor` | `.claude-plugin/prose/doctor.md` | `.claude-plugin/scripts/bin/doctor_static.py` |
+- every Codex adapter references an existing core prose file;
+- every wrapper-backed Codex adapter references the expected core wrapper;
+- Codex adapters do not contain copied core `## Steps`, failure-handling
+  tables, or output-schema narration;
+- adapter names stay namespaced as `livespec-help`, `livespec-next`, and
+  `livespec-doctor`.
 
 Keep mutating operations (`seed`, `propose-change`, `critique`, `revise`,
-`prune-history`) out of the first adapter PR.
+`prune-history`) out of Codex adapters until the sync checks and spec repair
+are landed.
 
-## Required verification for adapter PR
+## Verification Already Completed
 
-Run from the adapter worktree.
+PR #457 completed the required first adapter verification from the adapter
+worktree:
 
 ```bash
 find .agents/skills -maxdepth 2 -type f -name SKILL.md -print
@@ -143,23 +152,13 @@ codex exec --sandbox read-only 'livespec doctor help only. Do not edit files. Te
 mise exec -- just check-pre-commit-doc-only
 ```
 
-Expected:
-
-- `codex debug prompt-input` lists the project skills from `.agents/skills`.
-- The help probe reads both `.agents/skills/livespec-help/SKILL.md` and
-  `.claude-plugin/prose/help.md`.
-- The next probe identifies `.claude-plugin/scripts/bin/next.py` with explicit
-  `--project-root`, `--spec-target`, `--limit 5`, and `--offset 0`.
-- The doctor probe identifies `.claude-plugin/scripts/bin/doctor_static.py`,
-  preferably with `--help` for the first non-mutating proof.
-
-Record important command outputs in `research/codex-support/` if they add new
-evidence beyond `audit.md`.
+GitHub checks for PR #457 all passed before merge. See
+`research/codex-support/adapter-proof.md` for durable evidence.
 
 ## Required DRY follow-up
 
-After the first read-only adapters are proven, add mechanical sync checks rather
-than relying on humans to keep Claude and Codex skill text aligned:
+The first read-only adapters are proven. Add mechanical sync checks rather than
+relying on humans to keep Claude and Codex skill text aligned:
 
 - every Codex adapter references an existing core prose file;
 - every wrapper-backed Codex adapter references the expected core wrapper;
@@ -171,7 +170,8 @@ than relying on humans to keep Claude and Codex skill text aligned:
 
 1. File or attach Beads work-items for:
    - stale Codex dogfooding spec repair;
-   - Codex read-only adapter proof;
+   - Codex read-only adapter proof follow-through / sync checks;
+   - `doctor_static.py --help` printing help while exiting `2`;
    - Claude-memory-to-committed-instructions migration.
 2. Repair `SPECIFICATION/non-functional-requirements.md` through the governed
    propose-change -> revise path:
