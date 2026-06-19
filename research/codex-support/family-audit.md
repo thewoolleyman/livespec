@@ -37,6 +37,24 @@ LiveSpec processes.
     renamed H2 headings.
 - The high-level e2e Beads item `livespec-zkmn.1` now has Codex-specific
   acceptance criteria and `codex-support` / `e2e-codex` labels.
+- Four governed sibling repos now have Codex support requirements recorded in
+  their own specs:
+  - `livespec-dev-tooling` PR #134, merge
+    `e76b63621a40ff4f3d88f9681d1503107e82ee79`, cut
+    `SPECIFICATION/history/v015/`, and updated
+    `SPECIFICATION/non-functional-requirements.md`.
+  - `livespec-runtime` PR #48, merge
+    `dce528968176c8a80f8cd8b3abe97d988f3b456e`, cut
+    `SPECIFICATION/history/v005/`, and updated
+    `SPECIFICATION/non-functional-requirements.md`.
+  - `livespec-impl-git-jsonl` PR #88, merge
+    `e26cebee15bfd43f51a7eab596a75e9b2d719ed0`, cut
+    `SPECIFICATION/history/v009/`, and updated
+    `SPECIFICATION/constraints.md`.
+  - `livespec-impl-beads` PR #62, merge
+    `59627827584e43aabeaca9e11b8658b2e32dbfa6`, cut
+    `SPECIFICATION/history/v005/`, and updated
+    `SPECIFICATION/constraints.md`.
 
 ## Current live checks
 
@@ -75,53 +93,64 @@ Sibling spec-side `next` runs on 2026-06-19:
 | Repo | `next` result |
 |---|---|
 | `livespec-dev-tooling` | no candidates |
-| `livespec-impl-beads` | one low-urgency `revise` candidate for `proposed_changes/grooming-gherkin-and-gap-detectability.md` |
+| `livespec-impl-beads` | initially one low-urgency `revise` candidate for `proposed_changes/grooming-gherkin-and-gap-detectability.md`; after the repo was refreshed to master, no candidates |
 | `livespec-impl-git-jsonl` | no candidates |
 | `livespec-runtime` | no candidates |
+
+Sibling PR verification completed on 2026-06-19:
+
+| Repo | Local verification | PR / CI verification |
+|---|---|---|
+| `livespec-dev-tooling` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 46 targets, 903 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #134 checks passed before merge |
+| `livespec-runtime` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 43 targets, 81 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #48 checks passed before merge |
+| `livespec-impl-git-jsonl` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 46 targets, 319 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #88 checks passed, including `e2e-cli`, before merge |
+| `livespec-impl-beads` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 44 targets, 917 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #62 checks passed, including `e2e-cli`, before merge |
 
 ## Family-wide gaps
 
 ### Repository support
 
-Only core currently exposes Codex project skills. The other governed
-repositories rely on `AGENTS.md` plus ad hoc reasoning. That may be enough for
-ordinary coding instructions, but it is not equivalent to the core read-only
-LiveSpec adapter proof.
+Only core currently exposes Codex project skills. That remains intentional for
+the sibling repos as of the 2026-06-19 spec updates:
 
-Each governed repo needs an explicit decision:
+- `livespec-dev-tooling` owns shared enforcement-suite code, not a user-facing
+  `/livespec:*` Driver, so its Codex support is contributor-workflow support
+  through `AGENTS.md`, repo hooks, and stable check/wrapper entry points.
+- `livespec-runtime` exposes harness-neutral library code. Runtime code must
+  stay agent-runtime-neutral and must not branch on Claude, Codex, Pi, or any
+  harness identity.
+- `livespec-impl-git-jsonl` and `livespec-impl-beads` may need future
+  impl-side Codex adapters, but their specs now require those adapters to be
+  thin runtime bindings over existing wrapper CLIs and substrate semantics, not
+  copies of Claude-specific `SKILL.md` bodies.
+- `livespec-driver-claude` is deliberately Claude-specific and has no governed
+  `SPECIFICATION/`; no Codex repo update is expected there except explicit
+  classification in this audit.
 
-- no project skill needed because it only consumes core `/livespec:*`
-  operations through repository instructions;
-- project-local Codex skills should be added for impl-side commands such as
-  next/list/capture operations; or
-- Codex support should wait for a future distributed `livespec-driver-codex`
-  or impl-driver package.
+The future distributed path is still open: a `livespec-driver-codex` or
+impl-driver package may be appropriate once writable commands and end-to-end
+harness proofs are ready.
 
 ### Specification coverage
 
-Core `non-functional-requirements.md` now states Codex support, but the
-family-wide specifications do not consistently do so.
+Core and the governed siblings now consistently state the applicable Codex
+support requirement.
 
 Observed state:
 
 - `livespec` has Codex-specific non-functional rules, constraints, and
   scenarios.
-- `livespec-dev-tooling` has no Codex-specific spec text.
-- `livespec-impl-beads` mentions `CLAUDE.md` / `AGENTS.md` loading in
-  `contracts.md`, but does not have a Codex-specific non-functional spec file.
-- `livespec-impl-git-jsonl` mentions `CLAUDE.md` / `AGENTS.md` loading in
-  `contracts.md`, but does not have a Codex-specific non-functional spec file.
-- `livespec-runtime` has no Codex-specific spec text.
+- `livespec-dev-tooling` now states Codex contributor-workflow support in
+  `SPECIFICATION/non-functional-requirements.md`.
+- `livespec-runtime` now states Codex contributor-workflow support and
+  harness-neutral runtime-code constraints in
+  `SPECIFICATION/non-functional-requirements.md`.
+- `livespec-impl-beads` now states Codex adapter constraints in
+  `SPECIFICATION/constraints.md`.
+- `livespec-impl-git-jsonl` now states Codex adapter constraints in
+  `SPECIFICATION/constraints.md`.
 - `livespec-driver-claude` is intentionally Claude-specific and has no
   governed `SPECIFICATION/`.
-
-Core had stale high-level wording in `SPECIFICATION/spec.md` and
-`SPECIFICATION/contracts.md` that described the `livespec` core plugin bundle
-as containing `skills/<sub-command>/SKILL.md`, treated prose+CLI decomposition
-as future work, and expected an installed core plugin skill tree for the CLI
-e2e harness. The `codex-driver-spec-wording` worktree repairs those clauses via
-`SPECIFICATION/history/v119/` and `SPECIFICATION/history/v120/`; once the
-corresponding PR lands, this gap is closed for core.
 
 ### Manual verification
 
@@ -142,6 +171,12 @@ No manual Codex verification has been done yet for:
 - `livespec-impl-git-jsonl`;
 - `livespec-runtime`;
 - `livespec-driver-claude` as a deliberately non-Codex driver package.
+
+The sibling updates above were manually verified with governed LiveSpec
+wrappers, local `just check`, commit hooks, pre-push hooks, and PR/CI checks.
+They were not verified by launching Codex CLI inside each sibling checkout.
+Do not claim full family-wide Codex runtime verification until that evidence is
+added.
 
 ### High-level e2e testing
 
@@ -172,6 +207,9 @@ Observed hooks and non-skill mechanisms:
 - Core `AGENTS.md` now carries the critical Codex-facing replacement for some
   hook protection: worktree -> PR -> merge -> cleanup, `mise exec -- git`,
   never `--no-verify`, and primary checkout protection.
+- Sibling specs now explicitly state that Claude-only hooks are not assumed to
+  run under Codex, and any Codex adapter or hook replacement must be manually
+  verified before support is claimed.
 
 Open questions:
 
@@ -186,16 +224,19 @@ Open questions:
 
 ## Recommended next sequence
 
-1. For each governed sibling repo, use the existing `livespec next` / Beads
-   check and file a repo-local proposed spec change if its non-functional
-   specification needs to state Codex support.
-2. Decide the minimum project-local Codex adapter surface per repo:
-   no adapter, read-only adapter, or impl-side thin-transport adapter.
-3. Audit Claude-only hooks one by one and classify them as:
+1. Add Codex CLI runtime evidence for the changed sibling repos before claiming
+   family-wide support. At minimum, record whether Codex loads `AGENTS.md`,
+   respects the repo mutation protocol, and can identify the relevant wrapper
+   or check entry points without editing.
+2. Audit Claude-only hooks one by one and classify them as:
    Codex replacement required, AGENTS/repo-hook coverage sufficient, or
    Claude-driver-only by design.
-4. Add manual Codex verification evidence for every changed repo before
-   claiming family-wide support.
+3. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as a
+   supported agent-runtime dimension and keep this document updated with the
+   evidence.
+4. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
+   `livespec-dev-tooling-e60`; Codex should remain tokens-primary, not
+   Claude-cost-derived.
 
 ## Reproduction commands
 

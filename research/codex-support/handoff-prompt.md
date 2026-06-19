@@ -184,6 +184,69 @@ The high-level e2e Beads thread was updated on 2026-06-19:
   criteria and labels. Beads emitted the known `.beads` permissions warning and
   auto-backup limitation, but the update succeeded.
 
+The governed sibling spec updates landed on 2026-06-19:
+
+- `livespec-dev-tooling` PR #134:
+  `https://github.com/thewoolleyman/livespec-dev-tooling/pull/134`
+  - Merge commit: `e76b63621a40ff4f3d88f9681d1503107e82ee79`
+  - Spec revision: `SPECIFICATION/history/v015/`
+  - Scope: `SPECIFICATION/non-functional-requirements.md` now states Codex
+    contributor-workflow support through `AGENTS.md`, repo hooks, and stable
+    enforcement-suite entry points. It records that no project-local
+    `.agents/skills` are currently needed because the repo owns shared
+    enforcement-suite code, not a user-facing `/livespec:*` Driver.
+  - Verification: governed `propose_change.py` plus
+    `revise.py --post-step-doctor --run-stale-branch-check`;
+    `mise exec -- just check` passed all 46 targets, including 903 tests at
+    100% coverage; doc-only commit/pre-push hooks passed; PR checks passed
+    before merge. The primary checkout was fast-forwarded and the worktree /
+    local branch were removed.
+- `livespec-runtime` PR #48:
+  `https://github.com/thewoolleyman/livespec-runtime/pull/48`
+  - Merge commit: `dce528968176c8a80f8cd8b3abe97d988f3b456e`
+  - Spec revision: `SPECIFICATION/history/v005/`
+  - Scope: `SPECIFICATION/non-functional-requirements.md` now states Codex
+    contributor-workflow support and requires runtime code to remain
+    agent-runtime-neutral, with no branching on Claude, Codex, Pi, or any
+    harness identity.
+  - Verification: governed `propose_change.py` plus
+    `revise.py --post-step-doctor --run-stale-branch-check`;
+    `mise exec -- just check` passed all 43 targets, including 81 tests at
+    100% coverage; doc-only commit/pre-push hooks passed; PR checks passed
+    before merge. The primary checkout was fast-forwarded and the worktree /
+    local branch were removed.
+- `livespec-impl-git-jsonl` PR #88:
+  `https://github.com/thewoolleyman/livespec-impl-git-jsonl/pull/88`
+  - Merge commit: `e26cebee15bfd43f51a7eab596a75e9b2d719ed0`
+  - Spec revision: `SPECIFICATION/history/v009/`
+  - Scope: `SPECIFICATION/constraints.md` now requires Codex adapter support
+    to be a first-class agent-runtime consideration. Future Codex adapters
+    must be thin runtime bindings over existing wrapper CLIs, JSONL store
+    semantics, and consent rules, not copies of Claude-specific `SKILL.md`
+    bodies. Claude-only hooks are not assumed to run under Codex.
+  - Verification: governed `propose_change.py` plus
+    `revise.py --post-step-doctor --run-stale-branch-check`;
+    `mise exec -- just check` passed all 46 targets, including 319 tests at
+    100% coverage; doc-only commit/pre-push hooks passed; PR checks passed,
+    including `e2e-cli`, before merge. The primary checkout was fast-forwarded
+    and the worktree / local branch were removed.
+- `livespec-impl-beads` PR #62:
+  `https://github.com/thewoolleyman/livespec-impl-beads/pull/62`
+  - Merge commit: `59627827584e43aabeaca9e11b8658b2e32dbfa6`
+  - Spec revision: `SPECIFICATION/history/v005/`
+  - Scope: `SPECIFICATION/constraints.md` now requires Codex adapter support
+    to be a first-class agent-runtime consideration. Future Codex adapters
+    must be thin runtime bindings over existing wrapper CLIs, beads tenant
+    semantics, and consent rules, not copies of Claude-specific `SKILL.md`
+    bodies. Claude-only hooks are not assumed to run under Codex.
+  - Verification: governed `propose_change.py` plus
+    `revise.py --post-step-doctor --run-stale-branch-check`;
+    `mise exec -- just check` passed all 44 targets, including 917 tests at
+    100% coverage; doc-only commit/pre-push hooks passed; PR checks passed,
+    including `e2e-cli`, before merge. The primary checkout was fast-forwarded
+    and the feature worktree / local branch were removed. Pre-existing
+    unrelated worktrees under `.claude/worktrees/` were left untouched.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -260,18 +323,16 @@ At the end of any session that changes the Codex support state:
   are `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`,
   `livespec-impl-beads`, `livespec-impl-git-jsonl`, and `livespec-runtime`.
   Only core currently has `.agents/skills/`.
-- Core `SPECIFICATION/spec.md` still contains stale high-level
-  Claude-skill/plugin wording: it says the core plugin bundle MUST contain
-  `skills/<sub-command>/SKILL.md` and that `/livespec:<name>` dispatches to
-  matching skill prompts. This conflicts with the current driver architecture
-  and was repaired in the `codex-driver-spec-wording` worktree through
-  `SPECIFICATION/history/v119/`.
-- Core `SPECIFICATION/contracts.md` also contained adjacent stale wording:
-  core reference interfaces as skill prompts, prose+CLI decomposition as future
-  Phase-2 work, `SKILL.md` retry/narration wording, and a
-  `/livespec:next` thin-transport skill heading. This was repaired in the same
-  worktree through `SPECIFICATION/history/v120/`, including the required
-  `tests/heading-coverage.json` co-edit.
+- Core `SPECIFICATION/spec.md` and `SPECIFICATION/contracts.md` stale
+  Claude-skill/plugin wording was repaired by PR #471 through
+  `SPECIFICATION/history/v119/` and `SPECIFICATION/history/v120/`, including
+  the required `tests/heading-coverage.json` co-edit.
+- Sibling governed specs now state Codex support requirements or adapter
+  constraints where applicable: dev-tooling `v015`, runtime `v005`,
+  impl-git-jsonl `v009`, and impl-beads `v005`.
+- `livespec-driver-claude` remains intentionally Claude-specific and has no
+  governed `SPECIFICATION/`; no Codex repo update is expected there beyond
+  classification in `research/codex-support/family-audit.md`.
 
 ## Work discipline
 
@@ -301,26 +362,24 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 ## Next concrete action
 
 Continue Codex support work from the expanded family-wide scope. Do NOT repeat
-the completed PR #452, #457, #460, #465, #466, #467, #470, #471, or the
-`livespec-zkmn.1` e2e acceptance update. The next phase is sibling-repo support
-and hook coverage:
+the completed PR #452, #457, #460, #465, #466, #467, #470, #471, #473, or the
+sibling spec PRs #134 / #48 / #88 / #62 listed above. The next phase is runtime
+Codex evidence, hook classification, and high-level e2e follow-through:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
-   it current. On 2026-06-19, direct wrapper runs from core returned one
-   low-urgency spec-side candidate:
-   `{"action":"prune-history","reason":"118 unpruned history versions; consider pruning","urgency":"low"}`.
-2. For each governed sibling repo (`livespec-dev-tooling`,
-   `livespec-impl-beads`, `livespec-impl-git-jsonl`, `livespec-runtime`), run
-   its repo-local `livespec next` / Beads state check and decide the minimum
-   Codex support surface: no project skill, read-only adapter, or impl-side
-   thin-transport adapter.
-3. Where a repo's spec needs Codex non-functional requirements or constraints,
-   use that repo's governed propose-change -> revise lifecycle and PR flow.
-4. Audit Claude-only hooks one by one and classify each as: Codex replacement
+   it current.
+2. Add Codex CLI runtime evidence for the changed sibling repos before
+   claiming family-wide support. At minimum, record whether Codex loads
+   `AGENTS.md`, respects the repo mutation protocol, and can identify the
+   relevant wrapper or check entry points without editing.
+3. Audit Claude-only hooks one by one and classify each as: Codex replacement
    required, AGENTS/repo-hook coverage sufficient, or Claude-driver-only by
    design.
-5. Add manual Codex verification evidence for every changed repo before
-   claiming family-wide support.
+4. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as
+   a supported agent-runtime dimension.
+5. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
+   `livespec-dev-tooling-e60`; Codex should remain tokens-primary, not
+   Claude-cost-derived.
 6. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
@@ -423,19 +482,19 @@ Notes:
 
 ## Follow-up work after adapter proof
 
-The main-repo adapter-proof follow-ups are complete as of PR #467, but the
-broader Codex support program is NOT complete. Track at least these open areas:
+The main-repo adapter-proof follow-ups and sibling governed spec updates are
+complete as of the PRs listed above, but the broader Codex support program is
+NOT complete. Track at least these open areas:
 
-- family-wide repo updates: audit and update every livespec-family repo that
-  should support Codex, not just core;
-- family-wide spec updates: update each relevant repo's non-functional spec to
-  state Codex support requirements and constraints;
-- manual verification: prove the Codex path in every changed repo, including
-  adapter loading, wrapper invocation, and any migrated hook/bootstrap behavior;
+- manual Codex runtime verification: prove the Codex path in every changed
+  repo, including instruction loading, wrapper/check identification, and any
+  migrated hook/bootstrap behavior;
 - high-level e2e testing: `livespec-zkmn.1` now requires Codex as a supported
   harness dimension, but implementation and manual evidence remain open;
 - non-skill runtime mechanisms: audit hooks, plugin installation assumptions,
   bootstrap scripts, cloud-specific references, and Claude-only machinery;
+- telemetry/cost observability: keep Codex tokens-primary through
+  `livespec-impl-beads-zbl` and `livespec-dev-tooling-e60`;
 - reproduction summary: keep a current `research/codex-support/` summary
   document suitable for replaying the work for the Pi agent harness.
 
