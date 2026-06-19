@@ -24,6 +24,15 @@
 
 name: CI
 
+# uv occasionally fails when the PyPI file CDN (files.pythonhosted.org)
+# drops a wheel download mid-stream ("broken pipe"). UV_HTTP_RETRIES
+# makes uv retry the fetch in-process instead of failing the job.
+# Combined with the ~/.cache/uv actions/cache step (keyed on uv.lock)
+# every uv-sync job uses below, an unchanged lock installs from cache
+# and never contacts PyPI at all.
+env:
+  UV_HTTP_RETRIES: "5"
+
 on:
   pull_request:
   push:
@@ -70,6 +79,23 @@ jobs:
             echo "py_changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Warm the uv download cache ONCE per run. The check-python matrix
+      # jobs `needs: setup`, so they start only after this populates
+      # ~/.cache/uv — a cold lock then fetches from PyPI once per run
+      # instead of once per matrix job (every job restores the same key).
+      - name: Install pinned binaries via mise
+        uses: jdx/mise-action@v2
+
+      - name: Cache uv downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ '{{' }} runner.os {{ '}}' }}-${{ '{{' }} hashFiles('uv.lock') {{ '}}' }}
+          restore-keys: uv-${{ '{{' }} runner.os {{ '}}' }}-
+
+      - name: Populate uv cache
+        run: uv sync --all-groups
+
   check-python:
     name: ${{ '{{' }} matrix.target {{ '}}' }}
     needs: setup
@@ -100,6 +126,14 @@ jobs:
       - name: Install pinned binaries via mise
         if: needs.setup.outputs.py_changed == 'true'
         uses: jdx/mise-action@v2
+
+      - name: Restore uv download cache
+        if: needs.setup.outputs.py_changed == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ '{{' }} runner.os {{ '}}' }}-${{ '{{' }} hashFiles('uv.lock') {{ '}}' }}
+          restore-keys: uv-${{ '{{' }} runner.os {{ '}}' }}-
 
       - name: Install Python dev deps via uv
         if: needs.setup.outputs.py_changed == 'true'
