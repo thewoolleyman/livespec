@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 __all__: list[str] = [
+    "HelpRequestedError",
     "LivespecError",
     "PreconditionError",
     "UsageError",
@@ -47,6 +48,18 @@ class UsageError(LivespecError):
     """
 
     exit_code: ClassVar[int] = 2
+
+
+class HelpRequestedError(LivespecError):
+    """Argparse help request.
+
+    `argparse` implements `-h` / `--help` by printing help text
+    and raising `SystemExit(0)`. The CLI facade keeps that path
+    on the railway so supervisors can short-circuit with exit 0
+    without treating help as a usage failure.
+    """
+
+    exit_code: ClassVar[int] = 0
 
 
 class PreconditionError(LivespecError):

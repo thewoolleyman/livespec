@@ -86,7 +86,7 @@ from livespec.commands._revise_validation import (
 from livespec.commands._revise_validation import (
     _validate_resulting_files_targets_exist as _validate_resulting_files_targets_exist,
 )
-from livespec.errors import LivespecError, UsageError
+from livespec.errors import HelpRequestedError, LivespecError, UsageError
 from livespec.io import cli, fs
 from livespec.io import git as io_git
 from livespec.parse import jsonc
@@ -169,6 +169,8 @@ def _pattern_match_io_result(
     match unwrapped:
         case Success(_):
             return 0
+        case Failure(HelpRequestedError() as err):
+            return err.exit_code
         case Failure(LivespecError() as err):
             _log.error(
                 "revise failed",

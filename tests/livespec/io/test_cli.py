@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import argparse
 
+import pytest
+from livespec.commands import revise
+from livespec.doctor import run_static
 from livespec.errors import UsageError
 from livespec.io import cli
 from returns.io import IOSuccess
@@ -75,3 +78,50 @@ def test_cli_parse_argv_maps_missing_required_to_usage_error() -> None:
             pass
         case _:
             raise AssertionError(f"expected IOFailure(UsageError), got {result!r}")
+
+
+def test_cli_parse_argv_maps_help_request_to_zero_exit_failure() -> None:
+    """`--help` prints argparse help and returns a zero-exit carrier.
+
+    Help is a successful CLI short-circuit, not a usage error.
+    argparse raises `SystemExit(0)` after printing help, and
+    parse_argv must preserve that zero exit on the failure track
+    so supervisors can short-circuit before running command bodies.
+    """
+    parser = argparse.ArgumentParser(prog="t", exit_on_error=False)
+    _ = parser.add_argument("--required", required=True)
+    result = cli.parse_argv(parser=parser, argv=["--help"])
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(UsageError() as err):
+            raise AssertionError(f"help must not map to UsageError: {err!r}")
+        case Failure(Exception() as err):
+            assert getattr(err, "exit_code", None) == 0
+        case _:
+            raise AssertionError(
+                f"expected IOFailure(zero-exit help), got {result!r}"
+            )  # pragma: no cover
+
+
+def test_doctor_static_help_returns_zero_without_findings(
+    *,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Doctor help prints usage and does not run the findings workflow."""
+    exit_code = run_static.main(argv=["--help"])
+    out = capsys.readouterr().out
+    assert exit_code == 0
+    assert "usage: doctor-static" in out
+    assert '"findings"' not in out
+
+
+def test_revise_help_returns_zero_without_error_log(
+    *,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Revise help prints usage without the failure diagnostic."""
+    exit_code = revise.main(argv=["--help"])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "usage: revise" in captured.out
+    assert captured.err == ""

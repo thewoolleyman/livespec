@@ -32,7 +32,7 @@ import argparse
 
 from returns.io import IOResult, impure_safe
 
-from livespec.errors import UsageError
+from livespec.errors import HelpRequestedError, UsageError
 
 __all__: list[str] = ["parse_argv"]
 
@@ -62,7 +62,7 @@ def parse_argv(
     *,
     parser: argparse.ArgumentParser,
     argv: list[str],
-) -> IOResult[argparse.Namespace, UsageError]:
+) -> IOResult[argparse.Namespace, HelpRequestedError | UsageError]:
     """Parse argv, lifting argparse errors onto the IOResult track.
 
     `@impure_safe` converts the explicit `ArgumentError` raise
@@ -71,6 +71,11 @@ def parse_argv(
     exception; `.alt(...)` then maps that to a UsageError per
     the canonical pattern in `livespec/parse/jsonc.py`.
     """
-    return _raw_parse_argv(parser=parser, argv=argv).alt(
-        lambda exc: UsageError(f"argparse: {exc}"),  # pyright: ignore[reportUnknownLambdaType]
-    )
+    return _raw_parse_argv(parser=parser, argv=argv).alt(_map_parse_error)
+
+
+def _map_parse_error(exc: argparse.ArgumentError | SystemExit) -> HelpRequestedError | UsageError:
+    """Map argparse's exception-shaped exits to domain errors."""
+    if isinstance(exc, SystemExit) and exc.code == 0:
+        return HelpRequestedError("argparse: help requested")
+    return UsageError(f"argparse: {exc}")
