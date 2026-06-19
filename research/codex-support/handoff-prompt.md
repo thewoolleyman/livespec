@@ -3,7 +3,10 @@
 You are starting a new session in `/data/projects/livespec`.
 
 Goal: make livespec usable from OpenAI Codex as a maintainer dogfooding
-surface, starting with the minimum project-skill/bootstrap path.
+surface across the whole livespec family, not only in the core repo. The
+minimum project-skill/bootstrap path is complete for core read-only operations;
+continue with family-wide support, specs, verification, high-level testing,
+non-skill runtime mechanisms, and reproducible research notes.
 
 ## Start here
 
@@ -113,6 +116,24 @@ PR #467:
   was closed. Beads emitted the known `.beads` permissions and auto-backup
   warnings, but the close succeeded.
 
+The handoff was expanded after user correction on 2026-06-19 because the
+previous "Next concrete action" was too narrow. It treated the main-repo
+read-only Codex adapter slice as the end of the Codex-support track, but the
+actual objective is broader:
+
+- every livespec-family repo needs to be audited and, where appropriate,
+  updated to support Codex the same way the core repo now does;
+- every livespec-family repo's non-functional specification needs to state the
+  requirement and nature of Codex support where that repo owns a governed spec;
+- all family-wide changes need manual verification, not just static checks;
+- the high-level end-to-end testing bead/research thread needs to include Codex
+  as a supported harness, not only Claude;
+- non-skill mechanisms such as hooks, plugin/driver assumptions, local
+  bootstrap paths, and cloud-/Claude-specific workflows need to be audited and
+  migrated or explicitly documented as not applicable for Codex;
+- `research/codex-support/` needs a durable summary document recording what had
+  to be done so the process can be reproduced for the Pi agent harness.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -179,6 +200,12 @@ At the end of any session that changes the Codex support state:
   - `livespec-4moata.3` — wrapper help exit handling, closed after PR #467.
   - `livespec-zkmn.1.1` — parity-critical Claude/Codex operational memory
     migration, closed after PR #466.
+- Local livespec-family checkouts seen during the 2026-06-19 handoff expansion:
+  `livespec`, `livespec-driver-claude`, `livespec-impl-beads`,
+  `livespec-impl-git-jsonl`, `livespec-runtime`, plus dev/worktree directories
+  such as `livespec-dev-tooling`, `livespec.wt`, `livespec-impl-beads.wt`, and
+  `livespec-worktrees`. Do not assume this list is complete without
+  rechecking `/data/projects` and Beads state.
 
 ## Work discipline
 
@@ -207,11 +234,31 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 
 ## Next concrete action
 
-No known Codex-support follow-up from the adapter-proof track remains open in
-this repo. If a new session continues Codex support work, start by reading this
-handoff plus the audit/plan/proof files above, then re-triage current Beads and
-LiveSpec state instead of repeating the completed PR #452, #457, #460, #465,
-#466, and #467 work.
+Continue Codex support work from the expanded family-wide scope. Do NOT repeat
+the completed PR #452, #457, #460, #465, #466, and #467 work. Start by using
+the standard livespec processes now available to Codex:
+
+1. Run the core `livespec next` flow from this repo and record its JSON output
+   in this handoff or the summary doc. On 2026-06-19, a direct wrapper run from
+   core returned one low-urgency spec-side candidate:
+   `{"action":"prune-history","reason":"118 unpruned history versions; consider pruning","urgency":"low"}`.
+2. Query Beads for open work across the family using the documented
+   `with-livespec-env.sh`/`LIVESPEC_BD_PATH` path. A previous attempt in this
+   session was interrupted by the user before completion; re-run it.
+3. Inventory each livespec-family repo under `/data/projects` and determine:
+   whether it has a governed `SPECIFICATION/`, whether it has agent/harness
+   adapters, whether Codex can load the relevant instructions, and whether any
+   Claude-only hooks or plugin assumptions block Codex.
+4. Find the bead or research item about high-level end-to-end testing and
+   update its plan/implementation so Codex is explicitly covered.
+5. Create or update a durable summary document under
+   `research/codex-support/` that explains every required change and the
+   verification evidence, with enough detail to reproduce the work for the Pi
+   agent harness.
+6. For any repository mutation, follow that repo's required
+   worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
+   governed livespec propose-change -> revise lifecycle unless an explicit
+   fallback is approved and recorded.
 
 ## Verification Already Completed
 
@@ -310,8 +357,21 @@ Notes:
 
 ## Follow-up work after adapter proof
 
-No adapter-proof follow-up remains open as of PR #467. Re-triage before adding
-new work.
+The main-repo adapter-proof follow-ups are complete as of PR #467, but the
+broader Codex support program is NOT complete. Track at least these open areas:
+
+- family-wide repo updates: audit and update every livespec-family repo that
+  should support Codex, not just core;
+- family-wide spec updates: update each relevant repo's non-functional spec to
+  state Codex support requirements and constraints;
+- manual verification: prove the Codex path in every changed repo, including
+  adapter loading, wrapper invocation, and any migrated hook/bootstrap behavior;
+- high-level e2e testing: find and update the bead/research item so Codex is a
+  supported harness in the e2e plan;
+- non-skill runtime mechanisms: audit hooks, plugin installation assumptions,
+  bootstrap scripts, cloud-specific references, and Claude-only machinery;
+- reproduction summary: keep a current `research/codex-support/` summary
+  document suitable for replaying the work for the Pi agent harness.
 
 ## Constraints
 
