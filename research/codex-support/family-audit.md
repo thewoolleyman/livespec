@@ -26,6 +26,16 @@ LiveSpec processes.
 - Core operational instructions in `AGENTS.md` were updated in PR #466 with
   parity-critical repository mutation discipline for Codex.
 - Wrapper `--help` zero-exit behavior was fixed in PR #467.
+- The core spec wording repair for Driver/prose/binding ownership was drafted
+  through the governed propose-change -> revise lifecycle in the
+  `codex-driver-spec-wording` worktree:
+  - `SPECIFICATION/history/v119/` accepts
+    `codex-driver-spec-wording.md`, repairing stale `spec.md` and CLI e2e
+    harness wording that treated core as owning Claude skill prompts.
+  - `SPECIFICATION/history/v120/` accepts
+    `codex-contract-binding-wording.md`, repairing remaining `contracts.md`
+    SKILL.md terminology and co-editing `tests/heading-coverage.json` for the
+    renamed H2 headings.
 
 ## Current live checks
 
@@ -95,16 +105,13 @@ Observed state:
 - `livespec-driver-claude` is intentionally Claude-specific and has no
   governed `SPECIFICATION/`.
 
-Core also still has stale high-level wording in `SPECIFICATION/spec.md` that
-describes the `livespec` plugin bundle as containing
-`skills/<sub-command>/SKILL.md` and says `/livespec:<name>` dispatches to
-matching skill prompts.
-That conflicts with the post-extraction architecture where core ships prose and
-wrappers, while Claude skill bindings live in `livespec-driver-claude` and
-Codex project skills live under `.agents/skills/`.
-
-This core spec repair must be done through propose-change -> revise, not by
-direct edits to `SPECIFICATION/`.
+Core had stale high-level wording in `SPECIFICATION/spec.md` and
+`SPECIFICATION/contracts.md` that described the `livespec` core plugin bundle
+as containing `skills/<sub-command>/SKILL.md`, treated prose+CLI decomposition
+as future work, and expected an installed core plugin skill tree for the CLI
+e2e harness. The `codex-driver-spec-wording` worktree repairs those clauses via
+`SPECIFICATION/history/v119/` and `SPECIFICATION/history/v120/`; once the
+corresponding PR lands, this gap is closed for core.
 
 ### Manual verification
 
@@ -170,10 +177,8 @@ Open questions:
 
 ## Recommended next sequence
 
-1. Use core propose-change -> revise to repair stale
-   `SPECIFICATION/spec.md` Claude-skill wording and, if needed, broaden core
-   `non-functional-requirements.md` from "core-only adapter proof" to
-   "family-wide Codex support program".
+1. Land the `codex-driver-spec-wording` worktree through PR -> merge -> cleanup
+   and verify `just check`.
 2. For each governed sibling repo, run its own `livespec next` / Beads state
    check and file a repo-local proposed spec change if its non-functional
    specification needs to state Codex support.
