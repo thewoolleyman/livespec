@@ -398,7 +398,7 @@ Findings:
   with a validation checkpoint — the same "one coherent, independently
   verifiable 'done'" cut-line, arrived at from outside.
 
-### The grooming ritual — how the split gets drafted + approved — *structure set, details open*
+### The grooming ritual — how the split gets drafted + approved — *intake checklist + regroom flow drafted; calibration + state-model open*
 
 - **Two touchpoints, gated by a size test (both matter, not competitors):**
   1. **Intake cut at work-item creation** — a cheap readiness check: *is
@@ -436,9 +436,76 @@ Findings:
   evaporates: grooming is orchestrator-internal; core only ever *checks*
   cross-repo consistency (structural doctor invariants) and *defines the
   scenario concept*.
-- **STILL OPEN:** the groom front-end's exact draft output; the intake
-  checklist's precise gates; final confirmation of the home (non-functional
-  core guidance + reference-orchestrator-spec realization).
+**The intake-readiness checklist (Definition of Ready) — DRAFTED (2026-06-19).**
+Applied by the EXISTING capture front-ends (`capture-work-item`,
+`capture-impl-gaps`, …) at creation; cheap by construction — the drafting aid
+auto-answers what it can and prompts the human only on the rest. An item is
+`ready` only when ALL of these hold; otherwise it is ROUTED, not filed-as-ready:
+
+1. **One coherent "done."** Exactly one acceptance — either ONE named scenario
+   (*scenario-verified*) OR "the standing gates fully define done, no scenario"
+   (*gate-verified*). Can't name exactly one → it's an epic → `needs-regroom`.
+2. **Acceptance is autonomously verifiable.** An agent can confirm done with no
+   human judgement call (the scenario passes, or `just check` + `/livespec:doctor`
+   pass). If "done" needs human taste → add a verifiable acceptance, or mark it
+   human-gated.
+3. **Autonomy tier assigned.** spec-change → **human-gated** (routes to
+   propose-change / revise; never auto-dispatched); everything else →
+   **factory-dispatchable**.
+4. **Dependencies linked.** Blockers identified + linked (Beads `blocked-by`).
+   Ready = blockers closed (`bd ready`) **AND** an acceptance exists — never
+   deps alone (round-1 finding #5).
+5. **Repo target named.** One slice → one ledger/repo (cross-repo coordination
+   is a separate concern, not grooming's job in the general pattern).
+6. **Above the floor.** Big enough to deserve its own slice, else ride along
+   with a blast-radius sibling (anti-over-split). The floor is uncalibrated
+   until slice-size calibration — human judgement for now.
+
+Routing on failure: gate 1 fails → `needs-regroom`; gate 2 or 4 fails →
+`not-yet-actionable`; all pass → `ready` (Layer-0 if no open blockers). This is
+a checklist folded into the capture front-ends — **NOT new machinery.**
+
+**The regroom pass (agent-drafts / human-approves) — DRAFTED (2026-06-19).**
+Triggered by (a) an intake `needs-regroom` / epic, or (b) **factory
+non-convergence** — a dispatched slice that won't converge IS the "too big"
+signal; it routes back here, it never infinite-retries:
+
+1. **Read-only draft.** The groom front-end reads the epic + the relevant
+   spec/scenarios + the ledger and DRAFTS candidate slices, each with the
+   per-slice fields above filled. It proposes; it files NOTHING yet — read-only
+   until approved (the Factory Specification Mode pattern).
+2. **Layer.** Arrange the drafted slices into dependency layers (Beads blockers
+   → Layer-0 dispatches immediately, same layer parallelizes) — the Factory
+   milestone→feature model, each slice a fresh Fabro sandbox (fresh context per
+   slice already holds for us).
+3. **Human approves the cut.** The human edits the cut / acceptance / deps /
+   tiers and approves, or sends it back to re-draft (the revise loop). **The
+   human OWNS the cut and the acceptance; the aid only drafts.**
+4. **File on approval.** Approved slices are filed via the existing
+   `capture-work-item` machinery with deps linked; spec-change slices route to
+   propose-change / revise, not the factory.
+5. **Validation checkpoint per layer.** After a layer converges, re-run
+   `just check` + `/livespec:doctor` + the named scenarios before the next layer
+   dispatches (Factory's per-milestone validation).
+
+In the dark factory this is the ONE human-in-the-loop step in an otherwise
+autonomous loop: the Dispatcher SURFACES `needs-regroom` items
+(escalate-don't-drop), a human runs the groom front-end, approves, and the
+factory drains the resulting `ready` slices.
+
+**Homes + restraint (anti-over-spec).** The *pattern* above is non-functional
+core guidance (NFR, beside §"Orchestrator-internal Dispatcher guidance"); the
+*realization* is the reference orchestrator's own spec (`livespec-impl-beads`).
+Deliberately few new artifacts: the intake DoR is a checklist on EXISTING
+capture front-ends; layering / ready / labels reuse Beads; only the **regroom
+front-end** is genuinely new, plus one **`needs-regroom`** ledger state. If
+this ever grew past ~one new front-end + one state, stop and reconsider.
+
+**STILL OPEN:** the floor value (blocks gate 6 — needs slice-size calibration);
+whether the intake DoR is a HARD refuse-to-file gate or advisory-with-override;
+the exact `needs-regroom` state model in the orchestrator's ledger; and whether
+intake + regroom are better framed as one mechanism (the DoR gate, and what you
+do when it fails) rather than two.
 
 ### Slice-size calibration — discovering the limits from real run data — *approach set, design open*
 
@@ -541,6 +608,16 @@ Findings:
   fields enumerated; intake = checklist folded into capture front-ends,
   regroom = a single orchestrator-shipped groom front-end (tentative). Exact
   draft/gates still open. **NOT ratified.**
+- **2026-06-19** — **The grooming ritual, concrete draft:** the intake
+  Definition-of-Ready checklist (6 gates → `ready` / `needs-regroom` /
+  `not-yet-actionable`, folded into existing capture front-ends) and the
+  regroom pass (read-only draft → layer → human approves the cut → file →
+  per-layer validation checkpoint; triggered by epics OR factory
+  non-convergence). Borrows Factory's read-only-until-approved gate and
+  milestone→feature layering. Restraint: one new front-end + one
+  `needs-regroom` state, everything else reuses Beads + the capture
+  front-ends. **NOT ratified;** open: floor value, hard-vs-advisory gate,
+  ledger state model.
 - **2026-06-19** — **Round-2 research (the named-but-absent shops, resolved):**
   a second deep-research pass (25 sources, 25 claims verified, 23 confirmed /
   2 killed) found NO shop publishes a human-authored breakdown ritual and NO
