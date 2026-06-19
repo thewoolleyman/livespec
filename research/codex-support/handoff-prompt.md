@@ -243,9 +243,45 @@ The governed sibling spec updates landed on 2026-06-19:
     `revise.py --post-step-doctor --run-stale-branch-check`;
     `mise exec -- just check` passed all 44 targets, including 917 tests at
     100% coverage; doc-only commit/pre-push hooks passed; PR checks passed,
-    including `e2e-cli`, before merge. The primary checkout was fast-forwarded
-    and the feature worktree / local branch were removed. Pre-existing
-    unrelated worktrees under `.claude/worktrees/` were left untouched.
+    including `e2e-cli`, before merge. The primary checkout was
+    fast-forwarded and the feature worktree / local branch were removed.
+    Pre-existing unrelated worktrees under `.claude/worktrees/` were left
+    untouched.
+
+The Codex sibling runtime evidence and hook classification pass ran on
+2026-06-19:
+
+- PR: `https://github.com/thewoolleyman/livespec/pull/480`
+- Worktree: `/data/projects/livespec-codex-runtime-evidence`
+- Branch: `codex-runtime-evidence`
+- Scope:
+  - Launched `codex exec --sandbox read-only` from
+    `livespec-dev-tooling`, `livespec-runtime`,
+    `livespec-impl-git-jsonl`, `livespec-impl-beads`, and
+    `livespec-driver-claude`.
+  - Recorded the evidence in `research/codex-support/family-audit.md`.
+  - Classified Claude-only hooks and non-skill mechanisms in
+    `research/codex-support/family-audit.md`.
+- Evidence:
+  - Codex loaded or read each sibling repo's root `AGENTS.md`.
+  - Codex identified non-mutating `just` gates and wrapper entry points.
+  - Codex correctly classified `livespec-driver-claude` as
+    Claude-specific, with no Codex adapter expected in that repo.
+  - All read-only probes left the sibling checkouts clean according to
+    `git status --short`.
+- Finding:
+  - Sibling `AGENTS.md` files do **not** yet carry the complete core
+    repository mutation protocol (`worktree -> PR -> merge -> cleanup`,
+    primary checkout refresh, and cleanup discipline). They mostly contain
+    Red-Green-Replay plus `mise exec -- git ...` and never `--no-verify`.
+  - Therefore family-wide Codex support is not fully claimable yet, even
+    though Codex instruction loading and non-mutating entry-point discovery are
+    now proven in the sibling repos.
+- Local verification:
+  - `mise exec -- just check-pre-commit-doc-only` passed all seven doc-only
+    targets.
+  - The commit hook reran `just check-pre-commit-doc-only` and passed.
+  - The pre-push hook reran `just check-pre-commit-doc-only` and passed.
 
 ## Handoff protocol
 
@@ -333,6 +369,15 @@ At the end of any session that changes the Codex support state:
 - `livespec-driver-claude` remains intentionally Claude-specific and has no
   governed `SPECIFICATION/`; no Codex repo update is expected there beyond
   classification in `research/codex-support/family-audit.md`.
+- Read-only Codex runtime probes have now been run in the changed sibling
+  repos. They prove `AGENTS.md` loading and entry-point discovery, but also
+  prove that sibling `AGENTS.md` files still lack the full core mutation
+  protocol.
+- Claude-only hook classification is recorded in
+  `research/codex-support/family-audit.md`: the project
+  `livespec_footgun_guard.py` needs a Codex replacement before mutating Codex
+  automation, repo git hooks are runtime-neutral commit/push backstops, and
+  the Claude Driver's plugin hooks are Claude-driver-only by design.
 
 ## Work discipline
 
@@ -362,25 +407,23 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 ## Next concrete action
 
 Continue Codex support work from the expanded family-wide scope. Do NOT repeat
-the completed PR #452, #457, #460, #465, #466, #467, #470, #471, #473, or the
-sibling spec PRs #134 / #48 / #88 / #62 listed above. The next phase is runtime
-Codex evidence, hook classification, and high-level e2e follow-through:
+the completed PR #452, #457, #460, #465, #466, #467, #470, #471, #473, the
+sibling spec PRs #134 / #48 / #88 / #62, or the sibling read-only Codex runtime
+probes recorded above. The next phase is sibling instruction parity and
+high-level e2e follow-through:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Add Codex CLI runtime evidence for the changed sibling repos before
-   claiming family-wide support. At minimum, record whether Codex loads
-   `AGENTS.md`, respects the repo mutation protocol, and can identify the
-   relevant wrapper or check entry points without editing.
-3. Audit Claude-only hooks one by one and classify each as: Codex replacement
-   required, AGENTS/repo-hook coverage sufficient, or Claude-driver-only by
-   design.
-4. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as
+2. Sync the complete core repository mutation protocol into sibling
+   `AGENTS.md` files, using each repo's own required worktree -> PR -> merge
+   -> cleanup discipline. The Codex probes proved those files load, so this is
+   the next parity-critical instruction path.
+3. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as
    a supported agent-runtime dimension.
-5. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
+4. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60`; Codex should remain tokens-primary, not
    Claude-cost-derived.
-6. For any repository mutation, follow that repo's required
+5. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
    fallback is approved and recorded.

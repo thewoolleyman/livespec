@@ -154,7 +154,7 @@ Observed state:
 
 ### Manual verification
 
-Manual Codex verification exists only for core read-only operations:
+Manual Codex verification exists for core read-only operations:
 
 - adapter discovery via `codex debug prompt-input`;
 - help adapter reads `.agents/skills/livespec-help/SKILL.md` and
@@ -164,19 +164,23 @@ Manual Codex verification exists only for core read-only operations:
 - doctor adapter reads `.agents/skills/livespec-doctor/SKILL.md` and names
   `.claude-plugin/scripts/bin/doctor_static.py`.
 
-No manual Codex verification has been done yet for:
+On 2026-06-19, read-only Codex CLI probes were launched from each sibling
+checkout with `codex exec --sandbox read-only`. Every probe confirmed that
+Codex loaded or read the repository-root `AGENTS.md`, identified relevant
+non-mutating verification surfaces, and left `git status --short` clean.
 
-- `livespec-dev-tooling`;
-- `livespec-impl-beads`;
-- `livespec-impl-git-jsonl`;
-- `livespec-runtime`;
-- `livespec-driver-claude` as a deliberately non-Codex driver package.
+| Repo | Codex-loaded instruction surface | Mutation protocol evidence | Non-mutating surfaces Codex identified |
+|---|---|---|---|
+| `livespec-dev-tooling` | `/data/projects/livespec-dev-tooling/AGENTS.md` | Has Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`; does **not** carry full worktree -> PR -> merge -> cleanup lifecycle. | `just check-scoped`, `just check`, `just check-static`, `just check-changed`, `just check-pre-commit`, `just check-pre-push`, individual `just check-*` targets. |
+| `livespec-runtime` | `/data/projects/livespec-runtime/AGENTS.md` | Has Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`; does **not** carry full worktree -> PR -> merge -> cleanup lifecycle. | `just check`, `just check-static`, `just check-changed`, `just check-lint`, `just check-format`, `just check-types`, `just check-coverage`, `just check-pre-commit`, `just check-pre-push`. |
+| `livespec-impl-git-jsonl` | `/data/projects/livespec-impl-git-jsonl/AGENTS.md` | Has Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`; full lifecycle appears in README/justfile/hook docs, not in `AGENTS.md`. | `mise exec -- just check`, `check-pre-commit`, `check-pre-push`, `check-red-green-replay`, `check-static`, `check-changed`, store checks, and read-only wrappers `list_work_items.py`, `list_memos.py`, `next.py`, `detect_impl_gaps.py`. |
+| `livespec-impl-beads` | `/data/projects/livespec-impl-beads/AGENTS.md` | Has Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`; full lifecycle appears in README/justfile/dispatcher docs, not in `AGENTS.md`. | `just check-static`, `just check-format`, `just check-lint`, `just check-types`, `just changed-files`, `just check-red-green-replay`, `just check-work-item-merge-evidence`, read/check wrappers, and dispatcher `ledger-check`, `spec-check`, `janitor-check`. |
+| `livespec-driver-claude` | `/data/projects/livespec-driver-claude/AGENTS.md` | Has worktree secondary checkout guidance, `mise exec -- git ...`, and never `--no-verify`; does **not** carry the full worktree -> PR -> merge -> cleanup lifecycle. | `just check` for plugin-structure, hook tests, and mock e2e. Codex correctly classified the repo as deliberately Claude-specific and not a Codex adapter host. |
 
-The sibling updates above were manually verified with governed LiveSpec
-wrappers, local `just check`, commit hooks, pre-push hooks, and PR/CI checks.
-They were not verified by launching Codex CLI inside each sibling checkout.
-Do not claim full family-wide Codex runtime verification until that evidence is
-added.
+Conclusion: sibling runtime evidence now exists, but family-wide Codex support
+is still not fully claimable. The missing piece is instruction parity: sibling
+`AGENTS.md` files should carry the same complete repo mutation protocol now
+present in core before Codex is trusted for mutating family-wide work.
 
 ### High-level e2e testing
 
@@ -199,42 +203,34 @@ The acceptance criteria now require:
 Observed hooks and non-skill mechanisms:
 
 - All family repos have repo-level git hooks / lefthook discipline.
-- Multiple repos have `.claude/hooks/livespec_footgun_guard.py`, which is a
-  Claude Code PreToolUse guard. This does not run under Codex.
-- `livespec-driver-claude` ships `.claude-plugin/hooks/` with
-  `block-auto-memory.sh` and `warn-plan-persistence.sh`. These are
-  Claude-driver runtime mechanics, not Codex mechanics.
-- Core `AGENTS.md` now carries the critical Codex-facing replacement for some
-  hook protection: worktree -> PR -> merge -> cleanup, `mise exec -- git`,
-  never `--no-verify`, and primary checkout protection.
+- Each active family checkout has `.claude/hooks/livespec_footgun_guard.py`.
+  `livespec-driver-claude` also has Driver-plugin hooks under
+  `.claude-plugin/hooks/`.
 - Sibling specs now explicitly state that Claude-only hooks are not assumed to
   run under Codex, and any Codex adapter or hook replacement must be manually
   verified before support is claimed.
 
-Open questions:
+Hook classification:
 
-- Which Claude hook behaviors need a Codex-native equivalent, and which should
-  stay Claude-only?
-- Should Codex rely only on `AGENTS.md` plus repo git hooks for primary
-  checkout and no-`--no-verify` discipline, or should a Codex adapter/checklist
-  add an explicit pre-edit gate before mutating operations?
-- Should impl-plugin memo/plan-persistence redirection be represented in
-  Codex instructions, in Beads/Dolt work-item capture commands, or left
-  Claude-driver-only?
+| Mechanism | Locations | Classification | Rationale |
+|---|---|---|---|
+| `.claude/hooks/livespec_footgun_guard.py` | `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`, `livespec-impl-beads`, `livespec-impl-git-jsonl`, `livespec-runtime` | Codex replacement required before mutating Codex automation; AGENTS/repo-hook coverage sufficient for read-only probes and human-supervised verification. | This Claude Code `PreToolUse` Bash guard blocks `git commit/push --no-verify`, `LEFTHOOK=0/false`, and `git config core.bare=true` before a command runs. Codex does not run it. Git hooks and branch protections catch many commit/push failures later, but cannot stop direct file edits in a primary checkout. |
+| `.claude/settings.json` `SessionStart` plugin/bootstrap hooks | active family checkouts | Claude-driver-only by design. | These run Claude plugin installation or project hook setup. Codex has no proven livespec marketplace/plugin path; project-local `.agents/skills` plus repo instructions are the current Codex path. |
+| `.claude/settings.json` `PreToolUse` background/subagent guards | active family checkouts where configured | Claude-driver-only unless a future Codex runtime exposes equivalent hook events. | The hooks enforce Claude Code tool/session behavior. Current Codex evidence covers read-only execution, not background tool lifecycle integration. |
+| `livespec-driver-claude/.claude-plugin/hooks/block-auto-memory.sh` | `livespec-driver-claude` plugin | Claude-driver-only by design. | This prevents Claude Code auto-memory behavior in the Claude Driver. It is not a cross-runtime livespec contract. |
+| `livespec-driver-claude/.claude-plugin/hooks/warn-plan-persistence.sh` | `livespec-driver-claude` plugin | Claude-driver-only by design, with possible future documentation analogue for other runtimes. | This warns Claude users about plan persistence. Codex support should not inherit it silently; if Pi/Codex need equivalent guidance it belongs in their runtime instructions or driver, not in the Claude Driver. |
+| Repo git hooks and `check-primary-checkout-commit-refuse-hook-installed` | all governed family repos | AGENTS/repo-hook coverage sufficient for commit/push enforcement once installed. | These are runtime-neutral git/just mechanisms. They do not replace pre-edit instruction loading, but they are the correct backstop for commit/push discipline under Codex. |
 
 ## Recommended next sequence
 
-1. Add Codex CLI runtime evidence for the changed sibling repos before claiming
-   family-wide support. At minimum, record whether Codex loads `AGENTS.md`,
-   respects the repo mutation protocol, and can identify the relevant wrapper
-   or check entry points without editing.
-2. Audit Claude-only hooks one by one and classify them as:
-   Codex replacement required, AGENTS/repo-hook coverage sufficient, or
-   Claude-driver-only by design.
-3. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as a
+1. Sync the complete core repository mutation protocol into sibling
+   `AGENTS.md` files, using each repo's normal worktree -> PR -> merge ->
+   cleanup path. The Codex runtime probes proved those files load, but they do
+   not yet carry the full lifecycle.
+2. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as a
    supported agent-runtime dimension and keep this document updated with the
    evidence.
-4. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
+3. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60`; Codex should remain tokens-primary, not
    Claude-cost-derived.
 
