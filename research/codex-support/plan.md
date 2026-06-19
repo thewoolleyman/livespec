@@ -28,6 +28,21 @@ Detailed evidence: `research/codex-support/audit.md`.
 
 Codex dogfooding should be a thin adapter over core, not a new command model.
 
+The Claude/Codex DRY model is:
+
+- shared behavior source of truth: `.claude-plugin/prose/<operation>.md`;
+- shared executable contract: `.claude-plugin/scripts/bin/<operation>.py`;
+- runtime-specific adapters only:
+  - Claude Driver `SKILL.md` files in `/data/projects/livespec-driver-claude`;
+  - Codex project `SKILL.md` files under `.agents/skills/` for local
+    dogfooding, or a future Codex Driver repo if distribution becomes a product
+    goal.
+
+Do not introduce a second shared skill-body abstraction. The commonality has
+already been abstracted into core prose plus wrapper CLIs. Runtime adapters are
+allowed to differ only in binding mechanics: trigger descriptions, tool-use
+instructions, path resolution, and how they invoke the shared wrapper.
+
 The adapter should:
 
 - live in `.agents/skills/<operation>/SKILL.md` for project-local dogfooding, or
@@ -40,12 +55,33 @@ The adapter should:
   `.claude-plugin/scripts/bin/` when the prose calls for a CLI;
 - preserve the core operation prose as the behavior source of truth;
 - avoid symlinking to `.claude-plugin/skills/*`;
-- avoid copying Claude Driver `SKILL.md` bodies into core.
+- avoid copying Claude Driver `SKILL.md` bodies into core or Codex;
+- avoid restating operation-specific steps, failure handling, or output
+  interpretation that already live in core prose.
 
 For this repo's first dogfooding slice, prefer committed project-local
 `.agents/skills` adapters. A separate `livespec-driver-codex` repo is useful
 only after the project-local path is proven and the spec says what should be
 distributed.
+
+## Adapter sync checks
+
+After the read-only adapter proof lands, add mechanical checks that keep Claude
+and Codex adapters DRY by validating references rather than comparing copied
+text.
+
+Minimum checks:
+
+- every Codex adapter must reference an existing
+  `.claude-plugin/prose/<operation>.md`;
+- every wrapper-backed Codex adapter must reference the expected
+  `.claude-plugin/scripts/bin/<operation>.py`;
+- Codex adapters must not contain copied core operation sections such as full
+  `## Steps`, failure-handling tables, or output-schema narration;
+- Codex probes for `help`, `next`, and `doctor` must show that Codex reads the
+  adapter and then the core prose;
+- if a future `livespec-driver-codex` repo is created, it should reuse the same
+  reference checks against core rather than vendoring Claude Driver text.
 
 ## Bootstrap file layout
 
