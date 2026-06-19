@@ -22,6 +22,24 @@ The audit and plan landed on `master` via PR #452:
 Do not redo the initial audit unless new evidence contradicts it. Continue from
 the plan.
 
+## Handoff protocol
+
+This file is the complete continuation prompt for the next session. Keep all
+handoff instructions, current state, verification notes, and next actions here;
+do not rely on the final chat response to carry operational detail.
+
+At the end of any session that changes the Codex support state:
+
+1. Update this file with the current repository state, merged PRs, validation
+   results, unresolved blockers, and the exact next action.
+2. Land that update through the normal worktree -> PR -> merge -> cleanup path.
+3. In the final response, do not paste a separate handoff block. Tell the user
+   only to run this file in the next session:
+
+   ```text
+   research/codex-support/handoff-prompt.md
+   ```
+
 ## Current confirmed facts
 
 - Core owns `.claude-plugin/prose/<name>.md` and reference wrappers under
@@ -64,9 +82,9 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 4. Never use `--no-verify`.
 5. Open a PR, wait for checks, merge via the PR, refresh the primary checkout,
    remove the worktree, and delete the local branch.
-6. At the end of the session, write an updated handoff prompt in
-   `research/codex-support/handoff-prompt.md` with current state and next
-   action.
+6. At the end of the session, update `research/codex-support/handoff-prompt.md`
+   with the complete next-session prompt, land it, and make the final response
+   point only to that filename.
 
 ## Next concrete action
 
@@ -176,5 +194,7 @@ than relying on humans to keep Claude and Codex skill text aligned:
   proof.
 - Do not mutate `SPECIFICATION/` directly unless using the governed LiveSpec
   lifecycle or an explicitly approved fallback.
-- Do not leave the next session without an updated handoff prompt and a clear
-  next action.
+- Do not leave the session without an updated
+  `research/codex-support/handoff-prompt.md`.
+- Do not put handoff instructions only in the final chat response; the final
+  response should point to `research/codex-support/handoff-prompt.md`.
