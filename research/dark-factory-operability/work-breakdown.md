@@ -604,6 +604,85 @@ against model/codebase drift.
 
 ---
 
+## Realization & UX (draft — lands in the orchestrator's spec when ratified)
+
+The three pieces above are repo-agnostic PRINCIPLE. This section sketches the
+concrete REALIZATION for the reference Beads/Dolt + Fabro orchestrator — what
+the maintainer actually does, which skills change, and what (if anything)
+touches Fabro. Per the reframe, this realization belongs in
+`livespec-impl-beads`'s OWN spec when ratified; it is captured here as draft
+thinking, not core contract.
+
+### The maintainer's experience — four touchpoints, one new
+
+1. **Capture (intake) — augmented, frictionless.** File work as today via
+   `capture-work-item` / `capture-impl-gaps`. The skill now runs the
+   Definition-of-Ready checklist in-dialogue, auto-answering what it can and
+   asking only the rest, and tags the item `ready` / `needs-regroom` /
+   `not-yet-actionable`. Most small items pass with one confirmation.
+2. **Groom (regroom) — the one new surface.** For `needs-regroom` items run
+   `groom <id>` *(name provisional)*: a read-only scoping conversation that
+   DRAFTS a layered decomposition (slices pre-filled with acceptance / tier /
+   deps / repo / scope); you edit + approve (or send back); on approval it
+   files the slices via `capture-work-item`. Spec-change slices route to
+   `/livespec:propose-change`.
+3. **Dispatch — unattended, exceptions only.** The Dispatcher drains `ready`
+   slices into Fabro sandboxes by dependency layer, gates each on `just check`
+   + `/livespec:doctor`, merges, closes. It pulls you in only to SURFACE a
+   `human-gated` (spec-change) item or a `needs-regroom` bounce
+   (escalate-don't-drop → back to touchpoint 2).
+4. **Calibration — mostly invisible.** A periodic report correlates run
+   outcomes against size proxies and proposes ceiling thresholds; adopting
+   them makes the intake size-gate flag oversized items advisorily.
+
+### Skills: augmented vs new
+
+**Augmented** (existing impl-plugin skills):
+- `capture-work-item`, `capture-impl-gaps` — run the intake DoR + readiness tag.
+- `process-memos` — route impl-bound memos through the same DoR.
+
+**New** (exactly one): `groom` *(name provisional)* — the
+agent-drafts/human-approves regroom front-end.
+
+**Not skills** (orchestrator machinery):
+- The **Dispatcher** — refuse to auto-dispatch `human-gated`; on
+  non-convergence → mark `needs-regroom` + surface (not infinite-retry); emit
+  calibration telemetry. (The Dispatcher SURFACES `needs-regroom`; `next` is
+  the pull-based ranker and would merely gain "regroom this epic" as an action
+  — and per work-item `livespec-impl-beads-i3jiny`, the Dispatcher should
+  *compose* `next`'s ranking rather than re-rank inline.)
+- One new ledger state `needs-regroom`.
+- The calibration analysis pass (a periodic report over the journal — not a
+  skill).
+
+Core gets NONE of this — only the non-functional GUIDANCE in NFR. The skills,
+ledger state, and analysis are the reference orchestrator's own.
+
+### Fabro changes — almost none
+
+Breakdown is entirely UPSTREAM of Fabro (ledger + Dispatcher + skills); Fabro
+"assumes the human has already decomposed work into agent-feedable tasks"
+(round 2). So **no Fabro platform/setup change.** Only two touchpoints:
+1. **Capture run outcomes (Dispatcher-side, no Fabro change):** the Dispatcher
+   already reads Fabro run state (Working→Pending→Verify→Merge) and writes the
+   journal; calibration just records the outcome signal + size proxies there.
+2. **One Fabro workflow-DOT tweak (the reactive ceiling):** Fabro's graph
+   already has verify→fix-loop nodes + a `max_node_visits` governor; set a
+   fix-loop cap + a "non-converged" exit edge that routes back to the
+   Dispatcher (→ `needs-regroom`). Within Fabro's existing DOT vocabulary.
+
+Per-slice sandboxing (fresh context per work-item) is already how the
+Dispatcher uses Fabro — unchanged.
+
+### Open realization choices
+- **Hard vs advisory gate** — resolved by gate type: structural gates (one
+  done / acceptance / deps) hard; size gate advisory (data-derived).
+- **`groom` as a separate skill** (recommended) vs. an "epic mode" of
+  `capture-work-item`.
+- The exact **`needs-regroom` ledger representation** (label vs. status).
+
+---
+
 ## Open questions / unknowns (carry forward)
 
 1. **Quantitative sizing** — what numeric proxies actually predict
@@ -701,6 +780,15 @@ against model/codebase drift.
   is **advisory** while structural gates can be **hard** (resolves the grooming
   hard-vs-advisory question). Restraint: journal fields + one analysis pass.
   **NOT ratified;** open: floor measurement, sample size, re-calibration cadence.
+- **2026-06-19** — **Realization & UX sketched:** four maintainer touchpoints
+  (capture/intake → groom → dispatch → calibration), the augmented-vs-new skill
+  inventory (augment `capture-work-item`/`capture-impl-gaps`/`process-memos`;
+  one new `groom` front-end; Dispatcher + `needs-regroom` state + calibration
+  pass as non-skill machinery), and the Fabro answer: **no platform change** —
+  only Dispatcher-side outcome capture + one DOT fix-loop-cap/non-converged-exit
+  tweak. Realization belongs in the orchestrator's own spec when ratified.
+  Surfaced the `next`/Dispatcher ranking-divergence fix as work-item
+  `livespec-impl-beads-i3jiny`. **NOT ratified.**
 - **2026-06-19** — **Round-2 research (the named-but-absent shops, resolved):**
   a second deep-research pass (25 sources, 25 claims verified, 23 confirmed /
   2 killed) found NO shop publishes a human-authored breakdown ritual and NO
