@@ -271,3 +271,31 @@ jobs:
         env:
           LIVESPEC_SIBLING_CLONES_ROOT: ${{ runner.temp }}/sibling-clones
         run: just ${{ matrix.target }}
+
+  # Closed-loop CI telemetry: export this run's per-job timings to Honeycomb
+  # (dataset github-ci) and FAIL if Honeycomb does not accept them. The run
+  # that produced the data confirms its own telemetry landed — so a broken
+  # pipeline can't die silently (it reddens master CI and fires the existing
+  # failure notification). Master/merge_group ONLY (never PRs, so PR feedback
+  # stays fast); runs even when checks fail (!cancelled) so failed runs are
+  # observable too; excludes itself (still in_progress → no completedAt). See
+  # SPECIFICATION/non-functional-requirements.md §"CI telemetry export".
+  export-telemetry:
+    name: export-telemetry
+    needs: [setup, check-python, check-metadata]
+    if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'merge_group') }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Export CI run telemetry to Honeycomb (closed-loop verified)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC: ${{ secrets.HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC }}
+        run: bash .github/scripts/export-ci-telemetry.sh
