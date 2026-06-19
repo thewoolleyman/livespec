@@ -507,7 +507,7 @@ the exact `needs-regroom` state model in the orchestrator's ledger; and whether
 intake + regroom are better framed as one mechanism (the DoR gate, and what you
 do when it fails) rather than two.
 
-### Slice-size calibration — discovering the limits from real run data — *approach set, design open*
+### Slice-size calibration — discovering the limits from real run data — *design drafted; floor-measurement + sample-size open*
 
 - The field has **no quantitative agent-sizing rules** (all refuted as
   folklore — and round 2 re-confirmed it across six more shops). The honest
@@ -528,8 +528,79 @@ do when it fails) rather than two.
   per session; StrongDM iterates the spec until scenarios pass.
   Non-convergence *is the signal* the slice was too big — it routes back to a
   human grooming pass (the regroom step above), not an infinite retry.
-- **STILL OPEN:** the concrete Fabro-run instrumentation and the chosen
-  slice-size proxies (ceiling AND floor).
+**The two halves — DRAFTED (2026-06-19).** Don't guess thresholds; emit an
+outcome signal + several size proxies into the EXISTING Dispatcher journal →
+Honeycomb leg, then correlate to discover which proxies predict trouble.
+
+*Half 1 — the outcome signal (the dependent variable), per Fabro run /
+work-item* (most already in the journal; calibration adds the explicit tags):
+- **converged?** — reached a merged PR through the janitor gate with no human
+  rescue.
+- **fix-loop count** — verify→fix iterations before green (the graded signal;
+  Stripe's "2 CI iterations max → bail to human" is the analog).
+- **outcome class** — converged-clean / converged-hard / non-converged→regroom
+  / non-converged→human-rescue.
+- **wall-clock + token/cost** — the economic axis.
+- **bounced-to-regroom?** — the strongest "too big" label.
+
+*Half 2 — the size proxies (candidate predictors; correlation picks the
+winners), all mechanical, no human judgement:*
+- **acceptance count** (should be 1 by the cut-line; >1 ⇒ mis-cut),
+- **diff size** (files / lines in the merged PR),
+- **dependency fan-out** (blocker / blocked-by degree),
+- **spec surface touched** (# spec sections / scenarios referenced),
+- **dispatch context size** (goal description + referenced-file bytes —
+  "scoping consumes as much as execution", Cognition),
+- **archetype** (feature / spec-change / config / refactor / bump — a
+  categorical to stratify by), **repo** (stratify; ceilings may differ).
+
+**Ceiling vs floor are asymmetric — be honest about it.** The ceiling has a
+direct outcome signal (non-convergence / rising fix-loops), so it calibrates
+straightforwardly: the proxy value(s) above which trouble spikes. The **floor
+has no direct signal** — over-splitting's cost is a *counterfactual* ("the
+merge you didn't bundle"), which the data never shows. So the floor needs a
+different method: detect retrospective **bundling candidates** (sibling slices,
+same layer + same file-set + no real independence) and measure their aggregate
+*fixed* overhead (sandbox spin-up + dispatch + review not spent on actual
+change). Floor work is harder and lags the ceiling.
+
+**Two ways to use the ceiling (the key insight):**
+- **Reactive** — bail after N fix-loops → route to regroom. Doable TODAY,
+  no calibration needed (it's already the non-convergence trigger above).
+- **Predictive** — flag oversized at intake (cut-line gate 6's ceiling).
+  Needs calibration — and **the reactive bail-out is its training signal.**
+
+**Cold-start phasing** (calibration needs runs, but dispatch needs a rule):
+1. **Phase 0** — dispatch on the cut-line's qualitative "one coherent done" +
+   a generous human-guessed ceiling + floor = human judgement; reactive
+   bail-out ON; instrument everything.
+2. **Phase 1** — once runs accrue, the analysis pass proposes data-backed
+   thresholds; a human reviews + adopts them into the intake checklist.
+3. **Phase 2** — thresholds become **advisory** inputs to gate 6 + regroom;
+   re-calibrate periodically (model + codebase drift; the field moves fast).
+
+**This resolves the grooming ritual's hard-vs-advisory question, by gate
+type:** the *size* gate (gate 6) is **advisory** (data-derived, uncertain);
+the *structural* gates (one coherent done, acceptance exists, deps linked) can
+be **hard**.
+
+**Homes + restraint.** Orchestrator-internal: the *pattern/guidance* →
+non-functional core (NFR, beside §"Orchestrator-internal Dispatcher guidance"
+and the telemetry precondition in `preconditions.md`); the *realization*
+(journal fields, Honeycomb queries, the analysis pass, the adopted thresholds)
+→ the reference orchestrator's spec + its telemetry leg. New artifacts are few:
+outcome + size FIELDS on the EXISTING journal + ONE periodic analysis pass (a
+query + correlation, not an always-on service).
+
+**The honest risk.** We're inventing what the field hasn't solved; messy run
+data with confounders (model version, code area, flakiness) may not yield clean
+thresholds fast. Mitigation: thresholds stay provisional + advisory — the
+cut-line's qualitative "one coherent done" remains the primary rule, the
+numbers a secondary safety net the data calibrates.
+
+**STILL OPEN:** the floor's counterfactual measurement method; the minimum
+sample size before a threshold is trustworthy; the re-calibration cadence
+against model/codebase drift.
 
 ---
 
@@ -618,6 +689,18 @@ do when it fails) rather than two.
   `needs-regroom` state, everything else reuses Beads + the capture
   front-ends. **NOT ratified;** open: floor value, hard-vs-advisory gate,
   ledger state model.
+- **2026-06-19** — **Slice-size calibration, concrete draft:** instrument an
+  outcome signal (converged? / fix-loop count / outcome class / cost /
+  bounced-to-regroom) and several mechanical size proxies (acceptance count,
+  diff size, dep fan-out, spec surface, context size, archetype, repo) on the
+  EXISTING Dispatcher journal → Honeycomb leg; correlate to discover the
+  ceiling. Ceiling/floor are asymmetric — the ceiling has a direct
+  non-convergence signal; the floor is a counterfactual needing bundling-candidate
+  detection. Two uses of the ceiling: reactive fix-loop bail-out (today) trains
+  the predictive intake flag (post-calibration). Cold-start phasing; size gate
+  is **advisory** while structural gates can be **hard** (resolves the grooming
+  hard-vs-advisory question). Restraint: journal fields + one analysis pass.
+  **NOT ratified;** open: floor measurement, sample size, re-calibration cadence.
 - **2026-06-19** — **Round-2 research (the named-but-absent shops, resolved):**
   a second deep-research pass (25 sources, 25 claims verified, 23 confirmed /
   2 killed) found NO shop publishes a human-authored breakdown ritual and NO
