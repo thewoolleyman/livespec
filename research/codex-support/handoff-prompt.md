@@ -140,6 +140,24 @@ inventory, Beads items relevant to Codex/e2e work, stale core spec wording,
 missing sibling Codex coverage, manual-verification gaps, hook/non-skill
 mechanism gaps, and reproduction commands for the Pi agent harness path.
 
+The stale core Driver/prose/binding wording identified by the audit was then
+repaired in the `codex-driver-spec-wording` worktree through the governed
+propose-change -> revise lifecycle and opened as PR #471:
+
+- PR: `https://github.com/thewoolleyman/livespec/pull/471`
+
+- `SPECIFICATION/history/v119/` accepted
+  `codex-driver-spec-wording.md`, updating `SPECIFICATION/spec.md` and the
+  Claude CLI e2e harness contract in `SPECIFICATION/contracts.md`.
+- `SPECIFICATION/history/v120/` accepted
+  `codex-contract-binding-wording.md`, updating remaining
+  `SPECIFICATION/contracts.md` SKILL.md terminology and co-editing
+  `tests/heading-coverage.json` for the renamed H2 headings.
+- Local verification in that worktree: `mise exec -- just check` passed all
+  52 targets on 2026-06-19, including 903 pytest cases at 100% coverage, 52
+  prompt tests, 4 mock e2e tests, import-linter, pyright, ruff format/check,
+  doctor static checks, and the Codex adapter sync check.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -220,7 +238,14 @@ At the end of any session that changes the Codex support state:
   Claude-skill/plugin wording: it says the core plugin bundle MUST contain
   `skills/<sub-command>/SKILL.md` and that `/livespec:<name>` dispatches to
   matching skill prompts. This conflicts with the current driver architecture
-  and must be repaired through propose-change -> revise, not direct edits.
+  and was repaired in the `codex-driver-spec-wording` worktree through
+  `SPECIFICATION/history/v119/`.
+- Core `SPECIFICATION/contracts.md` also contained adjacent stale wording:
+  core reference interfaces as skill prompts, prose+CLI decomposition as future
+  Phase-2 work, `SKILL.md` retry/narration wording, and a
+  `/livespec:next` thin-transport skill heading. This was repaired in the same
+  worktree through `SPECIFICATION/history/v120/`, including the required
+  `tests/heading-coverage.json` co-edit.
 
 ## Work discipline
 
@@ -269,11 +294,10 @@ the standard livespec processes now available to Codex:
 5. Keep `research/codex-support/family-audit.md` current as the durable summary
    document explaining every required change and the verification evidence,
    with enough detail to reproduce the work for the Pi agent harness.
-6. Next governed mutation: file and revise a core spec repair for the stale
-   `SPECIFICATION/spec.md` driver/skill wording found in
-   `family-audit.md`, and decide whether core `non-functional-requirements.md`
-   also needs to state the family-wide Codex program rather than only the
-   core adapter proof.
+6. Finish the `codex-driver-spec-wording` PR if it is not yet merged, then move
+   to the sibling-repo phase: for each governed family repo, decide and specify
+   the minimum Codex support surface, using repo-local propose-change -> revise
+   where the repo's spec needs new non-functional requirements.
 7. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
