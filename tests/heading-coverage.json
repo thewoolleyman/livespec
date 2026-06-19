@@ -53,7 +53,13 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "tests.e2e.test_prune_history_noop.test_prune_history_noop",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {
+        "gap_id": "gap-62wl7ggo",
+        "scenario": "Recovery path \u2014 pruning history"
+      }
+    ]
   },
   {
     "heading": "## Proposed-change and revision file formats",
@@ -79,6 +85,10 @@
       {
         "gap_id": "gap-dez4u35o",
         "scenario": "Behavior clause lacking a scenario link is surfaced"
+      },
+      {
+        "gap_id": "gap-q2w6ub3e",
+        "scenario": "Happy-path revise"
       }
     ]
   },
