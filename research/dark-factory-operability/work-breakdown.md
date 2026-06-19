@@ -21,8 +21,9 @@ see the "Downstream — parked" appendix for what we already concluded there
 so we don't re-derive it).
 
 **Reading order:** the 2026-06-16 *research findings* below are durable and
-unchanged. The **2026-06-19 reframe** (next major section) **supersedes the
-earlier synthesis** wherever they conflict, and the **slice cut-line**, the
+unchanged; a **2026-06-19 round-2 pass** then resolves the named-but-absent
+shops from round 1. The **2026-06-19 reframe** (after the research) **supersedes
+the earlier synthesis** wherever they conflict, and the **slice cut-line**, the
 **grooming ritual**, and **slice-size calibration** carry the current state.
 
 ---
@@ -40,7 +41,8 @@ The closest thing to a verified sizing rule is qualitative: **one
 independently-testable vertical slice (a user story / scenario).** So on the
 specific thing the user called the biggest hole, the field confirms it is
 unsolved — **we will be partly inventing this**, and that is why careful
-thought matters more than speed here.
+thought matters more than speed here. (Round 2 below re-confirmed this across
+six more shops: still nobody publishes a numeric cut-point.)
 
 ---
 
@@ -137,12 +139,122 @@ workflows, Cursor's software-factory-at-scale, Stripe's ~1,300-PR/week
 "minions" harness, Factory.ai, MindStudio Remy, Dan Shapiro's "five
 levels."** Worth a targeted follow-up pass (see §Open questions).
 
+**→ This list was RESOLVED by a targeted round-2 pass — see "Research
+findings — round 2 (2026-06-19)" immediately below.**
+
 ### Primary sources (for future re-reading)
 - Devin 2.0 Interactive Planning — cognition.ai/blog/devin-2, docs.devin.ai
 - GitHub Spec-Kit — github.com/github/spec-kit (v0.10.3, Jun 2026)
 - Beads — github.com/steveyegge/beads/blob/main/docs/DEPENDENCIES.md
 - StrongDM Software Factory — factory.strongdm.ai (+ simonwillison.net first-hand, Feb 2026)
 - Fabro (execution layer, for context) — github.com/fabro-sh/fabro, docs.fabro.sh
+
+---
+
+## Research findings — round 2 (2026-06-19): the named-but-absent shops, resolved
+
+A targeted second pass (deep-research harness: 6 angles → 25 sources → 123
+claims → top 25 adversarially verified, **23 confirmed / 2 killed**) resolved
+the round-1 "named-but-absent" list. **Headline: across all six shops the
+human-led front-end breakdown layer this doc is about is either ABSENT or
+DELEGATED TO THE AGENT — none documents a human-*authored* decompose-and-size
+ritual.** The field's only published breakdown ritual is **agent-drafts /
+human-approves** (the Devin / Spec-Kit pattern), which endorses our direction.
+And the load-bearing confirmation: **not one of the six publishes any
+quantitative agent-sizing cut-point**, re-confirming round 1's "all folklore"
+result and making our learn-from-run-data calibration genuinely net-new.
+
+### Verified (high confidence)
+
+- **Stripe "minions" — named-but-absent for breakdown.** A run goes from a
+  Slack message to a CI-passing PR "with no interaction in between"; there is
+  no decomposition/sizing step between trigger and dispatch. "Blueprints" are
+  code-authored *execution* workflows, not a per-task human breakdown. The
+  human gate is POST-generation PR review, not pre-dispatch. No quantitative
+  cut-point — the "2 CI iterations maximum" is a downstream retry bail-out,
+  not a sizing rule. [stripe.dev/blog/minions-… parts 1–2; corrob. ByteByteGo,
+  InfoQ, ChatPRD]
+- **Cursor scaling-agents — agent-only, zero humans in the breakdown loop.**
+  "Planner" agents continuously explore the codebase and create tasks (and
+  spawn recursive sub-planners); "worker" agents execute; a "judge" agent
+  decides completion. No per-task sizing rule (only aggregate throughput
+  numbers). **Caveat (load-bearing for use):** this is an internal
+  long-running-autonomy RESEARCH demo — only one sub-task was actually merged
+  to production — NOT a battle-tested production grooming ritual.
+  [cursor.com/blog/scaling-agents; corrob. Willison, ZenML]
+- **Factory.ai — the one shop with an explicit ritual, and it's
+  agent-drafts/human-approves.** TWO documented forms:
+  - *Missions:* `/enter-mission` opens an interactive scoping conversation
+    ("clarifying questions, probing for constraints, iterating on the plan…
+    a conversation, not a one-shot prompt. The planning phase is where most
+    of the value comes from"); the orchestrator then DRAFTS a
+    milestone→feature decomposition that the human can inspect / edit /
+    override / approve before execution.
+  - *Specification Mode:* a 4–6-sentence human outcome description → the droid
+    DRAFTS a full spec + acceptance criteria + implementation plan +
+    file-by-file breakdown, **hard-gated read-only (cannot mutate anything)
+    until the human approves** (approve / iterate / approve-and-set-autonomy).
+  - NO quantitative sizing rule; Factory **explicitly lists "worker scope
+    (narrow vs broad)" as an UNRESOLVED open question** and admits "the
+    orchestrator still scopes too broadly sometimes."
+    [factory.ai/news/missions(-architecture); docs.factory.ai/…/specification-mode]
+- **Fabro — pure execution/topology layer, no breakdown at all.** Its DOT
+  language reference and workflow-authoring skill cover only runtime
+  control-flow (agent / prompt / command / human-gate / parallel-fan-out /
+  fan-in / manager-loop nodes; "pick the simplest topology"); it explicitly
+  *assumes the human has already decomposed work into agent-feedable tasks.*
+  Its canonical plan-approve-implement uses an AGENT-drafted plan + a human
+  gate. Its only numeric ceilings are runtime governors (`max_parallel`
+  default 4; `max_node_visits`; retries) — not work sizing. The "50-file
+  diff" line is a marketing analogy. [docs.fabro.sh/reference/dot-language;
+  fabro README; fabro-create-workflow SKILL.md]
+- **Dan Shapiro "five levels" — named-but-absent (qualitative only).** The
+  Level-4 human is a PM who "writes a spec… plans schedules… reviews plans";
+  no ritual, no checklist, no number. Level 5 NAMES "ability to scope tasks
+  well" as the limiting skill but attaches no metric.
+  [danshapiro.com/…/the-five-levels; simonwillison.net]
+
+### Refuted / unresolved (do NOT assert as fact)
+
+- **"Cursor explicitly rejected upfront/static planning as too rigid"** —
+  REFUTED 0-3 (overreach; the post describes recursive agent planning, not a
+  rejection of upfront planning).
+- **"Factory Code Droid does agent-side decomposition with no human gate"** —
+  REFUTED 1-2 (the Code-Droid technical report is superseded by Missions +
+  Specification Mode, which DO gate on a human).
+- **MindStudio "Remy" — UNRESOLVED.** Produced no surviving verified claim
+  this pass. Treat as *unknown*, not "absent" — needs a direct re-research
+  before being relied on (see §Open questions).
+
+### What round 2 changes for our design
+
+1. **Agent-drafts / human-approves is vindicated as THE ritual** — it is the
+   only breakdown ritual anyone publishes (Factory ×2; Fabro's canonical
+   workflow; the Devin / Spec-Kit lineage), and no shop uses pure
+   human-authored breakdown. Our "agent drafts the split, human owns the cut
+   + the acceptance" is the field consensus, not a bet.
+2. **Concrete patterns to borrow for the regroom gate:** keep the draft
+   **read-only until the human approves** (Factory Specification Mode), and
+   anchor each slice on **the acceptance / assertion it claims to fulfill**
+   (Factory: "a feature is a bounded piece that claims which assertions it
+   will fulfill" + a per-milestone validation checkpoint) — which is exactly
+   our two-mode cut-line seen from the outside.
+3. **There is NO published intake-readiness CHECKLIST to copy.** Ours stays
+   net-new; the closest analog is Factory's "bounded piece + finite validation
+   contract." Anchor the checklist on the acceptance the slice claims.
+4. **Borrow Factory's dependency-layering as the reference model:**
+   milestone → feature, with a FRESH-CONTEXT worker per feature and a
+   validation checkpoint per milestone. It maps cleanly onto our Beads
+   dependency layers (Layer-0 parallelism) + per-slice acceptance + the
+   Fabro-sandbox-per-work-item model (fresh context per slice already holds
+   for us).
+
+### Round-2 primary sources
+- Stripe minions — stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents (+ part-2)
+- Cursor — cursor.com/blog/scaling-agents
+- Factory.ai — factory.ai/news/missions, /news/missions-architecture, docs.factory.ai/cli/user-guides/specification-mode
+- Fabro — docs.fabro.sh/reference/dot-language, github.com/fabro-sh/fabro
+- Dan Shapiro — danshapiro.com/blog/2026/01/the-five-levels-…
 
 ---
 
@@ -154,24 +266,23 @@ general pattern becomes clean.
 
 ### Dependency note — a spec relocation this reasoning leans on
 
-A separate session is landing a `/livespec:critique` → `/livespec:revise`
-pass on branch `spec/relocate-family-infra-to-nfr` that **moves livespec's
-own family-infrastructure sections out of the *functional*
-`SPECIFICATION/contracts.md` and into `non-functional-requirements.md`**
-(the five sections: Cross-repo coordination — pin-and-bump; Shared content
-sync — copier template; Shared code sync — livespec-dev-tooling; Shared
-runtime — livespec-runtime; Sibling spec ownership). The doctor check
-`wiring-completeness-cross-repo` is *promoted* to a standalone entry under
-contracts.md §"Doctor cross-boundary invariants" (the doctor *mechanism*
-stays functional; the family roster it reads moves to NFR). A root-cause
-rule was codified in NFR §"Boundary": functional files describe only what
-*any* livespec consumer inherits; livespec's own family infrastructure is
-self-application and lives in NFR.
+A `/livespec:critique` → `/livespec:revise` pass **moved livespec's own
+family-infrastructure sections out of the *functional*
+`SPECIFICATION/contracts.md` and into `non-functional-requirements.md`** (the
+five sections: Cross-repo coordination — pin-and-bump; Shared content sync —
+copier template; Shared code sync — livespec-dev-tooling; Shared runtime —
+livespec-runtime; Sibling spec ownership). The doctor check
+`wiring-completeness-cross-repo` stays a standalone entry under contracts.md
+§"Doctor cross-boundary invariants" (the doctor *mechanism* stays functional;
+the family roster it reads moved to NFR). A root-cause rule was codified in
+NFR §"Boundary": functional files describe only what *any* livespec consumer
+inherits; livespec's own family infrastructure is self-application and lives
+in NFR.
 
-**Status as of 2026-06-19: NOT yet merged** — the five sections are still
-`##` headings in `contracts.md`. The boundary below holds *conceptually*
-either way; this doc just describes NFR as grooming guidance's home without
-claiming the physical relocation has landed.
+**Status as of 2026-06-19: MERGED.** The relocation landed on master
+(critique `71f9e6c` → revise `c9f3434` → doctor-narration fix `1832eb9`); the
+five sections are now `###` subsections in `non-functional-requirements.md`.
+So NFR is now literally — not just conceptually — grooming guidance's home.
 
 ### The functional / non-functional split is the spine
 
@@ -282,6 +393,10 @@ Findings:
   **human-gated** (they go through propose-change / revise); everything else
   is **factory-dispatchable**. This feeds where the grooming gate sits (the
   grooming ritual, below).
+- **Round-2 corroboration (2026-06-19):** Factory.ai independently frames a
+  unit as "a bounded piece that *claims which assertions it will fulfill*"
+  with a validation checkpoint — the same "one coherent, independently
+  verifiable 'done'" cut-line, arrived at from outside.
 
 ### The grooming ritual — how the split gets drafted + approved — *structure set, details open*
 
@@ -293,7 +408,7 @@ Findings:
   2. **Regroom pass (optional, later)** — the heavier draft-decompose that
      actually splits the not-yet-actionable items (epics / too-big) into
      slices. This is the verified "agent drafts, human approves" pattern
-     (Devin planner / Spec-Kit `/tasks`).
+     (Devin planner / Spec-Kit `/tasks` / Factory Missions).
 - **Per-slice fields the aid drafts** (the cut-line fills most of them):
   - *acceptance* — one scenario (behavioral) OR standing gates (gate-verified).
   - *governance scope* — autonomy tier (spec-change = human-gated; rest = auto).
@@ -308,6 +423,14 @@ Findings:
   is non-functional core content; the *front-end realization* is the
   reference orchestrator's own spec — **NOT a core skill / CLI / doctor
   invariant.**
+- **Round-2 prior art (2026-06-19):** agent-drafts/human-approves is the
+  field's ONLY published breakdown ritual (Factory Missions + Specification
+  Mode; Fabro's canonical plan-approve-implement; the Devin/Spec-Kit lineage)
+  — our shape is the consensus, not a bet. Two concrete patterns to borrow:
+  (a) keep the regroom draft **read-only until the human approves** (Factory
+  Specification Mode hard-gates the droid to read-only during analysis); and
+  (b) there is **no published intake-readiness *checklist*** anywhere — ours
+  is net-new.
 - **The earlier cross-repo fork is DISSOLVED.** The old "where does
   cross-repo grooming live — impl-layer vs livespec-layer?" question
   evaporates: grooming is orchestrator-internal; core only ever *checks*
@@ -320,13 +443,20 @@ Findings:
 ### Slice-size calibration — discovering the limits from real run data — *approach set, design open*
 
 - The field has **no quantitative agent-sizing rules** (all refuted as
-  folklore). The honest move is to **invent + instrument**: pick provisional
-  limits, instrument Fabro runs (converged? fix-loop count? wall-clock /
-  cost), and correlate with slice-size proxies to discover *our* cut-points
-  empirically rather than guess them. Ties to the journal → Honeycomb leg
-  already designed in `preconditions.md`.
+  folklore — and round 2 re-confirmed it across six more shops). The honest
+  move is to **invent + instrument**: pick provisional limits, instrument
+  Fabro runs (converged? fix-loop count? wall-clock / cost), and correlate
+  with slice-size proxies to discover *our* cut-points empirically rather than
+  guess them. Ties to the journal → Honeycomb leg already designed in
+  `preconditions.md`.
 - **Now also calibrate a FLOOR** (minimum viable slice), not just a ceiling
   — driven by the cut-line's over-split finding.
+- **Round 2 (2026-06-19) confirmed there is no field precedent for either a
+  ceiling or a floor** — none of six surveyed shops publishes one, and
+  Factory.ai openly lists scope (narrow vs broad) as unsolved. Learning both
+  from real run data is a genuine net-new contribution, not a codification of
+  existing practice — which raises the value of the instrumentation work and
+  lowers the chance we're missing an existing answer.
 - **Re-decomposition trigger = the agent fails to converge.** Devin re-plans
   per session; StrongDM iterates the spec until scenarios pass.
   Non-convergence *is the signal* the slice was too big — it routes back to a
@@ -340,8 +470,9 @@ Findings:
 
 1. **Quantitative sizing** — what numeric proxies actually predict
    "agent-one-shottable" *for our work* (mostly spec-governed Python +
-   cross-repo config)? Unsolved in the field; slice-size calibration is our
-   path to an answer — and it now must yield both a ceiling and a floor.
+   cross-repo config)? Unsolved in the field (round 2 confirmed); slice-size
+   calibration is our path to an answer — and it now must yield both a ceiling
+   and a floor.
 2. **Capture vs. grooming trigger rituals** — who/what triggers
    re-decomposition? Tentative: non-convergence routes to a human regroom
    pass. Needs a concrete state model in the Ledger (a `needs-regroom`
@@ -352,16 +483,23 @@ Findings:
    spec-governed code? Or is `just check` + `/livespec:doctor` + one scenario
    already our sufficient, deterministic acceptance? Lean: deterministic-first
    is fine for us; satisfaction is a fallback for genuinely agentic slices.
-4. **Targeted follow-up research** on the named-but-absent shops (Stripe
-   minions, Cursor, Factory.ai, Fabro's own workflow patterns, Remy, Dan
-   Shapiro's "five levels") — they may have breakdown rituals this pass
-   couldn't confirm. Use the `deep-research` skill if pursued.
-5. **The School-A → School-B handoff seam.** How does spec decomposition
+4. **The School-A → School-B handoff seam.** How does spec decomposition
    (propose-change → revise producing scenarios) hand off to impl
    decomposition (orchestrator Ledger slices)? In the reframe this is the
    functional/non-functional seam: the functional scenario concept supplies
    the cut-line; the orchestrator's Ledger consumes it. Under-specified — the
    exact handoff mechanics are the grooming ritual's remaining work.
+5. **MindStudio "Remy" stays unresolved.** Round 2 found no verifiable Remy
+   breakdown/grooming step — unknown whether none exists or it wasn't sourced.
+   Re-research directly before relying on it as "named-but-absent."
+6. **Has anyone since published empirical scope-calibration data?**
+   Factory.ai openly admits scope (narrow vs broad) is unsolved; if Factory
+   (or another shop) later ships a granularity heuristic or post-hoc data, it
+   could seed our ceiling/floor.
+7. **Do any shops tune decomposition from REAL RUN DATA** (merge rate, retry
+   count, CI-iteration count, successful-one-shot diff size) — even
+   informally? That would validate our learn-from-run-data calibration against
+   practice, not just doctrine.
 
 ---
 
@@ -403,6 +541,15 @@ Findings:
   fields enumerated; intake = checklist folded into capture front-ends,
   regroom = a single orchestrator-shipped groom front-end (tentative). Exact
   draft/gates still open. **NOT ratified.**
+- **2026-06-19** — **Round-2 research (the named-but-absent shops, resolved):**
+  a second deep-research pass (25 sources, 25 claims verified, 23 confirmed /
+  2 killed) found NO shop publishes a human-authored breakdown ritual and NO
+  shop publishes a quantitative agent-sizing cut-point (re-confirming "all
+  folklore"). Agent-drafts/human-approves is the field's only ritual
+  (vindicating our direction); slice-size calibration is net-new; borrow
+  Factory's milestone→feature dependency-layering + read-only-until-approved
+  gate. MindStudio Remy unresolved; two claims refuted. Also recorded: the
+  family-infra spec relocation to NFR MERGED this day.
 
 ---
 
@@ -414,7 +561,9 @@ here so it isn't lost, but **out of scope for this doc's active work:**
 - Fabro is the **execution** layer (workflow-as-DOT-graph; Runs board
   `Working → Pending → Verify → Merge`; queues + executes runs continuously;
   layered verify gates → fix loops). It prescribes *nothing* about breakdown
-  or prioritization — that's the upstream layer this doc is about.
+  or prioritization — that's the upstream layer this doc is about. (Round 2
+  confirmed this directly: Fabro "assumes the human has already decomposed
+  work into agent-feedable tasks.")
 - The family already has the downstream layers: Beads Ledger (priority, deps,
   ready), the Dispatcher (`mode`/`budget`, janitor `just check` + doctor hard-
   gate, iteration journal), `next` (deterministic ranking), doctor (cross-repo

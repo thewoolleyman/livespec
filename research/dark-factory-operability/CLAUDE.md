@@ -18,7 +18,11 @@ Dispatcher runs unattended and `/livespec-orchestrate` (livespec
   into manageable, factory-feedable chunks BEFORE autonomous dispatch
   (at capture or in a grooming pass). Captures the durable 2026-06-16
   deep research (verified patterns + the unsolved sizing gap + refuted
-  claims), the **2026-06-19 reframe** (cross-repo is a category error;
+  claims), a **2026-06-19 round-2 pass** resolving the named-but-absent
+  shops (Stripe minions / Cursor / Factory.ai / Fabro / Dan Shapiro / —
+  Remy unresolved; agent-drafts/human-approves is the field's only ritual,
+  and still no quantitative sizing cut-point), the **2026-06-19 reframe**
+  (cross-repo is a category error;
   the functional/non-functional split is the spine; grooming is
   Orchestrator-internal — non-functional core guidance + reference-
   orchestrator-spec realization, never a core skill), and three pieces:
