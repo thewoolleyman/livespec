@@ -85,13 +85,13 @@ The Codex/Claude operational memory migration landed on `master` via PR #466:
   `codex-memory-instructions` was deleted, and Beads item
   `livespec-zkmn.1.1` was closed.
 
-The wrapper-help exit fix for Codex adapter follow-up is now in progress:
+The wrapper-help exit fix for Codex adapter follow-up landed on `master` via
+PR #467:
 
-- Worktree: `/data/projects/livespec-codex-wrapper-help-exit`
-- Branch: `codex-wrapper-help-exit`
+- PR: `https://github.com/thewoolleyman/livespec/pull/467`
+- Merge commit: `dc94af9a659610dab154a7bf9b5ee5d05a8f0c82`
+- Date: 2026-06-19
 - Beads work-item: `livespec-4moata.3`
-- Current local commit: `32f7491def2bbbb10dbc4a230e35c0cc792e9d9f`
-  (`fix: make wrapper help exit successfully`)
 - Scope: maps argparse `SystemExit(0)` help requests to a zero-exit
   `HelpRequestedError`, lets `doctor_static.py --help` return `0`, and prevents
   `revise.py --help` from logging a failure diagnostic.
@@ -105,6 +105,13 @@ The wrapper-help exit fix for Codex adapter follow-up is now in progress:
   - The Red-Green-Replay Green amend ran `mise exec -- just check`; all 51
     targets passed, including 903 pytest cases at 100% coverage and 4 mock e2e
     tests.
+- Pre-push verification: `mise exec -- just check` passed all 52 targets.
+- PR checks passed before merge. After merge, the primary checkout was
+  fast-forwarded to `dc94af9`, worktree
+  `/data/projects/livespec-codex-wrapper-help-exit` was removed, local branch
+  `codex-wrapper-help-exit` was deleted, and Beads item `livespec-4moata.3`
+  was closed. Beads emitted the known `.beads` permissions and auto-backup
+  warnings, but the close succeeded.
 
 ## Handoff protocol
 
@@ -160,19 +167,18 @@ At the end of any session that changes the Codex support state:
     `.claude-plugin/scripts/bin/doctor_static.py --help`.
 - The doctor probe exposed a pre-existing wrapper-help behavior:
   `/usr/bin/python3 .claude-plugin/scripts/bin/doctor_static.py --help`
-  printed argparse help but exited `2`. Beads `livespec-4moata.3` is the
-  follow-up fix branch for that behavior.
+  printed argparse help but exited `2`. PR #467 fixed this; both
+  `doctor_static.py --help` and `revise.py --help` now return `0`.
 - PR #460 added `dev-tooling/checks/codex_adapter_sync.py` and
   `tests/dev-tooling/checks/test_codex_adapter_sync.py`, wired
   `check-codex-adapter-sync` into `just check`, `check-pre-commit-doc-only`,
   and the CI check-metadata matrix, and verified the current three adapters
   remain thin over core prose/wrappers.
-- Beads follow-ups filed on 2026-06-19:
-  - `livespec-4moata.2` — Codex dogfooding spec repair.
-  - `livespec-4moata.3` — `doctor_static.py --help` prints help while exiting
-    `2`.
-  - `livespec-zkmn.1.1` — migrate parity-critical Claude operational memory
-    into committed instructions.
+- Beads follow-ups filed on 2026-06-19 and completed:
+  - `livespec-4moata.2` — Codex dogfooding spec repair, closed after PR #465.
+  - `livespec-4moata.3` — wrapper help exit handling, closed after PR #467.
+  - `livespec-zkmn.1.1` — parity-critical Claude/Codex operational memory
+    migration, closed after PR #466.
 
 ## Work discipline
 
@@ -201,16 +207,11 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 
 ## Next concrete action
 
-Finish `livespec-4moata.3` in branch `codex-wrapper-help-exit`:
-
-1. Push `codex-wrapper-help-exit`.
-2. Open a PR for the wrapper-help exit fix.
-3. Wait for PR checks.
-4. Merge through the PR.
-5. Refresh `/data/projects/livespec`, remove
-   `/data/projects/livespec-codex-wrapper-help-exit`, delete local branch
-   `codex-wrapper-help-exit`, close Beads item `livespec-4moata.3`, and update
-   this handoff with the landed PR number and merge commit.
+No known Codex-support follow-up from the adapter-proof track remains open in
+this repo. If a new session continues Codex support work, start by reading this
+handoff plus the audit/plan/proof files above, then re-triage current Beads and
+LiveSpec state instead of repeating the completed PR #452, #457, #460, #465,
+#466, and #467 work.
 
 ## Verification Already Completed
 
@@ -254,6 +255,23 @@ Local doc-only verification and all PR checks passed. The merge commit was
 fast-forwarded after merge, the memory worktree/branch were removed, and Beads
 `livespec-zkmn.1.1` was closed.
 
+PR #467 completed the wrapper-help exit fix:
+
+```bash
+mise exec -- uv run pytest tests/livespec/io/test_cli.py -q
+/usr/bin/python3 .claude-plugin/scripts/bin/doctor_static.py --help
+/usr/bin/python3 .claude-plugin/scripts/bin/revise.py --help
+mise exec -- just check
+gh pr checks 467 --watch --interval 10
+```
+
+Local focused verification confirmed both wrappers returned `0` with zero
+stderr bytes. The Red-Green-Replay Green amend ran `just check` successfully;
+the pre-push hook reran `just check` and passed all 52 targets; PR checks all
+passed. The merge commit was `dc94af9a659610dab154a7bf9b5ee5d05a8f0c82`; the
+primary checkout was fast-forwarded after merge, the wrapper worktree/branch
+were removed, and Beads `livespec-4moata.3` was closed.
+
 Branch `codex-spec-repair` completed the governed spec repair locally:
 
 ```bash
@@ -292,9 +310,8 @@ Notes:
 
 ## Follow-up work after adapter proof
 
-1. Finish and land the wrapper-help exit fix (Beads `livespec-4moata.3`).
-2. After the wrapper PR merges, refresh this handoff with the landed PR number,
-   merge commit, cleanup state, and Beads close state.
+No adapter-proof follow-up remains open as of PR #467. Re-triage before adding
+new work.
 
 ## Constraints
 
