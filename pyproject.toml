@@ -460,6 +460,11 @@ exclude_also = [
     # Style-doc paired update extends the structural-exclusion
     # enumeration from 3 patterns to 4.
     "case _:",
+    # Red-Green-Replay tests may include defensive failure branches
+    # that must be unreachable once the Green implementation lands;
+    # test bytes are frozen across Red -> Green, so the exclusion
+    # must live here instead of on the Red test line.
+    'raise AssertionError\(f"help must not map to UsageError:',
 ]
 
 # ---------------------------------------------------------------------------
