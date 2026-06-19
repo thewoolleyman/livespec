@@ -137,6 +137,17 @@ proceed to §"Failure handling".
      PRs whose state warrants attention per
      `doctor-llm-objective-checks.md` §"Open spec-PR
      status".
+   - **Since-version delta review** (skill-baked, only when
+     a prior `vNNN` exists). Reasons ONLY about the regions
+     of each spec tree that CHANGED since the immediately-
+     prior history snapshot, surfacing new behavior with no
+     clause/scenario, clauses in the wrong functional /
+     non-functional bucket, and (in multi-repo projects)
+     realization mechanism that belongs in the
+     orchestrator's own spec, per
+     `doctor-llm-objective-checks.md` §"Since-version delta
+     review". This check consumes the `<prior-vN>` diff
+     threaded in sub-step 6a below.
 
    For each finding, capture: `check_id` (a stable
    identifier matching the check's name), `spec_root`
@@ -144,6 +155,28 @@ proceed to §"Failure handling".
    issue when applicable), `message` (1-2 sentence
    description), and `proposed_change_hint` (the suggested
    propose-change body, ready to thread into Step 10).
+
+   6a. **Thread the since-version diff.** For each spec
+   tree, resolve `<prior-vN>` the SAME way the revise prose
+   does (`prose/revise.md` Step 13(d), "Compute
+   `<prior-vN>`"): read the `vNNN` directory names under
+   `<spec-root>/history/`, identify the most-recently-cut
+   `v<N>`, and take `<prior-vN>` as the version immediately
+   preceding it — the highest `vNNN` BEFORE `v<N>`. When
+   only `v001` exists (no prior snapshot), the since-version
+   delta dimension is a no-op for that tree; narrate the
+   no-op as a structured `info`-level line and thread no
+   diff. Otherwise compute the live-vs-prior diff: each
+   `<spec-root>/history/<prior-vN>/` snapshot is a full copy
+   of the template-declared spec files, so the diff is a
+   per-file comparison of each live spec file against its
+   `<prior-vN>` counterpart (the LLM-driven phase is
+   permitted to read files and run tooling per the
+   LLM-phase contract; the static phase remains
+   network-free). Make the resolved `<prior-vN>` and the
+   computed diff available to the since-version delta check
+   above and to the template-extension prompt invoked in
+   Step 7 — it reasons over the changed regions only.
 
 7. **Template-extension objective checks.** Read the
    active template's `template.json`:
