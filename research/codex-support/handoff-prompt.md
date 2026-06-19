@@ -352,6 +352,8 @@ The sibling instruction parity pass landed on 2026-06-20:
 
 The Codex high-level e2e/runtime-matrix alignment pass ran on 2026-06-20:
 
+- PR: `https://github.com/thewoolleyman/livespec/pull/486`
+- Merge commit: `9cbd3be806caa19d5a35e2b0ad37c04a9d14770d`
 - Worktree: `/data/projects/livespec-codex-e2e-runtime-matrix`
 - Branch: `codex-e2e-runtime-matrix`
 - Scope:
@@ -375,8 +377,25 @@ The Codex high-level e2e/runtime-matrix alignment pass ran on 2026-06-20:
 - Verification before commit/PR:
   - `mise exec -- just check-pre-commit-doc-only` passed all seven doc-only
     targets from the worktree after trusting that worktree's `.mise.toml`.
-- After PR merge, update this block with PR number, merge SHA, check status,
-  primary refresh, worktree removal, and branch cleanup.
+  - The commit hook reran the doc-only subset and passed.
+  - The pre-push hook reran the doc-only subset and passed.
+  - PR checks passed before merge, including the Codex adapter sync check and
+    the primary-checkout hook check; `export-telemetry` skipped because the
+    workflow event was a PR.
+- Cleanup:
+  - GitHub auto-merged the PR after checks. The local `gh pr merge` attempt
+    then reported the PR was already merged and failed only while trying to
+    switch the feature worktree to `master`, because `master` is checked out by
+    the primary checkout.
+  - The primary checkout was fast-forwarded to `9cbd3be`.
+  - The feature worktree `/data/projects/livespec-codex-e2e-runtime-matrix`
+    was removed.
+  - The local branch `codex-e2e-runtime-matrix` was deleted.
+  - The remote topic branch had already been deleted; `git fetch --prune`
+    pruned the stale remote-tracking ref.
+  - While cleanup was in progress, `origin/master` advanced again to
+    `54b09c6` from unrelated CI workflow work; the primary checkout was
+    fast-forwarded to `54b09c6` before this follow-up handoff update began.
 
 ## Handoff protocol
 
