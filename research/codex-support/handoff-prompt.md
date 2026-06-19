@@ -429,6 +429,48 @@ The W7 Tier-2 follow-up item was filed after the runtime-matrix alignment:
     acceptance criteria. Beads emitted the known `.beads` permission warning
     and `beads.role` warning, but the create/show operations succeeded.
 
+The first `dn9` implementation slice landed in `livespec-impl-beads`:
+
+- PR: `https://github.com/thewoolleyman/livespec-impl-beads/pull/78`
+- Merge commit: `4c460d188190995879ce056e7e018da2570991e9`
+- Worktree: `/data/projects/livespec-impl-beads-tier2-dispatch-proof`
+- Branch: `w7-tier2-dispatch-proof`
+- Scope:
+  - Added `orchestrator-image/tier2-dispatch-proof.sh`.
+  - Added `just w7-tier2-dispatch-proof`.
+  - Added `research/w7-orchestrator-convergence/tier2-dispatch-proof.md`.
+  - Updated `orchestrator-image/README.md`.
+- Verification:
+  - `bash -n orchestrator-image/tier2-dispatch-proof.sh` passed.
+  - `mise exec -- just w7-tier2-dispatch-proof -- --help` passed.
+  - `/data/projects/1password-env-wrapper/with-livespec-env.sh -- bash
+    orchestrator-image/tier2-dispatch-proof.sh --preflight --build-image`
+    passed, building `livespec-orchestrator:dev`.
+  - Built image id:
+    `sha256:913eeda6955aa58dff51b6950f34a7d2342e6928b4a8df6894243b8d234543a2`.
+  - A second preflight without `--build-image` passed and confirmed the image
+    is present.
+  - `mise exec -- just check-pre-commit-doc-only` passed all three doc-only
+    targets.
+  - Commit and pre-push hooks reran the doc-only subset and passed.
+  - PR checks passed, including `e2e-cli`; `export-telemetry` skipped because
+    the workflow event was a PR.
+- Cleanup:
+  - The primary checkout `/data/projects/livespec-impl-beads` was
+    fast-forwarded to `4c460d1`.
+  - The feature worktree was removed.
+  - The local branch `w7-tier2-dispatch-proof` was deleted.
+  - The remote topic branch did not auto-delete on merge, so it was deleted
+    through the GitHub API and pruned locally.
+  - The pre-existing unrelated worktree
+    `/data/projects/livespec-impl-beads/.claude/worktrees/fabro-graph-fix` was
+    left untouched.
+- Beads:
+  - `livespec-impl-beads-dn9` was updated with a note recording PR #78,
+    verification, image id, and the remaining blocker.
+  - The item remains open. The actual Tier-2 dispatch still needs a
+    deliberately tiny isolated ready item; do NOT dispatch `dn9` itself.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -536,8 +578,9 @@ At the end of any session that changes the Codex support state:
   provider-specific overlays and must not be inferred from Claude Code cost
   spans.
 - W7 Beads/Fabro implementation now has an explicit next item:
-  `livespec-impl-beads-dn9`. Work that item before expanding to the full
-  golden-master harness.
+  `livespec-impl-beads-dn9`. PR #78 added the proof runner; the remaining work
+  is selecting/creating a tiny ready item and running the containerized
+  `--run --item` proof before expanding to the full golden-master harness.
 
 ## Work discipline
 
@@ -575,9 +618,11 @@ runtime-mechanism closure:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Continue `livespec-impl-beads-dn9` as the next W7 Beads/Fabro implementation
-   slice: produce the Tier-2 containerized real-dispatch proof and feed its
-   evidence back into `livespec-zkmn.1` and
+2. Continue `livespec-impl-beads-dn9`: select or create a deliberately tiny
+   isolated ready item, then run
+   `just w7-tier2-dispatch-proof -- --run --item <tiny-ready-item>` under the
+   1Password wrapper. Record the redacted dispatch evidence in impl-beads and
+   feed it back into `livespec-zkmn.1` and
    `research/codex-support/family-audit.md`.
 3. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60` as implementation begins; Codex should remain
