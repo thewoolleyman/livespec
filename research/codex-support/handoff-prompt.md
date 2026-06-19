@@ -168,6 +168,22 @@ The stale core Driver/prose/binding wording identified by the audit landed on
   `/data/projects/livespec-codex-driver-spec-wording` was removed, and local
   branch `codex-driver-spec-wording` was deleted.
 
+The high-level e2e Beads thread was updated on 2026-06-19:
+
+- PR recording this state: `https://github.com/thewoolleyman/livespec/pull/473`
+- Beads item: `livespec-zkmn.1`
+- Change: added formal acceptance criteria requiring Codex to be represented as
+  an explicit supported agent-runtime dimension in golden-master/e2e acceptance
+  where runtime behavior is part of the proof.
+- Labels added: `codex-support`, `e2e-codex`.
+- Required evidence now includes Codex instruction loading, verified
+  project-local adapters where present, tokens-primary telemetry/cost handling,
+  Claude-only hook classification, and updates to
+  `research/codex-support/family-audit.md` before the item is closed.
+- Verification: `bd show livespec-zkmn.1 --json` confirmed the acceptance
+  criteria and labels. Beads emitted the known `.beads` permissions warning and
+  auto-backup limitation, but the update succeeded.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -285,8 +301,9 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 ## Next concrete action
 
 Continue Codex support work from the expanded family-wide scope. Do NOT repeat
-the completed PR #452, #457, #460, #465, #466, #467, #470, and #471 work. The
-next phase is sibling-repo support and e2e/hook coverage:
+the completed PR #452, #457, #460, #465, #466, #467, #470, #471, or the
+`livespec-zkmn.1` e2e acceptance update. The next phase is sibling-repo support
+and hook coverage:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current. On 2026-06-19, direct wrapper runs from core returned one
@@ -299,14 +316,12 @@ next phase is sibling-repo support and e2e/hook coverage:
    thin-transport adapter.
 3. Where a repo's spec needs Codex non-functional requirements or constraints,
    use that repo's governed propose-change -> revise lifecycle and PR flow.
-4. Find the bead or research item about high-level end-to-end testing and
-   update its plan/implementation so Codex is explicitly covered.
-5. Audit Claude-only hooks one by one and classify each as: Codex replacement
+4. Audit Claude-only hooks one by one and classify each as: Codex replacement
    required, AGENTS/repo-hook coverage sufficient, or Claude-driver-only by
    design.
-6. Add manual Codex verification evidence for every changed repo before
+5. Add manual Codex verification evidence for every changed repo before
    claiming family-wide support.
-7. For any repository mutation, follow that repo's required
+6. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
    fallback is approved and recorded.
@@ -417,8 +432,8 @@ broader Codex support program is NOT complete. Track at least these open areas:
   state Codex support requirements and constraints;
 - manual verification: prove the Codex path in every changed repo, including
   adapter loading, wrapper invocation, and any migrated hook/bootstrap behavior;
-- high-level e2e testing: find and update the bead/research item so Codex is a
-  supported harness in the e2e plan;
+- high-level e2e testing: `livespec-zkmn.1` now requires Codex as a supported
+  harness dimension, but implementation and manual evidence remain open;
 - non-skill runtime mechanisms: audit hooks, plugin installation assumptions,
   bootstrap scripts, cloud-specific references, and Claude-only machinery;
 - reproduction summary: keep a current `research/codex-support/` summary

@@ -26,9 +26,8 @@ LiveSpec processes.
 - Core operational instructions in `AGENTS.md` were updated in PR #466 with
   parity-critical repository mutation discipline for Codex.
 - Wrapper `--help` zero-exit behavior was fixed in PR #467.
-- The core spec wording repair for Driver/prose/binding ownership was drafted
-  through the governed propose-change -> revise lifecycle in the
-  `codex-driver-spec-wording` worktree:
+- The core spec wording repair for Driver/prose/binding ownership landed in
+  PR #471 through the governed propose-change -> revise lifecycle:
   - `SPECIFICATION/history/v119/` accepts
     `codex-driver-spec-wording.md`, repairing stale `spec.md` and CLI e2e
     harness wording that treated core as owning Claude skill prompts.
@@ -36,6 +35,8 @@ LiveSpec processes.
     `codex-contract-binding-wording.md`, repairing remaining `contracts.md`
     SKILL.md terminology and co-editing `tests/heading-coverage.json` for the
     renamed H2 headings.
+- The high-level e2e Beads item `livespec-zkmn.1` now has Codex-specific
+  acceptance criteria and `codex-support` / `e2e-codex` labels.
 
 ## Current live checks
 
@@ -62,12 +63,21 @@ Open Beads work summary relevant to Codex:
 
 | Tenant | Relevant open item | Why it matters |
 |---|---|---|
-| `livespec` | `livespec-zkmn.1` — W7 golden-master acceptance and orchestrator convergence | This is the high-level e2e/swap-proof thread; it must include Codex as a supported driver/harness dimension where agent-runtime behavior is part of the proof. |
+| `livespec` | `livespec-zkmn.1` — W7 golden-master acceptance and orchestrator convergence | This is the high-level e2e/swap-proof thread. Its acceptance criteria were updated on 2026-06-19 to require Codex as an explicit supported agent-runtime dimension where runtime behavior is part of the proof. |
 | `livespec-impl-beads` | `livespec-impl-beads-zbl` — multi-provider cost observability: tokens-primary + Codex + self-hosted | Codex telemetry/cost extraction is explicitly deferred here; do not assume Claude Code telemetry covers Codex. |
 | `livespec-dev-tooling` | `livespec-dev-tooling-e60` — agent-loop efficiency and Honeycomb observability | Cross-runtime agent observability belongs here or in a child item; Codex should be named when the item is refined. |
 
 Other open work exists in each tenant, but the items above are the ones found
 with direct Codex/e2e relevance.
+
+Sibling spec-side `next` runs on 2026-06-19:
+
+| Repo | `next` result |
+|---|---|
+| `livespec-dev-tooling` | no candidates |
+| `livespec-impl-beads` | one low-urgency `revise` candidate for `proposed_changes/grooming-gherkin-and-gap-detectability.md` |
+| `livespec-impl-git-jsonl` | no candidates |
+| `livespec-runtime` | no candidates |
 
 ## Family-wide gaps
 
@@ -137,11 +147,10 @@ No manual Codex verification has been done yet for:
 
 The relevant thread is `livespec-zkmn.1`, whose description names a
 golden-master acceptance harness across the git-jsonl and Beads/Fabro
-orchestrators. The current wording is orchestrator-focused and does not yet
-make Codex a first-class driver/harness dimension.
+orchestrators. On 2026-06-19 its formal acceptance criteria were updated to
+make Codex a first-class agent-runtime dimension.
 
-Codex should be added to that plan where the acceptance story depends on
-agent-runtime behavior, for example:
+The acceptance criteria now require:
 
 - Codex can load the repo instruction surface for each tested checkout;
 - Codex can invoke verified project-local adapters where they exist;
@@ -177,19 +186,15 @@ Open questions:
 
 ## Recommended next sequence
 
-1. Land the `codex-driver-spec-wording` worktree through PR -> merge -> cleanup
-   and verify `just check`.
-2. For each governed sibling repo, run its own `livespec next` / Beads state
+1. For each governed sibling repo, use the existing `livespec next` / Beads
    check and file a repo-local proposed spec change if its non-functional
    specification needs to state Codex support.
-3. Decide the minimum project-local Codex adapter surface per repo:
+2. Decide the minimum project-local Codex adapter surface per repo:
    no adapter, read-only adapter, or impl-side thin-transport adapter.
-4. Update `livespec-zkmn.1` or its research plan so the golden-master/e2e
-   acceptance story names Codex explicitly.
-5. Audit Claude-only hooks one by one and classify them as:
+3. Audit Claude-only hooks one by one and classify them as:
    Codex replacement required, AGENTS/repo-hook coverage sufficient, or
    Claude-driver-only by design.
-6. Add manual Codex verification evidence for every changed repo before
+4. Add manual Codex verification evidence for every changed repo before
    claiming family-wide support.
 
 ## Reproduction commands
