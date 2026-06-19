@@ -20,6 +20,11 @@ queue/prioritize/drain mechanics (which are comparatively well understood;
 see the "Downstream — parked" appendix for what we already concluded there
 so we don't re-derive it).
 
+**Reading order:** the 2026-06-16 *research findings* below are durable and
+unchanged. The **2026-06-19 reframe** (next major section) **supersedes the
+earlier synthesis** wherever they conflict, and the **three named threads**
+(cut-line / grooming ritual / sizing calibration) carry the current state.
+
 ---
 
 ## Why this is the hard part (and the honest headline)
@@ -141,112 +146,223 @@ levels."** Worth a targeted follow-up pass (see §Open questions).
 
 ---
 
-## Synthesis for livespec (where we land so far — tentative)
+## The 2026-06-19 reframe (supersedes the earlier synthesis)
 
-The wider field splits into two schools that livespec is *uniquely both* of:
+The prior sessions kept snagging on cross-repo. This session's unlock:
+**cross-repo is a category error for this design.** Strip it out and the
+general pattern becomes clean.
 
-| School | Unit of work | Where human judgment goes | Exemplar |
-|---|---|---|---|
-| **A — Spec-hierarchy-as-source** | a vertical slice / scenario of the spec | authoring + curating spec + scenarios + acceptance | StrongDM, Spec-Kit |
-| **B — Dependency-graph-issue** | a dependency-linked work-item | the decomposition + the dependency links | Beads |
+### Dependency note — a spec relocation this reasoning leans on
 
-livespec already *has both*: `SPECIFICATION/` (+ `scenarios.md`, `propose-change`/`revise`) is School A; the Beads/Dolt ledger is School B. The
-two compose cleanly — **the spec/scenario layer supplies the cut-line and the
-acceptance; the Beads layer supplies the unit, the dependency links, and
-mechanical readiness.** That composition is the spine of the direction below.
+A separate session is landing a `/livespec:critique` → `/livespec:revise`
+pass on branch `spec/relocate-family-infra-to-nfr` that **moves livespec's
+own family-infrastructure sections out of the *functional*
+`SPECIFICATION/contracts.md` and into `non-functional-requirements.md`**
+(the five sections: Cross-repo coordination — pin-and-bump; Shared content
+sync — copier template; Shared code sync — livespec-dev-tooling; Shared
+runtime — livespec-runtime; Sibling spec ownership). The doctor check
+`wiring-completeness-cross-repo` is *promoted* to a standalone entry under
+contracts.md §"Doctor cross-boundary invariants" (the doctor *mechanism*
+stays functional; the family roster it reads moves to NFR). A root-cause
+rule was codified in NFR §"Boundary": functional files describe only what
+*any* livespec consumer inherits; livespec's own family infrastructure is
+self-application and lives in NFR.
 
-### Emerging design direction (tentative — needs the workstreams below)
+**Status as of 2026-06-19: NOT yet merged** — the five sections are still
+`##` headings in `contracts.md`. The boundary below holds *conceptually*
+either way; this doc just describes NFR as grooming guidance's home without
+claiming the physical relocation has landed.
 
-- **Unit = a vertical slice anchored to ONE scenario.** Cut test: *"is there a
-  single scenario (acceptance statement) this slice satisfies, autonomously
-  verifiable by `just check` + `/livespec:doctor` (+ that scenario)?"* One →
-  it's a chunk. Needs several independent ones → split.
-- **Agent-DRAFTS the breakdown, human OWNS the cut.** Mirrors Devin's planner
-  and Spec-Kit's `/tasks`: an aid proposes slices + dependency links +
-  acceptance from a spec change / gap / epic; the maintainer edits and
-  approves. The expensive blank-page scoping is offloaded; the *judgment*
-  (where to cut, what "done" means) stays human.
-- **Dependency-layer at breakdown time** so Layer-0 slices dispatch
-  immediately and same-layer slices parallelize. (Beads already supports the
-  graph + `bd ready`.)
-- **Definition of Ready = deps-closed (mechanical) AND a stated
-  acceptance/scenario AND governance scope (which repos/files; auto vs.
-  human-gated).** Never deps-closed alone — the research is explicit that
-  readiness ≠ verifiability.
-- **Re-decomposition trigger = the agent fails to converge.** Devin re-plans
-  per session; StrongDM iterates the spec until scenarios pass. Non-
-  convergence *is the signal* the slice was too big — it's the grooming
-  feedback loop, and it should route back to a human grooming pass, not an
-  infinite retry.
+### The functional / non-functional split is the spine
 
-### The "should we have a skill?" question — position has EVOLVED
+- livespec's spec separates user-facing **FUNCTIONAL** files (`spec.md` /
+  `contracts.md` / `constraints.md` / `scenarios.md`) from
+  `non-functional-requirements.md` ("how the project is built / tested /
+  maintained" — internal-facing, NOT visible at the user-facing CLI/API
+  surface, per its §"Boundary").
+- **The grooming pattern is GENERAL.** It must work for *any* project
+  governed by livespec, single-repo or many. Multi-repo / cross-repo is
+  **livespec's own family self-application** — a non-functional,
+  self-application concern — NOT a functional requirement of
+  livespec-the-general-system.
+- **The ONLY functional connection between multi-repo and core is the CLI
+  delegation seam** — the orchestrator-side and spec-side CLIs named in
+  `.livespec.jsonc`. Everything else about multi-repo is non-functional.
+- Therefore **cross-repo drops out of the general grooming pattern
+  entirely.** A single-repo project grooms identically; cross-repo
+  coordination is a separate concern layered on top by whoever needs it.
 
-Initial take (pre-research): *probably no skill — kickoff/prioritize/drain
-are deterministic orchestrator concerns; codify policy, don't build a skill.*
-That still holds for the **downstream** (parked below). But the research
-**flipped the answer for the breakdown step**: the dominant, verified pattern
-*is* an agent-assisted decomposition step the human steers (Devin's planner,
-Spec-Kit `/tasks`). So a **lightweight grooming/decompose aid that DRAFTS a
-slice-and-dependency breakdown for the maintainer to edit and approve** is now
-well-justified — provided it *drafts* and the human *owns the cut and the
-acceptance*. Open: whether this is a new `/livespec-impl-beads:groom` (or
-`:decompose`) skill, or a Definition-of-Ready checklist folded into the
-existing `capture-work-item` / `capture-impl-gaps`. Decide in Workstream B.
+### Terminology correction (use these words)
+
+- It is the **Orchestrator** — the pluggable *producer role* that consumes
+  the spec and produces the implementation (`spec.md` §"Contract + reference
+  implementations architecture"). NOT "impl plugin" — a plugin is merely how
+  one reference orchestrator is *packaged*. The reference orchestrators are
+  **git-jsonl** (serial) and **Beads/Dolt + Fabro** (parallel; the family's
+  dogfood default).
+- The orchestrator decomposes (guidance, NOT contract) into **Ledger**
+  (private work-item store + dep graph), **Loop** (produces one work-item),
+  **Dispatcher** (polls + parallelizes). Core's contract never names these.
+
+### Where grooming lives (resolved)
+
+- Grooming operates on the **Ledger → it is orchestrator-internal → NOT core
+  functional contract.** It never becomes a core CLI or doctor invariant.
+- The grooming **pattern / guidance is non-functional** — it belongs in
+  core's `non-functional-requirements.md` as orchestrator guidance, alongside
+  the existing §"Orchestrator-internal Dispatcher guidance". Repo-agnostic.
+- The **concrete realization** (a groom front-end / skill, ready-layering,
+  convergence feedback) lives in the **reference orchestrator's OWN spec**
+  (e.g. `livespec-impl-beads`'s `SPECIFICATION/`); cf. spec.md's
+  "orchestrator-shipped SKILL.md front-ends … in-repo for now".
+- The cut-line **PRINCIPLE** reaches down to exactly ONE core functional
+  concept: the **scenario / acceptance**.
+
+### What core's cross-repo surface actually is (so we don't re-confuse it)
+
+Verified against the spec this session — core has DELIBERATELY shed
+cross-repo *mechanism*, keeping only *consistency-checking + scaffolding*:
+- Doctor's whole cross-boundary job = wiring soundness
+  (`config-named-cli-callability`) + repo-tier structural invariants. It MUST
+  NOT inspect work-items / gaps / dep-graphs / memos (orchestrator-private).
+- Relocated OUT of core: pin-and-bump / `compat` (→ dev-tooling); work-item
+  dep machinery (→ orchestrator Ledger); the cross-repo loop driver
+  (→ retired, now the orchestrator Dispatcher).
+- So a cross-repo fan-out (like `livespec-gy21`'s) is something core
+  **checks**, never **coordinates** — which is why grooming sits in the
+  orchestrator.
+
+### The two schools livespec is both of (durable bridge, now reframed)
+
+The wider field splits into two schools; livespec is *uniquely both*, and
+the functional/non-functional split tells us which layer each lands in:
+
+| School | Unit of work | Where human judgment goes | livespec layer | Exemplar |
+|---|---|---|---|---|
+| **A — Spec-hierarchy-as-source** | a vertical slice / scenario of the spec | authoring + curating spec + scenarios + acceptance | **functional core** (`SPECIFICATION/`, the scenario concept) | StrongDM, Spec-Kit |
+| **B — Dependency-graph-issue** | a dependency-linked work-item | the decomposition + the dependency links | **orchestrator-internal** (the Ledger; non-functional) | Beads |
+
+They compose: **the functional spec/scenario layer supplies the cut-line and
+the acceptance; the orchestrator's Ledger supplies the unit, the dependency
+links, and mechanical readiness.** That composition is the spine of the
+three threads.
 
 ---
 
-## Open workstreams (the user asked to pursue ALL of these)
+## The three threads (where each landed / what's still open)
 
-### Workstream A — Our cut-line heuristic
-Adopt and pressure-test **"one independently-testable scenario = one slice."**
-Concretely test it against a real recent epic: *how should `livespec-gy21`
-(the project-scoping epic just completed) have been sliced under this rule?*
-Does "one scenario per slice" actually produce the right grain for our work,
-or do spec-change / cross-repo-bump / refactor work-item types need their own
-cut-lines? Output: a written cut-line heuristic with worked examples.
+Renamed from the old Workstreams A/B/C (no letter-labels). Thread A is
+largely landed; B has its structure but open details; C has an approach but
+no design yet.
 
-### Workstream B — The agent-assisted grooming ritual
-Design what the draft-decompose aid proposes and where the approval gate
-sits. Decide: capture-time quick-slice vs. a dedicated grooming pass (both
-exist — when each?). Decide skill-vs-checklist (per the evolved position
-above). Define the fields the aid must fill per slice: scope, the one
-scenario/acceptance, dependency links, governance scope, repo target.
-Mind the family rule: cross-repo coordination lives in the livespec layer;
-impl plugins round-trip labels (see
-[[feedback_no_cross_repo_leak_into_impl]] in maintainer memory).
+### Thread A — The cut-line (where to split) — *largely landed*
 
-### Workstream C — Invent + instrument our own sizing
-Since the field has NO numeric sizing rules, pick *provisional* limits
-(e.g., files touched, # of independent scenarios, dependency fan-out) and
-**let convergence/non-convergence data calibrate them.** The honest move is
-to instrument first: capture, per Fabro run, whether the slice converged,
-how many fix-loops, wall-clock/cost, then correlate with slice "size" proxies
-to discover *our* cut-points empirically rather than guess them. Ties to the
-operability telemetry already designed in `preconditions.md` (the journal →
-Honeycomb leg).
+Pressure-tested "one independently-testable scenario = one slice" against
+the real recent epic **`livespec-gy21`** (the project-scoping epic).
+Findings:
+
+- gy21 was ONE epic, an internal 5-step checklist, **zero child slices**,
+  landed in CORE as 2 commits, and added **zero behavioral scenarios** — yet
+  it was real factory work. So the verified "one scenario" rule is a
+  **special case**, not the general rule.
+- **General cut-line:** *a slice is the smallest unit with exactly ONE
+  coherent "done"; two independent "done"s → split.* "Done" is either:
+  - **scenario-verified** (one scenario passes) — behavioral feature work; or
+  - **gate-verified** (`just check` + `/livespec:doctor` pass, **no
+    scenario**) — config / spec-text / refactor / cross-repo-bump work, which
+    is what gy21 was.
+- The five "archetypes" (feature / spec-change / config / refactor / bump)
+  are **worked examples of these two modes, NOT a schema.** (Deliberately
+  resisted over-taxonomizing.)
+- **New finding — there must be a slice-size FLOOR, not just a ceiling.**
+  gy21 bundled a config change + a hook relocation with the *same blast
+  radius*; the strict rule would over-split them. Don't split below the point
+  where two slices cost more coordination than they save. The floor is a
+  sizing-calibration input (Thread C).
+- **Autonomy-tier finding (routing, not cut-line):** spec-change slices are
+  **human-gated** (they go through propose-change / revise); everything else
+  is **factory-dispatchable**. This feeds where the grooming gate sits
+  (Thread B).
+
+### Thread B — The grooming ritual (how the split gets drafted + approved) — *structure set, details open*
+
+- **Two touchpoints, gated by a size test (both matter, not competitors):**
+  1. **Intake cut at work-item creation** — a cheap readiness check: *is
+     this already one actionable slice (one coherent "done", deps known)?* If
+     yes → ready. If no → mark not-yet-actionable. The frictionless common
+     case.
+  2. **Regroom pass (optional, later)** — the heavier draft-decompose that
+     actually splits the not-yet-actionable items (epics / too-big) into
+     slices. This is the verified "agent drafts, human approves" pattern
+     (Devin planner / Spec-Kit `/tasks`).
+- **Per-slice fields the aid drafts** (Thread A fills most of them):
+  - *acceptance* — one scenario (behavioral) OR standing gates (gate-verified).
+  - *governance scope* — autonomy tier (spec-change = human-gated; rest = auto).
+  - *dependency links* — Beads blockers → Layer-0/1 parallelism.
+  - *repo target* — which ledger (cross-repo coordination is NOT grooming's
+    job in the general pattern).
+  - *scope* — smallest coherent acceptance, respecting the FLOOR.
+- **Skill vs. checklist (tentative, in the corrected frame):** intake
+  readiness = a **checklist** folded into the existing capture front-ends (no
+  new machinery); regroom pass = (tentative) **one orchestrator-shipped groom
+  front-end**. Crucially: this is **orchestrator-internal** — the *guidance*
+  is non-functional core content; the *front-end realization* is the
+  reference orchestrator's own spec — **NOT a core skill / CLI / doctor
+  invariant.**
+- **The earlier cross-repo fork is DISSOLVED.** The old "where does
+  cross-repo grooming live — impl-layer vs livespec-layer?" question
+  evaporates: grooming is orchestrator-internal; core only ever *checks*
+  cross-repo consistency (structural doctor invariants) and *defines the
+  scenario concept*.
+- **STILL OPEN:** the groom front-end's exact draft output; the intake
+  checklist's precise gates; final confirmation of the home (non-functional
+  core guidance + reference-orchestrator-spec realization).
+
+### Thread C — Sizing calibration (discover limits from real run data) — *approach set, design open*
+
+- The field has **no quantitative agent-sizing rules** (all refuted as
+  folklore). The honest move is to **invent + instrument**: pick provisional
+  limits, instrument Fabro runs (converged? fix-loop count? wall-clock /
+  cost), and correlate with slice-size proxies to discover *our* cut-points
+  empirically rather than guess them. Ties to the journal → Honeycomb leg
+  already designed in `preconditions.md`.
+- **Now also calibrate a FLOOR** (minimum viable slice), not just a ceiling
+  — driven by Thread A's over-split finding.
+- **Re-decomposition trigger = the agent fails to converge.** Devin re-plans
+  per session; StrongDM iterates the spec until scenarios pass.
+  Non-convergence *is the signal* the slice was too big — it routes back to a
+  human grooming pass (Thread B's regroom), not an infinite retry.
+- **STILL OPEN:** the concrete Fabro-run instrumentation and the chosen
+  slice-size proxies (ceiling AND floor).
 
 ---
 
 ## Open questions / unknowns (carry forward)
 
-1. **Quantitative sizing** — what numeric proxies actually predict "agent-
-   one-shottable" *for our work* (mostly spec-governed Python + cross-repo
-   config)? Unsolved in the field; Workstream C is our path to an answer.
-2. **Capture vs. grooming trigger rituals** — who/what triggers re-
-   decomposition? Tentative: non-convergence routes to a human grooming
-   pass. Needs a concrete state model in the ledger (a `needs-regroom`
-   state?).
+1. **Quantitative sizing** — what numeric proxies actually predict
+   "agent-one-shottable" *for our work* (mostly spec-governed Python +
+   cross-repo config)? Unsolved in the field; Thread C is our path to an
+   answer — and it now must yield both a ceiling and a floor.
+2. **Capture vs. grooming trigger rituals** — who/what triggers
+   re-decomposition? Tentative: non-convergence routes to a human regroom
+   pass. Needs a concrete state model in the Ledger (a `needs-regroom`
+   state?), which is orchestrator-internal — so it belongs in the reference
+   orchestrator's spec, not core.
 3. **Does "satisfaction" (probabilistic LLM-judge acceptance) generalize**
    beyond StrongDM's agentic-software domain to our mostly-deterministic
    spec-governed code? Or is `just check` + `/livespec:doctor` + one scenario
    already our sufficient, deterministic acceptance? Lean: deterministic-first
    is fine for us; satisfaction is a fallback for genuinely agentic slices.
 4. **Targeted follow-up research** on the named-but-absent shops (Stripe
-   minions, Cursor, Factory.ai, Fabro's own workflow patterns, Remy) — they
-   may have breakdown rituals this pass couldn't confirm.
-5. **How does spec decomposition (propose-change → revise producing scenarios)
-   hand off to impl decomposition (Beads slices)?** The seam between School A
-   and School B in *our* stack is under-specified.
+   minions, Cursor, Factory.ai, Fabro's own workflow patterns, Remy, Dan
+   Shapiro's "five levels") — they may have breakdown rituals this pass
+   couldn't confirm. Use the `deep-research` skill if pursued.
+5. **The School-A → School-B handoff seam.** How does spec decomposition
+   (propose-change → revise producing scenarios) hand off to impl
+   decomposition (orchestrator Ledger slices)? In the reframe this is the
+   functional/non-functional seam: the functional scenario concept supplies
+   the cut-line; the orchestrator's Ledger consumes it. Under-specified — the
+   exact handoff mechanics are Thread B's remaining work.
 
 ---
 
@@ -257,10 +373,37 @@ Honeycomb leg).
 - **2026-06-16** — Tentative direction: unit = vertical slice anchored to one
   scenario; agent-drafts/human-approves; dependency-layer for parallelism;
   DoR = deps + acceptance + governance; re-decomposition on non-convergence.
-  **NOT ratified** — pending Workstreams A/B/C.
+  **NOT ratified** — pending the three threads.
 - **2026-06-16** — "Skill?" answer evolved: a *drafting* grooming aid is
   justified for breakdown (was "probably not"); downstream stays policy, not
-  skill. Skill-vs-checklist deferred to Workstream B.
+  skill. Skill-vs-checklist deferred to Thread B.
+- **2026-06-19** — **Reframe: cross-repo is a category error here.** The
+  functional / non-functional split is the spine; the grooming pattern is
+  GENERAL (single- or multi-repo identical); cross-repo is livespec's own
+  *self-application* (non-functional), and its only functional tie to core is
+  the `.livespec.jsonc` CLI delegation seam. **Cross-repo drops out of the
+  general pattern.**
+- **2026-06-19** — **Terminology fixed:** it is the **Orchestrator** (the
+  producer role), not "impl plugin"; references **Ledger / Loop / Dispatcher**
+  (orchestrator-internal decomposition; core's contract never names them).
+- **2026-06-19** — **Where grooming lives, resolved:** grooming is
+  orchestrator-internal (operates on the Ledger) → NOT core functional
+  contract; the *pattern/guidance* is non-functional core content; the
+  *concrete front-end* is the reference orchestrator's own spec; the cut-line
+  principle reaches exactly ONE core functional concept — the scenario /
+  acceptance. The earlier impl-layer-vs-livespec-layer cross-repo fork is
+  **dissolved**.
+- **2026-06-19** — **Thread A two-mode cut-line:** a slice has exactly one
+  coherent "done," either *scenario-verified* OR *gate-verified*; the
+  verified "one scenario" rule is the scenario-verified special case. The five
+  archetypes are worked examples, not a schema. Added a slice-size **FLOOR**
+  (anti-over-split), calibrated in Thread C. Autonomy tier: spec-change =
+  human-gated, rest = factory-dispatchable.
+- **2026-06-19** — **Thread B structure:** two touchpoints (intake checklist
+  at creation + optional later regroom pass); per-slice fields enumerated;
+  intake = checklist folded into capture front-ends, regroom = a single
+  orchestrator-shipped groom front-end (tentative). Exact draft/gates still
+  open. **NOT ratified.**
 
 ---
 
@@ -273,7 +416,7 @@ here so it isn't lost, but **out of scope for this doc's active work:**
   `Working → Pending → Verify → Merge`; queues + executes runs continuously;
   layered verify gates → fix loops). It prescribes *nothing* about breakdown
   or prioritization — that's the upstream layer this doc is about.
-- The family already has the downstream layers: Beads ledger (priority, deps,
+- The family already has the downstream layers: Beads Ledger (priority, deps,
   ready), the Dispatcher (`mode`/`budget`, janitor `just check` + doctor hard-
   gate, iteration journal), `next` (deterministic ranking), doctor (cross-repo
   check).

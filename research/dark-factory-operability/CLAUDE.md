@@ -16,13 +16,18 @@ Dispatcher runs unattended and `/livespec-orchestrate` (livespec
 - `work-breakdown.md` — **OPEN, actively iterating.** The human-led
   front-end decomposition step: how a maintainer breaks/splits work
   into manageable, factory-feedable chunks BEFORE autonomous dispatch
-  (at capture or in a grooming pass). Captures the 2026-06-16 deep
-  research (verified patterns + the unsolved sizing gap + refuted
-  claims), the tentative direction (unit = vertical slice anchored to
-  one scenario; agent-drafts/human-approves), and three live
-  workstreams (cut-line heuristic; grooming ritual; invent+instrument
-  sizing). The user flagged this as the largest open unknown in the
-  ecosystem — expect multi-session iteration.
+  (at capture or in a grooming pass). Captures the durable 2026-06-16
+  deep research (verified patterns + the unsolved sizing gap + refuted
+  claims), the **2026-06-19 reframe** (cross-repo is a category error;
+  the functional/non-functional split is the spine; grooming is
+  Orchestrator-internal — non-functional core guidance + reference-
+  orchestrator-spec realization, never a core skill), and three named
+  threads: **cut-line** (two-mode "done": scenario-verified OR
+  gate-verified; plus a slice-size floor), **grooming ritual** (intake
+  checklist + optional regroom pass; agent-drafts/human-approves), and
+  **sizing calibration** (invent + instrument ceiling AND floor). The
+  user flagged this as the largest open unknown in the ecosystem —
+  expect multi-session iteration.
 
 ## Conventions
 
