@@ -30,7 +30,7 @@ dialogue (Step 11), NOT a hard stop.
 ### Dimensions
 
 For the built-in `livespec` template, the subjective-checks
-prompt covers four dimensions, two skill-baked + two
+prompt covers five dimensions, three skill-baked + two
 template-extension (per):
 
 1. **Spec↔implementation drift** (skill-baked). Compare the
@@ -82,12 +82,27 @@ template-extension (per):
      blank-line-delimited format; does NOT contain prose
      paragraphs outside scenario blocks.
 
+5. **Behavior-without-clause / behavior-without-scenario**
+   (skill-baked). Scan the spec prose for load-bearing
+   behavior — an observable input→output, a state transition,
+   an error path, or an invariant the implementation must
+   honor — that is NOT expressed as a BCP14 `MUST`/`SHOULD`
+   clause, OR that is so expressed but has NO `## Scenario` in
+   `scenarios.md` exercising it. Emit
+   `doctor-llm-subjective-behavior-coverage` with the path/line
+   of the under-specified prose and a `proposed_change_hint`
+   that either re-states the prose as a BCP14 clause or drafts
+   the missing Gherkin scenario. Rationale, motivation, and
+   example prose is NOT a finding — only behavior the
+   implementation must honor is in scope.
+
 ### Per-dimension scoring
 
 For each finding, emit:
 
 - `dimension`: one of `spec-impl-drift`, `prose-quality`,
-  `nlspec-conformance`, `template-compliance`. Recorded inside
+  `nlspec-conformance`, `template-compliance`,
+  `behavior-coverage`. Recorded inside
   the finding's `message` field as a structured prefix (e.g.,
   `[nlspec-conformance: economy] ...`) since the
   `doctor_findings.schema.json` does NOT carry a separate
