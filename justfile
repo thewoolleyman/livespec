@@ -215,6 +215,7 @@ check:
         # reference them) but are not wired in the aggregate to avoid
         # running the same module twice.
         check-canonical-slugs-projection
+        check-codex-adapter-sync
         check-comment-no-historical-refs
         check-copier-template-smoke
         # check-coverage is the aggregate (total) `fail_under = 100`
@@ -492,6 +493,7 @@ check-pre-commit-doc-only:
         check-heading-coverage
         check-vendor-manifest
         check-no-direct-tool-invocation
+        check-codex-adapter-sync
         check-copier-template-smoke
         check-tools
     )
@@ -639,6 +641,9 @@ stamp-canonical-slugs:
 # the `just check` aggregate (after the canonical block) and CI.
 check-canonical-slugs-projection:
     uv run python3 dev-tooling/checks/canonical_slugs_projection.py
+
+check-codex-adapter-sync:
+    uv run python3 dev-tooling/checks/codex_adapter_sync.py
 
 check-tools:
     uv run python -m livespec_dev_tooling.checks.check_tools
