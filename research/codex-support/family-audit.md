@@ -38,6 +38,10 @@ LiveSpec processes.
     renamed H2 headings.
 - The high-level e2e Beads item `livespec-zkmn.1` now has Codex-specific
   acceptance criteria and `codex-support` / `e2e-codex` labels.
+- `research/w7-orchestrator-convergence/plan.md` now carries the same
+  agent-runtime dimension: the golden-master acceptance story must record
+  Claude Code Driver, Codex project-local adapters, and the future Pi harness
+  explicitly, and Codex telemetry remains tokens-primary.
 - Four governed sibling repos now have Codex support requirements recorded in
   their own specs:
   - `livespec-dev-tooling` PR #134, merge
@@ -100,7 +104,7 @@ Open Beads work summary relevant to Codex:
 |---|---|---|
 | `livespec` | `livespec-zkmn.1` — W7 golden-master acceptance and orchestrator convergence | This is the high-level e2e/swap-proof thread. Its acceptance criteria were updated on 2026-06-19 to require Codex as an explicit supported agent-runtime dimension where runtime behavior is part of the proof. |
 | `livespec-impl-beads` | `livespec-impl-beads-zbl` — multi-provider cost observability: tokens-primary + Codex + self-hosted | Codex telemetry/cost extraction is explicitly deferred here; do not assume Claude Code telemetry covers Codex. |
-| `livespec-dev-tooling` | `livespec-dev-tooling-e60` — agent-loop efficiency and Honeycomb observability | Cross-runtime agent observability belongs here or in a child item; Codex should be named when the item is refined. |
+| `livespec-dev-tooling` | `livespec-dev-tooling-e60` — agent-loop efficiency and Honeycomb observability | Cross-runtime agent observability belongs here or in a child item; Codex should be named when the item is refined, with raw tokens retained as the primary signal. |
 
 Other open work exists in each tenant, but the items above are the ones found
 with direct Codex/e2e relevance.
@@ -231,6 +235,13 @@ golden-master acceptance harness across the git-jsonl and Beads/Fabro
 orchestrators. On 2026-06-19 its formal acceptance criteria were updated to
 make Codex a first-class agent-runtime dimension.
 
+On 2026-06-20, `research/w7-orchestrator-convergence/plan.md` was aligned with
+that Beads criterion. The plan now says the golden-master acceptance story must
+record which agent runtime each tier exercises: Claude Code Driver, OpenAI
+Codex project-local adapters, and the future Pi harness. Codex evidence must
+show repository instruction loading, use verified project-local adapters where
+they exist, and state unsupported or Claude-only mechanics explicitly.
+
 The acceptance criteria now require:
 
 - Codex can load the repo instruction surface for each tested checkout;
@@ -239,6 +250,24 @@ The acceptance criteria now require:
   Claude-specific cost spans;
 - Codex-specific limitations are explicit rather than silently inherited from
   Claude Code.
+
+### Telemetry and Cost
+
+The current tracking split is:
+
+- `livespec-impl-beads-zbl` owns provider-specific token extraction and
+  report-only cost overlays. It already names Codex/OpenAI and self-hosted
+  models as deferred provider legs, with raw tokens as the durable metric.
+- `livespec-dev-tooling-e60` owns broader agent-loop observability, including
+  per-turn spans, token counts, tool-call latencies, hook and pytest timings,
+  Red-Green-Replay leg timings, dispatch outcomes, and reflect-loop work-item
+  filing.
+
+Codex support must not be closed by reusing Claude Code dollar spans. The
+minimum acceptable evidence is token-first telemetry with provider/runtime
+tags, plus an explicit mapping for OpenAI/Codex token fields when an extractor
+is implemented. Dollar figures remain provider-specific overlays and may be
+absent or explicitly imputed for self-hosted runs.
 
 ### Non-skill mechanisms
 
@@ -265,12 +294,15 @@ Hook classification:
 
 ## Recommended next sequence
 
-1. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as a
-   supported agent-runtime dimension and keep this document updated with the
-   evidence.
-2. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
-   `livespec-dev-tooling-e60`; Codex should remain tokens-primary, not
-   Claude-cost-derived.
+1. Continue `livespec-zkmn.1` high-level e2e/golden-master implementation with
+   Codex as a supported agent-runtime dimension and keep this document updated
+   with the evidence.
+2. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
+   `livespec-dev-tooling-e60` as implementation begins; Codex should remain
+   tokens-primary, not Claude-cost-derived.
+3. Before claiming mutating Codex automation, provide a Codex replacement for
+   the Claude-only pre-tool footgun guard or record the narrower support claim
+   that relies on AGENTS/repo hooks only.
 
 ## Reproduction commands
 
