@@ -283,6 +283,73 @@ The Codex sibling runtime evidence and hook classification pass ran on
   - The commit hook reran `just check-pre-commit-doc-only` and passed.
   - The pre-push hook reran `just check-pre-commit-doc-only` and passed.
 
+The sibling instruction parity pass landed on 2026-06-20:
+
+- Scope: synced the complete core repository mutation protocol into sibling
+  `AGENTS.md` files so Codex-visible repo instructions now require
+  worktree -> PR -> merge -> cleanup before tracked-file edits.
+- `livespec-dev-tooling` PR #136:
+  `https://github.com/thewoolleyman/livespec-dev-tooling/pull/136`
+  - Merge commit: `095594f9dcc4f89e95e8007bd6456c567a72a431`
+  - Local verification: `mise exec -- just check-pre-commit-doc-only` passed;
+    commit and pre-push hooks reran the doc-only subset.
+  - PR checks passed before merge. The primary checkout was fast-forwarded,
+    the feature worktree and local branch were removed, the remote topic branch
+    was deleted through the GitHub API after the primary-checkout push guard
+    correctly blocked `git push --delete`, and the primary checkout was
+    verified clean on `master`.
+- `livespec-runtime` PR #50:
+  `https://github.com/thewoolleyman/livespec-runtime/pull/50`
+  - Merge commit: `18a35a246bb77f5f361dfabbbee2531287fc9fdd`
+  - Local verification: `mise exec -- just check-pre-commit-doc-only` passed;
+    commit and pre-push hooks reran the doc-only subset.
+  - PR checks passed before merge. The primary checkout was fast-forwarded,
+    the feature worktree and local branch were removed, the remote topic branch
+    was deleted through the GitHub API after the primary-checkout push guard
+    correctly blocked `git push --delete`, and the primary checkout was
+    verified clean on `master`.
+- `livespec-impl-git-jsonl` PR #90:
+  `https://github.com/thewoolleyman/livespec-impl-git-jsonl/pull/90`
+  - Merge commit: `2d88ee7d7ab4df3d61071478675eab4551630581`
+  - Local verification: `mise exec -- just check-pre-commit-doc-only` passed
+    all 3 doc-only targets; commit and pre-push hooks reran the doc-only
+    subset.
+  - PR checks passed before merge, including `e2e-cli`. The primary checkout
+    was fast-forwarded, the feature worktree and local branch were removed, the
+    remote topic branch was deleted through the GitHub API after the
+    primary-checkout push guard correctly blocked `git push --delete`, and the
+    primary checkout was verified clean on `master`.
+- `livespec-impl-beads` PR #75:
+  `https://github.com/thewoolleyman/livespec-impl-beads/pull/75`
+  - Merge commit: `af150ef55131c3a628e0dfd14f242285b31ee112`
+  - Local verification: `mise exec -- just check-pre-commit-doc-only` passed
+    all 3 doc-only targets; commit and pre-push hooks reran the doc-only
+    subset.
+  - PR checks passed before merge, including `e2e-cli`. The primary checkout
+    was fast-forwarded, the feature worktree and local branch were removed, the
+    remote topic branch was deleted through the GitHub API after the
+    primary-checkout push guard correctly blocked `git push --delete`, and the
+    primary checkout was verified clean on `master`. The pre-existing unrelated
+    worktree under `.claude/worktrees/fabro-graph-fix` was left untouched.
+- `livespec-driver-claude` PR #18:
+  `https://github.com/thewoolleyman/livespec-driver-claude/pull/18`
+  - Merge commit: `ea6b4ed9f73756d0163ac9767a395de070bf95ab`
+  - Local verification: `mise exec -- just check-pre-commit` passed; commit
+    hook reran plugin-structure, lint, and format; pre-push hook ran full
+    `just check`, including 23 hook tests and 2 mock e2e tests.
+  - PR checks passed before merge. The primary checkout was fast-forwarded, the
+    feature worktree and local branch were removed, the remote topic branch was
+    deleted by the PR merge path, and the primary checkout was verified clean on
+    `master`.
+- Fresh post-merge Codex verification:
+  - `codex exec --sandbox read-only` was launched from each of the five sibling
+    repos with a prompt asking whether `AGENTS.md` contains the repository
+    mutation protocol.
+  - Each probe read the repo-root `AGENTS.md` and confirmed the
+    worktree -> PR -> merge -> cleanup requirement before tracked-file edits.
+  - The probes emitted local MCP transport warnings from the Codex subprocess,
+    but completed successfully and left all sibling checkouts clean.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -370,9 +437,11 @@ At the end of any session that changes the Codex support state:
   governed `SPECIFICATION/`; no Codex repo update is expected there beyond
   classification in `research/codex-support/family-audit.md`.
 - Read-only Codex runtime probes have now been run in the changed sibling
-  repos. They prove `AGENTS.md` loading and entry-point discovery, but also
-  prove that sibling `AGENTS.md` files still lack the full core mutation
-  protocol.
+  repos. The first pass proved `AGENTS.md` loading and entry-point discovery
+  while exposing that sibling `AGENTS.md` files lacked the full core mutation
+  protocol. The 2026-06-20 sibling instruction parity PRs fixed that gap, and
+  fresh read-only Codex probes confirmed the updated protocol is visible in all
+  five sibling `AGENTS.md` files.
 - Claude-only hook classification is recorded in
   `research/codex-support/family-audit.md`: the project
   `livespec_footgun_guard.py` needs a Codex replacement before mutating Codex
@@ -408,22 +477,19 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 
 Continue Codex support work from the expanded family-wide scope. Do NOT repeat
 the completed PR #452, #457, #460, #465, #466, #467, #470, #471, #473, the
-sibling spec PRs #134 / #48 / #88 / #62, or the sibling read-only Codex runtime
-probes recorded above. The next phase is sibling instruction parity and
-high-level e2e follow-through:
+sibling spec PRs #134 / #48 / #88 / #62, the sibling instruction parity PRs
+#136 / #50 / #90 / #75 / #18, or the sibling read-only Codex runtime probes
+recorded above. The next phase is high-level e2e follow-through and telemetry /
+runtime-mechanism closure:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Sync the complete core repository mutation protocol into sibling
-   `AGENTS.md` files, using each repo's own required worktree -> PR -> merge
-   -> cleanup discipline. The Codex probes proved those files load, so this is
-   the next parity-critical instruction path.
-3. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as
+2. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as
    a supported agent-runtime dimension.
-4. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
+3. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60`; Codex should remain tokens-primary, not
    Claude-cost-derived.
-5. For any repository mutation, follow that repo's required
+4. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
    fallback is approved and recorded.
@@ -530,8 +596,9 @@ complete as of the PRs listed above, but the broader Codex support program is
 NOT complete. Track at least these open areas:
 
 - manual Codex runtime verification: prove the Codex path in every changed
-  repo, including instruction loading, wrapper/check identification, and any
-  migrated hook/bootstrap behavior;
+  repo, including writable/e2e behavior and any migrated hook/bootstrap
+  behavior; read-only instruction loading and sibling `AGENTS.md` mutation
+  protocol visibility are already proven;
 - high-level e2e testing: `livespec-zkmn.1` now requires Codex as a supported
   harness dimension, but implementation and manual evidence remain open;
 - non-skill runtime mechanisms: audit hooks, plugin installation assumptions,

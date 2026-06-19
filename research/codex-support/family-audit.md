@@ -1,6 +1,7 @@
 # Codex family support audit
 
 Date: 2026-06-19
+Last updated: 2026-06-20
 
 ## Purpose
 
@@ -55,6 +56,22 @@ LiveSpec processes.
     `59627827584e43aabeaca9e11b8658b2e32dbfa6`, cut
     `SPECIFICATION/history/v005/`, and updated
     `SPECIFICATION/constraints.md`.
+- Sibling `AGENTS.md` instruction parity landed on 2026-06-20:
+  - `livespec-dev-tooling` PR #136, merge
+    `095594f9dcc4f89e95e8007bd6456c567a72a431`.
+  - `livespec-runtime` PR #50, merge
+    `18a35a246bb77f5f361dfabbbee2531287fc9fdd`.
+  - `livespec-impl-git-jsonl` PR #90, merge
+    `2d88ee7d7ab4df3d61071478675eab4551630581`.
+  - `livespec-impl-beads` PR #75, merge
+    `af150ef55131c3a628e0dfd14f242285b31ee112`.
+  - `livespec-driver-claude` PR #18, merge
+    `ea6b4ed9f73756d0163ac9767a395de070bf95ab`.
+  - Scope: each repo's root `AGENTS.md` now carries the complete
+    worktree -> PR -> merge -> cleanup mutation lifecycle, including
+    primary-checkout confirmation, dedicated worktree editing, `mise exec -- git`
+    commit/push, no `--no-verify`, PR checks, primary refresh, worktree removal,
+    local branch deletion, and clean-`master` verification.
 
 ## Current live checks
 
@@ -105,6 +122,22 @@ Sibling PR verification completed on 2026-06-19:
 | `livespec-runtime` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 43 targets, 81 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #48 checks passed before merge |
 | `livespec-impl-git-jsonl` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 46 targets, 319 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #88 checks passed, including `e2e-cli`, before merge |
 | `livespec-impl-beads` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 44 targets, 917 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #62 checks passed, including `e2e-cli`, before merge |
+
+Sibling instruction-parity verification completed on 2026-06-20:
+
+| Repo | Local verification | PR / CI verification |
+|---|---|---|
+| `livespec-dev-tooling` | `mise exec -- just check-pre-commit-doc-only` passed; commit hook reran the doc-only subset; pre-push hook reran the doc-only subset | PR #136 checks passed before merge, including aggregate completeness, fleet conformance, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
+| `livespec-runtime` | `mise exec -- just check-pre-commit-doc-only` passed; commit hook reran the doc-only subset; pre-push hook reran the doc-only subset | PR #50 checks passed before merge, including aggregate completeness, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
+| `livespec-impl-git-jsonl` | `mise exec -- just check-pre-commit-doc-only` passed all 3 doc-only targets; commit/pre-push hooks reran the doc-only subset | PR #90 checks passed before merge, including `e2e-cli`, aggregate completeness, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
+| `livespec-impl-beads` | `mise exec -- just check-pre-commit-doc-only` passed all 3 doc-only targets; commit/pre-push hooks reran the doc-only subset | PR #75 checks passed before merge, including `e2e-cli`, aggregate completeness, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
+| `livespec-driver-claude` | `mise exec -- just check-pre-commit` passed; commit hook reran plugin-structure, lint, and format; pre-push hook ran full `just check` with 23 hook tests and 2 mock e2e tests passing | PR #18 checks passed before merge, including plugin-structure, hooks, mock e2e, format, and lint |
+
+After merge, all five primary checkouts were fast-forwarded to `origin/master`,
+the feature worktrees were removed, local `codex-agent-mutation-protocol`
+branches were deleted, remaining remote topic branches were deleted through the
+GitHub API where the primary-checkout push guard blocked `git push --delete`,
+and each checkout was verified clean on `master`.
 
 ## Family-wide gaps
 
@@ -167,20 +200,29 @@ Manual Codex verification exists for core read-only operations:
 On 2026-06-19, read-only Codex CLI probes were launched from each sibling
 checkout with `codex exec --sandbox read-only`. Every probe confirmed that
 Codex loaded or read the repository-root `AGENTS.md`, identified relevant
-non-mutating verification surfaces, and left `git status --short` clean.
+non-mutating verification surfaces, and left `git status --short` clean. Those
+probes also identified the missing sibling instruction-parity path that was
+fixed by the 2026-06-20 PRs listed above.
 
 | Repo | Codex-loaded instruction surface | Mutation protocol evidence | Non-mutating surfaces Codex identified |
 |---|---|---|---|
-| `livespec-dev-tooling` | `/data/projects/livespec-dev-tooling/AGENTS.md` | Has Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`; does **not** carry full worktree -> PR -> merge -> cleanup lifecycle. | `just check-scoped`, `just check`, `just check-static`, `just check-changed`, `just check-pre-commit`, `just check-pre-push`, individual `just check-*` targets. |
-| `livespec-runtime` | `/data/projects/livespec-runtime/AGENTS.md` | Has Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`; does **not** carry full worktree -> PR -> merge -> cleanup lifecycle. | `just check`, `just check-static`, `just check-changed`, `just check-lint`, `just check-format`, `just check-types`, `just check-coverage`, `just check-pre-commit`, `just check-pre-push`. |
-| `livespec-impl-git-jsonl` | `/data/projects/livespec-impl-git-jsonl/AGENTS.md` | Has Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`; full lifecycle appears in README/justfile/hook docs, not in `AGENTS.md`. | `mise exec -- just check`, `check-pre-commit`, `check-pre-push`, `check-red-green-replay`, `check-static`, `check-changed`, store checks, and read-only wrappers `list_work_items.py`, `list_memos.py`, `next.py`, `detect_impl_gaps.py`. |
-| `livespec-impl-beads` | `/data/projects/livespec-impl-beads/AGENTS.md` | Has Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`; full lifecycle appears in README/justfile/dispatcher docs, not in `AGENTS.md`. | `just check-static`, `just check-format`, `just check-lint`, `just check-types`, `just changed-files`, `just check-red-green-replay`, `just check-work-item-merge-evidence`, read/check wrappers, and dispatcher `ledger-check`, `spec-check`, `janitor-check`. |
-| `livespec-driver-claude` | `/data/projects/livespec-driver-claude/AGENTS.md` | Has worktree secondary checkout guidance, `mise exec -- git ...`, and never `--no-verify`; does **not** carry the full worktree -> PR -> merge -> cleanup lifecycle. | `just check` for plugin-structure, hook tests, and mock e2e. Codex correctly classified the repo as deliberately Claude-specific and not a Codex adapter host. |
+| `livespec-dev-tooling` | `/data/projects/livespec-dev-tooling/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #136, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `just check-scoped`, `just check`, `just check-static`, `just check-changed`, `just check-pre-commit`, `just check-pre-push`, individual `just check-*` targets. |
+| `livespec-runtime` | `/data/projects/livespec-runtime/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #50, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `just check`, `just check-static`, `just check-changed`, `just check-lint`, `just check-format`, `just check-types`, `just check-coverage`, `just check-pre-commit`, `just check-pre-push`. |
+| `livespec-impl-git-jsonl` | `/data/projects/livespec-impl-git-jsonl/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #90, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `mise exec -- just check`, `check-pre-commit`, `check-pre-push`, `check-red-green-replay`, `check-static`, `check-changed`, store checks, and read-only wrappers `list_work_items.py`, `list_memos.py`, `next.py`, `detect_impl_gaps.py`. |
+| `livespec-impl-beads` | `/data/projects/livespec-impl-beads/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #75, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `just check-static`, `just check-format`, `just check-lint`, `just check-types`, `just changed-files`, `just check-red-green-replay`, `just check-work-item-merge-evidence`, read/check wrappers, and dispatcher `ledger-check`, `spec-check`, `janitor-check`. |
+| `livespec-driver-claude` | `/data/projects/livespec-driver-claude/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #18, plus worktree secondary checkout guidance, `mise exec -- git ...`, and never `--no-verify`. | `just check` for plugin-structure, hook tests, and mock e2e. Codex correctly classified the repo as deliberately Claude-specific and not a Codex adapter host. |
 
-Conclusion: sibling runtime evidence now exists, but family-wide Codex support
-is still not fully claimable. The missing piece is instruction parity: sibling
-`AGENTS.md` files should carry the same complete repo mutation protocol now
-present in core before Codex is trusted for mutating family-wide work.
+On 2026-06-20, fresh read-only Codex probes were launched after those PRs
+merged. Each probe read the repo-root `AGENTS.md` and confirmed that the file
+contains the repository mutation protocol requiring the worktree -> PR -> merge
+-> cleanup path before tracked-file edits. The probes emitted local MCP
+transport warnings from the Codex subprocess, but completed successfully and
+left all five sibling checkouts clean on `master`.
+
+Conclusion: sibling instruction parity is now complete at the `AGENTS.md`
+surface. Mutating Codex automation is still not fully claimable until the
+remaining high-level e2e/golden-master, telemetry, and Codex hook/replacement
+questions are resolved.
 
 ### High-level e2e testing
 
@@ -223,14 +265,10 @@ Hook classification:
 
 ## Recommended next sequence
 
-1. Sync the complete core repository mutation protocol into sibling
-   `AGENTS.md` files, using each repo's normal worktree -> PR -> merge ->
-   cleanup path. The Codex runtime probes proved those files load, but they do
-   not yet carry the full lifecycle.
-2. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as a
+1. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as a
    supported agent-runtime dimension and keep this document updated with the
    evidence.
-3. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
+2. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60`; Codex should remain tokens-primary, not
    Claude-cost-derived.
 
