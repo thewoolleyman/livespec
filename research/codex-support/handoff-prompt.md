@@ -134,6 +134,12 @@ actual objective is broader:
 - `research/codex-support/` needs a durable summary document recording what had
   to be done so the process can be reproduced for the Pi agent harness.
 
+The family-wide audit summary was started on 2026-06-19 in
+`research/codex-support/family-audit.md`. It records the current family repo
+inventory, Beads items relevant to Codex/e2e work, stale core spec wording,
+missing sibling Codex coverage, manual-verification gaps, hook/non-skill
+mechanism gaps, and reproduction commands for the Pi agent harness path.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -206,6 +212,15 @@ At the end of any session that changes the Codex support state:
   such as `livespec-dev-tooling`, `livespec.wt`, `livespec-impl-beads.wt`, and
   `livespec-worktrees`. Do not assume this list is complete without
   rechecking `/data/projects` and Beads state.
+- A follow-up audit on 2026-06-19 found that the clean active family checkouts
+  are `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`,
+  `livespec-impl-beads`, `livespec-impl-git-jsonl`, and `livespec-runtime`.
+  Only core currently has `.agents/skills/`.
+- Core `SPECIFICATION/spec.md` still contains stale high-level
+  Claude-skill/plugin wording: it says the core plugin bundle MUST contain
+  `skills/<sub-command>/SKILL.md` and that `/livespec:<name>` dispatches to
+  matching skill prompts. This conflicts with the current driver architecture
+  and must be repaired through propose-change -> revise, not direct edits.
 
 ## Work discipline
 
@@ -239,23 +254,27 @@ the completed PR #452, #457, #460, #465, #466, and #467 work. Start by using
 the standard livespec processes now available to Codex:
 
 1. Run the core `livespec next` flow from this repo and record its JSON output
-   in this handoff or the summary doc. On 2026-06-19, a direct wrapper run from
+   in this handoff or the summary doc. On 2026-06-19, direct wrapper runs from
    core returned one low-urgency spec-side candidate:
    `{"action":"prune-history","reason":"118 unpruned history versions; consider pruning","urgency":"low"}`.
 2. Query Beads for open work across the family using the documented
-   `with-livespec-env.sh`/`LIVESPEC_BD_PATH` path. A previous attempt in this
-   session was interrupted by the user before completion; re-run it.
+   `with-livespec-env.sh`/`LIVESPEC_BD_PATH` path. The compact summary is now
+   recorded in `research/codex-support/family-audit.md`.
 3. Inventory each livespec-family repo under `/data/projects` and determine:
    whether it has a governed `SPECIFICATION/`, whether it has agent/harness
    adapters, whether Codex can load the relevant instructions, and whether any
    Claude-only hooks or plugin assumptions block Codex.
 4. Find the bead or research item about high-level end-to-end testing and
    update its plan/implementation so Codex is explicitly covered.
-5. Create or update a durable summary document under
-   `research/codex-support/` that explains every required change and the
-   verification evidence, with enough detail to reproduce the work for the Pi
-   agent harness.
-6. For any repository mutation, follow that repo's required
+5. Keep `research/codex-support/family-audit.md` current as the durable summary
+   document explaining every required change and the verification evidence,
+   with enough detail to reproduce the work for the Pi agent harness.
+6. Next governed mutation: file and revise a core spec repair for the stale
+   `SPECIFICATION/spec.md` driver/skill wording found in
+   `family-audit.md`, and decide whether core `non-functional-requirements.md`
+   also needs to state the family-wide Codex program rather than only the
+   core adapter proof.
+7. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
    fallback is approved and recorded.
@@ -372,6 +391,10 @@ broader Codex support program is NOT complete. Track at least these open areas:
   bootstrap scripts, cloud-specific references, and Claude-only machinery;
 - reproduction summary: keep a current `research/codex-support/` summary
   document suitable for replaying the work for the Pi agent harness.
+
+The first version of that summary is
+`research/codex-support/family-audit.md`; update it whenever Codex support state
+changes.
 
 ## Constraints
 
