@@ -350,6 +350,34 @@ The sibling instruction parity pass landed on 2026-06-20:
   - The probes emitted local MCP transport warnings from the Codex subprocess,
     but completed successfully and left all sibling checkouts clean.
 
+The Codex high-level e2e/runtime-matrix alignment pass ran on 2026-06-20:
+
+- Worktree: `/data/projects/livespec-codex-e2e-runtime-matrix`
+- Branch: `codex-e2e-runtime-matrix`
+- Scope:
+  - Updated `research/w7-orchestrator-convergence/plan.md` so the W7
+    golden-master acceptance story explicitly carries an agent-runtime
+    dimension: Claude Code Driver, OpenAI Codex project-local adapters, and the
+    future Pi harness.
+  - Updated `research/codex-support/family-audit.md` so the durable Codex
+    family summary records the same runtime matrix, the tokens-primary
+    telemetry rule, and the remaining distinction between high-level e2e,
+    telemetry/cost, and Codex hook/replacement closure.
+  - Updated this handoff.
+- Beads state inspected:
+  - `livespec-zkmn.1` already has formal Codex acceptance criteria and
+    `codex-support` / `e2e-codex` labels.
+  - `livespec-impl-beads-zbl` remains the cost/telemetry item that owns
+    provider-specific token extraction and report-only dollar overlays.
+  - `livespec-dev-tooling-e60` remains the agent-loop / Honeycomb
+    observability item; the Codex audit now records that Codex must be refined
+    there as raw-token-first agent telemetry work begins.
+- Verification before commit/PR:
+  - `mise exec -- just check-pre-commit-doc-only` passed all seven doc-only
+    targets from the worktree after trusting that worktree's `.mise.toml`.
+- After PR merge, update this block with PR number, merge SHA, check status,
+  primary refresh, worktree removal, and branch cleanup.
+
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -447,6 +475,15 @@ At the end of any session that changes the Codex support state:
   `livespec_footgun_guard.py` needs a Codex replacement before mutating Codex
   automation, repo git hooks are runtime-neutral commit/push backstops, and
   the Claude Driver's plugin hooks are Claude-driver-only by design.
+- `research/w7-orchestrator-convergence/plan.md` now explicitly requires the
+  W7 golden-master acceptance story to record the agent-runtime dimension:
+  Claude Code Driver, OpenAI Codex project-local adapters, and the future Pi
+  harness. Codex evidence must prove instruction-surface loading and verified
+  adapter use where adapters exist, and must state unsupported/Claude-only
+  mechanics explicitly.
+- Codex telemetry/cost evidence remains tokens-primary. Dollar figures are
+  provider-specific overlays and must not be inferred from Claude Code cost
+  spans.
 
 ## Work discipline
 
@@ -484,12 +521,16 @@ runtime-mechanism closure:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Continue `livespec-zkmn.1` high-level e2e/golden-master work with Codex as
-   a supported agent-runtime dimension.
-3. Track telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
-   `livespec-dev-tooling-e60`; Codex should remain tokens-primary, not
-   Claude-cost-derived.
-4. For any repository mutation, follow that repo's required
+2. Continue `livespec-zkmn.1` high-level e2e/golden-master implementation with
+   Codex as a supported agent-runtime dimension. The W7 research plan now
+   records the required Claude/Codex/Pi runtime matrix.
+3. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
+   `livespec-dev-tooling-e60` as implementation begins; Codex should remain
+   tokens-primary, not Claude-cost-derived.
+4. Before claiming mutating Codex automation, provide a Codex replacement for
+   the Claude-only pre-tool footgun guard or record the narrower support claim
+   that relies on AGENTS/repo hooks only.
+5. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
    fallback is approved and recorded.
@@ -599,8 +640,10 @@ NOT complete. Track at least these open areas:
   repo, including writable/e2e behavior and any migrated hook/bootstrap
   behavior; read-only instruction loading and sibling `AGENTS.md` mutation
   protocol visibility are already proven;
-- high-level e2e testing: `livespec-zkmn.1` now requires Codex as a supported
-  harness dimension, but implementation and manual evidence remain open;
+- high-level e2e testing: `livespec-zkmn.1` and
+  `research/w7-orchestrator-convergence/plan.md` now require Codex as a
+  supported harness dimension, but implementation and manual evidence remain
+  open;
 - non-skill runtime mechanisms: audit hooks, plugin installation assumptions,
   bootstrap scripts, cloud-specific references, and Claude-only machinery;
 - telemetry/cost observability: keep Codex tokens-primary through
