@@ -30,9 +30,62 @@ Codex skill/bootstrap path.
   - `a4f671b` added `SPECIFICATION/proposed_changes/codex-dogfood-compatibility.md`.
   - `3ac6541` landed the Codex dogfooding NFR text as v057.
   - `49e2d6e` later touched it during the v064 multi-repo/distribution rewrite.
-- I did not find a current open Beads item specifically tracking "Codex
-  conversion" across the livespec family. The main Codex content appears to be
-  the stale spec text above plus generic Driver architecture references.
+- Beads/research inventory from the prior investigation:
+  - I did not find a current open Beads item specifically named "Codex
+    conversion" or "Claude memory to instructions".
+  - Related Beads items DO exist and must shape this work:
+    - `livespec-4moata` is the open v103 contract/reference-implementation
+      realization epic. It covers Driver extraction and the broader
+      contract/reference split.
+    - `livespec-zkmn.1` is the open W7 convergence item. It includes the
+      memo-kill direction and retargeting the Driver's `block-auto-memory.sh`
+      behavior away from Claude memory toward durable work-item/knowledge flow.
+    - `livespec-a8bb` is closed. It retired `/livespec-orchestrate` and required
+      relocating normative skill duties before deleting the resident skill.
+    - `livespec-gy21` is closed. It project-scoped the livespec plugin family
+      so Claude skills/hooks stop leaking globally.
+  - Relevant research/spec support:
+    - `research/workflow-processes/tool-agnostic-workflow.md` treats persistent
+      agent knowledge as something that can live in harness instruction files
+      such as `CLAUDE.md`, `AGENTS.md`, `.ai/<topic>.md`, or a long-lived memory
+      store.
+    - `SPECIFICATION/non-functional-requirements.md` says agent-collaboration
+      rules apply to skills, `CLAUDE.md` / `AGENTS.md`, hooks, and ad-hoc agent
+      dialogue.
+    - `SPECIFICATION/non-functional-requirements.md` already codifies workspace
+      cleanup as part of "done".
+- Claude-specific state found on disk:
+  - `.claude/settings.json` enables `livespec@livespec`,
+    `livespec@livespec-driver-claude`, and
+    `livespec-impl-beads@livespec-impl-beads`, plus SessionStart/PreToolUse/
+    SubagentStop hooks.
+  - `/home/ubuntu/.claude/plugins/marketplaces/livespec-driver-claude/` contains
+    the installed Claude Driver plugin, including
+    `.claude-plugin/skills/{seed,propose-change,critique,revise,doctor,prune-history,next,help}/SKILL.md`.
+  - `/home/ubuntu/.claude/projects/-data-projects-livespec/memory/MEMORY.md`
+    contains a large livespec-specific memory index. Relevant memories include
+    Beads access, ending on main/master, `mise exec --` for git operations,
+    worktree orphan/reaper discipline, and multiple prior failure lessons.
+  - A sibling memory at
+    `/home/ubuntu/.claude/projects/-data-projects-livespec-runtime/memory/feedback_worktree_discipline.md`
+    explicitly says every livespec-governed repo change must follow a worktree
+    -> PR -> merge -> cleanup cycle.
+  - Codex currently does NOT have equivalent livespec project config:
+    `/home/ubuntu/.codex/config.toml` marks `/data/projects/livespec` trusted
+    and enables generic curated plugins, but does not enable livespec plugins,
+    livespec hooks, or a project-local skill bridge. No `.codex/` or `.agents/`
+    project skill tree exists in this checkout.
+- Important parity conclusion:
+  - Migrating useful Claude memory into repo instructions is necessary for Codex
+    parity because it removes hidden Claude-only operational knowledge.
+  - It is NOT sufficient by itself. Full parity also needs a Codex-loadable
+    skill/bootstrap path and mechanical rails where Codex supports them,
+    especially a pre-edit worktree discipline.
+  - The Claude Bash footgun guard would NOT have prevented a direct `apply_patch`
+    into the primary checkout. It blocks only specific Bash footguns
+    (`--no-verify`, `LEFTHOOK=0/false`, `core.bare=true`). So the fix cannot be
+    "trust memory harder"; it must turn the important memories into explicit
+    instructions and, where possible, enforceable checks/hooks.
 - Beads access works, but only with the current temporary tenant-secret bridge:
   ```bash
   /data/projects/1password-env-wrapper/with-livespec-env.sh bash -lc \
@@ -81,11 +134,47 @@ Codex skill/bootstrap path.
    - Corrected architecture.
    - Bootstrap file layout.
    - Verification commands.
-   - Follow-up Beads items needed, if no existing item tracks the stale NFR fix.
+   - The Claude-memory-to-instructions migration slice:
+     - inventory the Claude project memories that are actually operational rules;
+     - classify each as already codified, should move to repo instructions,
+       should move to spec, should move to an orchestrator/Driver repo, or
+       should be discarded as stale/transient;
+     - prioritize the parity-critical entries first: worktree discipline, Beads
+       access, `mise exec --` git operations, end-on-main cleanup, no
+       `--no-verify`, no primary-checkout edits, and no orphaned worktrees;
+     - preserve provenance by linking the source memory file/path in the plan.
+   - Follow-up Beads items needed if no existing item tracks the stale NFR fix,
+     the Codex bootstrap adapter, or the memory-to-instructions migration.
 5. Only after the plan is solid, decide whether to:
    - file a proposed spec change for the stale Codex NFR sections, or
    - implement a project-local bootstrap adapter first and then revise the spec
      from evidence.
+
+## Parity scope to carry forward
+
+Treat "Claude memory -> instructions" as one slice of a larger Codex parity
+effort, not the whole effort.
+
+The minimum credible parity scope is:
+
+1. **Instruction parity**: move durable Claude-only project memories into
+   committed, agent-readable instruction files or the appropriate sibling repo
+   instructions. Do not blindly dump memory into AGENTS.md. Classify and route.
+2. **Skill/bootstrap parity**: make Codex able to reach the livespec operation
+   surface from committed project files. In the current architecture, this
+   likely means Codex adapters that reference `.claude-plugin/prose/<name>.md`
+   and `.claude-plugin/scripts/bin/<name>.py`, not symlinks to nonexistent
+   `.claude-plugin/skills/*`.
+3. **Mechanical parity**: identify which Claude hooks/checks have Codex
+   equivalents. Where Codex cannot run an equivalent hook, add a visible
+   pre-flight checklist or repo check. Worktree-before-edit is the priority
+   because neither the current Claude footgun guard nor git commit hooks prevent
+   untracked primary-checkout edits.
+4. **Spec cleanup**: repair or replace the stale Codex dogfooding NFR sections
+   once evidence from actual Codex probes exists.
+5. **Verification parity**: prove behavior from separate Codex processes and
+   record the outputs under `research/codex-support/`. Do not accept "works in
+   Claude" as proof of Codex support.
 
 ## Suggested verification commands
 
