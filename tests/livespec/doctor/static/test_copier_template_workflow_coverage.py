@@ -178,7 +178,7 @@ def test_copier_template_workflow_coverage_fails_when_one_required_file_missing(
         "1 required workflow file(s) missing from "
         "`.github/workflows/`: auto-enable-merge.yml. Corrective action: run "
         "`copier update --vcs-ref=master` to re-sync the copier template (see "
-        '`contracts.md` §"Shared content sync — copier template" for '
+        '`non-functional-requirements.md` §"Shared content sync — copier template" for '
         "the canonical required-file list)."
     )
     expected = Finding(
@@ -222,7 +222,7 @@ def test_copier_template_workflow_coverage_fails_when_multiple_files_missing(
         "auto-enable-merge.yml, auto-update-branches.yml, pin-freshness.yml. "
         "Corrective action: run "
         "`copier update --vcs-ref=master` to re-sync the copier template (see "
-        '`contracts.md` §"Shared content sync — copier template" for '
+        '`non-functional-requirements.md` §"Shared content sync — copier template" for '
         "the canonical required-file list)."
     )
     expected = Finding(
@@ -260,7 +260,7 @@ def test_copier_template_workflow_coverage_fails_when_workflows_dir_absent(
         "`.github/workflows/` directory is absent from project root; "
         f"all {len(REQUIRED_WORKFLOW_FILES)} required workflow file(s) are missing: "
         f"{missing_joined}. Corrective action: run `copier update --vcs-ref=master` to "
-        "re-sync the copier template (see `contracts.md` "
+        "re-sync the copier template (see `non-functional-requirements.md` "
         '§"Shared content sync — copier template" for the canonical '
         "required-file list)."
     )
@@ -346,7 +346,7 @@ def test_copier_template_workflow_coverage_pure_no_monkeypatch_needed(
         "`.github/workflows/` directory is absent from project root; "
         f"all {len(REQUIRED_WORKFLOW_FILES)} required workflow file(s) are missing: "
         f"{missing_joined}. Corrective action: run `copier update --vcs-ref=master` to "
-        "re-sync the copier template (see `contracts.md` "
+        "re-sync the copier template (see `non-functional-requirements.md` "
         '§"Shared content sync — copier template" for the canonical '
         "required-file list)."
     )
@@ -426,7 +426,7 @@ def test_copier_template_workflow_coverage_fails_for_consumer_missing_required_f
         "1 required workflow file(s) missing from "
         "`.github/workflows/`: ci.yml. Corrective action: run "
         "`copier update --vcs-ref=master` to re-sync the copier template (see "
-        '`contracts.md` §"Shared content sync — copier template" for '
+        '`non-functional-requirements.md` §"Shared content sync — copier template" for '
         "the canonical required-file list)."
     )
     expected = Finding(

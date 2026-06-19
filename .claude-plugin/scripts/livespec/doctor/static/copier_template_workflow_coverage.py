@@ -159,7 +159,7 @@ def _evaluate(*, ctx: DoctorContext) -> Finding:
                 f"`.github/workflows/` directory is absent from project root; "
                 f"all {len(missing)} required workflow file(s) are missing: "
                 f"{missing_joined}. Corrective action: run `copier update --vcs-ref=master` to "
-                f"re-sync the copier template (see `contracts.md` "
+                f"re-sync the copier template (see `non-functional-requirements.md` "
                 f'§"Shared content sync — copier template" for the canonical '
                 f"required-file list)."
             ),
@@ -183,7 +183,7 @@ def _evaluate(*, ctx: DoctorContext) -> Finding:
             f"{len(missing)} required workflow file(s) missing from "
             f"`.github/workflows/`: {missing_joined}. Corrective action: run "
             f"`copier update --vcs-ref=master` to re-sync the copier template (see "
-            f'`contracts.md` §"Shared content sync — copier template" for '
+            f'`non-functional-requirements.md` §"Shared content sync — copier template" for '
             f"the canonical required-file list)."
         ),
     )
