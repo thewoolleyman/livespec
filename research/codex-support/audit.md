@@ -227,8 +227,6 @@ Key results:
 
 - `livespec-4moata` remains the broad v103 contract/reference implementation
   realization epic.
-- `livespec-zkmn.1` remains the W7 convergence item, including memo-kill and
-  durable knowledge flow.
 - No open item specifically tracks:
   - stale Codex dogfooding spec repair;
   - Codex project-skill bootstrap adapter;

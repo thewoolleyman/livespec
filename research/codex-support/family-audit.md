@@ -36,12 +36,9 @@ LiveSpec processes.
     `codex-contract-binding-wording.md`, repairing remaining `contracts.md`
     SKILL.md terminology and co-editing `tests/heading-coverage.json` for the
     renamed H2 headings.
-- The high-level e2e Beads item `livespec-zkmn.1` now has Codex-specific
-  acceptance criteria and `codex-support` / `e2e-codex` labels.
-- `research/w7-orchestrator-convergence/plan.md` now carries the same
-  agent-runtime dimension: the golden-master acceptance story must record
-  Claude Code Driver, Codex project-local adapters, and the future Pi harness
-  explicitly, and Codex telemetry remains tokens-primary.
+- Codex runtime/e2e evidence must record Claude Code Driver, Codex
+  project-local adapters, and the future Pi harness explicitly where runtime
+  behavior is part of a proof. Codex telemetry remains tokens-primary.
 - Four governed sibling repos now have Codex support requirements recorded in
   their own specs:
   - `livespec-dev-tooling` PR #134, merge
@@ -98,17 +95,14 @@ Local family checkout inventory:
 
 All six checkouts were clean on `master` at audit time.
 
-Open Beads work summary relevant to Codex:
+Open Codex-support work summary:
 
-| Tenant | Relevant open item | Why it matters |
+| Area | Current state | Why it matters |
 |---|---|---|
-| `livespec` | `livespec-zkmn.1` — W7 golden-master acceptance and orchestrator convergence | This is the high-level e2e/swap-proof thread. Its acceptance criteria were updated on 2026-06-19 to require Codex as an explicit supported agent-runtime dimension where runtime behavior is part of the proof. |
-| `livespec-impl-beads` | `livespec-impl-beads-dn9` / `5qv` / `ef5` — W7 Tier-2 containerized dispatch-plumbing proof | CLOSED. PR #78 added the repeatable proof runner and runbook; PR #85 proved real containerized Fabro sandbox dispatch through branch push; PRs #86/#87/#88 projected the GitHub token without leaking it; PRs #90/#92/#94/#97 fixed image/runtime/janitor gaps; final proof `ef5` created and merged PR #98, ran post-merge janitor `just check` green, removed the janitor checkout, and returned Dispatcher green. This is dispatch plumbing, not the golden-master acceptance harness. |
-| `livespec-impl-beads` | `livespec-impl-beads-zbl` — multi-provider cost observability: tokens-primary + Codex + self-hosted | Codex telemetry/cost extraction is explicitly deferred here; do not assume Claude Code telemetry covers Codex. |
-| `livespec-dev-tooling` | `livespec-dev-tooling-e60` — agent-loop efficiency and Honeycomb observability | Cross-runtime agent observability belongs here or in a child item; Codex should be named when the item is refined, with raw tokens retained as the primary signal. |
-
-Other open work exists in each tenant, but the items above are the ones found
-with direct Codex/e2e relevance.
+| Codex driver/distribution | Open decision: either create a `livespec-driver-codex` analogue or explicitly scope support to repo-local `.agents/skills/*`. | The proven path loads project-local adapters. It does not prove a distributed Codex driver or marketplace/plugin flow. |
+| Runtime/e2e verification | Open. Read-only instruction loading and adapter selection are proven; writable/e2e Codex behavior is not fully proven. | Codex support should not be closed by inheriting Claude Driver behavior. |
+| Telemetry/cost | Open. Codex must stay token-primary, with provider/runtime tags and no inference from Claude Code cost spans. | OpenAI/Codex evidence needs its own token mapping. |
+| Hook/replacement behavior | Open. Claude-only pre-tool hooks do not run under Codex. | Mutating Codex automation needs either a Codex replacement or a narrower documented support claim. |
 
 Sibling spec-side `next` runs on 2026-06-19:
 
@@ -226,80 +220,19 @@ left all five sibling checkouts clean on `master`.
 
 Conclusion: sibling instruction parity is now complete at the `AGENTS.md`
 surface. Mutating Codex automation is still not fully claimable until the
-remaining high-level e2e/golden-master, telemetry, and Codex hook/replacement
-questions are resolved.
+remaining Codex driver/distribution, runtime/e2e, telemetry, and Codex
+hook/replacement questions are resolved.
 
-### High-level e2e testing
+### Runtime/e2e testing
 
-The relevant thread is `livespec-zkmn.1`, whose description names a
-golden-master acceptance harness across the git-jsonl and Beads/Fabro
-orchestrators. On 2026-06-19 its formal acceptance criteria were updated to
-make Codex a first-class agent-runtime dimension.
+Codex support owns the Codex evidence boundary, not the implementation
+sequencing of any separate epic. This directory should record whether Codex
+loaded the relevant repository instruction surface, used verified
+project-local adapters where they exist, preserved tokens-primary telemetry,
+and documented unsupported or Claude-only mechanics.
 
-On 2026-06-20, `research/w7-orchestrator-convergence/plan.md` was aligned with
-that Beads criterion. The plan now says the golden-master acceptance story must
-record which agent runtime each tier exercises: Claude Code Driver, OpenAI
-Codex project-local adapters, and the future Pi harness. Codex evidence must
-show repository instruction loading, use verified project-local adapters where
-they exist, and state unsupported or Claude-only mechanics explicitly.
-
-Also on 2026-06-20 local time (2026-06-19 UTC in Beads), the missing
-impl-beads Tier-2 follow-up was filed as `livespec-impl-beads-dn9`. The closed
-step-1 image item `livespec-impl-beads-8bc` had deferred a "one real dispatch"
-proof; `dn9` captured that Beads/Fabro slice before the full golden-master
-harness. Its acceptance required a repeatable host-run path, proof that Fabro
-dispatches through the inner Docker daemon, secret-safe credential
-documentation, Codex runtime classification, and token-first telemetry
-evidence.
-
-The first `dn9` implementation slice landed in `livespec-impl-beads` PR #78
-(`4c460d188190995879ce056e7e018da2570991e9`). It added
-`orchestrator-image/tier2-dispatch-proof.sh`, a `just w7-tier2-dispatch-proof`
-target, and `research/w7-orchestrator-convergence/tier2-dispatch-proof.md`.
-Verification built `livespec-orchestrator:dev` through the new preflight path,
-confirmed the required secret env names were present without printing values,
-and confirmed the built image id
-`sha256:913eeda6955aa58dff51b6950f34a7d2342e6928b4a8df6894243b8d234543a2`.
-The actual Tier-2 dispatch then completed through a proof chain of deliberately
-tiny items:
-
-- PR #85 (`4c926c17e5f077d7db279e76d1b56a07534e7557`) closed `dn9` after a
-  real containerized dispatch reached Fabro sandbox clone, implementation,
-  janitor `just check`, and branch push.
-- `livespec-impl-beads-5qv` carried the remaining PR-sandbox credential gap.
-  PR #86/#87/#88 projected the family GitHub token into the Fabro PR sandbox
-  and kept secret values out of host argv/logs.
-- Proof sentinels `w9d`, `law`, `uw8`, `0b7`, `6vo`, and final `ef5` exposed
-  and then cleared the container/runtime/post-merge janitor gaps: PR #90 added
-  `mise`, PR #92 made the mounted checkout writable for post-merge primary
-  refresh, PR #94 added `libatomic1`, and PR #97 stabilized the environment-
-  sensitive Dispatcher cost-gate journal test.
-- Final proof `ef5` ran the production proof script, created and merged PR #98
-  at `431fd188875b870797f7dcf8340c4de29296eb4d`, ran post-merge janitor
-  `just check` green (45 targets, 1067 tests, 100% coverage), removed the
-  janitor checkout, and returned Dispatcher green.
-
-Boundary: this proves the Beads/Fabro dispatch plumbing. It does not satisfy
-W7 step 2's golden-master acceptance harness. The still-open zkmn.1 work must
-run the hello-world fixture behaviorally through both orchestrators, wire
-`just acceptance` as a required CI gate on both impl repos, and capture the
-agent-runtime matrix evidence.
-
-The remaining W7 backlog is now explicit in the `livespec` tenant:
-
-| Item | Target repo | Step |
-|---|---|---|
-| `livespec-ei4i` | `livespec-impl-git-jsonl` | Step 2 git-jsonl golden-master acceptance harness |
-| `livespec-b8od` | `livespec-impl-beads` | Step 2 Beads/Fabro golden-master acceptance harness |
-| `livespec-1oe9` | `livespec` | Step 2 runtime-matrix evidence |
-| `livespec-gjn4` | `livespec` | Step 3 spec-first memo surface retirement |
-| `livespec-kfiz` | `livespec-impl-beads` | Step 3 Beads/Fabro memo retirement |
-| `livespec-d4j3` | `livespec-impl-git-jsonl` | Step 3 git-jsonl memo retirement |
-| `livespec-4jsi` | `livespec-runtime` | Step 4 shared Store extraction |
-| `livespec-6a4n` | `livespec-impl-beads` | Step 4 Beads/Fabro Store consumer |
-| `livespec-5g4i` | `livespec-impl-git-jsonl` | Step 4 git-jsonl Store consumer |
-| `livespec-pe9u` | `livespec-impl-beads` | Step 5 real-work container substrate |
-| `livespec-b91b` | `livespec` | zkmn diagram/template remainder disposition |
+Implementation item IDs, blockers, and sequencing for other epics belong in
+their own research directories and ledgers, not in `research/codex-support/`.
 
 The acceptance criteria now require:
 
@@ -353,16 +286,14 @@ Hook classification:
 
 ## Recommended next sequence
 
-1. Drive the remaining `livespec-zkmn.1` sequence from the filed work items:
-   `livespec-ei4i` first for the git-jsonl behavioral fixture tier, then
-   `livespec-b8od` for the Beads/Fabro throwaway-repo tier, then
-   `livespec-1oe9` for runtime-matrix evidence. Only after those are green,
-   continue memo kill, shared Store extraction, substrate promotion, and
-   `livespec-b91b`.
-2. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
-   `livespec-dev-tooling-e60` as implementation begins; Codex should remain
-   tokens-primary, not Claude-cost-derived.
-3. Before claiming mutating Codex automation, provide a Codex replacement for
+1. Decide whether to create `livespec-driver-codex` for distributed Codex
+   support, or document that the supported Codex path remains repo-local
+   `.agents/skills/*` adapters.
+2. Complete writable/runtime Codex verification and record only Codex-specific
+   evidence here; keep unrelated epic sequencing in its owning docs.
+3. Refine telemetry/cost follow-ups as implementation begins; Codex should
+   remain tokens-primary, not Claude-cost-derived.
+4. Before claiming mutating Codex automation, provide a Codex replacement for
    the Claude-only pre-tool footgun guard or record the narrower support claim
    that relies on AGENTS/repo hooks only.
 

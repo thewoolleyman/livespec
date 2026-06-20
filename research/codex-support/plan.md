@@ -262,8 +262,6 @@ Discard or quarantine:
 Open Beads items checked on 2026-06-19:
 
 - `livespec-4moata`: broad v103 contract/reference implementation realization.
-- `livespec-zkmn.1`: W7 convergence, including memo-kill/durable knowledge
-  flow.
 
 No dedicated open item was found for:
 
@@ -285,5 +283,5 @@ Recommended work-items:
 3. `Claude memory to committed instructions slice`
    - Scope: migrate only parity-critical operational rules with provenance;
      explicitly discard stale/transient memory.
-   - Parent candidate: `livespec-zkmn.1` if framed as memo-kill/knowledge-flow
-     convergence; otherwise a standalone maintenance task.
+   - Parent candidate: standalone maintenance task unless a current ledger
+     review identifies a better owner.
