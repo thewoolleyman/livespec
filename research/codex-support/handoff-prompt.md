@@ -77,7 +77,7 @@ The Codex/Claude operational memory migration landed on `master` via PR #466:
 - PR: `https://github.com/thewoolleyman/livespec/pull/466`
 - Merge commit: `82e99653f7fe2e2f40bbeb2b0af1a5a673c6c46c`
 - Date: 2026-06-19
-- Beads work-item: `livespec-zkmn.1.1`
+- Beads work-item: parity-critical Claude/Codex operational memory migration
 - Scope: migrated only parity-critical repository mutation discipline into
   `AGENTS.md`: worktree -> PR -> merge -> cleanup, `mise exec -- git ...`,
   never `--no-verify`, primary-checkout protection, and cleanup expectations.
@@ -85,8 +85,8 @@ The Codex/Claude operational memory migration landed on `master` via PR #466:
 - PR checks passed before merge. After merge, the primary checkout was
   fast-forwarded to `82e9965`, worktree
   `/data/projects/livespec-codex-memory-instructions` was removed, local branch
-  `codex-memory-instructions` was deleted, and Beads item
-  `livespec-zkmn.1.1` was closed.
+  `codex-memory-instructions` was deleted, and the operational memory
+  migration item was closed.
 
 The wrapper-help exit fix for Codex adapter follow-up landed on `master` via
 PR #467:
@@ -126,8 +126,8 @@ actual objective is broader:
 - every livespec-family repo's non-functional specification needs to state the
   requirement and nature of Codex support where that repo owns a governed spec;
 - all family-wide changes need manual verification, not just static checks;
-- the high-level end-to-end testing bead/research thread needs to include Codex
-  as a supported harness, not only Claude;
+- cross-runtime end-to-end evidence needs to include Codex as a supported
+  harness, not only Claude;
 - non-skill mechanisms such as hooks, plugin/driver assumptions, local
   bootstrap paths, and cloud-/Claude-specific workflows need to be audited and
   migrated or explicitly documented as not applicable for Codex;
@@ -136,9 +136,9 @@ actual objective is broader:
 
 The family-wide audit summary was started on 2026-06-19 in
 `research/codex-support/family-audit.md`. It records the current family repo
-inventory, Beads items relevant to Codex/e2e work, stale core spec wording,
-missing sibling Codex coverage, manual-verification gaps, hook/non-skill
-mechanism gaps, and reproduction commands for the Pi agent harness path.
+inventory, stale core spec wording, missing sibling Codex coverage,
+manual-verification gaps, hook/non-skill mechanism gaps, and reproduction
+commands for the Pi agent harness path.
 
 The stale core Driver/prose/binding wording identified by the audit landed on
 `master` via PR #471:
@@ -168,21 +168,17 @@ The stale core Driver/prose/binding wording identified by the audit landed on
   `/data/projects/livespec-codex-driver-spec-wording` was removed, and local
   branch `codex-driver-spec-wording` was deleted.
 
-The high-level e2e Beads thread was updated on 2026-06-19:
+The cross-runtime e2e evidence requirement was recorded on 2026-06-19:
 
 - PR recording this state: `https://github.com/thewoolleyman/livespec/pull/473`
-- Beads item: `livespec-zkmn.1`
-- Change: added formal acceptance criteria requiring Codex to be represented as
-  an explicit supported agent-runtime dimension in golden-master/e2e acceptance
-  where runtime behavior is part of the proof.
-- Labels added: `codex-support`, `e2e-codex`.
-- Required evidence now includes Codex instruction loading, verified
-  project-local adapters where present, tokens-primary telemetry/cost handling,
+- Change: Codex must be represented as an explicit supported agent-runtime
+  dimension where runtime behavior is part of a proof.
+- Required evidence includes Codex instruction loading, verified project-local
+  adapters where present, tokens-primary telemetry/cost handling,
   Claude-only hook classification, and updates to
-  `research/codex-support/family-audit.md` before the item is closed.
-- Verification: `bd show livespec-zkmn.1 --json` confirmed the acceptance
-  criteria and labels. Beads emitted the known `.beads` permissions warning and
-  auto-backup limitation, but the update succeeded.
+  `research/codex-support/family-audit.md` before Codex support is closed.
+- Execution state, item IDs, blockers, and sequencing for other epics do not
+  belong in this Codex-support handoff.
 
 The governed sibling spec updates landed on 2026-06-19:
 
@@ -350,30 +346,26 @@ The sibling instruction parity pass landed on 2026-06-20:
   - The probes emitted local MCP transport warnings from the Codex subprocess,
     but completed successfully and left all sibling checkouts clean.
 
-The Codex high-level e2e/runtime-matrix alignment pass ran on 2026-06-20:
+The Codex runtime-evidence alignment pass ran on 2026-06-20:
 
 - PR: `https://github.com/thewoolleyman/livespec/pull/486`
 - Merge commit: `9cbd3be806caa19d5a35e2b0ad37c04a9d14770d`
 - Worktree: `/data/projects/livespec-codex-e2e-runtime-matrix`
 - Branch: `codex-e2e-runtime-matrix`
 - Scope:
-  - Updated `research/w7-orchestrator-convergence/plan.md` so the W7
-    golden-master acceptance story explicitly carries an agent-runtime
-    dimension: Claude Code Driver, OpenAI Codex project-local adapters, and the
-    future Pi harness.
   - Updated `research/codex-support/family-audit.md` so the durable Codex
-    family summary records the same runtime matrix, the tokens-primary
-    telemetry rule, and the remaining distinction between high-level e2e,
-    telemetry/cost, and Codex hook/replacement closure.
+    family summary records the runtime-evidence requirement, the
+    tokens-primary telemetry rule, and the remaining distinction between
+    runtime/e2e verification, telemetry/cost, and Codex hook/replacement
+    closure.
   - Updated this handoff.
-- Beads state inspected:
-  - `livespec-zkmn.1` already has formal Codex acceptance criteria and
-    `codex-support` / `e2e-codex` labels.
-  - `livespec-impl-beads-zbl` remains the cost/telemetry item that owns
-    provider-specific token extraction and report-only dollar overlays.
-  - `livespec-dev-tooling-e60` remains the agent-loop / Honeycomb
-    observability item; the Codex audit now records that Codex must be refined
-    there as raw-token-first agent telemetry work begins.
+- Work state inspected:
+  - Codex support has formal runtime-evidence requirements, but runtime/e2e
+    proof is not complete.
+  - Provider-specific token extraction and report-only dollar overlays remain
+    open follow-up work.
+  - Agent-loop / Honeycomb observability remains open follow-up work; Codex
+    must stay raw-token-first as that work begins.
 - Verification before commit/PR:
   - `mise exec -- just check-pre-commit-doc-only` passed all seven doc-only
     targets from the worktree after trusting that worktree's `.mise.toml`.
@@ -461,8 +453,8 @@ At the end of any session that changes the Codex support state:
 - Beads follow-ups filed on 2026-06-19 and completed:
   - `livespec-4moata.2` — Codex dogfooding spec repair, closed after PR #465.
   - `livespec-4moata.3` — wrapper help exit handling, closed after PR #467.
-  - `livespec-zkmn.1.1` — parity-critical Claude/Codex operational memory
-    migration, closed after PR #466.
+  - parity-critical Claude/Codex operational memory migration, closed after
+    PR #466.
 - Local livespec-family checkouts seen during the 2026-06-19 handoff expansion:
   `livespec`, `livespec-driver-claude`, `livespec-impl-beads`,
   `livespec-impl-git-jsonl`, `livespec-runtime`, plus dev/worktree directories
@@ -494,15 +486,17 @@ At the end of any session that changes the Codex support state:
   `livespec_footgun_guard.py` needs a Codex replacement before mutating Codex
   automation, repo git hooks are runtime-neutral commit/push backstops, and
   the Claude Driver's plugin hooks are Claude-driver-only by design.
-- `research/w7-orchestrator-convergence/plan.md` now explicitly requires the
-  W7 golden-master acceptance story to record the agent-runtime dimension:
-  Claude Code Driver, OpenAI Codex project-local adapters, and the future Pi
-  harness. Codex evidence must prove instruction-surface loading and verified
-  adapter use where adapters exist, and must state unsupported/Claude-only
-  mechanics explicitly.
+- Codex runtime/e2e evidence must prove instruction-surface loading and
+  verified adapter use where adapters exist, and must state
+  unsupported/Claude-only mechanics explicitly.
 - Codex telemetry/cost evidence remains tokens-primary. Dollar figures are
   provider-specific overlays and must not be inferred from Claude Code cost
   spans.
+- A distributed `livespec-driver-codex` repo has not been created. The current
+  proven path is repo-local `.agents/skills/*` adapters over CORE prose and
+  wrapper CLIs. Decide whether to create a Codex driver repo, or explicitly
+  document the narrower repo-local support claim, before claiming distributed
+  Codex support.
 
 ## Work discipline
 
@@ -535,21 +529,23 @@ Continue Codex support work from the expanded family-wide scope. Do NOT repeat
 the completed PR #452, #457, #460, #465, #466, #467, #470, #471, #473, the
 sibling spec PRs #134 / #48 / #88 / #62, the sibling instruction parity PRs
 #136 / #50 / #90 / #75 / #18, or the sibling read-only Codex runtime probes
-recorded above. The next phase is high-level e2e follow-through and telemetry /
-runtime-mechanism closure:
+recorded above. The next phase is Codex driver/distribution, runtime/e2e,
+telemetry, and runtime-mechanism closure:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Continue `livespec-zkmn.1` high-level e2e/golden-master implementation with
-   Codex as a supported agent-runtime dimension. The W7 research plan now
-   records the required Claude/Codex/Pi runtime matrix.
-3. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
-   `livespec-dev-tooling-e60` as implementation begins; Codex should remain
-   tokens-primary, not Claude-cost-derived.
-4. Before claiming mutating Codex automation, provide a Codex replacement for
+2. Decide the Codex driver/distribution boundary: either create a
+   `livespec-driver-codex` analogue for distributed Codex support, or document
+   that current Codex support is repo-local `.agents/skills/*` only.
+3. Complete Codex runtime/e2e verification without importing other epic item
+   IDs or sequencing into this directory. Record only the Codex evidence
+   boundary here.
+4. Refine telemetry/cost follow-ups as implementation begins; Codex should
+   remain tokens-primary, not Claude-cost-derived.
+5. Before claiming mutating Codex automation, provide a Codex replacement for
    the Claude-only pre-tool footgun guard or record the narrower support claim
    that relies on AGENTS/repo hooks only.
-5. For any repository mutation, follow that repo's required
+6. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
    fallback is approved and recorded.
@@ -593,8 +589,8 @@ gh pr checks 466 --watch --interval 10
 
 Local doc-only verification and all PR checks passed. The merge commit was
 `82e99653f7fe2e2f40bbeb2b0af1a5a673c6c46c`; the primary checkout was
-fast-forwarded after merge, the memory worktree/branch were removed, and Beads
-`livespec-zkmn.1.1` was closed.
+fast-forwarded after merge, the memory worktree/branch were removed, and the
+operational memory migration item was closed.
 
 PR #467 completed the wrapper-help exit fix:
 
@@ -659,14 +655,16 @@ NOT complete. Track at least these open areas:
   repo, including writable/e2e behavior and any migrated hook/bootstrap
   behavior; read-only instruction loading and sibling `AGENTS.md` mutation
   protocol visibility are already proven;
-- high-level e2e testing: `livespec-zkmn.1` and
-  `research/w7-orchestrator-convergence/plan.md` now require Codex as a
-  supported harness dimension, but implementation and manual evidence remain
-  open;
+- Codex driver/distribution: decide whether to create `livespec-driver-codex`
+  for distributed support, or document that the proven path remains repo-local
+  `.agents/skills/*`;
+- runtime/e2e testing: Codex must be represented as a supported harness
+  dimension where runtime behavior is part of the proof, but implementation
+  and manual evidence remain open;
 - non-skill runtime mechanisms: audit hooks, plugin installation assumptions,
   bootstrap scripts, cloud-specific references, and Claude-only machinery;
-- telemetry/cost observability: keep Codex tokens-primary through
-  `livespec-impl-beads-zbl` and `livespec-dev-tooling-e60`;
+- telemetry/cost observability: keep Codex tokens-primary and do not infer
+  Codex/OpenAI evidence from Claude Code cost spans;
 - reproduction summary: keep a current `research/codex-support/` summary
   document suitable for replaying the work for the Pi agent harness.
 
