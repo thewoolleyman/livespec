@@ -315,6 +315,25 @@ So NFR is now literally — not just conceptually — grooming guidance's home.
   (private work-item store + dep graph), **Loop** (produces one work-item),
   **Dispatcher** (polls + parallelizes). Core's contract never names these.
 
+### Concrete realization — the repo rename (decided 2026-06-20)
+
+The terminology correction above is being realized as a concrete repo rename,
+filed as ledger epic `livespec-4moata.4` (livespec tenant, child of `4moata`,
+`depends_on livespec-zkmn` so it executes AFTER W7). The `impl-` repo-naming
+prefix is dropped family-wide → `orchestrator-`, and BOTH the ledger and loop
+axes are kept in each name (Fabro is loop-portable across ledgers, so the loop
+is named, not just the ledger):
+
+- `livespec-impl-beads` → **`livespec-orchestrator-beads-fabro`** (Beads/Dolt ledger + Fabro loop)
+- `livespec-impl-git-jsonl` → **`livespec-orchestrator-git-jsonl`** (git-jsonl ledger + homegrown serial loop)
+
+Core repo `livespec` KEEPS its name (the `livespec` → `livespec-core` rename was
+RETIRED 2026-05-19, `history/v068`). This consolidates a previously-scattered
+capture: the `dw1t` W6 cutover deliverable ("decide the repo name, lean
+impl-beads-fabro") was never filed, and the terminology shift lived only here as
+prose. Full touchpoint playbook (modeled on the executed W5 precedent
+`livespec-p7az`): `tmp/orchestrator-rename-kickoff-prompt.md`.
+
 ### Where grooming lives (resolved)
 
 - Grooming operates on the **Ledger → it is orchestrator-internal → NOT core
@@ -798,6 +817,14 @@ Dispatcher uses Fabro — unchanged.
   Factory's milestone→feature dependency-layering + read-only-until-approved
   gate. MindStudio Remy unresolved; two claims refuted. Also recorded: the
   family-infra spec relocation to NFR MERGED this day.
+- **2026-06-20** — **Repo rename decided + filed.** The `impl-` repo prefix is
+  dropped family-wide → `orchestrator-`, keeping both ledger and loop axes:
+  `livespec-impl-beads` → `livespec-orchestrator-beads-fabro`,
+  `livespec-impl-git-jsonl` → `livespec-orchestrator-git-jsonl`; core `livespec`
+  unchanged. Filed as epic `livespec-4moata.4` (`depends_on zkmn`; executes after
+  W7); kickoff playbook at `tmp/orchestrator-rename-kickoff-prompt.md`. Realizes
+  the 2026-06-19 Orchestrator terminology correction + `dw1t`'s deferred
+  "decide the repo name" deliverable.
 
 ---
 

@@ -143,3 +143,13 @@ fixture spec through BOTH orchestrators, same asserted behavior.
 - Relocate-never-drop: memo machinery recoverable at its pre-deletion SHA (cite).
 - File the work as bd items under a new epic (or under `zkmn`), per repo; coordinate cross-repo via
   doctor + labels.
+
+## What follows W7 — the orchestrator repo rename
+
+Once this plan's acceptance net lands, the two orchestrator repos get renamed
+(drop `impl-` → `orchestrator-`): `livespec-impl-beads` →
+`livespec-orchestrator-beads-fabro`, `livespec-impl-git-jsonl` →
+`livespec-orchestrator-git-jsonl`; core `livespec` unchanged. Tracked by epic
+`livespec-4moata.4` (`depends_on zkmn`); playbook at
+`tmp/orchestrator-rename-kickoff-prompt.md`. Sequenced strictly AFTER W7 — do not
+rename mid-W7 while impl-beads master is receiving tier-2 commits.
