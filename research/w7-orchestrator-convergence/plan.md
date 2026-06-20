@@ -108,6 +108,27 @@ fixture spec through BOTH orchestrators, same asserted behavior.
 
 ## Sequencing (each step guarded by the prior; the acceptance net comes before the refactors)
 
+### Status as of 2026-06-20
+
+Steps 0-1 plus the Beads/Fabro **dispatch-plumbing** proof are complete:
+`livespec-impl-beads-dn9`, `5qv`, and proof sentinels `w9d`/`law`/`uw8`/`0b7`/`6vo`/`ef5`
+proved the production orchestrator container can run Fabro through PR creation,
+merge, post-merge janitor `just check`, cleanup, and a green Dispatcher exit.
+
+That proof is not the step-2 golden-master acceptance harness. Step 2 remains
+open until the same hello-world fixture SPECIFICATION is run behaviorally
+through both orchestrators (git-jsonl and Beads/Fabro), the produced software's
+greeting behavior is asserted, `just acceptance` is wired as a required CI gate
+on both impl repos, and the Claude Code / Codex / future Pi runtime-matrix
+evidence is captured.
+
+The remaining queue is filed in the `livespec` tenant: `livespec-ei4i`
+(git-jsonl acceptance), `livespec-b8od` (Beads/Fabro acceptance),
+`livespec-1oe9` (runtime-matrix evidence), `livespec-gjn4`/`kfiz`/`d4j3`
+(memo kill), `livespec-4jsi`/`6a4n`/`5g4i` (shared Store extraction and
+consumers), `livespec-pe9u` (real-work container substrate), and
+`livespec-b91b` (diagram/template remainder disposition).
+
 0. **SPIKE — Fabro under Docker-in-Docker.** Nesting approach DECIDED: **Docker-in-Docker**
    (user-ratified 2026-06-15) — a full Docker daemon inside the orchestrator container, sandboxes
    nested within it. Chosen because it serves the self-containment/host-decoupling goal that the
