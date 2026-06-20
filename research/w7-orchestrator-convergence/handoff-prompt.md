@@ -5,87 +5,126 @@ This handoff owns the active W7 continuation state. Do not put W7 execution
 state in `research/codex-support/handoff-prompt.md`; that file is for the
 Codex-support track only.
 
-## Current state as of 2026-06-20
+## Current state as of 2026-06-20 (step 3 COMPLETE; steps 4–5 remain)
 
-W7 is not complete, but step 2's live golden-master acceptance harness is now
-DONE and the GitHub permission gate is resolved. The remaining W7 work is steps
-3-5 plus the diagram/template remainder.
+W7 step 2 (golden-master acceptance) was already done. **Step 3 (the memo kill)
+is now COMPLETE across all four repos**, plus the diagram/template remainder
+(`livespec-b91b`) is disposed. The remaining W7 work is **step 4 (shared `Store`
+extraction)** and **step 5 (container real-work substrate)**, then close
+`livespec-zkmn.1` → `livespec-zkmn`.
 
-Credential provisioned (USER-ACTION done):
+### Step 3 — memo kill: DONE
 
-- A dedicated disposable GitHub org `livespec-e2e` was created with a
-  fine-grained token injected by the 1Password wrapper as
-  `LIVESPEC_E2E_GITHUB_TOKEN` (Administration / Contents / Pull-requests /
-  Workflows read-write, resource-owner-scoped to the org so the create/delete
-  blast radius is contained to that throwaway org). Create + delete are proven.
+Memo is fully retired as a named surface. All in-flight captures now flow to the
+work-item ledger (`capture-work-item`), spec input to `/livespec:propose-change`
+(`capture-spec-drift`), and durable lessons to the orchestrator's `lessons.md`
+(NOT the ledger) — user-confirmed 2026-06-20. The `.ai/` persistent-knowledge
+slot + the reflector were preserved. Closed work-items + landed PRs:
 
-Completed:
+- `livespec-gjn4` (core spec) — CLOSED. PR #497 → `SPECIFICATION/history/v123`.
+  Retargeted the `block-auto-memory` redirect contract (`contracts.md`
+  §"Driver-shipped hooks") `capture-memo` → `capture-work-item`; reworded
+  `spec.md` §"Terminology" Transient entry (kept the load-bearing
+  transient-vs-durable-pending principle). `contracts.md:142` keeps "memos" as a
+  doctor-boundary EXAMPLE intentionally (a contract test pins it).
+- `livespec-zkmn.1.3` (Driver `livespec-driver-claude`) — CLOSED. PR #23, merge
+  `ac14f9e`, Driver spec → `history/v001`. Retargeted `block-auto-memory.sh` +
+  its own SPECIFICATION (contracts hook desc + scenario H2 rename, heading-coverage
+  co-edit) + `tests/hooks/test_block_auto_memory.py`. (This Driver item was NOT in
+  the original plan — surfaced during the kill; the redirect contract is core's but
+  the SCRIPT lives in the Driver repo.)
+- `livespec-d4j3` (`livespec-impl-git-jsonl`) — CLOSED. Deletion `9eee8b1` +
+  stale-CLAUDE.md-ref cleanup `c169217`. master CI green.
+- `livespec-kfiz` (`livespec-impl-beads`) — CLOSED. PR #102 (deletion `ee8eff9`
+  + dev-tooling pin bump `b9f29b7`) + PR #103 (stale-CLAUDE.md-ref cleanup
+  `80dbf71`). master CI green.
 
-- The earlier Beads/Fabro dispatch-plumbing proof completed through
-  `livespec-impl-beads-dn9`, `5qv`, and proof sentinels
-  `w9d`/`law`/`uw8`/`0b7`/`6vo`/`ef5`. That proof showed the production
-  orchestrator container can run Fabro through PR creation, merge, post-merge
-  janitor `just check`, cleanup, and a green Dispatcher exit.
-- `livespec-ei4i` is closed. The `livespec-impl-git-jsonl` hermetic
-  hello-world acceptance harness landed in PR #92 at
-  `19c9c09142480f657b633e637b0ebcfedd1a57d5`; it added `just acceptance` and
-  the required CI acceptance gate.
-- The Beads/Fabro hermetic and live-preflight acceptance tiers landed in
-  `livespec-impl-beads` PR #99 at
-  `ad6fd1c890f413369a5a422e2babaadd12052353`; it added `just acceptance`, the
-  CI acceptance gate, `acceptance-live-preflight`, and
-  `acceptance-live <item>`.
-- `livespec-b8od` is CLOSED. The live Beads/Fabro golden-master acceptance
-  proof was genuinely met end-to-end and independently reproduced
-  (livespec-impl-beads PR #101, merge `e2ee88e`, master CI green). It added a
-  minimal livespec-impl skeleton (`orchestrator-image/e2e-skeleton/`),
-  embedded-mode ephemeral beads ledger, `acceptance-live-golden-master.sh`,
-  the `just acceptance-live-golden-master` target, the Red-Green-Replay-bound
-  live greeting assertion, and a `workflow_dispatch` CI job. The unmodified
-  production Fabro workflow dispatched the greeting work-item into a sandbox,
-  Claude implemented `greet()`, a real PR was created and merged, and the
-  greeting assertion was green from the merged repo.
-- `livespec-zkmn.1.2` (the reaper) is CLOSED. A standalone
-  `orchestrator-image/reap-e2e-repos.sh` plus `just reap-e2e-repos` landed in
-  livespec-impl-beads PR #100, wired into the live flow on entry-sweep and
-  EXIT-teardown. Zero leaks observed across 9+ runs.
-- `livespec-1oe9` (runtime-matrix evidence) is satisfied by the
-  documentation PR that added the "Acceptance runtime-matrix evidence (W7
-  step 2)" section to `research/codex-support/family-audit.md`. (That item is
-  closed by the maintainer, not by an agent.)
+### Gate fix landed this session — `livespec-dev-tooling` v0.14.1
 
-Remaining W7 work (under `livespec-zkmn.1`):
+The memo deletion exposed a real bug in dev-tooling's `check_coverage_incremental`:
+its no-`--paths` derive used `git diff --name-only origin/master...HEAD` WITHOUT a
+deletion filter, so a deletion-only commit fed the DELETED impl `.py` to the
+mirror-test resolver and hard-failed (the mirror test is correctly also deleted).
+This blocked every deletion-only commit at LOCAL pre-push (CI didn't catch it —
+the post-merge diff is empty). Fixed the gate, not the bypass: PR #138 added
+`--diff-filter=d` (RGR-tested), released as tag **`v0.14.1`**. `livespec-impl-beads`
+now pins `v0.14.1`; other family repos still on their prior pin — the fix is
+backward-compatible, so they can bump opportunistically. (NOTE: an earlier
+parallel session `--no-verify`'d the git-jsonl deletion during an Anthropic API
+overload, before the gate was fixed — that is why git-jsonl `9eee8b1` exists with
+the `thewoolleyman` author identity; not a human action.)
 
-- Step 3 — memo kill (`livespec-gjn4`, `livespec-kfiz`, `livespec-d4j3`):
-  spec-first via propose-change -> revise; it touches the contract.
-- Step 4 — shared `Store` extraction (`livespec-4jsi`, `livespec-6a4n`,
-  `livespec-5g4i`): a coordinated cross-repo version-bump fan-out.
-- Step 5 — promote the container image to the real-work substrate
-  (`livespec-pe9u`).
-- `livespec-b91b`: diagram/template remainder disposition.
+### `livespec-b91b` (diagram/template remainder) — DONE (descoped)
 
-Once steps 3-5 and `livespec-b91b` land, close `livespec-zkmn.1` then
-`livespec-zkmn` — which unblocks the orchestrator rename wave `4moata.4`.
+Both remainders descoped with rationale (b91b acceptance permits descope):
+(1) the built-in template v1→v2 `spec_files` manifest bump is NOT a clean 1-repo
+change — `spec.md:55` requires `heading_coverage` (upstream in `livespec-dev-tooling`)
+to consult the manifest under v2, and it still uses a hardcoded tuple; relocated
+to **`livespec-cuiz`** (P3, post-W7, dev-tooling-first ordering; latent/harmless
+until a v2 template exists). (2) the Mermaid syntax lint is descoped —
+`spec.md:209` says it is a CI nicety, NOT a contract requirement.
+
+## Remaining W7 work (under `livespec-zkmn.1`)
+
+### Step 4 — shared `Store` extraction (READY)
+
+Work-items: `livespec-4jsi` (extract, in `livespec-runtime`) → blocks
+`livespec-6a4n` (impl-beads consume) + `livespec-5g4i` (impl-git-jsonl consume).
+
+Design intent (from `plan.md` §B) — **do a design pass FIRST**:
+- Home = **`livespec-runtime`** (both impls already depend on it `v0.3.0` + vendor
+  under `_vendor/`). NOT core. NO new package.
+- Move (shared once): the `WorkItem` data model (currently duplicated per-repo) +
+  a `Store` interface (`typing.Protocol`: `read_work_items` / `append_work_item` /
+  `materialize_work_items` / comments) + genuinely-identical pure logic
+  (materialize/head-reduction, identity, validation). **No `Memo`** — it's gone now,
+  so the extracted protocol is memo-free (this is why step 4 follows step 3).
+- Stays per-impl (the "fill"): backend I/O — impl-beads → Beads/Dolt via `bd`;
+  impl-git-jsonl → JSONL files. Each just IMPLEMENTS the shared interface.
+- **Two real divergences to converge** (scope these before coding): the config/param
+  type (`StoreConfig` vs `Path`) and the comments API. Compare the two impls'
+  `store.py`/`types.py` (now memo-free) side by side.
+- **Atomic version-bump fan-out** — bump `livespec-runtime`, then pin-and-bump BOTH
+  consumers together. Watch the **schema-tightening-breaks-shared-wrapper hazard**
+  (making a shared key required breaks `list_work_items` on every sibling store until
+  each is backfilled — backfill both together). The dev-tooling v0.14.1 deletion-filter
+  fix means file-deletion churn in the consumers won't trip pre-push.
+
+### Step 5 — container real-work substrate (READY)
+
+Work-item: `livespec-pe9u` (impl-beads). Promote the containerized Beads/Dolt+Fabro
+orchestrator from Tier-2 proof runner to the real-work substrate: real work clones
+repos fresh from GitHub; host coupling reduced to secret provisioning + explicitly
+injected externals; byte-count-only secret hygiene; gate on `just check` +
+`just acceptance`. More self-contained than step 4 (single repo, no fan-out).
+
+### Close-out
+
+Once `4jsi`/`6a4n`/`5g4i` (step 4) and `pe9u` (step 5) land, close
+`livespec-zkmn.1` then `livespec-zkmn` — which unblocks the orchestrator rename
+wave `livespec-4moata.4` (drop `impl-` → `orchestrator-`; playbook at
+`tmp/orchestrator-rename-kickoff-prompt.md`). Do NOT start the rename mid-W7.
 
 ## Next action
 
-Step 2 is COMPLETE. Proceed to steps 3-5. Each is substantial:
-
-1. The memo kill (step 3) is spec-first and touches the contract, so drive it
-   through `/livespec:propose-change` -> `/livespec:revise` before any impl
-   change.
-2. The shared `Store` extraction (step 4) is a coordinated cross-repo bump:
-   extract once, then fan the version bump out to every consumer repo.
-3. Promote the container image to the real-work substrate (step 5).
-
-Do not start the orchestrator rename work or any non-W7 epic from this handoff.
-The rename wave `4moata.4` is downstream of W7 and remains out of scope until
-`livespec-zkmn` is closed.
+Step 3 is COMPLETE. Proceed to step 4, starting with a divergence-convergence
+design pass (`StoreConfig`-vs-`Path` + comments API) over the two impls' now-memo-free
+`store.py`/`types.py`, then extract into `livespec-runtime` and fan the version bump
+out to both consumers atomically. Step 5 (`pe9u`) is independent and can go in
+parallel (separate repo concern from step 4's runtime extraction, though both touch
+impl-beads — sequence impl-beads PRs to avoid worktree collisions).
 
 ## Work discipline
 
-Every tracked repo change still uses worktree -> PR -> merge -> cleanup. Use
-`mise exec -- git ...` so hooks run, never pass `--no-verify`, and do not leave
-dirty primary checkouts or orphaned worktrees. If a future session must stop,
-update this file with the active worktree path, branch, PR, validation state,
-and next action.
+Every tracked repo change uses worktree → PR → merge → cleanup. Use
+`mise exec -- git ...` so hooks run, never pass `--no-verify` (fix the gate, not the
+bypass — see the dev-tooling v0.14.1 fix above for the pattern), and do not leave
+dirty primary checkouts or orphaned worktrees. Verify cross-repo state via
+`git -C <clone> show origin/master:<path>` / `git grep origin/master` — a parallel
+session has touched this epic, so do not trust local working trees or agent idle
+pings; confirm merges independently. Spec-side changes (incl. each impl's OWN
+SPECIFICATION) are dogfooded via `/livespec:propose-change` → `/livespec:revise`
+(drive the core CLIs at `.claude-plugin/scripts/bin/` with `--project-root` pointed
+at the worktree; co-edit `tests/heading-coverage.json` on any H2 change). If a future
+session must stop, update this file with the active worktree path, branch, PR,
+validation state, and next action.
