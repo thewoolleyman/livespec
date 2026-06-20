@@ -138,6 +138,41 @@ branches were deleted, remaining remote topic branches were deleted through the
 GitHub API where the primary-checkout push guard blocked `git push --delete`,
 and each checkout was verified clean on `master`.
 
+## Acceptance runtime-matrix evidence (W7 step 2)
+
+This section records which agent runtime each acceptance tier actually
+exercised in the W7 impl/acceptance factory. Telemetry stays token-first:
+provider dollar estimates are overlays only, and Codex/OpenAI runtime
+participation is never inferred from Claude Code dollar spans.
+
+- **Beads/Fabro LIVE golden-master tier (`livespec-b8od`,
+  livespec-impl-beads PR #101):** Exercised the **Claude Code Driver
+  runtime**. The UNMODIFIED production `implement-work-item` Fabro workflow
+  dispatched the greeting work-item into a Fabro sandbox (image
+  `ghcr.io/thewoolleyman/livespec-fabro-sandbox:sha-ea684ad`) where
+  **Claude (Fable 5)** implemented `greet()` from the fixture
+  SPECIFICATION; a real PR was created and merged; the behavioral assertion
+  `greet("Ada")=="Hello, Ada!"` was green from the merged repo; and the run
+  was independently reproduced from clean `master` (run repo
+  `livespec-e2e-9h6jqddb`, dispatcher `status=green`/`converged`, ~161s).
+  The run's calibration record had `token_cost_micros: null` (no dollar
+  overlay captured this run) — telemetry stays token-first.
+- **git-jsonl hermetic tier (`livespec-ei4i`):** Deterministic stub (a
+  canned greet program); **no agent runtime exercised** — a fast, hermetic,
+  LLM-free behavioral check. The swap-proof pairs this deterministic
+  reference against the live real-factory Beads/Fabro run.
+- **Codex:** NOT exercised in the impl/acceptance FACTORY. Codex has
+  verified project-local adapters in core for spec-side `help`/`next`/`doctor`
+  ONLY; there is no Codex impl-side driver. Classification: no-adapter for
+  the impl factory; Codex participation here is contributor-workflow
+  (`AGENTS.md` instruction loading) plus spec-side adapters, not a runtime
+  that drives the golden-master.
+- **Pi:** future harness; not yet exercised.
+- **Claude-only mechanics that remain driver-only:** the Fabro factory and
+  the Claude Code Driver plugin hooks; the project `livespec_footgun_guard`
+  pre-tool hook still needs a Codex replacement before mutating Codex
+  automation.
+
 ## Family-wide gaps
 
 ### Repository support
