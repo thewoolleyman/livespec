@@ -397,158 +397,6 @@ The Codex high-level e2e/runtime-matrix alignment pass ran on 2026-06-20:
     `54b09c6` from unrelated CI workflow work; the primary checkout was
     fast-forwarded to `54b09c6` before this follow-up handoff update began.
 
-The W7 Tier-2 follow-up item was filed after the runtime-matrix alignment and
-is now closed:
-
-- Beads item: `livespec-impl-beads-dn9`
-- Tenant: `livespec-impl-beads`
-- Created: 2026-06-20 local time / 2026-06-19 UTC
-- Title: `W7 step 2A: Tier-2 containerized real-dispatch proof`
-- Labels: `codex-support`, `e2e-codex`, `w7`, `acceptance`
-- Why it exists:
-  - Closed item `livespec-impl-beads-o2f` completed the DinD spike.
-  - Closed item `livespec-impl-beads-8bc` completed the production
-    orchestrator image and Tier-1 verification, but explicitly deferred Tier 2:
-    one real dispatch from inside the container after the sandbox image and
-    per-dispatch credentials are available.
-  - `dn9` became the tracked Beads/Fabro dispatch-plumbing proof before the
-    full W7 golden-master acceptance harness.
-- Acceptance summary:
-  - provide a checked-in script, `just` target, or research note for running
-    the Tier-2 containerized dispatch proof under the 1Password wrapper;
-  - prove the dispatch path uses the inner Docker daemon, not the host daemon;
-  - document sandbox-image and credential prerequisites without printing
-    secrets;
-  - classify Codex participation: instruction loading, verified adapters where
-    present, and explicit no-adapter classifications where appropriate;
-  - keep telemetry token-first and never infer Codex/OpenAI evidence from
-    Claude Code dollar spans;
-  - record the result in impl-beads and reference it back from this core audit
-    before closing the item.
-- Initial verification:
-  - `bd show livespec-impl-beads-dn9 --json` confirmed the item, labels, and
-    acceptance criteria. Beads emitted the known `.beads` permission warning
-    and `beads.role` warning, but the create/show operations succeeded.
-
-The first `dn9` implementation slice landed in `livespec-impl-beads`:
-
-- PR: `https://github.com/thewoolleyman/livespec-impl-beads/pull/78`
-- Merge commit: `4c460d188190995879ce056e7e018da2570991e9`
-- Worktree: `/data/projects/livespec-impl-beads-tier2-dispatch-proof`
-- Branch: `w7-tier2-dispatch-proof`
-- Scope:
-  - Added `orchestrator-image/tier2-dispatch-proof.sh`.
-  - Added `just w7-tier2-dispatch-proof`.
-  - Added `research/w7-orchestrator-convergence/tier2-dispatch-proof.md`.
-  - Updated `orchestrator-image/README.md`.
-- Verification:
-  - `bash -n orchestrator-image/tier2-dispatch-proof.sh` passed.
-  - `mise exec -- just w7-tier2-dispatch-proof -- --help` passed.
-  - `/data/projects/1password-env-wrapper/with-livespec-env.sh -- bash
-    orchestrator-image/tier2-dispatch-proof.sh --preflight --build-image`
-    passed, building `livespec-orchestrator:dev`.
-  - Built image id:
-    `sha256:913eeda6955aa58dff51b6950f34a7d2342e6928b4a8df6894243b8d234543a2`.
-  - A second preflight without `--build-image` passed and confirmed the image
-    is present.
-  - `mise exec -- just check-pre-commit-doc-only` passed all three doc-only
-    targets.
-  - Commit and pre-push hooks reran the doc-only subset and passed.
-  - PR checks passed, including `e2e-cli`; `export-telemetry` skipped because
-    the workflow event was a PR.
-- Cleanup:
-  - The primary checkout `/data/projects/livespec-impl-beads` was
-    fast-forwarded to `4c460d1`.
-  - The feature worktree was removed.
-  - The local branch `w7-tier2-dispatch-proof` was deleted.
-  - The remote topic branch did not auto-delete on merge, so it was deleted
-    through the GitHub API and pruned locally.
-  - The pre-existing unrelated worktree
-    `/data/projects/livespec-impl-beads/.claude/worktrees/fabro-graph-fix` was
-    left untouched.
-- Follow-on proof chain:
-  - `livespec-impl-beads-dn9` was closed after PR #85
-    (`4c926c17e5f077d7db279e76d1b56a07534e7557`) proved the containerized
-    Dispatcher could launch a real Fabro sandbox, clone the repo, implement a
-    tiny sentinel, run janitor `just check`, and push a branch from inside the
-    container. PR auth/merge completion was deliberately split into
-    `livespec-impl-beads-5qv`.
-  - `livespec-impl-beads-5qv` and proof sentinels `w9d`, `law`, `uw8`, `0b7`,
-    `6vo`, and `ef5` are closed. The sequence fixed the PR sandbox GitHub
-    token projection and container runtime gaps found by the proof:
-    PR #86/#87/#88 for credential projection and secret hygiene, PR #90 for
-    `mise` in the orchestrator image, PR #92 for writable post-merge primary
-    refresh, PR #94 for `libatomic1`, and PR #97 for the environment-stable
-    Dispatcher cost-gate journal test.
-  - Final proof item `livespec-impl-beads-ef5` ran
-    `orchestrator-image/tier2-dispatch-proof.sh --run`, created and merged PR
-    #98, fast-forwarded the mounted primary checkout to
-    `431fd188875b870797f7dcf8340c4de29296eb4d`, ran post-merge janitor
-    `just check` green (45 targets, 1067 tests, 100% coverage), removed the
-    janitor checkout, and returned Dispatcher green with `merged, post-merge
-    janitor green`.
-  - This completed the Beads/Fabro containerized dispatch-plumbing proof only.
-    It did NOT complete W7 step 2's golden-master acceptance harness. The
-    git-jsonl hermetic tier and Beads/Fabro hermetic/preflight tier have since
-    landed separately, as recorded below.
-
-The remaining W7 work is now filed explicitly in the `livespec` tenant instead
-of relying on prose memory:
-
-| Item | Status | Target repo | Step / boundary |
-|---|---|---|---|
-| `livespec-ei4i` | closed | `livespec-impl-git-jsonl` | Step 2 git-jsonl hermetic golden-master acceptance harness |
-| `livespec-b8od` | blocked | `livespec-impl-beads` | Step 2 Beads/Fabro live throwaway-GitHub tier; hermetic/preflight tier landed |
-| `livespec-1oe9` | open, blocked by `b8od` | `livespec` | Step 2 runtime-matrix evidence |
-| `livespec-gjn4` | open, after step 2 | `livespec` | Step 3 spec-first memo surface retirement |
-| `livespec-kfiz` | open, after `gjn4` | `livespec-impl-beads` | Step 3 Beads/Fabro memo retirement |
-| `livespec-d4j3` | open, after `gjn4` | `livespec-impl-git-jsonl` | Step 3 git-jsonl memo retirement |
-| `livespec-4jsi` | open, after step 2 | `livespec-runtime` | Step 4 shared Store extraction |
-| `livespec-6a4n` | open, after `4jsi` | `livespec-impl-beads` | Step 4 Beads/Fabro Store consumer |
-| `livespec-5g4i` | open, after `4jsi` | `livespec-impl-git-jsonl` | Step 4 git-jsonl Store consumer |
-| `livespec-pe9u` | open, after Beads/Fabro acceptance | `livespec-impl-beads` | Step 5 real-work container substrate |
-| `livespec-b91b` | open, after step 2 | `livespec` | zkmn diagram/template remainder disposition |
-
-W7 acceptance progress after the 2026-06-20 accountability repair:
-
-- `livespec-ei4i` is complete and closed.
-  - Repo: `livespec-impl-git-jsonl`
-  - PR: `https://github.com/thewoolleyman/livespec-impl-git-jsonl/pull/92`
-  - Landed commit: `19c9c09142480f657b633e637b0ebcfedd1a57d5`
-  - Delivered a checked-in `hello-world-greets-a-name` SPECIFICATION fixture,
-    `livespec_impl_git_jsonl.acceptance`, `tests/livespec_impl_git_jsonl/
-    test_acceptance.py`, out-of-aggregate `just acceptance`, and a CI
-    `acceptance` job.
-  - Validation: red-green replay trailers on the final commit; targeted test
-    passed; `just acceptance` passed; `check-static` passed; pre-commit Green
-    amend and pre-push both ran full `just check` with 320 tests and 100%
-    coverage; PR checks passed, including `acceptance`.
-- `livespec-b8od` has partial progress landed but remains blocked.
-  - Repo: `livespec-impl-beads`
-  - PR: `https://github.com/thewoolleyman/livespec-impl-beads/pull/99`
-  - Landed commit: `ad6fd1c890f413369a5a422e2babaadd12052353`
-  - Delivered the hermetic Beads/Fabro `hello-world-greets-a-name` fixture,
-    `livespec_impl_beads.acceptance`, `tests/livespec_impl_beads/
-    test_acceptance.py`, out-of-aggregate `just acceptance`, CI `acceptance`,
-    and live-tier operator entrypoints `just acceptance-live-preflight` and
-    `just acceptance-live <item>` that delegate to
-    `orchestrator-image/tier2-dispatch-proof.sh`.
-  - Validation: red-green replay trailers on the final commit; targeted test
-    passed; `just acceptance` passed; `check-static` passed; 1Password-wrapped
-    `just acceptance-live-preflight` passed with byte-count-only secret probes
-    and existing `livespec-orchestrator:dev` image; pre-commit Green amend and
-    pre-push both ran full `just check` with 1068 tests and 100% coverage; PR
-    checks passed, including `acceptance`.
-  - Blocker: the original `b8od` acceptance still requires the live throwaway
-    GitHub tier: create `livespec-e2e-*` repo, run the production
-    container/Fabro path, create and merge the generated PR, assert greeting
-    behavior from the merged repo, and delete/reap the throwaway repo. The
-    current `LIVESPEC_FAMILY_GITHUB_TOKEN` authenticates but cannot create
-    repos: a tightly named permission smoke failed with GitHub error
-    `GraphQL: Resource not accessible by personal access token
-    (createRepository)`. `livespec-b8od` is therefore status `blocked` with
-    label `blocked:github-create-repo`.
-
 ## Handoff protocol
 
 This file is the complete continuation prompt for the next session. Keep all
@@ -655,17 +503,6 @@ At the end of any session that changes the Codex support state:
 - Codex telemetry/cost evidence remains tokens-primary. Dollar figures are
   provider-specific overlays and must not be inferred from Claude Code cost
   spans.
-- W7 Beads/Fabro dispatch plumbing is complete through final proof item
-  `livespec-impl-beads-ef5` and PR #98. Do not redo `dn9` or the proof-sentinel
-  chain.
-- W7 step 2 now has both hermetic acceptance merge gates landed:
-  git-jsonl PR #92 (`19c9c091`) and Beads/Fabro PR #99 (`ad6fd1c8`). Do not
-  redo either hermetic harness.
-- The only remaining W7 step-2 blocker is the Beads/Fabro live throwaway
-  GitHub tier in `livespec-b8od`: the current family token cannot create repos.
-  `livespec-b8od` is blocked with `blocked:github-create-repo`. Do not claim
-  runtime-matrix evidence (`livespec-1oe9`) complete until the live tier has
-  either run successfully or been formally rescoped by the user.
 
 ## Work discipline
 
@@ -703,19 +540,9 @@ runtime-mechanism closure:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Resume W7 at the current blocker:
-   - `livespec-ei4i` is closed; do not redo it.
-   - `livespec-b8od` is blocked on GitHub repo-create/delete permission for
-     the live throwaway `livespec-e2e-*` proof. With a suitable token or GitHub
-     App credential, run the full live tier: create throwaway repo, seed the
-     fixture, run `just acceptance-live <item>` / the production
-     container/Fabro path, create+merge the generated PR, assert the greeting
-     behavior from the merged repo, delete/reap the repo, and then close
-     `b8od`.
-   - Only after `b8od` closes, continue `livespec-1oe9` for runtime-matrix
-     evidence, then memo kill (`gjn4`, `kfiz`, `d4j3`), shared Store extraction
-     (`4jsi`, `6a4n`, `5g4i`), substrate promotion (`pe9u`), and
-     diagram/template disposition (`b91b`).
+2. Continue `livespec-zkmn.1` high-level e2e/golden-master implementation with
+   Codex as a supported agent-runtime dimension. The W7 research plan now
+   records the required Claude/Codex/Pi runtime matrix.
 3. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60` as implementation begins; Codex should remain
    tokens-primary, not Claude-cost-derived.

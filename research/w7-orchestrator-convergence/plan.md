@@ -115,19 +115,29 @@ Steps 0-1 plus the Beads/Fabro **dispatch-plumbing** proof are complete:
 proved the production orchestrator container can run Fabro through PR creation,
 merge, post-merge janitor `just check`, cleanup, and a green Dispatcher exit.
 
-That proof is not the step-2 golden-master acceptance harness. Step 2 remains
-open until the same hello-world fixture SPECIFICATION is run behaviorally
-through both orchestrators (git-jsonl and Beads/Fabro), the produced software's
-greeting behavior is asserted, `just acceptance` is wired as a required CI gate
-on both impl repos, and the Claude Code / Codex / future Pi runtime-matrix
-evidence is captured.
+That proof is not the step-2 golden-master acceptance harness. Step 2 is partly
+landed:
 
-The remaining queue is filed in the `livespec` tenant: `livespec-ei4i`
-(git-jsonl acceptance), `livespec-b8od` (Beads/Fabro acceptance),
-`livespec-1oe9` (runtime-matrix evidence), `livespec-gjn4`/`kfiz`/`d4j3`
-(memo kill), `livespec-4jsi`/`6a4n`/`5g4i` (shared Store extraction and
-consumers), `livespec-pe9u` (real-work container substrate), and
-`livespec-b91b` (diagram/template remainder disposition).
+- `livespec-ei4i` is closed. The `livespec-impl-git-jsonl` hermetic
+  hello-world acceptance harness landed in PR #92 at
+  `19c9c09142480f657b633e637b0ebcfedd1a57d5`.
+- `livespec-b8od` remains blocked. The `livespec-impl-beads` hermetic and
+  live-preflight acceptance tiers landed in PR #99 at
+  `ad6fd1c890f413369a5a422e2babaadd12052353`, but the remaining live
+  throwaway-GitHub proof cannot run until the family credential can create and
+  delete `livespec-e2e-*` repositories.
+- `livespec-1oe9` remains blocked behind `livespec-b8od`; it records the
+  Claude Code / Codex / future Pi runtime-matrix evidence after the step-2
+  acceptance proof closes.
+
+The active W7 continuation prompt is
+`research/w7-orchestrator-convergence/handoff-prompt.md`. Do not use
+`research/codex-support/handoff-prompt.md` as the W7 runbook.
+
+The remaining queue is filed in the `livespec` tenant:
+`livespec-gjn4`/`kfiz`/`d4j3` (memo kill), `livespec-4jsi`/`6a4n`/`5g4i`
+(shared Store extraction and consumers), `livespec-pe9u` (real-work container
+substrate), and `livespec-b91b` (diagram/template remainder disposition).
 
 0. **SPIKE — Fabro under Docker-in-Docker.** Nesting approach DECIDED: **Docker-in-Docker**
    (user-ratified 2026-06-15) — a full Docker daemon inside the orchestrator container, sandboxes
