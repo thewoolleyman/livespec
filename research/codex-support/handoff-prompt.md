@@ -397,7 +397,8 @@ The Codex high-level e2e/runtime-matrix alignment pass ran on 2026-06-20:
     `54b09c6` from unrelated CI workflow work; the primary checkout was
     fast-forwarded to `54b09c6` before this follow-up handoff update began.
 
-The W7 Tier-2 follow-up item was filed after the runtime-matrix alignment:
+The W7 Tier-2 follow-up item was filed after the runtime-matrix alignment and
+is now closed:
 
 - Beads item: `livespec-impl-beads-dn9`
 - Tenant: `livespec-impl-beads`
@@ -410,8 +411,8 @@ The W7 Tier-2 follow-up item was filed after the runtime-matrix alignment:
     orchestrator image and Tier-1 verification, but explicitly deferred Tier 2:
     one real dispatch from inside the container after the sandbox image and
     per-dispatch credentials are available.
-  - `dn9` is now the tracked next mergeable Beads/Fabro proof before the full
-    W7 golden-master acceptance harness.
+  - `dn9` became the tracked Beads/Fabro dispatch-plumbing proof before the
+    full W7 golden-master acceptance harness.
 - Acceptance summary:
   - provide a checked-in script, `just` target, or research note for running
     the Tier-2 containerized dispatch proof under the 1Password wrapper;
@@ -424,7 +425,7 @@ The W7 Tier-2 follow-up item was filed after the runtime-matrix alignment:
     Claude Code dollar spans;
   - record the result in impl-beads and reference it back from this core audit
     before closing the item.
-- Verification:
+- Initial verification:
   - `bd show livespec-impl-beads-dn9 --json` confirmed the item, labels, and
     acceptance criteria. Beads emitted the known `.beads` permission warning
     and `beads.role` warning, but the create/show operations succeeded.
@@ -465,11 +466,49 @@ The first `dn9` implementation slice landed in `livespec-impl-beads`:
   - The pre-existing unrelated worktree
     `/data/projects/livespec-impl-beads/.claude/worktrees/fabro-graph-fix` was
     left untouched.
-- Beads:
-  - `livespec-impl-beads-dn9` was updated with a note recording PR #78,
-    verification, image id, and the remaining blocker.
-  - The item remains open. The actual Tier-2 dispatch still needs a
-    deliberately tiny isolated ready item; do NOT dispatch `dn9` itself.
+- Follow-on proof chain:
+  - `livespec-impl-beads-dn9` was closed after PR #85
+    (`4c926c17e5f077d7db279e76d1b56a07534e7557`) proved the containerized
+    Dispatcher could launch a real Fabro sandbox, clone the repo, implement a
+    tiny sentinel, run janitor `just check`, and push a branch from inside the
+    container. PR auth/merge completion was deliberately split into
+    `livespec-impl-beads-5qv`.
+  - `livespec-impl-beads-5qv` and proof sentinels `w9d`, `law`, `uw8`, `0b7`,
+    `6vo`, and `ef5` are closed. The sequence fixed the PR sandbox GitHub
+    token projection and container runtime gaps found by the proof:
+    PR #86/#87/#88 for credential projection and secret hygiene, PR #90 for
+    `mise` in the orchestrator image, PR #92 for writable post-merge primary
+    refresh, PR #94 for `libatomic1`, and PR #97 for the environment-stable
+    Dispatcher cost-gate journal test.
+  - Final proof item `livespec-impl-beads-ef5` ran
+    `orchestrator-image/tier2-dispatch-proof.sh --run`, created and merged PR
+    #98, fast-forwarded the mounted primary checkout to
+    `431fd188875b870797f7dcf8340c4de29296eb4d`, ran post-merge janitor
+    `just check` green (45 targets, 1067 tests, 100% coverage), removed the
+    janitor checkout, and returned Dispatcher green with `merged, post-merge
+    janitor green`.
+  - This completes the Beads/Fabro containerized dispatch-plumbing proof only.
+    It does NOT complete W7 step 2's golden-master acceptance harness: the
+    hello-world fixture, behavioral assertion, git-jsonl tier, `just
+    acceptance` CI merge-gate, and agent-runtime matrix evidence remain open
+    under `livespec-zkmn.1`.
+
+The remaining W7 work is now filed explicitly in the `livespec` tenant instead
+of relying on prose memory:
+
+| Item | Target repo | Step |
+|---|---|---|
+| `livespec-ei4i` | `livespec-impl-git-jsonl` | Step 2 git-jsonl golden-master acceptance harness |
+| `livespec-b8od` | `livespec-impl-beads` | Step 2 Beads/Fabro golden-master acceptance harness |
+| `livespec-1oe9` | `livespec` | Step 2 runtime-matrix evidence |
+| `livespec-gjn4` | `livespec` | Step 3 spec-first memo surface retirement |
+| `livespec-kfiz` | `livespec-impl-beads` | Step 3 Beads/Fabro memo retirement |
+| `livespec-d4j3` | `livespec-impl-git-jsonl` | Step 3 git-jsonl memo retirement |
+| `livespec-4jsi` | `livespec-runtime` | Step 4 shared Store extraction |
+| `livespec-6a4n` | `livespec-impl-beads` | Step 4 Beads/Fabro Store consumer |
+| `livespec-5g4i` | `livespec-impl-git-jsonl` | Step 4 git-jsonl Store consumer |
+| `livespec-pe9u` | `livespec-impl-beads` | Step 5 real-work container substrate |
+| `livespec-b91b` | `livespec` | zkmn diagram/template remainder disposition |
 
 ## Handoff protocol
 
@@ -577,10 +616,12 @@ At the end of any session that changes the Codex support state:
 - Codex telemetry/cost evidence remains tokens-primary. Dollar figures are
   provider-specific overlays and must not be inferred from Claude Code cost
   spans.
-- W7 Beads/Fabro implementation now has an explicit next item:
-  `livespec-impl-beads-dn9`. PR #78 added the proof runner; the remaining work
-  is selecting/creating a tiny ready item and running the containerized
-  `--run --item` proof before expanding to the full golden-master harness.
+- W7 Beads/Fabro dispatch plumbing is complete through final proof item
+  `livespec-impl-beads-ef5` and PR #98. Do not redo `dn9` or the proof-sentinel
+  chain. The remaining W7 work is the actual golden-master acceptance harness
+  and follow-on zkmn.1 sequence: both-tier behavioral fixture proof,
+  `just acceptance` merge gates, memo kill, shared Store extraction, substrate
+  promotion, and zkmn diagram/template disposition.
 
 ## Work discipline
 
@@ -618,12 +659,11 @@ runtime-mechanism closure:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Continue `livespec-impl-beads-dn9`: select or create a deliberately tiny
-   isolated ready item, then run
-   `just w7-tier2-dispatch-proof -- --run --item <tiny-ready-item>` under the
-   1Password wrapper. Record the redacted dispatch evidence in impl-beads and
-   feed it back into `livespec-zkmn.1` and
-   `research/codex-support/family-audit.md`.
+2. Execute the remaining `livespec-zkmn.1` work items filed from the W7 plan,
+   starting with `livespec-ei4i`: step 2's git-jsonl golden-master acceptance
+   harness. Then continue `livespec-b8od` for the Beads/Fabro tier and
+   `livespec-1oe9` for runtime-matrix evidence before moving to memo kill,
+   shared Store extraction, substrate promotion, and `livespec-b91b`.
 3. Refine telemetry/cost follow-ups through `livespec-impl-beads-zbl` and
    `livespec-dev-tooling-e60` as implementation begins; Codex should remain
    tokens-primary, not Claude-cost-derived.
