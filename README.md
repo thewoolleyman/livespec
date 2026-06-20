@@ -11,6 +11,11 @@ for Claude Code).
 
 ## Install
 
+> **Setting up a new project?** See **[docs/installation.md](docs/installation.md)**
+> for the full end-to-end guide — choosing an orchestrator backend,
+> `.livespec.jsonc`, seeding the spec, and the Beads/Dolt + Fabro host
+> runtime. The summary below covers plugin enablement only.
+
 Two plugins — core (this repo: prose + CLIs + templates) and the
 Claude Code Driver (the `/livespec:*` commands). Enable them
 **per-project** by committing a `.claude/settings.json` to the repo
@@ -163,6 +168,7 @@ The livespec family dogfoods its own telemetry. CI runs, Red→Green commit-gate
 
 ## More
 
+- See [docs/installation.md](docs/installation.md) for the full end-to-end install / onboarding guide.
 - See [AGENTS.md](AGENTS.md) for repo orientation.
 - See [SPECIFICATION/](SPECIFICATION/) for the live livespec specification (dogfooded).
 - See [archive/](archive/) for bootstrap-process history.
