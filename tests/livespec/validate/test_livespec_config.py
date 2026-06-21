@@ -158,8 +158,8 @@ def test_validate_livespec_config_tolerates_unknown_top_level_sections() -> None
     payload: dict[str, object] = {
         "template": "livespec",
         "spec_root": "SPECIFICATION",
-        "implementation": {"plugin": "livespec-impl-beads"},
-        "livespec-impl-beads": {"format": "beads"},
+        "implementation": {"plugin": "livespec-orchestrator-beads-fabro"},
+        "livespec-orchestrator-beads-fabro": {"format": "beads"},
         "external_references": {"livespec-dev-tooling": []},
         "cross_repo_targets": {},
     }
@@ -302,7 +302,7 @@ def test_validate_livespec_config_orchestrator_round_trips_three_clis() -> None:
     schema = _SCHEMA
     payload: dict[str, object] = {
         "orchestrator": {
-            "name": "livespec-impl-beads",
+            "name": "livespec-orchestrator-beads-fabro",
             "spec_reader": ["impl-beads", "spec-reader"],
             "gap_capture": ["impl-beads", "gap-capture"],
             "drift_capture": ["impl-beads", "drift-capture"],
@@ -313,7 +313,7 @@ def test_validate_livespec_config_orchestrator_round_trips_three_clis() -> None:
         case Success(value):
             orchestrator = value.orchestrator
             assert orchestrator is not None
-            assert orchestrator.name == "livespec-impl-beads"
+            assert orchestrator.name == "livespec-orchestrator-beads-fabro"
             assert orchestrator.spec_reader == ["impl-beads", "spec-reader"]
             assert orchestrator.gap_capture == ["impl-beads", "gap-capture"]
             assert orchestrator.drift_capture == ["impl-beads", "drift-capture"]
@@ -332,7 +332,7 @@ def test_validate_livespec_config_orchestrator_missing_cli_is_rejected() -> None
     schema = _SCHEMA
     payload: dict[str, object] = {
         "orchestrator": {
-            "name": "livespec-impl-beads",
+            "name": "livespec-orchestrator-beads-fabro",
             "spec_reader": ["impl-beads", "spec-reader"],
         },
     }

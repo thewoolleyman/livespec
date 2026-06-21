@@ -127,7 +127,7 @@ def test_fails_when_orchestrator_cli_is_not_executable(*, tmp_path: Path) -> Non
         project_root=project_root,
         payload={
             "orchestrator": {
-                "name": "livespec-impl-beads",
+                "name": "livespec-orchestrator-beads-fabro",
                 "spec_reader": [str(executable)],
                 "gap_capture": [str(executable)],
                 "drift_capture": [str(non_executable)],
@@ -149,7 +149,7 @@ def test_passes_when_orchestrator_clis_resolve(*, tmp_path: Path) -> None:
         project_root=project_root,
         payload={
             "orchestrator": {
-                "name": "livespec-impl-beads",
+                "name": "livespec-orchestrator-beads-fabro",
                 "spec_reader": [str(executable), "spec-reader"],
                 "gap_capture": [str(executable), "gap-capture"],
                 "drift_capture": [str(executable), "drift-capture"],
