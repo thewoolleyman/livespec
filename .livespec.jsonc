@@ -39,7 +39,7 @@
       "local_clone": "/data/projects/livespec",
       "default_branch": "master"
     },
-    "livespec-impl-git-jsonl": {
+    "livespec-orchestrator-git-jsonl": {
       "github_url": "https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl",
       "local_clone": "/data/projects/livespec-orchestrator-git-jsonl",
       "default_branch": "master"

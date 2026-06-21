@@ -32,7 +32,7 @@
     { "repo": "livespec-dev-tooling", "class": "enforcement-suite" },
     { "repo": "livespec-driver-claude", "class": "driver-plugin" },
     { "repo": "livespec-impl-beads", "class": "impl-plugin" },
-    { "repo": "livespec-impl-git-jsonl", "class": "impl-plugin" },
+    { "repo": "livespec-orchestrator-git-jsonl", "class": "impl-plugin" },
     { "repo": "livespec-runtime", "class": "library" }
   ]
 }
