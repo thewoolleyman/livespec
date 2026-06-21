@@ -70,7 +70,7 @@ dev = [
 # SPECIFICATION/contracts.md §"`livespec_runtime.cross_repo` contract
 # surface". Bump-pin PRs follow the same shape as livespec-dev-tooling.
 [tool.uv.sources]
-livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.14.0" }
+livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.15.0" }
 livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.git", tag = "v0.3.1" }
 
 # ---------------------------------------------------------------------------
@@ -99,6 +99,26 @@ scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.cons
 destructive_cli_allowlist = [
     "dev-tooling/implementation/gap_blueprints.json",
     "dev-tooling/implementation/research/",
+]
+# Repo-root-relative path prefixes the `tests_no_subprocess_spawn` check
+# (canonical, added in livespec-dev-tooling v0.14.1) exempts from its
+# test-spawned-Python-subprocess scan. Every entry genuinely needs a real
+# subprocess: each drives a check/CLI module as a binary to assert its
+# exit-code + stderr contract (the `__main__`-guard / CLI-invocation
+# behavior), which cannot be exercised in-process. Hardening these child
+# envs to scrub COVERAGE_PROCESS_START / COV_CORE_* (the docstring's
+# stronger discipline the gate does not enforce) is tracked as a separate
+# follow-up.
+subprocess_spawn_allowlist = [
+    "tests/dev-tooling/checks/test_behavior_scenario_link.py",
+    "tests/dev-tooling/checks/test_canonical_slugs_projection.py",
+    "tests/dev-tooling/checks/test_codex_adapter_sync.py",
+    "tests/dev-tooling/checks/test_comment_no_historical_refs.py",
+    "tests/dev-tooling/checks/test_copier_template_smoke.py",
+    "tests/dev-tooling/checks/test_schema_dataclass_pairing.py",
+    "tests/dev-tooling/implementation/test_check_gaps.py",
+    "tests/dev-tooling/implementation/test_refresh_gaps.py",
+    "tests/e2e/test_doctor_fail_then_fix.py",
 ]
 
 # ---------------------------------------------------------------------------
@@ -262,11 +282,6 @@ ban-relative-imports = "all"
 # noise. S105 covers TRAILER-token constants whose names trip
 # the password heuristic.
 "dev-tooling/checks/*.py" = ["S603", "S607", "S404", "S105"]
-# dev-tooling/ mutating tools (vendor_update.py and any future peer)
-# shell out to git via subprocess.run with a fixed argv list per the
-# vendoring-procedure invocation contract. Same S603/S607/S404
-# carve-out shape as dev-tooling/checks/*.py above.
-"dev-tooling/vendor_update.py" = ["S603", "S607", "S404"]
 # reap_stale_worktrees.py is the orchestrator's worktree-reaper
 # action tool; it shells out to git via subprocess.run with fixed
 # argv lists. Same S603/S607/S404 carve-out shape as the peer

@@ -46,6 +46,7 @@
 - check-skill-invocation-paths
 - check-supervisor-discipline
 - check-tests-mirror-pairing
+- check-tests-no-subprocess-spawn
 - check-tool-backed-check-completeness
 - check-vendor-manifest
 - check-wrapper-shape
