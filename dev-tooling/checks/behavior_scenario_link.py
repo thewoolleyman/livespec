@@ -10,7 +10,7 @@ clause with no such link is surfaced.
 The clause-extractor + gap-id derivation are single-sourced from
 the shared `dev-tooling/spec_clauses.py` primitive, so the gap-ids
 this check derives are byte-identical to the ones the
-`livespec-impl-beads` detector derives (a vendored copy of the same
+`livespec-orchestrator-beads-fabro` detector derives (a vendored copy of the same
 module). That single-sourcing is what lets one `clauses[]` link map
 across the family.
 

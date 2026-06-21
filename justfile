@@ -101,13 +101,13 @@ bootstrap:
 ensure-plugins:
     claude plugin marketplace add thewoolleyman/livespec
     claude plugin marketplace add thewoolleyman/livespec-driver-claude
-    claude plugin marketplace add thewoolleyman/livespec-impl-beads
+    claude plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro
     claude plugin install livespec@livespec
     claude plugin install livespec@livespec-driver-claude
-    claude plugin install livespec-impl-beads@livespec-impl-beads
+    claude plugin install livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro
     claude plugin update livespec@livespec
     claude plugin update livespec@livespec-driver-claude
-    claude plugin update livespec-impl-beads@livespec-impl-beads
+    claude plugin update livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro
 
 # ---------------------------------------------------------------
 # Aggregate check — runs every check below sequentially. Continues

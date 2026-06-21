@@ -53,7 +53,7 @@ needs.
 
 ### Beads/Dolt + Fabro — parallel, concurrency-safe
 
-- Plugin: **`livespec-impl-beads`**.
+- Plugin: **`livespec-orchestrator-beads-fabro`**.
 - Work-items live in a [beads](https://github.com/steveyegge/beads)
   ledger backed by a **Dolt SQL server** (not git). The Fabro loop
   dispatches each ready work-item into its own sandbox; a Dispatcher
@@ -91,17 +91,17 @@ Substitute the orchestrator plugin you chose in §2 for the
   "extraKnownMarketplaces": {
     "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec" } },
     "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude" } },
-    "livespec-impl-beads":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-impl-beads" } }
+    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro" } }
   },
   "enabledPlugins": {
     "livespec@livespec": true,
     "livespec@livespec-driver-claude": true,
-    "livespec-impl-beads@livespec-impl-beads": true
+    "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro": true
   }
 }
 ```
 
-For the serial backend, replace the `livespec-impl-beads` keys with
+For the serial backend, replace the `livespec-orchestrator-beads-fabro` keys with
 `livespec-orchestrator-git-jsonl` (repo `thewoolleyman/livespec-orchestrator-git-jsonl`).
 
 After committing, restart Claude Code or run `/reload-plugins`. The
@@ -156,8 +156,8 @@ variable at `bd`-call time (§4.1). TCP-only, so there is **no**
 {
   "template": "livespec",
   "spec_root": "SPECIFICATION",
-  "implementation": { "plugin": "livespec-impl-beads" },
-  "livespec-impl-beads": {
+  "implementation": { "plugin": "livespec-orchestrator-beads-fabro" },
+  "livespec-orchestrator-beads-fabro": {
     "format": "beads",
     "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "master" },
     "connection": {
