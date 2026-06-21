@@ -44,7 +44,7 @@ needs.
 
 ### git-jsonl — serial, zero infrastructure
 
-- Plugin: **`livespec-impl-git-jsonl`**.
+- Plugin: **`livespec-orchestrator-git-jsonl`**.
 - Work-items and memos live in committed JSONL files
   (`work-items.jsonl`, `memos.jsonl`) in the repo.
 - No external services. Serial by construction — one writer at a time.
@@ -102,7 +102,7 @@ Substitute the orchestrator plugin you chose in §2 for the
 ```
 
 For the serial backend, replace the `livespec-impl-beads` keys with
-`livespec-impl-git-jsonl` (repo `thewoolleyman/livespec-impl-git-jsonl`).
+`livespec-orchestrator-git-jsonl` (repo `thewoolleyman/livespec-orchestrator-git-jsonl`).
 
 After committing, restart Claude Code or run `/reload-plugins`. The
 eight `/livespec:*` commands become available with the `livespec:`
@@ -133,8 +133,8 @@ keyring, secret manager).
 {
   "template": "livespec",
   "spec_root": "SPECIFICATION",
-  "implementation": { "plugin": "livespec-impl-git-jsonl" },
-  "livespec-impl-git-jsonl": {
+  "implementation": { "plugin": "livespec-orchestrator-git-jsonl" },
+  "livespec-orchestrator-git-jsonl": {
     "format": "jsonl",
     "compat": { "livespec_core": ">=0.1.0,<1.0.0", "pinned": "master" },
     "work_items_path": "work-items.jsonl",

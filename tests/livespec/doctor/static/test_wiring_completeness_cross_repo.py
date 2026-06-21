@@ -109,7 +109,7 @@ def _write_livespec_jsonc(
     config: dict[str, Any] = {
         "template": "livespec",
         "spec_root": "SPECIFICATION",
-        "implementation": {"plugin": "livespec-impl-git-jsonl"},
+        "implementation": {"plugin": "livespec-orchestrator-git-jsonl"},
     }
     if cross_repo_targets is not None:
         config["cross_repo_targets"] = cross_repo_targets
@@ -1706,11 +1706,11 @@ def test_resolve_effective_local_clone_returns_manifest_path_when_env_unset() ->
     the CI-only path.
     """
     result = resolve_effective_local_clone(
-        sibling_slug="livespec-impl-git-jsonl",
-        target={"local_clone": "/data/projects/livespec-impl-git-jsonl"},
+        sibling_slug="livespec-orchestrator-git-jsonl",
+        target={"local_clone": "/data/projects/livespec-orchestrator-git-jsonl"},
         env={},
     )
-    assert result == "/data/projects/livespec-impl-git-jsonl"
+    assert result == "/data/projects/livespec-orchestrator-git-jsonl"
 
 
 def test_resolve_effective_local_clone_returns_none_when_no_path_available() -> None:
@@ -1720,7 +1720,7 @@ def test_resolve_effective_local_clone_returns_none_when_no_path_available() -> 
     Path B (GitHub API)."
     """
     result = resolve_effective_local_clone(
-        sibling_slug="livespec-impl-git-jsonl",
+        sibling_slug="livespec-orchestrator-git-jsonl",
         target={"github_url": "https://github.com/x/y"},
         env={},
     )
@@ -1730,7 +1730,7 @@ def test_resolve_effective_local_clone_returns_none_when_no_path_available() -> 
 def test_resolve_effective_local_clone_returns_none_when_manifest_value_empty() -> None:
     """Empty-string `local_clone` is treated as absent (None)."""
     result = resolve_effective_local_clone(
-        sibling_slug="livespec-impl-git-jsonl",
+        sibling_slug="livespec-orchestrator-git-jsonl",
         target={"local_clone": ""},
         env={},
     )
@@ -1747,11 +1747,11 @@ def test_resolve_effective_local_clone_uses_env_var_when_set(*, tmp_path: Path) 
     """
     clones_root = tmp_path / "ci-clones"
     result = resolve_effective_local_clone(
-        sibling_slug="livespec-impl-git-jsonl",
-        target={"local_clone": "/data/projects/livespec-impl-git-jsonl"},
+        sibling_slug="livespec-orchestrator-git-jsonl",
+        target={"local_clone": "/data/projects/livespec-orchestrator-git-jsonl"},
         env={CLONES_ROOT_ENV_VAR: str(clones_root)},
     )
-    assert result == str(clones_root / "livespec-impl-git-jsonl")
+    assert result == str(clones_root / "livespec-orchestrator-git-jsonl")
 
 
 def test_resolve_effective_local_clone_env_var_overrides_missing_manifest(
@@ -1771,11 +1771,11 @@ def test_resolve_effective_local_clone_env_var_overrides_missing_manifest(
 def test_resolve_effective_local_clone_empty_env_var_falls_back_to_manifest() -> None:
     """A set-but-empty env var is treated as unset (manifest wins)."""
     result = resolve_effective_local_clone(
-        sibling_slug="livespec-impl-git-jsonl",
-        target={"local_clone": "/data/projects/livespec-impl-git-jsonl"},
+        sibling_slug="livespec-orchestrator-git-jsonl",
+        target={"local_clone": "/data/projects/livespec-orchestrator-git-jsonl"},
         env={CLONES_ROOT_ENV_VAR: ""},
     )
-    assert result == "/data/projects/livespec-impl-git-jsonl"
+    assert result == "/data/projects/livespec-orchestrator-git-jsonl"
 
 
 def test_host_repo_detected_by_slug_basename_match_when_manifest_path_mismatches(
@@ -1858,7 +1858,7 @@ def test_env_var_override_makes_path_a_resolve_via_env_root(
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
     clones_root = tmp_path / "ci-clones"
     clones_root.mkdir()
-    sibling_clone = clones_root / "livespec-impl-git-jsonl"
+    sibling_clone = clones_root / "livespec-orchestrator-git-jsonl"
     sibling_clone.mkdir()
     _git_init_and_commit(
         clone=sibling_clone,
@@ -1867,7 +1867,7 @@ def test_env_var_override_makes_path_a_resolve_via_env_root(
     _write_livespec_jsonc(
         project_root=project_root,
         cross_repo_targets={
-            "livespec-impl-git-jsonl": {
+            "livespec-orchestrator-git-jsonl": {
                 "github_url": "https://github.com/example/sibling",
                 # Bogus path that does NOT exist on the test runner —
                 # without the env-var override, Path A would fall
