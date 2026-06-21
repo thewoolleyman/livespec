@@ -200,6 +200,7 @@ check:
         check-skill-invocation-paths
         check-supervisor-discipline
         check-tests-mirror-pairing
+        check-tests-no-subprocess-spawn
         check-tool-backed-check-completeness
         check-vendor-manifest
         check-wrapper-shape
@@ -907,6 +908,13 @@ check-red-green-replay *args:
 check-tests-mirror-pairing:
     uv run python -m livespec_dev_tooling.checks.tests_mirror_pairing
 
+# Forbid test-spawned Python subprocesses (`subprocess.run([sys.executable, ...])`)
+# in tests/ — they self-instrument under `pytest --cov` and race concurrent
+# coverage runs; prefer the in-process `main()` pattern. Canonical check added
+# in livespec-dev-tooling v0.14.1 (4i5). In `just check` aggregate.
+check-tests-no-subprocess-spawn:
+    uv run python -m livespec_dev_tooling.checks.tests_no_subprocess_spawn
+
 # Commit-pair gate: every commit touching livespec/**, bin/**, or
 # dev-tooling/checks/** also touches tests/**. Lefthook pre-commit
 # only; NOT in `just check` aggregate (per-commit, not per-tree).
@@ -950,7 +958,7 @@ lint-fix:
     uv run ruff check --fix .
 
 vendor-update lib:
-    uv run python3 dev-tooling/vendor_update.py {{lib}}
+    uv run python -m livespec_dev_tooling.vendor_update {{lib}}
 
 # Deterministic, idempotent worktree REAPER — the ACTION counterpart
 # to doctor's detection-only `no-stale-worktree` check. The Layer 3
