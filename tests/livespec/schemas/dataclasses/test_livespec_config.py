@@ -77,12 +77,12 @@ def test_livespec_config_dataclasses_are_frozen_kw_only_slotted() -> None:
 def test_orchestrator_config_round_trips_field_values() -> None:
     """OrchestratorConfig carries its four required fields verbatim."""
     orchestrator = OrchestratorConfig(
-        name="livespec-impl-beads",
+        name="livespec-orchestrator-beads-fabro",
         spec_reader=["impl-beads", "spec-reader"],
         gap_capture=["impl-beads", "gap-capture"],
         drift_capture=["impl-beads", "drift-capture"],
     )
-    assert orchestrator.name == "livespec-impl-beads"
+    assert orchestrator.name == "livespec-orchestrator-beads-fabro"
     assert orchestrator.spec_reader == ["impl-beads", "spec-reader"]
     assert orchestrator.gap_capture == ["impl-beads", "gap-capture"]
     assert orchestrator.drift_capture == ["impl-beads", "drift-capture"]

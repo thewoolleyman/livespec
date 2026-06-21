@@ -7,7 +7,7 @@ fence skipping, keyword matching) AND a frozen gap-id PARITY
 vector set.
 
 The parity vectors are the cross-repo drift guard: the SAME
-golden ids are asserted by `livespec-impl-beads`'s vendored-copy
+golden ids are asserted by `livespec-orchestrator-beads-fabro`'s vendored-copy
 parity test. If a change to the extraction rules or the gap-id
 derivation moves any id, both copies' parity tests fail in
 lockstep, forcing a coordinated cross-repo change rather than a
