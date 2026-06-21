@@ -35,7 +35,7 @@ htmlcov/
 # than per-project.
 .beads-credential-key
 # NOTE: `.beads/config.yaml` is now TRACKED (epic li-ws2iv4 cutover to
-# the per-repo livespec-impl-beads Dolt tenant). The committed config
+# the per-repo livespec-orchestrator-beads-fabro Dolt tenant). The committed config
 # carries the server-mode connection block with NO per-machine
 # project_id and NO password (the tenant password is supplied via the
 # BEADS_DOLT_PASSWORD env var at bd-call time). Per-clone bd runtime

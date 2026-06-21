@@ -112,7 +112,7 @@
         "name": {
           "type": "string",
           "minLength": 1,
-          "description": "The orchestrator's name (e.g. 'livespec-impl-beads'). By convention the orchestrator owns the top-level config section bearing this name."
+          "description": "The orchestrator's name (e.g. 'livespec-orchestrator-beads-fabro'). By convention the orchestrator owns the top-level config section bearing this name."
         },
         "spec_reader": {
           "type": "array",

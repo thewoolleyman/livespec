@@ -17,7 +17,7 @@ never drift between them):
   advisory check (extracts clauses from the live spec, derives
   gap-ids, and WARNs for any clause lacking a `clauses[]` scenario
   link in `tests/heading-coverage.json`).
-- `livespec-impl-beads`'s `/livespec-impl-beads:detect-impl-gaps`
+- `livespec-orchestrator-beads-fabro`'s `/livespec-orchestrator-beads-fabro:detect-impl-gaps`
   thin-transport command, which VENDORS a byte-identical copy of
   this module into its plugin runtime bundle (the plugin runtime
   carries no dev dependencies, so it resolves the import from the

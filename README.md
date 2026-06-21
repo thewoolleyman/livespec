@@ -27,19 +27,19 @@ hooks) load **only** in that project — never machine-wide:
   "extraKnownMarketplaces": {
     "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec" } },
     "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude" } },
-    "livespec-impl-beads":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-impl-beads" } }
+    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro" } }
   },
   "enabledPlugins": {
     "livespec@livespec": true,
     "livespec@livespec-driver-claude": true,
-    "livespec-impl-beads@livespec-impl-beads": true
+    "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro": true
   }
 }
 ```
 
 Enable **core + Driver + the impl-plugin named by your project's
 `.livespec.jsonc`** `implementation.plugin` key — swap
-`livespec-impl-beads` for your impl (e.g. `livespec-impl-plaintext`)
+`livespec-orchestrator-beads-fabro` for your impl (e.g. `livespec-impl-plaintext`)
 in both the `extraKnownMarketplaces` and `enabledPlugins` blocks.
 Because enablement is committed at **project scope**, clones, CI, and
 sandboxes all resolve the same remote-GitHub marketplaces, and
@@ -119,7 +119,7 @@ in favor of the reference Dispatcher.
 
 Cross-repo orchestration is carried by the reference **Beads/Dolt +
 Fabro orchestrator** — a Beads/Dolt Ledger, a Fabro Loop, and a thin
-Dispatcher (`livespec-impl-beads`'s `dispatcher.py`). The Dispatcher
+Dispatcher (`livespec-orchestrator-beads-fabro`'s `dispatcher.py`). The Dispatcher
 polls the ledger, dispatches each ready work-item into its own Fabro
 sandbox, runs `just check` plus `/livespec:doctor` as a hard janitor
 gate, verifies the merge, and closes the item — carrying routine
