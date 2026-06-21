@@ -6,7 +6,7 @@
   "enabledPlugins": {
     "livespec@livespec": true,
     "livespec@livespec-driver-claude": true,
-    "livespec-impl-beads@livespec-impl-beads": true
+    "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro": true
   },
   "extraKnownMarketplaces": {
     "livespec": {
@@ -21,10 +21,10 @@
         "repo": "thewoolleyman/livespec-driver-claude"
       }
     },
-    "livespec-impl-beads": {
+    "livespec-orchestrator-beads-fabro": {
       "source": {
         "source": "github",
-        "repo": "thewoolleyman/livespec-impl-beads"
+        "repo": "thewoolleyman/livespec-orchestrator-beads-fabro"
       }
     }
   },
