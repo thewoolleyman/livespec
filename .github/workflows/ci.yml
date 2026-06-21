@@ -248,7 +248,7 @@ jobs:
         if: matrix.target == 'check-doctor-static'
         run: |
           mkdir -p "$RUNNER_TEMP/sibling-clones"
-          for sibling in livespec-impl-git-jsonl livespec-dev-tooling livespec-runtime; do
+          for sibling in livespec-orchestrator-git-jsonl livespec-dev-tooling livespec-runtime; do
             git clone --depth 1 "https://github.com/thewoolleyman/$sibling.git" \
               "$RUNNER_TEMP/sibling-clones/$sibling"
           done
