@@ -64,7 +64,7 @@ The project-local `/livespec-orchestrate` Layer-3 loop-driver skill
 `livespec-implementer` dispatch agent were **RETIRED at the W6
 dark-factory cutover** (user-declared 2026-06-15). Their successor is
 the reference **Beads/Dolt + Fabro orchestrator's Dispatcher**
-(`livespec-impl-beads`'s `dispatcher.py`): it polls the Beads ledger,
+(`livespec-orchestrator-beads-fabro`'s `dispatcher.py`): it polls the Beads ledger,
 dispatches each ready work-item into its own Fabro sandbox, runs
 `just check` + `/livespec:doctor` as a hard janitor gate, verifies the
 merge, and closes the item — carrying routine cross-repo work
@@ -120,12 +120,12 @@ machine-wide:
   "extraKnownMarketplaces": {
     "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec" } },
     "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude" } },
-    "livespec-impl-beads":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-impl-beads" } }
+    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro" } }
   },
   "enabledPlugins": {
     "livespec@livespec": true,
     "livespec@livespec-driver-claude": true,
-    "livespec-impl-beads@livespec-impl-beads": true
+    "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro": true
   }
 }
 ```
@@ -206,7 +206,7 @@ current branch's own worktree, use the repo's reaper entry point
 
 ## Beads runtime prerequisites (what `just bootstrap` does NOT provision)
 
-`just ensure-plugins` installs the `livespec-impl-beads` *plugin*, but the beads
+`just ensure-plugins` installs the `livespec-orchestrator-beads-fabro` *plugin*, but the beads
 backend also needs host-level runtime that bootstrap canNOT provision. A fresh
 clone connects to its beads tenant only when all of the following are present:
 
@@ -238,7 +238,7 @@ list` fails with "no beads database found" even though the plugin is present.
 - `just bootstrap` — first-touch setup on fresh clones; idempotently sets `livespec.primaryPath` on the primary checkout and installs the canonical commit-refuse hook at `.git/hooks/pre-commit` + `.git/hooks/pre-push` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure") plus installs lefthook hooks and resolves plugin dependencies.
 - `just check` — full enforcement aggregate (lint, types, tests, coverage, AST checks).
 - `just check-pre-commit-doc-only` — fast subset for doc-only commits.
-- **Cross-repo orchestration** is carried by the reference **Beads/Dolt + Fabro Dispatcher** (`livespec-impl-beads`'s `dispatcher.py`), which retired the project-local `/livespec-orchestrate` Layer-3 skill at the W6 cutover (2026-06-15). The dark factory polls the ledger, dispatches ready work-items into Fabro sandboxes, gates each on `just check` + `/livespec:doctor`, and closes merged items unattended. See `### Cross-repo orchestration` above.
+- **Cross-repo orchestration** is carried by the reference **Beads/Dolt + Fabro Dispatcher** (`livespec-orchestrator-beads-fabro`'s `dispatcher.py`), which retired the project-local `/livespec-orchestrate` Layer-3 skill at the W6 cutover (2026-06-15). The dark factory polls the ledger, dispatches ready work-items into Fabro sandboxes, gates each on `just check` + `/livespec:doctor`, and closes merged items unattended. See `### Cross-repo orchestration` above.
 
 `just check` is the load-bearing safety net; it runs locally, in
 pre-push, and in CI. The doc-only subset is invoked only by lefthook

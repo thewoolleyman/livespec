@@ -5,8 +5,8 @@
 {
   "template": "livespec",
   "spec_root": "SPECIFICATION",
-  "implementation": { "plugin": "livespec-impl-beads" },
-  "livespec-impl-beads": {
+  "implementation": { "plugin": "livespec-orchestrator-beads-fabro" },
+  "livespec-orchestrator-beads-fabro": {
     "format": "beads",
     "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "master" },
     // Per-repo beads tenant CONNECTION block. prefix==tenant==database==server_user is the
