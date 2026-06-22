@@ -216,12 +216,16 @@ clone connects to its beads tenant only when all of the following are present:
   family tenants force TCP (not the unix socket): `/var/lib/doltdb/` is `0750
   dolt:dolt` and untraversable by the sandboxed caller, so `.beads/config.yaml`
   carries `dolt.*` host/port keys with NO `socket` key.
-- **The per-tenant password** in env as
-  `BEADS_DOLT_PASSWORD_<tenant_underscores>` (tenant DB name == repo name),
-  injected by the livespec 1Password Environment wrapper `with-livespec-env.sh`
-  (canonical copy at `/data/projects/1password-env-wrapper/with-livespec-env.sh`).
-  Secrets are probe-only — `printenv NAME | wc -c`, never echo values — and
-  NEVER committed to `.livespec.jsonc` or `.beads/`.
+- **The shared family password** in env as a single **bare
+  `BEADS_DOLT_PASSWORD`** — all livespec-family beads tenants share ONE Dolt
+  password (members of the single livespec 1Password Environment), injected by
+  the livespec 1Password Environment wrapper `with-livespec-env.sh` (canonical
+  copy at `/data/projects/1password-env-wrapper/with-livespec-env.sh`). There is
+  NO per-tenant `BEADS_DOLT_PASSWORD_<tenant>` suffix and NO per-tenant→bare
+  mapping — the wrapper exports the one bare var directly. Real isolation comes
+  from the per-tenant SQL user + DB-scoped grant (unchanged), not from password
+  distinctness within the family. Secrets are probe-only — `printenv NAME | wc
+  -c`, never echo values — and NEVER committed to `.livespec.jsonc` or `.beads/`.
 - **The `.beads/` pointer files** in the repo: `config.yaml` (committed; carries
   the `dolt.*` server keys) and `metadata.json` (gitignored). `metadata.json` is
   REGENERABLE — `project_id` is server-stable, so re-running `bd init --server …`
