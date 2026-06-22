@@ -86,17 +86,16 @@ def _seed_workflows(*, project_root: Path, names: tuple[str, ...]) -> None:
         _ = (workflows_dir / name).write_text("# fixture workflow\n", encoding="utf-8")
 
 
-def test_required_workflow_files_enumerates_seven_canonical_entries() -> None:
+def test_required_workflow_files_enumerates_six_canonical_entries() -> None:
     """REQUIRED_WORKFLOW_FILES matches the canonical contracts.md list.
 
-    The seven enumerated files in §"Shared content sync — copier
+    The six enumerated files in §"Shared content sync — copier
     template" are pinned here as a contract regression guard. If
     the contract list ever drifts the test fails loudly so the
     drift is caught at PR review.
     """
     assert REQUIRED_WORKFLOW_FILES == (
         "auto-enable-merge.yml",
-        "auto-update-branches.yml",
         "bump-pin-from-dispatch.yml",
         "ci.yml",
         "copier-update-drift.yml",
@@ -207,8 +206,8 @@ def test_copier_template_workflow_coverage_fails_when_multiple_files_missing(
     project_root, spec_root = _seed_project(tmp_path=tmp_path)
     missing_names = (
         "auto-enable-merge.yml",
-        "auto-update-branches.yml",
         "pin-freshness.yml",
+        "release-dispatch.yml",
     )
     present = tuple(name for name in REQUIRED_WORKFLOW_FILES if name not in missing_names)
     _seed_workflows(project_root=project_root, names=present)
@@ -219,7 +218,7 @@ def test_copier_template_workflow_coverage_fails_when_multiple_files_missing(
         "copier-template-workflow-coverage: "
         "3 required workflow file(s) missing from "
         "`.github/workflows/`: "
-        "auto-enable-merge.yml, auto-update-branches.yml, pin-freshness.yml. "
+        "auto-enable-merge.yml, pin-freshness.yml, release-dispatch.yml. "
         "Corrective action: run "
         "`copier update --vcs-ref=master` to re-sync the copier template (see "
         '`non-functional-requirements.md` §"Shared content sync — copier template" for '
@@ -373,7 +372,7 @@ def test_copier_template_workflow_coverage_skips_when_no_copier_answers_marker(
     non-failing `skipped` finding and MUST NOT inspect
     `.github/workflows/`. This fixture deliberately seeds NEITHER
     the marker NOR any workflow directory: the absence of all
-    seven required workflow files would otherwise fire `fail`, so
+    six required workflow files would otherwise fire `fail`, so
     asserting `skipped` here proves the check short-circuits on
     the missing marker before touching the workflow set.
     """

@@ -45,7 +45,6 @@ def test_run_static_main_exists_and_returns_int(
 
 _REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
     "auto-enable-merge.yml",
-    "auto-update-branches.yml",
     "bump-pin-from-dispatch.yml",
     "ci.yml",
     "copier-update-drift.yml",
@@ -55,7 +54,7 @@ _REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
 
 
 def _seed_required_workflow_files(*, project_root: Path) -> None:
-    """Create the seven required `.github/workflows/` files in `project_root`.
+    """Create the six required `.github/workflows/` files in `project_root`.
 
     Mirrors `tests/e2e/fake_claude.py.seed_required_workflow_files`
     so the orchestrator's `copier-template-workflow-coverage`
