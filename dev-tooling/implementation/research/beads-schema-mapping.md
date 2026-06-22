@@ -144,10 +144,15 @@ migration blocker for li-zmigvx.
 Grounded in `dolt-server/SPECIFICATION/contracts.md` §"Beads-tenant
 contract" + §"Tenant-connection contract". A per-repo beads client runs
 in **server mode** against the shared multi-DB Dolt server; each repo is
-a **distinct tenant database**, and the beads **prefix equals the tenant
-database name** (this is the load-bearing identity rule —
-`dolt-server` §"Tenant-onboarding contract": "A tenant `${DB}` name …
-MUST match the beads prefix when the tenant is a beads client").
+a **distinct tenant database**. The **tenant DB name** is the
+load-bearing tenant identity (`database == server_user == tenant`, one
+`≤32`-char Dolt name serving all three). The beads issue-ID **prefix**
+is bd's server-stored create-prefix; it is **decoupled** from the tenant
+DB name and need **not** equal it — it MAY be a short readable alias
+(e.g. `bd-ib` for the `livespec-orch-beads-fabro` tenant, `bd-gj` for
+`livespec-orchestrator-git-jsonl`). Where a repo's prefix happens to
+equal its tenant (this core repo is `livespec` == `livespec`), that
+equality holds HERE but is no longer a required rule.
 
 ### 2.1 Exact connection parameters a per-repo tenant uses
 
@@ -180,9 +185,11 @@ MUST match the beads prefix when the tenant is a beads client").
     socket transport remains available for non-sandboxed callers.
   - `--database <tenant>` — select the tenant DB explicitly (the server
     infers no default tenant).
-  - `--prefix <tenant>` — the **prefix doubles as the tenant database
-    name `${DB}`** (load-bearing identity rule): for the livespec repo,
-    prefix == DB == (e.g.) `livespec`, so issue ids become `livespec-…`.
+  - `--prefix <issue-prefix>` — the beads issue-ID create-prefix. It is
+    **decoupled** from the tenant DB name (`${DB}`) and need **not**
+    equal it; it MAY be a short readable alias. For the livespec core
+    repo the prefix happens to equal the DB (`livespec`), so issue ids
+    become `livespec-…`, but that equality is no longer required.
   - `--skip-agents --skip-hooks` — family rule; **both flags exist** in
     v1.0.5 and MUST both be passed (no agent files / git hooks injected
     into the consuming repo).
@@ -194,7 +201,7 @@ MUST match the beads prefix when the tenant is a beads client").
   bd init --server --external \
     --server-host 127.0.0.1 --server-port 3307 \
     --server-user <tenant> \
-    --database <tenant> --prefix <tenant> \
+    --database <tenant> --prefix <issue-prefix> \
     --skip-agents --skip-hooks \
     --non-interactive --quiet
   ```

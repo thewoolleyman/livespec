@@ -146,11 +146,15 @@ keyring, secret manager).
 ### Beads/Dolt + Fabro
 
 The `connection` block carries the per-repo Dolt tenant identity. The
-load-bearing identity rule is `prefix == tenant == database ==
-server_user` (all equal to the repo name). The tenant **password is
-deliberately absent** — it is supplied only via an environment
-variable at `bd`-call time (§4.1). TCP-only, so there is **no**
-`socket` key.
+load-bearing tenant identity is the **tenant DB name** — `database ==
+server_user == tenant`, one `≤32`-char Dolt name serving all three. The
+beads issue-ID `prefix` is bd's server-stored create-prefix; it is
+**decoupled** from the tenant DB name and need **not** equal it (it MAY
+be a short readable alias). For the example below the prefix happens to
+equal the tenant, but that equality is no longer a required rule. The
+tenant **password is deliberately absent** — it is supplied only via an
+environment variable at `bd`-call time (§4.1). TCP-only, so there is
+**no** `socket` key.
 
 ```jsonc
 {
