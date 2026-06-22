@@ -8,6 +8,33 @@ minimum project-skill/bootstrap path is complete for core read-only operations;
 continue with family-wide support, specs, verification, high-level testing,
 non-skill runtime mechanisms, and reproducible research notes.
 
+## Current correction
+
+Do not use the old `livespec-impl-beads` or `livespec-impl-git-jsonl` names
+for new work. They were pre-rename names in older audit notes. The current
+live family checkouts are:
+
+- `livespec`
+- `livespec-dev-tooling`
+- `livespec-driver-claude`
+- `livespec-runtime`
+- `livespec-orchestrator-beads-fabro`
+- `livespec-orchestrator-git-jsonl`
+- `livespec-console-beads-fabro`
+
+As of 2026-06-23, all seven local checkouts are clean on `master`.
+`fleet-manifest.jsonc` still lists only the first six and omits
+`livespec-console-beads-fabro`; reconcile that through the governed fleet
+process before relying on fleet automation for console coverage.
+
+Also account for the hidden CORE dependency before claiming distributed Codex
+support. A `livespec-driver-codex` repo is likely necessary for reusable Codex
+runtime bindings, but not sufficient by itself: CORE must also become
+Codex-installable/discoverable as the artifact carrier for shared prose,
+scripts, schemas, and templates. The Claude Driver resolves CORE cross-repo
+because CORE is installed as `livespec@livespec`; Codex needs an equivalent
+CORE installability story.
+
 ## Start here
 
 Read these files first:
@@ -211,8 +238,8 @@ The governed sibling spec updates landed on 2026-06-19:
     100% coverage; doc-only commit/pre-push hooks passed; PR checks passed
     before merge. The primary checkout was fast-forwarded and the worktree /
     local branch were removed.
-- `livespec-impl-git-jsonl` PR #88:
-  `https://github.com/thewoolleyman/livespec-impl-git-jsonl/pull/88`
+- `livespec-orchestrator-git-jsonl` PR #88:
+  `https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl/pull/88`
   - Merge commit: `e26cebee15bfd43f51a7eab596a75e9b2d719ed0`
   - Spec revision: `SPECIFICATION/history/v009/`
   - Scope: `SPECIFICATION/constraints.md` now requires Codex adapter support
@@ -226,8 +253,8 @@ The governed sibling spec updates landed on 2026-06-19:
     100% coverage; doc-only commit/pre-push hooks passed; PR checks passed,
     including `e2e-cli`, before merge. The primary checkout was fast-forwarded
     and the worktree / local branch were removed.
-- `livespec-impl-beads` PR #62:
-  `https://github.com/thewoolleyman/livespec-impl-beads/pull/62`
+- `livespec-orchestrator-beads-fabro` PR #62:
+  `https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/62`
   - Merge commit: `59627827584e43aabeaca9e11b8658b2e32dbfa6`
   - Spec revision: `SPECIFICATION/history/v005/`
   - Scope: `SPECIFICATION/constraints.md` now requires Codex adapter support
@@ -253,7 +280,7 @@ The Codex sibling runtime evidence and hook classification pass ran on
 - Scope:
   - Launched `codex exec --sandbox read-only` from
     `livespec-dev-tooling`, `livespec-runtime`,
-    `livespec-impl-git-jsonl`, `livespec-impl-beads`, and
+    `livespec-orchestrator-git-jsonl`, `livespec-orchestrator-beads-fabro`, and
     `livespec-driver-claude`.
   - Recorded the evidence in `research/codex-support/family-audit.md`.
   - Classified Claude-only hooks and non-skill mechanisms in
@@ -304,8 +331,8 @@ The sibling instruction parity pass landed on 2026-06-20:
     was deleted through the GitHub API after the primary-checkout push guard
     correctly blocked `git push --delete`, and the primary checkout was
     verified clean on `master`.
-- `livespec-impl-git-jsonl` PR #90:
-  `https://github.com/thewoolleyman/livespec-impl-git-jsonl/pull/90`
+- `livespec-orchestrator-git-jsonl` PR #90:
+  `https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl/pull/90`
   - Merge commit: `2d88ee7d7ab4df3d61071478675eab4551630581`
   - Local verification: `mise exec -- just check-pre-commit-doc-only` passed
     all 3 doc-only targets; commit and pre-push hooks reran the doc-only
@@ -315,8 +342,8 @@ The sibling instruction parity pass landed on 2026-06-20:
     remote topic branch was deleted through the GitHub API after the
     primary-checkout push guard correctly blocked `git push --delete`, and the
     primary checkout was verified clean on `master`.
-- `livespec-impl-beads` PR #75:
-  `https://github.com/thewoolleyman/livespec-impl-beads/pull/75`
+- `livespec-orchestrator-beads-fabro` PR #75:
+  `https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/75`
   - Merge commit: `af150ef55131c3a628e0dfd14f242285b31ee112`
   - Local verification: `mise exec -- just check-pre-commit-doc-only` passed
     all 3 doc-only targets; commit and pre-push hooks reran the doc-only
@@ -455,26 +482,26 @@ At the end of any session that changes the Codex support state:
   - `livespec-4moata.3` — wrapper help exit handling, closed after PR #467.
   - parity-critical Claude/Codex operational memory migration, closed after
     PR #466.
-- Local livespec-family checkouts seen during the 2026-06-19 handoff expansion:
-  `livespec`, `livespec-driver-claude`, `livespec-impl-beads`,
-  `livespec-impl-git-jsonl`, `livespec-runtime`, plus dev/worktree directories
-  such as `livespec-dev-tooling`, `livespec.wt`, `livespec-impl-beads.wt`, and
-  `livespec-worktrees`. Do not assume this list is complete without
-  rechecking `/data/projects` and Beads state.
-- A follow-up audit on 2026-06-19 found that the clean active family checkouts
-  are `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`,
-  `livespec-impl-beads`, `livespec-impl-git-jsonl`, and `livespec-runtime`.
-  Only core currently has `.agents/skills/`.
+- Local livespec-family checkouts seen during the 2026-06-19 handoff expansion
+  were later corrected after the repo rename. Current live checkouts observed
+  on 2026-06-23 are `livespec`, `livespec-dev-tooling`,
+  `livespec-driver-claude`, `livespec-runtime`,
+  `livespec-orchestrator-beads-fabro`,
+  `livespec-orchestrator-git-jsonl`, and
+  `livespec-console-beads-fabro`. Do not assume this list is complete without
+  rechecking `/data/projects`, `fleet-manifest.jsonc`, and Beads state.
+- A follow-up audit on 2026-06-23 found all seven current local checkouts clean
+  on `master`. Only core currently has `.agents/skills/`. The console repo has
+  a governed `SPECIFICATION/` but is missing from `fleet-manifest.jsonc`.
 - Core `SPECIFICATION/spec.md` and `SPECIFICATION/contracts.md` stale
   Claude-skill/plugin wording was repaired by PR #471 through
   `SPECIFICATION/history/v119/` and `SPECIFICATION/history/v120/`, including
   the required `tests/heading-coverage.json` co-edit.
 - Sibling governed specs now state Codex support requirements or adapter
   constraints where applicable: dev-tooling `v015`, runtime `v005`,
-  impl-git-jsonl `v009`, and impl-beads `v005`.
-- `livespec-driver-claude` remains intentionally Claude-specific and has no
-  governed `SPECIFICATION/`; no Codex repo update is expected there beyond
-  classification in `research/codex-support/family-audit.md`.
+  orchestrator-git-jsonl `v009`, and orchestrator-beads-fabro `v005`.
+- `livespec-driver-claude` remains intentionally Claude-specific and now has a
+  governed `SPECIFICATION/`; do not treat it as a Codex adapter host.
 - Read-only Codex runtime probes have now been run in the changed sibling
   repos. The first pass proved `AGENTS.md` loading and entry-point discovery
   while exposing that sibling `AGENTS.md` files lacked the full core mutation
@@ -494,9 +521,9 @@ At the end of any session that changes the Codex support state:
   spans.
 - A distributed `livespec-driver-codex` repo has not been created. The current
   proven path is repo-local `.agents/skills/*` adapters over CORE prose and
-  wrapper CLIs. Decide whether to create a Codex driver repo, or explicitly
-  document the narrower repo-local support claim, before claiming distributed
-  Codex support.
+  wrapper CLIs. Before claiming distributed Codex support, create/spec the
+  Codex driver and make CORE Codex-installable/discoverable, or explicitly
+  document the narrower repo-local support claim.
 
 ## Work discipline
 
@@ -529,23 +556,27 @@ Continue Codex support work from the expanded family-wide scope. Do NOT repeat
 the completed PR #452, #457, #460, #465, #466, #467, #470, #471, #473, the
 sibling spec PRs #134 / #48 / #88 / #62, the sibling instruction parity PRs
 #136 / #50 / #90 / #75 / #18, or the sibling read-only Codex runtime probes
-recorded above. The next phase is Codex driver/distribution, runtime/e2e,
-telemetry, and runtime-mechanism closure:
+recorded above. The next phase is Codex driver/distribution, CORE
+installability, console/fleet reconciliation, runtime/e2e, telemetry, and
+runtime-mechanism closure:
 
 1. Use `research/codex-support/family-audit.md` as the durable summary and keep
    it current.
-2. Decide the Codex driver/distribution boundary: either create a
-   `livespec-driver-codex` analogue for distributed Codex support, or document
-   that current Codex support is repo-local `.agents/skills/*` only.
-3. Complete Codex runtime/e2e verification without importing other epic item
+2. Create/spec a `livespec-driver-codex` analogue if Codex support is meant to
+   work outside the core checkout.
+3. Make CORE Codex-installable/discoverable so a Codex driver can resolve
+   shared prose, scripts, schemas, and templates from any family repo.
+4. Reconcile `livespec-console-beads-fabro` with `fleet-manifest.jsonc` and add
+   its Codex-support classification/evidence.
+5. Complete Codex runtime/e2e verification without importing other epic item
    IDs or sequencing into this directory. Record only the Codex evidence
    boundary here.
-4. Refine telemetry/cost follow-ups as implementation begins; Codex should
+6. Refine telemetry/cost follow-ups as implementation begins; Codex should
    remain tokens-primary, not Claude-cost-derived.
-5. Before claiming mutating Codex automation, provide a Codex replacement for
+7. Before claiming mutating Codex automation, provide a Codex replacement for
    the Claude-only pre-tool footgun guard or record the narrower support claim
    that relies on AGENTS/repo hooks only.
-6. For any repository mutation, follow that repo's required
+8. For any repository mutation, follow that repo's required
    worktree -> PR -> merge -> cleanup discipline. For spec mutations, use the
    governed livespec propose-change -> revise lifecycle unless an explicit
    fallback is approved and recorded.
@@ -655,9 +686,13 @@ NOT complete. Track at least these open areas:
   repo, including writable/e2e behavior and any migrated hook/bootstrap
   behavior; read-only instruction loading and sibling `AGENTS.md` mutation
   protocol visibility are already proven;
-- Codex driver/distribution: decide whether to create `livespec-driver-codex`
-  for distributed support, or document that the proven path remains repo-local
-  `.agents/skills/*`;
+- Codex driver/distribution: create/spec `livespec-driver-codex` if
+  distributed Codex support is required, and make CORE
+  Codex-installable/discoverable so the driver can resolve the shared prose and
+  CLIs from non-core repos;
+- fleet/console reconciliation: register or otherwise classify
+  `livespec-console-beads-fabro` through the governed fleet path, then record
+  its Codex evidence in `family-audit.md`;
 - runtime/e2e testing: Codex must be represented as a supported harness
   dimension where runtime behavior is part of the proof, but implementation
   and manual evidence remain open;
