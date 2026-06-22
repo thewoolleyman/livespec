@@ -39,7 +39,6 @@ __all__ = [
 
 _REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
     "auto-enable-merge.yml",
-    "auto-update-branches.yml",
     "bump-pin-from-dispatch.yml",
     "ci.yml",
     "copier-update-drift.yml",
@@ -49,7 +48,7 @@ _REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
 
 
 def seed_required_workflow_files(*, project_root: Path) -> None:
-    """Create the seven required `.github/workflows/` files in `project_root`.
+    """Create the six required `.github/workflows/` files in `project_root`.
 
     Per the copier-template-workflow-coverage doctor invariant
     (contracts.md §"Doctor cross-boundary invariants"), every

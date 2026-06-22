@@ -66,7 +66,6 @@ SLUG: CheckId = CheckId("doctor-copier-template-workflow-coverage")
 
 REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
     "auto-enable-merge.yml",
-    "auto-update-branches.yml",
     "bump-pin-from-dispatch.yml",
     "ci.yml",
     "copier-update-drift.yml",
