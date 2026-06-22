@@ -9,10 +9,14 @@
   "livespec-orchestrator-beads-fabro": {
     "format": "beads",
     "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "master" },
-    // Per-repo beads tenant CONNECTION block. prefix==tenant==database==server_user is the
-    // load-bearing identity rule. The tenant PASSWORD is deliberately ABSENT — supplied only via
-    // the BEADS_DOLT_PASSWORD env var at bd-call time, never committed. TCP-only (the dolt.sock is
-    // not reachable by sandboxed callers), so no `socket` key.
+    // Per-repo beads tenant CONNECTION block. The tenant DB name is the load-bearing tenant
+    // identity (database == server_user == tenant — one <=32-char Dolt name serving all three).
+    // The beads issue-ID `prefix` is bd's server-stored create-prefix; it is DECOUPLED from the
+    // tenant DB name and need NOT equal it (it MAY be a short readable alias). For THIS repo the
+    // prefix happens to equal the tenant (`livespec`), but that equality is no longer a required
+    // rule. The tenant PASSWORD is deliberately ABSENT — supplied only via the BEADS_DOLT_PASSWORD
+    // env var at bd-call time, never committed. TCP-only (the dolt.sock is not reachable by
+    // sandboxed callers), so no `socket` key.
     "connection": {
       "tenant": "livespec",
       "prefix": "livespec",
