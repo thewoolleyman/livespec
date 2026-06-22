@@ -1,7 +1,7 @@
 # Codex family support audit
 
 Date: 2026-06-19
-Last updated: 2026-06-20
+Last updated: 2026-06-23
 
 ## Purpose
 
@@ -14,6 +14,31 @@ The target is reproducibility for another agent runtime, especially the future
 Pi driver/harness work: which repositories need support, what was proven, what
 is still Claude-specific, and which next changes should be made through normal
 LiveSpec processes.
+
+## Current naming correction
+
+The 2026-06-19/2026-06-20 audit was written across a repo rename. Older
+handoff text used the then-current `livespec-impl-beads` and
+`livespec-impl-git-jsonl` names. Current work must use the live repo names:
+
+| Former name in older notes | Current repo name |
+|---|---|
+| `livespec-impl-beads` | `livespec-orchestrator-beads-fabro` |
+| `livespec-impl-git-jsonl` | `livespec-orchestrator-git-jsonl` |
+
+The current local live family also includes `livespec-console-beads-fabro`.
+That repo is present and clean on `master`, but `fleet-manifest.jsonc` still
+lists only six members and does not include it. Treat that as an open fleet
+registration reconciliation item; do not infer from the omission that the
+console repo is outside the live family.
+
+Distributed Codex support also has a hidden core dependency: a future
+`livespec-driver-codex` cannot make `/livespec:*` usable from arbitrary family
+repos unless CORE itself is installable/discoverable by Codex as the artifact
+carrier for the shared prose, scripts, schemas, and templates. The Claude
+Driver works cross-repo because CORE is installed as the `livespec@livespec`
+Claude plugin; Codex needs an equivalent CORE installability story, not just a
+runtime driver repo.
 
 ## Completed baseline
 
@@ -49,11 +74,11 @@ LiveSpec processes.
     `dce528968176c8a80f8cd8b3abe97d988f3b456e`, cut
     `SPECIFICATION/history/v005/`, and updated
     `SPECIFICATION/non-functional-requirements.md`.
-  - `livespec-impl-git-jsonl` PR #88, merge
+  - `livespec-orchestrator-git-jsonl` PR #88, merge
     `e26cebee15bfd43f51a7eab596a75e9b2d719ed0`, cut
     `SPECIFICATION/history/v009/`, and updated
     `SPECIFICATION/constraints.md`.
-  - `livespec-impl-beads` PR #62, merge
+  - `livespec-orchestrator-beads-fabro` PR #62, merge
     `59627827584e43aabeaca9e11b8658b2e32dbfa6`, cut
     `SPECIFICATION/history/v005/`, and updated
     `SPECIFICATION/constraints.md`.
@@ -62,9 +87,9 @@ LiveSpec processes.
     `095594f9dcc4f89e95e8007bd6456c567a72a431`.
   - `livespec-runtime` PR #50, merge
     `18a35a246bb77f5f361dfabbbee2531287fc9fdd`.
-  - `livespec-impl-git-jsonl` PR #90, merge
+  - `livespec-orchestrator-git-jsonl` PR #90, merge
     `2d88ee7d7ab4df3d61071478675eab4551630581`.
-  - `livespec-impl-beads` PR #75, merge
+  - `livespec-orchestrator-beads-fabro` PR #75, merge
     `af150ef55131c3a628e0dfd14f242285b31ee112`.
   - `livespec-driver-claude` PR #18, merge
     `ea6b4ed9f73756d0163ac9767a395de070bf95ab`.
@@ -88,30 +113,37 @@ Local family checkout inventory:
 |---|---:|---:|---:|---:|
 | `livespec` | yes | yes | yes | yes |
 | `livespec-dev-tooling` | yes | no | no | yes |
-| `livespec-driver-claude` | no | no | yes | yes |
-| `livespec-impl-beads` | yes | no | yes | yes |
-| `livespec-impl-git-jsonl` | yes | no | yes | yes |
+| `livespec-driver-claude` | yes | no | yes | yes |
+| `livespec-orchestrator-beads-fabro` | yes | no | yes | yes |
+| `livespec-orchestrator-git-jsonl` | yes | no | yes | yes |
 | `livespec-runtime` | yes | no | no | yes |
+| `livespec-console-beads-fabro` | yes | no | no | no |
 
-All six checkouts were clean on `master` at audit time.
+All seven checkouts above were clean on `master` when rechecked on
+2026-06-23. The committed fleet manifest still names only the first six.
 
 Open Codex-support work summary:
 
 | Area | Current state | Why it matters |
 |---|---|---|
-| Codex driver/distribution | Open decision: either create a `livespec-driver-codex` analogue or explicitly scope support to repo-local `.agents/skills/*`. | The proven path loads project-local adapters. It does not prove a distributed Codex driver or marketplace/plugin flow. |
+| Codex driver/distribution | Open. Create/spec a `livespec-driver-codex` analogue if Codex support is meant to work outside the core checkout; also make CORE Codex-installable so the driver can resolve shared prose/scripts from any family repo. | The proven path loads project-local adapters only from core. It does not prove a distributed Codex driver, marketplace/plugin flow, or cross-repo CORE artifact resolution. |
 | Runtime/e2e verification | Open. Read-only instruction loading and adapter selection are proven; writable/e2e Codex behavior is not fully proven. | Codex support should not be closed by inheriting Claude Driver behavior. |
 | Telemetry/cost | Open. Codex must stay token-primary, with provider/runtime tags and no inference from Claude Code cost spans. | OpenAI/Codex evidence needs its own token mapping. |
 | Hook/replacement behavior | Open. Claude-only pre-tool hooks do not run under Codex. | Mutating Codex automation needs either a Codex replacement or a narrower documented support claim. |
+| Fleet inventory | Open for `livespec-console-beads-fabro`. | The live local family contains the console repo, but `fleet-manifest.jsonc` omits it. Reconcile through the governed fleet process before relying on fleet automation for console coverage. |
 
 Sibling spec-side `next` runs on 2026-06-19:
 
 | Repo | `next` result |
 |---|---|
 | `livespec-dev-tooling` | no candidates |
-| `livespec-impl-beads` | initially one low-urgency `revise` candidate for `proposed_changes/grooming-gherkin-and-gap-detectability.md`; after the repo was refreshed to master, no candidates |
-| `livespec-impl-git-jsonl` | no candidates |
+| `livespec-orchestrator-beads-fabro` | initially one low-urgency `revise` candidate for `proposed_changes/grooming-gherkin-and-gap-detectability.md`; after the repo was refreshed to master, no candidates |
+| `livespec-orchestrator-git-jsonl` | no candidates |
 | `livespec-runtime` | no candidates |
+
+`livespec-console-beads-fabro` was not part of this audit's original
+2026-06-19 sibling `next` sweep and has no recorded Codex-support update in the
+tables below yet.
 
 Sibling PR verification completed on 2026-06-19:
 
@@ -119,8 +151,8 @@ Sibling PR verification completed on 2026-06-19:
 |---|---|---|
 | `livespec-dev-tooling` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 46 targets, 903 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #134 checks passed before merge |
 | `livespec-runtime` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 43 targets, 81 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #48 checks passed before merge |
-| `livespec-impl-git-jsonl` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 46 targets, 319 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #88 checks passed, including `e2e-cli`, before merge |
-| `livespec-impl-beads` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 44 targets, 917 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #62 checks passed, including `e2e-cli`, before merge |
+| `livespec-orchestrator-git-jsonl` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 46 targets, 319 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #88 checks passed, including `e2e-cli`, before merge |
+| `livespec-orchestrator-beads-fabro` | governed `propose_change.py` + `revise.py --post-step-doctor --run-stale-branch-check`; `mise exec -- just check` passed all 44 targets, 917 tests at 100% coverage | doc-only commit/pre-push hooks passed; PR #62 checks passed, including `e2e-cli`, before merge |
 
 Sibling instruction-parity verification completed on 2026-06-20:
 
@@ -128,8 +160,8 @@ Sibling instruction-parity verification completed on 2026-06-20:
 |---|---|---|
 | `livespec-dev-tooling` | `mise exec -- just check-pre-commit-doc-only` passed; commit hook reran the doc-only subset; pre-push hook reran the doc-only subset | PR #136 checks passed before merge, including aggregate completeness, fleet conformance, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
 | `livespec-runtime` | `mise exec -- just check-pre-commit-doc-only` passed; commit hook reran the doc-only subset; pre-push hook reran the doc-only subset | PR #50 checks passed before merge, including aggregate completeness, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
-| `livespec-impl-git-jsonl` | `mise exec -- just check-pre-commit-doc-only` passed all 3 doc-only targets; commit/pre-push hooks reran the doc-only subset | PR #90 checks passed before merge, including `e2e-cli`, aggregate completeness, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
-| `livespec-impl-beads` | `mise exec -- just check-pre-commit-doc-only` passed all 3 doc-only targets; commit/pre-push hooks reran the doc-only subset | PR #75 checks passed before merge, including `e2e-cli`, aggregate completeness, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
+| `livespec-orchestrator-git-jsonl` | `mise exec -- just check-pre-commit-doc-only` passed all 3 doc-only targets; commit/pre-push hooks reran the doc-only subset | PR #90 checks passed before merge, including `e2e-cli`, aggregate completeness, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
+| `livespec-orchestrator-beads-fabro` | `mise exec -- just check-pre-commit-doc-only` passed all 3 doc-only targets; commit/pre-push hooks reran the doc-only subset | PR #75 checks passed before merge, including `e2e-cli`, aggregate completeness, format/lint/types/coverage, red-green-replay, and primary-checkout hook checks |
 | `livespec-driver-claude` | `mise exec -- just check-pre-commit` passed; commit hook reran plugin-structure, lint, and format; pre-push hook ran full `just check` with 23 hook tests and 2 mock e2e tests passing | PR #18 checks passed before merge, including plugin-structure, hooks, mock e2e, format, and lint |
 
 After merge, all five primary checkouts were fast-forwarded to `origin/master`,
@@ -146,7 +178,7 @@ provider dollar estimates are overlays only, and Codex/OpenAI runtime
 participation is never inferred from Claude Code dollar spans.
 
 - **Beads/Fabro LIVE golden-master tier (`livespec-b8od`,
-  livespec-impl-beads PR #101):** Exercised the **Claude Code Driver
+  livespec-orchestrator-beads-fabro PR #101):** Exercised the **Claude Code Driver
   runtime**. The UNMODIFIED production `implement-work-item` Fabro workflow
   dispatched the greeting work-item into a Fabro sandbox (image
   `ghcr.io/thewoolleyman/livespec-fabro-sandbox:sha-ea684ad`) where
@@ -186,17 +218,23 @@ the sibling repos as of the 2026-06-19 spec updates:
 - `livespec-runtime` exposes harness-neutral library code. Runtime code must
   stay agent-runtime-neutral and must not branch on Claude, Codex, Pi, or any
   harness identity.
-- `livespec-impl-git-jsonl` and `livespec-impl-beads` may need future
+- `livespec-orchestrator-git-jsonl` and `livespec-orchestrator-beads-fabro` may need future
   impl-side Codex adapters, but their specs now require those adapters to be
   thin runtime bindings over existing wrapper CLIs and substrate semantics, not
   copies of Claude-specific `SKILL.md` bodies.
-- `livespec-driver-claude` is deliberately Claude-specific and has no governed
-  `SPECIFICATION/`; no Codex repo update is expected there except explicit
-  classification in this audit.
+- `livespec-console-beads-fabro` is now a live governed repo and needs the same
+  Codex-support classification pass before family support is closed. It also
+  needs fleet-manifest reconciliation if it is intended to participate in fleet
+  automation.
+- `livespec-driver-claude` is deliberately Claude-specific. Its governed spec
+  should classify Codex only as a non-target runtime for that repo; no Codex
+  adapter implementation is expected there.
 
-The future distributed path is still open: a `livespec-driver-codex` or
-impl-driver package may be appropriate once writable commands and end-to-end
-harness proofs are ready.
+The future distributed path is still open: `livespec-driver-codex` is now the
+likely missing runtime driver if Codex should provide a reusable installed
+surface analogous to `livespec-driver-claude`. That driver is not sufficient by
+itself: CORE also needs Codex installability/discovery so the driver can find
+the shared prose, scripts, schemas, and templates from any governed repo.
 
 ### Specification coverage
 
@@ -212,12 +250,16 @@ Observed state:
 - `livespec-runtime` now states Codex contributor-workflow support and
   harness-neutral runtime-code constraints in
   `SPECIFICATION/non-functional-requirements.md`.
-- `livespec-impl-beads` now states Codex adapter constraints in
+- `livespec-orchestrator-beads-fabro` now states Codex adapter constraints in
   `SPECIFICATION/constraints.md`.
-- `livespec-impl-git-jsonl` now states Codex adapter constraints in
+- `livespec-orchestrator-git-jsonl` now states Codex adapter constraints in
   `SPECIFICATION/constraints.md`.
-- `livespec-driver-claude` is intentionally Claude-specific and has no
-  governed `SPECIFICATION/`.
+- `livespec-console-beads-fabro` is present locally with a governed
+  `SPECIFICATION/`, but this audit has not yet recorded a Codex-support
+  classification or spec update for it.
+- `livespec-driver-claude` is intentionally Claude-specific and now has a
+  governed `SPECIFICATION/`; that spec should not be treated as a Codex adapter
+  host.
 
 ### Manual verification
 
@@ -242,9 +284,10 @@ fixed by the 2026-06-20 PRs listed above.
 |---|---|---|---|
 | `livespec-dev-tooling` | `/data/projects/livespec-dev-tooling/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #136, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `just check-scoped`, `just check`, `just check-static`, `just check-changed`, `just check-pre-commit`, `just check-pre-push`, individual `just check-*` targets. |
 | `livespec-runtime` | `/data/projects/livespec-runtime/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #50, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `just check`, `just check-static`, `just check-changed`, `just check-lint`, `just check-format`, `just check-types`, `just check-coverage`, `just check-pre-commit`, `just check-pre-push`. |
-| `livespec-impl-git-jsonl` | `/data/projects/livespec-impl-git-jsonl/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #90, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `mise exec -- just check`, `check-pre-commit`, `check-pre-push`, `check-red-green-replay`, `check-static`, `check-changed`, store checks, and read-only wrappers `list_work_items.py`, `list_memos.py`, `next.py`, `detect_impl_gaps.py`. |
-| `livespec-impl-beads` | `/data/projects/livespec-impl-beads/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #75, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `just check-static`, `just check-format`, `just check-lint`, `just check-types`, `just changed-files`, `just check-red-green-replay`, `just check-work-item-merge-evidence`, read/check wrappers, and dispatcher `ledger-check`, `spec-check`, `janitor-check`. |
+| `livespec-orchestrator-git-jsonl` | `/data/projects/livespec-orchestrator-git-jsonl/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #90, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `mise exec -- just check`, `check-pre-commit`, `check-pre-push`, `check-red-green-replay`, `check-static`, `check-changed`, store checks, and read-only wrappers `list_work_items.py`, `list_memos.py`, `next.py`, `detect_impl_gaps.py`. |
+| `livespec-orchestrator-beads-fabro` | `/data/projects/livespec-orchestrator-beads-fabro/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #75, plus Red-Green-Replay, `mise exec -- git ...`, and never `--no-verify`. | `just check-static`, `just check-format`, `just check-lint`, `just check-types`, `just changed-files`, `just check-red-green-replay`, `just check-work-item-merge-evidence`, read/check wrappers, and dispatcher `ledger-check`, `spec-check`, `janitor-check`. |
 | `livespec-driver-claude` | `/data/projects/livespec-driver-claude/AGENTS.md` | Now carries the full worktree -> PR -> merge -> cleanup lifecycle from PR #18, plus worktree secondary checkout guidance, `mise exec -- git ...`, and never `--no-verify`. | `just check` for plugin-structure, hook tests, and mock e2e. Codex correctly classified the repo as deliberately Claude-specific and not a Codex adapter host. |
+| `livespec-console-beads-fabro` | not yet audited in this pass | Not recorded. | Needs a Codex read-only instruction-surface probe and repo classification before family support is closed. |
 
 On 2026-06-20, fresh read-only Codex probes were launched after those PRs
 merged. Each probe read the repo-root `AGENTS.md` and confirmed that the file
@@ -282,7 +325,7 @@ The acceptance criteria now require:
 
 The current tracking split is:
 
-- `livespec-impl-beads-zbl` owns provider-specific token extraction and
+- `livespec-orchestrator-beads-fabro-zbl` owns provider-specific token extraction and
   report-only cost overlays. It already names Codex/OpenAI and self-hosted
   models as deferred provider legs, with raw tokens as the durable metric.
 - `livespec-dev-tooling-e60` owns broader agent-loop observability, including
@@ -312,7 +355,7 @@ Hook classification:
 
 | Mechanism | Locations | Classification | Rationale |
 |---|---|---|---|
-| `.claude/hooks/livespec_footgun_guard.py` | `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`, `livespec-impl-beads`, `livespec-impl-git-jsonl`, `livespec-runtime` | Codex replacement required before mutating Codex automation; AGENTS/repo-hook coverage sufficient for read-only probes and human-supervised verification. | This Claude Code `PreToolUse` Bash guard blocks `git commit/push --no-verify`, `LEFTHOOK=0/false`, and `git config core.bare=true` before a command runs. Codex does not run it. Git hooks and branch protections catch many commit/push failures later, but cannot stop direct file edits in a primary checkout. |
+| `.claude/hooks/livespec_footgun_guard.py` | `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`, `livespec-orchestrator-beads-fabro`, `livespec-orchestrator-git-jsonl`, `livespec-runtime` | Codex replacement required before mutating Codex automation; AGENTS/repo-hook coverage sufficient for read-only probes and human-supervised verification. | This Claude Code `PreToolUse` Bash guard blocks `git commit/push --no-verify`, `LEFTHOOK=0/false`, and `git config core.bare=true` before a command runs. Codex does not run it. Git hooks and branch protections catch many commit/push failures later, but cannot stop direct file edits in a primary checkout. |
 | `.claude/settings.json` `SessionStart` plugin/bootstrap hooks | active family checkouts | Claude-driver-only by design. | These run Claude plugin installation or project hook setup. Codex has no proven livespec marketplace/plugin path; project-local `.agents/skills` plus repo instructions are the current Codex path. |
 | `.claude/settings.json` `PreToolUse` background/subagent guards | active family checkouts where configured | Claude-driver-only unless a future Codex runtime exposes equivalent hook events. | The hooks enforce Claude Code tool/session behavior. Current Codex evidence covers read-only execution, not background tool lifecycle integration. |
 | `livespec-driver-claude/.claude-plugin/hooks/block-auto-memory.sh` | `livespec-driver-claude` plugin | Claude-driver-only by design. | This prevents Claude Code auto-memory behavior in the Claude Driver. It is not a cross-runtime livespec contract. |
@@ -322,13 +365,17 @@ Hook classification:
 ## Recommended next sequence
 
 1. Decide whether to create `livespec-driver-codex` for distributed Codex
-   support, or document that the supported Codex path remains repo-local
-   `.agents/skills/*` adapters.
-2. Complete writable/runtime Codex verification and record only Codex-specific
+   support. If yes, also make CORE Codex-installable/discoverable so the driver
+   can resolve the shared prose and wrapper CLIs from non-core repos. If no,
+   document that supported Codex use remains repo-local `.agents/skills/*`
+   adapters in core only.
+2. Reconcile `livespec-console-beads-fabro` with `fleet-manifest.jsonc` through
+   the governed fleet process, then add its Codex-support classification here.
+3. Complete writable/runtime Codex verification and record only Codex-specific
    evidence here; keep unrelated epic sequencing in its owning docs.
-3. Refine telemetry/cost follow-ups as implementation begins; Codex should
+4. Refine telemetry/cost follow-ups as implementation begins; Codex should
    remain tokens-primary, not Claude-cost-derived.
-4. Before claiming mutating Codex automation, provide a Codex replacement for
+5. Before claiming mutating Codex automation, provide a Codex replacement for
    the Claude-only pre-tool footgun guard or record the narrower support claim
    that relies on AGENTS/repo hooks only.
 
@@ -357,8 +404,9 @@ Beads summary command, run through the 1Password environment wrapper:
 
 ```bash
 for d in /data/projects/livespec /data/projects/livespec-driver-claude \
-  /data/projects/livespec-impl-beads /data/projects/livespec-impl-git-jsonl \
-  /data/projects/livespec-runtime /data/projects/livespec-dev-tooling; do
+  /data/projects/livespec-orchestrator-beads-fabro /data/projects/livespec-orchestrator-git-jsonl \
+  /data/projects/livespec-runtime /data/projects/livespec-dev-tooling \
+  /data/projects/livespec-console-beads-fabro; do
   [ -d "$d/.beads" ] || continue
   name=${d##*/}
   tenant=${name//-/_}
