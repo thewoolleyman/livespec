@@ -799,5 +799,12 @@
     "spec_file": "contracts.md",
     "test": "TODO",
     "reason": "Landed in v097 (cli-end-to-end-harness-contract proposal accept, epic li-e2ecli Phase 1). The contract mandates a top-of-pyramid CLI-driven user-surface e2e tier. Real test ID populated by Epic D Waves 11-12: the harness ships from livespec-dev-tooling (li-e2ecdt) and each consumer repo wires tests/e2e-cli/ fixtures (li-e2eclv livespec, li-e2ecpx impl-plaintext)."
+  },
+  {
+    "heading": "## Family agent-instruction core",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "contracts.md",
+    "test": "TODO",
+    "reason": "Landed by the revise pass accepting proposed_changes/family-universal-agent-instruction-core.md. Mandates the family-universal agent-instruction core (incl. beads runtime prerequisites), the AGENTS.md / .claude/CLAUDE.md symlink shape, and the beads-access guard, fleet-enforced. Real test ID populated by the impl follow-up that adds the fleet OBLIGATION_ROWS instruction-surface rows in livespec-dev-tooling."
   }
 ]
