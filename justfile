@@ -82,6 +82,11 @@ bootstrap:
     cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-push"
     cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/commit-msg"
     chmod +x "${hooks_dir}/pre-commit" "${hooks_dir}/pre-push" "${hooks_dir}/commit-msg"
+    # Harden the beads tenant-pointer dir to owner-only on first-touch (bd
+    # recommends 0700; only the owning user's bd CLI reads it — the Dolt server
+    # connects over TCP and never reads this dir). Guarded: repos with no beads
+    # tenant have no .beads.
+    if [ -d "${primary_path}/.beads" ]; then chmod 700 "${primary_path}/.beads"; fi
     # Idempotent notes-refspec install for the `refs/notes/commits`
     # advisory cache. `git config --add` tolerates duplicate values,
     # but the literal-equality grep is the cheapest skip-path on
