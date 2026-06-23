@@ -54,6 +54,48 @@ do not assume how the system works:
    `/plugin marketplace add ./.claude-plugin/marketplace.json`. Never test local
    changes against a remote marketplace and assume they apply.
 
+## Codex dogfooding (OpenAI Codex CLI/TUI)
+
+This repo's `/livespec:*` and orchestrator surfaces can ALSO be dogfooded from
+OpenAI Codex CLI/TUI, not just Claude Code. Unlike the Claude path (plugins
+enabled PER PROJECT via a committed `.claude/settings.json`), Codex plugin
+enablement is **HOST-WIDE**: each registration persists in `~/.codex/config.toml`
+and applies to every project on the host. Codex offers no project-scoped plugin
+enablement, so there is no committed-settings analogue for the Codex path.
+
+Install the three plugins host-wide — livespec CORE (the artifact carrier that
+ships the spec-side prose and wrappers), the `livespec-driver-codex` Codex Driver
+(which supplies the `/livespec:*` operation surface over core's prose), and THIS
+repo's own orchestrator plugin (whose name is declared in this repo's
+`.claude-plugin/plugin.json` — e.g. `livespec-orchestrator-beads-fabro`,
+`livespec-orchestrator-git-jsonl`; substitute it for `<orchestrator-plugin>`
+below):
+
+```bash
+# livespec CORE (spec-side prose + wrappers; no skills of its own):
+codex plugin marketplace add thewoolleyman/livespec
+codex plugin add livespec@livespec
+
+# The Codex Driver (supplies the spec-side /livespec:* operation surface):
+codex plugin marketplace add thewoolleyman/livespec-driver-codex
+codex plugin add livespec@livespec-driver-codex
+
+# This repo's orchestrator plugin (ships its OWN cross-runtime Codex surface):
+codex plugin marketplace add thewoolleyman/<orchestrator-plugin>
+codex plugin add <orchestrator-plugin>@<orchestrator-plugin>
+```
+
+Once installed, Codex operations are driven via `codex exec` and NAME-selected as
+`<plugin>:<op>` (e.g. `livespec:next`, `<orchestrator-plugin>:list-work-items`)
+rather than as `/`-prefixed slash commands. The distributed Drivers resolve their
+prose at runtime — no `AGENTS.md` skill→prose mapping is required. See
+`livespec/SPECIFICATION/contracts.md` §"Plugin distribution" and
+`livespec/SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+contracts" for the authoritative install and resolution contracts; each
+orchestrator plugin's repository owns its own Codex Driver mapping. A temporary
+local Codex marketplace registration used for testing MUST be removed afterward
+unless you explicitly ask to keep it.
+
 ## Beads runtime prerequisites
 
 This plugin's work-item store is a per-repo beads/Dolt TENANT on the shared
