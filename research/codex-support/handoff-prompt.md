@@ -46,13 +46,14 @@ live family checkouts are:
 - `livespec`
 - `livespec-dev-tooling`
 - `livespec-driver-claude`
+- `livespec-driver-codex`
 - `livespec-runtime`
 - `livespec-orchestrator-beads-fabro`
 - `livespec-orchestrator-git-jsonl`
 - `livespec-console-beads-fabro`
 
-As of 2026-06-23, all seven local checkouts are clean on `master`.
-`fleet-manifest.jsonc` still lists only the first six and omits
+As of 2026-06-23, all eight local checkouts are clean on `master`.
+`.livespec-fleet-manifest.jsonc` still omits
 `livespec-console-beads-fabro`; reconcile that through the governed fleet
 process before relying on fleet automation for console coverage.
 
@@ -524,10 +525,10 @@ At the end of any session that changes the Codex support state:
   `livespec-orchestrator-beads-fabro`,
   `livespec-orchestrator-git-jsonl`, and
   `livespec-console-beads-fabro`. Do not assume this list is complete without
-  rechecking `/data/projects`, `fleet-manifest.jsonc`, and Beads state.
-- A follow-up audit on 2026-06-23 found all seven current local checkouts clean
+  rechecking `/data/projects`, `.livespec-fleet-manifest.jsonc`, and Beads state.
+- A follow-up audit on 2026-06-23 found all eight current local checkouts clean
   on `master`. Only core currently has `.agents/skills/`. The console repo has
-  a governed `SPECIFICATION/` but is missing from `fleet-manifest.jsonc`.
+  a governed `SPECIFICATION/` but is missing from `.livespec-fleet-manifest.jsonc`.
 - Core `SPECIFICATION/spec.md` and `SPECIFICATION/contracts.md` stale
   Claude-skill/plugin wording was repaired by PR #471 through
   `SPECIFICATION/history/v119/` and `SPECIFICATION/history/v120/`, including
@@ -601,7 +602,7 @@ runtime-mechanism closure:
    work outside the core checkout.
 3. Make CORE Codex-installable/discoverable so a Codex driver can resolve
    shared prose, scripts, schemas, and templates from any family repo.
-4. Reconcile `livespec-console-beads-fabro` with `fleet-manifest.jsonc` and add
+4. Reconcile `livespec-console-beads-fabro` with `.livespec-fleet-manifest.jsonc` and add
    its Codex-support classification/evidence.
 5. Complete Codex runtime/e2e verification without importing other epic item
    IDs or sequencing into this directory. Record only the Codex evidence

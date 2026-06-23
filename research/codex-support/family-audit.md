@@ -56,8 +56,8 @@ handoff text used the then-current `livespec-impl-beads` and
 | `livespec-impl-git-jsonl` | `livespec-orchestrator-git-jsonl` |
 
 The current local live family also includes `livespec-console-beads-fabro`.
-That repo is present and clean on `master`, but `fleet-manifest.jsonc` still
-lists only six members and does not include it. Treat that as an open fleet
+That repo is present and clean on `master`, but `.livespec-fleet-manifest.jsonc` still
+does not include it. Treat that as an open fleet
 registration reconciliation item; do not infer from the omission that the
 console repo is outside the live family.
 
@@ -148,16 +148,18 @@ distributed `livespec-driver-codex` Driver, not a repo-local tree.]**
 
 | Repo | Governed spec | `.agents/skills` | `.claude-plugin` | Beads tenant |
 |---|---:|---:|---:|---:|
-| `livespec` | yes | yes | yes | yes |
+| `livespec` | yes | no | yes | yes |
 | `livespec-dev-tooling` | yes | no | no | yes |
 | `livespec-driver-claude` | yes | no | yes | yes |
+| `livespec-driver-codex` | yes | no | yes | yes |
 | `livespec-orchestrator-beads-fabro` | yes | no | yes | yes |
 | `livespec-orchestrator-git-jsonl` | yes | no | yes | yes |
 | `livespec-runtime` | yes | no | no | yes |
 | `livespec-console-beads-fabro` | yes | no | no | no |
 
-All seven checkouts above were clean on `master` when rechecked on
-2026-06-23. The committed fleet manifest still names only the first six.
+All eight checkouts above were clean on `master` when rechecked on
+2026-06-23. The committed fleet manifest still omits
+`livespec-console-beads-fabro`.
 
 Open Codex-support work summary:
 
@@ -167,7 +169,7 @@ Open Codex-support work summary:
 | Runtime/e2e verification | Open. Read-only instruction loading and adapter selection are proven; writable/e2e Codex behavior is not fully proven. | Codex support should not be closed by inheriting Claude Driver behavior. |
 | Telemetry/cost | Open. Codex must stay token-primary, with provider/runtime tags and no inference from Claude Code cost spans. | OpenAI/Codex evidence needs its own token mapping. |
 | Hook/replacement behavior | Open. Claude-only pre-tool hooks do not run under Codex. | Mutating Codex automation needs either a Codex replacement or a narrower documented support claim. |
-| Fleet inventory | Open for `livespec-console-beads-fabro`. | The live local family contains the console repo, but `fleet-manifest.jsonc` omits it. Reconcile through the governed fleet process before relying on fleet automation for console coverage. |
+| Fleet inventory | Open for `livespec-console-beads-fabro`. | The live local family contains the console repo, but `.livespec-fleet-manifest.jsonc` omits it. Reconcile through the governed fleet process before relying on fleet automation for console coverage. |
 
 Sibling spec-side `next` runs on 2026-06-19:
 
@@ -410,7 +412,7 @@ Hook classification:
    can resolve the shared prose and wrapper CLIs from non-core repos. If no,
    document that supported Codex use remains repo-local `.agents/skills/*`
    adapters in core only.
-2. Reconcile `livespec-console-beads-fabro` with `fleet-manifest.jsonc` through
+2. Reconcile `livespec-console-beads-fabro` with `.livespec-fleet-manifest.jsonc` through
    the governed fleet process, then add its Codex-support classification here.
 3. Complete writable/runtime Codex verification and record only Codex-specific
    evidence here; keep unrelated epic sequencing in its owning docs.

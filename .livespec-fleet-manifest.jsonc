@@ -1,4 +1,4 @@
-// fleet-manifest.jsonc — the livespec fleet membership manifest.
+// .livespec-fleet-manifest.jsonc — the livespec fleet membership manifest.
 //
 // Authority: SPECIFICATION/non-functional-requirements.md
 //   §"Fleet membership contract" (accepted v108). This committed file
@@ -31,6 +31,7 @@
     { "repo": "livespec", "class": "core" },
     { "repo": "livespec-dev-tooling", "class": "enforcement-suite" },
     { "repo": "livespec-driver-claude", "class": "driver-plugin" },
+    { "repo": "livespec-driver-codex", "class": "driver-plugin" },
     { "repo": "livespec-orchestrator-beads-fabro", "class": "impl-plugin" },
     { "repo": "livespec-orchestrator-git-jsonl", "class": "impl-plugin" },
     { "repo": "livespec-runtime", "class": "library" }
