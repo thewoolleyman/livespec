@@ -166,6 +166,65 @@ PROJECT-level without the namespace prefix) was removed in v049. The
 Driver-plugin marketplace install is now the way the `/livespec:*`
 skills load with the correct namespace.
 
+## Codex dogfooding (OpenAI Codex CLI/TUI)
+
+Core is ALSO Codex-installable, so the same eight `/livespec:*` spec-side
+operations can be dogfooded from OpenAI Codex CLI/TUI. The model mirrors
+the Claude path — core is the artifact carrier (prose + wrappers, no
+skills of its own) and a per-runtime Driver supplies the command surface
+— with one key asymmetry: Codex plugin enablement is **HOST-WIDE**, not
+project-scoped.
+
+Install BOTH the core plugin and the `livespec-driver-codex` Driver
+host-wide:
+
+```bash
+# Core (artifact carrier — ships prose/wrappers, no skills of its own):
+codex plugin marketplace add thewoolleyman/livespec
+codex plugin add livespec@livespec
+
+# The Codex Driver (supplies the /livespec:* operation surface):
+codex plugin marketplace add thewoolleyman/livespec-driver-codex
+codex plugin add livespec@livespec-driver-codex
+```
+
+Both registrations persist HOST-WIDE in `~/.codex/config.toml` (a
+`[marketplaces.<name>]` entry plus a `[plugins."<plugin>@<marketplace>"]
+enabled = true` entry) and apply to EVERY project on the host — Codex
+offers no project-scoped plugin enablement, so there is no committed
+`.claude/settings.json` analogue for the Codex path. This is asymmetric
+to the Claude install above, which enables plugins PER PROJECT via a
+committed `.claude/settings.json`. See `SPECIFICATION/contracts.md`
+§"Plugin distribution" for the authoritative install contract.
+
+Once installed, the eight operations (`seed`, `propose-change`,
+`critique`, `revise`, `doctor`, `prune-history`, `help`, `next`) are
+driven from Codex via `codex exec`. They are NAME-selected as
+`livespec:<op>` (e.g. `livespec:next`) rather than as `/`-prefixed slash
+commands; `codex exec` resolves the Codex Driver binding, which reads
+CORE's harness-neutral prose (`.claude-plugin/prose/<name>.md`) and
+invokes the spec-side wrapper under `.claude-plugin/scripts/bin/` named
+in the governed project's `.livespec.jsonc`. No `AGENTS.md` skill→prose
+mapping is needed — the distributed Driver resolves the prose itself
+(per `SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+contracts").
+
+Daily-dogfooding note: core ships the Codex packaging the Driver
+resolves — a Codex marketplace catalog at `.agents/plugins/marketplace.json`
+plus the paired `.claude-plugin/.codex-plugin/plugin.json`, both pointing
+at the SAME `prose/` and `scripts/` the Claude marketplace ships (a
+single cross-runtime artifact; no prose, wrapper, schema, or template is
+duplicated). Editing core prose under `.claude-plugin/prose/<name>.md`
+therefore changes behavior on BOTH runtimes; Codex Driver binding edits
+themselves happen in the `livespec-driver-codex` repo, just as Claude
+binding edits happen in `livespec-driver-claude`. Per
+`SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+constraints", Codex-native plugin support is claimed only once the
+registration creates an installed `livespec` plugin entry in
+`~/.codex/config.toml` AND a `codex exec` invocation drives a `/livespec:*`
+operation through it; a temporary local Codex marketplace registration
+used for testing MUST be removed afterward unless you ask to keep it.
+
 ## Repository mutation protocol
 
 Every repo change uses a worktree → PR → merge → cleanup path. Treat
