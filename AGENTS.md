@@ -175,8 +175,8 @@ skills of its own) and a per-runtime Driver supplies the command surface
 — with one key asymmetry: Codex plugin enablement is **HOST-WIDE**, not
 project-scoped.
 
-Install BOTH the core plugin and the `livespec-driver-codex` Driver
-host-wide:
+Install the core plugin, the `livespec-driver-codex` Driver, and the
+governed project's orchestrator plugin host-wide:
 
 ```bash
 # Core (artifact carrier — ships prose/wrappers, no skills of its own):
@@ -186,9 +186,13 @@ codex plugin add livespec@livespec
 # The Codex Driver (supplies the /livespec:* operation surface):
 codex plugin marketplace add thewoolleyman/livespec-driver-codex
 codex plugin add livespec@livespec-driver-codex
+
+# The selected orchestrator plugin (supplies its own Codex skills):
+codex plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro
+codex plugin add livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro
 ```
 
-Both registrations persist HOST-WIDE in `~/.codex/config.toml` (a
+These registrations persist HOST-WIDE in `~/.codex/config.toml` (a
 `[marketplaces.<name>]` entry plus a `[plugins."<plugin>@<marketplace>"]
 enabled = true` entry) and apply to EVERY project on the host — Codex
 offers no project-scoped plugin enablement, so there is no committed
@@ -197,16 +201,20 @@ to the Claude install above, which enables plugins PER PROJECT via a
 committed `.claude/settings.json`. See `SPECIFICATION/contracts.md`
 §"Plugin distribution" for the authoritative install contract.
 
-Once installed, the eight operations (`seed`, `propose-change`,
+Once installed, the eight spec-side operations (`seed`, `propose-change`,
 `critique`, `revise`, `doctor`, `prune-history`, `help`, `next`) are
 driven from Codex via `codex exec`. They are NAME-selected as
 `livespec:<op>` (e.g. `livespec:next`) rather than as `/`-prefixed slash
 commands; `codex exec` resolves the Codex Driver binding, which reads
 CORE's harness-neutral prose (`.claude-plugin/prose/<name>.md`) and
 invokes the spec-side wrapper under `.claude-plugin/scripts/bin/` named
-in the governed project's `.livespec.jsonc`. No `AGENTS.md` skill→prose
-mapping is needed — the distributed Driver resolves the prose itself
-(per `SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+in the governed project's `.livespec.jsonc`. The orchestrator plugin
+adds its own Codex skills (`orchestrate`, `next`, `list-work-items`,
+`detect-impl-gaps`, `capture-work-item`, `capture-impl-gaps`,
+`capture-spec-drift`, `implement`, `groom`) under its plugin name. No
+`AGENTS.md` skill→prose mapping is needed — the distributed Drivers
+resolve their prose themselves (per
+`SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
 contracts").
 
 Daily-dogfooding note: core ships the Codex packaging the Driver
