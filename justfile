@@ -217,7 +217,7 @@ check:
         # running the same module twice.
         check-behavior-scenario-link
         check-canonical-slugs-projection
-        check-codex-adapter-sync
+        check-codex-no-repo-local-adapters
         check-comment-no-historical-refs
         check-copier-template-smoke
         # check-coverage is the aggregate (total) `fail_under = 100`
@@ -495,7 +495,7 @@ check-pre-commit-doc-only:
         check-heading-coverage
         check-vendor-manifest
         check-no-direct-tool-invocation
-        check-codex-adapter-sync
+        check-codex-no-repo-local-adapters
         check-copier-template-smoke
         check-tools
     )
@@ -656,8 +656,8 @@ check-behavior-scenario-link:
 check-canonical-slugs-projection:
     uv run python3 dev-tooling/checks/canonical_slugs_projection.py
 
-check-codex-adapter-sync:
-    uv run python3 dev-tooling/checks/codex_adapter_sync.py
+check-codex-no-repo-local-adapters:
+    uv run python3 dev-tooling/checks/codex_no_repo_local_adapters.py
 
 check-tools:
     uv run python -m livespec_dev_tooling.checks.check_tools
