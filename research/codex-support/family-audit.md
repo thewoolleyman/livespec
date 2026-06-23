@@ -1,3 +1,32 @@
+> **STATUS: SUPERSEDED (2026-06-23).** This family audit was written
+> against the **retired** repo-local `.agents/skills/livespec-*` Codex
+> adapter model. Its "Completed baseline" and "Manual verification"
+> sections describe core's committed `.agents/skills/` adapters and treat
+> repo-local adapters as the proven path; that model was RETIRED in
+> livespec PR #528 (the v129 spec cut adopted the distributed Codex driver
+> contract). Core ships NO repo-local `.agents/skills/livespec-*` adapter
+> directory, and the "Codex driver/distribution — Open" rows below are now
+> DONE. This file is preserved as a record of the research journey; the
+> repo-state tables and per-row Codex-support status are HISTORICAL.
+>
+> **Current Codex support is the DISTRIBUTED model:** core is itself
+> Codex-installable as an artifact carrier (ships `prose/` + wrappers, no
+> skills); the `/livespec:*` surface ships from the Codex Driver
+> `livespec-driver-codex`; each orchestrator ships its own cross-runtime
+> Codex surface (e.g. `livespec-orchestrator-beads-fabro`); heavyweight
+> orchestrator ops are shared-prose-backed (both the Claude and Codex
+> runtimes bind thin to the same `prose/<op>.md`). Codex names the bound
+> core prose file and (for wrapper-backed ops) the `scripts/bin/...`
+> wrapper directly — NO `.agents/skills/*` adapter and NO `AGENTS.md`
+> mapping is involved.
+>
+> **Authoritative sources** (current; this file is not):
+> `SPECIFICATION/contracts.md` §"Plugin distribution";
+> `SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+> compatibility" and §"Codex dogfooding contracts". The
+> `livespec-driver-codex` build record lives in the local scratch handoff
+> `tmp/livespec-driver-codex-build-handoff.md` (gitignored).
+
 # Codex family support audit
 
 Date: 2026-06-19
@@ -44,6 +73,9 @@ runtime driver repo.
 
 - Core `livespec` has committed Codex project skills under `.agents/skills/`
   for `livespec-help`, `livespec-next`, and `livespec-doctor`.
+  **[SUPERSEDED: these repo-local adapters were RETIRED in PR #528; core
+  now ships no `.agents/skills/livespec-*` directory. The `/livespec:*`
+  surface ships from the distributed `livespec-driver-codex` Driver.]**
 - Those adapters were proven with separate `codex exec` processes in PR #457.
 - The adapter sync check landed in PR #460 and is part of `just check`.
 - Core `SPECIFICATION/non-functional-requirements.md` was repaired in PR #465
@@ -108,6 +140,11 @@ Core spec-side `next` run:
 ```
 
 Local family checkout inventory:
+
+**[SUPERSEDED: the `.agents/skills` column below is HISTORICAL — core's
+repo-local Codex adapters were RETIRED in PR #528, so `livespec` is now
+`.agents/skills = no` like every sibling. Codex support is now the
+distributed `livespec-driver-codex` Driver, not a repo-local tree.]**
 
 | Repo | Governed spec | `.agents/skills` | `.claude-plugin` | Beads tenant |
 |---|---:|---:|---:|---:|
@@ -211,6 +248,10 @@ participation is never inferred from Claude Code dollar spans.
 
 Only core currently exposes Codex project skills. That remains intentional for
 the sibling repos as of the 2026-06-19 spec updates:
+**[SUPERSEDED: core no longer exposes repo-local Codex project skills
+either — they were RETIRED in PR #528. The distributed
+`livespec-driver-codex` Driver now provides the `/livespec:*` surface for
+every governed repo without a repo-local `.agents/skills` tree.]**
 
 - `livespec-dev-tooling` owns shared enforcement-suite code, not a user-facing
   `/livespec:*` Driver, so its Codex support is contributor-workflow support

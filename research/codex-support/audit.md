@@ -1,3 +1,30 @@
+> **STATUS: SUPERSEDED (2026-06-23).** This audit concluded that the
+> minimum-viable Codex path was a repo-local `.agents/skills/livespec-*`
+> adapter layer and that "Codex has no installed `livespec` plugin
+> marketplace entry" / "do not claim Codex plugin support". BOTH
+> conclusions are now obsolete: the repo-local adapter model was RETIRED in
+> livespec PR #528 (the v129 spec cut adopted the distributed Codex driver
+> contract), and core IS now Codex-installable as a plugin
+> (`codex plugin add livespec@livespec`). This file is preserved as a
+> record of the research journey — its findings were accurate at audit
+> time (2026-06-19) but no longer describe current behavior.
+>
+> **Current Codex support is the DISTRIBUTED model:** core is itself
+> Codex-installable as an artifact carrier (ships `prose/` + wrappers, no
+> skills); the `/livespec:*` surface ships from the Codex Driver
+> `livespec-driver-codex`; each orchestrator ships its own cross-runtime
+> Codex surface; heavyweight orchestrator ops are shared-prose-backed (both
+> runtimes bind thin). Codex names the bound core prose file and (for
+> wrapper-backed ops) the `scripts/bin/...` wrapper directly — NO
+> `.agents/skills/*` adapter and NO `AGENTS.md` mapping is involved.
+>
+> **Authoritative sources** (current; this file is not):
+> `SPECIFICATION/contracts.md` §"Plugin distribution";
+> `SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+> compatibility" and §"Codex dogfooding contracts". The
+> `livespec-driver-codex` build record lives in the local scratch handoff
+> `tmp/livespec-driver-codex-build-handoff.md` (gitignored).
+
 # Codex support audit
 
 Date: 2026-06-19
