@@ -3,31 +3,6 @@
     "BASH_DEFAULT_TIMEOUT_MS": "600000",
     "BASH_MAX_TIMEOUT_MS": "1200000"
   },
-  "enabledPlugins": {
-    "livespec@livespec": true,
-    "livespec@livespec-driver-claude": true,
-    "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro": true
-  },
-  "extraKnownMarketplaces": {
-    "livespec": {
-      "source": {
-        "source": "github",
-        "repo": "thewoolleyman/livespec"
-      }
-    },
-    "livespec-driver-claude": {
-      "source": {
-        "source": "github",
-        "repo": "thewoolleyman/livespec-driver-claude"
-      }
-    },
-    "livespec-orchestrator-beads-fabro": {
-      "source": {
-        "source": "github",
-        "repo": "thewoolleyman/livespec-orchestrator-beads-fabro"
-      }
-    }
-  },
   "hooks": {
     "SessionStart": [
       {
@@ -69,5 +44,30 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "livespec@livespec": true,
+    "livespec@livespec-driver-claude": true,
+    "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro": true
+  },
+  "extraKnownMarketplaces": {
+    "livespec": {
+      "source": {
+        "source": "github",
+        "repo": "thewoolleyman/livespec"
+      }
+    },
+    "livespec-driver-claude": {
+      "source": {
+        "source": "github",
+        "repo": "thewoolleyman/livespec-driver-claude"
+      }
+    },
+    "livespec-orchestrator-beads-fabro": {
+      "source": {
+        "source": "github",
+        "repo": "thewoolleyman/livespec-orchestrator-beads-fabro"
+      }
+    }
   }
 }
