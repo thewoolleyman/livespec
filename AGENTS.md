@@ -330,3 +330,294 @@ the module is missing.
 config) use `chore(...)` / `docs(...)` / `chore(spec):` subjects and skip the
 ritual entirely. Always use `mise exec -- git ...` so the hooks fire; never
 pass `--no-verify`.
+
+## Working with the maintainer
+
+- **The maintainer is not a Python developer** (though fluent in general software
+  engineering). When explaining Python, spell out language basics and idioms
+  (`class`, `def`, `pass`, `self`, `__init__`, `super()`, decorators, tuples,
+  dunder/magic methods, `match`, descriptors) and why each is needed. Never
+  abbreviate code with `# ...` or ellipses — show complete bodies, and show
+  alternatives in full.
+- **Lead with the plain-language bottom line.** Open every explanation, finding,
+  or decision question with one or two concrete sentences before any detail or
+  options. The maintainer is not a Python/SQL/Dolt/infra expert: define every
+  domain term inside the question, answer the literal question the jargon
+  raises, and never put a decision in undefined jargon — prefer "here's my
+  recommendation plus the plain trade-offs" over a bare jargon picker.
+- **Always recommend.** In any interview or critique dialogue, never present
+  options as a neutral menu: lead with an explicit recommended option (first,
+  labeled "Recommended"), state the reasoning, and yield gracefully if challenged.
+- **Honest pushback over agreement.** When the maintainer challenges a
+  recommendation or says "don't just agree with me / are we over-specifying,"
+  reconsider substantively against the project's principles (architecture-not-
+  mechanism, recreatability) — reshape if they're right, explain with specifics
+  if they're wrong; never capitulate reflexively, and re-check your later edits
+  against the new disposition.
+- **Questions are not directives.** When a message is interrogative ("why X?",
+  "what about Y?"), answer it and stop; act only on a clear imperative.
+- **No human-scale time framings.** Avoid "from day one", "daily", "over time",
+  "eventually", "stabilized through cycles" in commits, docs, work-items, spec,
+  or summaries — agent work happens in minutes; prefer event/state-based
+  phrasing (concrete dates that appear in artifacts are fine).
+- **Spell out "non-functional-requirements" in full** — never abbreviate it as
+  "NFR" anywhere.
+
+## When to ask, proceed, or self-resolve
+
+- **Ask one thing at a time.** When walking a structured list (critiques, TODOs,
+  decisions), ask exactly one question per turn — never batch sub-items unless
+  the maintainer groups them.
+- **Only ask on genuine doubt.** Self-resolve trivial wording fixes,
+  internal-consistency repairs, and items clearly aligned with established
+  preferences; reserve user gates for genuine architectural trade-offs or real
+  intent ambiguity. Present each self-resolved item with its disposition.
+- **One investigation, one finding, one question.** When a focused investigation
+  surfaces unrelated discrepancies, finish the original question first and
+  surface only the load-bearing finding; log side observations briefly. Cosmetic
+  drift never blocks on its own; genuinely independent decisions are asked
+  sequentially.
+- **Don't halt on simple typos.** A spec typo with one obviously-correct fix
+  aligned with adjacent rules: propose the fix via the normal cycle and proceed.
+- **Research before gating.** If a question is answerable by reading docs or
+  testing on a live system, do that, decide, implement, and report for
+  objection — don't offload an answerable technical decision to the maintainer.
+  Reserve gates for genuine product/values calls, irreversible or outward-facing
+  actions, and secret/host-mutation authorization.
+- **Prescribed destructive ops are pre-authorized.** When a destructive git op
+  is the codified mechanism of an adopted workflow (e.g. the `git commit --amend`
+  of the Red→Green step), the adoption is the authorization — proceed without
+  per-instance confirmation. Keep per-instance gating for ad-hoc `--amend`,
+  force-push, `reset --hard`, or `branch -D` on unmerged branches.
+- **Fast-forward mode.** When told to "fast-forward" a named scope, run its steps
+  back-to-back without per-step gates while still running all correctness/safety
+  scans and the established commit pattern; stop only on a blocking issue,
+  genuine ambiguity, a phase boundary, or an unauthorized destructive op.
+
+## Python and code conventions
+
+- **uv is the Python toolchain.** uv owns the Python version (`uv python pin`)
+  and all packages (`pyproject.toml` dev group + `uv sync`); mise pins only
+  non-Python binaries (`uv`, `just`, `lefthook`). Never recommend
+  pip/pipx/poetry/pip-tools.
+- **Strongest reasonable guardrails for agent-authored Python**: pyright strict,
+  Result/Railway-Oriented error handling, mechanically-enforced loose coupling
+  and high cohesion — the burden of justification sits on looser options. Most
+  style rules (keyword-only args, no inheritance / use `Protocol`, no `raise`
+  outside `io/`, comment discipline) are enforced by the `dev-tooling` checks in
+  `just check`; follow the surrounding code and let the checks teach the edges.
+- **Domain errors vs. bugs.** Route only EXPECTED errors (external/user/
+  environment/timing failures that retry could fix) through the Result failure
+  track; let bugs propagate as raised exceptions to the outermost supervisor
+  (log + exit 1). Wrap `@safe`/`@impure_safe` around specific expected exception
+  types, never blanket-catch; `assert` for invariants.
+- **Specify architecture, not mechanism.** In architecture-constrained specs,
+  constrain languages/versions, tooling gates, public-API type guarantees,
+  structural boundaries, and externally-visible invariants — not internal
+  composition. For each implementation-mechanism sentence ask "could this be
+  deleted without losing the guardrail?"; if an AST/type/style check already
+  enforces it, cut the prose.
+- **Static enumeration only for typed dispatch.** Use an explicit-import static
+  registry for dispatch tables the type checker must verify for completeness;
+  auto-derive plain-string lists from the filesystem (with a naming convention
+  for exclusions) to avoid a second drifting source of truth.
+- **Prefer well-maintained libraries; minimize new dependencies.** Present the
+  library option fully (maintenance, type ergonomics, idioms) rather than
+  reflexively hand-rolling on LOC count; vendoring small, permissively-licensed,
+  actively-maintained pure-Python libs under `scripts/_vendor/` is authorized.
+  But first check whether already-vendored tools suffice — prefer JSONC (vendored
+  `jsoncomment`) or plain text over adding TOML/YAML parsers; when a stdlib-vs-
+  third-party choice is Python-version-gated, say so.
+- **Hand-rolled SDK mocks are first-class livespec code** — they comply with
+  every livespec Python rule by construction (no inheritance, keyword-only args,
+  strict dataclasses). A mock handles I/O streams and subprocesses; it need not
+  subclass or shape-match SDK types. Don't raise style-vs-mock exemptions unless
+  a rule and the mock's contract are forcedly incompatible.
+- **User-provided extensions owe only the calling-API contract.** Impose nothing
+  on extension code (custom doctor checks, templates, hooks) beyond the boundary
+  type contract; livespec doesn't lint, vendor for, or prescribe architecture to
+  extension authors, and never vendors a library just because an extension might
+  want it.
+- **Isolate cwd in tests.** Any test that can reach a `Path.cwd()` default (even
+  via downstream delegation) must `monkeypatch.chdir(tmp_path)`, or the code
+  under test writes into the repo and pollutes tracked state.
+
+## Spec and work-item conventions
+
+- **The spec is for contracts, not tracking.** Put an artifact in `SPECIFICATION/`
+  only if it stays meaningful after the work it describes is done (contracts,
+  invariants, schemas, architectural commitments); epics, plans, and in-flight
+  tracking live in the work-items ledger.
+- **Don't codify transient conventions.** Before migrating anything into
+  `SPECIFICATION/`, ask "would this rule still make sense after the workflow it
+  scaffolds stabilizes?" — if not, leave it in working notes.
+- **In brainstorming/design mode, don't anchor on prior iterations.** Present the
+  cleanest structural break first unless the maintainer asks to preserve
+  compatibility.
+- **Enumerate every spec-target's queue before critiquing.** Each `--spec-target`
+  (sub-spec) has its own `proposed_changes/` queue that main-spec enumeration
+  doesn't surface; list it first, and if a pending proposal already covers the
+  scope, recommend revising it rather than filing a duplicate.
+- **Revise decisions are per-file.** One decision entry per proposed-change FILE
+  with `proposal_topic` = the file stem (front-matter topic), never a
+  `## Proposal:` section name (mismatch → silent exit 3); for selective
+  disposition, split proposals across separate files.
+- **`depends_on` entries are typed dicts** `{"kind": "local", "work_item_id":
+  "..."}`, never bare id strings — the store wrapper accepts bare strings but
+  doctor-static (full `just check`) rejects them; copy the shape from an existing
+  record and validate with full `just check`.
+
+## Enforcement-suite and tooling discipline
+
+- **The task runner is the single source of truth.** The justfile owns every
+  check/build/test/lint/format/coverage invocation; lefthook and CI delegate via
+  `just <target>` and never call underlying tools directly.
+- **Fix the gate, not the bypass.** When two systems conflict, ask which is
+  mis-designed for the current architecture and fix it — never reach for a skip
+  flag, exemption entry, or install-but-neuter. When an architecture decision
+  changes the world, enumerate the old-world invariants and re-derive each (keep
+  / re-scope its check / retire); cross-repo bump cost is never an argument
+  against the correct fix.
+- **Carve-outs are a severity lever, not an invariant relaxation.** When a check
+  legitimately can't behave identically everywhere, keep it always wired into
+  `just check` and always invoked, and add one self-documenting per-check env
+  lever (warn-vs-fail for fast checks; run/skip for too-slow ones, set in all CI
+  jobs) — never silently skip or weaken wiring-completeness. If escape-hatches
+  approach 1:1 with invariants, reshape the invariant instead of adding the Nth
+  hatch.
+- **Flaky tests are unacceptable.** Treat any observed flake as a hard blocker:
+  fix it conclusively (root-caused, deterministic, verified by repeated runs) or
+  delete it — never `@flaky`/retry or leave it as a non-blocking note. For
+  Hypothesis prefer `@settings(deadline=None)`; for order-dependence fix fixture
+  isolation.
+
+## Git and cross-repo working discipline
+
+- **Read canonical committed state via `git show`.** For any governed checkout
+  (host or sibling), read `git -C <clone> show origin/master:<path>` (or
+  `HEAD:<path>` for the local tip) rather than the filesystem — a working tree
+  can lag origin or carry edits. Never set `core.bare=true` on a primary checkout
+  (it freezes the tree; the commit-refuse-hook invariant fails on it).
+- **End on the main branch.** When finishing work in any repo you touched, switch
+  its checkout back to main, pull (or fetch + reset --hard to origin), and verify
+  clean status — never leave the maintainer on a feature branch, including after
+  `gh pr merge --auto`.
+- **Refresh the primary after a merge.** After any PR you drove lands,
+  `git -C /data/projects/<repo> pull --ff-only origin master` so the maintainer's
+  session sees it (the workspace path reaches the same `.git`, so there's no
+  separate clone to update).
+- **Master CI: surface red, query precisely.** On the first turn of a session,
+  check master CI; a job the CI workflow runs being red is a real broken state,
+  not a deferral — repair it or remove it from CI/branch-protection. Always query
+  with `--workflow CI` (a bare `gh run list` is masked by non-CI workflows and
+  reports a misleading green).
+- **One Bash call per non-trivial step.** Don't chain multi-step git/file
+  cleanups (worktree remove + branch delete + prune + refresh, loops over
+  `git diff` output) into one call; issue each step separately and show its
+  output, so the maintainer keeps visibility and an interrupt point.
+- **One tool call per turn for sequential/fallible work** (git commit/push, PR
+  create, edits depending on a prior read, surveys of unknown shape); reserve
+  parallel batching for genuinely independent read-only calls. A
+  `Cancelled: parallel tool call X errored` message means you broke your own
+  batch (collateral) — re-issue the named failing call alone; never probe, wake,
+  or snapshot in response. When overwriting an existing file, make sure a fresh
+  read of it landed in an earlier turn (not the same batch), or use an edit
+  instead of a full overwrite.
+- **Verify a fix isn't already landed before filing.** Before filing a work-item
+  from a memo or prior finding, grep git log (`--grep` on the id and the bug
+  noun) to confirm it isn't fixed on master; if it is, dispose as already-fixed.
+- **Verify per-repo state before cross-repo plans.** The family is non-uniform —
+  verify the concrete per-repo state a cross-repo rule depends on (heading
+  styles, registry entries, pins, which checks each repo runs) directly in each
+  target repo; treat a plan's claims about sibling state as hypotheses to confirm.
+- **Drive multi-repo work as one epic.** Never defer pieces to "follow-up PRs in
+  another session/repo"; file the epic plus per-repo work-items with cross-repo
+  links, and use `/livespec:doctor` as the cross-repo consistency check. Routine
+  lib bumps and contract changes ARE the steady-state use case for cross-repo
+  tooling — don't dismiss it as "no use case yet."
+- **A required-key schema change is a cross-repo epic.** Making a work-items
+  schema key required must, in the same epic, backfill that key into every
+  sibling repo's legacy records — the family shares one schema validator over
+  independent stores, so the originating repo's CI stays green while every
+  sibling store becomes unreadable.
+- **Dogfooding pins always pull HEAD.** For pin freshness across the
+  self-consuming family, default to "always pull HEAD"; never invoke
+  "reproducibility" or "pin + Dependabot/stable-releases" as a trade-off — a
+  stable pin hides the upstream breakage dogfooding exists to surface.
+- **Secrets are probe-only.** Read secret presence with `printenv NAME | wc -c`,
+  never echo a value; never print tokens, env dumps, or remote URLs that may
+  embed a token (e.g. a sandbox clone remote); on accidental exposure, rotate.
+
+## Orchestration and delegation
+
+- **Orchestrate; don't do heavy work inline.** For substantial multi-step work
+  (scaffolding, authoring many files, cross-repo work), delegate the heavy
+  lifting to scoped sub-agents (or a parallel workflow) with self-contained
+  briefs and keep the main session for plan/dispatch/synthesis. Watch your
+  context budget and write a concrete handoff before quality degrades.
+- **Fan out pre-authorized work.** Dispatch all genuinely pre-authorized,
+  independent, non-conflicting work-items in parallel; sequence only items that
+  conflict on overlapping files. A "pause" means "start a new session," not
+  "confirm everything from now on."
+- **Brief sub-agents fully and safely.** Sub-agents don't inherit the parent's
+  discipline: every dispatch brief touching git commit/push must explicitly
+  forbid `--no-verify` and tell the agent to halt and report on hook failure.
+  Pin load-bearing contract text verbatim into the brief (run a sequential
+  contract-verification pass first; don't trust a research agent's "✓ covered"
+  without re-checking its pinned text). Give trusted mutating executor agents NO
+  tools allowlist (inherit everything) — real footguns are Bash-pattern
+  behaviors caught by hooks + the prompt, not tool allowlists; reserve tight
+  allowlists for read-only research agents.
+- **Don't reap during active dispatch.** Never run the worktree reaper against a
+  repo while a dispatched agent is working in one of its worktrees; reap only at
+  session start, after a dispatched PR is confirmed merged and the agent exited,
+  or at loop end.
+- **Prefer primitives over new artifacts.** For coordination problems, reach for
+  existing primitives + a naming convention before proposing new schemas,
+  invariants, or skills; if a plan would create more than ~2 new artifacts, stop
+  and check whether a convention suffices. Add mechanical enforcement only when a
+  single maintainer can no longer verify state by reading.
+- **Derive derivable fields; readers fail soft.** When a field is derivable from
+  another, derive it on read rather than storing + requiring it; make readers
+  skip/default and name the offender rather than crashing the whole enumeration;
+  design bad data out with actionable errors and a discoverable blessed path.
+- **Relocate, never drop, valuable work.** When useful work (doctor checks,
+  hooks, disciplines, prose) leaves a repo, relocate it to where it now belongs
+  and file a work-item there citing the pre-deletion commit SHA; self-resolve
+  "keep/relocate/drop" as "relocate," and carry this into every handoff.
+
+## Plugin and skill authoring
+
+- **One skill per sub-command.** A Claude Code plugin with multiple sub-commands
+  ships `skills/<name>/SKILL.md` per sub-command (not one skill with internal
+  `commands/`), so each frontmatter scopes its description, least-privilege
+  `allowed-tools`, and (for destructive ops) `disable-model-invocation`. Keep
+  shared scripts/libs/schemas at plugin root; invoke as `/<plugin>:<skill>`. When
+  naming a sibling skill, keep the original's domain noun + modifier and only
+  swap the verb (sibling of `capture-impl-gaps` is `detect-impl-gaps`), carrying
+  `impl`/`spec` prefixes verbatim.
+- **Invoke plugin scripts via `${CLAUDE_PLUGIN_ROOT}`.** In any SKILL.md, write
+  `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/bin/<name>.py" "$@"` — never the
+  `.claude-plugin/` path literal and never `uv run`: the installer flattens
+  `.claude-plugin/scripts/` → `scripts/` and omits
+  `pyproject.toml`/`uv.lock`/`.python-version`, so only `${CLAUDE_PLUGIN_ROOT}` +
+  plain `python3` resolves in both the install cache and `--plugin-dir .` dev mode.
+
+## Standing environment facts
+
+- **`/home/ubuntu/workspace` and `/home/ubuntu/projects` are single top-level
+  symlinks to `/data/projects`** — there are no per-repo bind-mounts. A workspace
+  repo path is the same `/data/projects/<repo>` `.git` reached through the
+  symlinked parent, so a repo path-move is a plain `mv` of `/data/projects/<repo>`
+  plus `git remote set-url` and a config edit — no unmount/remount/fstab/
+  privileged operation.
+- **A Dolt `command denied to user '<tenant>'@'%'` error for `CALL
+  DOLT_BACKUP(...)` is correct-by-design, not a fault.** `DOLT_BACKUP` needs
+  SUPER, deliberately confined to one dedicated `backup`@localhost user; tenant
+  users intentionally lack it. Backups run hourly via the systemd
+  `dolt-backup.timer` — never treat tenant-level backup denial as a bug or blocker.
+- **`tmp/` is maintainer-owned scratch.** Never `rm` it or assume it's
+  disposable; put agent/tooling scratch under a scoped subdir (e.g.
+  `tmp/bootstrap/`). Write any cross-session handoff the next session must read
+  into the repo's `tmp/` (e.g. `tmp/HANDOFF-*.md`), not an ephemeral per-session
+  scratchpad. Don't codify the `tmp/` convention into `SPECIFICATION/`.
