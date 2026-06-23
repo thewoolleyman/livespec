@@ -1,3 +1,29 @@
+> **STATUS: SUPERSEDED (2026-06-23).** This plan proposes the **retired**
+> repo-local `.agents/skills/livespec-*` Codex adapter model as the first
+> dogfooding slice. That model was RETIRED in livespec PR #528 (the v129
+> spec cut adopted the distributed Codex driver contract); core ships NO
+> repo-local `.agents/skills/livespec-*` adapter directory. This file is
+> preserved to document WHY the distributed driver was ultimately chosen —
+> its "Adapter sync checks", "Bootstrap file layout", and `.agents/skills`
+> recommendations are HISTORICAL and no longer the plan of record.
+>
+> **Current Codex support is the DISTRIBUTED model:** core is itself
+> Codex-installable as an artifact carrier (ships `prose/` + wrappers, no
+> skills); the `/livespec:*` surface ships from the Codex Driver
+> `livespec-driver-codex`; each orchestrator ships its own cross-runtime
+> Codex surface; heavyweight orchestrator ops are shared-prose-backed (both
+> the Claude and Codex runtimes bind thin to the same prose). Codex names
+> the bound core prose file and (for wrapper-backed ops) the
+> `scripts/bin/...` wrapper directly — NO `.agents/skills/*` adapter and NO
+> `AGENTS.md` mapping is involved.
+>
+> **Authoritative sources** (current; this file is not):
+> `SPECIFICATION/contracts.md` §"Plugin distribution";
+> `SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+> compatibility" and §"Codex dogfooding contracts". The
+> `livespec-driver-codex` build record lives in the local scratch handoff
+> `tmp/livespec-driver-codex-build-handoff.md` (gitignored).
+
 # Codex support plan
 
 Date: 2026-06-19

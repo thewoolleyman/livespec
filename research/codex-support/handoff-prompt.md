@@ -1,3 +1,32 @@
+> **STATUS: SUPERSEDED (2026-06-23).** This continuation prompt drove the
+> Codex-support epic while the **retired** repo-local
+> `.agents/skills/livespec-*` adapter model was still the proven path. The
+> open "Next concrete action" items it lists — create `livespec-driver-codex`,
+> make CORE Codex-installable, distributed support — are now DONE, and the
+> repo-local adapter model was RETIRED in livespec PR #528 (the v129 spec
+> cut adopted the distributed Codex driver contract). Its "Current
+> confirmed facts" / "Constraints" still assert "this repo now has
+> committed project-local Codex adapters under `.agents/skills/`" and "do
+> not claim Codex marketplace support"; BOTH are obsolete. This file is
+> preserved as a record of the research journey, NOT a live handoff — do
+> NOT resume from it.
+>
+> **Current Codex support is the DISTRIBUTED model:** core is itself
+> Codex-installable as an artifact carrier (ships `prose/` + wrappers, no
+> skills); the `/livespec:*` surface ships from the Codex Driver
+> `livespec-driver-codex`; each orchestrator ships its own cross-runtime
+> Codex surface; heavyweight orchestrator ops are shared-prose-backed (both
+> runtimes bind thin). Codex names the bound core prose file and (for
+> wrapper-backed ops) the `scripts/bin/...` wrapper directly — NO
+> `.agents/skills/*` adapter and NO `AGENTS.md` mapping is involved.
+>
+> **Authoritative sources** (current; this file is not):
+> `SPECIFICATION/contracts.md` §"Plugin distribution";
+> `SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+> compatibility" and §"Codex dogfooding contracts". The
+> `livespec-driver-codex` build record lives in the local scratch handoff
+> `tmp/livespec-driver-codex-build-handoff.md` (gitignored).
+
 # Codex support handoff prompt
 
 You are starting a new session in `/data/projects/livespec`.
@@ -457,6 +486,12 @@ At the end of any session that changes the Codex support state:
   `openai-curated` marketplace is configured.
 - The proven near-term path is project-local `.agents/skills` adapters that read
   core prose and invoke core wrappers. Do not claim Codex marketplace support.
+  **[SUPERSEDED: all four bullets above are obsolete. PR #528 RETIRED the
+  repo-local `.agents/skills/livespec-*` adapters; core ships none now. Core
+  IS now Codex-installable as a plugin (`codex plugin add livespec@livespec`),
+  and the `/livespec:*` surface ships from the distributed
+  `livespec-driver-codex` Driver — so Codex marketplace support IS now the
+  proven path, not the repo-local tree.]**
 - The Claude/Codex DRY boundary is core prose plus wrapper CLIs, not copied
   skill bodies. Claude Driver `SKILL.md` files and Codex project `SKILL.md`
   files are both thin runtime adapters over the same core files.

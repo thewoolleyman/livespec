@@ -1,3 +1,36 @@
+> **STATUS: SUPERSEDED (2026-06-23).** This document describes the
+> **retired** repo-local `.agents/skills/livespec-*` Codex adapter model.
+> Core no longer ships any repo-local `.agents/skills/livespec-*` adapter
+> directory — that model was RETIRED in livespec PR #528 (the v129 spec
+> cut adopted the distributed Codex driver contract). The proof captured
+> below was real for the repo-local model at the time; it is preserved as
+> a record of the research journey, NOT as a description of current
+> behavior.
+>
+> **Current Codex support is the DISTRIBUTED model:**
+> - Core `livespec` is itself Codex-installable as an artifact carrier
+>   (ships `prose/` + wrappers, NO skills): `codex plugin marketplace add
+>   thewoolleyman/livespec` + `codex plugin add livespec@livespec`.
+> - The interactive `/livespec:*` surface ships from the Codex **Driver**
+>   `livespec-driver-codex` (`livespec@livespec-driver-codex`); each thin
+>   Codex `SKILL.md` resolves core's install root and reads
+>   `<core-root>/prose/<name>.md`.
+> - Each orchestrator ships its OWN cross-runtime Codex surface (e.g.
+>   `livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro`);
+>   its heavyweight ops are shared-prose-backed, with both Claude and Codex
+>   runtimes binding thin to the same `prose/<op>.md`.
+> - Codex names the bound core prose file and (for wrapper-backed ops) the
+>   `scripts/bin/...` wrapper directly — NO `.agents/skills/*` adapter
+>   directory and NO `AGENTS.md` skill-mapping is involved.
+>
+> **Authoritative sources** (these are current; this file is not):
+> `SPECIFICATION/contracts.md` §"Plugin distribution";
+> `SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
+> compatibility" and §"Codex dogfooding contracts". The
+> `livespec-driver-codex` build record lives in the local scratch handoff
+> `tmp/livespec-driver-codex-build-handoff.md` (gitignored; present only in
+> the build checkout).
+
 # Codex read-only adapter proof
 
 Date: 2026-06-19
