@@ -1,0 +1,20 @@
+{
+  "name": "livespec",
+  "interface": {
+    "displayName": "livespec"
+  },
+  "plugins": [
+    {
+      "name": "livespec",
+      "source": {
+        "source": "local",
+        "path": "./.claude-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Developer Tools",
+      "description": "Lives-as-spec core: the livespec contract plus its reference artifacts — harness-neutral driving prose (prose/), reference spec-side CLIs (scripts/bin/), schemas, and built-in templates. The interactive /livespec:* commands ship with a Driver plugin; for Claude Code install livespec@livespec-driver-claude alongside this core."
+    }
+  ]
+}
