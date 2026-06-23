@@ -217,6 +217,15 @@ resolve their prose themselves (per
 `SPECIFICATION/non-functional-requirements.md` §"Codex dogfooding
 contracts").
 
+The Codex TUI picker is a different surface from the colon-qualified
+name-selection form. In `/skills` → `List skills` (or the `@` picker),
+search by the short skill name, e.g. `orchestrate`; Codex renders the
+owning plugin as context, e.g.
+`orchestrate (livespec-orchestrator-beads-fabro)` with kind `Skill`.
+The colon-qualified form (`livespec-orchestrator-beads-fabro:orchestrate`)
+is for prompt / `codex exec` name selection and model-visible skill
+references, not the picker row operators should expect.
+
 Daily-dogfooding note: core ships the Codex packaging the Driver
 resolves — a Codex marketplace catalog at `.agents/plugins/marketplace.json`
 plus the paired `.claude-plugin/.codex-plugin/plugin.json`, both pointing

@@ -96,6 +96,14 @@ orchestrator plugin's repository owns its own Codex Driver mapping. A temporary
 local Codex marketplace registration used for testing MUST be removed afterward
 unless you explicitly ask to keep it.
 
+The Codex TUI picker displays skills by short name with the plugin as context.
+In `/skills` → `List skills` (or the `@` picker), search the operation name,
+for example `orchestrate`; the row renders as
+`orchestrate (<orchestrator-plugin>)` with kind `Skill`. The colon-qualified
+form `<orchestrator-plugin>:orchestrate` is still valid for prompt /
+`codex exec` name selection and model-visible skill references, but it is not
+the picker row operators should expect.
+
 ## Beads runtime prerequisites
 
 This plugin's work-item store is a per-repo beads/Dolt TENANT on the shared
