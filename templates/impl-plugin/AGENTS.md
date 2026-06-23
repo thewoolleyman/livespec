@@ -199,6 +199,36 @@ genuine assertion instead:
 This keeps Red honest: it proves the behavior is unimplemented, not merely that
 the module is missing.
 
+### Execution gotchas
+
+Three failure modes that cost dispatched agents real time:
+
+1. **Multi-test-file Red.** The Red commit must stage EXACTLY ONE test file
+   (zero impl). The commit-msg `red_green_replay` hook rejects more than one
+   staged test file with `multi-test-file`, AND lefthook's pre-commit only takes
+   the fast coverage-skip Red path when `test_count == 1 && impl_count == 0`
+   (otherwise it runs full `just check` and fails at <100% coverage). When a
+   change needs multiple new/changed test files, stage only ONE at Red (a genuine
+   failing assertion), then add the remaining test files + the impl + ride-along
+   docs at the Green `--amend`. (The old `LIVESPEC_PRECOMMIT_RED_MODE` env
+   override is gone.)
+2. **Preserve the Red trailer block at Green.** On the Green `git commit
+   --amend`, do NOT pass a fresh `-m` that overwrites the message — that wipes the
+   inline `TDD-Red-*` trailers the hook wrote at Red. The pre-push *range* replay
+   check greps the FINAL commit body for BOTH `TDD-Red-Test-File-Checksum:` AND
+   `TDD-Green-Verified-At:`; if the Red block is gone, the push is rejected. Use
+   `--amend --no-edit` (or re-include BOTH trailer blocks). The Red and Green
+   test-file bytes must stay byte-identical.
+3. **Working-tree gate, not just staged.** lefthook's pre-commit runs the
+   structural / dev-tooling checks over the WORKING TREE, not only the staged set.
+   So "revert only the impl for Red" is INSUFFICIENT when the change also ADDS
+   files that a working-tree gate inspects (e.g. a new structural check that
+   asserts certain dirs are absent, while you've already created those dirs on
+   disk). At Red, make the WHOLE working tree master-consistent: move new
+   untracked files aside (e.g. to scratch) and revert modified non-test files,
+   leaving only the one staged test divergent; then restore everything for the
+   Green `--amend`.
+
 **Exempt:** changesets with no product `.py` (docs, spec, work-items, shell,
 config) use `chore(...)` / `docs(...)` / `chore(spec):` subjects and skip the
 ritual entirely. Always use `mise exec -- git ...` so the hooks fire; never
