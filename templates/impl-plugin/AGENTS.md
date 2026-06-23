@@ -66,16 +66,19 @@ present:
 - **A running Dolt `sql-server`** reachable over **TCP `127.0.0.1:3307`**. Family
   tenants force TCP (not the unix socket); `.beads/config.yaml` carries `dolt.*`
   host/port keys with NO `socket` key.
-- **The shared family password** in env as a single **bare
-  `BEADS_DOLT_PASSWORD`** — all livespec-family beads tenants share ONE Dolt
-  password, injected by the family 1Password Environment wrapper
+- **The tenant password** in env as a single **bare `BEADS_DOLT_PASSWORD`** —
+  injected by THIS project's configured env wrapper. A FAMILY tenant shares the
+  one family password via the family 1Password Environment wrapper
   `with-livespec-env.sh` (canonical copy at
-  `/data/projects/1password-env-wrapper/with-livespec-env.sh`). There is NO
-  per-tenant `BEADS_DOLT_PASSWORD_<tenant>` variable and NO per-tenant→bare
-  mapping — the wrapper exports the one bare var directly. Real isolation comes
-  from the per-tenant SQL user + DB-scoped grant, not from password distinctness.
-  Secrets are probe-only — `printenv NAME | wc -c`, never echo values — and NEVER
-  committed to `.livespec.jsonc` or `.beads/`.
+  `/data/projects/1password-env-wrapper/with-livespec-env.sh`); an INDEPENDENT
+  (non-family) tenant injects its own tenant password from its own 1Password
+  Environment via its own `with-<project>-env.sh` wrapper. Either way `bd`
+  consumes the same bare var — there is NO per-tenant
+  `BEADS_DOLT_PASSWORD_<tenant>` variable and NO per-tenant→bare mapping. Real
+  isolation comes from the per-tenant SQL user + DB-scoped grant, not from
+  password distinctness or wrapper identity. Secrets are probe-only — `printenv
+  NAME | wc -c`, never echo values — and NEVER committed to `.livespec.jsonc` or
+  `.beads/`.
 - **The `.beads/` pointer files**: `config.yaml` (committed; the `dolt.*` server
   keys) and `metadata.json` (gitignored, regenerable). NEVER run `bd init` inside
   a primary checkout or worktree — it auto-commits and clobbers `.beads/`.
@@ -87,8 +90,9 @@ NOT from any resolved config object — so run from the intended repo's root, or
 
 **An "Access denied" / "no beads database found" failure almost always means you
 are running OUTSIDE the wrapper** (the bare `BEADS_DOLT_PASSWORD` is absent), not
-that a secret is missing. Re-run under `with-livespec-env.sh -- <command>`. Never
-hand-hunt the secret or reach around the seam with raw `mysql` / `dolt` / `sudo`.
+that a secret is missing. Re-run under your project's configured env wrapper
+(`with-<project>-env.sh`) -- `<command>`. Never hand-hunt the secret or reach
+around the seam with raw `mysql` / `dolt` / `sudo`.
 
 ## Daily commands
 
