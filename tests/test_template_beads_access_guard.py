@@ -64,6 +64,24 @@ def test_allows_wrapped_bd() -> None:
     assert _load_guard().should_block(command=wrapped) is False
 
 
+def test_allows_independent_wrapper_bd() -> None:
+    """An INDEPENDENT (non-family) tenant's own `with-<project>-env.sh` wrapper allows.
+
+    Per `contracts.md` §"Family agent-instruction core" (v130): the guard
+    recognizes ANY per-project credential-injection wrapper (`with-<id>-env.sh`),
+    not only the family `with-livespec-env.sh`. A non-family wrapper such as
+    `with-openbrain-env.sh` injecting the bare `BEADS_DOLT_PASSWORD` MUST pass
+    through rather than be blocked.
+    """
+    wrapped = "with-openbrain-env.sh -- bd list --status all --json"
+    assert _load_guard().should_block(command=wrapped) is False
+
+
+def test_blocks_bare_bd_without_any_wrapper() -> None:
+    """A bare `bd` with no `with-<id>-env.sh` wrapper at all is still blocked."""
+    assert _load_guard().should_block(command="env BD=1 bd list --json") is True
+
+
 def test_allows_unrelated_command() -> None:
     assert _load_guard().should_block(command="git status && ls -la") is False
 
@@ -89,6 +107,18 @@ def test_main_passes_wrapped(
 ) -> None:
     code, out = _run_main(
         stdin_text='{"tool_input": {"command": "with-livespec-env.sh -- bd list"}}',
+        monkeypatch=monkeypatch,
+        capsys=capsys,
+    )
+    assert code == 0
+    assert out == ""
+
+
+def test_main_passes_independent_wrapper(
+    *, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code, out = _run_main(
+        stdin_text='{"tool_input": {"command": "with-openbrain-env.sh -- bd list"}}',
         monkeypatch=monkeypatch,
         capsys=capsys,
     )
