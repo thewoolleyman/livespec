@@ -1,10 +1,12 @@
 # Beads gaps and workarounds
 
 A living catalogue of hacks and hoops the livespec implementation
-layer has accumulated while integrating `bd` (gastownhall/beads,
-v1.0.3 at time of writing). Each entry is framed so it can be
-filed upstream as a discrete proposal — observation, current
-workaround in livespec, proposed change(s) to eliminate the
+layer has accumulated while integrating `bd` (gastownhall/beads).
+This file started during the v1.0.3 embedded-Dolt bootstrap; a
+2026-06-24 review added current shared-Dolt-server notes for the
+fleet's Beads/Dolt + Fabro operating model. Each entry is framed
+so it can be filed upstream as a discrete proposal — observation,
+current workaround in livespec, proposed change(s) to eliminate the
 need.
 
 ## Provenance and scope
@@ -34,6 +36,48 @@ Scope: the workarounds documented here are the ones livespec is
 actively carrying. If an upstream change lands that obviates a
 workaround, the corresponding entry should be retired with a
 status update.
+
+## 2026-06-24 status pass
+
+The fleet has moved from the original embedded-Dolt bootstrap
+shape to per-repo shared Dolt sql-server tenants consumed through
+the Beads/Dolt + Fabro orchestrator. Beads itself has also changed
+substantially since the v1.0.3-era observations in this document.
+
+Treat the entries below in three buckets:
+
+- **Still relevant to current operations:** Entry 11 is current:
+  tenant `bd` commands can still emit a `backup_export` warning in
+  a topology where backups are deliberately externalized to a
+  dedicated `backup` SQL user. Entry 10 remains conceptually
+  relevant because `.beads/config.yaml` now carries shared-server
+  tenant connection keys that are intentionally committed as
+  fleet bootstrap pointers, while `.beads/metadata.json` remains
+  regenerable and gitignored.
+- **Historically useful but likely stale for current livespec
+  operations:** Entries 1, 2, 4, 5, 6, 7, 8, and the inherited
+  embedded-mode Open Brain entries describe the original embedded
+  bootstrap scripts (`setup-beads.sh`, `bd-doctor.sh`,
+  `.beads/embeddeddolt/`, generated hook templates). Those scripts
+  are no longer present in this repo, and current fleet members use
+  host-provisioned `bd` plus shared Dolt sql-server tenants. Keep
+  these entries as upstream-history references until each issue is
+  rechecked against the current Beads release, then retire or
+  rewrite them.
+- **Still relevant as upstream product/prose concerns, but not
+  current blockers:** Entries 3 and 9 about injected agent prose
+  and `bd prime` over-claiming task ownership remain plausible
+  upstream concerns. They are not load-bearing for current livespec
+  operation because the family relies on committed AGENTS.md /
+  CLAUDE.md guidance and orchestrator plugin skills instead of
+  accepting generic Beads agent prose as authoritative.
+
+Operationally, the current family rule is: a Beads-backed member
+needs the `bd` CLI, a reachable Dolt sql-server, a bare
+`BEADS_DOLT_PASSWORD` injected by the correct wrapper, and committed
+`.beads/config.yaml` pointer values. Tenant users are isolated by
+SQL user and database grants. Host-level backup is handled outside
+tenant `bd` commands by a dedicated backup user and service.
 
 ## Methodology — entry format
 
@@ -555,6 +599,77 @@ while excluding host-specific bits.
 Not yet filed upstream. Open Brain's `setup-beads.sh` and
 `research/beads-problems.md` capture the workaround and
 rationale.
+
+---
+
+## Entry 11 — Tenant CLI auto-backup warning in externally managed backup topology
+
+### Observation
+
+In the current livespec fleet topology, Beads tenants connect to a
+shared Dolt sql-server over TCP with a per-repo tenant SQL user.
+That tenant user has the database privileges needed for normal
+`bd` operation, but it intentionally does NOT have the privileges
+needed to register or sync Dolt backups. Backups are externally
+managed by the host-level `dolt-backup.timer` service using a
+dedicated `backup` SQL user.
+
+Despite that separation, tenant-side `bd` commands can emit:
+
+```text
+Warning: auto-backup failed: register backup remote: add backup backup_export: Error 1105 (HY000): command denied to user 'livespec-console-beads-fabro'@'%'
+```
+
+Observed on 2026-06-24 with `bd version 1.0.5 (6a3f515ce)`,
+`dolt.mode=server`, `dolt.server-host=127.0.0.1`,
+`dolt.server-port=3307`, tenant user
+`livespec-console-beads-fabro`, and `backup.enabled=false`
+reported as the default by `bd config show`.
+
+The important distinction: `backup.enabled=false` does NOT mean
+"this project is not backed up." In this topology it means "the
+tenant `bd` CLI should not perform Beads' automatic backup /
+`backup_export` registration work." The project is still backed up
+through externally managed Dolt-server backup infrastructure.
+
+### Current workaround
+
+Treat this as a benign tenant-permission warning, not as a failed
+project backup. Do not grant tenant users broader Dolt backup
+privileges merely to suppress the warning. The family backup path
+is the host-level backup service as the dedicated `backup` user.
+
+When checking tenant health, prefer ordinary `bd` operations such
+as `bd list --json` under the configured environment wrapper, and
+verify backup service health separately from the tenant CLI path.
+
+### Proposed upstream change
+
+One of:
+
+1. Honor `backup.enabled=false` before attempting
+   `backup_export` registration in all paths, including
+   status/config-related commands.
+2. Add an explicit escape hatch such as
+   `backup.auto-register=false` or `backup.mode=external` that
+   suppresses tenant-side `backup_export` registration and
+   warnings while leaving out-of-band backups intact.
+
+Rationale: shared-server deployments commonly separate tenant
+application privileges from backup privileges. A tenant command
+warning that the tenant cannot register a backup remote is noisy
+when the backup role is intentionally external.
+
+### Status / pointers
+
+Commented upstream on
+[gastownhall/beads#3501](https://github.com/gastownhall/beads/issues/3501#issuecomment-4787562082)
+with the current shared-server / dedicated-backup-user repro.
+Related upstream issues:
+[gastownhall/beads#3522](https://github.com/gastownhall/beads/issues/3522),
+[gastownhall/beads#3594](https://github.com/gastownhall/beads/issues/3594),
+and
+[gastownhall/beads#3878](https://github.com/gastownhall/beads/issues/3878).
 
 ---
 
