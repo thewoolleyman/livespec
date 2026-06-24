@@ -10,8 +10,9 @@
 
 - `<intent>` — the verbatim user intent (freeform text from the
   pre-seed dialogue captured by `seed/SKILL.md`).
-- The chosen template name (one of `livespec`, `minimal`, or a
-  user-provided template path). For this prompt the value is
+- The chosen template name (one of `livespec`,
+  `livespec-with-diagrams`, `minimal`, or a user-provided
+  template path). For this prompt the value is
   always `"livespec"` — the prompt is template-specific and
   the skill resolves which template's prompt to load before
   invoking the LLM.
@@ -175,7 +176,8 @@ templates, the same payload's `sub_specs[]` becomes:
   error, the SKILL.md prose re-invokes this prompt with the
   error context appended; the LLM repairs the offending field.
 - **Unknown template.** If the user-provided template name is
-  not `livespec` or `minimal` and not a resolvable path, the
+  not `livespec`, `livespec-with-diagrams`, or `minimal` and
+  not a resolvable path, the
   pre-seed dialogue surfaces the error before this prompt
   runs; this prompt always sees a valid `livespec` template
   context.

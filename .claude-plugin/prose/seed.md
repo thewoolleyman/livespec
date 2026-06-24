@@ -65,7 +65,8 @@ The seed CLI accepts the following flags in v1:
   ```
   The required top-level `template` field carries the user-
   chosen template value from the pre-seed dialogue (one of
-  `livespec`, `minimal`, or a custom template path); the
+  `livespec`, `livespec-with-diagrams`, `minimal`, or a custom
+  template path); the
   CLI consumes it to bootstrap `.livespec.jsonc` per bullet "`.livespec.jsonc` is wrapper-
   owned" (v016 P2). The `sub_specs[]` list MAY be empty (the
   default end-user case) or carry one entry per template the
@@ -115,8 +116,10 @@ exit code is `0` (NOT an error).
       use? Options: `livespec` (recommended default — multi-
       file `SPECIFICATION/` layout with `spec.md`,
       `contracts.md`, `constraints.md`, `scenarios.md`),
-      `minimal` (single-file `SPECIFICATION.md` at repo root),
-      or a path to a custom template directory containing
+      `livespec-with-diagrams` (the `livespec` layout plus a
+      Mermaid-first `diagrams/` manifest with a PlantUML escape
+      hatch), `minimal` (single-file `SPECIFICATION.md` at repo
+      root), or a path to a custom template directory containing
       `template.json`."
    2. **Sub-spec emission (v020 Q2; meta-project case).**
       "Does this project ship its own livespec templates that

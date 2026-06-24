@@ -10,8 +10,9 @@
 
 - `<intent>` — the verbatim user intent (freeform text from the
   pre-seed dialogue captured by `seed/SKILL.md`).
-- The chosen template name (one of `livespec`, `minimal`, or a
-  user-provided template path). For this prompt the value is
+- The chosen template name (one of `livespec`,
+  `livespec-with-diagrams`, `minimal`, or a user-provided
+  template path). For this prompt the value is
   always `"livespec"` — the prompt is template-specific and
   the skill resolves which template's prompt to load before
   invoking the LLM.

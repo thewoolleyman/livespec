@@ -14,7 +14,7 @@
   "properties": {
     "template": {
       "type": "string",
-      "description": "User-chosen template value from the pre-seed dialogue: a built-in name ('livespec', 'minimal') or a path to a custom template directory."
+      "description": "User-chosen template value from the pre-seed dialogue: a built-in name ('livespec', 'livespec-with-diagrams', 'minimal') or a path to a custom template directory."
     },
     "intent": {
       "type": "string",

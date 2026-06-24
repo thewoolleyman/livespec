@@ -13,12 +13,12 @@
 """Resolve-template sub-command supervisor.
 
 
-and emits the resolved template directory path on
-stdout. The path-computation formula
-`Path(__file__).resolve().parents[3]` derives the bundle root
-from this file's location: parents[0]=commands/,
-parents[1]=livespec/, parents[2]=scripts/,
-parents[3]=.claude-plugin/.
+and emits the resolved template directory path on stdout.
+Resolution (the built-in name set and the custom-template path
+rule) is delegated to the shared
+`livespec.templates.resolve_template_value` — the single source of
+truth shared with the two doctor-static resolvers (`template_exists`,
+`_template_manifest`) so the three cannot drift.
 
  minimum-viable scope: only the --template flow is
 implemented (the pre-seed flow per the spec Q2). The default
@@ -50,15 +50,11 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec import templates
 from livespec.errors import LivespecError, PreconditionError
 from livespec.io import cli
 
 __all__: list[str] = ["build_parser", "main"]
-
-
-_BUNDLE_ROOT = Path(__file__).resolve().parents[3]
-_BUILTIN_TEMPLATES_DIR = _BUNDLE_ROOT / "specification-templates"
-_BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "livespec-with-diagrams", "minimal"})
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -92,31 +88,37 @@ def _resolve_template_value(
 ) -> IOResult[Path, LivespecError]:
     """Resolve a --template value to an absolute directory path.
 
-    Built-in names (`livespec`, `livespec-with-diagrams`,
-    `minimal`) resolve to
-    `<bundle-root>/specification-templates/<name>` via
-    `_BUILTIN_TEMPLATES_DIR`. Other strings are treated as paths
-    relative to --project-root and validated to (a) exist as a
-    directory and (b) contain `template.json`. Failures map to
-    `PreconditionError` (exit 3).
+    Delegates to the shared `livespec.templates.resolve_template_value`
+    (the single built-in-set + custom-path source of truth shared with
+    the two doctor-static resolvers), then lifts the pure `Result` onto
+    the IO railway: a `TemplateResolutionFailure` maps to a
+    `PreconditionError` (exit 3) via `_precondition_for_failure`.
     """
-    if value in _BUILTIN_TEMPLATE_NAMES:
-        return IOSuccess(_BUILTIN_TEMPLATES_DIR / value)
-    candidate = (project_root / value).resolve()
-    if not candidate.is_dir():
-        return IOResult.from_failure(
-            PreconditionError(
-                f"resolve_template: --template path does not exist or "
-                f"is not a directory: {candidate}",
-            ),
+    resolution = templates.resolve_template_value(value=value, project_root=project_root)
+    return IOResult.from_result(
+        resolution.alt(lambda failure: _precondition_for_failure(failure=failure)),
+    )
+
+
+def _precondition_for_failure(
+    *,
+    failure: templates.TemplateResolutionFailure,
+) -> LivespecError:
+    """Map a shared-resolver failure onto the exit-3 PreconditionError.
+
+    The two arms keep the messages resolve_template emitted before the
+    resolution logic was extracted: `missing_dir` → the path is absent
+    or not a directory; `missing_manifest` → the directory exists but
+    carries no `template.json`.
+    """
+    if failure.reason == "missing_dir":
+        return PreconditionError(
+            f"resolve_template: --template path does not exist or "
+            f"is not a directory: {failure.candidate}",
         )
-    if not (candidate / "template.json").is_file():
-        return IOResult.from_failure(
-            PreconditionError(
-                f"resolve_template: --template path lacks template.json: " f"{candidate}",
-            ),
-        )
-    return IOSuccess(candidate)
+    return PreconditionError(
+        f"resolve_template: --template path lacks template.json: {failure.candidate}",
+    )
 
 
 def _emit_resolved_path(*, path: Path) -> IOResult[Path, LivespecError]:

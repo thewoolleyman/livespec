@@ -20,10 +20,11 @@ module holds the one shared resolution railway:
 
 1. read `<project_root>/.livespec.jsonc` and take its `template`
    value (defaulting to the built-in `livespec` name);
-2. resolve the value to a template directory — built-in names map
-   into the bundled `specification-templates/` tree (mirroring
-   `commands/resolve_template.py`), other strings resolve as
-   project-root-relative paths that must contain `template.json`;
+2. resolve the value to a template directory via the shared
+   `livespec.templates.resolve_template_value` — built-in names map
+   into the bundled `specification-templates/` tree, other strings
+   resolve as project-root-relative paths that must contain
+   `template.json`;
 3. read + schema-validate `template.json` and surface
    `TemplateConfig.spec_files`.
 
@@ -49,6 +50,7 @@ from typing import Any
 
 from returns.io import IOResult
 
+from livespec import templates
 from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
@@ -61,12 +63,6 @@ __all__: list[str] = ["is_main_spec_root", "load_active_template_spec_files"]
 
 _SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "schemas"
 _TEMPLATE_CONFIG_SCHEMA_PATH = _SCHEMAS_DIR / "template_config.schema.json"
-# parents[0]=static/, [1]=doctor/, [2]=livespec/, [3]=scripts/,
-# [4]=.claude-plugin/ — the bundle root carrying the built-in
-# templates (mirrors commands/resolve_template.py's formula).
-_BUNDLE_ROOT = Path(__file__).resolve().parents[4]
-_BUILTIN_TEMPLATES_DIR = _BUNDLE_ROOT / "specification-templates"
-_BUILTIN_TEMPLATE_NAMES = frozenset({"livespec", "livespec-with-diagrams", "minimal"})
 
 
 def is_main_spec_root(*, ctx: DoctorContext) -> bool:
@@ -82,20 +78,16 @@ def is_main_spec_root(*, ctx: DoctorContext) -> bool:
 def _resolve_template_dir(*, template_value: str, project_root: Path) -> Path | None:
     """Resolve a `.livespec.jsonc` `template` value to a directory, or None.
 
-    Built-in names resolve into the bundled
-    `specification-templates/` tree; other strings resolve as
-    project-root-relative custom-template paths that must exist and
-    contain `template.json`. Mirrors
-    `commands/resolve_template.py._resolve_template_value`, except
-    unresolvable values yield `None` (the caller degrades to
-    "no manifest") rather than a railway failure.
+    Delegates to the shared `livespec.templates.resolve_template_value`
+    (the single built-in-set + custom-path source of truth shared with
+    `commands/resolve_template.py` and `doctor/static/template_exists.py`).
+    An unresolvable value yields `None` so the caller degrades to
+    "no manifest" rather than surfacing a railway failure.
     """
-    if template_value in _BUILTIN_TEMPLATE_NAMES:
-        return _BUILTIN_TEMPLATES_DIR / template_value
-    candidate = (project_root / template_value).resolve()
-    if candidate.is_dir() and (candidate / "template.json").is_file():
-        return candidate
-    return None
+    return templates.resolve_template_value(
+        value=template_value,
+        project_root=project_root,
+    ).value_or(None)
 
 
 def load_active_template_spec_files(

@@ -1,17 +1,22 @@
 """Tests for livespec.doctor.static.template_exists.
 
- this is the second of the eight Phase-3
-minimum-subset doctor checks. It asserts that the project's
-`.livespec.jsonc` `template` field resolves to a known template
-— either a built-in template name (one of {`livespec`,
-`minimal`}) or a path-as-string to a custom template directory
-present on disk relative to the project root.
+The check asserts that the project's `.livespec.jsonc` `template`
+field resolves to a known template — either a built-in template name
+(one of {`livespec`, `livespec-with-diagrams`, `minimal`}) or a
+path-as-string to a custom template directory present on disk
+relative to the project root and carrying `template.json`. Resolution
+is delegated to the shared `livespec.templates.resolve_template_value`,
+so these tests exercise both resolution outcomes through the doctor's
+pass/fail `Finding` surface:
 
-This test lands the success arm for the built-in template
-resolution: a config declaring `template: "livespec"` yields
-IOSuccess(Finding(status='pass', ...)). Subsequent cycles
-extend to cover the failure arm (unknown template, missing
-custom-template directory) and the path-resolution branch.
+- pass: a built-in name (`livespec`, `livespec-with-diagrams`) and a
+  valid custom template path;
+- fail: an unknown name (no on-disk directory) and a custom path whose
+  directory exists but lacks `template.json`.
+
+The `livespec-with-diagrams` and custom-path pass arms are the
+livespec-kfjd regression coverage — before the shared resolver,
+`template_exists` rejected both.
 """
 
 from __future__ import annotations
@@ -81,6 +86,98 @@ def test_template_exists_run_returns_fail_for_unknown_name(
         check_id="doctor-template-exists",
         status="fail",
         message="template 'unknown-template' is neither a builtin nor an existing path",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert template_exists.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_template_exists_run_returns_pass_for_builtin_livespec_with_diagrams(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) passes for the `livespec-with-diagrams` built-in (livespec-kfjd).
+
+    Before the shared resolver, `template_exists` recognized only
+    `{livespec, minimal}` and emitted a fail-Finding for
+    `livespec-with-diagrams` even though `resolve_template` accepted
+    it — blocking the entire `/livespec:*` lifecycle for any project
+    on that builtin. This pins the now-passing arm.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    config_text = '{\n  "template": "livespec-with-diagrams"\n}\n'
+    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = Finding(
+        check_id="doctor-template-exists",
+        status="pass",
+        message="template resolves to a known builtin or existing path",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert template_exists.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_template_exists_run_returns_pass_for_valid_custom_template_path(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) passes for a project-relative custom template dir (livespec-kfjd).
+
+    The custom-template on-disk path-resolution branch was never
+    implemented in `template_exists`; a `template` value naming a
+    project-relative directory that exists and carries `template.json`
+    now resolves and yields a pass-Finding (matching `resolve_template`).
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    template_dir = project_root / "my-template"
+    template_dir.mkdir()
+    _ = (template_dir / "template.json").write_text("{}", encoding="utf-8")
+    config_text = '{\n  "template": "my-template"\n}\n'
+    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = Finding(
+        check_id="doctor-template-exists",
+        status="pass",
+        message="template resolves to a known builtin or existing path",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert template_exists.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_template_exists_run_returns_fail_for_custom_path_missing_template_json(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) fails for a custom path whose dir lacks `template.json`.
+
+    The directory exists relative to the project root, but it is not a
+    template (no `template.json`), so resolution fails and the check
+    yields a fail-Finding naming the offending value.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    bare_dir = project_root / "bare-template"
+    bare_dir.mkdir()
+    config_text = '{\n  "template": "bare-template"\n}\n'
+    _ = (project_root / ".livespec.jsonc").write_text(config_text, encoding="utf-8")
+    spec_root = project_root / "SPECIFICATION"
+    spec_root.mkdir()
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = Finding(
+        check_id="doctor-template-exists",
+        status="fail",
+        message="template 'bare-template' is neither a builtin nor an existing path",
         path=None,
         line=None,
         spec_root=str(spec_root),
