@@ -3,8 +3,7 @@
 This `SPECIFICATION/` directory holds the living specification
 for the project, governed by `livespec`'s propose-change/revise
 loop. The `livespec-with-diagrams` template ships six spec files
-plus a `diagrams/` escape-hatch directory plus the
-`proposed_changes/` and `history/` machinery:
+plus the `proposed_changes/` and `history/` machinery:
 
 - `spec.md` — primary source surface (project intent, top-level
   architecture).
@@ -17,8 +16,6 @@ plus a `diagrams/` escape-hatch directory plus the
   invariants that are NOT visible at the user-facing surface.
 - `scenarios.md` — Gherkin acceptance scenarios.
 - `README.md` (this file) — overview + entry-point.
-- `diagrams/` — PlantUML escape-hatch diagram sources plus
-  their rendered SVG outputs (see "Diagram conventions").
 
 ## Conventions
 
@@ -35,22 +32,18 @@ plus a `diagrams/` escape-hatch directory plus the
 
 ## Diagram conventions
 
-Mermaid is the standard diagram format. Common diagram types
-(sequence, class, state, ER, flowchart/dependency, light C4)
-are authored as fenced `mermaid` blocks inside the markdown
-spec files — they are markdown content, follow the markdown
-file's lifecycle, and need no manifest entry or render command.
+Mermaid is the standard and default diagram format. Diagram
+types (sequence, class, state, ER, flowchart/dependency, C4, and
+the rest) are authored as fenced `mermaid` blocks inside the
+markdown spec files — they are markdown content, render natively
+wherever markdown is viewed, follow the markdown file's
+lifecycle, and need no manifest entry or render command.
 
-PlantUML is the escape hatch, ONLY for diagram types Mermaid
-lacks first-class support for (deployment, timing, object,
-mind map, rich C4/sprites). Escape-hatch diagrams live as
-`diagrams/<name>.plantuml` sources (`kind: diagram_source` in
-the template manifest) with rendered SVG outputs
-(`kind: diagram_rendered`); `/livespec:revise` re-renders them
-via the `render_commands` entry in `.livespec.jsonc` whenever
-their sources change. The starter
-`diagrams/example.plantuml` → `diagrams/example.svg` pair shows
-the mechanism with a deployment diagram.
+If a diagram genuinely needs a tool Mermaid lacks (rare), render
+it with an alternate tool such as PlantUML or Graphviz OUTSIDE
+livespec and commit the resulting image alongside the markdown
+that references it; livespec treats it as an opaque asset and
+does not manage it.
 
 ## Lifecycle
 

@@ -116,9 +116,9 @@ exit code is `0` (NOT an error).
       use? Options: `livespec` (recommended default — multi-
       file `SPECIFICATION/` layout with `spec.md`,
       `contracts.md`, `constraints.md`, `scenarios.md`),
-      `livespec-with-diagrams` (the `livespec` layout plus a
-      Mermaid-first `diagrams/` manifest with a PlantUML escape
-      hatch), `minimal` (single-file `SPECIFICATION.md` at repo
+      `livespec-with-diagrams` (the `livespec` layout plus
+      seeded Mermaid diagram conventions and an example block),
+      `minimal` (single-file `SPECIFICATION.md` at repo
       root), or a path to a custom template directory containing
       `template.json`."
    2. **Sub-spec emission (v020 Q2; meta-project case).**
