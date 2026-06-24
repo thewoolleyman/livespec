@@ -575,7 +575,7 @@ Every repo change must use a worktree -> PR -> merge -> cleanup path.
 2. Create a separate worktree before editing:
 
    ```bash
-   mise exec -- git -C /data/projects/livespec worktree add -b <branch> /data/projects/<worktree> master
+   mise exec -- git -C /data/projects/livespec worktree add -b <branch> "$HOME/.worktrees/livespec/<branch>" master
    ```
 
 3. Use `mise exec -- git ...` for commit and push so hooks run.
