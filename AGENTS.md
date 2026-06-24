@@ -257,11 +257,19 @@ stopping points.
    ```
 
 2. If the change will modify tracked files, create a dedicated worktree
-   from the primary checkout's `master` and do all edits there:
+   from the primary checkout's `master` and do all edits there. Every
+   worktree lives under the per-user root `~/.worktrees/<repo>/<branch>`
+   — NEVER as a peer of the clones under `/data/projects`, so the
+   workspace holds only first-class clones:
 
    ```bash
-   mise exec -- git -C /data/projects/livespec worktree add -b <branch> /data/projects/<worktree> master
+   mise exec -- git -C /data/projects/livespec worktree add -b <branch> "$HOME/.worktrees/livespec/<branch>" master
    ```
+
+   `just bootstrap` registers `~/.worktrees` as one of mise's
+   `trusted_config_paths`, so a freshly created worktree's `.mise.toml`
+   is auto-trusted and the first `mise exec` inside it never stalls on a
+   "config not trusted" prompt.
 
 3. Use `mise exec -- git commit ...` and `mise exec -- git push ...` so
    the mise-managed lefthook hooks actually run. Never pass
