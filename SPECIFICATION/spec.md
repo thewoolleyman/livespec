@@ -202,7 +202,7 @@ Method is NOT a determinism distinction.
 
 **Substrate guidance.** A shared-mutable-file JSONL ledger is unsuitable for PARALLEL producers (git's unit of concurrency is the commit, not the row; N concurrent producers serialize and collide on merge); it remains acceptable for serial use. A parallel-capable Ledger requires row-level concurrent writes and structural merge (e.g. Beads on Dolt). Code artifacts stay in git (branch-per-run is already correct there); the contention problem is specific to the shared ledger.
 
-**Reference orchestrators.** Exactly two are current work: **git-jsonl** (serial use; the existing homegrown orchestration logic; optionally driven directly by a human via a coding agent runtime) and **Beads/Dolt + Fabro** (Beads/Dolt Ledger + Fabro Loop with a thin Dispatcher; parallel-capable; the assembly the livespec family itself dogfoods for ALL internal repos). Other fills (Gas City fleets, Kilroy) are possible future alternates the decomposition admits, not commitments.
+**Reference orchestrators.** Exactly two are current work: **git-jsonl** (serial use; the existing homegrown orchestration logic; optionally driven directly by a human via a coding agent runtime) and **Beads/Dolt + Fabro** (Beads/Dolt Ledger + Fabro Loop with a thin Dispatcher; parallel-capable; the assembly the livespec fleet itself dogfoods for ALL internal repos). Other fills (Gas City fleets, Kilroy) are possible future alternates the decomposition admits, not commitments.
 
 **Vocabulary.** "Layer 1/2/3" is retired. "Harness" is NOT used for the thin agent wrapper (it collides with the established wider meaning: everything in an agent except the model); the wrapper is the **Driver**.
 

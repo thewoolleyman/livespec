@@ -25,7 +25,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "TODO",
-    "reason": "Landed in v063 (template-manifest-additional-files proposal accept); revised at v105 (Mermaid-first). The W0b PR landed the v2 template_config schema + spec_files manifest + the livespec-with-diagrams built-in (tests.livespec.validate.test_template_config covers the manifest wire semantics). livespec-l1c3 landed the manifest-aware doctor checks (tests.livespec.doctor.static.test_template_files_present + test_diagram_source_rendered_drift) and the revise render-lifecycle integration (tests.livespec.commands.test_revise_render). Still TODO before the full-section test ID: the heading_coverage.py manifest rewiring, which ships from the livespec-dev-tooling sibling and needs a contract seam there first (template-manifest resolution via its consumer-configuration schema); no live drift meanwhile since every family consumer runs a v1 template whose implicit manifest equals the check's built-in file tuple."
+    "reason": "Landed in v063 (template-manifest-additional-files proposal accept); revised at v105 (Mermaid-first). The W0b PR landed the v2 template_config schema + spec_files manifest + the livespec-with-diagrams built-in (tests.livespec.validate.test_template_config covers the manifest wire semantics). livespec-l1c3 landed the manifest-aware doctor checks (tests.livespec.doctor.static.test_template_files_present + test_diagram_source_rendered_drift) and the revise render-lifecycle integration (tests.livespec.commands.test_revise_render). Still TODO before the full-section test ID: the heading_coverage.py manifest rewiring, which ships from the livespec-dev-tooling sibling and needs a contract seam there first (template-manifest resolution via its consumer-configuration schema); no live drift meanwhile since every fleet consumer runs a v1 template whose implicit manifest equals the check's built-in file tuple."
   },
   {
     "heading": "## Sub-command lifecycle",
@@ -801,10 +801,10 @@
     "reason": "Landed in v097 (cli-end-to-end-harness-contract proposal accept, epic li-e2ecli Phase 1). The contract mandates a top-of-pyramid CLI-driven user-surface e2e tier. Real test ID populated by Epic D Waves 11-12: the harness ships from livespec-dev-tooling (li-e2ecdt) and each consumer repo wires tests/e2e-cli/ fixtures (li-e2eclv livespec, li-e2ecpx impl-plaintext)."
   },
   {
-    "heading": "## Family agent-instruction core",
+    "heading": "## Fleet agent-instruction core",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "TODO",
-    "reason": "Landed by the revise pass accepting proposed_changes/family-universal-agent-instruction-core.md. Mandates the family-universal agent-instruction core (incl. beads runtime prerequisites), the AGENTS.md / .claude/CLAUDE.md symlink shape, and the beads-access guard, fleet-enforced. Real test ID populated by the impl follow-up that adds the fleet OBLIGATION_ROWS instruction-surface rows in livespec-dev-tooling."
+    "reason": "Landed by the revise pass accepting the proposed change that introduced the fleet-universal agent-instruction core. Mandates the fleet-universal agent-instruction core (incl. beads runtime prerequisites), the AGENTS.md / .claude/CLAUDE.md symlink shape, and the beads-access guard, fleet-enforced. Real test ID populated by the impl follow-up that adds the fleet OBLIGATION_ROWS instruction-surface rows in livespec-dev-tooling."
   }
 ]

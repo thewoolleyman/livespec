@@ -190,7 +190,7 @@ equality holds HERE but is no longer a required rule.
     equal it; it MAY be a short readable alias. For the livespec core
     repo the prefix happens to equal the DB (`livespec`), so issue ids
     become `livespec-…`, but that equality is no longer required.
-  - `--skip-agents --skip-hooks` — family rule; **both flags exist** in
+  - `--skip-agents --skip-hooks` — fleet rule; **both flags exist** in
     v1.0.5 and MUST both be passed (no agent files / git hooks injected
     into the consuming repo).
   - `--non-interactive --quiet` — noninteractive-only bd rule.
@@ -230,7 +230,7 @@ no default tenant), and the tenant is onboarded against an
   git hooks into the consuming repo: `bd init --server` with `--quiet`,
   plus `--stealth` where the repo must carry no beads git operations.
   (Matches the livespec rule `bd init --skip-agents --skip-hooks` from
-  prior family practice and the "Beads invariants" noninteractive-only
+  prior fleet practice and the "Beads invariants" noninteractive-only
   rule.)
 - **Server-mode auto-commit MUST stay OFF** (the default). Per-write
   `DOLT_COMMIT` under concurrent load raises "database is read only";
@@ -266,7 +266,7 @@ li-mwwdws / honored by li-srbpds:
   identity-mismatch concern.
 - **Problem 8** (`core.hooksPath` ownership race): the `--stealth` /
   no-git-hooks init above is the structural avoidance; the bridge must
-  never install beads git hooks into a livespec-family repo.
+  never install beads git hooks into a livespec-fleet repo.
 
 ## RESOLVED beads-side assumptions (li-mwwdws, 2026-06-08)
 
@@ -409,4 +409,4 @@ init/sync fixes). **RESOLVED 2026-06-08 (live-repro): pin v1.0.5.** Per
 on the tenant) never invokes that path, so the fork does not bind.
 v1.0.5 carries the Problem 1/3/4/5 fixes, and v1.0.4↔v1.0.5 mixing
 against one server is unsafe (#4152 forward schema-skew guard) — so
-li-srbpds / li-zmigvx **standardize the whole family on v1.0.5**.
+li-srbpds / li-zmigvx **standardize the whole fleet on v1.0.5**.

@@ -7,9 +7,9 @@ Beads/Dolt + Fabro backend — the host-level runtime that must be in
 place before work-items can flow.
 
 It is written for **any** project that wants livespec governance, not
-just the livespec family repos. Where the livespec family uses a
+just the livespec fleet repos. Where the livespec fleet uses a
 specific convention (a shared Dolt server, a 1Password secret
-wrapper), that is called out as *the family's reference setup* — your
+wrapper), that is called out as *the fleet reference setup* — your
 project supplies the equivalent.
 
 Authoritative contract surface: `SPECIFICATION/contracts.md`
@@ -186,12 +186,12 @@ provision host-level runtime. The Beads/Dolt backend connects only
 when **all four** of the following are present. (Skip this entire
 section for the git-jsonl backend.)
 
-1. **`bd` CLI, pinned v1.0.5**, at a known path (the family uses
+1. **`bd` CLI, pinned v1.0.5**, at a known path (the fleet uses
    `/usr/local/bin/bd`), with `LIVESPEC_BD_PATH` pointing at it — the
    beads wrappers shell out to `$LIVESPEC_BD_PATH`.
 
 2. **A running Dolt `sql-server`** reachable over **TCP**
-   (the family forces `127.0.0.1:3307`; the unix socket is
+   (the fleet forces `127.0.0.1:3307`; the unix socket is
    deliberately unreachable by sandboxed callers, which is why
    `.livespec.jsonc` and `.beads/config.yaml` carry `dolt.*` host/port
    keys with **no** `socket` key).
@@ -199,7 +199,7 @@ section for the git-jsonl backend.)
 3. **The per-tenant password in the environment** as
    `BEADS_DOLT_PASSWORD_<tenant_with_underscores>` (tenant == repo
    name; hyphens become underscores). The beads wrappers map this to
-   the bare `BEADS_DOLT_PASSWORD` they consume. The family injects it
+   the bare `BEADS_DOLT_PASSWORD` they consume. The fleet injects it
    via a 1Password Environment wrapper (`with-livespec-env.sh`); your
    project supplies the equivalent. Secrets are **probe-only** —
    verify with `printenv NAME | wc -c`, never echo the value — and

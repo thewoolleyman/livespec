@@ -734,7 +734,7 @@ check-doctor-static:
 # Shared commit-refuse-hook invariant from livespec-dev-tooling. Per
 # SPECIFICATION/contracts.md §"`primary-checkout-commit-refuse-hook-installed`"
 # and §"Shared code sync — livespec-dev-tooling", the commit-refuse-hook
-# rule is family-wide-by-intent and its canonical implementation ships
+# rule is fleet-wide-by-intent and its canonical implementation ships
 # in the shared inventory (available since livespec-dev-tooling v0.5.0).
 # This recipe is the project-root-scoped CI/just-check adoption that the
 # spec mandates for every consumer repo. Supersedes the v091-v094
@@ -991,7 +991,7 @@ vendor-update lib:
 # Deterministic, idempotent worktree REAPER — the ACTION counterpart
 # to doctor's detection-only `no-stale-worktree` check. The Layer 3
 # orchestrator runs this to mechanically clean up orphaned worktrees
-# in any family repo after their PRs rebase-merge (remote branch gone).
+# in any fleet member repo after their PRs rebase-merge (remote branch gone).
 # Reaps a NON-primary worktree only when its branch is "done"
 # (remote-gone), its working tree is clean, and it is not held by a
 # LIVE process lock; never touches the primary worktree. NOT part of

@@ -8,7 +8,7 @@ re-evaluated through the propose-change loop.
 ## Runtime
 
 The runtime environment the project requires (language version,
-operating-system family, etc.). Populated at seed time from the
+operating-system class, etc.). Populated at seed time from the
 user's intent + initial scaffolding.
 
 ## Dependencies
