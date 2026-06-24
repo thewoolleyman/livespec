@@ -19,15 +19,14 @@ categorization rule when landing non-functional content.
 top-level sections below mirror the user-facing spec files; the
 decision rule for each section:
 
-- `## Spec` — process *intent and behavior*: what testing and
-  TDD mean in this project, what "done" means for a contributor
-  change, how the project's own conventions apply to itself.
-  Mirrors `spec.md`'s role.
+- `## Spec` — process *intent and behavior*: what testing means
+  in this project, what the project's development discipline is,
+  what "done" means for a contributor change. Mirrors `spec.md`'s
+  role.
 - `## Contracts` — *contributor-facing external interfaces and
-  toolchain*: the specific tools the project depends on, the
-  contributor-facing invocation surface (e.g., `just check`),
-  and any wire-level test/coverage data-file shapes. Mirrors
-  `contracts.md`'s role.
+  toolchain*: the tools the project depends on, the command that
+  runs the project's checks, and any test/coverage data-file
+  shapes. Mirrors `contracts.md`'s role.
 - `## Constraints` — *architectural invariants on the
   implementation*: code patterns, layout rules, thresholds, and
   style rules that bind only contributors. Mirrors
@@ -35,7 +34,7 @@ decision rule for each section:
 - `## Scenarios` — *Gherkin-style scenarios for
   contributor-facing workflows*. Mirrors `scenarios.md`'s role.
   Empty initially; populated when a specific contributor flow
-  needs to be pinned.
+  needs to be captured.
 
 The boundary against the user-facing spec files:
 
@@ -61,15 +60,15 @@ of `spec.md`'s role for the user-facing surface.
 
 ### Development discipline
 
-Test-Driven Development practices, commit discipline, and
-review process. Populated at seed time from the user's intent
-and any inherited project conventions.
+The project's testing approach, commit discipline, and review
+process. Populated at seed time from the user's intent and any
+inherited project conventions.
 
 ### Tooling and enforcement
 
 Linter, formatter, type-checker, code-coverage targets, and
-complexity thresholds. The enforcement aggregate (e.g.,
-`just check`) MUST be derivable from this section.
+complexity thresholds. The single command that runs the full
+set of checks MUST be derivable from this section.
 
 ### Hooks and CI
 
@@ -79,9 +78,8 @@ each other.
 
 ### Contributor workflow
 
-Repo-local task tracking, dev-environment tool pinning,
-contributor onboarding, and agent-facing operating
-instructions.
+Repo-local task tracking, dev-environment setup, contributor
+onboarding, and agent-facing operating instructions.
 
 ## Contracts
 
@@ -90,20 +88,20 @@ contributor-facing external interfaces and toolchain — the
 analogue of `contracts.md`'s role for the user-facing surface.
 Example placeholder content:
 
-### Toolchain pins
+### Contributor toolchain
 
-The version-managed toolchain a contributor installs (language
-runtime, task runner, hook manager). Each tool SHOULD pin to a
-documented version so a fresh checkout reproduces the same
-checks. End users install only the shipped runtime, NOT this
-contributor toolchain.
+The tools a contributor installs to build, test, and check the
+project (language runtime, build and test tooling, hook
+manager). Document how each tool's version is selected and
+recorded so a fresh checkout reproduces the same checks. End
+users install only the shipped runtime, NOT this contributor
+toolchain.
 
-### Enforcement-aggregate surface
+### Check-aggregate command
 
-The single contributor-facing entry point that runs every check
-(e.g., `just check`). Document its sub-targets and the
-data-file shapes any check produces or consumes (coverage maps,
-test manifests).
+The single command a contributor runs to execute every check.
+Document its sub-steps and the data-file shapes any check
+produces or consumes (coverage reports, test manifests).
 
 ## Constraints
 
@@ -112,12 +110,13 @@ invariants on the project's implementation — the analogue of
 `constraints.md`'s role for the user-facing surface, but bound
 to contributor-facing concerns. Example placeholder content:
 
-### Developer-tooling layout
+### Build-and-check layout
 
-The single-source-of-truth rule for dev-tooling invocation
-(e.g., the task runner owns every check; hooks and CI delegate
-to it and MUST NOT shell out to the underlying tools directly).
-Populated at seed time from the project's tooling conventions.
+The single-source-of-truth rule for build and check invocation
+(e.g., one canonical entry point owns every check; hooks and CI
+delegate to it rather than invoking the underlying tools
+directly). Populated at seed time from the project's tooling
+conventions.
 
 ### Code patterns and thresholds
 
@@ -133,7 +132,7 @@ Gherkin keyword line is preceded and followed by a blank line
 so that every step renders as its own Markdown paragraph under
 GitHub-Flavored Markdown. Fenced code blocks are not used to
 hold Gherkin steps. Empty initially; populated when a specific
-contributor flow needs to be pinned.
+contributor flow needs to be captured.
 
 ### Scenario: `<placeholder-contributor-scenario-name>`
 
