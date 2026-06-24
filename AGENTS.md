@@ -289,15 +289,15 @@ clone connects to its beads tenant only when all of the following are present:
 - **`bd` CLI, pinned v1.0.5**, at `/usr/local/bin/bd`, with `LIVESPEC_BD_PATH`
   pointing at it (the impl-beads wrappers shell out to `$LIVESPEC_BD_PATH`).
 - **A running Dolt `sql-server`** reachable over **TCP `127.0.0.1:3307`**. The
-  family tenants force TCP (not the unix socket): `/var/lib/doltdb/` is `0750
+  fleet tenants force TCP (not the unix socket): `/var/lib/doltdb/` is `0750
   dolt:dolt` and untraversable by the sandboxed caller, so `.beads/config.yaml`
   carries `dolt.*` host/port keys with NO `socket` key.
 - **The tenant password** in env as a single **bare `BEADS_DOLT_PASSWORD`** —
-  injected by THIS project's configured env wrapper. A FAMILY tenant shares the
-  one family password (members of the single livespec 1Password Environment) via
+  injected by THIS project's configured env wrapper. A FLEET tenant shares the
+  one fleet password (members of the single livespec 1Password Environment) via
   the livespec 1Password Environment wrapper `with-livespec-env.sh` (canonical
   copy at `/data/projects/1password-env-wrapper/with-livespec-env.sh`); an
-  INDEPENDENT (non-family) tenant injects its own tenant password from its own
+  INDEPENDENT (non-fleet) tenant injects its own tenant password from its own
   1Password Environment via its own `with-<project>-env.sh` wrapper. Either way
   `bd` consumes the same bare var — there is NO per-tenant
   `BEADS_DOLT_PASSWORD_<tenant>` suffix and NO per-tenant→bare mapping. Real
@@ -632,7 +632,7 @@ pass `--no-verify`.
 - **Verify a fix isn't already landed before filing.** Before filing a work-item
   from a memo or prior finding, grep git log (`--grep` on the id and the bug
   noun) to confirm it isn't fixed on master; if it is, dispose as already-fixed.
-- **Verify per-repo state before cross-repo plans.** The family is non-uniform —
+- **Verify per-repo state before cross-repo plans.** The fleet is non-uniform —
   verify the concrete per-repo state a cross-repo rule depends on (heading
   styles, registry entries, pins, which checks each repo runs) directly in each
   target repo; treat a plan's claims about sibling state as hypotheses to confirm.
@@ -643,11 +643,11 @@ pass `--no-verify`.
   tooling — don't dismiss it as "no use case yet."
 - **A required-key schema change is a cross-repo epic.** Making a work-items
   schema key required must, in the same epic, backfill that key into every
-  sibling repo's legacy records — the family shares one schema validator over
+  sibling repo's legacy records — the fleet shares one schema validator over
   independent stores, so the originating repo's CI stays green while every
   sibling store becomes unreadable.
 - **Dogfooding pins always pull HEAD.** For pin freshness across the
-  self-consuming family, default to "always pull HEAD"; never invoke
+  self-consuming fleet, default to "always pull HEAD"; never invoke
   "reproducibility" or "pin + Dependabot/stable-releases" as a trade-off — a
   stable pin hides the upstream breakage dogfooding exists to surface.
 - **Secrets are probe-only.** Read secret presence with `printenv NAME | wc -c`,

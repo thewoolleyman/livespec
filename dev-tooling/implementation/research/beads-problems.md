@@ -265,7 +265,7 @@ projects.
   [#3842](https://github.com/gastownhall/beads/pull/3842) is **only in
   v1.0.5** (`ahead` of v1.0.4). Lowest-severity of the eight (docs only,
   no behavior). Note: `bd dream` is not a real command in the v1.0.5 CLI
-  reference; the memory family is `bd remember`/`memories`/`recall`/
+  reference; the memory command group is `bd remember`/`memories`/`recall`/
   `forget` — the original AGENTS.md reference was likely stale.
 - 2026-05-05: filed our comment with concrete suggestions
   (consolidated "How cross-machine sync works" entry-point doc;
@@ -572,7 +572,7 @@ read on 2026-06-08.
 > writes land as native Dolt commits (committer **"beads"**). Mixing
 > v1.0.4 and v1.0.5 against one server is **UNSAFE** — v1.0.5's forward
 > schema-skew guard (#4152) hard-fails a v1.0.4 binary against a
-> v1.0.5-migrated DB — so **standardize the whole family on v1.0.5**.
+> v1.0.5-migrated DB — so **standardize the whole fleet on v1.0.5**.
 > The "pin v1.0.4 + wait for v1.0.6" recommendation later in this
 > section is retained for the historical record but is **no longer the
 > recommended posture** for the standalone server architecture.
@@ -612,7 +612,7 @@ and wait for v1.0.6**. **2026-06-08 update: SUPERSEDED for the
 section).** Because the standalone model never invokes the `bd dolt`
 multi-machine sync path that #4259/`0043` corrupts, the fork does not
 bind — **pin v1.0.5** (it carries the Problem 1/3/4/5 fixes) and
-standardize the whole family on it; v1.0.4↔v1.0.5 mixing against one
+standardize the whole fleet on it; v1.0.4↔v1.0.5 mixing against one
 server is unsafe per the #4152 forward schema-skew guard. The "wait for
 v1.0.6" path remains valid only for any future *embedded multi-machine*
 usage, which the cutover does not use.
@@ -647,7 +647,7 @@ embedded-sync framing; **as of the 2026-06-08 live-repro it is
 SUPERSEDED** for the `dolt-server` standalone architecture (the
 #4259/`0043` corruptor never fires on the standalone single-server, no-
 remote model — verified empirically). **Resolved gate posture: pin
-v1.0.5 family-wide.** No remaining unconditional blocker for the
+v1.0.5 fleet-wide.** No remaining unconditional blocker for the
 server-mode cutover.
 
 ---

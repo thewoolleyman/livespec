@@ -190,7 +190,7 @@ matching clause below (evaluated in order):
 - **Wrong functional / non-functional bucket.** A changed clause
   sits in the wrong file per the boundary litmus in
   `SPECIFICATION/non-functional-requirements.md` §"Boundary" — e.g.,
-  family-infrastructure / contributor-facing content landed in a
+  fleet-infrastructure / contributor-facing content landed in a
   user-facing file (`spec.md` / `contracts.md` / `constraints.md` /
   `scenarios.md`), or a contract a third-party consumer inherits
   landed in `non-functional-requirements.md`. Emit

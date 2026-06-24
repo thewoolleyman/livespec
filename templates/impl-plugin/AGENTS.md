@@ -3,7 +3,7 @@
 This file is the canonical agent-orientation surface for this repo;
 `.claude/CLAUDE.md` is a symlink to it — never maintain a separate copy.
 The sections through "Red-Green-Replay commit protocol" are the livespec
-family-universal agent-instruction core (shared by every family member via
+fleet-universal agent-instruction core (shared by every fleet member via
 the impl-plugin template); repo-specific guidance is additive on top.
 
 ## Repository mutation protocol
@@ -107,21 +107,21 @@ the picker row operators should expect.
 ## Beads runtime prerequisites
 
 This plugin's work-item store is a per-repo beads/Dolt TENANT on the shared
-family dolt-server — NOT JSONL files. Installing the plugin does NOT provision
+fleet dolt-server — NOT JSONL files. Installing the plugin does NOT provision
 the backend; a clone connects to its tenant only when ALL of the following are
 present:
 
 - **`bd` CLI, pinned**, at an absolute path (NEVER the mise shim), with
   `LIVESPEC_BD_PATH` pointing at it.
-- **A running Dolt `sql-server`** reachable over **TCP `127.0.0.1:3307`**. Family
+- **A running Dolt `sql-server`** reachable over **TCP `127.0.0.1:3307`**. Fleet
   tenants force TCP (not the unix socket); `.beads/config.yaml` carries `dolt.*`
   host/port keys with NO `socket` key.
 - **The tenant password** in env as a single **bare `BEADS_DOLT_PASSWORD`** —
-  injected by THIS project's configured env wrapper. A FAMILY tenant shares the
-  one family password via the family 1Password Environment wrapper
+  injected by THIS project's configured env wrapper. A FLEET tenant shares the
+  one fleet password via the fleet 1Password Environment wrapper
   `with-livespec-env.sh` (canonical copy at
   `/data/projects/1password-env-wrapper/with-livespec-env.sh`); an INDEPENDENT
-  (non-family) tenant injects its own tenant password from its own 1Password
+  (non-fleet) tenant injects its own tenant password from its own 1Password
   Environment via its own `with-<project>-env.sh` wrapper. Either way `bd`
   consumes the same bare var — there is NO per-tenant
   `BEADS_DOLT_PASSWORD_<tenant>` variable and NO per-tenant→bare mapping. Real

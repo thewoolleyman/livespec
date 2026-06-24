@@ -84,7 +84,7 @@ Pi) and the **orchestrator** (the pluggable producer whose work
 product is the implementation; internally a Ledger + Loop +
 Dispatcher). There are ZERO direct dependencies between Driver and
 orchestrator. Reference orchestrators: **git-jsonl** (serial) and
-**Beads/Dolt + Fabro** (parallel; dogfooded family-wide).
+**Beads/Dolt + Fabro** (parallel; dogfooded fleet-wide).
 
 Three invariants the diagram pins down:
 
@@ -123,7 +123,7 @@ Dispatcher (`livespec-orchestrator-beads-fabro`'s `dispatcher.py`). The Dispatch
 polls the ledger, dispatches each ready work-item into its own Fabro
 sandbox, runs `just check` plus `/livespec:doctor` as a hard janitor
 gate, verifies the merge, and closes the item — carrying routine
-cross-repo work unattended across the whole livespec family (livespec,
+cross-repo work unattended across the whole livespec fleet (livespec,
 livespec-impl-*, livespec-dev-tooling, livespec-runtime).
 
 The project-local `/livespec-orchestrate` Layer-3 loop-driver skill
@@ -162,9 +162,9 @@ Two paths:
 
 ## Observability
 
-The livespec family dogfoods its own telemetry. CI runs, Red→Green commit-gate cycles, the beads+fabro dispatcher, sandbox runs, and harness sub-agents are published to a shared Honeycomb environment:
+The livespec fleet dogfoods its own telemetry. CI runs, Red→Green commit-gate cycles, the beads+fabro dispatcher, sandbox runs, and harness sub-agents are published to a shared Honeycomb environment:
 
-- **[livespec family — all activity](https://ui.honeycomb.io/thewoolleyweb/environments/livespec/board/krThv8DvcwS)** — the cross-repo activity board (Honeycomb, `livespec` environment).
+- **[livespec fleet — all activity](https://ui.honeycomb.io/thewoolleyweb/environments/livespec/board/krThv8DvcwS)** — the cross-repo activity board (Honeycomb, `livespec` environment).
 
 ## More
 

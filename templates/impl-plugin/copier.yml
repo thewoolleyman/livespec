@@ -14,7 +14,7 @@
 # `copier update --vcs-ref=master` when the template changes. The
 # `--vcs-ref=master` pin is load-bearing: a bare `copier update` resolves the
 # latest git TAG (livespec's v1.0.0, which predates the template workflow
-# set) — the family's blessed re-sync ref is master. CI in each generated
+# set) — the fleet's blessed re-sync ref is master. CI in each generated
 # repo SHOULD run `copier update --dry-run --vcs-ref=master` to surface
 # drift.
 #
