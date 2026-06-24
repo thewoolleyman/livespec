@@ -237,7 +237,6 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-anchor-reference-resolution",
         "doctor-out-of-band-edits",
         "doctor-accept-decision-snapshot-consistency",
-        "doctor-diagram-source-rendered-drift",
         "doctor-copier-template-workflow-coverage",
         "doctor-master-direct-uncommitted-spec-edits",
         "doctor-parent-proposed-change-resolves",
@@ -288,11 +287,6 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             # correctly skip on their missing precondition.
             "doctor-wiring-completeness-cross-repo",
             "doctor-copier-template-workflow-coverage",
-            # doctor-diagram-source-rendered-drift skips when the
-            # active template declares no diagram pairings (these
-            # fixtures carry no .livespec.jsonc, so no v2 manifest
-            # resolves).
-            "doctor-diagram-source-rendered-drift",
         ):
             assert (
                 finding["status"] == "skipped"

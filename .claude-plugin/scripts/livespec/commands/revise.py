@@ -65,9 +65,6 @@ from livespec.commands._revise_railway_emits import (
 from livespec.commands._revise_railway_emits import (
     _process_decisions,
 )
-from livespec.commands._revise_render import (
-    _prepare_render_plan,
-)
 from livespec.commands._revise_validation import (
     _iter_proposal_topics as _iter_proposal_topics,
 )
@@ -211,24 +208,17 @@ def main(*, argv: list[str] | None = None) -> int:
                 ),
             )
             .bind(
-                lambda revise_input: _prepare_render_plan(
-                    revise_input=revise_input,
-                    spec_target=_resolve_spec_target(namespace=namespace),
-                    project_root=_resolve_project_root(namespace=namespace),
-                ).bind(
-                    lambda render_plan: io_git.get_git_user().bind(
-                        lambda author_human: _process_decisions(
-                            revise_input=revise_input,
-                            spec_target=_resolve_spec_target(namespace=namespace),
-                            author_human=author_human,
-                            author_llm=_resolve_author(
-                                namespace=namespace,
-                                payload=revise_input,
-                                env_lookup=os.environ.get,
-                            ),
-                            revised_at=revised_at,
-                            render_plan=render_plan,
+                lambda revise_input: io_git.get_git_user().bind(
+                    lambda author_human: _process_decisions(
+                        revise_input=revise_input,
+                        spec_target=_resolve_spec_target(namespace=namespace),
+                        author_human=author_human,
+                        author_llm=_resolve_author(
+                            namespace=namespace,
+                            payload=revise_input,
+                            env_lookup=os.environ.get,
                         ),
+                        revised_at=revised_at,
                     ),
                 ),
             )

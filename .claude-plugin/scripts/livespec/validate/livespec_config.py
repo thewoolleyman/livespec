@@ -13,15 +13,6 @@ track per the canonical pattern. fastjsonschema applies the
 schema's `default` keywords during validation so the
 constructed LivespecConfig always has all fields populated.
 
-`render_commands` is materialized from the optional object when
-present; when absent, the dataclass receives a default
-`RenderCommands()` with all per-kind argvs as None. The
-cross-config invariant — `render_commands.diagram_source`
-REQUIRED iff the active template's spec_files declares any
-`kind: diagram_source` entry — is enforced by a doctor static
-check, not here, because JSON Schema cannot reach across
-.livespec.jsonc and the resolved template's template.json.
-
 `spec_clis` is materialized key-by-key with the dataclass-side
 core defaults filling any name the payload omits (per
 `contracts.md` §"Spec-side CLI contract": pre-populated with
@@ -44,26 +35,11 @@ from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.livespec_config import (
     LivespecConfig,
     OrchestratorConfig,
-    RenderCommands,
     SpecClis,
 )
 from livespec.types import SpecRoot, TemplateName
 
 __all__: list[str] = ["validate_livespec_config"]
-
-
-def _build_render_commands(*, raw: dict[str, Any] | None) -> RenderCommands:
-    """Materialize the RenderCommands dataclass from the validated dict.
-
-    Returns an empty-defaults RenderCommands when the input is
-    absent; copies the per-kind argv list verbatim when present.
-    Schema-level validation has already constrained each value
-    to a non-empty list of strings.
-    """
-    if raw is None:
-        return RenderCommands()
-    diagram_source: list[str] | None = raw.get("diagram_source")
-    return RenderCommands(diagram_source=diagram_source)
 
 
 def _build_spec_clis(*, raw: dict[str, Any] | None) -> SpecClis:
@@ -136,7 +112,6 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> Livespe
         pre_step_skip_stale_branch_check=validated["pre_step_skip_stale_branch_check"],
         spec_clis=_build_spec_clis(raw=validated.get("spec_clis")),
         orchestrator=_build_orchestrator(raw=validated.get("orchestrator")),
-        render_commands=_build_render_commands(raw=validated.get("render_commands")),
     )
 
 

@@ -17,9 +17,7 @@ Per the v2 manifest mechanism in SPECIFICATION/spec.md
 contract": v2 templates additionally declare `spec_files` — a
 mapping from spec-target-relative path strings to per-file
 declarations. Each declaration carries a `kind` discriminator
-(markdown | diagram_source | diagram_rendered);
-diagram_rendered entries additionally carry `derived_from`
-pointing at the diagram_source they were rendered from.
+whose sole value is `markdown`.
 
 Per `check-newtype-domain-primitives`: `spec_root` uses the
 `SpecRoot` NewType.
@@ -35,7 +33,7 @@ from livespec.types import SpecRoot
 __all__: list[str] = ["SpecFileDecl", "SpecFileKind", "TemplateConfig"]
 
 
-SpecFileKind = Literal["markdown", "diagram_source", "diagram_rendered"]
+SpecFileKind = Literal["markdown"]
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -44,12 +42,10 @@ class SpecFileDecl:
 
     Mirrors the per-file declaration shape in
     template_config.schema.json's `spec_files.additionalProperties`:
-    a `kind` discriminator and (for diagram_rendered only) a
-    `derived_from` path.
+    a `kind` discriminator whose sole value is `markdown`.
     """
 
     kind: SpecFileKind
-    derived_from: str | None = None
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

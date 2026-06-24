@@ -92,10 +92,10 @@ def test_resolve_template_emits_bundle_path_for_builtin_livespec_with_diagrams(
     """--template livespec-with-diagrams → resolves to the bundled v2 template directory.
 
     The third built-in template name (alongside `livespec` and
-    `minimal`). Ships the v2 spec_files manifest with the
-    Mermaid-first seeded spec files plus the PlantUML
-    escape-hatch source + rendered SVG pair demonstrating the
-    diagram_source / diagram_rendered file kinds.
+    `minimal`). Ships the markdown-only v2 spec_files manifest
+    with the Mermaid-first seeded spec files (fenced Mermaid
+    blocks live inside the markdown content; livespec manages no
+    diagram file kinds).
     """
     exit_code = resolve_template.main(argv=["--template", "livespec-with-diagrams"])
     assert exit_code == 0

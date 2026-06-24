@@ -11,11 +11,10 @@ optional LLM-prompt paths.
 
 Per the v2 manifest mechanism (SPECIFICATION/spec.md §"Template
 manifest" + contracts.md §"Template manifest wire contract"):
-v2 templates additionally declare a `spec_files` manifest with
-per-file `kind` discriminators (markdown | diagram_source |
-diagram_rendered); diagram_rendered entries also carry a
-`derived_from` pointing at a diagram_source entry in the same
-manifest.
+v2 templates additionally declare a `spec_files` manifest whose
+every entry carries `{kind: markdown}`. livespec manages no
+diagram file kinds; an alternate tool's image is an opaque
+committed asset, not a manifest-declared file kind.
 """
 
 from __future__ import annotations
@@ -119,17 +118,13 @@ def test_validate_template_config_round_trips_spec_root(*, spec_root: str) -> No
 
 
 def test_validate_template_config_accepts_v2_with_spec_files() -> None:
-    """A v2 payload with a well-formed spec_files manifest validates."""
+    """A v2 payload with a well-formed markdown-only spec_files manifest validates."""
     schema = _SCHEMA
     payload: dict[str, object] = {
         "template_format_version": 2,
         "spec_files": {
             "spec.md": {"kind": "markdown"},
-            "diagrams/example.plantuml": {"kind": "diagram_source"},
-            "diagrams/example.svg": {
-                "kind": "diagram_rendered",
-                "derived_from": "diagrams/example.plantuml",
-            },
+            "contracts.md": {"kind": "markdown"},
         },
     }
     result = template_config.validate_template_config(payload=payload, schema=schema)
@@ -138,13 +133,7 @@ def test_validate_template_config_accepts_v2_with_spec_files() -> None:
             assert value.template_format_version == 2
             assert value.spec_files is not None
             assert value.spec_files["spec.md"] == SpecFileDecl(kind="markdown")
-            assert value.spec_files["diagrams/example.plantuml"] == SpecFileDecl(
-                kind="diagram_source",
-            )
-            assert value.spec_files["diagrams/example.svg"] == SpecFileDecl(
-                kind="diagram_rendered",
-                derived_from="diagrams/example.plantuml",
-            )
+            assert value.spec_files["contracts.md"] == SpecFileDecl(kind="markdown")
         case _:
             msg = f"expected Success(TemplateConfig), got {result}"
             raise AssertionError(msg)
@@ -184,14 +173,22 @@ def test_validate_template_config_rejects_v1_with_spec_files() -> None:
             raise AssertionError(msg)
 
 
-def test_validate_template_config_rejects_diagram_rendered_without_derived_from() -> None:
-    """A diagram_rendered entry missing derived_from returns Failure."""
+def test_validate_template_config_rejects_non_markdown_kind() -> None:
+    """A spec_files entry whose kind is not `markdown` returns Failure.
+
+    `markdown` is the sole legal manifest kind: livespec manages
+    no diagram file kinds, so the schema enum rejects the
+    former `diagram_source` / `diagram_rendered` values. This is
+    the Red→Green hinge for the rendering-machinery removal — the
+    pre-removal validator accepted `diagram_source`; the
+    collapsed-enum validator rejects it.
+    """
     schema = _SCHEMA
     payload: dict[str, object] = {
         "template_format_version": 2,
         "spec_files": {
             "spec.md": {"kind": "markdown"},
-            "diagrams/example.svg": {"kind": "diagram_rendered"},
+            "diagrams/example.svg": {"kind": "diagram_source"},
         },
     }
     result = template_config.validate_template_config(payload=payload, schema=schema)
@@ -203,11 +200,13 @@ def test_validate_template_config_rejects_diagram_rendered_without_derived_from(
             raise AssertionError(msg)
 
 
-def test_validate_template_config_rejects_markdown_with_derived_from() -> None:
-    """A markdown entry carrying derived_from returns Failure.
+def test_validate_template_config_rejects_unknown_per_entry_property() -> None:
+    """A spec_files entry carrying an unknown property (e.g. derived_from) returns Failure.
 
-    Drives the per-entry if/then/else: derived_from is REQUIRED
-    for diagram_rendered and FORBIDDEN otherwise.
+    The per-entry `additionalProperties: false` rejects any key
+    beyond `kind`. `derived_from` was the diagram-rendered
+    back-reference; it no longer exists in the schema, so a
+    payload carrying it is rejected.
     """
     schema = _SCHEMA
     payload: dict[str, object] = {
@@ -222,96 +221,6 @@ def test_validate_template_config_rejects_markdown_with_derived_from() -> None:
             assert "template_config:" in str(err)
         case _:
             msg = f"expected Failure(ValidationError), got {result}"
-            raise AssertionError(msg)
-
-
-def test_validate_template_config_rejects_orphan_derived_from() -> None:
-    """A diagram_rendered whose derived_from resolves nowhere returns Failure.
-
-    Drives the post-schema cross-property check in
-    `validate_template_config`: every diagram_rendered's
-    derived_from MUST point at a path that exists in spec_files
-    as a kind: diagram_source entry. JSON Schema can't express
-    this (refs across instance fields), so the validator runs
-    the check after schema validation.
-    """
-    schema = _SCHEMA
-    payload: dict[str, object] = {
-        "template_format_version": 2,
-        "spec_files": {
-            "spec.md": {"kind": "markdown"},
-            "diagrams/orphan.svg": {
-                "kind": "diagram_rendered",
-                "derived_from": "diagrams/nonexistent.plantuml",
-            },
-        },
-    }
-    result = template_config.validate_template_config(payload=payload, schema=schema)
-    match result:
-        case Failure(ValidationError() as err):
-            assert "derived_from" in str(err)
-            assert "diagrams/nonexistent.plantuml" in str(err)
-        case _:
-            msg = f"expected Failure(ValidationError), got {result}"
-            raise AssertionError(msg)
-
-
-def test_validate_template_config_rejects_derived_from_pointing_at_markdown() -> None:
-    """A derived_from pointing at a non-diagram_source entry returns Failure.
-
-    The post-schema cross-property check rejects derived_from
-    references that resolve to entries of a different kind.
-    """
-    schema = _SCHEMA
-    payload: dict[str, object] = {
-        "template_format_version": 2,
-        "spec_files": {
-            "spec.md": {"kind": "markdown"},
-            "diagrams/wrong.svg": {
-                "kind": "diagram_rendered",
-                "derived_from": "spec.md",
-            },
-        },
-    }
-    result = template_config.validate_template_config(payload=payload, schema=schema)
-    match result:
-        case Failure(ValidationError() as err):
-            assert "derived_from" in str(err)
-        case _:
-            msg = f"expected Failure(ValidationError), got {result}"
-            raise AssertionError(msg)
-
-
-def test_validate_template_config_accepts_multiple_renders_per_source() -> None:
-    """Multiple diagram_rendered entries MAY share the same derived_from.
-
-    Per contracts.md §"Multi-diagram-per-source accommodation": a
-    single diagram_source file may produce multiple
-    diagram_rendered outputs (e.g., one .plantuml file with
-    multiple @startuml blocks).
-    """
-    schema = _SCHEMA
-    payload: dict[str, object] = {
-        "template_format_version": 2,
-        "spec_files": {
-            "diagrams/many.plantuml": {"kind": "diagram_source"},
-            "diagrams/many-a.svg": {
-                "kind": "diagram_rendered",
-                "derived_from": "diagrams/many.plantuml",
-            },
-            "diagrams/many-b.svg": {
-                "kind": "diagram_rendered",
-                "derived_from": "diagrams/many.plantuml",
-            },
-        },
-    }
-    result = template_config.validate_template_config(payload=payload, schema=schema)
-    match result:
-        case Success(value):
-            assert value.spec_files is not None
-            assert len(value.spec_files) == 3
-        case _:
-            msg = f"expected Success(TemplateConfig), got {result}"
             raise AssertionError(msg)
 
 
@@ -349,13 +258,13 @@ def test_shipped_minimal_template_json_validates() -> None:
 
 
 def test_shipped_livespec_with_diagrams_template_json_validates() -> None:
-    """The `livespec-with-diagrams` template.json validates as v2.
+    """The `livespec-with-diagrams` template.json validates as a markdown-only v2.
 
     Asserts the shipped template.json is structurally
-    well-formed, declares the six NLSpec markdown files plus the
-    PlantUML escape-hatch diagram_source / diagram_rendered pair,
-    and that the derived_from cross-property invariant holds (the
-    post-schema check would fail the validator otherwise).
+    well-formed and declares exactly the six NLSpec markdown
+    files (no diagram entries — the variant is Mermaid-first, and
+    fenced Mermaid blocks live inside the markdown spec files
+    themselves, not as separate manifest-declared file kinds).
     """
     schema = _SCHEMA
     template_json_path = _SPECIFICATION_TEMPLATES_DIR / "livespec-with-diagrams" / "template.json"
@@ -365,10 +274,7 @@ def test_shipped_livespec_with_diagrams_template_json_validates() -> None:
         case Success(value):
             assert value.template_format_version == 2
             assert value.spec_files is not None
-            markdown_paths = {
-                path for path, decl in value.spec_files.items() if decl.kind == "markdown"
-            }
-            assert markdown_paths == {
+            assert {path for path, decl in value.spec_files.items() if decl.kind == "markdown"} == {
                 "spec.md",
                 "contracts.md",
                 "constraints.md",
@@ -376,10 +282,7 @@ def test_shipped_livespec_with_diagrams_template_json_validates() -> None:
                 "scenarios.md",
                 "README.md",
             }
-            assert value.spec_files["diagrams/example.plantuml"].kind == "diagram_source"
-            rendered = value.spec_files["diagrams/example.svg"]
-            assert rendered.kind == "diagram_rendered"
-            assert rendered.derived_from == "diagrams/example.plantuml"
+            assert all(decl.kind == "markdown" for decl in value.spec_files.values())
         case _:
             msg = f"expected Success(TemplateConfig), got {result}"
             raise AssertionError(msg)

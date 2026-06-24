@@ -54,7 +54,7 @@ def test_template_files_present_run_returns_pass_when_spec_md_exists(
 
 
 def _seed_v2_project(*, tmp_path: Path) -> tuple[Path, Path]:
-    """Materialize a project whose active template declares a v2 manifest."""
+    """Materialize a project whose active template declares a markdown-only v2 manifest."""
     import json
 
     project_root = tmp_path / "project"
@@ -69,11 +69,8 @@ def _seed_v2_project(*, tmp_path: Path) -> tuple[Path, Path]:
                 "spec_root": "SPECIFICATION/",
                 "spec_files": {
                     "spec.md": {"kind": "markdown"},
-                    "diagrams/example.puml": {"kind": "diagram_source"},
-                    "diagrams/example.svg": {
-                        "kind": "diagram_rendered",
-                        "derived_from": "diagrams/example.puml",
-                    },
+                    "contracts.md": {"kind": "markdown"},
+                    "constraints.md": {"kind": "markdown"},
                 },
             },
         ),
@@ -96,7 +93,8 @@ def test_template_files_present_fails_naming_missing_manifest_paths(
     "Heading-coverage and doctor-static rewiring": under v2
     templates the manifest is the source of truth for the
     template-files-present enumeration. Only `spec.md` is on disk;
-    the two diagram files are missing and MUST be named (sorted).
+    the two other markdown files are missing and MUST be named
+    (sorted).
     """
     project_root, spec_root = _seed_v2_project(tmp_path=tmp_path)
     _ = (spec_root / "spec.md").write_text("# Spec\n", encoding="utf-8")
@@ -106,8 +104,7 @@ def test_template_files_present_fails_naming_missing_manifest_paths(
         status="fail",
         message=(
             f"template-files-present: 2 manifest-declared spec file(s) "
-            f"missing from {spec_root}: diagrams/example.puml, "
-            f"diagrams/example.svg"
+            f"missing from {spec_root}: constraints.md, contracts.md"
         ),
         path=None,
         line=None,
@@ -123,12 +120,8 @@ def test_template_files_present_passes_when_every_manifest_path_exists(
     """Under a v2 manifest, the check passes when every declared file exists."""
     project_root, spec_root = _seed_v2_project(tmp_path=tmp_path)
     _ = (spec_root / "spec.md").write_text("# Spec\n", encoding="utf-8")
-    (spec_root / "diagrams").mkdir()
-    _ = (spec_root / "diagrams" / "example.puml").write_text(
-        "@startuml\nA -> B\n@enduml\n",
-        encoding="utf-8",
-    )
-    _ = (spec_root / "diagrams" / "example.svg").write_text("<svg/>\n", encoding="utf-8")
+    _ = (spec_root / "contracts.md").write_text("# Contracts\n", encoding="utf-8")
+    _ = (spec_root / "constraints.md").write_text("# Constraints\n", encoding="utf-8")
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     expected = Finding(
         check_id="doctor-template-files-present",

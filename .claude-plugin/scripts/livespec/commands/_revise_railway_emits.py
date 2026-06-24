@@ -30,11 +30,6 @@ from pathlib import Path
 from returns.io import IOResult
 
 from livespec.commands._revise_helpers import _compose_revision_body
-from livespec.commands._revise_render import (
-    _apply_rendered_outputs,
-    _cleanup_render_staging,
-    _RenderPlan,
-)
 from livespec.errors import LivespecError, PreconditionError
 from livespec.io import fs
 from livespec.schemas.dataclasses.revise_input import RevisionInput
@@ -59,7 +54,6 @@ def _process_decisions(
     author_human: str,
     author_llm: str,
     revised_at: str,
-    render_plan: _RenderPlan,
 ) -> IOResult[RevisionInput, LivespecError]:
     """Run the file-shaping railway: precondition -> per-decision -> snapshot.
 
@@ -69,17 +63,12 @@ def _process_decisions(
     proposed_changes/`; (2) move `<spec-target>/proposed_changes/
     <stem>.md` byte-identically into the new history directory;
     (3) on accept/modify, materialize `resulting_files[]` into the
-    working-spec files. After all decisions, the staged rendered
-    outputs from `render_plan` are committed alongside their
-    sources (per spec.md §"Template manifest" → "Rendering in the
-    revise lifecycle"), then every spec-root file PLUS every
-    manifest-declared subdirectory file is snapshotted into
-    `<spec-target>/history/vNNN/` (the all-three-kinds-in-history
-    axis), and the render staging directory is removed. A failure
-    anywhere on the chain still removes the staging directory via
-    the trailing `lash` before re-surfacing the error. Threads
-    `author_human`, `author_llm`, and `revised_at` into every
-    per-decision body composition.
+    working-spec files. After all decisions, the whole working
+    spec tree is snapshotted into `<spec-target>/history/vNNN/`
+    (every file under the spec root except the `history/`,
+    `proposed_changes/`, and `templates/` sibling subtrees).
+    Threads `author_human`, `author_llm`, and `revised_at` into
+    every per-decision body composition.
     """
     return (
         _check_proposed_changes_nonempty(spec_target=spec_target)
@@ -96,28 +85,12 @@ def _process_decisions(
                 revised_at=revised_at,
             )
             .bind(
-                lambda _value: _apply_rendered_outputs(render_plan=render_plan),
-            )
-            .bind(
                 lambda _value, version_dir=version_dir: _snapshot_working_spec_files(
                     spec_target=spec_target,
                     version_dir=version_dir,
-                    manifest_paths=render_plan.manifest_paths,
                 ),
             )
-            .bind(
-                lambda _value: _cleanup_render_staging(render_plan=render_plan),
-            )
             .map(lambda _: revise_input),
-        )
-        .lash(
-            lambda err: _cleanup_render_staging(render_plan=render_plan)
-            .bind(
-                lambda _none: IOResult.from_failure(err),
-            )
-            .lash(
-                lambda _cleanup_err, err=err: IOResult.from_failure(err),
-            ),
         )
     )
 
@@ -290,72 +263,61 @@ def _bind_resulting_files(
     return accumulator
 
 
+_SNAPSHOT_EXCLUDED_SUBDIRS = frozenset({"history", "proposed_changes", "templates"})
+
+
 def _snapshot_working_spec_files(
     *,
     spec_target: Path,
     version_dir: Path,
-    manifest_paths: tuple[str, ...] = (),
 ) -> IOResult[list[Path], LivespecError]:
-    """Snapshot every immediate spec-root file byte-identically into `version_dir`.
+    """Snapshot the whole working spec tree byte-identically into `version_dir`.
 
-    Per the spec Proposal 3 item d ("on every cut, `<spec-target>/
-    history/vNNN/` snapshots every template-declared spec file
-    byte-identically"). "Template-declared" is approximated as
-    every immediate file child of `<spec-target>/` — directory
-    children (`history/`, `proposed_changes/`, `templates/`) are
-    not template-declared spec files and are skipped — PLUS, per
-    spec.md §"Template manifest" → "Per-kind behavior axes"
-    (history snapshots include all three kinds), every
-    `manifest_paths` entry in a subdirectory that exists on disk
-    (copied binary-safe: rendered artifacts are opaque bytes).
-    Root-level manifest entries are already covered by the
-    immediate-children copy.
+    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle": on every
+    successful revise the new `<spec-target>/history/vNNN/`
+    captures the WHOLE spec tree — every file under the spec root
+    recursively, EXCEPT anything under the `history/`,
+    `proposed_changes/`, or `templates/` sibling subdirectories —
+    preserving subdirectory structure. Copies are byte-identical
+    (`fs.copy_file` is binary-safe), so opaque committed assets
+    (e.g. an alternate tool's diagram image referenced by a
+    markdown file) are snapshotted intact alongside the markdown
+    spec files.
     """
-    railway = fs.list_dir(path=spec_target).bind(
-        lambda children: _copy_files_into(
-            sources=children,
+    return fs.list_tree(
+        root=spec_target,
+        exclude_top_level=_SNAPSHOT_EXCLUDED_SUBDIRS,
+    ).bind(
+        lambda sources: _copy_files_into(
+            sources=sources,
+            spec_target=spec_target,
             target_dir=version_dir,
         ),
     )
-    for rel_path in manifest_paths:
-        if "/" not in rel_path:
-            continue
-        source = spec_target / rel_path
-        if not source.is_file():
-            continue
-        railway = railway.bind(
-            lambda copied, rel_path=rel_path, source=source: fs.copy_file(
-                source=source,
-                target=version_dir / rel_path,
-            ).map(lambda _none, copied=copied: copied),
-        )
-    return railway
 
 
 def _copy_files_into(
     *,
     sources: list[Path],
+    spec_target: Path,
     target_dir: Path,
 ) -> IOResult[list[Path], LivespecError]:
-    """For each file in `sources` (skipping directories), read+write into `target_dir`.
+    """Byte-identically copy each source into `target_dir`, preserving subdirs.
 
-    Composes `fs.read_text` -> `fs.write_text` per source. Bytes
-    are preserved through UTF-8 round-trip (the spec contract
-    requires `.md` text files only). Directory children are
-    skipped via `is_file()` since the spec-root carries
-    sibling subdirs (`history/`, `proposed_changes/`,
-    `templates/`) that are not template-declared spec files.
+    For each absolute `source` under `spec_target`, the copy
+    target is `target_dir / source.relative_to(spec_target)`, so
+    the version snapshot mirrors the spec tree's subdirectory
+    structure. `fs.copy_file` creates parent directories on demand
+    and is binary-safe (opaque committed assets are preserved
+    byte-for-byte, not UTF-8 round-tripped).
     """
     accumulator: IOResult[list[Path], LivespecError] = IOResult.from_value([])
     for source in sources:
-        if not source.is_file():
-            continue
-        target = target_dir / source.name
+        target = target_dir / source.relative_to(spec_target)
         accumulator = accumulator.bind(
-            lambda _value, source=source, target=target: fs.read_text(path=source)
-            .bind(
-                lambda text, target=target: fs.write_text(path=target, text=text),
-            )
-            .map(lambda _: []),
+            lambda _value, source=source, target=target: fs.copy_file(
+                source=source,
+                target=target,
+            ).map(lambda _: []),
         )
     return accumulator

@@ -226,10 +226,8 @@ def test_fs_rmtree_returns_precondition_error_on_missing_path(
 def test_fs_stat_mtime_returns_iosuccess_with_mtime(*, tmp_path: Path) -> None:
     """stat_mtime returns the file's modification time on the IO track.
 
-    Consumer: the diagram-source-rendered-drift doctor check
-    compares a rendered output's mtime against its source's mtime
-    (the spec-sanctioned cheap drift proxy). Pins the value against
-    an explicitly-set os.utime so the assertion is deterministic.
+    A generic stat facade method. Pins the value against an
+    explicitly-set os.utime so the assertion is deterministic.
     """
     import os
 
@@ -251,6 +249,56 @@ def test_fs_stat_mtime_returns_precondition_error_on_missing_file(
     match unwrapped:
         case Failure(PreconditionError() as err):
             assert "fs.stat_mtime" in str(err)
+        case _:
+            msg = f"expected Failure(PreconditionError), got {unwrapped}"
+            raise AssertionError(msg)
+
+
+def test_fs_list_tree_returns_sorted_files_excluding_top_level_dirs(
+    *,
+    tmp_path: Path,
+) -> None:
+    """list_tree recurses every file, sorted, skipping excluded top-level subtrees.
+
+    Pins the revise whole-tree snapshot primitive: a file nested
+    in a non-excluded subdirectory is included (with subdir
+    structure), while every file under an excluded immediate-child
+    directory (and its whole subtree) is omitted.
+    """
+    root = tmp_path / "spec-root"
+    root.mkdir()
+    _ = (root / "spec.md").write_text("# Spec\n", encoding="utf-8")
+    (root / "diagrams").mkdir()
+    _ = (root / "diagrams" / "foo.svg").write_text("<svg/>\n", encoding="utf-8")
+    (root / "history" / "v001").mkdir(parents=True)
+    _ = (root / "history" / "v001" / "spec.md").write_text("# Old\n", encoding="utf-8")
+    (root / "proposed_changes").mkdir()
+    _ = (root / "proposed_changes" / "demo.md").write_text("## demo\n", encoding="utf-8")
+    (root / "templates" / "livespec").mkdir(parents=True)
+    _ = (root / "templates" / "livespec" / "sub.md").write_text("# Sub\n", encoding="utf-8")
+    result = fs.list_tree(
+        root=root,
+        exclude_top_level=frozenset({"history", "proposed_changes", "templates"}),
+    )
+    assert result == IOSuccess(
+        [
+            root / "diagrams" / "foo.svg",
+            root / "spec.md",
+        ],
+    )
+
+
+def test_fs_list_tree_returns_precondition_error_on_missing_root(
+    *,
+    tmp_path: Path,
+) -> None:
+    """list_tree on a missing root lifts to PreconditionError (exit 3)."""
+    missing = tmp_path / "no-such-root"
+    io_result = fs.list_tree(root=missing, exclude_top_level=frozenset())
+    unwrapped = unsafe_perform_io(io_result)
+    match unwrapped:
+        case Failure(PreconditionError() as err):
+            assert "fs.list_tree" in str(err)
         case _:
             msg = f"expected Failure(PreconditionError), got {unwrapped}"
             raise AssertionError(msg)
