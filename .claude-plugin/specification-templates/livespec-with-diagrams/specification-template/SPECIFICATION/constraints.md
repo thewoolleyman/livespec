@@ -22,5 +22,5 @@ ergonomics constraints.
 
 Developer-time tooling constraints (test runner, linter,
 type-checker) that gate per-commit checks. The list lives here
-so the project's `just check` (or equivalent) aggregate can be
-re-derived from this constraint set without reverse-engineering.
+so the project's check-aggregate command can be re-derived from
+this constraint set without reverse-engineering.
