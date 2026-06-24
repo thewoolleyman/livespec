@@ -18,8 +18,8 @@ surrounded by blank lines (one blank line above the opening
 fence, one blank line below the closing fence). Start-of-file
 is implicit-blank-above; end-of-file is implicit-blank-below.
 
-Per `SPECIFICATION/templates/minimal/constraints.md`
-§"Gherkin blank-line format check exemption" (
+Per `SPECIFICATION/contracts.md`
+§"Built-in template contracts" (
 widening): the check MUST exempt `minimal`-rooted spec_roots
 (single-file `SPECIFICATION.md` shape per `spec_root: "./"`)
 whose `SPECIFICATION.md` does NOT contain any fenced
@@ -113,8 +113,8 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
 def _skipped_finding(*, ctx: DoctorContext) -> Finding:
     """Construct the canonical skipped-status Finding for the minimal-rooted exemption.
 
-    Per `SPECIFICATION/templates/minimal/constraints.md`
-    §"Gherkin blank-line format check exemption": minimal-shape
+    Per `SPECIFICATION/contracts.md`
+    §"Built-in template contracts": minimal-shape
     spec_roots whose `SPECIFICATION.md` has no fenced gherkin
     blocks are exempt from this check. The skipped Finding
     documents the exemption in the canonical findings JSON

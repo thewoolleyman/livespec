@@ -94,8 +94,8 @@ def _list_top_level_md_files(
 def _is_minimal_shape(*, spec_root: Path) -> bool:
     """Detect minimal-template single-file shape at `spec_root`.
 
-    Per `SPECIFICATION/templates/minimal/constraints.md`
-    §"Single-file end-user output": a minimal-rooted project
+    Per `SPECIFICATION/contracts.md`
+    §"Built-in template contracts": a minimal-rooted project
     carries `SPECIFICATION.md` directly at the spec_root. The
     presence of that file is the v1 detection signal — it
     distinguishes minimal-shape from livespec-shape (which has
