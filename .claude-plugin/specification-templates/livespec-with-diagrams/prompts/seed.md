@@ -94,14 +94,17 @@ section names where appropriate (e.g., `## Intent`, `## Cadence`,
   repository-tooling, build/test, and contributor-workflow
   invariants that are NOT visible at the user-facing surface.
   The `# H1` is `<title> — non-functional requirements`. The
-  file MUST open with a `## Boundary` section (or equivalent
-  preamble) clarifying which content belongs here versus in
-  `spec.md`, `contracts.md`, `constraints.md`, and
-  `scenarios.md`. Subsequent sections cover Test-Driven
-  Development discipline, linter/formatter rules, code-coverage
-  targets, hook configuration, repo-local task tracking, and
-  any other contributor-facing invariants derived from the
-  user's intent.
+  file MUST open with a `## Boundary` section clarifying which
+  content belongs here versus in `spec.md`, `contracts.md`,
+  `constraints.md`, and `scenarios.md`, then mirror that same
+  four-file decomposition with `## Spec`, `## Contracts`,
+  `## Constraints`, and `## Scenarios` sections — each holding
+  the contributor-facing analogue of its user-facing
+  counterpart. Distribute the contributor-facing invariants
+  (Test-Driven Development discipline, linter/formatter rules,
+  code-coverage targets, hook configuration, repo-local task
+  tracking, and any others derived from the user's intent)
+  across those sections per the `## Boundary` decision rule.
 - **`scenarios.md`** — Gherkin scenarios. The `# H1` is
   `<title> — scenarios`. Sections are `## Scenario: ...` blocks
   with proper blank-line-delimited Gherkin steps (no fenced
