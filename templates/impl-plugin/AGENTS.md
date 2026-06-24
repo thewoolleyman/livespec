@@ -20,11 +20,19 @@ commit as failures of the workflow, not as acceptable stopping points.
    ```
 
 2. If the change will modify tracked files, create a dedicated worktree from the
-   primary checkout's `master` and do all edits there:
+   primary checkout's `master` and do all edits there. Every worktree lives
+   under the per-user root `~/.worktrees/<repo>/<branch>` — NEVER as a peer of
+   the clones under `/data/projects`, so the workspace holds only first-class
+   clones:
 
    ```bash
-   mise exec -- git worktree add -b <branch> <worktree-path> master
+   mise exec -- git worktree add -b <branch> "$HOME/.worktrees/<repo>/<branch>" master
    ```
+
+   `just bootstrap` registers `~/.worktrees` as one of mise's
+   `trusted_config_paths`, so a freshly created worktree's `.mise.toml` is
+   auto-trusted and the first `mise exec` inside it never stalls on a "config
+   not trusted" prompt.
 
 3. Use `mise exec -- git commit ...` and `mise exec -- git push ...` so the
    mise-managed lefthook hooks actually run. Never pass `--no-verify`; if a hook
@@ -148,8 +156,10 @@ around the seam with raw `mysql` / `dolt` / `sudo`.
 
 - `just bootstrap` — first-touch setup on a fresh clone; idempotently sets
   `livespec.primaryPath`, installs the canonical commit-refuse hook at
-  `.git/hooks/pre-commit` + `.git/hooks/pre-push`, installs lefthook hooks, and
-  resolves plugin dependencies.
+  `.git/hooks/pre-commit` + `.git/hooks/pre-push`, installs lefthook hooks,
+  resolves plugin dependencies, creates `~/.worktrees`, and registers it in
+  mise's `trusted_config_paths` so every worktree (created at
+  `~/.worktrees/<repo>/<branch>`) auto-trusts its `.mise.toml`.
 - `just check` — the full enforcement aggregate (lint, types, tests, coverage,
   AST checks). It is the load-bearing safety net; it runs locally, in pre-push,
   and in CI.

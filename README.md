@@ -138,7 +138,7 @@ recoverable from git history.
 
 ## Fresh-clone setup
 
-After cloning, run `just bootstrap` once. The target idempotently sets `livespec.primaryPath` on the primary checkout and installs the canonical commit-refuse hook at `.git/hooks/pre-commit` + `.git/hooks/pre-push` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure"), forcing every edit through `git worktree add` while still allowing reads/fetches at the primary, then installs lefthook hooks and resolves plugin dependencies.
+After cloning, run `just bootstrap` once. The target idempotently sets `livespec.primaryPath` on the primary checkout and installs the canonical commit-refuse hook at `.git/hooks/pre-commit` + `.git/hooks/pre-push` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure"), forcing every edit through `git worktree add` while still allowing reads/fetches at the primary, then installs lefthook hooks, resolves plugin dependencies, creates `~/.worktrees`, and registers it in mise's `trusted_config_paths`. That last step ensures every worktree created at `~/.worktrees/<repo>/<branch>` auto-trusts its `.mise.toml`, so the first `mise exec` inside a fresh worktree never stalls on a "config not trusted" prompt.
 
 ## Dogfooding (editing the plugin source in this repo)
 
