@@ -13,10 +13,10 @@
 """Shared active-template manifest loader for manifest-driven checks.
 
 Per `SPECIFICATION/spec.md` §"Template manifest" → "Heading-coverage
-and doctor-static rewiring": manifest-aware static checks
-(`template_files_present`, `diagram_source_rendered_drift`) consult
-the active template's `spec_files` manifest. This private sibling
-module holds the one shared resolution railway:
+and doctor-static rewiring": the manifest-aware static check
+`template_files_present` consults the active template's `spec_files`
+manifest. This private sibling module holds the one shared
+resolution railway:
 
 1. read `<project_root>/.livespec.jsonc` and take its `template`
    value (defaulting to the built-in `livespec` name);

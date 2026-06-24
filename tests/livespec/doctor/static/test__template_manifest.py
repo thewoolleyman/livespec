@@ -1,8 +1,7 @@
 """Tests for livespec.doctor.static._template_manifest.
 
 The shared active-template manifest loader for the manifest-driven
-static checks (`template_files_present`,
-`diagram_source_rendered_drift`). The load-bearing properties:
+static check `template_files_present`. The load-bearing properties:
 
 - `is_main_spec_root` mirrors `run_static`'s tree enumeration
   (`<project_root>/SPECIFICATION` is the main tree);
@@ -66,11 +65,11 @@ def test_load_yields_none_for_builtin_v1_template(*, tmp_path: Path) -> None:
 
 
 def test_load_yields_manifest_for_builtin_v2_template(*, tmp_path: Path) -> None:
-    """The built-in `livespec-with-diagrams` template is v2 → manifest dict.
+    """The built-in `livespec-with-diagrams` template is v2 → markdown-only manifest dict.
 
-    Pins the bundled template's escape-hatch pairing: the example
-    PlantUML source and its rendered SVG, with `derived_from`
-    resolving source-ward.
+    Pins the bundled Mermaid-first variant's six markdown spec
+    files; livespec manages no diagram file kinds, so the manifest
+    declares only `kind: markdown` entries.
     """
     _ = (tmp_path / ".livespec.jsonc").write_text(
         json.dumps({"template": "livespec-with-diagrams"}),
@@ -78,17 +77,12 @@ def test_load_yields_manifest_for_builtin_v2_template(*, tmp_path: Path) -> None
     )
     result = load_active_template_spec_files(project_root=tmp_path)
     expected: dict[str, SpecFileDecl] = {
-        "spec.md": SpecFileDecl(kind="markdown", derived_from=None),
-        "contracts.md": SpecFileDecl(kind="markdown", derived_from=None),
-        "constraints.md": SpecFileDecl(kind="markdown", derived_from=None),
-        "non-functional-requirements.md": SpecFileDecl(kind="markdown", derived_from=None),
-        "scenarios.md": SpecFileDecl(kind="markdown", derived_from=None),
-        "README.md": SpecFileDecl(kind="markdown", derived_from=None),
-        "diagrams/example.plantuml": SpecFileDecl(kind="diagram_source", derived_from=None),
-        "diagrams/example.svg": SpecFileDecl(
-            kind="diagram_rendered",
-            derived_from="diagrams/example.plantuml",
-        ),
+        "spec.md": SpecFileDecl(kind="markdown"),
+        "contracts.md": SpecFileDecl(kind="markdown"),
+        "constraints.md": SpecFileDecl(kind="markdown"),
+        "non-functional-requirements.md": SpecFileDecl(kind="markdown"),
+        "scenarios.md": SpecFileDecl(kind="markdown"),
+        "README.md": SpecFileDecl(kind="markdown"),
     }
     assert result == IOResult.from_value(expected)
 
@@ -113,7 +107,7 @@ def test_load_yields_manifest_for_custom_v2_template(*, tmp_path: Path) -> None:
     )
     result = load_active_template_spec_files(project_root=tmp_path)
     expected: dict[str, SpecFileDecl] = {
-        "spec.md": SpecFileDecl(kind="markdown", derived_from=None),
+        "spec.md": SpecFileDecl(kind="markdown"),
     }
     assert result == IOResult.from_value(expected)
 

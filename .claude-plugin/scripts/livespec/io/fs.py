@@ -25,6 +25,7 @@ from livespec.errors import LivespecError, PreconditionError
 __all__: list[str] = [
     "copy_file",
     "list_dir",
+    "list_tree",
     "move",
     "read_text",
     "rmtree",
@@ -109,6 +110,55 @@ def list_dir(*, path: Path) -> IOResult[list[Path], LivespecError]:
 
 
 @impure_safe(exceptions=(OSError,))
+def _raw_list_tree(*, root: Path, exclude_top_level: frozenset[str]) -> list[Path]:
+    """Decorator-lifted recursive walk under `root`.
+
+    Returns every regular file reachable from `root`, EXCEPT any
+    file whose path descends through an immediate child directory
+    of `root` whose name is in `exclude_top_level`. The returned
+    paths are sorted for deterministic ordering so callers don't
+    need to re-sort. Symlinks are followed only as `rglob` follows
+    them (it does not recurse into symlinked directories).
+
+    `Path.rglob` silently yields nothing for a missing or
+    non-directory `root`; an explicit guard raises so the public
+    seam maps the precondition failure to PreconditionError,
+    matching `list_dir`'s missing-path contract.
+    """
+    if not root.is_dir():
+        raise FileNotFoundError(f"list_tree: root is not a directory: {root}")
+    out: list[Path] = []
+    for candidate in sorted(root.rglob("*")):
+        if not candidate.is_file():
+            continue
+        first_segment = candidate.relative_to(root).parts[0]
+        if first_segment in exclude_top_level:
+            continue
+        out.append(candidate)
+    return out
+
+
+def list_tree(
+    *,
+    root: Path,
+    exclude_top_level: frozenset[str],
+) -> IOResult[list[Path], LivespecError]:
+    """Recursively list every file under `root`, sorted, on the IO track.
+
+    Files reached through an immediate-child directory of `root`
+    named in `exclude_top_level` are omitted (the directory itself
+    and its whole subtree). FileNotFoundError / NotADirectoryError
+    lift to PreconditionError (exit 3). Used by revise to snapshot
+    the whole working spec tree into `history/vNNN/` while excluding
+    the `history/`, `proposed_changes/`, and `templates/` sibling
+    subdirectories.
+    """
+    return _raw_list_tree(root=root, exclude_top_level=exclude_top_level).alt(
+        lambda exc: PreconditionError(f"fs.list_tree: {exc}"),
+    )
+
+
+@impure_safe(exceptions=(OSError,))
 def _raw_move(*, source: Path, target: Path) -> None:
     """Decorator-lifted byte-identical move via pathlib.Path.rename.
 
@@ -141,10 +191,10 @@ def _raw_copy_file(*, source: Path, target: Path) -> None:
     """Decorator-lifted byte-identical copy via shutil.copyfile.
 
     Parent directories of the target are created on demand so the
-    revise render/snapshot stages can copy into nested
-    `history/vNNN/diagrams/` paths without a separate mkdir stage.
-    `shutil.copyfile` is binary-safe (no text decode), which the
-    rendered-artifact copies require.
+    revise snapshot stage can copy into nested
+    `history/vNNN/<subdir>/` paths without a separate mkdir stage.
+    `shutil.copyfile` is binary-safe (no text decode), which opaque
+    committed assets (e.g. an alternate tool's image output) require.
     """
     target.parent.mkdir(parents=True, exist_ok=True)
     _ = shutil.copyfile(source, target)
@@ -154,10 +204,10 @@ def copy_file(*, source: Path, target: Path) -> IOResult[None, LivespecError]:
     """Copy `source` to `target` byte-identically; return IOSuccess(None).
 
     OSError (source missing, permission denied) lifts to
-    PreconditionError (exit 3). Consumers: the revise render
-    lifecycle (staged rendered outputs into the spec tree) and the
-    manifest-aware history snapshot (subdirectory spec files, which
-    may be binary rendered artifacts).
+    PreconditionError (exit 3). Consumer: the whole-tree history
+    snapshot, which copies subdirectory spec files (including
+    opaque committed binary assets) byte-for-byte into
+    `history/vNNN/`.
     """
     return _raw_copy_file(source=source, target=target).alt(
         lambda exc: PreconditionError(f"fs.copy_file: {exc}"),
@@ -174,10 +224,8 @@ def stat_mtime(*, path: Path) -> IOResult[float, LivespecError]:
     """Read `path`'s modification time (epoch seconds) on the IO track.
 
     FileNotFoundError lifts to PreconditionError (exit 3) per the
-    canonical mapping at the io boundary. Consumer: the
-    diagram-source-rendered-drift doctor check compares a rendered
-    output's mtime against its diagram_source's mtime (the
-    spec-sanctioned cheap drift proxy).
+    canonical mapping at the io boundary. A generic stat facade
+    method retained for mtime-based comparisons.
     """
     return _raw_stat_mtime(path=path).alt(
         lambda exc: PreconditionError(f"fs.stat_mtime: {exc}"),

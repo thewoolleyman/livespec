@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "template_config.schema.json",
   "title": "template_config",
-  "description": "Schema for a template's `template.json` (v011 K5). v1 templates declare format version, spec_root location, optional doctor extensibility hooks, and optional LLM-prompt paths. v2 additionally requires `spec_files` — a manifest mapping every materialized spec-target file to a per-file `kind` (markdown | diagram_source | diagram_rendered) that governs heading-coverage applicability, LLM-context inclusion, and history-snapshot scope.",
+  "description": "Schema for a template's `template.json` (v011 K5). v1 templates declare format version, spec_root location, optional doctor extensibility hooks, and optional LLM-prompt paths. v2 additionally requires `spec_files` — a manifest mapping every materialized spec-target file to a per-file `kind` (markdown) that governs heading-coverage applicability and LLM-context inclusion.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,7 +12,7 @@
     "template_format_version": {
       "type": "integer",
       "enum": [1, 2],
-      "description": "Template format version. v1 is markdown-only (implicit manifest synthesized from the seed prompt's well-known file set). v2 declares `spec_files` explicitly and enables the diagram_source / diagram_rendered file kinds."
+      "description": "Template format version. v1 is markdown-only (implicit manifest synthesized from the seed prompt's well-known file set). v2 declares the `spec_files` manifest explicitly (every entry of kind `markdown`)."
     },
     "spec_root": {
       "type": "string",
@@ -21,30 +21,16 @@
     },
     "spec_files": {
       "type": "object",
-      "description": "v2-only manifest. Maps spec-target-relative path strings to per-file declarations. Per `contracts.md` §\"Template manifest wire contract\", each value carries exactly one of: {kind: markdown}, {kind: diagram_source}, or {kind: diagram_rendered, derived_from: <path>}. The cross-property invariant that `derived_from` MUST resolve to a `kind: diagram_source` entry in this same manifest is enforced at the validator layer (post-schema), not by JSON Schema.",
+      "description": "v2-only manifest. Maps spec-target-relative path strings to per-file declarations. Per `contracts.md` §\"Template manifest wire contract\", each value carries `{kind: markdown}`. livespec governs only markdown spec files; an alternate tool's diagram image is just an opaque committed asset, not a manifest-declared file kind.",
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
         "required": ["kind"],
         "properties": {
           "kind": {
-            "enum": ["markdown", "diagram_source", "diagram_rendered"],
-            "description": "Per-file kind discriminator. `markdown` files are subject to heading-coverage and LLM-context inclusion. `diagram_source` files are LLM-readable text (PlantUML, Mermaid, ...) included in LLM-context but exempt from heading-coverage. `diagram_rendered` files are opaque rendered output, snapshotted into history but excluded from LLM-context."
-          },
-          "derived_from": {
-            "type": "string",
-            "description": "REQUIRED iff kind is diagram_rendered. Spec-target-relative path of the diagram_source from which this rendered output is produced by the project-declared render command. Multiple diagram_rendered entries MAY share the same derived_from value (a single source can render to multiple outputs)."
+            "enum": ["markdown"],
+            "description": "Per-file kind discriminator. `markdown` files are subject to heading-coverage and LLM-context inclusion."
           }
-        },
-        "if": {
-          "properties": { "kind": { "const": "diagram_rendered" } },
-          "required": ["kind"]
-        },
-        "then": {
-          "required": ["kind", "derived_from"]
-        },
-        "else": {
-          "not": { "required": ["derived_from"] }
         }
       }
     },

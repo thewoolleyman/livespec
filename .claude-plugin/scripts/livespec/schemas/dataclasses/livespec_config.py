@@ -18,14 +18,6 @@ mirror the schema's defaults so direct construction (without
 going through the validator) still yields the same configured
 state.
 
-`render_commands` is optional everywhere at the schema level
-but REQUIRED when the active template's spec_files manifest
-declares any `diagram_source` entry. Per `contracts.md`
-§".livespec.jsonc render-commands shape", the cross-config
-invariant is enforced by a doctor static check, NOT here —
-JSON Schema can validate one file at a time and cannot reach
-across .livespec.jsonc and template.json.
-
 `spec_clis` carries the seven spec-side CLI names per
 `contracts.md` §"Spec-side CLI contract": each is an argv-form
 array pre-populated with core's reference default and
@@ -46,7 +38,6 @@ from livespec.types import SpecRoot, TemplateName
 __all__: list[str] = [
     "LivespecConfig",
     "OrchestratorConfig",
-    "RenderCommands",
     "SpecClis",
 ]
 
@@ -60,18 +51,6 @@ def _default_cli_argv(*, wrapper_filename: str) -> list[str]:
     schema-dataclass-pairing convention.
     """
     return ["python3", f"${{CLAUDE_PLUGIN_ROOT}}/scripts/bin/{wrapper_filename}"]
-
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class RenderCommands:
-    """Per-source-kind render argv map.
-
-    Mirrors livespec_config.schema.json's `render_commands`
-    object. The single declared key today is `diagram_source`;
-    future template-kind extensions add sibling keys.
-    """
-
-    diagram_source: list[str] | None = None
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -134,15 +113,12 @@ class LivespecConfig:
 
     Mirrors livespec_config.schema.json: the flat spec-tier
     facts (`template`, `spec_root`, skip flags), the
-    `spec_clis` object naming the seven spec-side CLIs, the
-    optional `orchestrator` selection, and the optional
-    `render_commands` object that becomes mandatory once a v2
-    template declaring `diagram_source` files is active
-    (cross-config invariant enforced by doctor, not by this
-    schema). Unknown top-level sections in the payload are
-    tolerated per the schema root's `additionalProperties:
-    true` and are NOT carried on this dataclass — each plugin
-    or sibling consumer validates its own section on read.
+    `spec_clis` object naming the seven spec-side CLIs, and the
+    optional `orchestrator` selection. Unknown top-level
+    sections in the payload are tolerated per the schema root's
+    `additionalProperties: true` and are NOT carried on this
+    dataclass — each plugin or sibling consumer validates its
+    own section on read.
     """
 
     # NewType is structural — `TemplateName("livespec")` returns
@@ -159,4 +135,3 @@ class LivespecConfig:
     pre_step_skip_stale_branch_check: bool = False
     spec_clis: SpecClis = field(default_factory=SpecClis)
     orchestrator: OrchestratorConfig | None = None
-    render_commands: RenderCommands = field(default_factory=RenderCommands)

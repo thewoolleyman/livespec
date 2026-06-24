@@ -1801,104 +1801,123 @@ def test_revise_main_exits_0_when_post_step_doctor_passes(
     assert exit_code == 0, f"expected exit 0 on green post-step, got {exit_code}"
 
 
-def test_revise_render_diagram_source_writes_skips_malformed_decisions() -> None:
-    """`_diagram_source_writes` skips reject decisions and malformed entries.
-
-    Schema validation prevents malformed shapes from reaching the
-    helper in production, but the runtime isinstance-guards keep
-    the enumeration total: reject decisions contribute nothing,
-    non-list `resulting_files` values are skipped, non-dict
-    entries are skipped, and only manifest-declared
-    `kind: diagram_source` paths are collected.
-    """
-    from livespec.commands import _revise_render
-    from livespec.schemas.dataclasses.revise_input import RevisionInput
-    from livespec.schemas.dataclasses.template_config import SpecFileDecl
-
-    spec_files = {
-        "diagrams/example.puml": SpecFileDecl(kind="diagram_source", derived_from=None),
-        "spec.md": SpecFileDecl(kind="markdown", derived_from=None),
-    }
-    revise_input = RevisionInput(
-        author=None,
-        decisions=[
-            {"proposal_topic": "a", "decision": "reject", "rationale": "r"},
-            {
-                "proposal_topic": "b",
-                "decision": "accept",
-                "rationale": "r",
-                "resulting_files": "not-a-list",
-            },
-            {
-                "proposal_topic": "c",
-                "decision": "accept",
-                "rationale": "r",
-                "resulting_files": [
-                    "not-a-dict",
-                    {"path": "spec.md", "content": "# md\n"},
-                    {"path": "diagrams/example.puml", "content": "@startuml\n@enduml\n"},
-                ],
-            },
-        ],
-    )
-    writes = _revise_render._diagram_source_writes(  # noqa: SLF001
-        revise_input=revise_input,
-        spec_files=spec_files,
-    )
-    assert writes == [("diagrams/example.puml", "@startuml\n@enduml\n")]
-
-
-def test_revise_render_verify_staged_outputs_fails_on_missing_output(
+def test_revise_main_snapshots_subdirectory_asset_into_history_vnnn(
     *,
     tmp_path: Path,
 ) -> None:
-    """`_verify_staged_outputs` fails naming outputs the renderer never produced.
+    """Per the whole-tree snapshot, a subdirectory asset is copied into history/vNNN/.
 
-    A render command can exit 0 without producing the
-    manifest-declared output name (manifest/render mismatch); the
-    verification arm converts that into a PreconditionError BEFORE
-    any spec-tree mutation.
+    The revise history snapshot captures the WHOLE spec tree
+    recursively, preserving subdirectory structure — so an opaque
+    committed asset referenced by markdown (e.g. an alternate
+    tool's image at `diagrams/foo.svg`) IS copied into
+    `<spec-target>/history/vNNN/diagrams/foo.svg`, byte-for-byte.
     """
-    from livespec.commands import _revise_render
-    from livespec.errors import PreconditionError
-    from returns.result import Failure
-    from returns.unsafe import unsafe_perform_io
-
-    missing_staged = tmp_path / "staging" / "diagrams" / "example.svg"
-    io_result = _revise_render._verify_staged_outputs(  # noqa: SLF001
-        rendered_copies=((missing_staged, tmp_path / "final.svg"),),
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    diagrams = spec_target / "diagrams"
+    diagrams.mkdir()
+    asset_bytes = "<svg>committed asset</svg>\n"
+    _ = (diagrams / "foo.svg").write_text(asset_bytes, encoding="utf-8")
+    _ = (spec_target / "spec.md").write_text(
+        "# Spec\nSee ![diagram](diagrams/foo.svg)\n",
+        encoding="utf-8",
     )
-    unwrapped = unsafe_perform_io(io_result)
-    match unwrapped:
-        case Failure(PreconditionError() as err):
-            assert "were not produced" in str(err)
-            assert str(missing_staged) in str(err)
-        case _:
-            msg = f"expected Failure(PreconditionError), got {unwrapped}"
-            raise AssertionError(msg)
+    proposed_md = proposed_changes / "demo.md"
+    _ = proposed_md.write_text("## Proposal: demo\nContent.\n", encoding="utf-8")
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+    snapshot_asset = spec_target / "history" / "v002" / "diagrams" / "foo.svg"
+    assert snapshot_asset.is_file(), f"expected {snapshot_asset} to be snapshotted"
+    assert snapshot_asset.read_text(encoding="utf-8") == asset_bytes
+    snapshot_spec = spec_target / "history" / "v002" / "spec.md"
+    assert snapshot_spec.is_file()
 
 
-def test_revise_snapshot_skips_absent_manifest_subdir_paths(*, tmp_path: Path) -> None:
-    """`_snapshot_working_spec_files` skips manifest subdir paths absent on disk.
+def test_revise_main_snapshot_excludes_history_proposed_changes_and_templates(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Per the whole-tree snapshot, the three sibling subtrees are excluded.
 
-    A v2 manifest can declare a diagrams/ pairing the spec tree
-    does not (yet) carry — presence is template-files-present's
-    invariant, so the snapshot quietly skips the absent path
-    rather than failing the cut.
+    The snapshot captures every file under the spec root EXCEPT
+    anything under the `history/`, `proposed_changes/`, and
+    `templates/` sibling subdirectories — so the freshly-cut
+    `history/vNNN/` carries none of those subtrees' contents.
     """
-    from livespec.commands import _revise_railway_emits
-    from returns.unsafe import unsafe_perform_io
-
-    spec_target = tmp_path / "SPECIFICATION"
-    spec_target.mkdir()
-    _ = (spec_target / "spec.md").write_text("# Spec\n", encoding="utf-8")
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    # A stray file under each excluded subtree that must NOT appear
+    # in the snapshot.
+    _ = (spec_target / "history" / "v001" / "spec.md").write_text(
+        "# Old snapshot\n",
+        encoding="utf-8",
+    )
+    templates_dir = spec_target / "templates" / "livespec"
+    templates_dir.mkdir(parents=True)
+    _ = (templates_dir / "sub-spec.md").write_text("# Sub-spec\n", encoding="utf-8")
+    _ = (spec_target / "spec.md").write_text("# Spec\nBody.\n", encoding="utf-8")
+    proposed_md = proposed_changes / "demo.md"
+    _ = proposed_md.write_text("## Proposal: demo\nContent.\n", encoding="utf-8")
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rationale.",
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
     version_dir = spec_target / "history" / "v002"
-    io_result = _revise_railway_emits._snapshot_working_spec_files(  # noqa: SLF001
-        spec_target=spec_target,
-        version_dir=version_dir,
-        manifest_paths=("spec.md", "diagrams/missing.puml"),
-    )
-    unwrapped = unsafe_perform_io(io_result)
-    assert not isinstance(unwrapped, Exception)
     assert (version_dir / "spec.md").is_file()
-    assert not (version_dir / "diagrams").exists()
+    # None of the three excluded subtrees are nested inside the cut.
+    assert not (version_dir / "history").exists()
+    assert not (version_dir / "templates").exists()
+    # proposed_changes/ IS materialized fresh by the per-decision
+    # move (the rejected proposal's audit trail), but the snapshot
+    # pass itself copies nothing from the working proposed_changes/
+    # subtree — the only entry under it is the moved demo file, not
+    # a snapshot of the working proposed_changes/ contents.
+    assert (version_dir / "proposed_changes" / "demo.md").is_file()
+    assert (version_dir / "proposed_changes" / "demo-revision.md").is_file()
