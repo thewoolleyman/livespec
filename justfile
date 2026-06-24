@@ -92,6 +92,21 @@ bootstrap:
     # but the literal-equality grep is the cheapest skip-path on
     # repeated bootstrap invocations.
     git config --get-all remote.origin.fetch | grep -qx '+refs/notes/*:refs/notes/*' || git config --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
+    # Idempotent worktree-root + mise-trust setup. Every git worktree in
+    # the fleet lives under a single per-user root, ~/.worktrees/<repo>/
+    # <branch> (per SPECIFICATION/non-functional-requirements.md
+    # §"Commit-refuse hook bootstrap procedure"). Registering that root as one of
+    # mise's trusted_config_paths makes each freshly created worktree's
+    # .mise.toml auto-trusted, so the first `mise exec` inside it never
+    # stops on the "config not trusted" prompt — the failure that
+    # otherwise wastes a tool round-trip on every new worktree. The grep
+    # guard keeps the global ~/.config/mise/config.toml entry single on
+    # repeated bootstraps; the value is the absolute $HOME-rooted path so
+    # it resolves identically from any invocation site.
+    mkdir -p "${HOME}/.worktrees"
+    if ! mise settings get trusted_config_paths 2>/dev/null | grep -qF "${HOME}/.worktrees"; then
+        mise settings add trusted_config_paths "${HOME}/.worktrees"
+    fi
     just ensure-plugins
     just ensure-codex-plugins
 
