@@ -10,11 +10,6 @@
     "constraints.md": {"kind": "markdown"},
     "non-functional-requirements.md": {"kind": "markdown"},
     "scenarios.md": {"kind": "markdown"},
-    "README.md": {"kind": "markdown"},
-    "diagrams/example.plantuml": {"kind": "diagram_source"},
-    "diagrams/example.svg": {
-      "kind": "diagram_rendered",
-      "derived_from": "diagrams/example.plantuml"
-    }
+    "README.md": {"kind": "markdown"}
   }
 }
