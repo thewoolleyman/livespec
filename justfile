@@ -95,7 +95,7 @@ bootstrap:
     # Idempotent worktree-root + mise-trust setup. Every git worktree in
     # the fleet lives under a single per-user root, ~/.worktrees/<repo>/
     # <branch> (per SPECIFICATION/non-functional-requirements.md
-    # §"Commit-refuse hook bootstrap procedure"). Registering that root as one of
+    # §"Worktree root and mise trust"). Registering that root as one of
     # mise's trusted_config_paths makes each freshly created worktree's
     # .mise.toml auto-trusted, so the first `mise exec` inside it never
     # stops on the "config not trusted" prompt — the failure that
