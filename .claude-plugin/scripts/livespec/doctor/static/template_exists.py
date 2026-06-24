@@ -12,16 +12,20 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: template_exists.
 
-Per Plan  + + livespec_config.schema.json §"template":
-this check asserts that the `.livespec.jsonc` `template` field
-resolves to either a built-in template name (one of
-`{livespec, minimal}`) or a path-as-string to a custom template
-directory present on disk relative to the project root.
+Per livespec_config.schema.json §"template": this check asserts
+that the `.livespec.jsonc` `template` field resolves to either a
+built-in template name (one of `{livespec, livespec-with-diagrams,
+minimal}`) or a path-as-string to a custom template directory
+present on disk relative to the project root and carrying a
+`template.json`.
 
-This work lands the success arm for the built-in branch.
-Subsequent cycles add the failure arm (unknown name, missing
-custom-template directory) and the on-disk path-resolution
-branch under outside-in pressure.
+Resolution is delegated to `livespec.templates.resolve_template_value`
+— the single source of truth shared with `commands/resolve_template.py`
+and `doctor/static/_template_manifest.py` — so the built-in set and the
+custom-path rule cannot drift between the three resolvers (livespec-kfjd).
+A resolvable value yields a pass-Finding; an unknown name or a missing
+custom-template directory / `template.json` yields a fail-Finding naming
+the offending value.
 """
 
 from __future__ import annotations
@@ -29,7 +33,9 @@ from __future__ import annotations
 from typing import Any
 
 from returns.io import IOResult, IOSuccess
+from returns.pipeline import is_successful
 
+from livespec import templates
 from livespec.context import DoctorContext
 from livespec.errors import LivespecError
 from livespec.io import fs
@@ -41,7 +47,6 @@ __all__: list[str] = ["SLUG", "run"]
 
 
 SLUG: CheckId = CheckId("doctor-template-exists")
-BUILTIN_TEMPLATES: frozenset[str] = frozenset({"livespec", "minimal"})
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
@@ -71,14 +76,19 @@ def _fail_finding(*, ctx: DoctorContext, template_value: str) -> Finding:
 def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecError]:
     """Evaluate the parsed config against the template-exists rule.
 
-    This work splits the evaluation into two arms: the
-    `template` value is checked against BUILTIN_TEMPLATES and
-    yields a pass-Finding on hit; otherwise (unknown name)
-    yields a fail-Finding naming the offending value. The
-    on-disk path-resolution branch lands in a subsequent cycle.
+    Delegates to `livespec.templates.resolve_template_value`: a
+    built-in name or a project-relative directory carrying
+    `template.json` resolves and yields a pass-Finding; an unknown
+    name or a missing custom-template directory / `template.json`
+    fails resolution and yields a fail-Finding naming the offending
+    value.
     """
     template_value = parsed.get("template")
-    if template_value in BUILTIN_TEMPLATES:
+    resolution = templates.resolve_template_value(
+        value=str(template_value),
+        project_root=ctx.project_root,
+    )
+    if is_successful(resolution):
         return IOSuccess(_pass_finding(ctx=ctx))
     return IOSuccess(_fail_finding(ctx=ctx, template_value=str(template_value)))
 
