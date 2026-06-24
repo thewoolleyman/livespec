@@ -1004,19 +1004,3 @@ vendor-update lib:
 #   just reap-stale-worktrees /path/to/repo --dry-run  # preview a sibling
 reap-stale-worktrees repo="." *args="":
     uv run python3 dev-tooling/reap_stale_worktrees.py --repo {{repo}} {{args}}
-
-# ---------------------------------------------------------------
-# Implementation workflow — repo-local livespec-implementation layer
-# (non-functional-requirements.md §Contracts §"Implementation justfile
-# namespace"). Recipes live in implementation.just and are invoked as
-# `just implementation::setup-beads`, `just implementation::beads-doctor`,
-# etc. The `mod` mechanism (just 1.31+) gives us a real namespace —
-# the spec's `implementation:*` shorthand maps onto it via just's
-# native `::` invocation form.
-#
-# These targets are NOT part of the shipped `livespec` plugin surface;
-# the implementation layer lives under
-# `.claude/plugins/livespec-implementation/` and is dogfooding-only.
-# ---------------------------------------------------------------
-
-mod implementation 'implementation.just'
