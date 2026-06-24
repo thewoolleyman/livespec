@@ -3,10 +3,10 @@
 > The `# H1` reflects the project intent (BCP14 noun phrases
 > derived from the seed-time intent statement). The single-file
 > body uses HTML-comment delimiter markers (`<!-- region:<name> -->`
-> open + `<!-- /region:<name> -->` close) per
-> `SPECIFICATION/templates/minimal/contracts.md` §"Delimiter-
-> comment format" so propose-change/revise cycles can target
-> regions precisely.
+> open + `<!-- /region:<name> -->` close) so propose-change/revise
+> cycles can target regions precisely. Each region MUST have a
+> paired open + close marker; region names are kebab-case; regions
+> MUST NOT nest; and each marker is on its own line.
 
 <!-- region:project-intent -->
 
