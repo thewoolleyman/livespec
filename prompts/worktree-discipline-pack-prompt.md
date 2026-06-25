@@ -28,43 +28,58 @@ JavaScript.
 1. **Portable core + gate (ecosystem-neutral):** a dependency-light
    worktree-lifecycle implementation (create / hydrate / land / reap +
    `git-common-dir` vs `git-dir` primary detection) and a "refuse commits
-   on the primary checkout" check. No task-runner or language assumptions.
-2. **Invocation adapters:** thin wrappers mapping the repo's OWN task
-   runner onto the core. `just` is ONE reference adapter — do NOT require
-   it. Drive the choice from a `task_runner` copier question.
-3. **Three first-class ecosystem profiles** (`ecosystem` copier question:
-   python | rust | javascript), each presetting {runner, hydrate cmd,
-   hook framework, verify gate}, all keys overridable. Critically, the
-   Rust profile's hydrate = warm/share the BUILD cache (sccache or shared
-   `CARGO_TARGET_DIR`), NOT copying a dep dir (there is none — crates live
-   in `$CARGO_HOME`). JS hydrate = node_modules incl. workspace
-   sub-packages; Python hydrate = `.venv`.
-4. **Wire enforcement** via the repo's hook framework (`hook_framework`
-   copier question: lefthook | husky | pre-commit | raw) + a server-side
-   tripwire mirror.
+   on the primary checkout" check. Pure-git, no language assumptions.
+2. **Invocation = `just worktree-*` recipes** calling the portable core
+   (`dev-tooling/worktree-lib.sh`) DIRECTLY. The worktree lifecycle is
+   driven by `just` — `just` is mandated non-functionally, not optional.
+   Where the ecosystem has a native tool, emit a STRICT PASS-THROUGH
+   wrapper that literally invokes `just worktree-*` with no logic of its
+   own (rust: `cargo xtask worktree create` → `just worktree-create`;
+   javascript: package.json `"wt:create": "just worktree-create"`); never
+   an alternative runner/framework. DERIVE the native tool from
+   `ecosystem` — there is NO `task_runner` copier question.
+3. **Three first-class ecosystem hydrate profiles** (`ecosystem` copier
+   question: python | rust | javascript), each presetting the hydrate cmd
+   (overridable). Critically, the Rust profile's hydrate = warm/share the
+   BUILD cache (sccache or shared `CARGO_TARGET_DIR`), NOT copying a dep
+   dir (there is none — crates live in `$CARGO_HOME`). JS hydrate =
+   node_modules incl. workspace sub-packages; Python hydrate = `.venv`.
+4. **Wire enforcement via `lefthook`** (the mandated commit-time framework,
+   per the conformance `lefthook → just check` tier): the
+   `refuse-primary-commit.sh` gate runs first in pre-commit AND as the
+   commit-msg backstop, plus a server-side tripwire mirror. There is NO
+   `hook_framework` copier choice.
 5. **Default path:** make `implement`/dispatcher auto-provision a worktree
    per work-item.
 6. **Spec it** via the livespec lifecycle (orchestrator `contracts.md` +
-   `non-functional-requirements.md`): the contract is mandated, the task
-   runner / hook framework are NOT.
+   `non-functional-requirements.md`): the worktree contract is mandated,
+   and `just`/`lefthook` are mandated non-functionally as the mechanism —
+   while NEVER entering livespec core's public functional surface or the
+   `/livespec:*` skills.
 7. **Distribute:** ship in the copier template; verify `copier update`
    propagates cleanly; the drift workflow flags divergence.
 
 ## Constraints / non-negotiables
 
-- Mandate the CONTRACT, never a specific tool. No repo is required to use
-  `just`, lefthook, or any one runner/framework.
+- `just` and `lefthook` are mandated non-functionally (fleet+adopter-wide)
+  as the worktree pack's mechanism — Installer = a `just` recipe; commit
+  gate wired via `lefthook → just check`. They NEVER enter livespec core's
+  public functional surface or the `/livespec:*` skills. Any native
+  wrapper (cargo xtask, pnpm/npm scripts) is a strict pass-through to `just
+  worktree-*`, never an alternative runner/framework.
 - Rust is first-class: handle "hydrate = warm build cache" explicitly.
-- The portable core is the single source of truth; adapters stay logic-free
-  (or ecosystems drift — the thing `copier update` + the drift workflow
-  exist to catch).
+- The portable core (`worktree-lib.sh`) is the single source of truth; the
+  `just worktree-*` recipes call it directly and carry no logic (or
+  ecosystems drift — the thing `copier update` + the drift workflow exist
+  to catch).
 - Dogfood the discipline while building it (worktree + PR; never the primary).
 
 ## Close criteria
 
 A freshly scaffolded OR `copier update`-d Python/Rust/JS repo gets, by
-default: worktree lifecycle via its own runner; a gate blocking
-primary-checkout commits; ecosystem-correct hydration (incl. Rust shared
-build cache); a reaper; PR/merge landing — with zero manual per-session
-instruction. Update openbrain ob-0x5 status and archive this prompt pair
-when the epic closes.
+default: the worktree lifecycle driven by `just worktree-*` (with a strict
+pass-through native wrapper where the ecosystem has one); a
+`lefthook`-wired gate blocking primary-checkout commits; ecosystem-correct
+hydration (incl. Rust shared build cache); a reaper; PR/merge landing —
+with zero manual per-session instruction. Update openbrain ob-0x5 status
+and archive this prompt pair when the epic closes.

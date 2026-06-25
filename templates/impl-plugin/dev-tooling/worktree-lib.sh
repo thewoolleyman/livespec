@@ -14,13 +14,15 @@
 # `create`, `hydrate`, `land`, `reap` — plus the portable primary-vs-linked
 # detection they share.
 #
-# It is deliberately ECOSYSTEM-NEUTRAL and TASK-RUNNER-AGNOSTIC: it shells
-# out to `git` only, makes NO assumption about Python/Rust/JS/etc., and does
-# NOT require `just`, `make`, `pnpm`, or any one runner. The repo's own task
-# runner (if any) is expected to invoke these verbs through thin adapters —
-# the core carries the logic, the adapters stay logic-free. This is the
-# contract livespec mandates; the specific runner is the consuming repo's
-# choice.
+# It is deliberately ECOSYSTEM-NEUTRAL and pure-git: it shells out to `git`
+# only and makes NO assumption about Python/Rust/JS/etc., so it stays correct
+# under any invocation (including before a task runner is resolvable). It is
+# DRIVEN by `just`: the mandated `just worktree-{create,hydrate,land,reap}`
+# recipes call this core directly — the core carries the logic, the recipes
+# stay logic-free. `just` is mandated non-functionally across the fleet +
+# adopters; where an ecosystem has a native tool, a strict pass-through wrapper
+# (e.g. `cargo xtask worktree create` → `just worktree-create`) forwards to
+# those recipes, never an alternative runner.
 #
 # PRIMARY-VS-LINKED DETECTION (the load-bearing primitive)
 # ========================================================
@@ -182,9 +184,9 @@ worktree_hydrate() {
 
 # --------------------------------------------------------------------------
 # land — rebase the current worktree branch onto the latest base, then print
-# the runner-agnostic next step. landing is intentionally a REPORT, not an
+# the land-mode-neutral next step. landing is intentionally a REPORT, not an
 # automatic push/merge: the repo's own land mode (PR, merge-queue, direct
-# push) is its choice, and this neutral core must not assume one.
+# push) is its choice, and this core must not assume one.
 # --------------------------------------------------------------------------
 
 worktree_land() {
@@ -414,8 +416,9 @@ USAGE:
   worktree-lib.sh help
 
 The contract is mandated (isolated worktree, primary protected, land via
-PR/merge, orphans reaped); the task runner is NOT — invoke these verbs from
-whatever runner this repo uses.
+PR/merge, orphans reaped) and driven by `just` (the mandated runner): invoke
+these verbs via `just worktree-create` / `worktree-hydrate` / `worktree-land`
+/ `worktree-reap`, or a strict pass-through native wrapper onto them.
 EOF
 }
 
