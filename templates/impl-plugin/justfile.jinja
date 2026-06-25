@@ -81,9 +81,10 @@ worktree-reap *args:
 # ---------------------------------------------------------------
 # Server-side worktree discipline: GitHub branch protection.
 #
-# The local refuse-primary-commit gate (wired via lefthook) blocks commits on
-# the primary checkout, but it is LOCALLY BYPASSABLE (`--no-verify`, or simply
-# never installed/armed — the console fail-open incident). Branch protection is
+# The local commit-refuse hook (the structural git-hook-wrapper.sh body
+# installed at .git/hooks) blocks commits on the primary checkout, but it is
+# LOCALLY BYPASSABLE (`--no-verify`, or simply never installed). Branch
+# protection is
 # the server-enforced backstop: the default branch advances only via PR/merge;
 # direct + force pushes are rejected by GitHub itself. Both recipes delegate to
 # the portable, ecosystem-neutral dev-tooling/branch-protection.sh (the single
@@ -116,6 +117,38 @@ check-branch-protection:
 # First-time setup.
 # ---------------------------------------------------------------
 
+# Install the canonical structural commit-refuse hook body (the
+# repo-tracked dev-tooling/git-hook-wrapper.sh) as the pre-commit,
+# pre-push, and commit-msg hooks. This is the Installer slot of the
+# Worktree-discipline concern (the Conformance Pattern: Installer = a
+# `just` recipe; commit gate wired via lefthook → just check) — a
+# shared, idempotent recipe `bootstrap` delegates to. The body refuses
+# commits/pushes STRUCTURALLY: it exits 1 when `git rev-parse --git-dir`
+# equals `git rev-parse --git-common-dir` (a real primary checkout; a
+# secondary worktree's git-dir is `.git/worktrees/<name>` and so differs)
+# UNLESS `git config livespec.sandboxExempt` is `true`. There is therefore
+# NO arming step and so no fail-open window — the hook is armed the moment
+# it is installed. At worktrees (and in declared-exempt Fabro sandboxes)
+# the body delegates to mise-managed lefthook so the per-hook gates fire;
+# `--no-auto-install` inside the body is load-bearing (without it lefthook
+# backs the wrapper up to `<name>.old` on every fire and replaces it with
+# its PATH-searching stub, which both silently no-ops in Claude Code's bash
+# AND defeats the commit-refuse invariant).
+#
+# Resolves the shared hooks dir via git-common-dir so the install lands
+# correctly whether invoked from the primary checkout or a secondary
+# worktree (where .git is a file and `mkdir -p .git/hooks` would fail).
+# Idempotent: re-running overwrites with the same canonical body.
+install-commit-refuse-hooks:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    hooks_dir="$(realpath "$(git rev-parse --git-common-dir)")/hooks"
+    mkdir -p "${hooks_dir}"
+    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-commit"
+    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-push"
+    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/commit-msg"
+    chmod +x "${hooks_dir}/pre-commit" "${hooks_dir}/pre-push" "${hooks_dir}/commit-msg"
+
 bootstrap:
     #!/usr/bin/env bash
     # Shebang recipe: the whole body runs in ONE bash process, so the indented
@@ -126,20 +159,20 @@ bootstrap:
     # scaffolded or `copier update`-d consumer. Matches the other multi-line
     # recipes (check, check-pre-commit, ensure-codex-plugins).
     set -euo pipefail
-    # Install the git-hook-wrapper that delegates to lefthook via
-    # mise. The wrapper fires regardless of the user's shell config
-    # and routes commit-msg argv[1] to the v034 D3 replay-hook stage.
-    mkdir -p .git/hooks
-    cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-commit
-    cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-push
-    cp dev-tooling/git-hook-wrapper.sh .git/hooks/commit-msg
-    chmod +x .git/hooks/pre-commit .git/hooks/pre-push .git/hooks/commit-msg
+    # Install the structural commit-refuse hook body as the pre-commit,
+    # pre-push, and commit-msg hooks via the shared install recipe — the
+    # single Installer slot of the Worktree-discipline concern. The body
+    # refuses commits/pushes on the primary checkout (armed on install;
+    # no arming step), honours `livespec.sandboxExempt`, and otherwise
+    # delegates to mise-managed lefthook so commit-msg argv[1] reaches the
+    # red-green-replay stage regardless of the user's shell config.
+    just install-commit-refuse-hooks
     # Ensure the worktree-discipline shell scripts stay executable.
     # copier preserves the executable bit on a fresh `copier copy`, but a
     # `copier update` 3-way merge can re-checkout these files without it,
-    # and lefthook invokes refuse-primary-commit.sh directly (./…) — a
-    # non-executable gate would silently no-op. This chmod is idempotent.
-    chmod +x dev-tooling/refuse-primary-commit.sh dev-tooling/worktree-lib.sh dev-tooling/worktree-hydrate.sh dev-tooling/branch-protection.sh
+    # and the worktree-* recipes invoke them directly (./…) — a
+    # non-executable helper would silently no-op. This chmod is idempotent.
+    chmod +x dev-tooling/worktree-lib.sh dev-tooling/worktree-hydrate.sh dev-tooling/branch-protection.sh
     # Harden the beads tenant-pointer dir to owner-only on first-touch (bd
     # recommends 0700; only the owning user's bd reads it — the Dolt server
     # connects over TCP and never reads this dir). Guarded: repos with no beads

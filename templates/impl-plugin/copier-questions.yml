@@ -76,8 +76,9 @@ github_repo:
 # a `just` recipe, commit gate wired via `lefthook → just check`. The worktree
 # lifecycle is driven by the `just worktree-{create,hydrate,land,reap}` recipes
 # (justfile.jinja), which call the portable core (dev-tooling/worktree-lib.sh)
-# directly; the commit-refuse gate (dev-tooling/refuse-primary-commit.sh) is
-# wired through lefthook (lefthook.yml.jinja). Where a repo's ecosystem has a
+# directly; the structural commit-refuse hook (dev-tooling/git-hook-wrapper.sh)
+# is installed at the git hooks via `just install-commit-refuse-hooks`
+# (justfile.jinja). Where a repo's ecosystem has a
 # native tool, the template emits a STRICT PASS-THROUGH wrapper onto `just
 # worktree-*` (DERIVED from `ecosystem`: python → none; rust → cargo-xtask;
 # javascript → pnpm-scripts) — never an alternative runner/framework. `just`
