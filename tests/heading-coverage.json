@@ -45,8 +45,7 @@
     "heading": "## Contract + reference implementations architecture",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
-    "test": "TODO",
-    "reason": "Renamed from '## Three-layer orchestration architecture' in v103 (contract-and-reference-implementations-phase-1 proposal accept). Test ID populated in the Phase-2+ impl follow-up that exercises the contract + reference implementations seams (Driver-agnostic spec-side CLIs; an orchestrator consuming the three config-named CLIs)."
+    "test": "tests.test_architecture_diagram_single_source.test_readme_embeds_no_mermaid_diagram"
   },
   {
     "heading": "## Versioning",
