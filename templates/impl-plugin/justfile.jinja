@@ -47,6 +47,12 @@ bootstrap:
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/pre-push
     cp dev-tooling/git-hook-wrapper.sh .git/hooks/commit-msg
     chmod +x .git/hooks/pre-commit .git/hooks/pre-push .git/hooks/commit-msg
+    # Ensure the worktree-discipline shell scripts stay executable.
+    # copier preserves the executable bit on a fresh `copier copy`, but a
+    # `copier update` 3-way merge can re-checkout these files without it,
+    # and lefthook invokes refuse-primary-commit.sh directly (./…) — a
+    # non-executable gate would silently no-op. This chmod is idempotent.
+    chmod +x dev-tooling/refuse-primary-commit.sh dev-tooling/worktree-lib.sh dev-tooling/worktree-hydrate.sh
     # Harden the beads tenant-pointer dir to owner-only on first-touch (bd
     # recommends 0700; only the owning user's bd reads it — the Dolt server
     # connects over TCP and never reads this dir). Guarded: repos with no beads

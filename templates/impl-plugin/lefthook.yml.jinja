@@ -5,10 +5,23 @@
 # publishes a new release.
 #
 # Authority: livespec/SPECIFICATION/contracts.md
-#   §"Pre-commit step ordering" — pre-commit runs three commands in
-#   order (00-lint-autofix-staged, 01-commit-pairs-source-and-test,
-#   02-check-pre-commit); commit-msg runs no-commit-on-master then
-#   red-green-replay (v034 D3); pre-push runs the full aggregate.
+#   §"Pre-commit step ordering" — pre-commit runs the refuse-primary-commit
+#   gate FIRST, then three commands in order (00-lint-autofix-staged,
+#   01-commit-pairs-source-and-test, 02-check-pre-commit); commit-msg runs
+#   the refuse-primary-commit backstop then red-green-replay (v034 D3);
+#   pre-push runs the full aggregate.
+#
+# Worktree-discipline gate: `dev-tooling/refuse-primary-commit.sh` refuses
+# any commit made on the PRIMARY checkout (the worktree-only repository
+# mutation protocol; see AGENTS.md §"Repository mutation protocol"). It is
+# wired BOTH as the first pre-commit job AND as a commit-msg backstop — the
+# backstop catches `git commit --allow-empty`, which lefthook v2 skips at
+# pre-commit because it skips pre-commit jobs when there are zero staged
+# files. The gate distinguishes primary from linked worktree with portable,
+# config-free `git rev-parse --git-common-dir` vs `--git-dir` detection
+# (linked worktrees pass; the script exits 0 there); it needs no
+# `livespec.primaryPath` config and is runner-agnostic (it does NOT delegate
+# to `just`).
 #
 # Authority: livespec/SPECIFICATION/non-functional-requirements.md
 #   §"Toolchain pins" — `run:` fields MUST delegate to `just <target>`
@@ -25,23 +38,19 @@
 
 pre-commit:
   commands:
-    00-lint-autofix-staged:
+    00-refuse-primary-commit:
+      run: ./dev-tooling/refuse-primary-commit.sh
+    01-lint-autofix-staged:
       run: just lint-autofix-staged
-    01-commit-pairs-source-and-test:
+    02-commit-pairs-source-and-test:
       run: just check-commit-pairs-source-and-test
-    02-check-pre-commit:
+    03-check-pre-commit:
       run: just check-pre-commit
 
 commit-msg:
   commands:
-    00-no-commit-on-master:
-      run: |
-        branch=$(git rev-parse --abbrev-ref HEAD)
-        if [ "$branch" = "master" ]; then
-          printf 'ERROR: direct commits to master are forbidden; create a feature branch first\n' >&2
-          printf 'Hint: git checkout -b <branch-name>\n' >&2
-          exit 1
-        fi
+    00-refuse-primary-commit:
+      run: ./dev-tooling/refuse-primary-commit.sh
     01-red-green-replay:
       run: just check-red-green-replay {1}
 
