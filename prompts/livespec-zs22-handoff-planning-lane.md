@@ -37,31 +37,34 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-25)
+## Status (refreshed 2026-06-25, post-increment-1)
 
 Increment 0 and the design refinements have landed (PRs #568, #572);
-`livespec-zs22.1` is closed. **Increment 1 (`livespec-zs22.2`) is in
-progress**: the three final diagrams are captured in the design doc
-§"Architecture diagrams". Increments 2-5 are drafted in the design doc
-§"Increment sequence" and filed as ledger children as each ripens (the
-maintainer owns the cut: draft, get approval, then file).
+`livespec-zs22.1` is closed. **Increment 1 (`livespec-zs22.2`) has
+landed** (PR #575, merge `54f8763`): the `## Workflow planes and the
+Planning Lane` framing section plus the planes and skills diagrams are in
+`SPECIFICATION/spec.md`, the canonical architecture diagram now carries
+the Control Plane + the `plan/<topic>/` store (cut `v137` via the
+governed propose-change → revise lifecycle), the field-comparison
+section is in the repo `README`, and the diagram authoring conventions
+are in `AGENTS.md` (closing `livespec-1bvl`). The epic is 2/3 children
+complete. Increments 2-5 are drafted in the design doc §"Increment
+sequence" and filed as ledger children as each ripens (the maintainer
+owns the cut: draft, get approval, then file). `livespec-zs22.3`
+(plan-skill self-sufficiency check) is also open and ready.
 
 ## Next concrete action
 
-Finish increment 1 (`livespec-zs22.2`). The three diagrams are FINAL and
-captured in the design doc §"Architecture diagrams (increment-1 framing)";
-do not re-derive them. This is execution, not design:
-
-1. Land the three diagrams plus a short high-level framing section (the
-   three planes, the Planning Lane, the Control-Plane role) into
-   `SPECIFICATION/spec.md` via `/livespec:propose-change` then
-   `/livespec:revise` (requirement b). Keep it to the framing; the detailed
-   `plan` API, `plan/<topic>/` rules, and archive concern are increments
-   2-3, not the spec now.
-2. Add a `README` section on how livespec relates to the field (spec-kit,
-   Kiro, Cline, beads) and the gap this closes (requirement a). Direct edit.
-3. Add the spec/diagram authoring conventions to `AGENTS.md` (realizes
-   `livespec-1bvl`). Direct edit.
+Increment 2 — a `livespec-zs22` child not yet filed; the maintainer owns
+the cut. Land the **Planning Lane → core `non-functional-requirements.md`
+guidance** via `/livespec:propose-change` then `/livespec:revise`: the
+three-lane separation, the two seams, the no-shadow-ledger invariant, and
+the openbrain discipline (design doc §"Increment sequence" item 2 +
+§"The Planning Lane"). The *pattern* only; no command in core's
+functional surface, and `just` never leaks into core's functional spec.
+Draft the cut from the design doc, get maintainer approval, file the
+child, then execute. (`livespec-zs22.3` — plan-skill self-sufficiency —
+is the alternative ready pickup.)
 
 ## Constraints / non-negotiables
 
