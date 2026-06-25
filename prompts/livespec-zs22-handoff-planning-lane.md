@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-25, post-3b-core + red-green epic gcp2)
+## Status (refreshed 2026-06-25, post-increment-3 COMPLETE + red-green epic gcp2)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -59,81 +59,77 @@ op — PLUS the core NFR `Handoff self-sufficiency` pattern paragraph.
 fail-closed dangling-reference) is **CLOSED**. Epic is **4/5 children
 complete**.
 
-**Increment 3b CORE SLICE LANDED** (`livespec-zs22.5`; core PR `livespec#584`,
-cut `v140`): core `contracts.md` §"Driver-shipped hooks" now REQUIRES the
-no-shadow-ledger WARN-only `Stop` hook in BOTH Driver bundles, single-sourced
-as a byte-identical `no_shadow_ledger.py` + thin per-runtime `hooks.json` Stop
-adapters (maintainer chose option A, "identical copies now; Verifier in inc-5").
-The canonical body is authored + smoke-tested (6 cases incl. the inline-`` `[ ]` ``
-false-positive guard) and **pinned verbatim in §"Pinned canonical body" below**.
+**Increment 3 COMPLETE** (`livespec-zs22.5` CLOSED). 3a = the orchestrator
+`plan` skill (landed earlier). 3b = the no-shadow-ledger WARN-only `Stop` hook,
+now landed in BOTH Drivers byte-identical: core contract `livespec#584` (`v140`);
+`livespec-driver-claude#42` (master `06044b4`); `livespec-driver-codex#17`
+(master `d6a4f88`); both bodies sha256 `5beb62c5…` (= the canonical source, noqa
+preserved). Maintainer chose option A (identical copies now via the gate's
+suite-green `chore:` path; the mechanical byte-identity Verifier is increment-5
+Conformance work). The hooks landed via suite-green, not Red→Green, because the
+red-green classifier doesn't impl-classify Driver hook paths (`livespec-kvzt`).
 
-**Mid-3b detour, now DONE — epic `livespec-gcp2` (red-green-replay
+**Mid-increment-3 detour, DONE — epic `livespec-gcp2` (red-green-replay
 fleet+adopter-wide).** Maintainer directive (2026-06-25): red-green-replay MUST
 be enforced fleet+adopter-wide, regardless of any "no product Python"
 self-classification. LANDED: both Python Drivers wired at lefthook **and**
-authoritative CI (`livespec-driver-claude#40`, master `0107028`; codex master
-`8abbea1`+`356aabc`); core policy `livespec#589`, cut `v141`; adopters already
-covered by the `templates/impl-plugin/` copier scaffold. The Rust console
-analogue is `livespec-1t17` (separate; not gcp2). The mechanical fleet-wide
-Verifier is increment-5 Conformance-Pattern work. **Consequence for 3b:** the
-Drivers now ENFORCE red-green, so the two driver-hook PRs below MUST follow the
-Red→Green ritual (failing test first, then impl).
+authoritative CI (`livespec-driver-claude#40`; codex `8abbea1`+`356aabc`); core
+policy `livespec#589` (`v141`); adopters covered by the `templates/impl-plugin/`
+copier; `h3e7` (commit-pairs no-op) fixed in both Drivers. gcp2 was RE-OPENED as
+the **Driver-hook enforcement umbrella** to hold the conformance follow-ups this
+session surfaced (below).
 
-Open child: **`livespec-zs22.5`** — REMAINING: the two Driver hook impls (see
-Next concrete action). Increments 4-5 are design-doc-sequenced, filed as they
-ripen.
+**Open conformance follow-ups (filed this session; status from the ledger, not
+here; mostly increment-5 Conformance-Pattern work).**
+`livespec-co9h` (block-auto-memory deny-reason reword — claude part LANDED
+`ee8ec92`; codex has no such hook; part-3 = `livespec-8njn`, the family AGENTS.md
+durable-memory capture convention, default-tracked pending a maintainer draft-now
+call); `livespec-kvzt` (`red_green_replay._IMPL_PREFIXES` hardcoded → Driver hook
+changes dodge Red→Green; make impl-classification config-driven); `livespec-i6rc`
+(`lint-autofix-staged` mutates ruff-excluded files → `--force-exclude` needed in
+the canonical orchestrator + copier template, not just the Drivers);
+`livespec-qtjd` (fresh clones can have dormant local git gates until
+`just bootstrap`); `livespec-mjnv` (live codex picker fails-on-timeout vs
+skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console).
 
 ## Next concrete action
 
-**Increment 3b — the two Driver hook impls (`livespec-zs22.5`).** The core
-contract (`#584`/`v140`) is merged; what remains is to ship the byte-identical
-canonical `no_shadow_ledger.py` (pinned below) in BOTH Drivers, each wired as a
-`Stop` hook, **under the Red→Green ritual the Drivers now enforce** (gcp2).
-Drive as ONE cross-repo epic; do NOT defer pieces.
+Increment 3 is DONE (Status above). Two increments remain in the design-doc
+sequence, plus the conformance follow-ups this session filed.
 
-- **`livespec-driver-claude`**: add `.claude-plugin/hooks/no_shadow_ledger.py`
-  (verbatim from §"Pinned canonical body"); add `.claude-plugin/hooks/**` to
-  `[tool.ruff]` `extend-exclude` (so ruff does not reformat it and break
-  byte-identity — codex's `livespec/hooks/**` is already excluded); ADD a `Stop`
-  entry to `.claude-plugin/hooks/hooks.json` invoking
-  `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/no_shadow_ledger.py"` ALONGSIDE the
-  existing `warn-plan-persistence.sh` Stop entry (both fire); update
-  `SPECIFICATION/contracts.md` (its own) to realize the surface; add
-  `tests/hooks/test_no_shadow_ledger.py` (model on `test_warn_plan_persistence.py`).
-- **`livespec-driver-codex`**: add `livespec/hooks/no_shadow_ledger.py`
-  (BYTE-IDENTICAL — `cmp` it); ADD a `Stop` entry to `livespec/hooks/hooks.json`
-  (today PreToolUse-only); update `SPECIFICATION/contracts.md` §"Hook bundle"
-  (was "carries ONE hook"); add the test (model on
-  `test_livespec_footgun_guard.py`). **Codex Stop-input caveat:** the body reads
-  the Claude Stop I/O shape (`transcript_path`); fail-open means a format
-  mismatch is SAFE (inert, never breaks). Live-Codex Stop-input verification is a
-  separate follow-up; if it differs, the contract-sanctioned fix is a thin Codex
-  input-normalizer adapter, NOT a change to the shared body.
+**Increment 4 — console control-plane contract.** A NEW NON-normative
+orchestrator/console-Plane `####` block in core `non-functional-requirements.md`
+(model it on the existing `#### Orchestrator-internal Dispatcher guidance` /
+grooming templates, sibling under `### Orchestrator plugin ecosystem`) stating
+what the console reads/composes/coordinates and what it never owns — PLUS extend
+the EXISTING `livespec-console-beads-fabro/SPECIFICATION/spec.md` diagram (mermaid
+both sides). See §"Recon" for the verified console facts (it's Rust; already has
+control-plane content + a mermaid diagram). Drive as one cross-repo epic.
 
-**Red→Green ritual (both repos now enforce it at lefthook + CI):** commit the
-test FIRST (Red — failing, staged alone, no impl), then `git commit --amend`
-adding the impl + ride-alongs (Green). The hook `.py` is product Python now under
-`check-red-green-replay`. Validation: each repo's full `just check` + all PR
-checks green. NO pyright in the Driver repos; the hook dir is ruff-excluded; so
-the body ships verbatim. NOT in scope (design doc "do NOT fix defects tactically
-ahead of the pattern"): reconciling the divergent footgun guards (228 vs 365) or
-backfilling codex's missing warn-plan-persistence/block-auto-memory — increment-5
-Conformance work.
+**Increment 5 — the Conformance Pattern.** File the M0–M6 epic from
+`research/factory-conformance/cross-repo-conformance-pattern.md` (five slots:
+Contract / Mechanism / Installer / Verifier / Exemption; `baseline` profile;
+`adopters` manifest; four-tier enforcement; the `just` NFR keystone). **This is
+the natural home for the conformance follow-ups filed this session** — fold them
+in as named concerns / Verifiers: `kvzt` (config-driven impl-classification),
+`i6rc` (canonical `--force-exclude` fix), `qtjd` (bootstrap/dormant-gates),
+`mjnv` (picker skip-on-unavailable), the gcp2 mechanical byte-identity Verifier,
+and `co9h` part-3 (`8njn`, the AGENTS.md capture convention). The `gcp2`
+Driver-hook enforcement umbrella holds most of them.
 
-**Then increment 4** (console control-plane contract: a NEW NON-normative
-orchestrator/console-Plane `####` block in core
-`non-functional-requirements.md`, modeled on the Dispatcher/grooming guidance,
-+ the EXISTING `livespec-console-beads-fabro/SPECIFICATION/spec.md` diagram
-extended — mermaid both sides) and **increment 5** (Conformance Pattern — file
-the M0-M6 epic from
-`research/factory-conformance/cross-repo-conformance-pattern.md` once
-increment 3 lands). See §"Recon" for the verified cross-repo facts.
+**Also pending a maintainer call:** `co9h` part-3 (`livespec-8njn`) — document
+the durable-memory capture convention in the family AGENTS.md (impl-plugin
+template + core). Default-tracked; the maintainer may opt to draft it now (it has
+a design element on the AGENTS.md-section vs. referenced-instruction-file
+mechanism).
 
 ## Pinned canonical body (`no_shadow_ledger.py`)
 
-The single source for the two 3b Driver hooks — ship BYTE-IDENTICAL in both
-(`livespec-driver-claude/.claude-plugin/hooks/`,
-`livespec-driver-codex/livespec/hooks/`). Authored + smoke-tested 2026-06-25
+**LANDED — historical reference** (now committed byte-identical at sha256
+`5beb62c5…` in `livespec-driver-claude/.claude-plugin/hooks/no_shadow_ledger.py`
+and `livespec-driver-codex/livespec/hooks/no_shadow_ledger.py`; read those for
+the live copy). It was the single source for the two 3b Driver hooks. Authored
++ smoke-tested 2026-06-25
 (WARN on a `*handoff*.md` / `plan/` / `prompts/` `.md` write carrying ≥3 `[ ]`/`[x]`
 checkbox items; SILENT on clean artifacts incl. inline `` `[ ]` `` in prose, on
 non-planning paths, on malformed stdin, on `stop_hook_active`). It lives here
