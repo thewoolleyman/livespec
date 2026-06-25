@@ -27,61 +27,59 @@ default:
 # First-time setup.
 # ---------------------------------------------------------------
 
-bootstrap:
+# Install the canonical structural commit-refuse hook body (the
+# repo-tracked dev-tooling/git-hook-wrapper.sh) as the pre-commit,
+# pre-push, and commit-msg hooks. This is the Installer slot of the
+# Worktree-discipline concern (per
+# `SPECIFICATION/non-functional-requirements.md` §"Conformance
+# Pattern") — a shared, idempotent `just` recipe `bootstrap`
+# delegates to. The body refuses commits/pushes STRUCTURALLY: it
+# exits 1 when `git rev-parse --git-dir` equals `git rev-parse
+# --git-common-dir` (a real primary checkout; a secondary worktree's
+# git-dir is `.git/worktrees/<name>` and so differs) UNLESS `git
+# config livespec.sandboxExempt` is `true`. There is therefore NO
+# `livespec.primaryPath` arming step and so no fail-open window — the
+# hook is armed the moment it is installed (this supersedes the v095
+# `livespec.primaryPath` mechanism, which failed OPEN whenever its
+# arming step was missed). At worktrees (and in declared-exempt Fabro
+# sandboxes) the body delegates to mise-managed lefthook so the
+# per-hook gates fire; `--no-auto-install` inside the body is
+# load-bearing (without it lefthook backs the wrapper up to
+# `<name>.old` on every fire and replaces it with its PATH-searching
+# stub, which both silently no-ops in Claude Code's bash AND defeats
+# the commit-refuse-hook invariant).
+#
+# Resolves the shared hooks dir via git-common-dir so the install
+# lands correctly whether invoked from the primary checkout or a
+# secondary worktree (where .git is a file and `mkdir -p .git/hooks`
+# would fail). Idempotent: re-running overwrites with the same
+# canonical body — no duplicate content, no side effect.
+install-commit-refuse-hooks:
     #!/usr/bin/env bash
     set -euo pipefail
-    # Resolve the shared git dir and primary checkout root via
-    # git-common-dir so the recipe is safe from both the primary
-    # checkout and secondary worktrees. From a worktree, .git is a
-    # file (not a directory) and git-common-dir resolves to the
-    # primary's shared .git; dirname of that gives the primary
-    # checkout root. From the primary, git-common-dir returns the
-    # relative `.git` path and dirname gives `.`, which realpath
-    # expands to the primary root. Both cases produce the correct
-    # absolute primary path and shared hooks dir.
-    git_common_dir="$(realpath "$(git rev-parse --git-common-dir)")"
-    primary_path="$(realpath "$(dirname "$(git rev-parse --git-common-dir)")")"
-    hooks_dir="${git_common_dir}/hooks"
-    # Idempotent `livespec.primaryPath` on the primary checkout's
-    # git-common-dir config (per
-    # `SPECIFICATION/non-functional-requirements.md`
-    # §"Primary-checkout commit-refuse hook" /
-    # §"Commit-refuse hook bootstrap procedure"). The commit-refuse
-    # hook reads this config key to decide whether the current
-    # toplevel is the primary checkout and the commit should be
-    # refused. Runs FIRST so partial failure of any later step
-    # cannot leave the primary-path config unset. Both the config
-    # target (git-common-dir/config) and the value (primary_path,
-    # derived from dirname of git-common-dir resolved via realpath)
-    # are worktree-safe: from a secondary worktree, git-common-dir
-    # resolves to the primary's shared .git and dirname yields the
-    # primary checkout root regardless of the invocation site.
-    git config --file "${git_common_dir}/config" livespec.primaryPath "${primary_path}"
-    # Install the repo-tracked git-hook-wrapper.sh as pre-commit,
-    # pre-push, and commit-msg hooks. Uses hooks_dir (resolved via
-    # git-common-dir) so the install lands in the shared hooks dir
-    # whether invoked from the primary checkout or a secondary
-    # worktree (where .git is a file and mkdir -p .git/hooks would
-    # fail). The wrapper carries BOTH the canonical commit-refuse
-    # hook body (marker comment + `git rev-parse --show-toplevel`
-    # check + `exit 1` branch, recognized by the
-    # `primary-checkout-commit-refuse-hook-installed` invariant)
-    # AND the mise-managed lefthook delegation, so the same file
-    # satisfies the canonical fingerprint check on the primary AND
-    # fires lefthook gates on secondary worktrees.
-    # `mise exec lefthook -- lefthook run --no-auto-install ...` is
-    # what fires the gate regardless of the user's shell config and
-    # is the only mechanism that survives lefthook's auto-install
-    # clobber (`--no-auto-install` is load-bearing; without it,
-    # lefthook backs up the wrapper to `<name>.old` on every fire
-    # and replaces it with its PATH-searching stub, which both
-    # silently no-ops in Claude Code's bash AND defeats the
-    # commit-refuse-hook invariant).
+    hooks_dir="$(realpath "$(git rev-parse --git-common-dir)")/hooks"
     mkdir -p "${hooks_dir}"
     cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-commit"
     cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-push"
     cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/commit-msg"
     chmod +x "${hooks_dir}/pre-commit" "${hooks_dir}/pre-push" "${hooks_dir}/commit-msg"
+
+bootstrap:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Resolve the primary checkout root via git-common-dir so the
+    # recipe is safe from both the primary checkout and secondary
+    # worktrees. From a worktree, .git is a file (not a directory) and
+    # git-common-dir resolves to the primary's shared .git; dirname of
+    # that gives the primary checkout root. From the primary,
+    # git-common-dir returns the relative `.git` path and dirname
+    # gives `.`, which realpath expands to the primary root.
+    primary_path="$(realpath "$(dirname "$(git rev-parse --git-common-dir)")")"
+    # Install the structural commit-refuse hooks (armed on install; no
+    # `livespec.primaryPath` arming step to forget). Delegated to the
+    # shared install-commit-refuse-hooks recipe — the single Installer
+    # slot of the Worktree-discipline concern.
+    just install-commit-refuse-hooks
     # Harden the beads tenant-pointer dir to owner-only on first-touch (bd
     # recommends 0700; only the owning user's bd CLI reads it — the Dolt server
     # connects over TCP and never reads this dir). Guarded: repos with no beads
