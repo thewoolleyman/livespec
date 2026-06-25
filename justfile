@@ -275,6 +275,7 @@ check:
         check-format
         check-imports-architecture
         check-lint
+        check-no-renderer-vendoring
         check-prompts
         check-schema-dataclass-pairing
         check-types
@@ -701,6 +702,16 @@ check-canonical-slugs-projection:
 
 check-codex-no-repo-local-adapters:
     uv run python3 dev-tooling/checks/codex_no_repo_local_adapters.py
+
+# Renderer non-vendoring gate (SPECIFICATION/constraints.md
+# §"Renderer non-vendoring"): scans pyproject.toml dependency
+# declarations AND .claude-plugin/scripts/_vendor/ for any diagram
+# renderer (plantuml, graphviz, mermaid, or equivalents) and fails if
+# any is present. Livespec ships Mermaid-native diagrams and depends on
+# no renderer; an author needing another diagram type renders it
+# outside livespec and commits an opaque image asset.
+check-no-renderer-vendoring:
+    uv run python3 dev-tooling/checks/no_renderer_vendoring.py
 
 check-tools:
     uv run python -m livespec_dev_tooling.checks.check_tools
