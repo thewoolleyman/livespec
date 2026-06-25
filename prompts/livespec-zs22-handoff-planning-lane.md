@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-25, increment-5 M2 IN PROGRESS)
+## Status (refreshed 2026-06-26, increment-5 M2 FLEET-MIGRATION COMPLETE; next is M3)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -133,51 +133,63 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-**M2 (`livespec-zs22.7.3`) is IN PROGRESS — read its ledger notes for the live
-state (FIRST ACTION + `bd show livespec-zs22.7.3`).** The design open question is
-RESOLVED (no host-side fresh full clone commits beyond the Fabro sandbox: the
-janitor is a detached worktree, the integration clone never commits directly).
-The mechanism shape was maintainer-confirmed 2026-06-25: **Option A — one uniform
+**M3 (`livespec-zs22.7.4`) is next — read its ledger notes (FIRST ACTION +
+`bd show livespec-zs22.7.4`).** M2's structural-commit-refuse mechanism is now
+FLEET-MIGRATED, so M3 (fleet dogfood on the Rust console `livespec-console-beads-fabro`)
+can proceed on the interim cp-based mechanism: carry `baseline` (the structural
+commit-refuse hook + `just check`), prove commit-refuse fail-closed at its
+primary, and get `just check` green. This is a fresh-repo increment in a repo
+this session did not survey — start clean.
+
+**M2 (`livespec-zs22.7.3`) — what landed (mechanism FLEET-MIGRATED; live status
+from the ledger, not here):** the maintainer-confirmed **Option A** (one uniform
 commit-refuse wrapper installed everywhere + an explicit `livespec.sandboxExempt`
-marker** (the design doc's named "fallback"), chosen over the "verifier
-sandbox-aware / hook absent in the sandbox" path because the wrapper also carries
-the lefthook delegation the sandbox relies on for in-sandbox red-green-replay.
-
-Landed/in-flight this session (details in `zs22.7.3` ledger notes):
+marker the hook BODY reads; structural refuse when `git-dir == git-common-dir`;
+armed-on-install; `primaryPath` retired) is now the single canonical Mechanism
+for concern #1, migrated across the fleet:
+- **M2-1 `livespec-dev-tooling#165` (MERGED, v0.18.0)** — canonical structural
+  body + verifier accepts BOTH structural and legacy bodies through migration.
 - **PR-1 `livespec-orchestrator-beads-fabro#169` (MERGED)** — Fabro prepare arms
-  every dispatched sandbox with `git config livespec.sandboxExempt true`
-  (backward-compatible no-op for the legacy body; prerequisite for the structural
-  body). Folds the dormant-gates / `livespec-qtjd` arming concern.
-- **PR-2 `livespec-dev-tooling#165` (auto-merge ARMED)** — structural+exempt
-  canonical body + verifier fingerprint accepts BOTH structural(git-common-dir)
-  and legacy(show-toplevel) bodies (green fleet migration) + dev-tooling bootstrap
-  installs structural body & drops the primaryPath write + contracts.md governed
-  propose→revise (history v018). On merge, release-please cuts a dev-tooling
-  release core (M2-2) pins to.
+  `livespec.sandboxExempt true` (folds `livespec-qtjd`).
+- **M2-2 core `livespec#609` (MERGED, `4c7849a`, cut v144)** — core wrapper →
+  structural body; shared `install-commit-refuse-hooks` recipe + bootstrap
+  delegate; `primaryPath` retired; governed NFR/contracts spec cycle.
+- **Template `livespec#612` (MERGED, `4f37f75`)** — RESOLVED the architectural
+  divergence: the single-wrapper is canonical (it is the latest + the deliberate
+  M2 Mechanism + has `sandboxExempt` + satisfies the canonical check + is
+  armed-on-install). Template now installs the structural body via
+  `install-commit-refuse-hooks`; `refuse-primary-commit.sh` deleted + unwired;
+  KEPT `worktree-lib.sh` lifecycle pack + ecosystem profiles + branch-protection
+  (orthogonal, adopter-proven).
+- **M2-3 orchestrator `livespec-orchestrator-beads-fabro#171` (MERGED, `1bd35b5`)**
+  — orchestrator body → structural at pre-commit/pre-push/commit-msg; `primaryPath`
+  retired; recipe aligned.
 
-**Next: M2-2 (core `livespec` PR)** — once PR-2's release is cut: add `just
-install-commit-refuse-hooks` (interim cp of the structural body) + bootstrap
-delegates + RETIRE the primaryPath write + copier template import
-(`templates/impl-plugin/justfile.jinja`) + bump core's dev-tooling pin + update
-core's own `dev-tooling/git-hook-wrapper.sh` to the structural body + the core NFR
-governed spec cycle (rewrite §"Commit-refuse hook bootstrap procedure" /
-§"Primary-checkout commit-refuse hook" for the structural mechanism + the
-`livespec.sandboxExempt` Exemption; and update §"Conformance Pattern" concern #1
-wording from "Verifier: sandbox-aware … Exemption: a declared sandbox marker the
-Verifier reads" to Option A: the hook BODY reads the marker, the Verifier stays
-simple). Then the deferred pieces: **M2-1b** (a `livespec_dev_tooling.install_commit_refuse_hooks`
-python module so the body is REUSED from the package with NO per-repo cp copies —
-deferred to keep the cp-based install + Fabro data-driven sed working through the
-transition); the **`baseline` tag** (deferred to M4, where Open Brain first
-consumes the partition — don't build a partition no consumer reads); **M2-3
-completion** (align the orchestrator's OWN `install-commit-refuse-hooks` recipe to
-the structural body). Verify the git-jsonl orchestrator's Fabro prepare similarly
-arms `sandboxExempt` if it dispatches.
+**Still open under M2 (tracked in the `zs22.7.3` ledger notes; none blocks M3):**
+- **M2-1b** — the `livespec_dev_tooling.install_commit_refuse_hooks` python module
+  so the body is REUSED from the package (pin+import, NO per-repo cp copies). Core,
+  template, and orchestrator each currently cp their own byte-identical copy (the
+  interim transition state); M2's "no per-repo copies" delivery goal is met only
+  when this lands.
+- **`baseline` tag** — deferred to M4 (don't build a partition no consumer reads
+  until Open Brain imports it).
+- **git-jsonl follow-up (NEW)** — `livespec-orchestrator-git-jsonl` does NOT
+  dispatch into Fabro (no `.fabro/`), has NO `sandboxExempt` arming, and still
+  carries the LEGACY body. Do NOT migrate it to structural until its dispatch path
+  is confirmed to arm `sandboxExempt` (a structural body would refuse legitimate
+  in-sandbox commits). The v0.18.0 verifier still accepts its legacy body, so not
+  urgent.
 
-After M2: M3 (fleet dogfood on `livespec-console-beads-fabro`), M4 (adopter
-dogfood on Open Brain), M5 (concern #2 cross-harness plugin-resolution; folds
-`mjnv`), M6 (four-tier wiring). Each is its own PR. The fold-in follow-ups
-(`kvzt`, `i6rc`, `qtjd`, `mjnv`, the gcp2 byte-identity Verifier, `8njn`) are
+**Side observation (NOT acted on):** the two pre-migration planning docs
+`prompts/worktree-discipline-pack-{epic,prompt}.md` still reference the now-deleted
+`refuse-primary-commit.sh` (the only remaining stale refs in core). Candidate to
+archive to `archive/prompts/` (the pack landed; the refuse half is superseded) —
+maintainer's call.
+
+After M3: M4 (adopter dogfood on Open Brain + seed the `baseline` tag), M5 (concern
+#2 cross-harness plugin-resolution; folds `mjnv`), M6 (four-tier wiring). Each is
+its own PR. The fold-in follow-ups (`kvzt`, `i6rc`, `qtjd` [folded by M2's
+armed-on-install], `mjnv`, the gcp2 byte-identity Verifier, `8njn`) are
 see-also-linked to `zs22.7` and its milestones — pull each into the milestone
 whose concern it sharpens; do NOT re-parent them off `gcp2`.
 
