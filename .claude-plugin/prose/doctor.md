@@ -232,31 +232,64 @@ proceed to §"Failure handling".
 
 ### Per-finding user dialogue
 
-11. For every finding accumulated across Steps 6, 7, 9,
-    10 — in `spec_root`-grouped order matching how the
-    static-phase findings were surfaced — prompt the user
-    with:
+Per `contracts.md` §"Doctor per-finding disposition
+dialogue", this dialogue MUST run for EVERY non-`pass`
+finding surfaced in a single invocation, whichever phase
+produced it: a static-phase `fail` or `warn`, or any of the
+four LLM-driven phase categories (Steps 6, 7, 9, 10).
+Findings with status `pass` and `skipped` are NOT
+dispositioned — they remain narrated in Step 3 only. The
+dialogue MUST run BEFORE the Driver binding aborts on a
+static-phase `fail` (the wrapper's Exit 3): "abort" narrows
+to "do not run further LLM-driven check generation", not
+"stop interacting with the user" — disposition of
+already-surfaced findings is not check generation, so the
+no-LLM-after-`fail` safety contract is preserved. The
+dialogue MUST also run for static-phase `warn` findings
+(whose status does NOT lift the wrapper to Exit 3).
+
+11. For every non-`pass` finding accumulated across the
+    static phase and Steps 6, 7, 9, 10 — in `spec_root`-grouped
+    order matching how the static-phase findings were
+    surfaced — present the user with:
 
     - The finding's `check_id`, `spec_root`, optional
       `path`, and `message`.
     - The `proposed_change_hint` rendered as the body the
       `critique` operation would receive.
-    - Three options: **accept** (invoke the critique
-      operation with the hint), **defer** (record the
-      finding in this session's narration but do nothing),
-      **dismiss** (the user judges the finding does not
-      apply).
+    - A disposition menu of AT MINIMUM these five options,
+      in this canonical order:
 
-    Accept invokes the critique operation against the
-    appropriate `--spec-target` (the tree whose `spec_root`
-    surfaced the finding) and threads the
-    `proposed_change_hint` as the user-described change.
-
-    No cross-invocation persistence of dismissals in v1
-   . A
-    finding the user dismissed in one run MAY surface again
-    in the next run; the user dismisses again or chooses a
-    different disposition.
+      1. **fix-now** — apply the corrective action implied
+         by the finding's `message`. OPTIONAL per finding:
+         offer it ONLY when that action is mechanically
+         describable from `message` (text edits, `mkdir`,
+         single-shell-command cleanups); when it is not,
+         this option MUST NOT be offered for that finding
+         (the menu surfaces the remaining four).
+      2. **capture-as-work-item** — route the finding to the
+         active orchestrator's work-item machinery via the
+         interactive front-end the orchestrator ships (per
+         `contracts.md` §"Interactive dialogue ownership
+         (orchestrator-side)"). The handed-off finding embeds
+         the `check_id`, `spec_root`, optional `path`, and
+         `message` so the trail back to the originating
+         doctor finding is preserved. This option MUST ALWAYS
+         be offered for every non-`pass` finding.
+      3. **propose-change** — invoke the `critique` operation
+         against the appropriate `--spec-target` (the tree
+         whose `spec_root` surfaced the finding) and thread
+         the `proposed_change_hint` as the user-described
+         change. This option MUST ALWAYS be offered.
+      4. **defer** — record the finding in this session's
+         narration; take no durable action. It MAY surface
+         again on the next invocation.
+      5. **dismiss** — the user judges the finding does not
+         apply; take no durable action. No cross-invocation
+         persistence of dismissals in v1: a dismissed finding
+         MAY surface again on the next invocation, where the
+         user dismisses again or chooses a different
+         disposition.
 
 ## Skip control
 

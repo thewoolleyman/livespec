@@ -473,8 +473,7 @@
     "heading": "## Doctor per-finding disposition dialogue",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Added by the revise pass landing the propose-change at proposed_changes/doctor-uniform-per-finding-disposition.md. Codifies that doctor's per-finding disposition dialogue MUST apply uniformly to every non-pass finding regardless of phase, with a five-option menu (fix-now, capture-as-work-item, propose-change, defer, dismiss). Real test ID populated in the impl follow-up that regenerates .claude-plugin/skills/doctor/SKILL.md to expand Step 11 from three options to five and wire the dialogue into the Exit 3 static-fail path."
+    "test": "tests.test_doctor_disposition_prose.test_disposition_menu_lists_five_canonical_options_in_order"
   },
   {
     "heading": "## CLI end-to-end harness contract",
