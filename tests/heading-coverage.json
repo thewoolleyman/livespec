@@ -24,8 +24,8 @@
     "heading": "## Template manifest",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
-    "test": "TODO",
-    "reason": "Landed in v063 (template-manifest-additional-files proposal accept); revised at v105 (Mermaid-first) and v136 (Mermaid the default; diagram-rendering machinery removed). The v2 template_config schema + spec_files manifest ship the markdown-only manifest (tests.livespec.validate.test_template_config covers the manifest wire semantics); tests.livespec.doctor.static.test_template_files_present covers the manifest-aware presence check. Still TODO before the full-section test ID: the heading_coverage.py manifest rewiring, which ships from the livespec-dev-tooling sibling and needs a contract seam there first (template-manifest resolution via its consumer-configuration schema); no live drift meanwhile since every fleet consumer runs a v1 template whose implicit manifest equals the check's built-in file tuple."
+    "test": "tests.livespec.doctor.static.test_template_files_present.test_template_files_present_fails_naming_missing_manifest_paths",
+    "reason": "Landed in v063 (template-manifest-additional-files proposal accept); revised at v105 (Mermaid-first) and v136 (Mermaid the default; diagram-rendering machinery removed). The section's load-bearing rule is the manifest-aware doctor-static presence enumeration ('Heading-coverage and doctor-static rewiring'): under a v2 template the spec_files manifest is the source of truth for which files MUST be present. The mapped test seeds a v2 manifest declaring spec.md/contracts.md/constraints.md, leaves only spec.md on disk, and asserts doctor names the two missing manifest-declared files (sorted). The complementary heading_coverage.py manifest rewiring ships from the livespec-dev-tooling sibling; no live drift meanwhile since every fleet consumer runs a v1 template whose implicit manifest equals the check's built-in file tuple."
   },
   {
     "heading": "## Sub-command lifecycle",
@@ -124,15 +124,15 @@
     "heading": "## Orchestrator CLI contract \u2014 the three named CLIs",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). Real test ID populated in the Phase-2 impl follow-up that wires the three orchestrator-side CLIs (spec-reader, gap-capture, drift-capture) through .livespec.jsonc and asserts the config-named-cli-callability invariant against them."
+    "test": "tests.livespec.validate.test_livespec_config.test_validate_livespec_config_orchestrator_round_trips_three_clis",
+    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). The Phase-2 impl follow-up wired the three orchestrator-side CLIs (spec-reader, gap-capture, drift-capture) through .livespec.jsonc. The mapped test asserts a complete orchestrator section round-trips its name plus all three argv-form CLIs through livespec_config validation; the sibling test_validate_livespec_config_orchestrator_missing_cli_is_rejected asserts a partial section is rejected, since the three CLIs are the whole cross-boundary contract."
   },
   {
     "heading": "## Spec-side CLI contract",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). Real test ID populated in the Phase-2 impl follow-up that decomposes each spec-side skill into prose + CLI and asserts per-CLI config naming, reference-default pre-population, and individual overridability."
+    "test": "tests.livespec.validate.test_livespec_config.test_validate_livespec_config_spec_clis_default_to_core_reference_wrappers",
+    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). The Phase-2 impl follow-up decomposed each spec-side skill into prose + CLI. The mapped test asserts all seven spec-side CLI names (seed, propose-change, revise, critique, doctor, prune-history, next) pre-populate with core's argv-form reference defaults; the sibling test_validate_livespec_config_spec_clis_individually_overridable asserts overriding one CLI leaves every sibling at its default — covering per-CLI config naming, reference-default pre-population, and individual overridability."
   },
   {
     "heading": "## CLI shape conventions",
