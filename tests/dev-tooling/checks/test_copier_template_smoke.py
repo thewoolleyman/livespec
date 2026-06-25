@@ -289,6 +289,77 @@ def test_smoke_check_fails_when_generated_json_invalid(*, tmp_path: Path) -> Non
     )
 
 
+def test_smoke_check_fails_when_generated_justfile_does_not_parse(*, tmp_path: Path) -> None:
+    """Fail case: justfile.jinja renders to an unparseable justfile; check rejects.
+
+    All required output files exist and the JSON parses, but the
+    generated `justfile` is a plain (non-shebang) recipe whose
+    indented `if` body `just` rejects ("Recipe line has extra leading
+    whitespace") — the exact defect that broke the template's
+    `bootstrap` recipe. The text-grep assertions never invoke `just`,
+    so without the parse gate this slips through; the smoke check MUST
+    surface the `copier-template-smoke-justfile-parse-failed`
+    diagnostic and exit non-zero.
+    """
+    template_dir = tmp_path / "templates" / "impl-plugin"
+    template_dir.mkdir(parents=True)
+    (template_dir / "copier.yml").write_text(
+        "_templates_suffix: .jinja\n_exclude:\n  - copier.yml\n",
+        encoding="utf-8",
+    )
+    # Minimal stubs for every file in _EXPECTED_FILES so the missing-
+    # output branch doesn't fire and the JSON parse passes; only the
+    # justfile is malformed. The answers-file boilerplate renders to
+    # `.copier-answers.yml` (copier's default `_answers_file`).
+    (template_dir / "{{ _copier_conf.answers_file }}.jinja").write_text(
+        "{{ _copier_answers|to_nice_yaml -}}\n", encoding="utf-8"
+    )
+    (template_dir / ".python-version.jinja").write_text("3.13\n", encoding="utf-8")
+    (template_dir / ".mise.toml.jinja").write_text("[tools]\n", encoding="utf-8")
+    (template_dir / "pyproject.toml.jinja").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+    # Unparseable justfile: a PLAIN recipe whose `if` body is indented.
+    # `just` runs each line of a plain recipe as its own command and
+    # rejects the extra-indented continuation lines at parse time.
+    (template_dir / "justfile.jinja").write_text(
+        "bootstrap:\n    if true; then\n        echo hi\n    fi\n",
+        encoding="utf-8",
+    )
+    (template_dir / "lefthook.yml.jinja").write_text(
+        "pre-commit:\n  commands: {}\n", encoding="utf-8"
+    )
+    workflows = template_dir / ".github" / "workflows"
+    workflows.mkdir(parents=True)
+    (workflows / "ci.yml.jinja").write_text("name: ci\n", encoding="utf-8")
+    (workflows / "copier-update-drift.yml.jinja").write_text("name: drift\n", encoding="utf-8")
+    plugin_dir = template_dir / ".claude-plugin"
+    plugin_dir.mkdir()
+    (plugin_dir / "marketplace.json.jinja").write_text("{}\n", encoding="utf-8")
+    (plugin_dir / "plugin.json.jinja").write_text("{}\n", encoding="utf-8")
+    spec_dir = template_dir / "SPECIFICATION"
+    spec_dir.mkdir()
+    (spec_dir / "README.md.jinja").write_text("# README\n", encoding="utf-8")
+    claude_dir = template_dir / ".claude"
+    claude_dir.mkdir(parents=True)
+    (claude_dir / "settings.json").write_text("{}\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(_COPIER_TEMPLATE_SMOKE)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        f"smoke check should reject an unparseable generated justfile; "
+        f"got returncode={result.returncode} stderr={result.stderr!r}"
+    )
+    assert "copier-template-smoke-justfile-parse-failed" in result.stderr, (
+        f"expected 'copier-template-smoke-justfile-parse-failed' check_id in stderr; "
+        f"got stderr={result.stderr!r}"
+    )
+
+
 def test_expected_files_pin_generated_copier_answers_file() -> None:
     """`.copier-answers.yml` is pinned in the smoke check's expected output set.
 
