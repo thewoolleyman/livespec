@@ -16,13 +16,16 @@ Per Plan  +: this check asserts that the
 `<spec_root>/history/vNNN/` directory numbers form a
 contiguous sequence starting from `v001` with no gaps.
 
-This work lands the pass arm for a well-formed contiguous
-sequence. The fail arm (gap detected) lands in a subsequent
-cycle.
+Both arms are implemented: the pass arm for a well-formed
+contiguous sequence (including an empty history with no `vNNN/`
+directories yet — a freshly seeded project), and the fail arm
+naming the first missing version when the sequence has a gap or
+does not start at `v001`.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from returns.io import IOResult, IOSuccess
@@ -38,6 +41,11 @@ __all__: list[str] = ["SLUG", "run"]
 
 SLUG: CheckId = CheckId("doctor-version-contiguity")
 
+# A `vNNN` history-snapshot directory name: the literal `v` followed by
+# one or more digits. The README.md directory-description file and any
+# other non-snapshot sibling under `history/` do not match.
+_VERSION_DIR_PATTERN = re.compile(r"^v(\d+)$")
+
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:
     """Construct the canonical pass-status Finding for this check."""
@@ -51,6 +59,68 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
     )
 
 
+def _gap_finding(*, ctx: DoctorContext, missing: int) -> Finding:
+    """Construct a fail-status Finding naming the first missing version.
+
+    The `vNNN` sequence under `<spec_root>/history/` MUST be
+    contiguous starting at `v001`. When a number is absent — a
+    middle gap (e.g. `v001`, `v003` with no `v002`) or a missing
+    `v001` while later snapshots exist — the check fires fail and
+    embeds the first missing tag (zero-padded to three digits) in
+    the message so the user can locate the gap without re-scanning.
+    """
+    missing_tag = f"v{missing:03d}"
+    return Finding(
+        check_id=SLUG,
+        status="fail",
+        message=(
+            f"history/vNNN/ numbers are not contiguous: {missing_tag} is "
+            f"missing; the sequence MUST start at v001 with no gaps"
+        ),
+        path=None,
+        line=None,
+        spec_root=SpecRoot(str(ctx.spec_root)),
+    )
+
+
+def _select_version_numbers(*, version_paths: list[Path]) -> list[int]:
+    """Extract the integer NNN from each `vNNN`-named directory in `version_paths`.
+
+    Mirrors `version_directories_complete._select_version_dirs`: the
+    `is_dir()` + `^v(\\d+)$` filter excludes the skill-owned
+    `<spec_root>/history/README.md` directory-description file and any
+    other non-snapshot sibling, so a valid seeded tree is not
+    mis-classified. Returns the parsed numbers sorted ascending.
+    """
+    numbers: list[int] = []
+    for path in version_paths:
+        if not path.is_dir():
+            continue
+        match = _VERSION_DIR_PATTERN.match(path.name)
+        if match is None:
+            continue
+        numbers.append(int(match.group(1)))
+    return sorted(numbers)
+
+
+def _first_missing_version(*, numbers: list[int]) -> int | None:
+    """Return the first version absent from a contiguous-from-1 sequence.
+
+    The expected sequence is `1, 2, ... max(numbers)`. Returns the
+    first integer in that range not present in `numbers`, or `None`
+    when the sequence is contiguous starting at 1. An empty
+    `numbers` (a freshly seeded project with no `vNNN/` snapshots
+    yet) is contiguous-by-vacuity and yields `None`.
+    """
+    if not numbers:
+        return None
+    present = set(numbers)
+    for expected in range(1, max(numbers) + 1):
+        if expected not in present:
+            return expected
+    return None
+
+
 def _evaluate(
     *,
     ctx: DoctorContext,
@@ -58,22 +128,27 @@ def _evaluate(
 ) -> IOResult[Finding, LivespecError]:
     """Evaluate the directory list for contiguity.
 
-    This work lands the smallest viable behavior: as long as
-    fs.list_dir returned a list (success), produce the
-    pass-Finding. The actual contiguity discriminator (gap
-    detection) lands in the next cycle when its test forces
-    it into existence.
+    Filters `version_paths` to `vNNN/` snapshot directories, then
+    asserts the numbers form a contiguous sequence starting at
+    `v001`. A gap (or a missing `v001` while later snapshots exist)
+    yields a fail-Finding naming the first missing version; an
+    empty or contiguous sequence yields the pass-Finding.
     """
-    _ = version_paths
-    return IOSuccess(_pass_finding(ctx=ctx))
+    numbers = _select_version_numbers(version_paths=version_paths)
+    missing = _first_missing_version(numbers=numbers)
+    if missing is None:
+        return IOSuccess(_pass_finding(ctx=ctx))
+    return IOSuccess(_gap_finding(ctx=ctx, missing=missing))
 
 
 def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     """Run the version-contiguity check against `ctx`.
 
-    Lists `<ctx.spec_root>/history/` and evaluates the result.
-    On success yields IOSuccess(Finding(status='pass')); the
-    gap-detection failure arm lands in subsequent cycles.
+    Lists `<ctx.spec_root>/history/` and evaluates the result. On
+    a contiguous (or empty) `vNNN/` sequence yields
+    IOSuccess(Finding(status='pass')); on a gap or missing-v001
+    yields IOSuccess(Finding(status='fail')) naming the first
+    missing version.
     """
     history_path = ctx.spec_root / "history"
     return fs.list_dir(path=history_path).bind(
