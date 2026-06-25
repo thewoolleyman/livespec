@@ -77,7 +77,7 @@ def test_revise_main_returns_precondition_exit_code_on_missing_revise_path(
     Composes parse_argv -> fs.read_text on the railway. The
     fs.read_text failure (FileNotFoundError -> PreconditionError)
     bubbles to the supervisor's pattern-match, which lifts to
-    exit 3 via err.exit_code per style doc §"Exit code contract".
+    exit 3 via err.exit_code per style doc.
     Mirrors propose_change/critique's same railway stage.
     """
     missing = tmp_path / "no-such-revise.json"
@@ -98,9 +98,9 @@ def test_revise_main_emits_diagnostic_on_failure_before_exit(
     `_pattern_match_io_result` MUST surface the underlying
     `LivespecError` via `log.error(...)` (which renders at level
     ERROR, above the default WARNING threshold) before returning
-    `err.exit_code`. Per `SPECIFICATION/constraints.md`
-    §"Structured logging": structlog writes JSON to stderr, so
-    the diagnostic appears on stderr at default log level.
+    `err.exit_code`. Per `SPECIFICATION/constraints.md`:
+    structlog writes JSON to stderr, so the diagnostic appears
+    on stderr at default log level.
 
     Drives the PreconditionError arm (missing --revise-json
     file, exit 3). Asserts via `structlog.testing.capture_logs`
@@ -202,7 +202,7 @@ def test_revise_main_returns_validation_exit_code_on_malformed_payload(
 
     Composes parse_argv -> fs.read_text -> jsonc.loads on the
     railway. The pure parse-failure (ValidationError) bubbles via
-    bind chaining; exit 4 per style doc §"Exit code contract".
+    bind chaining; exit 4 per style doc.
     Mirrors critique's cycle-120 stage.
     """
     payload = tmp_path / "bad.json"
@@ -236,9 +236,8 @@ def test_revise_main_passes_through_non_dict_payload_to_schema_validation(
 ) -> None:
     """Non-dict JSON payload (`[]`) falls through pre-check to schema validation.
 
-    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle" revise
-    clause (b) (v052): the empty-decisions pre-check fires BEFORE
-    schema validation. The pre-check's defensive
+    Per `SPECIFICATION/spec.md`: the empty-decisions pre-check fires
+    BEFORE schema validation. The pre-check's defensive
     `isinstance(payload, dict)` guard ensures non-dict JSON
     payloads (e.g., a top-level `[]`) fall through cleanly to
     schema validation rather than crashing on `.get(...)`. The
@@ -259,8 +258,7 @@ def test_revise_main_returns_usage_exit_code_on_empty_decisions(
 ) -> None:
     """Payload with `decisions: []` returns exit 2 (UsageError).
 
-    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle" revise
-    clause (b), v052: `bin/revise.py` MUST fail hard with
+    Per `SPECIFICATION/spec.md`: `bin/revise.py` MUST fail hard with
     UsageError (exit 2) when the inbound `--revise-json` payload's
     `decisions[]` array is empty. A revise pass with zero decisions
     would produce a no-op cut and is forbidden. The wrapper-level
@@ -643,8 +641,7 @@ def test_revise_main_writes_full_5key_front_matter_for_reject_decision(
 ) -> None:
     """The revision-md front-matter has all 5 required keys per spec.
 
-    Per `SPECIFICATION/spec.md` §"Proposed-change and revision file
-    formats" §"Revision file format" + `revision_front_matter.schema.json`:
+    Per `SPECIFICATION/spec.md` + `revision_front_matter.schema.json`:
     `proposal`, `decision`, `revised_at`, `author_human`,
     `author_llm`. The `author_human` value is composed via
     `io.git.get_git_user`; the `author_llm` is resolved per the
@@ -709,12 +706,11 @@ def test_revise_main_emits_modifications_section_for_modify_decision(
 ) -> None:
     """For a `modify` decision, the revision-md emits a `## Modifications` section.
 
-    Per `SPECIFICATION/spec.md` §"Revision file format" item (3):
-    `## Modifications` is REQUIRED when `decision: modify`; the
-    section carries prose-form description of how the proposal
-    was changed before incorporation. Asserts both the heading
-    appears and the modifications text from the decision dict
-    is embedded.
+    Per `SPECIFICATION/spec.md`: `## Modifications` is REQUIRED
+    when `decision: modify`; the section carries prose-form
+    description of how the proposal was changed before
+    incorporation. Asserts both the heading appears and the
+    modifications text from the decision dict is embedded.
     """
     import pytest
 
@@ -773,12 +769,11 @@ def test_revise_main_emits_resulting_changes_section_for_accept_decision(
 ) -> None:
     """For an `accept` decision, the revision-md emits a `## Resulting Changes` section.
 
-    Per `SPECIFICATION/spec.md` §"Revision file format" item (4):
-    `## Resulting Changes` is REQUIRED when `decision: accept`
-    or `modify`; the section names the specification files
-    modified and lists the sections changed. Asserts both the
-    heading appears and the file path from `resulting_files[0]`
-    is embedded.
+    Per `SPECIFICATION/spec.md`: `## Resulting Changes` is REQUIRED
+    when `decision: accept` or `modify`; the section names the
+    specification files modified and lists the sections changed.
+    Asserts both the heading appears and the file path from
+    `resulting_files[0]` is embedded.
     """
     import pytest
 
@@ -1048,12 +1043,11 @@ def test_revise_main_emits_rejection_notes_section_for_reject_decision(
 ) -> None:
     """For a `reject` decision, the revision-md emits a `## Rejection Notes` section.
 
-    Per `SPECIFICATION/spec.md` §"Revision file format" item (5):
-    `## Rejection Notes` is REQUIRED when `decision: reject`;
-    explains what would need to change about the proposal for it
-    to be acceptable in a future revision. This pins the
-    rejection-flow audit-trail richness the spec mandates
-    ("rejection flow preserving audit trail").
+    Per `SPECIFICATION/spec.md`: `## Rejection Notes` is REQUIRED
+    when `decision: reject`; explains what would need to change
+    about the proposal for it to be acceptable in a future
+    revision. This pins the rejection-flow audit-trail richness
+    the spec mandates ("rejection flow preserving audit trail").
     """
     import pytest
 
@@ -1653,8 +1647,7 @@ def test_revise_main_exits_3_when_post_step_doctor_reports_fail(
 ) -> None:
     """Post-step doctor fail-status finding -> exit 3 per spec contract.
 
-    Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
-    → "`revise` payload validation", the post-step doctor static
+    Per `SPECIFICATION/contracts.md`: the post-step doctor static
     run against the freshly-cut `vNNN/` snapshot is the gating
     point: on any `status: "fail"` finding, the wrapper exits 3
     per the existing exit-code table — per the work-item

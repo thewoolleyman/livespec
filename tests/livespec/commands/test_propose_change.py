@@ -72,7 +72,7 @@ def test_propose_change_main_returns_precondition_exit_code_on_missing_findings_
     Composes parse_argv -> fs.read_text on the railway. The
     fs.read_text failure (FileNotFoundError -> PreconditionError)
     bubbles to the supervisor's pattern-match, which lifts to
-    exit 3 via err.exit_code per style doc §"Exit code contract".
+    exit 3 via err.exit_code per style doc.
     """
     missing = tmp_path / "no-such-findings.json"
     exit_code = propose_change.main(argv=["--findings-json", str(missing), "topic"])
@@ -87,8 +87,7 @@ def test_propose_change_main_returns_validation_exit_code_on_malformed_payload(
 
     Composes parse_argv -> fs.read_text -> jsonc.loads on the
     railway. The pure parse-failure (ValidationError) bubbles
-    via bind chaining; exit 4 per style doc §"Exit code
-    contract".
+    via bind chaining; exit 4 per style doc.
     """
     payload = tmp_path / "bad.json"
     _ = payload.write_text("{not json}", encoding="utf-8")
@@ -661,8 +660,7 @@ def test_propose_change_rejects_non_list_target_spec_files_at_schema(
 # front-matter so the post-revise doctor invariant
 # (unresolved-spec-commitment, sibling work-item li-7jniti) can
 # read it back from the vNNN/ snapshot. Per
-# `SPECIFICATION/contracts.md` §"Sub-command wire contracts" →
-# "`propose-change` payload validation", the wrapper does NOT
+# Per `SPECIFICATION/contracts.md`, the wrapper does NOT
 # cross-check id_hint uniqueness across the spec tree; that is
 # the doctor invariant's responsibility.
 

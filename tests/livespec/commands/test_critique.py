@@ -48,7 +48,7 @@ def test_critique_main_returns_precondition_exit_code_on_missing_findings_path(
     Composes parse_argv -> fs.read_text on the railway. The
     fs.read_text failure (FileNotFoundError -> PreconditionError)
     bubbles to the supervisor's pattern-match, which lifts to
-    exit 3 via err.exit_code per style doc §"Exit code contract".
+    exit 3 via err.exit_code per style doc.
     Mirrors propose_change's test for the same railway stage.
     """
     missing = tmp_path / "no-such-findings.json"
@@ -121,7 +121,7 @@ def test_critique_main_returns_validation_exit_code_on_malformed_payload(
 
     Composes parse_argv -> fs.read_text -> jsonc.loads on the
     railway. The pure parse-failure (ValidationError) bubbles via
-    bind chaining; exit 4 per style doc §"Exit code contract".
+    bind chaining; exit 4 per style doc.
     Mirrors propose_change's same railway stage.
     """
     payload = tmp_path / "bad.json"
@@ -255,10 +255,10 @@ def test_critique_main_resolves_author_via_env_var_when_no_cli_or_payload(
 ) -> None:
     """LIVESPEC_AUTHOR_LLM env var resolves when no --author and no payload author.
 
-    Per spec.md §"Author identifier resolution" step 2: with no
-    `--author` flag, the env var `LIVESPEC_AUTHOR_LLM` is
-    consulted before falling through to step 3 (payload author)
-    or step 4 ("unknown-llm"). Asserts the resulting file lands
+    Per spec.md: with no `--author` flag, the env var
+    `LIVESPEC_AUTHOR_LLM` is consulted before falling through
+    to the next resolution step (payload author) or the
+    final fallback ("unknown-llm"). Asserts the resulting file lands
     at `<spec-target>/proposed_changes/env-author-critique.md`,
     which only happens when critique threads env-lookup through
     its `_resolve_author` helper.
@@ -290,10 +290,9 @@ def test_critique_main_resolves_author_via_payload_when_no_cli_or_env(
 ) -> None:
     """Payload-level `author` resolves when no --author and no env var.
 
-    Per spec.md §"Author identifier resolution" step 3: with no
-    `--author` flag and no `LIVESPEC_AUTHOR_LLM` env var, the
-    payload's top-level `author` field is consulted before
-    falling through to "unknown-llm". Asserts the resulting file
+    Per spec.md: with no `--author` flag and no `LIVESPEC_AUTHOR_LLM`
+    env var, the payload's top-level `author` field is consulted
+    before falling through to "unknown-llm". Asserts the resulting file
     lands at `<spec-target>/proposed_changes/payload-author-critique.md`,
     which only happens when critique threads the validated
     payload through its `_resolve_author` helper.
@@ -325,9 +324,8 @@ def test_critique_main_cli_author_wins_over_env_and_payload(
 ) -> None:
     """CLI --author wins over both env var and payload author.
 
-    Per spec.md §"Author identifier resolution" step 1: `--author
-    <id>` on the CLI takes precedence over `LIVESPEC_AUTHOR_LLM`
-    (step 2) and the payload's `author` field (step 3). With all
+    Per spec.md: `--author <id>` on the CLI takes precedence over
+    `LIVESPEC_AUTHOR_LLM` and the payload's `author` field. With all
     three sources set, the resulting filename must be derived
     from the CLI value.
     """
@@ -360,8 +358,8 @@ def test_critique_main_truncates_long_author_stem_preserving_critique_suffix(
 ) -> None:
     """A 70-char author stem composes via reserve-suffix to a 64-char canonical filename.
 
-    Per spec.md §"`critique` internal delegation": critique
-    passes the un-slugged resolved-author stem as topic-hint AND
+    Per spec.md: critique passes the un-slugged resolved-author stem
+    as topic-hint AND
     the literal `"-critique"` as the reserve-suffix parameter to
     propose_change. propose_change's reserve-suffix
     canonicalization truncates the non-suffix portion to

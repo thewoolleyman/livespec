@@ -1,23 +1,20 @@
 """Tests for livespec.commands.next.
 
-Per `SPECIFICATION/contracts.md` §"`/livespec:next` spec-side
-thin-transport skill" → §"Wrapper CLI flags" + §"Output schema":
-the `next` sub-command reads spec-side state (Proposed Changes
-queue + Specification History) and emits JSON on stdout with two
-top-level keys — `candidates` (array of `{action, reason,
-urgency, target?}` objects) and `pagination` (`{offset, limit,
-total, has_more}`). The wrapper accepts `--limit <count>`
-(positive integer, default 5) and `--offset <count>`
-(non-negative integer, default 0) in addition to the
-§"Wrapper CLI surface" flags; non-positive `--limit` or
-negative `--offset` exits 2 (UsageError). Pure function of file
+Per `SPECIFICATION/contracts.md`: the `next` sub-command reads
+spec-side state (Proposed Changes queue + Specification History)
+and emits JSON on stdout with two top-level keys — `candidates`
+(array of `{action, reason, urgency, target?}` objects) and
+`pagination` (`{offset, limit, total, has_more}`). The wrapper
+accepts `--limit <count>` (positive integer, default 5) and
+`--offset <count>` (non-negative integer, default 0) in addition
+to the standard wrapper CLI surface flags; non-positive `--limit`
+or negative `--offset` exits 2 (UsageError). Pure function of file
 state; no LLM in the ranking path.
 
-Per §"Ranker semantics": the ranker enumerates ALL ripe
+Per `SPECIFICATION/contracts.md`: the ranker enumerates ALL ripe
 candidates, sorts within each action tier by urgency descending
-then target lexicographic, and applies offset/limit last. Per
-§"`prune-history` ordering invariant": prune-history sorts
-strictly below every other action.
+then target lexicographic, and applies offset/limit last.
+prune-history sorts strictly below every other action.
 """
 
 from __future__ import annotations
@@ -118,8 +115,8 @@ def test_next_empty_queue_short_history_returns_empty_candidates(
 ) -> None:
     """No pending proposals + short history → `candidates: []`.
 
-    Per §"Output schema": the empty array IS the no-work signal —
-    the payload does not degrade to any legacy single-output
+    Per `SPECIFICATION/contracts.md`: the empty array IS the no-work
+    signal — the payload does not degrade to any legacy single-output
     shape. The pagination block echoes the defaults
     (`offset=0`, `limit=5`) with `total=0` and `has_more=false`.
     """
@@ -142,9 +139,9 @@ def test_next_pending_proposal_returns_revise_candidate(
     """One pending proposed change → one `revise` candidate naming it.
 
     A non-empty Proposed Changes queue is the strongest signal
-    for the spec-side ranker: revise drains it. Per §"Output
-    schema" the candidate's `target` is the spec-target-relative
-    proposed_change path.
+    for the spec-side ranker: revise drains it. Per
+    `SPECIFICATION/contracts.md` the candidate's `target` is the
+    spec-target-relative proposed_change path.
     """
     target = _make_spec_target(root=tmp_path)
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -240,7 +237,7 @@ def test_next_enumerates_one_candidate_per_proposal(
 ) -> None:
     """Three pending proposals → three revise candidates, all high urgency.
 
-    Per §"Ranker semantics": the ranker enumerates ALL ripe
+    Per `SPECIFICATION/contracts.md`: the ranker enumerates ALL ripe
     candidates, not just the top one. Queue-depth-based urgency:
     even if every proposal is fresh, a deep queue lifts every
     revise candidate to high. Ties sort by `target`
@@ -272,7 +269,7 @@ def test_next_sorts_by_urgency_descending_within_tier(
 ) -> None:
     """Within the revise tier, higher-urgency candidates sort first.
 
-    Per §"Ranker semantics": sort within each action tier by
+    Per `SPECIFICATION/contracts.md`: sort within each action tier by
     urgency descending, then by `target` lexicographic. An old
     proposal (high urgency via the age axis) outranks a fresh
     one (medium via the depth axis) even though the fresh one's
@@ -306,10 +303,9 @@ def test_next_excludes_proposed_changes_readme(
 ) -> None:
     """The skill-owned `proposed_changes/README.md` is not a pending proposal.
 
-    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle" revise
-    clause (a): the README is excluded from the in-flight
-    proposal count. Without this exclusion, every fresh spec
-    tree would report a pending proposal.
+    Per `SPECIFICATION/spec.md`: the README is excluded from the
+    in-flight proposal count. Without this exclusion, every fresh
+    spec tree would report a pending proposal.
     """
     target = _make_spec_target(root=tmp_path)
     (target / "proposed_changes" / "README.md").write_text(
@@ -329,7 +325,7 @@ def test_next_long_history_with_empty_queue_returns_prune_history(
 
     The prune-history candidate carries `urgency: low` and omits
     `target` (pruning addresses a version range, not one item;
-    per §"Output schema" `target` MAY be omitted).
+    per `SPECIFICATION/contracts.md` `target` MAY be omitted).
     """
     target = _make_spec_target(root=tmp_path)
     _make_history_versions(target=target, count=25)
@@ -348,11 +344,10 @@ def test_next_ranks_prune_history_strictly_below_revise(
 ) -> None:
     """Pending proposals + long history → revise first, prune-history last.
 
-    Per §"`prune-history` ordering invariant": when ANY ripe
-    candidate exists with `action != prune-history`, the ranker
-    MUST NOT emit prune-history as the primary recommendation —
-    it sorts strictly below every other action tier regardless
-    of urgency.
+    Per `SPECIFICATION/contracts.md`: when ANY ripe candidate exists
+    with `action != prune-history`, the ranker MUST NOT emit
+    prune-history as the primary recommendation — it sorts strictly
+    below every other action tier regardless of urgency.
     """
     target = _make_spec_target(root=tmp_path)
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -375,10 +370,9 @@ def test_next_limit_slices_and_reports_has_more(
 ) -> None:
     """--limit 2 over 3 candidates → 2 returned, total=3, has_more=true.
 
-    Per §"Wrapper CLI flags" + §"Output schema": `limit` caps the
-    returned slice; `total` counts ripe candidates BEFORE
-    offset/limit; `has_more` is true iff
-    `offset + len(candidates) < total`.
+    Per `SPECIFICATION/contracts.md`: `limit` caps the returned slice;
+    `total` counts ripe candidates BEFORE offset/limit; `has_more`
+    is true iff `offset + len(candidates) < total`.
     """
     target = _make_spec_target(root=tmp_path)
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -408,7 +402,7 @@ def test_next_offset_skips_ranked_candidates(
 ) -> None:
     """--offset 1 skips the front of the ranked list before slicing.
 
-    Per §"Wrapper CLI flags": offset is applied to the ranked
+    Per `SPECIFICATION/contracts.md`: offset is applied to the ranked
     list before limit. The remaining slice drains the list, so
     `has_more` is false.
     """
@@ -443,9 +437,9 @@ def test_next_offset_at_or_beyond_total_returns_empty_window(
 ) -> None:
     """--offset >= total → `candidates: []` and `has_more: false`.
 
-    Pinned verbatim by §"Output schema": "When `offset >= total`,
-    the wrapper MUST emit `candidates: []` and `has_more:
-    false`."
+    Pinned verbatim by `SPECIFICATION/contracts.md`: "When
+    `offset >= total`, the wrapper MUST emit `candidates: []` and
+    `has_more: false`."
     """
     target = _make_spec_target(root=tmp_path)
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -473,8 +467,8 @@ def test_next_non_positive_limit_returns_2(
 ) -> None:
     """--limit 0 → exit 2 (UsageError).
 
-    Per §"Wrapper CLI flags": "Non-positive `--limit` or negative
-    `--offset` MUST cause the wrapper to exit `2` with a
+    Per `SPECIFICATION/contracts.md`: "Non-positive `--limit` or
+    negative `--offset` MUST cause the wrapper to exit `2` with a
     `UsageError`."
     """
     _ = _make_spec_target(root=tmp_path)
@@ -491,7 +485,7 @@ def test_next_negative_offset_returns_2(
     """--offset -1 → exit 2 (UsageError).
 
     The negative-offset twin of the non-positive-limit gate per
-    §"Wrapper CLI flags".
+    `SPECIFICATION/contracts.md`.
     """
     _ = _make_spec_target(root=tmp_path)
     exit_code = next_command.main(
@@ -524,8 +518,8 @@ def test_next_unknown_flag_returns_2(
 ) -> None:
     """Unknown CLI flag → exit 2 (UsageError).
 
-    Per `SPECIFICATION/contracts.md` §"Lifecycle exit-code
-    table": exit 2 on bad CLI invocation. Drives the parse_argv
+    Per `SPECIFICATION/contracts.md`: exit 2 on bad CLI invocation.
+    Drives the parse_argv
     stage on the railway: an unknown flag surfaces as an
     argparse SystemExit, which io/cli's @impure_safe maps to
     UsageError; the supervisor's pattern-match lifts to
@@ -544,10 +538,9 @@ def test_next_missing_spec_target_returns_3(
 ) -> None:
     """--spec-target points to non-existent path → exit 3 (PreconditionError).
 
-    Per `SPECIFICATION/contracts.md` §"Lifecycle exit-code
-    table": exit 3 on project-state precondition failure. A
-    missing spec target is the canonical precondition failure
-    for any sub-command that reads spec content.
+    Per `SPECIFICATION/contracts.md`: exit 3 on project-state
+    precondition failure. A missing spec target is the canonical
+    precondition failure for any sub-command that reads spec content.
     """
     exit_code = next_command.main(
         argv=[
@@ -588,10 +581,9 @@ def test_next_explicit_spec_target(
 ) -> None:
     """--spec-target selects a non-default spec tree explicitly.
 
-    Per `SPECIFICATION/contracts.md` §"Wrapper CLI surface":
-    --spec-target may name any spec tree (main spec or a
-    sub-spec). Drives the explicit-spec-target branch (vs the
-    `<project-root>/SPECIFICATION/` default).
+    Per `SPECIFICATION/contracts.md`: --spec-target may name any spec
+    tree (main spec or a sub-spec). Drives the explicit-spec-target
+    branch (vs the `<project-root>/SPECIFICATION/` default).
     """
     custom_root = tmp_path / "templates" / "custom-spec"
     (custom_root / "proposed_changes").mkdir(parents=True)
@@ -673,7 +665,7 @@ def _write_livespec_config(*, root: Path, body: str) -> None:
 
     The next wrapper reads `next.prune_history_threshold` from the
     project-root-level `.livespec.jsonc` on each invocation per
-    `SPECIFICATION/contracts.md` §"`.livespec.jsonc` configuration".
+    `SPECIFICATION/contracts.md`.
     """
     (root / ".livespec.jsonc").write_text(body, encoding="utf-8")
 
@@ -685,9 +677,9 @@ def test_next_lowered_threshold_config_triggers_prune_history(
 ) -> None:
     """`next.prune_history_threshold: 5` + 5 versions → prune-history.
 
-    Per §"`.livespec.jsonc` configuration": the wrapper MUST read
-    the key on each invocation; a project MAY lower the threshold
-    to surface pruning sooner. Five history versions would never
+    Per `SPECIFICATION/contracts.md`: the wrapper MUST read the key
+    on each invocation; a project MAY lower the threshold to surface
+    pruning sooner. Five history versions would never
     trip the default threshold of 20, so the candidate appearing
     proves the configured value is read and applied.
     """
@@ -709,9 +701,9 @@ def test_next_raised_threshold_config_defers_prune_history(
 ) -> None:
     """`next.prune_history_threshold: 30` + 25 versions → no candidates.
 
-    Per §"`.livespec.jsonc` configuration": a project MAY raise
-    the threshold to defer prune-history recommendations on
-    long-lived specs. Twenty-five versions trips the default of
+    Per `SPECIFICATION/contracts.md`: a project MAY raise the
+    threshold to defer prune-history recommendations on long-lived
+    specs. Twenty-five versions trips the default of
     20, so an empty candidates array proves the configured value
     overrides the default.
     """
@@ -731,8 +723,8 @@ def test_next_non_positive_threshold_config_returns_3(
 ) -> None:
     """`next.prune_history_threshold: 0` → exit 3 (PreconditionError).
 
-    Pinned verbatim by §"`.livespec.jsonc` configuration": "a
-    non-positive value MUST cause the wrapper to exit `3` with a
+    Pinned verbatim by `SPECIFICATION/contracts.md`: "a non-positive
+    value MUST cause the wrapper to exit `3` with a
     `PreconditionError` naming the offending key and value."
     """
     _ = _make_spec_target(root=tmp_path)
@@ -750,10 +742,10 @@ def test_next_non_integer_threshold_config_returns_3(
 ) -> None:
     """`next.prune_history_threshold: "20"` (a string) → exit 3.
 
-    Per §"`.livespec.jsonc` configuration": "The key value MUST
-    be a positive integer" — a string value is a
-    non-positive-integer value and takes the same exit-3
-    PreconditionError channel as a non-positive integer.
+    Per `SPECIFICATION/contracts.md`: "The key value MUST be a
+    positive integer" — a string value is a non-positive-integer
+    value and takes the same exit-3 PreconditionError channel as a
+    non-positive integer.
     """
     _ = _make_spec_target(root=tmp_path)
     _write_livespec_config(
@@ -787,7 +779,7 @@ def test_next_boolean_threshold_config_returns_3(
 def test_next_threshold_failure_names_key_and_value() -> None:
     """A rejected threshold's PreconditionError names the key and value.
 
-    Pinned verbatim by §"`.livespec.jsonc` configuration": the
+    Pinned verbatim by `SPECIFICATION/contracts.md`: the
     PreconditionError must name "the offending key and value" so
     the user can locate and fix the config entry without
     spelunking the wrapper source.
@@ -811,11 +803,10 @@ def test_next_threshold_key_absent_in_next_section_defaults_to_20(
 ) -> None:
     """A `next` section without the key falls back to the default of 20.
 
-    Per §"`.livespec.jsonc` configuration": "When the key is
-    absent, the wrapper MUST fall back to a default value of
-    `20`." Exactly 20 versions sits on the trigger boundary, so
-    the prune-history candidate appearing proves the default
-    applied.
+    Per `SPECIFICATION/contracts.md`: "When the key is absent, the
+    wrapper MUST fall back to a default value of `20`." Exactly 20
+    versions sits on the trigger boundary, so the prune-history
+    candidate appearing proves the default applied.
     """
     target = _make_spec_target(root=tmp_path)
     _make_history_versions(target=target, count=20)
@@ -834,9 +825,9 @@ def test_next_threshold_section_not_object_defaults_to_20(
 
     A top-level `next` key holding a scalar carries no
     `prune_history_threshold` member, so the key-absent fallback
-    of §"`.livespec.jsonc` configuration" applies rather than the
-    exit-3 channel (which is reserved for a present-but-invalid
-    threshold value).
+    of `SPECIFICATION/contracts.md` applies rather than the exit-3
+    channel (which is reserved for a present-but-invalid threshold
+    value).
     """
     target = _make_spec_target(root=tmp_path)
     _make_history_versions(target=target, count=25)
