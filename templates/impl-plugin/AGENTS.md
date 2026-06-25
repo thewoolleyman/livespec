@@ -104,6 +104,27 @@ Do not leave orphaned worktrees. If a session must stop before cleanup, record
 the active worktree path, branch, PR, validation state, and next action in the
 relevant handoff document.
 
+### Server-side enforcement (branch protection)
+
+The `refuse-primary-commit` gate is LOCALLY bypassable (`git commit
+--no-verify`, or simply never installed/armed). GitHub branch protection is the
+server-enforced backstop: the default branch advances only via PR/merge, and
+direct + force pushes to it are rejected by GitHub itself. Establish it once on
+a fresh repo (needs an admin-scoped `gh` token):
+
+```bash
+just protect-default-branch   # idempotent + non-weakening; FORCE=1 resets to baseline
+```
+
+`just check-branch-protection` is the VERIFIER (the "tripwire"): fail-closed
+when it can read protection, but capability-aware — it SKIPs with a named notice
+when it cannot (no `gh`, no admin token, or a non-GitHub origin), so it never
+makes `just check` flaky. It is wired into `just check` and honours the
+`LIVESPEC_BRANCH_PROTECTION_CHECK` severity lever (`fail` [default] | `warn` |
+`skip`) — the explicit, declared exemption. The authoritative bite belongs to
+the conformance/orchestrator tier, where an admin token exists. Both verbs
+delegate to the portable `dev-tooling/branch-protection.sh`.
+
 ## Agent prerequisites for plugin work
 
 When investigating or changing anything related to the Claude Code plugin

@@ -56,7 +56,13 @@ that keystone:
 - **Enforcement = the portable "no commit on primary" check, wired via
   `lefthook`** (the mandated commit-time framework) as the first pre-commit
   job AND the commit-msg backstop, with `lefthook → just check` as the
-  commit-time tier + a server-side tripwire mirror (hooks are bypassable).
+  commit-time tier + a server-side tripwire mirror (hooks are bypassable). The
+  server-side mirror reuses the GitHub branch-protection PRIMITIVE — not a
+  bespoke per-consumer detection workflow: `just protect-default-branch`
+  establishes baseline protection (Installer) and `just check-branch-protection`
+  is the fail-closed, capability-aware Verifier (the tripwire), both delegating
+  to the portable `dev-tooling/branch-protection.sh`. The authoritative bite is
+  the Fleet-time conformance/orchestrator tier, where an admin token exists.
 - **Default path:** orchestrator `implement`/dispatcher auto-provision a
   worktree per work-item so the happy path is disciplined by construction.
 - **Distribution:** ship in the copier impl-plugin template; `copier
