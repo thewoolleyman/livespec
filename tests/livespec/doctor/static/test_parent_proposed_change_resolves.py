@@ -356,6 +356,24 @@ def test_run_skips_subdirectories_inside_proposed_changes(
     assert finding.status == "pass"
 
 
+def test_run_skips_non_md_files_inside_proposed_changes(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Non-`.md` files inside `proposed_changes/` are not treated as PCs.
+
+    Seeds a `.json` file under `proposed_changes/` (e.g., a stray
+    artifact). The `_is_pc_file` helper returns False for entries
+    whose name does not end with `.md`; the check ignores them.
+    Asserts pass.
+    """
+    ctx = _make_ctx(tmp_path=tmp_path)
+    stray = ctx.spec_root / "proposed_changes" / "stray.json"
+    _ = stray.write_text("{}", encoding="utf-8")
+    finding = _run_and_unwrap(ctx=ctx)
+    assert finding.status == "pass"
+
+
 def test_run_returns_pass_when_no_pcs_present_at_all(
     *,
     tmp_path: Path,
