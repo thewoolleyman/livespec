@@ -79,6 +79,40 @@ worktree-reap *args:
     ./dev-tooling/worktree-lib.sh reap {{ '{{' }}args{{ '}}' }}
 
 # ---------------------------------------------------------------
+# Server-side worktree discipline: GitHub branch protection.
+#
+# The local refuse-primary-commit gate (wired via lefthook) blocks commits on
+# the primary checkout, but it is LOCALLY BYPASSABLE (`--no-verify`, or simply
+# never installed/armed — the console fail-open incident). Branch protection is
+# the server-enforced backstop: the default branch advances only via PR/merge;
+# direct + force pushes are rejected by GitHub itself. Both recipes delegate to
+# the portable, ecosystem-neutral dev-tooling/branch-protection.sh (the single
+# source of truth) — `just` is the mandated runner and the recipes carry no
+# logic of their own, exactly like the worktree-* recipes above.
+#
+# `protect-default-branch` (the INSTALLER) establishes baseline protection on a
+# fresh repo (requires an admin-scoped gh token); it is idempotent and
+# non-weakening — it leaves an existing, possibly richer, protection untouched
+# unless FORCE=1. `check-branch-protection` (the VERIFIER / "tripwire") asserts
+# protection is present and is fail-closed, but capability-aware: it SKIPs with
+# a NAMED notice when it cannot read protection (no gh / no admin token /
+# non-GitHub origin) so it never makes `just check` flaky, and honours the
+# LIVESPEC_BRANCH_PROTECTION_CHECK severity lever (fail [default] | warn | skip).
+# The authoritative bite belongs to the Fleet-time conformance/orchestrator
+# tier, where an admin token exists.
+# ---------------------------------------------------------------
+
+# Establish baseline GitHub branch protection on the default branch (requires an
+# admin-scoped gh token). Idempotent + non-weakening; FORCE=1 resets to baseline.
+protect-default-branch:
+    ./dev-tooling/branch-protection.sh apply
+
+# Verify the default branch is protected (the server-side tripwire). Fail-closed
+# but capability-aware; tune via LIVESPEC_BRANCH_PROTECTION_CHECK=fail|warn|skip.
+check-branch-protection:
+    ./dev-tooling/branch-protection.sh check
+
+# ---------------------------------------------------------------
 # First-time setup.
 # ---------------------------------------------------------------
 
@@ -96,7 +130,7 @@ bootstrap:
     # `copier update` 3-way merge can re-checkout these files without it,
     # and lefthook invokes refuse-primary-commit.sh directly (./…) — a
     # non-executable gate would silently no-op. This chmod is idempotent.
-    chmod +x dev-tooling/refuse-primary-commit.sh dev-tooling/worktree-lib.sh dev-tooling/worktree-hydrate.sh
+    chmod +x dev-tooling/refuse-primary-commit.sh dev-tooling/worktree-lib.sh dev-tooling/worktree-hydrate.sh dev-tooling/branch-protection.sh
     # Harden the beads tenant-pointer dir to owner-only on first-touch (bd
     # recommends 0700; only the owning user's bd reads it — the Dolt server
     # connects over TCP and never reads this dir). Guarded: repos with no beads
@@ -230,6 +264,16 @@ check:
             failed+=("$t")
         fi
     done
+    # Worktree Discipline Pack — server-side branch-protection tripwire. Run as
+    # a direct step rather than a canonical-slug target because it reads
+    # external GitHub state, not the source tree. Capability-aware: it SKIPs
+    # with a named notice when it cannot read protection (no gh / no admin
+    # token / non-GitHub origin), so it never makes `just check` flaky; it is
+    # fail-closed where it CAN read (honouring LIVESPEC_BRANCH_PROTECTION_CHECK).
+    printf '\n::: branch-protection (server-side worktree-discipline tripwire)\n'
+    if ! ./dev-tooling/branch-protection.sh check; then
+        failed+=("branch-protection")
+    fi
     if [[ ${#failed[@]} -gt 0 ]]; then
         printf '\nFailed targets (%d):\n' "${#failed[@]}"
         printf '  - %s\n' "${failed[@]}"

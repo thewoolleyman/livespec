@@ -48,7 +48,11 @@ JavaScript.
    per the conformance `lefthook → just check` tier): the
    `refuse-primary-commit.sh` gate runs first in pre-commit AND as the
    commit-msg backstop, plus a server-side tripwire mirror. There is NO
-   `hook_framework` copier choice.
+   `hook_framework` copier choice. The server-side mirror reuses the GitHub
+   branch-protection PRIMITIVE (not a bespoke per-consumer workflow):
+   `just protect-default-branch` (Installer) + `just check-branch-protection`
+   (the fail-closed, capability-aware Verifier, wired into `just check`), both
+   via the portable `dev-tooling/branch-protection.sh`.
 5. **Default path:** make `implement`/dispatcher auto-provision a worktree
    per work-item.
 6. **Spec it** via the livespec lifecycle (orchestrator `contracts.md` +
