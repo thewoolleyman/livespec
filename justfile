@@ -260,6 +260,7 @@ check:
         # running the same module twice.
         check-behavior-scenario-link
         check-canonical-slugs-projection
+        check-cli-explicit-project-root
         check-codex-no-repo-local-adapters
         check-comment-no-historical-refs
         check-copier-template-smoke
@@ -699,6 +700,14 @@ check-behavior-scenario-link:
 
 check-canonical-slugs-projection:
     uv run python3 dev-tooling/checks/canonical_slugs_projection.py
+
+# Spec-side CLI explicit-project-root conformance (SPECIFICATION/
+# contracts.md §"CLI shape conventions" → the explicit-project-root
+# addressing rule): every livespec module that defines a build_parser()
+# factory (a spec-side CLI) must register --project-root, so a consumer
+# can address any repository's state through the named CLI.
+check-cli-explicit-project-root:
+    uv run python3 dev-tooling/checks/cli_explicit_project_root.py
 
 check-codex-no-repo-local-adapters:
     uv run python3 dev-tooling/checks/codex_no_repo_local_adapters.py
