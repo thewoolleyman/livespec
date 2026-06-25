@@ -315,8 +315,8 @@
     "heading": "## Error path 3 \u2014 version-contiguity gap in history",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "scenarios.md tier rule (epic li-scetier, dev-tooling v0.9.0): scenario entries MUST point at an integration-tier test (tests.e2e / tests.prompts / tests.integration / tests.consumer / tests.bin), not a unit test. The prior pointer tests.livespec.doctor.static.test_version_contiguity is unit-tier and exercises the version-contiguity predicate in isolation, not the end-to-end /livespec:doctor invocation against a real v001/v003-no-v002 history gap. No existing e2e/integration test seeds a history gap and asserts the version-contiguity fail finding: tests.e2e.test_doctor_fail_then_fix exercises doctor static-fail-then-fix but trips bcp14-keyword-wellformedness, not version-contiguity. Honest TODO bridge pending a new e2e doctor-version-contiguity test."
+    "test": "tests.e2e.test_doctor_version_contiguity.test_doctor_version_contiguity_gap_fails",
+    "reason": "Integration-tier (tests.e2e.*) coverage of the scenarios.md Error-path-3 scenario, satisfying the scenarios.md tier rule (epic li-scetier, dev-tooling v0.9.0): the test seeds history/v001/ + v003/ (no v002/) and drives the real bin/doctor_static.py wrapper end-to-end, asserting a non-zero exit and a doctor-version-contiguity fail Finding naming v002. Landed alongside the version_contiguity._evaluate fail arm (livespec-besm.4): the prior impl ignored version_paths and always passed, so the scenario could not fire."
   },
   {
     "heading": "## Recovery path \u2014 pruning history",
