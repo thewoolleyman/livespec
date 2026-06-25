@@ -242,8 +242,7 @@
     "heading": "## Renderer non-vendoring",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
-    "test": "TODO",
-    "reason": "Landed in v063. Test ID populated in the impl follow-up PR. The constraint is architecture-level (livespec MUST NOT vendor renderer binaries/runtimes); the impl-side test verifies no plantuml/Mermaid/Graphviz dependency creeps into pyproject.toml or _vendor/."
+    "test": "tests.dev-tooling.checks.test_no_renderer_vendoring.test_renderer_dependency_in_pyproject_fails"
   },
   {
     "heading": "## Vendored-library discipline",

@@ -183,6 +183,7 @@ jobs:
           - check-copier-template-smoke
           - check-canonical-slugs-projection
           - check-codex-no-repo-local-adapters
+          - check-no-renderer-vendoring
           - check-tools
           - check-doctor-static
           - check-primary-checkout-commit-refuse-hook-installed
