@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-25, post-increment-2)
+## Status (refreshed 2026-06-25, post-increment-3a)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -47,47 +47,44 @@ per-cut approval gate for this track.
 
 Landed: increment 0 + design refinements (PRs #568, #572; `livespec-zs22.1`
 closed). **Increment 1** (`livespec-zs22.2`, PR #575, cut `v137`): the
-`## Workflow planes and the Planning Lane` framing + planes/skills diagrams
-in `spec.md`, the Control Plane + `plan/<topic>/` store on the canonical
-diagram, the `README` field-comparison section, and the `AGENTS.md` diagram
-authoring conventions (`livespec-1bvl` closed). **Increment 2**
-(`livespec-zs22.4`, PR #577, cut `v138`): the NON-normative
-`#### Planning Lane guidance` block under `### Orchestrator plugin ecosystem`
-in `non-functional-requirements.md`. Epic is **3/5 children complete**.
+`## Workflow planes and the Planning Lane` framing + planes/skills diagrams.
+**Increment 2** (`livespec-zs22.4`, PR #577, cut `v138`): the NON-normative
+`#### Planning Lane guidance` block in `non-functional-requirements.md`.
+**Increment 3a** (orchestrator PR `livespec-orchestrator-beads-fabro#167`,
+cut `v016`; core PR `livespec#579`, cut `v139`): the orchestrator-side
+`plan` skill (`prose/plan.md` + Claude/Codex bindings + e2e-cli fixture) and
+the `## Planning Lane realization` contract — `plan` is the SIXTH heavyweight
+op — PLUS the core NFR `Handoff self-sufficiency` pattern paragraph.
+`livespec-zs22.3` (the 3a acceptance harness: cold-open test, one path,
+fail-closed dangling-reference) is **CLOSED**. Epic is **4/5 children
+complete**.
 
-Open children: **`livespec-zs22.5`** (increment 3, filed) and
-**`livespec-zs22.3`** (plan-skill self-sufficiency — the acceptance harness
-for increment 3a). Increments 4-5 are design-doc-sequenced, filed as they
-ripen.
+Open child: **`livespec-zs22.5`** — now scoped to the REMAINING half,
+increment **3b** (the no-shadow-ledger hook DRY across both Drivers); its
+ledger note records 3a landed. Increments 4-5 are design-doc-sequenced,
+filed as they ripen.
 
 ## Next concrete action
 
-**Increment 3 (`livespec-zs22.5`)** — realize the Planning Lane. Two
-independently-mergeable parts (groom/split as 3a/3b; drive each as its own
-PR per increment discipline):
+**Increment 3b (`livespec-zs22.5`)** — the no-shadow-ledger hook DRY across
+both Drivers (`livespec-driver-claude` + `livespec-driver-codex`), driven as
+ONE cross-repo epic (file per-repo children with cross-repo links; never
+defer pieces to a follow-up). Single-source a shape-aware extension of the
+existing WARN-ONLY `warn-plan-persistence.sh` Stop hook (neutral body + thin
+per-runtime adapters), reconciling the two divergent footgun guards.
+Discharges the Plugin-resolution conformance concern's first slice. Honor
+NFR §"Hook chaining" (chain pre-existing hooks first, preserve exit status)
+and §"Codex dogfooding constraints" (single-source neutral logic; thin
+per-runtime adapters; no copied bodies). See §"Recon" for the verified
+file-level facts (re-verified 2026-06-25 post-3a).
 
-- **3a — orchestrator `plan` skill** (repo `livespec-orchestrator-beads-fabro`):
-  a heavyweight, stateful skill modeled on `groom`. Author
-  `.claude-plugin/prose/plan.md` (single source) + thin bindings
-  `.claude-plugin/skills/plan/SKILL.md` (Claude) and
-  `.claude-plugin/.codex-plugin/skills/plan/SKILL.md` (Codex). API (design
-  doc §"Refinements"): `plan` (no-arg) = interactive — list open threads
-  (ledger + `plan/` dirs) to resume, OR describe a new thread → propose a
-  canonical dash-cased slug (propose-change's canonicalization) → confirm →
-  create `plan/<slug>/` + a ledger epic anchor; `plan <slug>` = strict, must
-  match an existing `plan/<slug>/` or fail hard listing slugs (no
-  create-on-typo). Each invocation updates reasoning, refreshes the handoff,
-  routes ripe pieces (`propose-change` for spec, `capture-work-item` for
-  ledger work), or archives on close. `allowed-tools` include `Write` (it
-  mutates `plan/`). **`livespec-zs22.3`** (cold-open self-sufficiency test +
-  one-path next-command) is 3a's acceptance harness — co-deliver.
-- **3b — no-shadow-ledger hook DRY across both Drivers**
-  (`livespec-driver-claude` + `livespec-driver-codex`, one cross-repo epic):
-  single-source a shape-aware extension of the existing WARN-ONLY
-  `warn-plan-persistence.sh` Stop hook (neutral body + thin per-runtime
-  adapters), reconciling the two divergent footgun guards. Discharges the
-  Plugin-resolution concern's first slice. Honor NFR §"Hook chaining" and
-  §"Codex dogfooding constraints".
+Increment **3a is LANDED** (see Status): the orchestrator `plan` skill
+realizes the Planning Lane and `livespec-zs22.3`'s self-sufficiency gate
+lives in the plan prose + the core NFR pattern — no 3a work remains. The
+`plan` skill itself can now manage this very thread: a future session MAY
+migrate this handoff into the `plan/<topic>/handoff.md` store (slug `zs22`)
+via `/livespec-orchestrator-beads-fabro:plan`, dogfooding the new skill;
+that migration is optional and not a 3b prerequisite.
 
 **Then increment 4** (console control-plane contract: a NEW NON-normative
 orchestrator/console-Plane `####` block in core
@@ -106,10 +103,14 @@ Baked in so a fresh session does not re-run the survey. Verify before relying
 **Driver repos (both exist; NOT DRY — the increment-3b gap).**
 
 - `livespec-driver-claude`: skills at `.claude-plugin/skills/<name>/SKILL.md`;
-  hooks at `.claude-plugin/hooks/hooks.json` (PreToolUse:Write →
-  `block-auto-memory.sh`; Stop → `warn-plan-persistence.sh`) PLUS repo-scoped
-  `.claude/settings.json` (PreToolUse:Bash guard +
-  `.claude/hooks/livespec_footgun_guard.py`).
+  plugin hooks at `.claude-plugin/hooks/hooks.json` (PreToolUse:Write →
+  `block-auto-memory.sh`; Stop → `warn-plan-persistence.sh`, 6 KB) PLUS
+  repo-scoped `.claude/settings.json` whose PreToolUse:Bash CHAINS
+  `livespec_dev_tooling.agent_hooks.pretooluse_background_guard` THEN
+  `.claude/hooks/livespec_footgun_guard.py` (228 lines), and whose
+  SubagentStop wires `…agent_hooks.subagent_stop_guard`. (Re-verified
+  2026-06-25 post-3a.) 3b's no-shadow-ledger Stop hook must chain AFTER any
+  existing Stop hook and preserve exit status per NFR §"Hook chaining".
 - `livespec-driver-codex`: skills at `livespec/skills/<name>/SKILL.md`; hooks at
   `livespec/hooks/hooks.json` wiring ONLY PreToolUse:Bash →
   `livespec_footgun_guard.py`. NO `.sh` hooks (no block-auto-memory, no
@@ -179,6 +180,18 @@ to a committed+pushed state, update the ledger (`bd`), print the closing
 status table, and refresh this file (same epic id) with the exact
 remaining work. End every session by naming the literal next-session
 command.
+
+**Literal next-session command (one path — per the self-sufficiency rule
+this track codified):**
+
+```
+run prompts/livespec-zs22-handoff-planning-lane.md
+```
+
+That single path is sufficient: a fresh session opening only this handoff
+and its Read-first chain can execute the next action (increment 3b) without
+re-deriving anything. Status comes from the FIRST ACTION ledger query, never
+from this file.
 
 ## Archive condition
 
