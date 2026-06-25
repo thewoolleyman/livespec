@@ -581,6 +581,43 @@ pass `--no-verify`.
   doctor-static (full `just check`) rejects them; copy the shape from an existing
   record and validate with full `just check`.
 
+## Spec and architecture diagram authoring conventions
+
+Architecture diagrams are **Mermaid only**, authored as fenced
+` ```mermaid ` blocks directly inside `kind: markdown` spec files — no
+manifest entry, no render command, no paired rendered artifact (per
+`SPECIFICATION/spec.md` §"Template manifest"). The **canonical**
+architecture diagram is the single source of truth in
+`SPECIFICATION/spec.md` §"Contract + reference implementations
+architecture"; the repo README **references** it and never embeds a
+second copy (no duplication, no drift). Hold these conventions when
+authoring or revising any architecture diagram:
+
+- **Three planes, named exactly.** Spec Plane (livespec core),
+  Orchestrator Plane (the producer), Control Plane (the operator
+  console). The console is the **Control Plane / operator cockpit** —
+  NEVER call it a "Driver"; "Driver" is the per-agent-runtime binding
+  (`livespec-driver-claude`, `livespec-driver-codex`). Render each plane
+  as a subgraph.
+- **Full skill names in labels, no abbreviations.** Write
+  `propose-change`, `capture-work-item` in node *labels* (terse node
+  *ids* are fine).
+- **Stores are cylinders.** Filesystem / data stores — `SPECIFICATION/`,
+  `plan/<topic>/`, the Ledger, IMPLEMENTATION — use the cylinder shape
+  `[( … )]`. `plan/<topic>/` is a plain store node, not a skill.
+- **IMPLEMENTATION sits inside the Orchestrator Plane** (it is the
+  producer's work product), never a free-floating peer.
+- **No temporal markers.** Skills and nodes are uniform; do not annotate
+  a node as "new", "deferred", "phase-N", or "current" — a diagram
+  depicts the target architecture, not a migration state.
+- **Escape HTML in labels.** Use `&lt;` / `&gt;` for angle brackets
+  (e.g. `plan/&lt;topic&gt;/`) and `<br/>` for in-label line breaks.
+
+The three increment-1 framing diagrams (planes; skills; the canonical
+contract diagram) and their rationale live in
+`research/planning-workflow-gap/planning-lane-design.md`
+§"Architecture diagrams".
+
 ## Enforcement-suite and tooling discipline
 
 - **The task runner is the single source of truth.** The justfile owns every

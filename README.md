@@ -115,6 +115,30 @@ The §"Cross-repo orchestration" section below describes the
 post-cutover state: the resident Layer-3 loop driver has been retired
 in favor of the reference Dispatcher.
 
+## How livespec relates to the field
+
+Spec-driven development tools have converged on a three-lane model —
+**reason → specify → produce**. livespec governs all three as one
+disciplined, agent-runtime-agnostic system, and adds the rule the field
+has not solved: a planning artifact must never quietly become a second
+tracker.
+
+| Lane | The field | livespec |
+|---|---|---|
+| **Reason / plan** | spec-kit `plan.md`, Kiro `design.md`, Cline `activeContext.md` + `progress.md` | the **Planning Lane** — durable `plan/<topic>/` reasoning plus a ledger-anchored, resumable handoff, under the **no-shadow-ledger** rule |
+| **Specify** | spec-kit `spec.md`, Kiro `requirements.md` | the governed `/livespec:*` natural-language spec lifecycle (`seed`, `propose-change`, `critique`, `revise`, `doctor`, versioned history) |
+| **Produce** | beads ledger, ad-hoc agent loops | an **orchestrator-agnostic** producer (reference: Beads/Dolt + Fabro) consuming the spec through three CLIs, with a Gap/Drift feedback spine |
+
+The gap livespec closes: the field treats planning as scratch prose that
+drifts into an unaccountable parallel work queue. livespec's **Planning
+Lane** makes planning a first-class, multi-session lane whose status is
+always *derived from* the work-item ledger — never stored — so the plan
+stays a plan and the ledger stays the single source of truth. The
+architecture is framed in
+[`SPECIFICATION/spec.md` §"Workflow planes and the Planning Lane"](SPECIFICATION/spec.md#workflow-planes-and-the-planning-lane);
+the design rationale lives in
+[`research/planning-workflow-gap/`](research/planning-workflow-gap/).
+
 ## Cross-repo orchestration
 
 Cross-repo orchestration is carried by the reference **Beads/Dolt +
