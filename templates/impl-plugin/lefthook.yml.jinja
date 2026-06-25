@@ -20,8 +20,9 @@
 # files. The gate distinguishes primary from linked worktree with portable,
 # config-free `git rev-parse --git-common-dir` vs `--git-dir` detection
 # (linked worktrees pass; the script exits 0 there); it needs no
-# `livespec.primaryPath` config and is runner-agnostic (it does NOT delegate
-# to `just`).
+# `livespec.primaryPath` config and is invoked directly (it does NOT delegate
+# to `just`) so the gate stays correct even before `just` is resolvable —
+# unlike the tool-backed `run:` fields below, which MUST delegate to `just`.
 #
 # Authority: livespec/SPECIFICATION/non-functional-requirements.md
 #   §"Toolchain pins" — `run:` fields MUST delegate to `just <target>`

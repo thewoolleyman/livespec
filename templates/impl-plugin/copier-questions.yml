@@ -66,16 +66,25 @@ github_repo:
 # ---------------------------------------------------------------------------
 # Worktree-discipline ecosystem profile (the Worktree Discipline Pack).
 #
-# `ecosystem` selects a PROFILE of presets for the worktree-discipline pack:
-# the repo's task runner, its hydrate command, its hook framework, and its
-# verify gate. EVERY downstream key below carries the profile's value as its
-# DEFAULT and stays INDIVIDUALLY OVERRIDABLE — a repo whose runner or hook
-# framework differs from its ecosystem's default just answers that one
-# question. The portable worktree-lifecycle core (dev-tooling/worktree-lib.sh)
-# and the commit-refuse gate (dev-tooling/refuse-primary-commit.sh) are
-# pure-git and ECOSYSTEM-NEUTRAL; only these profile presets vary. Adding a
-# 4th ecosystem later is a new profile choice plus its preset branches — no
-# core or gate change.
+# `ecosystem` selects the per-ecosystem HYDRATE profile for the
+# worktree-discipline pack (the hydrate command below carries the profile's
+# value as its DEFAULT and stays overridable). The RUNNER and the HOOK
+# FRAMEWORK are NOT questions: `just` and `lefthook` are mandated
+# NON-FUNCTIONALLY across all fleet + adopter repos (per the zs22 locked
+# decision and the Conformance Pattern in
+# research/factory-conformance/cross-repo-conformance-pattern.md) — Installer =
+# a `just` recipe, commit gate wired via `lefthook → just check`. The worktree
+# lifecycle is driven by the `just worktree-{create,hydrate,land,reap}` recipes
+# (justfile.jinja), which call the portable core (dev-tooling/worktree-lib.sh)
+# directly; the commit-refuse gate (dev-tooling/refuse-primary-commit.sh) is
+# wired through lefthook (lefthook.yml.jinja). Where a repo's ecosystem has a
+# native tool, the template emits a STRICT PASS-THROUGH wrapper onto `just
+# worktree-*` (DERIVED from `ecosystem`: python → none; rust → cargo-xtask;
+# javascript → pnpm-scripts) — never an alternative runner/framework. `just`
+# and `lefthook` never enter livespec core's public functional surface or the
+# `/livespec:*` skills. The portable core and the gate are pure-git and
+# ECOSYSTEM-NEUTRAL; only the hydrate profile varies. Adding a 4th ecosystem
+# later is a new hydrate branch — no core, gate, runner, or hook change.
 #
 # BACKWARD-COMPAT: `default: python` is load-bearing. Existing consumers'
 # `.copier-answers.yml` predate this question; on `copier update` copier
@@ -93,38 +102,13 @@ ecosystem:
     - javascript
   help: |
     Primary language/ecosystem of this repo. Selects the worktree-discipline
-    profile's defaults for the task runner, the worktree hydrate command, the
-    hook framework, and the verify gate (each individually overridable below).
-    The worktree contract and the commit-refuse gate are identical across all
-    three; only these presets differ. Choose 'python' (the default) for a
-    Python plugin repo, 'rust' for a cargo workspace, 'javascript' for a
-    Node/pnpm workspace.
-
-task_runner:
-  type: str
-  default: "{% if ecosystem == 'rust' %}cargo{% elif ecosystem == 'javascript' %}pnpm{% else %}just{% endif %}"
-  help: |
-    The repo's OWN task runner — the command the thin worktree-discipline
-    adapters map onto the portable core. livespec mandates the worktree
-    CONTRACT, never a specific runner: `just` is one reference adapter, not a
-    requirement. Defaults per ecosystem (python: just; rust: cargo;
-    javascript: pnpm); override with whatever this repo actually uses (make,
-    nox, xtask, npm, yarn, taskfile, raw, …).
-
-hook_framework:
-  type: str
-  default: "{% if ecosystem == 'javascript' %}husky{% else %}lefthook{% endif %}"
-  choices:
-    - lefthook
-    - husky
-    - pre-commit
-    - raw
-  help: |
-    The git-hook framework this repo wires the commit-refuse gate through.
-    The gate itself (dev-tooling/refuse-primary-commit.sh) is framework-
-    agnostic pure-git; this only selects HOW it is installed. Defaults:
-    python/rust → lefthook; javascript → husky. 'raw' wires a plain
-    .git/hooks script (no framework).
+    pack's per-ecosystem hydrate command (overridable below) and the native
+    pass-through wrapper, if any. The runner (`just`) and the hook framework
+    (`lefthook`) are mandated across all three — they are NOT questions; the
+    worktree contract, the commit-refuse gate, and the lifecycle recipes are
+    identical across all three. Choose 'python' (the default) for a Python
+    plugin repo, 'rust' for a cargo workspace, 'javascript' for a Node/pnpm
+    workspace.
 
 worktree_root:
   type: str

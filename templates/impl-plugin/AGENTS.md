@@ -28,17 +28,20 @@ to the SAME path on the primary (refuse) and DIFFER in a linked worktree
 
 The portable worktree-lifecycle helper `dev-tooling/worktree-lib.sh` carries
 the four verbs the discipline needs — `create`, `hydrate`, `land`, `reap` —
-and uses the same primary-vs-linked test as the gate. It is ecosystem-neutral
-and task-runner-agnostic (it shells out to `git` only and does NOT require
-`just`); invoke it directly, or through whatever task runner this repo uses.
+and uses the same primary-vs-linked test as the gate. It is pure-git and
+ecosystem-neutral (it shells out to `git` only).
 
-Invoke the four verbs through this repo's OWN task runner via thin, logic-free
-adapters — the runner is this repo's choice, never mandated. `just` is one
-reference adapter (the `just worktree-create` / `worktree-hydrate` /
-`worktree-land` / `worktree-reap` recipes); `dev-tooling/worktree-adapter.sh`
-is the runner-neutral entry point a cargo/pnpm/make/taskfile/raw runner wires
-in (see its header for the per-runner snippets). The adapters carry no logic;
-the core stays the single source of truth.
+Drive the four verbs through `just` — the mandated runner. The `just
+worktree-create` / `worktree-hydrate` / `worktree-land` / `worktree-reap`
+recipes call `dev-tooling/worktree-lib.sh` directly and carry no logic of
+their own; the core stays the single source of truth. `just` and `lefthook`
+are mandated non-functionally across the fleet + adopters (the Conformance
+Pattern: Installer = a `just` recipe; commit gate wired via `lefthook → just
+check`) and never enter livespec core's public functional surface or the
+`/livespec:*` skills. If this repo's ecosystem has a native tool, expose it as
+a STRICT PASS-THROUGH onto these recipes — never an alternative runner: a Rust
+repo wires `cargo xtask worktree create` → `just worktree-create`; a
+JavaScript repo wires package.json `"wt:create": "just worktree-create"`.
 
 1. **Create the worktree.** Branch from the latest default branch into a
    dedicated worktree under `~/.worktrees/<repo>/<branch>` (NEVER as a peer of
@@ -212,8 +215,7 @@ around the seam with raw `mysql` / `dolt` / `sudo`.
   the mise-dispatching git-hook-wrapper at `.git/hooks/pre-commit` +
   `.git/hooks/pre-push` + `.git/hooks/commit-msg`, ensures the
   worktree-discipline shell scripts (`dev-tooling/refuse-primary-commit.sh`,
-  `dev-tooling/worktree-lib.sh`, `dev-tooling/worktree-hydrate.sh`,
-  `dev-tooling/worktree-adapter.sh`) stay
+  `dev-tooling/worktree-lib.sh`, `dev-tooling/worktree-hydrate.sh`) stay
   executable, installs lefthook hooks, resolves plugin dependencies, creates
   `~/.worktrees`, and registers it in mise's `trusted_config_paths` so every
   worktree (created at `~/.worktrees/<repo>/<branch>`) auto-trusts its

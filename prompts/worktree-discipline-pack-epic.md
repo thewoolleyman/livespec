@@ -24,28 +24,47 @@ happened when each session was told MANUALLY. livespec core has the
 "Repository mutation protocol" in its own AGENTS.md, but as repo-local
 prose — not distributed or enforced to consumers.
 
-## Design: contract + portable core + per-ecosystem profiles
+## Design: `just`+`lefthook` keystone + portable core + per-ecosystem profiles
 
-**Mandate the contract, never a tool.**
+**`just` and `lefthook` are the mandated keystone (non-functionally, fleet+adopter-wide).**
+
+Per the zs22 locked decision and the Conformance Pattern
+(`research/factory-conformance/cross-repo-conformance-pattern.md`), `just`
+and `lefthook` are mandated NON-FUNCTIONALLY across ALL fleet + adopter
+repos — but NEVER inside livespec core's public functional surface or the
+`/livespec:*` skills. The Conformance Pattern makes them the mechanism:
+Installer = a `just` recipe; Verifier = fail-closed in `just check`;
+commit-time tier = `lefthook → just check`. The worktree pack realizes
+that keystone:
 
 - **Contract (tool-agnostic):** every mutation happens in an isolated
   worktree; the primary checkout is never committed to; landing is via
   PR/merge; orphans are reaped; a commit-time gate enforces it.
-- **Portable core:** dependency-light (POSIX shell or a small single
-  binary) doing create / hydrate / land / reap + primary-vs-linked
-  detection (`git rev-parse --git-common-dir` vs `--git-dir`).
-  Config-driven; no ecosystem or task-runner assumptions.
-- **Invocation = thin adapters onto the repo's OWN task runner.** Do NOT
-  mandate `just`; it is ONE reference adapter. Emit aliases for the repo's
-  runner (cargo/xtask, pnpm/npm scripts, just, make, mise, taskfile, raw).
-- **Enforcement = portable "no commit on primary" check**, wired via the
-  repo's hook framework (lefthook / husky / pre-commit / raw git hook) +
-  a server-side tripwire mirror (hooks are bypassable).
+- **Portable core:** dependency-light (POSIX shell) doing create / hydrate
+  / land / reap + primary-vs-linked detection (`git rev-parse
+  --git-common-dir` vs `--git-dir`). Config-driven; no ecosystem
+  assumptions. This portable core (`dev-tooling/worktree-lib.sh`) and the
+  commit-refuse gate (`dev-tooling/refuse-primary-commit.sh`) carry the
+  logic; they are pure-git so they stay correct under any runner.
+- **Invocation = `just worktree-{create,hydrate,land,reap}` recipes** that
+  call `dev-tooling/worktree-lib.sh` DIRECTLY. The worktree lifecycle is
+  driven by `just`. Any ecosystem-native wrapper (cargo xtask, pnpm/npm
+  scripts) is a STRICT PASS-THROUGH that literally invokes `just
+  worktree-*` with NO logic of its own — never an alternative runner or
+  framework. e.g. `cargo xtask worktree create` → `just worktree-create`;
+  package.json `"wt:create": "just worktree-create"`.
+- **Enforcement = the portable "no commit on primary" check, wired via
+  `lefthook`** (the mandated commit-time framework) as the first pre-commit
+  job AND the commit-msg backstop, with `lefthook → just check` as the
+  commit-time tier + a server-side tripwire mirror (hooks are bypassable).
 - **Default path:** orchestrator `implement`/dispatcher auto-provision a
   worktree per work-item so the happy path is disciplined by construction.
 - **Distribution:** ship in the copier impl-plugin template; `copier
   update` propagates to existing consumers; the drift workflow flags
   divergence. Spec it in orchestrator contracts.md / non-functional-requirements.md.
+- **Core boundary:** `just`/`lefthook` are dev-tooling mechanism only —
+  they never enter livespec core's public functional surface or the
+  `/livespec:*` skills.
 
 ## Three first-class ecosystems (closed set): Python, Rust, JavaScript
 
@@ -54,11 +73,12 @@ profile of presets; EVERY key stays individually overridable.
 
 | | Python | Rust | JavaScript/TS |
 | - | - | - | - |
-| Default runner | just/uv (or make/nox) | cargo (+ xtask/just) | pnpm/npm/yarn scripts |
+| Runner (mandated) | `just` | `just` | `just` |
+| Native pass-through wrapper | — | `cargo xtask worktree …` → `just worktree-…` | package.json `"wt:…": "just worktree-…"` |
 | Hydrate cmd | `uv sync` (or poetry/pip) | `cargo fetch` + warm cache | `pnpm install` |
 | Per-worktree dep state | `.venv/` (cache-cheap) | NONE in-tree (see below) | `node_modules/` incl. workspaces |
-| Hooks default | lefthook / pre-commit | lefthook / raw | lefthook / husky |
-| Verify gate | pytest + ruff + mypy | cargo build/test/clippy/fmt | build + lint + test |
+| Hook framework (mandated) | `lefthook` | `lefthook` | `lefthook` |
+| Verify gate (under `just check`) | pytest + ruff + pyright | cargo build/test/clippy/fmt | build + lint + test |
 
 "Hydrate" means something DIFFERENT per ecosystem; the core delegates it
 to the profile:
@@ -77,23 +97,32 @@ to the profile:
 
 ## Config keys (copier questions)
 
-`ecosystem`; `task_runner`; `hook_framework`; install/hydrate cmd;
-`worktree_root` (default `~/.worktrees/<repo>/<branch>`); `land_mode`
-(pr | merge-queue | direct); `uses_mise` (gates the auto-trust step).
+`ecosystem` (python | rust | javascript); `hydrate_cmd` (install/hydrate
+cmd, defaulted per ecosystem); `worktree_root` (default
+`~/.worktrees/<repo>/<branch>`); `land_mode` (pr | merge-queue | direct);
+`uses_mise` (gates the auto-trust step). There is NO `task_runner`
+question — the runner is `just` (mandated); where a wrapper needs the
+ecosystem's native tool it DERIVES it from `ecosystem` (python → none;
+rust → cargo-xtask; javascript → pnpm-scripts), as a strict pass-through
+to `just`. There is NO `hook_framework` choice — `lefthook` is mandated
+(the conformance `lefthook → just check` commit-time tier).
 
 ## What stays identical across all three
 
-The contract and the enforcement check are pure-git, ecosystem-neutral.
-Only the profile presets (runner, hydrate, verify, hooks) vary. Adding a
-4th ecosystem later = a new profile, no core/gate change.
+The runner (`just`), the hook framework (`lefthook`), the contract, and the
+enforcement check are identical across all three ecosystems; the portable
+core and the gate are pure-git. Only the per-ecosystem HYDRATE profile
+varies (and, where a repo exposes its native tool, a strict pass-through
+wrapper onto `just worktree-*`). Adding a 4th ecosystem later = a new
+hydrate branch, no core/gate/runner change.
 
 ## Rollout (dogfood -> promote)
 
 1. Build the pieces in openbrain (ob-apw) — the JS/pnpm dogfood instance,
-   template-shaped (runner-agnostic core + a lefthook gate + an AGENTS.md
-   protocol section).
+   template-shaped (pure-git core driven by `just worktree-*` recipes + a
+   `lefthook` gate + an AGENTS.md protocol section).
 2. Extract/promote into `templates/impl-plugin/` as this pack; add the
-   Python and Rust profiles.
+   Python and Rust hydrate profiles.
 3. Spec it (orchestrator contracts.md + non-functional-requirements.md).
 4. `copier update` propagates to openbrain + other consumers; the drift
    workflow flags divergence.
@@ -101,7 +130,10 @@ Only the profile presets (runner, hydrate, verify, hooks) vary. Adding a
 ## Acceptance
 
 A freshly scaffolded OR copier-updated repo in Python, Rust, OR JavaScript
-gets BY DEFAULT: worktree lifecycle via its own task runner; a gate that
-blocks commits on the primary checkout; ecosystem-correct hydration
-(including Rust's shared build cache); a reaper; PR/merge landing. No agent
-needs manual instruction. `just` is not required by any repo.
+gets BY DEFAULT: the worktree lifecycle driven by `just worktree-*`
+(with a strict pass-through native wrapper where the ecosystem has one); a
+`lefthook`-wired gate that blocks commits on the primary checkout;
+ecosystem-correct hydration (including Rust's shared build cache); a
+reaper; PR/merge landing. No agent needs manual instruction. `just` and
+`lefthook` are mandated non-functionally, and never enter livespec core's
+public functional surface or the `/livespec:*` skills.
