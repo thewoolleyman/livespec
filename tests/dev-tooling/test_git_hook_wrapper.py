@@ -57,7 +57,7 @@ def test_git_hook_wrapper_dispatches_to_mise_with_basename_hook_name(*, tmp_path
     invokes `./pre-commit foo bar` (the wrapper renamed to
     `pre-commit` so the basename detection fires). The
     recorded argv must match the canonical dispatch:
-    `mise exec lefthook -- lefthook run pre-commit foo bar`.
+    `mise exec -- lefthook run pre-commit foo bar`.
     Failure here means the wrapper isn't using basename to
     determine the hook name OR isn't passing args through
     correctly OR isn't invoking mise as the resolution
@@ -113,7 +113,6 @@ def test_git_hook_wrapper_dispatches_to_mise_with_basename_hook_name(*, tmp_path
     recorded_argv = argv_log.read_text(encoding="utf-8").splitlines()
     expected_argv = [
         "exec",
-        "lefthook",
         "--",
         "lefthook",
         "run",
