@@ -182,6 +182,7 @@ jobs:
           - check-behavior-scenario-link
           - check-copier-template-smoke
           - check-canonical-slugs-projection
+          - check-cli-explicit-project-root
           - check-codex-no-repo-local-adapters
           - check-no-renderer-vendoring
           - check-tools

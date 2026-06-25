@@ -145,8 +145,7 @@
     "heading": "## CLI shape conventions",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). Real test ID populated in the Phase-2 impl follow-up that asserts the one-binary-per-side subcommand shape, --json stable schemas, stdin/stdout payload handling, exit-code-table reuse, and explicit project-root addressing across the named CLIs."
+    "test": "tests.dev-tooling.checks.test_cli_explicit_project_root.test_passes_when_every_cli_has_project_root"
   },
   {
     "heading": "## Interactive dialogue ownership (orchestrator-side)",
