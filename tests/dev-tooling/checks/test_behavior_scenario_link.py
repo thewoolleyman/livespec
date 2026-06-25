@@ -17,7 +17,18 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 __all__: list[str] = []
+
+# Every test in this module drives the check OUT-OF-PROCESS via
+# `subprocess.run`, so the whole module is integration-tier. The
+# marker declares that tier honestly (registered in
+# pyproject.toml `[tool.pytest.ini_options].markers`) and is what
+# `check-heading-coverage` AST-detects to satisfy the scenarios.md
+# integration-tier requirement for `## Behavior clause lacking a
+# scenario link is surfaced` in `tests/heading-coverage.json`.
+pytestmark = [pytest.mark.integration]
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]

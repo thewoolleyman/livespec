@@ -380,6 +380,7 @@ addopts = [
 markers = [
     "mock_only: test runs only in mock tier (LIVESPEC_E2E_HARNESS=mock); skipped in real tier",
     "e2e_golden: flagship multi-turn dialogue e2e test; per li-949's Q2 hybrid prompt strategy, the real-tier recipe runs golden tests in addition to the single-shot happy-path tests",
+    "integration: integration-tier test (drives a check/CLI out-of-process via subprocess); satisfies the scenarios.md integration-tier requirement in tests/heading-coverage.json (AST-detected by check-heading-coverage)",
 ]
 
 # ---------------------------------------------------------------------------

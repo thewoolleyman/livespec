@@ -332,8 +332,7 @@
     "heading": "## Behavior clause lacking a scenario link is surfaced",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "Acceptance for the behavior_scenario_link check. The exercising test is tests.dev-tooling.checks.test_behavior_scenario_link, a subprocess integration test of the check (warn/fail modes, link resolution). It sits in the dev-tooling tier, which is not in the scenario_tiers integration-tier prefix allowlist, so this entry stays TODO and explicitly acknowledges the integration-tier requirement until a tests.integration.* alias is added."
+    "test": "tests.dev-tooling.checks.test_behavior_scenario_link.test_warn_mode_is_non_blocking_but_surfaces_unlinked"
   },
   {
     "heading": "## Author identifier resolution",
