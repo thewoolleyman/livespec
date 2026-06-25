@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/thewoolleyman/livespec/compare/v0.2.0...v0.3.0) (2026-06-25)
+
+
+### Features
+
+* collapse spec_files kind to markdown-only; remove diagram-rendering machinery ([1469f10](https://github.com/thewoolleyman/livespec/commit/1469f10bd0248e0cc4696694afdd175f0bc23484))
+
 ## [0.2.0](https://github.com/thewoolleyman/livespec/compare/v0.1.0...v0.2.0) (2026-06-24)
 
 
