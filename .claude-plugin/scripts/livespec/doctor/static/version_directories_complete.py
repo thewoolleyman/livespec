@@ -23,9 +23,8 @@ template-specific "main-file" presence is deferred to .
 This work lands the pass arm. Subsequent cycles add the
 fail arm for version-directory shape violations.
 
- prereq.B widens the rule with the pruned-marker
-exemption per SPECIFICATION/v013 spec.md §"`version-directories-complete`
-pruned-marker exemption". A v-directory whose contents are
+ prereq.B widens the rule with the pruned-marker exemption per
+SPECIFICATION/v013 spec.md. A v-directory whose contents are
 EXACTLY `PRUNED_HISTORY.json` (single file at the directory
 root, no subdirs, no other files) is exempt from the standard
 "every v-dir contains template-required spec files + a
@@ -68,8 +67,7 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
 def _malformed_marker_finding(*, ctx: DoctorContext, version_path: Path) -> Finding:
     """Construct a fail-status Finding for a malformed pruned-marker v-dir.
 
-    Per SPECIFICATION/v013 spec.md §"`version-directories-complete`
-    pruned-marker exemption": the marker exemption is strict — a
+    Per SPECIFICATION/v013 spec.md: the marker exemption is strict — a
     v-dir carrying `PRUNED_HISTORY.json` AND extra entries (any
     other file or any subdir) is malformed and MUST be flagged.
     The Finding's `path` field embeds the offending v-dir so the

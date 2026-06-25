@@ -7,7 +7,7 @@ One configuration per process; each wrapper invocation is its own
 process.
 
 The structlog config emits JSON to stderr with the standard fields
-documented in python-skill-script-style-requirements.md §"Logging":
+documented in python-skill-script-style-requirements.md:
 `timestamp` (ISO 8601 UTC), `level`, `logger`, `message`, `run_id`
 (uuid4 bound here), plus arbitrary kwargs from the call site. Level is
 controlled by `LIVESPEC_LOG_LEVEL` env var (default `WARNING`); the
@@ -15,7 +15,7 @@ controlled by `LIVESPEC_LOG_LEVEL` env var (default `WARNING`); the
 
 The two side-effecting calls below (`structlog.configure`,
 `bind_contextvars`) are exempt from `check-global-writes` per the
-style doc §"Bootstrap" — they configure third-party library state,
+style doc — they configure third-party library state,
 not livespec module-level state.
 """
 

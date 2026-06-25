@@ -1,8 +1,7 @@
 """Validator for the finding wire payload.
 
-Per style doc §"Skill layout — `validate/`": factory-shape
-validator that takes the parsed payload (a dict from JSON
-parsing) and the parsed schema (a dict from
+Per style doc: factory-shape validator that takes the parsed payload
+(a dict from JSON parsing) and the parsed schema (a dict from
 finding.schema.json), validates the payload against the
 schema via fastjsonschema, and returns
 `Result[Finding, ValidationError]`.

@@ -12,8 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: master_direct_uncommitted_spec_edits.
 
-Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-invariants" → §"`master-direct-uncommitted-spec-edits`":
+Per `SPECIFICATION/contracts.md`:
 
   Every worktree (primary or secondary, per
   `git worktree list --porcelain`) whose HEAD points at the

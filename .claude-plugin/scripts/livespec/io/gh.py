@@ -12,8 +12,8 @@
 # ignore markers attached to the offending argument's line below.
 """GitHub CLI boundary facade.
 
-Per style doc §"Skill layout — `io/`": every operation that
-touches the gh CLI binary lives here under the typed io seam so the
+Per style doc: every operation that touches the gh CLI binary lives
+here under the typed io seam so the
 railway flows through `IOResult`. Mirrors the shape of
 `livespec.io.git`: a happy-path single subprocess invocation; the
 proc facade handles OSError → PreconditionError; non-zero exits

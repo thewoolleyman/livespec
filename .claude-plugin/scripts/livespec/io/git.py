@@ -12,8 +12,8 @@
 # ignore markers attached to the offending argument's line below.
 """Git boundary facade.
 
-Per style doc §"Skill layout — `io/`": the io/ layer is
-the impure boundary; every operation that touches git lives here
+Per style doc: the io/ layer is the impure boundary; every operation
+that touches git lives here
 under `@impure_safe` so the railway flows through `IOResult`.
 The git facade exposes `get_git_user` returning the conventional
 `"Name <email>"` author string from local git config, used by

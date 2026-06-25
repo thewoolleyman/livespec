@@ -8,9 +8,7 @@ Extracted from `next.py` so the parent file's LLOC stays under
 the 250-LLOC hard ceiling enforced by
 `livespec_dev_tooling.checks.file_lloc`.
 
-Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
-thin-transport skill" → §"Ranker semantics" + §"`prune-history`
-ordering invariant": the ranker enumerates ALL ripe candidates
+Per `SPECIFICATION/contracts.md`: the ranker enumerates ALL ripe candidates
 (one `revise` candidate per pending proposal, plus one
 `prune-history` candidate when the unpruned history version
 count reaches the threshold), sorts by action tier
@@ -19,8 +17,8 @@ descending, then `target` lexicographic, and applies
 offset/limit last to produce the returned slice.
 
 Stages: threshold extraction from the `.livespec.jsonc` body
-(`_threshold_from_config_text`, per §"`.livespec.jsonc`
-configuration"), ISO age parsing (`_raw_fromisoformat`,
+(`_threshold_from_config_text`, per `SPECIFICATION/contracts.md`),
+ISO age parsing (`_raw_fromisoformat`,
 `_parse_iso_age_days`), per-proposal age aggregation
 (`_collect_proposal_ages`), candidate enumeration + sorting
 (`_revise_urgency`, `_enumerate_candidates`), pagination
@@ -65,14 +63,14 @@ HIGH_URGENCY_COUNT_THRESHOLD = 3
 MEDIUM_URGENCY_COUNT_THRESHOLD = 2
 HIGH_URGENCY_AGE_DAYS = 7.0
 MEDIUM_URGENCY_AGE_DAYS = 1.0
-# Default per `SPECIFICATION/contracts.md` §"`.livespec.jsonc`
-# configuration": applies when `next.prune_history_threshold` is
-# absent from the project's `.livespec.jsonc` (or the config file
-# itself is absent). A present key overrides it per invocation via
+# Default per `SPECIFICATION/contracts.md`: applies when
+# `next.prune_history_threshold` is absent from the project's
+# `.livespec.jsonc` (or the config file itself is absent). A
+# present key overrides it per invocation via
 # `_threshold_from_config_text`.
 PRUNE_HISTORY_THRESHOLD = 20
 
-# Sort tier per action, per §"`prune-history` ordering invariant":
+# Sort tier per action per the prune-history ordering invariant:
 # prune-history sorts strictly below EVERY other action in the
 # enumeration, independent of urgency. The reference ranker emits
 # only `revise` and `prune-history` candidates; the remaining
@@ -93,8 +91,7 @@ URGENCY_RANK: dict[str, int] = {"high": 0, "medium": 1, "low": 2}
 def _threshold_from_config_text(*, text: str) -> Result[int, LivespecError]:
     """Extract `next.prune_history_threshold` from a `.livespec.jsonc` body.
 
-    Per `SPECIFICATION/contracts.md` §"`.livespec.jsonc`
-    configuration": the key value MUST be a positive integer; a
+    Per `SPECIFICATION/contracts.md`: the key value MUST be a positive integer; a
     present-but-non-positive-integer value (including a boolean —
     a `bool` is an `int` subclass that would otherwise coerce
     silently) yields `Failure(PreconditionError)` naming the
@@ -203,7 +200,7 @@ def _enumerate_candidates(
     history_version_count: int,
     prune_history_threshold: int = PRUNE_HISTORY_THRESHOLD,
 ) -> list[NextCandidate]:
-    """Enumerate ALL ripe candidates, sorted per §"Ranker semantics".
+    """Enumerate ALL ripe candidates, sorted per the ranker semantics.
 
     One `revise` candidate per pending proposal (target = the
     spec-target-relative proposal path) plus one `prune-history`
@@ -212,7 +209,7 @@ def _enumerate_candidates(
     version range). The threshold is resolved per invocation from
     `.livespec.jsonc`'s `next.prune_history_threshold` key by the
     supervisor (default `PRUNE_HISTORY_THRESHOLD` when absent,
-    per §"`.livespec.jsonc` configuration"). Sort key: action
+    per `SPECIFICATION/contracts.md`). Sort key: action
     tier (prune-history strictly last), urgency descending, then
     target lexicographic. An empty result IS the no-work signal.
     """
@@ -255,7 +252,7 @@ def _paginate(
 ) -> NextOutput:
     """Apply offset/limit to the ranked list and build the NextOutput.
 
-    Per §"Output schema": `total` counts ripe candidates BEFORE
+    Per the output schema contract: `total` counts ripe candidates BEFORE
     the slice; `has_more` is `true` iff
     `offset + len(candidates) < total`; `offset >= total` yields
     an empty window with `has_more: false`.

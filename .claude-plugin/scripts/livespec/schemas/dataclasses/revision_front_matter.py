@@ -1,8 +1,7 @@
 """RevisionFrontMatter dataclass paired 1:1 with revision_front_matter.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the type that flows through the railway after
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the type that flows through the railway after
 schema validation:
     Result[RevisionFrontMatter, ValidationError]
 from validate.revision_front_matter.validate_revision_front_matter.

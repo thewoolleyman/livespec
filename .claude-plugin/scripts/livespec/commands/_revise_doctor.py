@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Post-step doctor invocation railway stages for the `revise` sub-command.
 
-Per `SPECIFICATION/spec.md` §"Sub-command lifecycle": `revise`
+Per `SPECIFICATION/spec.md`: `revise`
 runs a post-step doctor static check after its action. The full
 static-phase doctor registry is exercised against the
 freshly-cut `vNNN/` snapshot.
@@ -120,7 +120,7 @@ def _run_post_step_doctor(
 ) -> IOResult[RevisionInput, LivespecError]:
     """Invoke `bin/doctor_static.py` as a subprocess; fold fail findings -> Failure.
 
-    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle":
+    Per `SPECIFICATION/spec.md`:
     `revise` MUST run a post-step doctor static check after its
     action; the full static registry runs against the
     freshly-cut `vNNN/` snapshot.

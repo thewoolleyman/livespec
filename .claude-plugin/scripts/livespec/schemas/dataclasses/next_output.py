@@ -1,14 +1,12 @@
 """Next-output dataclasses paired 1:1 with next_output.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclasses are the types that flow through the railway from the
-ranker into the supervisor's JSON-emit stage:
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclasses are the types that flow through the railway
+from the ranker into the supervisor's JSON-emit stage:
     Result[NextOutput, ValidationError]
 from validate.next_output.validate_next_output.
 
-Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
-thin-transport skill" → "Output schema": the payload carries two
+Per `SPECIFICATION/contracts.md`: the payload carries two
 top-level keys — `candidates` (array of candidate objects) and
 `pagination` (offset/limit echo + total + has_more). `action`
 and `urgency` are typed as `str` (not `Literal[...]`) because

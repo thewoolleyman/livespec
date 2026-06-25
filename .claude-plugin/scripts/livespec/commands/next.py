@@ -12,26 +12,24 @@
 # ignore markers attached to the offending argument's line below.
 """Next sub-command supervisor.
 
-Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
-thin-transport skill" → §"Wrapper CLI flags" + §"Output schema"
-+ §"Ranker semantics": a pure-function-of-file-state ranker over
-the spec-side queue state. Reads `<spec-target>/proposed_changes/`
-(one entry per pending proposal, with `created_at` from each
-proposal's restricted-YAML front-matter) and
-`<spec-target>/history/` (count of `vNNN/` version directories),
-enumerates ALL ripe candidates, and emits a
-`next_output.schema.json`-conforming JSON payload on stdout with
-top-level `candidates` (array of `{action, reason, urgency,
-target?}`) and `pagination` (`{offset, limit, total, has_more}`).
-No LLM in the ranking path; no impl-side store reads (cross-side
-composition is the project-local orchestration layer's job per
-`spec.md` §"Three-layer orchestration architecture").
+Per `SPECIFICATION/contracts.md`: a pure-function-of-file-state
+ranker over the spec-side queue state. Reads
+`<spec-target>/proposed_changes/` (one entry per pending
+proposal, with `created_at` from each proposal's
+restricted-YAML front-matter) and `<spec-target>/history/`
+(count of `vNNN/` version directories), enumerates ALL ripe
+candidates, and emits a `next_output.schema.json`-conforming
+JSON payload on stdout with top-level `candidates` (array of
+`{action, reason, urgency, target?}`) and `pagination`
+(`{offset, limit, total, has_more}`). No LLM in the ranking
+path; no impl-side store reads (cross-side composition is the
+project-local orchestration layer's job per `spec.md`).
 
-In addition to the §"Wrapper CLI surface" flags, the wrapper
+In addition to the wrapper CLI surface flags, the wrapper
 accepts `--limit <count>` (positive integer, default 5) and
 `--offset <count>` (non-negative integer, default 0); a
 non-positive limit or negative offset exits 2 (UsageError). Per
-§"`.livespec.jsonc` configuration" the wrapper reads
+`SPECIFICATION/contracts.md`, the wrapper reads
 `next.prune_history_threshold` from the project root's
 `.livespec.jsonc` on each invocation (positive integer; default
 20 when absent; exit 3 with a PreconditionError naming the
@@ -40,8 +38,8 @@ urgency bucketing, sorting, and pagination live in the sibling
 `_next_ranking` module; an empty `candidates` array is the
 no-work signal.
 
-`build_parser()` is the pure argparse factory per style doc
-§"CLI argument parsing seam"; `main()` is the supervisor that
+`build_parser()` is the pure argparse factory per the style doc;
+`main()` is the supervisor that
 threads argv through the railway and pattern-matches the final
 IOResult to derive the exit code + emit the JSON payload on
 stdout (per `commands/CLAUDE.md` exception list: supervisor
@@ -91,14 +89,13 @@ _DEFAULT_OFFSET = 0
 def build_parser() -> argparse.ArgumentParser:
     """Construct the next argparse parser without parsing.
 
-    Per `SPECIFICATION/contracts.md` §"Wrapper CLI surface" +
-    §"Wrapper CLI flags": `--project-root <path>` (default
-    `Path.cwd()`), `--spec-target <path>` (defaults to
+    Per `SPECIFICATION/contracts.md`: `--project-root <path>`
+    (default `Path.cwd()`), `--spec-target <path>` (defaults to
     `<project-root>/SPECIFICATION/` when omitted),
     `--limit <count>` (default 5), and `--offset <count>`
     (default 0). `exit_on_error=False` lets argparse signal
     errors via `argparse.ArgumentError` rather than `SystemExit`,
-    per style doc §"CLI argument parsing seam".
+    per the style doc.
     """
     parser = argparse.ArgumentParser(prog="next", exit_on_error=False)
     _ = parser.add_argument("--project-root", default=None)
@@ -119,7 +116,7 @@ def _resolve_spec_target(*, namespace: argparse.Namespace, project_root: Path) -
     """Resolve --spec-target to a Path; default <project-root>/SPECIFICATION/.
 
     The default applies when --spec-target is omitted per the
-    `next` row of the §"Wrapper CLI surface" table.
+    `next` row of the wrapper CLI surface table.
     """
     if namespace.spec_target is None:
         return project_root / "SPECIFICATION"
@@ -130,7 +127,7 @@ def _validate_window_flags(
     *,
     namespace: argparse.Namespace,
 ) -> IOResult[tuple[int, int], LivespecError]:
-    """Gate --offset/--limit values per §"Wrapper CLI flags".
+    """Gate --offset/--limit values per the wrapper CLI flags contract.
 
     Returns `IOSuccess((offset, limit))` when both are in range.
     A non-positive `--limit` or negative `--offset` lifts a
@@ -156,8 +153,8 @@ def _proposal_paths(*, spec_target: Path) -> IOResult[list[Path], LivespecError]
 
     Sorted lexicographically (via `fs.list_dir`) for deterministic
     iteration order. The skill-owned `proposed_changes/README.md`
-    is excluded per `SPECIFICATION/spec.md` §"Sub-command lifecycle"
-    revise clause (a) — the README is not an in-flight proposal.
+    is excluded per `SPECIFICATION/spec.md` — the README is not
+    an in-flight proposal.
     """
     return fs.list_dir(path=spec_target / "proposed_changes").map(
         lambda entries: [
@@ -180,7 +177,7 @@ def _front_matter_to_io(
     proposal in the spec tree is a project-state precondition
     failure (the spec tree contains an unparseable file); the
     remap to `PreconditionError` lifts the exit code from 4 → 3
-    per the §"Lifecycle exit-code table" semantics.
+    per the lifecycle exit-code table semantics.
     """
     parse_result = front_matter.parse_front_matter(text=text)
     match parse_result:
@@ -198,7 +195,7 @@ def _proposal_entry(*, path: Path) -> IOResult[tuple[str, str], LivespecError]:
     """Read one proposal and return its `(target, created_at)` pair.
 
     `target` is the spec-target-relative proposal path
-    (`proposed_changes/<name>.md`) per §"Output schema".
+    (`proposed_changes/<name>.md`) per the output schema.
     Composes fs.read_text -> front_matter parse, then coerces
     the `created_at` field to `str` via `str(... or "")`. A
     missing key or `null` value becomes the empty string, which
@@ -319,7 +316,7 @@ def _resolve_prune_history_threshold(
     *,
     project_root: Path,
 ) -> IOResult[int, LivespecError]:
-    """Resolve the prune-history threshold per §"`.livespec.jsonc` configuration".
+    """Resolve the prune-history threshold per `SPECIFICATION/contracts.md`.
 
     Reads `<project-root>/.livespec.jsonc` on each invocation. A
     missing config file means the key is absent, so the default
@@ -352,9 +349,8 @@ def _rank_pipeline(
     per-invocation value resolved from `.livespec.jsonc` by
     `_resolve_prune_history_threshold`.
 
-    Per `SPECIFICATION/contracts.md` §"/livespec:next spec-side
-    thin-transport skill": the ranker is a pure function of
-    spec-side file state — no impl-side store reads and no
+    Per `SPECIFICATION/contracts.md`: the ranker is a pure function
+    of spec-side file state — no impl-side store reads and no
     subprocess probes in the ranking path.
     """
     return (
@@ -395,8 +391,8 @@ def _ranked_payload(
     """Resolve config + spec target, then rank, paginate, and serialize.
 
     Composes the per-invocation `.livespec.jsonc` threshold read
-    (`next.prune_history_threshold` per §"`.livespec.jsonc`
-    configuration") with the file-state rank pipeline so the
+    (`next.prune_history_threshold` per `SPECIFICATION/contracts.md`)
+    with the file-state rank pipeline so the
     supervisor's bind chain in `main()` stays shallow. `window`
     is the validated `(offset, limit)` pair from
     `_validate_window_flags`.

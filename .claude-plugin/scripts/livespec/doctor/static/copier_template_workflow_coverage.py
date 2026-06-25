@@ -12,8 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: copier_template_workflow_coverage.
 
-Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-invariants" → §"`copier-template-workflow-coverage`":
+Per `SPECIFICATION/contracts.md`:
 
 The invariant applies ONLY to project roots that are
 copier-template consumers, detected by the presence of a
@@ -28,8 +27,8 @@ workflow set and are exempt.
 
 For consumer repositories (marker present), the repo MUST contain
 a `.github/workflows/` directory whose set of workflow files is a
-SUPERSET of the required-file list enumerated in §"Shared
-content sync — copier template". The check fires `fail` for
+SUPERSET of the required-file list in `non-functional-requirements.md`.
+The check fires `fail` for
 every required workflow file that is missing from the
 consumer's `.github/workflows/`. Each fail finding names the
 specific missing file(s) and directs the user to run
@@ -118,9 +117,8 @@ def _skipped(*, ctx: DoctorContext, message: str) -> Finding:
 def _evaluate(*, ctx: DoctorContext) -> Finding:
     """Build the skip-or-pass-or-fail Finding for the project root.
 
-    Per `SPECIFICATION/contracts.md`
-    §"`copier-template-workflow-coverage`", the invariant applies
-    ONLY to copier-template consumers, detected by a
+    Per `SPECIFICATION/contracts.md`, the invariant applies ONLY to
+    copier-template consumers, detected by a
     `.copier-answers.yml` file at the project root. When that
     marker is absent the project root is out of scope: the check
     returns a single non-failing `skipped` finding WITHOUT

@@ -12,9 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: wiring_completeness_cross_repo.
 
-Per `SPECIFICATION/contracts.md` §"Shared code sync —
-livespec-dev-tooling" → "Cross-repo backstop" + §"Doctor
-cross-boundary invariants":
+Per `SPECIFICATION/contracts.md`:
 
   A doctor invariant `wiring-completeness-cross-repo` MUST walk
   every registered sibling repo (per the `livespec-dev-tooling`,

@@ -12,8 +12,8 @@
 # ignore markers attached to the offending argument's line below.
 """argparse boundary facade.
 
-Per style doc §"CLI argument parsing seam": construction lives
-in `commands/<cmd>.py:build_parser()` (pure factory); parsing
+Per style doc: construction lives in `commands/<cmd>.py:build_parser()`
+(pure factory); parsing
 lives here under `@impure_safe`. `parse_argv` returns
 `IOResult[Namespace, UsageError | HelpRequested]` once those
 failure-track classes are pulled in by consumer pressure.

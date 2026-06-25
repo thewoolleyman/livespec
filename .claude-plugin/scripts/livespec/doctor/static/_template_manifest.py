@@ -12,8 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Shared active-template manifest loader for manifest-driven checks.
 
-Per `SPECIFICATION/spec.md` §"Template manifest" → "Heading-coverage
-and doctor-static rewiring": the manifest-aware static check
+Per `SPECIFICATION/spec.md`: the manifest-aware static check
 `template_files_present` consults the active template's `spec_files`
 manifest. This private sibling module holds the one shared
 resolution railway:

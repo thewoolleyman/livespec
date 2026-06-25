@@ -12,12 +12,10 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: config-named-cli-callability.
 
-Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-invariants" → "`config-named-cli-callability`": for every CLI
-named in `.livespec.jsonc` — spec-side per §"Spec-side CLI
-contract" and orchestrator-side per §"Orchestrator CLI contract
-— the three named CLIs" — the named entry MUST resolve and be
-executable. A missing or non-executable resolution fires `fail`
+Per `SPECIFICATION/contracts.md`: for every CLI named in
+`.livespec.jsonc` — spec-side and orchestrator-side — the named
+entry MUST resolve and be executable. A missing or non-executable
+resolution fires `fail`
 naming the config key and value. The callability test is
 zero-shape: the named CLI resolves and is executable; no probe
 convention (no required `--version`, `--help`, or ping

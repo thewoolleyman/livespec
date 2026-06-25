@@ -18,8 +18,7 @@ surrounded by blank lines (one blank line above the opening
 fence, one blank line below the closing fence). Start-of-file
 is implicit-blank-above; end-of-file is implicit-blank-below.
 
-Per `SPECIFICATION/contracts.md`
-§"Built-in template contracts" (
+Per `SPECIFICATION/contracts.md` (
 widening): the check MUST exempt `minimal`-rooted spec_roots
 (single-file `SPECIFICATION.md` shape per `spec_root: "./"`)
 whose `SPECIFICATION.md` does NOT contain any fenced
@@ -113,13 +112,11 @@ def _pass_finding(*, ctx: DoctorContext) -> Finding:
 def _skipped_finding(*, ctx: DoctorContext) -> Finding:
     """Construct the canonical skipped-status Finding for the minimal-rooted exemption.
 
-    Per `SPECIFICATION/contracts.md`
-    §"Built-in template contracts": minimal-shape
-    spec_roots whose `SPECIFICATION.md` has no fenced gherkin
-    blocks are exempt from this check. The skipped Finding
-    documents the exemption in the canonical findings JSON
-    payload so the orchestrator's union-of-statuses exit-code
-    derivation treats it as non-failing.
+    Per `SPECIFICATION/contracts.md`: minimal-shape spec_roots whose
+    `SPECIFICATION.md` has no fenced gherkin blocks are exempt from
+    this check. The skipped Finding documents the exemption in the
+    canonical findings JSON payload so the orchestrator's
+    union-of-statuses exit-code derivation treats it as non-failing.
     """
     return Finding(
         check_id=SLUG,
