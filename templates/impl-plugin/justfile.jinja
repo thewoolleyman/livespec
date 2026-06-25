@@ -117,6 +117,15 @@ check-branch-protection:
 # ---------------------------------------------------------------
 
 bootstrap:
+    #!/usr/bin/env bash
+    # Shebang recipe: the whole body runs in ONE bash process, so the indented
+    # `if` block below is valid. A plain (non-shebang) recipe runs each line as
+    # its own command and `just` REJECTS the extra-indented `if`-body lines
+    # ("Recipe line has extra leading whitespace") — which made the rendered
+    # justfile fail to parse, breaking every `just` command for a freshly
+    # scaffolded or `copier update`-d consumer. Matches the other multi-line
+    # recipes (check, check-pre-commit, ensure-codex-plugins).
+    set -euo pipefail
     # Install the git-hook-wrapper that delegates to lefthook via
     # mise. The wrapper fires regardless of the user's shell config
     # and routes commit-msg argv[1] to the v034 D3 replay-hook stage.
