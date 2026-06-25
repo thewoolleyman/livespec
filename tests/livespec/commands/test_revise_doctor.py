@@ -1,10 +1,9 @@
 """Tests for livespec.commands._revise_doctor.
 
-Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
-→ "`revise` payload validation", the post-step doctor static
-run against the freshly-cut `vNNN/` snapshot is the gating
-point. When any fail-status finding is reported, the supervisor
-lifts to exit 3 — the gating mechanism is
+Per `SPECIFICATION/contracts.md`: the post-step doctor static run
+against the freshly-cut `vNNN/` snapshot is the gating point. When
+any fail-status finding is reported, the supervisor lifts to exit 3
+— the gating mechanism is
 `_fold_post_step_doctor_completed_process` folding fail-status
 findings to `IOFailure(PreconditionError)`.
 
@@ -140,8 +139,7 @@ def test_fold_post_step_doctor_returns_failure_on_fail_status_finding(
 ) -> None:
     """Post-step fail-status finding lifts to Failure(PreconditionError).
 
-    Per `SPECIFICATION/contracts.md` §"Sub-command wire contracts"
-    → "`revise` payload validation": when any static check fires
+    Per `SPECIFICATION/contracts.md`: when any static check fires
     `fail` during the post-step run, the revise wrapper exits 3 —
     the post-step is the gating point.
 

@@ -85,8 +85,7 @@ def test_seed_main_returns_usage_exit_code_on_missing_required_flag() -> None:
 
     Threads argv through io/cli.parse_argv and pattern-matches
     the IOFailure(UsageError) onto its err.exit_code per style
-    doc §"Exit code contract". Drives seed.main's first real
-    railway-composition behavior.
+    doc. Drives seed.main's first real railway-composition behavior.
     """
     exit_code = seed.main(argv=[])
     assert exit_code == 2
@@ -101,7 +100,7 @@ def test_seed_main_returns_precondition_exit_code_on_missing_seed_json_path(
     Composes parse_argv -> fs.read_text on the railway. The
     fs.read_text failure (FileNotFoundError -> PreconditionError)
     bubbles to seed.main's pattern-match, which lifts to exit 3
-    via err.exit_code per style doc §"Exit code contract".
+    via err.exit_code per style doc.
     """
     missing = tmp_path / "no-such-payload.json"
     exit_code = seed.main(argv=["--seed-json", str(missing)])
@@ -117,7 +116,7 @@ def test_seed_main_returns_validation_exit_code_on_malformed_payload(
     Composes parse_argv -> fs.read_text -> jsonc.loads on the
     railway. The pure parse-failure (ValidationError) reaches
     seed.main's pattern-match through bind chaining; exit 4
-    per style doc §"Exit code contract".
+    per style doc.
     """
     payload = tmp_path / "bad.json"
     _ = payload.write_text("{not json}", encoding="utf-8")
@@ -151,7 +150,7 @@ def test_seed_main_defaults_argv_to_sys_argv_when_called_without_args(
     """`main()` (no args) defaults argv to `sys.argv[1:]`.
 
     The bin/seed.py wrapper invokes `main()` per the canonical
-    6-statement wrapper shape (style doc §"Wrapper shape"). The
+    6-statement wrapper shape (style doc). The
     supervisor must therefore read sys.argv[1:] when no argv
     is supplied, otherwise the wrapper raises TypeError on
     missing keyword argument. Drives the default-argv contract
@@ -167,12 +166,11 @@ def test_seed_main_defaults_argv_to_sys_argv_when_called_without_args(
     assert exit_code == 2
     """The pure argparse factory accepts `--seed-json <path>` and binds it.
 
-    Per (`bin/seed.py
-    --seed-json <path>` is the sole wrapper entry point) and
-    style doc §"CLI argument parsing seam" (commands/<cmd>.py
-    exposes a pure `build_parser() -> ArgumentParser` factory
-    that constructs but does NOT parse). Constructing-only lets
-    us introspect the parser shape without effectful invocation.
+    Per style doc: `bin/seed.py --seed-json <path>` is the sole
+    wrapper entry point, and commands/<cmd>.py exposes a pure
+    `build_parser() -> ArgumentParser` factory that constructs but
+    does NOT parse. Constructing-only lets us introspect the parser
+    shape without effectful invocation.
     """
     parser = seed.build_parser()
     namespace = parser.parse_args(["--seed-json", "/tmp/payload.json"])
@@ -427,8 +425,8 @@ def test_seed_main_returns_exit_zero_on_successful_seed(
 ) -> None:
     """Successful seed returns exit code 0.
 
-    Per style doc §"Exit code contract": exit 0 is the canonical
-    success exit. Drives the supervisor's pattern-match success
+    Per style doc: exit 0 is the canonical success exit. Drives the
+    supervisor's pattern-match success
     branch from the cycle-76 stub `1` to the real `0`. Composes
     the now-complete success arm: parse_argv -> read_text ->
     jsonc.loads -> validate_seed_input -> write .livespec.jsonc
@@ -452,7 +450,7 @@ def test_seed_build_parser_accepts_project_root_flag() -> None:
     `--project-root <path>` as an optional CLI flag with default
     `Path.cwd()`. Seed uses this to anchor `.livespec.jsonc`
     placement (the file is written at `<project-root>/.livespec.jsonc`
-    per §"`seed`" step 1).
+    per SPECIFICATION/spec.md).
     """
     parser = seed.build_parser()
     namespace = parser.parse_args(
@@ -992,9 +990,9 @@ def test_seed_main_invokes_post_step_doctor_and_returns_exit_three_on_fail_findi
 ) -> None:
     """After seed completes, post-step doctor runs; any fail finding -> exit 3.
 
-    Per §"`seed`": "Seed is exempt from
-    pre-step doctor-static; post-step runs normally after the
-    wrapper's deterministic work completes." On any `status:
+    Per SPECIFICATION/spec.md: "Seed is exempt from pre-step
+    doctor-static; post-step runs normally after the wrapper's
+    deterministic work completes." On any `status:
     "fail"` finding from post-step, the wrapper aborts with exit
     3 after sub-command logic has already mutated on-disk state.
 
@@ -1108,9 +1106,9 @@ def test_emit_skill_owned_history_readme_writes_main_spec_history_readme(
 ) -> None:
     """`_emit_skill_owned_history_readme` writes <main-spec-root>/history/README.md.
 
-    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism":
-    the seed wrapper writes the skill-owned history/README.md for
-    every spec tree. This unit-tests the main-spec helper.
+    Per SPECIFICATION/contracts.md: the seed wrapper writes the
+    skill-owned history/README.md for every spec tree. This
+    unit-tests the main-spec helper.
     """
     from livespec.commands._seed_railway_emits import _emit_skill_owned_history_readme
     from livespec.schemas.dataclasses.seed_input import SeedInput
@@ -1205,10 +1203,9 @@ def test_emit_skill_owned_sub_spec_proposed_changes_readmes_writes_one_per_sub_s
 ) -> None:
     """The new helper writes proposed_changes/README.md for every sub-spec.
 
-    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism":
-    the seed wrapper writes the skill-owned
-    proposed_changes/README.md for every spec tree, including each
-    sub-spec. The matching main-spec helper is
+    Per SPECIFICATION/contracts.md: the seed wrapper writes the
+    skill-owned proposed_changes/README.md for every spec tree,
+    including each sub-spec. The matching main-spec helper is
     `_emit_skill_owned_proposed_changes_readme`; this helper closes
     the per-sub-spec gap.
     """
@@ -1436,11 +1433,11 @@ def test_emit_skill_owned_sub_spec_history_readmes_writes_one_per_sub_spec(
 ) -> None:
     """The new helper writes history/README.md for every sub-spec.
 
-    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism":
-    the seed wrapper writes the skill-owned history/README.md for
-    every spec tree, including each sub-spec. The matching
-    main-spec helper is `_emit_skill_owned_history_readme`; this
-    helper closes the per-sub-spec gap.
+    Per SPECIFICATION/contracts.md: the seed wrapper writes the
+    skill-owned history/README.md for every spec tree, including
+    each sub-spec. The matching main-spec helper is
+    `_emit_skill_owned_history_readme`; this helper closes the
+    per-sub-spec gap.
     """
     from livespec.commands._seed_railway_emits import (
         _emit_skill_owned_sub_spec_history_readmes,
@@ -1645,10 +1642,10 @@ def test_emit_skill_owned_sub_spec_history_v001_gitkeeps_writes_one_per_sub_spec
 ) -> None:
     """The new helper writes history/v001/proposed_changes/.gitkeep per sub-spec.
 
-    Per SPECIFICATION/contracts.md §"Sub-spec structural mechanism":
-    the seed wrapper writes `.gitkeep` markers under each
-    sub-spec's `history/v001/proposed_changes/` so the empty dir
-    survives `git add`. Sub-specs do NOT receive auto-captured
+    Per SPECIFICATION/contracts.md: the seed wrapper writes `.gitkeep`
+    markers under each sub-spec's `history/v001/proposed_changes/`
+    so the empty dir survives `git add`. Sub-specs do NOT receive
+    auto-captured
     seed.md proposed-changes, so the history/v001/
     proposed_changes/ directory is otherwise empty for sub-specs.
     """
