@@ -71,7 +71,17 @@ dropped — see `/data/projects/openbrain/prompts/AGENTS.md`):
   pointer to a real ledger id — never a parallel work queue;
 - refresh the handoff at ~context budget; archive on close via `git mv`
   with a completion banner;
-- a per-repo `prompts/AGENTS.md` defines the convention locally.
+- a per-repo `prompts/AGENTS.md` defines the convention locally;
+- **self-sufficiency:** a handoff is not ready until a fresh session
+  opening ONLY the handoff can execute its next-action without re-deriving
+  anything. Every artifact the next-action depends on is committed and
+  reachable via the Read-first chain, never only in chat. The `plan` skill
+  verifies this with a cold-open test before declaring a handoff ready, and
+  a fail-closed check rejects any handoff whose referenced artifacts are
+  missing (`livespec-zs22.3`);
+- **one path:** the next-session command names exactly ONE path (the
+  handoff). Needing to also list other files is the smell that the handoff
+  is not self-sufficient; fix the handoff, do not list more paths.
 
 ### The two seams (the Spec/Orchestrator overlap)
 
