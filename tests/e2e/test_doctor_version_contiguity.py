@@ -1,7 +1,6 @@
 """E2E doctor version-contiguity gap test.
 
-Per SPECIFICATION/scenarios.md §"Error path 3 — version-contiguity gap
-in history": a seeded project whose `history/` carries `v001/` and
+Per SPECIFICATION/scenarios.md: a seeded project whose `history/` carries `v001/` and
 `v003/` with no `v002/` trips the `doctor-version-contiguity` static
 check; the wrapper exits non-zero and the fail Finding names the first
 missing version (`v002`).

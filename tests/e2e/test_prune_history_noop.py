@@ -1,6 +1,6 @@
 """E2E prune-history no-op test.
 
-Per SPECIFICATION/contracts.md §"E2E harness contract §"Error paths": a
+Per SPECIFICATION/contracts.md: a
 project with only v001 history triggers the prune-history no-op short-circuit
 (exit 0, prune-history-no-op skipped Finding).
 """

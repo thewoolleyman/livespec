@@ -1,7 +1,6 @@
 """Single-source-of-truth guard for the canonical architecture diagram.
 
-`SPECIFICATION/spec.md` §"Contract + reference implementations
-architecture" is the ONE home of the canonical Mermaid architecture
+`SPECIFICATION/spec.md` is the ONE home of the canonical Mermaid architecture
 diagram; the repo `README.md` references that section and never embeds
 a second copy (per the repo's architecture-diagram authoring
 conventions — no duplication, no drift). This test asserts that

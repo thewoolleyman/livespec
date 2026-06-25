@@ -1,11 +1,8 @@
 """Tests for livespec.doctor.static.config_named_cli_callability.
 
-Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-invariants" → "`config-named-cli-callability`": for every CLI
-named in `.livespec.jsonc` — spec-side per §"Spec-side CLI
-contract" and orchestrator-side per §"Orchestrator CLI contract
-— the three named CLIs" — the named entry MUST resolve and be
-executable. A missing or non-executable resolution fires `fail`
+Per `SPECIFICATION/contracts.md` "`config-named-cli-callability`": for every CLI
+named in `.livespec.jsonc` — spec-side and orchestrator-side — the named entry
+MUST resolve and be executable. A missing or non-executable resolution fires `fail`
 naming the config key and value. The callability test is
 zero-shape: no probe convention (no required `--version`,
 `--help`, or ping subcommand).

@@ -1,11 +1,9 @@
 """Tests for livespec.doctor.static.copier_template_workflow_coverage.
 
-Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-invariants" → §"`copier-template-workflow-coverage`": every
+Per `SPECIFICATION/contracts.md` →: every
 consumer repository governed by livespec MUST contain a
 `.github/workflows/` directory whose set of workflow files is a
-SUPERSET of the required-file list enumerated in §"Shared
-content sync — copier template". The check fires `fail` for
+SUPERSET of the required-file list enumerated in. The check fires `fail` for
 every required file missing from the consumer's
 `.github/workflows/`; each fail finding names the missing
 file(s) and directs the user to run
@@ -13,15 +11,15 @@ file(s) and directs the user to run
 
 Acceptance scenarios from work-item li-dctwfc:
 
-  - Fixture with ALL required workflows present → `pass`.
-  - Fixture with one required workflow file deleted → `fail`
+  - Fixture with ALL required workflows present `pass`.
+  - Fixture with one required workflow file deleted `fail`
     naming that file.
-  - Fixture with multiple required workflow files missing →
+  - Fixture with multiple required workflow files missing
     one `fail` finding naming every missing file. (The check
     returns ONE `IOResult[Finding, ...]` per the orchestrator
     contract; the message enumerates all missing files.)
   - Edge case: project with `.github/workflows/` absent
-    entirely → one `fail` finding naming every required file.
+    entirely one `fail` finding naming every required file.
     Documented choice: bundle all required files into one
     finding because the corrective action (`copier update
     --vcs-ref=master`)
@@ -62,7 +60,7 @@ def _seed_project(*, tmp_path: Path) -> tuple[Path, Path]:
     The project root is seeded as a copier-template CONSUMER: a
     `.copier-answers.yml` marker file is written at the project
     root so the check's consumer-only precondition (per
-    contracts.md §"`copier-template-workflow-coverage`") is
+    contracts.md) is
     satisfied and the workflow-coverage logic runs. Tests that
     exercise the non-consumer (absent-marker) path seed their own
     project root explicitly without calling this helper.
@@ -89,8 +87,7 @@ def _seed_workflows(*, project_root: Path, names: tuple[str, ...]) -> None:
 def test_required_workflow_files_enumerates_six_canonical_entries() -> None:
     """REQUIRED_WORKFLOW_FILES matches the canonical contracts.md list.
 
-    The six enumerated files in §"Shared content sync — copier
-    template" are pinned here as a contract regression guard. If
+    The six enumerated files are pinned here as a contract regression guard. If
     the contract list ever drifts the test fails loudly so the
     drift is caught at PR review.
     """

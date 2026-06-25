@@ -1,6 +1,6 @@
 """Terminology guard for the Spec / Orchestrator / Control planes.
 
-`SPECIFICATION/spec.md` §"Workflow planes and the Planning Lane" carries
+`SPECIFICATION/spec.md` carries
 the load-bearing terminology guard of that section: the operator console
 is the **Control Plane / operator cockpit** and is NEVER a "Driver"
 ("Driver" already names the per-agent-runtime binding —

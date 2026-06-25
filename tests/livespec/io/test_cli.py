@@ -1,6 +1,6 @@
 """Tests for livespec.io.cli.
 
-Per style doc §"CLI argument parsing seam": the io/cli facade
+Per style doc: the io/cli facade
 wraps argparse's parse-args call with `@impure_safe`, returning
 `IOResult[Namespace, UsageError | HelpRequested]`. Construction
 stays pure (commands/<cmd>.py:build_parser()); parsing is the
@@ -41,7 +41,7 @@ def test_cli_parse_argv_returns_iosuccess_on_valid_args() -> None:
 def test_cli_parse_argv_maps_argparse_error_to_usage_error() -> None:
     """argparse's ArgumentError lifts to IOFailure(UsageError(...)).
 
-    Per style doc §"CLI argument parsing seam": parse_argv's
+    Per style doc: parse_argv's
     failure track is `UsageError | HelpRequested`. With
     `exit_on_error=False`, argparse raises ArgumentError on
     type-conversion failures (the case this test pins); pre-

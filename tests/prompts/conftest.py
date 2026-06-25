@@ -2,7 +2,7 @@
 
 Adds `tests/prompts/` to `sys.path` so child test modules can
 `import _harness` without per-module sys.path manipulation. Per
-SPECIFICATION/contracts.md §"Prompt-QA harness contract" (v014),
+SPECIFICATION/contracts.md (v014),
 the harness is a dedicated test-infrastructure module at
 `tests/prompts/_harness.py`; placing the directory on the import
 path lets test modules consume it via a simple top-level import.

@@ -1,14 +1,13 @@
 """Tests for livespec.validate.next_output.
 
-Per style doc §"Skill layout — `validate/`": the validator
+Per style doc: the validator
 at `validate/next_output.py` exports `validate_next_output(
 payload, schema)` returning `Result[NextOutput, ValidationError]`.
 The payload carries two required top-level keys — `candidates`
 (array of `{action, reason, urgency, target?}` objects with
 strict enum membership on `action` and `urgency`) and
 `pagination` (`{offset, limit, total, has_more}`) — per
-`SPECIFICATION/contracts.md` §"/livespec:next spec-side
-thin-transport skill" → "Output schema".
+`SPECIFICATION/contracts.md` "Output schema".
 """
 
 from __future__ import annotations

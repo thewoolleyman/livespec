@@ -1,7 +1,6 @@
 """Outside-in test for `dev-tooling/checks/schema_dataclass_pairing.py` — schema→dataclass→validator triplet pairing.
 
-Per `python-skill-script-style-requirements.md` §"Canonical
-target list" (the `check-schema-dataclass-pairing` row), for
+Per `python-skill-script-style-requirements.md` (the `check-schema-dataclass-pairing` row), for
 every `.claude-plugin/scripts/livespec/schemas/*.schema.json`,
 the check verifies a paired dataclass at
 `schemas/dataclasses/<name>.py` AND a paired validator at

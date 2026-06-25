@@ -1,6 +1,6 @@
 """Tests for livespec.doctor.static.accept_decision_snapshot_consistency.
 
-Per `SPECIFICATION/spec.md` §"Sub-command lifecycle": for every
+Per `SPECIFICATION/spec.md`: for every
 `history/vNNN/<stem>-revision.md` with decision in {accept,
 modify} and a non-empty `## Resulting Changes` section, every
 listed file MUST differ byte-for-byte between vNNN/ and

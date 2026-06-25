@@ -2,8 +2,7 @@
 
 Asserts the shebang wrapper threads its main()'s return value
 into `raise SystemExit(<code>)`, per the canonical 6-statement
-wrapper shape (SPECIFICATION/constraints.md §"Shebang-wrapper
-contract" — the wrapper has no room for path-computation logic;
+wrapper shape (SPECIFICATION/constraints.md — the wrapper has no room for path-computation logic;
 the heavy lifting lives in `livespec.commands.resolve_template`).
 
 `wrapper_runner` (in conftest.py) stubs `_bootstrap.bootstrap`

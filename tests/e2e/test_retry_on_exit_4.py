@@ -1,6 +1,6 @@
 """E2E retry-on-exit-4 test: schema-invalid payload triggers exit 4, retry succeeds.
 
-Per SPECIFICATION/contracts.md §"E2E harness contract §"Error paths": the
+Per SPECIFICATION/contracts.md: the
 mock generates a schema-invalid propose-change payload on first call (exit 4),
 then a valid payload on second call (exit 0). Mock-only; real tier skips.
 """

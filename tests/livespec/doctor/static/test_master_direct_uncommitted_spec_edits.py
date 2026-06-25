@@ -1,7 +1,6 @@
 """Tests for livespec.doctor.static.master_direct_uncommitted_spec_edits.
 
-Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-invariants" → §"`master-direct-uncommitted-spec-edits`": every
+Per `SPECIFICATION/contracts.md` →: every
 worktree (primary or secondary, per `git worktree list
 --porcelain`) whose HEAD points at the default branch MUST NOT
 carry uncommitted modifications under `<spec-root>/`. The check
@@ -12,16 +11,16 @@ Acceptance scenarios (mirrored verbatim from the work-item
 description):
 
 (a) Primary worktree HEAD on `master`, no spec-tree
-    modifications → `pass`.
+    modifications `pass`.
 (b) Primary worktree HEAD on `master`, one modified file under
-    `<spec-root>/` → `warn` naming the worktree + file.
+    `<spec-root>/` `warn` naming the worktree + file.
 (c) Primary worktree HEAD on a feature branch, modifications
-    under `<spec-root>/` → `pass` (HEAD not default branch).
+    under `<spec-root>/` `pass` (HEAD not default branch).
 (d) Secondary worktree HEAD on `master` (created via
     `git worktree add --force <path> master`), with spec-tree
-    mods → `warn`. Bypass case
+    mods `warn`. Bypass case
     primary-checkout-commit-refuse-hook-installed cannot prevent.
-(e) Multiple worktrees all on master, mixed state → one `warn`
+(e) Multiple worktrees all on master, mixed state one `warn`
     finding summarizing every non-empty-status worktree.
 """
 

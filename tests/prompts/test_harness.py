@@ -1,7 +1,7 @@
 """Unit tests for `tests/prompts/_harness.py`.
 
 Exercises every branch of the harness's behavior contract per
-SPECIFICATION/contracts.md §"Prompt-QA harness contract" (v014):
+SPECIFICATION/contracts.md (v014):
 fixture-format validation, schema-validity assertions in both
 positive and negative-test cases, and per-template
 semantic-property dispatch (registered, unregistered, assertion

@@ -125,11 +125,10 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
     future test bloat).
     """
     project_root = tmp_path
-    # Per the copier-template-workflow-coverage doctor invariant
-    # (contracts.md §"Doctor cross-boundary invariants"), every
-    # livespec-governed consumer MUST carry the seven required
-    # `.github/workflows/` files. The round-trip fixture models
-    # the post-`copier copy` state so the post-step doctor pass.
+    # Per the copier-template-workflow-coverage doctor invariant in
+    # contracts.md, every livespec-governed consumer MUST carry the seven
+    # required `.github/workflows/` files. The round-trip fixture models
+    # the post-`copier copy` state so the post-step doctor passes.
     _seed_required_workflow_files(project_root=project_root)
 
     # Step 1: seed.

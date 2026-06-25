@@ -8,8 +8,7 @@ validator) yields the same configured state as an empty `{}`
 payload run through `validate_livespec_config`.
 
 The per-operation core-default argvs in `SpecClis` are the
-load-bearing surface of `contracts.md` §"Spec-side CLI
-contract" (pre-populated with core's reference defaults); the
+load-bearing surface of `contracts.md` (pre-populated with core's reference defaults); the
 schema-mirror test below pins the schema/dataclass equality so
 the two co-authoritative declarations cannot drift silently.
 """

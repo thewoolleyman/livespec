@@ -1,6 +1,6 @@
 """Tests for livespec.validate.revise_input.
 
-Per style doc §"Skill layout — `validate/`": each validator at
+Per style doc: each validator at
 `validate/<name>.py` exports a function
 `validate_<name>(payload: dict, schema: dict) -> Result[<Dataclass>, ValidationError]`
 where `<Dataclass>` is the paired dataclass at

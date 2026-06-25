@@ -1,6 +1,6 @@
 """Tests for livespec.validate.template_config.
 
-Per style doc §"Skill layout — `validate/`": validator at
+Per style doc: validator at
 `validate/template_config.py` exports
 `validate_template_config(payload, schema)` returning
 `Result[TemplateConfig, ValidationError]`.
@@ -9,8 +9,7 @@ A template's `template.json` declares its format version,
 spec_root location, optional doctor extensibility hooks, and
 optional LLM-prompt paths.
 
-Per the v2 manifest mechanism (SPECIFICATION/spec.md §"Template
-manifest" + contracts.md §"Template manifest wire contract"):
+Per the v2 manifest mechanism (SPECIFICATION/spec.md + contracts.md):
 v2 templates additionally declare a `spec_files` manifest whose
 every entry carries `{kind: markdown}`. livespec manages no
 diagram file kinds; an alternate tool's image is an opaque
@@ -317,7 +316,7 @@ def test_shipped_livespec_with_diagrams_template_files_present() -> None:
 def test_shipped_livespec_with_diagrams_seed_spec_carries_mermaid_block() -> None:
     """The variant's seeded spec.md carries a fenced mermaid example block.
 
-    Per SPECIFICATION/spec.md §"Template manifest": the
+    Per SPECIFICATION/spec.md: the
     `livespec-with-diagrams` variant is Mermaid-first — it seeds
     diagram conventions and example fenced blocks into the
     template's spec files. The fenced block is plain markdown

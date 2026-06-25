@@ -1,15 +1,13 @@
 """Tests for livespec.validate.livespec_config.
 
-Per style doc §"Skill layout — `validate/`": validator at
+Per style doc: validator at
 `validate/livespec_config.py` exports
 `validate_livespec_config(payload, schema)` returning
 `Result[LivespecConfig, ValidationError]`. The schema marks
 all fields optional with documented defaults; an empty `{}`
 payload validates and produces the all-defaults dataclass.
 
-Per `SPECIFICATION/contracts.md` §"Spec-side CLI contract" +
-§"Orchestrator CLI contract — the three named CLIs" +
-§"Plugin distribution": core's config schema carries the
+Per `SPECIFICATION/contracts.md`: core's config schema carries the
 spec-tier facts (`template`, `spec_root`), the seven spec-side
 CLI names (pre-populated with core's reference defaults,
 individually overridable), and the optional orchestrator
@@ -85,7 +83,7 @@ def test_validate_livespec_config_returns_success_for_explicit_template() -> Non
 def test_validate_livespec_config_tolerates_unknown_top_level_sections() -> None:
     """Unknown top-level sections validate (root is `additionalProperties: true`).
 
-    Per `SPECIFICATION/contracts.md` §"Plugin distribution":
+    Per `SPECIFICATION/contracts.md`:
     "`.livespec.jsonc`'s schema root is `additionalProperties:
     true`; each plugin or sibling consumer owns a top-level
     section named for itself and MUST validate its own section
@@ -115,7 +113,7 @@ def test_validate_livespec_config_tolerates_unknown_top_level_sections() -> None
 def test_validate_livespec_config_spec_root_defaults_to_specification() -> None:
     """`spec_root` defaults to "SPECIFICATION" and is overridable.
 
-    Per `SPECIFICATION/contracts.md` §"Spec-side CLI contract":
+    Per `SPECIFICATION/contracts.md`:
     "Core's config schema carries spec-tier facts (`template`,
     `spec_root`), the orchestrator selection, and the named
     CLIs."
@@ -143,7 +141,7 @@ def test_validate_livespec_config_spec_root_defaults_to_specification() -> None:
 def test_validate_livespec_config_spec_clis_default_to_core_reference_wrappers() -> None:
     """All seven spec-side CLI names pre-populate with core's reference defaults.
 
-    Per `SPECIFICATION/contracts.md` §"Spec-side CLI contract":
+    Per `SPECIFICATION/contracts.md`:
     the spec-side lifecycle operations — seed, propose-change,
     revise, critique, doctor, prune-history, next — are each
     named in `.livespec.jsonc` and pre-populated with core's
@@ -183,7 +181,7 @@ def test_validate_livespec_config_spec_clis_default_to_core_reference_wrappers()
 def test_validate_livespec_config_spec_clis_individually_overridable() -> None:
     """Overriding one spec-side CLI leaves every sibling at its core default.
 
-    Per `SPECIFICATION/contracts.md` §"Spec-side CLI contract":
+    Per `SPECIFICATION/contracts.md`:
     "an alternate implementation of any one operation is
     selected by overriding its name in config. `doctor` is NOT
     privileged: it is config-named and overridable like any
@@ -222,8 +220,7 @@ def test_validate_livespec_config_rejects_spec_clis_empty_argv() -> None:
 def test_validate_livespec_config_orchestrator_absent_yields_none() -> None:
     """When no orchestrator section is configured, the dataclass carries None.
 
-    Per `SPECIFICATION/contracts.md` §"Orchestrator CLI contract
-    — the three named CLIs" the orchestrator selection is wired
+    Per `SPECIFICATION/contracts.md` the orchestrator selection is wired
     by `.livespec.jsonc`; a project without one simply has no
     orchestrator-side CLIs for doctor to verify.
     """
@@ -266,8 +263,7 @@ def test_validate_livespec_config_orchestrator_missing_cli_is_rejected() -> None
     """An orchestrator section missing any of the three CLIs returns Failure.
 
     The three orchestrator-side CLIs are the WHOLE cross-boundary
-    contract (per §"Orchestrator CLI contract — the three named
-    CLIs"); a partial section is a wiring error, not a default.
+    contract; a partial section is a wiring error, not a default.
     """
     schema = _SCHEMA
     payload: dict[str, object] = {

@@ -1,6 +1,6 @@
 """Tests for livespec.validate.proposal_findings.
 
-Per style doc §"Skill layout — `validate/`": validator at
+Per style doc: validator at
 `validate/proposal_findings.py` exports
 `validate_proposal_findings(payload, schema)` returning
 `Result[ProposalFindings, ValidationError]`. Mirrors the
@@ -9,7 +9,7 @@ finding / seed_input validator-as-factory-style shape.
 li-8mj2lz, PC #4 sub-proposal 1: the optional `spec_commitments`
 block's shape (kebab-case id_hint, non-empty description,
 optional supersedes[]) is enforced by the JSON Schema and lifts
-to ValidationError (→ exit 4) at this validator's boundary.
+to ValidationError (exit 4) at this validator's boundary.
 """
 
 from __future__ import annotations
@@ -113,7 +113,7 @@ def test_validate_proposal_findings_round_trips_name_text(*, name: str) -> None:
 
 # li-8mj2lz, PC #4 sub-proposal 1: spec_commitments validation.
 # The schema is the validation seam — these tests pin the schema's
-# enforcement of the spec.md §"Spec→impl commitment declaration"
+# enforcement of the spec.md
 # contract so any future schema edit that loosens the shape (e.g.,
 # drops the kebab pattern, drops minLength) is caught here.
 

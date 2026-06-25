@@ -1,7 +1,6 @@
 """copier_template_smoke — smoke test for templates/impl-plugin/.
 
-Per livespec-core/SPECIFICATION/contracts.md §"Shared content sync
-— copier template", livespec-core publishes a copier template at
+Per livespec-core/SPECIFICATION/contracts.md, livespec-core publishes a copier template at
 `templates/impl-plugin/` and every `livespec-impl-*` repository
 MUST be generated from it. This check is the acceptance gate that
 the template is actually usable: it runs `copier copy` against a
@@ -15,8 +14,7 @@ per-commit smoke test. The structural assertions here are the
 load-bearing acceptance gate for the C.6 sub-task of the Phase C
 epic (li-jsl / li-vyj).
 
-Per livespec-core/SPECIFICATION/contracts.md §"Shared code sync —
-livespec-dev-tooling" → Template gate, the template's `justfile.jinja`
+Per livespec-core/SPECIFICATION/contracts.md Template gate, the template's `justfile.jinja`
 stamps the full canonical check-slug aggregate at copier-copy time
 from the committed STATIC DATA file `canonical-slugs.yml` (a
 release-time projection of

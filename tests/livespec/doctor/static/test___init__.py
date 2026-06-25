@@ -2,8 +2,7 @@
 
 The static-doctor check registry is the seam where each doctor
 check module gets pulled into existence via consumer pressure
-(see SPECIFICATION/contracts.md §"Per-sub-spec doctor
-parameterization"). Until any check module is authored under
+(see SPECIFICATION/contracts.md). Until any check module is authored under
 TDD, the package's `__init__.py`
 holds only the canonical no-op preamble (the the mirror-pairing rule
 mirror-pairing-rule's `__init__.py` carve-out: a file whose body
@@ -19,8 +18,7 @@ add per-check tests under `tests/livespec/doctor/static/test_
 <check_name>.py` (one-to-one mirror pairing) and re-register
 each new module in the registry as consumer pressure pulls it in.
 
-Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-invariants": doctor's entire cross-boundary job is wiring
+Per `SPECIFICATION/contracts.md`: doctor's entire cross-boundary job is wiring
 soundness. Doctor MUST NOT inspect gaps, work-items, dependency
 graphs, memos, or any other orchestrator-private state. The
 semantic work-item invariants formerly registered here
@@ -74,8 +72,7 @@ def test_applicability_by_tree_kind_maps_main_to_all_eight_checks() -> None:
 def test_registry_excludes_retired_cross_boundary_work_item_invariants() -> None:
     """The registry carries NONE of the retired work-item invariants.
 
-    Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-    invariants": "Doctor MUST NOT inspect gaps, work-items,
+    Per `SPECIFICATION/contracts.md`: "Doctor MUST NOT inspect gaps, work-items,
     dependency graphs, memos, or any other orchestrator-private
     state — those disciplines are owned by the orchestrator."
     The catalogue comprises `config-named-cli-callability` plus
@@ -104,8 +101,7 @@ def test_work_items_provider_acquisition_seam_is_removed() -> None:
     work-items through `_work_items_provider.resolve_provider_path`
     (the `LIVESPEC_IMPL_LIST_WORK_ITEMS` env seam) threaded via
     `DoctorContext.work_items_provider`. Per
-    `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-    invariants" doctor no longer reads any orchestrator-private
+    `SPECIFICATION/contracts.md` doctor no longer reads any orchestrator-private
     state, so both the module and the context field MUST be gone.
     """
     import importlib.util
@@ -124,8 +120,7 @@ def test_work_items_provider_acquisition_seam_is_removed() -> None:
 def test_registry_excludes_retired_stale_cleanup_checks() -> None:
     """The registry carries NONE of the retired stale-cleanup checks.
 
-    Per `SPECIFICATION/contracts.md` §"Doctor cross-boundary
-    invariants" (v105): the catalogue comprises the single
+    Per `SPECIFICATION/contracts.md` (v105): the catalogue comprises the single
     cross-boundary invariant `config-named-cli-callability` plus
     the repo-tier invariants defined in that section. The v103
     re-steering (Proposal 5.4) removed the impl-side cleanup

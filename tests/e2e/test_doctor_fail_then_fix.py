@@ -1,6 +1,6 @@
 """E2E doctor-fail-then-fix test.
 
-Per SPECIFICATION/contracts.md §"E2E harness contract §"Error paths": a
+Per SPECIFICATION/contracts.md: a
 pre-seeded SPECIFICATION/spec.md with a mixed-case `Shall` trips
 bcp14-keyword-wellformedness; propose-change + revise with --skip-pre-check
 fixes it; second doctor invocation exits 0.

@@ -1,6 +1,6 @@
 """Contract-conformance test for the doctor per-finding disposition dialogue.
 
-`SPECIFICATION/contracts.md` §"Doctor per-finding disposition dialogue"
+`SPECIFICATION/contracts.md`
 mandates that the `doctor` operation prose — which core ships at
 `.claude-plugin/prose/doctor.md` and the active Driver binding executes
 — offers a per-finding disposition menu of at minimum FIVE options in a

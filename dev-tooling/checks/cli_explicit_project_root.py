@@ -1,7 +1,7 @@
 """cli_explicit_project_root — every spec-side CLI accepts an explicit project-root.
 
 Enforces the load-bearing, mechanically-checkable rule of
-`SPECIFICATION/contracts.md` §"CLI shape conventions": *"Explicit
+`SPECIFICATION/contracts.md`: *"Explicit
 project-root addressing — every CLI accepts an explicit project-root,
 so a consumer can address any repository's state through the named CLI
 rather than by reading anything directly."*
@@ -17,8 +17,7 @@ livespec-besm.2):
 - "`--json` everywhere" — realized as the JSON wire format on
   stdin/stdout (input via `--*-json` flags, output as schema-conforming
   JSON on stdout), not a literal `--json` toggle flag.
-- "Stable exit codes" — governed by the shared §"Lifecycle exit-code
-  table", not a per-CLI flag.
+- "Stable exit codes" — governed by the shared, not a per-CLI flag.
 - "stdin/stdout plus files for payloads" — a wire convention.
 
 The check scans, at the consuming repo `cwd`, every Python module

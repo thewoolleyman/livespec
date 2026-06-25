@@ -1,7 +1,7 @@
 """Outside-in test for `dev-tooling/checks/cli_explicit_project_root.py`.
 
 Covers the explicit-project-root convention guard
-(`SPECIFICATION/contracts.md` §"CLI shape conventions"): a spec-side
+(`SPECIFICATION/contracts.md`): a spec-side
 CLI module (one defining a `build_parser()` factory) passes when its
 `build_parser` registers `--project-root` and fails when it does not;
 a module with no `build_parser` is not a CLI and is skipped; an absent

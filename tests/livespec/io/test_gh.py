@@ -1,6 +1,6 @@
 """Tests for livespec.io.gh.
 
-Per style doc §"Skill layout — `io/`": every operation that
+Per style doc: every operation that
 touches the gh CLI binary lives at this seam under @impure_safe so
 the railway flows through IOResult. The gh facade exposes three
 merged-PR/branch introspection operations:

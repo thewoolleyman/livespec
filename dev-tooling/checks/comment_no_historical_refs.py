@@ -1,7 +1,7 @@
 """comment_no_historical_refs — ban historical-bookkeeping references in source comments.
 
-Enforces SPECIFICATION/non-functional-requirements.md §"Comment
-discipline" Rule 2 — comments in first-party trees MUST NOT cite
+Enforces SPECIFICATION/non-functional-requirements.md Rule 2 — comments in
+first-party trees MUST NOT cite
 version markers, decision-id markers, phase-numbering markers,
 cycle-numbering markers, or commit-reference phrases. The audit
 trail of decisions lives in the spec history tree, the version-

@@ -3,7 +3,7 @@
 Adds `tests/e2e/` to `sys.path` so test modules can `import fake_claude`,
 `import real_claude`, and `import harness` without per-module sys.path
 manipulation. Mirrors the tests/prompts/conftest.py pattern per
-SPECIFICATION/contracts.md §"E2E harness contract".
+SPECIFICATION/contracts.md.
 
 Also auto-scrubs inherited `GIT_*` environment variables (set by lefthook
 when tests run as a pre-commit hook) so the wrapper-chain's internal git

@@ -1,8 +1,6 @@
 """Tests for livespec.doctor.static.wiring_completeness_cross_repo.
 
-Per `SPECIFICATION/contracts.md` §"Shared code sync —
-livespec-dev-tooling" → "Cross-repo backstop" + §"Doctor
-cross-boundary invariants":
+Per `SPECIFICATION/contracts.md` "Cross-repo backstop":
 
   A doctor invariant `wiring-completeness-cross-repo` MUST walk
   every registered sibling repo, read its `justfile`'s `check`
@@ -14,36 +12,36 @@ cross-boundary invariants":
 
 Tests cover:
 
-  - All siblings wire the full canonical set → `pass`.
-  - One sibling missing one slug → `fail` + finding lists the
+  - All siblings wire the full canonical set `pass`.
+  - One sibling missing one slug `fail` + finding lists the
     (sibling, slug) pair.
-  - Multiple siblings each missing slugs → `fail` + every pair
+  - Multiple siblings each missing slugs `fail` + every pair
     in the finding's message.
   - `local_clone` path resolution: justfile read from the local
     clone via `git -C <local_clone> show HEAD:justfile` (NOT a
     filesystem read — the family-wide bare-flag invariant on
     primary checkouts makes the working tree intentionally
     stale, so the git db is the canonical source).
-  - `local_clone` path exists but isn't a git repository →
+  - `local_clone` path exists but isn't a git repository
     graceful fall-through to GitHub Path B.
   - `local_clone` exists as a git repo but `justfile` was never
-    committed at HEAD → graceful fall-through to GitHub Path B.
+    committed at HEAD graceful fall-through to GitHub Path B.
   - Bare clone (`git init --bare` + commit pushed from a
-    working clone) → Path A reads the justfile via
+    working clone) Path A reads the justfile via
     `git show HEAD:` correctly. This is the bare-flag invariant
     compatibility test.
   - GitHub-fallback path: `gh api` mocked via monkeypatching
     `livespec.io.proc.run_subprocess`.
   - Sibling has no justfile at the local clone AND GitHub
-    fallback returns empty → `fail` with `:no-justfile-resolved`
+    fallback returns empty `fail` with `:no-justfile-resolved`
     placeholder.
-  - Sibling justfile has no `check:` recipe → `fail` with
+  - Sibling justfile has no `check:` recipe `fail` with
     `:no-check-recipe` placeholder.
-  - `cross_repo_targets` block absent → `skipped`.
+  - `cross_repo_targets` block absent `skipped`.
   - Host repo (local_clone == project_root) auto-excluded;
     when manifest has only the host, the result is `skipped`.
-  - .livespec.jsonc absent → `skipped`.
-  - .livespec.jsonc malformed → `skipped`.
+  - .livespec.jsonc absent `skipped`.
+  - .livespec.jsonc malformed `skipped`.
 
 The tests use a real `git init`'d directory (`tmp_path`) for
 the local-clone side — the Path A code reads via
