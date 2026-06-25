@@ -654,10 +654,21 @@ pass `--no-verify`.
   sibling repo's legacy records — the fleet shares one schema validator over
   independent stores, so the originating repo's CI stays green while every
   sibling store becomes unreadable.
-- **Dogfooding pins always pull HEAD.** For pin freshness across the
-  self-consuming fleet, default to "always pull HEAD"; never invoke
-  "reproducibility" or "pin + Dependabot/stable-releases" as a trade-off — a
-  stable pin hides the upstream breakage dogfooding exists to surface.
+- **Dogfooding pins track the latest RELEASE, not raw master.** Across the
+  self-consuming fleet, cross-repo pins resolve to core's latest release tag,
+  because a release carries release-gate validation (`release-tag.yml`'s
+  mutation testing, full heading coverage, no LLOC soft-warnings) that
+  per-commit `just check` deliberately skips — a release is the more-validated
+  artifact. This does NOT reintroduce stale pins: release-please cuts a release
+  on every `feat:`/`fix:` push, so "latest release" stays close to master, and
+  the cross-repo fan-out's `bump-pin` auto-rewrites every pin (`compat.pinned`
+  and the other pin formats) to each new release tag — so upstream breakage
+  still surfaces promptly, now gated by the release rather than by raw HEAD.
+  `bump-pin` rewriting a sibling's `compat.pinned` from `"master"` to a release
+  tag is correct-by-design: the `"master"` values are bootstrap placeholders
+  that become release tags on the first successful fan-out. One accepted seam:
+  `refactor:`/`perf:` commits cut no release, so a behavior-changing refactor
+  reaches siblings only on the next `feat:`/`fix:` release.
 - **Secrets are probe-only.** Read secret presence with `printenv NAME | wc -c`,
   never echo a value; never print tokens, env dumps, or remote URLs that may
   embed a token (e.g. a sandbox clone remote); on accidental exposure, rotate.
