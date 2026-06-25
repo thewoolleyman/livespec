@@ -193,6 +193,54 @@ def _extract_stamped_targets(*, justfile_text: str) -> tuple[str, ...]:
     return tuple(_TARGETS_LINE_RE.findall(justfile_text))
 
 
+def _verify_justfile_parses(*, target: Path, log: structlog.stdlib.BoundLogger) -> bool:
+    """Verify the generated `justfile` parses under `just`.
+
+    `just` is the generated repo's sole task runner and parses the WHOLE
+    justfile before running any recipe, so an unparseable justfile breaks every
+    `just` command (`bootstrap`, `check`, the worktree-* recipes). The
+    text-grep assertions elsewhere never invoke `just`, so this is the only
+    gate that exercises the parse: `just --summary` parses and lists recipe
+    names without running anything. Returns True on a clean parse, False (after
+    emitting a diagnostic) on a parse error. `just` is always on PATH where
+    this check runs — it is invoked via `just check-copier-template-smoke`.
+    """
+    justfile = target / "justfile"
+    result = subprocess.run(
+        ["just", "--justfile", str(justfile), "--working-directory", str(target), "--summary"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        log.error(
+            "generated justfile does not parse under `just`",
+            check_id="copier-template-smoke-justfile-parse-failed",
+            returncode=result.returncode,
+            stderr_tail=result.stderr[-2000:],
+            hint="A multi-line recipe must be a shebang recipe; see the bootstrap recipe.",
+        )
+        return False
+    return True
+
+
+def _verify_generated_justfile(
+    *, target: Path, log: structlog.stdlib.BoundLogger, repo_root: Path
+) -> int | None:
+    """Verify the generated justfile: it parses under `just`, then stamps every
+    canonical check slug.
+
+    Returns the verified slug count on success, or None if EITHER the justfile
+    fails to parse OR the canonical-slug array drifts (each emits its own
+    diagnostic). Folding both gates behind one return keeps main() within the
+    return-statement lint budget; the parse gate runs FIRST because an
+    unparseable justfile is the more fundamental failure.
+    """
+    if not _verify_justfile_parses(target=target, log=log):
+        return None
+    return _verify_canonical_slug_stamping(log=log, target=target, repo_root=repo_root)
+
+
 def main() -> int:
     log = _configure_logger()
     repo_root = Path.cwd()
@@ -240,17 +288,17 @@ def main() -> int:
                 failures=json_failures,
             )
             return 1
-        # Wiring-completeness invariant: the generated `justfile`
-        # MUST stamp every canonical check slug, in alphabetical
-        # order, inside the `check:` recipe's `targets=(...)` array.
-        # Helper handles the skip-vs-assert branch + diagnostic
-        # emission.
-        canonical_outcome = _verify_canonical_slug_stamping(
-            log=log, target=target, repo_root=repo_root
-        )
-        if canonical_outcome is None:
+        # The generated `justfile` MUST parse under `just` AND stamp every
+        # canonical check slug. `_verify_generated_justfile` runs the parse gate
+        # first (the text-grep assertions never invoke `just`, so it is the only
+        # gate that exercises the parse — it caught the non-shebang bootstrap
+        # recipe `just` rejected with "extra leading whitespace"), then the
+        # canonical-slug assertion; it returns the verified slug count, or None
+        # if EITHER fails. Combining them keeps main()'s return-statement count
+        # within the lint budget (PLR0911).
+        slugs_verified = _verify_generated_justfile(target=target, log=log, repo_root=repo_root)
+        if slugs_verified is None:
             return 1
-        slugs_verified = canonical_outcome
     log.info(
         "copier template smoke check passed",
         check_id="copier-template-smoke-ok",
