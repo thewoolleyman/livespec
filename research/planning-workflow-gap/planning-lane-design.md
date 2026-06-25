@@ -270,6 +270,148 @@ maintainer approval first — the human owns the cut).
 - Adopter auto-bump (under Pin-freshness): needs the fan-out fixed, the
   `adopters` manifest, the `posture` field, and the `4v7v.6` deadlock
   guard. Downstream.
-- Whether the reasoning-capture (`research/`) ever needs its own thin
-  skill, or stays served by `propose-change`/`critique` intake + the
-  persistence hook. Lean: no new skill until the convention strains.
+- Whether `research/`-only threads (reasoning with no handoff) ever need
+  more than the `plan` skill already provides. Lean: no, `plan` covers it
+  (see Refinements above).
+
+## Architecture diagrams (increment-1 framing)
+
+The three diagrams below are the final set agreed in the 2026-06-25 design
+session (full skill names; `IMPLEMENTATION` inside the Orchestrator Plane;
+filesystem/data stores as cylinders; every skill uniform with no temporal
+markers; `plan/` a plain store node). Increment 1 lands them in
+`SPECIFICATION/spec.md` via `propose-change` then `revise`; once there, the
+spec's canonical diagram is the single source of truth and this section
+becomes a reference to it.
+
+### Diagram 1: Planes
+
+```mermaid
+flowchart TB
+    human(["HUMAN"])
+    subgraph control["CONTROL PLANE: operator console (livespec-console-*)"]
+        console["console TUI / GUI: the single human interface;<br/>invokes every skill, shows every plane's state, surfaces attention"]
+    end
+    subgraph spec["SPEC PLANE: livespec core (generic deployable plugin)"]
+        SPECIFICATION[("SPECIFICATION/")]
+        planstore[("plan/&lt;topic&gt;/")]
+        lifecycle["spec skills: seed, propose-change, revise, critique, doctor, next"]
+    end
+    subgraph orch["ORCHESTRATOR PLANE: the producer (reference: beads-fabro)"]
+        orchskills["orchestrator skills: plan, groom, capture-work-item,<br/>capture-impl-gaps, capture-spec-drift, implement"]
+        ledger[("Ledger")]
+        dispatcher["Dispatcher to Loop / Fabro"]
+        impl[("IMPLEMENTATION")]
+    end
+
+    human ==> console
+    console -. "drives, monitors" .-> spec
+    console -. "drives, monitors" .-> orch
+
+    orchskills -->|"plan: writes"| planstore
+    planstore -. "matures: propose-change" .-> lifecycle
+    orchskills -->|"file work-items (GAP, plan, direct)"| ledger
+    orchskills -. "file proposed-changes (DRIFT, plan)" .-> lifecycle
+    ledger --> dispatcher
+    dispatcher --> impl
+    impl -. "teaches back (DRIFT source)" .-> orchskills
+
+    classDef plane fill:#f6f8fa,stroke:#444
+    class control,spec,orch plane
+```
+
+### Diagram 2: Skills
+
+```mermaid
+flowchart TB
+    human(["HUMAN"]) ==> console
+    subgraph control["CONTROL PLANE"]
+        console["console TUI / GUI: single interface;<br/>invokes every skill, shows every plane's state, surfaces attention<br/>(the standing, event-sourced realization of the orchestrate skill)"]
+    end
+    subgraph sp["SPEC-PLANE skills: livespec core (via the Driver)"]
+        seed["seed"]
+        pc["propose-change"]
+        rev["revise"]
+        crit["critique"]
+        doc["doctor"]
+        sn["next"]
+    end
+    subgraph op["ORCHESTRATOR-PLANE skills: reference beads-fabro"]
+        plan["plan: capture a planning thread in plan/&lt;topic&gt;/<br/>(research + handoff), anchor a ledger epic, route matured pieces"]
+        groom["groom: epic to ready slices"]
+        cwi["capture-work-item: file impl work"]
+        cig["capture-impl-gaps: detect spec to impl gaps"]
+        csd["capture-spec-drift: detect impl to spec drift"]
+        imp["implement: Red to Green a work-item"]
+        on["next, list-work-items"]
+    end
+    console --> sp
+    console --> op
+    plan -. "to spec" .-> pc
+    plan -. "to work" .-> cwi
+    plan -. "epic ready" .-> groom
+    groom -. "dispatch" .-> imp
+    csd -. "to spec" .-> pc
+```
+
+### Diagram 3: Canonical contract (existing spec.md diagram, modified)
+
+```mermaid
+flowchart TB
+    human(["HUMAN"])
+    subgraph control["CONTROL PLANE: operator console"]
+        console["console TUI / GUI: the single human interface"]
+    end
+    subgraph driver["DRIVER (one per agent runtime): livespec-driver-{claude,codex,opencode,pi}"]
+        drv["interactive driver (thin): binds core's spec-side CLIs<br/>+ harness-neutral prose to ONE tool runtime"]
+    end
+    subgraph core["CORE: livespec, SPEC PLANE (agnostic to BOTH Driver and orchestrator)"]
+        SPECIFICATION[("SPECIFICATION/")]
+        planstore[("plan/&lt;topic&gt;/")]
+        scli["spec-side reference CLIs: seed, propose-change, revise, critique, doctor, prune-history"]
+        prose["harness-neutral prose"]
+        cfg[".livespec.jsonc: wiring table (spec-side CLIs + the 3 orchestrator CLIs)"]
+    end
+    subgraph orch["ORCHESTRATOR, ORCHESTRATOR PLANE (one of N): git-jsonl (serial), Beads/Dolt + Fabro (parallel; dogfood default)"]
+        rdr["spec-reader CLI"]
+        gap["gap-capture CLI"]
+        drift["drift-capture CLI"]
+        subgraph internals["INTERNAL (invisible to core AND Driver)"]
+            dispatcher["Dispatcher: owns parallelism"]
+            ledger[("Ledger: work-items + deps")]
+            loop["Loop: per-work-item producer"]
+            oskills["orchestrator skills: plan, groom, capture-work-item, capture-impl-gaps, capture-spec-drift, implement"]
+        end
+        impl[("IMPLEMENTATION: work product")]
+    end
+    zerodep["ZERO direct Driver to orchestrator deps (load-bearing invariant)"]
+
+    human ==>|"drives everything via the console"| console
+    console -->|"spec lifecycle"| drv
+    console -->|"orchestrator skills + gap/drift consent"| oskills
+
+    drv -. "D1: reads prose" .-> prose
+    drv -->|"D2: wraps + invokes spec-side CLIs"| scli
+    cfg -. "D3: names the spec-side CLIs" .-> drv
+    cfg -. "O1: names the 3 orchestrator CLIs" .-> orch
+    rdr -->|"O2: reads BY CATEGORY"| SPECIFICATION
+    drift -->|"O3: files proposed-changes (human accepts)"| scli
+    scli -. "O4: doctor, CLIs resolve + callable" .-> orch
+
+    rdr -.-> gap
+    rdr -.-> drift
+    gap -->|"GAP corrects impl"| ledger
+    oskills -.-> gap
+    oskills -.-> drift
+    oskills -->|"plan: writes"| planstore
+    planstore -. "matures: propose-change" .-> scli
+    dispatcher <--> ledger
+    dispatcher --> loop
+    loop --> impl
+    impl -. "DRIFT corrects spec" .-> drift
+
+    driver -.- zerodep
+    zerodep -.- orch
+    classDef noteStyle fill:#fff8c5,stroke:#b08800,color:#111
+    class zerodep noteStyle
+```

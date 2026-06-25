@@ -19,7 +19,8 @@ Derive every "what's done / what's next" answer from that, plus
 ## Read first
 
 1. `research/planning-workflow-gap/planning-lane-design.md` — the design,
-   the three planes, the locked decisions, the increment sequence.
+   the three planes, the locked decisions, the increment sequence, and the
+   three FINAL diagrams (§"Architecture diagrams") ready to land in the spec.
 2. `research/factory-conformance/cross-repo-conformance-pattern.md` — the
    companion Conformance Pattern (files its milestones through this lane).
 3. `research/planning-workflow-gap/missing-planning-workflow-thread.md` —
@@ -36,21 +37,31 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status at capture (2026-06-25)
+## Status (refreshed 2026-06-25)
 
-Increment 0 (this capture) is landing as the `planning-lane-capture` PR:
-this handoff + the design doc + the Conformance Pattern reconcile
-(`livespec-zs22.1`). Future increments (1–5) are drafted in the design doc
-§"Increment sequence" and are filed as ledger children **as each ripens**
-— the maintainer owns the cut, so the front-end drafts and the maintainer
-approves before filing. Do not pre-file the whole breakdown.
+Increment 0 and the design refinements have landed (PRs #568, #572);
+`livespec-zs22.1` is closed. **Increment 1 (`livespec-zs22.2`) is in
+progress**: the three final diagrams are captured in the design doc
+§"Architecture diagrams". Increments 2-5 are drafted in the design doc
+§"Increment sequence" and filed as ledger children as each ripens (the
+maintainer owns the cut: draft, get approval, then file).
 
 ## Next concrete action
 
-Increment 1: **README + the `spec.md` architecture diagram** — capture the
-three planes, the Planning Lane, the two seams, and the Control Plane so
-the framing is not lost (maintainer requirements a + b). Draft, get
-approval on the diagram, then file it as `livespec-zs22.2` and land it.
+Finish increment 1 (`livespec-zs22.2`). The three diagrams are FINAL and
+captured in the design doc §"Architecture diagrams (increment-1 framing)";
+do not re-derive them. This is execution, not design:
+
+1. Land the three diagrams plus a short high-level framing section (the
+   three planes, the Planning Lane, the Control-Plane role) into
+   `SPECIFICATION/spec.md` via `/livespec:propose-change` then
+   `/livespec:revise` (requirement b). Keep it to the framing; the detailed
+   `plan` API, `plan/<topic>/` rules, and archive concern are increments
+   2-3, not the spec now.
+2. Add a `README` section on how livespec relates to the field (spec-kit,
+   Kiro, Cline, beads) and the gap this closes (requirement a). Direct edit.
+3. Add the spec/diagram authoring conventions to `AGENTS.md` (realizes
+   `livespec-1bvl`). Direct edit.
 
 ## Constraints / non-negotiables
 
