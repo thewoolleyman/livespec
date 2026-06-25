@@ -17,14 +17,23 @@ Leaving the primary dirty, committing on it, orphaning a worktree, or asking
 the user whether to commit are workflow failures — not acceptable stopping
 points.
 
-This rule is **mechanically enforced**: the `refuse-primary-commit` lefthook
-job (`dev-tooling/refuse-primary-commit.sh`) blocks any `git commit` made on
-the primary checkout and is wired BOTH as the first pre-commit job AND as a
-commit-msg backstop (the backstop catches `git commit --allow-empty`). Linked
-worktrees pass — the gate distinguishes primary from linked with portable,
-config-free detection: `git rev-parse --git-common-dir` and `--git-dir` resolve
-to the SAME path on the primary (refuse) and DIFFER in a linked worktree
-(allow). This needs no `git config` key and works in every clone identically.
+This rule is **mechanically enforced** by the STRUCTURAL commit-refuse hook —
+the `dev-tooling/git-hook-wrapper.sh` body that `just bootstrap` installs (via
+`just install-commit-refuse-hooks`) at `.git/hooks/pre-commit`,
+`.git/hooks/pre-push`, and `.git/hooks/commit-msg`. It blocks any `git commit`
+or `git push` made on the primary checkout UNLESS `git config
+livespec.sandboxExempt` is `true` (the explicit, declared exemption a Fabro
+sandbox — a fresh full clone that is structurally a primary but legitimately
+commits during Red-Green-Replay — sets on itself), then delegates to
+mise-managed lefthook so the per-hook gates still fire. Linked worktrees pass —
+the hook distinguishes primary from linked with portable, config-free
+detection: `git rev-parse --git-dir` and `--git-common-dir` resolve to the SAME
+path on the primary (refuse) and DIFFER in a linked worktree (the git-dir is
+`.git/worktrees/<name>`; allow). It is armed on install — there is no arming
+step and so no fail-open window — and needs no `git config` key beyond the
+`livespec.sandboxExempt` exemption marker; the commit-msg install covers
+`git commit --allow-empty`, which lefthook skips at pre-commit when there are
+zero staged files.
 
 The portable worktree-lifecycle helper `dev-tooling/worktree-lib.sh` carries
 the four verbs the discipline needs — `create`, `hydrate`, `land`, `reap` —
@@ -106,9 +115,9 @@ relevant handoff document.
 
 ### Server-side enforcement (branch protection)
 
-The `refuse-primary-commit` gate is LOCALLY bypassable (`git commit
---no-verify`, or simply never installed/armed). GitHub branch protection is the
-server-enforced backstop: the default branch advances only via PR/merge, and
+The local commit-refuse hook is LOCALLY bypassable (`git commit --no-verify`,
+or simply never installed). GitHub branch protection is the server-enforced
+backstop: the default branch advances only via PR/merge, and
 direct + force pushes to it are rejected by GitHub itself. Establish it once on
 a fresh repo (needs an admin-scoped `gh` token):
 
@@ -233,16 +242,19 @@ around the seam with raw `mysql` / `dolt` / `sudo`.
 ## Daily commands
 
 - `just bootstrap` — first-touch setup on a fresh clone; idempotently installs
-  the mise-dispatching git-hook-wrapper at `.git/hooks/pre-commit` +
+  the structural commit-refuse hook (the `dev-tooling/git-hook-wrapper.sh` body,
+  via `just install-commit-refuse-hooks`) at `.git/hooks/pre-commit` +
   `.git/hooks/pre-push` + `.git/hooks/commit-msg`, ensures the
-  worktree-discipline shell scripts (`dev-tooling/refuse-primary-commit.sh`,
-  `dev-tooling/worktree-lib.sh`, `dev-tooling/worktree-hydrate.sh`) stay
+  worktree-discipline shell scripts (`dev-tooling/worktree-lib.sh`,
+  `dev-tooling/worktree-hydrate.sh`, `dev-tooling/branch-protection.sh`) stay
   executable, installs lefthook hooks, resolves plugin dependencies, creates
   `~/.worktrees`, and registers it in mise's `trusted_config_paths` so every
   worktree (created at `~/.worktrees/<repo>/<branch>`) auto-trusts its
-  `.mise.toml`. The worktree-only mutation protocol is enforced by the
-  `refuse-primary-commit` gate wired in `lefthook.yml` (commit on the primary
-  checkout → blocked; linked worktrees → allowed).
+  `.mise.toml`. The worktree-only mutation protocol is enforced by that hook
+  body, which refuses a commit/push on the primary checkout (armed on install;
+  honours `livespec.sandboxExempt`) and otherwise delegates to mise-managed
+  lefthook (commit on the primary checkout → blocked; linked worktrees →
+  allowed).
 - `just check` — the full enforcement aggregate (lint, types, tests, coverage,
   AST checks). It is the load-bearing safety net; it runs locally, in pre-push,
   and in CI.

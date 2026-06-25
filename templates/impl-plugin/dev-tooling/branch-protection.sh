@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # branch-protection.sh — the SERVER-SIDE mirror of the worktree-only commit
-# discipline. The local refuse-primary-commit gate blocks commits on the
+# discipline. The local commit-refuse hook blocks commits on the
 # primary checkout, but it is LOCALLY BYPASSABLE (`git commit --no-verify`, or
-# simply never installed/armed — the console fail-open incident). GitHub branch
+# simply never installed). GitHub branch
 # protection is the server-enforced backstop: the default branch advances only
 # via PR/merge, and direct/force pushes to it are rejected by GitHub itself.
 #
