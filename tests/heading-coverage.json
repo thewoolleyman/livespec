@@ -38,8 +38,8 @@
     "heading": "## Workflow planes and the Planning Lane",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
-    "test": "TODO",
-    "reason": "Increment-1 architecture framing (epic livespec-zs22): the three planes (Spec/Orchestrator/Control), the Planning Lane, and the Control-Plane role, carrying the planes and skills diagrams. Descriptive architectural frame with no standalone CLI behavior; the test ID is populated if/when a behavioral clause attaches. Companion to the sibling '## Contract + reference implementations architecture' entry, which is likewise TODO."
+    "test": "tests.test_workflow_planes_terminology.test_terminology_guard_present",
+    "reason": "The section is descriptive architecture framing (the three planes Spec/Orchestrator/Control, the Planning Lane, the Control-Plane role); its one normative imperative is the terminology guard — the operator console is the Control Plane / operator cockpit and is NEVER a 'Driver' (the per-agent-runtime binding), to be kept distinct in all prose and diagrams. The mapped test pins that guard on core's own spec.md: it asserts the three plane names are present, the guard clauses are stated verbatim, and (structurally) no Mermaid subgraph labels the console a Driver while a distinct DRIVER subgraph is rendered. Tests core's authored artifact, not a mock, per the no-escape-hatch directive (livespec-besm.5)."
   },
   {
     "heading": "## Contract + reference implementations architecture",
