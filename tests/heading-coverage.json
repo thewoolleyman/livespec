@@ -35,6 +35,13 @@
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
+    "heading": "## Workflow planes and the Planning Lane",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Increment-1 architecture framing (epic livespec-zs22): the three planes (Spec/Orchestrator/Control), the Planning Lane, and the Control-Plane role, carrying the planes and skills diagrams. Descriptive architectural frame with no standalone CLI behavior; the test ID is populated if/when a behavioral clause attaches. Companion to the sibling '## Contract + reference implementations architecture' entry, which is likewise TODO."
+  },
+  {
     "heading": "## Contract + reference implementations architecture",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
