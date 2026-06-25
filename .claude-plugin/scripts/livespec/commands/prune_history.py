@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Prune-history sub-command supervisor.
 
-Per SPECIFICATION/spec.md §"Sub-command lifecycle"
+Per SPECIFICATION/spec.md
 prune-history paragraph: the wrapper resolves the spec root from
 `--project-root` and `.livespec.jsonc` (the main spec tree only —
 no `--spec-target` flag in v1) and performs deterministic
@@ -63,7 +63,7 @@ __all__: list[str] = ["build_parser", "main"]
 def build_parser() -> argparse.ArgumentParser:
     """Construct the prune-history argparse parser without parsing.
 
-    Per spec.md §"Pre-step skip control" rule: the wrapper
+    Per spec.md pre-step skip control rule: the wrapper
     declares an `add_mutually_exclusive_group` carrying the two
     flags `--skip-pre-check` / `--run-pre-check`; passing both
     together lifts to argparse usage error → exit 2 via
@@ -84,8 +84,8 @@ def _pattern_match_io_result(
 ) -> int:
     """Pattern-match the final railway IOResult onto an exit code.
 
-    Success(<value>) -> exit 0 per style doc §"Exit code
-    contract". Failure(LivespecError) lifts via err.exit_code;
+    Success(<value>) -> exit 0 per the style doc exit code
+    contract. Failure(LivespecError) lifts via err.exit_code;
     assert_never closes the match.
     """
     unwrapped = unsafe_perform_io(io_result)  # pyright: ignore[reportArgumentType]
@@ -104,8 +104,8 @@ def main(*, argv: list[str] | None = None) -> int:
     Threads argv through `parse_argv` -> `_run_prune` (which
     resolves the spec root, enumerates history, and dispatches to
     the no-op short-circuit when applicable). Pattern-matches the
-    final IOResult onto an exit code per style doc §"Exit code
-    contract".
+    final IOResult onto an exit code per the style doc exit code
+    contract.
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
@@ -127,7 +127,7 @@ def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError
     detection path; subsequent cycles widen the dispatch to the
     full 5-step prune mechanic.
 
-    Per spec.md §"Pre-step skip control": the supervisor
+    Per spec.md pre-step skip control: the supervisor
     threads `_resolve_skip` through the railway to derive the
     effective skip value from the 4-rule matrix (skip-flag,
     run-flag, `.livespec.jsonc` config key, default False).
@@ -137,7 +137,7 @@ def _run_prune(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError
     `prune-history-no-op` / `prune-history-pruned` finding, so
     stdout carries TWO JSON lines on the skip path.
 
-    Per spec.md §"Sub-command lifecycle" ():
+    Per spec.md ():
     when the resolved skip value is False, the wrapper invokes
     `bin/doctor_static.py` as a subprocess via
     `_invoke_pre_step_doctor` BEFORE running the body. On any
@@ -173,8 +173,8 @@ def _dispatch_pre_step(
 
     When `skip` is True, the wrapper emits the canonical
     `pre-step-skipped` finding and proceeds without invoking the
-    pre-step doctor static phase per spec.md §"Pre-step skip
-    control" emit-and-proceed contract.
+    pre-step doctor static phase per spec.md pre-step skip
+    control emit-and-proceed contract.
 
     When `skip` is False (the default per the 4-rule matrix), the
     wrapper invokes `_invoke_pre_step_doctor` to run
@@ -192,7 +192,7 @@ def _dispatch_pre_step(
 def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
     """Resolve `<project-root>` from `--project-root` or cwd.
 
-    Per the spec contracts.md §"Wrapper CLI surface" prune-history row
+    Per the spec contracts.md prune-history wrapper CLI surface
     + the universal `--project-root <path>` baseline. Defaults to
     `Path.cwd()` when `--project-root` is omitted. The spec root
     `<project-root>/SPECIFICATION` is derived at the call site;

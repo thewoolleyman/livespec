@@ -1,8 +1,7 @@
 """ProposalFindings dataclass paired 1:1 with proposal_findings.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the type that flows through the railway after
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the type that flows through the railway after
 schema validation:
     Result[ProposalFindings, ValidationError]
 from validate.proposal_findings.validate_proposal_findings.

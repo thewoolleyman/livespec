@@ -1,8 +1,8 @@
 """livespec.schemas.dataclasses: paired hand-authored dataclasses.
 
  placeholder. Each dataclass is
-`@dataclass(frozen=True, kw_only=True, slots=True)` per the style doc
-§"Dataclass authorship", with fields matching its paired schema
+`@dataclass(frozen=True, kw_only=True, slots=True)` per the style doc,
+with fields matching its paired schema
 one-to-one in name and Python type. Domain-meaningful fields use
 NewType aliases from `livespec/types.py`.
 

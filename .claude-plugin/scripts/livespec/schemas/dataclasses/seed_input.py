@@ -1,8 +1,7 @@
 """SeedInput dataclass paired 1:1 with seed_input.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the type that flows through the railway after
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the type that flows through the railway after
 schema validation:
   Result[SeedInput, ValidationError]
 from validate.seed_input.validate_seed_input.

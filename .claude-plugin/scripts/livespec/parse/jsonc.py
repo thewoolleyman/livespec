@@ -9,7 +9,7 @@ no I/O and never bare-raises.
 The `@safe(exceptions=(...))` decorator + `.alt(...)` pattern is
 the canonical way to convert third-party domain-meaningful
 exceptions into `LivespecError`-track failures (see
-python-skill-script-style-requirements.md §"Raising").
+python-skill-script-style-requirements.md.
 
 The Phase-3 driver is `.livespec.jsonc` parsing during the seed
 flow; cycles widen this module one behavior at a time as

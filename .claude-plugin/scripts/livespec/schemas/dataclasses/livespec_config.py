@@ -1,8 +1,7 @@
 """LivespecConfig dataclass paired 1:1 with livespec_config.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the type that flows through the railway after
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the type that flows through the railway after
 schema validation:
     Result[LivespecConfig, ValidationError]
 from validate.livespec_config.validate_livespec_config.
@@ -19,14 +18,13 @@ going through the validator) still yields the same configured
 state.
 
 `spec_clis` carries the seven spec-side CLI names per
-`contracts.md` §"Spec-side CLI contract": each is an argv-form
-array pre-populated with core's reference default and
-individually overridable. `orchestrator` is the optional
-orchestrator selection per `contracts.md` §"Orchestrator CLI
-contract — the three named CLIs": when configured it names the
-orchestrator plus its three CLIs; `None` means no orchestrator
-is configured. The `${CLAUDE_PLUGIN_ROOT}` placeholder in any
-argv entry is expanded at dispatch time, not here.
+`contracts.md`: each is an argv-form array pre-populated with
+core's reference default and individually overridable.
+`orchestrator` is the optional orchestrator selection per
+`contracts.md`: when configured it names the orchestrator plus
+its three CLIs; `None` means no orchestrator is configured.
+The `${CLAUDE_PLUGIN_ROOT}` placeholder in any argv entry is
+expanded at dispatch time, not here.
 """
 
 from __future__ import annotations
@@ -59,10 +57,9 @@ class SpecClis:
 
     Mirrors livespec_config.schema.json's `spec_clis` object.
     Each field is an argv-form array (NOT a shell string),
-    defaulting to core's reference wrapper per `contracts.md`
-    §"Spec-side CLI contract". Overriding one field selects an
-    alternate implementation of that one operation; siblings
-    keep their defaults.
+    defaulting to core's reference wrapper per `contracts.md`.
+    Overriding one field selects an alternate implementation of
+    that one operation; siblings keep their defaults.
     """
 
     seed: list[str] = field(
@@ -96,8 +93,7 @@ class OrchestratorConfig:
     All four fields are schema-required when the section is
     present; the section itself is optional
     (`LivespecConfig.orchestrator` is `None` when absent). Per
-    `contracts.md` §"Orchestrator CLI contract — the three named
-    CLIs" the CLIs are behaviorally undefined here — the
+    `contracts.md` the CLIs are behaviorally undefined here — the
     contract is that they are named and callable.
     """
 

@@ -20,8 +20,8 @@ the paired test surface at `tests/livespec/commands/test_revise.py`.
 
 extracted the helpers from `revise.py` to keep the
 supervisor file under the 250-LLOC hard ceiling enforced by
-`dev-tooling/checks/file_lloc.py` (per `SPECIFICATION/constraints.md`
-§"File LLOC ceiling"). This precedent matches
+`dev-tooling/checks/file_lloc.py` (per `SPECIFICATION/constraints.md`).
+This precedent matches
 `dev-tooling/checks/_red_green_replay_modes.py` which extracted
 the heavy mode handlers from `red_green_replay.py` for the same
 LLOC reason.
@@ -55,7 +55,7 @@ def _resolve_author(
     payload: RevisionInput,
     env_lookup: Callable[[str], str | None],
 ) -> str:
-    """Resolve the author identifier per spec.md "Author identifier resolution".
+    """Resolve the author identifier per spec.md author identifier resolution.
 
     Four-step precedence: `--author <id>` (CLI) > `LIVESPEC_AUTHOR_LLM`
     (env) > `payload.author` (LLM self-declaration) > literal
@@ -98,8 +98,7 @@ def _compose_revision_body(
 ) -> str:
     """Compose the `<stem>-revision.md` body from a decision dict.
 
-    Per `SPECIFICATION/spec.md` §"Proposed-change and revision file
-    formats" §"Revision file format" + `revision_front_matter.schema.json`:
+    Per `SPECIFICATION/spec.md` + `revision_front_matter.schema.json`:
     YAML front-matter with 5 keys (proposal, decision, revised_at,
     author_human, author_llm) plus per-decision-type sections:
     `## Decision and Rationale` always; `## Modifications` when
@@ -146,7 +145,7 @@ def _compose_resulting_changes_section(*, decision: dict[str, object]) -> str:
     when absent or non-list, the section emits the literal
     `(none)` so the heading still appears (the heading's presence
     signals that this is a working-spec-mutating decision per
-    spec.md §"Revision file format" item (4)).
+    spec.md revision file format).
     """
     resulting_files = decision.get("resulting_files", [])
     files_lines: list[str] = []

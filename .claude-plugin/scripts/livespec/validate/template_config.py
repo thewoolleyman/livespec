@@ -1,10 +1,9 @@
 """Validator for the template_config wire payload.
 
-Per style doc §"Skill layout — `validate/`": factory-shape
-validator that takes the parsed payload (a dict from JSON
-parsing of template.json) and the parsed schema (a dict from
-template_config.schema.json), validates the payload against
-the schema via fastjsonschema, and returns
+Per style doc: factory-shape validator that takes the parsed payload
+(a dict from JSON parsing of template.json) and the parsed schema
+(a dict from template_config.schema.json), validates the payload
+against the schema via fastjsonschema, and returns
 `Result[TemplateConfig, ValidationError]`.
 
 fastjsonschema applies the schema's `default` keywords during

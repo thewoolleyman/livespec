@@ -19,10 +19,9 @@ load+validate `--seed-json` payload, write `.livespec.jsonc`,
 materialize the main + sub-spec trees, auto-capture the seed
 proposed-change, run post-step doctor.
 
-`build_parser()` is the pure argparse factory per style doc
-§"CLI argument parsing seam"; `main()` is the supervisor that
-threads argv through the railway and pattern-matches the final
-IOResult to derive the exit code.
+`build_parser()` is the pure argparse factory per the style doc;
+`main()` is the supervisor that threads argv through the railway
+and pattern-matches the final IOResult to derive the exit code.
 
 Cycle 4e (2026-05-02) split the heavy file-writing and
 emission stages into sibling private modules
@@ -76,9 +75,9 @@ def build_parser() -> argparse.ArgumentParser:
     """Construct the seed argparse parser without parsing.
 
     Pure: returns the configured parser; the caller (the io/cli
-    facade) drives `parse_args()`. Per style doc §"CLI argument
-    parsing seam", `exit_on_error=False` lets argparse signal
-    errors via `argparse.ArgumentError` rather than `SystemExit`.
+    facade) drives `parse_args()`. Per the style doc,
+    `exit_on_error=False` lets argparse signal errors via
+    `argparse.ArgumentError` rather than `SystemExit`.
     """
     parser = argparse.ArgumentParser(prog="seed", exit_on_error=False)
     _ = parser.add_argument("--seed-json", required=True)

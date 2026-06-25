@@ -23,10 +23,9 @@ SPECIFICATION/spec.md "Topic canonicalization",
 remaining/N6 + rules (collision disambiguation
 and unified author precedence land in subsequent cycles).
 
-`build_parser()` is the pure argparse factory per style doc
-§"CLI argument parsing seam"; `main()` is the supervisor that
-threads argv through the railway and pattern-matches the final
-IOResult to derive the exit code.
+`build_parser()` is the pure argparse factory per the style doc;
+`main()` is the supervisor that threads argv through the railway
+and pattern-matches the final IOResult to derive the exit code.
 """
 
 from __future__ import annotations
@@ -62,7 +61,7 @@ _PROPOSAL_FINDINGS_SCHEMA_PATH = _SCHEMAS_DIR / "proposal_findings.schema.json"
 def build_parser() -> argparse.ArgumentParser:
     """Construct the propose-change argparse parser without parsing.
 
-    Per style doc §"CLI argument parsing seam":
+    Per the style doc CLI argument parsing seam:
     `exit_on_error=False` lets argparse signal errors via
     `argparse.ArgumentError` rather than `SystemExit`. The
     parser exposes `--findings-json <path>` (required), a
@@ -85,8 +84,8 @@ def _pattern_match_io_result(
 ) -> int:
     """Pattern-match the final railway IOResult onto an exit code.
 
-    Success(<value>) -> exit 0 per style doc §"Exit code
-    contract". Failure(LivespecError) lifts via err.exit_code;
+    Success(<value>) -> exit 0 per the style doc exit code
+    contract. Failure(LivespecError) lifts via err.exit_code;
     assert_never closes the match.
     """
     unwrapped = unsafe_perform_io(io_result)  # pyright: ignore[reportArgumentType]
@@ -264,8 +263,8 @@ def _resolve_author(
 def _render_spec_commitments_yaml(*, spec_commitments: SpecCommitments) -> str:
     """Render the optional spec_commitments block as YAML inside the front-matter.
 
-    li-8mj2lz, PC #4 sub-proposal 1: the block contract is in spec.md
-    §"Spec→impl commitment declaration". Each `impl_followups[]` entry
+    li-8mj2lz, PC #4 sub-proposal 1: the block contract is in spec.md.
+    Each `impl_followups[]` entry
     emits `id_hint` as a bare slug and `description` as a YAML literal
     block scalar (`|`) so multi-line descriptions round-trip without
     needing per-line quoting. The optional `supersedes[]` list emits as

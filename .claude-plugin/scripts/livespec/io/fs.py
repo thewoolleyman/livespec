@@ -1,8 +1,8 @@
 """Filesystem boundary facade.
 
-Per style doc §"Skill layout — `io/`": every filesystem
-operation lives here under `@impure_safe` so the railway flows
-through `IOResult`. Pure layers (`parse/`, `validate/`) cannot
+Per style doc: every filesystem operation lives here under `@impure_safe`
+so the railway flows through `IOResult`. Pure layers (`parse/`,
+`validate/`) cannot
 import this module (enforced by import-linter's
 `parse-and-validate-are-pure` contract).
 
@@ -246,8 +246,7 @@ def _raw_rmtree(*, path: Path) -> None:
 def rmtree(*, path: Path) -> IOResult[None, LivespecError]:
     """Recursively remove `path` and all contents; return IOSuccess(None).
 
-    Per SPECIFICATION/spec.md §"Sub-command lifecycle"
-    prune-history paragraph step (c): the wrapper deletes every
+    Per SPECIFICATION/spec.md: prune-history step (c): the wrapper deletes every
     `<spec-root>/history/vK/` where K < N-1. OSError
     (FileNotFoundError on a missing path, permission denied)
     lifts to PreconditionError (exit 3) per the canonical mapping

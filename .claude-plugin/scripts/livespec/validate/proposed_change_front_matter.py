@@ -1,9 +1,8 @@
 """Validator for the proposed_change_front_matter wire payload.
 
-Per style doc §"Skill layout — `validate/`": factory-shape
-validator that takes the parsed payload (a dict from YAML
-front-matter parsing) and the parsed schema (a dict from
-proposed_change_front_matter.schema.json), validates the
+Per style doc: factory-shape validator that takes the parsed payload
+(a dict from YAML front-matter parsing) and the parsed schema (a dict
+from proposed_change_front_matter.schema.json), validates the
 payload against the schema via fastjsonschema, and returns
 `Result[ProposedChangeFrontMatter, ValidationError]`.
 

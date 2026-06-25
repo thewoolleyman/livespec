@@ -12,8 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: template_files_present.
 
-Per `SPECIFICATION/spec.md` §"Template manifest" →
-"Heading-coverage and doctor-static rewiring": the check is
+Per `SPECIFICATION/spec.md`: the check is
 manifest-aware. For the main spec tree under an active v2
 template, the `spec_files` manifest is the source of truth — the
 check verifies that EVERY manifest-declared path exists under the

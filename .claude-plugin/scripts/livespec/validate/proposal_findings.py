@@ -1,9 +1,8 @@
 """Validator for the proposal-findings wire payload.
 
-Per style doc §"Skill layout — `validate/`": factory-shape
-validator that takes both the parsed payload (a dict from JSON
-parsing) and the parsed schema (a dict from
-proposal_findings.schema.json), validates the payload against
+Per style doc: factory-shape validator that takes both the parsed
+payload (a dict from JSON parsing) and the parsed schema (a dict
+from proposal_findings.schema.json), validates the payload against
 the schema via fastjsonschema, and returns
 `Result[ProposalFindings, ValidationError]`.
 

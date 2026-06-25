@@ -1,8 +1,7 @@
 """TemplateConfig dataclass paired 1:1 with template_config.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the type that flows through the railway after
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the type that flows through the railway after
 schema validation:
   Result[TemplateConfig, ValidationError]
 from validate.template_config.validate_template_config.
@@ -12,9 +11,8 @@ version, spec_root location, optional doctor extensibility
 hooks (static check modules), and optional LLM-prompt paths
 (objective + subjective checks).
 
-Per the v2 manifest mechanism in SPECIFICATION/spec.md
-§"Template manifest" and contracts.md §"Template manifest wire
-contract": v2 templates additionally declare `spec_files` — a
+Per the v2 manifest mechanism in SPECIFICATION/spec.md and
+contracts.md: v2 templates additionally declare `spec_files` — a
 mapping from spec-target-relative path strings to per-file
 declarations. Each declaration carries a `kind` discriminator
 whose sole value is `markdown`.

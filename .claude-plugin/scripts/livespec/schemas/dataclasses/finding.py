@@ -1,9 +1,8 @@
 """Finding dataclass paired 1:1 with finding.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the value-object every static-phase doctor check
-returns; the orchestrator collects findings per tree into the
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the value-object every static-phase doctor
+check returns; the orchestrator collects findings per tree into the
 canonical doctor-findings JSON payload.
 """
 

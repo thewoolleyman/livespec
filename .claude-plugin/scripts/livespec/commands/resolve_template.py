@@ -27,8 +27,8 @@ consumer in 's seed self-application; the seed/SKILL.md
 prose uses --template livespec pre-seed. With --template
 required at this phase, the seed unblocks for .
 
-`build_parser()` is the pure argparse factory per style doc
-§"CLI argument parsing seam"; `main()` is the supervisor that
+`build_parser()` is the pure argparse factory per the style doc;
+`main()` is the supervisor that
 threads argv through the railway and pattern-matches the final
 IOResult to derive the exit code. `main()` uses
 `sys.stdout.write` for the documented one-line resolved-path
@@ -65,8 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
     the default `.livespec.jsonc`-walking flow is a future widening).
 
     `exit_on_error=False` lets argparse signal errors via
-    `argparse.ArgumentError` rather than `SystemExit`, per style
-    doc §"CLI argument parsing seam".
+    `argparse.ArgumentError` rather than `SystemExit`, per the
+    style doc.
     """
     parser = argparse.ArgumentParser(prog="resolve-template", exit_on_error=False)
     _ = parser.add_argument("--project-root", default=None)
@@ -135,7 +135,7 @@ def _pattern_match_io_result(
 ) -> int:
     """Pattern-match the final railway IOResult onto an exit code.
 
-    Success(<value>) → exit 0 per style doc §"Exit code contract".
+    Success(<value>) → exit 0 per the style doc exit code contract.
     Failure(LivespecError) lifts via err.exit_code; assert_never
     closes the match.
     """
@@ -158,7 +158,7 @@ def main(*, argv: list[str] | None = None) -> int:
     UsageError (parse, missing required) -> exit 2;
     PreconditionError (template path missing or invalid) -> exit
     3; success -> exit 0 with one-line stdout per
-    SPECIFICATION/contracts.md §"Resolved-template stdout contract".
+    SPECIFICATION/contracts.md.
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()

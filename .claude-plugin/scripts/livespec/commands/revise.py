@@ -23,11 +23,11 @@ identically into `<spec-target>/history/vNNN/proposed_changes/
 `<spec-target>/history/vNNN/` materialized from the active
 template's versioned spec files. Accepts `--spec-target <path>`.
 
-`build_parser()` is the pure argparse factory per style doc
-§"CLI argument parsing seam"; `main()` is the supervisor that
-threads argv through the railway and pattern-matches the final
-IOResult to derive the exit code. The file-shaping railway
-helpers live in the sibling private module
+`build_parser()` is the pure argparse factory per the style doc;
+`main()` is the supervisor that threads argv through the railway
+and pattern-matches the final IOResult to derive the exit code.
+The file-shaping railway helpers live in the sibling private
+module
 `_revise_railway_emits.py` (extracted at to keep
 this file under the 250-LLOC hard ceiling).
 """
@@ -101,7 +101,7 @@ _REVISE_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "revise_input.schema.json"
 def build_parser() -> argparse.ArgumentParser:
     """Construct the revise argparse parser without parsing.
 
-     Per style doc §"CLI argument parsing seam":
+     Per the style doc CLI argument parsing seam:
      `exit_on_error=False` lets argparse signal errors via
      `argparse.ArgumentError` rather than `SystemExit`. The
      parser exposes `--revise-json <path>` (required), and the
@@ -119,9 +119,8 @@ def build_parser() -> argparse.ArgumentParser:
     livespec-dev-tooling per the cross-cutting epic.
 
     `--post-step-doctor` (default off) gates the post-step
-    doctor static invocation per `SPECIFICATION/contracts.md`
-    §"Sub-command wire contracts" → "`revise` payload
-    validation". When set, the wrapper invokes
+    doctor static invocation per `SPECIFICATION/contracts.md`.
+    When set, the wrapper invokes
     `bin/doctor_static.py` after the freshly-cut `vNNN/`
     snapshot lands; any `status: "fail"` finding
     short-circuits the railway with `IOFailure(PreconditionError)`
@@ -149,14 +148,14 @@ def _pattern_match_io_result(
 ) -> int:
     """Pattern-match the final railway IOResult onto an exit code.
 
-    Success(<value>) -> exit 0 per style doc §"Exit code
-    contract". Failure(LivespecError) lifts via err.exit_code;
+    Success(<value>) -> exit 0 per the style doc exit code
+    contract. Failure(LivespecError) lifts via err.exit_code;
     assert_never closes the match.
 
     Per work-item li-revslnt + `SPECIFICATION/constraints.md`
-    §"Structured logging" + the style spec's canonical
-    `match`-arm example: the Failure arm MUST emit a
-    `log.error(...)` diagnostic BEFORE returning the exit code.
+    + the style spec's canonical `match`-arm example: the
+    Failure arm MUST emit a `log.error(...)` diagnostic BEFORE
+    returning the exit code.
     At the default `LIVESPEC_LOG_LEVEL=WARNING` the call renders
     as a JSON line on stderr (ERROR > WARNING), so the user
     sees the `LivespecError` subclass name + structured context
@@ -187,7 +186,7 @@ def main(*, argv: list[str] | None = None) -> int:
     `jsonc.loads` -> `validate_payload` -> `io_git.get_git_user`
     -> `_process_decisions` (in `_revise_railway_emits`), then
     pattern-matches the final IOResult onto an exit code per
-    style doc §"Exit code contract".
+    the style doc exit code contract.
     """
     resolved_argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
@@ -240,7 +239,7 @@ def _maybe_run_post_step_doctor(
 ) -> IOResult[Any, LivespecError]:
     """Conditionally invoke the post-step doctor static phase.
 
-    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle": revise
+    Per `SPECIFICATION/spec.md`: revise
     runs a post-step doctor static check against the freshly-cut
     `vNNN/` snapshot. The full static-phase doctor registry is
     exercised; the gating semantics are exit 3 on any
@@ -273,7 +272,7 @@ def _check_decisions_nonempty(
 ) -> Result[dict[str, Any], LivespecError]:
     """Reject payloads whose `decisions[]` is present-but-empty.
 
-    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle" revise
+    Per `SPECIFICATION/spec.md` revise
     clause (b) (v052): the wrapper MUST fail hard with UsageError
     (exit 2) when the inbound `--revise-json` payload's
     `decisions[]` array is empty. A revise pass with zero
@@ -350,8 +349,8 @@ def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
     The post-step doctor invocation in `_revise_doctor._run_post_step_doctor`
     forwards `--project-root` to `bin/doctor_static.py` so the doctor
     resolves the spec root from the same project root the revise
-    wrapper resolved. Per `SPECIFICATION/contracts.md` §"Wrapper CLI
-    surface": `--project-root <path>` (default `Path.cwd()`).
+    wrapper resolved. Per `SPECIFICATION/contracts.md`:
+    `--project-root <path>` (default `Path.cwd()`).
     """
     if namespace.project_root is None:
         return Path.cwd()

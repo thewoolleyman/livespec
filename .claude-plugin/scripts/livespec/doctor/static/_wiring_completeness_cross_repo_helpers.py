@@ -17,9 +17,7 @@ decoding) from the parent module so the public check wrapper
 stays below the 250-LLOC hard ceiling enforced by the per-file
 LLOC check.
 
-Per `SPECIFICATION/contracts.md` §"Shared code sync —
-livespec-dev-tooling" → "Cross-repo backstop" + §"Doctor
-cross-boundary invariants", the cross-repo wiring-completeness
+Per `SPECIFICATION/contracts.md`, the cross-repo wiring-completeness
 invariant walks every registered sibling repo, reads its
 `justfile`'s `check` recipe, computes the canonical-set
 difference, and fires `fail` on any aggregate lacking any
@@ -105,7 +103,7 @@ _SLUG: CheckId = CheckId("doctor-wiring-completeness-cross-repo")
 
 # Pattern matching the canonical `https://github.com/<owner>/<name>`
 # URL contract from `.livespec.jsonc`'s `cross_repo_targets`
-# §"`github_url`" field. No trailing `.git`. Group 1 captures the
+# `github_url` field. No trailing `.git`. Group 1 captures the
 # owner; group 2 captures the name. Both segments allow any
 # non-slash characters; further validation is the
 # `cross-repo-targets-wellformedness` invariant's domain.

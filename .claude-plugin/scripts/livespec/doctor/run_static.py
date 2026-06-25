@@ -68,7 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     Phase-3 minimum: accepts only --project-root. The
     `exit_on_error=False` mirrors the rest of the project's
-    parsers per style doc §"CLI argument parsing seam".
+    parsers per style doc.
     """
     parser = argparse.ArgumentParser(prog="doctor-static", exit_on_error=False)
     _ = parser.add_argument("--project-root", default=None)
@@ -114,9 +114,9 @@ def _emit_findings_json(*, findings: list[Finding]) -> None:
     """Write the canonical `{"findings": [...]}` JSON payload to stdout.
 
     One of three places in the codebase where `sys.stdout.write`
-    is permitted (per python-skill-script-style-requirements.md
-    §"Logging" exemption list — the supervisor's documented
-    stdout contract). Each Finding is serialized as a dict via
+    is permitted (per python-skill-script-style-requirements.md —
+    the supervisor's documented stdout contract). Each Finding is
+    serialized as a dict via
     dataclasses.asdict.
     """
     payload = {"findings": [dataclasses.asdict(finding) for finding in findings]}
@@ -143,8 +143,7 @@ def _derive_exit_code(*, findings: list[Finding]) -> int:
 def _enumerate_sub_spec_roots(*, main_spec_root: Path) -> list[Path]:
     """Enumerate sub-spec tree roots under `<main_spec_root>/templates/<name>/`.
 
-    Per Plan §"" (sub-spec trees materialized at
-    `SPECIFICATION/templates/<name>/`) + +
+    Sub-spec trees materialized at `SPECIFICATION/templates/<name>/`; +
     (uniform livespec-internal multi-file layout), each
     immediate subdirectory of `<main_spec_root>/templates/`
     is treated as a sub-spec tree. Missing templates/ directory

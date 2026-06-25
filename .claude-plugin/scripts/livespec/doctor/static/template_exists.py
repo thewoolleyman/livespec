@@ -12,8 +12,8 @@
 # ignore markers attached to the offending argument's line below.
 """Static-phase doctor check: template_exists.
 
-Per livespec_config.schema.json §"template": this check asserts
-that the `.livespec.jsonc` `template` field resolves to either a
+Per livespec_config.schema.json: this check asserts that the
+`.livespec.jsonc` `template` field resolves to either a
 built-in template name (one of `{livespec, livespec-with-diagrams,
 minimal}`) or a path-as-string to a custom template directory
 present on disk relative to the project root and carrying a

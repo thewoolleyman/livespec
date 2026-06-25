@@ -1,8 +1,7 @@
 """ProposedChangeFrontMatter dataclass paired 1:1 with proposed_change_front_matter.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the type that flows through the railway after
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the type that flows through the railway after
 schema validation:
   Result[ProposedChangeFrontMatter, ValidationError]
 from validate.proposed_change_front_matter.validate_proposed_change_front_matter.
@@ -14,8 +13,7 @@ Per `check-newtype-domain-primitives`: `topic` uses the
 in this iteration).
 
 `SpecCommitments` + `ImplFollowup` nested dataclasses mirror the
-optional `spec_commitments` block per spec.md §"Proposed-change and
-revision file formats" → "Spec→impl commitment declaration" (li-8mj2lz,
+optional `spec_commitments` block per spec.md (li-8mj2lz,
 PC #4 sub-proposal 1). They are also re-imported by
 `proposal_findings.py` so the same nested types flow through both the
 wrapper's input payload validation and the file front-matter
@@ -49,7 +47,7 @@ class ImplFollowup:
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class SpecCommitments:
-    """The optional `spec_commitments` block per spec.md §"Spec→impl commitment declaration".
+    """The optional `spec_commitments` block per spec.md.
 
     `impl_followups` is the required (when the block is present) list
     of `ImplFollowup` entries. `supersedes` is the optional list of
@@ -73,8 +71,7 @@ class ProposedChangeFrontMatter:
     `parent_proposed_change` carries the canonical topic of a
     parent / coordinating-epic proposed change (per PC #2 of
     v081, coordinating-epic-stale-revise-enforcement). Optional
-    `spec_commitments` block per spec.md §"Spec→impl commitment
-    declaration" (li-8mj2lz, PC #4 sub-proposal 1).
+    `spec_commitments` block per spec.md (li-8mj2lz, PC #4 sub-proposal 1).
     """
 
     topic: TopicSlug

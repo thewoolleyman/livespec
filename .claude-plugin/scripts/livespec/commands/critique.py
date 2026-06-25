@@ -12,8 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Critique sub-command supervisor.
 
-Per SPECIFICATION/spec.md
-§"`critique` internal delegation" + §"Author identifier resolution":
+Per SPECIFICATION/spec.md:
 critique validates the inbound `--findings-json` payload then
 resolves the author identifier via the unified four-step precedence
 (`--author <id>` > `LIVESPEC_AUTHOR_LLM` env > payload `author` field
@@ -23,11 +22,11 @@ un-slugged resolved-author stem as topic-hint AND the literal string
 reserve-suffix canonicalization composes the two so the
 `-critique` suffix is preserved intact at the 64-char filename cap.
 
-`build_parser()` is the pure argparse factory per style doc
-§"CLI argument parsing seam"; `main()` is the supervisor that
-threads argv through the railway and pattern-matches the final
-IOResult to derive both the exit code and the post-validation
-work (delegating to propose_change with the composed argv).
+`build_parser()` is the pure argparse factory per the style doc;
+`main()` is the supervisor that threads argv through the railway
+and pattern-matches the final IOResult to derive both the exit
+code and the post-validation work (delegating to propose_change
+with the composed argv).
 """
 
 from __future__ import annotations
@@ -61,7 +60,7 @@ _PROPOSAL_FINDINGS_SCHEMA_PATH = _SCHEMAS_DIR / "proposal_findings.schema.json"
 def build_parser() -> argparse.ArgumentParser:
     """Construct the critique argparse parser without parsing.
 
-    Per style doc §"CLI argument parsing seam":
+    Per the style doc CLI argument parsing seam:
     `exit_on_error=False` lets argparse signal errors via
     `argparse.ArgumentError` rather than `SystemExit`. The
     parser exposes `--findings-json <path>` (required), and the
@@ -82,7 +81,7 @@ def _resolve_author(
     payload: ProposalFindings,
     env_lookup: Callable[[str], str | None],
 ) -> str:
-    """Resolve the author identifier per spec.md §"Author identifier resolution".
+    """Resolve the author identifier per spec.md author identifier resolution.
 
     Four-step precedence: `--author <id>` (CLI) > `LIVESPEC_AUTHOR_LLM`
     (env) > `payload.author` (LLM self-declaration) > literal
@@ -111,7 +110,7 @@ def _build_delegated_argv(
 ) -> list[str]:
     """Compose the argv list passed to `propose_change.main`.
 
-    Per spec.md §"`critique` internal delegation": the un-slugged
+    Per spec.md critique internal delegation: the un-slugged
     resolved-author stem is the trailing positional topic-hint;
     `--reserve-suffix=-critique` is the separate parameter so
     propose_change's / algorithm preserves the

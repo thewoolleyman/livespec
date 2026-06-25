@@ -1,6 +1,6 @@
 """Static-phase doctor check: accept_decision_snapshot_consistency.
 
-Per `SPECIFICATION/spec.md` §"Sub-command lifecycle":
+Per `SPECIFICATION/spec.md`:
 
 For every `<spec-target>/history/vNNN/<stem>-revision.md` with
 YAML front-matter `decision` in `{accept, modify}` and a

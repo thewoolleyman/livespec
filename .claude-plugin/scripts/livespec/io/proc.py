@@ -1,7 +1,7 @@
 """Subprocess boundary facade.
 
-Per style doc §"Skill layout — `io/`": every operation
-that touches the subprocess boundary lives here under
+Per style doc: every operation that touches the subprocess boundary
+lives here under
 `@impure_safe` so the railway flows through `IOResult`.
 Mirrors the shape of `livespec.io.fs` (every operation is a thin
 wrapper over one side-effecting call; OSError lifts to

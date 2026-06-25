@@ -273,7 +273,7 @@ def _snapshot_working_spec_files(
 ) -> IOResult[list[Path], LivespecError]:
     """Snapshot the whole working spec tree byte-identically into `version_dir`.
 
-    Per `SPECIFICATION/spec.md` §"Sub-command lifecycle": on every
+    Per `SPECIFICATION/spec.md`: on every
     successful revise the new `<spec-target>/history/vNNN/`
     captures the WHOLE spec tree — every file under the spec root
     recursively, EXCEPT anything under the `history/`,

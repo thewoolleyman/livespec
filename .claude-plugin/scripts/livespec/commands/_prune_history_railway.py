@@ -19,7 +19,7 @@ organizational; the behavior is identical to the inline original.
 
 Stages: stdout-finding emitters (`_emit_*_finding`), the
 `_resolve_skip` helper that implements the v012 spec.md
-§"Pre-step skip control" 4-rule resolution matrix, and the
+pre-step skip control 4-rule resolution matrix, and the
 `_invoke_pre_step_doctor` helper () that fires
 `bin/doctor_static.py` as a subprocess and folds fail-status
 findings onto the IOFailure track.
@@ -110,7 +110,7 @@ def _oldest_below_has_pruned_marker(*, children: list[Path], max_version: int) -
 def _v_dirs_below_threshold(*, children: list[Path], max_version: int) -> list[Path]:
     """Return the list of `vK/` paths in `children` where K < max_version - 1.
 
-    Per SPECIFICATION/spec.md §"Sub-command lifecycle"
+    Per SPECIFICATION/spec.md
     prune-history paragraph step (c): the wrapper deletes every
     `<spec-root>/history/vK/` where K < N-1. With N=4, that
     means K ∈ {1, 2} (v003 = v(N-1) is preserved at this cycle;
@@ -201,7 +201,7 @@ def _emit_no_op_finding() -> None:
 def _emit_pre_step_skipped_finding() -> None:
     """Write the canonical pre-step-skipped finding to stdout.
 
-    Per spec.md §"Pre-step skip control": when the resolved
+    Per spec.md: when the resolved
     skip value is True (either via the `--skip-pre-check` flag at
     or via the `.livespec.jsonc`
     `pre_step_skip_static_checks` config key at ), the
@@ -227,7 +227,7 @@ def _emit_pre_step_skipped_finding() -> None:
 def _resolve_skip_from_config_text(*, text: str) -> bool:
     """Parse `.livespec.jsonc` body and extract `pre_step_skip_static_checks`.
 
-    Per spec.md §"Pre-step skip control" rule (3): default is
+    Per spec.md pre-step skip control rule (3): default is
     False when the key is absent. Malformed JSONC is treated as
     default-False defensively — `livespec_jsonc_valid` is the
     dedicated mechanism for surfacing malformed configs to the
@@ -246,7 +246,7 @@ def _resolve_skip(
     namespace: argparse.Namespace,
     project_root: Path,
 ) -> IOResult[bool, LivespecError]:
-    """Resolve the effective skip value per spec.md §"Pre-step skip control".
+    """Resolve the effective skip value per spec.md pre-step skip control.
 
     Implements the 4-rule resolution matrix: (1) `--skip-pre-
     check` → True; (2) `--run-pre-check` → False (overrides
@@ -329,7 +329,7 @@ def _fold_pre_step_doctor_completed_process(
 def _invoke_pre_step_doctor(*, project_root: Path) -> IOResult[None, LivespecError]:
     """Invoke `bin/doctor_static.py` as a subprocess; fold fail findings -> Failure.
 
-    Per SPECIFICATION/spec.md §"Sub-command lifecycle": when
+    Per SPECIFICATION/spec.md: when
     the resolved skip value is False, the prune-history wrapper
     MUST run the pre-step doctor static check before its action.
     Composition mechanism mirrors the post-step doctor invocation

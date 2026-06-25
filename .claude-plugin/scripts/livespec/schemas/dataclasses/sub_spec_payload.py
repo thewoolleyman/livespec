@@ -1,8 +1,7 @@
 """SubSpecPayload dataclass paired 1:1 with sub_spec_payload.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the type that flows through the railway after
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the type that flows through the railway after
 schema validation:
   Result[SubSpecPayload, ValidationError]
 from validate.sub_spec_payload.validate_sub_spec_payload.

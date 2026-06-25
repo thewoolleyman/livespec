@@ -12,7 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Pre-write validation helpers for `livespec.commands.revise`.
 
-Per `SPECIFICATION/spec.md` §"Sub-command lifecycle":
+Per `SPECIFICATION/spec.md`:
 
 - **Path-relativity guard**: rejects `resulting_files[].path`
   values that are absolute or that begin with the spec-target's

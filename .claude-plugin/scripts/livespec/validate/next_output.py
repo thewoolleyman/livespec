@@ -1,10 +1,9 @@
 """Validator for the next_output wire payload.
 
-Per style doc §"Skill layout — `validate/`": factory-shape
-validator that takes the prepared payload (a dict) and the
-parsed schema (a dict from next_output.schema.json), validates
-the payload against the schema via fastjsonschema, and returns
-`Result[NextOutput, ValidationError]`.
+Per style doc: factory-shape validator that takes the prepared payload
+(a dict) and the parsed schema (a dict from next_output.schema.json),
+validates the payload against the schema via fastjsonschema, and
+returns `Result[NextOutput, ValidationError]`.
 
 The vendored fastjsonschema raises `JsonSchemaValueException`
 on violation; `@safe(exceptions=...)` lifts that onto the

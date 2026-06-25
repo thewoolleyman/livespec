@@ -1,8 +1,7 @@
 """Validator for the livespec_config wire payload.
 
-Per style doc §"Skill layout — `validate/`": factory-shape
-validator that takes the parsed payload (a dict from JSON
-parsing) and the parsed schema (a dict from
+Per style doc: factory-shape validator that takes the parsed payload
+(a dict from JSON parsing) and the parsed schema (a dict from
 livespec_config.schema.json), validates the payload against
 the schema via fastjsonschema, and returns
 `Result[LivespecConfig, ValidationError]`.
@@ -15,8 +14,8 @@ constructed LivespecConfig always has all fields populated.
 
 `spec_clis` is materialized key-by-key with the dataclass-side
 core defaults filling any name the payload omits (per
-`contracts.md` §"Spec-side CLI contract": pre-populated with
-core's reference defaults, individually overridable).
+`contracts.md`: pre-populated with core's reference defaults,
+individually overridable).
 `orchestrator` materializes to `OrchestratorConfig` when the
 section is present (schema-required four keys) and to `None`
 when absent. Unknown top-level sections validate per the schema
@@ -48,7 +47,7 @@ def _build_spec_clis(*, raw: dict[str, Any] | None) -> SpecClis:
     Returns the all-core-defaults SpecClis when the section is
     absent; otherwise overlays the payload's per-operation argv
     overrides onto the core defaults so each CLI is individually
-    overridable per `contracts.md` §"Spec-side CLI contract".
+    overridable per `contracts.md`.
     Schema-level validation has already constrained each value
     to a non-empty list of strings.
     """

@@ -1,7 +1,6 @@
 """Domain-primitive NewTypes for livespec.
 
-Per +
-`python-skill-script-style-requirements.md` §"Skill layout":
+Per `python-skill-script-style-requirements.md`:
 the canonical-target check `check-newtype-domain-primitives`
 (per `dev-tooling/checks/newtype_domain_primitives.py`)
 requires specific field names in

@@ -12,8 +12,7 @@
 # ignore markers attached to the offending argument's line below.
 """Pure restricted-YAML front-matter parser.
 
-Per §"Revision file
-format": values MUST be JSON-compatible scalars (strings,
+Values MUST be JSON-compatible scalars (strings,
 integers, booleans, `null`); no lists, no nested dicts, no
 anchors, no flow style. Schema-level `additionalProperties: false`
 owns unknown-key rejection; this module's job is to reject

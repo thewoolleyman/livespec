@@ -17,7 +17,7 @@ it as a helper module, exempt from the mirror-pairing test; its
 behavior is exercised through the public `io.git.list_remote_branches`
 re-export in `tests/livespec/io/test_git.py`). Extracted from
 `git.py` so that file stays under the per-file LLOC ceiling per
-`SPECIFICATION/constraints.md` §"File LLOC ceiling".
+`SPECIFICATION/constraints.md`.
 
 Holds `list_remote_branches`, the case (b) staleness signal for
 the orchestrator-side worktree janitor: a secondary worktree whose

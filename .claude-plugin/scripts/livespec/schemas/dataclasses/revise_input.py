@@ -1,8 +1,7 @@
 """RevisionInput dataclass paired 1:1 with revise_input.schema.json.
 
-Per style doc §"Skill layout — schemas/dataclasses/": fields
-match the schema one-to-one in name and Python type. The
-dataclass is the type that flows through the railway after
+Per style doc: fields match the schema one-to-one in name and Python
+type. The dataclass is the type that flows through the railway after
 schema validation:
   Result[RevisionInput, ValidationError]
 from validate.revise_input.validate_revise_input.
