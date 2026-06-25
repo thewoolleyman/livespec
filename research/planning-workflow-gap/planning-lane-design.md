@@ -86,6 +86,72 @@ discipline as the existing gap/drift flows:
    handoff **through the orchestrator's `capture-work-item` CLI** — never a
    direct cross-plane write.
 
+## Refinements (session continued, 2026-06-25): the `plan` skill, `plan/<topic>/`, archive-on-close
+
+These refine the Planning Lane above and **supersede the earlier
+`research/<topic>/` + `prompts/<topic>-handoff.md` split**. They also
+sharpen locked-decision 1 below: research IS captured by the `plan` skill,
+not by a no-skill convention.
+
+### The `plan` skill
+
+The codified Orchestrator-Plane skill is **`plan`** (not `capture-plan`):
+the `capture-*` family is one-shot, but a planning thread is stateful and
+re-entered for the same topic, like `groom`. API:
+
+- **`plan` (no argument):** the interactive entry. Lists the open threads
+  (from the ledger plus `plan/` dirs) to resume, or you describe a new
+  thread and the skill **proposes a short canonical dash-cased slug** (the
+  same canonicalization `propose-change` uses: lowercase, hyphenate runs of
+  non-alphanumerics, strip, truncate to 64), confirms it, and creates
+  `plan/<slug>/` plus a ledger epic anchor. The human never hand-crafts the
+  identifier, so there are no spaces, no over-long strings, deterministic output.
+- **`plan <slug>` (argument):** deterministic and strict. Must match an
+  existing `plan/<slug>/` exactly, or it fails hard with an error listing
+  the existing slugs. No fuzzy match, no accidental create-on-typo;
+  creation happens only through the no-argument interview path.
+
+Each invocation can update reasoning, refresh the handoff, route a now-ripe
+piece (to `propose-change` for spec, or `capture-work-item` for ledger
+work, filed as epic children), or archive on completion. The skill is
+Orchestrator-Plane, so core's functional surface stays pure.
+
+### `plan/<topic>/`: one directory, optional facets
+
+A planning thread is a first-class directory **`plan/<topic>/`** holding:
+
+- **At most one handoff:** the reserved filename `plan/<topic>/handoff.md`.
+  A fail-closed check rejects any second handoff (any other `handoff*.md`),
+  because only one resumption point can be active per topic. Optional: a
+  young thread can be research-only.
+- **Zero or more research files:** everything else under `plan/<topic>/`.
+  Multiple sub-topic files live in a `plan/<topic>/research/` subdir
+  (`research/auth-flow.md`, `research/data-model.md`); no count limit, and
+  no topic in the filenames since the dir carries it.
+
+This co-locates the two facets under one topic dir (no drift) and matches
+the skill one-to-one. The broader `research/` dir stays for standalone
+analysis that is not an active planning thread.
+
+### Archive-on-epic-close (a conformance concern)
+
+A plan thread's lifecycle binds to its ledger epic:
+
+- **Invariant:** `plan/<topic>/` is active if and only if its epic is open,
+  and archived to `plan/archive/<topic>/` if and only if the epic is closed.
+- **Mechanism:** whatever closes the epic also archives the dir (manual
+  `bd close`, the `plan` skill's close path, or the Dispatcher's
+  close-on-merge); reopening the epic unarchives it (bidirectional).
+- **Backstop:** a fail-closed check asserts `archived` matches
+  `epic-closed`, making this a five-slot conformance concern paired with
+  Ledger-closure (the work-item and its artifacts close together).
+- **Keep-it escape:** nothing is lost (the archived thread stays in
+  `plan/archive/` and git history); to keep a research file as living
+  reference, copy it to `research/` deliberately.
+
+In spirit this is `prune-history` for planning threads: the active view
+stays clean, completed threads move aside rather than getting deleted.
+
 ## Locked decisions (2026-06-25)
 
 1. **The codified handoff/coordination skill lives Orchestrator-side**,
