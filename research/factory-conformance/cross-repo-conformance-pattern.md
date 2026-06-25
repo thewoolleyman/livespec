@@ -10,6 +10,10 @@ part becomes a rule for livespec itself, it still moves through
 — that doc defines the planning lane this effort files its milestones
 through; this doc is the research file in that lane.
 
+See also `research/planning-workflow-gap/planning-lane-design.md`, which
+records this lane's locked decisions and the three-plane model (Spec /
+Orchestrator / Control) this effort sits within.
+
 ## Bottom line
 
 livespec already is, in effect, a policy-as-code conformance framework —
@@ -63,11 +67,13 @@ them (and collides with livespec CORE). Name them separately:
   itself.
 - **governed repo** — the union (anything under the approach; carries a
   `.livespec.jsonc`).
-- **factory profile** (`factory`) — the universal participant-conformance
-  baseline every governed repo needs (worktree discipline, `just`
+- **baseline profile** (`baseline`) — the universal participant-conformance
+  floor every governed repo satisfies (worktree discipline, `just`
   standard, beads-access guard, plugin-resolution). Applies to fleet AND
-  adopters. Replaces the bad "core" name; named for *what it is*
-  (conformance to be driven by the factory), not the audience.
+  adopters, and holds whatever orchestrator (or none) a repo uses — it is
+  the conformance floor, not a tie to the autonomous factory engine.
+  Renamed from the earlier "factory profile" (which collided with the dark
+  factory) and the still-earlier "core" (which collided with livespec CORE).
 
 ## The pattern — anatomy of a concern (five slots)
 
@@ -113,11 +119,20 @@ which is what lets an adopter consume the fleet's machinery without being
 a fleet member, and what makes the standard self-enforcing (a check can
 assert lefthook/CI contain only `just …`).
 
+**The boundary that keeps this honest.** `just` is mandated as a
+*non-functional* standard — for the livespec fleet's own NFRs, adopters,
+and the reference orchestrators (reference implementations, not public
+plugins). It MUST NEVER appear in livespec core's *functional* spec, the
+`/livespec:*` plugin skills core ships, or the core↔orchestrator CLI
+contract; those stay tool-agnostic so livespec remains a generic
+deployable plugin. The mandate cannot leak through that contract because
+the contract is the CLI seam, not the tooling behind it.
+
 ## Boundary — profiles + a declarative manifest (no scan)
 
 Replace "fleet member or not" with a **profile** = the set of concerns a
-repo must satisfy: `factory` (every governed repo) + additive layers
-(`fleet-infra`, `impl-plugin`, `app`, …).
+repo must satisfy: `baseline` (every governed repo) + additive layers
+(`fleet-infra`, `orchestrator-plugin`, `app`, …).
 
 Membership is **declarative**, not a filesystem scan (scans are slow,
 brittle, non-deterministic). Extend the existing manifest with an
@@ -126,10 +141,10 @@ profile:
 
 ```jsonc
 // .livespec-fleet-manifest.jsonc  (single file; graduate to a separate
-// file only when the factory tooling splits to its own repo)
+// file only when the baseline tooling splits to its own repo)
 {
-  "fleet":     [ { "repo": "livespec", "class": "core", "profile": ["factory","fleet-infra"] }, … ],
-  "adopters":  [ { "repo": "openbrain", "profile": ["factory","app"] }, … ]
+  "fleet":     [ { "repo": "livespec", "class": "core", "profile": ["baseline","fleet-infra"] }, … ],
+  "adopters":  [ { "repo": "openbrain", "profile": ["baseline","app"], "posture": "released" }, … ]
 }
 ```
 
@@ -178,15 +193,15 @@ verifier reads**, never an incidental side effect.
   a combined body (structural OR `primaryPath`) with an explicit sandbox
   opt-out marker.
 
-## dev-tooling cohesion — fleet vs factory tooling
+## dev-tooling cohesion — fleet vs baseline tooling
 
 livespec-dev-tooling exists to abstract the *fleet's* tooling; serving
 adopters too would erode that. But a new repo now is premature. Sequence:
 
-1. **Now — partition internally.** Tag each check module `factory`
+1. **Now — partition internally.** Tag each check module `baseline`
    (any governed repo) vs `fleet` (livespec-infra-only); expose a
-   `factory` import surface. Open Brain imports only `factory`.
-2. **Later — extract `factory` tooling to its own repo** once the surface
+   `baseline` import surface. Open Brain imports only `baseline`.
+2. **Later — extract `baseline` tooling to its own repo** once the surface
    is stable and a second adopter proves the boundary;
    livespec-dev-tooling then depends on it for the `fleet` layer. The
    manifest's `adopters` section can graduate to a separate file at the
@@ -207,37 +222,56 @@ shape, and ob-4ts is its live failure:
 
 A fail-closed verifier here would have made ob-4ts un-shippable (its
 acceptance was written to tolerate the `bd` fallback). Register it as the
-second `factory` concern.
+second `baseline` concern.
+
+## Pin-freshness and adopter auto-bump (a further concern)
+
+The release-pin fan-out is the same five-slot shape and is being built out
+concurrently (`livespec-4v7v` + follow-ups). Two refinements this lane adds:
+
+- **Posture, not forced-HEAD.** The fleet now tracks *latest RELEASE*, not
+  master HEAD (`livespec-bwyj`, 2026-06-25): a release carries mutation +
+  full-heading + no-LLOC validation that per-commit `just check` skips, and
+  release-please cuts a release on every feat/fix so latest-release stays
+  close to master. A per-repo `posture` field (`released` / `pinned` /
+  `none`) replaces the old always-pull-HEAD rule; fleet members are
+  `released`, adopters declare theirs.
+- **Adopter auto-bump.** Extend the fan-out to opted-in adopters via the
+  `adopters` manifest + each entry's `posture`. It MUST ship with a
+  fail-closed pin-freshness guard on the *releasing* repo's own
+  discover-step — a stale released shim globally deadlocked the fleet
+  fan-out once (`livespec-4v7v.6`), and more adopter edges multiply that
+  surface. Downstream of the fan-out fix + the `adopters` manifest.
 
 ## Milestones (each gated on real dogfooding)
 
 - **M0 — Decisions locked** (this thread): the naming (fleet/adopter/
-  governed; `factory` profile), the dev-tooling sequencing, the manifest
-  shape, the initial `factory` concern set. *No code.* Soft prerequisite:
+  governed; `baseline` profile), the dev-tooling sequencing, the manifest
+  shape, the initial `baseline` concern set. *No code.* Soft prerequisite:
   the planning-workflow-gap doc's planning-lane decision (so milestones
   are filed through it, not a parallel format).
 - **M1 — Pattern + concern registry specified** (livespec
   `propose-change`): the five-slot anatomy; profiles; the `adopters`
   manifest section; concern #1 = worktree discipline; concern #2 =
   cross-harness plugin-resolution.
-- **M2 — `factory` machinery built, reuse-first**: structural
+- **M2 — `baseline` machinery built, reuse-first**: structural
   commit-refuse hook body + `just install-commit-refuse-hooks` (shared
-  `just` module) + sandbox-aware verifier (dev-tooling, tagged `factory`)
+  `just` module) + sandbox-aware verifier (dev-tooling, tagged `baseline`)
   + copier import.
-- **M3 — Fleet dogfood: livespec-console-beads-fabro** carries `factory`;
+- **M3 — Fleet dogfood: livespec-console-beads-fabro** carries `baseline`;
   `just check` green; commit-refuse fail-closed; can no longer commit on
   its primary. Proves the self-application path.
 - **M4 — Adopter dogfood: Open Brain** migrated to `just` as sole runner
   (lefthook→`just`, pnpm→1:1 wrappers/recipes), registered as
-  `adopter`/`factory`, its hand-rolled hook reconciled to the canonical
-  structural body, `factory` verifiers green via the *same* machinery.
+  `adopter`/`baseline`, its hand-rolled hook reconciled to the canonical
+  structural body, `baseline` verifiers green via the *same* machinery.
   Proves the pattern reaches outside the fleet.
 - **M5 — Second concern + repeatability**: ship concern #2
   (cross-harness resolution) and show it catches the ob-4ts breakage
   class — proving "add a concern = fill five slots."
-- **M6 — Enforcement-in-depth wired**: `factory` verifiers at all four
+- **M6 — Enforcement-in-depth wired**: `baseline` verifiers at all four
   tiers; the orchestrator gates every dispatch (fleet and adopter) on
-  `factory` conformance. Self-sustaining.
+  `baseline` conformance. Self-sustaining.
 
 ## Open questions
 
@@ -245,7 +279,7 @@ second `factory` concern.
   edge case beyond the Fabro sandbox — e.g. a host-side fresh full clone
   that legitimately commits? (None found in the dispatch flow; the
   janitor is a worktree.) Confirm before M2.
-- Manifest ownership once `factory` tooling splits out: does the
+- Manifest ownership once `baseline` tooling splits out: does the
   `adopters` registry move with it, or stay in livespec?
 - Where the orchestrator's per-dispatch installer reads the per-repo
   install command (uniform `just install-commit-refuse-hooks` once `just`
@@ -257,4 +291,6 @@ Not "build the framework." Lock M0 (naming + the three structural
 decisions), then file M1 as a single livespec `propose-change`, with
 livespec-console-beads-fabro (fleet) and Open Brain (adopter) named as
 the M3/M4 dogfood proofs. Use the convention manually for these two
-concerns before considering a `/livespec:plan`-style command.
+concerns first. The planning-lane decision has since landed: the codified
+handoff skill is **orchestrator-side**, not a core `/livespec:plan` — see
+`planning-lane-design.md`.
