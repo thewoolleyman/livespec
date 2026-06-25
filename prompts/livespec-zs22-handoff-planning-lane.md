@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-25, post-increment-5-M1 COMPLETE)
+## Status (refreshed 2026-06-25, increment-5 M2 IN PROGRESS)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -133,23 +133,46 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-Increment 5 is FILED and M0/M1 are DONE (Status above). The next ready milestone
-is **M2 (`livespec-zs22.7.3`)** — the FIRST ACTION `bd ready` ranks it first
-under `zs22.7`. (The earlier "file the M0–M6 epic" action is COMPLETE; the epic
-is `livespec-zs22.7`.)
+**M2 (`livespec-zs22.7.3`) is IN PROGRESS — read its ledger notes for the live
+state (FIRST ACTION + `bd show livespec-zs22.7.3`).** The design open question is
+RESOLVED (no host-side fresh full clone commits beyond the Fabro sandbox: the
+janitor is a detached worktree, the integration clone never commits directly).
+The mechanism shape was maintainer-confirmed 2026-06-25: **Option A — one uniform
+commit-refuse wrapper installed everywhere + an explicit `livespec.sandboxExempt`
+marker** (the design doc's named "fallback"), chosen over the "verifier
+sandbox-aware / hook absent in the sandbox" path because the wrapper also carries
+the lefthook delegation the sandbox relies on for in-sandbox red-green-replay.
 
-**M2 — `baseline` machinery, reuse-first (a CODE increment, Red→Green).** Build
-the Worktree-discipline concern's five slots as real shared machinery: the
-structural commit-refuse hook body (refuse when git-dir == git-common-dir;
-armed-on-install, retiring `primaryPath`'s fail-open window), `just
-install-commit-refuse-hooks` as a shared `just` module, a sandbox-aware Verifier
-in `livespec-dev-tooling` tagged `baseline` (so a Fabro sandbox needs no hook
-install), and the copier import. Read `livespec-zs22.7.3`'s ledger body + the M2
-section of `research/factory-conformance/cross-repo-conformance-pattern.md`. Fold
-in `livespec-qtjd` (dormant-gates = the Installer/arming face). CONFIRM the design
-open question first (any host-side fresh full clone that legitimately commits
-beyond the Fabro sandbox — none found in the dispatch flow; re-verify). This
-touches dev-tooling Python, so it rides the Red→Green ritual + full `just check`.
+Landed/in-flight this session (details in `zs22.7.3` ledger notes):
+- **PR-1 `livespec-orchestrator-beads-fabro#169` (MERGED)** — Fabro prepare arms
+  every dispatched sandbox with `git config livespec.sandboxExempt true`
+  (backward-compatible no-op for the legacy body; prerequisite for the structural
+  body). Folds the dormant-gates / `livespec-qtjd` arming concern.
+- **PR-2 `livespec-dev-tooling#165` (auto-merge ARMED)** — structural+exempt
+  canonical body + verifier fingerprint accepts BOTH structural(git-common-dir)
+  and legacy(show-toplevel) bodies (green fleet migration) + dev-tooling bootstrap
+  installs structural body & drops the primaryPath write + contracts.md governed
+  propose→revise (history v018). On merge, release-please cuts a dev-tooling
+  release core (M2-2) pins to.
+
+**Next: M2-2 (core `livespec` PR)** — once PR-2's release is cut: add `just
+install-commit-refuse-hooks` (interim cp of the structural body) + bootstrap
+delegates + RETIRE the primaryPath write + copier template import
+(`templates/impl-plugin/justfile.jinja`) + bump core's dev-tooling pin + update
+core's own `dev-tooling/git-hook-wrapper.sh` to the structural body + the core NFR
+governed spec cycle (rewrite §"Commit-refuse hook bootstrap procedure" /
+§"Primary-checkout commit-refuse hook" for the structural mechanism + the
+`livespec.sandboxExempt` Exemption; and update §"Conformance Pattern" concern #1
+wording from "Verifier: sandbox-aware … Exemption: a declared sandbox marker the
+Verifier reads" to Option A: the hook BODY reads the marker, the Verifier stays
+simple). Then the deferred pieces: **M2-1b** (a `livespec_dev_tooling.install_commit_refuse_hooks`
+python module so the body is REUSED from the package with NO per-repo cp copies —
+deferred to keep the cp-based install + Fabro data-driven sed working through the
+transition); the **`baseline` tag** (deferred to M4, where Open Brain first
+consumes the partition — don't build a partition no consumer reads); **M2-3
+completion** (align the orchestrator's OWN `install-commit-refuse-hooks` recipe to
+the structural body). Verify the git-jsonl orchestrator's Fabro prepare similarly
+arms `sandboxExempt` if it dispatches.
 
 After M2: M3 (fleet dogfood on `livespec-console-beads-fabro`), M4 (adopter
 dogfood on Open Brain), M5 (concern #2 cross-harness plugin-resolution; folds
