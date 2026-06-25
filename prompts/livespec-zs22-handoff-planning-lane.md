@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-25, post-increment-3 COMPLETE + red-green epic gcp2)
+## Status (refreshed 2026-06-25, post-increment-4 COMPLETE)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -69,6 +69,24 @@ suite-green `chore:` path; the mechanical byte-identity Verifier is increment-5
 Conformance work). The hooks landed via suite-green, not Red→Green, because the
 red-green classifier doesn't impl-classify Driver hook paths (`livespec-kvzt`).
 
+**Increment 4 COMPLETE** (`livespec-zs22.6` CLOSED) — the console control-plane
+contract, landed as one cross-repo epic. CORE (`livespec` PR #598, cut `v142`):
+a NEW NON-normative top-level `### Control-Plane console guidance` section in
+`non-functional-requirements.md` — a PEER of `### Orchestrator plugin ecosystem`,
+NOT nested under it (the console is the Control Plane, a plane distinct from the
+Orchestrator; nesting would contradict the plane separation this track codifies;
+the earlier "sibling under Orchestrator plugin ecosystem" wording was imprecise —
+an H3 peer respects the planes and, since heading-coverage tracks H2 only, costs
+nothing mechanically). It records what the console reads / composes / coordinates
+/ never owns, that it is not a required dependency, not a Driver, and the `just`
+boundary — framed identically to the Dispatcher / grooming / Planning Lane
+guidance blocks. CONSOLE (`livespec-console-beads-fabro` PR #34, cut `v006`): a
+`Control-Plane realization` paragraph in `spec.md` §"Scope Boundary" plus the
+Scope-Boundary mermaid diagram extended to the three-plane framing (console =
+CONTROL PLANE; livespec core under a SPEC PLANE subgraph; orchestrator + Fabro
+under an ORCHESTRATOR PLANE subgraph; GitHub a host source). Both landed via the
+governed propose-change → revise lifecycle.
+
 **Mid-increment-3 detour, DONE — epic `livespec-gcp2` (red-green-replay
 fleet+adopter-wide).** Maintainer directive (2026-06-25): red-green-replay MUST
 be enforced fleet+adopter-wide, regardless of any "no product Python"
@@ -94,19 +112,12 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-Increment 3 is DONE (Status above). Two increments remain in the design-doc
-sequence, plus the conformance follow-ups this session filed.
+Increment 4 is DONE (Status above; `livespec-zs22.6` CLOSED). ONE increment
+remains in the design-doc sequence — increment 5 (the Conformance Pattern) —
+plus the conformance follow-ups prior sessions filed. Increment 5 is a large new
+epic (M0–M6); start it in a fresh session per the budget-handoff rule.
 
-**Increment 4 — console control-plane contract.** A NEW NON-normative
-orchestrator/console-Plane `####` block in core `non-functional-requirements.md`
-(model it on the existing `#### Orchestrator-internal Dispatcher guidance` /
-grooming templates, sibling under `### Orchestrator plugin ecosystem`) stating
-what the console reads/composes/coordinates and what it never owns — PLUS extend
-the EXISTING `livespec-console-beads-fabro/SPECIFICATION/spec.md` diagram (mermaid
-both sides). See §"Recon" for the verified console facts (it's Rust; already has
-control-plane content + a mermaid diagram). Drive as one cross-repo epic.
-
-**Increment 5 — the Conformance Pattern.** File the M0–M6 epic from
+**Increment 5 (the next action) — the Conformance Pattern.** File the M0–M6 epic from
 `research/factory-conformance/cross-repo-conformance-pattern.md` (five slots:
 Contract / Mechanism / Installer / Verifier / Exemption; `baseline` profile;
 `adopters` manifest; four-tier enforcement; the `just` NFR keystone). **This is
@@ -378,9 +389,12 @@ Glob`, `capture-work-item` adds `Write` — `plan` needs `Write` too.
 **Console (`livespec-console-beads-fabro`).** EXISTS (Rust), full
 `SPECIFICATION/` tree. Already control-plane content in `spec.md`:
 owns/does-not-own lists (`/livespec:* spec mutation semantics` is in
-does-not-own) + an existing mermaid diagram (Console/LiveSpec/Orchestrator
-nodes). Increment 4 EXTENDS this, not greenfield; it also has a `prompts/`
-dir with handoff files.
+does-not-own) + a mermaid diagram. Increment 4's console side LANDED
+(PR #34, cut `v006`): added the `Control-Plane realization` paragraph +
+extended the Scope-Boundary diagram to the three-plane framing. The console
+runs its OWN spec-refinement track (`prompts/spec-refinement-critique-handoff.md`)
+and a `prompts/` dir with handoff files; drive the lifecycle against fixed core
+with `LIVESPEC_CORE_PLUGIN_ROOT=/data/projects/livespec/.claude-plugin`.
 
 **Core NFR integration.** The zs22.4 Planning Lane guidance sits as a `####`
 under `### Orchestrator plugin ecosystem`, sibling to `#### Orchestrator-internal
