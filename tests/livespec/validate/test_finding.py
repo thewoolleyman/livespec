@@ -1,6 +1,6 @@
 """Tests for livespec.validate.finding.
 
-Per style doc §"Skill layout — `validate/`": validator at
+Per style doc: validator at
 `validate/finding.py` exports `validate_finding(payload, schema)`
 returning `Result[Finding, ValidationError]`. Mirrors the
 seed_input / revise_input validator-as-factory-style shape.

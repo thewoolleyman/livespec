@@ -1,6 +1,6 @@
 """Livespec E2E real harness — claude-agent-sdk against the live Claude Code CLI.
 
-Per SPECIFICATION/contracts.md §"E2E harness contract §"Harness mode selection":
+Per SPECIFICATION/contracts.md:
 this module is the `real` tier counterpart to `fake_claude.py`. Each LLM-driven
 function constructs a single-shot prompt that asks the model to emit a
 JSON-schema-constrained payload conforming to the corresponding wire-contract
@@ -108,7 +108,7 @@ def seed(*, project_root: Path, intent: str) -> subprocess.CompletedProcess[str]
 
     The prompt instructs the model to emit a single-file `files[]` entry at
     `SPECIFICATION/spec.md` (two-part path) per the seed-payload path
-    convention in `SPECIFICATION/contracts.md` §"Seed-payload path convention",
+    convention in `SPECIFICATION/contracts.md`,
     overriding the minimal template's `SPECIFICATION.md` default so the
     downstream wrappers + doctor checks resolve the spec root identically to
     the mock tier.

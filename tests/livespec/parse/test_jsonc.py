@@ -29,7 +29,7 @@ def test_jsonc_loads_empty_object_returns_success_empty_dict() -> None:
 def test_jsonc_loads_malformed_input_returns_validation_failure() -> None:
     """Malformed JSON returns `Failure(ValidationError(...))` on the railway.
 
-    Pure-layer parsers MUST NOT raise; per the style doc §"Raising"
+    Pure-layer parsers MUST NOT raise; per the style doc
     rules, errors flow as `Failure(<LivespecError>)` payloads.
     """
     result = jsonc.loads(text="{not json}")

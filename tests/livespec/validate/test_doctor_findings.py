@@ -1,6 +1,6 @@
 """Tests for livespec.validate.doctor_findings.
 
-Per style doc §"Skill layout — `validate/`": validator at
+Per style doc: validator at
 `validate/doctor_findings.py` exports
 `validate_doctor_findings(payload, schema)` returning
 `Result[DoctorFindings, ValidationError]`. The doctor_findings

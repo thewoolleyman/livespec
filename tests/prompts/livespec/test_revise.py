@@ -6,8 +6,7 @@ through the harness with the per-template `ASSERTIONS` registry,
 and asserts the fixture's declared properties hold for its
 `replayed_response`.
 
-Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-semantic-property catalogue → prompts/revise.md", the catalogue
+Per SPECIFICATION/templates/livespec/contracts.md, the catalogue
 starts at two properties (walk every pending proposed-change
 file; emit per-proposal disposition). Per-prompt regeneration
 cycles widen the catalogue and add matching assertion functions;

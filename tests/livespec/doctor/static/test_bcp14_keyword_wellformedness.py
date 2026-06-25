@@ -550,7 +550,7 @@ def test_run_passes_for_minimal_template_sub_spec_layout(
     minimal sub-spec under `<main_spec_root>/templates/minimal/`
     uses the multi-file livespec layout per
     SPECIFICATION/templates/minimal/constraints.md
-    §"Single-file end-user output" final paragraph; this
+    final paragraph; this
     fixture mirrors that layout and asserts the check passes
     when the sub-spec text is well-formed.
     """

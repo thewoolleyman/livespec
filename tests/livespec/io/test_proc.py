@@ -1,6 +1,6 @@
 """Tests for livespec.io.proc.
 
-Per style doc §"Skill layout — `io/`": "io/ — impure
+Per style doc: "io/ — impure
 boundary. Every function wraps a side-effecting operation
 (filesystem, subprocess, git) with @impure_safe." The proc
 facade exposes the typed subprocess primitive that

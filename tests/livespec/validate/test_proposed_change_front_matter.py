@@ -1,6 +1,6 @@
 """Tests for livespec.validate.proposed_change_front_matter.
 
-Per style doc §"Skill layout — `validate/`": validator at
+Per style doc: validator at
 `validate/proposed_change_front_matter.py` exports
 `validate_proposed_change_front_matter(payload, schema)`
 returning `Result[ProposedChangeFrontMatter, ValidationError]`.

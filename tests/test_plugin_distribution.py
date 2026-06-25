@@ -1,4 +1,4 @@
-"""Rule test for SPECIFICATION/contracts.md §"Plugin distribution".
+"""Rule test for SPECIFICATION/contracts.md.
 
 Asserts the on-disk plugin-bundle artifacts match the live spec's
 plugin-distribution contract, as realized after the Claude-binding
@@ -62,7 +62,7 @@ _SCRIPTS_DIR = _PLUGIN_DIR / "scripts"
 _SKILLS_DIR = _PLUGIN_DIR / "skills"
 _CLAUDE_SKILLS_SYMLINK = _REPO_ROOT / ".claude" / "skills"
 
-# Codex-packaging artifacts (v129 §"Plugin distribution"). The Codex
+# Codex-packaging artifacts (v129). The Codex
 # marketplace catalog lives at the repo-root path .agents/plugins/, and
 # the paired Codex plugin marker lives inside the SAME payload dir the
 # Claude marketplace sources (.claude-plugin/), so a single artifact
@@ -125,7 +125,7 @@ def test_marketplace_lists_single_livespec_plugin() -> None:
 def test_marketplace_description_duplicates_plugin_json() -> None:
     """marketplace.json's plugin description = plugin.json's description verbatim.
 
-    Per the v049 §"Plugin distribution" SoT rule: `plugin.json.description`
+    Per the v049 SoT rule: `plugin.json.description`
     is authoritative; `marketplace.json` duplicates it manually for v1.
     """
     marketplace = json.loads(_MARKETPLACE_JSON.read_text(encoding="utf-8"))
@@ -144,7 +144,7 @@ def test_marketplace_description_duplicates_plugin_json() -> None:
 def test_prose_exists_for_each_operation(*, operation: str) -> None:
     """Each of the eight spec-side operations ships its core prose artifact.
 
-    Per spec.md §"Contract + reference implementations architecture",
+    Per spec.md,
     the harness-neutral driving prose is CORE's artifact; Drivers (e.g.
     livespec-driver-claude) read it at runtime and bind it to their
     agent runtime.

@@ -2,7 +2,7 @@
 
 The package's `__init__.py` configures structlog and binds the
 per-invocation `run_id`. Both side-effects are exempt from
-`check-global-writes` per style doc §"Bootstrap" and run at first
+`check-global-writes` per style doc and run at first
 import. The verification this test owns: the module imports
 cleanly and the per-invocation `run_id` is bound after import.
 Logger-output behavior is exercised transitively by every other

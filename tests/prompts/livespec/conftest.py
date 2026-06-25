@@ -5,7 +5,7 @@ Provides the `assertions` pytest fixture loading
 unique sys.modules name, avoiding the collision Python's bare
 `import _assertions` would otherwise hit when both built-in
 templates ship a same-named registry. Per
-SPECIFICATION/contracts.md §"Prompt-QA harness contract" (v014)
+SPECIFICATION/contracts.md (v014)
 the per-template `_assertions.py` filename is pinned; the
 fixture-based loading is the test-infrastructure mechanism that
 preserves the contract.

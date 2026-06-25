@@ -89,7 +89,7 @@ def test_template_files_present_fails_naming_missing_manifest_paths(
 ) -> None:
     """Under a v2 manifest, missing declared files fire `fail` naming them.
 
-    Per `SPECIFICATION/spec.md` §"Template manifest" →
+    Per `SPECIFICATION/spec.md`
     "Heading-coverage and doctor-static rewiring": under v2
     templates the manifest is the source of truth for the
     template-files-present enumeration. Only `spec.md` is on disk;

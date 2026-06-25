@@ -3,7 +3,7 @@
 Maps each property name from a fixture's
 `expected_semantic_properties` array to a function that
 asserts the property holds for the fixture's `replayed_response`.
-Per SPECIFICATION/contracts.md §"Prompt-QA harness contract",
+Per SPECIFICATION/contracts.md,
 the registry is populated via explicit imports per the
 static-enumeration discipline (no `glob+importlib` dynamic
 discovery). Each assertion function MUST accept keyword-only
@@ -11,8 +11,7 @@ arguments `*, replayed_response: object, input_context: object`
 and raise `AssertionError` on any property violation.
 
 Property names match
-SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
-semantic-property catalogue". Per-prompt regeneration cycles
+SPECIFICATION/templates/minimal/contracts.md. Per-prompt regeneration cycles
 widen this registry alongside the catalogue.
 """
 
@@ -32,8 +31,7 @@ def _sub_specs_always_empty(
 ) -> None:
     """`replayed_response.sub_specs` is always `[]` for the minimal template.
 
-    Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/seed.md", the minimal
+    Per SPECIFICATION/templates/minimal/contracts.md, the minimal
     template implements the sub-spec opt-out — sub_specs MUST be
     empty regardless of any pre-seed dialogue input.
     """
@@ -55,8 +53,7 @@ def _single_specification_md_file(
 ) -> None:
     """`replayed_response.files[]` is exactly one entry with path "SPECIFICATION.md".
 
-    Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/seed.md", the minimal
+    Per SPECIFICATION/templates/minimal/contracts.md, the minimal
     template ships a single-file SPECIFICATION.md output (per the
     template's `spec_root: "./"` + single-file positioning).
     """
@@ -86,8 +83,7 @@ def _target_is_single_specification_md(
 ) -> None:
     """Every finding's target_spec_files equals exactly ["SPECIFICATION.md"].
 
-    Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/propose-change.md", the
+    Per SPECIFICATION/templates/minimal/contracts.md, the
     minimal template's single-file output means every finding
     targets exactly the single SPECIFICATION.md path.
     """
@@ -109,8 +105,7 @@ def _bcp14_in_proposed_changes(
 ) -> None:
     """Every finding's proposed_changes prose contains a BCP14 keyword.
 
-    Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/propose-change.md".
+    Per SPECIFICATION/templates/minimal/contracts.md.
     """
     del input_context
     payload = cast(dict[str, Any], replayed_response)

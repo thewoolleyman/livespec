@@ -1,6 +1,6 @@
 """Livespec E2E mock harness.
 
-Per SPECIFICATION/contracts.md §"E2E harness contract": this module provides
+Per SPECIFICATION/contracts.md: this module provides
 one function per livespec sub-command. Each function generates a deterministic
 JSON payload, writes it to a temp file, invokes the real bin/<cmd>.py wrapper,
 and returns the subprocess.CompletedProcess result.
@@ -9,7 +9,7 @@ Used when LIVESPEC_E2E_HARNESS=mock. The mock DOES NOT stub wrappers; every
 bin/<cmd>.py runs for real. Only the payload-generation step (normally
 performed by the LLM) is replaced with deterministic content.
 
-Seed-payload path convention (§"Seed-payload path convention"): the spec file
+Seed-payload path convention: the spec file
 is placed at SPECIFICATION/spec.md (two path parts) so that history/v001/ and
 proposed_changes/ materialize under SPECIFICATION/ and the doctor static phase
 resolves the main spec root as <project_root>/SPECIFICATION/ by default.
@@ -51,7 +51,7 @@ def seed_required_workflow_files(*, project_root: Path) -> None:
     """Create the six required `.github/workflows/` files in `project_root`.
 
     Per the copier-template-workflow-coverage doctor invariant
-    (contracts.md §"Doctor cross-boundary invariants"), every
+    (contracts.md), every
     livespec-governed consumer MUST carry the enumerated workflow
     file set under `.github/workflows/`. The e2e fixture models
     the post-`copier copy` state so the wrapper-chain's post-step
@@ -77,7 +77,7 @@ _HARNESS_COMMAND_PATTERN = re.compile(r"<!--\s*livespec-harness-command:\s*([a-z
 def _command_from_prompt_file(*, prompt_file: Path) -> str:
     """Extract the livespec-harness-command from a minimal template prompt file.
 
-    Per SPECIFICATION/contracts.md §"E2E harness contract" and DoD 3:
+    Per SPECIFICATION/contracts.md and DoD 3:
     each minimal template prompt carries a `<!-- livespec-harness-command: <cmd> -->`
     directive that identifies the wrapper invocation for the mock harness.
     """
@@ -109,7 +109,7 @@ def seed(*, project_root: Path, intent: str) -> subprocess.CompletedProcess[str]
     """Invoke bin/seed.py with a deterministic minimal-template payload.
 
     Reads the seed prompt file and verifies its harness-command directive
-    per SPECIFICATION/contracts.md §"E2E harness contract" DoD 3 requirement.
+    per SPECIFICATION/contracts.md DoD 3 requirement.
     """
     assert _command_from_prompt_file(prompt_file=_MINIMAL_PROMPTS_DIR / "seed.md") == "seed"
     payload: dict[str, object] = {
@@ -177,7 +177,7 @@ def propose_change_invalid(
 ) -> subprocess.CompletedProcess[str]:
     """Invoke bin/propose_change.py with a schema-INVALID payload (exit 4).
 
-    Per SPECIFICATION/contracts.md §"E2E harness contract §"Error paths":
+    Per SPECIFICATION/contracts.md:
     this function deliberately passes a payload that fails schema validation
     to exercise the retry-on-exit-4 path. The wrapper MUST return exit 4
     (ValidationError) on schema-invalid input.

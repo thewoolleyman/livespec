@@ -1,6 +1,6 @@
 """Tests for livespec.io.git.
 
-Per style doc §"Skill layout — `io/`": io/ is the
+Per style doc: io/ is the
 impure boundary; every operation that touches the git working
 tree lives here under `@impure_safe` so the railway flows
 through `IOResult`. The git facade exposes the typed primitive

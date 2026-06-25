@@ -4,8 +4,7 @@ The canonical-slugs projection check is the anti-drift gate for the
 release-time projection of `livespec_dev_tooling.canonical_checks`
 into the committed copier-template data file
 `templates/impl-plugin/canonical-slugs.yml`, per
-livespec/SPECIFICATION/contracts.md §"Shared code sync —
-livespec-dev-tooling" → Template gate.
+livespec/SPECIFICATION/contracts.md Template gate.
 
 Two modes are exercised:
 

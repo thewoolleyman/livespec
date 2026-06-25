@@ -7,8 +7,7 @@ above the opening fence, one blank line below the closing
 fence). Without proper spacing, GFM renderers and Gherkin
 parsers produce inconsistent output.
 
-Per `SPECIFICATION/templates/minimal/constraints.md`
-§"Gherkin blank-line format check exemption": the check MUST
+Per `SPECIFICATION/templates/minimal/constraints.md`: the check MUST
 exempt `minimal`-rooted projects whose `SPECIFICATION.md` does
 NOT contain any fenced ` ```gherkin ` blocks. The exemption
 avoids false-positive failures for spec content that has no
@@ -512,8 +511,7 @@ def test_run_returns_skipped_for_minimal_shape_with_no_gherkin_blocks(
 ) -> None:
     """run(ctx) emits status='skipped' for minimal-shape with no gherkin fences.
 
-    Per `SPECIFICATION/templates/minimal/constraints.md`
-    §"Gherkin blank-line format check exemption": when a
+    Per `SPECIFICATION/templates/minimal/constraints.md`: when a
     spec_root carries a single-file `SPECIFICATION.md` (the
     minimal-template shape per the `spec_root: "./"`
     convention) AND `SPECIFICATION.md` does NOT contain any
@@ -547,7 +545,7 @@ def test_run_applies_normally_for_minimal_shape_with_gherkin_blocks(
     """run(ctx) applies normally to minimal-shape WHEN gherkin blocks ARE present.
 
     Per `SPECIFICATION/templates/minimal/constraints.md`
-    §"Gherkin blank-line format check exemption" final
+    final
     sentence: "When `SPECIFICATION.md` does contain gherkin
     blocks, the check MUST apply normally." This fixture
     seeds a minimal-shape spec_root whose `SPECIFICATION.md`
@@ -592,7 +590,7 @@ def test_run_returns_fail_for_minimal_shape_with_malformed_gherkin_block(
     """run(ctx) returns IOSuccess(fail-Finding) for malformed minimal-shape gherkin.
 
     Per `SPECIFICATION/templates/minimal/constraints.md`
-    §"Gherkin blank-line format check exemption" final
+    final
     sentence: "When `SPECIFICATION.md` does contain gherkin
     blocks, the check MUST apply normally." This fixture
     seeds a minimal-shape spec_root whose `SPECIFICATION.md`

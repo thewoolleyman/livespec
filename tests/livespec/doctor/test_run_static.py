@@ -127,7 +127,7 @@ def test_run_static_main_returns_usage_exit_code_on_unknown_flag() -> None:
     pattern-match: io/cli.parse_argv lifts argparse's
     SystemExit-on-unknown-flag into a Failure(UsageError),
     which the supervisor maps to err.exit_code = 2 per the
-    style doc §"Exit code contract".
+    style doc.
     """
     exit_code = run_static.main(argv=["--no-such-flag"])
     assert exit_code == 2
@@ -199,7 +199,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
 ) -> None:
     """run_static.main enumerates main + sub-spec trees in one invocation.
 
-    Per Plan §"" exit criterion ("/livespec:doctor's
+    Per Plan exit criterion ("/livespec:doctor's
     static phase runs cleanly against every spec tree — one
     wrapper invocation, exit 0 overall, with per-tree findings
     emitted and all marked pass"): a project that ships

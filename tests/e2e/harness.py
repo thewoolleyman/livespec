@@ -1,9 +1,9 @@
 """E2E harness selector — dispatches mock vs real per `LIVESPEC_E2E_HARNESS`.
 
-Per SPECIFICATION/contracts.md §"E2E harness contract §"Harness mode selection":
+Per SPECIFICATION/contracts.md:
 
-- `LIVESPEC_E2E_HARNESS=mock` (default when unset) → `tests/e2e/fake_claude.py`.
-- `LIVESPEC_E2E_HARNESS=real` → `tests/e2e/real_claude.py` (live
+- `LIVESPEC_E2E_HARNESS=mock` (default when unset) `tests/e2e/fake_claude.py`.
+- `LIVESPEC_E2E_HARNESS=real` `tests/e2e/real_claude.py` (live
   claude-agent-sdk + Claude Code CLI; requires `ANTHROPIC_API_KEY`).
 
 Tests import this module and call `harness.seed(...)`, `harness.revise(...)`

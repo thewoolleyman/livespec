@@ -3,7 +3,7 @@
 Maps each property name from a fixture's
 `expected_semantic_properties` array to a function that
 asserts the property holds for the fixture's `replayed_response`.
-Per SPECIFICATION/contracts.md §"Prompt-QA harness contract",
+Per SPECIFICATION/contracts.md,
 the registry is populated via explicit imports per the
 static-enumeration discipline (no `glob+importlib` dynamic
 discovery). Each assertion function MUST accept keyword-only
@@ -11,8 +11,7 @@ arguments `*, replayed_response: object, input_context: object`
 and raise `AssertionError` on any property violation.
 
 Property names match
-SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-semantic-property catalogue". Per-prompt regeneration cycles
+SPECIFICATION/templates/livespec/contracts.md. Per-prompt regeneration cycles
 widen this registry alongside the catalogue; fixtures'
 `expected_semantic_properties` lists land in the same revise
 commit as their matching assertion functions.
@@ -34,8 +33,7 @@ def _headings_derived_from_intent(
 ) -> None:
     """Every file in `replayed_response.files[]` has an `# ` H1 header.
 
-    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/seed.md", each spec file's
+    Per SPECIFICATION/templates/livespec/contracts.md, each spec file's
     top-level heading MUST be `#` (level 1) reflecting the seed intent.
     The structural assertion verifies the H1 is present; semantic
     intent-derivation is a fuzzier check left to the LLM-driven
@@ -61,8 +59,7 @@ def _asks_v020_q2_question(
 ) -> None:
     """`replayed_response.sub_specs[]` reflects the dialogue answer for `ships_own_templates`.
 
-    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/seed.md", when the input
+    Per SPECIFICATION/templates/livespec/contracts.md, when the input
     context's `ships_own_templates` is true (with `named_templates`
     listing N entries), the replayed response's `sub_specs` array
     MUST carry exactly N entries; otherwise the array MUST be empty.
@@ -98,8 +95,7 @@ def _target_files_within_spec_target(
 ) -> None:
     """Every finding's `target_spec_files[]` paths are under `input_context.spec_target`.
 
-    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/propose-change.md", findings
+    Per SPECIFICATION/templates/livespec/contracts.md, findings
     referencing paths outside the spec target are malformed.
     """
     ctx = cast(dict[str, Any], input_context)
@@ -123,8 +119,7 @@ def _bcp14_in_proposed_changes(
 ) -> None:
     """Every finding's `proposed_changes` prose contains a BCP14 keyword.
 
-    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/propose-change.md", proposed-
+    Per SPECIFICATION/templates/livespec/contracts.md, proposed-
     change prose SHOULD apply normative language so the resulting
     file flows into the spec under the same discipline.
     """
@@ -151,10 +146,9 @@ def _decisions_reference_pending_proposals(
 ) -> None:
     """Every `replayed_response.decisions[].proposal_topic` references an actually-pending proposal.
 
-    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/revise.md", emitted
+    Per SPECIFICATION/templates/livespec/contracts.md, emitted
     decisions MAY cover any subset of pending proposals (selective
-    revise per SPECIFICATION/spec.md (v052) §"Sub-command lifecycle"
+    revise per SPECIFICATION/spec.md (v052)
     revise lifecycle clause (h)). Extras — decisions whose topic is
     NOT in pending — indicate stale or typo'd topic references and
     are a bug.
@@ -180,8 +174,7 @@ def _per_proposal_disposition_with_rationale(
 ) -> None:
     """Every decision has `decision` in {accept, modify, reject} + non-empty `rationale`.
 
-    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/revise.md". Schema
+    Per SPECIFICATION/templates/livespec/contracts.md. Schema
     validation enforces field presence + the enum; this assertion
     strengthens the rationale check (whitespace-only rationales
     fail).
@@ -223,8 +216,7 @@ def _findings_grounded_in_spec_target(
 ) -> None:
     """Every finding's `target_spec_files[]` paths exist in `input_context.current_spec_files[]`.
 
-    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/critique.md", critique
+    Per SPECIFICATION/templates/livespec/contracts.md, critique
     findings MUST reference files that exist in the target tree.
     """
     ctx = cast(dict[str, Any], input_context)
@@ -247,8 +239,7 @@ def _prioritizes_ambiguity_over_style(
 ) -> None:
     """Every finding's `motivation` contains an ambiguity / contradiction lexicon term.
 
-    Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-    semantic-property catalogue → prompts/critique.md", the prompt
+    Per SPECIFICATION/templates/livespec/contracts.md, the prompt
     SHOULD prioritize ambiguities + contradictions over wording-
     style suggestions. The lexicon match is heuristic; richer
     semantic checks live in the doctor LLM-driven subjective

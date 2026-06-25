@@ -1,6 +1,6 @@
 """Tests for livespec.validate.sub_spec_payload.
 
-Per style doc §"Skill layout — `validate/`": validator at
+Per style doc: validator at
 `validate/sub_spec_payload.py` exports
 `validate_sub_spec_payload(payload, schema)` returning
 `Result[SubSpecPayload, ValidationError]`.

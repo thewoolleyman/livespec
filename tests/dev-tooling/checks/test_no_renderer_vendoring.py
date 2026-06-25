@@ -1,7 +1,7 @@
 """Outside-in test for `dev-tooling/checks/no_renderer_vendoring.py`.
 
 Covers the two scan surfaces of the renderer-non-vendoring guard
-(`SPECIFICATION/constraints.md` §"Renderer non-vendoring"): a
+(`SPECIFICATION/constraints.md`): a
 renderer declared as a `pyproject.toml` dependency and a renderer
 vendored under `.claude-plugin/scripts/_vendor/` both fail; a clean
 tree (and a bare tree with neither surface present) passes. The

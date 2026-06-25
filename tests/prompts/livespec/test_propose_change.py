@@ -6,8 +6,7 @@ fixture through the harness with the per-template `ASSERTIONS`
 registry, and asserts the fixture's declared properties hold
 for its `replayed_response`.
 
-Per SPECIFICATION/templates/livespec/contracts.md §"Per-prompt
-semantic-property catalogue → prompts/propose-change.md", the
+Per SPECIFICATION/templates/livespec/contracts.md, the
 catalogue starts at two properties (per-finding
 `target_spec_files` referencing the spec-target tree; BCP14
 normative language in `proposed_changes`). Per-prompt

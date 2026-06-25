@@ -1,6 +1,6 @@
 """Outside-in test for `dev-tooling/checks/comment_no_historical_refs.py`.
 
-Per `SPECIFICATION/non-functional-requirements.md` §"Comment discipline"
+Per `SPECIFICATION/non-functional-requirements.md`
 (Rule 2 — No historical-bookkeeping references), comments in the
 first-party trees MUST NOT cite version numbers, decision IDs, phase
 numbers, cycle numbers, or commit references. The check greps every

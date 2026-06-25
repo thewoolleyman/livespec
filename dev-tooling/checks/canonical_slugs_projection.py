@@ -1,7 +1,6 @@
 """canonical_slugs_projection — project + verify the canonical-slug template data file.
 
-Per livespec/SPECIFICATION/contracts.md §"Shared code sync —
-livespec-dev-tooling" → Template gate, the canonical check-slug set
+Per livespec/SPECIFICATION/contracts.md Template gate, the canonical check-slug set
 that `templates/impl-plugin/justfile.jinja` stamps MUST flow as a
 committed STATIC DATA file — a release-time projection of
 `livespec_dev_tooling.canonical_checks` (the single source of truth)

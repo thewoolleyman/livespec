@@ -6,8 +6,7 @@ through the harness with the per-template `ASSERTIONS` registry,
 and asserts the fixture's declared properties hold for its
 `replayed_response`.
 
-Per SPECIFICATION/templates/minimal/contracts.md §"Per-prompt
-semantic-property catalogue → prompts/critique.md", the
+Per SPECIFICATION/templates/minimal/contracts.md, the
 catalogue starts at a single placeholder property; per-prompt
 regeneration cycles widen the catalogue and add matching
 assertion functions.

@@ -1,6 +1,6 @@
 """Tests for livespec.io.fs.
 
-Per style doc §"Skill layout — `io/`": every operation that
+Per style doc: every operation that
 touches the filesystem lives here under `@impure_safe`. The fs
 facade exposes the typed read/write primitives the seed +
 propose-change + revise + doctor sub-commands compose against.
@@ -57,8 +57,7 @@ def test_fs_read_text_returns_precondition_error_on_missing_file(*, tmp_path: Pa
     """`read_text(path=missing)` returns IOFailure(PreconditionError(...)).
 
     PreconditionError signals "the project state required for
-    this operation is not met" (exit 3 per style doc §"Exit
-    code contract"). FileNotFoundError -> PreconditionError is
+    this operation is not met" (exit 3 per style doc). FileNotFoundError -> PreconditionError is
     the canonical mapping at the io boundary.
     """
     missing = tmp_path / "does-not-exist.json"
@@ -181,7 +180,7 @@ def test_fs_rmtree_removes_populated_directory_and_returns_iosuccess(
 ) -> None:
     """`rmtree(path)` recursively deletes `path` and returns IOSuccess(None).
 
-    Per SPECIFICATION/spec.md §"Sub-command lifecycle" prune-history
+    Per SPECIFICATION/spec.md prune-history
     paragraph step (c), the wrapper deletes every
     `<spec-root>/history/vK/` where K < N-1, so io.fs needs a
     recursive directory-removal primitive that participates in the

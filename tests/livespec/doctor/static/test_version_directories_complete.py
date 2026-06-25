@@ -13,7 +13,7 @@ template-aware and lands at the per-prompt regeneration.  lands the success
 arm; subsequent cycles add the missing-subdirectory failure arm.
 
 the per-prompt regeneration prereq.B widens the rule with the pruned-marker
-exemption per SPECIFICATION/v013 spec.md §"Pruning history":
+exemption per SPECIFICATION/v013 spec.md:
 a v-directory whose contents are EXACTLY `PRUNED_HISTORY.json`
 (single file at the directory root, no subdirs, no other
 files) is exempt from the standard "must have proposed_changes/
@@ -112,8 +112,7 @@ def test_version_directories_complete_run_passes_for_pruned_marker_only(
 ) -> None:
     """run(ctx) returns IOSuccess(pass-Finding) when an oldest v-dir is a pruned-marker.
 
-    Per SPECIFICATION/v013 spec.md §"`version-directories-complete`
-    pruned-marker exemption": a v-directory whose contents are
+    Per SPECIFICATION/v013 spec.md: a v-directory whose contents are
     EXACTLY `PRUNED_HISTORY.json` (single file, no subdirs, no
     other files) is exempt from the standard "every v-dir contains
     template-required spec files + a `proposed_changes/` subdir"
@@ -153,8 +152,7 @@ def test_version_directories_complete_run_fails_for_marker_with_extra_file(
 ) -> None:
     """run(ctx) returns IOSuccess(fail-Finding) for a v-dir mixing marker + extra file.
 
-    Per SPECIFICATION/v013 spec.md §"`version-directories-complete`
-    pruned-marker exemption": the marker exemption is strict — the
+    Per SPECIFICATION/v013 spec.md: the marker exemption is strict — the
     pruned-marker v-dir MUST contain ONLY `PRUNED_HISTORY.json`.
     A v-dir carrying `PRUNED_HISTORY.json` AND an extra file
     (here a stray `spec.md`) is a malformed marker and yields a

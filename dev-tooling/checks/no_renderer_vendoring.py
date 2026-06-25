@@ -1,6 +1,6 @@
 """no_renderer_vendoring — livespec vendors and depends on no diagram renderer.
 
-Enforces `SPECIFICATION/constraints.md` §"Renderer non-vendoring":
+Enforces `SPECIFICATION/constraints.md`:
 livespec MUST NOT vendor rendering binaries or runtimes for any
 diagram language (no bundled `plantuml.jar`, no Graphviz dependency,
 no Mermaid CLI bundle) AND MUST NOT depend on any such renderer.

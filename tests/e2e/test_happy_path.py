@@ -1,6 +1,6 @@
-"""E2E happy-path test: seed → propose-change → critique → revise → doctor → prune-history.
+"""E2E happy-path test: seed propose-change critique revise doctor prune-history.
 
-Per SPECIFICATION/contracts.md §"E2E harness contract §"Test structure": the
+Per SPECIFICATION/contracts.md: the
 happy path exercises the full user workflow against a tmp_path-scoped git repo
 using the minimal template. Each wrapper step is followed by a git commit so
 the out-of-band-edits doctor check sees HEAD-committed spec state.
