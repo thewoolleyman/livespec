@@ -63,13 +63,124 @@ github_repo:
   default: "{{ plugin_full_name }}"
   help: GitHub repository name. Defaults to plugin_full_name.
 
+# ---------------------------------------------------------------------------
+# Worktree-discipline ecosystem profile (the Worktree Discipline Pack).
+#
+# `ecosystem` selects a PROFILE of presets for the worktree-discipline pack:
+# the repo's task runner, its hydrate command, its hook framework, and its
+# verify gate. EVERY downstream key below carries the profile's value as its
+# DEFAULT and stays INDIVIDUALLY OVERRIDABLE — a repo whose runner or hook
+# framework differs from its ecosystem's default just answers that one
+# question. The portable worktree-lifecycle core (dev-tooling/worktree-lib.sh)
+# and the commit-refuse gate (dev-tooling/refuse-primary-commit.sh) are
+# pure-git and ECOSYSTEM-NEUTRAL; only these profile presets vary. Adding a
+# 4th ecosystem later is a new profile choice plus its preset branches — no
+# core or gate change.
+#
+# BACKWARD-COMPAT: `default: python` is load-bearing. Existing consumers'
+# `.copier-answers.yml` predate this question; on `copier update` copier
+# applies the default, so the python profile MUST reproduce the prior
+# (Python-shaped) template behavior byte-for-byte. The Python-specific files
+# (pyproject.toml, .python-version, the uv pin in .mise.toml) are
+# conditionalized behind `ecosystem == 'python'` precisely so a python
+# consumer's `copier update` is a behavioral no-op.
+ecosystem:
+  type: str
+  default: python
+  choices:
+    - python
+    - rust
+    - javascript
+  help: |
+    Primary language/ecosystem of this repo. Selects the worktree-discipline
+    profile's defaults for the task runner, the worktree hydrate command, the
+    hook framework, and the verify gate (each individually overridable below).
+    The worktree contract and the commit-refuse gate are identical across all
+    three; only these presets differ. Choose 'python' (the default) for a
+    Python plugin repo, 'rust' for a cargo workspace, 'javascript' for a
+    Node/pnpm workspace.
+
+task_runner:
+  type: str
+  default: "{% if ecosystem == 'rust' %}cargo{% elif ecosystem == 'javascript' %}pnpm{% else %}just{% endif %}"
+  help: |
+    The repo's OWN task runner — the command the thin worktree-discipline
+    adapters map onto the portable core. livespec mandates the worktree
+    CONTRACT, never a specific runner: `just` is one reference adapter, not a
+    requirement. Defaults per ecosystem (python: just; rust: cargo;
+    javascript: pnpm); override with whatever this repo actually uses (make,
+    nox, xtask, npm, yarn, taskfile, raw, …).
+
+hook_framework:
+  type: str
+  default: "{% if ecosystem == 'javascript' %}husky{% else %}lefthook{% endif %}"
+  choices:
+    - lefthook
+    - husky
+    - pre-commit
+    - raw
+  help: |
+    The git-hook framework this repo wires the commit-refuse gate through.
+    The gate itself (dev-tooling/refuse-primary-commit.sh) is framework-
+    agnostic pure-git; this only selects HOW it is installed. Defaults:
+    python/rust → lefthook; javascript → husky. 'raw' wires a plain
+    .git/hooks script (no framework).
+
+worktree_root:
+  type: str
+  default: "~/.worktrees/{{ github_repo }}/{{ '{{branch}}' }}"
+  help: |
+    Per-worktree root path convention. The portable core defaults to
+    ~/.worktrees/<repo>/<branch>; this answer records the repo's chosen
+    convention (the literal {{ '{{branch}}' }} placeholder is filled per
+    worktree at create time). Override only if this repo deliberately roots
+    its worktrees elsewhere.
+
+land_mode:
+  type: str
+  default: pr
+  choices:
+    - pr
+    - merge-queue
+    - direct
+  help: |
+    How a landed worktree branch reaches the default branch. 'pr' (default):
+    open a PR and merge it; 'merge-queue': enqueue onto a merge queue;
+    'direct': push straight to the default branch. The portable core's `land`
+    verb rebases then REPORTS the next step — it never auto-pushes/merges —
+    so this answer documents the repo's chosen path rather than changing the
+    core.
+
+uses_mise:
+  type: bool
+  default: "{% if ecosystem == 'python' %}true{% else %}false{% endif %}"
+  help: |
+    Whether this repo manages its non-language binaries via mise (gates the
+    worktree-root mise-trust step in `just bootstrap` / the equivalent
+    bootstrap). Defaults true for python (the existing template behavior
+    pins uv/just/lefthook via .mise.toml); false otherwise — flip to true if
+    a rust or javascript repo also adopts mise for its binary pins.
+
+hydrate_cmd:
+  type: str
+  default: "{% if ecosystem == 'rust' %}cargo fetch{% elif ecosystem == 'javascript' %}pnpm install --frozen-lockfile{% else %}uv sync --all-groups{% endif %}"
+  help: |
+    The dependency-resolution step the worktree hydrate hook runs after
+    creating a fresh worktree. "Hydrate" means something DIFFERENT per
+    ecosystem (python: create a .venv via the uv cache; javascript: populate
+    node_modules including workspace sub-packages; rust: warm/share the BUILD
+    cache — crates already live in $CARGO_HOME, so `cargo fetch` is ~free and
+    the real cost is a cold target/ recompile). Defaults per ecosystem;
+    override with poetry/pip/npm/yarn/etc. as needed.
+
 python_version:
   type: str
   default: "3.13"
+  when: "{{ ecosystem == 'python' }}"
   help: |
     Python version to pin via .python-version and .mise.toml. Should
     match livespec's pinned Python version for the release tag this
-    template was generated against.
+    template was generated against. Asked only for the python ecosystem.
 
 livespec_release_tag:
   type: str

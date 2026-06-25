@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# worktree-hydrate.sh — per-ecosystem worktree hydration hook ({{ ecosystem }} profile).
+#
+# Generated from livespec/templates/impl-plugin/dev-tooling/worktree-hydrate.sh.jinja
+# at copier-copy time; re-sync via `copier update --vcs-ref=master` when
+# livespec publishes a new release.
+#
+# "Hydrate" means: prepare a freshly-created linked worktree so this repo's
+# checks and tooling can run inside it. What that entails is ECOSYSTEM-SPECIFIC
+# — there is NO neutral default that fits Python, Rust, and JavaScript — so the
+# portable, ecosystem-NEUTRAL core (dev-tooling/worktree-lib.sh) delegates
+# hydration here. This file is the {{ ecosystem }}-profile specialization the
+# copier template stamped from your `ecosystem` answer.
+#
+# The worktree-lifecycle CORE and the commit-refuse gate stay pure-git and
+# ecosystem-neutral; ONLY this hydration script varies by ecosystem. Adding a
+# 4th ecosystem later means a new branch in the template's hydrate profile, no
+# core or gate change.
+#
+# Resolution: worktree-lib.sh runs, in order, the WORKTREE_HYDRATE_HOOK env
+# command if set, else this executable script, else a friendly no-op. Override
+# the stamped command without editing this file by exporting
+# WORKTREE_HYDRATE_OVERRIDE="<command>" (takes precedence over the default
+# below), or replace the whole hook via WORKTREE_HYDRATE_HOOK.
+#
+# Idempotent and safe to re-run: worktree-lib.sh only invokes this from inside
+# a linked worktree, and `./dev-tooling/worktree-lib.sh hydrate` re-runs it.
+
+set -euo pipefail
+
+# The dependency-resolution command this repo's profile chose, stamped from the
+# `hydrate_cmd` copier question. Overridable at runtime via
+# WORKTREE_HYDRATE_OVERRIDE.
+HYDRATE_CMD="{{ hydrate_cmd }}"
+if [ -n "${WORKTREE_HYDRATE_OVERRIDE:-}" ]; then
+    HYDRATE_CMD="${WORKTREE_HYDRATE_OVERRIDE}"
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+{% if ecosystem == 'rust' -%}
+# -------------------------------------------------------------------------
+# Rust hydration = WARM/SHARE THE BUILD CACHE, not copy a dep dir.
+#
+# This is the load-bearing Rust distinction. Crates are NOT a per-worktree
+# in-tree dependency directory the way node_modules is: they already live in
+# the shared $CARGO_HOME registry, downloaded once and reused by every worktree
+# and branch. So `cargo fetch` is nearly free and there is nothing to copy. The
+# REAL per-worktree cost is a cold `target/` full recompile, so the Rust
+# profile makes that cache SHARED across worktrees — a new worktree spins up as
+# cheaply as a pnpm-store one — via either sccache (shared compilation cache
+# across worktrees AND branches) or a shared CARGO_TARGET_DIR. Do NOT model
+# Rust as "JavaScript but with cargo."
+#
+# Strategy resolution (overridable):
+#   - If RUSTC_WRAPPER is already exported (e.g. sccache from the shell env),
+#     respect it and just fetch — the compilation cache is already shared.
+#   - Else if sccache is on PATH, wire it as RUSTC_WRAPPER for this run.
+#   - Else share CARGO_TARGET_DIR rooted OUTSIDE any single worktree (default
+#     ~/.cache/cargo-target/<repo>), so compiled artifacts are reused across
+#     worktrees and branches instead of recompiled cold per worktree.
+if [ -n "${RUSTC_WRAPPER:-}" ]; then
+    echo "worktree-hydrate (rust): RUSTC_WRAPPER=${RUSTC_WRAPPER} already set — build cache is shared"
+elif command -v sccache >/dev/null 2>&1; then
+    RUSTC_WRAPPER="$(command -v sccache)"
+    export RUSTC_WRAPPER
+    echo "worktree-hydrate (rust): wired sccache as RUSTC_WRAPPER for a shared compilation cache"
+    echo "  (export RUSTC_WRAPPER=\"$RUSTC_WRAPPER\" in your shell to keep it across invocations)"
+else
+    repo_name="$(basename "$repo_root")"
+    shared_target="${CARGO_TARGET_DIR:-$HOME/.cache/cargo-target/$repo_name}"
+    mkdir -p "$shared_target"
+    export CARGO_TARGET_DIR="$shared_target"
+    echo "worktree-hydrate (rust): no sccache found — sharing CARGO_TARGET_DIR=$CARGO_TARGET_DIR"
+    echo "  across worktrees so target/ is not recompiled cold per worktree."
+    echo "  (install sccache for a finer-grained shared compilation cache, or"
+    echo "   export CARGO_TARGET_DIR yourself to relocate the shared target dir.)"
+fi
+
+# `cargo fetch` populates the shared $CARGO_HOME registry for this worktree's
+# lockfile. It is ~free when crates are already present (the shared registry is
+# the norm), so it is safe to run on every hydrate.
+echo "worktree-hydrate (rust): $HYDRATE_CMD"
+${HYDRATE_CMD}
+{% elif ecosystem == 'javascript' -%}
+# -------------------------------------------------------------------------
+# JavaScript hydration = POPULATE node_modules, INCLUDING workspace
+# sub-packages.
+#
+# node_modules IS a per-worktree in-tree dependency directory (unlike Rust's
+# shared $CARGO_HOME), but it materializes cheaply because pnpm hard-links from
+# its global content-addressed store rather than re-downloading. The
+# load-bearing gotcha: a monorepo's WORKSPACE SUB-PACKAGES each need their own
+# node_modules linked too — a top-level install that misses a sub-package
+# (e.g. a `dashboard/` workspace) leaves that sub-package's build broken in the
+# worktree. `pnpm install` walks the workspace and links every package by
+# design; if this repo uses npm/yarn workspaces, the `hydrate_cmd` answer
+# should be the equivalent workspace-aware install (`npm ci --workspaces`,
+# `yarn install`).
+echo "worktree-hydrate (javascript): $HYDRATE_CMD (workspace-aware install populates sub-packages)"
+${HYDRATE_CMD}
+
+# Defense-in-depth for monorepos whose installer does NOT auto-walk workspaces:
+# if a workspace manifest exists and any first-level workspace package still
+# lacks node_modules after the top-level install, surface it loudly rather than
+# letting a sub-package build fail later inside the worktree.
+if [ -f pnpm-workspace.yaml ] || grep -qs '"workspaces"' package.json 2>/dev/null; then
+    missing_ws=""
+    for pkg_json in */package.json; do
+        [ -e "$pkg_json" ] || continue
+        pkg_dir="$(dirname "$pkg_json")"
+        if [ ! -d "$pkg_dir/node_modules" ]; then
+            missing_ws="$missing_ws $pkg_dir"
+        fi
+    done
+    if [ -n "$missing_ws" ]; then
+        echo "worktree-hydrate (javascript): NOTE — workspace sub-package(s) without node_modules:$missing_ws" >&2
+        echo "  If their builds need linked deps, ensure your hydrate_cmd is workspace-aware" >&2
+        echo "  (e.g. 'pnpm install', 'npm ci --workspaces', 'yarn install')." >&2
+    fi
+fi
+{% else -%}
+# -------------------------------------------------------------------------
+# Python hydration = CREATE THE .venv via the uv cache.
+#
+# uv resolves and materializes a project-local .venv from pyproject.toml +
+# uv.lock; this is cheap because uv reuses its global wheel/download cache
+# across worktrees rather than re-downloading. `uv sync --all-groups` installs
+# the dev dependency group too (ruff/pyright/pytest/…), so the worktree can run
+# the full `just check` aggregate. There is no shared in-tree dep dir to copy —
+# the .venv is per-worktree and cheap to recreate.
+echo "worktree-hydrate (python): $HYDRATE_CMD"
+${HYDRATE_CMD}
+{% endif -%}
+
+echo "worktree-hydrate ({{ ecosystem }}): done."
+exit 0

@@ -35,6 +35,45 @@ default:
     @just --list
 
 # ---------------------------------------------------------------
+# Worktree-discipline adapters (the Worktree Discipline Pack).
+#
+# These four recipes are THIN, logic-free adapters that map this repo's
+# `just` task runner onto the portable, ecosystem-neutral worktree core
+# (dev-tooling/worktree-lib.sh). The CORE is the single source of truth for
+# the worktree lifecycle (create / hydrate / land / reap) and the
+# primary-vs-linked detection; these recipes carry NO logic of their own —
+# they only forward arguments. livespec mandates the worktree CONTRACT, never
+# `just`: a repo whose `task_runner` is cargo/pnpm/make/etc. wires the same
+# four verbs through ITS runner (see dev-tooling/worktree-adapter.sh for the
+# runner-neutral entry point and how to wire any runner). Keeping the logic in
+# the core — not in the adapter — is what stops ecosystems from drifting; the
+# drift workflow + `copier update` exist to catch any divergence.
+#
+# Hydration is the {{ ecosystem }}-profile specialization in
+# dev-tooling/worktree-hydrate.sh, which the core's `create`/`hydrate` verbs
+# invoke automatically.
+# ---------------------------------------------------------------
+
+# Branch a fresh isolated worktree from the default branch under
+# {{ worktree_root }} and hydrate it ({{ ecosystem }} profile).
+worktree-create branch base_ref="":
+    ./dev-tooling/worktree-lib.sh create {{ '{{' }}branch{{ '}}' }} {{ '{{' }}base_ref{{ '}}' }}
+
+# Run the {{ ecosystem }}-profile hydrate hook in the current worktree.
+worktree-hydrate:
+    ./dev-tooling/worktree-lib.sh hydrate
+
+# Rebase the current worktree branch onto the latest base, then report the
+# next landing step (land_mode={{ land_mode }}; the core never auto-pushes).
+worktree-land base_ref="":
+    ./dev-tooling/worktree-lib.sh land {{ '{{' }}base_ref{{ '}}' }}
+
+# Report (dry-run) or remove (--execute) stale/orphaned worktrees. Pass
+# extra args through, e.g. `just worktree-reap --execute`.
+worktree-reap *args:
+    ./dev-tooling/worktree-lib.sh reap {{ '{{' }}args{{ '}}' }}
+
+# ---------------------------------------------------------------
 # First-time setup.
 # ---------------------------------------------------------------
 
@@ -52,7 +91,7 @@ bootstrap:
     # `copier update` 3-way merge can re-checkout these files without it,
     # and lefthook invokes refuse-primary-commit.sh directly (./…) — a
     # non-executable gate would silently no-op. This chmod is idempotent.
-    chmod +x dev-tooling/refuse-primary-commit.sh dev-tooling/worktree-lib.sh dev-tooling/worktree-hydrate.sh
+    chmod +x dev-tooling/refuse-primary-commit.sh dev-tooling/worktree-lib.sh dev-tooling/worktree-hydrate.sh dev-tooling/worktree-adapter.sh
     # Harden the beads tenant-pointer dir to owner-only on first-touch (bd
     # recommends 0700; only the owning user's bd reads it — the Dolt server
     # connects over TCP and never reads this dir). Guarded: repos with no beads

@@ -32,6 +32,14 @@ and uses the same primary-vs-linked test as the gate. It is ecosystem-neutral
 and task-runner-agnostic (it shells out to `git` only and does NOT require
 `just`); invoke it directly, or through whatever task runner this repo uses.
 
+Invoke the four verbs through this repo's OWN task runner via thin, logic-free
+adapters — the runner is this repo's choice, never mandated. `just` is one
+reference adapter (the `just worktree-create` / `worktree-hydrate` /
+`worktree-land` / `worktree-reap` recipes); `dev-tooling/worktree-adapter.sh`
+is the runner-neutral entry point a cargo/pnpm/make/taskfile/raw runner wires
+in (see its header for the per-runner snippets). The adapters carry no logic;
+the core stays the single source of truth.
+
 1. **Create the worktree.** Branch from the latest default branch into a
    dedicated worktree under `~/.worktrees/<repo>/<branch>` (NEVER as a peer of
    first-class clones):
@@ -49,12 +57,17 @@ and task-runner-agnostic (it shells out to `git` only and does NOT require
 
 2. **Hydrate (if this repo needs it).** "Hydrate" means prepare the fresh
    worktree so the repo's checks and tooling can run inside it; what that
-   entails is ecosystem-specific (install deps, create a virtualenv, warm a
-   build cache, …). The shipped `dev-tooling/worktree-hydrate.sh` is a no-op
-   stub — replace its body with this repo's ecosystem-correct hydration, or
-   export `WORKTREE_HYDRATE_HOOK="<command>"`. `worktree-lib.sh create` runs
-   the hook automatically; re-run it standalone with
-   `./dev-tooling/worktree-lib.sh hydrate`.
+   entails is ecosystem-specific (Python: create a `.venv`; JavaScript:
+   populate `node_modules` including workspace sub-packages; Rust: warm/share
+   the build cache — crates already live in `$CARGO_HOME`, so the per-worktree
+   cost is the cold `target/` recompile, shared via sccache or a shared
+   `CARGO_TARGET_DIR`). The shipped `dev-tooling/worktree-hydrate.sh` is the
+   ecosystem-correct hydration the copier template stamped from this repo's
+   `ecosystem` answer — adjust its `hydrate_cmd` if this repo's installer
+   differs, or override at runtime via `WORKTREE_HYDRATE_OVERRIDE="<command>"`
+   (just the dependency step) or `WORKTREE_HYDRATE_HOOK="<command>"` (the whole
+   hook). `worktree-lib.sh create` runs the hook automatically; re-run it
+   standalone with `./dev-tooling/worktree-lib.sh hydrate`.
 
 3. **Edit and commit in the worktree.** Use `mise exec -- git commit ...` and
    `mise exec -- git push ...` so the mise-managed lefthook hooks actually run.
@@ -199,7 +212,8 @@ around the seam with raw `mysql` / `dolt` / `sudo`.
   the mise-dispatching git-hook-wrapper at `.git/hooks/pre-commit` +
   `.git/hooks/pre-push` + `.git/hooks/commit-msg`, ensures the
   worktree-discipline shell scripts (`dev-tooling/refuse-primary-commit.sh`,
-  `dev-tooling/worktree-lib.sh`, `dev-tooling/worktree-hydrate.sh`) stay
+  `dev-tooling/worktree-lib.sh`, `dev-tooling/worktree-hydrate.sh`,
+  `dev-tooling/worktree-adapter.sh`) stay
   executable, installs lefthook hooks, resolves plugin dependencies, creates
   `~/.worktrees`, and registers it in mise's `trusted_config_paths` so every
   worktree (created at `~/.worktrees/<repo>/<branch>`) auto-trusts its
