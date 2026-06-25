@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-25, post-increment-4 COMPLETE)
+## Status (refreshed 2026-06-25, post-increment-5-M1 COMPLETE)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -87,6 +87,27 @@ CONTROL PLANE; livespec core under a SPEC PLANE subgraph; orchestrator + Fabro
 under an ORCHESTRATOR PLANE subgraph; GitHub a host source). Both landed via the
 governed propose-change → revise lifecycle.
 
+**Increment 5 FILED + M0/M1 COMPLETE — the Conformance Pattern.** Increment 5 is
+now a filed SUB-EPIC `livespec-zs22.7` (under `livespec-zs22`, which is now 6/7
+children) holding milestones **M0–M6** (`livespec-zs22.7.1`…`.7`), chained
+M0→M6, with see-also links to the fold-in follow-ups (`gcp2`, `kvzt`, `i6rc`,
+`8njn` on the epic; `qtjd`↔M2; `mjnv`↔M5). **M0** (`zs22.7.1`) CLOSED — decisions
+locked in the design docs + `zs22.1`, no code. **M1 COMPLETE** (`zs22.7.2`, PR
+#602, rebase merge `9c7c87c`, cut `v143`): a NEW NON-normative top-level
+`### Conformance Pattern` section in `non-functional-requirements.md` (after
+`### Control-Plane console guidance`, before `### Codex dogfooding compatibility`)
+— the five-slot anatomy (Contract / Mechanism / Installer / Verifier / Exemption),
+the reuse-by-default delivery rule, the consolidated `just` keystone + its
+functional/non-functional boundary, the profile + declarative
+`.livespec-fleet-manifest.jsonc` `adopters`/`posture` boundary, the four-tier
+enforcement, the explicit-exemptions/default-fail-closed hard rule, and the
+concern registry (concern #1 worktree-discipline + concern #2 cross-harness
+plugin-resolution in full five-slot form; No-shadow-ledger / Terminology-guard /
+Ledger-closure / Pin-freshness / Archive-on-epic-close named). It NAMES +
+GENERALIZES existing fleet machinery (§Fleet membership contract, copier,
+dev-tooling, pin-and-bump) rather than duplicating it. `just check` green;
+doctor-static green. The pattern is now SPEC; the machinery is M2→M6.
+
 **Mid-increment-3 detour, DONE — epic `livespec-gcp2` (red-green-replay
 fleet+adopter-wide).** Maintainer directive (2026-06-25): red-green-replay MUST
 be enforced fleet+adopter-wide, regardless of any "no product Python"
@@ -112,21 +133,30 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-Increment 4 is DONE (Status above; `livespec-zs22.6` CLOSED). ONE increment
-remains in the design-doc sequence — increment 5 (the Conformance Pattern) —
-plus the conformance follow-ups prior sessions filed. Increment 5 is a large new
-epic (M0–M6); start it in a fresh session per the budget-handoff rule.
+Increment 5 is FILED and M0/M1 are DONE (Status above). The next ready milestone
+is **M2 (`livespec-zs22.7.3`)** — the FIRST ACTION `bd ready` ranks it first
+under `zs22.7`. (The earlier "file the M0–M6 epic" action is COMPLETE; the epic
+is `livespec-zs22.7`.)
 
-**Increment 5 (the next action) — the Conformance Pattern.** File the M0–M6 epic from
-`research/factory-conformance/cross-repo-conformance-pattern.md` (five slots:
-Contract / Mechanism / Installer / Verifier / Exemption; `baseline` profile;
-`adopters` manifest; four-tier enforcement; the `just` NFR keystone). **This is
-the natural home for the conformance follow-ups filed this session** — fold them
-in as named concerns / Verifiers: `kvzt` (config-driven impl-classification),
-`i6rc` (canonical `--force-exclude` fix), `qtjd` (bootstrap/dormant-gates),
-`mjnv` (picker skip-on-unavailable), the gcp2 mechanical byte-identity Verifier,
-and `co9h` part-3 (`8njn`, the AGENTS.md capture convention). The `gcp2`
-Driver-hook enforcement umbrella holds most of them.
+**M2 — `baseline` machinery, reuse-first (a CODE increment, Red→Green).** Build
+the Worktree-discipline concern's five slots as real shared machinery: the
+structural commit-refuse hook body (refuse when git-dir == git-common-dir;
+armed-on-install, retiring `primaryPath`'s fail-open window), `just
+install-commit-refuse-hooks` as a shared `just` module, a sandbox-aware Verifier
+in `livespec-dev-tooling` tagged `baseline` (so a Fabro sandbox needs no hook
+install), and the copier import. Read `livespec-zs22.7.3`'s ledger body + the M2
+section of `research/factory-conformance/cross-repo-conformance-pattern.md`. Fold
+in `livespec-qtjd` (dormant-gates = the Installer/arming face). CONFIRM the design
+open question first (any host-side fresh full clone that legitimately commits
+beyond the Fabro sandbox — none found in the dispatch flow; re-verify). This
+touches dev-tooling Python, so it rides the Red→Green ritual + full `just check`.
+
+After M2: M3 (fleet dogfood on `livespec-console-beads-fabro`), M4 (adopter
+dogfood on Open Brain), M5 (concern #2 cross-harness plugin-resolution; folds
+`mjnv`), M6 (four-tier wiring). Each is its own PR. The fold-in follow-ups
+(`kvzt`, `i6rc`, `qtjd`, `mjnv`, the gcp2 byte-identity Verifier, `8njn`) are
+see-also-linked to `zs22.7` and its milestones — pull each into the milestone
+whose concern it sharpens; do NOT re-parent them off `gcp2`.
 
 **Also pending a maintainer call:** `co9h` part-3 (`livespec-8njn`) — document
 the durable-memory capture convention in the family AGENTS.md (impl-plugin
@@ -448,9 +478,9 @@ run prompts/livespec-zs22-handoff-planning-lane.md
 ```
 
 That single path is sufficient: a fresh session opening only this handoff
-and its Read-first chain can execute the next action (increment 3b) without
-re-deriving anything. Status comes from the FIRST ACTION ledger query, never
-from this file.
+and its Read-first chain can execute the next action (increment 5 / M2,
+`livespec-zs22.7.3`) without re-deriving anything. Status comes from the FIRST
+ACTION ledger query, never from this file.
 
 ## Archive condition
 
