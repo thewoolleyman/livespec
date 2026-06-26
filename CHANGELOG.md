@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.0](https://github.com/thewoolleyman/livespec/compare/v0.3.0...v0.4.0) (2026-06-26)
+
+
+### Features
+
+* **dev-tooling:** add cli-explicit-project-root check (livespec-besm.2) ([d32ea6d](https://github.com/thewoolleyman/livespec/commit/d32ea6d733518dc52caa1ebc24b64b95caacf007))
+* **dev-tooling:** add no-renderer-vendoring check (livespec-besm.1) ([046f00e](https://github.com/thewoolleyman/livespec/commit/046f00e195607324759c73b649ae77f58d7f6820))
+* **dev-tooling:** smoke check parses the rendered justfile under `just` ([92c43e8](https://github.com/thewoolleyman/livespec/commit/92c43e8ae6821f466b20778edbb68e5d61510eb3))
+* **doctor:** reference-discipline static checks (no-cross-spec-reference, no-spec-section-citation-in-code) ([e0a67ec](https://github.com/thewoolleyman/livespec/commit/e0a67ec99ccec9b685f609dc4a40f26ecf8d641a))
+* **doctor:** version-contiguity check fails on a vNNN history gap ([29b6860](https://github.com/thewoolleyman/livespec/commit/29b6860359b02c33588cd5bb91666d0f304e48c8))
+* **template:** server-side branch-protection tripwire for the worktree pack ([68e4a02](https://github.com/thewoolleyman/livespec/commit/68e4a027f35f9e52d48a86edf30d9d9e72ed306e))
+* **template:** worktree-discipline pack phase 2/3 — ecosystem profiles + copier questions + adapters ([c2a50c8](https://github.com/thewoolleyman/livespec/commit/c2a50c8d7b054971afd97bb515113f1df679fc00))
+
+
+### Bug Fixes
+
+* **template:** make the bootstrap recipe a shebang recipe so the justfile parses ([2a13391](https://github.com/thewoolleyman/livespec/commit/2a133911e513f1380f2547584ddc1f0cb82b3bbc))
+
 ## [0.3.0](https://github.com/thewoolleyman/livespec/compare/v0.2.0...v0.3.0) (2026-06-25)
 
 
