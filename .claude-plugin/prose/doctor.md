@@ -269,9 +269,9 @@ dialogue MUST also run for static-phase `warn` findings
          (the menu surfaces the remaining four).
       2. **capture-as-work-item** — route the finding to the
          active orchestrator's work-item machinery via the
-         interactive front-end the orchestrator ships (per
-         `contracts.md` §"Interactive dialogue ownership
-         (orchestrator-side)"). The handed-off finding embeds
+         interactive front-end the orchestrator ships (the
+         interactive consent dialogue is orchestrator-owned,
+         not part of core's contract). The handed-off finding embeds
          the `check_id`, `spec_root`, optional `path`, and
          `message` so the trail back to the originating
          doctor finding is preserved. This option MUST ALWAYS
