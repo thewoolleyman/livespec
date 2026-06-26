@@ -1,3 +1,20 @@
+> **ARCHIVED 2026-06-26 — ob-0x5 CLOSED.** This handoff is historical; do NOT
+> "run" it. Its track was reconciled into the livespec Conformance Pattern and
+> its only residual (Phase-7 distribution) was **re-scoped**: a fleet-wide audit
+> found the copier-COPY delivery of the worktree pack is the same drift-prone
+> anti-pattern as the commit-refuse hook (3+ already-divergent vendored
+> `git-hook-wrapper.sh` copies fleet-wide). Per zs22.7's "reuse, no copies"
+> delivery rule, Phase-7 distribution + the hook de-dup are now ONE work item —
+> **`livespec-zs22.7.9` (dev-tooling single-source convergence)** — which is the
+> live home for any remaining work. Snapshot of disposition at close:
+> Mechanism + Phases 1-4 DONE (shipped in livespec release **v0.4.0**);
+> Phases 5-6 superseded (Fabro Architecture C) / inherited; git-jsonl got the
+> pack via copier-copy as an **interim** (PR #126, merged); beads-fabro
+> distribution **paused** (no copies vendored); console already installs
+> from-package (at the convergence target — sidecar concern **retired**).
+> Authoritative status: the livespec ledger (`livespec-zs22.7.9`), the commits,
+> and the spec — never this file.
+
 # Handoff: Worktree Discipline Pack (epic ob-0x5)
 
 **Track:** worktree-discipline · **Epic:** openbrain **`ob-0x5`** (cross-repo:
