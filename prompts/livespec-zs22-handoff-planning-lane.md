@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-26, increment-5 M4 COMPLETE; next is M5)
+## Status (refreshed 2026-06-26, increment-5 M5 COMPLETE; next is M6)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -153,14 +153,52 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-**M5 (`livespec-zs22.7.6`) is next — read its ledger notes (FIRST ACTION +
-`bd show livespec-zs22.7.6`); confirm it is still open + unstarted FIRST (see
-the concurrency warning above), then CLAIM it.** M5 = second concern +
-repeatability: ship concern #2 (cross-harness plugin-resolution) through the
-SAME five slots (Contract / Mechanism / Installer / Verifier = a fresh-session
-resolution smoke / Exemption), proving "add a concern = fill five slots, not
-design a framework"; prove it catches the `ob-4ts` class. Folds `mjnv`. M5's
-only dependency was M4, now CLOSED, so it is unblocked.
+**M6 (`livespec-zs22.7.7`) is next — read its ledger notes (FIRST ACTION +
+`bd show livespec-zs22.7.7`); confirm it is still open + unstarted FIRST (see
+the concurrency warning above), then CLAIM it.** M6 = enforcement-in-depth
+wired: the `baseline` verifiers (`check-primary-checkout-commit-refuse-hook-installed`
++ the new `check-plugin-resolution`) at all FOUR tiers — author-time (copier),
+commit-time (lefthook→`just check`), dispatch-time (the orchestrator runs the
+installer + verifier before driving any tenant), fleet-time (`just conformance`
+sweep over the manifest + drift CI) — and the orchestrator gates every dispatch
+(fleet AND adopter) on `baseline` conformance. M6's only dependency was M5, now
+CLOSED, so it is unblocked. NOTE the M5 carry-overs M6 inherits: (1) the
+`harnesses` `.livespec.jsonc` key is OPTIONAL today — M6 making it fleet-required
+is a cross-repo backfill (declare `harnesses` in every governed repo's
+`.livespec.jsonc` in the same epic; see "A required-key schema change is a
+cross-repo epic"); (2) wiring `check-plugin-resolution` into a repo's `just check`
+requires that repo to pin a dev-tooling RELEASE carrying it (PR-1 `80dab47` +
+PR-2a `a31eb4f` are on master; confirm the release tag the fan-out cut); (3)
+codex's GENUINE live resolution smoke is the repo-local `check-codex-skill-picker`
+(the dev-tooling check delegates codex) — M6 MAY unify the per-harness smokes or
+keep the delegation.
+
+**M5 (`livespec-zs22.7.6`) — DONE + CLOSED (2026-06-26).** Concern #2
+(cross-harness plugin-resolution) shipped through the five slots and proven
+repeatable (reused the dev-tooling check-registry + `baseline` accessor + the
+`cli_e2e` `CliRunner` seam — added ONE check + ONE declaration, no framework).
+Three PRs, all merged + master CI green: **PR-1** `livespec-dev-tooling#175`
+(`80dab47`) — the NEW `check-plugin-resolution` Verifier (always-on
+declaration-integrity gate reading optional `.livespec.jsonc` `harnesses`,
+fail-closed on malformed; env-gated `LIVESPEC_E2E_HARNESS=real` live resolution
+smoke; registered as the SECOND `_BASELINE_CHECK_SLUGS` concern; `contracts.md`
+inventory entry; 22 tests incl. the **ob-4ts fail-closed PROOF** — a raw `bd`
+fallback "works" but the slash command is unresolved ⇒ exit 4). **PR-2a**
+`livespec-dev-tooling#176` (`a31eb4f`) — per-harness runner routing: a `supported`
+codex harness was mis-routing through the claude `RealCliRunner` (`claude -p`) in
+`real` mode; now codex delegates to its repo-local smoke (`DelegatedResolutionRunner`
+⇒ SKIP); Red→Green proof that the claude-backed runner is never invoked for codex.
+**PR-2b** `livespec-driver-codex#22` (`1f1e7bd`) — the **`mjnv`** fold-in:
+`test_codex_skill_picker.py` now distinguishes codex-unavailable (SKIP: codex
+absent / TUI exit / bring-up-phase timeout) from genuine non-resolution (FAIL:
+final skill-row timeout); PROVEN LIVE (`check-codex-skill-picker` SKIPPED after
+the 125s startup timeout — codex present-but-unauthenticated — instead of
+failing); PLUS driver-codex `.livespec.jsonc` declares `harnesses` (codex
+supported / claude exempt) = the dogfood. DOGFOOD verified end-to-end: dev-tooling
+master `check-plugin-resolution` vs the driver-codex declaration ⇒ mock:
+well-formed, exit 0; real: codex `decision=skip` (delegated, NO mis-route), claude
+`decision=pass` (exempt), exit 0. `livespec-mjnv` CLOSED (fixed by PR-2b). The
+epic `livespec-zs22.7` is now 6/7 children complete; M6 is the last.
 
 **M4 (`livespec-zs22.7.5`) — DONE + CLOSED (2026-06-26).** Re-scoped by maintainer
 directive to the LIVESPEC-SIDE adopter-enablement machinery ONLY; the heavy Open
@@ -254,12 +292,13 @@ re-build the module — it exists in v0.19.0.)
 archive to `archive/prompts/` (the pack landed; the refuse half is superseded) —
 maintainer's call.
 
-After M4: M5 (concern #2 cross-harness plugin-resolution; folds `mjnv`), M6
-(four-tier wiring). M4 itself seeds the `baseline` tag (the partition deferred
-from M2, where Open Brain first imports it). Each is its own PR. The fold-in follow-ups (`kvzt`, `i6rc`, `qtjd` [folded by M2's
-armed-on-install], `mjnv`, the gcp2 byte-identity Verifier, `8njn`) are
-see-also-linked to `zs22.7` and its milestones — pull each into the milestone
-whose concern it sharpens; do NOT re-parent them off `gcp2`.
+M5 is DONE (concern #2 cross-harness plugin-resolution; folded `mjnv`); M6
+(four-tier wiring) is the last milestone. M4 itself seeds the `baseline` tag (the
+partition deferred from M2, where Open Brain first imports it). Each is its own
+PR. The remaining fold-in follow-ups (`kvzt`, `i6rc`, `qtjd` [folded by M2's
+armed-on-install], the gcp2 byte-identity Verifier, `8njn`) are see-also-linked
+to `zs22.7` and its milestones — pull each into the milestone whose concern it
+sharpens; do NOT re-parent them off `gcp2`. (`mjnv` is now CLOSED, folded into M5.)
 
 **Also pending a maintainer call:** `co9h` part-3 (`livespec-8njn`) — document
 the durable-memory capture convention in the family AGENTS.md (impl-plugin
@@ -581,9 +620,9 @@ run prompts/livespec-zs22-handoff-planning-lane.md
 ```
 
 That single path is sufficient: a fresh session opening only this handoff
-and its Read-first chain can execute the next action (increment 5 / M5,
-`livespec-zs22.7.6`) without re-deriving anything — AFTER confirming via the
-FIRST ACTION ledger query + `bd ready` + a `git fetch` that M5 is still open and
+and its Read-first chain can execute the next action (increment 5 / M6,
+`livespec-zs22.7.7`) without re-deriving anything — AFTER confirming via the
+FIRST ACTION ledger query + `bd ready` + a `git fetch` that M6 is still open and
 unstarted (other sessions work this epic; see the concurrency warning in
 §Status). Status comes from the FIRST ACTION ledger query, never from this file.
 
