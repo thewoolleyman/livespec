@@ -192,6 +192,15 @@ verifier reads**, never an incidental side effect.
   to set it. **Fallback:** keep the hook installed in the sandbox and use
   a combined body (structural OR `primaryPath`) with an explicit sandbox
   opt-out marker.
+- **Outcome (M2, maintainer-confirmed Option A):** the refined fallback
+  was chosen, NOT the preferred verifier-sandbox-aware path. ONE uniform
+  structural body is installed everywhere (sandbox included); that body
+  itself reads an explicit `livespec.sandboxExempt` git-config marker (set
+  by the Fabro prepare step) and skips its refuse branch when set. The
+  verifier stays simple — it recognizes the canonical body and accepts both
+  the structural and the legacy body through the fleet migration; it is NOT
+  sandbox-aware, because the marker lives in the hook body, which is present
+  in the sandbox too. See "Implementation status — M2" below.
 
 ## dev-tooling cohesion — fleet vs baseline tooling
 
@@ -256,8 +265,10 @@ concurrently (`livespec-4v7v` + follow-ups). Two refinements this lane adds:
   cross-harness plugin-resolution.
 - **M2 — `baseline` machinery built, reuse-first**: structural
   commit-refuse hook body + `just install-commit-refuse-hooks` (shared
-  `just` module) + sandbox-aware verifier (dev-tooling, tagged `baseline`)
-  + copier import.
+  `just` recipe) + a simple verifier that accepts the canonical body (the
+  `livespec.sandboxExempt` marker lives in the hook BODY, so the verifier
+  needs no sandbox-awareness) + copier import. (The `baseline` tag itself
+  is deferred to M4 — see "Implementation status — M2" below.)
 - **M3 — Fleet dogfood: livespec-console-beads-fabro** carries `baseline`;
   `just check` green; commit-refuse fail-closed; can no longer commit on
   its primary. Proves the self-application path.
@@ -275,10 +286,13 @@ concurrently (`livespec-4v7v` + follow-ups). Two refinements this lane adds:
 
 ## Open questions
 
-- Does the sandbox-aware-verifier path (retire `primaryPath`) have any
+- ~~Does the sandbox-aware-verifier path (retire `primaryPath`) have any
   edge case beyond the Fabro sandbox — e.g. a host-side fresh full clone
-  that legitimately commits? (None found in the dispatch flow; the
-  janitor is a worktree.) Confirm before M2.
+  that legitimately commits?~~ **RESOLVED at M2** (none found in the
+  dispatch flow; the janitor is a detached worktree and the integration
+  clone never commits directly), and the mechanism landed as Option A —
+  the hook BODY reads the `sandboxExempt` marker, so no sandbox-aware
+  verifier was needed. See "Implementation status — M2" below.
 - Manifest ownership once `baseline` tooling splits out: does the
   `adopters` registry move with it, or stay in livespec?
 - Where the orchestrator's per-dispatch installer reads the per-repo
@@ -294,3 +308,68 @@ the M3/M4 dogfood proofs. Use the convention manually for these two
 concerns first. The planning-lane decision has since landed: the codified
 handoff skill is **orchestrator-side**, not a core `/livespec:plan` — see
 `planning-lane-design.md`.
+
+## Implementation status — M2 (worktree-discipline concern)
+
+M0 and M1 are complete (decisions locked; the `### Conformance Pattern`
+section is now SPEC in `non-functional-requirements.md`). **M2 — the
+worktree-discipline Mechanism — is fleet-migration COMPLETE** (the live
+milestone status lives in the ledger under `livespec-zs22.7.3`, not here).
+The maintainer-confirmed design is **Option A**: ONE uniform structural
+commit-refuse body installed everywhere, armed on install (it refuses when
+`git rev-parse --git-dir` equals `git rev-parse --git-common-dir`, i.e. a
+primary checkout; worktrees differ), that reads an explicit
+`livespec.sandboxExempt` git-config marker in the hook BODY and skips its
+refuse branch when set. `livespec.primaryPath` (the v095 arming step whose
+fail-open window caused the console incident) is retired. The Verifier
+stays simple — it recognizes the canonical body and accepts BOTH the
+structural and the legacy body through the fleet migration (it is NOT
+sandbox-aware; the marker lives in the body, present in the sandbox too).
+
+Landed (PRs / commits / spec revisions are authoritative in each repo's
+ledger + git log):
+
+- **M2-1 — `livespec-dev-tooling#165` (MERGED, v0.18.0):** the canonical
+  structural body + the verifier that accepts both bodies through the
+  migration; the `baseline` check-profile accessor.
+- **PR-1 — `livespec-orchestrator-beads-fabro#169` (MERGED):** the Fabro
+  prepare step arms each dispatched sandbox with `git config
+  livespec.sandboxExempt true` (folds the dormant-gate concern
+  `livespec-qtjd`).
+- **M2-2 — core `livespec#609` (MERGED, `4c7849a`, cut spec `v144`):**
+  core's `dev-tooling/git-hook-wrapper.sh` → the structural body; a shared
+  `just install-commit-refuse-hooks` recipe that `just bootstrap`
+  delegates to; the `primaryPath` write retired from bootstrap; the
+  governed `non-functional-requirements.md` / `contracts.md`
+  propose-change → revise cycle (the §"Primary-checkout commit-refuse
+  hook" / §"Commit-refuse hook bootstrap procedure" / §"Conformance
+  Pattern" concern #1 rewrites to the structural + `sandboxExempt`
+  mechanism). Core's dev-tooling pin was bumped to **v0.19.0** by the
+  automated fan-out (`ff5667c`).
+- **Template — `livespec#612` (MERGED, `4f37f75`):** the copier template
+  (`templates/impl-plugin/`) reconciled to the single canonical structural
+  wrapper installed via `install-commit-refuse-hooks`; the divergent
+  `refuse-primary-commit.sh` lefthook job deleted and unwired; the
+  orthogonal `worktree-lib.sh` lifecycle pack + ecosystem profiles +
+  branch-protection kept.
+- **M2-3 — `livespec-orchestrator-beads-fabro#171` (MERGED, `1bd35b5`):**
+  the orchestrator's own hook body → structural at
+  pre-commit/pre-push/commit-msg; `primaryPath` retired; recipe aligned.
+
+Still open under M2 (none blocks M3):
+
+- **M2-1b — package the body as a reusable installer module
+  (`livespec_dev_tooling.install_commit_refuse_hooks`)** so every repo
+  installs from the wheel-shipped canonical body with NO per-repo copies.
+  Core, the template, and the orchestrator each currently `cp` their own
+  byte-identical copy (the deliberate interim transition state — kept so
+  the cp-based install and the Fabro data-driven install keep working
+  through the migration); M2's "no per-repo copies" delivery goal is met
+  only when this lands.
+- **The `baseline` check-profile tag** — deferred to M4, where Open Brain
+  first imports the partition (don't build a partition no consumer reads).
+
+Next: **M3** — fleet dogfood on the Rust console
+`livespec-console-beads-fabro` (carry `baseline`, prove commit-refuse
+fail-closed at its primary, get `just check` green) on the interim
+cp-based mechanism.
