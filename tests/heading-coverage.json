@@ -147,13 +147,6 @@
     "test": "tests.dev-tooling.checks.test_cli_explicit_project_root.test_passes_when_every_cli_has_project_root"
   },
   {
-    "heading": "## Interactive dialogue ownership (orchestrator-side)",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). Real test ID populated in the Phase-4 reference-orchestrator follow-up that ships the orchestrator-internal SKILL.md front-ends and asserts the Driver-to-orchestrator zero-dependency invariant."
-  },
-  {
     "heading": "## Sub-spec structural mechanism",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
@@ -472,13 +465,6 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.test_doctor_disposition_prose.test_disposition_menu_lists_five_canonical_options_in_order"
-  },
-  {
-    "heading": "## CLI end-to-end harness contract",
-    "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "test": "TODO",
-    "reason": "Landed in v097 (cli-end-to-end-harness-contract proposal accept, epic li-e2ecli Phase 1). The contract mandates a top-of-pyramid CLI-driven user-surface e2e tier. Real test ID populated by Epic D Waves 11-12: the harness ships from livespec-dev-tooling (li-e2ecdt) and each consumer repo wires tests/e2e-cli/ fixtures (li-e2eclv livespec, li-e2ecpx impl-plaintext)."
   },
   {
     "heading": "## Fleet agent-instruction core",
