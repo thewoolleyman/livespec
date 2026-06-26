@@ -40,20 +40,24 @@ stay where they are unless you deliberately migrate one).
 |---|---|---|---|---|
 | **Planning Lane + Conformance Pattern** (zs22) | `livespec-zs22` (last milestone: `zs22.7` M6) | `prompts/livespec-zs22-handoff-planning-lane.md` | `livespec2` | livespec1 |
 | **Dev-tooling single-source convergence** | `livespec-zs22.7.9` | `prompts/dev-tooling-single-source-convergence-handoff.md` | `livespec3` | livespec2 |
-| **Governed-repo lifecycle** (setup/install + ongoing drift — fleet + adopter, new + existing) | the `governed-repo-lifecycle` epic created by its plan track | the handoff under `prompts/` created by that plan track (resolve at startup; likely `prompts/governed-repo-lifecycle-*.md`) | `livespec-runtime` | livespec3 |
+| **Governed-repo lifecycle** (zs22 Increment 6: setup/install + ongoing drift — fleet + adopter, new + existing) | `livespec-zs22.8` | `prompts/governed-repo-lifecycle-handoff.md` | *not yet started — kick off in a fresh `livespecN`* | livespec3 |
 
 Notes:
-- The **zs22** track may be at/near completion (M6 closes `zs22.7`); if its epic
-  is CLOSED, mark it done and drop it from active watching.
-- The **governed-repo lifecycle** track was just created via the plan mechanism
-  (`/livespec-orchestrator-beads-fabro:plan`). Its plan session may still be
-  *producing* the design doc + handoff prompt + epic — resolve the exact epic id
-  and handoff path from `bd ready` / `ls prompts/` at startup, then oversee the
-  execution track. Its design brief: a unified, idempotent **setup/install +
-  ongoing-drift-check** system for every governed repo, sibling of the
-  Conformance Pattern, reusing its fleet-manifest/baseline/checks; surfaced as a
-  runnable script + `just` target; human seams (secrets, tenant DB connection)
-  detect-and-guide, never fake.
+- The **zs22** track is NOT complete: `zs22.7` is 7/9 (M6 / `zs22.7.7` closed)
+  with two open children — `zs22.7.8` (register livespec-console in the fleet
+  manifest) and `zs22.7.9` (dev-tooling convergence, the row above). `zs22.7`
+  (and parent `zs22`) close only when those land. Session `livespec2` finished
+  M6 and is now FREE.
+- The **governed-repo lifecycle** track (`livespec-zs22.8`, Increment 6) was
+  seeded via the plan mechanism (PR #648): design doc at
+  `research/governed-repo-lifecycle/lifecycle-system-design.md`, handoff at
+  `prompts/governed-repo-lifecycle-handoff.md`. EXECUTION has NOT started — kick
+  it off (`run prompts/governed-repo-lifecycle-handoff.md`) in a fresh
+  `livespecN` session and oversee it. Design brief: a unified, idempotent
+  **setup/install + ongoing-drift-check** system for every governed repo,
+  sibling of the Conformance Pattern, reusing its fleet-manifest/baseline/checks;
+  surfaced as a runnable script + `just` target; human seams (secrets, tenant DB
+  connection) detect-and-guide, never fake.
 
 ## Operating loop (per the skill)
 
