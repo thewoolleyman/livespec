@@ -447,6 +447,29 @@ config) use `chore(...)` / `docs(...)` / `chore(spec):` subjects and skip the
 ritual entirely. Always use `mise exec -- git ...` so the hooks fire; never
 pass `--no-verify`.
 
+## Agent-instruction `.ai/` convention
+
+Durable, non-ephemeral agent guidance in this repo lives in `AGENTS.md` and — for
+detail that would bloat it — in sibling **`.ai/<topic>.md`** files referenced from
+here, loaded **progressively** (only when working on that topic, so the
+always-loaded `AGENTS.md` stays small). A `.ai/` directory is supported at ANY
+directory level, beside that level's `AGENTS.md` and its symlinked
+`.claude/CLAUDE.md`; nested topics are additive (a deeper topic augments, never
+overrides, an ancestor topic of the same name). NEVER persist durable guidance to
+the harness-private per-session local-memory store
+(`~/.claude/projects/<slug>/memory/*.md`) — it is ephemeral, per-user, and
+invisible to other agents and runtimes. This is the core contract
+`SPECIFICATION/contracts.md` §"Fleet agent-instruction core"; the Driver-shipped
+`block-auto-memory` hook intent-routes a blocked memory write to this home.
+
+Referenced `.ai/<topic>.md` files (every reference here MUST resolve to an
+existing file):
+
+- **`.ai/agent-disciplines.md`** — read when ending a session or applying a
+  cross-cutting discipline (TDD red-green-replay, the worktree → PR flow, the
+  1Password secret-wrapper, no-local-memory), and for the session-end
+  standing-handoff print rule.
+
 ## Working with the maintainer
 
 - **The maintainer is not a Python developer** (though fluent in general software
