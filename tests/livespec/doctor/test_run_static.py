@@ -243,6 +243,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-no-cross-spec-reference",
         "doctor-no-spec-section-citation-in-code",
         "doctor-wiring-completeness-cross-repo",
+        "doctor-agents-ai-reference-resolution",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",

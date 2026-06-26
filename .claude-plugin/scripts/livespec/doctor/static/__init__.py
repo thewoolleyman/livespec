@@ -38,6 +38,7 @@ from typing import Literal
 
 from livespec.doctor.static import (
     accept_decision_snapshot_consistency,
+    agents_ai_reference_resolution,
     anchor_reference_resolution,
     bcp14_keyword_wellformedness,
     config_named_cli_callability,
@@ -86,6 +87,7 @@ STATIC_CHECKS = (
     no_cross_spec_reference,
     no_spec_section_citation_in_code,
     wiring_completeness_cross_repo,
+    agents_ai_reference_resolution,
 )
 
 
