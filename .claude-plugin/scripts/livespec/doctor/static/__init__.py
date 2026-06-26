@@ -45,6 +45,8 @@ from livespec.doctor.static import (
     gherkin_blank_line_format,
     livespec_jsonc_valid,
     master_direct_uncommitted_spec_edits,
+    no_cross_spec_reference,
+    no_spec_section_citation_in_code,
     out_of_band_edits,
     parent_proposed_change_resolves,
     proposed_change_topic_format,
@@ -81,6 +83,8 @@ STATIC_CHECKS = (
     copier_template_workflow_coverage,
     master_direct_uncommitted_spec_edits,
     parent_proposed_change_resolves,
+    no_cross_spec_reference,
+    no_spec_section_citation_in_code,
     wiring_completeness_cross_repo,
 )
 
@@ -97,6 +101,7 @@ APPLICABILITY_BY_TREE_KIND: dict[TreeKind, tuple[object, ...]] = {
         bcp14_keyword_wellformedness,
         gherkin_blank_line_format,
         anchor_reference_resolution,
+        no_cross_spec_reference,
         out_of_band_edits,
         accept_decision_snapshot_consistency,
         parent_proposed_change_resolves,

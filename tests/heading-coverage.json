@@ -464,8 +464,8 @@
     "heading": "## Reference discipline",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
-    "test": "TODO",
-    "reason": "Added by the revise pass landing the propose-change at proposed_changes/reference-discipline-invariant.md. Codifies two paired invariants (SPECIFICATION/ tree cannot reference outside content except via an external_references allowlist in .livespec.jsonc; source code cannot cite spec sections via \u00a7\"\u2026\"). Real test ID populated in the impl follow-up work-item that authors livespec/doctor/static/no_cross_spec_reference.py + no_spec_section_citation_in_code.py plus paired tests and retroactive sweep of existing violations."
+    "test": "tests.livespec.doctor.static.test_no_cross_spec_reference.test_run_fails_for_unresolved_bare_citation",
+    "reason": "Codifies two paired invariants (a SPECIFICATION/ tree cannot reference outside content except via an external_references allowlist in .livespec.jsonc; source code cannot cite spec sections via the section-sign citation form). The first invariant's static-phase enforcement (doctor-no-cross-spec-reference) is covered by test_no_cross_spec_reference, whose fail-arm asserts an unresolved cross-tree citation fires a fail Finding; the paired doctor-no-spec-section-citation-in-code check is covered by test_no_spec_section_citation_in_code."
   },
   {
     "heading": "## Doctor per-finding disposition dialogue",
