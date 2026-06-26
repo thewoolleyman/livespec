@@ -2,7 +2,8 @@
 //
 // Authority: SPECIFICATION/non-functional-requirements.md
 //   §"Fleet membership contract" (accepted v108). This committed file
-//   in livespec core enumerates every family repo and its repo class.
+//   in livespec core enumerates every fleet repo (the `fleet` array)
+//   and its repo class, plus an optional `adopters` array.
 //   Livespec core owns fleet-level facts (precedent: the copier
 //   template at `templates/impl-plugin/` is already core-hosted and
 //   sibling-consumed per `contracts.md` §"Shared content sync — copier
@@ -23,11 +24,21 @@
 // makes a half-wired new repo red fleet CI rather than an invisible
 // straggler.
 //
-// `class` is one of: core / enforcement-suite / impl-plugin /
-// driver-plugin / library.
+// `fleet` entries are { repo, class } where `class` is one of:
+// core / enforcement-suite / impl-plugin / driver-plugin / library.
+//
+// `adopters` entries are { repo, profile, posture } — governed repos
+// (or families) that adopted the workflow but are NOT the livespec
+// fleet (e.g. Open Brain). `profile` is the `baseline` floor plus any
+// additive layers (fleet-infra / orchestrator-plugin / app); `posture`
+// is one of released / pinned / none (how the adopter tracks upstream
+// livespec releases). A fleet member's profile is DERIVED from its
+// `class`; an adopter has no class, so it declares `profile` explicitly.
+// `adopters` is empty until the first adopter registers. See
+// non-functional-requirements.md §"Fleet membership contract" → "Adopters".
 {
   "owner": "thewoolleyman",
-  "members": [
+  "fleet": [
     { "repo": "livespec", "class": "core" },
     { "repo": "livespec-dev-tooling", "class": "enforcement-suite" },
     { "repo": "livespec-driver-claude", "class": "driver-plugin" },
@@ -35,5 +46,6 @@
     { "repo": "livespec-orchestrator-beads-fabro", "class": "impl-plugin" },
     { "repo": "livespec-orchestrator-git-jsonl", "class": "impl-plugin" },
     { "repo": "livespec-runtime", "class": "library" }
-  ]
+  ],
+  "adopters": []
 }
