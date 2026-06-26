@@ -37,13 +37,27 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-26, increment-5 M2 FLEET-MIGRATION COMPLETE; next is M3)
+## Status (refreshed 2026-06-26, increment-5 M3 COMPLETE; next is M4)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
 on a genuine architectural/intent question, and hand off to a fresh session
 when context approaches budget. This supersedes the design doc's
 per-cut approval gate for this track.
+
+**⚠ CONCURRENCY — another worker is on this epic's ready queue (2026-06-26).**
+M3 (`livespec-zs22.7.4`) was landed by a CONCURRENT session as console commit
+`76c9fc2` while a parallel interactive session was independently implementing
+the SAME milestone — duplicated effort (the parallel PR was closed). The likely
+cause: the dark-factory Dispatcher polls the Beads ledger and dispatches ready
+items, so `zs22.7`'s ready queue is being worked by the factory in parallel with
+any interactive session. BEFORE implementing ANY item: (1) re-run the FIRST
+ACTION ledger query AND `bd ready`, (2) `git fetch` + read each target repo's
+`origin/master` tip, and (3) confirm the item is still open and unstarted — an
+item can land on master mid-implementation. If the factory is actively pulling
+this epic, prefer to let it; an interactive session should claim an item
+(`bd update <id> --status in_progress`) and check master freshness immediately
+before each commit.
 
 Landed: increment 0 + design refinements (PRs #568, #572; `livespec-zs22.1`
 closed). **Increment 1** (`livespec-zs22.2`, PR #575, cut `v137`): the
@@ -133,13 +147,34 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-**M3 (`livespec-zs22.7.4`) is next — read its ledger notes (FIRST ACTION +
-`bd show livespec-zs22.7.4`).** M2's structural-commit-refuse mechanism is now
-FLEET-MIGRATED, so M3 (fleet dogfood on the Rust console `livespec-console-beads-fabro`)
-can proceed on the interim cp-based mechanism: carry `baseline` (the structural
-commit-refuse hook + `just check`), prove commit-refuse fail-closed at its
-primary, and get `just check` green. This is a fresh-repo increment in a repo
-this session did not survey — start clean.
+**M4 (`livespec-zs22.7.5`) is next — read its ledger notes (FIRST ACTION +
+`bd show livespec-zs22.7.5`); confirm it is still open + unstarted FIRST (see
+the concurrency warning above).** M4 = adopter dogfood: migrate Open Brain
+(`/data/projects/openbrain`) to `just` as sole runner (lefthook→`just`,
+pnpm→1:1 wrappers/recipes), register it as `adopter`/`baseline`, and reconcile
+its hand-rolled commit-refuse hook to the canonical STRUCTURAL body via the SAME
+shared livespec-dev-tooling machinery M3 proved (reuse, not re-impl). Open Brain
+is an ADOPTER (not a fleet member), so it belongs in the manifest's `adopters`
+section, not `members` — but the `adopters` section + the `profile`/`posture`
+fields do NOT exist in `.livespec-fleet-manifest.jsonc` yet (current schema is a
+flat `members` array with `class` only), so M4 either adds them or scopes around
+them; that manifest-schema work overlaps `zs22.7.8` and M6. Re-survey Open Brain
+(not surveyed by the M3 session) and start clean.
+
+**M3 (`livespec-zs22.7.4`) — DONE on console master via `76c9fc2`** (a CONCURRENT
+session; live status from the ledger). The Rust Control-Plane console now carries
+`baseline`: the canonical STRUCTURAL commit-refuse hook + the shared dev-tooling
+verifier wired into `just check` + CI, REUSED not re-implemented — `76c9fc2`
+consumes dev-tooling via a minimal `pyproject.toml` `[tool.uv.sources]` git+tag
+v0.19.0 pin (+ `.python-version`, `uv.lock`), the bump-automatable approach.
+Fail-closed proven (a commit on the console primary master is refused, HEAD
+unchanged, primaryPath unset); console master CI green. Console work-item
+`livespec-console-beads-fabro-d5c` CLOSED. Two follow-ups: `zs22.7.8` was REFINED
+— the console now HAS a pyproject `[tool.uv.sources]` dev-tooling pin, so the
+eventual `console` repo class should INCLUDE (not exclude) the `dev-tooling-pin`
+obligation; and `livespec-console-beads-fabro-e8y` (P3) — remove the
+now-redundant lefthook `00-no-commit-on-master` that `76c9fc2` left (the
+structural hook is the single Mechanism).
 
 **M2 (`livespec-zs22.7.3`) — what landed (mechanism FLEET-MIGRATED; live status
 from the ledger, not here):** the maintainer-confirmed **Option A** (one uniform
@@ -186,9 +221,9 @@ for concern #1, migrated across the fleet:
 archive to `archive/prompts/` (the pack landed; the refuse half is superseded) —
 maintainer's call.
 
-After M3: M4 (adopter dogfood on Open Brain + seed the `baseline` tag), M5 (concern
-#2 cross-harness plugin-resolution; folds `mjnv`), M6 (four-tier wiring). Each is
-its own PR. The fold-in follow-ups (`kvzt`, `i6rc`, `qtjd` [folded by M2's
+After M4: M5 (concern #2 cross-harness plugin-resolution; folds `mjnv`), M6
+(four-tier wiring). M4 itself seeds the `baseline` tag (the partition deferred
+from M2, where Open Brain first imports it). Each is its own PR. The fold-in follow-ups (`kvzt`, `i6rc`, `qtjd` [folded by M2's
 armed-on-install], `mjnv`, the gcp2 byte-identity Verifier, `8njn`) are
 see-also-linked to `zs22.7` and its milestones — pull each into the milestone
 whose concern it sharpens; do NOT re-parent them off `gcp2`.
@@ -513,9 +548,11 @@ run prompts/livespec-zs22-handoff-planning-lane.md
 ```
 
 That single path is sufficient: a fresh session opening only this handoff
-and its Read-first chain can execute the next action (increment 5 / M2,
-`livespec-zs22.7.3`) without re-deriving anything. Status comes from the FIRST
-ACTION ledger query, never from this file.
+and its Read-first chain can execute the next action (increment 5 / M4,
+`livespec-zs22.7.5`) without re-deriving anything — AFTER confirming via the
+FIRST ACTION ledger query + `bd ready` + a `git fetch` that M4 is still open and
+unstarted (another worker is on this epic; see the concurrency warning in
+§Status). Status comes from the FIRST ACTION ledger query, never from this file.
 
 ## Archive condition
 
