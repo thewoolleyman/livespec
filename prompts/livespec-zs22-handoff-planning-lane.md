@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-26, increment-5 M3 COMPLETE; next is M4)
+## Status (refreshed 2026-06-26, increment-5 M4 COMPLETE; next is M5)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -45,19 +45,25 @@ on a genuine architectural/intent question, and hand off to a fresh session
 when context approaches budget. This supersedes the design doc's
 per-cut approval gate for this track.
 
-**⚠ CONCURRENCY — another worker is on this epic's ready queue (2026-06-26).**
-M3 (`livespec-zs22.7.4`) was landed by a CONCURRENT session as console commit
-`76c9fc2` while a parallel interactive session was independently implementing
-the SAME milestone — duplicated effort (the parallel PR was closed). The likely
-cause: the dark-factory Dispatcher polls the Beads ledger and dispatches ready
-items, so `zs22.7`'s ready queue is being worked by the factory in parallel with
-any interactive session. BEFORE implementing ANY item: (1) re-run the FIRST
-ACTION ledger query AND `bd ready`, (2) `git fetch` + read each target repo's
-`origin/master` tip, and (3) confirm the item is still open and unstarted — an
-item can land on master mid-implementation. If the factory is actively pulling
-this epic, prefer to let it; an interactive session should claim an item
-(`bd update <id> --status in_progress`) and check master freshness immediately
-before each commit.
+**⚠ CONCURRENCY — multiple sessions work this epic's ready queue (RECURRING;
+has now bitten TWICE).** M3 (`livespec-zs22.7.4`) was landed by a CONCURRENT
+session as console commit `76c9fc2` while a parallel interactive session
+independently implemented the SAME milestone (the parallel PR was closed). M4
+(`livespec-zs22.7.5`) collided AGAIN: a runaway duplicate session (tmux
+`livespec-runtime`) independently produced byte-identical adopter-schema work,
+then its subagents rebased the active session's `v148` commit and
+force-pushed/merged it through PR #631 — INSIDE the active session's shared
+worktree. It CONVERGED (nothing lost; #631 carried the correct `v148` = master
+`fb8abd5`; the duplicate was then stopped + the contended worktree cleaned up),
+but it was chaotic. Likely cause: the dark-factory Dispatcher and/or stray tmux
+sessions poll the Beads ledger and work ready items in parallel with any
+interactive session. BEFORE implementing ANY item: (1) re-run the FIRST ACTION
+ledger query AND `bd ready`, (2) `git fetch` + read each target repo's
+`origin/master` tip, (3) confirm the item is still open + unstarted, and (4)
+`bd update <id> --status in_progress` to CLAIM it. Re-check master freshness
+immediately before EACH commit AND before EACH push (a push may be rejected
+non-fast-forward if a concurrent session pushed the same branch name). If a
+concurrent session is actively pulling this epic, prefer to let it.
 
 Landed: increment 0 + design refinements (PRs #568, #572; `livespec-zs22.1`
 closed). **Increment 1** (`livespec-zs22.2`, PR #575, cut `v137`): the
@@ -147,19 +153,36 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-**M4 (`livespec-zs22.7.5`) is next — read its ledger notes (FIRST ACTION +
-`bd show livespec-zs22.7.5`); confirm it is still open + unstarted FIRST (see
-the concurrency warning above).** M4 = adopter dogfood: migrate Open Brain
-(`/data/projects/openbrain`) to `just` as sole runner (lefthook→`just`,
-pnpm→1:1 wrappers/recipes), register it as `adopter`/`baseline`, and reconcile
-its hand-rolled commit-refuse hook to the canonical STRUCTURAL body via the SAME
-shared livespec-dev-tooling machinery M3 proved (reuse, not re-impl). Open Brain
-is an ADOPTER (not a fleet member), so it belongs in the manifest's `adopters`
-section, not `members` — but the `adopters` section + the `profile`/`posture`
-fields do NOT exist in `.livespec-fleet-manifest.jsonc` yet (current schema is a
-flat `members` array with `class` only), so M4 either adds them or scopes around
-them; that manifest-schema work overlaps `zs22.7.8` and M6. Re-survey Open Brain
-(not surveyed by the M3 session) and start clean.
+**M5 (`livespec-zs22.7.6`) is next — read its ledger notes (FIRST ACTION +
+`bd show livespec-zs22.7.6`); confirm it is still open + unstarted FIRST (see
+the concurrency warning above), then CLAIM it.** M5 = second concern +
+repeatability: ship concern #2 (cross-harness plugin-resolution) through the
+SAME five slots (Contract / Mechanism / Installer / Verifier = a fresh-session
+resolution smoke / Exemption), proving "add a concern = fill five slots, not
+design a framework"; prove it catches the `ob-4ts` class. Folds `mjnv`. M5's
+only dependency was M4, now CLOSED, so it is unblocked.
+
+**M4 (`livespec-zs22.7.5`) — DONE + CLOSED (2026-06-26).** Re-scoped by maintainer
+directive to the LIVESPEC-SIDE adopter-enablement machinery ONLY; the heavy Open
+Brain migration (just-as-sole-runner + hook reconciliation + adopter registration
++ baseline-green) was split out to OB-tenant epic **`ob-23p`** — the deferred
+FINAL track deliverable, ideally driven by Open Brain's OWN first-class autonomous
+work-item-dispatch factory once stood up (ob-coq delivered OB's deploy factory but
+NOT work-item dispatch; no `.fabro/` loop yet). What landed: core spec **v148**
+(master `fb8abd5`, PR #631) — NFR §"Fleet membership contract" defines the
+manifest's `fleet` + `adopters` arrays (the legacy `members` array RENAMED to
+`fleet` per the locked design + the family→fleet convergence; the umbrella term
+for fleet+adopters is **`governed repo`**, defined in
+`research/factory-conformance/cross-repo-conformance-pattern.md` §"Ubiquitous
+language"), §"Conformance Pattern" reconciled; the manifest renamed
+`members`→`fleet` + added an empty `adopters: []` (NO adopter registered). PLUS
+**dev-tooling v0.20.0** (PR #171) — `fleet/contract.py` parser accepts BOTH
+`fleet`/`members` keys + parses `adopters` (`Adopter` dataclass, `PROFILE_LAYERS`,
+`ADOPTER_POSTURES`), and the release fan-out `jq` reads `(.fleet // .members)`;
+landed FIRST so the runtime manifest-fetch never broke during the rename. The
+PR #631 cross-session COLLISION (see §concurrency) was RESOLVED: the duplicate's
+work converged with this session's, #631 carried the correct `v148`, nothing was
+lost, and the contended worktree was cleaned up.
 
 **M3 (`livespec-zs22.7.4`) — DONE on console master via `76c9fc2`** (a CONCURRENT
 session; live status from the ledger). The Rust Control-Plane console now carries
@@ -558,10 +581,10 @@ run prompts/livespec-zs22-handoff-planning-lane.md
 ```
 
 That single path is sufficient: a fresh session opening only this handoff
-and its Read-first chain can execute the next action (increment 5 / M4,
-`livespec-zs22.7.5`) without re-deriving anything — AFTER confirming via the
-FIRST ACTION ledger query + `bd ready` + a `git fetch` that M4 is still open and
-unstarted (another worker is on this epic; see the concurrency warning in
+and its Read-first chain can execute the next action (increment 5 / M5,
+`livespec-zs22.7.6`) without re-deriving anything — AFTER confirming via the
+FIRST ACTION ledger query + `bd ready` + a `git fetch` that M5 is still open and
+unstarted (other sessions work this epic; see the concurrency warning in
 §Status). Status comes from the FIRST ACTION ledger query, never from this file.
 
 ## Archive condition
