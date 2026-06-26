@@ -37,7 +37,7 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-26 session 2, M6 IN PROGRESS — foundation cleared; M6-e next)
+## Status (refreshed 2026-06-26 session 3, M6 IN PROGRESS — M6-e siblings DONE; core+console then M6-c/d/f/g next)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
@@ -89,6 +89,41 @@ fan-out's `@v0.17.0`-stale bump-pin missed (notably `livespec-runtime`,
 `livespec-orchestrator-beads-fabro`, `livespec-orchestrator-git-jsonl`,
 `livespec-console-beads-fabro`) to `v0.21.2` manually so M6-e can wire
 `check-plugin-resolution`. The pin-bump propagation gap is tracked in `2rab`.
+
+### M6 (zs22.7.7) — session-3 progress (2026-06-26): M6-e backfill landing
+
+M6-e commit-time backfill (per governed repo: pin→`v0.21.2` where stale +
+declare `harnesses` in `.livespec.jsonc` + wire the new canonical checks into
+`just check`) ran as 5 parallel sub-agents — **ALL LANDED + CI-green:**
+`livespec-driver-claude` (#51 wiring + #52 CI-matrix), `livespec-driver-codex`
+(#26), `livespec-orchestrator-git-jsonl` (#128), `livespec-orchestrator-beads-fabro`
+(#178, master `a2fd69e`), `livespec-runtime` (#66, master `f38827c`), plus
+`livespec-dev-tooling` (#182, harnesses-only — it already wired the check). All
+five sibling repos now pin dev-tooling `v0.21.2`, clean on master.
+
+**⚠ CRITICAL LEARNING for the REMAINING M6-e (core + console) — a v0.21.2 bump
+FORCES wiring MORE than `check-plugin-resolution`.** The wiring-completeness
+invariant `check-aggregate-completeness` requires EVERY canonical dev-tooling
+check be wired in the consumer's `just check`. The jump to v0.21.2 made
+**`check-agents-ai-references-resolve`** canonical (from a v0.20→v0.21 bump) AND
+**`check-tests-no-subprocess-spawn`** (additionally, from an old v0.14 bump). So
+a repo bumping to v0.21.2 CANNOT land green with only `check-plugin-resolution`
+wired — you MUST wire every slug `python -m livespec_dev_tooling.canonical_checks
+--json` emits that the repo lacks (each passes trivially — pure wiring, no
+violations: one entry in the `targets=(…)` array + a one-line `uv run python -m
+livespec_dev_tooling.checks.<module>` recipe, alphabetical). Read the next M6-e
+brief as "wire ALL new canonical slugs," not just plugin-resolution.
+
+**STILL TO BACKFILL (do next, both deferred as special):** `livespec` (CORE —
+artifact carrier, `harnesses` ALL EXEMPT, bump pin `v0.19.0`→`v0.21.2`) and
+`livespec-console-beads-fabro` (Rust + bespoke `check-baseline`, `harnesses` ALL
+EXEMPT, bump pin `v0.19.0`→`v0.21.2`). The proven pattern is the merged sibling
+PRs above; note drivers run checks as a CI matrix SEPARATE from `just check` (so
+they needed a 2nd ci.yml edit — `driver-claude` #52), while canonical-slugs repos
+get both surfaces from one slug edit, and `check-codex-skill-picker` is an
+environmental live-TUI flake that CI gates off (do not touch it). The remaining
+milestones M6-c/d/f/g have precise ready-to-execute notes in §"Next concrete
+action" below.
 
 **⚠ CONCURRENCY — multiple sessions work this epic's ready queue (RECURRING;
 has now bitten TWICE).** M3 (`livespec-zs22.7.4`) was landed by a CONCURRENT
@@ -198,33 +233,36 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-**M6 (`livespec-zs22.7.7`) is CLAIMED + IN PROGRESS (session 2).** Its
-foundation landed (see §"M6 — session-2 progress"): `check-plugin-resolution`
-is now pin-able (dev-tooling `v0.21.1`), both v148-rename collateral regressions
-are fixed (`zimq`, `2rab`), and the self-healing pin chain is in motion. The
-remaining M6 work is the cross-repo wiring, in this order (own the cuts; each its
-own PR; full state in the `zs22.7.7` ledger notes):
+**M6 (`livespec-zs22.7.7`) is CLAIMED + IN PROGRESS (session 3).** Foundation +
+most of M6-e landed (see §"M6 — session-2/3 progress"). Remaining work, in order
+(own the cuts; each its own PR; full state in the `zs22.7.7` ledger notes):
 
-0. **Confirm pins propagated.** After the FIRST ACTION query: verify the v0.21.1
-   fan-out went green and the per-sibling bump-pin PRs (dev-tooling `→v0.21.1`)
-   merged. If the fan-out is still red, read its now-self-diagnosing
-   `discover-siblings` log and re-open `2rab`. (Laggards to watch: `livespec-runtime`
-   was on `v0.14.0`, `livespec-console-beads-fabro` on `v0.19.0`/`compat.pinned
-   "master"` — the fan-out may not reach console; bump those manually if needed.)
-
-1. **M6-e — commit-time backfill (the bulk, cross-repo epic).** Per governed repo:
-   declare `harnesses` + (where not class-derived) `profile` in `.livespec.jsonc`,
-   and wire `check-plugin-resolution` into `just check`. Per-repo harness
-   declarations follow each repo's ACTUAL command/skill surface: orchestrators →
-   claude+codex `supported` (canonical_command e.g. `livespec-orchestrator-…:next`);
-   `driver-claude` → claude supported / codex exempt; `driver-codex` → already
-   declares codex supported / claude exempt; libraries (`dev-tooling`, `runtime`)
-   → no command surface, declare all harnesses `exempt` (reason: library); core
-   (`livespec`) → judgment call (the `/livespec:*` surface resolves via the
-   Drivers — likely claude+codex supported or a documented exemption). ALSO fix
-   the two Drivers + console to wire `check-primary-checkout-commit-refuse-hook-installed`
-   via the canonical mechanism (they wire NEITHER today). Delegate per-repo to
-   sub-agents; sequence file conflicts; re-check master freshness before each push.
+0. **Finish M6-e (commit-time backfill) for the 2 repos still pending: CORE +
+   console.** The 5 sibling repos are DONE (see §"M6 — session-3 progress" +
+   the ⚠ CRITICAL LEARNING there). Per-repo change (PROVEN pattern = the merged
+   sibling PRs): pin dev-tooling → `v0.21.2`, declare `harnesses` in
+   `.livespec.jsonc`, and wire **ALL new canonical checks** the v0.21.2 jump made
+   canonical (NOT just `check-plugin-resolution` — `check-aggregate-completeness`
+   forces wiring `check-agents-ai-references-resolve` and, from a v0.19→v0.21
+   jump, likely `check-tests-no-subprocess-spawn` too; let `python -m
+   livespec_dev_tooling.canonical_checks --json` tell you which slugs the repo
+   lacks). Each is one `targets=(…)` entry + a one-line `uv run python -m
+   livespec_dev_tooling.checks.<module>` recipe (alphabetical); all pass trivially.
+   `chore(conformance): … (zs22.7.7 M6-e)`, config/justfile only ⇒ NO TDD ritual.
+   - `livespec` (CORE) — `harnesses` ALL EXEMPT (reason: "core is an artifact
+     carrier; the `/livespec:*` surface ships from the per-runtime Driver
+     plugins, not core"); bump its dev-tooling pin (`v0.19.0`→`v0.21.2`). NOTE
+     core's own `just check` already runs many of these canonical checks; verify
+     against `check-aggregate-completeness`.
+   - `livespec-console-beads-fabro` — Rust + bespoke `check-baseline`. `harnesses`
+     ALL EXEMPT (Rust console, not a harness plugin); bump pin (`v0.19.0`→`v0.21.2`);
+     wire `check-plugin-resolution` (+ any other missing canonical slug); consider
+     also aligning it onto the shared `check-primary-checkout-commit-refuse-hook-installed`
+     slug (it currently uses its own `check-baseline`).
+   NOTE: the per-repo `profile` key is NOT needed for fleet members (class-derived
+   in the manifest); only adopters declare `profile`. The drivers' commit-refuse
+   wiring was DEFERRED (their CI does not install the hook, so the verifier would
+   fail in CI without a hook-install step — a controlled follow-up, not blocking).
 
 2. **M6-d — author-time (core template).** Add `check-plugin-resolution` to
    `templates/impl-plugin/canonical-slugs.yml` (commit-refuse already wired) and
@@ -234,15 +272,30 @@ own PR; full state in the `zs22.7.7` ledger notes):
    Update the `copier-template-workflow-coverage`/canonical-slugs doctor coverage
    if needed.
 
-3. **M6-c — fleet-time reporting (dev-tooling, spec cycle).** Extend
-   `fleet/fleet_conformance.py` to derive per-repo BASELINE obligations from
-   `profile` (members via class→profile; `adopters` via declared profile —
-   currently PARSED but IGNORED), asserting each governed repo wires the baseline
-   verifiers + declares `harnesses` + pins a carrying release. REUSE the existing
-   `OBLIGATION_ROWS` mechanism (add a `baseline-profile-wired` row); start the new
-   row at `warning` severity during backfill, flip to `error` after. This is the
-   "fleet-time sweep reports per-repo conformance" acceptance item. dev-tooling
-   `contracts.md` propose-change → revise.
+3. **M6-c — fleet-time reporting (dev-tooling, TDD; NO spec cycle).** It is IMPL
+   within the already-spec'd fleet-conformance mechanism (the harnesses-required
+   FLIP is M6-g's spec change, not this), so no propose-change/revise is needed
+   for warning-mode reporting. In `livespec_dev_tooling/fleet/`: add
+   `assert_baseline_harnesses(*, ctx, member) -> RowOutcome` (model on
+   `_rows_beads.py:assert_tenant_connection_consistency`, which parses
+   `.livespec.jsonc` via vendored `jsoncomment`): `ctx.file_text(repo=member.repo,
+   path=".livespec.jsonc")` → None ⇒ `RowSkip`; parse JSONC; top-level `harnesses`
+   a non-empty object ⇒ `RowPass`; else ⇒ `RowFinding(message=…,
+   severity="warning")` (MUST pass `severity="warning"` — default is `"error"`;
+   exit 4 is error-only, so un-backfilled repos log without failing dev-tooling CI
+   / the fan-out preflight). Register an `ObligationRow(row_id="baseline-harnesses",
+   obligation_type="committed-file", applies_to=_ALL_CLASSES,
+   assert_member=assert_baseline_harnesses, manual_hint="declare a `harnesses`
+   object in .livespec.jsonc (Conformance Pattern concern #2; zs22.7.7 M6)")` in
+   `contract.py OBLIGATION_ROWS` + the import. Optionally make `fleet_conformance.py`
+   ALSO iterate `manifest.adopters` (PARSED-but-IGNORED today; no-op while
+   `adopters: []`). This is product `.py` ⇒ Red→Green ritual; for the Red prefer
+   a genuine assertion via the new-module-stub technique (a stub
+   `assert_baseline_harnesses` returning `RowPass`, unregistered, makes both the
+   registration test and the "warns when absent" test fail). Types:
+   `RowFinding(severity)`, `RowPass`, `RowSkip(reason)` in `fleet/_context.py`;
+   `ObligationRow(...)` + `_ALL_CLASSES`/`REPO_CLASSES` in `fleet/contract.py`.
+   This is the "fleet-time sweep reports per-repo conformance" acceptance item.
 
 4. **M6-f — dispatch-time gate (orchestrator, spec cycle).** Add baseline Verifier
    step(s) to the Fabro prepare chain in
