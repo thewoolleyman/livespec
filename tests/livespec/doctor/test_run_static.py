@@ -240,6 +240,8 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-copier-template-workflow-coverage",
         "doctor-master-direct-uncommitted-spec-edits",
         "doctor-parent-proposed-change-resolves",
+        "doctor-no-cross-spec-reference",
+        "doctor-no-spec-section-citation-in-code",
         "doctor-wiring-completeness-cross-repo",
     }
     sub_spec_check_ids = {
@@ -255,6 +257,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-out-of-band-edits",
         "doctor-accept-decision-snapshot-consistency",
         "doctor-parent-proposed-change-resolves",
+        "doctor-no-cross-spec-reference",
     }
     payload = json.loads(out)
     findings = payload["findings"]
