@@ -211,29 +211,27 @@ jobs:
       # The shared livespec-dev-tooling commit-refuse-hook check
       # verifies that `.git/hooks/pre-commit` and `.git/hooks/pre-push`
       # contain the canonical refuse-at-primary body. CI's
-      # actions/checkout clone does NOT install the hook, so we
-      # install it here for the one matrix entry that exercises the
-      # check. Per SPECIFICATION/non-functional-requirements.md
-      # §"Primary-checkout commit-refuse hook" the canonical hook
-      # body carries the marker `# livespec commit-refuse hook`, a
-      # `git rev-parse --show-toplevel` invocation, and an `exit 1`
-      # branch — the substring fingerprint the check verifies.
+      # actions/checkout clone does NOT install the hook, so we install
+      # it here for the one matrix entry that exercises the check — by
+      # copying the SAME canonical structural body that
+      # `just install-commit-refuse-hooks` / `just bootstrap` install
+      # (dev-tooling/git-hook-wrapper.sh), so CI exercises the real
+      # body rather than a hand-rolled stand-in. Per
+      # SPECIFICATION/non-functional-requirements.md §"Primary-checkout
+      # commit-refuse hook" the canonical body carries the marker
+      # `# livespec commit-refuse hook`, a `git rev-parse
+      # --git-common-dir` invocation, and an `exit 1` branch — the
+      # substring fingerprint the check verifies (it also still accepts
+      # the legacy `git rev-parse --show-toplevel` body through the
+      # fleet migration). The verifier only READS the file; the hook
+      # never fires in this metadata job, so its lefthook delegation is
+      # never reached.
       - name: Install commit-refuse hook (satisfy invariant)
         if: matrix.target == 'check-primary-checkout-commit-refuse-hook-installed'
         run: |
           mkdir -p .git/hooks
           for hook in pre-commit pre-push; do
-            {
-              printf '%s\n' '#!/bin/sh'
-              printf '%s\n' '# livespec commit-refuse hook'
-              printf '%s\n' 'toplevel="$(git rev-parse --show-toplevel)"'
-              printf '%s\n' 'primary="$(git config --get livespec.primaryPath || true)"'
-              printf '%s\n' 'if [ -n "$primary" ] && [ "$toplevel" = "$primary" ]; then'
-              printf '%s\n' '  echo "livespec: refusing commit/push at primary checkout" >&2'
-              printf '%s\n' '  exit 1'
-              printf '%s\n' 'fi'
-              printf '%s\n' 'exit 0'
-            } > ".git/hooks/$hook"
+            cp dev-tooling/git-hook-wrapper.sh ".git/hooks/$hook"
             chmod 755 ".git/hooks/$hook"
           done
 

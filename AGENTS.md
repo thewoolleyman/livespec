@@ -249,10 +249,12 @@ leaving dirty state, committing on the primary checkout, or asking the
 user whether to commit as failures of the workflow, not as acceptable
 stopping points.
 
-1. Confirm the primary checkout before editing:
+1. Confirm the primary checkout before editing (a primary checkout's
+   git-dir equals its git-common-dir; a secondary worktree's differs —
+   the structural test the commit-refuse hook itself uses):
 
    ```bash
-   git -C /data/projects/livespec config --get livespec.primaryPath
+   git -C /data/projects/livespec rev-parse --git-dir --git-common-dir
    git -C /data/projects/livespec status --short --branch
    ```
 
@@ -326,7 +328,7 @@ list` fails with "no beads database found" even though the plugin is present.
 
 ## Daily commands
 
-- `just bootstrap` — first-touch setup on fresh clones; idempotently sets `livespec.primaryPath` on the primary checkout and installs the canonical commit-refuse hook at `.git/hooks/pre-commit` + `.git/hooks/pre-push` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure") plus installs lefthook hooks and resolves plugin dependencies.
+- `just bootstrap` — first-touch setup on fresh clones; idempotently installs the canonical structural commit-refuse hook at `.git/hooks/pre-commit`, `.git/hooks/pre-push`, and `.git/hooks/commit-msg` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure") — armed on install, refusing commits/pushes at the primary checkout structurally (when `git rev-parse --git-dir` equals `git rev-parse --git-common-dir`), with no `livespec.primaryPath` arming step — plus installs lefthook hooks and resolves plugin dependencies.
 - `just check` — full enforcement aggregate (lint, types, tests, coverage, AST checks).
 - `just check-pre-commit-doc-only` — fast subset for doc-only commits.
 - **Cross-repo orchestration** is carried by the reference **Beads/Dolt + Fabro Dispatcher** (`livespec-orchestrator-beads-fabro`'s `dispatcher.py`), which retired the project-local `/livespec-orchestrate` Layer-3 skill at the W6 cutover (2026-06-15). The dark factory polls the ledger, dispatches ready work-items into Fabro sandboxes, gates each on `just check` + `/livespec:doctor`, and closes merged items unattended. See `### Cross-repo orchestration` above.
