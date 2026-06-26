@@ -96,6 +96,12 @@ _EXPECTED_FILES: tuple[str, ...] = (
     ".claude-plugin/plugin.json",
     "SPECIFICATION/README.md",
     ".claude/settings.json",
+    # `.ai/agent-disciplines.md` seeds the agent-instruction `.ai/`
+    # convention in every generated adopter repo (per
+    # livespec/SPECIFICATION/contracts.md, the fleet agent-instruction
+    # core contract). Pinning it ensures the scaffold is never silently
+    # dropped on a template update.
+    ".ai/agent-disciplines.md",
 )
 
 _JSON_FILES: tuple[str, ...] = (

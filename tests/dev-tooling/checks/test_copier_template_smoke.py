@@ -207,6 +207,8 @@ def test_smoke_check_emits_canonical_slug_drift_when_targets_block_mismatches(
     claude_dir = template_dir / ".claude"
     claude_dir.mkdir(parents=True)
     (claude_dir / "settings.json").write_text("{}\n", encoding="utf-8")
+    (template_dir / ".ai").mkdir()
+    (template_dir / ".ai" / "agent-disciplines.md").write_text("# stub\n", encoding="utf-8")
 
     result = subprocess.run(
         [sys.executable, str(_COPIER_TEMPLATE_SMOKE)],
@@ -270,6 +272,8 @@ def test_smoke_check_fails_when_generated_json_invalid(*, tmp_path: Path) -> Non
     claude_dir = template_dir / ".claude"
     claude_dir.mkdir(parents=True)
     (claude_dir / "settings.json").write_text("{}\n", encoding="utf-8")
+    (template_dir / ".ai").mkdir()
+    (template_dir / ".ai" / "agent-disciplines.md").write_text("# stub\n", encoding="utf-8")
 
     result = subprocess.run(
         [sys.executable, str(_COPIER_TEMPLATE_SMOKE)],
@@ -341,6 +345,8 @@ def test_smoke_check_fails_when_generated_justfile_does_not_parse(*, tmp_path: P
     claude_dir = template_dir / ".claude"
     claude_dir.mkdir(parents=True)
     (claude_dir / "settings.json").write_text("{}\n", encoding="utf-8")
+    (template_dir / ".ai").mkdir()
+    (template_dir / ".ai" / "agent-disciplines.md").write_text("# stub\n", encoding="utf-8")
 
     result = subprocess.run(
         [sys.executable, str(_COPIER_TEMPLATE_SMOKE)],
@@ -384,3 +390,26 @@ def test_expected_files_pin_generated_copier_answers_file() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert ".copier-answers.yml" in module._EXPECTED_FILES  # noqa: SLF001
+
+
+def test_expected_files_includes_ai_agent_disciplines() -> None:
+    """`.ai/agent-disciplines.md` is pinned in the smoke check's expected output set.
+
+    The impl-plugin template ships `.ai/agent-disciplines.md` so every
+    generated adopter repo inherits the agent-instruction `.ai/`
+    convention seed scaffold. Pinning membership in `_EXPECTED_FILES`
+    makes the smoke check fail loudly if the scaffold is ever dropped.
+    Per livespec/SPECIFICATION/contracts.md (the fleet agent-instruction
+    core contract), the AGENTS.md convention block + a seed
+    `.ai/<topic>.md` scaffold MUST ship from the copier template.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "copier_template_smoke_for_ai_scaffold_test",
+        str(_COPIER_TEMPLATE_SMOKE),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert ".ai/agent-disciplines.md" in module._EXPECTED_FILES  # noqa: SLF001
