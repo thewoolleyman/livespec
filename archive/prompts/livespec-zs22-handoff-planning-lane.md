@@ -1,3 +1,36 @@
+> # ✅ ARCHIVED 2026-06-26 — epic `livespec-zs22` COMPLETE
+>
+> This handoff drove the **Planning Lane + Conformance Pattern**
+> formalization (epic `livespec-zs22`, increments 0–5 / milestones
+> M0–M6) to completion. All increments landed; this runbook is retained
+> for historical reference only and is no longer the live driver.
+>
+> The durable record now lives in the spec, the spec histories, the
+> commits, and the ledger — NOT in this file:
+> - **Core NFR** (`livespec/SPECIFICATION/non-functional-requirements.md`):
+>   §"Planning Lane guidance", §"Control-Plane console guidance",
+>   §"Conformance Pattern".
+> - **Core spec** (`spec.md`): §"Contract + reference implementations
+>   architecture" (the three planes + canonical diagram).
+> - **Orchestrator** (`livespec-orchestrator-beads-fabro/SPECIFICATION/contracts.md`):
+>   §"Planning Lane realization", §"Dispatch-time baseline conformance gate".
+> - **Console** (`livespec-console-beads-fabro`): §"Scope Boundary"
+>   Control-Plane realization + the three-plane diagram.
+> - **dev-tooling** (`livespec-dev-tooling/SPECIFICATION/contracts.md`):
+>   §"plugin_resolution check" (`harnesses` required fleet-wide) +
+>   §"baseline profile"; the `baseline-harnesses` fleet obligation row.
+>
+> The Conformance Pattern's concern #2 (cross-harness plugin-resolution)
+> is enforced in depth across all four tiers — author-time (copier
+> `.livespec.jsonc.jinja` stub + canonical-slugs), commit-time (every
+> governed repo's `just check`), dispatch-time (the orchestrator's Fabro
+> prepare gate), and fleet-time (`assert_baseline_harnesses` + the sweep)
+> — and made REQUIRED fleet-wide by dev-tooling **v0.22.0** (M6-g).
+>
+> Original handoff content preserved verbatim below.
+
+---
+
 # Handoff: Formalize the livespec blessed workflow (epic livespec-zs22)
 
 **Track:** planning-lane · **Epic:** `livespec-zs22` · **Tenant:** livespec
