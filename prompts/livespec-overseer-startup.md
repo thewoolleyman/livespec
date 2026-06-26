@@ -32,32 +32,36 @@ NOT clear or re-kick a session that is mid-track — you would destroy live work
 
 ## Track registry
 
-Resume each in its **current session**; the `livespec1/2/3/…N` column is the
-naming convention for **new** sessions/tracks going forward (existing tracks
-stay where they are unless you deliberately migrate one).
+The five tracks have each been migrated to their own fixed numbered session
+(`livespec1`–`livespec5`), one track per session — already running. **The
+overseer itself runs in `livespec-overseer`.** Resume each track **in place**
+(its session holds live context); never `/clear` or restart a session mid-track.
 
-| Track | Epic / item | Handoff prompt | Current session | livespecN |
-|---|---|---|---|---|
-| **Planning Lane + Conformance Pattern** (zs22) | `livespec-zs22` (last milestone: `zs22.7` M6) | `prompts/livespec-zs22-handoff-planning-lane.md` | `livespec2` | livespec1 |
-| **Dev-tooling single-source convergence** | `livespec-zs22.7.9` | `prompts/dev-tooling-single-source-convergence-handoff.md` | `livespec3` | livespec2 |
-| **Governed-repo lifecycle** (zs22 Increment 6: setup/install + ongoing drift — fleet + adopter, new + existing) | `livespec-zs22.8` | `prompts/governed-repo-lifecycle-handoff.md` | *not yet started — kick off in a fresh `livespecN`* | livespec3 |
+| Session | Track | Epic / item | Handoff prompt |
+|---|---|---|---|
+| **livespec1** | Fleet-wide doctor-static enforcement | `livespec-6jfq` | `prompts/doctor-static-fleet-enforcement-prompt.md` |
+| **livespec2** | Planning Lane + Conformance Pattern (zs22) | `livespec-zs22` (remaining: `zs22.7.8` register console + epic closure) | `prompts/livespec-zs22-handoff-planning-lane.md` |
+| **livespec3** | Dev-tooling single-source convergence | `livespec-zs22.7.9` | `prompts/dev-tooling-single-source-convergence-handoff.md` |
+| **livespec4** | Architecture / mermaid-diagram cleanup (propose-change) | *ad-hoc design session — no standing epic/handoff yet* | *resume by reading the session* |
+| **livespec5** | Governed-repo lifecycle (zs22 Increment 6) | `livespec-zs22.8` | `prompts/governed-repo-lifecycle-handoff.md` |
 
 Notes:
-- The **zs22** track is NOT complete: `zs22.7` is 7/9 (M6 / `zs22.7.7` closed)
-  with two open children — `zs22.7.8` (register livespec-console in the fleet
-  manifest) and `zs22.7.9` (dev-tooling convergence, the row above). `zs22.7`
-  (and parent `zs22`) close only when those land. Session `livespec2` finished
-  M6 and is now FREE.
-- The **governed-repo lifecycle** track (`livespec-zs22.8`, Increment 6) was
-  seeded via the plan mechanism (PR #648): design doc at
-  `research/governed-repo-lifecycle/lifecycle-system-design.md`, handoff at
-  `prompts/governed-repo-lifecycle-handoff.md`. EXECUTION has NOT started — kick
-  it off (`run prompts/governed-repo-lifecycle-handoff.md`) in a fresh
-  `livespecN` session and oversee it. Design brief: a unified, idempotent
-  **setup/install + ongoing-drift-check** system for every governed repo,
-  sibling of the Conformance Pattern, reusing its fleet-manifest/baseline/checks;
-  surfaced as a runnable script + `just` target; human seams (secrets, tenant DB
-  connection) detect-and-guide, never fake.
+- **livespec2 (zs22)** is winding down: `zs22.7` is 7/9 (M6 / `zs22.7.7` closed);
+  it closes (with parent `zs22`) only when `zs22.7.8` (livespec2) and `zs22.7.9`
+  (livespec3) land.
+- **livespec4 (mermaid cleanup)** is an in-session propose-change design
+  **awaiting the maintainer's review** of the diagrams before it files. Keep it
+  alive; do NOT restart or `/clear` it. It is maintainer-gated — do not push it
+  past the review.
+- **livespec5 (governed-repo lifecycle, `livespec-zs22.8`)** has its plan seeded
+  (design doc `research/governed-repo-lifecycle/lifecycle-system-design.md`,
+  handoff `prompts/governed-repo-lifecycle-handoff.md`, PR #648). The session
+  holds the just-completed plan; the maintainer-gated next action is to file
+  `zs22.8.1` (M1) and begin it as a `/livespec:propose-change`. Start execution
+  on the maintainer's go.
+- Sibling-repo sessions (`livespec-console-beads-fabro*`, `livespec-dev-tooling`,
+  `livespec-impl-plaintext`) are separate repos — NOT part of this fleet of five
+  and not overseen here unless told.
 
 ## Operating loop (per the skill)
 
@@ -96,4 +100,6 @@ Notes:
 - Beads via the env wrapper:
   `source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec <args>`.
 - Scratch under `tmp/overseer/` (never the `tmp/` root).
-- New sessions/tracks: name them `livespec1`, `livespec2`, … `livespecN`.
+- `livespec1`–`livespec5` are the current five tracks; name any **new**
+  track/session `livespec6`, `livespec7`, … `livespecN`. The overseer is
+  `livespec-overseer`. Sibling-repo sessions keep their repo-named sessions.
