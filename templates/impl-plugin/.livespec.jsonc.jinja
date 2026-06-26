@@ -1,0 +1,40 @@
+// Project-local livespec configuration for {{ plugin_full_name }}.
+//
+// Scaffolded by the livespec impl-plugin copier template (Conformance Pattern
+// author-time tier, livespec-zs22.7.7 M6-d). This is a STUB: it is born
+// declaring `harnesses` so the baseline `check-plugin-resolution` Verifier —
+// wired into this repo's `just check` aggregate via canonical-slugs.yml — has a
+// real declaration to evaluate from the first commit, with no silently
+// config-less window. The tenant `connection` block is deliberately omitted:
+// tenant identity is provisioned at fleet-onboarding, not copier time.
+//
+// Authority: livespec/SPECIFICATION/contracts.md and
+//   livespec/SPECIFICATION/non-functional-requirements.md §"Conformance Pattern".
+{
+  "template": "livespec",
+  "spec_root": "SPECIFICATION",
+
+  // The impl-plugin that governs THIS repo's work-items ledger. Defaults to the
+  // reference Beads/Dolt orchestrator; change it if this repo tracks its work
+  // items through a different backend.
+  "implementation": { "plugin": "livespec-orchestrator-beads-fabro" },
+
+  // Declared agent-runtime harnesses for the Conformance Pattern's cross-harness
+  // plugin-resolution concern (concern #2). A livespec-impl-* plugin exposes the
+  // required thin-transport `next` surface, so both runtimes are declared
+  // `supported` against `{{ plugin_namespace }}:next`. If this plugin will not
+  // ship a given harness's command surface, change that entry to
+  // {"status": "exempt", "reason": "<why this harness has no resolvable surface>"}.
+  "harnesses": {
+    "claude": { "status": "supported", "canonical_command": "{{ plugin_namespace }}:next" },
+    "codex":  { "status": "supported", "canonical_command": "{{ plugin_namespace }}:next" }
+  }
+
+  // TODO(onboarding): add the "livespec-orchestrator-beads-fabro" config block
+  // carrying this repo's beads tenant `connection` (tenant / database /
+  // server_user / prefix / server_host / server_port) once its Dolt tenant is
+  // provisioned. The block is intentionally absent from the generated scaffold;
+  // see livespec/.claude/CLAUDE.md §"Beads runtime prerequisites" for what
+  // onboarding provisions and livespec/SPECIFICATION/contracts.md for the
+  // tenant-connection contract.
+}
