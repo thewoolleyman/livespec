@@ -10,6 +10,7 @@
 # both the smoke-check flow AND the consumer `copier update` flow. See
 # livespec/SPECIFICATION/contracts.md §"Shared code sync —
 # livespec-dev-tooling" → Template gate.
+- check-agents-ai-references-resolve
 - check-aggregate-completeness
 - check-all-declared
 - check-assert-never-exhaustiveness
@@ -38,6 +39,7 @@
 - check-no-write-direct
 - check-pbt-coverage-pure-modules
 - check-per-file-coverage
+- check-plugin-resolution
 - check-primary-checkout-commit-refuse-hook-installed
 - check-private-calls
 - check-public-api-result-typed
