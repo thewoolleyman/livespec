@@ -64,23 +64,31 @@ a shadow ledger. What session 2 LANDED (all on master):
   reads `fleet` with a `members` fallback (matches dev-tooling's
   `(.fleet // .members)`); the canned test fixture now mirrors the real `fleet`
   shape so the autouse dispatch tests exercise it (the gap that hid the bug).
-- **`livespec-2rab` (P1, CLOSED) — release fan-out fixed.** The fan-out's
-  `discover-siblings` step failed post-v148 (jq `Cannot iterate over null` —
-  the authenticated `gh api .../contents` read returned content lacking
-  `fleet`/`members` under the workflow's App token, though the identical
-  pipeline worked with a normal token). Fixed via `livespec-dev-tooling`
-  PR #177 (merged): reads the PUBLIC manifest via `raw.githubusercontent.com`
-  (no auth, always raw), drops the App-token mint, echoes the fetched head on
-  parse failure. The v0.21.1 fan-out runs the FIXED workflow — confirm it went
-  green and opened bump-pin PRs (the self-healing pin-propagation chain).
+- **`livespec-2rab` (P1, dev-tooling side FIXED + VERIFIED; OPEN for a
+  fleet-wide follow-up) — release fan-out fixed.** The fan-out failed post-v148
+  (jq `Cannot iterate over null`). REAL root cause (the App-token theory was
+  wrong): the dev-tooling caller workflows `release-dispatch.yml` /
+  `bump-pin-from-dispatch.yml` / `pin-freshness.yml` pinned their reusable
+  workflow at `@v0.17.0` — a stale tag predating the M4 `(.fleet // .members)`
+  fallback — so the fan-out ran v0.17.0 code that reads `members` only → null
+  on the `fleet` manifest. Two PRs: dev-tooling #177 (a `raw.githubusercontent.com`
+  robustness fetch + self-diagnosing echo; shipped v0.21.1) and the OPERATIVE
+  dev-tooling #179 (bump the 3 caller pins `@v0.17.0`→`@v0.21.1`). VERIFIED: the
+  **v0.21.2** release fan-out ran GREEN and dispatched bump-pin to siblings
+  (driver-claude #50, driver-codex #24 opened pin→v0.21.2 PRs). REMAINING (2rab
+  stays open): the SIBLING copies of those caller workflows (copier-template-
+  distributed) are ALSO `@v0.17.0`-stale — `livespec-runtime`'s bump-pin run
+  FAILS; fix the TEMPLATE's caller pins + re-sync siblings, and revisit the
+  self-referential pin-bump so these caller self-pins auto-advance.
 
-**Self-healing pin chain now in motion:** v0.21.1's fixed fan-out should
-auto-bump every sibling's dev-tooling pin to `v0.21.1` (a release carrying
-`check-plugin-resolution`). That is the prerequisite M6-e's commit-time wiring
-needs. FIRST NEXT-SESSION ACTION (after the FIRST ACTION ledger query): confirm
-the v0.21.1 fan-out went green + the bump-pin PRs merged across siblings; if the
-fan-out still failed, read its `discover-siblings` log (now self-diagnosing) and
-re-open `2rab`.
+**Pin chain now WORKING:** dev-tooling is at `v0.21.2` (carries
+`check-plugin-resolution`); the fixed fan-out propagates pins to siblings. FIRST
+NEXT-SESSION ACTION (after the FIRST ACTION query): check the sibling bump-pin
+PRs (e.g. driver-claude #50, driver-codex #24) merged, and bump any sibling the
+fan-out's `@v0.17.0`-stale bump-pin missed (notably `livespec-runtime`,
+`livespec-orchestrator-beads-fabro`, `livespec-orchestrator-git-jsonl`,
+`livespec-console-beads-fabro`) to `v0.21.2` manually so M6-e can wire
+`check-plugin-resolution`. The pin-bump propagation gap is tracked in `2rab`.
 
 **⚠ CONCURRENCY — multiple sessions work this epic's ready queue (RECURRING;
 has now bitten TWICE).** M3 (`livespec-zs22.7.4`) was landed by a CONCURRENT
