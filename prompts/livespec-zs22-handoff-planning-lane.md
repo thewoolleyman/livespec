@@ -200,20 +200,30 @@ for concern #1, migrated across the fleet:
   — orchestrator body → structural at pre-commit/pre-push/commit-msg; `primaryPath`
   retired; recipe aligned.
 
-**Still open under M2 (tracked in the `zs22.7.3` ledger notes; none blocks M3):**
-- **M2-1b** — the `livespec_dev_tooling.install_commit_refuse_hooks` python module
-  so the body is REUSED from the package (pin+import, NO per-repo cp copies). Core,
-  template, and orchestrator each currently cp their own byte-identical copy (the
-  interim transition state); M2's "no per-repo copies" delivery goal is met only
-  when this lands.
-- **`baseline` tag** — deferred to M4 (don't build a partition no consumer reads
-  until Open Brain imports it).
-- **git-jsonl follow-up (NEW)** — `livespec-orchestrator-git-jsonl` does NOT
-  dispatch into Fabro (no `.fabro/`), has NO `sandboxExempt` arming, and still
-  carries the LEGACY body. Do NOT migrate it to structural until its dispatch path
-  is confirmed to arm `sandboxExempt` (a structural body would refuse legitimate
-  in-sandbox commits). The v0.18.0 verifier still accepts its legacy body, so not
-  urgent.
+**M2-1b — the reusable installer MODULE — is DONE (dev-tooling v0.19.0, `#167`
++ spec cycle `#169`).** `livespec_dev_tooling.install_commit_refuse_hooks` is the
+single wheel-shipped canonical-body carrier (installs pre-commit/pre-push/
+commit-msg), and `canonical_checks.baseline_check_slugs()` ships the `baseline`
+check-profile accessor. **MODULE ADOPTION:** dev-tooling, the orchestrator
+(`#173`, which retired its vendored `.sh`), and the console (`#43`) now REUSE the
+module; **core + the copier template still `cp` the interim body (core M2-1b
+DEFERRED per maintainer call)**. So M2's "no per-repo copies" goal is met for the
+repos on the module; core/template adoption is the remaining tail. (Do NOT
+re-build the module — it exists in v0.19.0.)
+
+**Still open / deferred under M2 (live status in the `zs22.7.3` ledger notes):**
+- **`baseline` tag** — the accessor SHIPS (v0.19.0) but the full profile/partition
+  + manifest wiring is deferred to M4 (where Open Brain first imports it).
+- **git-jsonl follow-up** — `livespec-orchestrator-git-jsonl` does NOT dispatch
+  into Fabro (no `.fabro/`), has NO `sandboxExempt` arming, and still carries the
+  LEGACY body. Do NOT migrate it to structural until its dispatch path is
+  confirmed to arm `sandboxExempt` (a structural body would refuse legitimate
+  in-sandbox commits). The verifier still accepts its legacy body, so not urgent.
+- **dev-tooling structlog runtime deps (NEW)** — dev-tooling vendors structlog
+  but declares no `[project.dependencies]`, so a minimal consumer (the console)
+  had to add `typing-extensions` on Python <3.11; the systemic fix is for
+  dev-tooling to declare structlog's transitive runtime deps so every consumer
+  gets them.
 
 **Side observation (NOT acted on):** the two pre-migration planning docs
 `prompts/worktree-discipline-pack-{epic,prompt}.md` still reference the now-deleted
