@@ -682,6 +682,15 @@ contract diagram) and their rationale live in
   `git -C /data/projects/<repo> pull --ff-only origin master` so the maintainer's
   session sees it (the workspace path reaches the same `.git`, so there's no
   separate clone to update).
+- **Force-push your OWN branch freely; never another session's.** Force-pushing
+  a feature branch YOU created — e.g. `--force-with-lease` to update your own PR
+  after a clean rebase onto `master` — is the standard, sanctioned PR-update flow;
+  do it without gating. NEVER force-push (or otherwise rewrite-and-push) a branch
+  or worktree ANOTHER session created; that is a cross-session clobber. For a
+  branch you did not create, never force-push without explicit per-instance
+  authorization. The same split applies to dispatched sub-agents: their briefs
+  MUST forbid touching, pushing, or force-pushing any worktree/branch other than
+  the one they create.
 - **Master CI: surface red, query precisely.** On the first turn of a session,
   check master CI; a job the CI workflow runs being red is a real broken state,
   not a deferral — repair it or remove it from CI/branch-protection. Always query
