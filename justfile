@@ -204,7 +204,8 @@ check:
     fi
     export UV_NO_SYNC=1
     targets=(
-        # ---- Canonical block (39 slugs, alphabetical) ----
+        # ---- Canonical block (42 slugs, alphabetical) ----
+        check-agents-ai-references-resolve
         check-aggregate-completeness
         check-all-declared
         check-assert-never-exhaustiveness
@@ -233,6 +234,7 @@ check:
         check-no-write-direct
         check-pbt-coverage-pure-modules
         check-per-file-coverage
+        check-plugin-resolution
         check-primary-checkout-commit-refuse-hook-installed
         check-private-calls
         check-public-api-result-typed
@@ -764,6 +766,16 @@ check-prompts:
 check-doctor-static:
     uv run --no-project .claude-plugin/scripts/bin/doctor_static.py
 
+# Cross-harness plugin-resolution Verifier from livespec-dev-tooling
+# (the Conformance Pattern's concern #2). Reads the `.livespec.jsonc`
+# `harnesses` declaration and verifies each declared agent-runtime
+# harness either resolves the `/livespec:*` surface or is marked
+# exempt. Per SPECIFICATION/non-functional-requirements.md §"Conformance
+# Pattern". Core declares both harnesses exempt (artifact carrier), so
+# this passes trivially.
+check-plugin-resolution:
+    uv run python -m livespec_dev_tooling.checks.plugin_resolution
+
 # Shared commit-refuse-hook invariant from livespec-dev-tooling. Per
 # SPECIFICATION/contracts.md §"`primary-checkout-commit-refuse-hook-installed`"
 # and §"Shared code sync — livespec-dev-tooling", the commit-refuse-hook
@@ -775,6 +787,14 @@ check-doctor-static:
 # reads at primaries that the hook mechanism does not).
 check-primary-checkout-commit-refuse-hook-installed:
     uv run python -m livespec_dev_tooling.checks.primary_checkout_commit_refuse_hook_installed
+
+# Shared agent-instruction `.ai/` reference-resolution Verifier from
+# livespec-dev-tooling. Parses each AGENTS.md `.ai/<topic>.md` reference
+# and verifies it resolves to an existing file, per
+# SPECIFICATION/contracts.md §"Fleet agent-instruction core". Core's
+# AGENTS.md references already resolve, so this passes trivially.
+check-agents-ai-references-resolve:
+    uv run python -m livespec_dev_tooling.checks.agents_ai_references_resolve
 
 # In-repo gate for the wiring-completeness invariant
 # (SPECIFICATION/contracts.md v094 §"Shared code sync —
