@@ -37,13 +37,50 @@ profile (not "factory"); **`just` mandated non-functionally only** (never
 in core's public functional surface); fleet pins track **latest RELEASE**
 not HEAD; the **console** is the Control-Plane runner.
 
-## Status (refreshed 2026-06-26, increment-5 M5 COMPLETE; next is M6)
+## Status (refreshed 2026-06-26 session 2, M6 IN PROGRESS — foundation cleared; M6-e next)
 
 **Run this track autonomously.** Standing maintainer directive (2026-06-25):
 own the cuts (file children, draft, execute, land per increment), gate only
 on a genuine architectural/intent question, and hand off to a fresh session
 when context approaches budget. This supersedes the design doc's
 per-cut approval gate for this track.
+
+### M6 (zs22.7.7) — session-2 progress (2026-06-26): foundation cleared
+
+M6 is CLAIMED (`bd update livespec-zs22.7.7 --status in_progress`). Its full
+decomposition + the recon'd four-tier state live in the **`zs22.7.7` ledger
+notes** (read them: `bd show livespec-zs22.7.7`) — not re-listed here, to avoid
+a shadow ledger. What session 2 LANDED (all on master):
+
+- **dev-tooling `v0.21.0` + `v0.21.1` CUT.** v0.21.0 (PR #174) is the lowest
+  release carrying `check-plugin-resolution` (concern #2's Verifier); v0.21.1
+  (PR #178) also carries the fan-out fix below. These are the pin-able releases
+  M6's plugin-resolution wiring needs.
+- **`livespec-zimq` (P1, CLOSED) — live dispatch regression fixed.** The v148
+  `members→fleet` manifest rename left the orchestrator's `parse_fleet_members`
+  reading the removed `members` key, so EVERY dark-factory dispatch failed at
+  sibling-clone provisioning (`_resolve_sibling_clones` refused on `None`).
+  Fixed via `livespec-orchestrator-beads-fabro` PR #177 (master `e979d41`):
+  reads `fleet` with a `members` fallback (matches dev-tooling's
+  `(.fleet // .members)`); the canned test fixture now mirrors the real `fleet`
+  shape so the autouse dispatch tests exercise it (the gap that hid the bug).
+- **`livespec-2rab` (P1, CLOSED) — release fan-out fixed.** The fan-out's
+  `discover-siblings` step failed post-v148 (jq `Cannot iterate over null` —
+  the authenticated `gh api .../contents` read returned content lacking
+  `fleet`/`members` under the workflow's App token, though the identical
+  pipeline worked with a normal token). Fixed via `livespec-dev-tooling`
+  PR #177 (merged): reads the PUBLIC manifest via `raw.githubusercontent.com`
+  (no auth, always raw), drops the App-token mint, echoes the fetched head on
+  parse failure. The v0.21.1 fan-out runs the FIXED workflow — confirm it went
+  green and opened bump-pin PRs (the self-healing pin-propagation chain).
+
+**Self-healing pin chain now in motion:** v0.21.1's fixed fan-out should
+auto-bump every sibling's dev-tooling pin to `v0.21.1` (a release carrying
+`check-plugin-resolution`). That is the prerequisite M6-e's commit-time wiring
+needs. FIRST NEXT-SESSION ACTION (after the FIRST ACTION ledger query): confirm
+the v0.21.1 fan-out went green + the bump-pin PRs merged across siblings; if the
+fan-out still failed, read its `discover-siblings` log (now self-diagnosing) and
+re-open `2rab`.
 
 **⚠ CONCURRENCY — multiple sessions work this epic's ready queue (RECURRING;
 has now bitten TWICE).** M3 (`livespec-zs22.7.4`) was landed by a CONCURRENT
@@ -153,25 +190,78 @@ skips-on-unavailable); `livespec-1t17` (Rust red-green analogue for the console)
 
 ## Next concrete action
 
-**M6 (`livespec-zs22.7.7`) is next — read its ledger notes (FIRST ACTION +
-`bd show livespec-zs22.7.7`); confirm it is still open + unstarted FIRST (see
-the concurrency warning above), then CLAIM it.** M6 = enforcement-in-depth
-wired: the `baseline` verifiers (`check-primary-checkout-commit-refuse-hook-installed`
-+ the new `check-plugin-resolution`) at all FOUR tiers — author-time (copier),
-commit-time (lefthook→`just check`), dispatch-time (the orchestrator runs the
-installer + verifier before driving any tenant), fleet-time (`just conformance`
-sweep over the manifest + drift CI) — and the orchestrator gates every dispatch
-(fleet AND adopter) on `baseline` conformance. M6's only dependency was M5, now
-CLOSED, so it is unblocked. NOTE the M5 carry-overs M6 inherits: (1) the
-`harnesses` `.livespec.jsonc` key is OPTIONAL today — M6 making it fleet-required
-is a cross-repo backfill (declare `harnesses` in every governed repo's
-`.livespec.jsonc` in the same epic; see "A required-key schema change is a
-cross-repo epic"); (2) wiring `check-plugin-resolution` into a repo's `just check`
-requires that repo to pin a dev-tooling RELEASE carrying it (PR-1 `80dab47` +
-PR-2a `a31eb4f` are on master; confirm the release tag the fan-out cut); (3)
-codex's GENUINE live resolution smoke is the repo-local `check-codex-skill-picker`
-(the dev-tooling check delegates codex) — M6 MAY unify the per-harness smokes or
-keep the delegation.
+**M6 (`livespec-zs22.7.7`) is CLAIMED + IN PROGRESS (session 2).** Its
+foundation landed (see §"M6 — session-2 progress"): `check-plugin-resolution`
+is now pin-able (dev-tooling `v0.21.1`), both v148-rename collateral regressions
+are fixed (`zimq`, `2rab`), and the self-healing pin chain is in motion. The
+remaining M6 work is the cross-repo wiring, in this order (own the cuts; each its
+own PR; full state in the `zs22.7.7` ledger notes):
+
+0. **Confirm pins propagated.** After the FIRST ACTION query: verify the v0.21.1
+   fan-out went green and the per-sibling bump-pin PRs (dev-tooling `→v0.21.1`)
+   merged. If the fan-out is still red, read its now-self-diagnosing
+   `discover-siblings` log and re-open `2rab`. (Laggards to watch: `livespec-runtime`
+   was on `v0.14.0`, `livespec-console-beads-fabro` on `v0.19.0`/`compat.pinned
+   "master"` — the fan-out may not reach console; bump those manually if needed.)
+
+1. **M6-e — commit-time backfill (the bulk, cross-repo epic).** Per governed repo:
+   declare `harnesses` + (where not class-derived) `profile` in `.livespec.jsonc`,
+   and wire `check-plugin-resolution` into `just check`. Per-repo harness
+   declarations follow each repo's ACTUAL command/skill surface: orchestrators →
+   claude+codex `supported` (canonical_command e.g. `livespec-orchestrator-…:next`);
+   `driver-claude` → claude supported / codex exempt; `driver-codex` → already
+   declares codex supported / claude exempt; libraries (`dev-tooling`, `runtime`)
+   → no command surface, declare all harnesses `exempt` (reason: library); core
+   (`livespec`) → judgment call (the `/livespec:*` surface resolves via the
+   Drivers — likely claude+codex supported or a documented exemption). ALSO fix
+   the two Drivers + console to wire `check-primary-checkout-commit-refuse-hook-installed`
+   via the canonical mechanism (they wire NEITHER today). Delegate per-repo to
+   sub-agents; sequence file conflicts; re-check master freshness before each push.
+
+2. **M6-d — author-time (core template).** Add `check-plugin-resolution` to
+   `templates/impl-plugin/canonical-slugs.yml` (commit-refuse already wired) and
+   scaffold a `.livespec.jsonc.jinja` declaring `profile`/`harnesses` for a
+   generated repo. COUPLED to M6-e: only land after the impl-plugin siblings are
+   on `v0.21.1` + wired, else their `copier update --dry-run` drift CI reddens.
+   Update the `copier-template-workflow-coverage`/canonical-slugs doctor coverage
+   if needed.
+
+3. **M6-c — fleet-time reporting (dev-tooling, spec cycle).** Extend
+   `fleet/fleet_conformance.py` to derive per-repo BASELINE obligations from
+   `profile` (members via class→profile; `adopters` via declared profile —
+   currently PARSED but IGNORED), asserting each governed repo wires the baseline
+   verifiers + declares `harnesses` + pins a carrying release. REUSE the existing
+   `OBLIGATION_ROWS` mechanism (add a `baseline-profile-wired` row); start the new
+   row at `warning` severity during backfill, flip to `error` after. This is the
+   "fleet-time sweep reports per-repo conformance" acceptance item. dev-tooling
+   `contracts.md` propose-change → revise.
+
+4. **M6-f — dispatch-time gate (orchestrator, spec cycle).** Add baseline Verifier
+   step(s) to the Fabro prepare chain in
+   `.fabro/workflows/implement-work-item/workflow.toml` — RIGHT AFTER the existing
+   `install-commit-refuse-hooks` + `git config livespec.sandboxExempt true` steps —
+   running `check-primary-checkout-commit-refuse-hook-installed` and
+   `check-plugin-resolution` (mock = declaration-integrity). A failing prepare
+   step aborts the run = the gate ("conformant by construction"). Codify the
+   dispatch-time gate in the orchestrator's OWN `SPECIFICATION/` (governed cycle).
+   NOTE: `uv sync --all-groups` runs earlier in prepare, so `livespec_dev_tooling`
+   resolves. (Side note logged this session: the janitor runs `just check` only —
+   `/livespec:doctor` is NOT in the dispatch path despite prose claiming it; out
+   of M6 scope but worth a separate look.)
+
+5. **M6-g — flip + close.** Once every governed repo declares `harnesses`, flip
+   `check-plugin-resolution` absent→fail (the `load_harnesses` `_LOAD_SKIP` path
+   already flags "M6 will make it required fleet-wide"); dev-tooling `v0.22.0`;
+   bump pins. Then verify all four tiers run the shared verifiers, CLOSE
+   `zs22.7.7` + `zs22.7` + `livespec-zs22`, and `git mv` this handoff to
+   `archive/prompts/` per §"Archive condition".
+
+Carry-over notes: (1) `harnesses` required is the cross-repo backfill of M6-e→M6-g
+("A required-key schema change is a cross-repo epic"); (2) `check-plugin-resolution`
+ships in dev-tooling `v0.21.0`+ — pin `v0.21.1` (also carries the fan-out fix);
+(3) codex's GENUINE live resolution smoke is the repo-local `check-codex-skill-picker`
+(the dev-tooling check DELEGATES codex via `DelegatedResolutionRunner`) — M6 MAY
+unify the per-harness smokes or keep the delegation.
 
 **M5 (`livespec-zs22.7.6`) — DONE + CLOSED (2026-06-26).** Concern #2
 (cross-harness plugin-resolution) shipped through the five slots and proven
