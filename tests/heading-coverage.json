@@ -479,5 +479,12 @@
     "spec_file": "contracts.md",
     "test": "tests.livespec.doctor.static.test_gherkin_blank_line_format.test_run_returns_skipped_for_minimal_shape_with_no_gherkin_blocks",
     "reason": "Relocated into the main contracts.md from the retired dogfooding sub-specs (SPECIFICATION/templates/livespec and SPECIFICATION/templates/minimal) in v135. Consolidates several template-internal contracts; the mapped test covers the load-bearing minimal-template MUST (\"The doctor static gherkin-blank-line-format check MUST exempt minimal-shape spec_roots whose SPECIFICATION.md contains no fenced ```gherkin blocks (emitting status='skipped')\"): it seeds a minimal-shape single-file SPECIFICATION.md with no gherkin fences and asserts status='skipped' with the exemption message, and its sibling test_run_applies_normally_for_minimal_shape_with_gherkin_blocks asserts the check applies normally when gherkin IS present. The other facets — the livespec template's NLSpec reference doc and doctor_llm_*_checks_prompt paths, and the minimal template's spec_root './' single-file shape, null doctor_llm opt-out, and HTML-comment region markers — are exercised by the template-config (tests.livespec.validate.test_template_config) and doctor-static suites; no live drift meanwhile."
+  },
+  {
+    "heading": "## Tool-agnostic workflow — spec / implementation lifecycle",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "TODO",
+    "reason": "Introductory diagram + caption section; carries no MUST/SHOULD behavior clause, hence no clauses[] scenario links. Diagram-only — the architecture-diagram single-source discipline is exercised by tests.test_architecture_diagram_single_source; a dedicated test ID replaces this TODO via the governed propose-change/revise loop's resulting_files[] mechanism."
   }
 ]
