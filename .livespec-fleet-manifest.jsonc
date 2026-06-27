@@ -25,7 +25,11 @@
 // straggler.
 //
 // `fleet` entries are { repo, class } where `class` is one of:
-// core / enforcement-suite / impl-plugin / driver-plugin / library.
+// core / enforcement-suite / impl-plugin / driver-plugin / library / console.
+// (`console` is the Control-Plane operator console — a non-pin-consuming
+// member: it carries a livespec-dev-tooling pin but ships none of the three
+// pin-and-bump shim workflows; see livespec-dev-tooling contracts.md
+// §"Bump-pin policy".)
 //
 // `adopters` entries are { repo, profile, posture } — governed repos
 // (or families) that adopted the workflow but are NOT the livespec
@@ -45,7 +49,8 @@
     { "repo": "livespec-driver-codex", "class": "driver-plugin" },
     { "repo": "livespec-orchestrator-beads-fabro", "class": "impl-plugin" },
     { "repo": "livespec-orchestrator-git-jsonl", "class": "impl-plugin" },
-    { "repo": "livespec-runtime", "class": "library" }
+    { "repo": "livespec-runtime", "class": "library" },
+    { "repo": "livespec-console-beads-fabro", "class": "console" }
   ],
   "adopters": []
 }
