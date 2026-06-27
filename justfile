@@ -27,42 +27,32 @@ default:
 # First-time setup.
 # ---------------------------------------------------------------
 
-# Install the canonical structural commit-refuse hook body (the
-# repo-tracked dev-tooling/git-hook-wrapper.sh) as the pre-commit,
-# pre-push, and commit-msg hooks. This is the Installer slot of the
-# Worktree-discipline concern (per
+# Install the canonical livespec commit-refuse hook by REUSING the
+# shared livespec-dev-tooling installer module
+# (`python -m livespec_dev_tooling.install_commit_refuse_hooks`) — the
+# SINGLE source of the structural hook body, pinned in pyproject.toml.
+# This is the Installer slot of the Worktree-discipline concern (per
 # `SPECIFICATION/non-functional-requirements.md` §"Conformance
-# Pattern") — a shared, idempotent `just` recipe `bootstrap`
-# delegates to. The body refuses commits/pushes STRUCTURALLY: it
-# exits 1 when `git rev-parse --git-dir` equals `git rev-parse
+# Pattern") — a shared, idempotent `just` recipe `bootstrap` delegates
+# to. The installed body refuses commits/pushes STRUCTURALLY: it exits
+# 1 when `git rev-parse --git-dir` equals `git rev-parse
 # --git-common-dir` (a real primary checkout; a secondary worktree's
-# git-dir is `.git/worktrees/<name>` and so differs) UNLESS `git
-# config livespec.sandboxExempt` is `true`. There is therefore NO
+# git-dir is `.git/worktrees/<name>` and so differs) UNLESS `git config
+# livespec.sandboxExempt` is `true`. There is therefore NO
 # `livespec.primaryPath` arming step and so no fail-open window — the
 # hook is armed the moment it is installed (this supersedes the v095
 # `livespec.primaryPath` mechanism, which failed OPEN whenever its
 # arming step was missed). At worktrees (and in declared-exempt Fabro
-# sandboxes) the body delegates to mise-managed lefthook so the
-# per-hook gates fire; `--no-auto-install` inside the body is
-# load-bearing (without it lefthook backs the wrapper up to
-# `<name>.old` on every fire and replaces it with its PATH-searching
-# stub, which both silently no-ops in Claude Code's bash AND defeats
-# the commit-refuse-hook invariant).
-#
-# Resolves the shared hooks dir via git-common-dir so the install
-# lands correctly whether invoked from the primary checkout or a
-# secondary worktree (where .git is a file and `mkdir -p .git/hooks`
-# would fail). Idempotent: re-running overwrites with the same
-# canonical body — no duplicate content, no side effect.
+# sandboxes) the body delegates to mise-managed lefthook so the per-hook
+# gates fire (the body's `--no-auto-install` keeps lefthook from
+# clobbering it). The installer resolves the shared hooks dir via
+# git-common-dir so the install lands correctly whether invoked from the
+# primary checkout or a secondary worktree, and is idempotent. There is
+# NO repo-tracked git-hook-wrapper.sh copy any more — the body ships
+# ONCE in the wheel (convergence zs22.7.9.1; no vendored duplicate to
+# drift).
 install-commit-refuse-hooks:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    hooks_dir="$(realpath "$(git rev-parse --git-common-dir)")/hooks"
-    mkdir -p "${hooks_dir}"
-    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-commit"
-    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-push"
-    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/commit-msg"
-    chmod +x "${hooks_dir}/pre-commit" "${hooks_dir}/pre-push" "${hooks_dir}/commit-msg"
+    uv run python -m livespec_dev_tooling.install_commit_refuse_hooks
 
 bootstrap:
     #!/usr/bin/env bash
