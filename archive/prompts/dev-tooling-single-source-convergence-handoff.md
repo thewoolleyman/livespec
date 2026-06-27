@@ -1,5 +1,31 @@
 # Handoff: dev-tooling single-source convergence (livespec-zs22.7.9)
 
+> **✅ COMPLETE — ARCHIVED 2026-06-27.** Both DECIDED tasks landed and are
+> verified end-to-end; the ledger items are CLOSED. This file is reference-only
+> history now.
+>
+> - **`livespec-i05g` (Task 1, Lean Option B) — CLOSED.** The bump-pin composite
+>   Action (`livespec-dev-tooling/.github/actions/bump-pin-rewrite/action.yml`)
+>   dropped the in-Action `just check` step + the hand-rolled commit-refuse-hook
+>   install step; the consumer's OWN CI / branch-protection gates each bump PR.
+>   `contracts.md` re-scoped (§"reusable-bump-pin-from-dispatch.yml" Behavior +
+>   `.vendor.jsonc` clause, §"Fallback to known-good pin", §"Bump-pin policy";
+>   dt history `v023`). Merged **dt#205**, released **dt v0.28.1**. NO pack-install
+>   bundling — verified inert against the v0.28.0 verifier (optional skip-if-absent
+>   pack arm; model-B files gitignored; no inline recipes to swap). Fan-out
+>   VERIFIED: all four pin-consumer bump PRs (**core#672, runtime#73,
+>   git-jsonl#137, beads-fabro#187**) opened and auto-merged GREEN via each
+>   consumer's own CI; console (non-pin-consuming) correctly got none.
+> - **`livespec-7a4e` (Task 2, full coverage) — CLOSED.** Worktree-discipline
+>   pack delivered to **beads-fabro** (Python, **PR#186**) + **console** (Rust,
+>   **PR#57**), mirroring git-jsonl's model-B add-side, each with a per-ecosystem
+>   `dev-tooling/worktree-hydrate.sh` (beads-fabro `uv sync --all-groups`; console
+>   `cargo fetch && uv sync --all-groups`). Both pinned dt v0.28.0; the
+>   byte-identity verifier validates the installed pack in CI.
+> - **PARKED:** M2 (`zs22.8`) remains out of scope.
+>
+> Everything below is the original durable design + plan, preserved verbatim.
+
 **Track:** dev-tooling single-source convergence · **Ledger:** livespec
 **`zs22.7.9`** (child of the Conformance Pattern epic **`zs22.7`**). This
 ABSORBS the retired ob-0x5 worktree-pack distribution (its handoff is archived at
