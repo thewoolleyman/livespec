@@ -6,23 +6,61 @@ ABSORBS the retired ob-0x5 worktree-pack distribution (its handoff is archived a
 `archive/prompts/worktree-discipline-pack-handoff.md`). This file carries durable
 *design + plan*; the *authoritative status* lives in the ledger, never here.
 
-## FIRST ACTION — repair the fan-out FIRST, then derive status from the ledger
+## FIRST ACTION — finish the fan-out repair, then run the parallel slices
 
-**TOP PRIORITY (do this FIRST): `livespec-2exa` (P1) — repair the dt-pin fan-out.**
-`zs22.7.9.2` made the driver-specific `check-plugin-structure` a CANONICAL slug;
-it CRASHES core, FAILS the orchestrator plugins (beads-fabro/git-jsonl), and is
-unwired in every aggregate-enforced consumer, so `bump-pin-from-dispatch` fails
-`check-aggregate-completeness` and consumers are stuck on stale dt pins (core
-v0.22.0; others v0.23.0). That BLOCKS consumer propagation of `zs22.7.9.5` and
-the rest of this epic. Recommended fix = `2exa` option **B** (relocate
-`plugin_structure` out of `checks/` into a driver-only NON-canonical namespace +
-update the 2 drivers' recipe; ~3 PRs). ALSO fix the SEPARATE pre-existing
-fan-out bug `livespec-2rab` (discover-siblings `jq` error post-v148), then verify
-a dt release auto-propagates pins to all consumers green.
+**`2exa`'s NAMED blocker is DONE.** The driver-only `plugin_structure` check was
+relocated out of the canonical `checks/` set into a non-canonical `driver_checks/`
+package (dt PR #193, released **dt v0.25.1**); both drivers point their recipe at
+`livespec_dev_tooling.driver_checks.plugin_structure` (PRs #59/#32); and the WHOLE
+fleet was hand-bumped to **dt v0.25.1** green — core #665, runtime #72, beads-fabro
+#184, git-jsonl #133, plus both drivers — so the relocation AND the `.5` strict
+byte-identity verifier are now propagated fleet-wide. `livespec-2rab`'s
+discover-siblings `jq` bug is VERIFIED non-blocking (the source-side
+release-dispatch run is green).
+
+**TOP PRIORITY (do this FIRST): `livespec-i05g` (P1) — the fan-out AUTOMATION is
+still broken.** The bump-pin composite Action runs each consumer's FULL `just check`
+in an INCOMPLETE CI env, so every automated bump-pin run fails (3 modes: the
+hand-rolled hook body ≠ the strict `CANONICAL_HOOK_BODY`; CORE's doctor rglob-scans
+the `.livespec-dev-tooling/` support-module checkout and flags dt's own `§"…"`
+citations; the orchestrator/runtime doctors error "livespec core not found"). The
+consumers THEMSELVES are fine at v0.25.1 (proven: runtime #72's NORMAL CI was fully
+green) — the failures are 100% the bump-pin's broken env.
+
+i05g's **blocker 2 is a DESIGN FORK** that changes the documented `contracts.md`
+`§Fallback-to-known-good-pin` / `§Cross-repo coordination automation surface`
+contract, so it is SURFACED TO THE MAINTAINER (pending decision — do NOT pick an
+approach unilaterally). Recommended = **option B**: the bump-pin STOPS running the
+full `just check` and lets each auto-merge PR's OWN CI (the authoritative
+branch-protection gate, properly set up) decide — fixes all 3 modes at once, matches
+the spec's "the failure surfaces on the PR's status checks" language. **blocker 1**
+(the hand-rolled hook install) is ENTANGLED with the fork (option B deletes that
+step; option A fixes it) → it is HELD; do NOT fix it until the fork lands.
+
+THE MOMENT the blocker-2 decision is relayed: implement it in dt's
+`.github/actions/bump-pin-rewrite/action.yml` (+ blocker 1 per the chosen option),
+cut a dt release, and verify the fan-out now auto-propagates. (Note: every consumer
+is ALREADY at v0.25.1, so a bump of the *current* tag is a no-op — verify on the
+NEXT real shared-artifact release, e.g. the one `.6` or `.3` produces.)
+
+**MEANWHILE (independent of the fork — run these in parallel):**
+
+- **`.6` (f)** — drop `copier_answers_commit` from the bump-pin autodiscovery (dt
+  code, clean to land) + the GOVERNED `contracts.md` `§Pin autodiscovery rules`
+  revise (needs `/livespec:propose-change` + maintainer `/livespec:revise`-accept) +
+  the beads-fabro `_commit` un-poison decision (premise VERIFIED WRONG — the whole
+  v0.2.0→v0.4.0 chain was bump-pin rewrites with zero template churn; surface the
+  re-render-vs-`_commit: v0.2.0`-vs-literal-`v1.0.0-638-g4f60277` choice; see the
+  `.6` ledger note).
+- **`.3` (c) + `.4` (d)** — worktree-pack single-source (package-data + installer,
+  mirroring the `CANONICAL_HOOK_BODY` precedent) + lifecycle recipes. Design
+  APPROVED (below). `.3` absorbs the impl-plugin TEMPLATE commit-refuse hook
+  conversion + its stale `v0.1.0` dt pin.
 
 Print live status (do not trust this file for status):
 
 ```
+/data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-i05g
 /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-2exa
 /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-zs22.7.9
 /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec ready --limit 8
@@ -31,12 +69,11 @@ Print live status (do not trust this file for status):
 Derive "what's done / what's next" from that plus `git log` in each target repo.
 **No shadow ledger** — re-verify every per-repo claim below directly (the fleet
 is non-uniform). As of 2026-06-27: `zs22.7.9.1/.2/.7` are CLOSED; `.5` (strict
-byte-identity verifier) is CODE-LANDED + RELEASED (dt v0.25.0) but its consumer
-propagation is BLOCKED by `2exa`; `.6/.3/.4` remain (each slice's ledger notes
-carry the plan, including `.6`'s beads-fabro `_commit` render-version decision —
-the "restore v0.3.0" premise is VERIFIED WRONG — and its governed dt
-`contracts.md` `/livespec:revise`-accept). The `.2` spec-prose follow-up is
-`livespec-325j` (P3).
+byte-identity verifier) is RELEASED (dt **v0.25.1**) AND propagated fleet-wide (all
+consumers at v0.25.1); `2exa`'s plugin_structure relocation is DONE — the remaining
+fan-out-AUTOMATION repair is `livespec-i05g` (blocker 2 a maintainer-gated fork,
+blocker 1 held); `.6/.3/.4` remain (the parallel work above; each slice's ledger
+notes carry the plan). The `.2` spec-prose follow-up is `livespec-325j` (P3).
 
 ## Read first
 
@@ -116,22 +153,25 @@ carries its own scope, decisions, blockers, and per-repo notes. The epic has
 been groomed into per-artifact slices `.1`–`.7`; scope `(a)` (the commit-refuse
 hook fan-out) has landed across the operating repos. Re-verify every per-repo
 claim directly (`git log` / `git show origin/master:<path>`) — the fleet is
-non-uniform.
+non-uniform. Scope `(a)` (commit-refuse hook fan-out), `(b)` (`plugin_structure`
+→ package, via the `2exa` relocation into `driver_checks/`), and `(e)` (the strict
+byte-identity Verifier) have LANDED and propagated fleet-wide (every consumer at dt
+v0.25.1). What remains: the fan-out-AUTOMATION repair (`i05g`) and scopes
+`(f)`/`(c)`/`(d)` = slices `.6`/`.3`/`.4`.
 
 ## Next concrete action — derive from the ledger
 
 The plan IS the open ledger items (FIRST ACTION query). **The first action is
-`livespec-2exa` (P1)** — repair the dt-pin fan-out (option **B**) so consumer
-pins auto-propagate again; until then the "each shared-artifact change auto-bumps
-every consumer's pin and stays green" assumption is **FALSE** (the fan-out's
-`bump-pin-from-dispatch` fails on the canonical-but-incompatible
-`check-plugin-structure`, plus the separate `livespec-2rab` discover-siblings
-bug). After the fan-out is green: finish `.5` consumer verification (drift a hook
-→ confirm fail-closed at a consumer), then `.6` (drop the copier autodiscovery
-code + the governed `contracts.md` revise + the beads-fabro `_commit` decision),
-then `.3` (worktree-pack package-data; absorbs the impl-plugin template hook
-conversion) and `.4` (lifecycle recipes). `.1/.2/.7` are CLOSED; the design
-decisions below are settled.
+`livespec-i05g` (P1)** — but its blocker-2 fix is a maintainer-gated DESIGN FORK
+(recommended option **B**; see FIRST ACTION), so do NOT pick an approach
+unilaterally. The moment the decision is relayed: implement it in dt's
+`bump-pin-rewrite` composite Action → cut a dt release → verify the fan-out
+auto-propagates on the next real shared-artifact release. MEANWHILE run the
+fork-independent slices in parallel: `.6` (drop the copier autodiscovery code + the
+governed `contracts.md` revise + the beads-fabro `_commit` decision), then `.3`
+(worktree-pack package-data; absorbs the impl-plugin template hook conversion) +
+`.4` (lifecycle recipes). `2exa`'s plugin_structure relocation and `.5`'s fleet-wide
+propagation are DONE; `.1/.2/.7` are CLOSED; the design decisions below are settled.
 
 ## Resolved design decisions
 
