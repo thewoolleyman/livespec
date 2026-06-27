@@ -181,13 +181,21 @@ channel uncluttered — the bottom pane carries **only** what needs them (choice
 input, hand-offs), while routine progress streams in the top pane. The maintainer
 asked for this explicitly (2026-06-27); hold to it.
 
+> **The top pane ALWAYS leads with the required status table** — columns
+> **Epic ID · Track · Status · %Complete**, one row per watched track/pane —
+> auto-emitted by the watcher to `tmp/overseer/status-table.txt`. These four
+> columns are mandatory and always present; `status.md` carries only free-form
+> notes BELOW the table.
+
 **Set it up once, at startup** (before registering tracks). Write the dashboard
 script + an initial `status.md` under `tmp/overseer/`, then split the window with
 the new pane on TOP and focus staying on the bottom (interactive) pane:
 
 ```bash
-# status.md is the curated status YOU maintain (the status-table content, below);
-# status-pane.sh renders it + the watcher snapshot, refreshing every 10s.
+# status-table.txt is the REQUIRED status table the watcher auto-emits (Epic ID |
+# Track | Status | %Complete); status.md is the free-form notes YOU maintain, BELOW
+# it. status-pane.sh renders the table FIRST, then the notes, then the watcher
+# snapshot, refreshing every 10s.
 mkdir -p /data/projects/livespec/tmp/overseer
 cat > /data/projects/livespec/tmp/overseer/status-pane.sh <<'EOF'
 #!/usr/bin/env bash
@@ -195,10 +203,12 @@ SD=/data/projects/livespec/tmp/overseer
 while true; do
   clear
   printf '  OVERSEER STATUS  —  %s   (read-only; act in the pane below)\n' "$(date '+%a %H:%M:%S')"
-  echo "──────────────────────────────────────────────────────────────────────────────"
+  echo "──── status: Epic · Track · Status · %Complete ───────────────────────────────"
+  cat "$SD/status-table.txt" 2>/dev/null
+  echo
   cat "$SD/status.md" 2>/dev/null
   echo "── watcher ───────────────────────────────────────────────────────────────────"
-  grep -E 'iter |busy=|TRIGGER|heartbeat' "$SD/stallwatch.log" 2>/dev/null | tail -10
+  grep -E 'iter |busy=|TRIGGER|heartbeat' "$SD/stallwatch.log" 2>/dev/null | tail -8
   sleep 10
 done
 EOF
@@ -210,8 +220,9 @@ command tmux split-window -v -b -l 33% -d -t livespec-overseer \
 ```
 
 **Discipline once it's up:**
-- **Keep `status.md` current** as state changes (it IS the status table, rendered
-  continuously in the top pane) — that's how routine progress reaches the maintainer.
+- **Keep `status.md` current** as state changes — the watcher auto-emits the required
+  status table ABOVE it; `status.md` carries the free-form notes that render BELOW the
+  table, and that's how routine narrative progress reaches the maintainer.
 - **Reserve the bottom pane for action / input / hand-offs.** Don't dump routine
   status there; push it to `status.md`. Surface in the bottom pane only genuine
   decisions, gates, and milestones — ideally as ONE clickable `AskUserQuestion` at
@@ -363,6 +374,45 @@ done
 echo "heartbeat done $(date +%H:%M:%S)" >> "$out"
 ```
 
+**Emit the required status table each cycle.** The watcher also (re)writes the
+top-pane status table (`tmp/overseer/status-table.txt`) every sample iteration, so
+the dashboard's top pane is always present and current without the overseer
+hand-maintaining it. Hold the session→epic map in an `EPIC` associative array (and
+a `PARKED` flag set), cache `%Complete` per session in `PCT` so the table never
+blank-thrashes between the periodic ledger queries, and — at the TOP of each
+iteration (before the per-session loop) rewrite the header, then INSIDE the loop
+append one row per session:
+
+```bash
+TABLE=/data/projects/livespec/tmp/overseer/status-table.txt
+declare -A PCT   # cache: %complete per session, refreshed on the periodic bd query
+
+# ...at the TOP of each sample iteration (before the per-session loop):
+{ printf ' %-22s | %-12s | %-8s | %s\n' 'EPIC ID' 'TRACK' 'STATUS' '%COMPLETE'
+  printf -- ' ----------------------+--------------+----------+-----------\n'
+} > "$TABLE"
+
+# ...INSIDE the per-session loop, after computing busy/idle ($b), the parked
+#    flag, and (on the periodic 3rd-iter query) the epic status ($es):
+ep="${EPIC[$s]:-—}"
+if [ -n "${PARKED[$s]:-}" ]; then st=parked; elif [ "$b" = 1 ]; then st=working; else st=idle; fi
+[ "$es" = CLOSED ] && st=done
+# refresh cached %complete only when we already queried this epic this cycle
+# (no extra bd calls): grep the "N/M complete (P%)" line bd show prints.
+if [ -n "${EPIC[$s]:-}" ] && [ -n "$es" ]; then
+  PCT[$s]=$( ( source "$WRAP" bd -C /data/projects/livespec show "${EPIC[$s]}" 2>/dev/null ) \
+             | grep -oE '[0-9]+/[0-9]+ complete \([0-9]+%\)' | head -1 )
+fi
+printf ' %-22s | %-12s | %-8s | %s\n' "$ep" "$s" "$st" "${PCT[$s]:-—}" >> "$TABLE"
+```
+
+A track with no epic shows `—` in Epic ID and `%Complete`; that's fine — Status
+still reflects working/idle/parked/done. (`$WRAP` is the env wrapper
+`/data/projects/1password-env-wrapper/with-livespec-env.sh`; in the single-session
+template above the epic-status badge is captured into `st` — the generalized
+multi-session form names it `$es` so the row's `$st` can carry the
+working/idle/parked/done word.)
+
 Run it with a background Bash (`run_in_background: true`); on its completion
 notification, read the log, act, re-arm. Generalize the single-session template above to
 loop over all registered sessions (track a per-session idle counter; trigger on any).
@@ -382,6 +432,17 @@ loop over all registered sessions (track a per-session idle counter; trigger on 
 ---
 
 ## The status table (print periodically + on request)
+
+> **The top pane ALWAYS leads with the required status table** — columns
+> **Epic ID · Track · Status · %Complete**, one row per watched track/pane —
+> auto-emitted by the watcher to `tmp/overseer/status-table.txt`. These four
+> columns are mandatory and always present; `status.md` carries only free-form
+> notes BELOW the table.
+
+That required four-column table is what the **watcher** auto-emits each cycle (see
+**The watcher** → *Emit the status table each cycle*) so the top pane never goes
+stale. The richer, on-request print below is a superset for the bottom-pane
+reader: same tracks, more columns.
 
 Every few heartbeats, and whenever asked, print a table of all tracks. Derive
 `%complete` from the ledger: `bd show <epic>` lists children with ✓/◐/○ glyphs — use
