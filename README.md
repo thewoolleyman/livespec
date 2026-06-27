@@ -9,6 +9,14 @@ surface ships separately as a per-agent-runtime **Driver** plugin
 (the first is [livespec-driver-claude](https://github.com/thewoolleyman/livespec-driver-claude)
 for Claude Code).
 
+> **New here?** Start with the **[spec / implementation lifecycle
+> diagram](SPECIFICATION/spec.md#tool-agnostic-workflow--spec--implementation-lifecycle)**
+> in `SPECIFICATION/spec.md` — the whole tool-agnostic workflow at a
+> glance: how intent becomes spec, and how the **Gap** (spec →
+> implementation) and **Drift** (implementation → spec) flows span the
+> Spec, Orchestrator, and Control planes. Single-sourced in the spec and
+> referenced here, never copied.
+
 ## Install
 
 > **Setting up a new project?** See **[docs/installation.md](docs/installation.md)**
