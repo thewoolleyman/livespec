@@ -6,102 +6,102 @@ ABSORBS the retired ob-0x5 worktree-pack distribution (its handoff is archived a
 `archive/prompts/worktree-discipline-pack-handoff.md`). This file carries durable
 *design + plan*; the *authoritative status* lives in the ledger, never here.
 
-## FIRST ACTION — relay i05g blocker-2 (then implement); WAVE 2 de-dup is DONE
+## FIRST ACTION — implement the two DECIDED tasks: i05g blocker-2 (Option B) + 7a4e
 
-**`2exa`'s NAMED blocker is DONE.** The driver-only `plugin_structure` check was
-relocated out of the canonical `checks/` set into a non-canonical `driver_checks/`
-package (dt PR #193, released **dt v0.25.1**); both drivers point their recipe at
-`livespec_dev_tooling.driver_checks.plugin_structure` (PRs #59/#32); and the WHOLE
-fleet was hand-bumped to **dt v0.25.1** green — core #665, runtime #72, beads-fabro
-#184, git-jsonl #133, plus both drivers — so the relocation AND the `.5` strict
-byte-identity verifier are now propagated fleet-wide. `livespec-2rab`'s
-discover-siblings `jq` bug is VERIFIED non-blocking (the source-side
-release-dispatch run is green).
+**CONVERGENCE CLOSED (2026-06-27).** The dev-tooling single-source convergence is
+DONE and the epics cascaded: **`zs22.7.9` → `zs22.7`** (Conformance Pattern,
+Increment 5) **→ `zs22`** (parent epic) are ALL CLOSED. Every shared dev-tooling
+artifact is single-sourced from the package (dt **v0.28.0**): the commit-refuse
+hook, the worktree pack (`worktree-lib.sh` + `branch-protection.sh`), and BOTH
+recipe fragments (`worktree.just` + `branch-protection.just`) — ZERO vendored copies
+fleet-wide; **MODEL B** (untracked-installed: gitignore + bootstrap/CI install,
+mirrors the `.git/hooks` precedent); recipes via the OPTIONAL **`import?`** (a plain
+`import` of the absent fragment bricks a fresh clone pre-bootstrap). The
+byte-identity verifier (the existing `primary_checkout_commit_refuse_hook_installed`
+slug, no new canonical slug) covers all 4 pack files and is PROVEN fail-closed.
+`.6` is closed (part 1 dt #196; part 2 the `§Pin autodiscovery rules` revise-accept
+dt #202; part 3 beads-fabro `_commit` → `v0.2.0` #185). Follow-ups **`livespec-jzpx`
+CLOSED** (branch-protection.just: dt #203 + git-jsonl #136 + core template #670) and
+**`livespec-usd3` CLOSED** (docstring `tracked` → untracked-installed). This file is
+KEPT (not archived) as the entry point for the two DECIDED tasks below.
 
-**TOP PRIORITY (do this FIRST): `livespec-i05g` (P1) — the fan-out AUTOMATION is
-still broken.** The bump-pin composite Action runs each consumer's FULL `just check`
-in an INCOMPLETE CI env, so every automated bump-pin run fails (3 modes: the
-hand-rolled hook body ≠ the strict `CANONICAL_HOOK_BODY`; CORE's doctor rglob-scans
-the `.livespec-dev-tooling/` support-module checkout and flags dt's own `§"…"`
-citations; the orchestrator/runtime doctors error "livespec core not found"). The
-consumers THEMSELVES are fine at v0.25.1 (proven: runtime #72's NORMAL CI was fully
-green) — the failures are 100% the bump-pin's broken env.
+The sections below are durable **design + history**. A fresh session implements
+these **two DECIDED tasks** — both are the maintainer's calls, already made;
+implement, do NOT re-litigate or re-surface as forks:
 
-i05g's **blocker 2 is a DESIGN FORK** that changes the documented `contracts.md`
-`§Fallback-to-known-good-pin` / `§Cross-repo coordination automation surface`
-contract, so it is SURFACED TO THE MAINTAINER (pending decision — do NOT pick an
-approach unilaterally). Recommended = **option B**: the bump-pin STOPS running the
-full `just check` and lets each auto-merge PR's OWN CI (the authoritative
-branch-protection gate, properly set up) decide — fixes all 3 modes at once, matches
-the spec's "the failure surfaces on the PR's status checks" language. **blocker 1**
-(the hand-rolled hook install) is ENTANGLED with the fork (option B deletes that
-step; option A fixes it) → it is HELD; do NOT fix it until the fork lands.
+### TASK 1 — `livespec-i05g` blocker-2 = OPTION B (re-enable the fan-out)
 
-THE MOMENT the blocker-2 decision is relayed: implement it in dt's
-`.github/actions/bump-pin-rewrite/action.yml` (+ blocker 1 per the chosen option),
-cut a dt release, and verify the fan-out now auto-propagates. (Note: every consumer
-is ALREADY at v0.25.1, so a bump of the *current* tag is a no-op — verify on the
-NEXT real shared-artifact release, e.g. the one `.6` or `.3` produces.)
+DECIDED: let each consumer's OWN CI gate the bump. The bump-pin fan-out's composite
+Action (`livespec-dev-tooling` `.github/actions/bump-pin-rewrite/action.yml`)
+currently runs each consumer's FULL `just check` in an INCOMPLETE CI env, so every
+automated bump fails (3 modes; the consumers themselves are green on their OWN CI).
+Implement:
 
-**WAVE 2 COMPLETE — the de-dup convergence is DONE (2026-06-27 session).** Every
-single-source-able dev-tooling artifact is now reused from the package; ZERO
-vendored worktree-pack copies remain fleet-wide; the byte-identity verifier is
-proven fail-closed. Slices **`.3`, `.4`, `.5` are CLOSED**, plus `.6` part 1.
+- **DROP the bump-pin's local full-`just check` pre-test entirely.** The Action just
+  rewrites the pin, commits, and opens the auto-merge PR — and lets each consumer's
+  OWN CI (the authoritative branch-protection gate) decide whether to merge.
+- **BUNDLE the worktree-pack-install sequencing constraint into the re-enabled
+  bump.** When auto-bumping a consumer to a pack-carrying release (dt v0.26.0+), the
+  SAME bump PR MUST also run `just install-worktree-pack` (writes the pack incl
+  `worktree.just` + `branch-protection.just`) and swap the consumer's inline recipe
+  stanzas for `import? 'dev-tooling/worktree.just'` /
+  `import? 'dev-tooling/branch-protection.just'` — else the consumer's verifier fails
+  `worktree_pack_file_missing`. (This is the Wave-2 consumer-sequencing constraint,
+  now codified into the automated bump.)
+- **FIX blocker 1 accordingly:** under Option B the bump-pin's hand-rolled inline
+  hook-install step is DELETED (the consumer's own CI/bootstrap installs the
+  canonical hook from-package; the strict byte-identity verifier then validates it).
+- **CUT a dt release; verify** the fan-out auto-propagates on the next real
+  shared-artifact release. (Mixed pins: git-jsonl + core impl-plugin template at
+  **v0.28.0**; the other consumers at v0.25.1 — any bump crossing v0.26.0 MUST carry
+  the pack-install bundle above.)
+- **FILE the contract change** for `contracts.md`
+  `§"Fallback-to-known-good-pin"` / `§"Cross-repo coordination automation surface"`
+  via `/livespec:propose-change` (against the dev-tooling spec) and surface the
+  `/livespec:revise`-accept — the contract today describes the bump running its OWN
+  validation; Option B changes it to "the failure surfaces on the PR's status
+  checks."
 
-- **dt v0.26.0 → v0.27.0** ship the worktree pack as package-data
-  (`livespec_dev_tooling/worktree_pack/{worktree-lib,branch-protection}.sh` +
-  `worktree.just`) + `install_worktree_pack.py` + `just install-worktree-pack` + a
-  3rd byte-identity-verifier arm on the EXISTING
-  `primary_checkout_commit_refuse_hook_installed` slug (no new canonical slug).
-- **Delivery = MODEL B (untracked-installed):** consumers gitignore the pack files
-  and install them via bootstrap/CI (never tracked-committed) — mirrors the hook
-  precedent; drift is structurally impossible. Recipe single-sourcing uses
-  **`import? 'dev-tooling/worktree.just'`** (the OPTIONAL `import?` — a plain
-  `import` of the absent fragment bricks a fresh clone pre-bootstrap).
-- **Consumers converted:** git-jsonl (PR #135 → dt v0.27.0) + the core impl-plugin
-  TEMPLATE (PR #668 — retired the 3 template scripts + the obsolete
-  `test_git_hook_wrapper.py`, whose invariant relocated into dt PR #199).
-  `worktree-hydrate.sh.jinja` stays the only templatized worktree artifact.
-- **`.6` remainder (maintainer-gated):** part 2 = the dev-tooling `contracts.md`
-  `§Pin autodiscovery rules` revise is FILED (proposal PR #195) awaiting
-  `/livespec:revise`-accept; part 3 = beads-fabro `_commit` un-poison (recommend
-  `_commit: v0.2.0`; non-blocking).
+### TASK 2 — `livespec-7a4e` = INCLUDE (full fleet coverage)
 
-**REMAINING follow-up slice work (all FILED; independent; none block each other):**
+DECIDED: deliver the worktree-discipline pack to BOTH
+`livespec-orchestrator-beads-fabro` AND `livespec-console-beads-fabro` (they carry
+NO worktree pack/recipes today). For EACH repo (mirror the consumer add-side from
+git-jsonl #134/#135/#136): add an `install-worktree-pack` recipe + bootstrap call;
+add `import? 'dev-tooling/worktree.just'` + `import? 'dev-tooling/branch-protection.just'`;
+gitignore the 4 pack files (model B); bump the dt pin to the latest release; ensure
+CI installs the pack before `just check` so the verifier VALIDATES (not skips). PLUS
+author a PER-ECOSYSTEM `dev-tooling/worktree-hydrate.sh` for each (beads-fabro =
+Python; console = Rust) — the `worktree-hydrate` recipe execs it, and it is NOT part
+of the pack (it stays a per-ecosystem tracked script, like the impl-plugin
+template's `worktree-hydrate.sh.jinja`).
 
-- `livespec-7a4e` (P3) — deliver the worktree pack + recipes to **beads-fabro +
-  console** (ADDITIVE — they carry no copies; deferred out of the de-dup; each also
-  needs a per-ecosystem `worktree-hydrate.sh`).
-- `livespec-jzpx` (P3) — single-source the **branch-protection** recipes via
-  `branch-protection.just` (same package-data + installer + verifier + `import?`
-  mechanism as `worktree.just`).
-- `livespec-usd3` (P3) — fix the `install_worktree_pack` docstring
-  (`tracked` → untracked-installed, model B).
+**PARKED:** M2 (`zs22.8`) stays parked — out of scope for this file.
 
 Print live status (do not trust this file for status):
 
 ```
 /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-i05g
-/data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-2exa
-/data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-zs22.7.9
+/data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-7a4e
 /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec ready --limit 8
 ```
 
 Derive "what's done / what's next" from that plus `git log` in each target repo.
 **No shadow ledger** — re-verify every per-repo claim directly (the fleet is
-non-uniform). As of the 2026-06-27 session: `zs22.7.9.1/.2/.3/.4/.5/.7` are
-CLOSED — the **WAVE 2 de-dup convergence is DONE** (zero vendored worktree-pack
-copies fleet-wide, single-sourced from dt **v0.27.0**, byte-identity verifier
-proven fail-closed); `2exa`'s plugin_structure relocation is DONE; `.6` part 1 is
-MERGED. REMAINING: the maintainer-gated `i05g` blocker-2 fork (recommend option
-B), `.6` part-2 `/livespec:revise`-accept (proposal PR #195), and `.6` part-3
-un-poison (recommend `_commit: v0.2.0`); plus three FILED follow-up work-items —
-`livespec-7a4e` (deliver pack + recipes to beads-fabro + console — ADDITIVE
-coverage, deferred), `livespec-jzpx` (`branch-protection.just` single-source),
-`livespec-usd3` (`install_worktree_pack` docstring fix). git-jsonl + the core
-impl-plugin TEMPLATE are at dt v0.27.0; the remaining consumers are unchanged (the
-broken fan-out changed no pins). The `.2` spec-prose follow-up is `livespec-325j`
-(P3).
+non-uniform). As of the 2026-06-27 session: the convergence is COMPLETE —
+`zs22.7.9` + `zs22.7` + `zs22` are CLOSED; all slices `.1`–`.7` + `.6` CLOSED;
+follow-ups `livespec-jzpx` (#670 merged) + `livespec-usd3` CLOSED; `2exa`'s
+plugin_structure relocation is DONE. dt is at **v0.28.0** with all 4 pack artifacts
+(`worktree-lib.sh`, `branch-protection.sh`, `worktree.just`, `branch-protection.just`)
+single-sourced + the verifier fail-closed. REMAINING = the two DECIDED tasks above:
+`livespec-i05g` blocker-2 = **Option B** (re-enable the fan-out; bundle the
+pack-install sequencing; delete the hand-rolled hook step; file the
+`§Fallback-to-known-good-pin` contract revise) and `livespec-7a4e` = **full
+coverage** (deliver the pack to beads-fabro + console with a per-ecosystem
+`worktree-hydrate.sh` each). M2 (`zs22.8`) PARKED. Mixed dt pins: git-jsonl + the
+core impl-plugin TEMPLATE are at **v0.28.0**; the other consumers at v0.25.1 (the
+still-broken fan-out changed no pins — Task 1 re-enables it). The `.2` spec-prose
+follow-up is `livespec-325j` (P3).
 
 ## Read first
 
