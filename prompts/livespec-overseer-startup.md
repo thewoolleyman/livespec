@@ -36,35 +36,41 @@ crash/reboot *every* tmux session disappears — cold-start it). Handle both:
 
 ## Track registry
 
-Five live tracks, each in a fixed numbered session. Each recovers either by
-**resuming its Claude session** (`claude --resume <id>` — preserves full
-pre-crash context) or by **cold-starting from a committed handoff**. **The
-overseer itself runs in `livespec-overseer`.**
+As of the **2026-06-27 refresh**, most tracks have completed or parked on a
+maintainer gate; the table below is the current disposition. A fresh overseer
+session resumes by reading each row's status (and the ledger) — do NOT re-kick a
+DONE track or a track parked on a maintainer gate. Each not-done track recovers
+either by **resuming its Claude session** (`claude --resume <id>`) or by
+**cold-starting from its committed handoff**. **The overseer itself runs in
+`livespec-overseer`.**
 
-| Session | Track | Epic | Recovery source |
-|---|---|---|---|
-| **livespec1** | Fleet-wide doctor-static enforcement | `livespec-6jfq` | handoff `prompts/doctor-static-fleet-enforcement-prompt.md` |
-| **livespec2** | Register livespec-console in the fleet manifest (+ zs22 closure) | `livespec-zs22.7.8` | ledger scope (`bd show livespec-zs22.7.8`) — no standing handoff |
-| **livespec3** | Dev-tooling single-source convergence | `livespec-zs22.7.9` | handoff `prompts/dev-tooling-single-source-convergence-handoff.md` |
-| **livespec4** | Architecture mermaid-diagram cleanup (propose-change) | *ad-hoc* | `claude --resume 85750c9d-727c-4f22-aec7-d0d2fe4e2636` — **no handoff; resume is its only anchor** |
-| **livespec5** | Governed-repo lifecycle (zs22 Increment 6) | `livespec-zs22.8` | handoff `prompts/governed-repo-lifecycle-handoff.md` |
+| Session | Track | Epic | Status (2026-06-27) | Recovery source |
+|---|---|---|---|---|
+| **livespec1** | Fleet-wide doctor-static enforcement | `livespec-6jfq` | ✅ **DONE** (closed; enforced across 6 repos; its handoff prompt was deleted) | — (complete) |
+| **livespec2** | Register livespec-console in the fleet manifest | `livespec-zs22.7.8` | ✅ **DONE** (closed; GitHub-wiring deferred → `livespec-inxg`) | — (complete) |
+| **livespec3** | Dev-tooling single-source convergence | `livespec-zs22.7.9` | ⏸ **PARKED** on the console-wiring deadlock (`livespec-inxg`): `.1`+`.7` landed, `.2` (PR #190 in dev-tooling) built & parked; resumes when the console is wired | handoff `prompts/dev-tooling-single-source-convergence-handoff.md` |
+| **livespec4** | Architecture mermaid-diagram cleanup | *ad-hoc* | ✅ **DONE** (diagram revised into `spec.md` at v151; README link captured as `livespec-p2zv`) | — (complete) |
+| **livespec5** | Governed-repo lifecycle (zs22 Increment 6) | `livespec-zs22.8` | ▶ **AT REST**: M0 + M1 done (M1 closed at v151); M2–M6 open; ready to groom **M2** on the maintainer's word | handoff `prompts/governed-repo-lifecycle-handoff.md` |
+| **livespec-console-beads-fabro** | Console fleet-wiring (cross-repo) | `livespec-inxg` | 🅼 **PROMPT LANDED; session NOT yet spun up** — awaiting the maintainer's go | run-prompt `livespec-console-beads-fabro/prompts/console-fleet-wiring-prompt.md` |
 
 Notes:
-- **livespec2 (`zs22.7.8`)** is a discrete deferred task: add a `console`
-  REPO_CLASS to the dev-tooling fleet contract + register livespec-console in the
-  manifest. The `zs22` epic closes once `zs22.7.8` (livespec2) and `zs22.7.9`
-  (livespec3) both land — the zs22 planning-lane increments (M0–M6) are already
-  done and that handoff was archived.
-- **livespec4 (mermaid)** is **maintainer-gated**: a diagram is drafted and it is
-  **waiting for the maintainer's review/sign-off** before it files the
-  propose-change. Keep it alive; do not push it past the review. ⚠️ It has **no
-  committed handoff** — its only recovery anchor is the session id above. It
-  should file a handoff so recovery stops depending on a remembered session id.
-- **livespec5 (`zs22.8`)**: plan seeded (design doc
-  `research/governed-repo-lifecycle/lifecycle-system-design.md`, PR #648);
-  maintainer-gated next action is to file `zs22.8.1` (M1) as a propose-change.
-- Sibling-repo sessions (`livespec-console-beads-fabro*`, `livespec-dev-tooling`,
-  `livespec-impl-plaintext`) are separate repos — not overseen here unless told.
+- **The keystone blocker is `livespec-inxg`** (console GitHub App install +
+  machine-fixable wiring). It deadlocks `livespec-dev-tooling` master (the
+  fleet-conformance preflight is red), which is why **livespec3 is parked**. Its
+  resolution is the committed run-prompt in the console repo (last row); spinning
+  up the `livespec-console-beads-fabro` tracking session is a **separate
+  maintainer go** (per the SKILL's cross-repo standing order). When that wiring
+  goes green, **resume livespec3** (it finishes `.2/.3/.5/.6`).
+- **livespec5 (`zs22.8`)**: M1 (the governed-repo-lifecycle entry point) is
+  specified and accepted into `non-functional-requirements.md` (v151); the next
+  ripe step is grooming **M2** (generalize `just bootstrap` → the lifecycle
+  verb). Held at rest per scope; groom on the maintainer's word.
+- **`zs22` parent epic** closes once `zs22.7.9` (livespec3) lands; that is gated
+  on the console wiring.
+- Sibling-repo sessions (`livespec-dev-tooling`, `livespec-impl-plaintext`, and
+  the new `livespec-console-beads-fabro` tracker) are separate repos — overseen
+  here only as noted (the console tracker is part of this fleet's work per the
+  cross-repo standing order in the SKILL).
 
 ## Cold start / disaster recovery (sessions gone after a crash)
 
@@ -142,6 +148,10 @@ the ~50% context mark.
 - Beads via the env wrapper:
   `source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec <args>`.
 - Scratch under `tmp/overseer/` (never the `tmp/` root).
-- The five live track sessions are `livespec1`–`livespec5` (see registry). Name
-  any **new** track/session `livespec6`, `livespec7`, … `livespecN`. The overseer
-  is `livespec-overseer`. Sibling-repo sessions keep their repo-named sessions.
+- The numbered track sessions are `livespec1`–`livespec5` (see registry; several
+  are now DONE). Name any **new** numbered track/session `livespec6`,
+  `livespec7`, … `livespecN`. The overseer is `livespec-overseer`. A **cross-repo
+  maintainer-action tracking session is named EXACTLY `livespec-<repo-name>`**
+  (e.g. `livespec-console-beads-fabro`), per the SKILL's cross-repo standing
+  order — and is spun up only on a separate maintainer go, after its run-prompt
+  is landed in that repo's `prompts/`.

@@ -120,6 +120,37 @@ recoverable.
 
 ---
 
+## Cross-repo maintainer actions — prompt-and-track (standing order)
+
+When a maintainer-gated action must be performed in **another repo** (not the
+overseer's host repo) — an owner-only GitHub setting, a secret/host mutation,
+any step only the maintainer can take — do NOT merely surface it as a queue
+note. Convert it into a self-documenting, committed, tracked unit of work:
+
+1. **Write a self-contained run-prompt INTO that repo's `prompts/` directory.**
+   It MUST (a) walk the maintainer through every owner-only manual step in
+   concrete, copy-pasteable detail, (b) drive the rest of the work
+   autonomously once the manual step is done, and (c) end by reporting back so
+   the overseer can resume any dependent tracks. Make it cold-startable like any
+   other handoff (derive status from the ledger; no shadow queue).
+2. **Land it via that repo's `worktree → PR → rebase-merge` discipline** — the
+   same standards used fleet-wide; `mise exec -- git`, never `--no-verify`,
+   doc-only (`docs(...)`) so it skips the TDD ritual. Auto-merge may be off on a
+   given repo — merge manually on green.
+3. **Spin up a dedicated tracking session named EXACTLY `livespec-<repo-name>`**
+   (e.g. `livespec-console-beads-fabro`) that runs the prompt and tracks the
+   work to completion, then fold it into the watcher + status table like any
+   other track. This is the one naming exception to the `livespecN` rule below:
+   cross-repo tracking sessions are repo-named.
+
+The result: every cross-repo maintainer action is committed (survives a crash),
+walks the human through exactly what only they can do, and is tracked in its own
+session rather than as a fragile in-context overseer note. **Landing the prompt
+is the durable artifact; spinning up the tracking session is a SEPARATE go** —
+do it only when the maintainer is ready to run the work, not automatically.
+
+---
+
 ## The operating loop
 
 1. **Register & kick off** each `session=prompt` pair (see **Kicking off**).
