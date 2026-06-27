@@ -6,16 +6,37 @@ ABSORBS the retired ob-0x5 worktree-pack distribution (its handoff is archived a
 `archive/prompts/worktree-discipline-pack-handoff.md`). This file carries durable
 *design + plan*; the *authoritative status* lives in the ledger, never here.
 
-## FIRST ACTION — print live status (do not trust this file for status)
+## FIRST ACTION — repair the fan-out FIRST, then derive status from the ledger
+
+**TOP PRIORITY (do this FIRST): `livespec-2exa` (P1) — repair the dt-pin fan-out.**
+`zs22.7.9.2` made the driver-specific `check-plugin-structure` a CANONICAL slug;
+it CRASHES core, FAILS the orchestrator plugins (beads-fabro/git-jsonl), and is
+unwired in every aggregate-enforced consumer, so `bump-pin-from-dispatch` fails
+`check-aggregate-completeness` and consumers are stuck on stale dt pins (core
+v0.22.0; others v0.23.0). That BLOCKS consumer propagation of `zs22.7.9.5` and
+the rest of this epic. Recommended fix = `2exa` option **B** (relocate
+`plugin_structure` out of `checks/` into a driver-only NON-canonical namespace +
+update the 2 drivers' recipe; ~3 PRs). ALSO fix the SEPARATE pre-existing
+fan-out bug `livespec-2rab` (discover-siblings `jq` error post-v148), then verify
+a dt release auto-propagates pins to all consumers green.
+
+Print live status (do not trust this file for status):
 
 ```
+/data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-2exa
 /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-zs22.7.9
-/data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-zs22.7
+/data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec ready --limit 8
 ```
 
 Derive "what's done / what's next" from that plus `git log` in each target repo.
 **No shadow ledger** — re-verify every per-repo claim below directly (the fleet
-is non-uniform).
+is non-uniform). As of 2026-06-27: `zs22.7.9.1/.2/.7` are CLOSED; `.5` (strict
+byte-identity verifier) is CODE-LANDED + RELEASED (dt v0.25.0) but its consumer
+propagation is BLOCKED by `2exa`; `.6/.3/.4` remain (each slice's ledger notes
+carry the plan, including `.6`'s beads-fabro `_commit` render-version decision —
+the "restore v0.3.0" premise is VERIFIED WRONG — and its governed dt
+`contracts.md` `/livespec:revise`-accept). The `.2` spec-prose follow-up is
+`livespec-325j` (P3).
 
 ## Read first
 
@@ -77,8 +98,13 @@ Audit (2026-06-26, git blob-SHA across fleet `origin/master`):
     (a later update diffs newtag→newtag = empty and skips template content).
     Drop `copier_answers_commit` from the bump-pin autodiscovery (the other
     three pin formats ARE version pins; `_commit` is render-provenance). Also
-    un-poison beads-fabro's current `_commit: v0.4.0` (tree is v0.3.0-rendered
-    after fan-out PR #174).
+    un-poison beads-fabro's current `_commit: v0.4.0`. **NOTE (verified
+    2026-06-27): the "tree is v0.3.0-rendered after PR #174" premise is WRONG —
+    the whole v0.2.0→v0.3.0→v0.4.0 chain was bump-pin rewrites with zero template
+    churn; the last GENUINE render was core `4f60277` (`v1.0.0-638-g4f60277`,
+    contained in `v0.2.0`). So the un-poison is a maintainer decision (re-render
+    via `copier update --vcs-ref=master`, or set `_commit: v0.2.0`, or the literal
+    rendered ref) — see the `.6` ledger note.**
 
 ## Current state — read from the ledger, not here
 
@@ -94,12 +120,18 @@ non-uniform.
 
 ## Next concrete action — derive from the ledger
 
-The plan IS the open `zs22.7.9.N` slices (FIRST ACTION query); read them rather
-than reconstructing a checkbox queue here. Cross-slice facts the ledger carries:
-the `red_green_replay` `.py`-DELETION prerequisite (`.7`) **blocks** the slices
-that delete `.py` files (`.2`, `.3`); each shared-artifact change bumps every
-consumer's pin and stays green in the **same** epic; and the design decisions
-below are settled.
+The plan IS the open ledger items (FIRST ACTION query). **The first action is
+`livespec-2exa` (P1)** — repair the dt-pin fan-out (option **B**) so consumer
+pins auto-propagate again; until then the "each shared-artifact change auto-bumps
+every consumer's pin and stays green" assumption is **FALSE** (the fan-out's
+`bump-pin-from-dispatch` fails on the canonical-but-incompatible
+`check-plugin-structure`, plus the separate `livespec-2rab` discover-siblings
+bug). After the fan-out is green: finish `.5` consumer verification (drift a hook
+→ confirm fail-closed at a consumer), then `.6` (drop the copier autodiscovery
+code + the governed `contracts.md` revise + the beads-fabro `_commit` decision),
+then `.3` (worktree-pack package-data; absorbs the impl-plugin template hook
+conversion) and `.4` (lifecycle recipes). `.1/.2/.7` are CLOSED; the design
+decisions below are settled.
 
 ## Resolved design decisions
 
