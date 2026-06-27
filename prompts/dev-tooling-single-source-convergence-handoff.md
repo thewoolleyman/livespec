@@ -80,38 +80,35 @@ Audit (2026-06-26, git blob-SHA across fleet `origin/master`):
     un-poison beads-fabro's current `_commit: v0.4.0` (tree is v0.3.0-rendered
     after fan-out PR #174).
 
-## Current state (verified 2026-06-26)
+## Current state — read from the ledger, not here
 
-**DONE**
-- `v0.4.0` cut (pack in the release).
-- **git-jsonl** PR #126 (merged): pack via copier-COPY (**INTERIM** — convert
-  under (a)/(c)) + gen-1→gen-2 structural commit-refuse migration + retired its
-  vendored `livespec-commit-refuse-hook.sh` + fixed its `ci.yml` hook-install.
+This file is durable **design**. The authoritative, current status lives in the
+**ledger** — run the FIRST ACTION query and read the `zs22.7.9.N` slices (the
+groom). Do **not** trust any prose snapshot here for status; the FIRST ACTION
+query is the single source of truth (**no shadow ledger**), and each slice
+carries its own scope, decisions, blockers, and per-repo notes. The epic has
+been groomed into per-artifact slices `.1`–`.7`; scope `(a)` (the commit-refuse
+hook fan-out) has landed across the operating repos. Re-verify every per-repo
+claim directly (`git log` / `git show origin/master:<path>`) — the fleet is
+non-uniform.
 
-**PAUSED / NOT DONE (do NOT vendor copies)**
-- **beads-fabro:** distribution PAUSED, worktree stood down (no copies vendored).
-  Already has the from-package hook + load-bearing Mechanism/Verifier; needs only
-  the lifecycle via (c)/(d). Its `.copier-answers.yml _commit` is POISONED
-  (=`v0.4.0`, tree v0.3.0-rendered) by fan-out PR #174 → fix under (f).
-- **console:** already installs from-package (at the hook convergence target);
-  needs only the lifecycle via (c)/(d); it is NOT an impl-plugin → no
-  copier-onboarding.
+## Next concrete action — derive from the ledger
 
-## Next concrete action
+The plan IS the open `zs22.7.9.N` slices (FIRST ACTION query); read them rather
+than reconstructing a checkbox queue here. Cross-slice facts the ledger carries:
+the `red_green_replay` `.py`-DELETION prerequisite (`.7`) **blocks** the slices
+that delete `.py` files (`.2`, `.3`); each shared-artifact change bumps every
+consumer's pin and stays green in the **same** epic; and the design decisions
+below are settled.
 
-Build the single-source delivery in **livespec-dev-tooling FIRST** — start with
-(a) the hook (worst drift; the precedent already exists), add the byte-identity
-Verifier (e), then fan out (retire vendored copies per repo) as
-worktree→PR→rebase-merge, each gated by `just check` + the new Verifier. Likely
-**groom `zs22.7.9` into per-artifact slices**: hook / check_plugin_structure /
-worktree-pack / lifecycle / verifier / fan-out-fix.
+## Resolved design decisions
 
-## Open design question (decide early)
-
-Worktree-pack scripts ship as **package-data in livespec-dev-tooling** (mirror
-`CANONICAL_HOOK_BODY` + an installer module — **RECOMMENDED**, for consistency
-with the hook precedent) vs a **shared `just` module import**. The hook
-precedent leans package-data.
+- **Worktree-pack delivery = package-data** in livespec-dev-tooling (mirror
+  `CANONICAL_HOOK_BODY` + an installer module), **not** a shared `just` module —
+  for consistency with the proven hook precedent. APPROVED — do not re-litigate.
+- **Sequencing = fan-out-before-verifier**: retire vendored copies first (the
+  pre-existing fingerprint check guards the migration), then land the strict
+  byte-identity Verifier so it needs no migration-tolerance branch. APPROVED.
 
 ## Constraints / non-negotiables
 
