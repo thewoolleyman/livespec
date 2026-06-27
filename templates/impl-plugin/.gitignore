@@ -3,10 +3,12 @@
 # NOT tracked here. The from-package installer writes byte-identical copies
 # into dev-tooling/ at bootstrap, mirroring how the commit-refuse hooks are
 # installed into the untracked .git/hooks/ dir. The root justfile `import?`s
-# dev-tooling/worktree.just, so the fragment is absent until bootstrap installs
-# it (the optional import tolerates that). The per-ecosystem
+# dev-tooling/worktree.just and dev-tooling/branch-protection.just, so the
+# fragments are absent until bootstrap installs them (the optional imports
+# tolerate that). The per-ecosystem
 # dev-tooling/worktree-hydrate.sh stub stays TRACKED (it is not part of the
 # package pack).
 /dev-tooling/worktree-lib.sh
 /dev-tooling/branch-protection.sh
 /dev-tooling/worktree.just
+/dev-tooling/branch-protection.just

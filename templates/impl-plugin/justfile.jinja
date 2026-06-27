@@ -79,10 +79,24 @@ import? 'dev-tooling/worktree.just'
 # LOCALLY BYPASSABLE (`--no-verify`, or simply never installed). Branch
 # protection is
 # the server-enforced backstop: the default branch advances only via PR/merge;
-# direct + force pushes are rejected by GitHub itself. Both recipes delegate to
-# the portable, ecosystem-neutral dev-tooling/branch-protection.sh (the single
-# source of truth) — `just` is the mandated runner and the recipes carry no
-# logic of their own, exactly like the worktree-* recipes above.
+# direct + force pushes are rejected by GitHub itself.
+#
+# The two `protect-default-branch` / `check-branch-protection` recipes are the
+# SINGLE-SOURCED canonical stanzas the livespec-dev-tooling package ships
+# (livespec_dev_tooling/worktree_pack/branch-protection.just), exactly like the
+# worktree-* recipes above. `just install-worktree-pack` (run from `bootstrap`)
+# writes them to dev-tooling/branch-protection.just, and the OPTIONAL import
+# below pulls them in — so this template carries NO recipe text to drift. Both
+# recipes are ecosystem-neutral pass-throughs onto the portable
+# dev-tooling/branch-protection.sh (the single source of truth) and carry no
+# logic of their own.
+#
+# The import MUST be OPTIONAL (`import?`) for the same reason as the worktree
+# fragment: under the from-package delivery model the fragment is ABSENT until
+# `just install-worktree-pack` writes it (it is gitignored, never tracked), and
+# `just` parses the WHOLE justfile before running any recipe, so a plain
+# `import` of the missing fragment would brick a fresh scaffolded clone before
+# it could even run `just bootstrap`.
 #
 # `protect-default-branch` (the INSTALLER) establishes baseline protection on a
 # fresh repo (requires an admin-scoped gh token); it is idempotent and
@@ -96,15 +110,7 @@ import? 'dev-tooling/worktree.just'
 # tier, where an admin token exists.
 # ---------------------------------------------------------------
 
-# Establish baseline GitHub branch protection on the default branch (requires an
-# admin-scoped gh token). Idempotent + non-weakening; FORCE=1 resets to baseline.
-protect-default-branch:
-    ./dev-tooling/branch-protection.sh apply
-
-# Verify the default branch is protected (the server-side tripwire). Fail-closed
-# but capability-aware; tune via LIVESPEC_BRANCH_PROTECTION_CHECK=fail|warn|skip.
-check-branch-protection:
-    ./dev-tooling/branch-protection.sh check
+import? 'dev-tooling/branch-protection.just'
 
 # ---------------------------------------------------------------
 # First-time setup.
@@ -131,21 +137,21 @@ install-commit-refuse-hooks:
     uv run python -m livespec_dev_tooling.install_commit_refuse_hooks
 
 # Install the canonical worktree-discipline PACK (worktree-lib.sh +
-# branch-protection.sh + worktree.just) by REUSING the shared
-# livespec-dev-tooling installer module (the SINGLE source of all three bodies;
-# pinned in pyproject.toml). NOT a repo-vendored copy — the prior tracked
+# branch-protection.sh + worktree.just + branch-protection.just) by REUSING the
+# shared livespec-dev-tooling installer module (the SINGLE source of all four
+# bodies; pinned in pyproject.toml). NOT a repo-vendored copy — the prior tracked
 # `dev-tooling/worktree-lib.sh` + `dev-tooling/branch-protection.sh` copies and
-# the inline `worktree-*` recipe stanzas are retired so there is exactly ZERO
-# drift-prone pack copy in this repo. This is the Installer slot for the pack
-# facet of the Worktree-discipline concern, mirroring `install-commit-refuse-
-# hooks` exactly: `bootstrap` delegates to it, and CI runs it before the
-# `check-primary-checkout-commit-refuse-hook-installed` verifier so the verifier
-# VALIDATES the installed pack (byte-identical to the package source) rather than
-# skipping it. The installer writes worktree-lib.sh + branch-protection.sh
-# executable and worktree.just non-executable (it is `import?`ed by this
-# justfile, never run directly); all three are gitignored (installed, not
-# tracked), exactly as the commit-refuse hooks are installed into the untracked
-# `.git/hooks/` dir. Idempotent.
+# the inline `worktree-*` + branch-protection recipe stanzas are retired so there
+# is exactly ZERO drift-prone pack copy in this repo. This is the Installer slot
+# for the pack facet of the Worktree-discipline concern, mirroring
+# `install-commit-refuse-hooks` exactly: `bootstrap` delegates to it, and CI runs
+# it before the `check-primary-checkout-commit-refuse-hook-installed` verifier so
+# the verifier VALIDATES the installed pack (byte-identical to the package
+# source) rather than skipping it. The installer writes worktree-lib.sh +
+# branch-protection.sh executable and worktree.just + branch-protection.just
+# non-executable (both are `import?`ed by this justfile, never run directly); all
+# four are gitignored (installed, not tracked), exactly as the commit-refuse
+# hooks are installed into the untracked `.git/hooks/` dir. Idempotent.
 install-worktree-pack:
     uv run python -m livespec_dev_tooling.install_worktree_pack
 
@@ -168,14 +174,15 @@ bootstrap:
     # red-green-replay stage regardless of the user's shell config.
     just install-commit-refuse-hooks
     # Install the worktree-discipline PACK (worktree-lib.sh +
-    # branch-protection.sh + worktree.just) from the shared
-    # livespec-dev-tooling package — the single canonical source — into
+    # branch-protection.sh + worktree.just + branch-protection.just) from the
+    # shared livespec-dev-tooling package — the single canonical source — into
     # `dev-tooling/`. The installer writes the two `.sh` scripts executable and
-    # the `worktree.just` recipe fragment non-executable; all three are
+    # the two `.just` recipe fragments non-executable; all four are
     # gitignored (installed, not tracked), so a fresh clone materializes them
     # here on first bootstrap exactly as the commit-refuse hooks are installed
-    # above. The root justfile `import?`s dev-tooling/worktree.just, so the
-    # `worktree-*` recipes become available once this step has run.
+    # above. The root justfile `import?`s dev-tooling/worktree.just and
+    # dev-tooling/branch-protection.just, so the `worktree-*` and
+    # branch-protection recipes become available once this step has run.
     just install-worktree-pack
     # Ensure the remaining per-ecosystem worktree helper stays executable.
     # worktree-hydrate.sh is the one TRACKED dev-tooling shell script (the

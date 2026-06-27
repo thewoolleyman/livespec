@@ -271,9 +271,10 @@ around the seam with raw `mysql` / `dolt` / `sudo`.
   — no repo-vendored copy) at `.git/hooks/pre-commit` + `.git/hooks/pre-push` +
   `.git/hooks/commit-msg`, installs the worktree-discipline pack
   (`dev-tooling/worktree-lib.sh`, `dev-tooling/branch-protection.sh`,
-  `dev-tooling/worktree.just`) from the same `livespec-dev-tooling` package (via
-  `just install-worktree-pack`; the scripts are written executable and the files
-  are gitignored, not tracked), ensures the per-ecosystem
+  `dev-tooling/worktree.just`, `dev-tooling/branch-protection.just`) from the
+  same `livespec-dev-tooling` package (via `just install-worktree-pack`; the
+  `.sh` scripts are written executable, the `.just` fragments non-executable, and
+  all four are gitignored, not tracked), ensures the per-ecosystem
   `dev-tooling/worktree-hydrate.sh` stub stays executable, installs lefthook
   hooks, resolves plugin dependencies, creates
   `~/.worktrees`, and registers it in mise's `trusted_config_paths` so every
