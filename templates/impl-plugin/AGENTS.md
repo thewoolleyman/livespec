@@ -40,9 +40,11 @@ the user whether to commit are workflow failures — not acceptable stopping
 points.
 
 This rule is **mechanically enforced** by the STRUCTURAL commit-refuse hook —
-the `dev-tooling/git-hook-wrapper.sh` body that `just bootstrap` installs (via
-`just install-commit-refuse-hooks`) at `.git/hooks/pre-commit`,
-`.git/hooks/pre-push`, and `.git/hooks/commit-msg`. It blocks any `git commit`
+the canonical body that `just bootstrap` installs (via `just
+install-commit-refuse-hooks`, which REUSES the shared `livespec-dev-tooling`
+installer module `python -m livespec_dev_tooling.install_commit_refuse_hooks` —
+the SINGLE source of the hook body, no repo-vendored copy) at
+`.git/hooks/pre-commit`, `.git/hooks/pre-push`, and `.git/hooks/commit-msg`. It blocks any `git commit`
 or `git push` made on the primary checkout UNLESS `git config
 livespec.sandboxExempt` is `true` (the explicit, declared exemption a Fabro
 sandbox — a fresh full clone that is structurally a primary but legitimately
@@ -264,12 +266,16 @@ around the seam with raw `mysql` / `dolt` / `sudo`.
 ## Daily commands
 
 - `just bootstrap` — first-touch setup on a fresh clone; idempotently installs
-  the structural commit-refuse hook (the `dev-tooling/git-hook-wrapper.sh` body,
-  via `just install-commit-refuse-hooks`) at `.git/hooks/pre-commit` +
-  `.git/hooks/pre-push` + `.git/hooks/commit-msg`, ensures the
-  worktree-discipline shell scripts (`dev-tooling/worktree-lib.sh`,
-  `dev-tooling/worktree-hydrate.sh`, `dev-tooling/branch-protection.sh`) stay
-  executable, installs lefthook hooks, resolves plugin dependencies, creates
+  the structural commit-refuse hook (the canonical body from the shared
+  `livespec-dev-tooling` installer module, via `just install-commit-refuse-hooks`
+  — no repo-vendored copy) at `.git/hooks/pre-commit` + `.git/hooks/pre-push` +
+  `.git/hooks/commit-msg`, installs the worktree-discipline pack
+  (`dev-tooling/worktree-lib.sh`, `dev-tooling/branch-protection.sh`,
+  `dev-tooling/worktree.just`) from the same `livespec-dev-tooling` package (via
+  `just install-worktree-pack`; the scripts are written executable and the files
+  are gitignored, not tracked), ensures the per-ecosystem
+  `dev-tooling/worktree-hydrate.sh` stub stays executable, installs lefthook
+  hooks, resolves plugin dependencies, creates
   `~/.worktrees`, and registers it in mise's `trusted_config_paths` so every
   worktree (created at `~/.worktrees/<repo>/<branch>`) auto-trusts its
   `.mise.toml`. The worktree-only mutation protocol is enforced by that hook

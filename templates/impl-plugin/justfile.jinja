@@ -37,46 +37,39 @@ default:
 # ---------------------------------------------------------------
 # Worktree-discipline recipes (the Worktree Discipline Pack).
 #
-# These four recipes drive the worktree lifecycle through `just` — the
-# mandated runner — by calling the portable, ecosystem-neutral worktree core
-# (dev-tooling/worktree-lib.sh) DIRECTLY. The CORE is the single source of
-# truth for the lifecycle (create / hydrate / land / reap) and the
-# primary-vs-linked detection; these recipes carry NO logic of their own —
-# they only forward arguments. `just` and `lefthook` are mandated
-# non-functionally across the fleet + adopters (the Conformance Pattern:
-# Installer = a `just` recipe; commit gate wired via `lefthook → just check`);
-# they never enter livespec core's public functional surface or the
-# /livespec:* skills. Where this repo's ecosystem ({{ ecosystem }}) has a
-# native tool, expose it as a STRICT PASS-THROUGH wrapper onto these recipes —
-# never an alternative runner: e.g. rust `cargo xtask worktree create` →
-# `just worktree-create`; javascript package.json
-# `"wt:create": "just worktree-create"`. Keeping the logic in the core — not
-# in any wrapper — is what stops ecosystems from drifting; the drift workflow
-# + `copier update` exist to catch any divergence.
+# The four `just worktree-{create,hydrate,land,reap}` lifecycle recipes are the
+# SINGLE-SOURCED canonical stanzas the livespec-dev-tooling package ships
+# (livespec_dev_tooling/worktree_pack/worktree.just). `just install-worktree-pack`
+# (run from `bootstrap`) writes them to dev-tooling/worktree.just, and the
+# OPTIONAL import below pulls them in — so this template carries NO recipe text
+# to drift, and the package stays the one source of truth (the
+# `primary-checkout-commit-refuse-hook-installed` check byte-verifies the
+# installed fragment against the package source).
 #
-# Hydration is the {{ ecosystem }}-profile specialization in
-# dev-tooling/worktree-hydrate.sh, which the core's `create`/`hydrate` verbs
-# invoke automatically.
+# The import MUST be OPTIONAL (`import?`): under the from-package delivery model
+# the fragment is ABSENT until `just install-worktree-pack` writes it (it is
+# gitignored, never tracked). `just` parses the WHOLE justfile before running
+# any recipe, so a plain `import` of the missing fragment would fail to parse the
+# entire justfile — bricking a fresh scaffolded clone before it could even run
+# `just bootstrap`. With `import?` the missing fragment is tolerated: `just
+# bootstrap` parses and runs, installs the pack, and the `worktree-*` recipes
+# become available on the next invocation.
+#
+# The recipes are ecosystem-neutral one-line pass-throughs onto the worktree
+# lifecycle core ./dev-tooling/worktree-lib.sh (also installed from the
+# package). `just` and `lefthook` are mandated non-functionally across the
+# fleet + adopters (the Conformance Pattern: Installer = a `just` recipe; commit
+# gate wired via `lefthook → just check`); they never enter livespec core's
+# public functional surface or the /livespec:* skills. Where this repo's
+# ecosystem ({{ ecosystem }}) has a native tool, expose it as a STRICT
+# PASS-THROUGH wrapper onto these recipes — never an alternative runner: e.g.
+# rust `cargo xtask worktree create` → `just worktree-create`; javascript
+# package.json `"wt:create": "just worktree-create"`. Hydration is the
+# {{ ecosystem }}-profile specialization in dev-tooling/worktree-hydrate.sh,
+# which the core's `create`/`hydrate` verbs invoke automatically.
 # ---------------------------------------------------------------
 
-# Branch a fresh isolated worktree from the default branch under
-# {{ worktree_root }} and hydrate it ({{ ecosystem }} profile).
-worktree-create branch base_ref="":
-    ./dev-tooling/worktree-lib.sh create {{ '{{' }}branch{{ '}}' }} {{ '{{' }}base_ref{{ '}}' }}
-
-# Run the {{ ecosystem }}-profile hydrate hook in the current worktree.
-worktree-hydrate:
-    ./dev-tooling/worktree-lib.sh hydrate
-
-# Rebase the current worktree branch onto the latest base, then report the
-# next landing step (land_mode={{ land_mode }}; the core never auto-pushes).
-worktree-land base_ref="":
-    ./dev-tooling/worktree-lib.sh land {{ '{{' }}base_ref{{ '}}' }}
-
-# Report (dry-run) or remove (--execute) stale/orphaned worktrees. Pass
-# extra args through, e.g. `just worktree-reap --execute`.
-worktree-reap *args:
-    ./dev-tooling/worktree-lib.sh reap {{ '{{' }}args{{ '}}' }}
+import? 'dev-tooling/worktree.just'
 
 # ---------------------------------------------------------------
 # Server-side worktree discipline: GitHub branch protection.
@@ -117,37 +110,44 @@ check-branch-protection:
 # First-time setup.
 # ---------------------------------------------------------------
 
-# Install the canonical structural commit-refuse hook body (the
-# repo-tracked dev-tooling/git-hook-wrapper.sh) as the pre-commit,
-# pre-push, and commit-msg hooks. This is the Installer slot of the
-# Worktree-discipline concern (the Conformance Pattern: Installer = a
-# `just` recipe; commit gate wired via lefthook → just check) — a
-# shared, idempotent recipe `bootstrap` delegates to. The body refuses
-# commits/pushes STRUCTURALLY: it exits 1 when `git rev-parse --git-dir`
-# equals `git rev-parse --git-common-dir` (a real primary checkout; a
-# secondary worktree's git-dir is `.git/worktrees/<name>` and so differs)
-# UNLESS `git config livespec.sandboxExempt` is `true`. There is therefore
-# NO arming step and so no fail-open window — the hook is armed the moment
-# it is installed. At worktrees (and in declared-exempt Fabro sandboxes)
-# the body delegates to mise-managed lefthook so the per-hook gates fire;
-# `--no-auto-install` inside the body is load-bearing (without it lefthook
-# backs the wrapper up to `<name>.old` on every fire and replaces it with
-# its PATH-searching stub, which both silently no-ops in Claude Code's bash
-# AND defeats the commit-refuse invariant).
-#
-# Resolves the shared hooks dir via git-common-dir so the install lands
-# correctly whether invoked from the primary checkout or a secondary
-# worktree (where .git is a file and `mkdir -p .git/hooks` would fail).
-# Idempotent: re-running overwrites with the same canonical body.
+# Install the canonical livespec commit-refuse hook by REUSING the shared
+# livespec-dev-tooling installer module (the SINGLE source of the structural
+# hook body; pinned in pyproject.toml). NOT a repo-vendored copy — the prior
+# `cp dev-tooling/git-hook-wrapper.sh` x3 + chmod block is retired so there is
+# exactly ZERO drift-prone hook-body copy in this repo. This is the Installer
+# slot of the Worktree-discipline concern (the Conformance Pattern: Installer =
+# a `just` recipe; commit gate wired via lefthook → just check) that `bootstrap`
+# delegates to. The installed body refuses commits/pushes STRUCTURALLY: it
+# exits 1 when `git rev-parse --git-dir` equals `git rev-parse --git-common-dir`
+# (a real primary checkout; a secondary worktree's git-dir is
+# `.git/worktrees/<name>` and so differs) UNLESS `git config
+# livespec.sandboxExempt` is `true`. There is therefore NO arming step and so no
+# fail-open window — the hook is armed the moment it is installed. At worktrees
+# (and in declared-exempt Fabro sandboxes) the body delegates to mise-managed
+# lefthook so the per-hook gates fire. The installer resolves the shared hooks
+# dir via git-common-dir so the install lands correctly whether invoked from the
+# primary checkout or a secondary worktree. Idempotent; worktree-safe.
 install-commit-refuse-hooks:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    hooks_dir="$(realpath "$(git rev-parse --git-common-dir)")/hooks"
-    mkdir -p "${hooks_dir}"
-    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-commit"
-    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/pre-push"
-    cp dev-tooling/git-hook-wrapper.sh "${hooks_dir}/commit-msg"
-    chmod +x "${hooks_dir}/pre-commit" "${hooks_dir}/pre-push" "${hooks_dir}/commit-msg"
+    uv run python -m livespec_dev_tooling.install_commit_refuse_hooks
+
+# Install the canonical worktree-discipline PACK (worktree-lib.sh +
+# branch-protection.sh + worktree.just) by REUSING the shared
+# livespec-dev-tooling installer module (the SINGLE source of all three bodies;
+# pinned in pyproject.toml). NOT a repo-vendored copy — the prior tracked
+# `dev-tooling/worktree-lib.sh` + `dev-tooling/branch-protection.sh` copies and
+# the inline `worktree-*` recipe stanzas are retired so there is exactly ZERO
+# drift-prone pack copy in this repo. This is the Installer slot for the pack
+# facet of the Worktree-discipline concern, mirroring `install-commit-refuse-
+# hooks` exactly: `bootstrap` delegates to it, and CI runs it before the
+# `check-primary-checkout-commit-refuse-hook-installed` verifier so the verifier
+# VALIDATES the installed pack (byte-identical to the package source) rather than
+# skipping it. The installer writes worktree-lib.sh + branch-protection.sh
+# executable and worktree.just non-executable (it is `import?`ed by this
+# justfile, never run directly); all three are gitignored (installed, not
+# tracked), exactly as the commit-refuse hooks are installed into the untracked
+# `.git/hooks/` dir. Idempotent.
+install-worktree-pack:
+    uv run python -m livespec_dev_tooling.install_worktree_pack
 
 bootstrap:
     #!/usr/bin/env bash
@@ -167,12 +167,25 @@ bootstrap:
     # delegates to mise-managed lefthook so commit-msg argv[1] reaches the
     # red-green-replay stage regardless of the user's shell config.
     just install-commit-refuse-hooks
-    # Ensure the worktree-discipline shell scripts stay executable.
-    # copier preserves the executable bit on a fresh `copier copy`, but a
-    # `copier update` 3-way merge can re-checkout these files without it,
-    # and the worktree-* recipes invoke them directly (./…) — a
-    # non-executable helper would silently no-op. This chmod is idempotent.
-    chmod +x dev-tooling/worktree-lib.sh dev-tooling/worktree-hydrate.sh dev-tooling/branch-protection.sh
+    # Install the worktree-discipline PACK (worktree-lib.sh +
+    # branch-protection.sh + worktree.just) from the shared
+    # livespec-dev-tooling package — the single canonical source — into
+    # `dev-tooling/`. The installer writes the two `.sh` scripts executable and
+    # the `worktree.just` recipe fragment non-executable; all three are
+    # gitignored (installed, not tracked), so a fresh clone materializes them
+    # here on first bootstrap exactly as the commit-refuse hooks are installed
+    # above. The root justfile `import?`s dev-tooling/worktree.just, so the
+    # `worktree-*` recipes become available once this step has run.
+    just install-worktree-pack
+    # Ensure the remaining per-ecosystem worktree helper stays executable.
+    # worktree-hydrate.sh is the one TRACKED dev-tooling shell script (the
+    # ecosystem-specific hydration stub); the pack scripts above are written
+    # +chmod'd by `install-worktree-pack`. copier preserves the executable
+    # bit on a fresh `copier copy`, but a `copier update` 3-way merge can
+    # re-checkout this file without it, and the worktree-hydrate recipe
+    # invokes it directly (./…) — a non-executable helper would silently
+    # no-op. This chmod is idempotent.
+    chmod +x dev-tooling/worktree-hydrate.sh
     # Harden the beads tenant-pointer dir to owner-only on first-touch (bd
     # recommends 0700; only the owning user's bd reads it — the Dolt server
     # connects over TCP and never reads this dir). Guarded: repos with no beads

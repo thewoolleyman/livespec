@@ -74,10 +74,12 @@ github_repo:
 # decision and the Conformance Pattern in
 # research/factory-conformance/cross-repo-conformance-pattern.md) — Installer =
 # a `just` recipe, commit gate wired via `lefthook → just check`. The worktree
-# lifecycle is driven by the `just worktree-{create,hydrate,land,reap}` recipes
-# (justfile.jinja), which call the portable core (dev-tooling/worktree-lib.sh)
-# directly; the structural commit-refuse hook (dev-tooling/git-hook-wrapper.sh)
-# is installed at the git hooks via `just install-commit-refuse-hooks`
+# lifecycle is driven by the `just worktree-{create,hydrate,land,reap}` recipes,
+# which the root justfile `import?`s from the from-package
+# dev-tooling/worktree.just fragment (installed by `just install-worktree-pack`)
+# and which call the portable core (dev-tooling/worktree-lib.sh) directly; the
+# structural commit-refuse hook (the canonical body from the livespec-dev-tooling
+# package) is installed at the git hooks via `just install-commit-refuse-hooks`
 # (justfile.jinja). Where a repo's ecosystem has a
 # native tool, the template emits a STRICT PASS-THROUGH wrapper onto `just
 # worktree-*` (DERIVED from `ecosystem`: python → none; rust → cargo-xtask;
