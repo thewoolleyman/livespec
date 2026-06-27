@@ -13,10 +13,12 @@
 #
 # Worktree-discipline gate: the worktree-only repository mutation protocol (see
 # AGENTS.md §"Repository mutation protocol") is enforced by the STRUCTURAL
-# commit-refuse hook — the `dev-tooling/git-hook-wrapper.sh` body that
-# `just bootstrap` installs (via `just install-commit-refuse-hooks`) at
-# .git/hooks/pre-commit, .git/hooks/pre-push, and .git/hooks/commit-msg. That
-# body refuses a commit/push on the PRIMARY checkout (exit 1 when
+# commit-refuse hook — the canonical body that `just bootstrap` installs (via
+# `just install-commit-refuse-hooks`, which REUSES the shared
+# `livespec-dev-tooling` installer module — the SINGLE source of the hook body,
+# no repo-vendored copy) at .git/hooks/pre-commit, .git/hooks/pre-push, and
+# .git/hooks/commit-msg. That body refuses a commit/push on the PRIMARY checkout
+# (exit 1 when
 # `git rev-parse --git-dir` equals `git rev-parse --git-common-dir`; a linked
 # worktree's git-dir is `.git/worktrees/<name>` and so differs) UNLESS
 # `git config livespec.sandboxExempt` is `true`, then delegates to mise-managed
@@ -32,9 +34,11 @@
 #   lefthook-must-delegate-to-just rule, enforced by
 #   dev-tooling/checks/no_direct_tool_invocation.py).
 #
-# Activation: `just bootstrap` installs the git-hook-wrapper from
-# dev-tooling/git-hook-wrapper.sh into .git/hooks/pre-commit,
-# .git/hooks/pre-push, and .git/hooks/commit-msg. The wrapper invokes
+# Activation: `just bootstrap` installs the canonical commit-refuse hook by
+# REUSING the shared `livespec-dev-tooling` installer
+# (`python -m livespec_dev_tooling.install_commit_refuse_hooks`, the SINGLE
+# source of the hook body) into .git/hooks/pre-commit, .git/hooks/pre-push, and
+# .git/hooks/commit-msg. The installed body invokes
 # `mise exec -- lefthook run --no-auto-install <hook-name> "$@"` so the gates
 # fire regardless of shell config and commit-msg argv[1] (the commit-message
 # file path) reaches the red-green-replay hook.
