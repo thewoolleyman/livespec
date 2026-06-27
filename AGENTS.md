@@ -615,7 +615,24 @@ manifest entry, no render command, no paired rendered artifact (per
 architecture diagram is the single source of truth in
 `SPECIFICATION/spec.md` §"Contract + reference implementations
 architecture"; the repo README **references** it and never embeds a
-second copy (no duplication, no drift). Hold these conventions when
+second copy (no duplication, no drift).
+
+**Intentional exception — multiple diagrams at different zoom levels.**
+`SPECIFICATION/spec.md` itself deliberately carries SEVERAL architecture
+diagrams whose content overlaps, because each renders a different zoom
+level / layer of the SAME architecture — e.g. the top-level
+lifecycle/dataflow view (§"Tool-agnostic workflow — spec / implementation
+lifecycle"), the plane model (§"Workflow planes and the Planning Lane"),
+the revision loop (§"Lifecycle"), and the canonical dependency/boundary
+view (§"Contract + reference implementations architecture"). That
+intra-spec overlap is DELIBERATE, not drift: each diagram is the source of
+truth for its own layer, so you MUST NOT consolidate or "de-duplicate"
+them to satisfy the no-duplication rule. That rule still binds the
+README→spec relationship (the README references the canonical diagram and
+never embeds a copy) and forbids genuine same-layer copies — it does NOT
+forbid these deliberate different-zoom views.
+
+Hold these conventions when
 authoring or revising any architecture diagram:
 
 - **Three planes, named exactly.** Spec Plane (livespec core),
