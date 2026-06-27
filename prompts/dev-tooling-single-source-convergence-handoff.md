@@ -6,7 +6,7 @@ ABSORBS the retired ob-0x5 worktree-pack distribution (its handoff is archived a
 `archive/prompts/worktree-discipline-pack-handoff.md`). This file carries durable
 *design + plan*; the *authoritative status* lives in the ledger, never here.
 
-## FIRST ACTION — relay i05g blocker-2 (then implement); MEANWHILE drive WAVE 2
+## FIRST ACTION — relay i05g blocker-2 (then implement); WAVE 2 de-dup is DONE
 
 **`2exa`'s NAMED blocker is DONE.** The driver-only `plugin_structure` check was
 relocated out of the canonical `checks/` set into a non-canonical `driver_checks/`
@@ -43,38 +43,40 @@ cut a dt release, and verify the fan-out now auto-propagates. (Note: every consu
 is ALREADY at v0.25.1, so a bump of the *current* tag is a no-op — verify on the
 NEXT real shared-artifact release, e.g. the one `.6` or `.3` produces.)
 
-**dt-FOUNDATION DONE — released in dt v0.26.0 (2026-06-27 session):**
+**WAVE 2 COMPLETE — the de-dup convergence is DONE (2026-06-27 session).** Every
+single-source-able dev-tooling artifact is now reused from the package; ZERO
+vendored worktree-pack copies remain fleet-wide; the byte-identity verifier is
+proven fail-closed. Slices **`.3`, `.4`, `.5` are CLOSED**, plus `.6` part 1.
 
-- **`.6` part 1** — drop `copier_answers_commit` from the bump-pin autodiscovery —
-  is MERGED (dt PR #196). **`.3` foundation** is MERGED (dt PR #198): the
-  worktree-pack ships as genuine PACKAGE-DATA at
-  `livespec_dev_tooling/worktree_pack/{worktree-lib,branch-protection}.sh` (NOT
-  inline string constants — that tripped ruff E501 on the long shell lines) +
-  `install_worktree_pack.py` + `just install-worktree-pack` + a 3rd
-  byte-identity-verifier arm on the EXISTING
-  `primary_checkout_commit_refuse_hook_installed` slug (NO new canonical slug → no
-  fleet aggregate-completeness rewiring). The verifier arm is DORMANT until a
-  consumer installs the pack. Canonical `worktree-lib.sh` = git-jsonl's
-  from-package body (blob `94b8034`), NOT core's template `cd21441` (which still
-  references the to-be-deleted `git-hook-wrapper.sh`). Both shipped in **dt
-  v0.26.0** (release PR #197).
-- **`.6` remainder (maintainer-gated):** part 2 = the GOVERNED dev-tooling
-  `contracts.md` `§Pin autodiscovery rules` revise is FILED (proposal PR #195 on dt
-  master) and awaits the maintainer's `/livespec:revise`-accept; part 3 = the
-  beads-fabro `_commit` un-poison (recommend option **(b)** `_commit: v0.2.0` —
-  the "restore v0.3.0" premise is VERIFIED WRONG; non-blocking cleanup).
+- **dt v0.26.0 → v0.27.0** ship the worktree pack as package-data
+  (`livespec_dev_tooling/worktree_pack/{worktree-lib,branch-protection}.sh` +
+  `worktree.just`) + `install_worktree_pack.py` + `just install-worktree-pack` + a
+  3rd byte-identity-verifier arm on the EXISTING
+  `primary_checkout_commit_refuse_hook_installed` slug (no new canonical slug).
+- **Delivery = MODEL B (untracked-installed):** consumers gitignore the pack files
+  and install them via bootstrap/CI (never tracked-committed) — mirrors the hook
+  precedent; drift is structurally impossible. Recipe single-sourcing uses
+  **`import? 'dev-tooling/worktree.just'`** (the OPTIONAL `import?` — a plain
+  `import` of the absent fragment bricks a fresh clone pre-bootstrap).
+- **Consumers converted:** git-jsonl (PR #135 → dt v0.27.0) + the core impl-plugin
+  TEMPLATE (PR #668 — retired the 3 template scripts + the obsolete
+  `test_git_hook_wrapper.py`, whose invariant relocated into dt PR #199).
+  `worktree-hydrate.sh.jinja` stays the only templatized worktree artifact.
+- **`.6` remainder (maintainer-gated):** part 2 = the dev-tooling `contracts.md`
+  `§Pin autodiscovery rules` revise is FILED (proposal PR #195) awaiting
+  `/livespec:revise`-accept; part 3 = beads-fabro `_commit` un-poison (recommend
+  `_commit: v0.2.0`; non-blocking).
 
-**MEANWHILE — drive WAVE 2 (the consumer side; the next concrete work):** now that
-v0.26.0 ships the pack, retire the vendored copies fleet-wide by reuse. Only TWO
-repos carry copies — git-jsonl (`dev-tooling/{worktree-lib,branch-protection}.sh`)
-and core's impl-plugin TEMPLATE
-(`templates/impl-plugin/dev-tooling/{worktree-lib,branch-protection,git-hook-wrapper}.sh`).
-`.3` ABSORBS the template commit-refuse-hook conversion + its stale `v0.1.0` dt
-pin; `.4` (lifecycle recipes via a single-sourced `dev-tooling/worktree.just` +
-consumer `import`) and closing `.5` (the deliberate-drift fail-closed test) fold
-into this wave. The fan-out is broken (i05g) so propagate consumer pins to v0.26.0
-by HAND. The FULL step-by-step Wave-2 plan (W2a–W2d) lives in the `zs22.7.9` epic
-ledger note.
+**REMAINING follow-up slice work (all FILED; independent; none block each other):**
+
+- `livespec-7a4e` (P3) — deliver the worktree pack + recipes to **beads-fabro +
+  console** (ADDITIVE — they carry no copies; deferred out of the de-dup; each also
+  needs a per-ecosystem `worktree-hydrate.sh`).
+- `livespec-jzpx` (P3) — single-source the **branch-protection** recipes via
+  `branch-protection.just` (same package-data + installer + verifier + `import?`
+  mechanism as `worktree.just`).
+- `livespec-usd3` (P3) — fix the `install_worktree_pack` docstring
+  (`tracked` → untracked-installed, model B).
 
 Print live status (do not trust this file for status):
 
@@ -87,18 +89,19 @@ Print live status (do not trust this file for status):
 
 Derive "what's done / what's next" from that plus `git log` in each target repo.
 **No shadow ledger** — re-verify every per-repo claim directly (the fleet is
-non-uniform). As of the 2026-06-27 session: `zs22.7.9.1/.2/.7` are CLOSED; `.5`
-(strict byte-identity verifier, dt **v0.25.1**) is RELEASED + propagated
-fleet-wide; `2exa`'s plugin_structure relocation is DONE; **`.6` part 1 + `.3`
-dt-foundation are MERGED and RELEASED in dt v0.26.0** (the worktree-pack is now a
-single canonical package-data source + installer + a dormant verifier arm).
-REMAINING: **WAVE 2** — consumer-side retirement of the vendored copies + `.4`
-recipes + close `.5`'s drift test (all specced W2a–W2d in the `zs22.7.9` epic
-ledger note); plus the maintainer-gated `i05g` blocker-2 fork (recommend option
-B), `.6` part-2 `/livespec:revise`-accept, and `.6` part-3 un-poison (recommend
-`_commit: v0.2.0`). The fleet remains at dt v0.25.1 (the broken fan-out changed no
-pins; v0.26.0 must be propagated by hand in Wave 2). The `.2` spec-prose follow-up
-is `livespec-325j` (P3).
+non-uniform). As of the 2026-06-27 session: `zs22.7.9.1/.2/.3/.4/.5/.7` are
+CLOSED — the **WAVE 2 de-dup convergence is DONE** (zero vendored worktree-pack
+copies fleet-wide, single-sourced from dt **v0.27.0**, byte-identity verifier
+proven fail-closed); `2exa`'s plugin_structure relocation is DONE; `.6` part 1 is
+MERGED. REMAINING: the maintainer-gated `i05g` blocker-2 fork (recommend option
+B), `.6` part-2 `/livespec:revise`-accept (proposal PR #195), and `.6` part-3
+un-poison (recommend `_commit: v0.2.0`); plus three FILED follow-up work-items —
+`livespec-7a4e` (deliver pack + recipes to beads-fabro + console — ADDITIVE
+coverage, deferred), `livespec-jzpx` (`branch-protection.just` single-source),
+`livespec-usd3` (`install_worktree_pack` docstring fix). git-jsonl + the core
+impl-plugin TEMPLATE are at dt v0.27.0; the remaining consumers are unchanged (the
+broken fan-out changed no pins). The `.2` spec-prose follow-up is `livespec-325j`
+(P3).
 
 ## Read first
 
