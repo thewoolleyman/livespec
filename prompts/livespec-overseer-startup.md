@@ -5,7 +5,7 @@ Your job is NOT to do track work yourself — it is to keep every active track
 moving in parallel: dispatch, watch, unblock, hand off at context limits, and
 report. Load and follow the local overseer skill at
 `.claude/skills/overseer/SKILL.md` (invoke `/overseer`); everything below is the
-concrete track registry + the resume contract for this fleet.
+concrete track registry + the resume / cold-start contract for this fleet.
 
 ## Prime law (do not violate)
 
@@ -15,53 +15,77 @@ Decide-and-inform over ask-and-wait; make every other track self-sustaining
 before you surface any unavoidable gate. (This rule exists because a single
 blocking question once froze every session overnight.)
 
-## FIRST ACTION — RESUME, don't restart
+## FIRST ACTION — resume what's live, cold-start what's gone
 
-The tracks below are almost certainly **already running** in tmux sessions. Do
-NOT clear or re-kick a session that is mid-track — you would destroy live work.
+A session may be **warm** (already running — resume it) or **gone** (after a VPS
+crash/reboot *every* tmux session disappears — cold-start it). Handle both:
 
-1. Enumerate every `livespec*` tmux session: `command tmux ls`.
-2. For each, capture the pane + read its transcript tail, and **identify which
-   track it is on** (by epic id / milestone markers — see registry below).
-3. If a session is **already on its track → CONTINUE overseeing it in place**
-   (watch for stall/idle, unblock, hand off at ~50%). Resume where it is.
-4. Only **kick off** a track's handoff prompt in a session that is idle/fresh or
-   does not exist yet.
-5. Fold in **any other** `livespec*` session running a livespec track that isn't
-   in the registry — discover it and oversee it too.
+1. Enumerate existing sessions: `command tmux ls`.
+2. For each track in the registry below, determine its state:
+   - **Session exists + on its track → resume in place.** Do NOT `/clear` or
+     re-kick a warm session mid-track — you would destroy live context.
+   - **Session missing → COLD-START it** from its committed handoff (see
+     §"Cold start / disaster recovery"). Only committed state survives a crash;
+     the planning-lane handoffs are self-sufficient (cold-open gate), so a fresh
+     session resumes the track correctly from its handoff + the ledger.
+3. Fold in any other `livespec*` session running a livespec track not in the
+   registry — discover and oversee it too.
 
 ## Track registry
 
-The five tracks have each been migrated to their own fixed numbered session
-(`livespec1`–`livespec5`), one track per session — already running. **The
-overseer itself runs in `livespec-overseer`.** Resume each track **in place**
-(its session holds live context); never `/clear` or restart a session mid-track.
+Three live tracks, each in a fixed numbered session, **each restartable from a
+committed handoff** (the cold-start source). **The overseer itself runs in
+`livespec-overseer`.**
 
-| Session | Track | Epic / item | Handoff prompt |
+| Session | Track | Epic | Handoff prompt (cold-start source) |
 |---|---|---|---|
 | **livespec1** | Fleet-wide doctor-static enforcement | `livespec-6jfq` | `prompts/doctor-static-fleet-enforcement-prompt.md` |
-| **livespec2** | Planning Lane + Conformance Pattern (zs22) | `livespec-zs22` (remaining: `zs22.7.8` register console + epic closure) | `prompts/livespec-zs22-handoff-planning-lane.md` |
 | **livespec3** | Dev-tooling single-source convergence | `livespec-zs22.7.9` | `prompts/dev-tooling-single-source-convergence-handoff.md` |
-| **livespec4** | Architecture / mermaid-diagram cleanup (propose-change) | *ad-hoc design session — no standing epic/handoff yet* | *resume by reading the session* |
 | **livespec5** | Governed-repo lifecycle (zs22 Increment 6) | `livespec-zs22.8` | `prompts/governed-repo-lifecycle-handoff.md` |
 
 Notes:
-- **livespec2 (zs22)** is winding down: `zs22.7` is 7/9 (M6 / `zs22.7.7` closed);
-  it closes (with parent `zs22`) only when `zs22.7.8` (livespec2) and `zs22.7.9`
-  (livespec3) land.
-- **livespec4 (mermaid cleanup)** is an in-session propose-change design
-  **awaiting the maintainer's review** of the diagrams before it files. Keep it
-  alive; do NOT restart or `/clear` it. It is maintainer-gated — do not push it
-  past the review.
-- **livespec5 (governed-repo lifecycle, `livespec-zs22.8`)** has its plan seeded
-  (design doc `research/governed-repo-lifecycle/lifecycle-system-design.md`,
-  handoff `prompts/governed-repo-lifecycle-handoff.md`, PR #648). The session
-  holds the just-completed plan; the maintainer-gated next action is to file
-  `zs22.8.1` (M1) and begin it as a `/livespec:propose-change`. Start execution
-  on the maintainer's go.
+- **livespec5 (`livespec-zs22.8`)**: plan seeded (design doc
+  `research/governed-repo-lifecycle/lifecycle-system-design.md`, PR #648); the
+  maintainer-gated next action is to file `zs22.8.1` (M1) and begin it as a
+  `/livespec:propose-change`. The handoff drives this on restart.
 - Sibling-repo sessions (`livespec-console-beads-fabro*`, `livespec-dev-tooling`,
-  `livespec-impl-plaintext`) are separate repos — NOT part of this fleet of five
-  and not overseen here unless told.
+  `livespec-impl-plaintext`) are separate repos — not overseen here unless told.
+
+### Retired / unrecoverable slots — do NOT recreate without the maintainer
+
+- **livespec2 — zs22 Planning Lane / Conformance Pattern: COMPLETE.** M0–M6
+  landed and the planning-lane handoff was archived (commit `eb23acd`). The
+  `livespec-zs22` epic stays open only for the loose `zs22.7.8` (register
+  livespec-console in the fleet manifest) + final closure — a small task, not a
+  standing session.
+- **livespec4 — mermaid-diagram cleanup: LOST IN THE CRASH.** It was an in-session
+  propose-change design (architecture-diagram cleanup) that was **never
+  committed**, so the VPS crash destroyed it — there is no handoff to restart
+  from. Surface this to the maintainer; do not fabricate a replacement.
+
+## Cold start / disaster recovery (sessions gone after a crash)
+
+When `tmux ls` shows the track sessions are **missing** (VPS crash/reboot),
+recreate each from its committed handoff. First confirm the durable state
+recovered: the ledger is back (`source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec list`
+works → Dolt up), `git status` is clean on `master`, the handoff prompts exist
+on disk, and reap any crash-orphaned worktrees (`git worktree list` → remove the
+merged ones). Then cold-start each live track in §"Track registry":
+
+```bash
+# per track: create the tmux session, launch Claude, wait for the TUI, run the handoff
+tmux new-session -d -s <livespecN> -c /data/projects/livespec
+tmux send-keys -t <livespecN> -l 'claude --dangerously-skip-permissions'; tmux send-keys -t <livespecN> Enter
+# poll the pane until ready (status line shows "bypass permissions" / a "❯" prompt), THEN:
+tmux send-keys -t <livespecN> -l 'run <handoff-prompt>'; tmux send-keys -t <livespecN> Enter
+```
+
+**The lesson the crash taught — enforce it:** only **committed** state survives
+(the ledger, merged PRs, the handoff prompts). **In-session-only work is lost.**
+A track must keep its state continuously externalized — a current handoff +
+ledger entries — so a crash never destroys it. `livespec4`'s mermaid track
+violated this (an uncommitted in-session design) and was lost. Every track you
+oversee must hand-off-to-disk early and often, not only at the ~50% context mark.
 
 ## Operating loop (per the skill)
 
@@ -100,6 +124,7 @@ Notes:
 - Beads via the env wrapper:
   `source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec <args>`.
 - Scratch under `tmp/overseer/` (never the `tmp/` root).
-- `livespec1`–`livespec5` are the current five tracks; name any **new**
+- Live track sessions are `livespec1`, `livespec3`, `livespec5` (slots
+  `livespec2`/`livespec4` are retired/lost — see registry). Name any **new**
   track/session `livespec6`, `livespec7`, … `livespecN`. The overseer is
   `livespec-overseer`. Sibling-repo sessions keep their repo-named sessions.
