@@ -77,6 +77,8 @@ self-sustaining before surfacing any unavoidable gate.
 
 ## How to run it (the walk-through contract)
 
+**Set up the two-pane layout first** — a read-only status dashboard above, your decision channel below — per the overseer skill's "## The two-pane layout" section. Then:
+
 1. Enumerate any warm track sessions (`command tmux ls`); reuse `livespec1`-`5`
    for dispatched work, name new ones `livespec6`+.
 2. **FIRST — the autonomous tail (A + B):** dispatch items 1–6. They need NO
