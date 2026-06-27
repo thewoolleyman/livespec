@@ -153,6 +153,8 @@ do it only when the maintainer is ready to run the work, not automatically.
 
 ## The operating loop
 
+First set up the **two-pane layout** (status dashboard above, decisions below — see the section just after this list). Then run the loop:
+
 1. **Register & kick off** each `session=prompt` pair (see **Kicking off**).
 2. **Arm the watcher** (see **The watcher**). It samples each session, detects
    stalls/context/epic-closure, and exits on a trigger or a ~6-min heartbeat.
@@ -167,6 +169,56 @@ do it only when the maintainer is ready to run the work, not automatically.
 > The harness reaps long background tasks after a few minutes — that's fine. Each
 > reap/exit notification re-invokes you; you re-check and re-arm. That cadence *is* the
 > heartbeat. The only thing that breaks it is **you** being blocked (law 1).
+
+---
+
+## The two-pane layout — read-only status above, decisions below
+
+Run the overseer's own `livespec-overseer` window as **two stacked panes**: a
+**top read-only status dashboard** (≈1/3 height, full width) and the
+**interactive overseer TUI below** (≈2/3). This keeps the maintainer's decision
+channel uncluttered — the bottom pane carries **only** what needs them (choices,
+input, hand-offs), while routine progress streams in the top pane. The maintainer
+asked for this explicitly (2026-06-27); hold to it.
+
+**Set it up once, at startup** (before registering tracks). Write the dashboard
+script + an initial `status.md` under `tmp/overseer/`, then split the window with
+the new pane on TOP and focus staying on the bottom (interactive) pane:
+
+```bash
+# status.md is the curated status YOU maintain (the status-table content, below);
+# status-pane.sh renders it + the watcher snapshot, refreshing every 10s.
+mkdir -p /data/projects/livespec/tmp/overseer
+cat > /data/projects/livespec/tmp/overseer/status-pane.sh <<'EOF'
+#!/usr/bin/env bash
+SD=/data/projects/livespec/tmp/overseer
+while true; do
+  clear
+  printf '  OVERSEER STATUS  —  %s   (read-only; act in the pane below)\n' "$(date '+%a %H:%M:%S')"
+  echo "──────────────────────────────────────────────────────────────────────────────"
+  cat "$SD/status.md" 2>/dev/null
+  echo "── watcher ───────────────────────────────────────────────────────────────────"
+  grep -E 'iter |busy=|TRIGGER|heartbeat' "$SD/stallwatch.log" 2>/dev/null | tail -10
+  sleep 10
+done
+EOF
+printf 'OVERSEER STATUS — initializing...\n' > /data/projects/livespec/tmp/overseer/status.md
+# top pane = 1/3 height, full width; -d keeps your focus on the bottom (interactive) pane.
+# (tmux >= 3.1 takes `-l 33%`; older tmux uses `-p 33`.)
+command tmux split-window -v -b -l 33% -d -t livespec-overseer \
+  -c /data/projects/livespec 'bash /data/projects/livespec/tmp/overseer/status-pane.sh'
+```
+
+**Discipline once it's up:**
+- **Keep `status.md` current** as state changes (it IS the status table, rendered
+  continuously in the top pane) — that's how routine progress reaches the maintainer.
+- **Reserve the bottom pane for action / input / hand-offs.** Don't dump routine
+  status there; push it to `status.md`. Surface in the bottom pane only genuine
+  decisions, gates, and milestones — ideally as ONE clickable `AskUserQuestion` at
+  a time, plain language, recommendation first (the maintainer's stated preference).
+- The split survives a `/clear` (it tracks the pane, not the session id). If the
+  dashboard targets a specific active track's live pane, re-point that capture
+  after a hand-off.
 
 ---
 
