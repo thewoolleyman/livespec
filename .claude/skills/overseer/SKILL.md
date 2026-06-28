@@ -64,13 +64,16 @@ recommendation first:
    **delete the stale artifacts** —
    `rm -f tmp/overseer/status-table.txt tmp/overseer/stallwatch.log tmp/overseer/rows.tsv`
    and reset `status.md`; (c) **rebuild THIS session's three-pane layout** (table
-   top-left, notes/watcher top-right, interactive below) sized with an **explicit
-   row count, never the `33%` form** (which silently falls back to 50%); (d) arm
-   a fresh watcher; (e) **VERIFY**: top region is **≈1/3 height, on TOP**; the
-   top-LEFT pane shows the aligned box table (real cell boundaries) and never
-   scrolls; the top-RIGHT pane's clock **advances** across two captures seconds
-   apart (the liveness proof — not a frozen timestamp). Show the maintainer the
-   live panes and confirm they reflect current reality before proceeding.
+   top-left, notes/watcher top-right, interactive below) — top split **50/50
+   left/right** (table and notes EACH ≈half the window width; a narrower table
+   wraps and corrupts the box) and the top region sized with an **explicit row
+   count, never the `33%` form** (which silently falls back to 50%); (d) arm a
+   fresh watcher; (e) **VERIFY**: top region is **≈1/3 height, on TOP**; the
+   top-LEFT pane shows the aligned box table (real cell boundaries), **≈half width
+   and NOT wrapping**, and never scrolls; the top-RIGHT pane's clock **advances**
+   across two captures seconds apart (the liveness proof — not a frozen
+   timestamp). Show the maintainer the live panes and confirm they reflect current
+   reality before proceeding.
 4. **Confirm the current work state from the ledger, not a stale prompt.** The
    startup runbook's "current work" section may be stale; re-derive what is
    actually open from the ledger + each track's own handoff before dispatching,
@@ -238,10 +241,13 @@ region is split into a **top-LEFT status-table pane** (renders ONLY the aligned
 table — never scrolls, so the table is permanently visible) and a **top-RIGHT
 notes/watcher pane** (a live clock + free-form notes + the latest watcher
 snapshot — the part that streams/scrolls), with the **interactive overseer TUI
-below** (≈2/3). Splitting the top region left/right is what keeps the table from
-ever scrolling off behind the streaming notes, and keeps the maintainer's
-decision channel — the bottom pane — uncluttered. The maintainer asked for this
-explicitly (2026-06-27, refined to the L/R split 2026-06-28); hold to it.
+below** (≈2/3). Splitting the top region left/right **50/50** is what keeps the
+table from ever scrolling off behind the streaming notes, gives the table enough
+width that realistic rows never wrap the box, and keeps the maintainer's decision
+channel — the bottom pane — uncluttered. The maintainer asked for this explicitly
+(2026-06-27; refined to the L/R split 2026-06-28; **fixed to a 50/50 split
+2026-06-28** after a too-narrow `WCOL - 62` table wrapped and corrupted the box);
+hold to it.
 
 > **The top-LEFT pane is ONLY the required status table** — columns
 > **Epic ID · Track · Status · %Complete**, one row per watched track/pane —
@@ -361,12 +367,17 @@ TOP=$(( WIN / 3 ))                       # top region ≈ 1/3 of the window heig
 L=$(command tmux split-window -v -b -l "$TOP" -d -P -F '#{pane_id}' -t livespec-overseer \
   -c /data/projects/livespec 'bash /data/projects/livespec/tmp/overseer/table-pane.sh')
 command tmux resize-pane -t "$L" -y "$TOP"
-# (2) TOP-RIGHT (notes): split that pane left|right — the table pane keeps ~62
-#     cols (wide enough for the box); notes gets the rest.
-R=$(command tmux split-window -h -l "$(( WCOL - 62 ))" -d -P -F '#{pane_id}' -t "$L" \
+# (2) TOP-RIGHT (notes): split that pane left|right **50/50** — table and notes
+#     EACH get half the window width (~113 cols on a 226-wide window). A narrower
+#     table wraps the box on realistic rows (long epic ids, "N/M complete (P%)"),
+#     which corrupts the table; 50/50 gives ample room. (The earlier `WCOL - 62`
+#     reserved only ~62 cols and wrapped — never go back to it.)
+R=$(command tmux split-window -h -l "$(( WCOL / 2 ))" -d -P -F '#{pane_id}' -t "$L" \
   -c /data/projects/livespec 'bash /data/projects/livespec/tmp/overseer/notes-pane.sh')
-# (3) VERIFY geometry: top panes ≈1/3 height ON TOP (top=0), table LEFT, notes RIGHT.
-#     If a top pane reads ~1/2 height, re-run `resize-pane -t "$L" -y "$TOP"`.
+# (3) VERIFY geometry: top panes ≈1/3 height ON TOP (top=0), table LEFT, notes
+#     RIGHT, EACH ≈half the window WIDTH. If a top pane reads ~1/2 height, re-run
+#     `resize-pane -t "$L" -y "$TOP"`; if the table is narrower than half and
+#     wraps the box, re-run `resize-pane -t "$L" -x "$(( WCOL / 2 ))"`.
 command tmux list-panes -t livespec-overseer \
   -F 'pane #{pane_id} top=#{pane_top} left=#{pane_left} h=#{pane_height} w=#{pane_width} cmd=#{pane_current_command}'
 ```
@@ -376,10 +387,12 @@ command tmux list-panes -t livespec-overseer \
   (`command tmux capture-pane -p -t <notes-id> | grep OVERSEER`) and confirm the
   timestamp DIFFERS. A frozen timestamp = a dead renderer / stale snapshot —
   the exact failure this teardown exists to prevent.
-- **Top-LEFT table is aligned.** Capture the table pane and confirm it shows a
-  box with real cell boundaries (`┌┬┐ │ ├┼┤ └┴┘`), not a misaligned dash/plus
-  line. Then **show the maintainer the live panes** and confirm they reflect
-  current reality before kicking anything off.
+- **Top-LEFT table is aligned AND unwrapped.** Capture the table pane and confirm
+  it shows a box with real cell boundaries (`┌┬┐ │ ├┼┤ └┴┘`), not a misaligned
+  dash/plus line, and that NO row wraps (each box line is exactly one terminal
+  row). If the box wraps, the pane is too narrow — re-run
+  `resize-pane -t "$L" -x "$(( WCOL / 2 ))"`. Then **show the maintainer the live
+  panes** and confirm they reflect current reality before kicking anything off.
 
 **Discipline once it's up:**
 - **Keep `status.md` current** as state changes — it renders in the top-RIGHT
@@ -546,30 +559,49 @@ is always present, current, and aligned WITHOUT the overseer hand-maintaining it
 and WITHOUT any hardcoded-dash separator. The watcher does NOT format the box or
 write `status-table.txt` — it only writes the rows; `render-table.py` owns the
 header, the computed column widths, and the cell boundaries. Hold the
-session→epic map in an `EPIC` associative array (and a `PARKED` flag set), cache
-`%Complete` per session in `PCT` so rows never blank-thrash between the periodic
-ledger queries, and — at the TOP of each iteration (before the per-session loop)
-TRUNCATE `rows.tsv`, then INSIDE the loop append one row per session:
+session→epic map in an `EPIC` associative array (and a `PARKED` flag set), and
+cache `%Complete` per session in `PCT`. **Keep the `%Complete` column ALWAYS
+FILLED** — never let it fall back to a bare `—` for an epic-bearing track. Three
+rules make that hold: (1) **seed** `PCT` from the prior `rows.tsv` at watcher
+startup, so a re-arm inherits the last value instead of resetting to empty; (2)
+query the epic status on the **first sample as well as every 3rd**, so a fresh
+arming fills the column within one sample rather than after ~75s; (3) on the
+periodic query, **keep the last good value** if `bd show` transiently returns
+empty. Then — at the TOP of each iteration (before the per-session loop) TRUNCATE
+`rows.tsv`, and INSIDE the loop append one row per session:
 
 ```bash
 ROWS=/data/projects/livespec/tmp/overseer/rows.tsv
-declare -A PCT   # cache: %complete per session, refreshed on the periodic bd query
+declare -A PCT   # cache: %complete per session — kept ALWAYS-FILLED (see below).
+
+# ...ONCE at watcher startup (before the sample loop): SEED PCT from the prior
+#    rows.tsv (col 4) so a re-arm inherits the last %complete and the column
+#    never blanks across re-arms. Accept only a real "N/M complete (P%)" value:
+while IFS=$'\t' read -r _ep s _st pct; do
+  case "$pct" in *complete*) PCT[$s]="$pct" ;; esac
+done < "$ROWS" 2>/dev/null
 
 # ...at the TOP of each sample iteration (before the per-session loop) truncate
 #    rows.tsv so it holds exactly this cycle's rows (NO header line here —
 #    render-table.py adds the header + box when the table pane renders it):
 : > "$ROWS"
 
+# ...query the epic status badge ($es) on the FIRST sample AND every 3rd
+#    thereafter (`[ "$i" -eq 1 ] || [ $((i % 3)) -eq 0 ]`), NOT only every 3rd,
+#    so PCT is populated within the first sample of every arming.
+
 # ...INSIDE the per-session loop, after computing busy/idle ($b), the parked
-#    flag, and (on the periodic 3rd-iter query) the epic status ($es):
+#    flag, and (on the first + every-3rd query) the epic status ($es):
 ep="${EPIC[$s]:-—}"
 if [ -n "${PARKED[$s]:-}" ]; then st=parked; elif [ "$b" = 1 ]; then st=working; else st=idle; fi
 [ "$es" = CLOSED ] && st=done
-# refresh cached %complete only when we already queried this epic this cycle
-# (no extra bd calls): grep the "N/M complete (P%)" line bd show prints.
+# refresh cached %complete when we queried this epic this cycle, and KEEP the
+# last good value if the query transiently returns empty — so the column is
+# ALWAYS filled. grep the "N/M complete (P%)" line bd show prints.
 if [ -n "${EPIC[$s]:-}" ] && [ -n "$es" ]; then
-  PCT[$s]=$( ( source "$WRAP" bd -C /data/projects/livespec show "${EPIC[$s]}" 2>/dev/null ) \
-             | grep -oE '[0-9]+/[0-9]+ complete \([0-9]+%\)' | head -1 )
+  newpct=$( ( source "$WRAP" bd -C /data/projects/livespec show "${EPIC[$s]}" 2>/dev/null ) \
+            | grep -oE '[0-9]+/[0-9]+ complete \([0-9]+%\)' | head -1 )
+  [ -n "$newpct" ] && PCT[$s]="$newpct"
 fi
 # one TAB-separated row per session; render-table.py turns rows.tsv into the
 # aligned box table in the top-LEFT pane:
