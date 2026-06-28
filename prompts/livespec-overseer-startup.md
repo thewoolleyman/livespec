@@ -31,11 +31,14 @@ previous overseer's hours-old "everything idle" snapshot. Confirm ALL of:
    (`rm -f tmp/overseer/status-table.txt tmp/overseer/stallwatch.log
    tmp/overseer/rows.tsv`, reset `status.md`); (c) **rebuild the three panes** —
    table top-LEFT (aligned box, never scrolls), notes/watcher top-RIGHT (live
-   clock), interactive below — sized with an **explicit row count, NOT `33%`**
-   (which silently falls back to 50%); (d) arm a fresh watcher; (e) **VERIFY**:
-   top region ≈1/3 on top; the top-RIGHT clock ADVANCES across two captures
-   seconds apart (liveness proof); the top-LEFT table shows real cell boundaries.
-   Show the maintainer the live panes before proceeding.
+   clock), interactive below — top split **50/50 left/right** (table and notes
+   EACH ≈half the window width; a narrower table wraps and corrupts the box) and
+   the top region sized with an **explicit row count, NOT `33%`** (which silently
+   falls back to 50%); (d) arm a fresh watcher; (e) **VERIFY**: top region ≈1/3 on
+   top; the top-RIGHT clock ADVANCES across two captures seconds apart (liveness
+   proof); the top-LEFT table shows real cell boundaries **and does NOT wrap**
+   (each box line is one terminal row). Show the maintainer the live panes before
+   proceeding.
 4. **Re-derive current work from the ledger, not this prompt.** The "CURRENT
    WORK" section below MAY BE STALE — confirm what is actually open from the
    ledger + each track's own handoff before dispatching.
@@ -153,7 +156,7 @@ network/port model for parallel dispatch).
 
 ## How to run it
 
-- **Run the clean-start teardown + three-pane layout first** (overseer skill "## The three-pane layout") — kill any prior dashboard panes, clear stale artifacts, rebuild table top-left / notes top-right / interactive below, verify live.
+- **Run the clean-start teardown + three-pane layout first** (overseer skill "## The three-pane layout") — kill any prior dashboard panes, clear stale artifacts, rebuild table top-left / notes top-right (top split **50/50** so the table never wraps) / interactive below, verify live.
 - Enumerate sessions (`command tmux ls`). **Session `/clear` is FLAKY when a
   session is busy/has queued msgs**: Escape (drain) → confirm idle (no spinner) →
   `/clear` → verify the welcome banner BEFORE dispatching. `livespec1` got stuck
