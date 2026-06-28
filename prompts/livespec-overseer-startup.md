@@ -22,13 +22,20 @@ previous overseer's hours-old "everything idle" snapshot. Confirm ALL of:
    SEQUENTIAL — one at a time) or is a **session-driven** code-fix / interactive
    track (worktree → PR → merge; parallel-safe). The maintainer confirms the
    split before any dispatch.
-3. **Status pane FRESH + LIVE + 33%.** Clear the previous overseer's stale
-   artifacts (`rm -f tmp/overseer/status-table.txt tmp/overseer/stallwatch.log`,
-   reset `status.md`), stand up THIS session's two-pane layout, arm a fresh
-   watcher, and VERIFY the top pane is live (current, advancing timestamp — not a
-   stale snapshot) and is **≈33% height, full width, on top — NOT 50%** (force +
-   verify per the skill's "## The two-pane layout"). Show the maintainer the live
-   pane before proceeding.
+3. **Status panes FRESH + LIVE + three-pane, ≈1/3.** Run the **unconditional
+   clean-start teardown — every start, no exceptions** (full sequence in the
+   skill's "## The three-pane layout"): a `/clear` does NOT kill tmux panes, so a
+   prior overseer's dashboard panes keep rendering a frozen snapshot until you
+   kill them. (a) **Kill every non-interactive pane** in the `livespec-overseer`
+   window (every pane not running `claude`); (b) delete the stale artifacts
+   (`rm -f tmp/overseer/status-table.txt tmp/overseer/stallwatch.log
+   tmp/overseer/rows.tsv`, reset `status.md`); (c) **rebuild the three panes** —
+   table top-LEFT (aligned box, never scrolls), notes/watcher top-RIGHT (live
+   clock), interactive below — sized with an **explicit row count, NOT `33%`**
+   (which silently falls back to 50%); (d) arm a fresh watcher; (e) **VERIFY**:
+   top region ≈1/3 on top; the top-RIGHT clock ADVANCES across two captures
+   seconds apart (liveness proof); the top-LEFT table shows real cell boundaries.
+   Show the maintainer the live panes before proceeding.
 4. **Re-derive current work from the ledger, not this prompt.** The "CURRENT
    WORK" section below MAY BE STALE — confirm what is actually open from the
    ledger + each track's own handoff before dispatching.
@@ -146,7 +153,7 @@ network/port model for parallel dispatch).
 
 ## How to run it
 
-- **Set up the two-pane layout first** (overseer skill "## The two-pane layout").
+- **Run the clean-start teardown + three-pane layout first** (overseer skill "## The three-pane layout") — kill any prior dashboard panes, clear stale artifacts, rebuild table top-left / notes top-right / interactive below, verify live.
 - Enumerate sessions (`command tmux ls`). **Session `/clear` is FLAKY when a
   session is busy/has queued msgs**: Escape (drain) → confirm idle (no spinner) →
   `/clear` → verify the welcome banner BEFORE dispatching. `livespec1` got stuck
