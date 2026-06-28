@@ -24,10 +24,13 @@ that worker.
 
 ---
 
-**M1 + M2 are DONE; this file now drives M3 → M6 AUTONOMOUSLY** (the
+**M1 + M2 are DONE; M3's hole-closure (the genuine-absence assert guard)
+is DONE + released; this file now drives M4 → M6 AUTONOMOUSLY** (the
 maintainer delegated the cut 2026-06-28). The OVERSEER dispatches this into a
-dedicated worker session; **that worker — not the overseer — executes M3 → M6**
-(see §"Autonomous execution plan — M3 → M6" below).
+dedicated worker session; **that worker — not the overseer — executes M4 → M6**
+(see §"Autonomous execution plan — M3 → M6" below). M3's remaining
+`.livespec.jsonc` **generate/complete** half was intentionally folded into **M6**
+(a config-less scratch repo exercises it end-to-end) — see M3 + M6 below.
 
 ## FIRST ACTION — print live status (do not trust this file for status)
 
@@ -113,7 +116,12 @@ merged**. The verb lives in `livespec-dev-tooling`
 `livespec_dev_tooling/fleet/local_reconcile.py` (+ `_rows_local.py`,
 `_local_context.py`, `contract.py`), shipped in **dt v0.29.0**; core's `just
 bootstrap` runs `uv run python -m livespec_dev_tooling.fleet.local_reconcile`.
-**Remaining: M3 → M6.**
+**M3's hole-closure half (`zs22.8.3`) is DONE + released:** the genuine-absence
+assert guard ships in **dt v0.29.1** (`livespec_dev_tooling/fleet/_rows_baseline.py`
+`assert_baseline_harnesses` → a genuinely-absent `.livespec.jsonc` on a manifest
+member is now an ERROR finding via `ctx.tree`, not a vacuous skip; live
+fleet-conformance sweep green, all 8 members). **Remaining: M3's generate/complete
+half (folded into M6), then M4 → M6.**
 
 **Mandate (maintainer-delegated 2026-06-28):** the maintainer has handed the
 M3–M6 cut to **autonomous execution** — the earlier "human owns the cut" gate is
@@ -123,19 +131,40 @@ it ripens, implement it, and proceed — no per-cut gate. Decide-and-inform;
 surface only the genuine gates listed at the end.
 
 **M3 — `.livespec.jsonc` generate/complete + close the vacuous-pass hole.**
-- Extend the verb so reconcile GUARANTEES a complete `.livespec.jsonc`: ensure
-  `harnesses` is present; fill `connection` from the env wrapper, or emit a
-  `manual_hint` TODO when it can't be derived (never fabricate it).
-- Close the hole: add the assert-side guard that **a governed member (in the
-  fleet manifest) with no / incomplete `.livespec.jsonc` is a FINDING**, not a
-  vacuous pass (`plugin_resolution.py:322-324, 426-428`).
-- **Confirmed decision — guard rollout:** land the new finding **WARN-FIRST**
-  (the established per-check env warn/fail lever), **backfill every fleet
-  member's `.livespec.jsonc`** so each is complete, THEN flip the guard to
-  hard-fail. Never let it red fleet CI before the configs exist (a required-key
-  change is itself a cross-repo backfill epic — see CLAUDE.md).
-- Acceptance: verb fills/guards config; guard flipped to fail with all fleet
-  configs complete; `just check` green fleet-wide.
+- **Hole-closure half — DONE + released (`zs22.8.3`, dt v0.29.1).** The
+  assert-side guard now treats **a governed manifest member whose
+  `.livespec.jsonc` is GENUINELY ABSENT as an ERROR finding**, not a vacuous
+  skip. Realized in `livespec_dev_tooling/fleet/_rows_baseline.py`
+  (`assert_baseline_harnesses` → `_absent_or_unreadable`): genuine absence is
+  proven from the member's master tree (`ctx.tree`: readable, non-truncated,
+  file not listed); transient-unreadable / truncated stays a skip
+  (can't-read-is-not-absent). Spec: dt `contracts.md` §"Fleet surface".
+  - **Rollout outcome — warn-first collapsed to direct error-severity.** The
+    confirmed rollout was warn-first → backfill → flip. **All 8 fleet members
+    already carry a complete `harnesses`-bearing `.livespec.jsonc` (verified
+    2026-06-28)**, so the backfill precondition was already met and the guard
+    shipped directly at ERROR severity. Proven safe: the live
+    `fleet_conformance --owner thewoolleyman` sweep exits 0 with the guard
+    active. (No env warn/fail lever was added — the only precedent was the
+    `RowFinding.severity` field; warn-first would have been zero-value here.)
+- **Generate/complete half — FOLDED INTO M6 (not yet built).** Extending the
+  verb to GUARANTEE a complete `.livespec.jsonc` (ensure `harnesses`; fill
+  `connection` from `.beads/config.yaml` / the env wrapper, or emit a
+  `manual_hint` when it can't be derived; never fabricate) was deferred to M6,
+  because: (a) every current fleet member is already complete, so the completer
+  is a no-op on them; (b) there is **no fake-free way to auto-generate a correct
+  `harnesses` block** — statuses (supported/exempt + `canonical_command`/`reason`)
+  are a human-judgment seam per "never fake"; (c) the one genuinely machine-fillable
+  piece — the `connection` block from `.beads/config.yaml` — needs YAML extraction
+  + a jsonc-write, best built and validated against a real **config-less** repo,
+  which is exactly what M6's disposable scratch repo provides. Build it AS PART OF
+  M6's onboarding pass (a new `livespec-jsonc-complete` LocalObligationRow in
+  `_rows_local.py` + `LOCAL_OBLIGATION_ROWS`, detect-and-guide for `harnesses` /
+  machine-fill for `connection`).
+- Acceptance (met for the hole-closure half): guard is error-severity with all
+  fleet configs confirmed complete; live fleet-conformance sweep green; dt
+  `just check` green (48/48, 100% coverage). The verb's `fills`-config acceptance
+  rides with M6.
 
 **M4 — beads-runtime detect-and-guide rows.** Add obligation rows that PROBE the
 ledger backend — the `bd` binary (`$LIVESPEC_BD_PATH`), the Dolt server
@@ -150,7 +179,18 @@ fanned out — one PR per repo, pin bump, `just check` green each), then run the
 unified verb end-to-end against a fleet member: set one up from a fresh clone,
 and verify drift-detection on an already-configured one.
 
-**M6 — adopter dogfood (disposable scratch repo).**
+**M6 — adopter dogfood (disposable scratch repo) + build M3's generate/complete.**
+- **Build the config generate/complete here (the folded M3 half).** Before/while
+  onboarding the scratch repo, add the `.livespec.jsonc` generate/complete to the
+  LOCAL verb: a `livespec-jsonc-complete` LocalObligationRow
+  (`_rows_local.py` + `LOCAL_OBLIGATION_ROWS` in `contract.py`) that, against a
+  target checkout, GUARANTEES a `harnesses`-bearing `.livespec.jsonc` —
+  **detect-and-guide** for the `harnesses` statuses (a human-judgment seam; emit a
+  `manual_hint`, never fabricate) and **machine-fill** the `connection` block from
+  the repo's committed `.beads/config.yaml` (`dolt.*` keys → the five tenant fields;
+  the existing `assert_tenant_connection_consistency` row governs agreement). This
+  is what makes the verb "fill" config, not just guard it. The config-less scratch
+  repo is its first real exercise.
 - **Confirmed decision:** create a **DISPOSABLE scratch repo** (not a real
   adopter), onboard it from config-less to fully set-up via the verb, verify
   drift-detection, confirm the vacuous-pass hole is closed for a non-fleet repo,
@@ -164,9 +204,12 @@ and verify drift-detection on an already-configured one.
   count + id list before and after; confirm only the scratch project_id's items
   were added and removed). Secrets probe-only throughout.
 
-**Sequencing:** M3 → M4 → M5 → M6. dev-tooling changes cut a dt release; core +
-every fleet repo's pin bumps to it; `just check` stays green in EVERY touched
-repo within this one epic (no "follow-up in another session").
+**Sequencing:** M3-guard is LANDED (dt v0.29.1); remaining **M4 → M5 → M6**, with
+M6 also building M3's generate/complete half. dev-tooling changes cut a dt
+release; core + every fleet repo's pin bumps to it (the release fan-out
+auto-bumps `compat.pinned` / `[tool.uv.sources]` pins to the new tag); `just
+check` stays green in EVERY touched repo within this one epic (no "follow-up in
+another session").
 
 **Surface only these (else decide-and-inform):**
 - A genuinely NEW host/secret mutation BEYOND the pre-authorized test-reuse
