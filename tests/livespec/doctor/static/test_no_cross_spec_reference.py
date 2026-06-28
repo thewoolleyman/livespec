@@ -200,6 +200,66 @@ def test_run_passes_for_allowlisted_file_prefixed_citation(*, tmp_path: Path) ->
     )
 
 
+def test_run_fails_when_repo_qualified_citation_heading_is_absent_in_cited_repo(
+    *,
+    tmp_path: Path,
+) -> None:
+    """run(ctx) resolves a repo-qualified citation against that repo's headings.
+
+    The local tree deliberately carries the same heading text, so a
+    heading-only or basename-only resolution would pass. The cited
+    sibling clone lacks that heading, so the repo-qualified citation
+    must fail instead.
+    """
+    project_root, spec_root = _project(tmp_path=tmp_path)
+    sibling_root = tmp_path / "livespec"
+    sibling_spec_root = sibling_root / "SPECIFICATION"
+    citation = _cite(
+        heading="Collision heading",
+        file_prefix="livespec/SPECIFICATION/contracts.md",
+    )
+    _seed_spec_root(
+        spec_root=spec_root,
+        files={
+            "spec.md": f"# Spec\n\nPer {citation} upstream.\n",
+            "contracts.md": "# Contracts\n\n## Collision heading\n\nlocal only\n",
+        },
+    )
+    _seed_spec_root(
+        spec_root=sibling_spec_root,
+        files={"contracts.md": "# Contracts\n\n## Different heading\n\nupstream\n"},
+    )
+    allow = _cite(
+        heading="Collision heading",
+        file_prefix="SPECIFICATION/contracts.md",
+    )
+    _write_config(
+        project_root=project_root,
+        body=(
+            '{"external_references": {"livespec": ['
+            + _json(allow)
+            + ']}, "cross_repo_targets": {"livespec": {"local_clone": '
+            + _json(str(sibling_root))
+            + "}}}"
+        ),
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = Finding(
+        check_id="doctor-no-cross-spec-reference",
+        status="fail",
+        message=(
+            f"spec.md:3 section citation '{citation}' does not resolve to a "
+            f"heading in the same SPECIFICATION/ tree and is not allowlisted; "
+            f"add '{citation}' under an external_references repo key in "
+            f".livespec.jsonc to allow it"
+        ),
+        path=str(spec_root / "spec.md"),
+        line=3,
+        spec_root=str(spec_root),
+    )
+    assert no_cross_spec_reference.run(ctx=ctx) == IOSuccess(expected)
+
+
 def test_run_fails_for_unresolved_bare_citation(*, tmp_path: Path) -> None:
     """run(ctx) fails a bare citation whose heading exists nowhere in-tree."""
     project_root, spec_root = _project(tmp_path=tmp_path)

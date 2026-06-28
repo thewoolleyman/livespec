@@ -50,6 +50,7 @@ from returns.io import IOResult, IOSuccess
 
 from livespec.context import DoctorContext
 from livespec.doctor.static._no_cross_spec_reference_helpers import (
+    _CITATION_PATTERN,
     _MINIMAL_SHAPE_FILENAME,
     _allowlist_match,
     _build_finding_from_scan,
@@ -134,6 +135,110 @@ def _list_top_level_md_files(
     )
 
 
+def _config_cross_repo_targets_value(*, config: Any) -> Any:
+    """Extract the parsed `cross_repo_targets` block when present."""
+    if isinstance(config, dict):
+        return config.get("cross_repo_targets")
+    return None
+
+
+def _local_clone_for_repo(*, cross_repo_targets: Any, repo_slug: str) -> Path | None:
+    """Return a configured local clone path for `repo_slug`, if available."""
+    if not isinstance(cross_repo_targets, dict):
+        return None
+    target = cross_repo_targets.get(repo_slug)
+    if not isinstance(target, dict):  # pragma: no cover
+        return None
+    local_clone = target.get("local_clone")
+    if not isinstance(local_clone, str):  # pragma: no cover
+        return None
+    return Path(local_clone)
+
+
+def _cross_repo_heading_files(
+    *,
+    external_references: Any,
+    cross_repo_targets: Any,
+) -> dict[str, Path]:
+    """Map repo-qualified citation prefixes to local clone files."""
+    if not isinstance(external_references, dict):
+        return {}
+    files: dict[str, Path] = {}
+    for repo_slug, entries in external_references.items():
+        if not isinstance(repo_slug, str) or not isinstance(entries, list):  # pragma: no cover
+            continue
+        local_clone = _local_clone_for_repo(
+            cross_repo_targets=cross_repo_targets,
+            repo_slug=repo_slug,
+        )
+        if local_clone is None:
+            continue
+        for entry in entries:
+            if not isinstance(entry, str):  # pragma: no cover
+                continue
+            match = _CITATION_PATTERN.search(entry)
+            if match is None:  # pragma: no cover
+                continue
+            file_prefix = match.group("file")
+            if file_prefix is None:  # pragma: no cover
+                continue
+            files[f"{repo_slug}/{file_prefix}"] = local_clone / file_prefix
+    return files
+
+
+def _read_cross_repo_headings(
+    *,
+    heading_files: dict[str, Path],
+) -> IOResult[dict[str, frozenset[str]], LivespecError]:
+    """Read configured cited-repo files and collect their headings."""
+    accumulator: IOResult[dict[str, frozenset[str]], LivespecError] = IOSuccess({})
+    for citation_prefix, file_path in sorted(heading_files.items()):
+        if not file_path.is_file():  # pragma: no cover
+            accumulator = accumulator.map(
+                lambda acc, prefix=citation_prefix: {**acc, prefix: frozenset()},
+            )
+            continue
+        accumulator = accumulator.bind(
+            lambda acc, prefix=citation_prefix, path=file_path: fs.read_text(path=path).map(
+                lambda text, a=acc, p=prefix: {**a, p: frozenset(_collect_headings(text=text))},
+            ),
+        )
+    return accumulator
+
+
+def _validated_external_references(
+    *,
+    external_references: Any,
+    cross_repo_headings_by_path: dict[str, frozenset[str]],
+) -> Any:
+    """Drop configured allowlist entries whose cited repo lacks the heading."""
+    if not isinstance(external_references, dict):
+        return external_references
+    validated: dict[str, object] = {}
+    for repo_slug, entries in external_references.items():
+        if not isinstance(repo_slug, str) or not isinstance(entries, list):  # pragma: no cover
+            validated[str(repo_slug)] = entries
+            continue
+        kept: list[object] = []
+        for entry in entries:
+            if not isinstance(entry, str):  # pragma: no cover
+                kept.append(entry)
+                continue
+            match = _CITATION_PATTERN.search(entry)
+            if match is None:  # pragma: no cover
+                kept.append(entry)
+                continue
+            file_prefix = match.group("file")
+            if file_prefix is None:  # pragma: no cover
+                kept.append(entry)
+                continue
+            headings = cross_repo_headings_by_path.get(f"{repo_slug}/{file_prefix}")
+            if headings is None or match.group("head") in headings:
+                kept.append(entry)
+        validated[repo_slug] = kept
+    return validated
+
+
 def _walk_set(*, ctx: DoctorContext) -> IOResult[list[Path], LivespecError]:
     """Resolve the per-shape walk-set of `.md` files to scan."""
     minimal_path = ctx.spec_root / _MINIMAL_SHAPE_FILENAME
@@ -160,11 +265,21 @@ def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     ).lash(lambda _err: IOSuccess({}))
     return allowlist_io.bind(
         lambda config: _walk_set(ctx=ctx).bind(
-            lambda files: _read_all_texts(files=files).map(
-                lambda texts, cfg=config: _scan_all(
-                    ctx=ctx,
-                    texts=texts,
-                    external_references=_config_allowlist_value(config=cfg),
+            lambda files: _read_all_texts(files=files).bind(
+                lambda texts, cfg=config: _read_cross_repo_headings(
+                    heading_files=_cross_repo_heading_files(
+                        external_references=_config_allowlist_value(config=cfg),
+                        cross_repo_targets=_config_cross_repo_targets_value(config=cfg),
+                    ),
+                ).map(
+                    lambda cross_repo_headings, txt=texts, cfg=cfg: _scan_all(
+                        ctx=ctx,
+                        texts=txt,
+                        external_references=_validated_external_references(
+                            external_references=_config_allowlist_value(config=cfg),
+                            cross_repo_headings_by_path=cross_repo_headings,
+                        ),
+                    ),
                 ),
             ),
         ),
