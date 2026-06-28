@@ -5,6 +5,16 @@ design session captured verbatim in `../conversation/transcript.md`; the
 external grounding is in `01-prior-art.md`; the running decision trail and
 open items are in `03-decision-log.md`.
 
+> ⚠️ **SESSION-2 REVISIONS — read `03-decision-log.md` "Locked decisions —
+> session 2" first.** §§2, 4, 6 below are **partly superseded** and will be
+> re-synthesized at the end of the A–H walk. Net changes already locked:
+> **7 stored states** (`deferred` removed, `pending-approval` added);
+> **`groomed` is the `pending-approval` state**, not a property;
+> **`admission_approved` dropped** (approval ≡ being in `ready`); the word
+> **"receipt" retired** (transitions only); the **only derived overlay** is
+> `blocked:dependency`; **WIP cap is per-repo**; **beads uses custom
+> statuses (1:1)**. The locked transition table lives in `03-decision-log.md`.
+
 ## 1. Problem and thesis
 
 Today the work-item lifecycle is **implicit and scattered** across at
