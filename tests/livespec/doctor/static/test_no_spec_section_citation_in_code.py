@@ -174,6 +174,22 @@ def test_run_fails_on_skill_md_citation(*, tmp_path: Path) -> None:
     assert finding.line == 3
 
 
+def test_run_fails_on_rust_comment_citation(*, tmp_path: Path) -> None:
+    """run(ctx) fails when a Rust source comment cites a spec section."""
+    ctx, project_root, spec_root = _ctx(tmp_path=tmp_path)
+    rust_dir = project_root / "crates" / "demo" / "src"
+    rust_dir.mkdir(parents=True)
+    rust_path = rust_dir / "lib.rs"
+    _ = rust_path.write_text(
+        "pub fn demo() {}\n// Per " + _cite(heading="Rust wire") + "\n",
+        encoding="utf-8",
+    )
+    finding = _run_and_unwrap(ctx=ctx)
+    assert finding.status == "fail"
+    assert finding.path == str(rust_path)
+    assert finding.line == 2
+
+
 def test_run_ignores_section_marker_in_excluded_segments(*, tmp_path: Path) -> None:
     """run(ctx) does NOT scan paths under excluded segments.
 
