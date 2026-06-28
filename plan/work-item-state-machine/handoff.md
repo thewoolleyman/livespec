@@ -12,8 +12,12 @@ readiness predicate + Dispatcher markers + the `mode` lever + the janitor
 gate + the overseer's bash state table) into ONE explicit state machine
 with two human-delegable WIP valves. **No implementation has started.**
 The design is being driven to a locked, sliceable state by resolving the
-open items **A–H one at a time**; **A and B are now locked (session 2);
-C–H remain.**
+open items **A–H one at a time**. **Locked: A, C, and D (except D-3).
+Partly locked: B** (its lane-taxonomy is resolved by decision 32, but its
+`lane_of` signature/home + the `list-work-items --json` lane shape are
+still open). **Remaining walk order: G → D-3 → B → E → F → H.** (D-3 is
+sequenced right after G because it depends on G's output; B is sequenced
+just before E because E — the console — consumes B's emitted-lane shape.)
 
 ## Status (read from the ledger — never from this file)
 
@@ -28,73 +32,121 @@ C–H remain.**
 ## Read-first chain (in order)
 
 1. **`research/03-decision-log.md`** — START HERE. Decisions 1–21 are
-   session-1; **decisions 22–32 + the "Locked transition table (item A)"
-   are the session-2 refinements and are AUTHORITATIVE wherever they touch
-   the design doc.** The "Open items" list marks **A and B ✅ resolved;
-   C–H open.**
+   session-1; **22–32 + the "Locked transition table (item A)" are
+   session-2; 33–37 are session-3.** All are AUTHORITATIVE wherever they
+   touch the design doc. The "Open items" list marks **A, C ✅; B partly
+   (taxonomy ✅ via decision 32; signature/home/shape ⬜ open); D 🟡
+   (D-1/D-2/D-4 ✅, D-3 ⬜); E/F/G/H open.** Session-3 added: **C** =
+   post-merge acceptance (33–34, which AMEND item A's `complete`/`accept`/
+   `reject` rows); **D-1** owner≡`assignee` (35); **D-2** beads encoding
+   verified vs v1.0.5 (36); **D-4** fleet set (37).
 2. **`research/02-design.md`** — the design of record. Heed its top
-   banner: §§2/4/6 are **partly superseded** by the session-2 decisions
-   and await a re-synthesis pass (after the A–H walk). Read it for the
-   still-current parts (the two valves, `rank`, the console constraints,
-   the blast radius, the Mermaid diagrams); defer to the decision log for
-   the state-machine specifics.
+   banner: **§§2, 4, 6 are partly superseded** by the session-2/3 decisions
+   and await a re-synthesis pass (after the A–H walk). In particular §4's
+   "Acceptance valve" (which implied a PRE-merge release gate) is
+   superseded by decision 33 (acceptance is POST-merge); §6's beads mapping
+   table is superseded by decision 36. Read it for the still-current parts
+   (the admission valve, `rank`, the console constraints, the blast radius,
+   the Mermaid diagrams); defer to the decision log everywhere they differ.
 3. **`research/01-prior-art.md`** — external grounding (Open Engine /
    Gas Town / WIP theory / Linear / agentic state models), cited.
 4. **`conversation/transcript.md`** — the verbatim session-1 design
-   discussion (lossless `.jsonl` companion). Session-2 reasoning lives
+   discussion (lossless `.jsonl` companion). Session-2/3 reasoning lives
    inside the decision-log entries themselves.
 
-## The locked model so far (session 2 — the spine for everything)
+## The locked model so far (the spine for everything)
 
 - **Seven stored states:** `backlog · pending-approval · ready · active ·
   acceptance · blocked · done`. The single derived overlay: `ready` + any
-  open dependency → rendered `blocked:dependency` (auto-clears when the
-  blocker closes). The word "receipt" is retired — the model is just
-  states + transitions + the backend's native history.
-- **Grooming is the `backlog → pending-approval` transition** (a state,
-  not a boolean); **approval is the `pending-approval → ready` transition**
-  (approval ≡ being in `ready`; the `admission_approved` field is dropped).
+  open dependency → rendered `blocked:dependency` (auto-clears). "Receipt"
+  is retired — just states + transitions + the backend's native history.
+- **Grooming = `backlog → pending-approval`**; **approval = `pending-approval
+  → ready`** (approval ≡ being in `ready`; `admission_approved` dropped).
   `defer` → `pending-approval`; `bounce`/`reject(re-groom)` → `backlog`.
-  "Deferred vs never-approved" is one stored shape, told apart by activity.
-- **WIP cap is per-repo** (`.livespec.jsonc`, default 5; fleet total =
-  sum of caps, no fleet ceiling). **`rank`** (a fractional key) is the
-  sole order; `priority` is dropped. **beads realization = custom statuses
-  (1:1)**; git-jsonl = a schema-only update; both get activity natively.
-- **`lane_of` is one minimal pure function** (lane == status, plus the one
-  `blocked:dependency` overlay), lifted into `livespec_runtime`
-  (new `work_items/lifecycle.py`) as the single authority imported by
-  `next`/`dispatcher`/`doctor`, and **emitted** to the console via
-  `list-work-items --json` (console consumes, never re-derives).
-- Full table + field/guard details: decision log, "Locked transition
-  table (item A)" + decisions 22–32.
+- **Acceptance is POST-MERGE / in-production (session 3, decision 33).**
+  `just check` stays the HARD pre-merge floor; the AI/human fit-and-behavior
+  acceptance happens AFTER ship-on-green, against the shipped artifact +
+  telemetry. `complete` merges-on-green into the observable `acceptance`
+  state; `accept` is a post-ship confirmation (AI for `ai-only`; human from
+  the console for `ai-then-human`, item parked on the ledger); `reject` =
+  revert/fix-forward. Risk dial is at ADMISSION + reversibility, never a
+  pre-merge hold. (Majors/Fong-Jones "verify in production".)
+- **Ownership = the existing `assignee` field (decision 35)** — kept in
+  place, zero migration, set by the Dispatcher on `admit`, invariant
+  `active ⟹ assignee set`. ("owner ≡ assignee"; beads has no native `owner`,
+  its native field IS `assignee`.)
+- **WIP cap is per-repo** (`.livespec.jsonc`, default 5; fleet total = sum
+  of caps). **`rank`** (a fractional key) is the sole order; `priority`
+  dropped.
+- **Beads encoding (decision 36, verified vs gastownhall/beads v1.0.5):**
+  5 custom statuses (`backlog`, `pending-approval`, `ready:active`,
+  `active:wip`, `acceptance:wip`) + 2 built-in reuses (`blocked`;
+  `done`→`closed` for native closure). Categories: only `ready` = `active`.
+  `bd create` forces `open`, so the store's `append_work_item` needs a
+  2-step `create`+`update --status`. No transition enforcement in beads
+  (livespec's machine enforces in Python). git-jsonl = status-enum update.
+- **`lane_of` is one minimal pure function** (lane == status + the one
+  `blocked:dependency` overlay), living in the `livespec_runtime.work_items`
+  package, imported by `next`/`dispatcher`/`doctor` and **emitted** to the
+  console via `list-work-items --json`. NOTE: the exact module, the function
+  signature, and the emitted-lane JSON shape are **open item B** — not yet
+  locked by any decision (design §3 only says "the `livespec_runtime.work_items`
+  package"; no decision has fixed a module name like `lifecycle.py`).
+- **Fleet/blast radius (decision 37):** all 8 beads tenants under
+  `/data/projects/livespec*` migrate in lockstep; code touches
+  `livespec_runtime`, both orchestrators, the console.
+- Full detail + guards: the decision log (decisions 22–37 + the item-A
+  table, as amended by 34/35).
 
-## The next action — resume the A–H walk at item C
+## Beads ground-truth (for any further beads research)
 
-The maintainer chose to **resolve the open items A–H first, one at a
-time, before slicing the epic.** A and B are locked. **Resume at item C**
-(see `research/03-decision-log.md` "Open items"):
+- Canonical beads origin is **`github.com/gastownhall/beads`**
+  (`steveyegge/beads` redirects to it). A local clone at
+  `/data/projects/beads` has `upstream` already repointed to canonical and
+  is parked at tag **v1.0.5** (the livespec-pinned version) for inspection;
+  `origin` is the maintainer's fork. Verified there: custom statuses +
+  categories are real (`bd config set status.custom "name:category,…"`),
+  7 built-ins (`open,in_progress,blocked,deferred,closed,pinned,hooked`),
+  no status-transition enforcement, `bd create` forces `open`/`deferred`.
 
-- **C.** the `acceptance` "ai" verification mechanism (headless run vs.
-  inline) for `ai-only` / `ai-then-human`.
-- **D.** migration mechanics + the exact beads custom-status encoding +
-  the **`owner`-vs-`assignee`** reconciliation (see the A-note in the
-  decision log) + the exact fleet repo set.
-- **E.** console redesign + the zero-primary-state conformance test.
-- **F.** the `core ↔ driver ↔ orchestrator` dependency-edge check (the
-  "Driver → orchestrator = zero deps" invariant with the console added).
-- **G.** fractional-index library choice (vendor vs. port) + rebalance
-  trigger policy.
-- **H.** `rank` rebalance concurrency edge.
+## The next action — resume the walk at item G, then D-3, then B
+
+The maintainer is resolving open items **one at a time, before slicing the
+epic**; A, C, D (except D-3) are locked and B is partly locked. **Resume at
+item G** (D-3 depends on it; B follows before E):
+
+- **G.** Fractional-index library choice — **vendor** a small pure-Python
+  LexoRank/fractional-indexing impl vs. **port** one (per the project's
+  "prefer well-maintained libraries; vendoring small permissive pure-Python
+  libs under `scripts/_vendor/` is authorized" rule) — plus the **rebalance
+  trigger policy** (on-demand vs. key-length threshold).
+- **D-3** (unblocked by G). `rank` backfill for existing items +
+  `priority` drop. ORDER strategy is pre-agreed: rank existing items by
+  current `priority` → `captured_at` (preserves effective order), then drop
+  `priority`; G supplies the key generator for the actual values.
+- **B** (the still-open part). Lock the precise `lane_of` signature, its
+  exact module home in `livespec_runtime.work_items`, and the
+  `list-work-items --json` lane-emitting shape (the Python ↔ console seam
+  that E consumes). Decision 32 already fixed the taxonomy (lane == state +
+  the one `blocked:dependency` overlay); this is the engineering-signature
+  remainder.
+- **E.** Console full lane/view redesign + the "zero-primary-state /
+  rebuild-from-ledger" conformance test. (Consumes B's emitted-lane shape.)
+- **F.** Verify the `core ↔ driver ↔ orchestrator` dependency edges hold
+  the "Driver → orchestrator = zero deps" invariant with the console added.
+- **H.** `rank` rebalance concurrency edge (rebalance racing a concurrent
+  insert) — confirm "off-by-one-position, never corrupt" under the real
+  merge model.
 
 Work each with the maintainer **one item / one question per turn**; always
 lead with a recommendation; research the live code + beads before gating
-(the `livespec_runtime` package, both orchestrators' `commands/`, and
-`bd` itself are the ground truth). Record each resolution as a new
-decision-log entry. **After A–H:** re-synthesize `02-design.md` §§2/4/6
-from the session-2 decisions, then decompose the epic into
+(`livespec_runtime`, both orchestrators' `commands/`, and the
+`/data/projects/beads` v1.0.5 checkout are the ground truth). Record each
+resolution as a new decision-log entry. **After the walk:** re-synthesize
+`02-design.md` §§2/4/6 from the decisions, then decompose the epic into
 dependency-layered slices (foundation first: the shared `livespec_runtime`
-schema + the `lifecycle.py` single authority), routing each per the plan
-operation (becomes-contract → `/livespec:propose-change`; becomes-work →
+schema + `lane_of`), routing each per the plan operation
+(becomes-contract → `/livespec:propose-change`; becomes-work →
 `/livespec-orchestrator-beads-fabro:capture-work-item` as a child of
 `livespec-35s3zo`).
 
