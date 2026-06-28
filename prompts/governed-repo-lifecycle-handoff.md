@@ -6,9 +6,28 @@ parent `zs22`). The drift-check half is a SUPERSET that includes
 conformance. This file carries durable *design + plan*; the
 *authoritative status* lives in the ledger, never here.
 
+## ROLE GATE — read this BEFORE anything else
+
+**If your session is the OVERSEER** (its name contains `overseer`, or you were
+launched via the `overseer` skill): **STOP — do NOT run this inline.** This file
+is a *track to dispatch*, not a runbook for you to execute. Your only actions are
+(a) dispatch this prompt into a dedicated `livespecN` **worker** session and (b)
+watch that worker via the three-pane monitor. The overseer NEVER does this
+track's work itself (no product edits, no `just check`, no TDD/Red-Green commits,
+no track worktrees/PRs) — see `.claude/skills/overseer/SKILL.md` §"STEP 0". The
+ONE exception is fixing THIS prompt's orchestration apparatus (e.g. this gate),
+which the overseer may land doc-only.
+
+**Only proceed past this gate if you ARE the dedicated worker session** assigned
+to drive the `zs22.8` track. The rest of this file is written second-person to
+that worker.
+
+---
+
 **M1 + M2 are DONE; this file now drives M3 → M6 AUTONOMOUSLY** (the
-maintainer delegated the cut 2026-06-28). Kick it off by running this prompt in
-a fresh session — see §"Autonomous execution plan — M3 → M6" below.
+maintainer delegated the cut 2026-06-28). The OVERSEER dispatches this into a
+dedicated worker session; **that worker — not the overseer — executes M3 → M6**
+(see §"Autonomous execution plan — M3 → M6" below).
 
 ## FIRST ACTION — print live status (do not trust this file for status)
 
