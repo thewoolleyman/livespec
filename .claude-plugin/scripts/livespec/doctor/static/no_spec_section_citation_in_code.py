@@ -21,17 +21,18 @@ but MUST NOT name specific headings within those files
 (heading-level references rot silently on rename).
 
 This check scans the project's source for the section-sign
-citation marker appearing in a Python COMMENT or in a
-module/class/function DOCSTRING. The same marker inside ANY OTHER
-string literal is legitimate test data / regex / fixture content
-and is IGNORED — only comments and docstrings carry the
-heading-level citation the rule forbids.
+citation marker appearing in a Python COMMENT, in a
+module/class/function DOCSTRING, or in a Rust source file. The same
+marker inside any non-comment Python string literal is legitimate
+test data / regex / fixture content and is IGNORED.
 
 Walk-set:
   - every `*.py` file under `ctx.project_root`, EXCLUDING any path
     that descends through a segment named `archive`, `_vendor`,
     `__pycache__`, `.git`, or `node_modules`, and EXCLUDING the
     spec tree (`ctx.spec_root`);
+  - every `*.rs` file under `crates/**/src/` within
+    `ctx.project_root`, with the same exclusions;
   - every `skills/<name>/SKILL.md` under `ctx.project_root` — a
     whole-file text scan, since Markdown has no comment/code
     distinction to discriminate against (core ships no skills, but
@@ -39,10 +40,10 @@ Walk-set:
 
 For each `.py` file, `tokenize` surfaces COMMENT tokens and `ast`
 surfaces module/class/function docstrings; the marker in either is
-a violation. For each `SKILL.md`, any marker occurrence in the raw
-text is a violation. The check short-circuits on the first match
-in sorted path order, naming the file, the 1-indexed line, and the
-offending text.
+a violation. For each `.rs` file and `SKILL.md`, any marker
+occurrence in the raw text is a violation. The check short-circuits
+on the first match in sorted path order, naming the file, the
+1-indexed line, and the offending text.
 """
 
 from __future__ import annotations
@@ -256,6 +257,8 @@ def _build_finding(
     """Dispatch the per-suffix scan and translate a hit into a Finding."""
     if file_path.suffix == ".py":
         violation = _scan_python_text(text=text)
+    elif file_path.suffix == ".rs":
+        violation = _scan_skill_text(text=text)
     else:
         violation = _scan_skill_text(text=text)
     if violation is None:
@@ -269,11 +272,18 @@ def _build_finding(
     )
 
 
+def _is_rust_source(*, path: Path) -> bool:
+    """Return True iff `path` is a Rust source under `crates/**/src/`."""
+    return path.match("*/crates/**/src/*.rs")
+
+
 def _is_in_scan_set(*, path: Path, spec_root: Path) -> bool:
-    """Return True iff `path` is a scannable `.py` or `skills/.../SKILL.md`."""
+    """Return True iff `path` is a scannable source or skill-prose file."""
     if _is_excluded(path=path, spec_root=spec_root):
         return False
     if path.suffix == ".py":
+        return True
+    if _is_rust_source(path=path):
         return True
     return _is_skill_md(path=path)
 
@@ -317,7 +327,7 @@ def _walk_scan_set(*, ctx: DoctorContext) -> IOResult[list[Path], LivespecError]
 
     Uses `fs.list_tree` to enumerate the project tree (excluding the
     obvious top-level non-source dirs plus the spec-root basename),
-    then filters to the `.py` / `SKILL.md` scan set with the
+    then filters to the source / `SKILL.md` scan set with the
     per-segment exclusions applied.
     """
     exclude_top_level = _EXCLUDED_TOP_LEVEL | {ctx.spec_root.name}
@@ -332,11 +342,12 @@ def _walk_scan_set(*, ctx: DoctorContext) -> IOResult[list[Path], LivespecError]
 def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
     """Run the no-spec-section-citation-in-code check against `ctx`.
 
-    Walks `project_root` for scannable `.py` and `skills/.../SKILL.md`
-    files (excluding vendored, cached, archived, and spec-tree
-    paths), then folds each file's comment/docstring (`.py`) or
-    whole-file (`SKILL.md`) scan into a single first-violation
-    Finding. On no violation yields IOSuccess(Finding(status='pass'));
+    Walks `project_root` for scannable `.py`, Rust source, and
+    `skills/.../SKILL.md` files (excluding vendored, cached, archived,
+    and spec-tree paths), then folds each file's comment/docstring
+    (`.py`) or whole-file (`.rs` / `SKILL.md`) scan into a single
+    first-violation Finding. On no violation yields
+    IOSuccess(Finding(status='pass'));
     on the first section-sign citation yields
     IOSuccess(Finding(status='fail')) naming the file, 1-indexed
     line, and offending text.
