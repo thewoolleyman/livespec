@@ -6,6 +6,10 @@ parent `zs22`). The drift-check half is a SUPERSET that includes
 conformance. This file carries durable *design + plan*; the
 *authoritative status* lives in the ledger, never here.
 
+**M1 + M2 are DONE; this file now drives M3 → M6 AUTONOMOUSLY** (the
+maintainer delegated the cut 2026-06-28). Kick it off by running this prompt in
+a fresh session — see §"Autonomous execution plan — M3 → M6" below.
+
 ## FIRST ACTION — print live status (do not trust this file for status)
 
 ```
@@ -81,34 +85,97 @@ vacuous-pass hole by guaranteeing a `harnesses`-bearing config exists.
    install, NOT spec-side prose; never enters core's functional spec or
    the `/livespec:*` surface; callable by the conformance reporting.
 
-## Next concrete action
+## Autonomous execution plan — M3 → M6 (drive this track to completion)
 
-The track is at **M0** (this PR landed: the design doc, this handoff,
-and the `zs22.8` epic anchor). The next action is maintainer-gated
-because **the human owns the milestone cut**:
+**Status (verify via FIRST ACTION; do not trust this line):** M1
+(`zs22.8.1`, unified entry point specified) and M2 (`zs22.8.2`, the local
+first-touch reconcile verb + core `just bootstrap` delegation) are **DONE +
+merged**. The verb lives in `livespec-dev-tooling`
+`livespec_dev_tooling/fleet/local_reconcile.py` (+ `_rows_local.py`,
+`_local_context.py`, `contract.py`), shipped in **dt v0.29.0**; core's `just
+bootstrap` runs `uv run python -m livespec_dev_tooling.fleet.local_reconcile`.
+**Remaining: M3 → M6.**
 
-> With the maintainer, lock the **M0–M6 decomposition** in the design
-> doc's §"Milestone sketch" (adjust as directed), then file the first
-> ripe child — **M1: specify the unified entry point** — under epic
-> `zs22.8` via the `capture-work-item` operation, and begin M1 as a
-> `/livespec:propose-change` into `non-functional-requirements.md`.
+**Mandate (maintainer-delegated 2026-06-28):** the maintainer has handed the
+M3–M6 cut to **autonomous execution** — the earlier "human owns the cut" gate is
+LIFTED for these milestones. Run M3 → M6 as ONE cross-repo epic. **File each
+child** (`zs22.8.3` … `zs22.8.6`) under epic `zs22.8` via `capture-work-item` as
+it ripens, implement it, and proceed — no per-cut gate. Decide-and-inform;
+surface only the genuine gates listed at the end.
 
-Likely follow-on: **groom `zs22.8`** into the per-milestone slices once
-the cut is locked. Do NOT file children before the maintainer approves
-the cut.
+**M3 — `.livespec.jsonc` generate/complete + close the vacuous-pass hole.**
+- Extend the verb so reconcile GUARANTEES a complete `.livespec.jsonc`: ensure
+  `harnesses` is present; fill `connection` from the env wrapper, or emit a
+  `manual_hint` TODO when it can't be derived (never fabricate it).
+- Close the hole: add the assert-side guard that **a governed member (in the
+  fleet manifest) with no / incomplete `.livespec.jsonc` is a FINDING**, not a
+  vacuous pass (`plugin_resolution.py:322-324, 426-428`).
+- **Confirmed decision — guard rollout:** land the new finding **WARN-FIRST**
+  (the established per-check env warn/fail lever), **backfill every fleet
+  member's `.livespec.jsonc`** so each is complete, THEN flip the guard to
+  hard-fail. Never let it red fleet CI before the configs exist (a required-key
+  change is itself a cross-repo backfill epic — see CLAUDE.md).
+- Acceptance: verb fills/guards config; guard flipped to fail with all fleet
+  configs complete; `just check` green fleet-wide.
 
-## Open design questions (decide early — see design doc §"Open questions")
+**M4 — beads-runtime detect-and-guide rows.** Add obligation rows that PROBE the
+ledger backend — the `bd` binary (`$LIVESPEC_BD_PATH`), the Dolt server
+(`127.0.0.1:3307`), the tenant secret (`BEADS_DOLT_PASSWORD`, presence only), and
+the `.beads/` pointers (`config.yaml` committed, `metadata.json` regenerable) —
+emitting a `manual_hint` per unmet seam. Secrets stay **probe-only** (`printenv
+NAME | wc -c`, never echo). Additive rows in `contract.py`; no new mechanism.
 
-- **Where the unified verb lives** — beside `wire_fleet_member` in
-  `livespec-dev-tooling` (extends the same table) with thin `just`
-  delegators per repo, vs. core. Gated on the `baseline`-tooling
-  extraction sequencing.
-- **Local setup vs. central wiring vantage** — `wire_fleet_member` works
-  from a central GitHub vantage; first-touch local setup is in-checkout.
-  Confirm the local/central row split (no row needs both).
-- **Adopter not-yet-in-manifest** — `wire_fleet_member` exits 1 if
-  `--repo` is not a declared member. Decide register-then-wire in one
-  pass vs. registration as a deliberate human-gated first step.
+**M5 — fleet dogfood + the deferred fleet-wide bootstrap rewire.** Rewire every
+fleet member's `just bootstrap` to the thin delegator (the M2 pattern, now
+fanned out — one PR per repo, pin bump, `just check` green each), then run the
+unified verb end-to-end against a fleet member: set one up from a fresh clone,
+and verify drift-detection on an already-configured one.
+
+**M6 — adopter dogfood (disposable scratch repo).**
+- **Confirmed decision:** create a **DISPOSABLE scratch repo** (not a real
+  adopter), onboard it from config-less to fully set-up via the verb, verify
+  drift-detection, confirm the vacuous-pass hole is closed for a non-fleet repo,
+  then **DELETE the scratch repo**.
+- **Confirmed decision — beads for the dogfood:** do NOT provision a new tenant.
+  **Reuse an existing fleet repo's tenant auth/connection** (the existing
+  `/data/projects/1password-env-wrapper/with-livespec-env.sh` wrapper) to run the
+  test. The scratch repo gets its own beads `project_id` in that tenant, so every
+  item the dogfood creates is scoped to it; after the test **PURGE every test
+  item** and **verify the tenant's real-item set is unchanged** (capture a
+  count + id list before and after; confirm only the scratch project_id's items
+  were added and removed). Secrets probe-only throughout.
+
+**Sequencing:** M3 → M4 → M5 → M6. dev-tooling changes cut a dt release; core +
+every fleet repo's pin bumps to it; `just check` stays green in EVERY touched
+repo within this one epic (no "follow-up in another session").
+
+**Surface only these (else decide-and-inform):**
+- A genuinely NEW host/secret mutation BEYOND the pre-authorized test-reuse
+  (e.g. creating a real new beads tenant, rotating a secret).
+- Pushing/force-pushing to any repo/branch this session did NOT create (the
+  scratch repo it creates for M6 is fine; deleting that scratch repo is fine).
+- A real product/architecture fork not covered by the locked framing above.
+
+Hand off at ~50% context by refreshing THIS file to the then-current state and
+landing it via the worktree → PR → merge flow.
+
+**Close-out:** when M3–M6 land, dogfood is green, and the vacuous-pass hole is
+closed, close `zs22.8.3…6` and the epic `zs22.8`, then archive this file (see
+**Archive condition**). **Report:** reply `DONE` with the merged PRs + closed
+epic, or `BLOCKED <one-line diagnosis>` on a genuine blocker.
+
+## Resolved design decisions (were open at M0; now locked)
+
+- **Verb home — RESOLVED:** `livespec-dev-tooling`, beside `wire_fleet_member`
+  (extends the same `contract.py` table); thin `just` delegators per repo. Built
+  in M2.
+- **Local vs. central vantage — RESOLVED:** single-vantage **LOCAL** rows run in
+  the checkout (`_rows_local.py`); central rows (secrets, branch protection,
+  topic, shim PRs) stay in `wire_fleet_member`. No row needs both.
+- **Adopter not-yet-in-manifest — RESOLVED (for the dogfood):** M6 uses a
+  disposable scratch repo created + onboarded + deleted by this track;
+  registration of a real adopter remains a deliberate human-gated step outside
+  this epic.
 
 ## Constraints / non-negotiables
 
