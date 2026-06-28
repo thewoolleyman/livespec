@@ -24,16 +24,20 @@ that worker.
 
 ---
 
-**M1 + M2 + M3-hole-closure + M4 are DONE + released; M5's verb-robustness
-enabler is landing.** This file now drives the **M5 fleet-wide bootstrap rewire
-(0/7) → M6** AUTONOMOUSLY (the maintainer delegated the cut 2026-06-28). The
+**M1–M5 are DONE + merged; M6 is the SOLE remaining milestone.** This file now
+drives **M6** AUTONOMOUSLY (the maintainer delegated the cut 2026-06-28). The
 OVERSEER dispatches this into a dedicated worker session; **that worker — not the
 overseer — executes the rest** (see §"Autonomous execution plan" below). M3's
 remaining `.livespec.jsonc` **generate/complete** half was intentionally folded
 into **M6** (a config-less scratch repo exercises it end-to-end) — see M3 + M6
-below. **Start at the M5 fan-out: read the per-member map in the `zs22.8.5`
-ledger note FIRST (the fleet is non-uniform — a blind template apply breaks
-member bootstrap).**
+below. **Start at M6.** (M5's fleet-wide `just bootstrap` rewire landed in all 7
+members — verb-only: driver-claude #65, runtime #78, driver-codex #38,
+dev-tooling #220; verb + worktree-pack TAIL: orchestrator-beads-fabro #196,
+orchestrator-git-jsonl #142, console #58 [console also bumped its stale dt pin
+v0.28.0→v0.30.1 + uv.lock refresh]; core was already verb-only from M2. The verb
+was then drift-dogfooded against core — exit 0, every row
+reconciled/already-satisfied, the two host-seam beads rows correctly
+WARNING-guided without failing. See the closed `zs22.8.5` ledger note.)
 
 ## FIRST ACTION — print live status (do not trust this file for status)
 
@@ -126,12 +130,14 @@ member is now an ERROR finding via `ctx.tree`, not a vacuous skip; live
 fleet-conformance sweep green, all 8 members). **M4 (`zs22.8.4`) is DONE +
 released:** five beads-runtime detect-and-guide rows ship in **dt v0.30.0**
 (`_rows_local_beads.py`, gated on `.beads/`, warning-severity guidance honored by
-the verb). **M5's verb-robustness enabler (`zs22.8.5`, dt v0.30.1) is landing:**
-the verb's plugin rows now SKIP when a member lacks the `ensure-plugins` /
-`ensure-codex-plugins` recipe (unblocks the fan-out for `livespec-driver-codex`,
-which has no codex recipe). **Remaining: M5's fleet-wide bootstrap rewire
-(0/7 done — see the per-member map in the ledger note on `zs22.8.5`), then M3's
-generate/complete half folded into M6.**
+the verb). **M5 (`zs22.8.5`) is DONE + merged + CLOSED:** the verb-robustness
+enabler shipped in **dt v0.30.1** (plugin rows SKIP when a member lacks the
+`ensure-plugins` / `ensure-codex-plugins` recipe), and the fleet-wide `just
+bootstrap` rewire landed in all 7 members (one `chore` PR each, rebase-merged,
+full `just check` green; PRs listed in the banner above and the `zs22.8.5` close
+note) + drift-dogfooded against core (exit 0). **Remaining: ONLY M6 —
+the `.livespec.jsonc` generate/complete half folded out of M3, plus the
+disposable scratch-repo dogfood.**
 
 **Mandate (maintainer-delegated 2026-06-28):** the maintainer has handed the
 M3–M6 cut to **autonomous execution** — the earlier "human owns the cut" gate is
@@ -189,36 +195,44 @@ guides instead of failing when the backend is down). Verified by hermetic tests 
 a live smoke against core (4 prereqs pass, bd-binary guides). Spec: dt
 `contracts.md` §"Fleet surface" (local-vantage reconcile paragraph).
 
-**M5 — fleet dogfood + the deferred fleet-wide bootstrap rewire (IN PROGRESS).**
-Rewire every fleet member's `just bootstrap` to delegate to the verb (the M2
-pattern, fanned out — one PR per repo, `just check` green each).
-- **Enabler DONE (`zs22.8.5`, dt v0.30.1, landing):** the verb's plugin rows SKIP
-  when a member lacks `ensure-plugins` / `ensure-codex-plugins` (the verb
-  delegates to the member's OWN recipes; an absent recipe is nothing to do, not a
-  fault). This unblocks `livespec-driver-codex` (no codex recipe) for the fan-out.
-- **CRITICAL — the fleet is NON-UNIFORM; do NOT blind-apply a template** (full
-  per-member map is in the ledger note on `zs22.8.5`; read it first). The rewire
-  is `verb-call + member-specific TAIL`, per repo. The verb SUBSUMES: mise
-  trust/install, uv sync, commit-refuse-hooks (this subsumes `lefthook install` —
-  the canonical hook overwrites the lefthook stubs), git-notes-refspec,
-  worktree-root mise-trust, `.beads` chmod, claude/codex plugin rows, beads-runtime
-  probes. Classification:
-  - **verb-ONLY** (no tail): `livespec-driver-claude`, `livespec-runtime` (core
-    already done in M2). Rewire to `uv run python -m livespec_dev_tooling.fleet.local_reconcile`.
-  - **verb + TAIL** (keep `just install-worktree-pack` + `chmod +x
-    dev-tooling/worktree-hydrate.sh`, plus the console's shebang/`primary_path`):
-    `livespec-dev-tooling`, `livespec-orchestrator-beads-fabro`,
-    `livespec-orchestrator-git-jsonl`, `livespec-console-beads-fabro`.
-  - **needed the enabler** (now unblocked by dt v0.30.1): `livespec-driver-codex`
-    — bump its pin to v0.30.1 first, then rewire.
-- **SAFETY:** `just bootstrap` correctness is NOT gated by `just check`; verify
-  each FULL recipe maps every step to verb-covered-or-tail and preserve every
-  non-covered step. justfile-only → `chore(...)` commits, no TDD ritual.
-- **Dogfood:** the verb is validated against core piecewise (M2 green bootstrap,
-  M3 live fleet sweep, M4 live beads smoke). The fresh-clone full-setup +
-  drift-detection run is most safely done on M6's disposable scratch repo (running
-  a full mutating `just bootstrap` on a live fleet member's checkout was
-  deliberately avoided as session-disruptive).
+**M5 — fleet dogfood + the deferred fleet-wide bootstrap rewire. DONE + merged +
+closed (`zs22.8.5`).** Every fleet member's `just bootstrap` now delegates to the
+verb (one `chore` PR each, rebase-merged, full `just check` green). The enabler
+(dt v0.30.1) made the verb's plugin rows SKIP when a member lacks `ensure-plugins`
+/ `ensure-codex-plugins`. The fleet IS non-uniform, so each FULL recipe was
+verified before rewiring (the original ~20-line survey misclassified two repos —
+corrected below). Final landed classification:
+  - **verb-ONLY** (`uv run python -m livespec_dev_tooling.fleet.local_reconcile`,
+    no tail): `livespec-driver-claude` (#65), `livespec-runtime` (#78),
+    `livespec-driver-codex` (#38 — no `ensure-codex-plugins` recipe, so the
+    codex-plugins row SKIPs), `livespec-dev-tooling` (#220 — runs the verb against
+    its OWN source; **survey misclassification corrected: its real bootstrap never
+    called `install-worktree-pack`, so verb-only, not tail**). Core was already
+    verb-only from M2.
+  - **verb + worktree-pack TAIL** (`just install-worktree-pack` + `chmod +x
+    dev-tooling/worktree-hydrate.sh` preserved; the orchestrators/console were
+    shebang recipes flattened to plain): `livespec-orchestrator-beads-fabro`
+    (#196), `livespec-orchestrator-git-jsonl` (#142), `livespec-console-beads-fabro`
+    (#58 — **also needed a dt pin bump v0.28.0→v0.30.1 + uv.lock refresh: it was
+    the stale laggard whose pin predated the verb; CI green at v0.30.1; its
+    `primary_path` precompute was dropped because the verb's beads-dir-perms row
+    resolves the primary itself**).
+  The verb SUBSUMES: mise trust/install, uv sync, commit-refuse-hooks (subsumes
+  `lefthook install`), git-notes-refspec, worktree-root mise-trust, `.beads`
+  chmod, claude/codex plugin rows, beads-runtime probes.
+- **Dogfood DONE:** ran the verb in drift mode against core → **exit 0**; every
+  row reconciled/already-satisfied/skipped; `beads-bd-binary` + `beads-tenant-secret`
+  correctly emitted WARNING detect-and-guide (plain shell, no env wrapper) without
+  failing the verb — validating the M4 warning-severity seam end-to-end with the
+  M3 guard + M4 rows + M5 skip-enabler all active. (The fresh-clone full-setup +
+  drift run on a config-less repo remains M6's scratch-repo job.)
+- **SEPARATE pre-existing finding (NOT M5/M6 scope — flagged by 4 rewire agents):**
+  fleet-wide `pyproject.toml`↔`uv.lock` dt-pin drift — the release fan-out bumps
+  each repo's pin but does NOT re-run `uv lock`, so the committed lock lags the
+  pin (seen on dev-tooling, runtime, driver-codex, git-jsonl, core; CI green
+  everywhere — no `--frozen`/`--locked` gate, so cosmetic). Candidate follow-up:
+  have `bump-pin` also run `uv lock`. File as its own work-item after M6 (verify
+  per-repo first — non-uniform); do NOT bundle into M6.
 
 **M6 — adopter dogfood (disposable scratch repo) + build M3's generate/complete.**
 - **Build the config generate/complete here (the folded M3 half).** Before/while
@@ -232,6 +246,43 @@ pattern, fanned out — one PR per repo, `just check` green each).
   the existing `assert_tenant_connection_consistency` row governs agreement). This
   is what makes the verb "fill" config, not just guard it. The config-less scratch
   repo is its first real exercise.
+  - **Implementation facts verified this session (build straight from these):**
+    - `LocalContext` exposes only `exec` + `checkout`/`home`/`run` (no filesystem
+      seam), but `reconcile_beads_dir_perms` already reaches the tree directly via
+      `ctx.checkout / ".beads"` (`.is_dir()`) — so the row reads/writes
+      `ctx.checkout / ".livespec.jsonc"` via `Path` directly, tested with
+      `tmp_path` checkouts (`monkeypatch.chdir`).
+    - **Reuse, don't re-implement** (from `_rows_beads.py`): `_parse_beads_config`,
+      `_connection_block` / `_named_plugin_connection`, and `CONNECTION_FIELD_PAIRS`
+      (the five `dolt.*`→jsonc-key pairs). Promote them to a shared module if a
+      cross-vantage import is awkward. The `connection` block is **NON-SECRET**
+      (host/port/user/database/prefix); the tenant PASSWORD is the secret and stays
+      a detect-and-guide warning (the M4 `beads-tenant-secret` row) — so filling
+      `connection` fakes no human seam.
+    - The harnesses-PRESENCE guard is the CENTRAL `assert_baseline_harnesses`
+      (fleet sweep, ERROR severity); this LOCAL completer is COMPLEMENTARY —
+      guides+fills at first-touch.
+    - **Suggested row semantics** (one `reconcile_local`, no `assert_local`, like
+      the beads probes): (1) `.livespec.jsonc` absent → WARNING guide (author a
+      harnesses-bearing config; can't fabricate the structure); (2) unparseable →
+      WARNING (fix by hand; never auto-edit a broken file); (3) no `harnesses`
+      block → WARNING guide (statuses are the human seam); (4) harnesses present +
+      not beads-backed → PASS; (5) harnesses present + beads-backed + `connection`
+      absent/incomplete → machine-FILL → PASS; (6) complete+consistent → PASS.
+      Wire into `LOCAL_OBLIGATION_ROWS` after `codex-plugins`, before
+      `beads-bd-binary`.
+    - **THE HARD PART — comment-preserving jsonc WRITE.** `jsoncomment.loads`
+      strips comments and `json.dumps` would nuke the heavily-commented
+      `.livespec.jsonc`; do a TARGETED text insertion of the `connection`
+      sub-block under the impl-plugin block, NOT a full re-serialize. Verify the
+      written file re-parses AND the central `assert_tenant_connection_consistency`
+      then passes.
+    - This row WRITES a tracked file (`.livespec.jsonc`) during `just bootstrap`
+      on a config-INCOMPLETE checkout (onboarding fills it; the human then commits
+      the change); on a configured member it is a no-op. Within the locked framing.
+    - Product `.py` → **red-green-replay ritual** in dev-tooling (Red stages ONE
+      test file alone; Green amend adds impl + remaining tests). Then a dt release
+      (`feat:`) cuts; the fan-out bumps core + fleet pins to it.
 - **Confirmed decision:** create a **DISPOSABLE scratch repo** (not a real
   adopter), onboard it from config-less to fully set-up via the verb, verify
   drift-detection, confirm the vacuous-pass hole is closed for a non-fleet repo,
@@ -245,14 +296,15 @@ pattern, fanned out — one PR per repo, `just check` green each).
   count + id list before and after; confirm only the scratch project_id's items
   were added and removed). Secrets probe-only throughout.
 
-**Sequencing:** M3-guard (dt v0.29.1), M4 (dt v0.30.0), and the M5 verb-robustness
-enabler (dt v0.30.1) are LANDED. Remaining: **M5 bootstrap-rewire fan-out (0/7) →
-M6** (M6 also builds M3's generate/complete half). dev-tooling changes cut a dt
-release; core + every fleet repo's pin bumps to it (the release fan-out
-auto-bumps `compat.pinned` / `[tool.uv.sources]` pins to the new tag); `just
-check` stays green in EVERY touched repo within this one epic. The M5 rewires are
-justfile-only `chore(...)` commits (no TDD ritual) — one PR per member, branched
-from each member's latest master.
+**Sequencing:** M3-guard (dt v0.29.1), M4 (dt v0.30.0), the M5 enabler (dt
+v0.30.1), AND the full M5 bootstrap-rewire fan-out (7/7 merged) are LANDED.
+Remaining: **ONLY M6** (build M3's generate/complete `livespec-jsonc-complete`
+row + the disposable scratch-repo dogfood). M6's dev-tooling row is product `.py`
+(red-green-replay ritual) and cuts a dt release; the release fan-out then
+auto-bumps core + fleet pins (`compat.pinned` / `[tool.uv.sources]`) to the new
+tag, `just check` staying green in every touched repo within this one epic. Do
+the M6 dev-tooling row build AFTER confirming dev-tooling master is settled (the
+M5 `chore` rewire PR #220 already merged, so master is clean for the row PR).
 
 **Surface only these (else decide-and-inform):**
 - A genuinely NEW host/secret mutation BEYOND the pre-authorized test-reuse
