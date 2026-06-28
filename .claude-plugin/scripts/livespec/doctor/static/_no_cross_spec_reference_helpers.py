@@ -22,6 +22,11 @@ from pathlib import Path
 from typing import Any, cast
 
 from livespec.context import DoctorContext
+from livespec.doctor.static._no_cross_spec_reference_allowlist import (
+    _CITATION_PATTERN,
+    _allowlist_match,
+    _flatten_allowlist,
+)
 from livespec.schemas.dataclasses.finding import Finding
 from livespec.types import CheckId, SpecRoot
 
@@ -72,18 +77,6 @@ _FENCE_PATTERN: re.Pattern[str] = re.compile(r"^\s*(?:```|~~~)")
 # citation that merely contains a backtick fragment inside its
 # quoted heading still resolves.
 _INLINE_CODE_PATTERN: re.Pattern[str] = re.compile(r"`[^`]*`")
-
-# Pattern matching a section citation: an optional `<path>.md`
-# file prefix, then the section sign followed by a double-quoted
-# heading. Group `file` is the optional file prefix (None for a
-# bare citation); group `head` is the heading text between the
-# quotes. The heading body is `[^"]*` — the first closing quote
-# terminates it (a nested citation inside the quotes resolves to
-# the truncated head, which simply fails to resolve and surfaces
-# as the actionable violation rather than silently passing).
-_CITATION_PATTERN: re.Pattern[str] = re.compile(
-    r'(?:(?P<file>[^\s"`()]+\.md)\s+)?§"(?P<head>[^"]*)"',
-)
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -210,86 +203,11 @@ def _prose_lines(*, text: str) -> list[str]:
     return out
 
 
-def _flatten_allowlist(*, external_references: Any) -> tuple[set[str], set[str]]:
-    """Flatten the `external_references` block into matchable sets.
-
-    Returns `(entry_strings, entry_headings)`:
-      - `entry_strings`: every file-plus-heading allowlist string
-        verbatim, used to match a file-prefixed citation by its
-        reconstructed basename-plus-heading form;
-      - `entry_headings`: the heading text of every allowlist
-        entry, used to match a BARE citation (prose citations of a
-        sibling-repo heading frequently omit the `<file>` prefix).
-
-    A malformed block (not a dict, or a value that is not a list of
-    strings) contributes nothing — a parse-shape fault degrades to
-    "no allowlist", which can only make the check stricter, never
-    spuriously pass.
-    """
-    entry_strings: set[str] = set()
-    entry_headings: set[str] = set()
-    if not isinstance(external_references, dict):
-        return (entry_strings, entry_headings)
-    block = cast("dict[str, object]", external_references)
-    for entries in block.values():
-        if not isinstance(entries, list):
-            continue
-        items = cast("list[object]", entries)
-        for entry in items:
-            if not isinstance(entry, str):
-                continue
-            entry_strings.add(entry)
-            head_match = _CITATION_PATTERN.search(entry)
-            if head_match is not None:
-                entry_headings.add(head_match.group("head"))
-    return (entry_strings, entry_headings)
-
-
 def _citation_text(*, file_prefix: str | None, heading: str) -> str:
     """Reconstruct the literal citation text for messages/matching."""
     if file_prefix is None:
         return f'§"{heading}"'
     return f'{file_prefix} §"{heading}"'
-
-
-def _allowlist_match(
-    *,
-    file_prefix: str | None,
-    heading: str,
-    entry_strings: Set[str],
-    entry_headings: Set[str],
-) -> bool:
-    """Return True iff this citation is covered by the allowlist.
-
-    A BARE citation (no file prefix) matches when its heading text
-    is the heading of any allowlist entry — prose citations of a
-    sibling-repo heading frequently omit the `<file>` prefix, so the
-    heading text alone is the matchable key.
-
-    A FILE-PREFIXED citation matches by the precise
-    basename-plus-heading comparison: its reconstructed
-    basename-plus-heading string must equal an allowlist entry's own
-    basename-plus-heading form. This is stricter than the bare
-    case on purpose — a file-prefixed citation naming the WRONG file
-    must not pass just because its heading text coincides with a
-    differently-filed allowlist entry. (The allowlist may spell the
-    file with a `SPECIFICATION/` directory prefix; basename
-    comparison makes the two spellings agree.)
-    """
-    if file_prefix is None:
-        return heading in entry_headings
-    citation_basename = Path(file_prefix).name
-    target = f'{citation_basename} §"{heading}"'
-    for entry in entry_strings:
-        entry_match = _CITATION_PATTERN.search(entry)
-        if entry_match is None:
-            continue
-        entry_file = entry_match.group("file")
-        if entry_file is None:
-            continue
-        if f'{Path(entry_file).name} §"{entry_match.group("head")}"' == target:
-            return True
-    return False
 
 
 def _same_tree_match(
@@ -408,9 +326,14 @@ def _scan_all(
     fail-Finding (short-circuit); when every file is clean, the
     pass-Finding is returned.
     """
-    entry_strings, entry_headings = _flatten_allowlist(
+    entry_strings, entry_headings, entry_strings_by_repo = _flatten_allowlist(
         external_references=external_references,
     )
+    scoped_entry_strings = entry_strings | {
+        f"{repo_slug}/{entry}"
+        for repo_slug, entries in entry_strings_by_repo.items()
+        for entry in entries
+    }
     headings_by_file: dict[str, frozenset[str]] = {
         path.name: frozenset(_collect_headings(text=text)) for path, text in texts.items()
     }
@@ -420,7 +343,7 @@ def _scan_all(
     resolver = _Resolver(
         all_headings=frozenset(all_headings),
         headings_by_file=headings_by_file,
-        entry_strings=frozenset(entry_strings),
+        entry_strings=frozenset(scoped_entry_strings),
         entry_headings=frozenset(entry_headings),
     )
     for file_path in sorted(texts):

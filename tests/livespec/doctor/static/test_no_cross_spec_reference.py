@@ -192,8 +192,51 @@ def test_run_passes_for_allowlisted_file_prefixed_citation(*, tmp_path: Path) ->
     )
     _write_config(
         project_root=project_root,
-        body='{"external_references": {"x": [' + _json(allow) + "]}}",
+        body='{"external_references": {"livespec-x": [' + _json(allow) + "]}}",
     )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    assert no_cross_spec_reference.run(ctx=ctx) == IOSuccess(
+        _pass_finding(spec_root=spec_root),
+    )
+
+
+def test_run_uses_sibling_clones_root_for_cross_repo_heading_validation(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """The cross-repo heading read honors the shared CI clones-root override."""
+    project_root, spec_root = _project(tmp_path=tmp_path)
+    clones_root = tmp_path / "clones"
+    sibling_root = clones_root / "repo-a"
+    sibling_spec_root = sibling_root / "SPECIFICATION"
+    citation = _cite(
+        heading="Shared heading",
+        file_prefix="repo-a/SPECIFICATION/contracts.md",
+    )
+    _seed_spec_root(
+        spec_root=spec_root,
+        files={"spec.md": f"# Spec\n\nPer {citation} upstream.\n"},
+    )
+    _seed_spec_root(
+        spec_root=sibling_spec_root,
+        files={"contracts.md": "# Contracts\n\n## Shared heading\n\nupstream\n"},
+    )
+    allow = _cite(
+        heading="Shared heading",
+        file_prefix="SPECIFICATION/contracts.md",
+    )
+    _write_config(
+        project_root=project_root,
+        body=(
+            '{"external_references": {"repo-a": ['
+            + _json(allow)
+            + ']}, "cross_repo_targets": {"repo-a": {"local_clone": '
+            + _json(str(tmp_path / "stale-manifest-path"))
+            + "}}}"
+        ),
+    )
+    monkeypatch.setenv("LIVESPEC_SIBLING_CLONES_ROOT", str(clones_root))
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     assert no_cross_spec_reference.run(ctx=ctx) == IOSuccess(
         _pass_finding(spec_root=spec_root),
@@ -240,6 +283,57 @@ def test_run_fails_when_repo_qualified_citation_heading_is_absent_in_cited_repo(
             + _json(allow)
             + ']}, "cross_repo_targets": {"livespec": {"local_clone": '
             + _json(str(sibling_root))
+            + "}}}"
+        ),
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    expected = Finding(
+        check_id="doctor-no-cross-spec-reference",
+        status="fail",
+        message=(
+            f"spec.md:3 section citation '{citation}' does not resolve to a "
+            f"heading in the same SPECIFICATION/ tree and is not allowlisted; "
+            f"add '{citation}' under an external_references repo key in "
+            f".livespec.jsonc to allow it"
+        ),
+        path=str(spec_root / "spec.md"),
+        line=3,
+        spec_root=str(spec_root),
+    )
+    assert no_cross_spec_reference.run(ctx=ctx) == IOSuccess(expected)
+
+
+def test_run_fails_when_repo_qualified_citation_matches_different_repo_allowlist(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A repo-qualified citation must match the same allowlist repo key."""
+    project_root, spec_root = _project(tmp_path=tmp_path)
+    sibling_a_root = tmp_path / "repo-a"
+    sibling_a_spec_root = sibling_a_root / "SPECIFICATION"
+    citation = _cite(
+        heading="Shared heading",
+        file_prefix="repo-b/SPECIFICATION/contracts.md",
+    )
+    _seed_spec_root(
+        spec_root=spec_root,
+        files={"spec.md": f"# Spec\n\nPer {citation} upstream.\n"},
+    )
+    _seed_spec_root(
+        spec_root=sibling_a_spec_root,
+        files={"contracts.md": "# Contracts\n\n## Shared heading\n\nupstream\n"},
+    )
+    allow = _cite(
+        heading="Shared heading",
+        file_prefix="SPECIFICATION/contracts.md",
+    )
+    _write_config(
+        project_root=project_root,
+        body=(
+            '{"external_references": {"repo-a": ['
+            + _json(allow)
+            + ']}, "cross_repo_targets": {"repo-a": {"local_clone": '
+            + _json(str(sibling_a_root))
             + "}}}"
         ),
     )
@@ -477,14 +571,19 @@ def test_flatten_allowlist_tolerates_malformed_shapes() -> None:
     a value that is not a list, a list entry that is not a string,
     and a well-formed entry whose heading is collected.
     """
-    none_strings, none_headings = no_cross_spec_reference._flatten_allowlist(  # noqa: SLF001
+    (
+        none_strings,
+        none_headings,
+        none_by_repo,
+    ) = no_cross_spec_reference._flatten_allowlist(  # noqa: SLF001
         external_references=None,
     )
     assert none_strings == set()
     assert none_headings == set()
+    assert none_by_repo == {}
 
     good = _cite(heading="Good heading", file_prefix="contracts.md")
-    strings, headings = no_cross_spec_reference._flatten_allowlist(  # noqa: SLF001
+    strings, headings, by_repo = no_cross_spec_reference._flatten_allowlist(  # noqa: SLF001
         external_references={
             "repo-a": "not-a-list",
             "repo-b": [42, good],
@@ -492,15 +591,17 @@ def test_flatten_allowlist_tolerates_malformed_shapes() -> None:
     )
     assert strings == {good}
     assert headings == {"Good heading"}
+    assert by_repo == {"repo-b": {good}}
 
 
 def test_flatten_allowlist_entry_without_citation_contributes_no_heading() -> None:
     """A malformed allowlist string with no citation adds to strings, not headings."""
-    strings, headings = no_cross_spec_reference._flatten_allowlist(  # noqa: SLF001
+    strings, headings, by_repo = no_cross_spec_reference._flatten_allowlist(  # noqa: SLF001
         external_references={"repo": ["no citation here"]},
     )
     assert strings == {"no citation here"}
     assert headings == set()
+    assert by_repo == {"repo": {"no citation here"}}
 
 
 def test_allowlist_match_skips_entries_without_file_prefix() -> None:
