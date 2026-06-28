@@ -66,6 +66,9 @@ from livespec.doctor.static._no_cross_spec_reference_helpers import (
 from livespec.doctor.static._no_cross_spec_reference_helpers import (
     SLUG as SLUG,
 )
+from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
+    resolve_effective_local_clone,
+)
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.parse import jsonc
@@ -143,16 +146,19 @@ def _config_cross_repo_targets_value(*, config: Any) -> Any:
 
 
 def _local_clone_for_repo(*, cross_repo_targets: Any, repo_slug: str) -> Path | None:
-    """Return a configured local clone path for `repo_slug`, if available."""
+    """Return the effective local clone path for `repo_slug`, if available."""
     if not isinstance(cross_repo_targets, dict):
         return None
     target = cross_repo_targets.get(repo_slug)
     if not isinstance(target, dict):  # pragma: no cover
         return None
-    local_clone = target.get("local_clone")
-    if not isinstance(local_clone, str):  # pragma: no cover
+    effective = resolve_effective_local_clone(
+        sibling_slug=repo_slug,
+        target=target,
+    )
+    if effective is None:  # pragma: no cover
         return None
-    return Path(local_clone)
+    return Path(effective)
 
 
 def _cross_repo_heading_files(
