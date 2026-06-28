@@ -1,12 +1,56 @@
-# Overseer startup — factory-reliability phase: harden the factory, finish the tail, groom M2
+# Overseer startup
+
+## STEP 0 — STARTUP GATE: ask the maintainer BEFORE doing anything (unskippable)
+
+**Stop. Before you read the rest of this prompt, register a track, dispatch, or
+touch any work, you MUST confirm the operating model with the maintainer in ONE
+clear `AskUserQuestion` (plain language, recommendation first).** This is the one
+allowed blocking question — at startup nothing is live yet, so it freezes
+nothing. Added 2026-06-28 because a session ignored these rules: it ran the
+overseer window as an inline worker (did the track work itself, context blew up),
+never spun work out to separate sessions, and left the top pane frozen on a
+previous overseer's hours-old "everything idle" snapshot. Confirm ALL of:
+
+1. **Every track runs in its OWN separate session; the overseer does NO track
+   work in its own shell.** Confirm the session → track → prompt map. The
+   overseer only dispatches (`command tmux send-keys`), maintains `tmp/overseer/`
+   status files, and arms/reads the watcher — it never writes product code, runs
+   `just check`, commits, opens a track's worktree/PR, or spawns sub-agents to do
+   the track work.
+2. **Per track: Fabro factory or session-driven?** State, for each track,
+   whether it runs via the **Fabro factory** (Dispatcher → Fabro sandbox;
+   SEQUENTIAL — one at a time) or is a **session-driven** code-fix / interactive
+   track (worktree → PR → merge; parallel-safe). The maintainer confirms the
+   split before any dispatch.
+3. **Status pane FRESH + LIVE + 33%.** Clear the previous overseer's stale
+   artifacts (`rm -f tmp/overseer/status-table.txt tmp/overseer/stallwatch.log`,
+   reset `status.md`), stand up THIS session's two-pane layout, arm a fresh
+   watcher, and VERIFY the top pane is live (current, advancing timestamp — not a
+   stale snapshot) and is **≈33% height, full width, on top — NOT 50%** (force +
+   verify per the skill's "## The two-pane layout"). Show the maintainer the live
+   pane before proceeding.
+4. **Re-derive current work from the ledger, not this prompt.** The "CURRENT
+   WORK" section below MAY BE STALE — confirm what is actually open from the
+   ledger + each track's own handoff before dispatching.
+
+Do not proceed past this gate until the maintainer has confirmed 1–4.
+
+---
 
 Run this to drive the livespec overseer. The large epics are CLOSED and the
 ready punch-list work-items are now carried by the **Beads/Dolt + Fabro
-factory**. This phase: make the factory reliable enough to run those items
-unattended, finish a small deferred tail, and walk the maintainer through the M2
-groom. Load and follow the local overseer skill at
+factory**. Load and follow the local overseer skill at
 `.claude/skills/overseer/SKILL.md` (invoke `/overseer`). Detailed evidence +
 resume commands live in `tmp/overseer/HANDOFF.md`; this prompt is the runbook.
+
+> **Staleness note (2026-06-28):** the phase content below (factory-bug fixes,
+> the tail, "groom M2") is largely SPENT — the factory bugs were fixed, and M2
+> (`zs22.8`) moved from grooming into implementation: the dev-tooling first-touch
+> reconcile verb shipped in `livespec-dev-tooling` **v0.29.0**; the core
+> `just bootstrap` rewire + ledger close of `zs22.8.2` are the remaining pieces.
+> Treat the sections below as historical context and re-derive live state from
+> the ledger + the per-track handoffs (e.g.
+> `prompts/governed-repo-lifecycle-handoff.md`).
 
 ## Prime law (do not violate)
 

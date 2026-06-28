@@ -22,6 +22,56 @@ they are the whole point.
 
 ---
 
+## STEP 0 — MANDATORY STARTUP GATE (ask the maintainer BEFORE anything else)
+
+> Added 2026-06-28 after a session ran an overseer window as an inline worker:
+> it did the track work itself (context blew up), never spun the work out to
+> separate sessions, and left the top pane frozen on a *previous* overseer's
+> hours-old "everything idle" snapshot. The rules below already existed and were
+> ignored; this gate makes them **unskippable** by forcing an explicit maintainer
+> confirmation up front.
+
+**Do NOT register, kick off, dispatch, edit, or run ANY track work until the
+maintainer has confirmed all four points below.** This is the ONE allowed
+blocking question: anti-stall law 1 forbids blocking *while sessions are live*,
+and at startup nothing is live yet, so this gate freezes nothing. Present it as
+ONE clear `AskUserQuestion` (or a short numbered confirm), plain language,
+recommendation first:
+
+1. **Every track runs in its OWN separate session; the overseer does NO track
+   work itself.** Confirm the session → track → prompt map (which `livespecN` or
+   repo-named session runs which track from which prompt). The overseer's ONLY
+   actions are: dispatch (`command tmux send-keys`), maintain the `tmp/overseer/`
+   status files, and arm/read the watcher. **It NEVER** writes product files,
+   runs `just check`, does TDD/Red-Green commits, opens worktrees/PRs for a
+   track, or spawns in-session sub-agents to do the track work. *(Tripwire: if
+   you are about to Write a product file, run `just check`, or commit track code
+   in THIS window — STOP. That is track work; send it to a track session.)*
+2. **Factory vs. session-driven, stated PER track.** For each track say whether
+   it runs via the **Fabro factory** (the Dispatcher → Fabro sandbox carrier for
+   ready ledger work-items; **SEQUENTIAL** — one factory dispatch at a time
+   because `--network host` collides) or is a **session-driven** track
+   (worktree → PR → merge code-fix / interactive spec/planning work;
+   parallel-safe). The maintainer confirms this split before any dispatch.
+3. **Status pane stood up FRESH, verified LIVE, and sized correctly.** Before
+   kicking off: (a) **clear the previous overseer's stale artifacts** —
+   `rm -f tmp/overseer/status-table.txt tmp/overseer/stallwatch.log` and reset
+   `status.md` — so the pane can never show a prior session's frozen snapshot;
+   (b) stand up THIS session's two-pane layout and arm a fresh watcher; (c)
+   **VERIFY the top pane is live** (its table carries a *current* timestamp that
+   advances, not an hours-old one) and is **≈33% height, full width, on TOP —
+   NOT 50%** (force + verify per "## The two-pane layout"). Show the maintainer
+   the live pane and confirm it reflects current reality before proceeding.
+4. **Confirm the current work state from the ledger, not a stale prompt.** The
+   startup runbook's "current work" section may be stale; re-derive what is
+   actually open from the ledger + each track's own handoff before dispatching,
+   and reflect THAT in the pane.
+
+Only after the maintainer confirms 1–4 do you register tracks and run the loop
+below.
+
+---
+
 ## API / invocation
 
 ```
@@ -214,9 +264,18 @@ done
 EOF
 printf 'OVERSEER STATUS — initializing...\n' > /data/projects/livespec/tmp/overseer/status.md
 # top pane = 1/3 height, full width; -d keeps your focus on the bottom (interactive) pane.
-# (tmux >= 3.1 takes `-l 33%`; older tmux uses `-p 33`.)
-command tmux split-window -v -b -l 33% -d -t livespec-overseer \
-  -c /data/projects/livespec 'bash /data/projects/livespec/tmp/overseer/status-pane.sh'
+# Capture the new pane's id with `-P -F` so we can FORCE + VERIFY its size: tmux
+# silently falls back to a 50/50 split when `-l 33%` is rejected (older tmux, a
+# short window) — that is the "pane is 50% not the 33% I asked for" bug. NEVER
+# assume the split took: resize the captured pane to 33% and verify its height.
+sp=$(command tmux split-window -v -b -l 33% -d -P -F '#{pane_id}' -t livespec-overseer \
+  -c /data/projects/livespec 'bash /data/projects/livespec/tmp/overseer/status-pane.sh')
+command tmux resize-pane -t "$sp" -y 33%
+# VERIFY: pane_height must be ~1/3 of window_height, NOT ~1/2. If it still reads
+# ~half, the percentage form was rejected — retry with an explicit row count,
+# e.g. `command tmux resize-pane -t "$sp" -y $(( $(tmux display -p '#{window_height}') / 3 ))`.
+command tmux display-message -p -t "$sp" \
+  'status pane #{pane_id}: height=#{pane_height} of window=#{window_height} rows (target ≈1/3, NOT 1/2)'
 ```
 
 **Discipline once it's up:**
