@@ -17,7 +17,7 @@
   "implementation": { "plugin": "livespec-orchestrator-beads-fabro" },
   "livespec-orchestrator-beads-fabro": {
     "format": "beads",
-    "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "v0.3.0" },
+    "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "v0.4.0" },
     // Per-repo beads tenant CONNECTION block. The tenant DB name is the load-bearing tenant
     // identity (database == server_user == tenant — one <=32-char Dolt name serving all three).
     // The beads issue-ID `prefix` is bd's server-stored create-prefix; it is DECOUPLED from the
