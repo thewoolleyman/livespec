@@ -54,49 +54,25 @@ default:
 install-commit-refuse-hooks:
     uv run python -m livespec_dev_tooling.install_commit_refuse_hooks
 
+# First-touch setup — a THIN delegator to the shipped LOCAL first-touch
+# reconcile verb (`livespec_dev_tooling.fleet.local_reconcile`), the
+# generalized successor to this recipe's former inline steps. Reuse-first:
+# NO copied logic — the verb walks the LOCAL obligation partition
+# (`contract.LOCAL_OBLIGATION_ROWS`): mise trust/install, uv sync, the
+# structural commit-refuse hooks, the advisory `refs/notes/*` refspec, the
+# worktree-root mise-trust entry, the beads tenant-dir hardening, and
+# project-scoped Claude/Codex plugin registration — each an idempotent
+# assert-then-reconcile row. The two plugin rows delegate back to THIS
+# repo's own `ensure-plugins` / `ensure-codex-plugins` recipes below (the
+# plugin set is repo-specific, so each governed repo's recipe stays the
+# single source). The verb resolves the target checkout worktree-safely via
+# `git rev-parse --git-common-dir`, so invoking from a linked worktree still
+# provisions the primary checkout's shared state — preserving this recipe's
+# former primary-root resolution. `--checkout` defaults to the working
+# directory. Mirrors the `install-commit-refuse-hooks` recipe's
+# `uv run python -m ...` from-package invocation.
 bootstrap:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # Resolve the primary checkout root via git-common-dir so the
-    # recipe is safe from both the primary checkout and secondary
-    # worktrees. From a worktree, .git is a file (not a directory) and
-    # git-common-dir resolves to the primary's shared .git; dirname of
-    # that gives the primary checkout root. From the primary,
-    # git-common-dir returns the relative `.git` path and dirname
-    # gives `.`, which realpath expands to the primary root.
-    primary_path="$(realpath "$(dirname "$(git rev-parse --git-common-dir)")")"
-    # Install the structural commit-refuse hooks (armed on install; no
-    # `livespec.primaryPath` arming step to forget). Delegated to the
-    # shared install-commit-refuse-hooks recipe — the single Installer
-    # slot of the Worktree-discipline concern.
-    just install-commit-refuse-hooks
-    # Harden the beads tenant-pointer dir to owner-only on first-touch (bd
-    # recommends 0700; only the owning user's bd CLI reads it — the Dolt server
-    # connects over TCP and never reads this dir). Guarded: repos with no beads
-    # tenant have no .beads.
-    if [ -d "${primary_path}/.beads" ]; then chmod 700 "${primary_path}/.beads"; fi
-    # Idempotent notes-refspec install for the `refs/notes/commits`
-    # advisory cache. `git config --add` tolerates duplicate values,
-    # but the literal-equality grep is the cheapest skip-path on
-    # repeated bootstrap invocations.
-    git config --get-all remote.origin.fetch | grep -qx '+refs/notes/*:refs/notes/*' || git config --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
-    # Idempotent worktree-root + mise-trust setup. Every git worktree in
-    # the fleet lives under a single per-user root, ~/.worktrees/<repo>/
-    # <branch> (per SPECIFICATION/non-functional-requirements.md
-    # §"Worktree root and mise trust"). Registering that root as one of
-    # mise's trusted_config_paths makes each freshly created worktree's
-    # .mise.toml auto-trusted, so the first `mise exec` inside it never
-    # stops on the "config not trusted" prompt — the failure that
-    # otherwise wastes a tool round-trip on every new worktree. The grep
-    # guard keeps the global ~/.config/mise/config.toml entry single on
-    # repeated bootstraps; the value is the absolute $HOME-rooted path so
-    # it resolves identically from any invocation site.
-    mkdir -p "${HOME}/.worktrees"
-    if ! mise settings get trusted_config_paths 2>/dev/null | grep -qF "${HOME}/.worktrees"; then
-        mise settings add trusted_config_paths "${HOME}/.worktrees"
-    fi
-    just ensure-plugins
-    just ensure-codex-plugins
+    uv run python -m livespec_dev_tooling.fleet.local_reconcile
 
 # Idempotent: `claude plugin marketplace add` / `install` / `update` all exit 0
 # when the target is already present / already at latest. The `update` calls
