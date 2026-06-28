@@ -1,4 +1,19 @@
-# Handoff: governed-repo lifecycle (livespec-zs22.8)
+# Handoff: governed-repo lifecycle (livespec-zs22.8) — ✅ ARCHIVED (epic complete)
+
+> **COMPLETION BANNER (2026-06-28).** Epic **`livespec-zs22.8` is CLOSED — all
+> six milestones M1–M6 landed.** The unified governed-repo lifecycle verb
+> (`livespec_dev_tooling.fleet.local_reconcile`, the generalized successor to
+> `just bootstrap`) exists; setup + drift modes were dogfooded on a fleet member
+> (core) AND an adopter (a disposable config-less scratch repo, per this track's
+> own resolution); and the vacuous-pass hole is closed (central genuine-absence
+> guard + the local `livespec-jsonc-complete` row that guarantees a
+> harnesses-bearing config and machine-fills the non-secret `connection` block).
+> Final pieces: M5 rewired all 7 fleet members' `just bootstrap` to the verb
+> (driver-claude #65, runtime #78, driver-codex #38, dev-tooling #220,
+> orchestrator-beads-fabro #196, orchestrator-git-jsonl #142, console #58);
+> M6 shipped the row in **dt v0.31.0** (dev-tooling #221) and fanned the pin out
+> fleet-wide. Durable history now lives in the spec, the commits, and the ledger
+> (`bd show livespec-zs22.8`). This file is archived read-only; do NOT resume it.
 
 **Track:** governed-repo lifecycle · **Ledger:** livespec **`zs22.8`**
 (Increment 6; **sibling of the Conformance Pattern `zs22.7`**, under
