@@ -831,6 +831,4 @@ contract diagram) and their rationale live in
   `dolt-backup.timer` — never treat tenant-level backup denial as a bug or blocker.
 - **`tmp/` is maintainer-owned scratch.** Never `rm` it or assume it's
   disposable; put agent/tooling scratch under a scoped subdir (e.g.
-  `tmp/bootstrap/`). Write any cross-session handoff the next session must read
-  into the repo's `tmp/` (e.g. `tmp/HANDOFF-*.md`), not an ephemeral per-session
-  scratchpad. Don't codify the `tmp/` convention into `SPECIFICATION/`.
+  `tmp/bootstrap/`). Don't codify the `tmp/` convention into `SPECIFICATION/`.
