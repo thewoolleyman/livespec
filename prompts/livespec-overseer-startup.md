@@ -1,12 +1,12 @@
-# Overseer startup — final wrap-up: close the tail, then groom M2
+# Overseer startup — factory-reliability phase: harden the factory, finish the tail, groom M2
 
-Run this to drive the **final wrap-up** of the livespec `zs22` work in the
-`livespec-overseer` tmux session. The large epics are CLOSED; this session
-**closes a small, enumerated punch-list of remaining open items, then walks the
-maintainer through grooming the next milestone (M2)** — one clean decision at a
-time. Load and follow the local overseer skill at
-`.claude/skills/overseer/SKILL.md` (invoke `/overseer`); everything below is the
-concrete punch-list + how to run it.
+Run this to drive the livespec overseer. The large epics are CLOSED and the
+ready punch-list work-items are now carried by the **Beads/Dolt + Fabro
+factory**. This phase: make the factory reliable enough to run those items
+unattended, finish a small deferred tail, and walk the maintainer through the M2
+groom. Load and follow the local overseer skill at
+`.claude/skills/overseer/SKILL.md` (invoke `/overseer`). Detailed evidence +
+resume commands live in `tmp/overseer/HANDOFF.md`; this prompt is the runbook.
 
 ## Prime law (do not violate)
 
@@ -14,101 +14,125 @@ concrete punch-list + how to run it.
 live.** Decide-and-inform over ask-and-wait; make every other track
 self-sustaining before surfacing any unavoidable gate.
 
+## Operating model (LOCKED — corrected 2026-06-28; hold to it)
+
+- The overseer **ORCHESTRATES** (plan, dispatch, watch, synthesize). It does
+  **NOT** run factory dispatches or author fixes in its own shell. **livespec
+  SESSIONS host the work** (a session runs the factory dispatch / does the code
+  fix); the overseer watches panes + ledger + PRs.
+- The blessed carrier for ready ledger work-items is the **Fabro factory**
+  (`orchestrator-image/real-work-dispatch.sh` → Dispatcher → Fabro docker
+  sandbox → review gate → janitor → auto-merge → ledger-close), **NOT**
+  hand-briefed direct execution.
+- **Factory dispatches are SEQUENTIAL**: real-work-dispatch.sh uses
+  `--network host` (to reach host Dolt at `127.0.0.1:3307`), so a 2nd concurrent
+  orchestrator container collides on fixed inner ports/namespace and dies at
+  provisioning. Code-fix sessions (worktree→PR→merge) are NOT factory dispatches
+  and CAN run in parallel.
+
 ## Maintainer interaction style (learned 2026-06-27 — hold to it)
 
-- **One clear, CLICKABLE choice at a time** (`AskUserQuestion`), in plain
-  language, no jargon. Lead with a recommended option. Define every domain term
-  inside the question.
-- **Never** dump a prose wall of decisions. Walk the maintainer through items
-  one by one.
-- The maintainer is not a Python/infra expert — say the plain-language bottom
-  line first, then detail.
+- **One clear, CLICKABLE choice at a time** (`AskUserQuestion`), plain language,
+  no jargon. Lead with a recommended option. Define every domain term inside the
+  question.
+- **Never** dump a prose wall of decisions; walk the maintainer through items one
+  by one. Say the plain-language bottom line first, then detail.
 
-## Baseline — already DONE this prior session (do NOT redo)
+## What's DONE (do NOT redo)
 
-- The **`zs22` epic family is CLOSED**: the dev-tooling single-source
-  convergence (`zs22.7.9`), the Conformance Pattern (`zs22.7`), and the
-  blessed-workflow parent (`zs22`).
-- Both maintainer decisions landed + closed: **`i05g` = Option B** (bump-pin
-  gates on each consumer's own CI) and **`7a4e` = full coverage** (worktree-pack
-  delivered to beads-fabro + console). Follow-ups `jzpx` + `usd3` merged.
-- Fleet is on **dt v0.28.1**; all 6 repo primaries clean on master.
+- The `zs22` epic family is CLOSED (prior sessions).
+- Factory items landed end-to-end via the factory: **dt-23n** (PR #207),
+  **n70w** (PR #677) — merged + janitor-green + ledger-closed.
+- Factory fixes merged to **orchestrator** master: **#188** (project ONLY
+  `~/.codex/auth.json` into the container — credential-only) and **#189**
+  (regen beads `metadata.json` in a non-git scratch dir — livespec-tenant fix).
 
-## The punch-list (this session's ENTIRE scope)
+## CURRENT WORK
 
-### A — close the done-but-open loose ends (autonomous: verify + close)
+### A — Factory-bug fixes (IN FLIGHT; maintainer chose "fix the factory bugs first")
 
-1. **`livespec-2exa`** (P1) — the plugin_structure regression. Fix already
-   relocated + released; the fleet is healthy on it. Verify (no canonical-check
-   breakage on core/orchestrators), then CLOSE the work-item.
-2. **`livespec-2rab`** (P1) — the fan-out discover-siblings `jq` bug. Its note
-   says **"dev-tooling side: FIXED + VERIFIED."** Check whether the consumer
-   caller workflows (`release-dispatch.yml` / `bump-pin-from-dispatch.yml` /
-   `pin-freshness.yml`) are still pinned at the stale `@v0.17.0` reusable-workflow
-   tag; bump to current fleet-wide if so, then CLOSE.
+Two reliability bugs surfaced dispatching real work; fixes dispatched into
+sessions (code fixes on the **livespec-orchestrator-beads-fabro** repo;
+worktree→PR→merge; parallel-safe):
 
-### B — implement the deferred follow-ups, then close
+1. **PR-stage path-mapping** — `livespec3`, brief
+   `tmp/overseer/briefs/fix-factory-prstage-path.md`. The Fabro sandbox mounts
+   the repo at `/workspace/<repo>` but the PR stage looked for
+   `/workspace/dispatch-target` → "no committed work" → no PR. INTERMITTENT
+   (n70w succeeded on the same repo).
+2. **Coverage-gate gap** — `livespec4`, brief
+   `tmp/overseer/briefs/fix-factory-coverage-gate.md`. The in-sandbox janitor
+   passed but the PR's CI `check-coverage` failed → the factory ships
+   unmergeable PRs. Make the pre-PR gate enforce the same coverage CI does.
 
-3. **`livespec-dev-tooling-04g`** (P3) — subagent-stop-guard false-blocks a clean
-   sub-agent on a SIBLING's in-flight worktree. Implement "scope by **creator**
-   (worktrees this agent created), not transcript-**mention**"; preserve the
-   `_MAX_BLOCKS_PER_SESSION=3` cap. The hook lives in the **dev-tooling** tenant;
-   xref `dev-tooling-7us.2`.
-4. **`livespec-n70w`** (P2) — doctor-static `no_cross_spec_reference` blind spot:
-   a cross-repo citation that collides with a same-named LOCAL heading resolves
-   silently. Repo-qualify + resolve against the cited repo so it fails loudly.
-5. **`livespec-vtxt`** (P3) — doctor-static `no_spec_section_citation_in_code`
-   doesn't scan Rust (`crates/**/src/*.rs`). Extend the scanned-source set
-   (generalize the language set).
-6. **`livespec-dev-tooling-23n`** — `wire_fleet_member`/reconcile reads
-   `APP_ID`/`APP_PRIVATE_KEY` but the livespec env projects
-   `GITHUB_APP_ID`/`GITHUB_PRIVATE_KEY`. Reconcile so the next fleet member's
-   wiring is friction-free.
+MONITOR: watch `livespec3`/`livespec4` panes + the orchestrator's open PRs. They
+report `DONE <pr>` or `BLOCKED <diagnosis>`. **Review any BLOCKED diagnosis
+before they implement** (the briefs tell them to surface, not guess).
 
-### C — groom the next milestone (MAINTAINER-GATED, interactive)
+### B — Deferred tail (after the factory bugs are fixed + merged)
 
-7. **M2 groom (`zs22.8`)** — the governed-repo-lifecycle epic. M1 is closed;
-   **M2–M6 are not filed yet** ("child milestones are filed as they ripen — the
-   maintainer owns the cut"). Run the grooming conversation
-   (`/livespec-orchestrator-beads-fabro:groom`, or the standing handoff
-   `prompts/governed-repo-lifecycle-handoff.md`) to cut **M2** into ready,
-   dependency-ordered work-items. **The maintainer OWNS the cut** — draft,
-   present one piece at a time, file ONLY on approval.
+3. **retry `livespec-vtxt`** (OPEN) — intermittent PR-stage failure; re-dispatch
+   through the fixed factory (sequential, default container, host in a session).
+4. **`livespec-dev-tooling-04g`** (OPEN) — **PR #209** (branch
+   `feat/livespec-dev-tooling-04g`) carries the impl but fails `check-coverage`;
+   P3 + oversized (`sizing-warn`). Re-dispatch through the fixed coverage-gate OR
+   regroom/split. Do NOT abandon PR #209.
+5. **`livespec-2exa`** (OPEN) — VERIFY-only + close (no code → no PR;
+   overseer-handled): confirm fan-out green for the 4 aggregate-enforced
+   consumers + check-plugin-structure driver-only, then close.
+6. **`livespec-2rab`** (OPEN) — cross-repo caller-workflow pin bump (many repos →
+   not a single sandbox; overseer-handled or decompose into per-repo items).
 
-## How to run it (the walk-through contract)
+### C — M2 groom (MAINTAINER-GATED, interactive)
 
-**Set up the two-pane layout first** — a read-only status dashboard above, your decision channel below — per the overseer skill's "## The two-pane layout" section. Then:
+**`livespec-zs22.8`** governed-repo-lifecycle. M2 = "Generalize `just bootstrap`
+→ the lifecycle verb" (first code milestone; verb lives in dev-tooling beside
+`wire_fleet_member`, reuse-first). Walk the maintainer through the cut **one
+clean `AskUserQuestion` at a time**; the maintainer OWNS the cut, files ONLY on
+approval. See `prompts/governed-repo-lifecycle-handoff.md` +
+`research/governed-repo-lifecycle/`.
 
-1. Enumerate any warm track sessions (`command tmux ls`); reuse `livespec1`-`5`
-   for dispatched work, name new ones `livespec6`+.
-2. **FIRST — the autonomous tail (A + B):** dispatch items 1–6. They need NO
-   maintainer decision — just inform as each lands. Fan out the non-conflicting
-   ones in parallel (2exa/2rab are dev-tooling-fan-out; 04g is a dev-tooling hook;
-   n70w/vtxt are core doctor-static; 23n is dev-tooling tooling — brief each
-   sub-agent: own worktree only, never `--no-verify`, halt+report on hook
-   failure). Verify each closes in the ledger.
-3. **THEN — M2 (item 7):** walk the maintainer through grooming **one clean
-   `AskUserQuestion` at a time**. They own every cut/file decision.
-4. **Surface to the maintainer ONLY:** the M2 cut approvals, a genuine
-   architectural/contract decision, or an unauthorized destructive op. Everything
-   else is decide-and-inform.
-5. **House rules:** repo mutations go `worktree → PR → rebase-merge`; never commit
-   on a primary; never `--no-verify`; beads via
-   `source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec <args>`;
-   scratch under `tmp/overseer/`.
+## Factory bug inventory (the reliability picture)
+
+1. codex-cred not projected — FIXED (#188). 2. beads-regen in-clone dolt-over-git
+fail — FIXED (#189). 3. PR-stage path mismatch — FIXING (livespec3). 4. pre-PR
+gate ≠ CI coverage — FIXING (livespec4). 5. can't run concurrently
+(`--network host`) — NOTED, not filed (consider a work-item: redesign the factory
+network/port model for parallel dispatch).
+
+## How to run it
+
+- **Set up the two-pane layout first** (overseer skill "## The two-pane layout").
+- Enumerate sessions (`command tmux ls`). **Session `/clear` is FLAKY when a
+  session is busy/has queued msgs**: Escape (drain) → confirm idle (no spinner) →
+  `/clear` → verify the welcome banner BEFORE dispatching. `livespec1` got stuck
+  this way (stale TODOs that never cleared); `livespec2`/`3`/`4`/`5` cleared fine.
+- **Dispatch a factory run** (sequential, default container) — host it in a
+  session via its brief:
+  `cd /data/projects/livespec-orchestrator-beads-fabro && source /data/projects/1password-env-wrapper/with-livespec-env.sh bash orchestrator-image/real-work-dispatch.sh --run --target-repo <repo> --item <id> --mode shadow`
+  (~30–50 min; ledger-closes the item on success; add `--preflight` to validate
+  env first).
+- **Surface to the maintainer ONLY:** the M2 cut approvals, a genuine
+  architectural/contract decision, a factory-fix `BLOCKED` diagnosis, or an
+  unauthorized destructive op. Everything else is decide-and-inform.
+- **House rules:** repo mutations go `worktree → PR → rebase-merge`; never commit
+  on a primary; never `--no-verify`; beads via
+  `source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C <repo> <args>`;
+  scratch under `tmp/overseer/`.
 
 ## Explicitly OUT of scope (do NOT pull in unless the maintainer asks)
 
-The broader pre-existing fleet backlog — ~12 other open items not from the
-convergence work: `gcp2` (fleet-wide red-green-replay), `4dzbcv` (manifest
-rename), `yc8e`, `4moata`, `mutreal*` (mutation testing), `9msu`, `qtjd`,
-`i6rc`, `kvzt`, `h3e7`, `1t17`, `aava`, `0jxs`, etc. These are a separate,
-larger backlog-triage — note they exist; leave them for a future session.
+The broader pre-existing fleet backlog (~12 items): `gcp2`, `4dzbcv`, `yc8e`,
+`4moata`, `mutreal*`, `9msu`, `qtjd`, `i6rc`, `kvzt`, `h3e7`, `1t17`, `aava`,
+`0jxs`, etc. Note they exist; leave them for a future session.
 
 ## Cold-start / crash recovery
 
-Durable state is the **ledger** (the punch-list above is `bd ready` /
-`bd list`) plus this prompt. After a crash: confirm the ledger is reachable
+Durable state is the **ledger** + this prompt + **`tmp/overseer/HANDOFF.md`**
+(detailed evidence, open PRs, resume commands). After a crash: confirm the ledger
+is reachable
 (`source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec list`),
-`git status` clean on master, reap merged worktrees (`git worktree list`), then
-re-run this prompt — the punch-list re-derives from the ledger.
+all three primaries (`livespec`, `livespec-dev-tooling`,
+`livespec-orchestrator-beads-fabro`) clean on master, reap merged worktrees, then
+re-run this prompt — current state re-derives from the ledger + open PRs +
+`HANDOFF.md`.
