@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.0](https://github.com/thewoolleyman/livespec/compare/v0.4.0...v0.5.0) (2026-06-29)
+
+
+### Features
+
+* **doctor:** agents-ai-reference-resolution static check — AGENTS.md .ai/ refs must resolve ([b288fdb](https://github.com/thewoolleyman/livespec/commit/b288fdbf164f26ddfb940101d3c5071b1004baf8))
+* **governed-lifecycle:** core bootstrap delegates to local reconcile verb (livespec-zs22.8.2) ([147b0d7](https://github.com/thewoolleyman/livespec/commit/147b0d7ede695e9f56b44f0c5f1794f90ab2ac9e))
+* **template:** propagate .ai/ agent-instruction scaffold into impl-plugin template ([9dad852](https://github.com/thewoolleyman/livespec/commit/9dad852d695e2e34ee81f9f2ab56b7a4d6f85587))
+
+
+### Bug Fixes
+
+* catch stale repo-qualified spec citations ([4e859ec](https://github.com/thewoolleyman/livespec/commit/4e859ec690b52ab260bec234e4ca8005169016ba))
+* scan Rust source citations ([1584c14](https://github.com/thewoolleyman/livespec/commit/1584c14c6febae18af7526dac60cd2092086e6a3))
+* tighten repo-qualified citation matching ([0638e2b](https://github.com/thewoolleyman/livespec/commit/0638e2b245a0d92952eb4c824e8eeaf38511c933))
+* tolerate release-please version-anchor bumps in doctor out-of-band-edits ([75110d0](https://github.com/thewoolleyman/livespec/commit/75110d0fa9e38eae6af8f8418353bfe5a65f84ba))
+
 ## [0.4.0](https://github.com/thewoolleyman/livespec/compare/v0.3.0...v0.4.0) (2026-06-26)
 
 
