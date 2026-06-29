@@ -44,15 +44,17 @@ Each repo's slice runs in its OWN tmux session as its OWN
 `/livespec-orchestrator-beads-fabro:plan work-item-state-machine` thread
 (own epic, own tenant, prose-linked to `livespec-35s3zo`).
 
-Concrete next steps (see `04-slice-plan.md` for the full per-track slices):
-1. **Author + land a cold-startable kickoff brief** for the **L0
-   `livespec-runtime`** track (its slice: the `WorkItem` schema +
-   `lifecycle.py` + the `rank` port + the `:131` drift fix → propose-change
-   to `livespec-runtime/SPECIFICATION/contracts.md`, then code), landed in
-   the `livespec-runtime` repo via its worktree→PR.
-2. **Kick off the `livespec-runtime` tmux session** into its `/plan` thread
-   with that brief; validate the per-repo-session + overseer mechanics on
-   this one track first.
+Concrete next steps (see `04-slice-plan.md` for the full per-track slices;
+each track's cold-startable kickoff brief lands under `briefs/`):
+1. ✅ **L0 kickoff brief landed** at `briefs/l0-runtime.md` (the template for
+   every per-repo track).
+2. **Kick off the `livespec-runtime` tmux session** by sending it (via
+   `command tmux send-keys -t livespec-runtime`) a SHORT message:
+   `read /data/projects/livespec/plan/work-item-state-machine/briefs/l0-runtime.md and follow it. Start now.`
+   Then verify it submitted (capture the pane; re-send Enter if it shows
+   `[Pasted text]`). Validate the per-repo-session + overseer mechanics on
+   this one track before fanning out. Watch for its surface-back (the L0
+   propose-change + slice draft → maintainer revise/groom gates).
 3. **Fan out** L1a (`livespec-orchestrator-beads-fabro`) + L1b
    (`livespec-orchestrator-git-jsonl`) spec work in parallel once L0 is
    moving; their code + the console + the L2 migration tracks (OpenBrain +
