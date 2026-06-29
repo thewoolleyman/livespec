@@ -12,8 +12,9 @@ state machine with two human-delegable WIP valves. **No implementation has
 started.** The A–H design walk is **COMPLETE** (decisions 1–43): A, B, C,
 D (all sub-items), E, F, G, H are all resolved. **Item E (the console
 redesign) was DELEGATED to a console-repo plan thread and is itself
-complete** (see decision 41). What remains is the post-walk cleanup +
-hand-off to grooming, below.
+complete** (see decision 41). The post-walk **design-doc re-synthesis is
+also DONE** (`research/02-design.md` §§1–10 now reflect decisions 1–43).
+What remains is the hand-off to grooming, below.
 
 ## Status (read from the ledger — never from this file)
 
@@ -27,24 +28,21 @@ hand-off to grooming, below.
   (E-1..E-4 resolved + on master).
 - Neither epic has child work-items yet — slicing/grooming hasn't begun.
 
-## The next action (do these in order)
+## The next action
 
-1. **Re-synthesize `research/02-design.md` §§2/4/6** from the decision log. The
-   design doc is largely superseded by decisions 22–43 and carries a stale
-   session-2 banner; rewrite §2 (state set — 7 states, no `deferred`), §4
-   (acceptance = POST-merge; `admission_approved` dropped), and §6 (the schema:
-   `rank` non-null, `priority` dropped, `assignee` reused, beads custom-status
-   encoding; `lane_of` signature/home). The decision log is START-HERE
-   authoritative wherever it differs.
-2. **Then groom/slice — MAINTAINER-OWNED.** Decompose each epic into
-   dependency-layered child work-items (foundation first: the shared
-   `livespec_runtime` schema + `lane_of`/`lifecycle.py`), routing each per the
-   plan operation: becomes-contract → `/livespec:propose-change`; becomes-work →
-   `/livespec-orchestrator-beads-fabro:capture-work-item` as a child of
-   `livespec-35s3zo`. Per decision 42, `lifecycle.py` moves the pure predicate and
-   INJECTS the backend status-lookup (no runtime→beads back-edge). The console's
-   slices belong to the console thread/epic, not the core epic. Grooming into
-   *ready* slices is the `groom` operation (maintainer owns the cut), not `plan`.
+**Groom/slice — MAINTAINER-OWNED.** The A–H design walk AND the design-doc
+re-synthesis are both complete; the only remaining step is decomposition.
+Decompose each epic into dependency-layered child work-items (foundation
+first: the shared `livespec_runtime` schema + `lane_of`/`lifecycle.py`),
+routing each per the plan operation: becomes-contract →
+`/livespec:propose-change`; becomes-work →
+`/livespec-orchestrator-beads-fabro:capture-work-item` as a child of
+`livespec-35s3zo`. Per decision 42, `lifecycle.py` moves the pure predicate
+and INJECTS the backend status-lookup (no runtime→beads back-edge). The
+console's slices belong to the console thread/epic, not the core epic.
+Grooming into *ready* slices is the `groom` operation (maintainer owns the
+cut), not `plan`. `research/02-design.md` §10 enumerates the full blast
+radius to slice against.
 
 ## Read-first chain (in order)
 
@@ -52,9 +50,9 @@ hand-off to grooming, below.
    session-1; 22–32 + the item-A transition table = session-2; 33–37 = session-3;
    38–40 = session-4; **41–43 = session-5** (E-delegation = 41; F = 42; H = 43).
    The "Open items" list now marks **A–H all ✅**.
-2. **`research/02-design.md`** — the design of record, **awaiting the §§2/4/6
-   re-synthesis above**; treat it as superseded by the decision log wherever they
-   differ.
+2. **`research/02-design.md`** — the design of record, **re-synthesized from
+   decisions 1–43 (current)**; §10 is the blast-radius slice list. The decision
+   log still wins on any residual discrepancy (it carries the reasoning trail).
 3. **`research/01-prior-art.md`** — external grounding, cited.
 4. **`conversation/transcript.md`** — verbatim session-1 design discussion;
    sessions 2–5 reasoning lives in the decision-log entries.
