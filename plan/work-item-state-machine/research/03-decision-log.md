@@ -718,6 +718,33 @@ and driven, not the design itself. The execution structure is written up in
     They each get a **thin track** anyway, so the migration is formalized and
     captured in each repo's history *(maintainer call, session 6)*.
 
+## Locked decisions — session 7 (overseer retained at exit)
+
+47. **The overseer is NOT deleted at the epic's exit gate — it is KEPT and
+    UPDATED; deletion is DEFERRED to the future console operator-cockpit
+    milestone.** *Supersedes decision 18 (which made the exit gate delete the
+    overseer skill once the new system was dogfooded).* The local overseer skill
+    (`.claude/skills/overseer/`) is rewritten to the **lean, plan-skill-driven +
+    factory-dispatch** form — each track is a
+    `/livespec-orchestrator-beads-fabro:plan` thread with a durable
+    self-sufficient handoff, status read LIVE from the ledger (no shadow ledger),
+    ready implementation **dispatched through the factory** (never hand-coded
+    inline), a fresh per-session `Monitor` re-armed for stall detection, and
+    role-rotation before ~50% context — incorporating everything learned in the
+    L0+L1+L2 overseeing sessions. The heavy three-pane "dashboard" operating
+    model is removed.
+    - **Rationale:** there is **no replacement** for the manual coordinator yet.
+      The overseer's coordination function is replaced only once the **console
+      operator-cockpit** (the Control Plane / operator cockpit — TUI at minimum,
+      ideally a GUI) is **BUILT VIA THE FACTORY**. Deleting the overseer before
+      that console exists would leave the fleet with no coordination layer — so
+      the original "delete at exit" plan is reversed.
+    - **New exit gate:** console E-walk done **+** the overseer updated → close
+      the anchor epic `livespec-35s3zo` and the per-repo L2 epics (the overseer
+      RETAINED, not deleted). Overseer deletion is its own future milestone,
+      gated on the console operator-cockpit being built via the factory, NOT on
+      this epic. *(Maintainer call, session 7.)*
+
 ## Open items (resolve-in-thread / author-in-doc — non-blocking)
 
 - **A.** ✅ **RESOLVED (session 2)** — the full transition table + guards
