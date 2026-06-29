@@ -97,6 +97,7 @@ from livespec.doctor.static._out_of_band_edits_pure import (
     _is_empty_dir,
     _make_finding,
     _parse_version_number,
+    _strip_release_please_anchor_lines,
 )
 from livespec.doctor.static._out_of_band_edits_writes import (
     route_drift_outcome,
@@ -229,13 +230,24 @@ def _compare_one_file(
     Both-None cannot reach this helper (the union enumeration
     only emits basenames present on at least one side); so
     one-None or unequal-bytes cleanly map to True.
+
+    Both sides are normalized through
+    `_strip_release_please_anchor_lines` before the byte
+    comparison so a release-please version-anchor-only bump
+    (which lands on HEAD-active without a paired revise snapshot)
+    is NOT flagged as out-of-band drift, while every other spec
+    edit still diverges and is flagged. Presence-on-one-side-only
+    (a or h is None) remains drift regardless of normalization.
     """
     spec_rel = _spec_root_repo_relative(ctx=ctx)
     active = spec_rel / file_basename
     history = spec_rel / _HISTORY_SUBDIR_NAME / latest_version_label / file_basename
     return _show_or_none(ctx=ctx, path=active).bind(
         lambda a: _show_or_none(ctx=ctx, path=history).map(
-            lambda h: a is None or h is None or a != h,
+            lambda h: a is None
+            or h is None
+            or _strip_release_please_anchor_lines(content=a)
+            != _strip_release_please_anchor_lines(content=h),
         ),
     )
 
