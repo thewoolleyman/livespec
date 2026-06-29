@@ -15,9 +15,11 @@ re-synthesized; the **slice plan + execution structure are persisted**
 dependency-layered, per-repo tracks — each run in its OWN tmux session as its
 OWN `/livespec-orchestrator-beads-fabro:plan` thread (own epic, own beads
 tenant, prose-linked to the core anchor). **L0 (the foundation track) is
-COMPLETE and released as `livespec-runtime` `v0.5.0`; L1a + L1b are running
-autonomously** (each in its own tmux session). See the Session-7
-autonomous-run log below for what landed while the maintainer was asleep.
+COMPLETE and released as `livespec-runtime` `v0.5.0`; L1a + L1b are COMPLETE
+and released (`v0.3.0` each) → L1 COMPLETE (≈60% of the epic).** The console
+track is now KICKED OFF and running autonomously; **L2 (the 9-tenant migration)
+is the active next phase, now UNBLOCKED.** See the Session-7 autonomous-run log
+below for what landed while the maintainer was asleep.
 
 **Your role (coordinator):** drive the rollout in `research/04-slice-plan.md`,
 foundation-first. Run a **lightweight manual overseer** — INFORMED BY
@@ -71,49 +73,71 @@ shadow queue).
     `_strip_release_please_anchor_lines` that normalizes anchor-marked lines
     out of BOTH sides before the byte compare — **PR #707** (`75110d0`),
     shipped in CORE **`v0.5.0`**.
-- **L1a — `livespec-orchestrator-beads-fabro` track: KICKED OFF (running
-  autonomously).** Own tmux session driving its `04-slice-plan.md` "L1a" slice
-  (Dispatcher per-repo WIP cap + `admission_policy` valve + post-merge
-  acceptance; 5 custom beads statuses + `blocked`/`done`→`closed` reuse;
-  2-step `append_work_item`; `list-work-items` lane/lane_reason emission; new
-  `rebalance-ranks` command; doctor checks). Creating its OWN `/plan` thread +
-  epic in the beads-fabro tenant, prose-linked to `livespec-35s3zo`.
-- **L1b — `livespec-orchestrator-git-jsonl` track: KICKED OFF (running
-  autonomously).** Own tmux session driving its `04-slice-plan.md` "L1b" slice
-  (JSONL record schema 16→17 keys: `+rank`, `−priority`; status-enum → the 7
-  states; store required-keys + rank + bottom-sentinel adapter;
-  `commands/next.py` `_sort_key` priority→rank; tests + golden-master + e2e
-  fixtures).
-- **Console track (exists, NOT started):** epic
-  `livespec-console-beads-fabro-vqh36l` (console tenant), thread
-  `plan/work-item-lifecycle-redesign/` in
-  `/data/projects/livespec-console-beads-fabro` — open, groom-pending, gated
-  on L1a's lane/lane_reason emission.
-- **L2 + thin tracks: not started** (gated on the L1 releases).
+- **L1a — `livespec-orchestrator-beads-fabro` track: COMPLETE.**
+  Beads-fabro-tenant epic **`bd-ib-vvrxcb`** is **CLOSED**; **`v0.3.0`
+  is released**. Landed across its slices: re-vendor `livespec-runtime v0.5.0`
+  + store-adapter (S1+S2, PR #203); the `next` rank ordering + `lane`/`lane_reason`
+  emission + 5 custom beads statuses + 2-step append + new `rebalance-ranks`
+  command + doctor checks (S4/S6); the Dispatcher admission valve + per-repo WIP
+  cap + post-merge acceptance (S3 — `complete→acceptance→accept-per-policy`,
+  reject routing, non-convergence→backlog; PR re-expressing scenarios 10/11 +
+  adding 22–25); release PR #168. 1245 tests, 100% coverage. **NOTE:** its live
+  beads tenant stays PRE-migration — L2 migrates the statuses in lockstep; the
+  epic closures used the schema-tolerant read path.
+- **L1b — `livespec-orchestrator-git-jsonl` track: COMPLETE.** **`v0.3.0`
+  is released** (PR #150 implement / PR #151 release). JSONL record schema
+  16→17 (`+rank`, `−priority`; the 3 policy fields are `None`-on-read /
+  dropped-on-write); store `rank` + `BOTTOM_SENTINEL` adapter; `next` ordering
+  now `(rank, id)`. *(Doc-reconcile TODO: the policy-fields-dropped behavior is
+  a slice-plan-vs-design-§6 tension worth reconciling in `research/02-design.md`
+  §6 next time that doc is touched.)*
+- **L1 COMPLETE → ≈60% of the epic.** L0 (`livespec-runtime` `v0.5.0`) + L1a
+  (`v0.3.0`) + L1b (`v0.3.0`) are all released. L2 is now unblocked on both the
+  L1 releases AND the `rebalance-ranks` command (shipped in L1a `v0.3.0`).
+- **Console track — `livespec-console-beads-fabro`: KICKED OFF (running
+  autonomously).** Resuming its existing thread `plan/work-item-lifecycle-redesign/`
+  (epic `livespec-console-beads-fabro-vqh36l`) to CONSUME the orchestrator's flat
+  `lane`/`lane_reason` emission from `list-work-items` and RETIRE the `bd ready`
+  re-derivation — decoupling the console from Beads (orchestrator-CLI-only, zero
+  primary lifecycle state; decision 41).
+- **L2 — the 9-tenant migration: NOT STARTED, now UNBLOCKED.** Register the 5
+  custom beads statuses (`bd config set status.custom`) + backfill `rank`
+  (`priority → captured_at → id` via `n_keys_between`, legacy-seeded) into EACH
+  of the 9 beads tenants, applied through the orchestrator's `rebalance-ranks`
+  (legacy-seed entry). Tracks: **openbrain** (adopter — also bumps its
+  core/runtime/orchestrator pins to the new releases + `.livespec.jsonc` WIP-cap
+  config + custom-status registration + rank backfill); the **thin
+  migration-only tracks** (`livespec-dev-tooling`, `livespec-driver-claude`,
+  `livespec-driver-codex` — tenant migration only, formalized in each repo's
+  history); and the core `livespec` tenant is swept too. Each thin track gets its
+  own `/plan` track per `research/04-slice-plan.md` "L2".
+- **Env note (worth a fleet fix):** `hydrate` does NOT provision the gitignored
+  worktree-pack (`branch-protection.just` etc.) into fresh worktrees, so sessions
+  must run `just install-worktree-pack` to get `just check` green (self-healed
+  each time); the git-jsonl PRIMARY checkout also lacks `branch-protection.just`.
 
 ## The next action
 
-**Continue the rollout (foundation-first), in this order:**
+**L1 is complete. Drive the active phase (L2) and the console, in this order:**
 
-1. **Monitor L1a + L1b (immediate).** Both run autonomously in their own tmux
-   sessions. Surface and resolve any blocker; confirm **each cuts its
-   release** (the L1 artifacts L2 + console depend on). Do NOT freeze the
-   coordinator waiting on either — keep both self-sustaining.
-2. **Re-engage the console track once L1a emits lane/lane_reason + releases.**
-   The console consumes `list-work-items --json`'s flat `lane` + `lane_reason`
-   and retires its `bd ready` re-derivation; its thread already exists
-   (`plan/work-item-lifecycle-redesign/`, epic `…-vqh36l`).
-3. **Kick off L2 once the L1 releases land.** Author + kick off the `openbrain`
-   adopter (core/runtime/orchestrator pin bumps + `.livespec.jsonc` WIP-cap +
-   custom-status registration + `rank` backfill) and the **thin migration-only**
-   tracks (`livespec-dev-tooling`, `livespec-driver-claude`,
-   `livespec-driver-codex`: custom-status registration + per-tenant `rank`
-   backfill via the orchestrator's `rebalance-ranks` legacy-seeded path). The
-   core `livespec` tenant is swept too — **9 tenants total**.
-4. **Exit gate:** delete `.claude/skills/overseer/` once the new system is
-   dogfooded — `livespec-35s3zo` is NOT done until this lands.
+1. **Monitor the console (autonomous).** It runs in its own tmux session,
+   resuming `plan/work-item-lifecycle-redesign/` (epic `…-vqh36l`). Confirm it
+   CONSUMES `list-work-items --json`'s flat `lane` + `lane_reason`, retires its
+   `bd ready` re-derivation, merges, and (optionally) cuts a release. Do NOT
+   freeze the coordinator waiting on it — keep it self-sustaining.
+2. **Drive L2 (the active next phase — the 9-tenant migration).** Author + kick
+   off the `openbrain` adopter (core/runtime/orchestrator pin bumps to the new
+   releases + `.livespec.jsonc` WIP-cap config + custom-status registration +
+   `rank` backfill) and the **thin migration-only** tracks
+   (`livespec-dev-tooling`, `livespec-driver-claude`, `livespec-driver-codex`:
+   register the 5 custom statuses + per-tenant `rank` backfill via the
+   orchestrator's `rebalance-ranks` legacy-seeded path); sweep the core
+   `livespec` tenant too — **9 tenants total**. Each thin track = its own
+   `/plan` track.
+3. **Exit gate:** delete `.claude/skills/overseer/` once the new system is
+   dogfooded → then close `livespec-35s3zo` — it is NOT done until this lands.
 
-**Kickoff mechanics** (per remaining track — L2 + console): land a
+**Kickoff mechanics** (per remaining L2 track): land a
 cold-startable brief under `briefs/` (template: `briefs/l0-runtime.md`),
 confirm the repo is clean + on master + the orchestrator plugin enabled + its
 tenant reachable, then:
@@ -142,11 +166,11 @@ All required sessions already exist: `livespec-runtime`,
 |---|---|---|---|
 | anchor | livespec (core) | `livespec-35s3zo` | coordinating |
 | L0 | livespec-runtime | `livespec-runtime-l4yojx` | **COMPLETE** · closed · `v0.5.0` released |
-| L1a | livespec-orchestrator-beads-fabro | (in beads-fabro tenant) | **running autonomously** |
-| L1b | livespec-orchestrator-git-jsonl | (in git-jsonl tenant) | **running autonomously** |
-| console | livespec-console-beads-fabro | `…-vqh36l` | open · groom-pending (gated on L1a lane emission) |
-| L2 | openbrain (adopter) | — | not started (gated on L1 releases) |
-| L2 | livespec-dev-tooling / driver-claude / driver-codex | — | not started · thin migration-only (gated on L1) |
+| L1a | livespec-orchestrator-beads-fabro | `bd-ib-vvrxcb` | **COMPLETE** · closed · `v0.3.0` released |
+| L1b | livespec-orchestrator-git-jsonl | (in git-jsonl tenant) | **COMPLETE** · `v0.3.0` released |
+| console | livespec-console-beads-fabro | `…-vqh36l` | **running autonomously** (consuming lane/lane_reason) |
+| L2 | openbrain (adopter) | — | not started · **UNBLOCKED** (L1 released) |
+| L2 | livespec-dev-tooling / driver-claude / driver-codex | — | not started · thin migration-only · **UNBLOCKED** |
 
 ## Session-7 autonomous-run log
 
@@ -166,6 +190,24 @@ What landed while the maintainer was asleep (session 7, autonomous):
 - **L1a + L1b kicked off autonomously**, each in its own tmux session driving
   its slice and creating its own `/plan` thread + epic, prose-linked to
   `livespec-35s3zo`.
+- **L1a COMPLETE + released `v0.3.0`** (epic `bd-ib-vvrxcb` closed). Re-vendored
+  `livespec-runtime v0.5.0` + store-adapter (PR #203); shipped `next` rank
+  ordering + `lane`/`lane_reason` emission + 5 custom statuses + 2-step append +
+  `rebalance-ranks` + doctor checks; Dispatcher admission valve + per-repo WIP
+  cap + post-merge acceptance (PR re-expressing scenarios 10/11 + adding 22–25);
+  release PR #168. 1245 tests, 100% coverage. Its live beads tenant stays
+  PRE-migration (L2 migrates statuses in lockstep).
+- **L1b COMPLETE + released `v0.3.0`** (PR #150 implement / #151 release). JSONL
+  schema 16→17 (`+rank`, `−priority`; policy fields `None`-on-read /
+  dropped-on-write); store `rank` + `BOTTOM_SENTINEL` adapter; `next` ordering
+  `(rank, id)`.
+- **L1 COMPLETE → ≈60% of the epic** (L0 `v0.5.0` + L1a `v0.3.0` + L1b `v0.3.0`
+  all released).
+- **Console track kicked off autonomously** — resuming
+  `plan/work-item-lifecycle-redesign/` to consume the orchestrator's
+  `lane`/`lane_reason` emission and retire its `bd ready` re-derivation.
+- **L2 (the 9-tenant migration) + the exit gate remain.** L2 is unblocked on the
+  L1 releases + `rebalance-ranks`; the overseer-deletion exit gate is still pending.
 
 ## Read-first chain (in order)
 
