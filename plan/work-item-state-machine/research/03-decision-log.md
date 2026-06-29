@@ -654,6 +654,70 @@ governs only the `approve` routing (auto vs. human).
       divergent-head check are the safety net. *(Operational note, not a hard requirement:
       prefer running `rebalance-ranks` during quiescence.)*
 
+## Locked decisions — session 6 (execution structure; the slice plan)
+
+These decisions concern HOW the locked design (decisions 1–43) is decomposed
+and driven, not the design itself. The execution structure is written up in
+`04-slice-plan.md`; this section is the authoritative decision trail for it.
+
+44. **Spec-routing reframe: the contract lives in the `livespec-runtime` +
+    orchestrator `SPECIFICATION`s, NOT in CORE's spec.** Grounded in a session-6
+    fleet survey: CORE's `SPECIFICATION/` *explicitly delegates* the entire
+    redesign surface (lifecycle/states, Dispatcher/WIP/admission/janitor,
+    acceptance pre-vs-post-merge, the `WorkItem` schema + fields, `lane_of` /
+    `is_item_ready` / work-item ranking) to the orchestrator's own spec, marked
+    NON-normative ("core neither names nor verifies any of it"); CORE's contract
+    sees only the three named orchestrator CLIs, the `capture-work-item` seam,
+    the Planning-Lane frame, `livespec-runtime` policy, and CI telemetry. So
+    propose-changes land in `livespec-runtime/SPECIFICATION/contracts.md` (the
+    shared schema + new `lifecycle`/`rank` headings) and each orchestrator's own
+    `contracts.md` — **not** CORE. The epic stays *anchored* in core (decision
+    20 — the fleet anchor), but core is the anchor, not the work site. *Tightens
+    decision 41's loose "core owns the contract" wording.* Verified clean: no
+    lifecycle/schema content is mis-routed into CORE's spec today; one ride-along
+    drift to fix in L0 — `livespec-runtime/SPECIFICATION/contracts.md:131` claims
+    the record schema is "codified upstream in `livespec/SPECIFICATION/contracts.md`,"
+    but CORE hosts no such schema (the home is the runtime's own
+    `### …work_items.types`).
+
+45. **Per-repo `/plan` tracks, coordinated from core by a lightweight manual
+    overseer.** Each repo's slice is driven by its OWN
+    `/livespec-orchestrator-beads-fabro:plan` thread in that repo's tmux session,
+    so the spec/code/migration lands in — and is captured in the history of —
+    the correct repo, with its own epic in its own tenant, prose-linked to the
+    core anchor `livespec-35s3zo` (the console precedent, decision 41 — never a
+    typed cross-tenant `depends_on`). This (core) session is the coordinator +
+    anchor; it runs a **lightweight overseer INFORMED BY** `.claude/skills/overseer/`
+    but does **not** invoke it or stand up its three-pane dashboard (the heavy,
+    throwaway part this epic deletes). It adopts only: the status table
+    (`Epic · Track · Status · %Complete`) printed in the core pane before any
+    gate/status; the anti-stall discipline (never freeze the coordinator on one
+    track; keep others self-sustaining; decide-and-inform for reversible calls);
+    `tmux send-keys` kickoff; and the cross-repo run-prompt discipline
+    (cold-startable brief per repo, status from the ledger, no shadow queue).
+    *(Maintainer call, session 6, after weighing the skill's tmux/attention
+    accommodations against its risk of muddying the epic.)*
+
+46. **Tenant scope is 9; every tenant gets a track; drivers + dev-tooling get
+    THIN migration-only tracks.** *Extends decision 37 (which scoped 8 fleet beads
+    tenants) to add the OpenBrain adopter.* The full migration set: the 8 fleet
+    tenants (`livespec`, `livespec-runtime`, `livespec-dev-tooling`,
+    `livespec-console-beads-fabro`, `livespec-driver-claude`,
+    `livespec-driver-codex`, `livespec-orchestrator-beads-fabro`,
+    `livespec-orchestrator-git-jsonl`) **plus `openbrain`** — the only current
+    external adopter dogfooding livespec + the beads-fabro orchestrator, with its
+    own `.livespec.jsonc`, its own beads tenant (`dolt.database: openbrain`), and
+    its own governed `SPECIFICATION/`. The required-`rank` change makes any
+    un-migrated tenant unreadable (the standing "required-key schema change is a
+    cross-repo epic" rule), so all 9 migrate in lockstep. **OpenBrain** gets an
+    adopter track (pin bump + `.livespec.jsonc` updates + tenant migration).
+    **`livespec-dev-tooling` + the two drivers** need NO code/spec change
+    (decision 42: `Driver → orchestrator = zero deps`; their spec carries no
+    work-item schema) — only the data migration of their tenant (custom-status
+    registration + `rank` backfill, applied through the orchestrator's tooling).
+    They each get a **thin track** anyway, so the migration is formalized and
+    captured in each repo's history *(maintainer call, session 6)*.
+
 ## Open items (resolve-in-thread / author-in-doc — non-blocking)
 
 - **A.** ✅ **RESOLVED (session 2)** — the full transition table + guards
