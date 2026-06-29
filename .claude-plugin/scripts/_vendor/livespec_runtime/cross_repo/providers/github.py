@@ -1,9 +1,8 @@
 """GitHub `gh` CLI provider for cross-repo state queries.
 
-Per livespec/SPECIFICATION/contracts.md v072 §"Cross-repo dependency
-awareness" → "Resolution mechanism" and "`gh` CLI as the GitHub
-transport": every GitHub query the resolve-ref walker issues funnels
-through this module. `gh` MUST be installed and authenticated
+Per livespec/SPECIFICATION/contracts.md v072: every GitHub query the
+resolve-ref walker issues funnels through this module. `gh` MUST be
+installed and authenticated
 (`gh auth status` returning success) in any environment where the
 runtime is consumed; absence is a configuration error surfaced by the
 caller's retry policy collapsing to `RefStatus.UNKNOWN`.
@@ -16,8 +15,8 @@ on the branch existence probe — is detected by the stderr fingerprint
 and returned as `False` instead of propagating.
 
 `NonCanonicalGithubUrlError` is the only domain exception raised
-here. Per livespec/SPECIFICATION/non-functional-requirements.md
-§"Error discipline", schema-level inputs (canonical github_url
+here. Per livespec/SPECIFICATION/non-functional-requirements.md,
+schema-level inputs (canonical github_url
 form) are validated at the boundary and surfaced as a typed error;
 runtime transport failures (gh exit codes, JSON decode) propagate
 as built-ins.
@@ -89,9 +88,8 @@ def branch_exists_on_remote(*, github_url: str, name: str) -> bool:
     CalledProcessError propagates so the retry-wrap layer can decide
     whether to back off and retry.
 
-    Per livespec/SPECIFICATION/history/v003/contracts.md
-    §"livespec_runtime.cross_repo.providers.github" /
-    "branch_exists_on_remote": the 404 SHOULD be detected via `gh`'s
+    Per livespec/SPECIFICATION/history/v003/contracts.md: the 404 SHOULD
+    be detected via `gh`'s
     structured response, not a substring match on stderr.
     """
     owner_name = _split_owner_name(github_url=github_url)

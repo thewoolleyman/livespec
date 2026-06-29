@@ -3,9 +3,8 @@
 This is the order-independent reduction lifted byte-faithfully from
 `livespec-impl-git-jsonl`'s store — the canonical reducer of which
 beads' historical one-record-per-id collection is the degenerate case.
-Per livespec/SPECIFICATION/contracts.md §"Materialized view" /
-§"Append-only store disciplines", an entity's materialized view is its
-supersession-chain head, computed from the in-record `supersedes`
+Per livespec/SPECIFICATION/contracts.md, an entity's materialized view
+is its supersession-chain head, computed from the in-record `supersedes`
 pointers INDEPENDENTLY of the physical order of records (git may
 reorder lines during a merge; a "latest record by file order wins"
 reduction is retired).
@@ -92,7 +91,7 @@ def reduce_work_item_heads(
     """Reduce a WorkItem stream to the un-superseded heads per `id`.
 
     The canonical order-independent reduction per
-    livespec/SPECIFICATION/contracts.md §"Materialized view": each
+    livespec/SPECIFICATION/contracts.md: each
     entity's heads are the records whose identity no sibling record's
     `supersedes` pointer names, in ascending tie-break order
     (`captured_at`, then per-record identity). A tuple longer than one
@@ -121,7 +120,7 @@ def random_id_suffix() -> str:
     """Return a fresh six-character lowercase base32 id suffix.
 
     The `li-<suffix>` body, per livespec/SPECIFICATION/contracts.md
-    §"Work-items JSONL record schema" (the upstream `bd` convention
+    (the upstream `bd` convention
     `li-<6-char-base32-suffix>`). Randomness comes from
     `secrets.token_bytes`, so collision probability is negligible.
     Backend-coupled id MINTING (deciding the `li-` prefix and any
