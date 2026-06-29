@@ -350,6 +350,204 @@ governs only the `approve` routing (auto vs. human).
     can be locked now, but the actual key VALUES it assigns need G's key
     generator — so D-3 is best finalized with, or just after, G.
 
+## Locked decisions — session 4 (items G, D-3, B, resolved)
+
+38. **Fractional-index `rank` library = PORT (inline a verbatim copy), and
+    rebalance is ON-DEMAND with a `doctor` warning.** *Resolves item G (both
+    sub-parts).* Researched against the live code + the library landscape before
+    deciding.
+
+    **G-1 (library): PORT, not vendor.** Inline a **verbatim copy** of the
+    reference algorithm — `httpie/fractional-indexing-python`, the official Python
+    port of **rocicorp/fractional-indexing** (the Figma/David-Greenspan
+    fractional-indexing scheme, byte-compatible across JS/Go/Python/Kotlin/Ruby):
+    a single self-contained module (~287 lines), **stdlib-only** (`math`,
+    `typing`, `decimal`), licensed **CC0-1.0 (public domain)**, public API
+    `generate_key_between` / `generate_n_keys_between` / `validate_order_key`. It
+    lands at `livespec_runtime/work_items/_fractional_indexing.py` (attribution
+    header) behind a thin livespec-facing `rank.py` wrapper (`key_between` /
+    `n_keys_between`).
+    - **Why PORT over VENDOR — overrides `02-design.md` §5's casual "vendor a small
+      pure-Python fractional-indexing implementation" AND the general
+      prefer-vendoring rule, for a specific live-code reason:** the `rank` math
+      must live in **`livespec_runtime`**, which (a) has **no vendoring machinery**
+      — `.vendor.jsonc` + `vendor_update` + the `vendor_manifest` check live only in
+      the *consumer* plugin repos, and it carries **zero** vendored libs today
+      (sole runtime dep: `typing_extensions`) — and (b) is itself copied
+      **source-only** into every consumer's `_vendor/` tree (the copy pulls only the
+      `livespec_runtime/` source, **not** its declared deps), while shipped plugins
+      run under bare `python3` with `pyproject.toml` stripped (a pip dependency is
+      **unreachable** at end-user runtime). So VENDORing would force either standing
+      up the vendoring machinery *inside* `livespec_runtime`, or copying the lib
+      separately into all **3** consumer plugins and keeping them in sync (cross-repo
+      drift). PORTing drops **one file** into the `livespec_runtime` source tree that
+      rides along automatically wherever that tree is already vendored — **one source
+      of truth, no new machinery, no drift.**
+    - **CC0-1.0** is a public-domain dedication → verbatim copy is legally
+      frictionless (attribution courteous, not required; still add an attribution
+      header + a `NOTICES`/attribution line in `livespec-runtime`).
+    - This is **not hand-rolling** — it inlines **the** reference algorithm, honoring
+      the project's "use a proven algorithm, don't hand-roll" rule; fractional
+      indexing is **finished math**, so the usual port downside (upstream drift) is
+      negligible.
+
+    **G-2 (rebalance trigger): ON-DEMAND only.** An explicit `rebalance-ranks`
+    command (a deterministic, order-preserving bulk re-key) is the **sole** trigger;
+    a key-length threshold drives a **`doctor` WARNING** (discoverability +
+    actionable blessed path: "rank keys exceed N chars — run `rebalance-ranks`"),
+    **never** an automatic rebalance.
+    - **Why:** at the low, append-dominant volume (filing at top/bottom of the
+      backlog frontier; tens-to-hundreds of items per repo) long keys are
+      essentially a **non-event** (base-62 keys stay <~10 chars for thousands of
+      appends). A rebalance is a **churn burst** (N superseding records in git-jsonl
+      / N status-metadata updates in beads) best kept **deliberate**. Auto-firing
+      would **race concurrent inserts** — the exact hazard **item H** reasons about —
+      so keeping rebalance an explicit, non-racing op also de-risks H. The warn
+      threshold value is a tunable implementation detail (set generously), not an
+      architecture decision.
+
+    **Consequences:** (a) `02-design.md` §5's "vendor … implementation" line is
+    **superseded** by the PORT decision (re-synthesized at end of walk); (b) the
+    inlined module + `rank.py` wrapper land in `livespec_runtime/work_items/` and
+    ride the existing source-only vendoring into all consumers — **no consumer
+    `_vendor/` change, no `.vendor.jsonc` entry**; (c) a `NOTICES`/attribution entry
+    is added in `livespec-runtime`; (d) `doctor` gains a rank-key-length **warning**
+    check; (e) the orchestrator gains a `rebalance-ranks` command; (f) **D-3 is now
+    unblocked** — G's `key_between`/`n_keys_between` are the generator D-3's backfill
+    uses to assign actual rank VALUES (D-3's pre-agreed ORDER strategy — rank
+    existing items by current `priority` → `captured_at`, then drop `priority` — is
+    now finalizable; next in the walk).
+
+39. **`rank` is a strictly-required NON-NULL field; `priority` is dropped; the
+    backfill is a one-time global re-key reusing `rebalance-ranks`.** *Resolves
+    item D-3 — and thereby item D in full.* Grounded in the live store code
+    (`livespec_runtime/work_items/reduce.py` + `store.py`) and shaped by the
+    maintainer's pushback ("a new field we control doesn't need to be nullable").
+
+    **Type: `rank: str` — required, no default, never `| None`.** *Supersedes the
+    nullable proposal floated earlier this session;* re-affirms `02-design.md`
+    §6's `+ rank: str`. The maintainer's instinct is correct: a new field we own
+    is always set on every record we write going forward. The ONLY records we
+    don't control are the pre-`rank` lines already on disk — and because the store
+    is **append-only** (a backfill APPENDS superseding records, never rewrites old
+    lines) and `reduce.py` **re-parses every historical record** (not just heads)
+    to rebuild supersession chains, the read path will forever meet old lines with
+    no `rank` key and must answer "what rank does this read as?".
+
+    **That answer is a bottom-sentinel supplied by the STORE ADAPTER, not
+    nullability in the type.** When a backend facade (git-jsonl / beads) reads a
+    legacy line lacking `rank`, it substitutes a shared **bottom-sentinel** — a
+    constant using a char OUTSIDE the lib's base-62 alphabet (`0-9A-Za-z`), e.g.
+    `"~"` (0x7E > `z` 0x7A), so it sorts strictly AFTER every real key. The
+    domain type stays strict (`rank: str`, every constructor passes a value); the
+    legacy read-quirk lives where backend quirks belong (the adapter), kept DRY
+    via one shared sentinel constant the two facades import. *(Chosen by the
+    maintainer over a type-level `rank: str = "<sentinel>"` default; the strict
+    type matches "always required" + the strongest-guardrails Python rule.)* This
+    is a deliberate departure from the `= None` blessed-pattern shape used by
+    `spec_commitment_hint`/`supersedes`: `rank` has no "absent" meaning (every
+    live item HAS a position), so a strict non-null type + an adapter fallback is
+    cleaner than a nullable type with None-handling at every sort site.
+
+    **Backfill (the migration, across all 8 tenants — decision 37's blast
+    radius).** A rank is NOT a per-record function of one priority (fractional
+    keys are assigned relative to neighbors); the backfill sorts the WHOLE set by
+    the pre-agreed **`priority → captured_at → id`** order and calls G's
+    `n_keys_between(None, None, N)` for evenly-spaced keys. `priority` is required
+    (`priority: int`, never null) so there is no null-priority case. Written
+    per-backend: git-jsonl = N superseding records each carrying `rank` (and
+    omitting `priority`); beads = `metadata.rank`. The backfill produces ONE
+    real-ranked head per id, so post-backfill **no live head carries the
+    sentinel** (the sentinel only ever surfaces for superseded historical lines).
+
+    **Mechanism = `rebalance-ranks` seeded by the legacy order.** The backfill is
+    the SAME deterministic bulk re-key as G's `rebalance-ranks`, just seeded by
+    `priority → captured_at → id` instead of by existing-rank order. One command,
+    two seed orderings — no separate migration tool.
+
+    **`priority` drop.** Removed from the abstract `WorkItem`;
+    `ready_sort_key` (`livespec-orchestrator-beads-fabro` `commands/_cross_repo.py`)
+    switches its lead key from `priority` to `rank`. Legacy physical lines keep
+    `priority` harmlessly in append-only history; backfilled/new records omit it —
+    **no data scrub**.
+
+    **Invariant (doctor-checkable, joins item A's `active ⟹ assignee` family):**
+    every live (head, non-superseded) record has a real, non-sentinel `rank`.
+    Fail-soft in spirit — a stray sentinel-rank item sorts last and is NAMED by
+    doctor, never crashes the listing (the adapter always supplies SOME string, so
+    construction never fails). **Consequences:** (a) `02-design.md` §6's `rank`
+    row + §5 stand (no nullability); (b) a shared bottom-sentinel constant lands
+    in `livespec_runtime.work_items` (imported by both facades); (c) `doctor` gains
+    the non-sentinel-rank invariant; (d) the `rebalance-ranks` command gains a
+    legacy-seed entry path for the one-time backfill; (e) item D is now **fully
+    resolved** (D-1..D-4 all locked).
+
+40. **`lane_of` signature, home, and emitted shape — FULL single-authority
+    consolidation into `livespec_runtime`.** *Resolves item B (the
+    engineering-signature remainder; the lane TAXONOMY was decision 32).* Grounded
+    in the live code: today `is_item_ready`/`ready_sort_key` + the open/closed
+    dependency logic live in the orchestrator's `commands/_cross_repo.py`, there is
+    **no lane logic anywhere**, and the Rust console does NOT read `list-work-items`
+    — it shells `bd ready --json` and re-derives a 3-way lane from the raw status
+    string inside `parse_beads_observation` (the drift this retires).
+
+    **Signature + return type:**
+    ```python
+    def lane_of(*, item: WorkItem, index: dict[str, WorkItem], manifest: CrossRepoManifest) -> Lane
+
+    @dataclass(frozen=True, slots=True, kw_only=True)
+    class Lane:
+        name: LaneName                  # the 7 rendered lanes
+        reason: BlockedReason | None    # non-None iff name == "blocked"
+    ```
+    `LaneName = Literal["backlog","pending-approval","ready","active","acceptance","blocked","done"]`;
+    `BlockedReason = Literal["needs-human","infra-external","dependency"]`. The
+    `(item, index, manifest)` triple is EXACTLY what every `is_item_ready` caller
+    (`next`, dispatcher, `list-work-items`) already passes — zero new context
+    plumbing. Overlay logic: stored `ready` + any open dep → `Lane("blocked",
+    "dependency")`; stored `blocked` → `Lane("blocked", <stored blocked_reason>)`;
+    every other state → `Lane(<status>, None)`. "Open dep" is the existing
+    `is_item_ready` notion (resolve each `depends_on` via `resolve_ref`: a dep
+    blocks iff it resolves to `RefStatus.OPEN`, OR the entry is unparseable —
+    which fail-closes to blocking; `CLOSED` and `UNKNOWN`/missing-id do NOT block),
+    so lane and readiness agree by construction.
+
+    **Home + FULL consolidation (maintainer-chosen over a minimal move).** A new
+    module **`livespec_runtime/work_items/lifecycle.py`** (beside `types.py`/
+    `reduce.py`/`store.py`) becomes the SINGLE home for the lifecycle logic:
+    `lane_of`, the `Lane`/`LaneName`/`BlockedReason` types, `is_item_ready`
+    (re-expressed as `lane_of(...).name == "ready"`), `ready_sort_key` (now keyed
+    on **`rank`** per decision 39, not `priority`), and the lifted
+    open/closed-dependency determination (`parse_entry`/`_entry_blocks`/the
+    local-status-lookup — moved out of the orchestrator's `_cross_repo.py`),
+    reusing `resolve_ref`/`RefStatus` already in `livespec_runtime.cross_repo`. The
+    orchestrator's `next`/`dispatcher`/`list-work-items` IMPORT these from the
+    runtime; `_cross_repo.py` shrinks to orchestrator-only bits (`load_manifest`,
+    etc.). Rationale: lane_of MUST live in the runtime (decision 15 — Python
+    consumers import it, the console consumes its emission), which FORCES the
+    dep-logic into the runtime anyway; relocating `is_item_ready`/`ready_sort_key`
+    too means "open deps" is computed in exactly ONE place, so the Dispatcher's
+    drain order can never diverge from what `next` advertises (the single-authority
+    discipline `is_item_ready`/`ready_sort_key` already embody).
+
+    **Emitted shape (the Python ↔ console seam E consumes).** `list-work-items
+    --json` adds two computed FLAT keys per item: **`lane`** (rendered lane name,
+    one of 7) and **`lane_reason`** (rendered reason: `dependency`/`needs-human`/
+    `infra-external`/null). Flat, not nested — matches the existing flat `asdict`
+    emitter and the Rust flat-field parser. All other new `WorkItem` fields
+    (`rank`, `admission_policy`, `acceptance_policy`, stored `blocked_reason`,
+    `assignee`, the 7-state `status`) auto-emit via `asdict`, so only `lane`/
+    `lane_reason` are computed additions. **Consequences:** (a) the console (item E)
+    switches its source from `bd ready --json` + `parse_beads_observation`'s
+    `match status_text` to reading `lane`/`lane_reason` directly; Rust's
+    `BeadsWorkItemStatus` 3-way enum + the re-derivation are retired; (b) the new
+    cross-repo import edge (orchestrator → `livespec_runtime.work_items.lifecycle`)
+    is a fact item **F** must check against the "Driver → orchestrator = zero deps"
+    invariant; (c) ride-along cleanup: standardize the `audit` JSON to one
+    canonical serializer (the 5-key `reduce.py` form) to kill the current
+    3-key-vs-5-key `list-work-items`-vs-`reduce` divergence; (d) item B is fully
+    resolved (taxonomy = decision 32; signature/home/shape = here).
+
 ## Open items (resolve-in-thread / author-in-doc — non-blocking)
 
 - **A.** ✅ **RESOLVED (session 2)** — the full transition table + guards
@@ -364,29 +562,41 @@ governs only the `approve` routing (auto vs. human).
   has a native `owner` field" was wrong — beads' native field is `assignee` (no
   native `owner`), which is exactly why keeping the abstract name `assignee` is
   the cohesive, zero-impedance choice.
-- **B.** Precise `lane_of` signature + its exact home in
-  `livespec_runtime`, and the `list-work-items --json` lane-emitting
-  shape (the Python ↔ console seam).
+- **B.** ✅ **RESOLVED (session 4, decision 40)** — `lane_of(*, item, index,
+  manifest) -> Lane` (a `{name, reason}` dataclass), homed in a new
+  `livespec_runtime/work_items/lifecycle.py` with FULL single-authority
+  consolidation (`is_item_ready`/`ready_sort_key` + dep-resolution relocate there;
+  orchestrator imports them). `list-work-items --json` emits flat `lane` +
+  `lane_reason`; the console consumes them directly (retiring its `bd ready`
+  re-derivation). Taxonomy was decision 32.
 - **C.** ✅ **RESOLVED (session 3)** — acceptance verification is **post-merge /
   in-production (observability-driven)**: ship-on-green, then the AI/human
   confirm the *shipped* artifact against tests + telemetry; `reject` =
   revert/fix-forward. `just check` stays the pre-merge correctness floor. See
   decisions 33–34 (which amend the item-A table's `complete`/`accept`/`reject`
   rows).
-- **D.** 🟡 **PARTLY RESOLVED (session 3)** — sub-questions:
+- **D.** ✅ **RESOLVED (sessions 3–4)** — sub-questions all locked:
   - **D-1** ✅ owner ≡ existing `assignee` field, kept in place (decision 35).
   - **D-2** ✅ beads status encoding finalized against verified v1.0.5 source
     (decision 36): 5 custom statuses + `blocked`/`done`→`closed` reuse.
+  - **D-3** ✅ **(session 4, decision 39)** — `rank` is a strictly-required
+    NON-NULL `str` (store adapter supplies a bottom-sentinel for legacy lines, not
+    a nullable type); backfill across all 8 tenants from `priority → captured_at →
+    id` via G's `n_keys_between`, reusing `rebalance-ranks` (legacy-seeded);
+    `priority` dropped (no scrub); doctor invariant = every live item has a real
+    rank.
   - **D-4** ✅ fleet repo set = all 8 beads tenants + code blast radius
     (decision 37).
-  - **D-3** ⬜ OPEN — `rank` backfill order + `priority` drop; **coupled to item
-    G** (needs G's fractional-key generator). Finalize with/after G.
 - **E.** Console full lane/view redesign + the "zero-primary-state /
   rebuild-from-ledger" conformance test.
 - **F.** Verify the exact `core ↔ driver ↔ orchestrator` dependency edges
   hold the "Driver → orchestrator = zero" invariant with the console added.
-- **G.** Fractional-index library choice (vendor vs port) + rebalance
-  trigger policy (on-demand vs length threshold).
+- **G.** ✅ **RESOLVED (session 4, decision 38)** — **PORT** (inline a verbatim
+  CC0-1.0 copy of the rocicorp/httpie fractional-indexing reference module into
+  `livespec_runtime/work_items/`, behind a thin `rank.py` wrapper), not vendor
+  (livespec_runtime has no vendoring machinery and is itself vendored source-only
+  into consumers). Rebalance is **on-demand** (explicit `rebalance-ranks` command)
+  with a **`doctor` key-length warning** for discoverability; never auto-fires.
 - **H.** `rank` rebalancing concurrency edge (a rebalance racing a
   concurrent insert) — confirm the "off-by-one-position, never corrupt"
   reasoning under the real merge model.
