@@ -155,9 +155,16 @@ shadow queue).
    the coordinator waiting on it; keep it self-sustaining (see the "For the next
    overseer" section for the monitor + re-engage mechanics).
 2. **Exit gate (the final step — maintainer's call to declare the system
-   dogfooded).** Delete `.claude/skills/overseer/`, then close the anchor epic
-   `livespec-35s3zo` (and the per-repo L2 epics that were **left open by design**
-   for archive-on-close). It is NOT done until this lands.
+   dogfooded).** The exit gate is now **console E-walk done + the overseer
+   updated** → close the anchor epic `livespec-35s3zo` (and the per-repo L2
+   epics that were **left open by design** for archive-on-close). The local
+   overseer skill (`.claude/skills/overseer/`) is **KEPT and UPDATED** to the
+   lean, plan-skill-driven + factory-dispatch form (done), **not deleted** —
+   there is no replacement for the manual coordinator until the **console
+   operator-cockpit** (TUI minimum, GUI ideal), itself built via the factory,
+   replaces it. Deleting the overseer is therefore **DEFERRED** to that future
+   console-cockpit milestone, NOT part of this epic's exit gate. It is NOT done
+   until the anchor + L2 epics close.
 3. **Post-L2 follow-ups (none blocking) — capture as work-items when convenient:**
    - **No end-to-end `migrate-tenant` CLI.** `legacy_seed` /
      `register_custom_statuses` are library **primitives**, not a command — all
@@ -256,9 +263,12 @@ What landed while the maintainer was asleep (session 7, autonomous):
   **E-2b (hybrid lane TUI sub-view) RUNNING NOW**; E-3 + E-4 remain.
 - **All other sessions idle/done.** L0/L1a/L1b/runtime/beads-fabro/git-jsonl/
   dev-tooling/driver-claude/driver-codex/openbrain are done with their work.
-- **Remaining:** console E-2b → E-3 → E-4, then the exit gate (delete
-  `.claude/skills/overseer/`, close `livespec-35s3zo` + the per-repo L2 epics).
-  Post-L2 follow-ups are captured under "The next action" (none blocking).
+- **Remaining:** console E-2b → E-3 → E-4 and the overseer update (DONE — the
+  skill was rewritten to the lean, plan-skill-driven + factory-dispatch form,
+  RETAINED not deleted), then the exit gate (close `livespec-35s3zo` + the
+  per-repo L2 epics; the overseer is NOT deleted — its deletion is DEFERRED to
+  the future console operator-cockpit milestone). Post-L2 follow-ups are
+  captured under "The next action" (none blocking).
 
 ## Read-first chain (in order)
 
@@ -328,11 +338,16 @@ What landed while the maintainer was asleep (session 7, autonomous):
 
 ## Hard exit gate for the epic
 
-`livespec-35s3zo` is NOT done until the local **overseer skill**
-(`.claude/skills/overseer/`) is **deleted** — it keeps running until the new
-system is dogfooded (console E-2b→E-4 finished), then is removed as the final
-step. At that gate, also close `livespec-35s3zo` and the per-repo L2 epics that
-were left open by design for archive-on-close.
+`livespec-35s3zo` is NOT done until **both**: (1) the console E-walk is finished
+(E-2b → E-3 → E-4, the new system dogfooded), and (2) the local **overseer
+skill** (`.claude/skills/overseer/`) is **updated** to the lean,
+plan-skill-driven + factory-dispatch form (DONE). The overseer is **KEPT and
+UPDATED, NOT deleted** — there is no replacement for the manual coordinator
+until the **console operator-cockpit** (TUI minimum, GUI ideal), itself built
+via the factory, replaces it; deleting the overseer is therefore **DEFERRED** to
+that future console-cockpit milestone, not this epic's exit gate. At the exit
+gate, close `livespec-35s3zo` and the per-repo L2 epics that were left open by
+design for archive-on-close (the overseer skill stays in place).
 
 ## Resume command
 
