@@ -55,6 +55,37 @@ so a manual coordinator MUST rotate-and-delegate or it degrades into
 ineffectiveness. The same constraint binds any future long-running
 multi-session coordination, whatever drives it.
 
+## Factory-dispatch over inline implementation
+
+The fleet is built around a **dark factory**: ready, factory-safe implementation
+work-items are dispatched through `/livespec-orchestrator-beads-fabro:orchestrate`
+(`run --action impl:<work-item-id>`), which runs the Red→Green build factory-side
+in a **Codex/Fabro sandbox**, gated by the janitor (`just check` +
+`/livespec:doctor`). **Do NOT hand-code ready implementation inline in a Claude
+session** — that is the inline-overseer anti-pattern this fleet is actively
+deleting (the work-item-lifecycle epic's exit gate removes the local overseer
+skill for exactly this reason). Dispatching is not just cleaner: it produces
+better code AND spends **Codex** quota instead of **Claude** quota.
+
+Holds for **ad-hoc work AND anything routed via the `plan` skill**:
+
+- **Ad-hoc / freeform impl** (a bug, refactor, or tactical task you would
+  otherwise start coding) → file it as a work-item and dispatch via
+  `orchestrate`; do not open an editor and hand-write it.
+- **`plan`-routed impl** — when a planning thread matures a piece into ledger
+  work, that work is **factory-dispatched**; the planning session itself never
+  hand-codes the implementation.
+- **Trust `orchestrate`** — it owns the Dispatcher/Fabro mechanics. Never invoke
+  Fabro directly or pre-inspect `.fabro/`; if a repo or item is not factory-safe,
+  `orchestrate` says so.
+
+**Stays in Claude (NOT factory-dispatched):** the planning thread itself,
+`groom` (the maintainer-owned cut), spec-side `/livespec:*` lifecycle, host-only
+self-machinery, and maintainer-gated exits. Everything that is ready,
+factory-safe *implementation* goes through the factory. Authoritative detail:
+the orchestrator's `SPECIFICATION/contracts.md` §"Dispatcher admission, WIP cap,
+and post-merge acceptance" and its `prose/plan.md` routing.
+
 ## Cross-cutting disciplines index
 
 Each entry names the discipline and points at its authoritative detail — read the
@@ -90,3 +121,9 @@ named section before acting; do not rely on this summary alone.
   lean by `tail`-capturing panes and delegating heavy authoring to sub-agents.
   Detail: this file §"Overseer / long-running-coordinator discipline" and the
   local `.claude/skills/overseer/SKILL.md`.
+- **Factory-dispatch over inline implementation** — ready, factory-safe impl
+  work-items are dispatched via `/livespec-orchestrator-beads-fabro:orchestrate`
+  (Codex/Fabro sandbox), never hand-coded inline in Claude; inline Claude is for
+  planning / `groom` / spec-side / maintainer-gated exits only. Better code AND
+  spares Claude quota. Detail: this file §"Factory-dispatch over inline
+  implementation".

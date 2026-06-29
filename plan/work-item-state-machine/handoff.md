@@ -15,6 +15,16 @@ released, and **all 9 beads tenants are migrated and doctor-verified**. Only
 two things remain: the **console track** (E-2b → E-3 → E-4) and the **exit
 gate** (maintainer's call to declare the system dogfooded). To take over:
 
+- **⚑ STANDING RULE — dispatch implementation through the factory; do NOT
+  hand-code it inline.** The inline-tmux-Claude pattern below was a *bootstrap
+  crutch* that expired when L0+L1+L2 shipped (the factory substrate now exists).
+  Ready, factory-safe impl is dispatched via
+  `/livespec-orchestrator-beads-fabro:orchestrate` (`run --action impl:<id>`),
+  which runs Red→Green factory-side on **Codex/Fabro** — better code AND spends
+  Codex quota, sparing Claude. **Concretely: the console's E-3 and E-4 are
+  dispatched via `orchestrate`, not hand-coded; "re-engage" means dispatch, not
+  re-open an inline coder.** Canonical rule:
+  `.ai/agent-disciplines.md` §"Factory-dispatch over inline implementation".
 - **Re-arm monitoring.** The prior session's `Monitor` watchers died with it —
   they do NOT survive a session boundary. Start a **fresh persistent `Monitor`**
   over the console tmux session `livespec-console-beads-fabro`: poll its pane
