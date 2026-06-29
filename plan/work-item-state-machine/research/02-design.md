@@ -461,16 +461,20 @@ registers the 5 custom statuses
 — a per-tenant provisioning step. (b) Because `bd create` forces
 `open`/`deferred`, the beads store wrapper's `append_work_item` becomes a
 **2-step create+update** for every initial state (even a plain `file`,
-since `backlog` is custom). (c) The `rank` backfill spans **all 8 beads
-tenants** (decision 37): it sorts the whole set by `priority → captured_at
-→ id` and calls `n_keys_between(None, None, N)` for evenly-spaced keys,
-written per-backend (git-jsonl = N superseding records carrying `rank` and
-omitting `priority`; beads = `metadata.rank`) — the SAME deterministic
-bulk re-key as `rebalance-ranks`, just seeded by the legacy order, so the
-backfill produces one real-ranked head per id (the sentinel only ever
-surfaces for superseded historical lines). (d) git-jsonl needs only a
-schema update (the 7 status enum values; it stores status as a free
-string).
+since `backlog` is custom). (c) The `rank` backfill spans **all 9 beads
+tenants** (the 8 fleet tenants + the OpenBrain adopter — decisions 37 + 46):
+it sorts the whole set by `priority → captured_at → id` and calls
+`n_keys_between(None, None, N)` for evenly-spaced keys, written per-backend
+(git-jsonl = N superseding records carrying `rank` and omitting `priority`;
+beads = `metadata.rank`) — the SAME deterministic bulk re-key as
+`rebalance-ranks`, just seeded by the legacy order, so the backfill produces
+one real-ranked head per id (the sentinel only ever surfaces for superseded
+historical lines). (d) git-jsonl does NOT store status as a free string: it
+validates status against the vendored `WorkItemStatus` Literal (so the enum
+auto-tracks the runtime bump) AND carries a **closed record schema** in its
+own `contracts.md` (`## Work-items JSONL record schema` — extra keys fire a
+doctor `fail`), so it needs an L1b propose-change to grow that schema 16→17
+keys (`+ rank`, `− priority`) and update its 7-state status-enum prose.
 
 ### Transitions and audit (no "receipt" structure)
 
@@ -487,10 +491,13 @@ chain *is* the audit log) or a beads status change recorded in native
 ## 7. The console — delegated to the console repo (contract boundary)
 
 The console **redesign is delegated** to the console repo's own plan thread
-(decision 41): livespec **core** owns the CONTRACT — the lifecycle state
-machine, the `WorkItem` schema in `livespec_runtime`, `lane_of` + the
-`list-work-items --json` emission shape (`lane`/`lane_reason` + the new
-fields), `rank`, and the acceptance model — while
+(decision 41): the **livespec spec plane** owns the CONTRACT — and that
+contract lives in the **`livespec-runtime` + orchestrator `SPECIFICATION`s**,
+NOT in CORE's own spec (decision 44): the lifecycle state machine + the
+`WorkItem` schema (`livespec-runtime/SPECIFICATION` + `livespec_runtime`
+code), `lane_of` + the `list-work-items --json` emission shape
+(`lane`/`lane_reason` + the new fields), `rank`, and the acceptance model
+(the orchestrator `SPECIFICATION`s) — while
 `livespec-console-beads-fabro` owns its HOW (the Rust redesign, the TUI,
 ingestion, the attention lens, the conformance test, and any console-LOCAL
 spec invariants). Console-specific design/research/work-items live in the
@@ -576,32 +583,40 @@ removed).
 
 ## 10. Blast radius (one fleet-wide epic)
 
-Anchored in **livespec core** (epic `livespec-35s3zo`). Per decision 37:
+Anchored in **livespec core** (epic `livespec-35s3zo`) — the fleet anchor,
+NOT the work site (decision 44: CORE's own spec is barely touched). Per
+decisions 37 + 46. The execution decomposition (tracks, layers, per-repo
+routing) is `research/04-slice-plan.md`.
 
-- **Data migration — all 8 beads tenants** under `/data/projects/livespec*`
-  (`livespec`, `livespec-runtime`, `livespec-dev-tooling`,
-  `livespec-console-beads-fabro`, `livespec-driver-claude`,
-  `livespec-driver-codex`, `livespec-orchestrator-beads-fabro`,
-  `livespec-orchestrator-git-jsonl`): the status-enum + `rank` backfill +
-  `priority` drop, migrated in lockstep (the shared validator means a
-  required-key change is a cross-repo epic).
-- **Code blast radius:**
-  - `livespec_runtime` — the `WorkItem` schema (status enum, drop
-    `priority`, add non-null `rank`, `assignee` invariant), the net-new
-    `lifecycle.py` (`lane_of` + relocated `is_item_ready`/`ready_sort_key`),
-    the ported `_fractional_indexing.py` + `rank.py`, and the shared
-    bottom-sentinel constant.
-  - `livespec-orchestrator-beads-fabro` — custom-status registration, the
-    2-step `append_work_item`, the `done↔closed` mapping, the Dispatcher
-    valves + per-repo WIP, `list-work-items` lane emission, the
-    `rebalance-ranks` command (with the legacy-seed backfill path).
-  - `livespec-orchestrator-git-jsonl` — the status enum update.
+- **Data migration — all 9 beads tenants:** the 8 fleet tenants under
+  `/data/projects/livespec*` (`livespec`, `livespec-runtime`,
+  `livespec-dev-tooling`, `livespec-console-beads-fabro`,
+  `livespec-driver-claude`, `livespec-driver-codex`,
+  `livespec-orchestrator-beads-fabro`, `livespec-orchestrator-git-jsonl`)
+  **plus the `openbrain` adopter** — the status-enum + `rank` backfill +
+  `priority` drop + custom-status registration, migrated in lockstep (the
+  shared validator means a required-key change is a cross-repo epic).
+- **Code/spec blast radius:**
+  - `livespec-runtime` (`SPECIFICATION` + `livespec_runtime`) — the
+    `WorkItem` schema (status enum, drop `priority`, add non-null `rank`,
+    `assignee` invariant), the net-new `lifecycle.py` (`lane_of` + relocated
+    `is_item_ready`/`ready_sort_key`), the ported `_fractional_indexing.py`
+    + `rank.py`, and the shared bottom-sentinel constant.
+  - `livespec-orchestrator-beads-fabro` (`SPECIFICATION` + code) —
+    custom-status registration, the 2-step `append_work_item`, the
+    `done↔closed` mapping, the Dispatcher valves + per-repo WIP,
+    `list-work-items` lane emission, the `rebalance-ranks` command (with the
+    legacy-seed backfill path), the doctor `rank` invariants.
+  - `livespec-orchestrator-git-jsonl` (`SPECIFICATION` + code) — the
+    `## Work-items JSONL record schema` 16→17 keys + status-enum prose; the
+    `store.py` required-keys + sentinel adapter; `next` `priority → rank`.
   - `livespec-console-beads-fabro` — consume the new lane/fields (the HOW is
     the delegated console thread, §7).
-  - `doctor` — the non-sentinel-`rank` invariant + the rank-key-length
-    warning.
-- **Not changed:** the **drivers** (`livespec-driver-claude`/`-codex`) — the
+- **Migration-only, NO code/spec change** (`livespec-driver-claude`,
+  `livespec-driver-codex`, `livespec-dev-tooling`): the
   "Driver → orchestrator = zero deps" invariant holds (decision 42), so the
-  lifecycle consolidation adds no driver edge.
+  lifecycle work adds no code edge — only their tenant is migrated (above).
+  They get a **thin track** each so that migration is captured in their
+  history (decision 46).
 
 **Overseer deletion is the epic's exit criterion.**
