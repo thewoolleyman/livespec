@@ -487,6 +487,11 @@ existing file):
 - **Always recommend.** In any interview or critique dialogue, never present
   options as a neutral menu: lead with an explicit recommended option (first,
   labeled "Recommended"), state the reasoning, and yield gracefully if challenged.
+- **Prefer structured pickers over free-form prose questions.** When prompting the
+  maintainer for a decision, use the harness's structured multiple-choice picker
+  (Claude Code: the `AskUserQuestion` tool) with a clearly-recommended first option —
+  do NOT ask free-form prose questions the maintainer must type answers to. Reserve
+  prose for stating self-resolved actions and findings.
 - **Honest pushback over agreement.** When the maintainer challenges a
   recommendation or says "don't just agree with me / are we over-specifying,"
   reconsider substantively against the project's principles (architecture-not-
