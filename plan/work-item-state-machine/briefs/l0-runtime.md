@@ -65,9 +65,21 @@ is **`livespec-35s3zo`** (livespec core tenant).
 
 ## Discipline (non-negotiable)
 
+- **Dispatch implementation through the factory; do NOT hand-code it inline
+  in this Claude session.** Ready, factory-safe impl work-items are dispatched
+  via `/livespec-orchestrator-beads-fabro:orchestrate`
+  (`run --action impl:<work-item-id>`), which runs the Red→Green build
+  factory-side on **Codex/Fabro** — that is the whole system being built here
+  (and the exit gate deletes the inline-Claude overseer for exactly this
+  reason). It produces better code AND spends **Codex** quota instead of
+  **Claude** quota. Only the planning thread, `groom`, spec-side `/livespec:*`,
+  and the maintainer-gated exit legitimately stay in Claude; everything that is
+  ready, factory-safe implementation goes through `orchestrate`. Trust the
+  `orchestrate` skill — never invoke Fabro directly or pre-inspect `.fabro/`.
 - Every change via **worktree → PR → rebase-merge**; `mise exec -- git …`;
   **never `--no-verify`**; halt and report on any hook failure.
-- Product `.py` follows **this repo's red-green-replay TDD ritual**.
+- Product `.py` follows **this repo's red-green-replay TDD ritual** (executed
+  factory-side by the dispatched Codex agent, not by hand in this session).
 - Operate **only in worktrees you create**; never touch another track's
   worktree/branch.
 - Secrets probe-only; no human-scale time framings.
