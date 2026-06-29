@@ -20,6 +20,14 @@ This skill exists because doing this by hand failed in two specific ways that
 must never recur. Read the **Prime directive** and **Anti-stall laws** first;
 they are the whole point.
 
+> **Coordinator self-discipline lives in `.ai/agent-disciplines.md`
+> §"Overseer / long-running-coordinator discipline"** — read it alongside this
+> skill. In short: rotate the overseer role before ~50% context (refresh the
+> handoff and hand off to a FRESH session; don't hoard the role to autocompact),
+> never park ready work behind a "my context is heavy" excuse (track work runs in
+> each session's OWN context), and keep yourself lean by `tail`-capturing panes
+> and delegating heavy authoring to sub-agents.
+
 ---
 
 ## STEP 0 — MANDATORY STARTUP GATE (ask the maintainer BEFORE anything else)
