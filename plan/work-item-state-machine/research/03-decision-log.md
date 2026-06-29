@@ -548,6 +548,112 @@ governs only the `approve` routing (auto vs. human).
     3-key-vs-5-key `list-work-items`-vs-`reduce` divergence; (d) item B is fully
     resolved (taxonomy = decision 32; signature/home/shape = here).
 
+## Locked decisions — session 5 (items E, F, H resolved; A–H walk complete)
+
+41. **Item E (the console redesign) is DELEGATED to a console-repo plan thread —
+    not designed here.** *Resolves item E.* The boundary: livespec **core** owns the
+    CONTRACT (the lifecycle state machine, the `WorkItem` schema in `livespec_runtime`,
+    `lane_of` + the `list-work-items --json` emission shape, `rank`, the acceptance
+    model); the **console repo** (`livespec-console-beads-fabro`) owns its HOW (the Rust
+    redesign, the TUI, ingestion, attention, the conformance test, and any console-LOCAL
+    spec invariants). Console-specific design/research/work-items live in the console
+    repo, never in livespec core's spec or plan.
+    - **Console thread:** `plan/work-item-lifecycle-redesign/` in
+      `livespec-console-beads-fabro`, anchored by console-tenant epic
+      **`livespec-console-beads-fabro-vqh36l`**, cross-linked to this core epic
+      `livespec-35s3zo` as a **prose reference** (NOT a typed cross-tenant `depends_on`:
+      that repo's `depends_on` is a flat same-tenant id list, so a cross-tenant id would
+      dangle and pollute the `blocked:dependency` derivation).
+    - **E resolved there (E-1..E-4), landed on the console repo's master via its PR #60:**
+      - **E-1** (source/ingestion): the console switches its work-item source from
+        `bd ready --json` (a beads reach-around) → orchestrator **`list-work-items --json`**
+        (ALL lanes), parsed as a real JSON array; consumes the emitted `lane`/`lane_reason`
+        + new fields; deletes the Rust 3-way `match status_text` lane re-derivation; renames
+        the whole `Beads*` cluster to backend-neutral vocabulary; one observed event per item.
+      - **E-2** (maintainer): a **hybrid** lane-overview home + full-width per-lane drill-in;
+        **Attention = a derived LENS** over the lanes (not a standalone view, not an 8th lane);
+        the pseudo-lane tabs Ready/Factory/Manual/Done collapse into the 7 real lanes;
+        Spec/Events/Repos stay as orthogonal non-lane views.
+      - **E-3** (forced parts): the attention inbox is redefined as a **pure derivation** of
+        (`lane`, `lane_reason`, `admission_policy`, `acceptance_policy`); snooze/ack plumbing
+        deleted across all 5 console layers; the 3 old triggers accounted for
+        (dispatcher-needs-regroom + fabro-human-gate subsumed by the lane; livespec-revise
+        relocated to the Spec view); "not now" = defer/re-rank via the orchestrator.
+        *(Flagged for impl: confirm the orchestrator/ledger reflects a Fabro human-gate AS
+        the work-item's lane.)*
+      - **E-4** (maintainer ratified): a **rebuild-from-ledger conformance test** —
+        rebuild-determinism (snapshot projections → wipe store → re-backfill from the ledger
+        → recompute → assert identical) PLUS a structural "no primary lifecycle state"
+        assertion, scoped to work-item projections (lanes + attention lens), **excluding**
+        the operator commands table; **DROP** the dead `projections` table; accept
+        `commands.status` as console-local operator-command state via a documented carve-out
+        (not event-sourced).
+    - **Mechanism note:** the console repo's orchestrator pin (v0.2.0) predates the `plan`
+      skill, so the thread create-flow was realized manually but conformantly (thread dir +
+      epic via the same consented store-writer); forward-compatible with a future `plan`
+      resume once that pin bumps (which it must anyway when core ships the lane emission).
+    - The console thread's `handoff.md` names its single next action: **groom epic
+      `livespec-console-beads-fabro-vqh36l` into dispatchable slices (MAINTAINER-OWNED)**.
+
+42. **The "Driver → orchestrator = zero deps" invariant HOLDS fleet-wide; decision 40's
+    lifecycle consolidation uses DEPENDENCY INJECTION, not a verbatim move.** *Resolves item
+    F.* Verified the actual dependency edges across all 7 repos against the canonical
+    statement (livespec `SPECIFICATION/spec.md` §"Contract + reference implementations
+    architecture" — the `zerodep` node; `non-functional-requirements.md` — core
+    standalone-installable, "no plane depends on the console").
+    - **All four edges HOLD:** (1) **Driver → orchestrator = zero** (both
+      `livespec-driver-claude`/`-codex`: empty `[project.dependencies]`, clean `uv.lock`,
+      clean manifests, no imports; the only touchpoint is a config-indirected, late-bound
+      `revise → capture-impl-gaps` hand-off via `.livespec.jsonc implementation.plugin` — a
+      runtime contract, not a build dep). (2) **`livespec_runtime` depends on nothing above
+      it** (sole runtime dep `typing_extensions`). (3) **orchestrator → `livespec_runtime`**
+      is an existing edge (vendored v0.4.0 + imported). (4) **console → orchestrator-CLI-only**
+      (`Cargo.toml` has no beads/fabro/driver/orchestrator crate; the "Beads"/"Fabro" tokens
+      in Rust are the console's own observed-domain vocabulary + shell-out strings; zero
+      `console → driver` references).
+    - **Refinement to decision 40** (the reason F mattered): the `lifecycle.py` consolidation
+      is NOT a verbatim move.
+      - `ready_sort_key` → **clean move** (and decision 39 already re-keys it on `rank`,
+        dropping the old `priority`/gap-tied constants).
+      - `is_item_ready` → **cannot move verbatim**: its sibling-lookup reaches beads-specific
+        orchestrator code (`resolve_store_config`, the `read_work_items` *free function*,
+        `StoreConfig`) that must NOT exist in `livespec_runtime`; moving it as-is creates a
+        **back-edge** (runtime → beads). **Fix: move the PURE predicate and INJECT the
+        status-lookup callables** (`sibling_status_lookup`/`local_status_lookup` — `resolve_ref`
+        already accepts these); the beads store-reading stays in the orchestrator.
+      - `lane_of` → **net-new** (exists in no repo today) — a small correction to the
+        handoff's "those live in the orchestrator" wording; only `is_item_ready`/`ready_sort_key`
+        are relocations.
+      - **Net:** decision 40's "FULL single-authority consolidation" stands in spirit
+        (`lane_of`/`is_item_ready`/`ready_sort_key` all live in `lifecycle.py` as the one
+        authority), but the precise mechanism is **"move the pure core, inject the backend
+        I/O,"** which strengthens the runtime's backend-agnosticism. Name-collision caveat:
+        runtime's `read_work_items` is a Protocol *method*, not the beads free function.
+
+43. **rebalance-vs-insert race: "never corrupt" CONFIRMED; "off-by-one" CORRECTED to bounded
+    benign mispositioning O(cohort size).** *Resolves item H.* Analyzed against the live
+    storage/sort/merge model.
+    - **NEVER CORRUPT — confirmed:** the append-only, content-addressed supersession reducer
+      (`livespec_runtime/work_items/reduce.py`: identity = sha256 of canonical JSON; heads =
+      records not named by any sibling's `supersedes`; resolution is content-based and
+      order-independent; a concurrently-inserted item is never superseded → no data loss);
+      the fractional-index generator only emits valid base-62 keys (never unparseable); the
+      sort key ends in `id` (unique tie-break), so even an identical-rank collision yields a
+      deterministic total order. **git-jsonl:** a fork is a SURFACED divergent-head finding
+      (`no_divergent_heads` check), never silent — and rebalance-vs-insert does not even
+      create one (they touch different ids). **beads:** last-write-wins on one SQL row (the
+      Dolt server serializes), so no divergence is possible.
+    - **"OFF-BY-ONE" CORRECTED → bounded benign mispositioning up to O(cohort size):** because
+      a rebalance rewrites the ABSOLUTE key values of the inserted item's old neighbors, the
+      item's fixed old-relative key can land several slots away (bounded by the cohort the
+      rebalance compressed past it), not just one. It stays fully ordered, parseable, and
+      unambiguous, and SELF-HEALS on the next rebalance that observes it.
+    - **Mitigation already in place:** decision 38 G-2's **on-demand-only** rebalance (never
+      auto-fire) keeps the race rare and deliberate, so the worst case stays academic at the
+      stated volume. No new machinery is needed; the `(rank, id)` tie-break + the
+      divergent-head check are the safety net. *(Operational note, not a hard requirement:
+      prefer running `rebalance-ranks` during quiescence.)*
+
 ## Open items (resolve-in-thread / author-in-doc — non-blocking)
 
 - **A.** ✅ **RESOLVED (session 2)** — the full transition table + guards
@@ -587,19 +693,24 @@ governs only the `approve` routing (auto vs. human).
     rank.
   - **D-4** ✅ fleet repo set = all 8 beads tenants + code blast radius
     (decision 37).
-- **E.** Console full lane/view redesign + the "zero-primary-state /
-  rebuild-from-ledger" conformance test.
-- **F.** Verify the exact `core ↔ driver ↔ orchestrator` dependency edges
-  hold the "Driver → orchestrator = zero" invariant with the console added.
+- **E.** ✅ **RESOLVED (session 5, decision 41)** — DELEGATED to the console-repo plan
+  thread `plan/work-item-lifecycle-redesign/` (epic `livespec-console-beads-fabro-vqh36l`,
+  cross-linked to `livespec-35s3zo`); E-1..E-4 resolved + landed on the console repo's
+  master. Core owns the contract; the console repo owns its HOW.
+- **F.** ✅ **RESOLVED (session 5, decision 42)** — the invariant HOLDS across all four
+  fleet edges; decision 40's `lifecycle.py` consolidation moves the PURE predicate and
+  INJECTS the backend status-lookup callables (no runtime→beads back-edge). `lane_of` is
+  net-new, not a relocation.
 - **G.** ✅ **RESOLVED (session 4, decision 38)** — **PORT** (inline a verbatim
   CC0-1.0 copy of the rocicorp/httpie fractional-indexing reference module into
   `livespec_runtime/work_items/`, behind a thin `rank.py` wrapper), not vendor
   (livespec_runtime has no vendoring machinery and is itself vendored source-only
   into consumers). Rebalance is **on-demand** (explicit `rebalance-ranks` command)
   with a **`doctor` key-length warning** for discoverability; never auto-fires.
-- **H.** `rank` rebalancing concurrency edge (a rebalance racing a
-  concurrent insert) — confirm the "off-by-one-position, never corrupt"
-  reasoning under the real merge model.
+- **H.** ✅ **RESOLVED (session 5, decision 43)** — "never corrupt" CONFIRMED
+  (content-addressed append-only reduce + always-valid keys + `(rank, id)` tie-break +
+  surfaced divergent-head check); "off-by-one" CORRECTED to bounded benign mispositioning
+  O(cohort size), self-healing; on-demand-only rebalance keeps it academic.
 
 ## Sources
 
