@@ -478,6 +478,128 @@ def test_run_returns_fail_when_active_diverges_from_history(
     assert result == IOSuccess(expected)
 
 
+def test_run_returns_pass_when_only_release_please_version_anchor_lines_differ(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(pass) when active and history-vN differ ONLY in release-please anchor lines.
+
+    Regression fixture for the fleet-wide release-please bug
+    (work-item livespec-0uu3): release-please mechanically bumps the
+    version token on every spec-file line tagged with a trailing
+    `# x-release-please-version` (TOML) or `// x-release-please-version`
+    (JSONC) sentinel on each release. That bump lands on HEAD-active
+    `contracts.md` without a paired revise snapshot, so HEAD-active
+    diverges from `history/v001` in those marker lines ALONE. The check
+    MUST NOT flag this as out-of-band drift — otherwise every release
+    reddens master CI and freezes the repo via `check-master-ci-green`.
+
+    Fixture: `contracts.md` is committed at HEAD-active with the bumped
+    version (`v0.5.0`) on two marker lines (one JSONC, one TOML);
+    `history/v001/contracts.md` carries the same file with the prior
+    version (`v0.4.0`) on those same marker lines. Every NON-marker line
+    is byte-identical. The marker-normalized comparison MUST emit a
+    pass-Finding.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    history_v = spec_root / "history" / "v001"
+    history_v.mkdir(parents=True)
+    history_contracts = (
+        b"# Contracts\n"
+        b"\n"
+        b"Shared prose that does not change between releases.\n"
+        b"\n"
+        b"```jsonc\n"
+        b'      "pinned": "v0.4.0" // x-release-please-version\n'
+        b"```\n"
+        b"\n"
+        b"```toml\n"
+        b'livespec-runtime = { tag = "v0.4.0" } # x-release-please-version\n'
+        b"```\n"
+    )
+    active_contracts = (
+        b"# Contracts\n"
+        b"\n"
+        b"Shared prose that does not change between releases.\n"
+        b"\n"
+        b"```jsonc\n"
+        b'      "pinned": "v0.5.0" // x-release-please-version\n'
+        b"```\n"
+        b"\n"
+        b"```toml\n"
+        b'livespec-runtime = { tag = "v0.5.0" } # x-release-please-version\n'
+        b"```\n"
+    )
+    active = spec_root / "contracts.md"
+    _ = active.write_bytes(active_contracts)
+    snapshot = history_v / "contracts.md"
+    _ = snapshot.write_bytes(history_contracts)
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot])
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    assert out_of_band_edits.run(ctx=ctx) == IOSuccess(_expected_pass_clean(spec_root=spec_root))
+
+
+def test_run_returns_fail_when_non_anchor_content_differs_despite_anchor_bump(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) returns IOSuccess(fail) when a non-anchor line diverges even alongside a release-please anchor bump.
+
+    Companion to the anchor-only-bump regression (work-item
+    livespec-0uu3): stripping the marker lines MUST NOT mask a genuine
+    out-of-band edit. Here `contracts.md` carries BOTH a release-please
+    version bump on the marker line AND a genuine edit to a non-marker
+    prose line that has no paired revise snapshot. After both sides are
+    marker-normalized, the non-marker prose still differs, so the check
+    MUST still emit a fail-Finding naming `contracts.md`.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    project_root = tmp_path
+    spec_root = project_root / "SPECIFICATION"
+    history_v = spec_root / "history" / "v001"
+    history_v.mkdir(parents=True)
+    history_contracts = (
+        b"# Contracts\n"
+        b"\n"
+        b"Original prose.\n"
+        b"\n"
+        b"```toml\n"
+        b'livespec-runtime = { tag = "v0.4.0" } # x-release-please-version\n'
+        b"```\n"
+    )
+    active_contracts = (
+        b"# Contracts\n"
+        b"\n"
+        b"Genuinely edited prose landed out of band.\n"
+        b"\n"
+        b"```toml\n"
+        b'livespec-runtime = { tag = "v0.5.0" } # x-release-please-version\n'
+        b"```\n"
+    )
+    active = spec_root / "contracts.md"
+    _ = active.write_bytes(active_contracts)
+    snapshot = history_v / "contracts.md"
+    _ = snapshot.write_bytes(history_contracts)
+    _git_commit_paths(repo_root=tmp_path, paths=[active, snapshot])
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = out_of_band_edits.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-out-of-band-edits",
+        status="fail",
+        message="out-of-band edits detected at HEAD against history/v001: contracts.md",
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
 def test_run_returns_fail_when_active_present_history_missing_at_head(
     *,
     tmp_path: Path,
