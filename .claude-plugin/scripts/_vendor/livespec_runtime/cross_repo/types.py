@@ -1,9 +1,6 @@
 """Typed `DependsOnEntry` union + `CrossRepoManifest` + `RefStatus`.
 
-Per livespec/SPECIFICATION/contracts.md v072 §"Cross-repo dependency
-awareness" → "Typed `DependsOnEntry` union for the work-item
-`depends_on` field" and "`cross_repo_targets` manifest in
-`.livespec.jsonc`".
+Per livespec/SPECIFICATION/contracts.md v072.
 
 The four variant dataclasses (`LocalDependency`,
 `SiblingWorkItemDependency`, `PullRequestDependency`,

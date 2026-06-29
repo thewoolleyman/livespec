@@ -1,7 +1,6 @@
 """`resolve_ref` — exhaustive live-walk dependency resolution.
 
-Per livespec/SPECIFICATION/contracts.md v072 §"Cross-repo dependency
-awareness" → "Resolution mechanism": no cache; tolerate partial
+Per livespec/SPECIFICATION/contracts.md v072: no cache; tolerate partial
 visibility; for each `DependsOnEntry` variant, walk every extant view
 the runtime can access and return a `RefStatus`.
 
