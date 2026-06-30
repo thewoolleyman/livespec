@@ -219,51 +219,46 @@ shadow queue).
 
 ## The next action
 
-**L0 + L1 + L2 are complete. The orchestrator self-containment fix is DONE and
-RELEASED (`v0.3.1`), so the console E-walk is UNBLOCKED. The order is now:
-refresh the cache, resume the console, then the exit gate:**
+**L0 + L1 + L2 are complete; the orchestrator self-containment fix shipped
+(`v0.3.1`); the console E-walk is COMPLETE (E-3a/E-3b/E-4 merged — console PRs
+#67/#69/#70); and the core-plugin-root janitor fix shipped (`v0.3.2`). By
+MAINTAINER DECISION (session 9) the exit gate is HELD until the factory
+self-publishes a PR with ZERO native-auth bridge — so `bd-ib-gsl` (App-token
+autonomy) is now the critical path:**
 
-1. **Refresh the orchestrator plugin cache to `0.3.1` in the console's
-   environment (the console unblock) — NOW NARROWED TO ONE SCOPE.** The
-   self-containment fix is on the orchestrator `0.3.1` cache, and (session-8c)
-   **that cache is already on disk host-wide** at
-   `~/.claude/plugins/cache/livespec-orchestrator-beads-fabro/livespec-orchestrator-beads-fabro/e0d801ebac24`
-   (the ONLY cached payload that ships the bundled
-   `.fabro/workflows/implement-work-item/workflow.toml`; `plugin.json` version
-   `0.3.1`). The core `/data/projects/livespec` scope already re-points to it
-   (this session's SessionStart hook fetched it; "Restart to apply" pending). The
-   **only scope still stale is the console's**:
-   `/data/projects/livespec-console-beads-fabro` → `832ca0bbc129` = **v0.1.0**.
-   So the single remaining step is, IN the `livespec-console-beads-fabro`
-   session: `/plugin update livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro`
-   → `/reload-plugins` → `/clear` (the `/clear` SessionStart hook re-syncs the
-   scope to `e0d801ebac24`/`0.3.1`, and `/clear` also drops the stale ~434.8k
-   console context). This is **client-side** — an agent session cannot run
-   `/plugin update` as a tool — so it is maintainer- or console-session-driven.
-2. **Resume the console E-3a → E-3b → E-4 from the fixed enabled plugin.**
-   Dispatch the slices through `/livespec-orchestrator-beads-fabro:orchestrate`
-   (Codex/Fabro) per the factory-dispatch standing rule — NOT hand-coded inline:
-   E-3a (`livespec-console-beads-fabro-en67su`) → E-3b → E-4
-   (`livespec-console-beads-fabro-4rt6zi`). The console runs in its own tmux
-   session `livespec-console-beads-fabro`, resuming
-   `plan/work-item-lifecycle-redesign/` (epic `…-vqh36l`); E-1 + E-2a (PR #62) +
-   E-2b (PR #64) are MERGED. Once dispatch resumes, do NOT freeze the
-   coordinator on the console; keep it self-sustaining (see the "For the next
-   overseer" section for the monitor + re-engage mechanics). The `real-work-dispatch.sh`
-   substrate (Slice 4 / Slice 6) is a FOLLOW-ON, NOT on this critical path (see
-   the Status section + the orchestrator thread).
-3. **Exit gate (the final step — maintainer's call to declare the system
-   dogfooded).** The exit gate is now **console E-walk done + the overseer
-   updated** → close the anchor epic `livespec-35s3zo` (and the per-repo L2
-   epics that were **left open by design** for archive-on-close). The local
-   overseer skill (`.claude/skills/overseer/`) is **KEPT and UPDATED** to the
-   lean, plan-skill-driven + factory-dispatch form (done), **not deleted** —
-   there is no replacement for the manual coordinator until the **console
-   operator-cockpit** (TUI minimum, GUI ideal), itself built via the factory,
-   replaces it. Deleting the overseer is therefore **DEFERRED** to that future
-   console-cockpit milestone, NOT part of this epic's exit gate. It is NOT done
-   until the anchor + L2 epics close.
-4. **Post-L2 follow-ups (none blocking) — capture as work-items when convenient:**
+1. **`bd-ib-gsl` — switch the factory's PR-create credential to a GitHub App
+   installation token (THE critical path; in flight in the console session).**
+   The console E-walk's three PRs were published via a NATIVE-AUTH BRIDGE (a
+   human's `gh` auth) because the factory authenticates PR-create as the
+   fine-grained PAT `LIVESPEC_FAMILY_GITHUB_TOKEN` (per
+   `orchestrator-image/orchestrator-entrypoint.sh`), which lacks
+   `Pull requests: write` on `livespec-console-beads-fabro`. The maintainer chose
+   NOT to grant the PAT (so the PAT-grant item `bd-ib-p2e` is superseded);
+   instead, switch the factory to mint a short-lived **GitHub App installation
+   token** from `GITHUB_APP_ID` + `GITHUB_PRIVATE_KEY` (the **`livespec-pr-bot`**
+   App, verified to hold `Pull requests` + `Contents` = Read/write at the app
+   level), and parameterize the token source so adopters bring their own App.
+   Prereq: the App must be INSTALLED (PR+Contents write) on every target family
+   repo — verify via `gh api`; a GitHub-UI-only install is a maintainer/Chrome
+   action (this session has authenticated Chrome access via Playwright). Then
+   release (`v0.3.3`) + `claude plugin update --scope project` the relevant
+   scopes. **PROOF = the exit-gate condition:** dispatch a small real ready
+   work-item through the factory and confirm it opens+merges a PR via the App
+   token with NO native-auth bridge.
+2. **Exit gate (maintainer's call) — now GATED on the bd-ib-gsl proof.** Once the
+   factory self-publishes with zero native-auth bridge, the exit gate is met →
+   close the anchor epic `livespec-35s3zo` + the per-repo L2 epics + the console
+   epic `…-vqh36l` (all left open by design for archive-on-close). The local
+   overseer skill (`.claude/skills/overseer/`) is **KEPT and UPDATED** (lean,
+   plan-skill-driven + factory-dispatch form), **not deleted** — deletion is
+   DEFERRED to the future console operator-cockpit milestone, NOT this gate.
+   *(Mechanism correction, session 9: an overseer session CAN drive a client-side
+   cache refresh — `claude plugin update <plugin>@<marketplace> --scope project`
+   run from the target repo dir, then exit+relaunch the session via tmux
+   `send-keys`. The prior "an agent session cannot run `/plugin update` as a tool
+   / could not drive a client-side cache refresh" framing was WRONG; the CLI is
+   the clean path.)*
+3. **Post-L2 follow-ups (none blocking) — capture as work-items when convenient:**
    - **No end-to-end `migrate-tenant` CLI.** `legacy_seed` /
      `register_custom_statuses` are library **primitives**, not a command — all
      9 tracks hand-composed the migration. A single `migrate-tenant` wrapper
@@ -332,7 +327,8 @@ sleep 0.6; command tmux send-keys -t <session> Enter
 | L2 | core `livespec` | `livespec-owwguc` | **COMPLETE** · 371 items migrated + verified |
 | L2 | livespec-console-beads-fabro (tenant) | `…-vxq` | **COMPLETE** · 12 heads migrated + verified |
 | ~~blocker~~ | livespec-orchestrator-beads-fabro (self-containment) | `/plan` thread `orchestrator-plugin-self-containment` | **DONE · released `v0.3.1`** · clause #6 + Slices 1+2+3 (PRs #215/#217/#219/#220; release #218→`v0.3.1`); CI + fan-out green. Slice 4/6 (`real-work-dispatch.sh`) is a follow-on, not on the console path |
-| console | livespec-console-beads-fabro (E-walk) | `…-vqh36l` | **UNBLOCKED — pending cache refresh to `0.3.1`**, then resume E-3a→E-3b→E-4 via `orchestrate`. E-1+E-2a (PR #62) + E-2b (PR #64) MERGED; regroomed-out into E-3a (`…-en67su`) → E-3b → E-4 (`…-4rt6zi`); toolchain blocker `…-3vmgam` |
+| console | livespec-console-beads-fabro (E-walk) | `…-vqh36l` | **COMPLETE** · E-1/E-2a/E-2b + E-3a (PR #67) / E-3b (PR #69) / E-4 (PR #70) all MERGED (factory-implemented, native-auth-published). Core-plugin-root janitor fix released `v0.3.2`. Epic ready to close at the exit gate |
+| exit gate | held by maintainer (session 9) | — | **GATED on `bd-ib-gsl`** — factory must self-publish a PR via the `livespec-pr-bot` App installation token with ZERO native-auth bridge; then close anchor + L2 + `…-vqh36l`. PAT-grant `bd-ib-p2e` superseded |
 
 ## Session-7 autonomous-run log
 
@@ -510,6 +506,35 @@ What this session found / decided:
   (`livespec-console-beads-fabro-4rt6zi`)** via
   `/livespec-orchestrator-beads-fabro:orchestrate` (Codex/Fabro — NOT inline),
   and monitors to finish, then the exit gate.
+
+## Session-9 log (this session — `/plugin:plan` resume → console E-walk finish)
+
+What this session drove:
+
+- **Cleared the console unblock end-to-end (CORRECTING the prior "can't drive a
+  client-side cache refresh" claim).** First `/plugin update` via tmux send-keys
+  opened the interactive plugin browser (a dead end); the clean path was the
+  `claude plugin update livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro
+  --scope project` CLI run from the console repo dir, which re-pointed the console
+  scope `0.1.0 → e0d801ebac24` (`v0.3.1`); then exit+relaunch the console session
+  via tmux. fabro itself was already installed at `~/.fabro/bin/fabro` (v0.254.0,
+  creds + Docker + `livespec-orchestrator:dev` image all present) — the console
+  had only checked `PATH`; fix was a symlink into `~/.local/bin`.
+- **Console E-walk COMPLETE.** E-3a (`en67su`, PR #67), E-3b (`pdc7ma`, PR #69),
+  E-4 (`4rt6zi`, PR #70) all factory-implemented (janitor-green + Opus review) and
+  merged. Each was published via the **native-auth bridge** (the factory's PAT
+  lacks console-repo PR-create).
+- **Two real factory bugs found + fixed mid-flight:** (a) the dispatch overlay
+  didn't project `LIVESPEC_CORE_PLUGIN_ROOT`, so the sandbox `doctor` janitor
+  couldn't resolve core — fixed + released **`v0.3.2`** (`d62499b` + CI guard
+  `1b17bdf`); (b) the PR-create credential gap (the token finding).
+- **Exit-gate decision (maintainer, session 9): HOLD until the factory
+  self-publishes with zero native-auth bridge.** So `bd-ib-gsl` (App-token
+  autonomy) is the new critical path (in flight). The PAT-grant item `bd-ib-p2e`
+  is superseded by the App decision. The `livespec-pr-bot` App was confirmed
+  (Chrome) to hold `Pull requests` + `Contents` = Read/write at the app level.
+- **Decision-log + console handoff** updated through E-walk completion in the
+  console repo (`plan/work-item-lifecycle-redesign/`).
 
 ## Read-first chain (in order)
 
