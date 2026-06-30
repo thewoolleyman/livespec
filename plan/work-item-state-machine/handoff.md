@@ -224,13 +224,22 @@ RELEASED (`v0.3.1`), so the console E-walk is UNBLOCKED. The order is now:
 refresh the cache, resume the console, then the exit gate:**
 
 1. **Refresh the orchestrator plugin cache to `0.3.1` in the console's
-   environment (the console unblock).** The self-containment fix that the
-   console's E-3a blocker needs ships in the orchestrator `0.3.1` cache (the
-   HOST-side dispatcher reads the enabled-plugin cache, and Slices 1+2+3 fix
-   exactly that path). So the console's environment needs a client-side `/plugin
-   update livespec-orchestrator-beads-fabro@…` + restart to `0.3.1`. This is
-   **client-side — likely maintainer- or console-session-side**; this overseer
-   session could not drive a client-side cache refresh.
+   environment (the console unblock) — NOW NARROWED TO ONE SCOPE.** The
+   self-containment fix is on the orchestrator `0.3.1` cache, and (session-8c)
+   **that cache is already on disk host-wide** at
+   `~/.claude/plugins/cache/livespec-orchestrator-beads-fabro/livespec-orchestrator-beads-fabro/e0d801ebac24`
+   (the ONLY cached payload that ships the bundled
+   `.fabro/workflows/implement-work-item/workflow.toml`; `plugin.json` version
+   `0.3.1`). The core `/data/projects/livespec` scope already re-points to it
+   (this session's SessionStart hook fetched it; "Restart to apply" pending). The
+   **only scope still stale is the console's**:
+   `/data/projects/livespec-console-beads-fabro` → `832ca0bbc129` = **v0.1.0**.
+   So the single remaining step is, IN the `livespec-console-beads-fabro`
+   session: `/plugin update livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro`
+   → `/reload-plugins` → `/clear` (the `/clear` SessionStart hook re-syncs the
+   scope to `e0d801ebac24`/`0.3.1`, and `/clear` also drops the stale ~434.8k
+   console context). This is **client-side** — an agent session cannot run
+   `/plugin update` as a tool — so it is maintainer- or console-session-driven.
 2. **Resume the console E-3a → E-3b → E-4 from the fixed enabled plugin.**
    Dispatch the slices through `/livespec-orchestrator-beads-fabro:orchestrate`
    (Codex/Fabro) per the factory-dispatch standing rule — NOT hand-coded inline:
@@ -469,6 +478,38 @@ What this overseer drove:
     branches whose remotes weren't deleted.
   - The local Codex TUI `check-codex-skill-picker` is blocked by a hooks-trust
     prompt (CI self-skips it).
+
+## Session-8c log (this session — `/plugin:plan` resume)
+
+What this session found / decided:
+
+- **The `v0.3.1` self-containment fix cache is now ON DISK host-wide.** Verified
+  the host cache: `e0d801ebac24` (fetched today by this session's `/clear`
+  SessionStart hook) is the **only** cached orchestrator payload that ships the
+  bundled `.fabro/workflows/implement-work-item/workflow.toml`, and its
+  `plugin.json` version is **`0.3.1`**. So the console unblock is no longer
+  "pending a release" — the fix artifact exists locally; what remains is purely
+  re-pointing the console's plugin scope at it.
+- **Per-scope orchestrator pointers (`installed_plugins.json`):** core
+  `/data/projects/livespec` → `e0d801ebac24` (**v0.3.1**, restart pending);
+  console `/data/projects/livespec-console-beads-fabro` → `832ca0bbc129`
+  (**v0.1.0**, STALE — the one remaining step); orchestrator repo itself →
+  `e099dd288a0f` (v0.2.0); openbrain → `accbbd1415e1`; assorted worktree scopes
+  pre-`0.3.1`. **The console scope is the single blocker.**
+- **Console session state (live):** the `livespec-console-beads-fabro` tmux
+  session is idle at a clean prompt, holding ~434.8k tokens, its last output a
+  precise root-cause confirmation that `orchestrate run` (E-3a dispatch) fails
+  (dispatcher exit 3, missing workflow config) ONLY because its installed
+  orchestrator plugin is v0.1.0. E-3a/E-3b/E-4 are filed, ready, dep-layered;
+  the ledger is clean and resumable.
+- **Maintainer decision (this session): "you refresh, I coordinate."** The
+  maintainer drives the one client-side step in the console session
+  (`/plugin update` → `/reload-plugins` → `/clear`, re-syncing to `0.3.1`); this
+  session then re-engages the console from its handoff via `tmux send-keys`,
+  dispatches **E-3a (`livespec-console-beads-fabro-en67su`) → E-3b → E-4
+  (`livespec-console-beads-fabro-4rt6zi`)** via
+  `/livespec-orchestrator-beads-fabro:orchestrate` (Codex/Fabro — NOT inline),
+  and monitors to finish, then the exit gate.
 
 ## Read-first chain (in order)
 
