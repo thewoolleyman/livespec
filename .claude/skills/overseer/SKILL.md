@@ -48,7 +48,7 @@ The coordinator's self-discipline is codified in
 **`.ai/agent-disciplines.md`** — read these two sections alongside this skill
 and treat them as authoritative; this file only summarizes:
 
-- **§"Overseer / long-running-coordinator discipline".** Rotate the coordinator
+- **Overseer / long-running-coordinator discipline.** Rotate the coordinator
   role **before ~50% context** — refresh the durable handoff and hand the role
   to a FRESH session via its resume command; never drive yourself to 80%+ and
   autocompact. **Never park ready work behind a "my context is heavy" rationale**
@@ -57,7 +57,7 @@ and treat them as authoritative; this file only summarizes:
   panes (never full dumps), delegate heavy authoring/migration to sub-agents
   (their context, not yours), keep status terse (one-line tick per routine event,
   full detail only at milestones and blockers).
-- **§"Factory-dispatch over inline implementation".** Ready, factory-safe
+- **Factory-dispatch over inline implementation.** Ready, factory-safe
   implementation is dispatched via
   `/livespec-orchestrator-beads-fabro:orchestrate` (`run --action impl:<id>`),
   which runs Red→Green factory-side in a **Codex/Fabro sandbox**, gated by the
@@ -118,8 +118,8 @@ this skill's history proves is destructive.
   `--network host` sandboxes collide if parallelized). Session-driven /
   interactive tracks (planning, spec work) are parallel-safe.
 
-Authoritative detail: `.ai/agent-disciplines.md` §"Factory-dispatch over inline
-implementation".
+Authoritative detail: the factory-dispatch discipline in
+`.ai/agent-disciplines.md`.
 
 ---
 
