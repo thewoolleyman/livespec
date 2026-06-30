@@ -12,13 +12,18 @@ You are taking over a **LEAN overseer session**. The work-item-lifecycle
 rollout is **L0 + L1 + L2 COMPLETE** — the deterministic state machine is
 designed, the foundation (`livespec-runtime`) + both orchestrators are
 released, and **all 9 beads tenants are migrated and doctor-verified**. What
-remains is the **console track** and the **exit gate** — but as of session 8
-the console track is **BLOCKED on an orchestrator fix that must land first**:
-the factory cannot dispatch from a cache-installed/enabled plugin because the
-orchestrator plugin is **not self-contained**. So the order is: **(1) drive
-the orchestrator plugin self-containment fix**, **(2) dispatch the console's
-remaining slices (E-3a → E-3b → E-4) through the fixed factory**, **(3) land
-the exit gate**. To take over:
+remains is the **console track** and the **exit gate**. The session-8 blocker
+(the factory could not dispatch from a cache-installed/enabled plugin because
+the orchestrator plugin was **not self-contained**) is **RESOLVED and
+RELEASED**: the orchestrator plugin self-containment fix is **MERGED and
+RELEASED as `livespec-orchestrator-beads-fabro` `v0.3.1`** (CI green; release
+fan-out to siblings succeeded — see the Session-8b log below). So the order is
+now: **(1) refresh the orchestrator plugin cache to `0.3.1`** in the console's
+environment (a client-side `/plugin update` + restart — this overseer session
+could not drive a client-side cache refresh), **(2) resume the console's
+remaining slices (E-3a → E-3b → E-4) via dispatch through
+`/livespec-orchestrator-beads-fabro:orchestrate` from the fixed enabled
+plugin**, **(3) land the exit gate**. To take over:
 
 - **⚑ STANDING RULE — dispatch implementation through the factory; do NOT
   hand-code it inline.** The inline-tmux-Claude pattern below was a *bootstrap
@@ -32,17 +37,30 @@ the exit gate**. To take over:
   `.ai/agent-disciplines.md` (CORE PR #715, MERGED) + orchestrator
   `prose/plan.md` "plan files ripe work; the factory implements it"
   (livespec-orchestrator-beads-fabro PR #213, MERGED).
-- **⛔ SESSION-8 BLOCKER on that rule — the factory does NOT yet dispatch from
-  an enabled plugin.** `orchestrate run` from the ENABLED PLUGIN fails
-  (dispatcher exit 3) because the orchestrator plugin is **not self-contained**:
-  its Fabro workflow (`.fabro/workflows/implement-work-item/workflow.toml`)
-  lives at the orchestrator repo ROOT, outside the packaged `.claude-plugin/`,
-  and the dispatcher resolves it via source-layout path-math that
-  install-flattening breaks. The factory has only ever worked from the
-  orchestrator **SOURCE checkout** (the fleet has it; adopters don't) — which
-  is exactly **why all prior impl went inline**. Until the self-containment fix
-  lands, "dispatch the console's E-3a/E-3b/E-4" is BLOCKED; **drive the fix
-  first** (see "The next action").
+- **✅ SESSION-8 BLOCKER on that rule — RESOLVED + RELEASED (`v0.3.1`).** The
+  session-8 blocker was: `orchestrate run` from the ENABLED PLUGIN failed
+  (dispatcher exit 3, "workflow config does not exist") because the orchestrator
+  plugin was **not self-contained** — its Fabro workflow
+  (`.fabro/workflows/implement-work-item/workflow.toml`) lived at the
+  orchestrator repo ROOT, outside the packaged `.claude-plugin/`, and the
+  HOST-side dispatcher (reading the enabled-plugin cache) resolved it via
+  source-layout path-math that install-flattening breaks. **That is now fixed
+  and released as `livespec-orchestrator-beads-fabro` `v0.3.1`** (CI green; fan-out
+  green). The landed work (full trail in the Session-8b log + the orchestrator
+  repo's refreshed thread `plan/orchestrator-plugin-self-containment/handoff.md`):
+  - Clause #6 contract `## Self-contained plugin dispatch` — PR #215 (v021).
+  - Slice 1 — relocate `.fabro/` into the plugin payload + re-anchor the
+    resolvers to a `_plugin_root()` helper (`CLAUDE_PLUGIN_ROOT` → `parents[3]`)
+    — PR #217.
+  - Slice 2 — vendor `typing_extensions 4.15.0` so the host-side dispatcher runs
+    with no apt/uv — PR #219.
+  - Slice 3 — read-only-cache guards: `self-update-skipped` no-op + empty
+    fleet-manifest sibling projection; retired the pre-v021 "refuse on
+    unfetchable manifest" invariant — PR #220.
+  - Release `0.3.1` — PR #218 → tag `v0.3.1`.
+  This fixes EXACTLY the console's E-3a blocker, so "dispatch the console's
+  E-3a/E-3b/E-4" is **UNBLOCKED — pending a client-side cache refresh to
+  `0.3.1`** in the console's environment, then resume (see "The next action").
 - **Re-arm monitoring.** The prior session's `Monitor` watchers died with it —
   they do NOT survive a session boundary. Start a **fresh persistent `Monitor`**
   over the console tmux session `livespec-console-beads-fabro`: poll its pane
@@ -77,10 +95,11 @@ tenant, prose-linked to the core anchor). **L0 (foundation) is COMPLETE and
 released as `livespec-runtime` `v0.5.0`; L1a + L1b are COMPLETE and released
 (`v0.3.0` each) → L1 COMPLETE; L2 (the 9-tenant migration) is COMPLETE — all
 9 beads tenants migrated and doctor-verified on their live tenants.** The
-remaining work is the **console track** and the **exit gate** — and as of
-session 8 the console track is **BLOCKED on the orchestrator plugin
-self-containment fix** (the factory can't dispatch from an enabled plugin yet).
-See the Session-7 and Session-8 logs below for what landed.
+remaining work is the **console track** and the **exit gate** — and the
+session-8 console blocker (the factory couldn't dispatch from an enabled plugin)
+is now **RESOLVED and RELEASED** as `livespec-orchestrator-beads-fabro` `v0.3.1`;
+the console is **UNBLOCKED, pending a client-side cache refresh to `0.3.1`**.
+See the Session-7, Session-8, and Session-8b logs below for what landed.
 
 **Your role (coordinator):** monitor + re-engage the console to its finish, then
 land the exit gate. Run a **lightweight manual overseer** — INFORMED BY
@@ -155,31 +174,44 @@ shadow queue).
   | 7 | `openbrain` (adopter) | migrated + verified (pin bumps still need a client-side `/plugin install` + restart — see follow-ups) |
   | 8 | core `livespec` | work-item **`livespec-owwguc`**, **371 items**, migrated + verified |
   | 9 | `livespec-console-beads-fabro` | work-item **`…-vxq`** (12 live heads, `a0…aB`), migrated + verified (S6 doctor exits 0) |
-- **Console E-walk + the session-8 BLOCKER.** The console's lifecycle-redesign
-  E-walk (`plan/work-item-lifecycle-redesign/`, epic `…-vqh36l`) has **E-2b
-  MERGED** (console PR #64). The epic was **GROOMED** (finer split,
-  maintainer-approved) and regroomed-out into **E-3a**
+- **Console E-walk + the session-8 BLOCKER (now CLEARED, `v0.3.1`).** The
+  console's lifecycle-redesign E-walk (`plan/work-item-lifecycle-redesign/`,
+  epic `…-vqh36l`) has **E-2b MERGED** (console PR #64). The epic was **GROOMED**
+  (finer split, maintainer-approved) and regroomed-out into **E-3a**
   (`livespec-console-beads-fabro-en67su`, ready) → **E-3b** (dep on E-3a) →
   **E-4** (`livespec-console-beads-fabro-4rt6zi`, dep on E-3b); a toolchain
-  blocker is filed as `livespec-console-beads-fabro-3vmgam`. **The E-walk is
-  BLOCKED:** the factory cannot dispatch E-3a from an enabled plugin (root cause
-  in the STANDING-RULE / SESSION-8-BLOCKER bullets above). **Maintainer
-  decision:** make the orchestrator plugin **self-contained** so the factory
-  dispatches from the ENABLED PLUGIN — fleet members and adopters then consume
-  it IDENTICALLY (just enable the plugin; no orchestrator-source clone; the only
-  clones left are of the TARGET repo, which is legitimate). Verdict:
-  **achievable-with-work** (packaging + path-resolution, NOT architecture).
-  Sequencing chosen: **self-containment fix FIRST**, then dispatch E-3a → E-3b →
-  E-4 through the fixed factory as the validation. The design + change set are
-  captured in a NEW orchestrator-repo thread at
-  `/data/projects/livespec-orchestrator-beads-fabro/plan/orchestrator-plugin-self-containment/`
-  (its handoff is the read-first for that work).
+  blocker is filed as `livespec-console-beads-fabro-3vmgam`. The E-walk was
+  BLOCKED because the factory couldn't dispatch E-3a from an enabled plugin — the
+  orchestrator plugin was not self-contained (root cause in the SESSION-8-BLOCKER
+  bullet above). **That fix is DONE and RELEASED as
+  `livespec-orchestrator-beads-fabro` `v0.3.1`** (clause #6 + Slices 1+2+3;
+  PRs #215/#217/#219/#220; release PR #218 → tag `v0.3.1`; CI + fan-out green).
+  So the console is **UNBLOCKED — pending a client-side cache refresh to `0.3.1`**
+  in the console's environment, then resume E-3a → E-3b → E-4 via dispatch through
+  `/livespec-orchestrator-beads-fabro:orchestrate`. The design + change set are
+  captured in the orchestrator-repo thread at
+  `/data/projects/livespec-orchestrator-beads-fabro/plan/orchestrator-plugin-self-containment/handoff.md`
+  (its handoff is the read-first for that work, including the Slice 4 / Slice 6
+  follow-on — see below).
+- **Slice 4 + Slice 6 are a FOLLOW-ON, NOT on the console critical path.**
+  `real-work-dispatch.sh` (the unattended, containerized dispatch substrate)
+  moving off its self-clone is a SEPARATE concern — it already worked (its
+  clone-A shipped `.fabro/` at the repo root). It needs a focused design pass
+  because its clone-A also provisions the orchestrator's `.beads/config.yaml`
+  tenant config + `metadata.json` regen + (formerly) `uv sync`, and the image
+  bakes in no plugin payload. Slice 6 (an E2E acceptance proving enabled-plugin
+  dispatch) pairs with it. Full detail in the orchestrator repo's refreshed
+  thread `plan/orchestrator-plugin-self-containment/handoff.md`. Neither gates
+  the console resume.
 - **Plugin state (mapped session 8).** Per-repo Claude enablement is ALREADY
   correct in all 10 governed repos (committed `.claude/settings.json`); Codex is
   registered host-wide. Caches are STALE (core 0.4.0→0.5.0; orchestrator
-  0.2.0/0.1.0→0.3.0). A cache refresh is **AUTHORIZED but DEPRIORITIZED** — it
-  fixes staleness + the console's runtime-data (attention lens / lane board) but
-  NOT dispatch; the self-containment fix is the real unblock.
+  0.2.0/0.1.0→**0.3.1**). The cache refresh is now **THE console unblock**: the
+  self-containment fix ships in the orchestrator `0.3.1` cache, so the console's
+  environment needs a client-side `/plugin update
+  livespec-orchestrator-beads-fabro@…` + restart to `0.3.1` before dispatch
+  resumes (it also fixes staleness + the console's runtime-data — attention lens /
+  lane board). This overseer session could not drive a client-side cache refresh.
 - **Env note (worth a fleet fix):** `hydrate` does NOT provision the gitignored
   worktree-pack (`branch-protection.just` etc.) into fresh worktrees, so sessions
   must run `just install-worktree-pack` to get `just check` green (self-healed
@@ -187,24 +219,31 @@ shadow queue).
 
 ## The next action
 
-**L0 + L1 + L2 are complete. The console E-walk is BLOCKED on the orchestrator
-self-containment fix — drive that FIRST, then the console, then the exit gate:**
+**L0 + L1 + L2 are complete. The orchestrator self-containment fix is DONE and
+RELEASED (`v0.3.1`), so the console E-walk is UNBLOCKED. The order is now:
+refresh the cache, resume the console, then the exit gate:**
 
-1. **Drive the orchestrator plugin self-containment fix FIRST (the real
-   unblock).** The factory cannot dispatch from a cache-installed/enabled plugin
-   until the orchestrator plugin is self-contained. Read-first:
-   `/data/projects/livespec-orchestrator-beads-fabro/plan/orchestrator-plugin-self-containment/handoff.md`
-   → `propose-change` → `groom` → `implement`. **Then dispatch the console
-   slices through the fixed factory (Codex), as the validation that the fix
-   works:** E-3a (`livespec-console-beads-fabro-en67su`) → E-3b → E-4
+1. **Refresh the orchestrator plugin cache to `0.3.1` in the console's
+   environment (the console unblock).** The self-containment fix that the
+   console's E-3a blocker needs ships in the orchestrator `0.3.1` cache (the
+   HOST-side dispatcher reads the enabled-plugin cache, and Slices 1+2+3 fix
+   exactly that path). So the console's environment needs a client-side `/plugin
+   update livespec-orchestrator-beads-fabro@…` + restart to `0.3.1`. This is
+   **client-side — likely maintainer- or console-session-side**; this overseer
+   session could not drive a client-side cache refresh.
+2. **Resume the console E-3a → E-3b → E-4 from the fixed enabled plugin.**
+   Dispatch the slices through `/livespec-orchestrator-beads-fabro:orchestrate`
+   (Codex/Fabro) per the factory-dispatch standing rule — NOT hand-coded inline:
+   E-3a (`livespec-console-beads-fabro-en67su`) → E-3b → E-4
    (`livespec-console-beads-fabro-4rt6zi`). The console runs in its own tmux
    session `livespec-console-beads-fabro`, resuming
    `plan/work-item-lifecycle-redesign/` (epic `…-vqh36l`); E-1 + E-2a (PR #62) +
    E-2b (PR #64) are MERGED. Once dispatch resumes, do NOT freeze the
    coordinator on the console; keep it self-sustaining (see the "For the next
-   overseer" section for the monitor + re-engage mechanics). The cache refresh
-   (Status above) is an OPTIONAL parallel cleanup; it does NOT unblock dispatch.
-2. **Exit gate (the final step — maintainer's call to declare the system
+   overseer" section for the monitor + re-engage mechanics). The `real-work-dispatch.sh`
+   substrate (Slice 4 / Slice 6) is a FOLLOW-ON, NOT on this critical path (see
+   the Status section + the orchestrator thread).
+3. **Exit gate (the final step — maintainer's call to declare the system
    dogfooded).** The exit gate is now **console E-walk done + the overseer
    updated** → close the anchor epic `livespec-35s3zo` (and the per-repo L2
    epics that were **left open by design** for archive-on-close). The local
@@ -215,7 +254,7 @@ self-containment fix — drive that FIRST, then the console, then the exit gate:
    replaces it. Deleting the overseer is therefore **DEFERRED** to that future
    console-cockpit milestone, NOT part of this epic's exit gate. It is NOT done
    until the anchor + L2 epics close.
-3. **Post-L2 follow-ups (none blocking) — capture as work-items when convenient:**
+4. **Post-L2 follow-ups (none blocking) — capture as work-items when convenient:**
    - **No end-to-end `migrate-tenant` CLI.** `legacy_seed` /
      `register_custom_statuses` are library **primitives**, not a command — all
      9 tracks hand-composed the migration. A single `migrate-tenant` wrapper
@@ -241,8 +280,10 @@ self-containment fix — drive that FIRST, then the console, then the exit gate:
      bullet), so `m0xu` is a plain `open` item needing grooming into the new
      lifecycle later.
    - **Orchestrator-plugin cache is stale fleet-wide** (core 0.4.0→0.5.0;
-     orchestrator 0.2.0/0.1.0→0.3.0); a cache refresh is AUTHORIZED but
-     DEPRIORITIZED — fixes staleness + the console runtime-data, NOT dispatch.
+     orchestrator 0.2.0/0.1.0→**0.3.1**); a cache refresh is now THE console
+     unblock (the `0.3.1` cache carries the self-containment fix) and is also a
+     fleet-wide cleanup (staleness + console runtime-data). Client-side `/plugin
+     update` + restart per repo.
    - **Open-item status reclassification deferred** (per-item grooming; a bulk
      rewrite is available if wanted).
    - **openbrain pin bump needs a client-side `/plugin install` + restart** —
@@ -281,8 +322,8 @@ sleep 0.6; command tmux send-keys -t <session> Enter
 | L2 | openbrain (adopter) | (openbrain tenant) | **COMPLETE** · migrated + verified (client-side pin install pending) |
 | L2 | core `livespec` | `livespec-owwguc` | **COMPLETE** · 371 items migrated + verified |
 | L2 | livespec-console-beads-fabro (tenant) | `…-vxq` | **COMPLETE** · 12 heads migrated + verified |
-| **blocker** | livespec-orchestrator-beads-fabro (self-containment) | new `/plan` thread `orchestrator-plugin-self-containment` | **NEXT — drive FIRST** · make the orchestrator plugin self-contained so the factory dispatches from the enabled plugin |
-| console | livespec-console-beads-fabro (E-walk) | `…-vqh36l` | **BLOCKED on self-containment** · E-1+E-2a (PR #62) + E-2b (PR #64) MERGED; regroomed-out into E-3a (`…-en67su`) → E-3b → E-4 (`…-4rt6zi`); toolchain blocker `…-3vmgam` |
+| ~~blocker~~ | livespec-orchestrator-beads-fabro (self-containment) | `/plan` thread `orchestrator-plugin-self-containment` | **DONE · released `v0.3.1`** · clause #6 + Slices 1+2+3 (PRs #215/#217/#219/#220; release #218→`v0.3.1`); CI + fan-out green. Slice 4/6 (`real-work-dispatch.sh`) is a follow-on, not on the console path |
+| console | livespec-console-beads-fabro (E-walk) | `…-vqh36l` | **UNBLOCKED — pending cache refresh to `0.3.1`**, then resume E-3a→E-3b→E-4 via `orchestrate`. E-1+E-2a (PR #62) + E-2b (PR #64) MERGED; regroomed-out into E-3a (`…-en67su`) → E-3b → E-4 (`…-4rt6zi`); toolchain blocker `…-3vmgam` |
 
 ## Session-7 autonomous-run log
 
@@ -386,6 +427,49 @@ What landed / was decided in session 8:
   (same staleness) — so `m0xu` is a plain `open` item needing grooming into the
   new lifecycle later.
 
+## Session-8b log (this overseer)
+
+What this overseer drove:
+
+- **Drove the orchestrator plugin self-containment fix END-TO-END — DONE +
+  RELEASED `v0.3.1`.** Clause #6 contract `## Self-contained plugin dispatch`
+  (PR #215, v021) + Slice 1 (relocate `.fabro/` into the plugin payload +
+  re-anchor resolvers to a `_plugin_root()` helper, `CLAUDE_PLUGIN_ROOT` →
+  `parents[3]`; PR #217) + Slice 2 (vendor `typing_extensions 4.15.0` so the
+  host-side dispatcher runs with no apt/uv; PR #219) + Slice 3 (read-only-cache
+  guards: `self-update-skipped` no-op + empty fleet-manifest sibling projection;
+  retired the pre-v021 "refuse on unfetchable manifest" invariant; PR #220) all
+  MERGED; release PR #218 → tag `v0.3.1`. CI green; release fan-out to siblings
+  succeeded.
+- **Corrected the design mid-flight.** Vendored `typing_extensions` rather than
+  depending on host apt/uv (the VP3 correction), so the dispatcher is genuinely
+  self-contained from the enabled-plugin cache.
+- **Reframed the console unblock.** The console's E-3a blocker (`orchestrate run`
+  from the ENABLED PLUGIN failing, dispatcher exit 3, "workflow config does not
+  exist") was the HOST-side dispatcher reading the enabled-plugin cache; Slices
+  1+2+3 fix exactly that path. So the console unblock is now the **host
+  enabled-plugin + cache-refresh-to-`0.3.1`** path, not a "drive the fix first"
+  blocker. This overseer session could not drive a client-side cache refresh.
+- **Reclassified Slice 4 + Slice 6 as a follow-on.** `real-work-dispatch.sh`
+  (the unattended containerized substrate) moving off its self-clone is a
+  SEPARATE concern, NOT on the console critical path — it already worked (its
+  clone-A shipped `.fabro/` at the repo root) but needs a focused design pass
+  (its clone-A also provisions the orchestrator's `.beads/config.yaml` +
+  `metadata.json` regen + (formerly) `uv sync`, and the image bakes in no plugin
+  payload); Slice 6 (E2E acceptance proving enabled-plugin dispatch) pairs with
+  it. Full detail in the orchestrator repo's refreshed thread
+  `plan/orchestrator-plugin-self-containment/handoff.md`.
+- **Non-blocking side-findings (capture as work-items when convenient):**
+  - CORE `propose_change.py` / `revise.py` resolve a relative `--spec-target`
+    against the **cwd**, not against `--project-root` — pass an ABSOLUTE
+    `--spec-target` path to be safe.
+  - CORE `doctor_static.py` lacks a `--spec-target` flag.
+  - The worktree reaper (`dev-tooling/reap_stale_worktrees.py`) fails on a
+    relative `--repo` run from the justfile dir, AND it skips rebase-merged
+    branches whose remotes weren't deleted.
+  - The local Codex TUI `check-codex-skill-picker` is blocked by a hooks-trust
+    prompt (CI self-skips it).
+
 ## Read-first chain (in order)
 
 1. **`research/04-slice-plan.md`** — the execution structure (tracks, layers,
@@ -399,8 +483,9 @@ What landed / was decided in session 8:
    per-repo brief.
 5. **`research/01-prior-art.md`** — external grounding.
 6. **`conversation/transcript.md`** — verbatim session-1 design discussion.
-7. **The orchestrator self-containment thread — the read-first for the BLOCKING
-   next action:**
+7. **The orchestrator self-containment thread — its core fix is DONE and
+   released (`v0.3.1`); the thread now carries the Slice 4 / Slice 6 follow-on
+   (`real-work-dispatch.sh` substrate + E2E acceptance):**
    `/data/projects/livespec-orchestrator-beads-fabro/plan/orchestrator-plugin-self-containment/handoff.md`.
 8. **Per-track handoffs (each track's own state):** the L0 runtime track's
    handoff (`/data/projects/livespec-runtime/plan/work-item-state-machine/handoff.md`);
@@ -458,8 +543,9 @@ What landed / was decided in session 8:
 ## Hard exit gate for the epic
 
 `livespec-35s3zo` is NOT done until **both**: (1) the console E-walk is finished
-(E-2b MERGED; the remaining E-3a → E-3b → E-4 dispatched through the fixed
-factory once the orchestrator self-containment fix lands, the new system
+(E-2b MERGED; the orchestrator self-containment fix is now DONE + released
+`v0.3.1`, so the remaining E-3a → E-3b → E-4 are dispatched through the fixed
+factory once the console's cache is refreshed to `0.3.1`, the new system
 dogfooded), and (2) the local **overseer skill**
 (`.claude/skills/overseer/`) is **updated** to the lean,
 plan-skill-driven + factory-dispatch form (DONE). The overseer is **KEPT and
