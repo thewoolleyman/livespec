@@ -21,6 +21,21 @@ zero-shape: the named CLI resolves and is executable; no probe
 convention (no required `--version`, `--help`, or ping
 subcommand) is part of this invariant.
 
+The optional `credential_wrapper` prefix joins the SAME callability
+enumeration when the key is present and non-empty (a no-op when
+absent or empty): its first token is resolved with the identical
+semantics as every other named entry. It carries a warn-vs-fail
+severity lever, because the credential wrapper is host-provisioned
+and legitimately ABSENT on CI runners that do not install it — a
+hard `fail` there would redden every fleet CI once repos set the
+key. So a `credential_wrapper` first token that does NOT resolve at
+all fires `warn` (environmental absence, which the doctor
+supervisor's exit-code derivation treats as non-fail), while a
+first token that resolves to a file lacking the executable bit
+stays a `fail` (a real misconfiguration). The lever applies ONLY to
+`credential_wrapper`; the spec-side and orchestrator-side named
+CLIs keep the hard-fail semantics.
+
 Resolution semantics for each named argv's first entry:
 
 - the literal `${CLAUDE_PLUGIN_ROOT}` substring expands to the
@@ -65,6 +80,18 @@ SLUG: CheckId = CheckId("doctor-config-named-cli-callability")
 _SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schemas" / "livespec_config.schema.json"
 _PLUGIN_ROOT_PLACEHOLDER = "${CLAUDE_PLUGIN_ROOT}"
 
+# The config key whose callability carries the warn-vs-fail severity
+# lever (an unresolvable first token warns instead of failing).
+_CREDENTIAL_WRAPPER_KEY = "credential_wrapper"
+
+# Three-way classification of one argv-leading entry's resolution
+# state. The strict named CLIs only care callable-vs-not, but the
+# credential_wrapper lever needs to tell a host-absent entry apart
+# from a present-but-non-executable one.
+_RESOLVE_CALLABLE = "callable"
+_RESOLVE_NOT_EXECUTABLE = "not-executable"
+_RESOLVE_UNRESOLVABLE = "unresolvable"
+
 
 def _make_finding(*, ctx: DoctorContext, status: str, message: str) -> Finding:
     """Construct this check's Finding with the canonical payload shape."""
@@ -93,20 +120,32 @@ def _plugin_root() -> str:
     return str(Path(__file__).resolve().parents[4])
 
 
-def _entry_is_callable(*, entry: str, project_root: Path) -> bool:
-    """Decide whether one argv-leading entry resolves to an executable.
+def _classify_entry(*, entry: str, project_root: Path) -> str:
+    """Classify one argv-leading entry's resolution state.
 
-    Path-shaped entries (containing a separator) must be files
-    carrying the executable bit, with relative paths anchored at
-    the project root; bare command names resolve via PATH.
+    Returns `_RESOLVE_CALLABLE` when the entry resolves to an
+    executable, `_RESOLVE_NOT_EXECUTABLE` when a path-shaped entry
+    names an existing file that lacks the executable bit, and
+    `_RESOLVE_UNRESOLVABLE` when the path does not exist or a bare
+    command name is absent from PATH.
+
+    Path-shaped entries (containing a separator) resolve as
+    filesystem paths, with relative paths anchored at the project
+    root; bare command names resolve via PATH.
     """
     expanded = entry.replace(_PLUGIN_ROOT_PLACEHOLDER, _plugin_root())
     if os.sep in expanded:
         candidate = Path(expanded)
         if not candidate.is_absolute():
             candidate = project_root / candidate
-        return candidate.is_file() and os.access(candidate, os.X_OK)
-    return shutil.which(expanded) is not None
+        if not candidate.is_file():
+            return _RESOLVE_UNRESOLVABLE
+        if os.access(candidate, os.X_OK):
+            return _RESOLVE_CALLABLE
+        return _RESOLVE_NOT_EXECUTABLE
+    if shutil.which(expanded) is not None:
+        return _RESOLVE_CALLABLE
+    return _RESOLVE_UNRESOLVABLE
 
 
 def _named_clis(*, config: LivespecConfig) -> list[tuple[str, list[str]]]:
@@ -115,7 +154,12 @@ def _named_clis(*, config: LivespecConfig) -> list[tuple[str, list[str]]]:
     The seven spec-side CLIs are always named (core defaults
     materialize when the config omits them); the three
     orchestrator-side CLIs join the enumeration only when the
-    optional orchestrator section is configured.
+    optional orchestrator section is configured; the optional
+    `credential_wrapper` prefix joins only when the key is present
+    and non-empty. The credential_wrapper entry is enumerated here
+    like any other named CLI, but `_evaluate` applies the
+    warn-vs-fail severity lever to it — an unresolvable wrapper
+    warns rather than fails.
     """
     clis = config.spec_clis
     entries: list[tuple[str, list[str]]] = [
@@ -135,6 +179,8 @@ def _named_clis(*, config: LivespecConfig) -> list[tuple[str, list[str]]]:
                 ("orchestrator.drift_capture", config.orchestrator.drift_capture),
             ],
         )
+    if config.credential_wrapper:
+        entries.append((_CREDENTIAL_WRAPPER_KEY, config.credential_wrapper))
     return entries
 
 
@@ -147,9 +193,13 @@ def _evaluate(
     """Validate the parsed config and check every named CLI's callability.
 
     Schema rejection fires `fail` (the named CLIs cannot be
-    read); otherwise each named argv's first entry must resolve
-    to an executable, and any miss fires `fail` naming every
-    offending config key and value.
+    read). Otherwise each named argv's first entry must resolve to
+    an executable. A spec-side or orchestrator-side miss fires
+    `fail` naming the offending key and value. The optional
+    `credential_wrapper` carries the severity lever: an
+    unresolvable first token fires `warn` (the host-provisioned
+    wrapper is legitimately absent on CI), while a
+    resolves-but-not-executable first token stays a `fail`.
     """
     validation = validate_livespec_config(payload=payload, schema=schema)
     if not isinstance(validation, Success):
@@ -163,16 +213,33 @@ def _evaluate(
         )
     config = validation.unwrap()
     named = _named_clis(config=config)
-    failures = [
-        f"{key} = {argv!r} (entry {argv[0]!r} does not resolve to an executable)"
-        for key, argv in named
-        if not _entry_is_callable(entry=argv[0], project_root=ctx.project_root)
-    ]
+    failures: list[str] = []
+    warnings: list[str] = []
+    for key, argv in named:
+        state = _classify_entry(entry=argv[0], project_root=ctx.project_root)
+        if state == _RESOLVE_CALLABLE:
+            continue
+        if key == _CREDENTIAL_WRAPPER_KEY and state == _RESOLVE_UNRESOLVABLE:
+            warnings.append(
+                f"{key} = {argv!r} (first token {argv[0]!r} does not resolve; "
+                "the host-provisioned credential wrapper is legitimately "
+                "absent, e.g. on a CI runner)",
+            )
+            continue
+        failures.append(
+            f"{key} = {argv!r} (entry {argv[0]!r} does not resolve to an executable)",
+        )
     if failures:
         return _make_finding(
             ctx=ctx,
             status="fail",
             message="config-named CLI not callable: " + "; ".join(failures),
+        )
+    if warnings:
+        return _make_finding(
+            ctx=ctx,
+            status="warn",
+            message="config-named credential wrapper not resolvable: " + "; ".join(warnings),
         )
     return _make_finding(
         ctx=ctx,

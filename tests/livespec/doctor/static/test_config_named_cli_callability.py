@@ -239,3 +239,90 @@ def test_fails_when_config_rejects_schema_validation(*, tmp_path: Path) -> None:
     finding = _run_check(project_root=project_root)
     assert finding.status == "fail", f"expected fail, got {finding}"
     assert "livespec_config" in finding.message
+
+
+def test_credential_wrapper_present_and_executable_passes(*, tmp_path: Path) -> None:
+    """A present, executable `credential_wrapper` first token passes and is counted.
+
+    The optional wrapper joins the callability enumeration when
+    the key is present and non-empty, so the pass message's count
+    includes it: seven spec-side defaults plus the wrapper is
+    eight.
+    """
+    project_root = tmp_path / "project"
+    wrapper = _write_executable(path=project_root / "tools" / "with-env.sh")
+    _write_config(
+        project_root=project_root,
+        payload={"credential_wrapper": [str(wrapper), "--"]},
+    )
+    finding = _run_check(project_root=project_root)
+    assert finding.status == "pass", f"expected pass, got {finding}"
+    assert "8" in finding.message
+
+
+def test_credential_wrapper_present_but_not_executable_fails(*, tmp_path: Path) -> None:
+    """A `credential_wrapper` token that resolves to a non-executable file fails.
+
+    A present-but-not-executable wrapper is a real
+    misconfiguration, so the severity lever keeps it a hard `fail`
+    naming the config key — the lever only downgrades the
+    unresolvable (host-absent) case to `warn`.
+    """
+    project_root = tmp_path / "project"
+    non_executable = project_root / "tools" / "with-env.sh"
+    non_executable.parent.mkdir(parents=True, exist_ok=True)
+    _ = non_executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    _write_config(
+        project_root=project_root,
+        payload={"credential_wrapper": [str(non_executable), "--"]},
+    )
+    finding = _run_check(project_root=project_root)
+    assert finding.status == "fail", f"expected fail, got {finding}"
+    assert "credential_wrapper" in finding.message
+    assert str(non_executable) in finding.message
+
+
+def test_credential_wrapper_unresolvable_path_warns(*, tmp_path: Path) -> None:
+    """A `credential_wrapper` first token that does not resolve warns, not fails.
+
+    The credential wrapper is host-provisioned and legitimately
+    absent on CI runners that do not install it, so an
+    unresolvable path yields a `warn` finding — which the doctor
+    supervisor's exit-code derivation treats as non-fail — rather
+    than reddening the suite.
+    """
+    project_root = tmp_path / "project"
+    _write_config(
+        project_root=project_root,
+        payload={"credential_wrapper": ["/nonexistent/with-livespec-env.sh", "--"]},
+    )
+    finding = _run_check(project_root=project_root)
+    assert finding.status == "warn", f"expected warn, got {finding}"
+    assert "credential_wrapper" in finding.message
+    assert "/nonexistent/with-livespec-env.sh" in finding.message
+
+
+def test_credential_wrapper_unresolvable_bare_command_warns(*, tmp_path: Path) -> None:
+    """A bare `credential_wrapper` command absent from PATH warns, not fails."""
+    project_root = tmp_path / "project"
+    _write_config(
+        project_root=project_root,
+        payload={"credential_wrapper": ["livespec-nonexistent-wrapper-xyz", "--"]},
+    )
+    finding = _run_check(project_root=project_root)
+    assert finding.status == "warn", f"expected warn, got {finding}"
+    assert "credential_wrapper" in finding.message
+
+
+def test_credential_wrapper_omitted_is_noop(*, tmp_path: Path) -> None:
+    """An omitted `credential_wrapper` key adds nothing to the enumeration.
+
+    The optional key defaults to an empty list, so the callability
+    check is a no-op for it: only the seven spec-side defaults are
+    counted and the finding passes.
+    """
+    project_root = tmp_path / "project"
+    _write_config(project_root=project_root, payload={"template": "livespec"})
+    finding = _run_check(project_root=project_root)
+    assert finding.status == "pass", f"expected pass, got {finding}"
+    assert "7" in finding.message
