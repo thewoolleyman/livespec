@@ -456,6 +456,27 @@ def test_main_dry_run_against_repo_returns_zero(*, tmp_path: Path) -> None:
     assert wt.is_dir()
 
 
+def test_main_resolves_bare_repo_name_against_workspace_parent(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`--repo <name>` resolves to a sibling repo of the current checkout."""
+    module = _load_module()
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    justfile_repo = workspace / "livespec"
+    justfile_repo.mkdir()
+    primary, _origin = _init_primary_with_origin(tmp_path=workspace)
+    target = workspace / "sibling-repo"
+    primary.rename(target)
+    wt = _add_worktree(primary=target, name="wt-sibling", branch="feat-sibling")
+    monkeypatch.chdir(justfile_repo)
+
+    rc = module.main(argv=["--repo", target.name, "--dry-run"])
+
+    assert rc == 0
+    assert wt.is_dir()
+
+
 def test_main_defaults_repo_to_cwd(*, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """`main([])` defaults `--repo` to the current working directory."""
     module = _load_module()

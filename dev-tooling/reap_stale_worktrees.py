@@ -327,6 +327,14 @@ def _reapable_branch(
     return branch
 
 
+def _resolve_repo_path(*, repo: Path) -> Path:
+    """Resolve CLI repo paths using the justfile sibling-repo convention."""
+    expanded = repo.expanduser()
+    if expanded.is_absolute() or expanded.exists():
+        return expanded.resolve()
+    return (Path.cwd().parent / expanded).resolve(strict=False)
+
+
 def reap_worktrees(*, repo: Path, dry_run: bool) -> list[str]:
     """Reap every reapable non-primary worktree in `repo`.
 
@@ -371,7 +379,7 @@ def main(*, argv: list[str] | None = None) -> int:
         help="report what would be reaped without removing anything",
     )
     namespace = parser.parse_args(argv)
-    repo = Path(str(namespace.repo))
+    repo = _resolve_repo_path(repo=Path(str(namespace.repo)))
     dry_run = bool(namespace.dry_run)
     _ = reap_worktrees(repo=repo, dry_run=dry_run)
     return 0
