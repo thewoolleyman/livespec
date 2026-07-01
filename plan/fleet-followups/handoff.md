@@ -16,9 +16,22 @@ alone via the read-first chain — no chat history required.
   held at `backlog` — see §"Session 3"/§"Session 4"); every **cross-tenant** item
   is **prose-linked** in the inventory and its status is composed from the ledger
   (no shadow queue).
+- **⚑ NEW #1 (2026-07-02): GitHub App-token auth — its OWN dedicated thread.** The
+  GH_TOKEN factory-auth blocker (a `livespec-console-beads-fabro` canary hit it) grew
+  into a fleet-wide credential-model track: retire the fleet PAT
+  (`LIVESPEC_FAMILY_GITHUB_TOKEN`) + the human `gho_` OAuth from the agent path,
+  standardize on GitHub **App installation tokens**, with **first-class remint**
+  (survives >1h runs), **tenant-scoped** resolution + adopter isolation (fleet = adopter
+  #0, fail-closed), and OS/VPS **enforcement**. Worked in **`plan/github-app-auth/`**
+  (epic **`livespec-2ef0`**, core; resume
+  `/livespec-orchestrator-beads-fabro:plan github-app-auth`) — successor to the closed
+  credential-wrapper epic `livespec-zd8h`. It absorbs `bd-ib-gsl` as its factory slice,
+  **supersedes `bd-ib-p2e`** (PAT-grant stopgap → obsolete), and folds in **`C16`**
+  (openbrain adopter wrapper). Resume THAT thread for this work, not here.
 - **⚑ TOP PRIORITY (Session 4, maintainer-directed): FOUR P0 factory-hardening
   threads** (all `livespec-orchestrator-beads-fabro` tenant, all dispatcher
-  self-modifications) outrank everything else. Status is READ from the ledger; see
+  self-modifications) outrank everything else EXCEPT the github-app-auth track above.
+  Status is READ from the ledger; see
   §"Session 4 (part 2)" for the full map + the janitor discovery:
   1. **`bd-ib-fqh`** (EPIC) — factory context-completeness, re-groomed as an
      **Option-B cross-repo epic** (`acceptance_criteria`+`notes` become first-class
@@ -302,6 +315,22 @@ queue):
 carry the callability check outward — is **auto-resolving**: `bump-pin` rewrites
 every sibling's `compat.pinned` to the latest CORE release on the next
 `feat:`/`fix:` fan-out (self-heal does NOT need the pin bumps). No action item.
+
+## Session 6 (2026-07-02) — GH_TOKEN factory-auth → dedicated github-app-auth thread
+
+A console canary (`livespec-console-beads-fabro`) failed pre-launch needing `GH_TOKEN`;
+investigation + a cited deep-research pass (primary GitHub docs) established the fix, which
+grew into a fleet-wide credential-model track and was spun out to its **own dedicated
+thread** `plan/github-app-auth/` (epic **`livespec-2ef0`**, core; PR #752). Scope:
+standardize the fleet on GitHub **App installation tokens** for BOTH factory dispatch AND
+standalone agent worktree commits; retire the fleet PAT (`LIVESPEC_FAMILY_GITHUB_TOKEN`) +
+remove the human `gho_` OAuth from the agent path. Four pillars — first-class remint
+(survives >1h), tenant-scoped resolution + adopter isolation (fleet = adopter #0,
+fail-closed), one primitive for factory + standalone, OS/VPS enforcement. It **absorbs
+`bd-ib-gsl`** (factory slice), **supersedes `bd-ib-p2e`** (PAT-grant stopgap → close
+obsolete on groom), and **folds in `C16`** (openbrain adopter wrapper). Successor to the
+closed credential-wrapper epic `livespec-zd8h`. Resume via
+`/livespec-orchestrator-beads-fabro:plan github-app-auth`.
 
 ## Read-first chain (in order)
 

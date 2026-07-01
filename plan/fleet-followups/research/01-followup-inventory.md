@@ -20,6 +20,16 @@ is READ from the ledger. Discovered dispatching `yc8e` + S1 (§ handoff "Session
 "Session 4 (part 2)"). **Order:** fix the **janitor E2E unblocker** (`bd-ib-mxr`)
 first — until it lands, every non-core dispatch merges-but-marks-failed on the janitor.
 
+> **⚑ NEW #1 (2026-07-02) — spun out to its own thread: `plan/github-app-auth/`** (epic
+> **`livespec-2ef0`**, core; resume `/livespec-orchestrator-beads-fabro:plan github-app-auth`).
+> The GH_TOKEN factory-auth blocker grew into a fleet-wide credential-model track (GitHub
+> **App installation tokens**; retire the fleet PAT + the human `gho_` OAuth from the agent
+> path; first-class remint; adopter isolation, fleet = adopter #0, fail-closed; OS/VPS
+> enforcement). It **absorbs `bd-ib-gsl`** (factory slice), **supersedes `bd-ib-p2e`**
+> (PAT-grant stopgap → obsolete), and folds in **`C16`**. Successor to the closed
+> credential-wrapper epic `livespec-zd8h`. Work it in that thread, not here — the P0
+> threads below remain the factory-hardening set.
+
 | id | kind | slices / status | what |
 |---|---|---|---|
 | `bd-ib-mxr` | EPIC · **UNBLOCKER** | `bd-ib-cyv` (janitor green-by-execution + provision livespec core) · `bd-ib-mxr.1` (broader real-dispatch E2E, deps `bd-ib-cyv`) | **E2E dispatch acceptance.** The post-merge janitor doesn't provision livespec core → false-fails `check-doctor-static` for every NON-CORE target (merges but reports `failed:janitor-post-merge`); and it's only ever MOCKED green in tests, so the gap shipped invisibly. Fix: provision core + a top-of-pyramid test running the REAL janitor to green, then the broader real-dispatch E2E. |
