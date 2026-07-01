@@ -30,6 +30,22 @@
     "codex":  { "status": "supported", "canonical_command": "{{ plugin_namespace }}:next" }
   }
 
+  // Optional — credential_wrapper: the credential-injection wrapper for this
+  // repo's secret-backed tooling (the beads tenant password, API tokens). A
+  // JSON array of literal argv tokens naming a conforming wrapper CLI plus its
+  // fixed arguments; livespec prepends the array to each secret-touching
+  // command and execs the result directly — no shell, no word-splitting, no
+  // `--` synthesis, so bake the separator your backend needs into the array.
+  // Swapping secret backends is a credential_wrapper edit, not a code change.
+  // To enable it, add it as a real key above (a comma after the `harnesses`
+  // block); the fleet reference default injects BEADS_DOLT_PASSWORD via the
+  // 1Password Environment wrapper:
+  //   "credential_wrapper": ["/usr/local/bin/with-<id>-env.sh", "--"]
+  // Backend alternatives (same opaque prefix-array contract):
+  //   "credential_wrapper": ["aws-vault", "exec", "<id>", "--"]
+  //   "credential_wrapper": ["chamber", "exec", "<id>", "--"]
+  //   "credential_wrapper": ["op", "run", "--env-file=.env", "--"]
+  //
   // TODO(onboarding): add the "livespec-orchestrator-beads-fabro" config block
   // carrying this repo's beads tenant `connection` (tenant / database /
   // server_user / prefix / server_host / server_port) once its Dolt tenant is

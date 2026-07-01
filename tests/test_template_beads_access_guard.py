@@ -90,6 +90,82 @@ def test_allows_plain_mysql_without_tenant_hint() -> None:
     assert _load_guard().should_block(command="mysql --help") is False
 
 
+def _write_config(*, project_dir: Path, body: str) -> None:
+    (project_dir / ".livespec.jsonc").write_text(body, encoding="utf-8")
+
+
+def test_allows_configured_wrapper_token(*, tmp_path: Path) -> None:
+    """A command under the CONFIGURED `credential_wrapper` token is allowed even
+    when it is not a `with-<id>-env.sh` name (e.g. an `aws-vault` wrapper).
+    """
+    _write_config(
+        project_dir=tmp_path,
+        body=(
+            "{\n"
+            "  // the credential-injection wrapper for this repo\n"
+            '  "credential_wrapper": ["aws-vault", "exec", "x", "--"]\n'
+            "}\n"
+        ),
+    )
+    wrapped = "aws-vault exec x -- bd list --status all --json"
+    assert _load_guard().should_block(command=wrapped, project_dir=str(tmp_path)) is False
+
+
+def test_configured_wrapper_absent_from_command_still_blocks(*, tmp_path: Path) -> None:
+    """A configured wrapper whose token is NOT present in the command does not
+    excuse a bare `bd` — it is still blocked.
+    """
+    _write_config(
+        project_dir=tmp_path,
+        body='{ "credential_wrapper": ["aws-vault", "exec", "x", "--"] }\n',
+    )
+    assert _load_guard().should_block(command="bd list --json", project_dir=str(tmp_path)) is True
+
+
+def test_fallback_wrapper_when_no_credential_wrapper(*, tmp_path: Path) -> None:
+    """With a readable config that declares NO `credential_wrapper`, the
+    `with-<id>-env.sh` fallback still recognizes the conventional wrapper.
+    """
+    _write_config(project_dir=tmp_path, body='{ "template": "livespec" }\n')
+    guard = _load_guard()
+    wrapped = "with-openbrain-env.sh -- bd list --json"
+    assert guard.should_block(command=wrapped, project_dir=str(tmp_path)) is False
+    assert guard.should_block(command="bd list --json", project_dir=str(tmp_path)) is True
+
+
+def test_non_string_wrapper_token_falls_back(*, tmp_path: Path) -> None:
+    """A `credential_wrapper` whose first token is not a string is ignored; the
+    guard falls back to the `with-<id>-env.sh` regex and blocks a bare `bd`.
+    """
+    _write_config(project_dir=tmp_path, body='{ "credential_wrapper": [123] }\n')
+    assert _load_guard().should_block(command="bd list --json", project_dir=str(tmp_path)) is True
+
+
+def test_fail_open_absent_config(*, tmp_path: Path) -> None:
+    """No `.livespec.jsonc` at `project_dir`: the read fails open (no crash) and
+    the guard falls back to the regex — a bare `bd` is still blocked.
+    """
+    guard = _load_guard()
+    assert guard.should_block(command="bd list --json", project_dir=str(tmp_path)) is True
+    wrapped = "with-livespec-env.sh -- bd list --json"
+    assert guard.should_block(command=wrapped, project_dir=str(tmp_path)) is False
+
+
+def test_fail_open_malformed_config(*, tmp_path: Path) -> None:
+    """A malformed `.livespec.jsonc` fails open (no crash); the guard falls back
+    to the regex and a bare `bd` is still blocked.
+    """
+    _write_config(project_dir=tmp_path, body="{ this is not valid json\n")
+    assert _load_guard().should_block(command="bd list --json", project_dir=str(tmp_path)) is True
+
+
+def test_no_project_dir_blocks_bare_bd() -> None:
+    """With no `project_dir` (the default), only the regex fallback applies — a
+    bare `bd` is blocked.
+    """
+    assert _load_guard().should_block(command="bd list --json") is True
+
+
 def test_main_emits_deny_for_bare_bd(
     *, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
