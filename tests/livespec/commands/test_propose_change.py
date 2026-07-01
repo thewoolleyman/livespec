@@ -581,6 +581,53 @@ def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_f
     assert out.exists(), f"expected {out} to be written"
 
 
+def test_propose_change_resolves_relative_spec_target_against_cwd_not_project_root(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Explicit relative --spec-target is anchored to invocation cwd.
+
+    A caller may pass --project-root for project-level config while
+    selecting a cwd-relative spec tree. The explicit --spec-target
+    must follow the same cwd-relative behavior as doctor/next instead
+    of being joined under --project-root.
+    """
+    import argparse
+
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    invocation_cwd = tmp_path / "invocation"
+    project_root = tmp_path / "project"
+    cwd_spec_target = invocation_cwd / "alt-spec"
+    project_root_spec_target = project_root / "alt-spec"
+    cwd_spec_target.mkdir(parents=True)
+    project_root_spec_target.mkdir(parents=True)
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    monkeypatch.chdir(invocation_cwd)
+    namespace = argparse.Namespace(spec_target="alt-spec", project_root=str(project_root))
+    assert propose_change._resolve_spec_target(namespace=namespace) == cwd_spec_target  # noqa: SLF001
+
+    exit_code = propose_change.main(
+        argv=[
+            "--findings-json",
+            str(payload_path),
+            "--project-root",
+            str(project_root),
+            "--spec-target",
+            "alt-spec",
+            "demo-topic",
+        ],
+    )
+
+    assert exit_code == 0
+    cwd_out = cwd_spec_target / "proposed_changes" / "demo-topic.md"
+    project_root_out = project_root_spec_target / "proposed_changes" / "demo-topic.md"
+    assert cwd_out.exists(), f"expected cwd-relative {cwd_out} to be written"
+    assert not project_root_out.exists(), f"did not expect project-root-relative {project_root_out}"
+
+
 def test_propose_change_module_declares_hkt_erosion_pragma() -> None:
     """`commands/propose_change.py` carries the file-level HKT-erosion pyright pragma.
 
