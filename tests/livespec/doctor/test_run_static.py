@@ -133,6 +133,40 @@ def test_run_static_main_returns_usage_exit_code_on_unknown_flag() -> None:
     assert exit_code == 2
 
 
+def test_run_static_main_accepts_spec_target(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """run_static.main uses --spec-target as the main spec tree root.
+
+    Sibling spec-side wrappers accept --spec-target to point an
+    operation at a sub-spec tree instead of the default
+    `<project-root>/SPECIFICATION`. Doctor static must expose
+    the same targeting surface while still using --project-root
+    for project-level checks.
+    """
+    project_root = tmp_path / "project"
+    default_spec_root = _seed_fully_valid_project(project_root=project_root)
+    custom_spec_root = project_root / "CUSTOM_SPEC"
+    default_spec_root.rename(custom_spec_root)
+
+    exit_code = run_static.main(
+        argv=[
+            "--project-root",
+            str(project_root),
+            "--spec-target",
+            str(custom_spec_root),
+        ],
+    )
+    out = capsys.readouterr().out
+
+    assert exit_code == 0, f"expected exit 0, got {exit_code}; stdout: {out}"
+    payload = json.loads(out)
+    spec_roots = {finding["spec_root"] for finding in payload["findings"]}
+    assert spec_roots == {str(custom_spec_root)}
+
+
 def test_run_static_main_emits_findings_json_to_stdout(
     *,
     tmp_path: Path,

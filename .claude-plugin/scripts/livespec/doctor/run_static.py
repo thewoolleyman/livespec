@@ -66,12 +66,13 @@ __all__: list[str] = ["build_parser", "main"]
 def build_parser() -> argparse.ArgumentParser:
     """Construct the doctor-static argparse parser without parsing.
 
-    Phase-3 minimum: accepts only --project-root. The
+    Accepts --project-root and --spec-target. The
     `exit_on_error=False` mirrors the rest of the project's
     parsers per style doc.
     """
     parser = argparse.ArgumentParser(prog="doctor-static", exit_on_error=False)
     _ = parser.add_argument("--project-root", default=None)
+    _ = parser.add_argument("--spec-target", default=None)
     return parser
 
 
@@ -80,6 +81,13 @@ def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
     if namespace.project_root is None:
         return Path.cwd()
     return Path(namespace.project_root)
+
+
+def _resolve_spec_target(*, namespace: argparse.Namespace, project_root: Path) -> Path:
+    """Resolve --spec-target to a Path; default <project-root>/SPECIFICATION."""
+    if namespace.spec_target is None:
+        return project_root / "SPECIFICATION"
+    return Path(namespace.spec_target)
 
 
 def _run_one_check(*, ctx: DoctorContext, module: Any) -> Finding:
@@ -172,8 +180,8 @@ def _run_tree(*, ctx: DoctorContext, tree_kind: TreeKind) -> list[Finding]:
 def _orchestrate(*, namespace: argparse.Namespace) -> int:
     """Run the per-tree, per-check dispatch pathway against every spec tree.
 
-    Derive project_root from --project-root; build the main
-    DoctorContext at `<project_root>/SPECIFICATION` and run the
+    Derive project_root from --project-root and main spec root
+    from --spec-target; build the main DoctorContext and run the
     `main` applicability subset (all 8 Phase-3-minimum checks).
     Then enumerate sub-spec trees under
     `<main_spec_root>/templates/<name>/` and run the `sub_spec`
@@ -184,7 +192,7 @@ def _orchestrate(*, namespace: argparse.Namespace) -> int:
     the union of statuses.
     """
     project_root = _resolve_project_root(namespace=namespace)
-    main_spec_root = project_root / "SPECIFICATION"
+    main_spec_root = _resolve_spec_target(namespace=namespace, project_root=project_root)
     main_ctx = DoctorContext(
         project_root=project_root,
         spec_root=main_spec_root,
