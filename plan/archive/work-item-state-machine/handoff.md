@@ -1,3 +1,12 @@
+> **STATUS: CLOSED — EPIC COMPLETE (exit gate met 2026-07-01).** The anchor epic
+> `livespec-35s3zo` and all related L2 + console E-walk epics are CLOSED. Exit-gate
+> proof: the dark factory self-published AND self-merged a real PR (console PR #74)
+> via its own GitHub App installation token with ZERO native-auth bridge; post-merge
+> janitor green; item `zgd` → done; master CI green. The local overseer skill is KEPT
+> and UPDATED (deletion deferred to the future console operator-cockpit milestone,
+> decision 47). This thread is archived to `plan/archive/work-item-state-machine/`;
+> NO further action. The text below is the historical coordinator record.
+
 # Handoff — work-item-state-machine (FLEET COORDINATOR)
 
 This is the single resumable entry point for a fresh session resuming the
