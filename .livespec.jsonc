@@ -15,6 +15,11 @@
     "codex":  { "status": "exempt", "reason": "core is an artifact carrier; the /livespec:* surface ships from the per-runtime Driver plugins, not core" }
   },
   "implementation": { "plugin": "livespec-orchestrator-beads-fabro" },
+  // Credential-injection wrapper (fleet default) prefixed to bd-backed CLIs so a bare
+  // invocation self-heals its tenant secret (BEADS_DOLT_PASSWORD) by re-exec — per
+  // SPECIFICATION/non-functional-requirements.md §"Fleet secrets". An opaque argv prefix;
+  // swapping the secret backend (aws-vault/chamber/…) is a config edit, not code.
+  "credential_wrapper": ["/usr/local/bin/with-livespec-env.sh", "--"],
   "livespec-orchestrator-beads-fabro": {
     "format": "beads",
     "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "v0.5.0" },
