@@ -338,7 +338,10 @@ def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     under the built-in livespec template).
     """
     if namespace.spec_target is not None:
-        return Path(namespace.spec_target)
+        spec_target = Path(namespace.spec_target)
+        if spec_target.is_absolute():
+            return spec_target
+        return Path.cwd() / spec_target
     project_root = _resolve_project_root(namespace=namespace)
     return project_root / "SPECIFICATION"
 

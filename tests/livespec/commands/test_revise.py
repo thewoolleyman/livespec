@@ -328,6 +328,68 @@ def test_revise_main_uses_cwd_specification_default_when_no_target_flags(
     assert revision_md.exists(), f"expected {revision_md} to be written"
 
 
+def test_revise_resolves_relative_spec_target_against_cwd_not_project_root(
+    *,
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    """Explicit relative --spec-target is anchored to invocation cwd.
+
+    A caller may pass --project-root for project-level config while
+    selecting a cwd-relative spec tree. The explicit --spec-target
+    must follow the same cwd-relative behavior as doctor/next instead
+    of being joined under --project-root.
+    """
+    import argparse
+
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    invocation_cwd = tmp_path / "invocation"
+    project_root = tmp_path / "project"
+    cwd_spec_target = invocation_cwd / "alt-spec"
+    project_root_spec_target = project_root / "alt-spec"
+    (cwd_spec_target / "history" / "v001").mkdir(parents=True)
+    cwd_proposed_changes = cwd_spec_target / "proposed_changes"
+    cwd_proposed_changes.mkdir()
+    _ = (cwd_proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
+    )
+    (project_root_spec_target / "history" / "v001").mkdir(parents=True)
+    project_root_proposed_changes = project_root_spec_target / "proposed_changes"
+    project_root_proposed_changes.mkdir()
+    _ = (project_root_proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\nWrong target.\n",
+        encoding="utf-8",
+    )
+    revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
+    monkeypatch.chdir(invocation_cwd)
+    namespace = argparse.Namespace(spec_target="alt-spec", project_root=str(project_root))
+    assert revise._resolve_spec_target(namespace=namespace) == cwd_spec_target  # noqa: SLF001
+
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(revise_path),
+            "--project-root",
+            str(project_root),
+            "--spec-target",
+            "alt-spec",
+        ],
+    )
+
+    assert exit_code == 0
+    cwd_revision = cwd_spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    project_root_revision = (
+        project_root_spec_target / "history" / "v002" / "proposed_changes" / "demo-revision.md"
+    )
+    assert cwd_revision.exists(), f"expected cwd-relative {cwd_revision} to be written"
+    assert (
+        not project_root_revision.exists()
+    ), f"did not expect project-root-relative {project_root_revision}"
+
+
 def test_revise_format_next_version_name_skips_non_directory_entries(
     *,
     tmp_path: Path,

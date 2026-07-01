@@ -203,7 +203,10 @@ def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     template, that's <project-root>/SPECIFICATION/.
     """
     if namespace.spec_target is not None:
-        return Path(namespace.spec_target)
+        spec_target = Path(namespace.spec_target)
+        if spec_target.is_absolute():
+            return spec_target
+        return Path.cwd() / spec_target
     project_root = Path.cwd() if namespace.project_root is None else Path(namespace.project_root)
     return project_root / "SPECIFICATION"
 
