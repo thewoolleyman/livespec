@@ -376,7 +376,10 @@ check-imports-architecture:
 
 check-coverage:
     #!/usr/bin/env bash
-    set -uo pipefail
+    # `-e` (errexit) is load-bearing: without it a non-zero pytest/coverage
+    # exit is swallowed by the trailing per_file_coverage command (whose exit
+    # code would become the recipe's), silently reporting GREEN on a RED suite.
+    set -euo pipefail
     # Red-mode pre-commit omits this target via `check-pre-commit`'s
     # `just skip="check-coverage check-per-file-coverage" check`
     # argument (a self-contained just variable — there is NO ambient
@@ -814,7 +817,10 @@ check-file-lloc:
 # is needed here (epic li-cvaudit, cvredmd).
 check-per-file-coverage:
     #!/usr/bin/env bash
-    set -uo pipefail
+    # `-e` (errexit) is load-bearing: without it a non-zero pytest exit is
+    # swallowed by the trailing per_file_coverage command, silently reporting
+    # GREEN on a RED suite. See check-coverage above for the same rationale.
+    set -euo pipefail
     # See check-coverage above for the rationale on the cov-config
     # path + pytest-xdist parallelism.
     uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
