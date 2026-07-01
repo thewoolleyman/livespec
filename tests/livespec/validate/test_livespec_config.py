@@ -317,3 +317,48 @@ def test_validate_livespec_config_round_trips_skip_flags(
         case _:
             msg = f"expected Success(LivespecConfig), got {result}"
             raise AssertionError(msg)
+
+
+def test_validate_livespec_config_credential_wrapper_round_trips_argv() -> None:
+    """A configured `credential_wrapper` argv validates and materializes verbatim.
+
+    Per `SPECIFICATION/non-functional-requirements.md`: the
+    project's credential-injection wrapper is backend-agnostic and
+    named in `.livespec.jsonc` as an argv-form prefix (the reference
+    default is the 1Password Environment wrapper). Here the payload
+    carries an explicit wrapper and the validated config surfaces it
+    unchanged. `getattr(..., None)` keeps the assertion genuine
+    before the field is materialized.
+    """
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "credential_wrapper": ["/usr/local/bin/with-livespec-env.sh", "--"],
+    }
+    result = livespec_config.validate_livespec_config(payload=payload, schema=schema)
+    match result:
+        case Success(value):
+            assert getattr(value, "credential_wrapper", None) == [
+                "/usr/local/bin/with-livespec-env.sh",
+                "--",
+            ]
+        case _:
+            msg = f"expected Success(LivespecConfig), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_credential_wrapper_absent_yields_empty_list() -> None:
+    """When `credential_wrapper` is absent the config carries `[]` (no wrapper).
+
+    Absence of the key is equivalent to its documented default: an
+    empty argv, meaning no credential wrapper is applied.
+    `getattr(..., None)` keeps the assertion genuine before the
+    field is materialized.
+    """
+    schema = _SCHEMA
+    result = livespec_config.validate_livespec_config(payload={}, schema=schema)
+    match result:
+        case Success(value):
+            assert getattr(value, "credential_wrapper", None) == []
+        case _:
+            msg = f"expected Success(LivespecConfig), got {result}"
+            raise AssertionError(msg)

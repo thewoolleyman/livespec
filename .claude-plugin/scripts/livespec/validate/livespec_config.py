@@ -18,9 +18,12 @@ core defaults filling any name the payload omits (per
 individually overridable).
 `orchestrator` materializes to `OrchestratorConfig` when the
 section is present (schema-required four keys) and to `None`
-when absent. Unknown top-level sections validate per the schema
-root's `additionalProperties: true` and are dropped here — each
-plugin or sibling consumer validates its own section on read.
+when absent. `credential_wrapper` materializes to the payload's
+argv-form prefix when present and to `[]` when absent (no
+credential wrapper applied). Unknown top-level sections validate
+per the schema root's `additionalProperties: true` and are
+dropped here — each plugin or sibling consumer validates its own
+section on read.
 """
 
 from __future__ import annotations
@@ -111,6 +114,7 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> Livespe
         pre_step_skip_stale_branch_check=validated["pre_step_skip_stale_branch_check"],
         spec_clis=_build_spec_clis(raw=validated.get("spec_clis")),
         orchestrator=_build_orchestrator(raw=validated.get("orchestrator")),
+        credential_wrapper=validated.get("credential_wrapper", []),
     )
 
 

@@ -133,6 +133,13 @@
           "description": "argv-form drift-capture CLI. Routes impl → spec drift to propose-change; the spec-reader CLI and the propose-change CLI are injected as references."
         }
       }
+    },
+    "credential_wrapper": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "OPTIONAL argv-form command prefix that injects the project's credentials/secrets into the process environment before a downstream CLI runs (e.g. the reference 1Password Environment wrapper `[\"/usr/local/bin/with-livespec-env.sh\", \"--\"]`). Backend-agnostic: livespec constrains only that it is a non-empty array of strings when present; the secret backend, the wrapper identity, and the injected variables are the project's own concern. The literal substring `${CLAUDE_PLUGIN_ROOT}` in any entry is expanded at dispatch time as elsewhere. When the key is absent the validator materializes `[]`, meaning no wrapper is applied.",
+      "default": []
     }
   }
 }
