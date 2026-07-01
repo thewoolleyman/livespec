@@ -12,6 +12,17 @@ Epic anchor: **`livespec-jcc6`** (core tenant, `backlog`).
 
 ---
 
+## 0. ⚑ TOP PRIORITY — factory-hardening (beads-fabro tenant; Session 4, maintainer-directed)
+
+Found while dispatching `yc8e` (§ handoff "Session 4"): the factory leaks context
+and wastes its poll budget. Both P0, `backlog`, **careful self-modifications of the
+dispatcher** — groom + review from a beads-fabro session; do NOT auto-dispatch blind.
+
+| id | tenant | what | next |
+|---|---|---|---|
+| `bd-ib-fqh` | beads-fabro | **Holistic factory context-completeness.** `render_goal()` injects only id/title/description + ledger comments into every phase prompt, OMITTING the acceptance-criteria field + notes — so the DoR definition-of-done never reaches the implement/review agents (root cause of the PR #740 over-reach). Audit every stage × every context field; fix ALL gaps. | groom (beads-fabro session) |
+| `bd-ib-asp` | beads-fabro | **Merge-poll fail-fast on a BLOCKED PR.** `run_dispatch`'s poll loop polls only for MERGED and burns the full ~76-min budget on a terminally-BLOCKED PR (failed required check, e.g. PR #740's `check-coverage`). Detect the terminal failure, fail fast, surface the failing check. | groom (beads-fabro session) |
+
 ## A. Already filed — cite read-only; groom + dispatch in the owning repo's session
 
 | id | tenant | what | next |
@@ -23,7 +34,7 @@ Epic anchor: **`livespec-jcc6`** (core tenant, `backlog`).
 
 ## B. Unfiled — tooling / dev-ex bugs (file → groom → dispatch)
 
-1. ✅ **FILED** — **Worktree reaper** (`dev-tooling/reap_stale_worktrees.py`) — **CORE** tenant — two bugs: (a) fails on a *relative* `--repo` run from the justfile dir — must pass an absolute path (**CONFIRMED hit 2026-07-01**; `just reap-stale-worktrees livespec` throws, `--repo /data/projects/livespec` works); (b) skips rebase-merged branches whose remotes weren't deleted. Fix both + make the justfile pass an absolute `--repo`. → **`livespec-yc8e`** (P1, relative-path crash + justfile absolute-`--repo`; the (b) rebase-merged-skip sub-bug is appended to its notes). Sibling reaper bug: **`livespec-mpkaz4`** (P3, bare-name/sibling path). Groom + dispatch (core session).
+1. ✅ **DONE (PR #742)** — **Worktree reaper** (`dev-tooling/reap_stale_worktrees.py`) — **CORE** tenant — two bugs: (a) fails on a *relative* `--repo` run from the justfile dir — must pass an absolute path (**CONFIRMED hit 2026-07-01**; `just reap-stale-worktrees livespec` threw, `--repo /data/projects/livespec` worked); (b) skips rebase-merged branches whose remotes weren't deleted. → **`livespec-yc8e`** (P1) **CLOSED** via a scope-guarded factory re-dispatch (PR #742, 2 files: reaper + test, janitor-green; the fix resolves relative/bare repo names in the script itself). NOTE: the FIRST dispatch (PR #740, closed) over-reached (deleted README mermaid → coverage fail); that surfaced the two P0 factory-hardening items in group 0. Sibling reaper bug **`livespec-mpkaz4`** (P3, bare-name/sibling path) remains `open`.
 2. ✅ **FILED** — **CORE `propose_change.py` / `revise.py` cwd resolution** — **CORE** tenant — resolve a relative `--spec-target` against **cwd**, not `--project-root`; honor `--project-root` (or document the absolute-path requirement). → **`livespec-jcc6.1`** (backlog, child of the epic).
 3. ✅ **FILED** — **CORE `doctor_static.py` missing `--spec-target`** — **CORE** tenant — the flag exists on sibling wrappers; add it for consistency. → **`livespec-jcc6.2`** (backlog, child of the epic).
 4. **No end-to-end `migrate-tenant` CLI** — **beads-fabro** (or runtime) — `legacy_seed` / `register_custom_statuses` are library primitives; wrap into one command so a future tenant onboards in one step (all 9 L2 tracks hand-composed the migration). *Still unfiled — file from the beads-fabro/runtime session.*
@@ -74,3 +85,12 @@ dispatchable **`ready`** (acceptance + autonomy tier added); `jcc6.3` held at
 Revise / Gap / Groom / Orchestrate findings (gap: ~370 uncaptured candidates
 need a scoped pass; groom targets are cross-tenant; dispatch runs in the
 dedicated Dispatcher env, not this interactive session).
+
+**Session 4 (2026-07-01):** `jcc6.1` (PR #736), `jcc6.2` (PR #734), and
+**`yc8e`** (PR #742, scope-guarded re-dispatch) all **DONE** via factory. `yc8e`'s
+first dispatch over-reached (PR #740, closed) → surfaced the two **P0
+factory-hardening** items now in **group 0** (`bd-ib-fqh` context-completeness,
+`bd-ib-asp` merge-poll fail-fast; beads-fabro tenant, the epic's TOP priority).
+`yonx` + `ek6e` promoted to `ready` + `admission:auto`/`acceptance:ai-only` but
+**HELD** pending per-dispatch scope-guard comments (the interim workaround until
+`bd-ib-fqh` lands). See `handoff.md` §"Session 4".
