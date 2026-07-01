@@ -168,6 +168,67 @@ hard-gate, and structured iteration journal are codified in the
 orchestrator repo's own specification. The retired skill is
 recoverable from git history.
 
+## The work-item lifecycle
+
+livespec runs software work as an explicit, **deterministic state
+machine**, so that an autonomous **factory** can build and merge routine
+changes unattended — with a human in control at exactly two points. Every
+unit of work (a *work-item*: a bug, a feature slice, a chore) moves through
+seven named states, and those transitions are the only way work advances:
+
+- **backlog** — filed, not yet shaped
+- **pending-approval** — shaped ("groomed") into a well-defined slice, awaiting a go-ahead
+- **ready** — approved; eligible for the factory to pick up
+- **active** — a doer (usually the factory) is building it
+- **acceptance** — built, merged, and live; awaiting a final "is this actually good?" check
+- **done** — accepted and closed
+- **blocked** — waiting on something external (a dependency, a human, an outside system)
+
+Two **human-delegable valves** gate the risk — safe by default, but each
+can be set to run automatically for low-risk work:
+
+- **Admission** (`ready → active`) — *should the factory start this?*
+  Risky or irreversible work waits for a human; routine work is auto-admitted.
+- **Acceptance** (`acceptance → done`) — *is the shipped result good?*
+  Confirmed after the change is live (against tests + telemetry) by an AI
+  check, a human, or both.
+
+The **factory loop** is the autonomous span in the middle: an
+orchestrator's *Dispatcher* continuously drains **ready** items (up to a
+per-repo concurrency cap), builds each in an isolated sandbox, runs the
+full checks, and **merges on green** into **acceptance**. Everything before
+`ready` is shaping; everything after `acceptance` is sign-off; in between,
+the factory runs on its own.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    state "pending-approval" as pending
+    [*] --> backlog: file
+    backlog --> pending: groom
+    pending --> ready: approve
+    ready --> active: admit (valve 1)
+    active --> acceptance: build + merge on green
+    acceptance --> done: accept (valve 2)
+    active --> blocked: blocked
+    blocked --> active: unblock
+    acceptance --> backlog: reject
+    done --> [*]
+
+    note right of active
+      Factory loop (autonomous): the Dispatcher
+      drains ready items, builds each in an
+      isolated sandbox, and merges on green
+      (up to a per-repo concurrency cap).
+    end note
+```
+
+Storage is pluggable — the reference orchestrator uses a Beads/Dolt
+ledger — but the states and rules are livespec's own; a backend is just
+one realization. This is a deliberately minimal, human-oriented view; the
+fully-specified machine (transition guards, ordering, rationale) lives in
+[`SPECIFICATION/`](SPECIFICATION/).
+
 ## Fresh-clone setup
 
 After cloning, run `just bootstrap` once. The target idempotently installs the canonical structural commit-refuse hook at `.git/hooks/pre-commit`, `.git/hooks/pre-push`, and `.git/hooks/commit-msg` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure") — armed on install, refusing commits/pushes at the primary checkout structurally (when `git rev-parse --git-dir` equals `git rev-parse --git-common-dir`), with no `livespec.primaryPath` arming step — forcing every edit through `git worktree add` while still allowing reads/fetches at the primary, then installs lefthook hooks, resolves plugin dependencies, creates `~/.worktrees`, and registers it in mise's `trusted_config_paths`. That last step ensures every worktree created at `~/.worktrees/<repo>/<branch>` auto-trusts its `.mise.toml`, so the first `mise exec` inside a fresh worktree never stalls on a "config not trusted" prompt.
