@@ -219,45 +219,61 @@ shadow queue).
 
 ## The next action
 
-**L0 + L1 + L2 are complete; the orchestrator self-containment fix shipped
-(`v0.3.1`); the console E-walk is COMPLETE (E-3a/E-3b/E-4 merged — console PRs
-#67/#69/#70); and the core-plugin-root janitor fix shipped (`v0.3.2`). By
-MAINTAINER DECISION (session 9) the exit gate is HELD until the factory
-self-publishes a PR with ZERO native-auth bridge — so `bd-ib-gsl` (App-token
-autonomy) is now the critical path:**
+**L0 + L1 + L2 are complete; the console E-walk is COMPLETE (E-3a/E-3b/E-4
+merged); the core-plugin-root janitor fix shipped (`v0.3.2`); and `bd-ib-gsl`
+(App-token autonomy) is DONE — the factory now mints + uses its own GitHub App
+installation token and SELF-PUBLISHED a PR with ZERO native-auth bridge (proof:
+console PR #72, authored AND merged by `livespec-pr-bot`, all GitHub CI green). By
+a FURTHER MAINTAINER DECISION (session 9, "hold for a fully-clean-green dispatch")
+the exit gate is now held on ONE remaining item: a factory dispatch green
+END-TO-END, no failed verdict:**
 
-1. **`bd-ib-gsl` — switch the factory's PR-create credential to a GitHub App
-   installation token (THE critical path; in flight in the console session).**
-   The console E-walk's three PRs were published via a NATIVE-AUTH BRIDGE (a
-   human's `gh` auth) because the factory authenticates PR-create as the
-   fine-grained PAT `LIVESPEC_FAMILY_GITHUB_TOKEN` (per
-   `orchestrator-image/orchestrator-entrypoint.sh`), which lacks
-   `Pull requests: write` on `livespec-console-beads-fabro`. The maintainer chose
-   NOT to grant the PAT (so the PAT-grant item `bd-ib-p2e` is superseded);
-   instead, switch the factory to mint a short-lived **GitHub App installation
-   token** from `GITHUB_APP_ID` + `GITHUB_PRIVATE_KEY` (the **`livespec-pr-bot`**
-   App, verified to hold `Pull requests` + `Contents` = Read/write at the app
-   level), and parameterize the token source so adopters bring their own App.
-   Prereq: the App must be INSTALLED (PR+Contents write) on every target family
-   repo — verify via `gh api`; a GitHub-UI-only install is a maintainer/Chrome
-   action (this session has authenticated Chrome access via Playwright). Then
-   release (`v0.3.3`) + `claude plugin update --scope project` the relevant
-   scopes. **PROOF = the exit-gate condition:** dispatch a small real ready
-   work-item through the factory and confirm it opens+merges a PR via the App
-   token with NO native-auth bridge.
-2. **Exit gate (maintainer's call) — now GATED on the bd-ib-gsl proof.** Once the
-   factory self-publishes with zero native-auth bridge, the exit gate is met →
-   close the anchor epic `livespec-35s3zo` + the per-repo L2 epics + the console
-   epic `…-vqh36l` (all left open by design for archive-on-close). The local
-   overseer skill (`.claude/skills/overseer/`) is **KEPT and UPDATED** (lean,
-   plan-skill-driven + factory-dispatch form), **not deleted** — deletion is
-   DEFERRED to the future console operator-cockpit milestone, NOT this gate.
-   *(Mechanism correction, session 9: an overseer session CAN drive a client-side
-   cache refresh — `claude plugin update <plugin>@<marketplace> --scope project`
-   run from the target repo dir, then exit+relaunch the session via tmux
-   `send-keys`. The prior "an agent session cannot run `/plugin update` as a tool
-   / could not drive a client-side cache refresh" framing was WRONG; the CLI is
-   the clean path.)*
+1. **Fix the console POST-MERGE janitor Rust-toolchain gap, then re-dispatch
+   clean-green (THE critical path; in flight in the console session).** The
+   `bd-ib-gsl` proof dispatch (item `e8y`, console PR #72) self-published
+   correctly, but its OVERALL verdict was `failed` — ONLY at the orchestrator's
+   post-merge acceptance janitor, which runs `just check` in a fresh checkout that
+   lacks the Rust toolchain (`cargo: not found`, exit 127), AFTER the PR was
+   already published + merged, with zero token/auth errors. So: (a) reconcile
+   `e8y` (merged + fully GitHub-CI-green; accept to `done`); (b) locate where the
+   post-merge acceptance env is provisioned (dispatcher post-merge acceptance /
+   Fabro sandbox / console hydrate) and provision `cargo`/Rust there, via
+   worktree→PR (red-green-replay for any product `.py`; HONOR THE SHELL RULE — any
+   logic in tested code, shell only thin glue; release + cache-refresh if the fix
+   is orchestrator-side); (c) dispatch a small real console-tenant ready item and
+   confirm the FULL flow is clean green: implement → App-token publish+merge (zero
+   bridge) → post-merge acceptance GREEN → item `done`, NO failed verdict. THAT
+   clean-green dispatch is the exit-gate proof.
+   - **bd-ib-gsl landed (DONE):** mint logic is TESTED Python (`_app_token.py`
+     core + `mint_app_token` CLI + thin-glue entrypoint, genuine Red→Green, 100%
+     coverage; orchestrator PR #225), released as **`v0.4.0`** (a `feat:`, so a
+     minor bump — NOT the `0.3.3` earlier named). PAT-grant `bd-ib-p2e` is
+     superseded; the `livespec-pr-bot` App is verified installed (PR+Contents
+     write) on the family repos; the native-auth bridge is retired.
+2. **Exit gate (maintainer's call) — GATED on the clean-green dispatch above.**
+   Once one factory dispatch is green end-to-end (no failed verdict), the exit
+   gate is met → close the anchor epic `livespec-35s3zo` + the per-repo L2 epics +
+   the console epic `…-vqh36l` (all left open by design for archive-on-close). The
+   local overseer skill (`.claude/skills/overseer/`) is **KEPT and UPDATED**, NOT
+   deleted — deletion is DEFERRED to the future console operator-cockpit milestone.
+   *(Mechanism note, session 9: an overseer session CAN drive a client-side cache
+   refresh — `claude plugin update <plugin>@<marketplace> --scope project` from the
+   target repo dir, then exit+relaunch via tmux `send-keys`; that CLI is the clean
+   non-interactive path, whereas the `/plugin update` slash command opens an
+   interactive UI that send-keys cannot drive cleanly.)*
+
+**Parallel initiative (SEPARATE epic, NOT part of this exit gate): shell-logic
+hardening.** A fleet-wide shell audit (session 9) found NO product-logic-in-shell
+dodge, but a real body of untested plumbing-logic in shell + `python -c` heredocs,
+some fanned out fleet-wide. The maintainer chose "rule + mechanical gates, NOT a
+ban." Filed as epic **`livespec-dev-tooling-9j8`** (+ 13 children across tenants;
+2 ports marked ready — `9j8.1` bump-pin rewriters → tested module; `livespec-gnjb`
+`export-ci-telemetry.sh` → tested Python in core + re-stamp template) with a merged
+audit doc at `livespec-dev-tooling:research/shell-logic-audit/findings.md`
+(PR #229). **NEEDS GROOMING.** The RULE: substantive logic must live in tested,
+type-checked, IMPORTABLE code (no logic in shell OR `python -c`/heredocs); shell =
+thin glue. Origin: the `bd-ib-gsl` conformance catch — a session tried to write the
+token mint in shell to dodge the TDD/pyright gates, redirected to tested Python.
 3. **Post-L2 follow-ups (none blocking) — capture as work-items when convenient:**
    - **No end-to-end `migrate-tenant` CLI.** `legacy_seed` /
      `register_custom_statuses` are library **primitives**, not a command — all
@@ -328,7 +344,9 @@ sleep 0.6; command tmux send-keys -t <session> Enter
 | L2 | livespec-console-beads-fabro (tenant) | `…-vxq` | **COMPLETE** · 12 heads migrated + verified |
 | ~~blocker~~ | livespec-orchestrator-beads-fabro (self-containment) | `/plan` thread `orchestrator-plugin-self-containment` | **DONE · released `v0.3.1`** · clause #6 + Slices 1+2+3 (PRs #215/#217/#219/#220; release #218→`v0.3.1`); CI + fan-out green. Slice 4/6 (`real-work-dispatch.sh`) is a follow-on, not on the console path |
 | console | livespec-console-beads-fabro (E-walk) | `…-vqh36l` | **COMPLETE** · E-1/E-2a/E-2b + E-3a (PR #67) / E-3b (PR #69) / E-4 (PR #70) all MERGED (factory-implemented, native-auth-published). Core-plugin-root janitor fix released `v0.3.2`. Epic ready to close at the exit gate |
-| exit gate | held by maintainer (session 9) | — | **GATED on `bd-ib-gsl`** — factory must self-publish a PR via the `livespec-pr-bot` App installation token with ZERO native-auth bridge; then close anchor + L2 + `…-vqh36l`. PAT-grant `bd-ib-p2e` superseded |
+| bd-ib-gsl | orchestrator App-token autonomy | (beads-fabro tenant) | **DONE** · mint logic tested Python (orch PR #225), released `v0.4.0`; factory SELF-PUBLISHED console PR #72 (authored+merged by `livespec-pr-bot`, all CI green, zero bridge). native-auth bridge retired; `bd-ib-p2e` superseded |
+| exit gate | held by maintainer (session 9 — "fully-clean-green") | — | **GATED on a clean-green dispatch** — bd-ib-gsl self-publish proven, but the console POST-MERGE janitor fails `cargo: not found` (env lacks Rust). Fix that + land one factory dispatch green END-TO-END (no failed verdict); then close anchor + L2 + `…-vqh36l` |
+| shell-hardening | fleet audit → epic (SEPARATE) | `livespec-dev-tooling-9j8` | **FILED** · +13 children, doc PR #229 merged; rule + gates (not a ban); 2 ports ready (`9j8.1`, `livespec-gnjb`); NEEDS GROOMING |
 
 ## Session-7 autonomous-run log
 
