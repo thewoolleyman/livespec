@@ -58,11 +58,19 @@ the env wrapper, `bd create --type task --labels origin:freeform` then 2-step
 `bd update --status backlog`). Cross-tenant items must be filed from their own
 repo's session (the `bd` cwd-tenant trap).
 
-**Filing progress (2026-07-01, this session):** the still-unfiled CORE items
-were filed as children of the epic — **B2 → `livespec-jcc6.1`**, **B3 →
-`livespec-jcc6.2`**, **C6 → `livespec-jcc6.3`** (all `backlog`); the **B1**
-reaper bugs were already filed (`livespec-yc8e` + `livespec-mpkaz4`), with the
-B1(b) rebase-merged-skip sub-bug appended to `yc8e`'s notes; **B5** is covered
-by `livespec-aava`. Remaining unfiled: **B4** (beads-fabro/runtime), **C7**
-(driver-codex), **C8** (git-jsonl), and the env/policy calls **D9/D10** —
-file each from its owning repo's session (or as a core decision for D10).
+**Filing progress (2026-07-01):** the still-unfiled CORE items were filed as
+children of the epic — **B2 → `livespec-jcc6.1`**, **B3 → `livespec-jcc6.2`**,
+**C6 → `livespec-jcc6.3`**; the **B1** reaper bugs were already filed
+(`livespec-yc8e` + `livespec-mpkaz4`), with the B1(b) rebase-merged-skip sub-bug
+appended to `yc8e`'s notes; **B5** is covered by `livespec-aava`. Remaining
+unfiled: **B4** (beads-fabro/runtime), **C7** (driver-codex), **C8** (git-jsonl),
+and the env/policy calls **D9/D10** — file each from its owning repo's session
+(or as a core decision for D10).
+
+**DoR triage (2026-07-01, session 2):** `jcc6.1` + `jcc6.2` promoted to
+dispatchable **`ready`** (acceptance + autonomy tier added); `jcc6.3` held at
+`backlog` (`not-yet-actionable` — acceptance not autonomously verifiable);
+`m0xu` moved `open` → `backlog`. See `handoff.md` §"Session 2" for the full
+Revise / Gap / Groom / Orchestrate findings (gap: ~370 uncaptured candidates
+need a scoped pass; groom targets are cross-tenant; dispatch runs in the
+dedicated Dispatcher env, not this interactive session).
