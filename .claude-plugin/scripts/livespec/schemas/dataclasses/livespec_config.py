@@ -109,8 +109,10 @@ class LivespecConfig:
 
     Mirrors livespec_config.schema.json: the flat spec-tier
     facts (`template`, `spec_root`, skip flags), the
-    `spec_clis` object naming the seven spec-side CLIs, and the
-    optional `orchestrator` selection. Unknown top-level
+    `spec_clis` object naming the seven spec-side CLIs, the
+    optional `orchestrator` selection, and the optional
+    `credential_wrapper` argv prefix (empty by default, meaning
+    no credential wrapper is applied). Unknown top-level
     sections in the payload are tolerated per the schema root's
     `additionalProperties: true` and are NOT carried on this
     dataclass — each plugin or sibling consumer validates its
@@ -131,3 +133,4 @@ class LivespecConfig:
     pre_step_skip_stale_branch_check: bool = False
     spec_clis: SpecClis = field(default_factory=SpecClis)
     orchestrator: OrchestratorConfig | None = None
+    credential_wrapper: list[str] = field(default_factory=list)

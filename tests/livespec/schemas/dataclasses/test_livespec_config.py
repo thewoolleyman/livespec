@@ -73,6 +73,25 @@ def test_livespec_config_dataclasses_are_frozen_kw_only_slotted() -> None:
         assert hasattr(cls, "__slots__"), f"{cls.__name__} must declare slots"
 
 
+def test_livespec_config_credential_wrapper_defaults_to_empty_list() -> None:
+    """`credential_wrapper` defaults to `[]` — absent means no wrapper.
+
+    Direct construction mirrors the schema's documented default:
+    an empty argv, so a project that configures no wrapper carries
+    an empty prefix.
+    """
+    config = LivespecConfig()
+    assert config.credential_wrapper == []
+
+
+def test_livespec_config_credential_wrapper_round_trips_provided_argv() -> None:
+    """A provided `credential_wrapper` argv is carried verbatim."""
+    config = LivespecConfig(
+        credential_wrapper=["/usr/local/bin/with-livespec-env.sh", "--"],
+    )
+    assert config.credential_wrapper == ["/usr/local/bin/with-livespec-env.sh", "--"]
+
+
 def test_orchestrator_config_round_trips_field_values() -> None:
     """OrchestratorConfig carries its four required fields verbatim."""
     orchestrator = OrchestratorConfig(
