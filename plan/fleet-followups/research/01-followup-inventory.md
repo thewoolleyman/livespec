@@ -17,23 +17,23 @@ Epic anchor: **`livespec-jcc6`** (core tenant, `backlog`).
 | id | tenant | what | next |
 |---|---|---|---|
 | `livespec-127o` | core | README rewrite (spec-driven): add a README-contract to `SPECIFICATION/` (purpose, audience = zero-knowledge newcomer, required structure, reference-not-duplicate), then author the README to conform. Supersedes the incrementally-grown README (PR #723). | groom |
-| `livespec-m0xu` | core | rename `templates/impl-plugin/` → `templates/orchestrator-plugin/` (it scaffolds orchestrator plugins; the name misleads). Plain `open` item filed via raw `bd create`. | groom into the new lifecycle |
+| `livespec-m0xu` | core | rename `templates/impl-plugin/` → `templates/orchestrator-plugin/` (it scaffolds orchestrator plugins; the name misleads). Plain `open` item filed via raw `bd create` — **still `open`; needs the 2-step move to `backlog` before grooming.** | move to backlog, then groom |
 | `bd-ib-2wq` | beads-fabro | doctor invariant: fail `just check` / `/livespec:doctor` when any LIVE work-item's status is outside the 7-state set (the enforcement gap — today it's pyright-only, no runtime/audit check). | groom |
 | `livespec-dev-tooling-9j8` (+13 children) | dev-tooling | shell-logic hardening epic: substantive logic must live in tested, type-checked, importable code (no logic in shell OR `python -c`/heredocs). Rule + mechanical gates, NOT a ban. 2 ports ready: `9j8.1` (bump-pin rewriters → tested module), `livespec-gnjb` (`export-ci-telemetry.sh` → tested Python + re-stamp template). Doc PR #229 merged. | groom the epic |
 
 ## B. Unfiled — tooling / dev-ex bugs (file → groom → dispatch)
 
-1. **Worktree reaper** (`dev-tooling/reap_stale_worktrees.py`) — **CORE** tenant — two bugs: (a) fails on a *relative* `--repo` run from the justfile dir — must pass an absolute path (**CONFIRMED hit 2026-07-01**; `just reap-stale-worktrees livespec` throws, `--repo /data/projects/livespec` works); (b) skips rebase-merged branches whose remotes weren't deleted. Fix both + make the justfile pass an absolute `--repo`.
-2. **CORE `propose_change.py` / `revise.py` cwd resolution** — **CORE** tenant — resolve a relative `--spec-target` against **cwd**, not `--project-root`; honor `--project-root` (or document the absolute-path requirement).
-3. **CORE `doctor_static.py` missing `--spec-target`** — **CORE** tenant — the flag exists on sibling wrappers; add it for consistency.
-4. **No end-to-end `migrate-tenant` CLI** — **beads-fabro** (or runtime) — `legacy_seed` / `register_custom_statuses` are library primitives; wrap into one command so a future tenant onboards in one step (all 9 L2 tracks hand-composed the migration).
-5. **Codex TUI `check-codex-skill-picker` blocked by hooks-trust prompt** (CI self-skips) — **driver-codex** / dev-tooling — make it runnable locally or document the skip.
+1. ✅ **FILED** — **Worktree reaper** (`dev-tooling/reap_stale_worktrees.py`) — **CORE** tenant — two bugs: (a) fails on a *relative* `--repo` run from the justfile dir — must pass an absolute path (**CONFIRMED hit 2026-07-01**; `just reap-stale-worktrees livespec` throws, `--repo /data/projects/livespec` works); (b) skips rebase-merged branches whose remotes weren't deleted. Fix both + make the justfile pass an absolute `--repo`. → **`livespec-yc8e`** (P1, relative-path crash + justfile absolute-`--repo`; the (b) rebase-merged-skip sub-bug is appended to its notes). Sibling reaper bug: **`livespec-mpkaz4`** (P3, bare-name/sibling path). Groom + dispatch (core session).
+2. ✅ **FILED** — **CORE `propose_change.py` / `revise.py` cwd resolution** — **CORE** tenant — resolve a relative `--spec-target` against **cwd**, not `--project-root`; honor `--project-root` (or document the absolute-path requirement). → **`livespec-jcc6.1`** (backlog, child of the epic).
+3. ✅ **FILED** — **CORE `doctor_static.py` missing `--spec-target`** — **CORE** tenant — the flag exists on sibling wrappers; add it for consistency. → **`livespec-jcc6.2`** (backlog, child of the epic).
+4. **No end-to-end `migrate-tenant` CLI** — **beads-fabro** (or runtime) — `legacy_seed` / `register_custom_statuses` are library primitives; wrap into one command so a future tenant onboards in one step (all 9 L2 tracks hand-composed the migration). *Still unfiled — file from the beads-fabro/runtime session.*
+5. ≈ **COVERED** — **Codex TUI `check-codex-skill-picker` blocked by hooks-trust prompt** (CI self-skips) — **driver-codex** / dev-tooling — make it runnable locally or document the skip. → effectively **`livespec-aava`** (same test `test_codex_skill_picker.py`; that item's root cause is the non-TTY/no-controlling-terminal pre-push context — the "make it runnable locally / document the skip" thrust is the same). Related: **`livespec-nylyhi`** (Codex orchestrate help trips the primary-checkout guard).
 
 ## C. Unfiled — doc / config drift (file → fix)
 
-6. **Stale `capture-work-item` / `plan` prose for v0.3.0** — **CORE** (`.claude-plugin/prose/`) — documents the OLD schema (`status=open` + `priority`, no `rank`); refresh to the 7-state + `rank` model.
-7. **driver-codex `.livespec.jsonc` / `CLAUDE.md` say beads connection "DEFERRED"** — **driver-codex** — the tenant is migrated + connected; correct the stale "DEFERRED" wording.
-8. **git-jsonl §6 doc-reconcile** — **git-jsonl** — the policy-fields-dropped-on-write behavior is a slice-plan-vs-design §6 tension; reconcile in that repo's design doc.
+6. ✅ **FILED** — **Stale `capture-work-item` / `plan` prose for v0.3.0** — **CORE** (`.claude-plugin/prose/`) — documents the OLD schema (`status=open` + `priority`, no `rank`); refresh to the 7-state + `rank` model. → **`livespec-jcc6.3`** (backlog, child of the epic).
+7. **driver-codex `.livespec.jsonc` / `CLAUDE.md` say beads connection "DEFERRED"** — **driver-codex** — the tenant is migrated + connected; correct the stale "DEFERRED" wording. *Still unfiled — file from the driver-codex session.*
+8. **git-jsonl §6 doc-reconcile** — **git-jsonl** — the policy-fields-dropped-on-write behavior is a slice-plan-vs-design §6 tension; reconcile in that repo's design doc. *Still unfiled — file from the git-jsonl session.*
 
 ## D. Unfiled — env / infra
 
@@ -53,7 +53,16 @@ Epic anchor: **`livespec-jcc6`** (core tenant, `backlog`).
 ---
 
 ### Filing note
-Core-tenant items (B1, B2, B3, C6, and arguably D9/D10) can be filed from THIS
-session (`cd /data/projects/livespec` + the env wrapper, `bd create --type task
---labels origin:freeform` then 2-step `bd update --status backlog`). Cross-tenant
-items must be filed from their own repo's session (the `bd` cwd-tenant trap).
+Core-tenant items are filed from a core session (`cd /data/projects/livespec` +
+the env wrapper, `bd create --type task --labels origin:freeform` then 2-step
+`bd update --status backlog`). Cross-tenant items must be filed from their own
+repo's session (the `bd` cwd-tenant trap).
+
+**Filing progress (2026-07-01, this session):** the still-unfiled CORE items
+were filed as children of the epic — **B2 → `livespec-jcc6.1`**, **B3 →
+`livespec-jcc6.2`**, **C6 → `livespec-jcc6.3`** (all `backlog`); the **B1**
+reaper bugs were already filed (`livespec-yc8e` + `livespec-mpkaz4`), with the
+B1(b) rebase-merged-skip sub-bug appended to `yc8e`'s notes; **B5** is covered
+by `livespec-aava`. Remaining unfiled: **B4** (beads-fabro/runtime), **C7**
+(driver-codex), **C8** (git-jsonl), and the env/policy calls **D9/D10** —
+file each from its owning repo's session (or as a core decision for D10).
