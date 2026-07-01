@@ -9,15 +9,25 @@ rule and the overseer / long-running-coordinator discipline.
 
 ## Session-end standing-handoff print rule
 
-When a session advanced a **standing-handoff track** — a `prompts/<name>.md`
-that declares itself a refresh-each-session handoff — the session's closing
-summary MUST print the exact command that resumes it:
+When a session advanced a **standing-handoff track** — a refresh-each-session
+handoff, whether a `prompts/<name>.md` or a plan thread's
+`plan/<topic>/handoff.md` — the session's closing recap MUST end by printing the
+exact resume command **verbatim, as the LAST line of the recap** (nothing after
+it):
 
 ```
 run prompts/<name>.md
 ```
 
-Never leave the next session to rediscover its entry point. This operationalizes
+or, for a plan thread:
+
+```
+/livespec-orchestrator-beads-fabro:plan <topic>
+```
+
+Print it **verbatim and last, every time** — never paraphrased, never buried
+mid-summary, never omitted, and never with trailing prose after it. Never leave
+the next session to rediscover its entry point. This operationalizes
 `SPECIFICATION/non-functional-requirements.md` §"Planning Lane guidance" → "No
 shadow ledger" ("a session's closing summary names the exact command that
 launches the next session") at the agent-instruction layer. If the session
