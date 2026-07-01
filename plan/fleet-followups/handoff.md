@@ -12,9 +12,10 @@ alone via the read-first chain — no chat history required.
   span multiple tenants (core, beads-fabro, dev-tooling, driver-codex,
   git-jsonl, runtime), so — per the fleet pattern — this anchor carries only a
   few **same-tenant (core) ledger children** (`livespec-jcc6.1/.2/.3`, filed
-  2026-07-01; `.1` and `.2` are now `ready`, `.3` held at `backlog` — see
-  §"Session 2"); every **cross-tenant** item is **prose-linked** in the
-  inventory and its status is composed from the ledger (no shadow queue).
+  2026-07-01; **`.2` is DONE** via factory dispatch (PR #734), **`.1` dispatched**,
+  `.3` held at `backlog` — see §"Session 3"); every **cross-tenant** item is
+  **prose-linked** in the inventory and its status is composed from the ledger
+  (no shadow queue).
 - **Epic anchor:** `livespec-jcc6` (core tenant, `backlog`). Status is READ from
   the ledger, never from this file:
   ```bash
@@ -47,15 +48,26 @@ alone via the read-first chain — no chat history required.
    (git-jsonl §6 doc-reconcile), **D9** (fleet/dev-tooling `hydrate`
    worktree-pack), **D10** (fleet/core review-policy decision). **In THIS core
    session the only immediately-runnable action is grooming (step 3).**
-3. **Dispatch the two `ready` core items** — `livespec-jcc6.1` (propose/revise
-   cwd resolution) and `livespec-jcc6.2` (doctor_static `--spec-target`) are
-   staged `ready` with acceptance + autonomy tier (§"Session 2"); the impl `next`
-   ranker surfaces both. Let the **Dispatcher drain them** (dedicated dispatch
-   env with App-token + Fabro creds) or run
-   `/livespec-orchestrator-beads-fabro:orchestrate run --action impl:<id>` from a
-   session that HAS those creds. They are NOT dispatchable from this interactive
-   coordination session (creds absent — see §"Session 2"). Confirm the janitor +
-   App-token loop stays green (it proved out on `zgd`/PR #74).
+3. **Dispatch `ready` core items through the factory FROM THIS SESSION** (proven
+   in §"Session 3" — the Session-2 "creds absent / not dispatchable here" claim
+   was WRONG). Two required steps: (a) **approve admission** — a `ready` item is
+   held at the dispatcher's admission valve unless it carries the label
+   `admission:auto` (default `admission_policy` is `manual` — the designed human
+   gate); add `admission:auto` (and `acceptance:ai-only` to close the loop
+   without a final human sign-off). (b) **run the containerized dispatcher**:
+   ```bash
+   source /data/projects/1password-env-wrapper/with-livespec-env.sh \
+     bash /data/projects/livespec-orchestrator-beads-fabro/orchestrator-image/real-work-dispatch.sh \
+     --target-repo livespec --item <ready-id> --run
+   ```
+   The secrets come from the SAME `with-livespec-env.sh` wrapper used for `bd`
+   (`LIVESPEC_FAMILY_GITHUB_TOKEN`, `ANTHROPIC_API_KEY_LIVESPEC_E2E`,
+   `CLAUDE_CODE_OAUTH_TOKEN`, `BEADS_DOLT_PASSWORD`, `HONEYCOMB_INGEST_KEY_LIVESPEC`)
+   plus the host `~/.codex/auth.json`; it runs in the `livespec-orchestrator:dev`
+   container (Fabro sandbox → PR → janitor gate `just check` + doctor → rebase-merge
+   → acceptance → `done`). `--preflight` (no `--item`) checks all inputs first.
+   Status: **`livespec-jcc6.2` is DONE** (PR #734, janitor-green, closed);
+   **`livespec-jcc6.1` dispatched** the same way.
 4. **Groom the remaining core items** (`/livespec-orchestrator-beads-fabro:groom
    <id>` in a session that owns the tenant): `livespec-127o` (README — epic-shaped:
    a spec-contract slice → `/livespec:propose-change` + a README-authoring slice
@@ -107,13 +119,41 @@ Ran Revise / Gap / Groom / Orchestrate over the thread; the durable outcomes:
   `livespec-orchestrator-beads-fabro`) and `livespec-rmew4k` (cross-repo,
   spec-gated; overlaps `livespec-4dzbcv`), groom into route-out slices, not
   core-local dispatchable work — groom them from those repos' sessions.
-- **Orchestrate — dispatch runs in the dedicated Dispatcher env, not here.** The
-  GitHub App-token + Fabro API creds are ABSENT in this interactive session (0
-  bytes, even under the env wrapper) and no dispatcher daemon is running, though
-  the `fabro` binary is present. Real dispatch (Fabro sandbox → janitor gate →
-  merge) runs in the Dispatcher environment with its own secrets — the
-  interactive `/plan` session coordinates + stages `ready` work; it does not fire
-  the factory inline (the retired-inline-overseer boundary).
+- **Orchestrate — ⚠️ THIS FINDING WAS WRONG; corrected in §"Session 3".** (Struck
+  for the record.) The claim was that dispatch can't run from this session
+  because App-token/Fabro creds are absent. That was a mis-probe: I checked the
+  wrong env-var names (`LIVESPEC_APP_ID`/`FABRO_API_KEY`) and hadn't found
+  `orchestrator-image/real-work-dispatch.sh`. Dispatch DOES run from this session
+  via that containerized script; the real gate is the `admission:auto` approval,
+  not credential absence. See §"Session 3" for the proven mechanism.
+
+## Session 3 (2026-07-01) — factory dispatch PROVEN + scoped gap capture
+
+- **Dispatch works from this session (Session-2 finding corrected).** The
+  mechanism is the containerized `orchestrator-image/real-work-dispatch.sh` under
+  the `with-livespec-env.sh` wrapper (see the command in "The next action" step
+  3). The one real gate beyond `status: ready` is the **admission valve**: an item
+  with the default `admission_policy: manual` is HELD ("surfaced for the
+  maintainer to approve into ready, never auto-dispatched") until it carries the
+  label `admission:auto`. That is the designed human-approval gate, realized at
+  admission (not at status). `acceptance:ai-only` closes the loop without a final
+  human sign-off; `DEFAULT_DOER = fabro` auto-assigns.
+- **`livespec-jcc6.2` DONE end-to-end.** admission held → added
+  `admission:auto` + `acceptance:ai-only` → re-dispatched → Fabro implemented
+  (`fix: add doctor static spec target coverage`) → **PR #734** → post-merge
+  janitor `just check` green (58 targets) → rebase-merge → ai-only acceptance →
+  ledger **CLOSED** (`resolution:completed`). ~20 min wall-clock.
+- **`livespec-jcc6.1` dispatched** the same way (admission approved).
+- **Gap capture — scoped `--since-version 150`.** 236 clause candidates (201 in
+  `non-functional-requirements.md`, 35 in `spec.md`); 5 parallel triage agents
+  checked each against the repo. **3 genuine gaps filed** (`origin:gap-tied`,
+  `backlog`): **`livespec-yonx`** (`io/fastjsonschema_facade.py` absent, core),
+  **`livespec-ek6e`** (`io/structlog_facade.py` absent, core), **`livespec-8kip`**
+  (`check-mutation` structured-JSON fail-summary missing; fix lands in
+  `livespec-dev-tooling`). The other 233 clauses verified as genuinely
+  implemented/enforced. One spec-drift note (`gap-dg2rdlsf`: coverage `source`
+  clause stale vs a deliberate omit-only impl choice) → route to
+  `capture-spec-drift`/`propose-change`, not a gap.
 
 ## Read-first chain (in order)
 
