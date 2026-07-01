@@ -183,14 +183,18 @@ def _resolve_repo_path(*, repo_arg: str, cwd: Path) -> Path:
 
     `just reap-stale-worktrees <repo>` runs from this repo's justfile
     directory, while `<repo>` commonly names a sibling checkout under
-    the workspace root. `.` keeps its current-repo meaning; other
-    relative repo names resolve against the workspace parent.
+    the workspace root. Keep explicit cwd-relative paths working when
+    they exist, and otherwise treat a relative repo name as relative to
+    the workspace parent.
     """
     repo = Path(repo_arg).expanduser()
     if repo.is_absolute():
         return repo.resolve()
     if repo == Path():
         return cwd.resolve()
+    cwd_relative = (cwd / repo).resolve()
+    if cwd_relative.exists():
+        return cwd_relative
     return (cwd.parent / repo).resolve()
 
 
