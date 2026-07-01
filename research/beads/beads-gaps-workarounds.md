@@ -673,6 +673,73 @@ and
 
 ---
 
+## Entry 12 — `bd create` cannot create directly in a custom status (forces `open`/`deferred`)
+
+### Observation
+
+`bd create` hard-codes the initial status: in `buildCreateIssue`
+(`cmd/bd/create.go`, upstream/main @ `9626f4f1a`, unchanged through
+`v1.1.0-rc.1`) `status := types.StatusOpen`, with `StatusDeferred` the
+only alternative (when `--defer` has a future date). The create command
+registers ~35 flags but **no `--status`** (`-s`/`--status` exists only on
+`list`/`count`/`search`/`lint`/`update`). So although beads supports
+custom statuses (`bd config set status.custom`), a new issue can only be
+born `open` (or `deferred`); reaching any custom status needs a **second**
+`bd update --status <x>`.
+
+### Current workaround
+
+The two-step create→update. livespec's store adapter `append_work_item`
+(beads-fabro `store.py`) runs `bd create` (lands `open`) then
+`bd update --status <target>` in immediate succession; ad-hoc
+sessions/scripts do the same with raw `bd create` + `bd update --status
+backlog`. Between the two calls the item is transiently non-conforming
+(`open`), which the status-conformance doctor gate (bd-ib-2wq /
+beads-fabro PR #231) now flags — so a factory dispatch racing an item
+creation can transiently fail the pre-dispatch gate. Mitigation: prefer
+`append_work_item` (two back-to-back calls) over a raw `bd create` left
+un-updated, to keep the window minimal.
+
+### Proposed upstream change
+
+Add a `--status <status>` flag to `bd create`. When set, validate it
+against built-in + configured custom statuses by reusing exactly what
+`bd update` already does — `types.Status(s).IsValidWithCustom(
+store.GetCustomStatuses(ctx))` (`cmd/bd/update.go:63-76`) — and set that
+as the initial status in `buildCreateIssue` instead of the hard-coded
+`types.StatusOpen` (`cmd/bd/create.go:741`). Default stays `open`;
+`--defer` behavior preserved (define precedence: explicit `--status`
+wins, or error if `--status` + `--defer` conflict). Frame it as
+*completing* the custom-status feature — an item should be creatable
+directly in a configured lifecycle state — mirroring the
+`claim.from-statuses` generalization that made custom `active` statuses
+claimable; NOT as a new status concept (the maintainer is deliberately
+minimalist here — see pointers).
+
+### Status / pointers
+
+Confirmed not possible in the latest beads (source-verified 2026-07-01)
+and **not requested upstream** — an exhaustive search of
+`gastownhall/beads` issues/PRs/discussions (and the `thewoolleyman` fork)
+found no `bd create --status` ask; the only create-time status override
+ever added is `--defer` → `deferred`
+([#4071](https://github.com/gastownhall/beads/issues/4071) → merged
+[PR #4112](https://github.com/gastownhall/beads/pull/4112)). It is
+intentional design (maintainer Steve Yegge's fixed-schema stance;
+[#344](https://github.com/gastownhall/beads/issues/344) /
+[discussion #345](https://github.com/gastownhall/beads/discussions/345) —
+he prefers labels, which *can* be set at create). The precedent for
+generalizing past the `open` baseline is the claim side:
+[#4164](https://github.com/gastownhall/beads/issues/4164) (open) /
+[PR #4334](https://github.com/gastownhall/beads/pull/4334) (open) make
+custom `active`-category statuses claimable. **PR to be driven from the
+beads repo** — clone at `/data/projects/beads` on branch
+`feat/create-status-flag` (off `upstream/main`); handoff prompt at
+`tmp/beads-create-status-pr/handoff.md` (gitignored). Upstream PR link:
+TBD — update this section when opened.
+
+---
+
 ## Entries inherited from the Open Brain catalogue
 
 The following are documented in
