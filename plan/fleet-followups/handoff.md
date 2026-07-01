@@ -16,13 +16,22 @@ alone via the read-first chain — no chat history required.
   held at `backlog` — see §"Session 3"/§"Session 4"); every **cross-tenant** item
   is **prose-linked** in the inventory and its status is composed from the ledger
   (no shadow queue).
-- **⚑ TOP PRIORITY (Session 4, maintainer-directed):** two **P0 factory-hardening**
-  items in the **beads-fabro** tenant outrank everything else in this epic —
-  **`bd-ib-fqh`** (holistic context-completeness: `render_goal` omits acceptance
-  criteria + notes) and **`bd-ib-asp`** (merge-poll must fail-fast on a BLOCKED PR
-  instead of exhausting the ~76-min budget). Both `backlog`, careful
-  self-modifications of the factory — groom from a beads-fabro session; do NOT
-  auto-dispatch blind. See §"Session 4" for the root-cause discovery.
+- **⚑ TOP PRIORITY (Session 4, maintainer-directed): FOUR P0 factory-hardening
+  threads** (all `livespec-orchestrator-beads-fabro` tenant, all dispatcher
+  self-modifications) outrank everything else. Status is READ from the ledger; see
+  §"Session 4 (part 2)" for the full map + the janitor discovery:
+  1. **`bd-ib-fqh`** (EPIC) — factory context-completeness, re-groomed as an
+     **Option-B cross-repo epic** (`acceptance_criteria`+`notes` become first-class
+     `WorkItem` fields, both backends): **S1 `livespec-runtime-00u` DONE** (contract;
+     released **v0.7.0**); S2 `bd-ib-fqh.1` (beads store+`render_goal`) + S3
+     `bd-gj-lxr` (git-jsonl store/schema) **release-gated**; S4 `bd-ib-fqh.2` + S5
+     `bd-ib-fqh.3` gated behind S2.
+  2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR. `ready`.
+  3. **`bd-ib-mxr`** (EPIC) — **E2E dispatch acceptance**: prove the REAL janitor +
+     dispatch path green **by execution** (not mocks). Children **`bd-ib-cyv`**
+     (janitor green-by-execution + provision livespec core) + **`bd-ib-mxr.1`**
+     (broader real-dispatch E2E). **THE UNBLOCKER** for reliable non-core dispatch.
+  All careful self-modifications — human-approved admission, never auto-dispatch blind.
 - **Epic anchor:** `livespec-jcc6` (core tenant, `backlog`). Status is READ from
   the ledger, never from this file:
   ```bash
@@ -40,22 +49,29 @@ alone via the read-first chain — no chat history required.
 
 ## The next action
 
-**⚑ SESSION-4 TOP PRIORITY (maintainer-directed): the two P0 factory-hardening
-items in the beads-fabro tenant.** They fix the factory ITSELF (found while
-dispatching `yc8e` — see §"Session 4"), so they are held at `backlog` and groomed
-+ reviewed carefully from a **beads-fabro session** (that tenant selects via cwd);
-do NOT auto-dispatch blind (a self-modification of the dispatcher).
+**⚑ SESSION-4 TOP PRIORITY (maintainer-directed): the FOUR P0 factory-hardening
+threads** — all in `livespec-orchestrator-beads-fabro`, all dispatcher
+self-modifications, all GROOMED (full map in the "For a fresh session" bullet above
++ §"Session 4 (part 2)"). Work them from a **`livespec-orchestrator-beads-fabro`
+session**; careful — human-approved admission, never auto-dispatch blind. **Order:**
 
-- **`bd-ib-fqh`** (P0) — holistic factory context-completeness. `render_goal()`
-  (`_dispatcher_plan.py`) injects only id/title/description + ledger comments into
-  every phase prompt, OMITTING the acceptance-criteria field + notes — so the DoR
-  definition-of-done never reaches the implementing/reviewing agents. Audit every
-  stage × every context field; fix ALL gaps. `groom bd-ib-fqh` from a beads-fabro
-  session.
-- **`bd-ib-asp`** (P0) — dispatcher merge-poll fail-fast. `run_dispatch`'s poll
-  loop (`dispatcher.py`) polls only for MERGED and burns the full ~76-min budget on
-  a terminally-BLOCKED PR (a failed REQUIRED check). Detect the terminal failure,
-  fail fast, surface the failing check. `groom bd-ib-asp` from a beads-fabro session.
+1. **`bd-ib-mxr` / `bd-ib-cyv` FIRST — the janitor E2E unblocker.** The post-merge
+   janitor doesn't provision livespec core → false-fails `check-doctor-static` for
+   EVERY non-core target (the dispatch merges the change but reports
+   `failed:janitor-post-merge`; hand-reconcile). The janitor is also only ever MOCKED
+   green in tests, so the gap shipped invisibly. Fix = provision core + a
+   top-of-pyramid test running the REAL janitor to green (`bd-ib-cyv`) + the broader
+   real-dispatch E2E (`bd-ib-mxr.1`). Until it lands, every non-core dispatch below
+   merges-but-marks-failed.
+2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR (`ready`).
+3. **`bd-ib-fqh` cross-repo epic** — S1 (`livespec-runtime-00u`) DONE + **v0.7.0**
+   released; when `bump-pin` propagates v0.7.0, S2 (`bd-ib-fqh.1`) + S3 (`bd-gj-lxr`)
+   unblock (re-vendor gate) → promote `backlog→ready` → then S4/S5.
+
+Dispatch mechanics + scope-guard discipline: see step 3 below. ⚠ Non-core targets
+currently false-fail the post-merge janitor (that's `bd-ib-cyv`) — verify via
+`gh pr view <n>` / CI-green-on-master and hand-reconcile (`bd update <id> --status
+closed`) a change that actually merged.
 
 Then the remaining thread work (core tenant, from this session):
 
@@ -107,8 +123,12 @@ Then the remaining thread work (core tenant, from this session):
 
 ## Already-filed items to fold in (cite read-only; details in the inventory)
 
-**⚑ TOP PRIORITY (beads-fabro):** `bd-ib-fqh` (P0, factory context-completeness),
-`bd-ib-asp` (P0, merge-poll fail-fast) — both `backlog`, careful self-modifications.
+**⚑ TOP PRIORITY (all `livespec-orchestrator-beads-fabro`, P0, careful self-mods):**
+`bd-ib-fqh` EPIC (context-completeness, Option-B cross-repo: S1 `livespec-runtime-00u`
+DONE/v0.7.0, S2 `bd-ib-fqh.1` + S3 `bd-gj-lxr` release-gated, S4 `bd-ib-fqh.2` + S5
+`bd-ib-fqh.3` gated); `bd-ib-asp` (merge-poll fail-fast, `ready`); `bd-ib-mxr` EPIC
+(E2E dispatch acceptance — children `bd-ib-cyv` janitor-green-by-execution +
+`bd-ib-mxr.1` broader E2E; THE UNBLOCKER for non-core dispatch).
 Core epic children (this thread): `livespec-jcc6.1` (B2, **DONE** PR #736),
 `livespec-jcc6.2` (B3, **DONE** PR #734), `livespec-jcc6.3` (C6, `backlog` — held).
 Other core: `livespec-yc8e` (B1 reaper, **DONE** PR #742), `livespec-mpkaz4`
@@ -210,6 +230,40 @@ Ran Revise / Gap / Groom / Orchestrate over the thread; the durable outcomes:
   acceptance → CLOSED, ~20 min. **Interim workaround until `bd-ib-fqh` lands:
   hand-write a scope-guard comment on each dispatch.** The review stage even
   self-reported "only touches the two files in the scope guard."
+
+## Session 4 (part 2, 2026-07-01) — cross-repo re-groom, S1 landed, janitor E2E gap
+
+Factory-hardening deepened from two items to **four P0 threads** (all
+`livespec-orchestrator-beads-fabro`):
+
+- **`bd-ib-fqh` re-groomed to Option B (cross-repo), maintainer-directed.** The
+  "acceptance not in the brief" root cause is deeper: `acceptance_criteria` + `notes`
+  aren't even on the shared `WorkItem` model, so `render_goal` can't carry them. The
+  holistic fix makes them first-class `WorkItem` fields in **`livespec-runtime`**,
+  propagated to BOTH orchestrator backends + the git-jsonl schema. 5 slices, 3 tenants:
+  - **S1 `livespec-runtime-00u` (livespec-runtime) — DONE.** WorkItem +=
+    `acceptance_criteria`/`notes` (optional-on-read); PR #104 merged, master CI green,
+    **release v0.7.0** (PR #105). The re-vendor gate for S2/S3.
+  - S2 `bd-ib-fqh.1` (beads store map + `render_goal` + audit) — `backlog`, release-gated.
+  - S3 `bd-gj-lxr` (git-jsonl store + schema fields, consistent with beads) —
+    `backlog`, release-gated.
+  - S4 `bd-ib-fqh.2` (implement.md scope rule + review checks acceptance) — gated behind S2.
+  - S5 `bd-ib-fqh.3` (remaining audited gaps) — gated behind S2.
+- **`bd-ib-asp` groomed** — single `ready` slice (fail-fast on a REQUIRED
+  terminal-failure check; keep polling on pending/BEHIND).
+- **NEW: the janitor E2E gap (`bd-ib-mxr` epic).** Dispatching S1 exposed that the
+  post-merge janitor doesn't provision livespec core → `check-doctor-static` errors
+  core-not-found → the dispatch reported `failed:janitor-post-merge` even though
+  PR #104 merged + CI was green (I hand-reconciled S1 to `closed`). Deeper cause: the
+  janitor is only ever MOCKED green in dispatcher tests, so the gap was invisible.
+  `bd-ib-mxr` (E2E dispatch acceptance) folds **`bd-ib-cyv`** (provision core + run
+  the REAL janitor to green) + **`bd-ib-mxr.1`** (broader real-dispatch E2E). The
+  unblocker for reliable non-core autonomous dispatch (S2/S3, `bd-ib-asp` all target
+  non-core repos).
+- **Dispatch scope-guard workaround (until `bd-ib-fqh` lands):** hand-write a
+  `bd comment <id>` naming the exact files before each dispatch (the only
+  item-specific channel the Fabro brief reads). Proven by `yc8e` (PR #742) +
+  `livespec-runtime-00u` (both landed in scope).
 
 ## Read-first chain (in order)
 
