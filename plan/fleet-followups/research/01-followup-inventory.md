@@ -23,11 +23,12 @@ first — until it lands, every non-core dispatch merges-but-marks-failed on the
 | id | kind | slices / status | what |
 |---|---|---|---|
 | `bd-ib-mxr` | EPIC · **UNBLOCKER** | `bd-ib-cyv` (janitor green-by-execution + provision livespec core) · `bd-ib-mxr.1` (broader real-dispatch E2E, deps `bd-ib-cyv`) | **E2E dispatch acceptance.** The post-merge janitor doesn't provision livespec core → false-fails `check-doctor-static` for every NON-CORE target (merges but reports `failed:janitor-post-merge`); and it's only ever MOCKED green in tests, so the gap shipped invisibly. Fix: provision core + a top-of-pyramid test running the REAL janitor to green, then the broader real-dispatch E2E. |
-| `bd-ib-fqh` | EPIC · cross-repo (Option B) | **S1 `livespec-runtime-00u` DONE** (v0.7.0) · S2 `bd-ib-fqh.1` + S3 `bd-gj-lxr` release-gated · S4 `bd-ib-fqh.2` + S5 `bd-ib-fqh.3` gated behind S2 | **Factory context-completeness.** `acceptance_criteria`+`notes` weren't even on the shared `WorkItem` model, so `render_goal` couldn't carry them (root cause of PR #740 over-reach). Make them first-class `WorkItem` fields in **`livespec-runtime`** (S1 done), propagated to the beads store+`render_goal` (S2), the git-jsonl store+schema (S3), then the beads prompts (S4) + remaining audited gaps (S5). |
+| `bd-ib-fqh` | EPIC · cross-repo (Option B) | **S1 `livespec-runtime-00u` DONE** (merged; v0.7.0 release QUEUED — PR #105 OPEN) · S2 `bd-ib-fqh.1` + S3 `bd-gj-lxr` release-gated · S4 `bd-ib-fqh.2` + S5 `bd-ib-fqh.3` gated behind S2 | **Factory context-completeness.** `acceptance_criteria`+`notes` weren't even on the shared `WorkItem` model, so `render_goal` couldn't carry them (root cause of PR #740 over-reach). Make them first-class `WorkItem` fields in **`livespec-runtime`** (S1 done), propagated to the beads store+`render_goal` (S2), the git-jsonl store+schema (S3), then the beads prompts (S4) + remaining audited gaps (S5). |
 | `bd-ib-asp` | task · `ready` | single slice | **Merge-poll fail-fast.** `_await_merge` polls only for MERGED and burns the full ~76-min budget on a terminally-BLOCKED PR (a REQUIRED terminal-failure check, e.g. PR #740's `check-coverage`). Fail fast + surface the failing check; keep polling on pending/BEHIND. |
 
 **Cross-repo dep (S2/S3 → S1):** release-ordering + prose (beads edges are
-intra-tenant). S1 released **v0.7.0**; when `bump-pin` propagates it, promote S2/S3
+intra-tenant). S1 is MERGED but **v0.7.0 is NOT cut yet** (release-please PR #105
+OPEN); merge PR #105 → v0.7.0 → when `bump-pin` propagates it, promote S2/S3
 `backlog→ready`. **Scope-guard workaround** until `bd-ib-fqh` lands: hand-write a
 `bd comment <id>` naming the exact files before each dispatch (the only item-specific
 channel the Fabro brief reads today).

@@ -22,10 +22,12 @@ alone via the read-first chain — no chat history required.
   §"Session 4 (part 2)" for the full map + the janitor discovery:
   1. **`bd-ib-fqh`** (EPIC) — factory context-completeness, re-groomed as an
      **Option-B cross-repo epic** (`acceptance_criteria`+`notes` become first-class
-     `WorkItem` fields, both backends): **S1 `livespec-runtime-00u` DONE** (contract;
-     released **v0.7.0**); S2 `bd-ib-fqh.1` (beads store+`render_goal`) + S3
-     `bd-gj-lxr` (git-jsonl store/schema) **release-gated**; S4 `bd-ib-fqh.2` + S5
-     `bd-ib-fqh.3` gated behind S2.
+     `WorkItem` fields, both backends): **S1 `livespec-runtime-00u` DONE** (contract
+     MERGED to `livespec-runtime` master; a **v0.7.0** release is QUEUED but NOT yet
+     cut — release-please **PR #105** is still OPEN, latest release is v0.6.0); S2
+     `bd-ib-fqh.1` (beads store+`render_goal`) + S3 `bd-gj-lxr` (git-jsonl
+     store/schema) **release-gated** (merge PR #105 → v0.7.0 → `bump-pin`); S4
+     `bd-ib-fqh.2` + S5 `bd-ib-fqh.3` gated behind S2.
   2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR. `ready`.
   3. **`bd-ib-mxr`** (EPIC) — **E2E dispatch acceptance**: prove the REAL janitor +
      dispatch path green **by execution** (not mocks). Children **`bd-ib-cyv`**
@@ -64,9 +66,11 @@ session**; careful — human-approved admission, never auto-dispatch blind. **Or
    real-dispatch E2E (`bd-ib-mxr.1`). Until it lands, every non-core dispatch below
    merges-but-marks-failed.
 2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR (`ready`).
-3. **`bd-ib-fqh` cross-repo epic** — S1 (`livespec-runtime-00u`) DONE + **v0.7.0**
-   released; when `bump-pin` propagates v0.7.0, S2 (`bd-ib-fqh.1`) + S3 (`bd-gj-lxr`)
-   unblock (re-vendor gate) → promote `backlog→ready` → then S4/S5.
+3. **`bd-ib-fqh` cross-repo epic** — S1 (`livespec-runtime-00u`) DONE (merged to
+   `livespec-runtime` master). ⚠ The **v0.7.0** release is NOT cut yet —
+   release-please **PR #105** is OPEN. **Merge PR #105** to cut v0.7.0; then
+   `bump-pin` propagates it and S2 (`bd-ib-fqh.1`) + S3 (`bd-gj-lxr`) unblock
+   (re-vendor gate) → promote `backlog→ready` → then S4/S5.
 
 Dispatch mechanics + scope-guard discipline: see step 3 below. ⚠ Non-core targets
 currently false-fail the post-merge janitor (that's `bd-ib-cyv`) — verify via
@@ -125,7 +129,7 @@ Then the remaining thread work (core tenant, from this session):
 
 **⚑ TOP PRIORITY (all `livespec-orchestrator-beads-fabro`, P0, careful self-mods):**
 `bd-ib-fqh` EPIC (context-completeness, Option-B cross-repo: S1 `livespec-runtime-00u`
-DONE/v0.7.0, S2 `bd-ib-fqh.1` + S3 `bd-gj-lxr` release-gated, S4 `bd-ib-fqh.2` + S5
+DONE, v0.7.0 release QUEUED via PR #105, S2 `bd-ib-fqh.1` + S3 `bd-gj-lxr` release-gated, S4 `bd-ib-fqh.2` + S5
 `bd-ib-fqh.3` gated); `bd-ib-asp` (merge-poll fail-fast, `ready`); `bd-ib-mxr` EPIC
 (E2E dispatch acceptance — children `bd-ib-cyv` janitor-green-by-execution +
 `bd-ib-mxr.1` broader E2E; THE UNBLOCKER for non-core dispatch).
@@ -242,8 +246,9 @@ Factory-hardening deepened from two items to **four P0 threads** (all
   holistic fix makes them first-class `WorkItem` fields in **`livespec-runtime`**,
   propagated to BOTH orchestrator backends + the git-jsonl schema. 5 slices, 3 tenants:
   - **S1 `livespec-runtime-00u` (livespec-runtime) — DONE.** WorkItem +=
-    `acceptance_criteria`/`notes` (optional-on-read); PR #104 merged, master CI green,
-    **release v0.7.0** (PR #105). The re-vendor gate for S2/S3.
+    `acceptance_criteria`/`notes` (optional-on-read); PR #104 merged, master CI green.
+    ⚠ The **v0.7.0** release is NOT cut yet — release-please **PR #105** is still OPEN
+    (latest release v0.6.0). Merging PR #105 cuts v0.7.0, the re-vendor gate for S2/S3.
   - S2 `bd-ib-fqh.1` (beads store map + `render_goal` + audit) — `backlog`, release-gated.
   - S3 `bd-gj-lxr` (git-jsonl store + schema fields, consistent with beads) —
     `backlog`, release-gated.
