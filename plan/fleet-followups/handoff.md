@@ -270,6 +270,39 @@ Factory-hardening deepened from two items to **four P0 threads** (all
   item-specific channel the Fabro brief reads). Proven by `yc8e` (PR #742) +
   `livespec-runtime-00u` (both landed in scope).
 
+## Session 5 (2026-07-01) — credential-wrapper epic closed; its tail relocated here
+
+The **`credential-wrapper`** planning thread (epic `livespec-zd8h`, CORE) closed at
+**100%** — all 4 children done, self-heal **PROVEN by execution** (a bare `next.py`
+re-execs through the configured `credential_wrapper` → valid result). Shipped: the
+`credential_wrapper` schema key + doctor callability **warn-vs-fail lever** + the
+generalized beads-access-guard template, the `livespec_runtime` v0.6.0
+`ensure_credentials`/`decide_credentials` helper + orchestrator `_bootstrap`
+re-exec wiring, and the config key rolled out across every fleet repo. That thread
+was archived to `plan/archive/credential-wrapper/` (its handoff is the completion
+record). Per **relocate-never-drop**, its still-live deferred tail moved INTO this
+thread's inventory as prose-linked entries (status read from the ledger, no shadow
+queue):
+
+- **`C15`** (inventory group C) — **CORE spec-side**: `contracts.md` callability
+  **warn-vs-fail lever** prose refinement (impl→spec drift — the clause still says
+  an unresolvable wrapper "fires `fail`", but the shipped lever WARNS so CI stays
+  green). The exact drop-in clause is in the inventory entry. File from a CORE
+  session via `/livespec:propose-change` → `/livespec:revise` (no ledger child).
+- **`C16`** (group C) — **adopters** (openbrain, dolt-server): add
+  `credential_wrapper` + install the guard, from each adopter's OWN session; gated
+  on `D17`.
+- **`D17`** (group D) — **fleet / core decision**: reconcile
+  `.livespec-fleet-manifest.jsonc` `adopters: []` — decide whether openbrain +
+  dolt-server register as adopters (each brings its own wrapper + tenant password).
+- **`D18`** (group D) — **livespec-runtime**: refresh the stale `uv.lock`
+  (self-pin 0.4.0 → 0.6.0), from the runtime session.
+
+**Disposed, not relocated:** the epic's 5th tail item — fleet CORE-pin bumps to
+carry the callability check outward — is **auto-resolving**: `bump-pin` rewrites
+every sibling's `compat.pinned` to the latest CORE release on the next
+`feat:`/`fix:` fan-out (self-heal does NOT need the pin bumps). No action item.
+
 ## Read-first chain (in order)
 
 1. **`research/01-followup-inventory.md`** — the full grouped catalog. (This is
