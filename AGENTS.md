@@ -623,7 +623,12 @@ manifest entry, no render command, no paired rendered artifact (per
 architecture diagram is the single source of truth in
 `SPECIFICATION/spec.md` §"Contract + reference implementations
 architecture"; the repo README **references** it and never embeds a
-second copy (no duplication, no drift).
+second copy OF THAT ARCHITECTURE DIAGRAM (no duplication, no drift for
+the one canonical diagram). The narrowed rule forbids duplicating the
+ARCHITECTURE diagram specifically — NOT all Mermaid in the README: the
+README MAY embed OTHER, non-architecture diagrams (e.g. the
+human-readable work-item-lifecycle `stateDiagram-v2`), since only the
+canonical architecture diagram is single-sourced.
 
 **Intentional exception — multiple diagrams at different zoom levels.**
 `SPECIFICATION/spec.md` itself deliberately carries SEVERAL architecture
@@ -636,9 +641,11 @@ view (§"Contract + reference implementations architecture"). That
 intra-spec overlap is DELIBERATE, not drift: each diagram is the source of
 truth for its own layer, so you MUST NOT consolidate or "de-duplicate"
 them to satisfy the no-duplication rule. That rule still binds the
-README→spec relationship (the README references the canonical diagram and
-never embeds a copy) and forbids genuine same-layer copies — it does NOT
-forbid these deliberate different-zoom views.
+README→spec relationship (the README references the canonical architecture
+diagram and never embeds a copy OF IT, though it MAY embed other,
+non-architecture diagrams such as the work-item-lifecycle state diagram)
+and forbids genuine same-layer copies — it does NOT forbid these deliberate
+different-zoom views.
 
 Hold these conventions when
 authoring or revising any architecture diagram:

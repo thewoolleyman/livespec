@@ -45,7 +45,7 @@
     "heading": "## Contract + reference implementations architecture",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
-    "test": "tests.test_architecture_diagram_single_source.test_readme_embeds_no_mermaid_diagram"
+    "test": "tests.test_architecture_diagram_single_source.test_readme_does_not_duplicate_architecture_diagram"
   },
   {
     "heading": "## Versioning",
