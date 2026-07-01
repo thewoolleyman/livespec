@@ -456,6 +456,25 @@ def test_main_dry_run_against_repo_returns_zero(*, tmp_path: Path) -> None:
     assert wt.is_dir()
 
 
+def test_main_resolves_relative_sibling_repo_from_justfile_dir(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`main` accepts a sibling repo name when invoked from the livespec checkout dir."""
+    module = _load_module()
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    justfile_dir = workspace / "livespec"
+    justfile_dir.mkdir()
+    primary, _origin = _init_primary_with_origin(tmp_path=workspace)
+    sibling = workspace / "livespec-orchestrator-beads-fabro"
+    primary.rename(sibling)
+    monkeypatch.chdir(justfile_dir)
+
+    rc = module.main(argv=["--repo", sibling.name, "--dry-run"])
+
+    assert rc == 0
+
+
 def test_main_defaults_repo_to_cwd(*, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """`main([])` defaults `--repo` to the current working directory."""
     module = _load_module()

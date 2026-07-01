@@ -200,29 +200,6 @@ full checks, and **merges on green** into **acceptance**. Everything before
 `ready` is shaping; everything after `acceptance` is sign-off; in between,
 the factory runs on its own.
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    state "pending-approval" as pending
-    [*] --> backlog: file
-    backlog --> pending: groom
-    pending --> ready: approve
-    ready --> active: admit (valve 1)
-    active --> acceptance: build + merge on green
-    acceptance --> done: accept (valve 2)
-    active --> blocked: blocked
-    blocked --> active: unblock
-    acceptance --> backlog: reject
-    done --> [*]
-
-    note right of active
-      Factory loop (autonomous): the Dispatcher
-      drains ready items, builds each in an
-      isolated sandbox, and merges on green
-      (up to a per-repo concurrency cap).
-    end note
-```
-
 Storage is pluggable — the reference orchestrator uses a Beads/Dolt
 ledger — but the states and rules are livespec's own; a backend is just
 one realization. This is a deliberately minimal, human-oriented view; the

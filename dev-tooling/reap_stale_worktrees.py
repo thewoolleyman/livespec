@@ -178,6 +178,22 @@ def _run_git(*, repo: Path, args: list[str], check: bool) -> subprocess.Complete
     )
 
 
+def _resolve_repo_path(*, repo_arg: str, cwd: Path) -> Path:
+    """Resolve CLI repo arguments to an absolute path.
+
+    `just reap-stale-worktrees <repo>` runs from this repo's justfile
+    directory, while `<repo>` commonly names a sibling checkout under
+    the workspace root. `.` keeps its current-repo meaning; other
+    relative repo names resolve against the workspace parent.
+    """
+    repo = Path(repo_arg).expanduser()
+    if repo.is_absolute():
+        return repo.resolve()
+    if repo == Path():
+        return cwd.resolve()
+    return (cwd.parent / repo).resolve()
+
+
 def _worktree_is_clean(*, worktree_path: str) -> bool:
     """Return True if the worktree has no uncommitted changes."""
     result = subprocess.run(
@@ -362,7 +378,7 @@ def main(*, argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="reap_stale_worktrees", add_help=True)
     _ = parser.add_argument(
         "--repo",
-        default=str(Path.cwd()),
+        default=".",
         help="path to the target git repo (default: current working directory)",
     )
     _ = parser.add_argument(
@@ -371,7 +387,7 @@ def main(*, argv: list[str] | None = None) -> int:
         help="report what would be reaped without removing anything",
     )
     namespace = parser.parse_args(argv)
-    repo = Path(str(namespace.repo))
+    repo = _resolve_repo_path(repo_arg=str(namespace.repo), cwd=Path.cwd())
     dry_run = bool(namespace.dry_run)
     _ = reap_worktrees(repo=repo, dry_run=dry_run)
     return 0
