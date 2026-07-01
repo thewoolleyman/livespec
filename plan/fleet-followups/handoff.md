@@ -10,9 +10,10 @@ alone via the read-first chain — no chat history required.
   follow-ups + lingering cleanup across the fleet into one runnable point. It
   succeeds the (closed + archived) `work-item-state-machine` fleet epic. Items
   span multiple tenants (core, beads-fabro, dev-tooling, driver-codex,
-  git-jsonl, runtime), so — per the fleet pattern — this anchor has few/no
-  ledger children; cross-tenant items are **prose-linked** in the inventory and
-  their status is composed from the ledger (no shadow queue).
+  git-jsonl, runtime), so — per the fleet pattern — this anchor carries only a
+  few **same-tenant (core) ledger children** (`livespec-jcc6.1/.2/.3`, filed
+  2026-07-01); every **cross-tenant** item is **prose-linked** in the inventory
+  and its status is composed from the ledger (no shadow queue).
 - **Epic anchor:** `livespec-jcc6` (core tenant, `backlog`). Status is READ from
   the ledger, never from this file:
   ```bash
@@ -31,14 +32,24 @@ alone via the read-first chain — no chat history required.
 ## The next action
 
 1. **Read `research/01-followup-inventory.md`** — the full grouped catalog (ids,
-   tenants, one-line actions). It is the map for everything below.
-2. **Triage + file the UNFILED items** (inventory groups **B** tooling/dev-ex,
-   **C** doc/config drift, **D** env/infra) into their named tenant as work-items
-   (`--labels origin:freeform`, 2-step to `backlog`). Core-tenant items (B1, B2,
-   B3, C6, D9, D10) can be filed from THIS session; others from their repo's
-   session (the `bd` cwd-tenant trap).
+   tenants, one-line actions, and each item's live ledger id / FILED marker). It
+   is the map for everything below.
+2. **CORE filing of the unfiled inventory items is DONE** (2026-07-01): B2 →
+   `livespec-jcc6.1`, B3 → `livespec-jcc6.2`, C6 → `livespec-jcc6.3` (all
+   `backlog`); B1 was already `livespec-yc8e` (+ `livespec-mpkaz4`, + the B1(b)
+   sub-bug in `yc8e`'s notes); B5 ≈ `livespec-aava`. (Note: `livespec-m0xu` is
+   filed but still `open` — filed ≠ backlog-ready; move it to `backlog` before
+   grooming, per step 3.) **Still-unfiled items are CROSS-TENANT** — they are
+   NOT fileable from THIS core session (the `bd` cwd-tenant trap); file each
+   from its owning repo's OWN session: **B4** (beads-fabro/runtime
+   `migrate-tenant` CLI), **C7** (driver-codex "DEFERRED" wording), **C8**
+   (git-jsonl §6 doc-reconcile), **D9** (fleet/dev-tooling `hydrate`
+   worktree-pack), **D10** (fleet/core review-policy decision). **In THIS core
+   session the only immediately-runnable action is grooming (step 3).**
 3. **Groom** each filed item (`/livespec-orchestrator-beads-fabro:groom <id>`)
-   into ready, dependency-layered slices — in the owning repo's session.
+   into ready, dependency-layered slices — in the owning repo's session. Ripe
+   CORE items to groom next: `livespec-jcc6.1/.2/.3`, `livespec-yc8e`,
+   `livespec-127o`, `livespec-m0xu` (move `m0xu` to `backlog` first).
 4. **Dispatch** ready, factory-safe slices via
    `/livespec-orchestrator-beads-fabro:orchestrate run --action impl:<id>`
    (Codex/Fabro), or let the Dispatcher drain the ready queue. Confirm the
@@ -51,9 +62,13 @@ alone via the read-first chain — no chat history required.
 
 ## Already-filed items to fold in (cite read-only; details in the inventory)
 
-`livespec-127o`, `livespec-m0xu` (core); `bd-ib-2wq` (beads-fabro);
-`livespec-dev-tooling-9j8` +13 children (dev-tooling, `9j8.1` + `livespec-gnjb`
-ready).
+Core epic children (this thread): `livespec-jcc6.1` (B2), `livespec-jcc6.2`
+(B3), `livespec-jcc6.3` (C6) — all `backlog`.
+Other core: `livespec-127o` (README), `livespec-m0xu` (template rename, still
+`open`), `livespec-yc8e` + `livespec-mpkaz4` (reaper bugs), `livespec-aava` (B5,
+Codex skill-picker).
+Cross-tenant: `bd-ib-2wq` (beads-fabro); `livespec-dev-tooling-9j8` +13 children
+(dev-tooling, `9j8.1` + `livespec-gnjb` ready).
 
 ## Read-first chain (in order)
 
