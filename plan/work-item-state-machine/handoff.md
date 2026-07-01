@@ -228,22 +228,24 @@ a FURTHER MAINTAINER DECISION (session 9, "hold for a fully-clean-green dispatch
 the exit gate is now held on ONE remaining item: a factory dispatch green
 END-TO-END, no failed verdict:**
 
-1. **Fix the console POST-MERGE janitor Rust-toolchain gap, then re-dispatch
-   clean-green (THE critical path; in flight in the console session).** The
-   `bd-ib-gsl` proof dispatch (item `e8y`, console PR #72) self-published
-   correctly, but its OVERALL verdict was `failed` — ONLY at the orchestrator's
-   post-merge acceptance janitor, which runs `just check` in a fresh checkout that
-   lacks the Rust toolchain (`cargo: not found`, exit 127), AFTER the PR was
-   already published + merged, with zero token/auth errors. So: (a) reconcile
-   `e8y` (merged + fully GitHub-CI-green; accept to `done`); (b) locate where the
-   post-merge acceptance env is provisioned (dispatcher post-merge acceptance /
-   Fabro sandbox / console hydrate) and provision `cargo`/Rust there, via
-   worktree→PR (red-green-replay for any product `.py`; HONOR THE SHELL RULE — any
-   logic in tested code, shell only thin glue; release + cache-refresh if the fix
-   is orchestrator-side); (c) dispatch a small real console-tenant ready item and
-   confirm the FULL flow is clean green: implement → App-token publish+merge (zero
-   bridge) → post-merge acceptance GREEN → item `done`, NO failed verdict. THAT
-   clean-green dispatch is the exit-gate proof.
+1. **Catch the IN-FLIGHT clean-green proof dispatch → then the exit-gate close
+   (THE critical path; a proof dispatch is RUNNING in the console tmux session as
+   of the session-9 handoff).** All prep is DONE: `e8y` is reconciled to `done`
+   (merged via PR #72, App-token self-publish, zero bridge; its earlier `failed`
+   verdict was post-merge-janitor-ENV-only); and the post-merge-janitor Rust gap
+   is FIXED — console **PR #73** added `[env] _.path = ["~/.cargo/bin"]` to the
+   console `.mise.toml` so `mise exec` self-provisions `cargo` (declarative,
+   HONORS the shell rule; no orchestrator change, no release). The clean-green
+   PROOF target is a small **doc-only** item (adds the janitor-toolchain gotcha to
+   the console `AGENTS.md` — guaranteed no Rust/clippy/coverage/arch risk),
+   dispatching now via the App token. **NEXT SESSION:** re-arm a `Monitor` over the
+   `livespec-console-beads-fabro` tmux pane (idle test excludes `esc to interrupt`
+   / `Waiting for N background` / `N shell`); when the dispatch settles, capture
+   the pane and verify the FULL flow is clean green — implement → App-token
+   publish+merge (zero bridge) → post-merge janitor GREEN → acceptance → `done`,
+   **NO failed verdict**. GREEN ⟹ the exit-gate condition is MET (go to step 2).
+   RED ⟹ diagnose (PR #73 fixed `cargo`; a red would be something new) and
+   re-drive with another small guaranteed-green item.
    - **bd-ib-gsl landed (DONE):** mint logic is TESTED Python (`_app_token.py`
      core + `mint_app_token` CLI + thin-glue entrypoint, genuine Red→Green, 100%
      coverage; orchestrator PR #225), released as **`v0.4.0`** (a `feat:`, so a
@@ -274,6 +276,15 @@ audit doc at `livespec-dev-tooling:research/shell-logic-audit/findings.md`
 type-checked, IMPORTABLE code (no logic in shell OR `python -c`/heredocs); shell =
 thin glue. Origin: the `bd-ib-gsl` conformance catch — a session tried to write the
 token mint in shell to dodge the TDD/pyright gates, redirected to tested Python.
+
+**Parallel follow-up (SEPARATE, standalone — NOT this epic): README rewrite.**
+`livespec-127o` (core tenant, `backlog`, `origin:freeform`): author a NEW livespec
+README from scratch, SPEC-DRIVEN — add a README-contract to `SPECIFICATION/`
+(purpose, audience = newcomer with zero prior knowledge, required content/structure,
+tone, reference-not-duplicate rules), then author the README to conform. NEEDS
+GROOMING. (A minimal human-readable lifecycle section + state-machine diagram was
+already added to the current README in session 9, PR #723 — the rewrite supersedes
+that incrementally-grown README wholesale.)
 3. **Post-L2 follow-ups (none blocking) — capture as work-items when convenient:**
    - **No end-to-end `migrate-tenant` CLI.** `legacy_seed` /
      `register_custom_statuses` are library **primitives**, not a command — all
@@ -345,7 +356,8 @@ sleep 0.6; command tmux send-keys -t <session> Enter
 | ~~blocker~~ | livespec-orchestrator-beads-fabro (self-containment) | `/plan` thread `orchestrator-plugin-self-containment` | **DONE · released `v0.3.1`** · clause #6 + Slices 1+2+3 (PRs #215/#217/#219/#220; release #218→`v0.3.1`); CI + fan-out green. Slice 4/6 (`real-work-dispatch.sh`) is a follow-on, not on the console path |
 | console | livespec-console-beads-fabro (E-walk) | `…-vqh36l` | **COMPLETE** · E-1/E-2a/E-2b + E-3a (PR #67) / E-3b (PR #69) / E-4 (PR #70) all MERGED (factory-implemented, native-auth-published). Core-plugin-root janitor fix released `v0.3.2`. Epic ready to close at the exit gate |
 | bd-ib-gsl | orchestrator App-token autonomy | (beads-fabro tenant) | **DONE** · mint logic tested Python (orch PR #225), released `v0.4.0`; factory SELF-PUBLISHED console PR #72 (authored+merged by `livespec-pr-bot`, all CI green, zero bridge). native-auth bridge retired; `bd-ib-p2e` superseded |
-| exit gate | held by maintainer (session 9 — "fully-clean-green") | — | **GATED on a clean-green dispatch** — bd-ib-gsl self-publish proven, but the console POST-MERGE janitor fails `cargo: not found` (env lacks Rust). Fix that + land one factory dispatch green END-TO-END (no failed verdict); then close anchor + L2 + `…-vqh36l` |
+| janitor Rust-env fix | console post-merge acceptance env | (console) | **DONE** · console PR #73 (`.mise.toml [env] _.path = ["~/.cargo/bin"]`, declarative — honors shell rule); `e8y` reconciled to `done` |
+| exit gate | held by maintainer (session 9 — "fully-clean-green") | — | **IN FLIGHT** · clean-green proof dispatch RUNNING (doc-only `AGENTS.md` item). NEXT: catch it (re-arm Monitor); GREEN end-to-end (item `done`, no failed verdict) ⟹ gate met → close anchor `livespec-35s3zo` + L2 epics + `…-vqh36l`; RED ⟹ diagnose + re-drive |
 | shell-hardening | fleet audit → epic (SEPARATE) | `livespec-dev-tooling-9j8` | **FILED** · +13 children, doc PR #229 merged; rule + gates (not a ban); 2 ports ready (`9j8.1`, `livespec-gnjb`); NEEDS GROOMING |
 
 ## Session-7 autonomous-run log
