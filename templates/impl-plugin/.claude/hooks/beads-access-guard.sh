@@ -2,7 +2,8 @@
 # beads-access-guard — PreToolUse hook (Bash tool).
 #
 # Blocks a bare `bd` / `dolt` / direct-tenant `mysql` invocation unless the
-# command runs under a recognized per-project env wrapper (`with-<id>-env.sh`).
+# command runs under the project's configured `credential_wrapper` (from
+# `$CLAUDE_PROJECT_DIR/.livespec.jsonc`; `with-<id>-env.sh` is the fallback).
 # Registered in `.claude/settings.json` under `hooks.PreToolUse` with matcher
 # `Bash`.
 #
