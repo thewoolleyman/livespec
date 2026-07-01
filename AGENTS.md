@@ -686,6 +686,17 @@ contract diagram) and their rationale live in
   changes the world, enumerate the old-world invariants and re-derive each (keep
   / re-scope its check / retire); cross-repo bump cost is never an argument
   against the correct fix.
+- **Never skip a test as the first or easiest fix — root-cause it.** When a
+  test fails anywhere (local, CI, or a janitor/dispatch gate), the default is to
+  diagnose and fix the underlying cause; skipping, disabling, deleting, or
+  carving the test out to make the gate pass forfeits the verification the test
+  exists for and hides the defect. A *normal, recurring* failure mode — e.g. a
+  plugin's hooks needing re-trust after a version-pin bump, or any hardcoded
+  value that drifts out of sync with its source — MUST be handled
+  **automatically at its source** (derive it, refresh it, or accept it
+  programmatically), never skipped. A scoped, self-documenting carve-out is a
+  last resort, allowed only after a genuine root-cause fix is shown impossible —
+  and even then it is a documented severity lever, never a silent skip.
 - **Carve-outs are a severity lever, not an invariant relaxation.** When a check
   legitimately can't behave identically everywhere, keep it always wired into
   `just check` and always invoked, and add one self-documenting per-check env
