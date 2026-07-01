@@ -303,7 +303,10 @@ clone connects to its beads tenant only when all of the following are present:
   dolt:dolt` and untraversable by the sandboxed caller, so `.beads/config.yaml`
   carries `dolt.*` host/port keys with NO `socket` key.
 - **The tenant password** in env as a single **bare `BEADS_DOLT_PASSWORD`** —
-  injected by THIS project's configured env wrapper. A FLEET tenant shares the
+  injected by THIS project's configured `credential_wrapper` (the `.livespec.jsonc`
+  key naming the project's conforming credential-injection wrapper; the fleet
+  reference default is the 1Password Environment wrapper `with-livespec-env.sh`).
+  A FLEET tenant shares the
   one fleet password (members of the single livespec 1Password Environment) via
   the livespec 1Password Environment wrapper `with-livespec-env.sh` (canonical
   copy at `/data/projects/1password-env-wrapper/with-livespec-env.sh`); an

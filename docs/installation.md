@@ -199,9 +199,10 @@ section for the git-jsonl backend.)
 3. **The per-tenant password in the environment** as
    `BEADS_DOLT_PASSWORD_<tenant_with_underscores>` (tenant == repo
    name; hyphens become underscores). The beads wrappers map this to
-   the bare `BEADS_DOLT_PASSWORD` they consume. The fleet injects it
-   via a 1Password Environment wrapper (`with-livespec-env.sh`); your
-   project supplies the equivalent. Secrets are **probe-only** —
+   the bare `BEADS_DOLT_PASSWORD` they consume. It is injected by the
+   project's configured `credential_wrapper` (the fleet reference
+   default is the 1Password Environment wrapper `with-livespec-env.sh`);
+   your project supplies the equivalent. Secrets are **probe-only** —
    verify with `printenv NAME | wc -c`, never echo the value — and
    are never committed to `.livespec.jsonc` or `.beads/`.
 
