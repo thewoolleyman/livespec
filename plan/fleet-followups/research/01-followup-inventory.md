@@ -55,11 +55,17 @@ channel the Fabro brief reads today).
 6. ✅ **FILED** — **Stale `capture-work-item` / `plan` prose for v0.3.0** — **CORE** (`.claude-plugin/prose/`) — documents the OLD schema (`status=open` + `priority`, no `rank`); refresh to the 7-state + `rank` model. → **`livespec-jcc6.3`** (backlog, child of the epic).
 7. **driver-codex `.livespec.jsonc` / `CLAUDE.md` say beads connection "DEFERRED"** — **driver-codex** — the tenant is migrated + connected; correct the stale "DEFERRED" wording. *Still unfiled — file from the driver-codex session.*
 8. **git-jsonl §6 doc-reconcile** — **git-jsonl** — the policy-fields-dropped-on-write behavior is a slice-plan-vs-design §6 tension; reconcile in that repo's design doc. *Still unfiled — file from the git-jsonl session.*
+15. **`contracts.md` callability warn-vs-fail lever prose (impl→spec drift)** — **CORE** (spec-side; `/livespec:propose-change` → `/livespec:revise`, no beads) — *relocated from the closed credential-wrapper epic `livespec-zd8h`, 2026-07-01.* `SPECIFICATION/contracts.md` §"Doctor cross-boundary invariants" (the `config-named-cli-callability` paragraph) still says an unresolvable `credential_wrapper` first token "fires `fail`", but the SHIPPED lever (PR #746, `livespec-zd8h.3`) **warns** (non-fail) when the token does not resolve — the host-provisioned wrapper is legitimately absent on CI runners — and keeps `fail` only for a resolved-but-non-executable token. Refine the clause to match the code. *Still unfiled — file from a CORE session; spec-side, no ledger child.* **Exact drop-in clause (from the crit-path-4 agent):**
+
+    > When `credential_wrapper` is present and non-empty, its first token is resolved with the same semantics as every other named CLI, but the callability finding carries a severity lever unique to this OPTIONAL key: if the first token resolves to a file that is not executable (a real misconfiguration) the finding is `fail`; if the first token does not resolve at all — the host-provisioned wrapper is legitimately absent, e.g. on a CI runner that does not install it — the finding is `warn` (non-fail, so CI stays green); when the key is absent or empty the invariant is a no-op. The lever applies ONLY to `credential_wrapper`; the spec-side and orchestrator-side named CLIs keep their hard-fail semantics.
+16. **Adopters `credential_wrapper` config + guard (openbrain, dolt-server)** — **adopters** — *relocated from the closed credential-wrapper epic `livespec-zd8h`, 2026-07-01.* Add `credential_wrapper` to each adopter's `.livespec.jsonc` (openbrain → `["/usr/local/bin/with-openbrain-env.sh","--"]`, its OWN 1Password env, NOT the fleet wrapper; dolt-server → its own wrapper) + install the generalized beads-access guard. Gated on the manifest-reconcile decision **`D17`** — only meaningful once openbrain/dolt-server register as adopters. *Still unfiled — file from each adopter repo's OWN session (the `bd` cwd-tenant trap).*
 
 ## D. Unfiled — env / infra
 
 9. **`hydrate` doesn't provision the worktree-pack** (`branch-protection.just` etc.) into fresh worktrees (self-healed via `just install-worktree-pack`) — **fleet / dev-tooling** — make hydrate provision it. Also: the **git-jsonl PRIMARY checkout lacks `branch-protection.just`**.
 10. **Branch protection requires checks but 0 reviews** — **fleet / core** — relevant once external contributions arrive; decide the review policy.
+17. **Fleet manifest `adopters: []` reconcile — decide openbrain/dolt-server registration** — **fleet / core** — *relocated from the closed credential-wrapper epic `livespec-zd8h`, 2026-07-01.* `.livespec-fleet-manifest.jsonc` still carries `adopters: []`. Decide whether openbrain + dolt-server register as adopters (each brings its OWN credential wrapper + tenant password, not the fleet's). A fleet/core call, like #10; it gates the adopter config rollout **`C16`**.
+18. **`livespec-runtime` stale `uv.lock` (0.4.0 → 0.6.0)** — **livespec-runtime** — *relocated from the closed credential-wrapper epic `livespec-zd8h`, 2026-07-01.* `livespec_runtime` released **v0.6.0** (the `ensure_credentials`/`decide_credentials` self-heal helper) but its committed `uv.lock` still pins the old `0.4.0` self-version; refresh the lockfile. Low-risk hygiene. *Still unfiled — file from the livespec-runtime session.*
 
 ## E. Client-side operator actions (NOT factory work-items — do directly)
 
@@ -104,3 +110,12 @@ factory-hardening** items now in **group 0** (`bd-ib-fqh` context-completeness,
 `yonx` + `ek6e` promoted to `ready` + `admission:auto`/`acceptance:ai-only` but
 **HELD** pending per-dispatch scope-guard comments (the interim workaround until
 `bd-ib-fqh` lands). See `handoff.md` §"Session 4".
+
+**Session 5 (2026-07-01):** the **`credential-wrapper`** epic (`livespec-zd8h`,
+CORE) closed at **100%** (self-heal proven) and its thread archived to
+`plan/archive/credential-wrapper/`. Its still-live deferred tail relocated here
+(relocate-never-drop): **`C15`** (CORE `contracts.md` warn-vs-fail lever prose),
+**`C16`** (adopter config), **`D17`** (manifest `adopters:[]` reconcile decision),
+**`D18`** (runtime `uv.lock` refresh). The 5th tail item — fleet CORE-pin bumps —
+was **disposed as auto-resolving** (`bump-pin` fan-out on the next CORE release;
+self-heal does not need it). See `handoff.md` §"Session 5".
