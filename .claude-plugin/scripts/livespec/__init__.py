@@ -24,7 +24,7 @@ import os
 import sys
 import uuid
 
-import structlog
+from livespec.io import structlog_facade
 
 __all__: list[str] = []
 
@@ -34,15 +34,8 @@ def _resolve_log_level() -> int:
     return getattr(logging, name, logging.WARNING)
 
 
-structlog.configure(
-    processors=[
-        structlog.contextvars.merge_contextvars,
-        structlog.processors.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso", utc=True),
-        structlog.processors.JSONRenderer(),
-    ],
-    wrapper_class=structlog.make_filtering_bound_logger(_resolve_log_level()),
-    logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
-    cache_logger_on_first_use=True,
+structlog_facade.configure_logging(
+    log_level=_resolve_log_level(),
+    stream=sys.stderr,
 )
-_ = structlog.contextvars.bind_contextvars(run_id=str(uuid.uuid4()))
+structlog_facade.bind_contextvars(run_id=str(uuid.uuid4()))
