@@ -162,3 +162,14 @@ drift from the Session-3 `--since-version 150` pass). **Both then REVISED IN** �
 doctor static + full `just check` green). Queue back to README-only; the thread's
 CORE spec-side drift work is COMPLETE (do NOT re-run revise/propose-change). See
 `handoff.md` §"Session 9 (continued)".
+
+**Session 9 (continued 3, 2026-07-02) — PRIORITY RESET:** maintainer directed
+"autonomously complete all the factory-hardening ones as the first priority, leave
+grooming until after those are complete." A `groom livespec-127o` start was aborted
+(clean; nothing filed). Group **0** (factory-hardening: `bd-ib-cyv`/`bd-ib-mxr`,
+`bd-ib-asp`, `bd-ib-fqh` S2/S3/S4/S5 across beads-fabro + git-jsonl) is now the
+SINGULAR autonomous top priority; grooming (`livespec-127o`, `livespec-m0xu`) + all
+other core work in this inventory are DEFERRED until it completes. The full ordered
+execution plan + live-status snapshot live in `handoff.md` §"The next action" +
+§"Session 9 (continued 3)". `admission:auto` is pre-authorized for the group-0 threads
+by that directive (keep scope-guard + PR review).
