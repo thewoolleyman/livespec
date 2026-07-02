@@ -72,90 +72,111 @@ alone via the read-first chain — no chat history required.
 
 ## The next action
 
-**⚑ SESSION-4 TOP PRIORITY (maintainer-directed): the FOUR P0 factory-hardening
-threads** — all in `livespec-orchestrator-beads-fabro`, all dispatcher
-self-modifications, all GROOMED (full map in the "For a fresh session" bullet above
-+ §"Session 4 (part 2)"). Work them from a **`livespec-orchestrator-beads-fabro`
-session**; careful — human-approved admission, never auto-dispatch blind. **Order:**
+**⚑ TOP PRIORITY — maintainer-directed 2026-07-02 (Session 9): AUTONOMOUSLY COMPLETE
+ALL factory-hardening threads FIRST. Grooming (`livespec-127o`, `livespec-m0xu`) and
+every other core item are DEFERRED until factory-hardening is done** (see the DEFERRED
+block below). The maintainer AUTHORIZED autonomous admission + dispatch for these
+threads — this directive IS the admission approval — but STILL apply the scope-guard
+discipline + careful review, because they modify the dispatcher/factory itself.
+**Compose LIVE status from each tenant before acting**; the statuses below are a
+2026-07-02 Session-9 snapshot, not authoritative.
 
-1. **`bd-ib-mxr` / `bd-ib-cyv` FIRST — the janitor E2E unblocker.** The post-merge
-   janitor doesn't provision livespec core → false-fails `check-doctor-static` for
-   EVERY non-core target (the dispatch merges the change but reports
-   `failed:janitor-post-merge`; hand-reconcile). The janitor is also only ever MOCKED
-   green in tests, so the gap shipped invisibly. Fix = provision core + a
-   top-of-pyramid test running the REAL janitor to green (`bd-ib-cyv`) + the broader
-   real-dispatch E2E (`bd-ib-mxr.1`). Until it lands, every non-core dispatch below
-   merges-but-marks-failed.
-2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR (`ready`).
-3. **`bd-ib-fqh` cross-repo epic** — S1 (`livespec-runtime-00u`) DONE; **v0.7.0
-   CUT** (PR #105; CORE re-vendored via `4d08972`). **S2 (`bd-ib-fqh.1`): re-vendor
-   LANDED** (beads-fabro fan-out **PR #233** merged 2026-07-02) → promote
-   `backlog→ready` from a beads-fabro session and work it. **S3 (`bd-gj-lxr`):
-   INVERTED gate** — its re-vendor PR #158 is terminally BLOCKED because v0.7.0
-   serializes `acceptance_criteria`+`notes` and git-jsonl's own schema validator
-   rejects them (87 test failures); implement S3 from a git-jsonl session and land
-   it WITH the pin bump. Then S4/S5 (`ready` in the ledger, correctly dep-gated on
-   S2 via `depends_on`). Details: §"Session 8".
+The threads span TWO tenants — **beads-fabro** (`/data/projects/livespec-orchestrator-beads-fabro`)
+and **git-jsonl** (`/data/projects/livespec-orchestrator-git-jsonl`). A driving session
+orchestrates cross-tenant via `bd -C <repo>` (promote/admission, under
+`with-livespec-env.sh`) + `real-work-dispatch.sh --target-repo <repo> --item <id>` (the
+factory implements the self-mod in a Fabro sandbox → PR → janitor → merge). Execute in
+this order:
 
-Dispatch mechanics + scope-guard discipline: see step 3 below. ⚠ Non-core targets
-currently false-fail the post-merge janitor (that's `bd-ib-cyv`) — verify via
-`gh pr view <n>` / CI-green-on-master and hand-reconcile (`bd update <id> --status
-closed`) a change that actually merged.
+**1. `bd-ib-cyv` (+ its epic `bd-ib-mxr`) FIRST — the janitor E2E unblocker.**
+[beads-fabro; snapshot `backlog`] WHY FIRST: until it lands, EVERY non-core dispatch
+(all items below are non-core) merges-but-marks-`failed:janitor-post-merge` — the
+post-merge janitor doesn't provision livespec core → false-fails `check-doctor-static`;
+and it's only ever MOCKED green in tests, so the gap ships invisibly. Fix = provision
+core + a top-of-pyramid test running the REAL janitor to green. Promote `backlog→ready`
+(+ acceptance, `admission:auto`, `acceptance:ai-only`, scope-guard) and dispatch. ⚠
+BOOTSTRAPPING WRINKLE: cyv's OWN dispatch (a non-core target) hits the pre-fix janitor
+false-fail → its PR merges but the run reports `failed:janitor-post-merge` →
+hand-reconcile (verify PR merged + CI green on master, then `bd -C … update bd-ib-cyv
+--status closed`). Once cyv lands, the janitor works for every dispatch after it. Then
+dispatch **`bd-ib-mxr.1`** (broader real-dispatch E2E; `depends_on bd-ib-cyv`).
 
-Then the remaining thread work (core tenant, from this session):
+**2. `bd-ib-asp`** [beads-fabro; snapshot `ready`, ungated] — dispatcher merge-poll
+fail-fast on a terminally-BLOCKED PR (today a blocked PR burns the full ~76-min poll
+then exits `failed:merge-poll`). Admission-approve + scope-guard + dispatch.
 
-1. **Read `research/01-followup-inventory.md`** — the full grouped catalog (ids,
-   tenants, one-line actions, live ledger id / FILED marker). The map for below.
-2. **The two core gap-facade items are DONE** (Session 8): **`livespec-yonx`**
-   (`io/fastjsonschema_facade.py`, **PR #762**, exact-scope, janitor green, CLOSED)
-   + **`livespec-ek6e`** (`io/structlog_facade.py`, **PR #764**, exact-scope,
-   janitor green, CLOSED). ⚠ The scope-guard discipline they validated stays
-   MANDATORY for every
-   dispatch until `bd-ib-fqh` lands: add a **SCOPE-GUARD ledger comment**
-   (`bd comment <id> "modify ONLY <files>; do NOT edit README/docs/..."`) naming the
-   exact file set — that comment is the ONLY item-specific channel the Fabro brief
-   includes today (the acceptance field is NOT in the brief; that's what `bd-ib-fqh`
-   fixes). Enumerate the REAL callsite set yourself (grep, don't trust the item
-   text's examples — yonx's acceptance named 2 callsites; the true set was 11).
-3. **Dispatch a `ready`, scope-guarded core item through the factory FROM THIS
-   SESSION** (proven — `yonx` PR #762, `ek6e` #764, `yc8e` #742, `jcc6.1` #736,
-   `jcc6.2` #734). ⚠ As of Session 8 the core dispatchable-`ready` queue is
-   EMPTY — this step is the mechanics reference for when step-4 grooming promotes
-   new items. (For a non-core target substitute its repo name in `--target-repo`,
-   but mind the janitor false-fail warning below.) (a) admission
-   is approved via the `admission:auto` label (+ `acceptance:ai-only`); (b) run the
-   containerized dispatcher:
-   ```bash
-   source /data/projects/1password-env-wrapper/with-livespec-env.sh \
-     bash /data/projects/livespec-orchestrator-beads-fabro/orchestrator-image/real-work-dispatch.sh \
-     --target-repo livespec --item <ready-id> --run
-   ```
-   Secrets come from the SAME `with-livespec-env.sh` wrapper
-   (`LIVESPEC_FAMILY_GITHUB_TOKEN`, `ANTHROPIC_API_KEY_LIVESPEC_E2E`,
-   `CLAUDE_CODE_OAUTH_TOKEN`, `BEADS_DOLT_PASSWORD`, `HONEYCOMB_INGEST_KEY_LIVESPEC`)
-   plus the host `~/.codex/auth.json`; it runs in `livespec-orchestrator:dev` (Fabro
-   sandbox → PR → janitor `just check` + doctor → rebase-merge → acceptance →
-   `done`, ~20 min). `--preflight` (no `--item`) checks inputs. ⚠ Until `bd-ib-asp`
-   lands, a dispatch whose PR fails a required check POLLS the full ~76 min then
-   exits `failed:merge-poll` — if a run overruns ~25 min, check `gh pr checks <n>`
-   (a red required check = the poll can never succeed; close/fix + re-dispatch).
-4. **Groom the remaining core items** (`groom <id>` from a core session):
-   `livespec-127o` (README — epic-shaped: spec-contract slice →
-   `/livespec:propose-change` + README-authoring slice → factory), `livespec-m0xu`
-   (template rename — copier-ref ripples; `backlog`). `livespec-jcc6.3` (prose
-   refresh) stays `backlog` (acceptance not autonomously verifiable). `needs-regroom`
-   `livespec-nylyhi` + `livespec-rmew4k` are CROSS-TENANT — groom from those repos'
-   sessions.
-5. **Still-unfiled CROSS-TENANT items** (file from each owning repo's OWN session —
-   the `bd` cwd-tenant trap): **B4** (beads-fabro/runtime `migrate-tenant` CLI),
-   **C7** (driver-codex "DEFERRED" wording), **C8** (git-jsonl §6 doc-reconcile),
-   **D9** (fleet/dev-tooling `hydrate` worktree-pack), **D10** (fleet/core
-   review-policy decision).
-6. **Client-side ops** (inventory group **E**) — operator actions, done directly.
-7. **Cross-links** (group **F**) resume in their own repo's thread, not here.
-8. **Close `livespec-jcc6`** when the gathered items (incl. the two P0 factory
-   items) are groomed + dispatched/reassigned and nothing lingers → archive this
-   thread to `plan/archive/`.
+**3. `bd-ib-fqh.1` (S2)** [beads-fabro; snapshot `backlog`, UN-GATED — re-vendor
+**PR #233** merged] — beads store map + `render_goal` carrying
+`acceptance_criteria`+`notes` + stage audit. This is the ROOT-CAUSE fix that lets DoR
+scope reach the implement/review agents, RETIRING the per-dispatch scope-guard
+workaround. Promote `backlog→ready` + work it. When S2 lands, **`bd-ib-fqh.2` (S4)** +
+**`bd-ib-fqh.3` (S5)** un-gate (both snapshot `ready`, `depends_on bd-ib-fqh.1`) →
+dispatch them.
+
+**4. `bd-gj-lxr` (S3)** [git-jsonl; snapshot `backlog`; the trickiest] — INVERTED gate:
+its v0.7.0 re-vendor **PR #158 is terminally BLOCKED (still OPEN, `mergeStateStatus:
+BLOCKED`)** because v0.7.0 serializes `acceptance_criteria`+`notes` and git-jsonl's OWN
+schema validator rejects them — and that schema/store extension IS S3's scope. So
+implement S3 (git-jsonl store + schema carry the two fields, consistent with beads) and
+land it WITH the pin bump (same PR, or S3-first then #158 goes green). Work from the
+git-jsonl repo.
+
+**5. Close the epics.** `bd-ib-mxr` + `bd-ib-fqh` close once their children are all done.
+
+**Dispatch mechanics** (proven — `yonx` PR #762, `ek6e` #764, `yc8e` #742; reuse for
+every item above):
+- Admission + DoR: `bd -C <repo> update <id> --labels admission:auto,acceptance:ai-only`
+  (+ a coherent autonomously-verifiable acceptance + `backlog→ready`).
+- SCOPE-GUARD (MANDATORY until `bd-ib-fqh` lands): `bd -C <repo> comment <id> "modify
+  ONLY <exact files>; do NOT edit README/docs/…"` — the ONLY item-specific channel the
+  Fabro brief reads today (the acceptance field is NOT in the brief; that's what
+  `bd-ib-fqh` fixes). Enumerate the REAL file set yourself (grep; the item text's
+  examples undercount — yonx named 2 callsites, the true set was 11).
+- Dispatch:
+  ```bash
+  source /data/projects/1password-env-wrapper/with-livespec-env.sh \
+    bash /data/projects/livespec-orchestrator-beads-fabro/orchestrator-image/real-work-dispatch.sh \
+    --target-repo <repo> --item <ready-id> --run
+  ```
+  Secrets come from `with-livespec-env.sh` (`LIVESPEC_FAMILY_GITHUB_TOKEN`,
+  `ANTHROPIC_API_KEY_LIVESPEC_E2E`, `CLAUDE_CODE_OAUTH_TOKEN`, `BEADS_DOLT_PASSWORD`,
+  `HONEYCOMB_INGEST_KEY_LIVESPEC`) + host `~/.codex/auth.json`; runs in
+  `livespec-orchestrator:dev` (Fabro sandbox → PR → janitor `just check` + doctor →
+  rebase-merge → acceptance → `done`, ~20 min). `--preflight` (no `--item`) checks
+  inputs. ⚠ Until `bd-ib-asp` lands, a red-required-check PR polls the full ~76 min
+  then exits `failed:merge-poll` — if a run overruns ~25 min, `gh pr checks <n>`; a red
+  required check = close/fix + re-dispatch. ⚠ Until `bd-ib-cyv` lands, every non-core
+  dispatch merges-but-marks-`failed:janitor-post-merge` — hand-reconcile per the cyv
+  wrinkle above.
+
+**A note on the driving session.** Most work is beads-fabro tenant; only S3 is
+git-jsonl. A driving session can orchestrate ALL of it via `bd -C <repo>` +
+`--target-repo <repo>` (the code work happens inside the Fabro sandbox, not the driving
+session), EXCEPT S3, whose schema fix must land coupled to the blocked pin-bump PR #158
+— do S3 from the git-jsonl repo. `bd-ib-cyv`/`bd-ib-asp`/S2 are careful dispatcher
+self-mods: review each Fabro PR before/at merge even though admission is pre-approved.
+
+---
+
+**DEFERRED until ALL factory-hardening above is complete — do NOT start these first:**
+
+1. **Grooming** — `livespec-127o` (README epic; maintainer-owned cut: a spec-contract
+   slice → `/livespec:propose-change` + a README-authoring slice → factory) and
+   `livespec-m0xu` (template rename — copier-ref ripples). `livespec-jcc6.3` (prose
+   refresh) stays held (acceptance not autonomously verifiable). `needs-regroom`
+   `livespec-nylyhi` + `livespec-rmew4k` are CROSS-TENANT — groom from those repos.
+2. **Still-unfiled CROSS-TENANT items** (file from each owning repo's OWN session — the
+   `bd` cwd-tenant trap): **B4** (beads-fabro/runtime `migrate-tenant` CLI), **C7**
+   (driver-codex "DEFERRED" wording), **C8** (git-jsonl §6 doc-reconcile), **D9**
+   (fleet/dev-tooling `hydrate` worktree-pack), **D10** (fleet/core review-policy).
+3. **Client-side ops** (inventory group **E**) — operator actions, done directly.
+4. **Cross-links** (group **F**) — resume in their own repo's thread, not here.
+5. **Close `livespec-jcc6`** when factory-hardening + the deferred items are done and
+   nothing lingers → archive this thread to `plan/archive/`.
+
+The two core spec-side drifts (C15, gap-dg2rdlsf) are DONE — revised in at v154
+(§"Session 9 (continued 2)"). Full factory-hardening map: inventory
+`research/01-followup-inventory.md` group **0**.
 
 ## Already-filed items to fold in (cite read-only; details in the inventory)
 
@@ -503,6 +524,33 @@ factory-hardening threads (`bd-ib-mxr`/`bd-ib-cyv`, `bd-ib-asp`, `bd-ib-fqh` S2/
 stay cross-tenant (work from beads-fabro / git-jsonl / runtime sessions). Consider
 closing `livespec-jcc6` once the two remaining core items are groomed + dispatched
 and nothing lingers.
+
+## Session 9 (continued 3, 2026-07-02) — priority reset: factory-hardening FIRST; grooming DEFERRED
+
+Maintainer directive (mid-session, interrupting a `groom livespec-127o` start):
+**"autonomously complete all the factory-hardening ones as the first priority, leave
+grooming until after those are complete. Update that as your plan and handoff to a
+fresh session."** Acted on:
+
+- **Groom of `livespec-127o` ABORTED** — clean (groom is read-only until approval;
+  nothing was filed). It stays `needs-regroom`-eligible for later.
+- **"The next action" REWRITTEN** to make the factory-hardening threads the singular
+  autonomous top priority with a full ordered execution plan (cyv/mxr janitor
+  unblocker FIRST → asp → fqh.1 S2 → fqh.2/.3 S4/S5 → git-jsonl S3), and to move
+  grooming + all other core work into an explicit DEFERRED block.
+- **LIVE cross-tenant status composed this session** (verify again on resume; do not
+  trust): beads-fabro `bd-ib-asp`=`ready` (ungated), `bd-ib-fqh.1`/`bd-ib-fqh.2`/`bd-ib-fqh.3`
+  present (fqh.1 `backlog` un-gated; fqh.2/.3 `ready` but dep-gated on fqh.1),
+  `bd-ib-cyv`/`bd-ib-mxr`/`bd-ib-mxr.1`/`bd-ib-fqh`=`backlog`; git-jsonl `bd-gj-lxr`=`backlog`.
+  Blocking-PR states: beads-fabro **PR #233 MERGED** (S2 un-gated); git-jsonl **PR #158
+  still OPEN + BLOCKED** (S3 pending). Nothing dispatched this session — the maintainer
+  asked for a handoff, and this is a core session; execution is for the fresh session.
+- **`admission:auto` is pre-authorized** for these threads by the directive above, but
+  each is a careful dispatcher self-mod — keep the scope-guard + PR review.
+
+**⚑ RESUME = execute "The next action" factory-hardening plan autonomously.** A fresh
+session resumes via the command below and drives the cross-tenant dispatches (bd -C /
+--target-repo); grooming does NOT start until every factory-hardening thread is done.
 
 ## Read-first chain (in order)
 
