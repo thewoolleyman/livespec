@@ -28,11 +28,11 @@ alone via the read-first chain — no chat history required.
   credential-wrapper epic `livespec-zd8h`. It absorbs `bd-ib-gsl` as its factory slice,
   **supersedes `bd-ib-p2e`** (PAT-grant stopgap → obsolete), and folds in **`C16`**
   (openbrain adopter wrapper). Resume THAT thread for this work, not here.
-- **⚑ TOP PRIORITY (Session 4, maintainer-directed): FOUR P0 factory-hardening
-  threads** (all `livespec-orchestrator-beads-fabro` tenant, all dispatcher
-  self-modifications) outrank everything else EXCEPT the github-app-auth track above.
-  Status is READ from the ledger; see
-  §"Session 4 (part 2)" for the full map + the janitor discovery:
+- **⚑ FACTORY-HARDENING — ✅ COMPLETE (Session 10, 2026-07-02).** The FOUR P0
+  factory-hardening threads (all `livespec-orchestrator-beads-fabro` tenant, dispatcher
+  self-modifications) ALL landed and both epics (`bd-ib-mxr`, `bd-ib-fqh`) are CLOSED —
+  see §"Session 10 (2026-07-02) — factory-hardening COMPLETE". The map below is retained
+  as history (do NOT re-run it):
   1. **`bd-ib-fqh`** (EPIC) — factory context-completeness, re-groomed as an
      **Option-B cross-repo epic** (`acceptance_criteria`+`notes` become first-class
      `WorkItem` fields, both backends): **S1 `livespec-runtime-00u` DONE** (contract
@@ -72,14 +72,15 @@ alone via the read-first chain — no chat history required.
 
 ## The next action
 
-**⚑ TOP PRIORITY — maintainer-directed 2026-07-02 (Session 9): AUTONOMOUSLY COMPLETE
-ALL factory-hardening threads FIRST. Grooming (`livespec-127o`, `livespec-m0xu`) and
-every other core item are DEFERRED until factory-hardening is done** (see the DEFERRED
-block below). The maintainer AUTHORIZED autonomous admission + dispatch for these
-threads — this directive IS the admission approval — but STILL apply the scope-guard
-discipline + careful review, because they modify the dispatcher/factory itself.
-**Compose LIVE status from each tenant before acting**; the statuses below are a
-2026-07-02 Session-9 snapshot, not authoritative.
+**✅ FACTORY-HARDENING IS COMPLETE (Session 10, 2026-07-02) — the maintainer-directed
+autonomous run finished.** All four P0 threads landed and both epics (`bd-ib-mxr`,
+`bd-ib-fqh`) are CLOSED; full detail + outcomes in §"Session 10 (2026-07-02) —
+factory-hardening COMPLETE". The ordered plan that WAS here (cyv → asp → fqh.1 →
+fqh.2/.3 → S3 → mxr.1) is retained below as the execution record — do NOT re-run it.
+**The active next action is the (formerly deferred) block after the `---`: grooming +
+still-unfiled cross-tenant items + two new findings.**
+
+The completed plan, retained for the record:
 
 The threads span TWO tenants — **beads-fabro** (`/data/projects/livespec-orchestrator-beads-fabro`)
 and **git-jsonl** (`/data/projects/livespec-orchestrator-git-jsonl`). A driving session
@@ -158,7 +159,8 @@ self-mods: review each Fabro PR before/at merge even though admission is pre-app
 
 ---
 
-**DEFERRED until ALL factory-hardening above is complete — do NOT start these first:**
+**⚑ NEXT ACTIONS — factory-hardening is COMPLETE (Session 10); these formerly-deferred
+items are now the active priority. Compose LIVE status before acting:**
 
 1. **Grooming** — `livespec-127o` (README epic; maintainer-owned cut: a spec-contract
    slice → `/livespec:propose-change` + a README-authoring slice → factory) and
@@ -169,6 +171,15 @@ self-mods: review each Fabro PR before/at merge even though admission is pre-app
    `bd` cwd-tenant trap): **B4** (beads-fabro/runtime `migrate-tenant` CLI), **C7**
    (driver-codex "DEFERRED" wording), **C8** (git-jsonl §6 doc-reconcile), **D9**
    (fleet/dev-tooling `hydrate` worktree-pack), **D10** (fleet/core review-policy).
+   Plus TWO **new findings from the Session-10 run** to file: (a) git-jsonl
+   **worktree-hydration gap** (a concrete instance of D9) — `just worktree-create` does
+   NOT install the Worktree Discipline Pack (`dev-tooling/branch-protection.sh`), so `.py`
+   commits fail `check-pre-commit` until `just install-worktree-pack`; fix: hydrate
+   installs the pack as `bootstrap` does. (b) beads-fabro **self-update-canary
+   under-trigger** — on the asp dispatch the canary logged "merge did not touch the
+   dispatcher's own scripts" though asp modified `_dispatcher_engine.py`/`_dispatcher_plan.py`;
+   the full janitor validated asp, but the canary's path-detection may under-fire (relates
+   to the now-closed `bd-ib-mxr` E2E epic).
 3. **Client-side ops** (inventory group **E**) — operator actions, done directly.
 4. **Cross-links** (group **F**) — resume in their own repo's thread, not here.
 5. **Close `livespec-jcc6`** when factory-hardening + the deferred items are done and
@@ -551,6 +562,63 @@ fresh session."** Acted on:
 **⚑ RESUME = execute "The next action" factory-hardening plan autonomously.** A fresh
 session resumes via the command below and drives the cross-tenant dispatches (bd -C /
 --target-repo); grooming does NOT start until every factory-hardening thread is done.
+
+## Session 10 (2026-07-02) — factory-hardening COMPLETE (all 7 items landed autonomously)
+
+Under the maintainer's standing "autonomously complete all factory-hardening first"
+directive, all four P0 threads were driven to done in ONE session — six items via factory
+dispatch (`real-work-dispatch.sh --target-repo`), one (S3) hand-implemented via a fork.
+Both epics closed. Every merged PR was reviewed for scope; all held (no docs/spec
+over-reach).
+
+- **`bd-ib-cyv` DONE (PR #237).** The janitor E2E unblocker: the host-side post-merge
+  janitor now provisions livespec core (clones core at the target's `.livespec.jsonc`
+  `compat.pinned` ref into `<janitor-checkout>/.livespec-core`, runs `just check` with
+  `LIVESPEC_CORE_PLUGIN_ROOT` set), so `check-doctor-static` passes for non-core dispatches;
+  a core-clone failure degrades green (not false-fail). Plus a top-of-pyramid E2E test that
+  runs the REAL janitor to green. Its OWN dispatch hit the expected pre-fix janitor
+  false-fail → hand-reconciled + closed. **After it landed, every subsequent non-core
+  dispatch went fully green with no reconcile** (proven by asp/fqh.*/mxr.1, all exit 0).
+- **`bd-ib-asp` DONE.** Merge-poll now fail-fasts on a REQUIRED check with a terminal-failure
+  conclusion (surfacing the check name via `statusCheckRollup`), keeps polling on
+  pending/BEHIND — no more ~76-min burn. (A self-contradictory pre-existing scope-guard
+  comment on the item — "edit parse_pr_view but do NOT edit _dispatcher_plan.py", where those
+  live — was corrected with a superseding comment before dispatch.)
+- **`bd-ib-fqh` EPIC DONE (all 5 slices).** S1 `livespec-runtime-00u` (v0.8.0 WorkItem
+  fields, prior); S2 `bd-ib-fqh.1` (beads store map + `render_goal` emits acceptance+notes,
+  PR #243); S3 `bd-gj-lxr` (git-jsonl, below); S4 `bd-ib-fqh.2` (implement.md
+  scope-minimalism + review.md checks acceptance, PR #244); S5 `bd-ib-fqh.3` (spec_id in the
+  goal + pr.md-from-acceptance + audit closed, PR #245). **`render_goal` now carries full
+  work-item context (acceptance/notes/spec_id) into every stage AND implement/review enforce
+  scope-minimalism — the per-dispatch scope-guard workaround is RETIRED** (kept as cheap
+  insurance for the remaining careful self-mods, but no longer load-bearing).
+- **`bd-ib-mxr` EPIC DONE.** `bd-ib-cyv` + `bd-ib-mxr.1` (PR #246: extended the E2E to the
+  full merge→janitor→accept→done path + backstopped the two mocked scenario stubs). The real
+  janitor + accept path is proven by execution, not mocks.
+- **`bd-gj-lxr` (S3) DONE (git-jsonl PR #160).** git-jsonl now carries
+  `acceptance_criteria`+`notes`: schema widened 17→19 canonical keys through the livespec
+  lifecycle (history/**v014**) + `store.py` map + v0.8.0 vendor bump — one coherent PR.
+  **Targeted v0.8.0 via #159, NOT the handoff's #158/v0.7.0 (stale)**; both #158 + #159
+  closed as superseded. This was a git-jsonl-only spec change (livespec core does not
+  enumerate the record schema; it leaves it to each backend — verified).
+
+**Drifts corrected (were stale in this handoff — do not trust the retained record on these):**
+- **Dispatch auth migrated PAT → GitHub App tokens.** `real-work-dispatch.sh` now requires
+  `GITHUB_APP_ID` + `GITHUB_PRIVATE_KEY` (installation tokens minted in-container,
+  remint-capable); the fleet PAT `LIVESPEC_FAMILY_GITHUB_TOKEN` is retired (github-app-auth
+  track landed, PR #235). Preflight is green with the App env from `with-livespec-env.sh`.
+- **livespec-runtime is now v0.8.0** (was v0.7.0; `priority` removed for `rank`); beads-fabro
+  + git-jsonl both vendored on v0.8.0 (still carries acceptance_criteria+notes).
+
+**Dispatch pattern confirmed (reuse for grooming's dispatchable slices):** promote
+`backlog→ready` + `--add-label admission:auto` + `--add-label acceptance:ai-only` + a
+coherent autonomously-verifiable acceptance (+ optional scope-guard `bd comment`, now that
+fqh landed) → `real-work-dispatch.sh --target-repo <repo> --item <id> --run`. **Gotcha:** the
+pre-dispatch ledger-conformance gate BLOCKS the whole dispatch if ANY ledger item has a
+non-livespec status (beads-native `open`); normalize stragglers to `backlog` first (4 such
+github-app-auth follow-ups blocked the first cyv attempt). **Observed:** concurrent activity
+on beads-fabro + core master from another session (spec critiques, plan-archive) —
+non-conflicting (the dispatcher fresh-clones master per dispatch).
 
 ## Read-first chain (in order)
 
