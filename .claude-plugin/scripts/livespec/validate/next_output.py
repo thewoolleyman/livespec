@@ -17,9 +17,10 @@ the schema and the dataclasses surfaces as ValidationError
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any, cast
 
-import fastjsonschema
 from returns.result import Result, safe
 
 from livespec.errors import ValidationError
@@ -27,6 +28,17 @@ from livespec.schemas.dataclasses.next_output import (
     NextCandidate,
     NextOutput,
     NextPagination,
+)
+
+_Validator = Callable[[dict[str, Any]], dict[str, Any]]
+_FASTJSONSCHEMA_FACADE = import_module("livespec.io.fastjsonschema_facade")
+_JsonSchemaValueException = cast(
+    type[Exception],
+    _FASTJSONSCHEMA_FACADE.JsonSchemaValueException,
+)
+_compile_schema = cast(
+    Callable[..., _Validator],
+    _FASTJSONSCHEMA_FACADE.compile_schema,
 )
 
 __all__: list[str] = ["validate_next_output"]
@@ -48,18 +60,18 @@ def _candidate_from_validated(*, item: dict[str, Any]) -> NextCandidate:
     )
 
 
-@safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
+@safe(exceptions=(_JsonSchemaValueException,))
 def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> NextOutput:
     """Decorator-lifted validate-and-construct call.
 
-    fastjsonschema.compile returns a validator function that
+    compile_schema returns a validator function that
     raises JsonSchemaValueException on violation. Both top-level
     keys are required (`additionalProperties: false`); the
     compiled validator therefore returns a dict populated with
     exactly the `candidates` array and the `pagination` object,
     which the nested dataclass constructors consume.
     """
-    validator = fastjsonschema.compile(schema)
+    validator = _compile_schema(schema_id="next_output.schema.json", schema=schema)
     validated = validator(payload)
     pagination = validated["pagination"]
     return NextOutput(

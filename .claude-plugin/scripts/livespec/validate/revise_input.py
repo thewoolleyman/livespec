@@ -13,27 +13,39 @@ track per the canonical pattern.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any, cast
 
-import fastjsonschema
 from returns.result import Result, safe
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.revise_input import RevisionInput
 
+_Validator = Callable[[dict[str, Any]], dict[str, Any]]
+_FASTJSONSCHEMA_FACADE = import_module("livespec.io.fastjsonschema_facade")
+_JsonSchemaValueException = cast(
+    type[Exception],
+    _FASTJSONSCHEMA_FACADE.JsonSchemaValueException,
+)
+_compile_schema = cast(
+    Callable[..., _Validator],
+    _FASTJSONSCHEMA_FACADE.compile_schema,
+)
+
 __all__: list[str] = ["validate_revise_input"]
 
 
-@safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
+@safe(exceptions=(_JsonSchemaValueException,))
 def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> RevisionInput:
     """Decorator-lifted validate-and-construct call.
 
-    fastjsonschema.compile returns a validator function that
+    compile_schema returns a validator function that
     raises JsonSchemaValueException on violation. On success we
     construct RevisionInput from the validated payload's
     well-known keys.
     """
-    validator = fastjsonschema.compile(schema)
+    validator = _compile_schema(schema_id="revise_input.schema.json", schema=schema)
     validated = validator(payload)
     return RevisionInput(
         author=validated.get("author"),

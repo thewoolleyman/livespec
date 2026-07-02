@@ -22,9 +22,10 @@ payload.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any, cast
 
-import fastjsonschema
 from returns.result import Result, safe
 
 from livespec.errors import ValidationError
@@ -34,6 +35,17 @@ from livespec.schemas.dataclasses.proposed_change_front_matter import (
     SpecCommitments,
 )
 from livespec.types import Author
+
+_Validator = Callable[[dict[str, Any]], dict[str, Any]]
+_FASTJSONSCHEMA_FACADE = import_module("livespec.io.fastjsonschema_facade")
+_JsonSchemaValueException = cast(
+    type[Exception],
+    _FASTJSONSCHEMA_FACADE.JsonSchemaValueException,
+)
+_compile_schema = cast(
+    Callable[..., _Validator],
+    _FASTJSONSCHEMA_FACADE.compile_schema,
+)
 
 __all__: list[str] = ["validate_proposal_findings"]
 
@@ -58,16 +70,16 @@ def _build_spec_commitments(*, raw: dict[str, Any] | None) -> SpecCommitments | 
     return SpecCommitments(impl_followups=impl_followups, supersedes=supersedes)
 
 
-@safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
+@safe(exceptions=(_JsonSchemaValueException,))
 def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> ProposalFindings:
     """Decorator-lifted validate-and-construct call.
 
-    fastjsonschema.compile returns a validator function that
+    compile_schema returns a validator function that
     raises JsonSchemaValueException on violation. On success we
     construct ProposalFindings from the validated payload's
     well-known keys.
     """
-    validator = fastjsonschema.compile(schema)
+    validator = _compile_schema(schema_id="proposal_findings.schema.json", schema=schema)
     validated = validator(payload)
     raw_author = validated.get("author")
     raw_spec_commitments = validated.get("spec_commitments")

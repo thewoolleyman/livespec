@@ -28,9 +28,10 @@ section on read.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any, cast
 
-import fastjsonschema
 from returns.result import Result, safe
 
 from livespec.errors import ValidationError
@@ -40,6 +41,17 @@ from livespec.schemas.dataclasses.livespec_config import (
     SpecClis,
 )
 from livespec.types import SpecRoot, TemplateName
+
+_Validator = Callable[[dict[str, Any]], dict[str, Any]]
+_FASTJSONSCHEMA_FACADE = import_module("livespec.io.fastjsonschema_facade")
+_JsonSchemaValueException = cast(
+    type[Exception],
+    _FASTJSONSCHEMA_FACADE.JsonSchemaValueException,
+)
+_compile_schema = cast(
+    Callable[..., _Validator],
+    _FASTJSONSCHEMA_FACADE.compile_schema,
+)
 
 __all__: list[str] = ["validate_livespec_config"]
 
@@ -85,11 +97,11 @@ def _build_orchestrator(*, raw: dict[str, Any] | None) -> OrchestratorConfig | N
     )
 
 
-@safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
+@safe(exceptions=(_JsonSchemaValueException,))
 def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> LivespecConfig:
     """Decorator-lifted validate-and-construct call.
 
-    fastjsonschema.compile returns a validator function that
+    compile_schema returns a validator function that
     raises JsonSchemaValueException on violation. The compiled
     validator applies the schema's `default` keywords, so the
     resulting `validated` dict is fully populated even when the
@@ -97,7 +109,7 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> Livespe
     the `TemplateName` NewType and `spec_root` to the `SpecRoot`
     NewType per `check-newtype-domain-primitives`.
     """
-    validator = fastjsonschema.compile(schema)
+    validator = _compile_schema(schema_id="livespec_config.schema.json", schema=schema)
     validated = validator(payload)
     return LivespecConfig(
         template=TemplateName(validated["template"]),
