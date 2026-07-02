@@ -92,19 +92,40 @@ forward verbatim in every future handoff refresh.
     session added the `admission:auto` label and re-dispatched).
   - `livespec-u67wdb` (**livespec-runtime tenant**) — the App-token provider
     + git credential helper primitive (first-class remint; Pillar 1; the
-    critical path). ADMITTED 2026-07-02 via the proxied gate (maintainer
-    approved in the core session; the selection was delivered to the
-    `livespec-runtime` pane) — IN_PROGRESS; that session drives it
-    end-to-end (TDD in a worktree → PR → merge → close the item). Monitor
-    the pane (`command tmux capture-pane -t livespec-runtime -p`; plain
-    `tmux` may be shadowed by a zsh plugin shim in non-interactive shells —
-    prefix with `command`). Read:
-    `bd -C /data/projects/livespec-runtime show livespec-u67wdb`.
+    critical path). DONE + HARD-REVIEWED: livespec-runtime PR #107 merged
+    2026-07-02T03:33Z, item CLOSED; released in **v0.8.0** (the overseer
+    merged release-please PR #108 as a recorded judgment call — cutting the
+    release is the documented steady-state and the pin chain needs it).
+    Overseer review verdict: **ACCEPT, all 7 acceptance criteria pass** —
+    the mid-sequence forced-expiry re-mint test is genuine behavioral
+    verification (injected clock, real provider + mint railway, token
+    VALUES asserted across a 130-min sequence), fail-closed is tested at
+    config + helper boundaries and was exercised live under `env -i`, no
+    fleet-fallback paths exist, the token never persists, CI green on the
+    merge commit. Module: `livespec_runtime/github_auth/`
+    (`InstallationTokenProvider`, console script
+    `livespec-github-credential-helper`). Two recorded side dispositions:
+    (a) the overseer deleted the stale gitignored `mutants/` mutmut scratch
+    in `/data/projects/livespec-runtime` (it broke local `just check`
+    there; regenerable tool scratch, dated 2026-05-30); (b) the runtime
+    session was asked to file two follow-ups in ITS tenant — the
+    urllib-vs-no-HTTP-client spec-tension propose-change (file only;
+    revise is a later gate) and a work-item for doctor-static not honoring
+    gitignore. The pre-existing `bd` auto-backup warning is
+    correct-by-design (tenant-level DOLT_BACKUP denial; hourly systemd
+    timer does real backups) — no item.
   - `livespec-in7snc` (**livespec-orchestrator-beads-fabro tenant**) —
     factory dispatch routes GitHub auth via target `credential_wrapper` →
     provider; retires the fleet-PAT export. Supersedes-edge to `bd-ib-gsl`
-    (absorbed; closes when this lands). Blocked by `livespec-u67wdb` (sibling
-    dep). Read: `bd -C /data/projects/livespec-orchestrator-beads-fabro show livespec-in7snc`.
+    (absorbed; close BOTH when this lands). Dependency `livespec-u67wdb`
+    is now satisfied (v0.8.0). DELEGATED 2026-07-02: the overseer cleared
+    the `livespec-orchestrator-beads-fabro` session, confirmed Fable 5
+    xhigh, and sent it a self-contained brief (pinned verbatim at
+    `research/in7snc-delegation-brief.md` for re-delegation); its admission
+    picker is proxied to the overseer per the operating model (the overseer
+    MAY approve it as a recorded judgment call — the slices were
+    maintainer-groomed and the maintainer admitted the critical path).
+    Read: `bd -C /data/projects/livespec-orchestrator-beads-fabro show livespec-in7snc`.
   - Epic children (core, maintainer-gated — deliberately NOT `ready` so the
     Dispatcher never drains them): `livespec-orslcm` (standalone
     agent-context wiring, Pillar 3), `livespec-uotocj` (retire the fleet PAT +
@@ -138,36 +159,41 @@ forward verbatim in every future handoff refresh.
 
 ## The next action
 
-**Shepherd `livespec-u67wdb` to a reviewed close, then delegate the chain** —
+**Shepherd `livespec-in7snc` to a reviewed close, then unblock the tail** —
 statuses read live from the ledger, all gates proxied through the overseer
 per the operating model:
 
-1. **Monitor the `livespec-runtime` session** until `livespec-u67wdb`
-   closes: watch the pane (`command tmux capture-pane -t livespec-runtime
-   -p`) and the ledger status. Proxy any picker that session raises into
-   the overseer (answer with best judgment under the autonomy directive;
-   route only genuine product/credential/destructive calls to the
-   maintainer).
-2. **On `livespec-u67wdb` close: review hard before treating it as
-   accepted.** Read the merged livespec-runtime PR diff against the item's
-   acceptance criteria (mid-sequence token-expiry re-mint test; fail-closed
-   missing-PEM/App-id tests; `just check` green in livespec-runtime) and
-   record the review verdict in this handoff.
-3. **Then delegate `livespec-in7snc`** to the
-   `livespec-orchestrator-beads-fabro` tmux session with a self-contained
-   brief (same discipline block as the operating model; the item
-   description is authoritative — read it from that repo's tenant first).
-   Its admission picker is proxied to the overseer; under the autonomy
-   directive the overseer MAY approve it as a recorded judgment call (the
-   epic's slices were maintainer-groomed and the maintainer admitted the
-   critical path).
-4. **Then the remaining children in dependency order:** `livespec-orslcm`
-   and `livespec-uotocj` become actionable once the provider exists (mark
-   ready / delegate as judgment calls, recorded here); `livespec-p3icf6`
-   stays gated on D17 (`plan/fleet-followups/handoff.md`, group D) — D17
-   (register openbrain + dolt-server as adopters in
-   `.livespec-fleet-manifest.jsonc`) is a genuine fleet/core product
-   decision: surface it to the maintainer when p3icf6 is otherwise ripe.
+1. **Monitor the `livespec-orchestrator-beads-fabro` session** until
+   `livespec-in7snc` closes: watch the pane (`command tmux capture-pane -t
+   livespec-orchestrator-beads-fabro -p`) and the ledger status. Proxy any
+   picker it raises into the overseer; its ADMISSION picker may be approved
+   by the overseer as a recorded judgment call (see the slice bullet).
+   Route only genuine product/credential/destructive calls to the
+   maintainer.
+2. **On `livespec-in7snc` close: hard-review before treating it as
+   accepted.** Review the merged PR against the item's acceptance criteria
+   (NO dispatch path references `LIVESPEC_FAMILY_GITHUB_TOKEN`; the
+   console's ready item `livespec-console-beads-fabro-idgql3` — console
+   repo `/data/projects/livespec-console-beads-fabro`, same-named tmux
+   session — dispatches end-to-end via App token; survives the ~76-minute
+   merge-poll via re-mint; `just check` + `/livespec:doctor` green, run in
+   the beads-fabro repo) and record the verdict here. Verify `bd-ib-gsl`
+   was closed with it (absorbed).
+3. **Shepherd the runtime session's two follow-up filings** (check its
+   pane / that repo's `SPECIFICATION/proposed_changes/` + tenant): the
+   urllib-vs-no-HTTP-client spec-tension propose-change (filed only — its
+   revise/accept is a later gate, run from a livespec-runtime session) and
+   the doctor-static-gitignore work-item.
+4. **Then the remaining children in dependency order** (the provider is
+   now available in v0.8.0): `livespec-orslcm` (Pillar 3, standalone
+   agent-context wiring) then `livespec-uotocj` (retire the fleet PAT +
+   restrict fleet App install scope — sequence it LAST among the code
+   slices, after in7snc and orslcm stop consuming the PAT). Mark ready /
+   delegate as recorded judgment calls. `livespec-p3icf6` stays gated on
+   D17 (`plan/fleet-followups/handoff.md`, group D) — D17 (register
+   openbrain + dolt-server as adopters in `.livespec-fleet-manifest.jsonc`)
+   is a genuine fleet/core product decision: surface it to the maintainer
+   when p3icf6 is otherwise ripe.
 
 ## Read-first chain (in order)
 
