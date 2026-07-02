@@ -4,6 +4,37 @@ The single resumable entry point for the **fleet GitHub App-token auth**
 coordination epic. A fresh session can execute the next action from this file
 alone via the read-first chain — no chat history required.
 
+## Track operating model (maintainer directive, 2026-07-02 — THIS track only)
+
+Standing instructions for EVERY session resuming this thread; carry them
+forward verbatim in every future handoff refresh.
+
+- **Drive autonomously.** Sessions on this track drive end-to-end without
+  waiting for prompts: execute the next action, then keep going (spec revise,
+  delegation, monitoring, follow-ups) until the track is blocked on the
+  maintainer or done. Reserve maintainer gates for genuine decisions
+  (approvals, credential/host actions, destructive ops); present EVERY such
+  gate as a structured multiple-choice question (Claude Code: the
+  AskUserQuestion tool) with a clearly-recommended FIRST option — never a
+  free-form prose question.
+- **Delegate cross-repo work to per-repo tmux sessions.** Each target repo's
+  work is driven in the tmux session NAMED AFTER THAT REPO (e.g.
+  `livespec-runtime`, `livespec-orchestrator-beads-fabro`); the maintainer has
+  these sessions open and monitors them. Do NOT hand-code sibling-repo slices
+  inline in the core session — send the work to the repo's own session with a
+  self-contained brief (forbid `--no-verify`; halt-and-report on hook
+  failure; never touch another session's worktrees/branches).
+- **Parallelize safely.** When slices are independent and non-conflicting
+  (different repos, no unmet dependency edge, no overlapping files), drive
+  them in parallel across their per-repo sessions; sequence only work joined
+  by a dependency edge or overlapping files.
+- **Model policy.** All sessions and sub-sessions on this track run **Claude
+  Fable 5 at extra-high reasoning effort**. When starting a fresh Claude Code
+  session for delegation, switch it FIRST (`/model` → Fable 5, xhigh effort)
+  before driving any work.
+- **Scope.** This operating model is TRACK-SCOPED to github-app-auth — a
+  per-track maintainer directive, not a permanent or fleet-wide decision.
+
 ## For a fresh session — read first
 
 - **What this is.** The coordination anchor for standardizing the fleet on
@@ -41,9 +72,9 @@ alone via the read-first chain — no chat history required.
   automation-credential rule).
 - **Working model.** This is a **CORE coordination thread** — resume it from a
   core session. The code slices are **cross-tenant**: each is admitted + built
-  from ITS OWN repo's session (livespec-runtime, then beads-fabro). Factory
-  changes are careful **self-modifications** — human-approved admission, never
-  auto-dispatch blind.
+  from ITS OWN repo's tmux session (per the operating model above). Factory
+  changes are careful **self-modifications** — human-approved admission
+  (AskUserQuestion gate with recommendation), never auto-dispatch blind.
 - **⚑ Golden rule.** FILE + GROOM ripe work; DISPATCH ready, factory-safe slices
   through the factory under the janitor gate; NEVER hand-code inline. Every repo
   change is worktree→PR→merge, never `--no-verify`.
@@ -51,20 +82,22 @@ alone via the read-first chain — no chat history required.
 
 ## The next action
 
-**Process the pending proposed change** (spec leads, impl follows) from a core
-session:
+**Process the pending proposed change** (spec leads, impl follows) from this
+core session:
 
 ```
 /livespec:revise
 ```
 
 Accepting `github-app-token-standardization` lands the fleet
-automation-credential contract the impl slices build against. After the revise
-pass, the parallel fronts (status from the ledger, per-tenant sessions): admit
-+ build `livespec-u67wdb` (livespec-runtime — the critical-path primitive),
-then `livespec-in7snc` (beads-fabro), while the Dispatcher may drain
-`livespec-gwjnes` (core, `ready`); the maintainer-gated children follow their
-dependency edges.
+automation-credential contract the impl slices build against. Then — per the
+operating model — the SAME session keeps driving without waiting: delegate
+`livespec-u67wdb` to the `livespec-runtime` tmux session (the critical-path
+primitive) and, in parallel where safe, let the Dispatcher (or the core
+session) drain `livespec-gwjnes` (core, `ready`, independent of the provider);
+`livespec-in7snc` follows in the `livespec-orchestrator-beads-fabro` session
+once its sibling dependency `livespec-u67wdb` lands; the maintainer-gated
+children follow their dependency edges via AskUserQuestion gates.
 
 ## Read-first chain (in order)
 
