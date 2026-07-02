@@ -13,29 +13,41 @@ track per the canonical pattern.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any, cast
 
-import fastjsonschema
 from returns.result import Result, safe
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.doctor_findings import DoctorFindings
 
+_Validator = Callable[[dict[str, Any]], dict[str, Any]]
+_FASTJSONSCHEMA_FACADE = import_module("livespec.io.fastjsonschema_facade")
+_JsonSchemaValueException = cast(
+    type[Exception],
+    _FASTJSONSCHEMA_FACADE.JsonSchemaValueException,
+)
+_compile_schema = cast(
+    Callable[..., _Validator],
+    _FASTJSONSCHEMA_FACADE.compile_schema,
+)
+
 __all__: list[str] = ["validate_doctor_findings"]
 
 
-@safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
+@safe(exceptions=(_JsonSchemaValueException,))
 def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> DoctorFindings:
     """Decorator-lifted validate-and-construct call.
 
-    fastjsonschema.compile returns a validator function that
+    compile_schema returns a validator function that
     raises JsonSchemaValueException on violation. On success we
     construct DoctorFindings from the validated payload, keeping
     the nested findings as dicts (consumers cast them via
     validate.finding.validate_finding when typed Finding
     instances are needed).
     """
-    validator = fastjsonschema.compile(schema)
+    validator = _compile_schema(schema_id="doctor_findings.schema.json", schema=schema)
     validated = validator(payload)
     return DoctorFindings(findings=validated["findings"])
 

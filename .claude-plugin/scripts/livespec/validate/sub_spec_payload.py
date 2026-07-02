@@ -9,19 +9,31 @@ the schema via fastjsonschema, and returns
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any, cast
 
-import fastjsonschema
 from returns.result import Result, safe
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.sub_spec_payload import SubSpecPayload
 from livespec.types import TemplateName
 
+_Validator = Callable[[dict[str, Any]], dict[str, Any]]
+_FASTJSONSCHEMA_FACADE = import_module("livespec.io.fastjsonschema_facade")
+_JsonSchemaValueException = cast(
+    type[Exception],
+    _FASTJSONSCHEMA_FACADE.JsonSchemaValueException,
+)
+_compile_schema = cast(
+    Callable[..., _Validator],
+    _FASTJSONSCHEMA_FACADE.compile_schema,
+)
+
 __all__: list[str] = ["validate_sub_spec_payload"]
 
 
-@safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
+@safe(exceptions=(_JsonSchemaValueException,))
 def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> SubSpecPayload:
     """Decorator-lifted validate-and-construct call.
 
@@ -29,7 +41,7 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> SubSpec
     even though check-newtype-domain-primitives' exact-name
     lookup doesn't require it — see dataclass docstring).
     """
-    validator = fastjsonschema.compile(schema)
+    validator = _compile_schema(schema_id="sub_spec_payload.schema.json", schema=schema)
     validated = validator(payload)
     return SubSpecPayload(
         template_name=TemplateName(validated["template_name"]),

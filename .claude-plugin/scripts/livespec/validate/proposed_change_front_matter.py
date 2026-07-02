@@ -13,9 +13,10 @@ Result track per the canonical pattern.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any, cast
 
-import fastjsonschema
 from returns.result import Result, safe
 
 from livespec.errors import ValidationError
@@ -25,6 +26,17 @@ from livespec.schemas.dataclasses.proposed_change_front_matter import (
     SpecCommitments,
 )
 from livespec.types import Author, TopicSlug
+
+_Validator = Callable[[dict[str, Any]], dict[str, Any]]
+_FASTJSONSCHEMA_FACADE = import_module("livespec.io.fastjsonschema_facade")
+_JsonSchemaValueException = cast(
+    type[Exception],
+    _FASTJSONSCHEMA_FACADE.JsonSchemaValueException,
+)
+_compile_schema = cast(
+    Callable[..., _Validator],
+    _FASTJSONSCHEMA_FACADE.compile_schema,
+)
 
 __all__: list[str] = ["validate_proposed_change_front_matter"]
 
@@ -49,7 +61,7 @@ def _build_spec_commitments(*, raw: dict[str, Any] | None) -> SpecCommitments | 
     return SpecCommitments(impl_followups=impl_followups, supersedes=supersedes)
 
 
-@safe(exceptions=(fastjsonschema.JsonSchemaValueException,))
+@safe(exceptions=(_JsonSchemaValueException,))
 def _raw_validate(
     *,
     payload: dict[str, Any],
@@ -63,7 +75,7 @@ def _raw_validate(
     block lands as the nested `SpecCommitments` dataclass when
     present (li-8mj2lz, PC #4 sub-proposal 1).
     """
-    validator = fastjsonschema.compile(schema)
+    validator = _compile_schema(schema_id="proposed_change_front_matter.schema.json", schema=schema)
     validated = validator(payload)
     return ProposedChangeFrontMatter(
         topic=TopicSlug(validated["topic"]),
