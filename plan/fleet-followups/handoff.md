@@ -13,7 +13,7 @@ alone via the read-first chain — no chat history required.
   git-jsonl, runtime), so — per the fleet pattern — this anchor carries only a
   few **same-tenant (core) ledger children** (`livespec-jcc6.1/.2/.3`, filed
   2026-07-01; **`.1` + `.2` DONE** via factory dispatch (PRs #736/#734), `.3`
-  held at `backlog` — see §"Session 3"/§"Session 4"); every **cross-tenant** item
+  held at `backlog` — held rationale in §"Session 2"); every **cross-tenant** item
   is **prose-linked** in the inventory and its status is composed from the ledger
   (no shadow queue).
 - **⚑ NEW #1 (2026-07-02): GitHub App-token auth — its OWN dedicated thread.** The
@@ -38,10 +38,17 @@ alone via the read-first chain — no chat history required.
      `WorkItem` fields, both backends): **S1 `livespec-runtime-00u` DONE** (contract
      MERGED to `livespec-runtime` master; **v0.7.0 CUT** 2026-07-02 — release-please
      **PR #105** merged, latest release now v0.7.0; CORE already re-vendored it via
-     `bump-pin` commit `4d08972`); S2 `bd-ib-fqh.1` (beads store+`render_goal`) + S3
-     `bd-gj-lxr` (git-jsonl store/schema) now wait ONLY on their own tenants'
-     `bump-pin` re-vendor of v0.7.0 → promote `backlog→ready` from those sessions; S4
-     `bd-ib-fqh.2` + S5 `bd-ib-fqh.3` gated behind S2.
+     `bump-pin` commit `4d08972`). **S2 `bd-ib-fqh.1` (beads store+`render_goal`) is
+     UN-GATED** — beads-fabro's re-vendor landed (fan-out **PR #233** MERGED
+     2026-07-02 01:45Z); promote `backlog→ready` from a beads-fabro session. **S3
+     `bd-gj-lxr` (git-jsonl store/schema) has an INVERTED gate** — its re-vendor
+     (fan-out **PR #158**) is terminally BLOCKED: v0.7.0 serializes
+     `acceptance_criteria`+`notes` and git-jsonl's own schema validator rejects them
+     (87 test failures, `check-coverage` red), and that schema extension IS S3's
+     work — implement S3 from a git-jsonl session and land it WITH the pin bump
+     (same PR or S3-first). S4 `bd-ib-fqh.2` + S5 `bd-ib-fqh.3` show `ready` in the
+     ledger but carry `depends_on → bd-ib-fqh.1` edges, so dispatch stays correctly
+     gated behind S2 (§"Session 8").
   2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR. `ready`.
   3. **`bd-ib-mxr`** (EPIC) — **E2E dispatch acceptance**: prove the REAL janitor +
      dispatch path green **by execution** (not mocks). Children **`bd-ib-cyv`**
@@ -80,11 +87,15 @@ session**; careful — human-approved admission, never auto-dispatch blind. **Or
    real-dispatch E2E (`bd-ib-mxr.1`). Until it lands, every non-core dispatch below
    merges-but-marks-failed.
 2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR (`ready`).
-3. **`bd-ib-fqh` cross-repo epic** — S1 (`livespec-runtime-00u`) DONE (merged to
-   `livespec-runtime` master). **v0.7.0 CUT** 2026-07-02 (PR #105 merged; CORE
-   re-vendored via `bump-pin` `4d08972`). S2 (`bd-ib-fqh.1`) + S3 (`bd-gj-lxr`) now
-   wait ONLY on their own tenants' `bump-pin` re-vendor of v0.7.0 → verify the
-   re-vendor landed, promote `backlog→ready` from those sessions → then S4/S5.
+3. **`bd-ib-fqh` cross-repo epic** — S1 (`livespec-runtime-00u`) DONE; **v0.7.0
+   CUT** (PR #105; CORE re-vendored via `4d08972`). **S2 (`bd-ib-fqh.1`): re-vendor
+   LANDED** (beads-fabro fan-out **PR #233** merged 2026-07-02) → promote
+   `backlog→ready` from a beads-fabro session and work it. **S3 (`bd-gj-lxr`):
+   INVERTED gate** — its re-vendor PR #158 is terminally BLOCKED because v0.7.0
+   serializes `acceptance_criteria`+`notes` and git-jsonl's own schema validator
+   rejects them (87 test failures); implement S3 from a git-jsonl session and land
+   it WITH the pin bump. Then S4/S5 (`ready` in the ledger, correctly dep-gated on
+   S2 via `depends_on`). Details: §"Session 8".
 
 Dispatch mechanics + scope-guard discipline: see step 3 below. ⚠ Non-core targets
 currently false-fail the post-merge janitor (that's `bd-ib-cyv`) — verify via
@@ -95,16 +106,23 @@ Then the remaining thread work (core tenant, from this session):
 
 1. **Read `research/01-followup-inventory.md`** — the full grouped catalog (ids,
    tenants, one-line actions, live ledger id / FILED marker). The map for below.
-2. **Two `ready` core gap-facade items are admission-approved but HELD** pending
-   scope guards: **`livespec-yonx`** (`io/fastjsonschema_facade.py`) +
-   **`livespec-ek6e`** (`io/structlog_facade.py`), both `admission:auto` +
-   `acceptance:ai-only`. ⚠ Before dispatching each, add a **SCOPE-GUARD ledger
-   comment** (`bd comment <id> "modify ONLY <files>; do NOT edit README/docs/..."`)
-   — that comment is the ONLY item-specific channel the Fabro brief includes today
-   (the acceptance field is NOT in the brief; that's what `bd-ib-fqh` fixes), and it
-   is what made `yc8e`'s re-dispatch land cleanly.
+2. **The two core gap-facade items are DONE** (Session 8): **`livespec-yonx`**
+   (`io/fastjsonschema_facade.py`, **PR #762**, exact-scope, janitor green, CLOSED)
+   + **`livespec-ek6e`** (`io/structlog_facade.py`, **PR #764**, exact-scope,
+   janitor green, CLOSED). ⚠ The scope-guard discipline they validated stays
+   MANDATORY for every
+   dispatch until `bd-ib-fqh` lands: add a **SCOPE-GUARD ledger comment**
+   (`bd comment <id> "modify ONLY <files>; do NOT edit README/docs/..."`) naming the
+   exact file set — that comment is the ONLY item-specific channel the Fabro brief
+   includes today (the acceptance field is NOT in the brief; that's what `bd-ib-fqh`
+   fixes). Enumerate the REAL callsite set yourself (grep, don't trust the item
+   text's examples — yonx's acceptance named 2 callsites; the true set was 11).
 3. **Dispatch a `ready`, scope-guarded core item through the factory FROM THIS
-   SESSION** (proven — `yc8e` PR #742, `jcc6.1` #736, `jcc6.2` #734). (a) admission
+   SESSION** (proven — `yonx` PR #762, `ek6e` #764, `yc8e` #742, `jcc6.1` #736,
+   `jcc6.2` #734). ⚠ As of Session 8 the core dispatchable-`ready` queue is
+   EMPTY — this step is the mechanics reference for when step-4 grooming promotes
+   new items. (For a non-core target substitute its repo name in `--target-repo`,
+   but mind the janitor false-fail warning below.) (a) admission
    is approved via the `admission:auto` label (+ `acceptance:ai-only`); (b) run the
    containerized dispatcher:
    ```bash
@@ -143,16 +161,20 @@ Then the remaining thread work (core tenant, from this session):
 
 **⚑ TOP PRIORITY (all `livespec-orchestrator-beads-fabro`, P0, careful self-mods):**
 `bd-ib-fqh` EPIC (context-completeness, Option-B cross-repo: S1 `livespec-runtime-00u`
-DONE, v0.7.0 CUT (PR #105 merged), S2 `bd-ib-fqh.1` + S3 `bd-gj-lxr` re-vendor-gated, S4 `bd-ib-fqh.2` + S5
-`bd-ib-fqh.3` gated); `bd-ib-asp` (merge-poll fail-fast, `ready`); `bd-ib-mxr` EPIC
+DONE, v0.7.0 CUT (PR #105 merged), **S2 `bd-ib-fqh.1` UN-GATED** (re-vendor PR #233
+merged — promote from a beads-fabro session), **S3 `bd-gj-lxr` INVERTED gate** (its
+re-vendor PR #158 is BLOCKED on S3's own schema work — land together from a git-jsonl
+session), S4 `bd-ib-fqh.2` + S5 `bd-ib-fqh.3` dep-gated on S2); `bd-ib-asp`
+(merge-poll fail-fast, `ready`); `bd-ib-mxr` EPIC
 (E2E dispatch acceptance — children `bd-ib-cyv` janitor-green-by-execution +
 `bd-ib-mxr.1` broader E2E; THE UNBLOCKER for non-core dispatch).
 Core epic children (this thread): `livespec-jcc6.1` (B2, **DONE** PR #736),
 `livespec-jcc6.2` (B3, **DONE** PR #734), `livespec-jcc6.3` (C6, `backlog` — held).
-Other core: `livespec-yc8e` (B1 reaper, **DONE** PR #742), `livespec-mpkaz4`
-(reaper sibling, `open`), `livespec-127o` (README, `backlog`), `livespec-m0xu`
-(template rename, `backlog`), `livespec-yonx` + `livespec-ek6e` (io facades,
-**`ready`** — HELD pending scope guards), `livespec-aava` (B5, Codex skill-picker).
+Other core: `livespec-yc8e` (B1 reaper, **DONE** PR #742), `livespec-yonx` (io
+facade, **DONE** PR #762), `livespec-ek6e` (io facade, **DONE** PR #764),
+`livespec-mpkaz4` (reaper sibling, `open`), `livespec-127o` (README, `backlog`),
+`livespec-m0xu` (template rename, `backlog`), `livespec-aava` (B5, Codex
+skill-picker).
 Cross-tenant: `bd-ib-2wq` (beads-fabro); `livespec-dev-tooling-9j8` +13 children
 (dev-tooling); `livespec-8kip` (dev-tooling gap).
 
@@ -261,8 +283,9 @@ Factory-hardening deepened from two items to **four P0 threads** (all
   propagated to BOTH orchestrator backends + the git-jsonl schema. 5 slices, 3 tenants:
   - **S1 `livespec-runtime-00u` (livespec-runtime) — DONE.** WorkItem +=
     `acceptance_criteria`/`notes` (optional-on-read); PR #104 merged, master CI green.
-    ⚠ The **v0.7.0** release is NOT cut yet — release-please **PR #105** is still OPEN
-    (latest release v0.6.0). Merging PR #105 cuts v0.7.0, the re-vendor gate for S2/S3.
+    ⚠ *(SUPERSEDED by §"Session 7" — v0.7.0 WAS cut 2026-07-02.)* At the time of this
+    session the **v0.7.0** release was NOT cut yet — release-please **PR #105** was
+    still OPEN (latest release v0.6.0); merging it was the re-vendor gate for S2/S3.
   - S2 `bd-ib-fqh.1` (beads store map + `render_goal` + audit) — `backlog`, release-gated.
   - S3 `bd-gj-lxr` (git-jsonl store + schema fields, consistent with beads) —
     `backlog`, release-gated.
@@ -354,6 +377,43 @@ authorized the cut.
   `plan/github-app-auth/handoff.md` sits on the PRIMARY checkout (another track's
   work; stuck because the primary-checkout commit-refuse hook blocks committing it
   there — it must be moved into a worktree by that track). NOT touched here.
+
+## Session 8 (2026-07-02) — S2 un-gated / S3 gate inverted; both io facades dispatched
+
+Resumed to execute next-action steps 2–3. Composed status LIVE and found the
+`bd-ib-fqh` chain had moved:
+
+- **S2 (`bd-ib-fqh.1`, beads-fabro) is UN-GATED.** Its v0.7.0 re-vendor landed —
+  fan-out **PR #233** (`chore(deps): bump livespec-runtime pin to v0.7.0`) MERGED
+  2026-07-02 01:45Z. Next: promote `backlog→ready` + work it from a beads-fabro
+  session. (A stale local clone can hide this — verify against GitHub, not the
+  checkout.)
+- **S3 (`bd-gj-lxr`, git-jsonl) has an INVERTED gate.** Its re-vendor, fan-out
+  **PR #158**, sits terminally BLOCKED: required check `check-coverage` fails with
+  **87 test failures** — v0.7.0's `WorkItem` now serializes `acceptance_criteria` +
+  `notes` on every record and git-jsonl's OWN schema validator rejects them
+  (`unexpected extra keys`). That schema/store extension IS S3's scope, so S3 isn't
+  waiting on the re-vendor — the re-vendor is waiting on S3. Implement S3 from a
+  git-jsonl session (`/data/projects/livespec-orchestrator-git-jsonl`) and land it
+  WITH the pin bump (same PR or S3-first). PR #158 is
+  also a live specimen of the terminally-BLOCKED-PR state `bd-ib-asp` will
+  fail-fast on.
+- **S4/S5 (`bd-ib-fqh.2`/`.3`) read `ready` in the ledger** — not premature: both
+  carry explicit `depends_on → bd-ib-fqh.1` edges, so dispatch stays gated behind
+  S2. No action needed.
+- **`livespec-yonx` DONE via factory** — scope-guard comment enumerated the facade
+  + the REAL callsite set (11 `fastjsonschema.compile` callsites across
+  `validate/`; the acceptance text had named only 2 as examples) + 1 test file →
+  **PR #762** merged, diff exactly the 13 scoped files, post-merge janitor green
+  (58 targets), ai-only acceptance, ledger CLOSED (~31 min).
+- **`livespec-ek6e` DONE via factory** the same way (scope guard: facade +
+  `__init__.py` + `commands/revise.py` — a second structlog callsite the item text
+  missed — + 1 test file) → **PR #764** merged, diff exactly the 4 scoped files,
+  post-merge janitor green, ai-only acceptance, ledger CLOSED (~28 min).
+- With both io facades landed, the three `--since-version 150` capture-pass gaps
+  are 2/3 closed (core); the remaining one is `livespec-8kip` (dev-tooling tenant).
+  Core's dispatchable-`ready` queue is now EMPTY — the remaining core items need
+  grooming (`127o`, `m0xu`) or aren't autonomously verifiable (`jcc6.3`).
 
 ## Read-first chain (in order)
 
