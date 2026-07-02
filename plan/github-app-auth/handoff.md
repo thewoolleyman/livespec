@@ -46,8 +46,11 @@ forward verbatim in every future handoff refresh.
 - **Epic anchor:** `livespec-2ef0` (core tenant). Status is READ from the
   ledger, never from this file:
   ```bash
-  source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-2ef0
+  /data/projects/1password-env-wrapper/with-livespec-env.sh -- bd -C /data/projects/livespec show livespec-2ef0
   ```
+  Every `bd` command in this handoff runs under this same wrapper (the bare
+  `bd ...` forms below omit it for brevity); `/usr/local/bin/with-livespec-env.sh`
+  is the installed copy of the same wrapper.
 - **Spec side: DONE (2026-07-02).** The proposed change
   `github-app-token-standardization` was ACCEPTED by `/livespec:revise` —
   history **v153** cut, PR #756 merged to master. The fleet
@@ -61,21 +64,26 @@ forward verbatim in every future handoff refresh.
   future pass asks.
 - **Groomed slice ids (cite read-only; status lives in the ledger).**
   - `livespec-gwjnes` (core) — impl-plugin template `github-auth-guard` hook
-    + core test. DISPATCHED through the factory 2026-07-02 (core session ran
-    `orchestrate run --action impl:livespec-gwjnes`; shadow mode, budget=1).
-    The first dispatch was HELD at admission (unset `admission_policy` →
-    safe-default `manual`); the core session added the `admission:auto`
-    label and re-dispatched, executing THIS handoff's pre-authorization
-    ("let the Dispatcher (or the core session) drain livespec-gwjnes") —
-    the maintainer was away at the AskUserQuestion gate, so review this
-    judgment call. Post-merge the item PARKS in `acceptance`
-    (`ai-then-human` default) until the maintainer confirms.
-    Verify outcome in the ledger + merged PR before re-dispatching.
+    + core test. FACTORY-BUILT AND MERGED: PR #760 landed on master
+    2026-07-02T02:15Z; Session 8 verified the template hook + paired
+    `github_auth_guard.py` + `tests/test_template_github_auth_guard.py` on
+    `origin/master` and ran the test green there (15 passed). The item is
+    PARKED in `acceptance` (`ai-then-human` default) awaiting the
+    maintainer's confirmation; the acceptance gate was presented Session 8
+    (maintainer away — still open). Note for the maintainer: the dispatch
+    itself involved a judgment call to review — the first dispatch HELD at
+    admission (unset `admission_policy` → safe-default `manual`), and the
+    core session added the `admission:auto` label and re-dispatched under
+    this handoff's pre-authorization while the maintainer was away.
   - `livespec-u67wdb` (**livespec-runtime tenant**) — the App-token provider
     + git credential helper primitive (first-class remint; Pillar 1; the
     critical path). DELEGATED 2026-07-02 to the `livespec-runtime` tmux
-    session with a self-contained brief; its human admission gate
-    (AskUserQuestion) surfaces THERE. Read:
+    session; that session read the brief and is PAUSED at its human
+    admission gate (AskUserQuestion: "Admit and start now?") awaiting the
+    maintainer IN THAT PANE — the item deliberately stays `backlog` until
+    admitted (`command tmux capture-pane -t livespec-runtime -p` to check;
+    plain `tmux` may be shadowed by a zsh plugin shim in non-interactive
+    shells — prefix with `command`). Read:
     `bd -C /data/projects/livespec-runtime show livespec-u67wdb`.
   - `livespec-in7snc` (**livespec-orchestrator-beads-fabro tenant**) —
     factory dispatch routes GitHub auth via target `credential_wrapper` →
@@ -94,6 +102,20 @@ forward verbatim in every future handoff refresh.
   from ITS OWN repo's tmux session (per the operating model above). Factory
   changes are careful **self-modifications** — human-approved admission
   (AskUserQuestion gate with recommendation), never auto-dispatch blind.
+- **Core factory dispatch shape** (until `livespec-in7snc` retires it): the
+  Dispatcher process needs the fleet PAT aliased into `GH_TOKEN` under the
+  wrapper AND `fabro` (`~/.local/bin`) on PATH —
+  `/usr/local/bin/with-livespec-env.sh -- sh -c 'export
+  PATH="$HOME/.local/bin:$PATH"; export
+  GH_TOKEN="$LIVESPEC_FAMILY_GITHUB_TOKEN"; exec python3
+  /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/orchestrate.py
+  run --repo /data/projects/livespec --action impl:<work-item-id> --json'`
+  (a bare `orchestrate run` fails at `run-config-overlay`; without the PATH
+  prepend the fabro launch dies and STRANDS the item in `active` — reset it
+  with `bd update <work-item-id> --status ready` before re-dispatching). The
+  Dispatcher journal is
+  `/data/projects/livespec/tmp/fabro-dispatch-journal.jsonl` (JSONL, one
+  stage record per line; read its tail for the last dispatch's stages).
 - **⚑ Golden rule.** FILE + GROOM ripe work; DISPATCH ready, factory-safe slices
   through the factory under the janitor gate; NEVER hand-code inline. Every repo
   change is worktree→PR→merge, never `--no-verify`.
@@ -101,35 +123,22 @@ forward verbatim in every future handoff refresh.
 
 ## The next action
 
-**Verify and shepherd the two in-flight slices, then unblock the chain** —
-all from this core session, statuses read live from the ledger:
+**The track is blocked on two open maintainer gates; clear them, then unblock
+the chain** — statuses read live from the ledger:
 
-1. `livespec-gwjnes` (factory dispatch, core): confirm the Dispatcher run
-   ended with a merged PR and the item parked in `acceptance`
-   (`bd -C /data/projects/livespec show livespec-gwjnes`; check
-   `gh pr list --repo thewoolleyman/livespec --state merged --search
-   github-auth-guard`), then present the maintainer the post-merge
-   acceptance gate. If the dispatch failed, read its journal and re-run.
-   The Dispatcher journal is
-   `/data/projects/livespec/tmp/fabro-dispatch-journal.jsonl` (JSONL,
-   one stage record per line; read its tail for the last dispatch's
-   stages). DISPATCH SHAPE (until `livespec-in7snc` retires it): the
-   Dispatcher process needs the fleet PAT aliased into `GH_TOKEN` under
-   the wrapper AND `fabro` (`~/.local/bin`) on PATH —
-   `/usr/local/bin/with-livespec-env.sh -- sh -c 'export
-   PATH="$HOME/.local/bin:$PATH"; export
-   GH_TOKEN="$LIVESPEC_FAMILY_GITHUB_TOKEN"; exec python3
-   /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/orchestrate.py
-   run --repo /data/projects/livespec --action impl:livespec-gwjnes
-   --json'` (a bare `orchestrate run` fails at `run-config-overlay`;
-   without the PATH prepend the fabro launch dies and STRANDS the item
-   in `active` — reset it with `bd update livespec-gwjnes --status
-   ready` before re-dispatching).
-2. `livespec-u67wdb` (livespec-runtime session): check the ledger; if still
-   `backlog`, the admission gate is likely awaiting the maintainer in the
-   `livespec-runtime` tmux session — check that pane
-   (`tmux capture-pane -t livespec-runtime -p`) and surface to the
-   maintainer if stalled.
+1. **Maintainer gate (critical path): `livespec-u67wdb` admission.** The
+   `livespec-runtime` tmux session is paused at its AskUserQuestion admission
+   gate ("Admit and start now?" — recommended). The maintainer answers IN THAT
+   PANE; on admission that session drives the slice end-to-end (TDD, worktree
+   → PR → merge, close). A resuming core session verifies the pane is still
+   at the gate (`command tmux capture-pane -t livespec-runtime -p`) and
+   re-surfaces this to the maintainer if stalled; do NOT self-approve — the
+   item is explicitly human-admitted.
+2. **Maintainer gate: `livespec-gwjnes` acceptance.** Merged and verified
+   (see the slice bullet above); present/re-present the acceptance gate via
+   AskUserQuestion (recommend: accept and close). On acceptance, close the
+   item in the core ledger: `bd -C /data/projects/livespec close
+   livespec-gwjnes` (under the wrapper).
 3. When `livespec-u67wdb` CLOSES: delegate `livespec-in7snc` to the
    `livespec-orchestrator-beads-fabro` tmux session with a self-contained
    brief (same discipline block as the operating model; the item description
