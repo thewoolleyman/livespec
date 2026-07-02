@@ -10,19 +10,40 @@ alone via the read-first chain — no chat history required.
   GitHub **App installation tokens** for ALL automated GitHub operations —
   factory dispatch AND standalone agent worktree commits — **retiring the fleet
   PAT** (`LIVESPEC_FAMILY_GITHUB_TOKEN`) and **removing the human OAuth token
-  from the agent path**. The current model is fragmented across three identities
-  (factory PAT, human `gho_` OAuth, CI `GITHUB_TOKEN`), none right for
-  automation; see `research/01-design.md` for the full why + the four pillars.
-- **Epic anchor:** `livespec-2ef0` (core tenant, `backlog`). Status is READ from
-  the ledger, never from this file:
+  from the agent path**. See `research/01-design.md` for the why + the four
+  pillars.
+- **Epic anchor:** `livespec-2ef0` (core tenant). GROOMED 2026-07-02 into
+  dependency-layered slices (ids below). Status is READ from the ledger, never
+  from this file:
   ```bash
   source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-2ef0
   ```
+- **Groomed slice ids (cite read-only; status lives in the ledger).**
+  - `livespec-gwjnes` (core, filed `ready`) — impl-plugin template
+    `github-auth-guard` hook + core test.
+  - `livespec-u67wdb` (**livespec-runtime tenant**, `backlog`) — the App-token
+    provider + git credential helper primitive (first-class remint; Pillar 1).
+    Read: `bd -C /data/projects/livespec-runtime show livespec-u67wdb`.
+  - `livespec-in7snc` (**livespec-orchestrator-beads-fabro tenant**, `backlog`)
+    — factory dispatch routes GitHub auth via target `credential_wrapper` →
+    provider; retires the fleet-PAT export. Supersedes-edge to `bd-ib-gsl`
+    (absorbed; closes when this lands). Blocked by `livespec-u67wdb` (sibling
+    dep). Read: `bd -C /data/projects/livespec-orchestrator-beads-fabro show livespec-in7snc`.
+  - Epic children (core, `backlog`, maintainer-gated — deliberately NOT
+    `ready` so the Dispatcher never drains them): `livespec-orslcm` (standalone
+    agent-context wiring, Pillar 3), `livespec-uotocj` (retire the fleet PAT +
+    restrict fleet App install scope; superseded `bd-ib-p2e` is CLOSED),
+    `livespec-p3icf6` (openbrain adopter dogfood, Pillar 2; folds
+    fleet-followups C16, gated on its D17 decision).
+- **Spec side.** The groom's spec-change slice is FILED as a pending proposed
+  change: `SPECIFICATION/proposed_changes/github-app-token-standardization.md`
+  (extends non-functional-requirements §"Fleet secrets" with the GitHub
+  automation-credential rule).
 - **Working model.** This is a **CORE coordination thread** — resume it from a
-  core session. The code slices are **cross-tenant**: the **factory** slice is
-  groomed + built from a `livespec-orchestrator-beads-fabro` session; the
-  **host/adopter** slices from their own sessions. Factory changes are careful
-  **self-modifications** — human-approved admission, never auto-dispatch blind.
+  core session. The code slices are **cross-tenant**: each is admitted + built
+  from ITS OWN repo's session (livespec-runtime, then beads-fabro). Factory
+  changes are careful **self-modifications** — human-approved admission, never
+  auto-dispatch blind.
 - **⚑ Golden rule.** FILE + GROOM ripe work; DISPATCH ready, factory-safe slices
   through the factory under the janitor gate; NEVER hand-code inline. Every repo
   change is worktree→PR→merge, never `--no-verify`.
@@ -30,41 +51,26 @@ alone via the read-first chain — no chat history required.
 
 ## The next action
 
-**Groom the epic (`livespec-2ef0`) into dependency-layered slices** from the
-appropriate session:
+**Process the pending proposed change** (spec leads, impl follows) from a core
+session:
 
 ```
-/livespec-orchestrator-beads-fabro:groom livespec-2ef0
+/livespec:revise
 ```
 
-The following is **grooming guidance**, explicitly NOT a shadow `[ ]`/`[x]`
-checklist — status is composed from the ledger, there is no shadow queue.
-Proposed slice shape (each a careful self-mod — groom + human review; do NOT
-auto-dispatch blind):
-
-1. **Shared credential provider + git credential helper with first-class
-   remint** — the core primitive. Hard acceptance = **survives a >1-hour run /
-   re-mints transparently** (Pillar 1).
-2. **Factory** [beads-fabro] — route `real-work-dispatch.sh` + the entrypoint +
-   all dispatch paths through **target-scoped `credential_wrapper` resolution**,
-   retiring the hardcoded fleet PAT. Reshape `bd-ib-gsl` into this slice.
-3. **Standalone / host** [host/fleet] — wire the git credential helper as the
-   agent-context credential, drop the ambient `gh` OAuth from the agent path,
-   scrub `GH_TOKEN` (Pillar 3).
-4. **Enforcement guardrails** — the `github_auth_guard` PreToolUse hook (sibling
-   of `beads_access_guard`) + document the VPS **per-tenant-OS-user** boundary as
-   the real enforcement (Pillar 4).
-5. **Retire `LIVESPEC_FAMILY_GITHUB_TOKEN`** from the fleet Environment +
-   restrict the fleet App's install scope to fleet repos only.
-6. **Adopter dogfood acceptance** — openbrain via its own App with the fleet
-   secrets UNREADABLE (Pillar 2 dogfood). Fold `C16`; close `bd-ib-p2e` as
-   obsolete.
+Accepting `github-app-token-standardization` lands the fleet
+automation-credential contract the impl slices build against. After the revise
+pass, the parallel fronts (status from the ledger, per-tenant sessions): admit
++ build `livespec-u67wdb` (livespec-runtime — the critical-path primitive),
+then `livespec-in7snc` (beads-fabro), while the Dispatcher may drain
+`livespec-gwjnes` (core, `ready`); the maintainer-gated children follow their
+dependency edges.
 
 ## Read-first chain (in order)
 
 1. `research/01-design.md` — the why, the decision, the research basis, the four
-   pillars + mechanics, existing items to fold in, and open questions. The only
-   companion; everything else needed is in this handoff.
+   pillars + mechanics, and open questions. The only companion; everything else
+   needed is in this handoff.
 
 ## Resume command
 
