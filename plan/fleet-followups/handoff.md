@@ -36,10 +36,11 @@ alone via the read-first chain — no chat history required.
   1. **`bd-ib-fqh`** (EPIC) — factory context-completeness, re-groomed as an
      **Option-B cross-repo epic** (`acceptance_criteria`+`notes` become first-class
      `WorkItem` fields, both backends): **S1 `livespec-runtime-00u` DONE** (contract
-     MERGED to `livespec-runtime` master; a **v0.7.0** release is QUEUED but NOT yet
-     cut — release-please **PR #105** is still OPEN, latest release is v0.6.0); S2
-     `bd-ib-fqh.1` (beads store+`render_goal`) + S3 `bd-gj-lxr` (git-jsonl
-     store/schema) **release-gated** (merge PR #105 → v0.7.0 → `bump-pin`); S4
+     MERGED to `livespec-runtime` master; **v0.7.0 CUT** 2026-07-02 — release-please
+     **PR #105** merged, latest release now v0.7.0; CORE already re-vendored it via
+     `bump-pin` commit `4d08972`); S2 `bd-ib-fqh.1` (beads store+`render_goal`) + S3
+     `bd-gj-lxr` (git-jsonl store/schema) now wait ONLY on their own tenants'
+     `bump-pin` re-vendor of v0.7.0 → promote `backlog→ready` from those sessions; S4
      `bd-ib-fqh.2` + S5 `bd-ib-fqh.3` gated behind S2.
   2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR. `ready`.
   3. **`bd-ib-mxr`** (EPIC) — **E2E dispatch acceptance**: prove the REAL janitor +
@@ -80,10 +81,10 @@ session**; careful — human-approved admission, never auto-dispatch blind. **Or
    merges-but-marks-failed.
 2. **`bd-ib-asp`** — merge-poll fail-fast on a terminally-BLOCKED PR (`ready`).
 3. **`bd-ib-fqh` cross-repo epic** — S1 (`livespec-runtime-00u`) DONE (merged to
-   `livespec-runtime` master). ⚠ The **v0.7.0** release is NOT cut yet —
-   release-please **PR #105** is OPEN. **Merge PR #105** to cut v0.7.0; then
-   `bump-pin` propagates it and S2 (`bd-ib-fqh.1`) + S3 (`bd-gj-lxr`) unblock
-   (re-vendor gate) → promote `backlog→ready` → then S4/S5.
+   `livespec-runtime` master). **v0.7.0 CUT** 2026-07-02 (PR #105 merged; CORE
+   re-vendored via `bump-pin` `4d08972`). S2 (`bd-ib-fqh.1`) + S3 (`bd-gj-lxr`) now
+   wait ONLY on their own tenants' `bump-pin` re-vendor of v0.7.0 → verify the
+   re-vendor landed, promote `backlog→ready` from those sessions → then S4/S5.
 
 Dispatch mechanics + scope-guard discipline: see step 3 below. ⚠ Non-core targets
 currently false-fail the post-merge janitor (that's `bd-ib-cyv`) — verify via
@@ -142,7 +143,7 @@ Then the remaining thread work (core tenant, from this session):
 
 **⚑ TOP PRIORITY (all `livespec-orchestrator-beads-fabro`, P0, careful self-mods):**
 `bd-ib-fqh` EPIC (context-completeness, Option-B cross-repo: S1 `livespec-runtime-00u`
-DONE, v0.7.0 release QUEUED via PR #105, S2 `bd-ib-fqh.1` + S3 `bd-gj-lxr` release-gated, S4 `bd-ib-fqh.2` + S5
+DONE, v0.7.0 CUT (PR #105 merged), S2 `bd-ib-fqh.1` + S3 `bd-gj-lxr` re-vendor-gated, S4 `bd-ib-fqh.2` + S5
 `bd-ib-fqh.3` gated); `bd-ib-asp` (merge-poll fail-fast, `ready`); `bd-ib-mxr` EPIC
 (E2E dispatch acceptance — children `bd-ib-cyv` janitor-green-by-execution +
 `bd-ib-mxr.1` broader E2E; THE UNBLOCKER for non-core dispatch).
@@ -331,6 +332,28 @@ fail-closed), one primitive for factory + standalone, OS/VPS enforcement. It **a
 obsolete on groom), and **folds in `C16`** (openbrain adopter wrapper). Successor to the
 closed credential-wrapper epic `livespec-zd8h`. Resume via
 `/livespec-orchestrator-beads-fabro:plan github-app-auth`.
+
+## Session 7 (2026-07-02) — v0.7.0 cut; `bd-ib-fqh` S2/S3 un-gated
+
+Resumed to unblock the `bd-ib-fqh` cross-repo chain. Verified LIVE (not from prose):
+`livespec-runtime` **v0.7.0 was NOT yet cut** — release-please **PR #105** was still
+OPEN, latest release v0.6.0 (the handoff's earlier correction was right; an older
+`livespec-jcc6` ledger comment claiming "released v0.7.0" was stale). Maintainer
+authorized the cut.
+
+- **Merged PR #105 (rebase) → v0.7.0 CUT** (2026-07-02 01:44Z); release-please
+  immediately created the v0.7.0 tag/release.
+- **CORE already re-vendored v0.7.0** via the `bump-pin` fan-out commit `4d08972`
+  ("chore(deps): bump livespec-runtime pin to v0.7.0" — updated the vendored
+  `work_items/types.py`, `.vendor.jsonc`, `pyproject.toml`, `uv.lock`).
+- **`bd-ib-fqh` S2 (`bd-ib-fqh.1`, beads-fabro) + S3 (`bd-gj-lxr`, git-jsonl) are no
+  longer release-gated** — they now wait ONLY on their OWN tenants' `bump-pin`
+  re-vendor of v0.7.0. Next: from a beads-fabro / git-jsonl session, verify the
+  re-vendor landed and promote each `backlog→ready`, then S4/S5.
+- **Untouched finding:** an in-flight, uncommitted refresh of
+  `plan/github-app-auth/handoff.md` sits on the PRIMARY checkout (another track's
+  work; stuck because the primary-checkout commit-refuse hook blocks committing it
+  there — it must be moved into a worktree by that track). NOT touched here.
 
 ## Read-first chain (in order)
 
