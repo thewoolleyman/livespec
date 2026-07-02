@@ -144,13 +144,65 @@ forward verbatim in every future handoff refresh.
     fabro SERVER env (allowlist blocks sandbox propagation; contract
     honored). Read:
     `bd -C /data/projects/livespec-orchestrator-beads-fabro show livespec-in7snc`.
-  - Epic children (core, maintainer-gated — deliberately NOT `ready` so the
-    Dispatcher never drains them): `livespec-orslcm` (standalone
-    agent-context wiring, Pillar 3), `livespec-uotocj` (retire the fleet PAT +
-    restrict fleet App install scope; superseded `bd-ib-p2e` is CLOSED),
-    `livespec-p3icf6` (openbrain adopter dogfood, Pillar 2; folds
+  - `livespec-orslcm` (core, Pillar 3) — WIRED 2026-07-02 (maintainer
+    approved "wire it now"; overseer executed as the maintainer-proxy
+    host session): all 8 fleet clones' repo-local git config now RESETS
+    the credential-helper list and substitutes
+    `~/.local/bin/livespec-agent-github-credential-helper` (a shim that
+    execs the livespec-runtime v0.8.0 `livespec-github-credential-helper`
+    under `/usr/local/bin/with-livespec-env.sh`) — worktrees inherit it;
+    `git credential fill` in a fleet clone yields
+    `username=x-access-token` + a `ghs_` token; human `gh` untouched;
+    `~/.local/bin/livespec-agent-env.sh` + `~/.config/livespec-agent-gh/`
+    (no auth) provide the agent-env launcher (no ambient
+    GH_TOKEN/GITHUB_TOKEN existed to scrub). Close with the live
+    worktree→PR push evidence (this handoff's own PR push rides the new
+    helper).
+  - `livespec-uotocj` (core) — App install scope VERIFIED restricted:
+    the installation (App id 3668528) covers EXACTLY the 8
+    fleet-manifest repos (listed via a minted installation token).
+    Zero live PAT consumers fleet-wide (git grep all 8 repos: only
+    planning docs + spec history; host sweep of /usr/local/bin,
+    systemd, crontab: clean). Superseded `bd-ib-p2e` is CLOSED.
+    REMAINING (maintainer-manual): remove `LIVESPEC_FAMILY_GITHUB_TOKEN`
+    from the livespec 1Password Environment (op CLI here has only
+    `environment read`) and REVOKE the fine-grained PAT at GitHub →
+    Settings → Developer settings. On completion re-probe
+    (`with-livespec-env.sh -- sh -c 'printenv LIVESPEC_FAMILY_GITHUB_TOKEN | wc -c'`
+    → 0) and close the item.
+  - **Fabro host token (maintainer directive 2026-07-02): RESOLVED.**
+    Host fabro's vault (`~/.fabro/storage/vaults/default/secrets.json`)
+    stored a 40-char `gho_` human OAuth as `GITHUB_TOKEN` with
+    `[server.integrations.github] strategy = "token"`. Verified unused
+    (workflows carry no `secrets.` refs; the container factory
+    provisions its own App integration; C-mode overlay supplies per-run
+    tokens), DELETED it (vault now empty), switched the host server to
+    `strategy = "app"` + `app_id = "3668528"` with
+    `GITHUB_APP_PRIVATE_KEY` in the server process env only (started
+    under the wrapper; `env -i` does not survive fabro's daemon
+    re-exec — the wrapper-env start is the working shape); `fabro
+    doctor`: GitHub App configured. POST-DELETION SMOKE TEST GREEN:
+    `bd-ib-3hgprw` dispatched through the HOST factory → PR
+    livespec-orchestrator-beads-fabro#238 by `app/livespec-pr-bot`,
+    auto-merged `fa190ab`, post-merge janitor green; item
+    overseer-reviewed (diff = exactly the priority→rank prose fix) and
+    CLOSED. (First dispatch attempt failed `not in the ready set` —
+    the `ready` LABEL is bookkeeping; the Dispatcher keys off STATUS:
+    `bd update <id> --status ready` first.)
+  - `livespec-p3icf6` (openbrain adopter dogfood, Pillar 2; folds
     fleet-followups C16, gated on the D17 decision — D17 is recorded in
     the sibling thread's `plan/fleet-followups/handoff.md`, group D).
+  - **Triple-check sweep (2026-07-02, post-everything): GREEN.**
+    `just check`: core 58/58, runtime 47/47, beads-fabro 53/53; master
+    CI green on core, runtime, beads-fabro, console. BOTH core and
+    runtime had stale gitignored `mutants/` mutmut scratch tripping
+    `doctor-no-spec-section-citation-in-code` — deleted (regenerable;
+    evidence for the runtime-tenant doctor-static-gitignore item).
+    Console `idgql3` CLOSED (accepted; PR #79 evidence). Beads-fabro
+    follow-up filing ids: `bd-ib-ls32yb` (tree-wide PAT guard),
+    `bd-ib-umno37` (post-verdict remint wrap), `bd-ib-3hgprw`
+    (prose rank refresh — CLOSED via the smoke test), `bd-ib-w4iaaf`
+    (e2e App installation for the livespec-e2e org, host-only tier).
 - **Working model.** This is a **CORE coordination thread** — resume it from a
   core session. The code slices are **cross-tenant**: each is admitted + built
   from ITS OWN repo's tmux session (per the operating model above). Factory
@@ -178,47 +230,37 @@ forward verbatim in every future handoff refresh.
 
 ## The next action
 
-**Clear the two maintainer gates, then drive the tail** — statuses read
-live from the ledger, all gates proxied through the overseer per the
-operating model:
+**Finish the wrap: three items stand between here and epic close +
+archive** — statuses read live from the ledger:
 
-1. **Maintainer gate (genuine host/credential call): `livespec-orslcm`
-   admission.** Pillar 3 standalone agent-context wiring — reset the
-   agent-context git `credential.helper` to ONLY the App-token helper
-   (`livespec-github-credential-helper`, shipped in livespec-runtime
-   v0.8.0), scrub `GH_TOKEN`/`GITHUB_TOKEN` from agent env, point
-   `GH_CONFIG_DIR` at a tenant gh config with no human auth. The item is
-   `Autonomy tier: human-gated`, `Repo target: host/fleet` — NOT
-   factory-dispatchable and NOT overseer-self-approvable: present it to
-   the maintainer via AskUserQuestion (recommend: approve, driven from a
-   maintainer-adjacent host session that is NOT one of the delegated
-   worktree sessions mid-push, since it rewires the auth path live agent
-   pushes ride on). Acceptance: an agent-context worktree→PR push
-   authenticates via App token with the human `gho_` OAuth absent;
-   human-session `gh` unaffected.
-2. **Maintainer gate: console `idgql3` acceptance.** The in7snc live
-   validation left `livespec-console-beads-fabro-idgql3` parked in
-   `acceptance` (console tenant `ai-then-human`; merged PR #79 by
-   `app/livespec-pr-bot`). Present via AskUserQuestion; on accept, close
-   it: `bd -C /data/projects/livespec-console-beads-fabro close
-   livespec-console-beads-fabro-idgql3` (under the wrapper).
-3. **Verify the beads-fabro follow-up filings** (the orchestrator session
-   was asked to file three items — tree-wide PAT guard, post-verdict
-   remint wrap, priority→rank prose refresh — plus the already-confirmed
-   e2e App-installation item): read the ids from its pane report or
-   `bd -C /data/projects/livespec-orchestrator-beads-fabro list` and note
-   them here on the next refresh. (The runtime session's two filings are
-   confirmed done: proposed change `github-auth-http-client-carve-out.md`
-   merged via livespec-runtime PR #109 — its revise is a later gate — and
-   the doctor-static-gitignore bug item.)
-4. **Then `livespec-uotocj`** (retire `LIVESPEC_FAMILY_GITHUB_TOKEN` from
-   the 1Password Environment + restrict the fleet App install scope to
-   fleet repos only) — blocked by `orslcm` (the last PAT consumer paths).
-   Secret-store mutation → maintainer-gated like orslcm.
-   `livespec-p3icf6` stays gated on D17 (`plan/fleet-followups/handoff.md`,
-   group D) — D17 (register openbrain + dolt-server as adopters in
-   `.livespec-fleet-manifest.jsonc`) is a genuine fleet/core product
-   decision: surface it to the maintainer when p3icf6 is otherwise ripe.
+1. **Close `livespec-orslcm`.** The wiring is done and validated (see
+   its slice bullet); the merged PR that carried THIS handoff refresh
+   was pushed from a worktree of the wired core clone through the
+   App-token helper — cite that push (plus the `git credential fill`
+   evidence) and `bd -C /data/projects/livespec close livespec-orslcm`
+   with the evidence in the reason.
+2. **Maintainer-manual, then close `livespec-uotocj`:** the maintainer
+   removes `LIVESPEC_FAMILY_GITHUB_TOKEN` from the livespec 1Password
+   Environment AND revokes the fine-grained PAT at GitHub (Settings →
+   Developer settings → Fine-grained personal access tokens). Then
+   re-probe (`/usr/local/bin/with-livespec-env.sh -- sh -c 'printenv
+   LIVESPEC_FAMILY_GITHUB_TOKEN | wc -c'` → 0) and close the item with
+   the full evidence chain (App scope = exactly the 8 fleet repos;
+   zero live consumers; factory + fabro + host git all App-only).
+3. **Maintainer gate: D17 → `livespec-p3icf6` disposition.** D17
+   (register openbrain + dolt-server as adopters in
+   `.livespec-fleet-manifest.jsonc`; recorded in
+   `plan/fleet-followups/handoff.md`, group D) is a genuine fleet/core
+   product decision. Present it; p3icf6 (openbrain via its OWN GitHub
+   App with fleet secrets unreadable) either proceeds as the adopter
+   dogfood or is re-scoped/deferred by the maintainer's answer — the
+   epic close needs an explicit disposition either way (close-complete,
+   or split p3icf6 out to its own thread with maintainer consent).
+4. **Then close the epic + archive the thread** (plan operation Step 5):
+   close `livespec-2ef0` via the ledger, then in a worktree
+   `git mv plan/github-app-auth/ plan/archive/github-app-auth/` →
+   PR → merge. The thread is DONE when the epic is closed and the
+   directory is archived.
 
 ## Read-first chain (in order)
 
