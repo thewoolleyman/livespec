@@ -43,33 +43,52 @@ forward verbatim in every future handoff refresh.
   PAT** (`LIVESPEC_FAMILY_GITHUB_TOKEN`) and **removing the human OAuth token
   from the agent path**. See `research/01-design.md` for the why + the four
   pillars.
-- **Epic anchor:** `livespec-2ef0` (core tenant). GROOMED 2026-07-02 into
-  dependency-layered slices (ids below). Status is READ from the ledger, never
-  from this file:
+- **Epic anchor:** `livespec-2ef0` (core tenant). Status is READ from the
+  ledger, never from this file:
   ```bash
   source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-2ef0
   ```
+- **Spec side: DONE (2026-07-02).** The proposed change
+  `github-app-token-standardization` was ACCEPTED by `/livespec:revise` —
+  history **v153** cut, PR #756 merged to master. The fleet
+  automation-credential contract now lives at
+  `SPECIFICATION/non-functional-requirements.md` §"Fleet secrets — 1Password
+  Environment as canonical source" → the **GitHub automation credential.**
+  block. The revise post-step `capture-impl-gaps --since-version v152`
+  surfaced exactly one new rule, gap id **`gap-illb2rtn`** (the new block);
+  it was deliberately NOT filed as a new gap-tied item because the epic's
+  groomed slices below already carry that work — cite this gap id if a
+  future pass asks.
 - **Groomed slice ids (cite read-only; status lives in the ledger).**
-  - `livespec-gwjnes` (core, filed `ready`) — impl-plugin template
-    `github-auth-guard` hook + core test.
-  - `livespec-u67wdb` (**livespec-runtime tenant**, `backlog`) — the App-token
-    provider + git credential helper primitive (first-class remint; Pillar 1).
-    Read: `bd -C /data/projects/livespec-runtime show livespec-u67wdb`.
-  - `livespec-in7snc` (**livespec-orchestrator-beads-fabro tenant**, `backlog`)
-    — factory dispatch routes GitHub auth via target `credential_wrapper` →
+  - `livespec-gwjnes` (core) — impl-plugin template `github-auth-guard` hook
+    + core test. DISPATCHED through the factory 2026-07-02 (core session ran
+    `orchestrate run --action impl:livespec-gwjnes`; shadow mode, budget=1).
+    The first dispatch was HELD at admission (unset `admission_policy` →
+    safe-default `manual`); the core session added the `admission:auto`
+    label and re-dispatched, executing THIS handoff's pre-authorization
+    ("let the Dispatcher (or the core session) drain livespec-gwjnes") —
+    the maintainer was away at the AskUserQuestion gate, so review this
+    judgment call. Post-merge the item PARKS in `acceptance`
+    (`ai-then-human` default) until the maintainer confirms.
+    Verify outcome in the ledger + merged PR before re-dispatching.
+  - `livespec-u67wdb` (**livespec-runtime tenant**) — the App-token provider
+    + git credential helper primitive (first-class remint; Pillar 1; the
+    critical path). DELEGATED 2026-07-02 to the `livespec-runtime` tmux
+    session with a self-contained brief; its human admission gate
+    (AskUserQuestion) surfaces THERE. Read:
+    `bd -C /data/projects/livespec-runtime show livespec-u67wdb`.
+  - `livespec-in7snc` (**livespec-orchestrator-beads-fabro tenant**) —
+    factory dispatch routes GitHub auth via target `credential_wrapper` →
     provider; retires the fleet-PAT export. Supersedes-edge to `bd-ib-gsl`
     (absorbed; closes when this lands). Blocked by `livespec-u67wdb` (sibling
     dep). Read: `bd -C /data/projects/livespec-orchestrator-beads-fabro show livespec-in7snc`.
-  - Epic children (core, `backlog`, maintainer-gated — deliberately NOT
-    `ready` so the Dispatcher never drains them): `livespec-orslcm` (standalone
+  - Epic children (core, maintainer-gated — deliberately NOT `ready` so the
+    Dispatcher never drains them): `livespec-orslcm` (standalone
     agent-context wiring, Pillar 3), `livespec-uotocj` (retire the fleet PAT +
     restrict fleet App install scope; superseded `bd-ib-p2e` is CLOSED),
     `livespec-p3icf6` (openbrain adopter dogfood, Pillar 2; folds
-    fleet-followups C16, gated on its D17 decision).
-- **Spec side.** The groom's spec-change slice is FILED as a pending proposed
-  change: `SPECIFICATION/proposed_changes/github-app-token-standardization.md`
-  (extends non-functional-requirements §"Fleet secrets" with the GitHub
-  automation-credential rule).
+    fleet-followups C16, gated on the D17 decision — D17 is recorded in
+    the sibling thread's `plan/fleet-followups/handoff.md`, group D).
 - **Working model.** This is a **CORE coordination thread** — resume it from a
   core session. The code slices are **cross-tenant**: each is admitted + built
   from ITS OWN repo's tmux session (per the operating model above). Factory
@@ -82,22 +101,43 @@ forward verbatim in every future handoff refresh.
 
 ## The next action
 
-**Process the pending proposed change** (spec leads, impl follows) from this
-core session:
+**Verify and shepherd the two in-flight slices, then unblock the chain** —
+all from this core session, statuses read live from the ledger:
 
-```
-/livespec:revise
-```
-
-Accepting `github-app-token-standardization` lands the fleet
-automation-credential contract the impl slices build against. Then — per the
-operating model — the SAME session keeps driving without waiting: delegate
-`livespec-u67wdb` to the `livespec-runtime` tmux session (the critical-path
-primitive) and, in parallel where safe, let the Dispatcher (or the core
-session) drain `livespec-gwjnes` (core, `ready`, independent of the provider);
-`livespec-in7snc` follows in the `livespec-orchestrator-beads-fabro` session
-once its sibling dependency `livespec-u67wdb` lands; the maintainer-gated
-children follow their dependency edges via AskUserQuestion gates.
+1. `livespec-gwjnes` (factory dispatch, core): confirm the Dispatcher run
+   ended with a merged PR and the item parked in `acceptance`
+   (`bd -C /data/projects/livespec show livespec-gwjnes`; check
+   `gh pr list --repo thewoolleyman/livespec --state merged --search
+   github-auth-guard`), then present the maintainer the post-merge
+   acceptance gate. If the dispatch failed, read its journal and re-run.
+   The Dispatcher journal is
+   `/data/projects/livespec/tmp/fabro-dispatch-journal.jsonl` (JSONL,
+   one stage record per line; read its tail for the last dispatch's
+   stages). DISPATCH SHAPE (until `livespec-in7snc` retires it): the
+   Dispatcher process needs the fleet PAT aliased into `GH_TOKEN` under
+   the wrapper AND `fabro` (`~/.local/bin`) on PATH —
+   `/usr/local/bin/with-livespec-env.sh -- sh -c 'export
+   PATH="$HOME/.local/bin:$PATH"; export
+   GH_TOKEN="$LIVESPEC_FAMILY_GITHUB_TOKEN"; exec python3
+   /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/orchestrate.py
+   run --repo /data/projects/livespec --action impl:livespec-gwjnes
+   --json'` (a bare `orchestrate run` fails at `run-config-overlay`;
+   without the PATH prepend the fabro launch dies and STRANDS the item
+   in `active` — reset it with `bd update livespec-gwjnes --status
+   ready` before re-dispatching).
+2. `livespec-u67wdb` (livespec-runtime session): check the ledger; if still
+   `backlog`, the admission gate is likely awaiting the maintainer in the
+   `livespec-runtime` tmux session — check that pane
+   (`tmux capture-pane -t livespec-runtime -p`) and surface to the
+   maintainer if stalled.
+3. When `livespec-u67wdb` CLOSES: delegate `livespec-in7snc` to the
+   `livespec-orchestrator-beads-fabro` tmux session with a self-contained
+   brief (same discipline block as the operating model; the item description
+   is authoritative — read it from that repo's tenant first).
+4. Then present the maintainer-gated children (`livespec-orslcm`,
+   `livespec-uotocj`, `livespec-p3icf6`) one at a time via AskUserQuestion
+   gates, in dependency order (orslcm and uotocj need the provider;
+   p3icf6 needs D17).
 
 ## Read-first chain (in order)
 
