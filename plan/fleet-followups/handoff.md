@@ -171,12 +171,13 @@ items are now the active priority. Compose LIVE status before acting:**
    `bd` cwd-tenant trap): **B4** (beads-fabro/runtime `migrate-tenant` CLI), **C7**
    (driver-codex "DEFERRED" wording), **C8** (git-jsonl §6 doc-reconcile), **D9**
    (fleet/dev-tooling `hydrate` worktree-pack), **D10** (fleet/core review-policy).
-   Plus TWO **new findings from the Session-10 run** to file: (a) git-jsonl
-   **worktree-hydration gap** (a concrete instance of D9) — `just worktree-create` does
+   Plus TWO **new findings from the Session-10 run**, now FILED (`backlog`; status read
+   from the ledger): (a) git-jsonl **`bd-gj-hew`** (worktree-hydration gap, a concrete
+   instance of D9) — `just worktree-create` does
    NOT install the Worktree Discipline Pack (`dev-tooling/branch-protection.sh`), so `.py`
    commits fail `check-pre-commit` until `just install-worktree-pack`; fix: hydrate
-   installs the pack as `bootstrap` does. (b) beads-fabro **self-update-canary
-   under-trigger** — on the asp dispatch the canary logged "merge did not touch the
+   installs the pack as `bootstrap` does. (b) beads-fabro **`bd-ib-24l`**
+   (self-update-canary under-trigger) — on the asp dispatch the canary logged "merge did not touch the
    dispatcher's own scripts" though asp modified `_dispatcher_engine.py`/`_dispatcher_plan.py`;
    the full janitor validated asp, but the canary's path-detection may under-fire (relates
    to the now-closed `bd-ib-mxr` E2E epic).
