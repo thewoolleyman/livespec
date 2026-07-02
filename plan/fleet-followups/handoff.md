@@ -415,6 +415,46 @@ Resumed to execute next-action steps 2–3. Composed status LIVE and found the
   Core's dispatchable-`ready` queue is now EMPTY — the remaining core items need
   grooming (`127o`, `m0xu`) or aren't autonomously verifiable (`jcc6.3`).
 
+## Session 9 (2026-07-02) — live status re-verified; C15 confirmed ripe-to-file
+
+Resumed and composed status LIVE from the core ledger (never from this file). The
+Session-8 picture held, with two durable outcomes:
+
+- **Core-tenant LIVE snapshot.** Epic `livespec-jcc6` **backlog · 2/3 (66%)**
+  (`.1`/`.2` closed, `.3` held). **Core dispatchable-`ready` queue: EMPTY** (`bd
+  list --status ready` → "No issues found") — nothing is factory-dispatchable from
+  this core session without grooming first. `livespec-127o` + `livespec-m0xu` +
+  `livespec-jcc6.3` + `livespec-aava` + `livespec-mpkaz4` all `backlog` (minor
+  drift since Session 8: `m0xu` completed its `open→backlog` move; `mpkaz4` also
+  `open→backlog` — both harmless). The FOUR P0 factory-hardening threads
+  (`bd-ib-mxr`/`bd-ib-cyv`, `bd-ib-asp`, `bd-ib-fqh` S2/S3) remain the top priority
+  but are ALL cross-tenant — unworkable from this core session (the `bd` cwd-tenant
+  trap); work them from beads-fabro / git-jsonl / runtime sessions.
+- **⚑ C15 (contracts.md warn-vs-fail lever) VERIFIED live in code + spec — ripe to
+  file in ONE step.** Confirmed against origin/master (not the memo): the shipped
+  check `.claude-plugin/scripts/livespec/doctor/static/config_named_cli_callability.py`
+  (`_evaluate`, the `_CREDENTIAL_WRAPPER_KEY` + `_RESOLVE_UNRESOLVABLE` branch)
+  **warns** on an unresolvable `credential_wrapper` first token (host wrapper
+  legitimately absent on CI) and keeps **`fail`** only for a resolved-but-not-executable
+  token. But `SPECIFICATION/contracts.md` still says the opposite in **TWO** spots:
+  **line 135** (the `config-named-cli-callability` invariant paragraph) — "*a missing
+  or non-executable resolution fires `fail`*" — and the **line 61** parenthetical —
+  "*(its first token MUST resolve to an executable)*". Both must be reconciled to the
+  warn-vs-fail lever. The exact drop-in clause is already drafted in
+  `research/01-followup-inventory.md` group C item **15**. **Next-session action:**
+  route C15 via `/livespec:propose-change` (a spec proposal the maintainer accepts
+  later via `/livespec:revise`; no ledger child) — targeting the line-135 paragraph
+  with the drafted clause and softening the line-61 parenthetical to match. Left
+  UNFILED here deliberately: filing is an outward-facing spec-contract change the
+  maintainer was mid-deciding when this session composed status; it is now fully
+  de-risked and one step from filing.
+
+The core-session-actionable set is otherwise unchanged: **route C15 → spec**
+(recommended, above), or **groom `livespec-127o`** (README epic) / **groom
+`livespec-m0xu`** (template rename) to produce dispatchable slices. `jcc6.3` stays
+held (acceptance not autonomously verifiable). Everything else is cross-tenant or
+client-side.
+
 ## Read-first chain (in order)
 
 1. **`research/01-followup-inventory.md`** — the full grouped catalog. (This is
