@@ -449,11 +449,37 @@ Session-8 picture held, with two durable outcomes:
   maintainer was mid-deciding when this session composed status; it is now fully
   de-risked and one step from filing.
 
-The core-session-actionable set is otherwise unchanged: **route C15 → spec**
-(recommended, above), or **groom `livespec-127o`** (README epic) / **groom
-`livespec-m0xu`** (template rename) to produce dispatchable slices. `jcc6.3` stays
-held (acceptance not autonomously verifiable). Everything else is cross-tenant or
-client-side.
+The core-session-actionable set is otherwise unchanged: **groom `livespec-127o`**
+(README epic) / **groom `livespec-m0xu`** (template rename) to produce dispatchable
+slices (both maintainer-owned cuts — `groom` files nothing until approval). `jcc6.3`
+stays held (acceptance not autonomously verifiable). Everything else is cross-tenant
+or client-side.
+
+## Session 9 (continued, 2026-07-02) — C15 + gap-dg2rdlsf filed as spec proposals
+
+Under a maintainer directive to continue autonomously, the two verified CORE
+spec-side drifts were filed as pending proposals (both reversible — a `revise` pass
+accepts/rejects them; no live-spec edit yet, no ledger children):
+
+- **C15 FILED → `SPECIFICATION/proposed_changes/callability-warn-fail-lever.md`**
+  (**PR #769**, merged). Reconciles the `credential_wrapper` callability drift
+  (`contracts.md` line 135 invariant paragraph + line 61 parenthetical) to the
+  shipped warn-vs-fail lever. Inventory item 15 marked FILED.
+- **gap-dg2rdlsf FILED → `SPECIFICATION/proposed_changes/coverage-omit-only-not-source-allowlist.md`**
+  (**PR #770**, merged). Reconciles the coverage `source`-allowlist drift
+  (`non-functional-requirements.md` §"Code coverage thresholds" + `contracts.md`
+  §"Python-rule compliance") to the shipped `omit`-only blocklist, restating the
+  invariant + the load-bearing no-`source`-allowlist constraint (architecture-not-
+  mechanism). This was the last known CORE spec-side drift from the Session-3
+  `--since-version 150` capture pass.
+
+**⚑ NEXT CORE ACTION (changed): run `/livespec:revise`** to accept (or reject) the
+TWO pending proposals above — they are the only entries in
+`SPECIFICATION/proposed_changes/` besides the skill-owned `README.md`. Do NOT
+re-file either via `propose-change` (that would duplicate). After revise, the C15 +
+coverage clauses land in the live spec and this thread's spec-side drift work is
+complete. The remaining CORE work is then maintainer-owned grooming (`127o`, `m0xu`)
+or held (`jcc6.3`); the top-priority factory-hardening threads stay cross-tenant.
 
 ## Read-first chain (in order)
 
