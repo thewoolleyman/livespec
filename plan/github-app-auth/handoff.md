@@ -32,6 +32,24 @@ forward verbatim in every future handoff refresh.
   Fable 5 at extra-high reasoning effort**. When starting a fresh Claude Code
   session for delegation, switch it FIRST (`/model` → Fable 5, xhigh effort)
   before driving any work.
+- **Overseer-proxy: ALL gates surface in the core session** (added
+  2026-07-02, Session 8). The core session is the OVERSEER and runs the
+  delegated agents on the maintainer's behalf. When a delegated per-repo
+  session pauses at a picker (admission, acceptance, anything), the overseer
+  captures that pane, presents the gate HERE via AskUserQuestion, and
+  delivers the answer back to the pane (`command tmux send-keys -t <session>
+  <keys>` — verify the picker is still showing and which option is
+  highlighted BEFORE sending). Never expect the maintainer to visit a
+  delegated pane.
+- **Maximal autonomy** (added 2026-07-02, Session 8). Do not stop to ask the
+  maintainer unless the decision genuinely needs their input; self-resolve
+  with best judgment and RECORD each judgment call in this handoff for
+  review. At every accept/revise point, review the changes hard (read the
+  merged diff, re-run the tests, check acceptance criteria) before
+  accepting. Keep driving until the overseer session's context passes ~50%,
+  then refresh this handoff and hand off to a fresh session. Implementation
+  is always delegated (factory or per-repo session) — never hand-coded in
+  the overseer.
 - **Scope.** This operating model is TRACK-SCOPED to github-app-auth — a
   per-track maintainer directive, not a permanent or fleet-wide decision.
 
@@ -64,26 +82,23 @@ forward verbatim in every future handoff refresh.
   future pass asks.
 - **Groomed slice ids (cite read-only; status lives in the ledger).**
   - `livespec-gwjnes` (core) — impl-plugin template `github-auth-guard` hook
-    + core test. FACTORY-BUILT AND MERGED: PR #760 landed on master
-    2026-07-02T02:15Z; Session 8 verified the template hook + paired
-    `github_auth_guard.py` + `tests/test_template_github_auth_guard.py` on
-    `origin/master` and ran the test green there (15 passed). The item is
-    PARKED in `acceptance` (`ai-then-human` default) awaiting the
-    maintainer's confirmation; the acceptance gate was presented Session 8
-    (maintainer away — still open). Note for the maintainer: the dispatch
-    itself involved a judgment call to review — the first dispatch HELD at
-    admission (unset `admission_policy` → safe-default `manual`), and the
-    core session added the `admission:auto` label and re-dispatched under
-    this handoff's pre-authorization while the maintainer was away.
+    + core test. DONE: factory-built, PR #760 merged 2026-07-02T02:15Z;
+    Session 8 verified the template hook + paired `github_auth_guard.py` +
+    `tests/test_template_github_auth_guard.py` on `origin/master` and ran
+    the test green there (15 passed); the maintainer ACCEPTED via the
+    proxied acceptance gate and the item is CLOSED in the core ledger
+    (epic 1/4). The acceptance also ratified the earlier judgment call
+    (first dispatch HELD at admission on unset `admission_policy`; the core
+    session added the `admission:auto` label and re-dispatched).
   - `livespec-u67wdb` (**livespec-runtime tenant**) — the App-token provider
     + git credential helper primitive (first-class remint; Pillar 1; the
-    critical path). DELEGATED 2026-07-02 to the `livespec-runtime` tmux
-    session; that session read the brief and is PAUSED at its human
-    admission gate (AskUserQuestion: "Admit and start now?") awaiting the
-    maintainer IN THAT PANE — the item deliberately stays `backlog` until
-    admitted (`command tmux capture-pane -t livespec-runtime -p` to check;
-    plain `tmux` may be shadowed by a zsh plugin shim in non-interactive
-    shells — prefix with `command`). Read:
+    critical path). ADMITTED 2026-07-02 via the proxied gate (maintainer
+    approved in the core session; the selection was delivered to the
+    `livespec-runtime` pane) — IN_PROGRESS; that session drives it
+    end-to-end (TDD in a worktree → PR → merge → close the item). Monitor
+    the pane (`command tmux capture-pane -t livespec-runtime -p`; plain
+    `tmux` may be shadowed by a zsh plugin shim in non-interactive shells —
+    prefix with `command`). Read:
     `bd -C /data/projects/livespec-runtime show livespec-u67wdb`.
   - `livespec-in7snc` (**livespec-orchestrator-beads-fabro tenant**) —
     factory dispatch routes GitHub auth via target `credential_wrapper` →
@@ -123,30 +138,36 @@ forward verbatim in every future handoff refresh.
 
 ## The next action
 
-**The track is blocked on two open maintainer gates; clear them, then unblock
-the chain** — statuses read live from the ledger:
+**Shepherd `livespec-u67wdb` to a reviewed close, then delegate the chain** —
+statuses read live from the ledger, all gates proxied through the overseer
+per the operating model:
 
-1. **Maintainer gate (critical path): `livespec-u67wdb` admission.** The
-   `livespec-runtime` tmux session is paused at its AskUserQuestion admission
-   gate ("Admit and start now?" — recommended). The maintainer answers IN THAT
-   PANE; on admission that session drives the slice end-to-end (TDD, worktree
-   → PR → merge, close). A resuming core session verifies the pane is still
-   at the gate (`command tmux capture-pane -t livespec-runtime -p`) and
-   re-surfaces this to the maintainer if stalled; do NOT self-approve — the
-   item is explicitly human-admitted.
-2. **Maintainer gate: `livespec-gwjnes` acceptance.** Merged and verified
-   (see the slice bullet above); present/re-present the acceptance gate via
-   AskUserQuestion (recommend: accept and close). On acceptance, close the
-   item in the core ledger: `bd -C /data/projects/livespec close
-   livespec-gwjnes` (under the wrapper).
-3. When `livespec-u67wdb` CLOSES: delegate `livespec-in7snc` to the
+1. **Monitor the `livespec-runtime` session** until `livespec-u67wdb`
+   closes: watch the pane (`command tmux capture-pane -t livespec-runtime
+   -p`) and the ledger status. Proxy any picker that session raises into
+   the overseer (answer with best judgment under the autonomy directive;
+   route only genuine product/credential/destructive calls to the
+   maintainer).
+2. **On `livespec-u67wdb` close: review hard before treating it as
+   accepted.** Read the merged livespec-runtime PR diff against the item's
+   acceptance criteria (mid-sequence token-expiry re-mint test; fail-closed
+   missing-PEM/App-id tests; `just check` green in livespec-runtime) and
+   record the review verdict in this handoff.
+3. **Then delegate `livespec-in7snc`** to the
    `livespec-orchestrator-beads-fabro` tmux session with a self-contained
-   brief (same discipline block as the operating model; the item description
-   is authoritative — read it from that repo's tenant first).
-4. Then present the maintainer-gated children (`livespec-orslcm`,
-   `livespec-uotocj`, `livespec-p3icf6`) one at a time via AskUserQuestion
-   gates, in dependency order (orslcm and uotocj need the provider;
-   p3icf6 needs D17).
+   brief (same discipline block as the operating model; the item
+   description is authoritative — read it from that repo's tenant first).
+   Its admission picker is proxied to the overseer; under the autonomy
+   directive the overseer MAY approve it as a recorded judgment call (the
+   epic's slices were maintainer-groomed and the maintainer admitted the
+   critical path).
+4. **Then the remaining children in dependency order:** `livespec-orslcm`
+   and `livespec-uotocj` become actionable once the provider exists (mark
+   ready / delegate as judgment calls, recorded here); `livespec-p3icf6`
+   stays gated on D17 (`plan/fleet-followups/handoff.md`, group D) — D17
+   (register openbrain + dolt-server as adopters in
+   `.livespec-fleet-manifest.jsonc`) is a genuine fleet/core product
+   decision: surface it to the maintainer when p3icf6 is otherwise ripe.
 
 ## Read-first chain (in order)
 
