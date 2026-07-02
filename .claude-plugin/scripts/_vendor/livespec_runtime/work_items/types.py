@@ -9,11 +9,12 @@ Python-level realization.
 
 This is the SHARED lift of the model both `livespec-impl-git-jsonl`
 and `livespec-impl-beads` re-implemented identically. The unified
-shape is a 20-field record: 15 required fields (including the `rank`
-ordering key) followed by 5 optional-on-read fields. `rank` is the
+shape is a 22-field record: 15 required fields (including the `rank`
+ordering key) followed by 7 optional-on-read fields. `rank` is the
 sole ordering authority — the prior `priority: int` is REMOVED (two
 order sources are two conflicting truths). The `spec_commitment_hint`
-/ `supersedes` pointers and the `admission_policy` / `acceptance_policy`
+/ `acceptance_criteria` / `notes` / `supersedes` pointers and the
+`admission_policy` / `acceptance_policy`
 / `blocked_reason` policy fields all follow the blessed `… | None`
 optional-on-read pattern: legacy records lacking them read back as
 `None`, with no in-place migration.
@@ -118,6 +119,13 @@ class WorkItem:
     (no in-place migration required); the field is OPTIONAL on the read
     path but always written explicitly on append (as `null` or the value).
 
+    `acceptance_criteria` carries first-class operator-authored acceptance
+    criteria for the work-item. `notes` carries first-class operator notes
+    that should survive store-to-WorkItem reads and downstream rendering.
+    Both fields follow the same blessed `… | None` optional-on-read
+    pattern as `spec_commitment_hint`: legacy records lacking the field on
+    disk read back as `None` with no in-place migration required.
+
     `supersedes` is the append-only supersession pointer (per this repo's
     `### livespec_runtime.work_items.reduce` and the append-only store
     disciplines). `None` marks an original record; a non-None value
@@ -156,6 +164,8 @@ class WorkItem:
     audit: AuditRecord | None
     superseded_by: str | None
     spec_commitment_hint: str | None = None
+    acceptance_criteria: str | None = None
+    notes: str | None = None
     supersedes: str | None = None
     admission_policy: AdmissionPolicy | None = None
     acceptance_policy: AcceptancePolicy | None = None
