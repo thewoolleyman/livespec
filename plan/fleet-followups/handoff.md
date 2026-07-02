@@ -473,13 +473,36 @@ accepts/rejects them; no live-spec edit yet, no ledger children):
   mechanism). This was the last known CORE spec-side drift from the Session-3
   `--since-version 150` capture pass.
 
-**⚑ NEXT CORE ACTION (changed): run `/livespec:revise`** to accept (or reject) the
-TWO pending proposals above — they are the only entries in
-`SPECIFICATION/proposed_changes/` besides the skill-owned `README.md`. Do NOT
-re-file either via `propose-change` (that would duplicate). After revise, the C15 +
-coverage clauses land in the live spec and this thread's spec-side drift work is
-complete. The remaining CORE work is then maintainer-owned grooming (`127o`, `m0xu`)
-or held (`jcc6.3`); the top-priority factory-hardening threads stay cross-tenant.
+**Both proposals were REVISED IN** (see §"Session 9 (continued 2)" below) — the queue
+is back to README-only; do NOT re-run `/livespec:revise` (it would exit 3 on an empty
+queue) and do NOT re-file either via `propose-change`.
+
+## Session 9 (continued 2, 2026-07-02) — revise v154 landed; thread spec-side drift work COMPLETE
+
+Ran `/livespec:revise` (maintainer-invoked) over the two pending proposals; both
+**accepted** → history **v154** cut (**PR #772**, merged; full `just check` +
+pre/post-step doctor static green):
+
+- **C15 landed** — `contracts.md` now carries the shipped `credential_wrapper`
+  warn-vs-fail lever (invariant paragraph + §"Spec-side CLI contract" parenthetical).
+- **gap-dg2rdlsf landed** — `non-functional-requirements.md` §"Code coverage
+  thresholds" + `contracts.md` §"Python-rule compliance" now describe the shipped
+  `omit`-only blocklist + the no-`source`-allowlist constraint.
+
+Both proposals moved to `history/v154/proposed_changes/` with paired `-revision.md`
+files; `proposed_changes/` is README-only. No `##`/`###` heading changes (payload
+builder asserted it; heading-coverage untouched). The non-gating LLM post-steps
+(`capture-impl-gaps` per-gap consent; doctor LLM objective/subjective) were NOT run
+in this unattended pass — both changes make the spec match already-shipped impl, so
+by construction they introduce no new spec→impl gap; run `/livespec:doctor` anytime.
+
+**⚑ THREAD SPEC-SIDE DRIFT WORK IS COMPLETE.** No pending proposals remain. The
+remaining CORE work is maintainer-owned grooming (`livespec-127o` README epic,
+`livespec-m0xu` template rename) or held (`livespec-jcc6.3`); the top-priority
+factory-hardening threads (`bd-ib-mxr`/`bd-ib-cyv`, `bd-ib-asp`, `bd-ib-fqh` S2/S3)
+stay cross-tenant (work from beads-fabro / git-jsonl / runtime sessions). Consider
+closing `livespec-jcc6` once the two remaining core items are groomed + dispatched
+and nothing lingers.
 
 ## Read-first chain (in order)
 
