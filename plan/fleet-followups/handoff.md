@@ -14,9 +14,9 @@ alone via the read-first chain — no chat history required.
   few **same-tenant (core) ledger children** (`livespec-jcc6.1/.2/.3` filed
   2026-07-01 + `.4` filed 2026-07-03; **`.1` + `.2` DONE** via factory dispatch
   (PRs #736/#734), **`.3` DONE via relocation** → beads-fabro `bd-ib-syb`,
-  PR #254 — §"Session 13"; **`.4`** = reaper dead-plugin-entry pruner, `backlog`,
-  held under `livespec-c1k9`, §"Session 12" — **unhold recommended**, since c1k9's
-  finalized design does not cover its domain, §"Session 14"); every **cross-tenant** item
+  PR #254 — §"Session 13"; **`.4`** = reaper dead-plugin-entry pruner — hold
+  RELEASED §"Session 15" (maintainer-authorized; c1k9's finalized design does not
+  cover its domain, §"Session 14") — being dispatched via the factory); every **cross-tenant** item
   is **prose-linked** in the inventory and its status is composed from the ledger
   (no shadow queue).
 - **⚑ GitHub App-token auth — ✅ CLOSED + ARCHIVED (2026-07-03).** The GH_TOKEN
@@ -78,25 +78,23 @@ autonomous run finished.** All four P0 threads landed and both epics (`bd-ib-mxr
 `bd-ib-fqh`) are CLOSED; full detail + outcomes in §"Session 10 (2026-07-02) —
 factory-hardening COMPLETE". The ordered plan that WAS here (cyv → asp → fqh.1 →
 fqh.2/.3 → S3 → mxr.1) is retained below as the execution record — do NOT re-run it.
-**The active next action: an attended `/livespec:revise` accepting/shaping
-`SPECIFICATION/proposed_changes/readme-contract.md`** (the `livespec-127o.1` slice;
-content is maintainer-gated — include the `tests/heading-coverage.json` co-edit in
-the revise payload's `resulting_files[]`, since the proposal adds a `## README
-contract` heading: one added entry in the TODO + `reason` shape the existing
-entries use, path spelled `../tests/heading-coverage.json` so the wrapper's
-`spec_target / path` join resolves it from the main `SPECIFICATION/` tree)
-**→ then close `livespec-127o.1` in the ledger** (so the `depends_on` edge
-un-gates `.2`; bd's ledger vocabulary is `--status closed` — the runtime
-literal `done` recorded in §"Session 13" is a different layer, the
-`WorkItemStatus` model, not the bd CLI) **→ then promote + dispatch `livespec-127o.2`** (the factory
-README rewrite; it ALREADY carries a full autonomously-verifiable acceptance
-block — verified §"Session 14" — so promotion is just `backlog→ready` +
-`--add-label admission:auto --add-label acceptance:ai-only`) via the Session-12
-dispatch mechanics (bare repo NAME `livespec`). A SECOND attended decision is queued: **unhold `livespec-jcc6.4`**
-(recommended) — `livespec-c1k9`'s finalized Phase-4 design does not cover its
-orphan-registry-entry domain, so the Session-12 hold condition has resolved
-(§"Session 14"). The block after the `---` is patched with per-item dispositions —
-most are DONE/FILED; do NOT re-run its items as originally written.
+**⚑ The README-contract track is REMOVED from this thread's scope (maintainer
+directive, Session 15, 2026-07-03 — "I don't want to do it right now").** The
+attended-revise chain that WAS the active next action here is DEFERRED, not
+rejected: the pending proposal was WITHDRAWN from `SPECIFICATION/proposed_changes/`
+(content recoverable — see §"Session 15" for the commit citation), and
+`livespec-127o` + slices `.1`/`.2` remain filed in the core ledger at `backlog`
+(the deferred state; deferral comment on the epic). To resume later: restore the
+proposal from git history (or re-run `/livespec:propose-change` from `.1`), then
+run the revise → close-`.1` → dispatch-`.2` chain recorded in §"Session 14".
+**The active next action: the Session-15 autonomous completion run** (maintainer:
+"continue on with everything else left") — unhold + dispatch `livespec-jcc6.4`
+(the §"Session 14" recommendation, now authorized), bring the three filed
+cross-tenant items (`bd-ib-09c`, `livespec-driver-codex-wqo`,
+`livespec-dev-tooling-5kv`) to DoR and dispatch them via the factory, dispose the
+remaining stragglers, then take the epic to its close boundary. The block after
+the `---` is patched with per-item dispositions — most are DONE/FILED; do NOT
+re-run its items as originally written.
 
 The completed plan, retained for the record:
 
@@ -921,6 +919,30 @@ attended session. This pass composed status LIVE and refreshed this handoff only
   (verified via `bd update --help`); the retained Dispatch-mechanics block was
   corrected in place. (c) The heading-coverage co-edit shape + path spelling and
   the close-`.1`-to-un-gate-`.2` step are now explicit in the next-action text.
+
+## Session 15 (2026-07-03) — README track REMOVED from scope (deferred); autonomous completion run started
+
+Two maintainer directives this session: **"Remove the readme contract track from this
+fleet-followups epic, I don't want to do it right now"**, then **"Continue on with
+everything else left in fleet-followups."** Dispositions:
+
+- **README-contract track DEFERRED out of this thread (not rejected, not lost).**
+  The pending proposal `SPECIFICATION/proposed_changes/readme-contract.md` was
+  WITHDRAWN in this commit (recoverable: `git log --follow` on that path — it landed
+  via the Session-12 PR and leaves the tree in THIS Session-15 commit; the drafted
+  contract text also survives verbatim in git history). `livespec-127o` + `.1`/`.2`
+  stay filed at `backlog` in the core ledger with a deferral comment — resume by
+  restoring the proposal (or re-running `/livespec:propose-change` from `.1`'s
+  record), then the §"Session 14" revise → close-`.1` → dispatch-`.2` chain.
+  `proposed_changes/` is back to the README placeholder only. Epic `livespec-jcc6`'s
+  close boundary no longer gates on the README slices.
+- **Everything-else run (this session, per the second directive):** unhold +
+  factory-dispatch `livespec-jcc6.4`; DoR + factory-dispatch `bd-ib-09c`
+  (beads-fabro), `livespec-driver-codex-wqo` (driver-codex),
+  `livespec-dev-tooling-5kv` (dev-tooling); dispose stragglers (`livespec-mpkaz4`,
+  `livespec-aava`, `bd-ib-24l`, `bd-gj-hew`, needs-regroom `nylyhi`/`rmew4k`);
+  then the epic close boundary. Outcomes are recorded in the follow-up Session-15
+  entries below as they land (status stays READ from the ledger, never from here).
 
 ## Read-first chain (in order)
 
