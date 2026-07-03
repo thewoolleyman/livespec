@@ -1,5 +1,12 @@
 # Handoff — cleanup-research-and-prompt-cruft
 
+**THREAD CLOSED 2026-07-03.** All five phases executed; epic
+`livespec-ztepy5` closed; this directory is archived under
+`plan/archive/`. Two deliberate residual work-items outlive the epic:
+`livespec-wnkl72` (residual-`family` terminology classification) and
+`livespec-bnv7dm` (copier template still stamps the retired
+`prompts/<name>.md` convention).
+
 The single resumable entry point for the fleet-wide cleanup of legacy
 root-level `research/` and `prompts/` directories: still-active tracks
 migrate to `plan/<topic>/` threads, completed/stale material archives
@@ -72,25 +79,13 @@ read-first chain — no chat history required.
 
 ## The next action
 
-**Run Phase 3 — per-repo execution (mutating).** Phases 0–2 closed
-2026-07-03; every disposition is now CONFIRMED — each repo's 02 file
-ends with a "Phase 2 verdicts" section that is authoritative over its
-table. Zero unresolved MAINTAINER rows. Concretely:
-
-1. Read epic status from the ledger (command above).
-2. File one child work-item per dirty repo in that repo's OWN tenant
-   via the capture-work-item operation (citing `livespec-ztepy5`);
-   openbrain's filing runs under ITS wrapper.
-3. Dispatch one mutating agent per repo (all five in parallel — the
-   repos are file-disjoint), each brief composed from the "Per-repo
-   agent brief template" below with that repo's FULL 02 file (table +
-   corrections + verdicts + obligations) pinned verbatim. Sequencing
-   inside the livespec and openbrain briefs: SPEC-ABSORB rows are
-   propose-change → revise → `git mv`, never the move first.
-4. As each repo's PR merges: refresh its primary checkout, verify the
-   agent cleaned its worktree/branch, close its child work-item.
-
-Then proceed to Phase 4/5 per the phase plan below.
+None — the thread is CLOSED. Phase 3 executed across all five dirty
+repos (PRs: livespec #810 → 27ecea5 + spec v157; orchestrator #258 →
+66beddf; console #86 → 7c424ff; dev-tooling #235 → cb72efe; openbrain
+#4 → 3ccd775 + spec v092); Phase 4 was fully carried by the livespec
+Phase 3 PR (remaining template residual filed as `livespec-bnv7dm`);
+Phase 5 re-scan confirmed the exact confirmed end-state fleet-wide.
+All five child work-items closed; epic closed; thread archived.
 
 ## Phase plan
 
@@ -339,3 +334,34 @@ Phase 3 (execution, mutating) adds:
   `beads/`, `dark-factory-operability/{CLAUDE.md,preconditions.md}`,
   `factory-conformance/`, `planning-workflow-gap/`.
 - Next action advanced to Phase 3 (per-repo mutating execution).
+
+### Session 3 continued (2026-07-03) — Phases 3–5 executed; thread CLOSED
+
+- Filed the five per-repo child work-items (livespec-kg6paq,
+  bd-ib-ping3v, livespec-console-beads-fabro-bvomzt,
+  livespec-dev-tooling-nyzgdy, ob-fqqnpu) plus the residual
+  terminology item livespec-wnkl72; dispatched five parallel mutating
+  executors, one per repo.
+- All five landed and were verified + closed: livespec PR #810
+  (27ecea5; spec v157 retired the workflow-processes mandate and
+  re-worded the No-shadow-ledger convention; 104 renames; prompts/
+  removed); orchestrator PR #258 (66beddf); console PR #86 (7c424ff;
+  archive/ created, prompts/ + research/ removed); dev-tooling PR #235
+  (cb72efe; plan/shell-logic-hardening/ thread created on existing
+  epic 9j8, handoff gate PASS run 1); openbrain merge 3ccd775 (spec
+  v092 de-references; explore-gmail tool retired; prompts/ folded +
+  removed; note: its path-gated release-android pre-push gate
+  auto-published GitHub Release android-v0.0.6 — codified automatic
+  behavior).
+- Cross-tenant ledger repoints for the shell-logic findings path
+  executed in all five candidate items (livespec-gnjb, livespec-9sxx,
+  livespec-driver-claude-hxn, bd-ib-k5p, ob-vc7y).
+- Phase 4: nothing left — the livespec executor carried every D2 doc
+  edit; the copier-template residual became livespec-bnv7dm (ready).
+- Phase 5: default-branch-aware re-scan across all 9 repos matches the
+  confirmed end-state exactly (research/ residents: livespec 8 files /
+  orchestrator 5 / dev-tooling 3 / openbrain 2; prompts/ gone
+  fleet-wide; 4 clean repos still clean); doctor-static green in every
+  merged gate and both revise post-steps.
+- Closed the epic and archived this thread to
+  `plan/archive/cleanup-research-and-prompt-cruft/`.
