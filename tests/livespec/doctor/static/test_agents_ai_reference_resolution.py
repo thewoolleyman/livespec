@@ -260,7 +260,7 @@ def test_is_excluded_false_for_ordinary_path() -> None:
     """_is_excluded returns False for a plain in-scope project path."""
     spec_root = Path("/proj/SPECIFICATION")
     excluded = mod._is_excluded(  # noqa: SLF001
-        path=Path("/proj/templates/impl-plugin/AGENTS.md"),
+        path=Path("/proj/templates/orchestrator-plugin/AGENTS.md"),
         spec_root=spec_root,
     )
     assert excluded is False

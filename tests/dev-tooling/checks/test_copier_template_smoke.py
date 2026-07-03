@@ -1,6 +1,6 @@
 """Outside-in test for `dev-tooling/checks/copier_template_smoke.py`.
 
-The smoke check runs `copier copy` against `templates/impl-plugin/`
+The smoke check runs `copier copy` against `templates/orchestrator-plugin/`
 with a stock answers fixture, then verifies the generated tree
 contains every expected file and that JSON files parse. The check
 is the C.6 acceptance gate for Phase C of the multi-repo split per
@@ -40,7 +40,7 @@ def test_smoke_check_passes_against_real_template() -> None:
     )
 
     assert result.returncode == 0, (
-        f"smoke check should exit 0 against the real templates/impl-plugin/ tree; "
+        f"smoke check should exit 0 against the real templates/orchestrator-plugin/ tree; "
         f"got returncode={result.returncode} "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
@@ -51,7 +51,7 @@ def test_smoke_check_passes_against_real_template() -> None:
 
 
 def test_smoke_check_fails_when_template_missing(*, tmp_path: Path) -> None:
-    """Fail case: cwd has no templates/impl-plugin/; script emits the missing-template diagnostic."""
+    """Fail case: cwd has no templates/orchestrator-plugin/; script emits the missing-template diagnostic."""
     result = subprocess.run(
         [sys.executable, str(_COPIER_TEMPLATE_SMOKE)],
         cwd=str(tmp_path),
@@ -61,7 +61,7 @@ def test_smoke_check_fails_when_template_missing(*, tmp_path: Path) -> None:
     )
 
     assert result.returncode != 0, (
-        f"smoke check should reject when templates/impl-plugin/copier.yml is missing; "
+        f"smoke check should reject when templates/orchestrator-plugin/copier.yml is missing; "
         f"got returncode={result.returncode}"
     )
     assert "copier-template-smoke-missing-template" in result.stderr, (
@@ -77,7 +77,7 @@ def test_smoke_check_fails_when_copier_copy_errors(*, tmp_path: Path) -> None:
     copier subprocess exits non-zero. The smoke check MUST surface
     the copy-failed diagnostic with returncode + stdout/stderr tails.
     """
-    template_dir = tmp_path / "templates" / "impl-plugin"
+    template_dir = tmp_path / "templates" / "orchestrator-plugin"
     template_dir.mkdir(parents=True)
     # Malformed YAML: unclosed mapping with a tab character — copier
     # rejects this with a YAMLError, exiting non-zero before any
@@ -111,7 +111,7 @@ def test_smoke_check_fails_when_expected_files_missing(*, tmp_path: Path) -> Non
     generates an empty tree. The smoke check's expected-files list
     won't be satisfied and MUST surface the missing-output diagnostic.
     """
-    template_dir = tmp_path / "templates" / "impl-plugin"
+    template_dir = tmp_path / "templates" / "orchestrator-plugin"
     template_dir.mkdir(parents=True)
     (template_dir / "copier.yml").write_text(
         "_templates_suffix: .jinja\n_exclude:\n  - copier.yml\n",
@@ -157,7 +157,7 @@ def test_smoke_check_emits_canonical_slug_drift_when_targets_block_mismatches(
     """
     _ = pytest.importorskip("livespec_dev_tooling.canonical_checks")
 
-    template_dir = tmp_path / "templates" / "impl-plugin"
+    template_dir = tmp_path / "templates" / "orchestrator-plugin"
     template_dir.mkdir(parents=True)
     # No `_jinja_extensions:` registered so copier copy succeeds
     # without the extension; the stamped targets list is hand-rolled
@@ -236,7 +236,7 @@ def test_smoke_check_fails_when_generated_json_invalid(*, tmp_path: Path) -> Non
     output files exist (so the missing-output branch doesn't fire),
     but the JSON parse check rejects.
     """
-    template_dir = tmp_path / "templates" / "impl-plugin"
+    template_dir = tmp_path / "templates" / "orchestrator-plugin"
     template_dir.mkdir(parents=True)
     (template_dir / "copier.yml").write_text(
         "_templates_suffix: .jinja\n_exclude:\n  - copier.yml\n",
@@ -305,7 +305,7 @@ def test_smoke_check_fails_when_generated_justfile_does_not_parse(*, tmp_path: P
     surface the `copier-template-smoke-justfile-parse-failed`
     diagnostic and exit non-zero.
     """
-    template_dir = tmp_path / "templates" / "impl-plugin"
+    template_dir = tmp_path / "templates" / "orchestrator-plugin"
     template_dir.mkdir(parents=True)
     (template_dir / "copier.yml").write_text(
         "_templates_suffix: .jinja\n_exclude:\n  - copier.yml\n",
@@ -395,7 +395,7 @@ def test_expected_files_pin_generated_copier_answers_file() -> None:
 def test_expected_files_includes_ai_agent_disciplines() -> None:
     """`.ai/agent-disciplines.md` is pinned in the smoke check's expected output set.
 
-    The impl-plugin template ships `.ai/agent-disciplines.md` so every
+    The orchestrator-plugin template ships `.ai/agent-disciplines.md` so every
     generated adopter repo inherits the agent-instruction `.ai/`
     convention seed scaffold. Pinning membership in `_EXPECTED_FILES`
     makes the smoke check fail loudly if the scaffold is ever dropped.

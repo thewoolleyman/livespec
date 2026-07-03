@@ -1,4 +1,4 @@
-# Shared question set for the impl-plugin copier template.
+# Shared question set for the orchestrator-plugin copier template.
 #
 # Single source of truth for the template's questions, !include'd by
 # BOTH copier entry points:
@@ -9,8 +9,8 @@
 #     include the consumer flow would see zero declared questions and
 #     `copier update` would silently DROP every recorded answer from
 #     `.copier-answers.yml` when regenerating it;
-#   - `templates/impl-plugin/copier.yml` (the smoke-check flow, which
-#     uses templates/impl-plugin/ itself as the template root).
+#   - `templates/orchestrator-plugin/copier.yml` (the smoke-check flow, which
+#     uses templates/orchestrator-plugin/ itself as the template root).
 #
 # This file is excluded from generated output via `_exclude` in both
 # configs. Do not add settings (underscore-prefixed keys) here —

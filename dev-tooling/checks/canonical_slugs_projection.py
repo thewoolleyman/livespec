@@ -1,10 +1,10 @@
 """canonical_slugs_projection — project + verify the canonical-slug template data file.
 
 Per livespec/SPECIFICATION/contracts.md Template gate, the canonical check-slug set
-that `templates/impl-plugin/justfile.jinja` stamps MUST flow as a
+that `templates/orchestrator-plugin/justfile.jinja` stamps MUST flow as a
 committed STATIC DATA file — a release-time projection of
 `livespec_dev_tooling.canonical_checks` (the single source of truth)
-written to `templates/impl-plugin/canonical-slugs.yml` — NOT computed
+written to `templates/orchestrator-plugin/canonical-slugs.yml` — NOT computed
 at render time by a copier `_jinja_extension`. The consumer
 `copier update --vcs-ref=master` path reads only the committed data
 file, so the canonical block renders import-free and correct (copier
@@ -16,7 +16,7 @@ This module is both the release-time PROJECTION writer and the
 anti-drift VERIFY gate:
 
 - **Verify mode (default, `python3 canonical_slugs_projection.py`).**
-  Parses the committed `templates/impl-plugin/canonical-slugs.yml`
+  Parses the committed `templates/orchestrator-plugin/canonical-slugs.yml`
   and asserts it equals `canonical_check_slugs()` in set AND order;
   exits non-zero with a structured drift diagnostic on any mismatch
   (missing file, missing slugs, extra slugs, or out-of-order). Wired
@@ -55,7 +55,7 @@ import structlog  # noqa: E402  — vendor-path-aware import after sys.path inse
 __all__: list[str] = []
 
 
-_YAML_REL = Path("templates") / "impl-plugin" / "canonical-slugs.yml"
+_YAML_REL = Path("templates") / "orchestrator-plugin" / "canonical-slugs.yml"
 _HEADER_LINES: tuple[str, ...] = (
     "# Canonical check-slug aggregate — release-time projection of",
     "# livespec_dev_tooling.canonical_checks (the single source of truth).",
@@ -64,7 +64,7 @@ _HEADER_LINES: tuple[str, ...] = (
     "# `check-canonical-slugs-projection` gate fails if this file drifts from",
     "# livespec_dev_tooling.canonical_checks.canonical_check_slugs().",
     "#",
-    "# Consumed by templates/impl-plugin/justfile.jinja as committed copier",
+    "# Consumed by templates/orchestrator-plugin/justfile.jinja as committed copier",
     "# template DATA so the canonical `check:` aggregate renders import-free on",
     "# both the smoke-check flow AND the consumer `copier update` flow. See",
     '# livespec/SPECIFICATION/contracts.md §"Shared code sync —',
@@ -171,7 +171,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="canonical-slugs-projection",
         description=(
             "Verify (default) or --write the committed "
-            "templates/impl-plugin/canonical-slugs.yml projection of "
+            "templates/orchestrator-plugin/canonical-slugs.yml projection of "
             "livespec_dev_tooling.canonical_checks."
         ),
     )

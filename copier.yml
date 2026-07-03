@@ -1,6 +1,6 @@
 # Root copier manifest for the livespec monorepo.
 #
-# The impl-plugin template lives at templates/impl-plugin/. This file
+# The orchestrator-plugin template lives at templates/orchestrator-plugin/. This file
 # routes `copier copy gh:thewoolleyman/livespec` and
 # `copier update --vcs-ref=master` to that subdirectory so _src_path in
 # generated repos can use the repo root URL rather than a non-standard
@@ -8,16 +8,16 @@
 # "owner/repo/subdir" — a broken GitHub URL).
 #
 # IMPORTANT: when the template source is the repo root (the consumer
-# flow), copier reads ONLY this file — templates/impl-plugin/copier.yml
+# flow), copier reads ONLY this file — templates/orchestrator-plugin/copier.yml
 # is NOT consulted. The question set is therefore single-sourced in
-# templates/impl-plugin/copier-questions.yml and !include'd both here
+# templates/orchestrator-plugin/copier-questions.yml and !include'd both here
 # and there; without it, consumer-side `copier update` would see zero
 # declared questions and silently DROP every recorded answer when
 # regenerating .copier-answers.yml.
 #
 # No `_jinja_extensions` is declared on EITHER copier config. The
 # canonical enforcement-check aggregate that justfile.jinja stamps is
-# delivered as committed STATIC DATA: templates/impl-plugin/
+# delivered as committed STATIC DATA: templates/orchestrator-plugin/
 # canonical-slugs.yml is a release-time projection of
 # livespec_dev_tooling.canonical_checks (regenerated via
 # `just stamp-canonical-slugs` in livespec and `{% include %}`'d by
@@ -30,9 +30,9 @@
 # SPECIFICATION/contracts.md §"Shared code sync — livespec-dev-tooling"
 # → Template gate).
 ---
-!include templates/impl-plugin/copier-questions.yml
+!include templates/orchestrator-plugin/copier-questions.yml
 ---
-_subdirectory: templates/impl-plugin
+_subdirectory: templates/orchestrator-plugin
 _templates_suffix: .jinja
 _answers_file: .copier-answers.yml
 _envops:

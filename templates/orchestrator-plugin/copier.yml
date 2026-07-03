@@ -19,7 +19,7 @@
 # drift.
 #
 # NOTE: this file is the template config ONLY when copier is pointed
-# directly at templates/impl-plugin/ (the smoke-check flow). The consumer
+# directly at templates/orchestrator-plugin/ (the smoke-check flow). The consumer
 # flow (`_src_path: gh:thewoolleyman/livespec`) reads the repo-root
 # copier.yml instead, which routes here via `_subdirectory`. The question
 # set is single-sourced in copier-questions.yml and !include'd by both

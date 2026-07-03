@@ -4,7 +4,7 @@ This file is the canonical agent-orientation surface for this repo;
 `.claude/CLAUDE.md` is a symlink to it — never maintain a separate copy.
 The sections through "Red-Green-Replay commit protocol" are the livespec
 fleet-universal agent-instruction core (shared by every fleet member via
-the impl-plugin template); repo-specific guidance is additive on top.
+the orchestrator-plugin template); repo-specific guidance is additive on top.
 
 ## Agent-instruction `.ai/` convention
 
