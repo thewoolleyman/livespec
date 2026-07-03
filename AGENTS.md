@@ -487,6 +487,15 @@ existing file):
   domain term inside the question, answer the literal question the jargon
   raises, and never put a decision in undefined jargon — prefer "here's my
   recommendation plus the plain trade-offs" over a bare jargon picker.
+- **Name the repo in every artifact reference.** The fleet spans many sibling
+  repos, and work driven from a session in one repo routinely lands artifacts
+  in another. When citing any file, PR, branch, or commit the maintainer might
+  look up — a review handoff, a gate presentation, a status report — state the
+  owning repository explicitly and prefer a full clickable GitHub URL
+  (`https://github.com/thewoolleyman/<repo>/blob/<branch>/<path>`) over a bare
+  repo-relative path; "on master" is meaningless without the repo. When the
+  maintainer will review locally, name which clone to pull. Never assume the
+  session's cwd repo is the reader's mental default.
 - **Always recommend.** In any interview or critique dialogue, never present
   options as a neutral menu: lead with an explicit recommended option (first,
   labeled "Recommended"), state the reasoning, and yield gracefully if challenged.
