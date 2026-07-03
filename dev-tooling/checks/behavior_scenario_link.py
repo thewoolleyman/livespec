@@ -12,7 +12,7 @@ the shared `dev-tooling/spec_clauses.py` primitive, so the gap-ids
 this check derives are byte-identical to the ones the
 `livespec-orchestrator-beads-fabro` detector derives (a vendored copy of the same
 module). That single-sourcing is what lets one `clauses[]` link map
-across the family.
+across the fleet.
 
 ALWAYS-WIRED, ALWAYS-RUNNING with a self-documenting per-check
 severity lever (the "carve-out = severity lever, not invariant

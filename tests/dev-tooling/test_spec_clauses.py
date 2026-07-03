@@ -1,7 +1,7 @@
 """Outside-in + parity test for `dev-tooling/spec_clauses.py`.
 
 `spec_clauses.py` is the single-source-of-truth clause extractor +
-gap-id primitive shared across the livespec family. This test
+gap-id primitive shared across the livespec fleet. This test
 covers BOTH the extraction behavior (heading-path scoping, code
 fence skipping, keyword matching) AND a frozen gap-id PARITY
 vector set.

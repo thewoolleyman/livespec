@@ -33,7 +33,7 @@ _APP_AUTH_HELPER_PATH = ".claude-plugin/scripts/bin/mint_app_token.py"
 
 # Fallback default: the conventional per-project credential-injection wrapper
 # name (`with-<id>-env.sh`). Recognized even when no `credential_wrapper` is
-# configured, matching the Beads guard's repo-family convention.
+# configured, matching the Beads guard's repo-fleet convention.
 _WRAPPER_RE = re.compile(r"with-[a-z0-9-]+-env\.sh")
 
 _SHELL_SPLIT_RE = re.compile(r"[;&|]+")

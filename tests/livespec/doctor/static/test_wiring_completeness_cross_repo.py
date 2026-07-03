@@ -19,7 +19,7 @@ Tests cover:
     in the finding's message.
   - `local_clone` path resolution: justfile read from the local
     clone via `git -C <local_clone> show HEAD:justfile` (NOT a
-    filesystem read — the family-wide bare-flag invariant on
+    filesystem read — the fleet-wide bare-flag invariant on
     primary checkouts makes the working tree intentionally
     stale, so the git db is the canonical source).
   - `local_clone` path exists but isn't a git repository
@@ -1621,7 +1621,7 @@ def test_path_a_reads_via_git_db_on_bare_flag_clone(
 ) -> None:
     """Path A reads the justfile via `git show HEAD:` on a bare-flag clone.
 
-    Although the post-v095 family-wide invariant is the
+    Although the post-v095 fleet-wide invariant is the
     commit-refuse hook (not `core.bare = true`), bare clones
     remain valid as cross-repo siblings — a freshly-cloned
     repo carrying `core.bare = true` (e.g., a CI worker that

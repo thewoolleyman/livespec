@@ -26,6 +26,7 @@ set -euo pipefail
 KEY="${HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC:?HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC required}"
 
 DATASET="github-ci"            # OTLP service.name -> Honeycomb dataset
+# Kept deliberately for telemetry continuity; see livespec-wnkl72.
 NAMESPACE="livespec-family"
 ENDPOINT="https://api.honeycomb.io/v1/traces"
 SCOPE_NAME="livespec.github-ci-export"
