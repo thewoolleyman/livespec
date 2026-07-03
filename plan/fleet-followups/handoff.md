@@ -13,22 +13,21 @@ alone via the read-first chain — no chat history required.
   git-jsonl, runtime), so — per the fleet pattern — this anchor carries only a
   few **same-tenant (core) ledger children** (`livespec-jcc6.1/.2/.3` filed
   2026-07-01 + `.4` filed 2026-07-03; **`.1` + `.2` DONE** via factory dispatch
-  (PRs #736/#734), `.3` held at `backlog` — rationale in §"Session 2"; **`.4`** =
-  reaper dead-plugin-entry pruner, `backlog`, §"Session 12"); every **cross-tenant** item
+  (PRs #736/#734), **`.3` DONE via relocation** → beads-fabro `bd-ib-syb`,
+  PR #254 — §"Session 13"; **`.4`** = reaper dead-plugin-entry pruner, `backlog`,
+  held under `livespec-c1k9`, §"Session 12"); every **cross-tenant** item
   is **prose-linked** in the inventory and its status is composed from the ledger
   (no shadow queue).
-- **⚑ NEW #1 (2026-07-02): GitHub App-token auth — its OWN dedicated thread.** The
-  GH_TOKEN factory-auth blocker (a `livespec-console-beads-fabro` canary hit it) grew
-  into a fleet-wide credential-model track: retire the fleet PAT
-  (`LIVESPEC_FAMILY_GITHUB_TOKEN`) + the human `gho_` OAuth from the agent path,
-  standardize on GitHub **App installation tokens**, with **first-class remint**
-  (survives >1h runs), **tenant-scoped** resolution + adopter isolation (fleet = adopter
-  #0, fail-closed), and OS/VPS **enforcement**. Worked in **`plan/github-app-auth/`**
-  (epic **`livespec-2ef0`**, core; resume
-  `/livespec-orchestrator-beads-fabro:plan github-app-auth`) — successor to the closed
-  credential-wrapper epic `livespec-zd8h`. It absorbs `bd-ib-gsl` as its factory slice,
-  **supersedes `bd-ib-p2e`** (PAT-grant stopgap → obsolete), and folds in **`C16`**
-  (openbrain adopter wrapper). Resume THAT thread for this work, not here.
+- **⚑ GitHub App-token auth — ✅ CLOSED + ARCHIVED (2026-07-03).** The GH_TOKEN
+  factory-auth blocker grew into its own fleet-wide credential-model thread; epic
+  **`livespec-2ef0`** is **CLOSED** with all four pillars delivered and dogfooded
+  (first-class remint via livespec-runtime v0.8.0 `github_auth` + per-subprocess
+  re-mint in the factory; tenant-scoped resolution + adopter isolation fail-closed;
+  one primitive for factory AND standalone on all 8 clones; enforcement — fleet PAT
+  `LIVESPEC_FAMILY_GITHUB_TOKEN` deleted + revoked, `gho_` OAuth out of every agent
+  path, github-auth-guard hook). It absorbed `bd-ib-gsl`, superseded `bd-ib-p2e`,
+  and folded in `C16`. Full record: **`plan/archive/github-app-auth/`** (do not
+  resume; it succeeded the credential-wrapper epic `livespec-zd8h`).
 - **⚑ FACTORY-HARDENING — ✅ COMPLETE (Session 10, 2026-07-02).** The FOUR P0
   factory-hardening threads (all `livespec-orchestrator-beads-fabro` tenant, dispatcher
   self-modifications) ALL landed and both epics (`bd-ib-mxr`, `bd-ib-fqh`) are CLOSED —
@@ -78,8 +77,14 @@ autonomous run finished.** All four P0 threads landed and both epics (`bd-ib-mxr
 `bd-ib-fqh`) are CLOSED; full detail + outcomes in §"Session 10 (2026-07-02) —
 factory-hardening COMPLETE". The ordered plan that WAS here (cyv → asp → fqh.1 →
 fqh.2/.3 → S3 → mxr.1) is retained below as the execution record — do NOT re-run it.
-**The active next action is the (formerly deferred) block after the `---`: grooming +
-still-unfiled cross-tenant items + two new findings.**
+**The active next action: an attended `/livespec:revise` accepting/shaping
+`SPECIFICATION/proposed_changes/readme-contract.md`** (the `livespec-127o.1` slice;
+content is maintainer-gated — include the `tests/heading-coverage.json` co-edit in
+the revise payload's `resulting_files[]`, since the proposal adds a `## README
+contract` heading) **→ then promote + dispatch `livespec-127o.2`** (the factory
+README rewrite, dep-gated on `.1`) via the Session-12 dispatch mechanics (bare repo
+NAME `livespec`). The block after the `---` is patched with per-item dispositions —
+most are DONE/FILED; do NOT re-run its items as originally written.
 
 The completed plan, retained for the record:
 
@@ -163,17 +168,24 @@ self-mods: review each Fabro PR before/at merge even though admission is pre-app
 **⚑ NEXT ACTIONS — factory-hardening is COMPLETE (Session 10); these formerly-deferred
 items are now the active priority. Compose LIVE status before acting:**
 
-1. **Grooming** — `livespec-127o` (README epic; maintainer-owned cut: a spec-contract
-   slice → `/livespec:propose-change` + a README-authoring slice → factory).
+1. **Grooming — core DONE.** `livespec-127o` (README epic) **GROOMED (Session 12
+   continued)** into `livespec-127o.1` (spec README contract; propose-change FILED →
+   the pending attended revise named above) + `livespec-127o.2` (factory rewrite,
+   dep-gated on `.1`) — do NOT re-groom.
    **`livespec-m0xu` (template rename) is DONE (Session 11)** — groomed + landed
    (history/v155 + PR #782); m0xu + child `livespec-pzrvzm` CLOSED. See §"Session 11".
-   `livespec-jcc6.3` (prose refresh) stays held (acceptance not autonomously verifiable).
+   `livespec-jcc6.3` (prose refresh) is DONE — relocated to beads-fabro `bd-ib-syb` +
+   landed (PR #254, §"Session 13").
    `needs-regroom` `livespec-nylyhi` + `livespec-rmew4k` are CROSS-TENANT — groom from those repos.
-2. **Still-unfiled CROSS-TENANT items** (file from each owning repo's OWN session — the
-   `bd` cwd-tenant trap): **B4** (beads-fabro/runtime `migrate-tenant` CLI), **C7**
-   (driver-codex "DEFERRED" wording), **C8** (git-jsonl §6 doc-reconcile), **D9**
-   (fleet/dev-tooling `hydrate` worktree-pack), **D10** (fleet/core review-policy).
-   Plus TWO **new findings from the Session-10 run**, now FILED (`backlog`; status read
+2. **Cross-tenant items — FILED/DISPOSED (Session 12 continued, from the core session
+   via `bd -C <repo>`; do NOT re-file):** **B4** → `bd-ib-09c` (beads-fabro
+   `migrate-tenant` CLI), **C7** → `livespec-driver-codex-wqo` (driver-codex "DEFERRED"
+   wording), **D9** → `livespec-dev-tooling-5kv` (dev-tooling `hydrate` worktree-pack;
+   supersedes the narrow git-jsonl instance `bd-gj-hew`), **C8** disposed
+   already-fixed (git-jsonl contracts.md already documents it — no filing), **D10**
+   decided no-change (checks-only branch protection stands). Groom + dispatch the
+   three FILED items in their owning repos' sessions.
+   Plus TWO **new findings from the Session-10 run**, also FILED (`backlog`; status read
    from the ledger): (a) git-jsonl **`bd-gj-hew`** (worktree-hydration gap, a concrete
    instance of D9) — `just worktree-create` does
    NOT install the Worktree Discipline Pack (`dev-tooling/branch-protection.sh`), so `.py`
@@ -208,12 +220,13 @@ session), S4 `bd-ib-fqh.2` + S5 `bd-ib-fqh.3` dep-gated on S2); `bd-ib-asp`
 (E2E dispatch acceptance — children `bd-ib-cyv` janitor-green-by-execution +
 `bd-ib-mxr.1` broader E2E; THE UNBLOCKER for non-core dispatch).
 Core epic children (this thread): `livespec-jcc6.1` (B2, **DONE** PR #736),
-`livespec-jcc6.2` (B3, **DONE** PR #734), `livespec-jcc6.3` (C6, `backlog` — held).
+`livespec-jcc6.2` (B3, **DONE** PR #734), `livespec-jcc6.3` (C6, **DONE** via
+relocation → `bd-ib-syb`, PR #254, §"Session 13").
 Other core: `livespec-yc8e` (B1 reaper, **DONE** PR #742), `livespec-yonx` (io
 facade, **DONE** PR #762), `livespec-ek6e` (io facade, **DONE** PR #764),
-`livespec-mpkaz4` (reaper sibling, `open`), `livespec-127o` (README, `backlog`),
-`livespec-m0xu` (template rename, `backlog`), `livespec-aava` (B5, Codex
-skill-picker).
+`livespec-mpkaz4` (reaper sibling), `livespec-127o` (README, GROOMED — slices
+`.1`/`.2`, §"Session 12 (continued)"), `livespec-m0xu` (template rename, **DONE**
+Session 11), `livespec-aava` (B5, Codex skill-picker).
 Cross-tenant: `bd-ib-2wq` (beads-fabro); `livespec-dev-tooling-9j8` +13 children
 (dev-tooling); `livespec-8kip` (dev-tooling gap).
 
@@ -767,9 +780,9 @@ against the owning repo's origin/master (via parallel sub-agents) before filing.
 **Remaining fleet-followups priorities:** run `/livespec:revise` to accept `readme-contract.md`
 (Slice-1 content gate) → then dispatch Slice 2 (`livespec-127o.2`); the cross-tenant items are now
 filed (groom + dispatch each in its owning repo's session); `jcc6.4` stays held under `c1k9`;
-**`jcc6.3` is now ACTIONABLE via the fable-judge approach — see §"Session 12 (continued 2)"**
-(no longer indefinitely held). Close `livespec-jcc6` once its remaining children resolve
-(`.3` reframed-actionable, `.4` held-under-c1k9) — not yet.
+**`jcc6.3` is DONE — executed in §"Session 13"** (relocated to `bd-ib-syb`, landed PR #254).
+Close `livespec-jcc6` once its remaining child resolves (`.4` held-under-c1k9) and the README
+slices land — not yet.
 
 ## Session 12 (continued 2, 2026-07-03) — jcc6.3 researched: proper repo = beads-fabro; reframed as a fable-judged small fix
 
@@ -812,6 +825,48 @@ Researched live against origin/master:
    real wording/product call arises (e.g. whether the capture example should show the raw
    beads-native create-then-normalize vs. the 7-state value directly). Otherwise self-resolve and
    land via the beads-fabro worktree → PR → janitor path.
+
+## Session 13 (2026-07-03) — jcc6.3 EXECUTED: relocated to bd-ib-syb, prose fix landed (PR #254), fable-judge loop proven
+
+Resumed fleet-followups; the maintainer was away at the activity picker, so the session
+proceeded under the §"Session 12 (continued 2)" standing directive ("the NEXT session judges
+the rewrite itself … asking the maintainer only where necessary"). The maintainer-gated
+`/livespec:revise` of `readme-contract.md` was deliberately NOT run (content gate — it stays
+the top action for an attended session). Executed the jcc6.3 plan end-to-end:
+
+- **Relocated:** filed **`bd-ib-syb`** (beads-fabro, P2, `origin:freeform`, normalized
+  `open→backlog`) carrying the full research findings; closed core child `livespec-jcc6.3`
+  as relocated with a citation comment. Epic `livespec-jcc6` is now **3/4** (`.4` held
+  under `c1k9` is the only open child).
+- **Live re-verification (one correction to §"Session 12 (continued 2)"):** the
+  `WorkItemStatus` literal's terminal state is **`"done"`, not `"closed"`** as recorded
+  there (verified in livespec-runtime origin/master AND the beads-fabro vendored copy).
+  Unchanged conclusion: `"open"` is invalid; `"backlog"` is the intake entry state.
+- **Drafted + fable-judged (the DoR-blocker resolution, proven):** drafted
+  `capture-work-item.md` `status="open"` → `"backlog"` in a beads-fabro worktree; a fresh
+  `general-purpose` sub-agent on the **fable model** (NOT a fork — Session-11 lesson)
+  independently judged the prose against the vendored schema + store signatures. Verdict
+  **REVISE**: the core change confirmed correct, kwargs/signatures all verified, but THREE
+  real residual drifts surfaced that the draft missed — (a) Pre-requisites still said
+  "JSONL store path" (beads has no on-disk JSONL; now "the resolved beads tenant
+  connection"), (b) the Depends-on bullet hardcoded `li-` ids contradicting the same
+  file's prefix-decoupling comment (now the tenant's configured `<prefix>-XXXXXX` form),
+  (c) `plan.md` offered a "parent link" the capture path cannot express (`parent_id=None`
+  always; now "linked via `depends_on`"). Applied all three; a re-judge pass on the
+  amendments returned **APPROVE (high confidence)**.
+- **Landed:** beads-fabro **PR #254** (`docs(prose):` — no product `.py`, TDD-exempt;
+  sibling-precedent subject per `fa190ab`) merged `ec5a598`, all required checks green;
+  primary refreshed, worktree + branch cleaned; `bd-ib-syb` CLOSED with the completion
+  record.
+- **Side observation (logged as a `bd-ib-syb` comment, not expanded into scope):** the
+  beads-fabro package `types.py:11-12` docstring says "unified 20-field shape" but the
+  vendored model is 22 fields — a stale count in a `.py` docstring (TDD-ritual territory);
+  fix opportunistically on the next `types.py`-touching change.
+
+**Method note for future not-autonomously-verifiable items:** the fable-judge loop
+(draft → independent fable-model judge with the source-of-truth file list → reconcile →
+re-judge the amendments) resolved a DoR blocker that had held jcc6.3 since Session 2, and
+the judge caught real drift the drafting session missed — reuse it.
 
 ## Read-first chain (in order)
 
