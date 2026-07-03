@@ -163,10 +163,11 @@ self-mods: review each Fabro PR before/at merge even though admission is pre-app
 items are now the active priority. Compose LIVE status before acting:**
 
 1. **Grooming** — `livespec-127o` (README epic; maintainer-owned cut: a spec-contract
-   slice → `/livespec:propose-change` + a README-authoring slice → factory) and
-   `livespec-m0xu` (template rename — copier-ref ripples). `livespec-jcc6.3` (prose
-   refresh) stays held (acceptance not autonomously verifiable). `needs-regroom`
-   `livespec-nylyhi` + `livespec-rmew4k` are CROSS-TENANT — groom from those repos.
+   slice → `/livespec:propose-change` + a README-authoring slice → factory).
+   **`livespec-m0xu` (template rename) is DONE (Session 11)** — groomed + landed
+   (history/v155 + PR #782); m0xu + child `livespec-pzrvzm` CLOSED. See §"Session 11".
+   `livespec-jcc6.3` (prose refresh) stays held (acceptance not autonomously verifiable).
+   `needs-regroom` `livespec-nylyhi` + `livespec-rmew4k` are CROSS-TENANT — groom from those repos.
 2. **Still-unfiled CROSS-TENANT items** (file from each owning repo's OWN session — the
    `bd` cwd-tenant trap): **B4** (beads-fabro/runtime `migrate-tenant` CLI), **C7**
    (driver-codex "DEFERRED" wording), **C8** (git-jsonl §6 doc-reconcile), **D9**
@@ -620,6 +621,51 @@ non-livespec status (beads-native `open`); normalize stragglers to `backlog` fir
 github-app-auth follow-ups blocked the first cyv attempt). **Observed:** concurrent activity
 on beads-fabro + core master from another session (spec critiques, plan-archive) —
 non-conflicting (the dispatcher fresh-clones master per dispatch).
+
+## Session 11 (2026-07-02) — livespec-m0xu (template rename) GROOMED + COMPLETED
+
+Resumed fleet-followups; re-verified LIVE that factory-hardening is complete (both epics
+closed) and core CI is green. Maintainer directed grooming `livespec-m0xu` (the
+impl-plugin→orchestrator-plugin copier-template rename), then "run it all autonomously."
+Executed end-to-end; **m0xu + its Slice-2 child `livespec-pzrvzm` are CLOSED**, the rename
+is fully landed and verified.
+
+- **Groomed m0xu via the `groom` operation** (maintainer-approved **PATH-ONLY** cut).
+  Grooming CORRECTED m0xu's own premise: its description said to "backfill `_subdirectory`
+  in every sibling's `.copier-answers.yml`", but the siblings carry NO `_subdirectory` key —
+  it lives ONCE in core's root `copier.yml`. So the cross-repo work COLLAPSED to a
+  verification, not per-sibling edits. Also disambiguated the overloaded term `impl-plugin`:
+  the **template PATH** (renamed) vs the **repo-class/role** term (deliberately KEPT — a
+  separate future rename). Two slices filed; m0xu regroomed out.
+- **Slice 1 — spec path-rename (human-gated) DONE.** `/livespec:propose-change` →
+  `/livespec:revise` renamed `templates/impl-plugin/` → `templates/orchestrator-plugin/`
+  across the live spec (contracts.md + non-functional-requirements.md), preserving the 3
+  repo-class/role refs. **history/v155** (PRs #780/#781, merged; full just check + doctor green).
+- **Slice 2 — core code rename DONE.** `git mv` the template dir + `copier.yml`
+  `_subdirectory` + the dev-tooling/doctor checks + tests + the drift workflow + the
+  fleet-manifest path comment. **PR #782** merged (`a304b09`, `fix:` — Red-Green-Replay
+  ritual). Verified on origin/master: dir renamed, 0 residual real path refs, role/class refs
+  intact, CI green. **Sibling `copier update --vcs-ref=master` resolves the renamed subdir
+  (exit 0** from an isolated git-jsonl clone) — siblings safe on next update.
+- **⚑ FLEET FINDING surfaced + filed + FIXED: the factory App token lacked `workflows`
+  permission.** Slice 2's FIRST attempt was a factory dispatch; Fabro implemented the rename
+  correctly but GitHub REJECTED the push because the diff touches
+  `.github/workflows/copier-update-drift.yml` and the fleet App installation token lacked
+  `workflows: write`. This blocks ANY factory dispatch touching `.github/workflows/**`. Filed
+  **`livespec-2ef0.1`** (github-app-auth epic); the github-app-auth track FIXED it at source
+  (App now carries Workflows: Read/write, verified on installation 131208965; openbrain
+  adopter App too) and **CLOSED `2ef0.1`**. Future workflow-touching dispatches now work
+  through the factory. For THIS slice, since the operator session's `gh` token carried the
+  `workflow` scope, Slice 2 was completed as OPERATOR work (worktree → PR → merge, full just
+  check + doctor + CI gates).
+- **Execution lesson:** a `fork` subagent is UNRELIABLE for a delegated TASK — it inherits
+  the parent's context and acts AS the parent (the first Slice-1 fork did nothing but echo a
+  status message). Use a fresh `general-purpose` agent for delegation; verify its claims
+  against canonical committed state (`git show origin/master`).
+
+**Remaining fleet-followups priorities** (unchanged except m0xu now done): groom
+`livespec-127o` (README); file the still-unfiled CROSS-TENANT items (B4/C7/C8/D9/D10) from
+their own repos' sessions; client-side ops (group E); then close `livespec-jcc6`.
 
 ## Read-first chain (in order)
 
