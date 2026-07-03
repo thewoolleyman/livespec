@@ -717,10 +717,58 @@ rather than assuming. Full group-E disposition:
   hand-coded — groom + dispatch it via the factory. Epic is now **2/4** (`.1`/`.2` closed,
   `.3` held, `.4` new).
 
-**Remaining fleet-followups priorities** (group E now disposed): groom `livespec-127o`
-(README); groom + dispatch **`livespec-jcc6.4`** (the reaper pruner) via the factory; file
-the still-unfiled CROSS-TENANT items (B4/C7/C8/D9/D10) from their own repos' sessions; then
-close `livespec-jcc6`.
+## Session 12 (continued, 2026-07-03) — cross-tenant items FILED from core; 127o GROOMED; jcc6.4 held under c1k9; D10 decided
+
+Maintainer directed finishing the remaining fleet-followups work autonomously (after clearing
+gates up front). Proved cross-tenant filing FROM THE CORE SESSION works: `bd -C <repo> create`
+routes to any fleet tenant (the "cwd-tenant trap" is avoidable, not absolute — shared fleet
+password authenticates each tenant's SQL user; dry-run confirmed). Each item was VERIFIED live
+against the owning repo's origin/master (via parallel sub-agents) before filing.
+
+- **Cross-tenant filings (B4/C7/C8/D9):**
+  - **C7 FILED → `livespec-driver-codex-wqo`** (driver-codex, P3). Verified: the beads tenant
+    IS wired + connected (bd list ok; `.beads/config.yaml` committed, server-mode
+    user/db=livespec-driver-codex) but `.livespec.jsonc:24-29` + `AGENTS.md:27,38` still say
+    "DEFERRED". (The item said CLAUDE.md; it's the AGENTS.md symlink.)
+  - **B4 FILED → `bd-ib-09c`** (beads-fabro, P3, feature). Verified no `migrate-tenant` command
+    exists; primitives `register_custom_statuses` (store.py:319) + `legacy_seed`
+    (rebalance_ranks.py:74) live in beads-fabro (runtime is substrate-neutral). Built factory-side.
+  - **D9 FILED → `livespec-dev-tooling-5kv`** (dev-tooling, P3). Verified: `worktree_create`/
+    `worktree_hydrate` (worktree-pack/worktree-lib.sh:114/:150) run only the ecosystem hook, not
+    `install-worktree-pack`, so fresh worktrees lack the pack (gitignored in consumers) →
+    `just check` fails until manual install; bootstrap DOES install it. Single-source dev-tooling
+    fix; prose-links to (supersedes) the narrow git-jsonl instance **`bd-gj-hew`**.
+  - **C8 DISPOSED as already-fixed** (no filing). git-jsonl's shipped `contracts.md:406-411`
+    already documents the policy-fields-drop-on-write deliberately; the only stale cell is in a
+    FROZEN livespec `plan/archive/` design doc (do-not-edit). Verification saved a redundant item.
+- **`livespec-127o` (README) GROOMED** into two dependency-layered slices (maintainer-authorized):
+  **`livespec-127o.1`** (spec README contract in `contracts.md`, CORE-only scope, adjacent to
+  Fleet-agent-instruction-core) and **`livespec-127o.2`** (rewrite README to conform, factory,
+  `depends_on .1`). **Slice-1 propose-change FILED** this PR →
+  `SPECIFICATION/proposed_changes/readme-contract.md` (drafted via a sub-agent; the CONTENT is
+  maintainer-gated at `/livespec:revise` — do NOT auto-revise). Next: run `/livespec:revise` to
+  accept/shape it (adds the `## README contract` heading → needs the `tests/heading-coverage.json`
+  co-edit in the revise payload's `resulting_files[]`), then dispatch Slice 2.
+- **`livespec-jcc6.4` HELD under `livespec-c1k9`** (NOT dispatched). Discovered while dispatching
+  jcc6.4: the ledger-conformance gate blocked it on a lone core straggler — **`livespec-c1k9`**, a
+  **P0 epic another session filed today** ("Fleet plugin currency: every new session runs the
+  latest released plugin builds", thread `plan/fleet-plugin-currency/`) that SUBSUMES jcc6.4's
+  dead-entry-cleanup domain ("coherent cache"). Maintainer decision: link jcc6.4 under c1k9 and
+  HOLD standalone dispatch until c1k9's investigation decides how orphan-cleanup ships (avoids
+  pre-empting the active P0 design). Normalized c1k9 `open→backlog` (unblocks all core dispatch;
+  transparency comment) and demoted jcc6.4 `ready→backlog` with a held-pending-c1k9 comment.
+  ⚑ **Dispatch mechanics learned:** `real-work-dispatch.sh --target-repo` takes the bare repo
+  NAME (`livespec`), NOT a filesystem path (a path becomes `thewoolleyman/<path>` → 404). Preflight
+  passes with App tokens (`GITHUB_APP_ID`+`GITHUB_PRIVATE_KEY`) + image `livespec-orchestrator:dev`.
+- **D10 (branch-protection review policy) DECIDED — no change.** Keep checks-only / 0 required
+  reviews: requiring human reviews would break the dark factory's unattended auto-merge. Revisit
+  only when external human contributors arrive. No config change; no ledger item.
+
+**Remaining fleet-followups priorities:** run `/livespec:revise` to accept `readme-contract.md`
+(Slice-1 content gate) → then dispatch Slice 2 (`livespec-127o.2`); the cross-tenant items are now
+filed (groom + dispatch each in its owning repo's session); `jcc6.4` stays held under `c1k9`;
+`jcc6.3` stays held. Close `livespec-jcc6` once its remaining children resolve (`.3` held, `.4`
+held-under-c1k9) — not yet.
 
 ## Read-first chain (in order)
 
