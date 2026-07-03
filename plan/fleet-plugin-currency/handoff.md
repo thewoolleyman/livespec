@@ -292,3 +292,12 @@ Next actions, in order:
   mapping (incl. NEW items to file), and the Phase 5 verification plan are all
   recorded. `handoff.md` §"The next action" updated to the post-finalization
   next-action list.
+
+### Session 1 (continued) — fast-path wave landed (2026-07-03)
+
+- **Fast-path wave landed — tactical sweep completed** (fleet pointers
+  refreshed, openbrain excluded), release-branch substrate merged in all five
+  plugin repos (PRs livespec #803, driver-claude #73, driver-codex #46,
+  beads-fabro #256, git-jsonl #166; branches verified at latest release commits;
+  five ledger items closed), 10 new items filed + 5 regroomed by the filing
+  agent, allowlist + hook-adoption waves in flight.
