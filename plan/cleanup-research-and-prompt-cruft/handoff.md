@@ -3,9 +3,11 @@
 The single resumable entry point for the fleet-wide cleanup of legacy
 root-level `research/` and `prompts/` directories: still-active tracks
 migrate to `plan/<topic>/` threads, completed/stale material archives
-under each repo's top-level `archive/`, load-bearing living reference
-stays (provisional D1). A fresh session executes the next action from
-this file alone via the read-first chain — no chat history required.
+under each repo's top-level `archive/`, non-spec-referenced living
+reference stays, and spec-referenced docs get absorbed into (or
+de-referenced from) the spec then archived (confirmed D1). A fresh
+session executes the next action from this file alone via the
+read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
@@ -35,16 +37,20 @@ this file alone via the read-first chain — no chat history required.
   livespec-driver-codex, livespec-orchestrator-git-jsonl,
   livespec-runtime.
 - **⚑ Golden rules.**
-  - D1–D3 in the inventory are PROVISIONAL until Phase 0 confirms them
-    with the maintainer. No repo mutation before Phase 0 closes.
+  - D1–D3 are CONFIRMED (Phase 0 closed 2026-07-03): D1 = prune + the
+    SPEC-ABSORB rule (spec-referenced docs get a propose-change that
+    inlines their content into the spec or removes the obsolete
+    reference, THEN archive — revise strictly before or atomically
+    with the move); D2 = retire the prompts/ convention fleet-wide;
+    D3 = openbrain `PLAN/` out of scope. Full statements in the
+    inventory's "Scoping decisions" section.
   - Every repo mutation runs the full worktree → PR → merge → cleanup
     protocol IN ITS OWN REPO (worktrees under
     `~/.worktrees/<repo>/<branch>`), `mise exec -- git …` so hooks
     fire, never `--no-verify`, never force-push a branch another
     session created. All changesets here are doc/file moves — zero
     product `.py` — so commits are `chore(...)`-subject and exempt from
-    the Red-Green-Replay ritual, EXCEPT any orchestrator code change
-    (only if D1 flips) which is full TDD.
+    the Red-Green-Replay ritual.
   - Spec files are never raw-edited: a `SPECIFICATION/` change in any
     repo goes through that repo's propose-change → revise cycle.
   - Archive moves are `git mv` (history-preserving), inbound-reference
@@ -66,20 +72,20 @@ this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
-**Run Phase 0 — maintainer scoping confirmation.** Concretely:
+**Run Phase 1 — per-repo disposition validation (read-only).**
+Phase 0 closed 2026-07-03 (verdicts recorded in the inventory).
+Concretely:
 
 1. Read epic status from the ledger (command above).
-2. Present D1, then D2, then D3 from the inventory's "Scoping
-   decisions" section via the structured picker — one question per
-   turn, recommended default listed first, flip costs stated from the
-   inventory's notes.
-3. Record the verdicts by editing that section from PROVISIONAL to
-   CONFIRMED (or re-scoped) and land the edit through this thread's
-   normal worktree → PR flow.
-4. If D1 flips to "eliminate": STOP and re-plan per the inventory's
-   "Cross-repo coordination hazards" section before any further phase.
+2. Dispatch one read-only agent per dirty repo (5, parallel), each
+   brief composed from the "Per-repo agent brief template" below with
+   the inventory's per-repo table + the corrected survey sweep pinned
+   verbatim (openbrain's brief carries ITS wrapper and `main`).
+3. Commit the returned tables as
+   `plan/cleanup-research-and-prompt-cruft/research/02-dispositions-<repo>.md`
+   via this thread's normal worktree → PR flow.
 
-Then proceed to Phase 1 below.
+Then proceed to Phase 2 below.
 
 ## Phase plan
 
@@ -87,20 +93,19 @@ Phases run strictly in order; within Phase 1 and Phase 3 the per-repo
 agents are independent (no shared files across repos) and run in
 parallel.
 
-- **Phase 0 — maintainer scoping confirmation.** Present D1–D3 from the
-  inventory (recommended defaults first) via the structured picker, one
-  question per turn. Record verdicts by editing the inventory's
-  "Scoping decisions" section from PROVISIONAL to CONFIRMED (or
-  re-scoping per its flip notes) through this thread's normal
-  worktree → PR flow. If D1 flips to "eliminate", STOP and re-plan (the
-  inventory's cross-repo hazards section enumerates what grows).
+- **Phase 0 — maintainer scoping confirmation. CLOSED 2026-07-03:**
+  D1 confirmed MODIFIED (prune + spec-absorb rule), D2 confirmed
+  (retire prompts/ convention), D3 confirmed (openbrain `PLAN/` out of
+  scope) — verdicts recorded in the inventory's "Scoping decisions"
+  section.
 - **Phase 1 — per-repo disposition validation (read-only).** Dispatch
   one read-only agent per dirty repo (5 agents, parallel) to: re-run
   the survey sweep for its repo, verify every VERIFY row's evidence
   (git log --grep for the landing merge, spec history version, ledger
   state via the repo's own tenant), confirm the inbound-reference line
   numbers still hold, and return a finalized disposition table
-  (ARCHIVE / PLAN-THREAD / STAYS / MAINTAINER, with evidence strings).
+  (ARCHIVE / PLAN-THREAD / STAYS / SPEC-ABSORB / MAINTAINER, with
+  evidence strings).
   The overseer commits the returned tables as
   `plan/cleanup-research-and-prompt-cruft/research/02-dispositions-<repo>.md`
   in livespec via this thread's worktree → PR flow.
@@ -108,10 +113,12 @@ parallel.
   row with the maintainer, one item per turn, recommended disposition
   first (known queue from the inventory: livespec
   `dark-factory-operability/work-breakdown.md`, the
-  `workflow-processes` reframing/mermaid docs, and
-  `prompts/livespec-overseer-startup.md`; plus whatever Phase 1
-  escalates). Record verdicts into the 02-dispositions files (same
-  commit flow). Exit: zero MAINTAINER rows left.
+  `workflow-processes` reframing/mermaid docs,
+  `prompts/livespec-overseer-startup.md`, and openbrain
+  `ob1-fork-patches.md` — spec-referenced live registry, see its row
+  for the three checkpoint options; plus whatever Phase 1 escalates).
+  Record verdicts into the 02-dispositions files (same commit flow).
+  Exit: zero MAINTAINER rows left.
 - **Phase 3 — per-repo execution (mutating).** File one child
   work-item per dirty repo in that repo's OWN tenant via the
   capture-work-item operation (citing `livespec-ztepy5`), then dispatch
@@ -120,15 +127,19 @@ parallel.
   its repo's 02-dispositions file: `git mv` ARCHIVE rows to
   `archive/research/<topic>/` / `archive/prompts/`, create PLAN-THREAD
   rows as proper threads (directory + handoff passing the
-  self-sufficiency gate + epic anchor in that repo's tenant), apply the
-  D2 convention-doc edits, update every inbound reference in the same
-  PR, run the repo's full gate green, open the PR, merge under the
-  repo's merge discipline, refresh the primary checkout, clean up the
-  worktree/branch, and close its child work-item. livespec's agent also
-  carries the two spec-side pieces through propose-change → revise: the
-  D2 sentence (§"No shadow ledger" naming `prompts/AGENTS.md`) and any
-  heading-set change ripple (`tests/heading-coverage.json` co-edit
-  discipline).
+  self-sufficiency gate + epic anchor in that repo's tenant), execute
+  SPEC-ABSORB rows in the load-bearing order — propose-change → revise
+  (inline the content or remove the obsolete reference) → `git mv` to
+  archive, never the move first — apply the D2 convention-doc edits,
+  update every inbound reference in the same PR, run the repo's full
+  gate green, open the PR, merge under the repo's merge discipline,
+  refresh the primary checkout, clean up the worktree/branch, and close
+  its child work-item. livespec's agent also carries the D2 spec
+  sentence (§"No shadow ledger" naming `prompts/AGENTS.md`) through
+  propose-change → revise, plus any heading-set change ripple
+  (`tests/heading-coverage.json` co-edit discipline); openbrain's agent
+  drives its SPEC-ABSORB revises through openbrain's own
+  propose-change → revise cycle.
 - **Phase 4 — livespec convention docs.** Whatever D2 doc updates are
   NOT already carried by Phase 3 agents (e.g. livespec
   `.ai/agent-disciplines.md` handoff-convention rewrite, the stale
@@ -136,8 +147,9 @@ parallel.
   livespec PR. May fold into livespec's Phase 3 PR if that agent takes
   it explicitly.
 - **Phase 5 — fleet re-scan + close.** Re-run the inventory's survey
-  sweep across all 9 repos (dirty ones now clean of ARCHIVE/PLAN-THREAD
-  rows; the 4 clean repos still clean; STAYS rows intact), run
+  sweep across all 9 repos (dirty ones now clean of ARCHIVE,
+  PLAN-THREAD, and SPEC-ABSORB rows; the 4 clean repos still clean;
+  STAYS rows intact and no spec reference pointing into them), run
   `/livespec:doctor` in the fleet repos touched, verify all child
   work-items closed, then close `livespec-ztepy5` and archive this
   thread (`git mv plan/cleanup-research-and-prompt-cruft/
@@ -238,3 +250,25 @@ Phase 3 (execution, mutating) adds:
   explicit next-action section, `origin/master` hardcoded in the survey
   sweep false-greening openbrain, Phase 1 brief-pin ambiguity); all
   four repaired in this file + the inventory, then re-verified.
+
+### Session 2 (2026-07-03) — Phase 0 closed
+
+- Maintainer answered all three scoping questions (same calendar day,
+  same overseer session as Session 1 after a picker-timeout gap).
+- **D1 confirmed MODIFIED** — prune, PLUS the spec-absorb rule: no doc
+  stays in `research/` on account of a SPEC reference; each
+  spec-referenced doc gets a propose-change that inlines its content
+  into the specification or removes the incorrect/obsolete reference,
+  and archives once the revise lands. Docs referenced only by
+  code/AGENTS.md and the runtime-written `lessons.md` keep the prune
+  default. New SPEC-ABSORB disposition class added; rows reshaped:
+  livespec `workflow-processes` mandated pair, openbrain
+  `android-voice-path-decision.md`, openbrain `gmail-ingest-filter/`
+  → SPEC-ABSORB; openbrain `ob1-fork-patches.md` → MAINTAINER
+  (spec-referenced live registry — inlining mutable tracking state
+  into a spec conflicts with "spec is for contracts, not tracking";
+  three options queued for Phase 2).
+- **D2 confirmed** — retire the root prompts/ handoff convention
+  fleet-wide. **D3 confirmed** — openbrain `PLAN/` out of scope.
+- Recorded the verdicts in the inventory (PROVISIONAL → CONFIRMED) and
+  refreshed this handoff (next action now Phase 1).
