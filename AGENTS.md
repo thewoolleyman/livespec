@@ -518,6 +518,17 @@ existing file):
   phrasing (concrete dates that appear in artifacts are fine).
 - **Spell out "non-functional-requirements" in full** — never abbreviate it as
   "NFR" anywhere.
+- **Spell out "Definition-of-Ready" in full** — the acronym "DoR" is BANNED
+  (maintainer-declared 2026-07-04: non-intuitive, carries no meaning). Never
+  use it in any prose, document, work-item, commit, or report; always write
+  "Definition-of-Ready". (Quoting pre-existing text verbatim for mechanical
+  replacement targeting is the only exception.)
+- **Maintainer-facing documents must explain their own notation.** Define
+  every symbol before or beside its first use (an arrow, a column, a tally),
+  make headings match their content (a list titled "the 7 X" must contain
+  seven X — or say why it doesn't), and write complete sentences over
+  compressed fragments. A reviewing maintainer should never have to ask
+  "what are the arrows for?"
 
 ## When to ask, proceed, or self-resolve
 
