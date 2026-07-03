@@ -19,10 +19,17 @@ from this file alone via the read-first chain — no chat history required.
   source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-c1k9
   ```
 - **⚑ Golden rules.**
-  - Investigation phases (0–3) are **READ-ONLY toward every plugin cache,
+  - **[HISTORICAL — investigation-phase rule; NO LONGER BINDING.]**
+    Investigation phases (0–3) were **READ-ONLY toward every plugin cache,
     registry, marketplace cache, and settings file** — no updates,
-    reinstalls, or pruning until Phase 3 closes; controlled experiments run
-    only in scratch projects. Evidence first; a "helpful fix" destroys it.
+    reinstalls, or pruning until Phase 3 closed; controlled experiments ran
+    only in scratch projects. Evidence-first was the point; a "helpful fix"
+    would have destroyed it. Phases 0–3 are now CLOSED and the fast-path
+    implementation waves (below) DELIBERATELY mutate caches, registries,
+    marketplaces, and settings through the sanctioned paths (committed
+    settings `extraKnownMarketplaces`, `marketplace add/update`, scoped
+    `plugin update`). This rule is retained only as the record of the
+    investigation-phase discipline, not as a live constraint.
   - Ready, factory-safe implementation is **factory-dispatched**
     (`/livespec-orchestrator-beads-fabro:orchestrate`) — never hand-coded
     inline. Host-only self-machinery stays maintainer-side.
@@ -43,74 +50,69 @@ from this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
-**Phase 4 design FINAL — the ref-pin experiment VERIFIED the release-branch
-mechanism on BOTH runtimes; D1 resolved.** The design is finalized in
-`research/design.md` (supersedes `design-draft.md`). Maintainer decisions
-(2026-07-03, via structured picker) as resolved:
+**CLOSING phase — the currency invariant is LIVE and PROVEN.** The Phase 4
+design (`research/design.md`, decisions D1 = release-branch marketplace-ref
+mechanism, D2 = warn-plus-`LIVESPEC_CURRENCY_GATE=fail` lever on Unknown,
+D3 = defer the host-level sweep) is now realized across the fleet: the L0
+allowlist fix, the L1a per-repo `release` branches + fast-forward CI, the L1c
+SessionStart `ensure-plugins` hooks de-drifted onto committed settings, the
+L0b release-park guard, and the L1b marketplace ref-pinning have all merged.
+The invariant was proven LIVE mid-rollout — an unattended `fix:` push cut
+v0.6.1 and fast-forwarded `refs/heads/release` with NO human in the loop (see
+§"Fast-path implementation waves"). `livespec-c1k9.1`, `.8`, and `.9` are
+CLOSED. Status is READ from the ledger, never from this file. What remains is
+the Python currency gate, the recipe collapse, the spec codification, and the
+mechanized exit-gate assertion.
 
-- **D1 = release-branch marketplace-ref mechanism (VERIFIED).** The prior
-  "SHA-pin catalog entries" form was REFUTED empirically
-  (`tmp/fleet-plugin-currency/scratch/experiment-log.md`: `github` plugin
-  sources validate `commit`/`branch`/`path` but the installer silently ignores
-  all three; `git-subdir` runtime-rejected). The maintainer-approved
-  verify-first path — each plugin repo carries a CI-fast-forwarded `release`
-  branch and the fleet marketplaces register AT that ref — is now **VERIFIED on
-  both runtimes** (Claude 2.1.199 + Codex 0.142.5; log
-  `tmp/fleet-plugin-currency/scratch/ref-exp/ref-experiment-log.md`; verdicts
-  A1–A4 Claude, B1–B3 Codex). It works because the fleet plugins use RELATIVE
-  (`./.claude-plugin`) plugin sources that resolve INSIDE the ref-pinned
-  marketplace clone. This preserves the research-plan's ORIGINAL "latest
-  released pin" invariant natively. The upstream docs-vs-behavior report on the
-  ignored pin fields is filed (c1k9.7).
-- **D2 = Warn + fail lever on Unknown:** confirmed-Stale ALWAYS fails hard;
-  Unknown (offline / clone missing / unpinned-transition / legacy snapshot)
-  warns loudly and proceeds interactively, with `LIVESPEC_CURRENCY_GATE=fail`
-  set in CI and factory dispatch making Unknown fail hard there.
-- **D3 = Host-level pre-session sweep DEFERRED:** rely on the uniform
-  SessionStart hook + `/reload-plugins` lag-closing nudge + the hard gate;
-  revisit only if the reload lag proves painful.
+Remaining work, in order:
 
-**RESOLVED — ref-pin experiment VERIFIED (Claude 2.1.199 + Codex 0.142.5).**
-Log: `tmp/fleet-plugin-currency/scratch/ref-exp/ref-experiment-log.md`.
-Decisive answer: release-branch MARKETPLACE-ref pinning is viable on BOTH
-runtimes for RELATIVE-source (`./.claude-plugin`) plugins. Claude:
-`marketplace add <url>#release` (persists the ref in `known_marketplaces.json`)
-+ `marketplace update` (fast-forwards the ref) + `plugin update --scope project`
-→ the plugin tracks `release`, never default HEAD (A1–A4). Codex:
-`marketplace add <src> --ref release` (persists `ref` in `config.toml`) +
-`marketplace upgrade` → clone + served plugin track `release`, never default
-HEAD (B1–B3). Five rollout surprises carried into `design.md` §"Rollout
-gotchas" (verbatim-faithful). The Codex leg needs an EXPLICIT `codex plugin
-marketplace upgrade` on the currency path (no self-refresh; host-wide by
-design). Full design in `research/design.md`.
+1. **Python / TDD-disciplined path (factory-dispatch, or TDD red-green-replay
+   for the product `.py`).**
+   - `livespec-c1k9.3` — the **currency gate in core `_bootstrap.py`**: compare
+     the running `gitCommitSha` against the marketplace clone's pinned-ref
+     (`release`) tip; confirmed-**Stale** hard-fails, **Unknown** warns and
+     proceeds behind the `LIVESPEC_CURRENCY_GATE=fail` lever (CI + factory
+     dispatch set it). Includes the **staled-cache NEGATIVE test** (a
+     deliberately-staled cache must fail loudly).
+   - `livespec-dev-tooling-be9` — the **relative-source (`./.claude-plugin`)
+     structural check** (the ref-pin mechanism only holds for relative-source
+     plugins, so this guards the precondition).
+   - `livespec-dev-tooling-a62` (REGROOMED) — the **derive-from-settings shared
+     entry point** `python -m livespec_dev_tooling.fleet.ensure_plugins`, the
+     shrunken hook-wired / wrapper-present check, and the stale-docstring
+     ride-along at `fleet/_rows_local.py:172-174`. This supersedes the earlier
+     consistency-check framing.
 
-Next actions, in order:
+2. **`livespec-c1k9.11` — fleet recipe collapse onto the shared entry point.**
+   Collapse every repo's `ensure-plugins` recipe onto the -a62 entry point
+   (`python -m livespec_dev_tooling.fleet.ensure_plugins`). **STEP-ZERO
+   precondition:** reconcile the git-jsonl settings-vs-recipe orchestrator
+   mismatch — now also filed as ACTIVE bug **`bd-gj-hj8`** in the git-jsonl
+   tenant (every SessionStart there dirties the tracked `settings.json`). Fix
+   that before collapsing git-jsonl's recipe.
 
-1. **Re-groom the filed items to `design.md`, and file the NEW implementation
-   items** (per `design.md` §"Work-item mapping"). Re-groom: `c1k9.1` → L0a
-   shape-guard form; `c1k9.2` resolution = reload nudge; `c1k9.3` comparison
-   target = the marketplace clone's pinned-ref (release) tip + D2 severity;
-   `c1k9.4` = the verified Codex leg (`--ref release` + explicit `marketplace
-   upgrade`); `c1k9.5` mitigated by reading `gitCommitSha` from the registry
-   (keep for cache-pruning posture); `c1k9.6` = single-source the invariant +
-   gate guarantee in core `non-functional-requirements.md` + per-repo mechanical
-   enforcement; `c1k9.7` = upstream report (filed). NEW items to file:
-   per-plugin-repo `release` branch + CI fast-forward; marketplace ref-pin
-   re-registration rollout (settings `extraKnownMarketplaces` + CLAUDE.md +
-   Codex `--ref`); release-park guard (`reusable-release-park.yml` in
-   `dev-tooling` + per-repo wiring); relative-source structural check; Codex
-   `marketplace upgrade` step in the currency path.
-2. **Phase 5 — factory-dispatch the ready, factory-safe slices.** Spec-side
-   `c1k9.6` codification (via `/livespec:propose-change`) and host-only
-   self-machinery steps (marketplace re-registration, host `release`-branch
-   pushes, Codex host provisioning) stay maintainer-side; the rest is
-   factory-safe.
-3. **Epic exit gate = the verification plan** (`design.md` §"Verification
-   plan"): the mechanized fleet-wide fresh-session assertion (every repo ×
-   Claude interactive × `codex exec`: running `gitCommitSha` == pinned-ref tip
-   == latest release tag) + the negative test (a deliberately-staled cache fails
-   loudly, and `Unknown` warns by default / fails under
-   `LIVESPEC_CURRENCY_GATE=fail`).
+3. **Evaluate `livespec-c1k9.10` (Codex upgrade wiring)** against the
+   now-pinned `ensure-codex-plugins` recipes — the L1b/L1c waves may already
+   have satisfied it. **Close or narrow** it rather than re-implementing.
+
+4. **Lower-priority follow-ups:** `livespec-c1k9.2` (reload nudge — lands with
+   the gate work), `livespec-c1k9.5` (cache-pruning posture),
+   `livespec-c1k9.7` (upstream docs-vs-behavior report — execution),
+   `livespec-dev-tooling-r5m` (uv.lock release drift), and
+   `livespec-dev-tooling-afd` (release-park follow-ups).
+
+5. **`livespec-c1k9.6` — spec codification.** Single-source the invariant + gate
+   guarantee in core `SPECIFICATION/non-functional-requirements.md` (with the
+   `tests/heading-coverage.json` co-edit per the revise discipline); the
+   dev-tooling `contracts.md` parity piece rides `livespec-dev-tooling-afd`.
+
+6. **EPIC EXIT GATE.** The mechanized **fleet-wide fresh-session assertion**
+   (every repo × Claude interactive × `codex exec`: running `gitCommitSha` ==
+   pinned-ref tip == latest release tag) — already partially evidenced by
+   `c1k9.9`'s 24/24 Claude + 4/4 Codex verification — PLUS the
+   **deliberately-staled-cache negative test** (gated on `c1k9.3`) PLUS the
+   now-**SATISFIED** live observation of an unattended release (the v0.6.1 cut,
+   recorded below). Close `livespec-c1k9` when all three hold.
 
 ## Session log
 
@@ -323,3 +325,71 @@ Next actions, in order:
   when an unrelated worktree's pre-commit hook regenerated uv.lock (0.31.0 →
   0.31.1) as dirty-tree noise. Fix direction: regenerate the lock in the release
   flow + a CI lock/pyproject parity check.
+
+### Fast-path implementation waves (2026-07-03 ~07:00–08:40Z)
+
+- **Maintainer authorized the fast path** — a tactical fleet sweep, parallel
+  ritual-exempt PRs, and the TDD path reserved only for the Python changes.
+
+- **Tactical sweep.** All governed repos' project-scope plugin pointers were
+  refreshed (the console orchestrator moved `b96eb8a` → `ec5a598`, picking up
+  the self-heal; `openbrain` excluded by its `posture: "pinned"` adopter
+  choice). Codex marketplaces were upgraded.
+
+- **L0 allowlist (`livespec-c1k9.1` CLOSED).** Six PRs — livespec #802,
+  beads-fabro #255, driver-claude #74, driver-codex #47, git-jsonl #167,
+  dev-tooling #233 — plus a copier-template source fix. The dual App-login
+  spelling was verified and handled where relevant: `livespec-pr-bot[bot]`
+  (the webhook / `pull_request.user.login` form) vs `app/livespec-pr-bot`
+  (the `gh pr list` form).
+
+- **L1a release branches (`livespec-c1k9.8` + 4 cross-tenant items CLOSED).**
+  Five PRs — livespec #803, driver-claude #73, driver-codex #46,
+  beads-fabro #256, git-jsonl #166. Each repo's `release` branch was created at
+  its latest release commit via the REST ref-create API, and a uniform
+  `fast-forward-release-branch.yml` keeps it advancing.
+
+- **L1c hooks (5 items CLOSED).** Option B: the `ensure-plugins` recipes were
+  de-drifted back onto committed settings + SessionStart hooks — console #85,
+  driver-claude #75, dev-tooling #232, runtime #113, driver-codex #48 (the last
+  also renamed `ensure-codex-plugins`, with the SKIP→RUN transition documented).
+
+- **L0b release-park guard (`livespec-dev-tooling-ldd` CLOSED).** The reusable
+  workflow landed in dev-tooling #234, with per-repo shims: livespec #809 (plus
+  the copier-template source), beads-fabro #257, git-jsonl #168,
+  driver-claude #76, driver-codex #49. A live `workflow_dispatch` run was green.
+  It keys off `createdAt`, NOT `updatedAt` — an aged-open release PR is caught
+  by when it was opened, not reset by a trivial touch.
+
+- **L1b ref pinning (`livespec-c1k9.9` CLOSED).** Eight PRs — livespec #811,
+  driver-claude #77, console #87, beads-fabro #259, git-jsonl #169,
+  dev-tooling #236, driver-codex #50, runtime #114 — pinning settings
+  `"ref": "release"`, the recipes' `@release` / `--ref release`, and the core
+  README / AGENTS snippets. Step-0 double verification confirmed BOTH the
+  settings reconcile AND the CLI clone land at the `release` tip. **Final
+  verification: 24/24 Claude project-scope plugins == release tips, 4/4 Codex
+  marketplaces pinned with enablement preserved.** Codex offers no in-place ref
+  update, so the documented path is remove / re-add / upgrade — enablement
+  survives that cycle.
+
+- **★ LIVE PROOF of the L0 fix.** Mid-rollout, a `fix: prune dead project
+  plugin registry entries` push triggered release PR #814; auto-merge was ARMED
+  BY THE WORKFLOW and the PR was MERGED BY `app/livespec-pr-bot` with NO human
+  in the loop. **v0.6.1 was cut at 08:29Z**, and `refs/heads/release`
+  fast-forwarded to `4ec36d5b` == v0.6.1 automatically. First-hand verified by
+  the overseer — this is the previously-manual release cadence now running
+  unattended, the exact failure mode the epic set out to eliminate.
+
+- **New / updated ledger.** Filed: `livespec-c1k9.11` (recipe collapse, with the
+  git-jsonl precondition note); `bd-gj-hj8` (git-jsonl dirty-settings bug, P1);
+  `livespec-dev-tooling-r5m` (uv.lock release drift); `livespec-dev-tooling-afd`
+  (release-park follow-ups + the dual App-login-spelling trap for gh-based
+  tooling). REGROOMED: `livespec-dev-tooling-a62` to the derive-from-settings
+  shared entry point (supersedes the earlier consistency-check framing).
+
+- **CLOSED this window:** `livespec-c1k9.1`, `livespec-c1k9.8`,
+  `livespec-c1k9.9`, `livespec-driver-claude-9ab`, `livespec-driver-codex-rn1`,
+  `bd-ib-giy`, `bd-gj-lwg`, `livespec-console-beads-fabro-vfd`,
+  `livespec-driver-claude-nm9`, `livespec-driver-codex-045`,
+  `livespec-dev-tooling-6da`, `livespec-runtime-m2u`,
+  `livespec-dev-tooling-ldd`.
