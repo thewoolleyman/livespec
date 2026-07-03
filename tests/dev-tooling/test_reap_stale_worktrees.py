@@ -27,6 +27,7 @@ repo occurs.
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -486,3 +487,62 @@ def test_main_defaults_repo_to_cwd(*, tmp_path: Path, monkeypatch: pytest.Monkey
     rc = module.main(argv=["--dry-run"])
 
     assert rc == 0
+
+
+def test_main_prunes_dead_project_scope_plugin_entries_and_backs_up_registry(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The end-of-run plugin sweep removes only project entries whose paths are gone.
+
+    The registry is synthetic under a temp HOME so the test never
+    reads or writes the real `~/.claude/plugins/installed_plugins.json`.
+    """
+    module = _load_module()
+    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    home = tmp_path / "home"
+    registry = home / ".claude" / "plugins" / "installed_plugins.json"
+    registry.parent.mkdir(parents=True)
+    live_project = tmp_path / "live-project"
+    live_project.mkdir()
+    missing_project = tmp_path / "missing-project"
+    registry.write_text(
+        json.dumps(
+            {
+                "version": 2,
+                "plugins": {
+                    "livespec@livespec": [
+                        {"scope": "project", "projectPath": str(missing_project), "enabled": True},
+                        {"scope": "project", "projectPath": str(live_project), "enabled": True},
+                        {"scope": "user", "enabled": True},
+                    ],
+                    "other@marketplace": [
+                        {"scope": "project", "enabled": True},
+                    ],
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+
+    rc = module.main(argv=["--repo", str(primary)])
+
+    assert rc == 0
+    pruned = json.loads(registry.read_text(encoding="utf-8"))
+    assert pruned == {
+        "version": 2,
+        "plugins": {
+            "livespec@livespec": [
+                {"scope": "project", "projectPath": str(live_project), "enabled": True},
+                {"scope": "user", "enabled": True},
+            ],
+            "other@marketplace": [
+                {"scope": "project", "enabled": True},
+            ],
+        },
+    }
+    backups = sorted(registry.parent.glob("installed_plugins.json.*.bak"))
+    assert len(backups) == 1
+    backed_up = json.loads(backups[0].read_text(encoding="utf-8"))
+    assert backed_up["plugins"]["livespec@livespec"][0]["projectPath"] == str(missing_project)
