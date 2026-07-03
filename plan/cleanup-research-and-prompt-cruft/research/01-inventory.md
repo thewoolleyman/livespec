@@ -30,30 +30,33 @@ for repo in livespec livespec-driver-claude livespec-driver-codex \
 done
 ```
 
-## Scoping decisions (D1–D3) — PROVISIONAL
+## Scoping decisions (D1–D3) — CONFIRMED (Phase 0 closed 2026-07-03)
 
-Recommended defaults, adopted provisionally on 2026-07-03 because the
-maintainer was away from keyboard when asked. **Phase 0 of the handoff
-confirms all three with the maintainer before any mutation.** Flipping
-a decision re-scopes dispositions per the notes in each table.
+All three confirmed by the maintainer on 2026-07-03. D1 was confirmed
+in a MODIFIED, stricter form (the spec-absorb rule below); D2 and D3
+confirmed as recommended.
 
-- **D1 — research/ fate: PRUNE, keep living references.** Stale or
-  completed topics move to `archive/research/<topic>/`; genuinely
-  active tracks become `plan/<topic>/` threads; load-bearing
-  living-reference docs STAY in `research/` — the spec already blesses
-  this ("The broader `research/` tree stays for standalone analysis
-  that is not an active planning thread",
+- **D1 — research/ fate: PRUNE, plus the SPEC-ABSORB rule for
+  spec-referenced docs (maintainer-modified).** Stale or completed
+  topics move to `archive/research/<topic>/`; genuinely active tracks
+  become `plan/<topic>/` threads. Docs referenced only by code
+  (docstrings/comments), by `AGENTS.md`, or written at runtime (the
+  orchestrator's `research/loop-reflection-gate/lessons.md`,
+  `_dispatcher_reflector_oob.py:688`) keep the prune default: they
+  STAY in `research/`, which remains spec-blessed for standalone
+  analysis ("The broader `research/` tree stays…",
   `SPECIFICATION/non-functional-requirements.md` §"Planning Lane
-  guidance"). The alternative (eliminate `research/` fleet-wide) would
-  additionally require: a livespec spec revise (the
-  §"research/workflow-processes/ tool-agnostic vs
-  implementation-specific split" section MANDATES that directory), an
-  orchestrator dispatcher code+test change
-  (`_dispatcher_reflector_oob.py:688` hardcodes
-  `research/loop-reflection-gate/lessons.md` as a runtime write path),
-  and openbrain spec/lefthook/code reference rewrites.
+  guidance"). **But no doc stays in `research/` on account of a SPEC
+  reference:** for each research doc a `SPECIFICATION/` file references
+  or mandates, this epic files a propose-change in the owning repo that
+  either (a) moves the doc's content INLINE into the specification, or
+  (b) removes the reference from the spec if it is incorrect/obsolete —
+  and once that revise lands, the research file is ARCHIVED. Ordering
+  is load-bearing: the revise lands before (or atomically with) the
+  archive move, never after.
 - **D2 — prompts/ fate: RETIRE the root prompts/ handoff convention
-  fleet-wide.** The Planning Lane (`plan/<topic>/handoff.md`) is its
+  fleet-wide (confirmed as recommended).** The Planning Lane
+  (`plan/<topic>/handoff.md`) is its
   structural successor. Completed prompt files archive to
   `archive/prompts/`; a still-active handoff converts to a proper plan
   thread; convention docs that still teach `prompts/<name>.md` get
@@ -63,12 +66,13 @@ a decision re-scopes dispositions per the notes in each table.
   `non-functional-requirements.md` §"Planning Lane guidance" → "No
   shadow ledger" — a spec change, so it goes through
   propose-change/revise, never a raw edit).
-- **D3 — openbrain uppercase `PLAN/`: OUT of scope.** It is live
-  drift-tracking machinery (current-specification-drift.json +
-  schemas) wired into openbrain's justfile, lefthook globs,
-  SPECIFICATION constraints, and the update-specification-drift
-  skill — not planning cruft. The lowercase-`plan/` name collision is
-  noted as a possible follow-up epic, nothing more.
+- **D3 — openbrain uppercase `PLAN/`: OUT of scope (confirmed as
+  recommended).** It is live drift-tracking machinery
+  (current-specification-drift.json + schemas) wired into openbrain's
+  justfile, lefthook globs, SPECIFICATION constraints, and the
+  update-specification-drift skill — not planning cruft. The
+  lowercase-`plan/` name collision is noted as a possible follow-up
+  epic, nothing more.
 
 ## Disposition classes
 
@@ -82,9 +86,17 @@ a decision re-scopes dispositions per the notes in each table.
   file(s)) and an epic anchor filed in THAT repo's own ledger tenant
   via the capture-work-item operation, citing `livespec-ztepy5` in its
   description.
-- **STAYS** — load-bearing living reference (spec-linked,
-  runtime-written, or cross-repo-referenced); remains in `research/`
-  under D1.
+- **STAYS** — load-bearing living reference referenced by code,
+  `AGENTS.md`, or written at runtime (NOT by the spec); remains in
+  `research/` under D1.
+- **SPEC-ABSORB** — referenced or mandated by a `SPECIFICATION/` file
+  (D1's maintainer-modified rule): file a propose-change in the owning
+  repo that inlines the doc's content into the specification OR removes
+  the reference as incorrect/obsolete; once the revise lands, `git mv`
+  the doc to `archive/research/<topic>/` (revise strictly before or
+  atomically with the archive move). Non-spec inbound references (code
+  comments etc.) get path-updated to the archive location in the same
+  PR.
 - **VERIFY** — recommended disposition depends on a mechanical check a
   Phase 1 agent performs (did the work land? grep git log / spec
   history / ledger).
@@ -111,7 +123,7 @@ file, not asserted from memory.
 | `research/planning-workflow-gap/` | 2026-06-25 | `planning-lane-design.md` ← `AGENTS.md:675` + project `CLAUDE.md` (diagram rationale) + `README.md:148` | STAYS |
 | `research/spec-ready/` | 2026-05-18 | none found; bootstrap-era snapshots | ARCHIVE |
 | `research/w6-cutover-gate/` | 2026-06-13 | none found; W6 cutover executed 2026-06-15 | ARCHIVE |
-| `research/workflow-processes/` — the two spec-mandated artifacts (`tool-agnostic-workflow.md`, `architecture-summary.html` + `architecture-summary.md` and `diagrams/`) | 2026-05-18 | MANDATED by `non-functional-requirements.md` §"research/workflow-processes/ tool-agnostic vs implementation-specific split"; `README.md:119–121` links the contract-reframing pair | STAYS (mandated) |
+| `research/workflow-processes/` — the two spec-mandated artifacts (`tool-agnostic-workflow.md`, `architecture-summary.html` + `architecture-summary.md` and `diagrams/`) | 2026-05-18 | MANDATED by `non-functional-requirements.md` §"research/workflow-processes/ tool-agnostic vs implementation-specific split"; `README.md:119–121` links the contract-reframing pair | SPEC-ABSORB (D1 rule): propose-change either inlines the still-true content into the spec or retires the mandate section as obsolete (the spec now carries its own canonical Mermaid architecture diagrams, so the mandate is likely obsolete — the revise decides); then archive the artifacts + update README links |
 | `research/workflow-processes/archive/` (3 dated snapshot trees) + `conversation-transcript.*` | 2026-05-18 | none found | ARCHIVE (relocate to `archive/research/workflow-processes/`) |
 | `research/workflow-processes/multi-repo-split-execution-plan.md` | 2026-05-19 | docstring cite `tests/dev-tooling/checks/test_copier_template_smoke.py:7`; comment cite orchestrator `copier-update-drift.yml:26`; split executed (fleet exists) | ARCHIVE + update both citing comments to the archived path |
 | `research/workflow-processes/livespec-as-contract-and-reference-implementations{,-reframing}.md`, `mermaid-vs-plantuml-llm-readable-specs.md` | 2026-06-10 | first two ← `README.md:119–121` | MAINTAINER (reframing docs read as living rationale; mermaid-vs-plantuml decision landed v105 → ARCHIVE candidate) |
@@ -145,8 +157,10 @@ historical artifacts from the bootstrap process" is already stale
 
 Note: `.claude-plugin/prose/plan.md:54,179` and
 `SPECIFICATION/contracts.md:900` carry the "broader research/ tree
-stays" language — under D1 no change; if D1 flips, both need revising
-here too.
+stays" language — under confirmed D1 (research/ remains blessed for
+non-spec-referenced living docs) neither needs a change. Those lines
+reference the `research/` TREE as a concept, not a specific doc, so
+the spec-absorb rule does not bite on them.
 
 ## livespec-console-beads-fabro — research/ 1 file, prompts/ 2 files
 
@@ -177,9 +191,9 @@ Default branch is `main` (not master). openbrain already has
 
 | Item | Last commit | Inbound refs (current files) | Disposition |
 |---|---|---|---|
-| `research/ob1-fork-patches.md` | 2026-06-21 | live patch REGISTRY: `lefthook.yml:133` glob, `AGENTS.md:214`, `spec.md:1667`, `scenarios.md:1772`, `.ai-instructions/{local-gates,ob1-fork}.md`, `implement-task-capture-surfaces.mjs:218`, `README.md:147` | STAYS (active registry, mechanically load-bearing) |
-| `research/android-voice-path-decision.md` | 2026-06-10 | `spec.md:1768`, `AndroidManifest.xml:35`, `VoiceCaptureActivity.kt:14` (decision record) | STAYS (spec/code-linked decision record) |
-| `research/gmail-ingest-filter/` | 2026-06-23 | `SPECIFICATION/contracts.md:663` links `candidates/human-conversations-stricter.json` as the deployed-filter definition record; migrations were seeded from it | STAYS (spec-linked; archiving would force an openbrain spec revise for one link — not worth it under D1) |
+| `research/ob1-fork-patches.md` | 2026-06-21 | live patch REGISTRY: `lefthook.yml:133` glob, `AGENTS.md:214`, `spec.md:1667`, `scenarios.md:1772`, `.ai-instructions/{local-gates,ob1-fork}.md`, `implement-task-capture-surfaces.mjs:218`, `README.md:147` | MAINTAINER (Phase 2): spec-referenced, so the D1 spec-absorb rule nominally applies — but it is a LIVE, appended-to registry wired into lefthook/code, and inlining mutable tracking state into a spec violates "the spec is for contracts, not tracking"; checkpoint options: exempt-and-stay, relocate to a non-research home + retarget all refs, or absorb only the contractual part and de-reference the registry |
+| `research/android-voice-path-decision.md` | 2026-06-10 | `spec.md:1768`, `AndroidManifest.xml:35`, `VoiceCaptureActivity.kt:14` (decision record) | SPEC-ABSORB (D1 rule): propose-change inlines the decision (or drops the reference if obsolete); then archive + update the two code-comment paths |
+| `research/gmail-ingest-filter/` | 2026-06-23 | `SPECIFICATION/contracts.md:663` links `candidates/human-conversations-stricter.json` as the deployed-filter definition record; migrations were seeded from it | SPEC-ABSORB (D1 rule): propose-change inlines the deployed-filter definition into `contracts.md` (or re-points/drops the link if obsolete); then archive the directory |
 | `research/embedding-model-voyage-investigation.md` | 2026-06-12 | none found; embedding pipeline landed (v043 chunking) | ARCHIVE (VERIFY) |
 | `research/livespec-impl-probing-proposal.md` | 2026-06-23 | none found; superseded — openbrain registered as livespec adopter (github-app-auth D17, 2026-07-03) | ARCHIVE (VERIFY) |
 | `research/ob1-inline-autonomous-factory.md` | 2026-06-23 | none found; v086 `ob1-inline-autonomous-deploy` accepted; its handoff already archived (`archive/prompts/ob-coq-…`) | ARCHIVE (VERIFY) |
@@ -218,6 +232,10 @@ Phase 5 re-runs the sweep to confirm nothing appeared meanwhile.
 - dev-tooling `livespec_dev_tooling/worktree_pack/branch-protection.sh:15`
   cites livespec's `research/factory-conformance/…` — STAYS under D1;
   no change.
-- If the maintainer flips D1 to "eliminate", every STAYS row above
-  converts to a coordinated multi-repo move with spec revises and the
-  orchestrator dispatcher code change — re-plan before executing.
+- SPEC-ABSORB ordering: each absorb/de-reference revise MUST land
+  before (or atomically with) its archive move — an archive move that
+  precedes the revise leaves a dangling spec link, which openbrain's
+  drift tooling and livespec's doctor would rightly flag. The Phase 3
+  briefs for livespec and openbrain must sequence propose-change →
+  revise → `git mv` inside their single PR (or split into two PRs in
+  that order).
