@@ -116,9 +116,9 @@ Normative home: `SPECIFICATION/spec.md` §"Contract + reference
 implementations architecture", which carries the canonical Mermaid
 diagram itself (single source of truth).
 Design rationale:
-[`research/workflow-processes/livespec-as-contract-and-reference-implementations.md`](research/workflow-processes/livespec-as-contract-and-reference-implementations.md)
+[`archive/research/workflow-processes/livespec-as-contract-and-reference-implementations.md`](archive/research/workflow-processes/livespec-as-contract-and-reference-implementations.md)
 (+ the
-[reframing follow-up](research/workflow-processes/livespec-as-contract-and-reference-implementations-reframing.md)).
+[reframing follow-up](archive/research/workflow-processes/livespec-as-contract-and-reference-implementations-reframing.md)).
 The §"Cross-repo orchestration" section below describes the
 post-cutover state: the resident Layer-3 loop driver has been retired
 in favor of the reference Dispatcher.

@@ -4,7 +4,7 @@ The smoke check runs `copier copy` against `templates/orchestrator-plugin/`
 with a stock answers fixture, then verifies the generated tree
 contains every expected file and that JSON files parse. The check
 is the C.6 acceptance gate for Phase C of the multi-repo split per
-research/workflow-processes/multi-repo-split-execution-plan.md.
+archive/research/workflow-processes/multi-repo-split-execution-plan.md.
 
 Pass case: invoke the script with cwd=<livespec-core repo root>;
 expect exit 0 and the structured success diagnostic.

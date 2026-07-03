@@ -11,14 +11,19 @@ them into the spec lifecycle.
 
 Subdirectories group docs by topic. As of writing:
 
-- `workflow-processes/` — discussions about how livespec gets
-  built, how agents and contributors collaborate, how work flows
-  through the issue tracker, etc. NOT spec content; orientation
-  notes and open-question captures.
+- `beads/` — living notes on beads (work-items backend) gaps and
+  workarounds; actively maintained fleet reference.
+- `dark-factory-operability/` — `preconditions.md`, the relocation
+  record for the duties of the machinery retired at the W6
+  dark-factory cutover (cited from `AGENTS.md`).
+- `factory-conformance/` — the cross-repo Conformance Pattern
+  reference (accepted v143), cited by fleet tooling.
+- `planning-workflow-gap/` — design rationale for the Planning
+  Lane (cited from `AGENTS.md` and `README.md`).
 
-Future subdirectories may include things like
-`architecture-decisions/`, `notebooks/`, etc. Each gets its own
-`CLAUDE.md` describing what kind of doc belongs there.
+Retired topics are moved (subpaths preserved) to the top-level
+`archive/research/<topic>/`; each new subdirectory here gets its
+own `CLAUDE.md` describing what kind of doc belongs there.
 
 ## What this directory is NOT
 
@@ -31,7 +36,8 @@ Future subdirectories may include things like
   proper proposed change, not by the doc itself becoming
   load-bearing.
 - **Not `archive/`.** Files there are frozen historical artifacts
-  from the bootstrap process — do not edit. Files here are
+  (bootstrap-process records and retired `archive/research/` /
+  `archive/prompts/` material) — do not edit. Files here are
   living: they may be revised, expanded, superseded, or deleted
   as thinking matures.
 - **Not `prior-art/`.** Files there are reference source material

@@ -10,16 +10,9 @@ rule and the overseer / long-running-coordinator discipline.
 ## Session-end standing-handoff print rule
 
 When a session advanced a **standing-handoff track** — a refresh-each-session
-handoff, whether a `prompts/<name>.md` or a plan thread's
-`plan/<topic>/handoff.md` — the session's closing recap MUST end by printing the
-exact resume command **verbatim, as the LAST line of the recap** (nothing after
-it):
-
-```
-run prompts/<name>.md
-```
-
-or, for a plan thread:
+handoff, i.e. a plan thread's `plan/<topic>/handoff.md` — the session's closing
+recap MUST end by printing the exact resume command **verbatim, as the LAST
+line of the recap** (nothing after it):
 
 ```
 /livespec-orchestrator-beads-fabro:plan <topic>
