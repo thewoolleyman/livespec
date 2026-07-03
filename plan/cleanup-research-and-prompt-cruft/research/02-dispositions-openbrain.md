@@ -57,3 +57,11 @@
 **README layout tree (ride-along with the last Phase 3 change):** `README.md:375` (`research/` described as "active exploratory docs") — reword to reflect the post-cleanup residents (per Phase 2: likely `ob1-fork-patches.md` + `ob1-inline-autonomous-factory.md` only); `README.md:376` (`ob1-fork-patches.md` row) — per Phase 2 verdict.
 
 **No-obligation rows:** `embedding-model-voyage-investigation.md` and `livespec-impl-probing-proposal.md` move to `archive/research/` with zero ref edits (ledger `ob-nwf`'s close-reason path citation is an immutable historical record — leave it); `ob1-inline-autonomous-factory.md` STAYS — `scripts/promote.ts:6` remains valid as-is.
+
+## Phase 2 verdicts — CONFIRMED by the maintainer (2026-07-03)
+
+| Escalation | CONFIRMED verdict |
+|---|---|
+| 1 — `ob1-fork-patches.md` | **Exempt-and-stay** — recorded D1 exemption: a live append-only registry is TRACKING STATE the spec may reference without absorbing ("spec is for contracts, not tracking"); zero moves, zero ref churn. The exemption is documented here; Phase 5's re-scan treats this spec-referenced research file as deliberate. |
+| 2 — `explore-gmail.ts` tool coupling | **Retire the tool with the directory** — archive `scripts/explore-gmail.ts` + `scripts/test-explore-gmail-classifier.ts` (→ `archive/research/gmail-ingest-filter/tools/` or beside the archived dir), drop `package.json:51–52` script entries and the `scripts/README.md:158` row, in the same PR as the directory archive (after the de-reference revise lands). |
+| 3 — cross-repo `AGENTS.md:304` → livespec beads-gaps-workarounds | No action — the livespec target STAYS; optional ride-along: qualify the reference as livespec-repo-explicit. |

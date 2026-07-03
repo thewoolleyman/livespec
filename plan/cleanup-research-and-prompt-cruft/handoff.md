@@ -72,35 +72,25 @@ read-first chain — no chat history required.
 
 ## The next action
 
-**Run Phase 2 — the maintainer checkpoint.** Phases 0 and 1 closed
-2026-07-03; the five finalized tables sit at
-`research/02-dispositions-<repo>.md` (livespec,
-livespec-orchestrator-beads-fabro, livespec-console-beads-fabro,
-livespec-dev-tooling, openbrain). Concretely:
+**Run Phase 3 — per-repo execution (mutating).** Phases 0–2 closed
+2026-07-03; every disposition is now CONFIRMED — each repo's 02 file
+ends with a "Phase 2 verdicts" section that is authoritative over its
+table. Zero unresolved MAINTAINER rows. Concretely:
 
 1. Read epic status from the ledger (command above).
-2. Walk the MAINTAINER/escalation queue with the maintainer via the
-   structured picker, ONE item per turn, the table's recommended
-   verdict listed first. The queue (each row's evidence + options live
-   in its repo's 02 file):
-   - livespec: `dark-factory-operability/work-breakdown.md` (rec
-     ARCHIVE); `workflow-processes/livespec-as-contract-…{,-reframing}.md`
-     (rec STAYS); `workflow-processes/mermaid-vs-plantuml-…md` (rec
-     ARCHIVE); `prompts/livespec-overseer-startup.md` (rec RELOCATE to
-     `.claude/skills/overseer/`); `prompts/fleet-terminology-migration-*`
-     (rec ARCHIVE after filing a residual-`family`-cleanup work-item).
-   - orchestrator: w7 relocation vs the repo-local `research/archive/`
-     convention (rec relocate anyway + rewrite `research/CLAUDE.md`);
-     context-completeness ARCHIVE confirmation (rec confirm).
-   - console: treat `plan/impl-dispatch/` as the completed D2
-     conversion (rec yes — archive the prompts file, no new thread).
-   - openbrain: `ob1-fork-patches.md` (rec exempt-and-stay);
-     `explore-gmail.ts` tool retirement alongside the
-     gmail-ingest-filter archive (rec retire the tool).
-3. Record each verdict by editing the matching 02 file (same
-   worktree → PR flow), marking the row CONFIRMED-<verdict>.
+2. File one child work-item per dirty repo in that repo's OWN tenant
+   via the capture-work-item operation (citing `livespec-ztepy5`);
+   openbrain's filing runs under ITS wrapper.
+3. Dispatch one mutating agent per repo (all five in parallel — the
+   repos are file-disjoint), each brief composed from the "Per-repo
+   agent brief template" below with that repo's FULL 02 file (table +
+   corrections + verdicts + obligations) pinned verbatim. Sequencing
+   inside the livespec and openbrain briefs: SPEC-ABSORB rows are
+   propose-change → revise → `git mv`, never the move first.
+4. As each repo's PR merges: refresh its primary checkout, verify the
+   agent cleaned its worktree/branch, close its child work-item.
 
-Exit: zero unresolved MAINTAINER rows; then proceed to Phase 3 below.
+Then proceed to Phase 4/5 per the phase plan below.
 
 ## Phase plan
 
@@ -327,3 +317,25 @@ Phase 3 (execution, mutating) adds:
     applied-migration comments are immutable (never edit).
 - Next action advanced to Phase 2 (maintainer checkpoint; queue in
   "The next action" above).
+
+### Session 3 (2026-07-03) — Phase 2 closed
+
+- Walked all 10 checkpoint items with the maintainer, one picker per
+  turn. Nine confirmed as recommended; ONE override: the
+  workflow-processes contract/reframing pair went **ARCHIVE + retarget
+  README** (recommendation had been STAYS).
+- Verdicts recorded as an authoritative "Phase 2 verdicts" section
+  appended to each repo's 02 file. Highlights: livespec empties
+  `prompts/` entirely (overseer-startup RELOCATES to
+  `.claude/skills/overseer/`; terminology pair archives after ONE
+  residual-`family` work-item is filed); the whole
+  `research/workflow-processes/` tree leaves `research/` once the
+  mandate-retirement revise lands; orchestrator relocates w7 +
+  archives context-completeness; console archives both prompts files
+  (plan/impl-dispatch/ is the conversion); openbrain records the
+  ob1-fork-patches D1 exemption (registry = tracking state) and
+  retires explore-gmail.ts with its directory.
+- Post-execution `research/` residents (livespec): `CLAUDE.md`,
+  `beads/`, `dark-factory-operability/{CLAUDE.md,preconditions.md}`,
+  `factory-conformance/`, `planning-workflow-gap/`.
+- Next action advanced to Phase 3 (per-repo mutating execution).
