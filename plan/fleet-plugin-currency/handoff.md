@@ -62,9 +62,44 @@ structured picker — all three recommendations accepted):
 
 Next actions, in order:
 
-1. **Await the sha-pin-experiment verdict** — scratch verification of
-   git-subdir+sha end-to-end (in flight). If it CONTRADICTS the docs, bring the
-   contradiction back to the maintainer BEFORE implementing D1.
+1. **Sha-pin verdict — REFUTED (empirical, Claude Code 2.1.199; log at
+   `tmp/fleet-plugin-currency/scratch/experiment-log.md`).** Catalog-level SHA
+   pinning is NOT honored by the shipped runtime:
+   - `git-subdir` sources are **rejected at runtime** ("source type your Claude
+     Code version does not support" — may ship in a newer CC).
+   - `github` plugin sources **VALIDATE** `commit`/`branch`/`path`
+     (`claude plugin validate` accepts them) but the installer **SILENTLY
+     IGNORES all three**, always installing default-branch HEAD (verified
+     against real livespec release tags, with clean-cache repeats).
+   - Cache dirs are keyed by the resolved `version` field (`plugin.json`
+     version if present, else `sha12`); `gitCommitSha` always records the clone
+     HEAD.
+   - Operational gotcha: `github` PLUGIN sources clone over SSH
+     (`git@github.com:`), unlike the HTTPS marketplace clones.
+   - The docs (`plugin-marketplaces.md` §"Plugin sources") describe a
+     capability the shipped runtime does not deliver. Upstream docs-vs-behavior
+     report **filed this session** (see the new work-item, session log below).
+
+   **Maintainer decision (2026-07-03, via picker) — D1 mechanism revised to
+   "verify release-branch marketplace-ref first".** Run a scratch experiment
+   (`ref-pin-experiment`, **IN FLIGHT**; log will land at
+   `tmp/fleet-plugin-currency/scratch/ref-exp/`) verifying (a) `claude plugin
+   marketplace add <src>#<ref>` registers at the ref, (b) marketplace update
+   holds the ref, (c) plugin update installs clone-at-ref content.
+   - **If VERIFIED:** each plugin repo carries a CI-fast-forwarded `release`
+     branch pinned to the latest release tag, and the fleet marketplaces
+     register `@release` — the release-pinning invariant realized via
+     primitives we control.
+   - **If REFUTED:** fall back to master-HEAD tracking now, and revisit when
+     Claude Code ships working pin support.
+
+   EITHER WAY, the upstream docs-vs-behavior report is filed (below).
+
+   **Maintainer directive (same answer):** the invariant AND its verification
+   MUST cover the **CODEX driver path** too. Codex plugin versioning is being
+   mapped in the SAME in-flight experiment (help/config/clone semantics, ref
+   support, release-branch viability); the finalized design must give Codex an
+   equivalent currency + gate story.
 2. **Finalize `research/design-draft.md` → `research/design.md`** —
    incorporate D1–D3 + the experiment findings, drop the DRAFT banner.
 3. **Re-groom the filed defect items to the decided design, and file the NEW
@@ -221,3 +256,21 @@ Next actions, in order:
 - Design review passed with all three recommendations accepted: D1 = sha-pin
   to releases, D2 = warn + `LIVESPEC_CURRENCY_GATE=fail` lever on Unknown,
   D3 = defer the host-level pre-session sweep. Decisions recorded via this PR.
+
+### Session 1 (continued) — sha-pin REFUTED; D1 revised; Codex scope added (2026-07-03)
+
+- **Sha-pin refuted empirically** (Claude Code 2.1.199; log
+  `tmp/fleet-plugin-currency/scratch/experiment-log.md`) → maintainer revised D1
+  to **verify-release-branch-ref-first** with a **master-HEAD fallback**, and
+  extended the invariant's scope to **Codex** plugin versioning. The
+  `ref-pin-experiment` was dispatched (log target
+  `tmp/fleet-plugin-currency/scratch/ref-exp/`), and the upstream
+  docs-vs-behavior report work-item was filed under the epic. See §"The next
+  action" item 1 for the full verdict + decision.
+- **Side observation (correct-by-design upstream behavior; no action taken).**
+  During the sha-pin experiment window, Claude Code's own reconcile (NOT the
+  experiment) auto-pruned the **DELISTED** `livespec-impl-plaintext`
+  plugin+marketplace registration — the upstream catalog no longer lists it,
+  though the `openbrain` settings still enable it. The pre-prune registry
+  snapshot is preserved at
+  `tmp/fleet-plugin-currency/scratch/before/installed_plugins.json`.
