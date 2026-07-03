@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.6.0](https://github.com/thewoolleyman/livespec/compare/v0.5.0...v0.6.0) (2026-07-03)
+
+
+### Features
+
+* add credential_wrapper config key (schema+dataclass+validator) ([97b3d00](https://github.com/thewoolleyman/livespec/commit/97b3d00538f8b8b720b7a9bbe19709db7c306e56))
+* add github auth guard template test ([49ab40d](https://github.com/thewoolleyman/livespec/commit/49ab40dc4ae159dc79159f62ffd1c8f26ced750d))
+* warn-vs-fail lever for credential_wrapper callability ([47f8977](https://github.com/thewoolleyman/livespec/commit/47f8977be8e9254cce7dcf5fd6b3edd6a0b55e3e))
+
+
+### Bug Fixes
+
+* add doctor static spec target coverage ([8486f95](https://github.com/thewoolleyman/livespec/commit/8486f955c07d0e280ef34ada77b4735068611f30))
+* add fastjsonschema facade cache ([ee9f17f](https://github.com/thewoolleyman/livespec/commit/ee9f17f8dab7958667dea609a191feee036dbdbf))
+* add typed structlog facade ([10e1a0d](https://github.com/thewoolleyman/livespec/commit/10e1a0d4487e6eec107605fc2e08df4444530209))
+* anchor relative propose-change spec target ([30588b0](https://github.com/thewoolleyman/livespec/commit/30588b0d8d37ff7b76f6a99e4393420698bf47de))
+* rename copier template path templates/impl-plugin -&gt; templates/orchestrator-plugin ([a304b09](https://github.com/thewoolleyman/livespec/commit/a304b096cffffdf8244b54750afde18f2b12f048))
+* resolve stale worktree repo names ([61beec7](https://github.com/thewoolleyman/livespec/commit/61beec7c8df2bd8ffa40eb19685a58b1145f9883))
+
 ## [0.5.0](https://github.com/thewoolleyman/livespec/compare/v0.4.0...v0.5.0) (2026-06-29)
 
 
