@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/thewoolleyman/livespec/compare/v0.6.0...v0.6.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* prune dead project plugin registry entries ([8f56eb8](https://github.com/thewoolleyman/livespec/commit/8f56eb813fb0479c6f7d675d9a558ce1c519dde0))
+
 ## [0.6.0](https://github.com/thewoolleyman/livespec/compare/v0.5.0...v0.6.0) (2026-07-03)
 
 
