@@ -21,20 +21,33 @@
 # `permissions:` scopes. Apps installed on the repo are granted
 # the access by the install grant itself.
 #
-# Author allowlist (initially):
-#   - thewoolleyman — covers the user's own PRs and PRs opened by
-#     agents acting via the user's PAT (Claude Code, etc., where
-#     the PR author == the PAT owner).
+# Enable paths (ANY one qualifies), each still subject to the
+# draft-skip and do-not-merge opt-out below:
+#   - Author in the human allowlist:
+#       - thewoolleyman — the user's own PRs and PRs opened by agents
+#         acting via the user's PAT (Claude Code, etc., where the PR
+#         author == the PAT owner).
+#   - The fleet's OWN release-please App (author login
+#     `livespec-pr-bot[bot]`) on a head branch whose name starts with
+#     `release-please--`. The branch-shape guard scopes the App path to
+#     release PRs, so the App cannot auto-enable-merge any other PR it
+#     might author.
 #
-# Explicit opt-out paths:
+# Explicit opt-out paths (apply to BOTH enable paths):
 #   - `--draft` PRs are skipped (the trigger only fires on
 #     ready-for-review state).
 #   - PRs labelled `do-not-merge` are skipped.
 #
 # Out of scope by design:
-#   - External bot PRs (dependabot, future renovate) — author not
-#     in the allowlist.
+#   - EXTERNAL bot PRs (dependabot, future renovate) — author neither
+#     in the human allowlist nor the fleet's release-please App.
 #   - Future collaborator PRs — same gate.
+#
+# Why the release-please App path exists: across 2026-06-30..2026-07-03
+# the fleet's release train stalled in all six repos — release-please's
+# App-authored release PRs were never in the author allowlist, so
+# auto-merge was never enabled and the release PRs silently parked. The
+# branch-shape-guarded App path closes that gap (livespec-c1k9).
 #
 # This workflow ensures green PRs enter the auto-merge state on open
 # so they merge hands-off under the rebase-merge-only discipline (per
@@ -70,12 +83,18 @@ concurrency:
 jobs:
   enable-auto-merge:
     runs-on: ubuntu-latest
-    # Composed gate: NOT draft AND author in allowlist AND
-    # do-not-merge label absent.
+    # Composed gate: NOT draft AND do-not-merge label absent AND
+    # (author in human allowlist OR the fleet's release-please App on a
+    # release-please-- head branch). All continuation lines share one
+    # indent so the `>-` fold yields a single-line expression.
     if: >-
       github.event.pull_request.draft == false
-      && contains(fromJSON('["thewoolleyman"]'), github.event.pull_request.user.login)
       && !contains(github.event.pull_request.labels.*.name, 'do-not-merge')
+      && (
+      contains(fromJSON('["thewoolleyman"]'), github.event.pull_request.user.login)
+      || (github.event.pull_request.user.login == 'livespec-pr-bot[bot]'
+      && startsWith(github.event.pull_request.head.ref, 'release-please--'))
+      )
     steps:
       - name: Mint App installation token
         id: app-token
