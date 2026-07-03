@@ -5,7 +5,7 @@ Asserts the template-shipped PreToolUse guard
 un-wrapped `bd` / `dolt` / tenant-`mysql` invocation and passes a wrapped or
 unrelated command through. The pure `should_block` predicate and the
 `main` stdin->decision path are exercised directly by import — no subprocess —
-realizing `contracts.md` section "Family agent-instruction core" (the
+realizing `contracts.md` section "Fleet agent-instruction core" (the
 beads-access guard surface).
 """
 
@@ -65,11 +65,11 @@ def test_allows_wrapped_bd() -> None:
 
 
 def test_allows_independent_wrapper_bd() -> None:
-    """An INDEPENDENT (non-family) tenant's own `with-<project>-env.sh` wrapper allows.
+    """An INDEPENDENT (non-fleet) tenant's own `with-<project>-env.sh` wrapper allows.
 
     Per `contracts.md` (v130): the guard
     recognizes ANY per-project credential-injection wrapper (`with-<id>-env.sh`),
-    not only the family `with-livespec-env.sh`. A non-family wrapper such as
+    not only the fleet `with-livespec-env.sh`. A non-fleet wrapper such as
     `with-openbrain-env.sh` injecting the bare `BEADS_DOLT_PASSWORD` MUST pass
     through rather than be blocked.
     """

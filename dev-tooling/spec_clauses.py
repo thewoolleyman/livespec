@@ -1,7 +1,7 @@
 """spec_clauses — the shared spec-clause extractor + gap-id primitive.
 
 This is the single-source-of-truth implementation of the
-livespec family's behavior-clause detection: it enumerates the
+livespec fleet's behavior-clause detection: it enumerates the
 `MUST` / `MUST NOT` / `SHOULD` / `SHOULD NOT` rule lines in a spec
 markdown body and derives a stable `gap-<8>` id for each, keyed on
 `spec_file \x1f heading_path \x1f rule_text`.

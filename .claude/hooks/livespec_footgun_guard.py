@@ -2,7 +2,7 @@
 """
 livespec footgun guard — Claude Code PreToolUse hook (Bash).
 
-Blocks ONLY patterns that are NEVER legitimate in the livespec family:
+Blocks ONLY patterns that are NEVER legitimate in the livespec fleet:
   - `git ... commit/push ... --no-verify`
   - `git ... config core.bare <true>`   (set; NOT --get/--unset/--list reads)
   - a leading `LEFTHOOK=0|false` env-assignment (the --no-verify equivalent)
@@ -39,7 +39,7 @@ import shlex
 import sys
 
 _NO_VERIFY_REASON = (
-    "NEVER use --no-verify in the livespec family. The lefthook gates "
+    "NEVER use --no-verify in the livespec fleet. The lefthook gates "
     "(commit-msg, pre-commit, pre-push, Red-Green-Replay trailers) are "
     "load-bearing. If a hook rejects a commit, READ the rejection and fix the "
     "ROOT CAUSE, or HALT and ask the user — do not bypass. "

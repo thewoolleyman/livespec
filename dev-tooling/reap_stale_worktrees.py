@@ -1,14 +1,14 @@
 """reap_stale_worktrees — deterministic, idempotent reaper for merged worktrees.
 
 The Layer 3 orchestrator (per `.claude/skills/livespec-orchestrate/
-SKILL.md`) dispatches sub-agents into family repos with worktree
+SKILL.md`) dispatches sub-agents into fleet repos with worktree
 isolation. When a sub-agent's PR rebase-merges, the remote branch is
 deleted but the local self-managed worktree + its branch linger. The
 doctor `no-stale-worktree` check only WARNS (detection); this tool is
 the deterministic ACTION layer the orchestrator runs to mechanically
 clean those orphans up.
 
-It operates on ANY family repo path (the orchestrator is livespec-
+It operates on ANY fleet repo path (the orchestrator is livespec-
 resident and reaps each repo by `--repo <path>`). For every NON-primary
 worktree (per `git worktree list --porcelain`), it reaps the worktree
 (`git worktree remove` + `git branch -D <branch>` + `git worktree

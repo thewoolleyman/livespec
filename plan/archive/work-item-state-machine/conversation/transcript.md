@@ -632,7 +632,7 @@ The `plan` skill is confirmed merged to master and usable. Let me read the conso
 ```
 1	# spec.md -- livespec-console-beads-fabro
 2	
-3	`livespec-console-beads-fabro` is the LiveSpec-family operator console
+3	`livespec-console-beads-fabro` is the LiveSpec fleet operator console
 4	for repositories whose implementation work is tracked in Beads and
 5	driven through the Beads/Fabro orchestrator. It is a separate product
 6	from LiveSpec core, the Beads/Fabro orchestrator, and Fabro itself.

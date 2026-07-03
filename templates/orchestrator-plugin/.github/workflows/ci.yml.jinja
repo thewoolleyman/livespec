@@ -154,7 +154,7 @@ jobs:
   # (dataset github-ci) and FAIL if Honeycomb does not accept them, so a broken
   # telemetry pipeline reddens master CI instead of dying silently. Master/
   # merge_group only (PRs untouched, no added latency). REQUIRES the repo secret
-  # HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC (the livespec-family write-only
+  # HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC (the livespec fleet write-only
   # ingest key). A freshly generated {{ plugin_full_name }} fails this job on its
   # first master run until that secret is added — add it, or delete this job if
   # {{ plugin_full_name }} does not send CI telemetry to Honeycomb.
