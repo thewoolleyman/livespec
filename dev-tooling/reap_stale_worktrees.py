@@ -69,7 +69,12 @@ _VENDOR_DIR = Path(__file__).resolve().parent.parent / ".claude-plugin" / "scrip
 if str(_VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(_VENDOR_DIR))
 
-import structlog  # noqa: E402  — vendor-path-aware import after sys.path insert.
+_DEV_TOOLING_DIR = Path(__file__).resolve().parent
+if str(_DEV_TOOLING_DIR) not in sys.path:
+    sys.path.insert(0, str(_DEV_TOOLING_DIR))
+
+import structlog  # noqa: E402  — path-aware import after sys.path insert.
+from claude_plugin_registry import prune_dead_project_plugin_entries  # noqa: E402
 
 __all__: list[str] = ["main", "reap_worktrees"]
 
@@ -382,6 +387,7 @@ def main(*, argv: list[str] | None = None) -> int:
     repo = _resolve_repo_path(repo=Path(str(namespace.repo)))
     dry_run = bool(namespace.dry_run)
     _ = reap_worktrees(repo=repo, dry_run=dry_run)
+    _ = prune_dead_project_plugin_entries(dry_run=dry_run)
     return 0
 
 
