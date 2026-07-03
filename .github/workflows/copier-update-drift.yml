@@ -1,4 +1,4 @@
-# Livespec is the source of the copier template at templates/impl-plugin/;
+# Livespec is the source of the copier template at templates/orchestrator-plugin/;
 # drift detection does not apply to the source itself. This file exists
 # to satisfy the `copier-template-workflow-coverage` doctor invariant per
 # SPECIFICATION/contracts.md §"copier-template-workflow-coverage", which
@@ -17,6 +17,6 @@ jobs:
     steps:
       - name: Explain
         run: |
-          echo "livespec hosts templates/impl-plugin/ — the copier template source."
+          echo "livespec hosts templates/orchestrator-plugin/ — the copier template source."
           echo "copier update --dry-run does not apply to the source repo itself."
           echo "This workflow exists to satisfy copier-template-workflow-coverage."

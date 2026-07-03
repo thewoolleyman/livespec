@@ -631,7 +631,7 @@ check-no-direct-destructive-cli:
 check-no-direct-tool-invocation:
     uv run python -m livespec_dev_tooling.checks.no_direct_tool_invocation
 
-# Smoke test for templates/impl-plugin/ — runs copier copy against a
+# Smoke test for templates/orchestrator-plugin/ — runs copier copy against a
 # stock answers fixture and verifies the generated tree contains the
 # expected file set. Acceptance gate for the C.6 sub-task of the
 # Phase C multi-repo-split epic. Repo-metadata check: not gated by
@@ -640,7 +640,7 @@ check-copier-template-smoke:
     uv run python3 dev-tooling/checks/copier_template_smoke.py
 
 # Release-time projection of the canonical check-slug aggregate into the
-# committed copier-template DATA file templates/impl-plugin/
+# committed copier-template DATA file templates/orchestrator-plugin/
 # canonical-slugs.yml. Reads livespec_dev_tooling.canonical_checks (the
 # single source of truth) and writes the alphabetically-sorted slug set.
 # Re-run after the canonical set changes in livespec-dev-tooling, then
@@ -650,7 +650,7 @@ check-copier-template-smoke:
 stamp-canonical-slugs:
     uv run python3 dev-tooling/checks/canonical_slugs_projection.py --write
 
-# Anti-drift gate: verify the committed templates/impl-plugin/
+# Anti-drift gate: verify the committed templates/orchestrator-plugin/
 # canonical-slugs.yml equals livespec_dev_tooling.canonical_checks.
 # canonical_check_slugs(), so the release-time projection can never
 # silently drift from the source of truth. Livespec-private; wired into

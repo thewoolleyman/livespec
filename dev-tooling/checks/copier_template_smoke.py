@@ -1,7 +1,7 @@
-"""copier_template_smoke — smoke test for templates/impl-plugin/.
+"""copier_template_smoke — smoke test for templates/orchestrator-plugin/.
 
 Per livespec-core/SPECIFICATION/contracts.md, livespec-core publishes a copier template at
-`templates/impl-plugin/` and every `livespec-impl-*` repository
+`templates/orchestrator-plugin/` and every `livespec-impl-*` repository
 MUST be generated from it. This check is the acceptance gate that
 the template is actually usable: it runs `copier copy` against a
 tmpdir with a stock answers fixture, then verifies the generated
@@ -54,7 +54,7 @@ import structlog  # noqa: E402  — vendor-path-aware import after sys.path inse
 __all__: list[str] = []
 
 
-_TEMPLATE_PATH_REL = Path("templates") / "impl-plugin"
+_TEMPLATE_PATH_REL = Path("templates") / "orchestrator-plugin"
 # Regex matching the bash array entry shape inside the `check:`
 # recipe's `targets=(...)` block. Each canonical slug is rendered
 # as 8-space-indented bareword on its own line by `justfile.jinja`'s
@@ -66,7 +66,7 @@ _TARGETS_LINE_RE = re.compile(r"^ {8}(check-[a-z0-9-]+)$", re.MULTILINE)
 _STOCK_ANSWERS: tuple[tuple[str, str], ...] = (
     ("plugin_short_name", "smoketest"),
     ("plugin_full_name", "livespec-impl-smoketest"),
-    ("plugin_description", "Smoke-test fixture plugin for the impl-plugin template."),
+    ("plugin_description", "Smoke-test fixture plugin for the orchestrator-plugin template."),
     ("plugin_namespace", "livespec-impl-smoketest"),
     ("author_name", "Smoke Test"),
     ("author_email", "smoke@example.invalid"),
@@ -251,7 +251,7 @@ def main() -> int:
     template_path = repo_root / _TEMPLATE_PATH_REL
     if not (template_path / "copier.yml").is_file():
         log.error(
-            "templates/impl-plugin/copier.yml not found",
+            "templates/orchestrator-plugin/copier.yml not found",
             check_id="copier-template-smoke-missing-template",
             template_path=str(template_path),
             hint="Run from the livespec-core repo root.",
@@ -275,7 +275,7 @@ def main() -> int:
                 "generated tree missing expected files",
                 check_id="copier-template-smoke-missing-output",
                 missing=missing,
-                hint="Check templates/impl-plugin/ for the corresponding .jinja sources.",
+                hint="Check templates/orchestrator-plugin/ for the corresponding .jinja sources.",
             )
             return 1
         json_failures: list[dict[str, str]] = []
@@ -358,7 +358,7 @@ def _verify_canonical_slug_stamping(
         out_of_order=stamped != tuple(sorted(stamped)),
         hint=(
             "Run `just stamp-canonical-slugs` to regenerate "
-            "templates/impl-plugin/canonical-slugs.yml from the source of "
+            "templates/orchestrator-plugin/canonical-slugs.yml from the source of "
             "truth, and verify justfile.jinja includes + line-parses it."
         ),
     )

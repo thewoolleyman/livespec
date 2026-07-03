@@ -1,7 +1,7 @@
-"""Rule test for the impl-plugin template's beads-access guard hook.
+"""Rule test for the orchestrator-plugin template's beads-access guard hook.
 
 Asserts the template-shipped PreToolUse guard
-(`templates/impl-plugin/.claude/hooks/beads_access_guard.py`) blocks an
+(`templates/orchestrator-plugin/.claude/hooks/beads_access_guard.py`) blocks an
 un-wrapped `bd` / `dolt` / tenant-`mysql` invocation and passes a wrapped or
 unrelated command through. The pure `should_block` predicate and the
 `main` stdin->decision path are exercised directly by import — no subprocess —
@@ -22,7 +22,7 @@ __all__: list[str] = []
 
 _GUARD_PATH = (
     Path(__file__).resolve().parents[1]
-    / "templates/impl-plugin/.claude/hooks/beads_access_guard.py"
+    / "templates/orchestrator-plugin/.claude/hooks/beads_access_guard.py"
 )
 
 

@@ -5,7 +5,7 @@
 //   in livespec core enumerates every fleet repo (the `fleet` array)
 //   and its repo class, plus an optional `adopters` array.
 //   Livespec core owns fleet-level facts (precedent: the copier
-//   template at `templates/impl-plugin/` is already core-hosted and
+//   template at `templates/orchestrator-plugin/` is already core-hosted and
 //   sibling-consumed per `contracts.md` §"Shared content sync — copier
 //   template"); per-repo facts stay in consumer-local config.
 //

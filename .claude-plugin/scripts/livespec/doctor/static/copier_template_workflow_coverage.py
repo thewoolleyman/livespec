@@ -20,7 +20,7 @@ copier-template consumers, detected by the presence of a
 that does NOT carry `.copier-answers.yml` is out of scope: the
 check emits a single non-failing `skipped` finding and does NOT
 inspect `.github/workflows/`. Only `livespec-impl-*` consumers
-generated from the impl-plugin copier template carry that marker;
+generated from the orchestrator-plugin copier template carry that marker;
 `livespec` itself, `livespec-dev-tooling`, `livespec-runtime`,
 and other non-consumer repos legitimately carry a different
 workflow set and are exempt.
@@ -141,7 +141,7 @@ def _evaluate(*, ctx: DoctorContext) -> Finding:
                 "copier-template-workflow-coverage: project root is not a "
                 "copier-template consumer (`.copier-answers.yml` is absent); "
                 "the invariant applies only to `livespec-impl-*` consumers "
-                "generated from the impl-plugin copier template, so the "
+                "generated from the orchestrator-plugin copier template, so the "
                 "workflow-coverage check is not applicable here."
             ),
         )

@@ -1,6 +1,6 @@
 # justfile — {{ plugin_full_name }} dev-tooling task runner.
 #
-# Generated from livespec/templates/impl-plugin/justfile.jinja at
+# Generated from livespec/templates/orchestrator-plugin/justfile.jinja at
 # copier-copy time; re-sync via `copier update --vcs-ref=master` when livespec
 # publishes a new release.
 #
@@ -275,9 +275,9 @@ ensure-codex-plugins:
 #
 # The data file resolves at the Jinja loader root, which differs
 # between the two flows (smoke-check flow: loader root is
-# templates/impl-plugin/; consumer flow: loader root is the repo/clone
+# templates/orchestrator-plugin/; consumer flow: loader root is the repo/clone
 # root, with _subdirectory routing). A Jinja list-include tries
-# "canonical-slugs.yml" then "templates/impl-plugin/canonical-slugs.yml"
+# "canonical-slugs.yml" then "templates/orchestrator-plugin/canonical-slugs.yml"
 # and uses the first that exists, so one physical data file serves both
 # flows import-free.
 #
@@ -310,7 +310,7 @@ check:
         exit 1
     fi
     export UV_NO_SYNC=1
-{%- set canonical_slugs_raw %}{% include ["canonical-slugs.yml", "templates/impl-plugin/canonical-slugs.yml"] %}{% endset %}
+{%- set canonical_slugs_raw %}{% include ["canonical-slugs.yml", "templates/orchestrator-plugin/canonical-slugs.yml"] %}{% endset %}
     targets=(
 {%- for canonical_slug_line in canonical_slugs_raw.split("\n") %}
 {%- set canonical_slug = canonical_slug_line.strip() %}

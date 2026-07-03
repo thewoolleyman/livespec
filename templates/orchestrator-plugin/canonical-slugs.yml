@@ -5,7 +5,7 @@
 # `check-canonical-slugs-projection` gate fails if this file drifts from
 # livespec_dev_tooling.canonical_checks.canonical_check_slugs().
 #
-# Consumed by templates/impl-plugin/justfile.jinja as committed copier
+# Consumed by templates/orchestrator-plugin/justfile.jinja as committed copier
 # template DATA so the canonical `check:` aggregate renders import-free on
 # both the smoke-check flow AND the consumer `copier update` flow. See
 # livespec/SPECIFICATION/contracts.md §"Shared code sync —

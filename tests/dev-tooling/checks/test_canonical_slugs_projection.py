@@ -3,7 +3,7 @@
 The canonical-slugs projection check is the anti-drift gate for the
 release-time projection of `livespec_dev_tooling.canonical_checks`
 into the committed copier-template data file
-`templates/impl-plugin/canonical-slugs.yml`, per
+`templates/orchestrator-plugin/canonical-slugs.yml`, per
 livespec/SPECIFICATION/contracts.md Template gate.
 
 Two modes are exercised:
@@ -38,7 +38,7 @@ __all__: list[str] = []
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _PROJECTION = _REPO_ROOT / "dev-tooling" / "checks" / "canonical_slugs_projection.py"
-_YAML_REL = Path("templates") / "impl-plugin" / "canonical-slugs.yml"
+_YAML_REL = Path("templates") / "orchestrator-plugin" / "canonical-slugs.yml"
 
 
 def _load_module() -> object:
@@ -180,6 +180,6 @@ def test_committed_yaml_matches_source_of_truth() -> None:
     module = _load_module()
     committed = module._parse_committed_slugs(yaml_path=_REPO_ROOT / _YAML_REL)  # noqa: SLF001
     assert committed == _canonical_slugs(), (
-        "the committed templates/impl-plugin/canonical-slugs.yml has drifted from "
+        "the committed templates/orchestrator-plugin/canonical-slugs.yml has drifted from "
         "livespec_dev_tooling.canonical_checks; run `just stamp-canonical-slugs`"
     )

@@ -1,7 +1,7 @@
-"""Rule test for the impl-plugin template's GitHub auth guard hook.
+"""Rule test for the orchestrator-plugin template's GitHub auth guard hook.
 
 Asserts the template-shipped PreToolUse guard
-(`templates/impl-plugin/.claude/hooks/github_auth_guard.py`) blocks bare
+(`templates/orchestrator-plugin/.claude/hooks/github_auth_guard.py`) blocks bare
 `gh` / `git push` invocations that could fall through to ambient human OAuth,
 while allowing unrelated commands and commands that name the configured
 credential wrapper or App-token helper path.
@@ -19,10 +19,12 @@ import pytest
 __all__: list[str] = []
 
 _GUARD_PATH = (
-    Path(__file__).resolve().parents[1] / "templates/impl-plugin/.claude/hooks/github_auth_guard.py"
+    Path(__file__).resolve().parents[1]
+    / "templates/orchestrator-plugin/.claude/hooks/github_auth_guard.py"
 )
 _SHELL_PATH = (
-    Path(__file__).resolve().parents[1] / "templates/impl-plugin/.claude/hooks/github-auth-guard.sh"
+    Path(__file__).resolve().parents[1]
+    / "templates/orchestrator-plugin/.claude/hooks/github-auth-guard.sh"
 )
 
 
