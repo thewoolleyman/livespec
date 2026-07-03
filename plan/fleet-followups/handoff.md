@@ -15,7 +15,8 @@ alone via the read-first chain — no chat history required.
   2026-07-01 + `.4` filed 2026-07-03; **`.1` + `.2` DONE** via factory dispatch
   (PRs #736/#734), **`.3` DONE via relocation** → beads-fabro `bd-ib-syb`,
   PR #254 — §"Session 13"; **`.4`** = reaper dead-plugin-entry pruner, `backlog`,
-  held under `livespec-c1k9`, §"Session 12"); every **cross-tenant** item
+  held under `livespec-c1k9`, §"Session 12" — **unhold recommended**, since c1k9's
+  finalized design does not cover its domain, §"Session 14"); every **cross-tenant** item
   is **prose-linked** in the inventory and its status is composed from the ledger
   (no shadow queue).
 - **⚑ GitHub App-token auth — ✅ CLOSED + ARCHIVED (2026-07-03).** The GH_TOKEN
@@ -81,9 +82,20 @@ fqh.2/.3 → S3 → mxr.1) is retained below as the execution record — do NOT 
 `SPECIFICATION/proposed_changes/readme-contract.md`** (the `livespec-127o.1` slice;
 content is maintainer-gated — include the `tests/heading-coverage.json` co-edit in
 the revise payload's `resulting_files[]`, since the proposal adds a `## README
-contract` heading) **→ then promote + dispatch `livespec-127o.2`** (the factory
-README rewrite, dep-gated on `.1`) via the Session-12 dispatch mechanics (bare repo
-NAME `livespec`). The block after the `---` is patched with per-item dispositions —
+contract` heading: one added entry in the TODO + `reason` shape the existing
+entries use, path spelled `../tests/heading-coverage.json` so the wrapper's
+`spec_target / path` join resolves it from the main `SPECIFICATION/` tree)
+**→ then close `livespec-127o.1` in the ledger** (so the `depends_on` edge
+un-gates `.2`; bd's ledger vocabulary is `--status closed` — the runtime
+literal `done` recorded in §"Session 13" is a different layer, the
+`WorkItemStatus` model, not the bd CLI) **→ then promote + dispatch `livespec-127o.2`** (the factory
+README rewrite; it ALREADY carries a full autonomously-verifiable acceptance
+block — verified §"Session 14" — so promotion is just `backlog→ready` +
+`--add-label admission:auto --add-label acceptance:ai-only`) via the Session-12
+dispatch mechanics (bare repo NAME `livespec`). A SECOND attended decision is queued: **unhold `livespec-jcc6.4`**
+(recommended) — `livespec-c1k9`'s finalized Phase-4 design does not cover its
+orphan-registry-entry domain, so the Session-12 hold condition has resolved
+(§"Session 14"). The block after the `---` is patched with per-item dispositions —
 most are DONE/FILED; do NOT re-run its items as originally written.
 
 The completed plan, retained for the record:
@@ -132,8 +144,10 @@ git-jsonl repo.
 
 **Dispatch mechanics** (proven — `yonx` PR #762, `ek6e` #764, `yc8e` #742; reuse for
 every item above):
-- Admission + DoR: `bd -C <repo> update <id> --labels admission:auto,acceptance:ai-only`
-  (+ a coherent autonomously-verifiable acceptance + `backlog→ready`).
+- Admission + DoR: `bd -C <repo> update <id> --add-label admission:auto --add-label
+  acceptance:ai-only` (+ a coherent autonomously-verifiable acceptance +
+  `backlog→ready`). [Corrected §"Session 14": bd v1.0.5 has NO `--labels` flag —
+  `--add-label` (repeatable) is the real form, verified via `bd update --help`.]
 - SCOPE-GUARD (MANDATORY until `bd-ib-fqh` lands): `bd -C <repo> comment <id> "modify
   ONLY <exact files>; do NOT edit README/docs/…"` — the ONLY item-specific channel the
   Fabro brief reads today (the acceptance field is NOT in the brief; that's what
@@ -867,6 +881,46 @@ the top action for an attended session). Executed the jcc6.3 plan end-to-end:
 (draft → independent fable-model judge with the source-of-truth file list → reconcile →
 re-judge the amendments) resolved a DoR blocker that had held jcc6.3 since Session 2, and
 the judge caught real drift the drafting session missed — reuse it.
+
+## Session 14 (2026-07-03) — unattended status pass: no drift; c1k9's FINAL design does NOT cover jcc6.4 (unhold surfaced)
+
+Resumed fleet-followups; the maintainer was away (the activity picker timed out), so —
+per the Session-13 precedent — the content-gated `/livespec:revise` of
+`readme-contract.md` was again deliberately NOT run; it remains the top action for an
+attended session. This pass composed status LIVE and refreshed this handoff only:
+
+- **No drift from the Session-13 record.** Epic `livespec-jcc6` **3/4** (`.4` the only
+  open child, still `backlog`); `SPECIFICATION/proposed_changes/` still holds only
+  `readme-contract.md` (+ the README placeholder); nothing new in the core queue.
+- **Cross-tenant Session-12 filings unchanged** — all three still `backlog` in their
+  owning tenants, awaiting groom + dispatch from those repos' sessions (as designed;
+  no core-session action): beads-fabro `bd-ib-09c` (migrate-tenant CLI), driver-codex
+  `livespec-driver-codex-wqo` (stale "DEFERRED" docs), dev-tooling
+  `livespec-dev-tooling-5kv` (worktree-pack hydration).
+- **⚑ NEW FINDING — `livespec-c1k9`'s Phase-4 design is FINAL and does NOT cover
+  jcc6.4's domain.** c1k9 now carries 10 filed children (0/10 complete) and its design
+  decisions are recorded final in `plan/fleet-plugin-currency/handoff.md` (D1 =
+  verified release-branch marketplace ref, D2 = warn+fail lever, D3 = host-level
+  pre-session sweep DEFERRED). Neither the child set nor that handoff mentions the
+  orphaned `installed_plugins.json` dead-entry cleanup `livespec-jcc6.4` implements —
+  the D3 "sweep" is a different mechanism (pre-session plugin-UPDATE sweep, not
+  registry-entry pruning). So the Session-12 hold condition ("until c1k9's
+  investigation decides how orphan-cleanup ships") has effectively resolved to
+  "c1k9 does NOT ship it". **Attended decision surfaced (recommended): UNHOLD
+  `livespec-jcc6.4`** — promote `backlog→ready` (+ `admission:auto`,
+  `acceptance:ai-only`; its unit-test-over-synthetic-registry acceptance is already
+  autonomously verifiable) and dispatch it standalone via the factory. The
+  alternative — refiling it as a c1k9 child — has no home in the finalized design.
+  Left undispatched here: the hold was an explicit Session-12 maintainer decision,
+  so reversing it is the maintainer's call.
+- **Cold-open gate repairs (verified live, then folded into "The next action"):**
+  (a) `livespec-127o.2` ALREADY carries a full autonomously-verifiable acceptance
+  block (7-sections-in-order, no embedded diagrams, link resolution, `just check` +
+  doctor green) — no acceptance authoring needed at promote time. (b) bd v1.0.5's
+  `update` has NO `--labels` flag — the real form is repeatable `--add-label`
+  (verified via `bd update --help`); the retained Dispatch-mechanics block was
+  corrected in place. (c) The heading-coverage co-edit shape + path spelling and
+  the close-`.1`-to-un-gate-`.2` step are now explicit in the next-action text.
 
 ## Read-first chain (in order)
 
