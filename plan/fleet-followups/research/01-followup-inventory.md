@@ -84,9 +84,12 @@ lands: hand-write a `bd comment <id>` naming the exact files before each dispatc
 
 ## E. Client-side operator actions (NOT factory work-items — do directly)
 
-11. **Orchestrator-plugin cache stale fleet-wide** — client-side `claude plugin update <plugin>@<marketplace> --scope project` (per repo) + restart. (This core session refreshed to `06e3e080ae19` at SessionStart; other scopes may lag.)
-12. **openbrain pin bump** needs a client-side `/plugin install` + restart — cannot be done in-session.
-13. **Open-item status reclassification** — per-item grooming; a bulk rewrite is available if wanted.
+**✅ DISPOSED (Session 12, 2026-07-03).** All three resolved; the only actionable cleanup
+(dead plugin-registry entries) was done + a proactive pruner filed as `livespec-jcc6.4`.
+
+11. **Orchestrator-plugin cache stale fleet-wide** — ✅ **self-heals; no cross-repo action possible.** The 4 active repos (console-beads-fabro, openbrain, git-jsonl, beads-fabro) carry stale project-scope pins but **auto-refresh at each repo's next SessionStart** (this core session did `055ce0ea→f79abb88`). `claude plugin update --scope project` is **cwd-bound** (no cross-repo target), so pre-refreshing from core gains nothing durable. **11b — dead-path entries PRUNED:** `installed_plugins.json` held **8 inert `scope=project` entries** on gone paths (2 removed worktrees + 1 `/tmp` scratchpad); backed up + dropped (rule: `scope==project` AND path missing) → 21 kept, valid JSON, core scope preserved, 0 remaining dead. **⚑ Proactive prune has NO built-in** (Claude Code's `.last_inuse_sweep` GC's cache dirs not registry entries; `claude plugin prune` = deps only; reaper has no registry knowledge) → filed **`livespec-jcc6.4`** (fold a path-gone sweep into `dev-tooling/reap_stale_worktrees.py`; groom + dispatch via factory).
+12. **openbrain pin bump** — ✅ **same self-heal.** openbrain scope = `livespec 0.2.0`; refreshes on openbrain's next session or operator `/plugin install`+restart *in an openbrain session*. Not doable from core.
+13. **Open-item status reclassification** — ✅ **no-op for core** (ledger clean: 0 beads-native `open`/in_progress/blocked/deferred; all 32 non-closed are `backlog`). Any stragglers would be cross-tenant.
 
 ## F. Cross-links — existing threads (resume THERE, not here)
 

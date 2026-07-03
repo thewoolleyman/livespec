@@ -11,9 +11,10 @@ alone via the read-first chain — no chat history required.
   succeeds the (closed + archived) `work-item-state-machine` fleet epic. Items
   span multiple tenants (core, beads-fabro, dev-tooling, driver-codex,
   git-jsonl, runtime), so — per the fleet pattern — this anchor carries only a
-  few **same-tenant (core) ledger children** (`livespec-jcc6.1/.2/.3`, filed
-  2026-07-01; **`.1` + `.2` DONE** via factory dispatch (PRs #736/#734), `.3`
-  held at `backlog` — held rationale in §"Session 2"); every **cross-tenant** item
+  few **same-tenant (core) ledger children** (`livespec-jcc6.1/.2/.3` filed
+  2026-07-01 + `.4` filed 2026-07-03; **`.1` + `.2` DONE** via factory dispatch
+  (PRs #736/#734), `.3` held at `backlog` — rationale in §"Session 2"; **`.4`** =
+  reaper dead-plugin-entry pruner, `backlog`, §"Session 12"); every **cross-tenant** item
   is **prose-linked** in the inventory and its status is composed from the ledger
   (no shadow queue).
 - **⚑ NEW #1 (2026-07-02): GitHub App-token auth — its OWN dedicated thread.** The
@@ -182,7 +183,11 @@ items are now the active priority. Compose LIVE status before acting:**
    dispatcher's own scripts" though asp modified `_dispatcher_engine.py`/`_dispatcher_plan.py`;
    the full janitor validated asp, but the canary's path-detection may under-fire (relates
    to the now-closed `bd-ib-mxr` E2E epic).
-3. **Client-side ops** (inventory group **E**) — operator actions, done directly.
+3. **Client-side ops** (inventory group **E**) — ✅ **DISPOSED (Session 12)**: dead plugin
+   registry entries pruned (8); items 11/12 self-heal on each repo's next SessionStart
+   (cwd-bound CLI, no cross-repo action); item 13 a no-op (core ledger clean). A proactive
+   reaper-pruner was filed as **`livespec-jcc6.4`** (groom + dispatch via factory). See
+   §"Session 12".
 4. **Cross-links** (group **F**) — resume in their own repo's thread, not here.
 5. **Close `livespec-jcc6`** when factory-hardening + the deferred items are done and
    nothing lingers → archive this thread to `plan/archive/`.
@@ -666,6 +671,56 @@ is fully landed and verified.
 **Remaining fleet-followups priorities** (unchanged except m0xu now done): groom
 `livespec-127o` (README); file the still-unfiled CROSS-TENANT items (B4/C7/C8/D9/D10) from
 their own repos' sessions; client-side ops (group E); then close `livespec-jcc6`.
+
+## Session 12 (2026-07-03) — group E client-side ops DISPOSED; dead plugin-entries pruned; pruner filed (jcc6.4)
+
+Resumed fleet-followups; maintainer chose **Client-side ops (group E)**. Composed core
+ledger status LIVE (epic `livespec-jcc6` backlog · 2/3 before this session; core `ready`
+queue EMPTY; **0** open/in_progress/blocked/deferred stragglers). Established plugin
+execution context FIRST (`claude plugin marketplace list` + `installed_plugins.json` map)
+rather than assuming. Full group-E disposition:
+
+- **Item 11 (plugin cache stale fleet-wide) — self-heals; no cross-repo action possible.**
+  4 active repos (`livespec-console-beads-fabro`, `openbrain`,
+  `livespec-orchestrator-git-jsonl`, `livespec-orchestrator-beads-fabro`) carry stale
+  project-scope pins, but each **auto-refreshes at its own next SessionStart** (this core
+  session did `055ce0ea→f79abb88` at startup). `claude plugin update --scope project` is
+  **cwd-bound** — no cross-repo targeting — so pre-refreshing from core gains nothing
+  durable (the next session in each repo does the identical update).
+- **Item 11b (dead-path entries) — PRUNED (8 removed).** `installed_plugins.json` held **8
+  inert project-scope entries** pointing at gone paths: 2 removed worktrees
+  (`…/livespec-console-beads-fabro-wt-bootstrap-rust-infra`,
+  `~/.worktrees/livespec/factory-conformance-capture`) + 1 `/tmp` scratchpad
+  (`…/scratchpad/lsr-clean`). They never load (no active cwd matches) and never self-heal.
+  Backed up (`…installed_plugins.json.bak.predeadprune-20260703052501`), then dropped every
+  `scope==project` entry whose `projectPath` is missing → 8 removed, 21 kept, valid JSON,
+  core's own scope (latest) preserved, 0 remaining dead.
+- **Item 12 (openbrain pin bump) — same self-heal.** openbrain scope = `livespec 0.2.0`
+  (stale); refreshes on openbrain's next session, or operator `/plugin install`+restart
+  *in an openbrain session*. Not doable from core.
+- **Item 13 (open-item status reclassification) — NO-OP for core.** Core ledger is clean
+  (0 beads-native `open` stragglers; all 32 non-closed are `backlog`). Any stragglers would
+  be cross-tenant.
+
+- **⚑ Maintainer Q: "how do we proactively prune these?" → root-caused + FILED
+  `livespec-jcc6.4`.** There is **no built-in** proactive mechanism: Claude Code's own
+  sweep (`~/.claude/plugins/.last_inuse_sweep`) GC's unused cache dirs but leaves dead
+  registry entries (all 8 persisted through it); `claude plugin prune|autoremove` only
+  removes auto-installed *dependencies*; the worktree reaper has no plugin-registry
+  knowledge. Root cause: ephemeral project dirs (worktrees + `/tmp` scratchpads) get
+  project-scope plugin installs via SessionStart, then the path is deleted, orphaning the
+  entry. **Maintainer chose the shape: fold a path-gone sweep into the worktree reaper**
+  (`dev-tooling/reap_stale_worktrees.py`) — a general "scope==project AND path gone → drop"
+  end-of-run pass (backup + `--dry-run`, catches `/tmp` too). Filed as **`livespec-jcc6.4`**
+  (core, P3, `backlog`, child of the epic; autonomously-verifiable acceptance = a unit test
+  over a synthetic registry in a temp HOME). Per the golden rule this was FILED, not
+  hand-coded — groom + dispatch it via the factory. Epic is now **2/4** (`.1`/`.2` closed,
+  `.3` held, `.4` new).
+
+**Remaining fleet-followups priorities** (group E now disposed): groom `livespec-127o`
+(README); groom + dispatch **`livespec-jcc6.4`** (the reaper pruner) via the factory; file
+the still-unfiled CROSS-TENANT items (B4/C7/C8/D9/D10) from their own repos' sessions; then
+close `livespec-jcc6`.
 
 ## Read-first chain (in order)
 
