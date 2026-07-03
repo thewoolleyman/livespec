@@ -236,8 +236,11 @@ new pattern.
 ### L1 — Currency mechanism (updates land before the session exists)
 
 **L1a — each plugin repo carries a CI-fast-forwarded `release` branch.** Add to
-each of the four plugin repos a CI step that, on every release tag, fast-forwards
-a long-lived `release` branch to that tag's commit. The natural home is the
+each of the five plugin repos a CI step that, on every release tag, fast-forwards
+a long-lived `release` branch to that tag's commit. (The five are core,
+driver-claude, driver-codex, orchestrator-beads-fabro, and
+orchestrator-git-jsonl — git-jsonl also ships release-please + a plugin
+marketplace, so it carries the release branch too.) The natural home is the
 existing release workflow (`release-tag.yml` / the release-please tag event):
 after a release is cut, push `release` → the new tag. `release` therefore always
 points at the latest release-tag commit — the fetchable ref the marketplaces
