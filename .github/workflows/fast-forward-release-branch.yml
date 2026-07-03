@@ -1,0 +1,57 @@
+# fast-forward-release-branch.yml — keep the `release` branch pinned to the
+# latest release.
+#
+# Substrate for fleet plugin ref-pinning (livespec core epic livespec-c1k9,
+# design plan/fleet-plugin-currency/research/design.md). The fleet's
+# marketplace registrations pin each plugin entry to the `release` branch ref,
+# which must always resolve to the latest published release commit. On every
+# published release this fast-forwards `refs/heads/release` to the release
+# tag's commit.
+#
+# Event: `release: published` — the same event release-dispatch.yml rides, and
+# the release is authored via the App token (release-please.yml) so the event
+# reliably fires.
+#
+# Auth: mints the livespec GitHub App installation token (secrets APP_ID +
+# APP_PRIVATE_KEY), mirroring release-please.yml — the App identity that
+# authors the release also advances the branch.
+#
+# The push is fast-forward-only: a plain `git push` (no --force) is rejected by
+# the remote when `release` is not an ancestor of the released commit, failing
+# the job loudly instead of silently rewriting the branch.
+
+name: Fast-forward release branch
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  fast-forward-release-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout released commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Fast-forward the release branch to the released commit
+        run: |
+          set -euo pipefail
+          release_sha="$(git rev-parse HEAD)"
+          echo "Release ${{ github.event.release.tag_name }} = ${release_sha}"
+          # Fast-forward-only: no --force, so the remote rejects (and this job
+          # fails loudly) if `release` has diverged from the released history.
+          git push origin "HEAD:refs/heads/release"
