@@ -1,5 +1,7 @@
 # Phase 4 design — the fleet plugin-currency guarantee
 
+> **SUPERSEDED by `design.md` (2026-07-03)** — the correction + maintainer decisions + ref-pin experiment resolved D1 to the release-branch mechanism. Read `design.md`; this draft is retained for its still-valid layer reasoning only.
+
 > **STATUS: DRAFT — Phase 4 maintainer design review PENDING (2026-07-03).** Three maintainer decisions are open (recorded in `../handoff.md` §"The next action"); the design is not final until they are answered and this doc is revised to `design.md`. Do not implement from this draft.
 
 ## CORRECTION (2026-07-03) — catalog-level sha pinning IS supported; §1's premise is refuted
