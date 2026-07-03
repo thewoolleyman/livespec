@@ -2,6 +2,96 @@
 
 > **STATUS: DRAFT — Phase 4 maintainer design review PENDING (2026-07-03).** Three maintainer decisions are open (recorded in `../handoff.md` §"The next action"); the design is not final until they are answered and this doc is revised to `design.md`. Do not implement from this draft.
 
+## CORRECTION (2026-07-03) — catalog-level sha pinning IS supported; §1's premise is refuted
+
+> **This correction section GOVERNS the rest of this draft.** §1 below (and the
+> facts §0 leans on for it) was written from a premise the official Claude Code
+> docs refute. Read this section first; where it conflicts with §1, this section
+> wins. The rest of the draft is deliberately NOT rewritten — only §1's
+> invariant *choice* changes; every other layer survives as drafted (see
+> "Layers unaffected" below).
+
+**Plain-language bottom line.** The draft concluded that Claude Code simply
+*cannot* pin a plugin to a released version, so it redefined "current" down to
+"whatever master HEAD happens to be." That conclusion is wrong. Claude Code
+*does* support pinning a plugin entry in a marketplace catalog to an exact
+commit — so the fleet CAN deliver the research-plan's original "latest
+*released* pin" invariant natively, without redefining anything. The corrected
+recommendation (D1, recorded in `../handoff.md` §"The next action") is
+therefore: **SHA-pin every fleet catalog entry to the latest release-tag commit
+and let CI auto-bump the pin on each release** — the same shape the fleet's
+`bump-pin` discipline already uses for code pins.
+
+### The facts (from the official docs at `code.claude.com/docs` — `plugin-marketplaces.md` §"Plugin sources" and `plugins-reference.md` §"Version management")
+
+1. **Git-based PLUGIN-ENTRY sources support both `ref` AND `sha`.** A plugin
+   entry in `marketplace.json` whose source is git-based (`github`, `url`, or
+   `git-subdir`) accepts BOTH a `ref` (a branch or tag) AND a `sha` (a full
+   40-character commit hash). When both are set, **`sha` wins** — "Claude Code
+   fetches and checks out the pinned commit directly." This is the exact
+   capability §1 claimed did not exist.
+2. **MARKETPLACE sources support `ref` but not `sha`.** The source that says
+   where the *catalog itself* is fetched from supports `ref` (branch/tag) but
+   NOT `sha`. So the pin lives on the plugin ENTRY inside the catalog, not on
+   the marketplace-of-the-catalog — and the plugin-entry level is exactly the
+   level the fleet controls in its own committed `marketplace.json`.
+3. **`plugin.json.version` is the consumer cache key.** Consumers re-fetch a
+   plugin only when its `version` string changes. release-please bumps that
+   `version` exactly at release commits, so a `sha` pin *at a release commit*
+   composes cleanly with cache invalidation: the pin moves and the version
+   string changes together, at the release, and consumers pick the new build up.
+4. **Ecosystem precedent.** Anthropic's own community marketplace pins each
+   approved plugin to a commit `sha` in the catalog, with CI bumping the pin
+   automatically — precisely the pattern the fleet's `bump-pin` discipline
+   already embodies for its code pins.
+5. **Why the fleet doesn't get this today.** Every fleet catalog entry uses
+   `"source": "./.claude-plugin"` — a *relative path*, which resolves to
+   "whatever the marketplace clone has checked out," i.e. default-branch (master)
+   HEAD. That is why master-HEAD tracking looked like the only option. The draft
+   correctly verified the CLI surface (no pin flags on `claude plugin
+   install`/`update` — still true) and the current catalog *shape* (relative-path
+   sources — still true), but **missed the catalog *schema* fields** (`ref`/`sha`
+   on git-based entry sources), which is where the pin actually lives.
+6. **One capability still unverified (flagged, in flight).** Whether a
+   `git-subdir` source combined with `sha` works end-to-end for a plugin rooted
+   in a `.claude-plugin/` subdirectory (the fleet's layout) is being verified in
+   a scratch experiment. The recommendation below depends on this; it is the one
+   open capability check.
+
+### What this changes
+
+- **§1's invariant reconciliation (master-HEAD tracking) was derived from a
+  false premise.** Its central claim — that the tooling *cannot express* the
+  "latest released pin" because there is "no marketplace ref-pin, no
+  install-at-tag" — is refuted at the catalog (plugin-entry) level. The
+  two-axes table and the "master ≈ latest release is good enough" argument no
+  longer decide the invariant.
+- **The corrected D1 (recorded in `../handoff.md` §"The next action") now
+  RECOMMENDS SHA-pinning catalog entries to release-tag commits with CI
+  auto-bumping the pin.** This rides the existing `bump-pin` discipline (extend
+  the freshness guard to cover a *parked* pin-bump, exactly as it already covers
+  a parked code-pin) and **preserves the research-plan's ORIGINAL "latest
+  *released* pin" invariant natively** — no redefinition of "current" required.
+
+### Layers unaffected by this correction (they survive as drafted)
+
+- **The fail-loud gate shape (§4).** The gate still fails loudly on a stale
+  build; only its *comparison target* changes — from "the freshly-fetched
+  marketplace-clone master HEAD" to "the catalog's pinned `sha`." That target is
+  SIMPLER (a fixed value committed in the catalog, not a just-fetched moving
+  HEAD) and STILL offline-verifiable (the pinned sha is on disk in the catalog).
+- **Release permanence (§2).** Unchanged.
+- **Hook uniformity (§3a).** Unchanged.
+- **The reload-nudge (§3b).** Unchanged.
+- **Fabro out-of-scope (§5).** Unchanged.
+- **Cache hygiene.** Unchanged.
+
+Everything below this section is the ORIGINAL draft, preserved for its
+still-valid layers. Where §1 conflicts with this correction, this correction
+governs.
+
+---
+
 **Plain-language bottom line.** We make plugin staleness *impossible to be
 silent* with two layers that share one small pure decision brain, and we
 redefine "current" to something the tooling can actually deliver. Layer 1

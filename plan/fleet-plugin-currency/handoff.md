@@ -46,16 +46,18 @@ from this file alone via the read-first chain — no chat history required.
 1. **Phase 4 design DRAFT landed (`research/design-draft.md`); maintainer review
    PENDING — re-ask these three decisions, one per turn, each with the
    recommendation first:**
-   - **D1 (Invariant):** redefine plugin-currency to master-HEAD tracking (gate
-     asserts running snapshot SHA == freshly-fetched marketplace-clone master
-     HEAD), keeping code pins release-tag-based on their own axis? RECOMMENDED:
-     yes (never staler than release-tracking; tag-install is unsupported by
-     Claude Code; during the stall the release target was the broken build).
-     Alt: yes + upstream install-at-tag feature request; Alt: keep literal
-     release-tag invariant (needs custom tooling; delivers older builds during
-     stalls).
+   - **D1 (Invariant mechanism, CORRECTED):** SHA-pin every fleet catalog entry
+     to the latest release-tag commit with CI auto-bump on each release
+     (RECOMMENDED — preserves the original "latest released pin" invariant
+     natively; ecosystem-standard per Anthropic's community marketplace; rides
+     existing bump-pin discipline; requires converting catalog entries from
+     relative-path to git-subdir sources, end-to-end verification of
+     git-subdir+sha in flight). Alt: master-HEAD tracking (draft's original —
+     simplest, fastest delivery, but ships un-release-gate-validated builds).
+     Alt: SHA-pin + explicit --plugin-dir dev carve-out for core dogfooding.
    - **D2 (Gate severity on Unknown):** when the gate cannot determine
-     "expected" (offline / no marketplace clone / legacy semver-named dir) —
+     "expected" (offline / no marketplace clone / legacy semver-named dir /
+     catalog entry not yet SHA-pinned during transition) —
      warn-by-default with a `LIVESPEC_CURRENCY_GATE=fail` env lever set in
      CI/dispatch (RECOMMENDED, matches carve-out-as-severity-lever), or
      fail-hard-always (stricter; can block legitimate offline sessions).
@@ -206,3 +208,10 @@ from this file alone via the read-first chain — no chat history required.
   banner-marked DRAFT); maintainer AFK at review time, so the three open
   decisions (§"The next action" item 1) remain PENDING; gate held (no
   implementation dispatched from the draft).
+
+### Session 1 (continued) — D1 premise corrected (2026-07-03)
+
+- Maintainer challenged the "tag-tracking is unsatisfiable" claim; a Claude Code
+  docs check refuted it (catalog plugin-entry sources support `ref`+`sha`);
+  correction landed in `research/design-draft.md`; scratch verification of
+  `git-subdir`+`sha` dispatched; the three decisions still pending.
