@@ -21,7 +21,7 @@ slash commands.
 | `dev-tooling/` | Standalone enforcement-suite Python scripts (run via `just check`) |
 | `tests/` | pytest suite — mirrors the `.claude-plugin/scripts/` and `dev-tooling/` trees one-to-one |
 | `prior-art/` | Reference source material adapted into the shipped livespec template |
-| `archive/` | Frozen historical artifacts from the bootstrap process — do not edit |
+| `archive/` | Frozen historical artifacts — bootstrap-process records, plus retired research topics under `archive/research/` and retired prompt handoffs under `archive/prompts/` — do not edit |
 | `pyproject.toml`, `justfile`, `lefthook.yml`, `.mise.toml`, `.python-version`, `.vendor.jsonc`, `.livespec.jsonc` | Toolchain configuration |
 | `NOTICES.md` | Third-party vendoring notices |
 

@@ -60,7 +60,7 @@ resume commands live in `tmp/overseer/HANDOFF.md`; this prompt is the runbook.
 > `just bootstrap` rewire + ledger close of `zs22.8.2` are the remaining pieces.
 > Treat the sections below as historical context and re-derive live state from
 > the ledger + the per-track handoffs (e.g.
-> `prompts/governed-repo-lifecycle-handoff.md`).
+> `archive/prompts/governed-repo-lifecycle-handoff.md`).
 
 ## Prime law (do not violate)
 
@@ -143,8 +143,8 @@ before they implement** (the briefs tell them to surface, not guess).
 → the lifecycle verb" (first code milestone; verb lives in dev-tooling beside
 `wire_fleet_member`, reuse-first). Walk the maintainer through the cut **one
 clean `AskUserQuestion` at a time**; the maintainer OWNS the cut, files ONLY on
-approval. See `prompts/governed-repo-lifecycle-handoff.md` +
-`research/governed-repo-lifecycle/`.
+approval. See `archive/prompts/governed-repo-lifecycle-handoff.md` +
+`archive/research/governed-repo-lifecycle/`.
 
 ## Factory bug inventory (the reliability picture)
 
