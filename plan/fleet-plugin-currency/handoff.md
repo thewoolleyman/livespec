@@ -301,3 +301,25 @@ Next actions, in order:
   beads-fabro #256, git-jsonl #166; branches verified at latest release commits;
   five ledger items closed), 10 new items filed + 5 regroomed by the filing
   agent, allowlist + hook-adoption waves in flight.
+
+### Session 1 (continued) — allowlist slice CLOSED (2026-07-03)
+
+- **Allowlist slice CLOSED (`livespec-c1k9.1`).** Six PRs merged giving every
+  fleet repo's `auto-enable-merge.yml` a dedicated release-PR path gated on the
+  verified App login `livespec-pr-bot[bot]` AND the `release-please--*`
+  branch-shape guard (do-not-merge label opt-out preserved): livespec #802,
+  livespec-orchestrator-beads-fabro #255, livespec-driver-claude #74,
+  livespec-driver-codex #47, livespec-orchestrator-git-jsonl #167,
+  livespec-dev-tooling #233. The workflow header rationale was updated
+  everywhere, and the copier template
+  (`templates/orchestrator-plugin/.../auto-enable-merge.yml.jinja`) was fixed at
+  the SOURCE so a future `copier update` cannot revert the change. Follow-up idea
+  recorded: parameterize the App login if non-fleet template adopters need their
+  own release bots auto-merged. Six `fix-auto-enable-merge-release-prs` worktrees
+  + branches reaped across the six repos.
+- **dev-tooling uv.lock/pyproject mismatch bug filed** (`livespec-dev-tooling-r5m`,
+  P2): the release 0.31.1 commit bumped `pyproject.toml` without running
+  `uv lock`, so master carries a pyproject/uv.lock version mismatch; observed
+  when an unrelated worktree's pre-commit hook regenerated uv.lock (0.31.0 →
+  0.31.1) as dirty-tree noise. Fix direction: regenerate the lock in the release
+  flow + a CI lock/pyproject parity check.
