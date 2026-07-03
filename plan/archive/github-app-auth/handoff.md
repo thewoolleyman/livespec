@@ -1,8 +1,12 @@
-# Handoff — github-app-auth
+# Handoff — github-app-auth (ARCHIVED — epic CLOSED 2026-07-03)
 
-The single resumable entry point for the **fleet GitHub App-token auth**
-coordination epic. A fresh session can execute the next action from this file
-alone via the read-first chain — no chat history required.
+**THREAD CLOSED.** Epic `livespec-2ef0` and all five children are CLOSED in
+the core ledger; this directory is archived under `plan/archive/`. This file
+is the historical record of the track — there is no next action. Read the
+epic's close reason (`bd -C /data/projects/livespec show livespec-2ef0`) for
+the four-pillar completion summary; the five adopter-onboarding findings from
+the openbrain dogfood live in the beads-fabro tenant. The dogfood evidence:
+openbrain PR #3 merged by `app/openbrain-pr-bot` with fleet secrets absent.
 
 ## Track operating model (maintainer directive, 2026-07-02 — THIS track only)
 
@@ -230,37 +234,17 @@ forward verbatim in every future handoff refresh.
 
 ## The next action
 
-**Finish the wrap: three items stand between here and epic close +
-archive** — statuses read live from the ledger:
-
-1. **Close `livespec-orslcm`.** The wiring is done and validated (see
-   its slice bullet); the merged PR that carried THIS handoff refresh
-   was pushed from a worktree of the wired core clone through the
-   App-token helper — cite that push (plus the `git credential fill`
-   evidence) and `bd -C /data/projects/livespec close livespec-orslcm`
-   with the evidence in the reason.
-2. **Maintainer-manual, then close `livespec-uotocj`:** the maintainer
-   removes `LIVESPEC_FAMILY_GITHUB_TOKEN` from the livespec 1Password
-   Environment AND revokes the fine-grained PAT at GitHub (Settings →
-   Developer settings → Fine-grained personal access tokens). Then
-   re-probe (`/usr/local/bin/with-livespec-env.sh -- sh -c 'printenv
-   LIVESPEC_FAMILY_GITHUB_TOKEN | wc -c'` → 0) and close the item with
-   the full evidence chain (App scope = exactly the 8 fleet repos;
-   zero live consumers; factory + fabro + host git all App-only).
-3. **Maintainer gate: D17 → `livespec-p3icf6` disposition.** D17
-   (register openbrain + dolt-server as adopters in
-   `.livespec-fleet-manifest.jsonc`; recorded in
-   `plan/fleet-followups/handoff.md`, group D) is a genuine fleet/core
-   product decision. Present it; p3icf6 (openbrain via its OWN GitHub
-   App with fleet secrets unreadable) either proceeds as the adopter
-   dogfood or is re-scoped/deferred by the maintainer's answer — the
-   epic close needs an explicit disposition either way (close-complete,
-   or split p3icf6 out to its own thread with maintainer consent).
-4. **Then close the epic + archive the thread** (plan operation Step 5):
-   close `livespec-2ef0` via the ledger, then in a worktree
-   `git mv plan/github-app-auth/ plan/archive/github-app-auth/` →
-   PR → merge. The thread is DONE when the epic is closed and the
-   directory is archived.
+NONE — the thread is closed and archived. Historical wrap sequence
+(Session 8→9, 2026-07-02/03): gwjnes factory-built + accepted; u67wdb
+(provider, v0.8.0) reviewed ACCEPT; in7snc (factory PAT retirement)
+reviewed ACCEPT + live-validated (console PR #79); orslcm host wiring with
+live push evidence; uotocj — PAT deleted from 1Password + revoked; fabro
+vault gho_ token deleted, both fabro servers on strategy=app, post-deletion
+smoke test green (beads-fabro PR #238); openbrain adopter dogfood COMPLETE
+in 5 attempts (each a filed finding: adopter LLM credential, per-tenant
+fabro server, fleet-hardcoded workflow prepare steps, dispatcher cwd/tenant
+coupling, pull-primary default-branch assumption) — openbrain PR #3 merged
+by its own App; 2ef0.1 workflows permission granted to both Apps.
 
 ## Read-first chain (in order)
 
