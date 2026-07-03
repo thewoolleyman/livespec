@@ -72,20 +72,35 @@ read-first chain — no chat history required.
 
 ## The next action
 
-**Run Phase 1 — per-repo disposition validation (read-only).**
-Phase 0 closed 2026-07-03 (verdicts recorded in the inventory).
-Concretely:
+**Run Phase 2 — the maintainer checkpoint.** Phases 0 and 1 closed
+2026-07-03; the five finalized tables sit at
+`research/02-dispositions-<repo>.md` (livespec,
+livespec-orchestrator-beads-fabro, livespec-console-beads-fabro,
+livespec-dev-tooling, openbrain). Concretely:
 
 1. Read epic status from the ledger (command above).
-2. Dispatch one read-only agent per dirty repo (5, parallel), each
-   brief composed from the "Per-repo agent brief template" below with
-   the inventory's per-repo table + the corrected survey sweep pinned
-   verbatim (openbrain's brief carries ITS wrapper and `main`).
-3. Commit the returned tables as
-   `plan/cleanup-research-and-prompt-cruft/research/02-dispositions-<repo>.md`
-   via this thread's normal worktree → PR flow.
+2. Walk the MAINTAINER/escalation queue with the maintainer via the
+   structured picker, ONE item per turn, the table's recommended
+   verdict listed first. The queue (each row's evidence + options live
+   in its repo's 02 file):
+   - livespec: `dark-factory-operability/work-breakdown.md` (rec
+     ARCHIVE); `workflow-processes/livespec-as-contract-…{,-reframing}.md`
+     (rec STAYS); `workflow-processes/mermaid-vs-plantuml-…md` (rec
+     ARCHIVE); `prompts/livespec-overseer-startup.md` (rec RELOCATE to
+     `.claude/skills/overseer/`); `prompts/fleet-terminology-migration-*`
+     (rec ARCHIVE after filing a residual-`family`-cleanup work-item).
+   - orchestrator: w7 relocation vs the repo-local `research/archive/`
+     convention (rec relocate anyway + rewrite `research/CLAUDE.md`);
+     context-completeness ARCHIVE confirmation (rec confirm).
+   - console: treat `plan/impl-dispatch/` as the completed D2
+     conversion (rec yes — archive the prompts file, no new thread).
+   - openbrain: `ob1-fork-patches.md` (rec exempt-and-stay);
+     `explore-gmail.ts` tool retirement alongside the
+     gmail-ingest-filter archive (rec retire the tool).
+3. Record each verdict by editing the matching 02 file (same
+   worktree → PR flow), marking the row CONFIRMED-<verdict>.
 
-Then proceed to Phase 2 below.
+Exit: zero unresolved MAINTAINER rows; then proceed to Phase 3 below.
 
 ## Phase plan
 
@@ -272,3 +287,43 @@ Phase 3 (execution, mutating) adds:
   fleet-wide. **D3 confirmed** — openbrain `PLAN/` out of scope.
 - Recorded the verdicts in the inventory (PROVISIONAL → CONFIRMED) and
   refreshed this handoff (next action now Phase 1).
+
+### Session 2 continued (2026-07-03) — Phase 1 executed
+
+- Dispatched the five read-only validation agents in parallel; all
+  returned finalized tables, committed as
+  `research/02-dispositions-<repo>.md`.
+- Headline corrections the agents surfaced (details in each 02 file):
+  - livespec: mermaid-handoff landing evidence corrected (v151
+    lifecycle diagram, not v105); fleet-terminology prompts escalated
+    to MAINTAINER (residual active-scope `family` occurrences, no
+    committed classification inventory); `.claude/CLAUDE.md` is a
+    symlink to `AGENTS.md` (cited double-anchors collapse to one);
+    new inbound ref `templates/orchestrator-plugin/copier-questions.yml:75`
+    → factory-conformance.
+  - orchestrator: context-completeness resolved to ARCHIVE (epic
+    `bd-ib-fqh` closed, merges `1485fb1`/`2fd4efd`); w7 relocation
+    conflicts with the repo-local `research/archive/` convention
+    ratified in its `research/CLAUDE.md` (escalated, rec relocate
+    anyway); `pyproject.toml:319` = documentary
+    `destructive_cli_allowlist` entry (non-behavioral path rewrite,
+    keep the entry); fifth w7 ref found (`orchestrator-image/README.md:13`);
+    `Dockerfile:5` path was ALREADY stale.
+  - console: BOTH prompts handoffs → ARCHIVE — the active track's D2
+    conversion already exists as the parked `plan/impl-dispatch/`
+    thread (do NOT create a second); AGENTS.md anchor drifted 47→55;
+    gate = `just check` (Rust aggregate).
+  - dev-tooling: shell-logic-audit → PLAN-THREAD
+    (`plan/shell-logic-hardening/`) anchored on EXISTING open epic
+    `livespec-dev-tooling-9j8` (all 8 children BACKLOG);
+    agent-instruction-inheritance ARCHIVE verified (v146 + merges).
+  - openbrain: `ob1-inline-autonomous-factory.md` flipped
+    ARCHIVE → STAYS (live code ref `scripts/promote.ts:6`);
+    gmail-ingest-filter has a live tool coupling
+    (`scripts/explore-gmail.ts` hard-codes the dir — tool retirement
+    escalated); spec link at `contracts.md:663` characterized as
+    provenance-only and stale (candidates JSON frozen at v3 vs
+    normative inline v8) — the revise de-references, inlines nothing;
+    applied-migration comments are immutable (never edit).
+- Next action advanced to Phase 2 (maintainer checkpoint; queue in
+  "The next action" above).
