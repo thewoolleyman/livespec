@@ -43,15 +43,25 @@ from this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
-**Phase 4 design review PASSED** (2026-07-03, maintainer decisions via
-structured picker — all three recommendations accepted):
+**Phase 4 design FINAL — the ref-pin experiment VERIFIED the release-branch
+mechanism on BOTH runtimes; D1 resolved.** The design is finalized in
+`research/design.md` (supersedes `design-draft.md`). Maintainer decisions
+(2026-07-03, via structured picker) as resolved:
 
-- **D1 = SHA-pin to releases:** every fleet catalog entry converts from the
-  relative-path source to a git-based source pinned at `sha` = the latest
-  release-tag commit; CI auto-bumps the pin on each release (rides the existing
-  `bump-pin` discipline); the freshness guard extends to a parked pin-bump; the
-  staleness gate compares running snapshot vs the catalog's pinned sha.
-  Preserves the research-plan's ORIGINAL "latest released pin" invariant.
+- **D1 = release-branch marketplace-ref mechanism (VERIFIED).** The prior
+  "SHA-pin catalog entries" form was REFUTED empirically
+  (`tmp/fleet-plugin-currency/scratch/experiment-log.md`: `github` plugin
+  sources validate `commit`/`branch`/`path` but the installer silently ignores
+  all three; `git-subdir` runtime-rejected). The maintainer-approved
+  verify-first path — each plugin repo carries a CI-fast-forwarded `release`
+  branch and the fleet marketplaces register AT that ref — is now **VERIFIED on
+  both runtimes** (Claude 2.1.199 + Codex 0.142.5; log
+  `tmp/fleet-plugin-currency/scratch/ref-exp/ref-experiment-log.md`; verdicts
+  A1–A4 Claude, B1–B3 Codex). It works because the fleet plugins use RELATIVE
+  (`./.claude-plugin`) plugin sources that resolve INSIDE the ref-pinned
+  marketplace clone. This preserves the research-plan's ORIGINAL "latest
+  released pin" invariant natively. The upstream docs-vs-behavior report on the
+  ignored pin fields is filed (c1k9.7).
 - **D2 = Warn + fail lever on Unknown:** confirmed-Stale ALWAYS fails hard;
   Unknown (offline / clone missing / unpinned-transition / legacy snapshot)
   warns loudly and proceeds interactively, with `LIVESPEC_CURRENCY_GATE=fail`
@@ -60,61 +70,47 @@ structured picker — all three recommendations accepted):
   SessionStart hook + `/reload-plugins` lag-closing nudge + the hard gate;
   revisit only if the reload lag proves painful.
 
+**RESOLVED — ref-pin experiment VERIFIED (Claude 2.1.199 + Codex 0.142.5).**
+Log: `tmp/fleet-plugin-currency/scratch/ref-exp/ref-experiment-log.md`.
+Decisive answer: release-branch MARKETPLACE-ref pinning is viable on BOTH
+runtimes for RELATIVE-source (`./.claude-plugin`) plugins. Claude:
+`marketplace add <url>#release` (persists the ref in `known_marketplaces.json`)
++ `marketplace update` (fast-forwards the ref) + `plugin update --scope project`
+→ the plugin tracks `release`, never default HEAD (A1–A4). Codex:
+`marketplace add <src> --ref release` (persists `ref` in `config.toml`) +
+`marketplace upgrade` → clone + served plugin track `release`, never default
+HEAD (B1–B3). Five rollout surprises carried into `design.md` §"Rollout
+gotchas" (verbatim-faithful). The Codex leg needs an EXPLICIT `codex plugin
+marketplace upgrade` on the currency path (no self-refresh; host-wide by
+design). Full design in `research/design.md`.
+
 Next actions, in order:
 
-1. **Sha-pin verdict — REFUTED (empirical, Claude Code 2.1.199; log at
-   `tmp/fleet-plugin-currency/scratch/experiment-log.md`).** Catalog-level SHA
-   pinning is NOT honored by the shipped runtime:
-   - `git-subdir` sources are **rejected at runtime** ("source type your Claude
-     Code version does not support" — may ship in a newer CC).
-   - `github` plugin sources **VALIDATE** `commit`/`branch`/`path`
-     (`claude plugin validate` accepts them) but the installer **SILENTLY
-     IGNORES all three**, always installing default-branch HEAD (verified
-     against real livespec release tags, with clean-cache repeats).
-   - Cache dirs are keyed by the resolved `version` field (`plugin.json`
-     version if present, else `sha12`); `gitCommitSha` always records the clone
-     HEAD.
-   - Operational gotcha: `github` PLUGIN sources clone over SSH
-     (`git@github.com:`), unlike the HTTPS marketplace clones.
-   - The docs (`plugin-marketplaces.md` §"Plugin sources") describe a
-     capability the shipped runtime does not deliver. Upstream docs-vs-behavior
-     report **filed this session** (see the new work-item, session log below).
-
-   **Maintainer decision (2026-07-03, via picker) — D1 mechanism revised to
-   "verify release-branch marketplace-ref first".** Run a scratch experiment
-   (`ref-pin-experiment`, **IN FLIGHT**; log will land at
-   `tmp/fleet-plugin-currency/scratch/ref-exp/`) verifying (a) `claude plugin
-   marketplace add <src>#<ref>` registers at the ref, (b) marketplace update
-   holds the ref, (c) plugin update installs clone-at-ref content.
-   - **If VERIFIED:** each plugin repo carries a CI-fast-forwarded `release`
-     branch pinned to the latest release tag, and the fleet marketplaces
-     register `@release` — the release-pinning invariant realized via
-     primitives we control.
-   - **If REFUTED:** fall back to master-HEAD tracking now, and revisit when
-     Claude Code ships working pin support.
-
-   EITHER WAY, the upstream docs-vs-behavior report is filed (below).
-
-   **Maintainer directive (same answer):** the invariant AND its verification
-   MUST cover the **CODEX driver path** too. Codex plugin versioning is being
-   mapped in the SAME in-flight experiment (help/config/clone semantics, ref
-   support, release-branch viability); the finalized design must give Codex an
-   equivalent currency + gate story.
-2. **Finalize `research/design-draft.md` → `research/design.md`** —
-   incorporate D1–D3 + the experiment findings, drop the DRAFT banner.
-3. **Re-groom the filed defect items to the decided design, and file the NEW
-   implementation items.**
-   - Re-groom: `c1k9.2` resolution = reload nudge; `c1k9.3` target = catalog
-     pinned sha + D2 severity; `c1k9.5` largely mitigated by sha-pinning;
-     `c1k9.6` executable.
-   - File NEW implementation items: per-repo catalog sha-pin conversion + CI
-     pin-bump automation; release-park freshness guard (reusable workflow in
-     `dev-tooling` + per-repo wiring); hook-presence check; hook rollout
-     already filed per-repo.
-4. **Phase 5 — factory-dispatch the ready, factory-safe items;** host-only +
-   spec-side stays maintainer-side. Exit gate = the mechanized fleet-wide
-   fresh-session assertion + the negative test (a deliberately-staled cache
-   fails loudly).
+1. **Re-groom the filed items to `design.md`, and file the NEW implementation
+   items** (per `design.md` §"Work-item mapping"). Re-groom: `c1k9.1` → L0a
+   shape-guard form; `c1k9.2` resolution = reload nudge; `c1k9.3` comparison
+   target = the marketplace clone's pinned-ref (release) tip + D2 severity;
+   `c1k9.4` = the verified Codex leg (`--ref release` + explicit `marketplace
+   upgrade`); `c1k9.5` mitigated by reading `gitCommitSha` from the registry
+   (keep for cache-pruning posture); `c1k9.6` = single-source the invariant +
+   gate guarantee in core `non-functional-requirements.md` + per-repo mechanical
+   enforcement; `c1k9.7` = upstream report (filed). NEW items to file:
+   per-plugin-repo `release` branch + CI fast-forward; marketplace ref-pin
+   re-registration rollout (settings `extraKnownMarketplaces` + CLAUDE.md +
+   Codex `--ref`); release-park guard (`reusable-release-park.yml` in
+   `dev-tooling` + per-repo wiring); relative-source structural check; Codex
+   `marketplace upgrade` step in the currency path.
+2. **Phase 5 — factory-dispatch the ready, factory-safe slices.** Spec-side
+   `c1k9.6` codification (via `/livespec:propose-change`) and host-only
+   self-machinery steps (marketplace re-registration, host `release`-branch
+   pushes, Codex host provisioning) stay maintainer-side; the rest is
+   factory-safe.
+3. **Epic exit gate = the verification plan** (`design.md` §"Verification
+   plan"): the mechanized fleet-wide fresh-session assertion (every repo ×
+   Claude interactive × `codex exec`: running `gitCommitSha` == pinned-ref tip
+   == latest release tag) + the negative test (a deliberately-staled cache fails
+   loudly, and `Unknown` warns by default / fails under
+   `LIVESPEC_CURRENCY_GATE=fail`).
 
 ## Session log
 
@@ -274,3 +270,25 @@ Next actions, in order:
   though the `openbrain` settings still enable it. The pre-prune registry
   snapshot is preserved at
   `tmp/fleet-plugin-currency/scratch/before/installed_plugins.json`.
+
+### Session 1 (continued) — ref-pin VERIFIED; design FINALIZED (2026-07-03)
+
+- **Session killed mid-experiment and resumed.** The overseer session was
+  killed while the `ref-pin-experiment` was in flight. On resume, the verdict
+  was **recovered from disk** — the log
+  `tmp/fleet-plugin-currency/scratch/ref-exp/ref-experiment-log.md` was found
+  **completed and clean** (all A1–A4 + B1–B3 verdicts recorded, cleanup
+  verified byte-for-byte on both runtimes, the local smart-HTTP server killed).
+  No re-run needed.
+- **Ref-pin experiment VERIFIED on BOTH runtimes** (Claude 2.1.199 + Codex
+  0.142.5): release-branch MARKETPLACE-ref pinning is viable for RELATIVE-source
+  (`./.claude-plugin`) plugins. This resolves D1 to the release-branch mechanism
+  (the sha-pin form having been refuted earlier this session). Five rollout
+  surprises captured.
+- **Design FINALIZED via this PR.** `research/design.md` authored (supersedes
+  `research/design-draft.md`, which now carries a one-line SUPERSEDED pointer);
+  D1 resolved to the verified release-branch mechanism, D2/D3 as decided; the
+  L0/L1/L2 layers, structural guards, out-of-scope, rollout gotchas, work-item
+  mapping (incl. NEW items to file), and the Phase 5 verification plan are all
+  recorded. `handoff.md` §"The next action" updated to the post-finalization
+  next-action list.
