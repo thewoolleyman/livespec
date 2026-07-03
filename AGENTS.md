@@ -118,9 +118,9 @@ machine-wide:
 ```jsonc
 {
   "extraKnownMarketplaces": {
-    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec" } },
-    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude" } },
-    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro" } }
+    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec", "ref": "release" } },
+    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude", "ref": "release" } },
+    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro", "ref": "release" } }
   },
   "enabledPlugins": {
     "livespec@livespec": true,
@@ -180,15 +180,15 @@ governed project's orchestrator plugin host-wide:
 
 ```bash
 # Core (artifact carrier — ships prose/wrappers, no skills of its own):
-codex plugin marketplace add thewoolleyman/livespec
+codex plugin marketplace add thewoolleyman/livespec --ref release
 codex plugin add livespec@livespec
 
 # The Codex Driver (supplies the /livespec:* operation surface):
-codex plugin marketplace add thewoolleyman/livespec-driver-codex
+codex plugin marketplace add thewoolleyman/livespec-driver-codex --ref release
 codex plugin add livespec@livespec-driver-codex
 
 # The selected orchestrator plugin (supplies its own Codex skills):
-codex plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro
+codex plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro --ref release
 codex plugin add livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro
 ```
 

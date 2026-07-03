@@ -33,9 +33,9 @@ hooks) load **only** in that project — never machine-wide:
 ```jsonc
 {
   "extraKnownMarketplaces": {
-    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec" } },
-    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude" } },
-    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro" } }
+    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec", "ref": "release" } },
+    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude", "ref": "release" } },
+    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro", "ref": "release" } }
   },
   "enabledPlugins": {
     "livespec@livespec": true,

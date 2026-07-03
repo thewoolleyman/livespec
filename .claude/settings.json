@@ -54,19 +54,22 @@
     "livespec": {
       "source": {
         "source": "github",
-        "repo": "thewoolleyman/livespec"
+        "repo": "thewoolleyman/livespec",
+        "ref": "release"
       }
     },
     "livespec-driver-claude": {
       "source": {
         "source": "github",
-        "repo": "thewoolleyman/livespec-driver-claude"
+        "repo": "thewoolleyman/livespec-driver-claude",
+        "ref": "release"
       }
     },
     "livespec-orchestrator-beads-fabro": {
       "source": {
         "source": "github",
-        "repo": "thewoolleyman/livespec-orchestrator-beads-fabro"
+        "repo": "thewoolleyman/livespec-orchestrator-beads-fabro",
+        "ref": "release"
       }
     }
   }
