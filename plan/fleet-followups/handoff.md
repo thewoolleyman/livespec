@@ -767,8 +767,51 @@ against the owning repo's origin/master (via parallel sub-agents) before filing.
 **Remaining fleet-followups priorities:** run `/livespec:revise` to accept `readme-contract.md`
 (Slice-1 content gate) → then dispatch Slice 2 (`livespec-127o.2`); the cross-tenant items are now
 filed (groom + dispatch each in its owning repo's session); `jcc6.4` stays held under `c1k9`;
-`jcc6.3` stays held. Close `livespec-jcc6` once its remaining children resolve (`.3` held, `.4`
-held-under-c1k9) — not yet.
+**`jcc6.3` is now ACTIONABLE via the fable-judge approach — see §"Session 12 (continued 2)"**
+(no longer indefinitely held). Close `livespec-jcc6` once its remaining children resolve
+(`.3` reframed-actionable, `.4` held-under-c1k9) — not yet.
+
+## Session 12 (continued 2, 2026-07-03) — jcc6.3 researched: proper repo = beads-fabro; reframed as a fable-judged small fix
+
+Maintainer directed researching jcc6.3's proper repo and reworking it so the NEXT session
+**judges the rewrite itself** (via a fable-model sub-agent), asking the maintainer only where
+necessary — instead of leaving it indefinitely held on "acceptance not autonomously verifiable".
+Researched live against origin/master:
+
+- **Proper repo = `livespec-orchestrator-beads-fabro`.** The `capture-work-item` + `plan` prose
+  lives ONLY at that repo's `.claude-plugin/prose/{capture-work-item,plan}.md`. Core ships NO such
+  prose (only the 8 spec-side ops); **`livespec-orchestrator-git-jsonl` ships NO prose at all**; the
+  drivers ship SKILL.md bindings, not prose. So **`livespec-jcc6.3` is a beads-fabro-tenant item
+  mis-filed as a core child** → relocate it there when picked up (relocate-never-drop).
+- **Scope is MUCH smaller than the 2026-07-01 premise** ("old schema: status=open + priority, no
+  rank"). The prose was refreshed since: `capture-work-item.md` already uses `rank` (3×) and has NO
+  `priority`; `plan.md` has no work-item-schema field references at all (its "open" matches are
+  English — "open thread"). The ONE residual stale marker is **`capture-work-item.md:72`
+  `status="open"`** — and `open` is NOT a valid status in the current model, so it should be
+  `"backlog"` (the intake entry state). Plus a consistency pass to confirm nothing else drifted.
+- **Schema source of truth (judge the rewrite against this):**
+  `livespec-runtime/livespec_runtime/work_items/types.py` —
+  `WorkItemStatus = Literal["backlog","pending-approval","ready","active","acceptance","blocked","closed"]`
+  (NO `"open"`), `rank` as the SOLE ordering key (`priority` retired), the 22-field record; and
+  `lifecycle.py` `LaneName` for the derived lanes. The prose already imports
+  `from livespec_runtime.work_items.rank import key_between`.
+
+**Next-session plan for jcc6.3 (judge in-session; escalate only where necessary):**
+1. Work it FROM a beads-fabro session (`cd /data/projects/livespec-orchestrator-beads-fabro`).
+   Relocate the ledger item: file a beads-fabro `origin:freeform` item for the prose refresh and
+   dispose the mis-filed core child `livespec-jcc6.3` as relocated (cite this finding).
+2. Draft the fix: reconcile `capture-work-item.md:72` `status="open"` → the correct valid status
+   (likely `"backlog"`); scan BOTH prose files for any other drift vs `types.py`/`lifecycle.py`.
+3. **Judge correctness with a fable-model sub-agent** — this is how the "not autonomously
+   verifiable" DoR blocker is resolved (delegated model judgment, not a standing human gate).
+   Dispatch a sub-agent **running the `fable` model** to independently read the drafted prose + the
+   schema source of truth (`livespec-runtime work_items/types.py` + `lifecycle.py`) and verdict
+   whether the new prose accurately + completely describes the current 7-state + `rank` model,
+   flagging any residual drift. The driving session reconciles the verdict.
+4. **Ask the maintainer ONLY where necessary** — where the fable judge is genuinely uncertain or a
+   real wording/product call arises (e.g. whether the capture example should show the raw
+   beads-native create-then-normalize vs. the 7-state value directly). Otherwise self-resolve and
+   land via the beads-fabro worktree → PR → janitor path.
 
 ## Read-first chain (in order)
 
