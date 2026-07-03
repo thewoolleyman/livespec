@@ -43,45 +43,26 @@ from this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
-1. **⚑ Maintainer decision PENDING — merge the four stalled release PRs.** The
-   release pipeline is stalled fleet-wide (Finding A): each plugin repo has an
-   open, unmerged release PR authored by the `livespec-pr-bot` GitHub App that
-   the `auto-enable-merge` workflow refuses to auto-merge (App bot not in the
-   `thewoolleyman` allowlist). The overseer session is asking the maintainer to
-   merge them: **livespec #733 → 0.6.0, orchestrator-beads-fabro #228 → 0.5.0,
-   driver-claude #58 → 0.2.1, driver-codex #25 → 0.3.0.** Until they merge,
-   "latest release" is not even a currency floor.
-2. **Phase 3 — file defect child work-items under `livespec-c1k9`.** Each
-   independent defect that permits the staleness class becomes a child (same
-   tenant in core; cross-tenant items filed in their owning repos and
-   prose-linked, per the fleet pattern):
-   - **Release-pipeline auto-merge allowlist excludes the `livespec-pr-bot`
-     GitHub App** — fleet-wide, one work-item per plugin repo (livespec,
-     orchestrator-beads-fabro, driver-claude, driver-codex).
-   - **SessionStart `ensure-plugins` hook missing** in
-     `console` / `dev-tooling` / `driver-claude` / `driver-codex` / `runtime`.
-   - **One-session-lag design gap** — `claude plugin update` applies only at the
-     next session; the current session always runs the prior fetch.
-   - **Codex host-wide surface has no updater/gate** (`~/.codex/config.toml`, no
-     SessionStart-hook analogue).
-   - **Fabro sandbox docker-image pin outside `bump-pin` discipline** —
-     `sha-ea684ad` is a floating master build the v013 pin_autodiscovery formats
-     do not cover; orchestrator tenant.
-   - **Semver cache-dir content-ambiguity trap** — post-release master commits
-     reuse the same `plugin.json.version`, so an `install` lands in a semver dir
-     that collides last-writer-wins with the release-tag content; only SHA-named
-     dirs are content-stable.
-3. **Phase 4 — design the guarantee** per `research-plan.md` §"Design
-   constraints". **NOTE the invariant needs re-examination.** The research
-   plan's stated invariant ("every session runs the LATEST RELEASED pin") was
-   UNSATISFIABLE during the stall: the latest release (orchestrator v0.4.0 =
-   `06e3e080`) was the BROKEN, pre-self-heal build, and tracking **master** is
-   what actually delivered the fix to the repos that ran `ensure-plugins`. The
-   Phase 4 design must therefore **fix the release pipeline FIRST** (auto-merge
-   the App-bot release PRs so "latest release" becomes trustworthy and current),
-   and only THEN decide release-tracking vs master-tracking for the currency
-   mechanism. Do not design a release-tracking gate on top of a stalled
-   pipeline.
+1. **Phase 4 — design the guarantee (draft in progress).** A design agent is
+   drafting the currency-guarantee design against `research-plan.md` §"Design
+   constraints"; **maintainer design review is the gate** before anything
+   implements. The stall that inverted the plan's invariant is now fixed (the
+   release train is unstalled — see §"Session 1 (continued)"), so the design can
+   fix the release pipeline as a settled precondition and only THEN decide
+   release-tracking vs master-tracking for the currency mechanism.
+2. **After design review — groom + dispatch the filed defect items.** The
+   Phase 3 child work-items (enumerated in §"Session 1 (continued)") are FILED
+   but ungroomed. Groom each and factory-dispatch the ready, factory-safe ones
+   (`/livespec-orchestrator-beads-fabro:orchestrate`); host-only self-machinery
+   stays maintainer-side.
+3. **Console tactical fix may be fast-tracked.** `livespec-console-beads-fabro-vfd`
+   (P0 — console SessionStart `ensure-plugins` hook + active-pointer refresh) may
+   jump ahead of grooming if the maintainer asks, since the console is the
+   concrete trigger repo for the whole investigation.
+4. **Verify the two late-caught release auto-merges landed.**
+   `livespec-orchestrator-git-jsonl` #156 → 0.4.0 and `livespec-dev-tooling`
+   #224 → 0.31.1 were armed with rebase auto-merge (land on green); confirm each
+   merged and cut its release.
 
 ## Session log
 
@@ -159,3 +140,49 @@ from this file alone via the read-first chain — no chat history required.
 - **openbrain is intentionally `posture: "pinned"`.** The adopter repo's stale
   snapshot is a deliberate adopter choice, not a defect — RESPECT it; it is out
   of scope for the currency fix and must not be "helpfully" updated.
+
+### Session 1 (continued) — release train unstalled; Phase 3 filed (2026-07-03 ~05:30–05:45Z)
+
+- **Release train unstalled (maintainer directive: "merge whatever is
+  stalled").** The four stalled release PRs were each verified green — every
+  check rollup carried the smoking-gun `enable-auto-merge: SKIPPED` step — and
+  merged: **livespec #733 → v0.6.0**, **livespec-orchestrator-beads-fabro #228 →
+  v0.5.0** (carries the credential self-heal `860f671`), **livespec-driver-claude
+  #58 → v0.2.1**, **livespec-driver-codex #25 → v0.3.0**. All four releases
+  confirmed cut and marked Latest.
+- **Two more stalled release PRs surfaced in the fleet scan (same cause):**
+  `livespec-orchestrator-git-jsonl` #156 → 0.4.0 and `livespec-dev-tooling` #224
+  → 0.31.1. Both were armed with rebase auto-merge (land on green) rather than
+  merged by hand; confirm they landed and cut their releases (next-action item 4).
+- **Fan-out is unaffected — the stall is RELEASE-PR-specific.** bump-pin PRs are
+  also App-authored, yet they arm their OWN auto-merge (evidence:
+  `livespec-runtime` #111, "bump livespec pin to v0.6.0", automerge=ON). Only
+  release-please's release PRs hit the allowlist gate.
+- **Root cause of the stall (established + first-hand verified).**
+  `auto-enable-merge.yml`'s gate is `contains(["thewoolleyman"],
+  pull_request.user.login)` — only the maintainer. Release PRs are authored by
+  the fleet's own GitHub App `app/livespec-pr-bot`, which is not in the
+  allowlist, so auto-merge is SKIPPED on every release PR. The workflow header
+  documents bot PRs as out-of-scope by design (it predates release-please
+  authoring via the App). Every past release shipped only via manual maintainer
+  merges (author = App, mergedBy = `thewoolleyman`); that manual cadence lapsed
+  after ~Jun 30 with ZERO red anywhere — no check asserts that a green release PR
+  must not age open.
+- **Phase 3 work-items filed** (all tenants probed present; the epic had zero
+  children before). Core children under `livespec-c1k9`:
+  - `livespec-c1k9.1` (P0) — auto-merge allowlist fix + fleet audit.
+  - `livespec-c1k9.2` (P1) — one-session-lag design gap.
+  - `livespec-c1k9.3` (P1) — staleness gate.
+  - `livespec-c1k9.4` (P1) — Codex host-wide surface updater/gate.
+  - `livespec-c1k9.5` (P2) — semver cache-dir content-ambiguity trap.
+
+  Cross-tenant (filed in each owning repo, descriptions referencing the core
+  epic):
+  - `livespec-console-beads-fabro-vfd` (P0) — console SessionStart hook +
+    active-pointer refresh (the concrete trigger repo).
+  - `bd-ib-mwz` (P1) — Fabro sandbox docker-image pin (orchestrator tenant).
+  - `livespec-driver-claude-nm9` / `livespec-driver-codex-045` /
+    `livespec-dev-tooling-6da` / `livespec-runtime-m2u` (P1) — SessionStart
+    `ensure-plugins` hook adoption.
+- **Research docs landed on master via PR #788** (`research/semantics.md` +
+  `research/fleet-audit.md`) — the curated Phase 0–2 findings referenced above.
