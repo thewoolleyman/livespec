@@ -44,14 +44,24 @@ Disposition vocabulary (three verbs, defined once):
    `livespec-impl-beads-29f`) driving the remaining reflection-gate
    work (the unimplemented ratified-lessons brief-injection consumer;
    related: `bd-ib-umno37`, cross-tenant `livespec-dev-tooling-e60`).
-2. **New home for openbrain's live `ob1-fork-patches.md` registry.**
-   Append-only patch registry (20 patches) wired into enforcement:
-   `lefthook.yml:133` glob and the `scripts/inert-deferral-lint.ts:84`
-   allowlist regex, plus ~10 doc/code references. It cannot archive
-   (live tracking state) and must not spec-absorb ("the spec is for
-   contracts, not tracking"). Recommendation: `docs/ob1-fork-patches.md`
-   (openbrain already has a `docs/` directory) with the lefthook glob +
-   lint regex + all references retargeted atomically.
+2. **openbrain's `ob1-fork-patches.md` registry** — **DECIDED
+   (maintainer, 2026-07-04): "We are not maintaining this as a fork
+   anymore. Just move it to the archive and delete references to
+   it."** The registry is no longer live — it ARCHIVES to
+   `archive/research/ob1-fork-patches.md`, and its references are
+   DELETED, not retargeted: drop the `lefthook.yml:133` glob entry and
+   the `scripts/inert-deferral-lint.ts` fork-registry allowlist
+   handling (`:47` header mention, `:84` regex); REMOVE (via
+   propose-change → revise) the fork-patch clauses at
+   `SPECIFICATION/spec.md:1667` and `SPECIFICATION/scenarios.md:1772`
+   (they describe maintaining a fork that is no longer maintained);
+   remove the mentions in `AGENTS.md:214`,
+   `.ai-instructions/local-gates.md:119`,
+   `.claude/workflows/implement-task-capture-surfaces.mjs:218`,
+   `README.md:147,376`. Aligned ride-along (self-resolved, report for
+   objection): `.ai-instructions/ob1-fork.md` — an instruction file
+   whose entire subject is maintaining that fork — archives to
+   `archive/` alongside, with its own inbound references cleaned.
 
 ## Per-repo retirement map
 
@@ -87,7 +97,7 @@ Disposition vocabulary (three verbs, defined once):
 
 | Item | Verb | Target + reference retargets |
 |---|---|---|
-| `research/ob1-fork-patches.md` | RELOCATE | → the Phase 0 gate-2 home. Retargets, all in one PR: `lefthook.yml:133` glob, `scripts/inert-deferral-lint.ts:47,84` (header + allowlist regex), `AGENTS.md:214`, `SPECIFICATION/spec.md:1667` + `SPECIFICATION/scenarios.md:1772` (REVISE — spec links move through openbrain's propose-change → revise, revise lands before or atomically with the move), `.ai-instructions/local-gates.md:119`, `.ai-instructions/ob1-fork.md:61`, `.claude/workflows/implement-task-capture-surfaces.mjs:218`, `README.md:147,376`. |
+| `research/ob1-fork-patches.md` | ARCHIVE (per DECIDED gate 2 — fork no longer maintained) | → `archive/research/ob1-fork-patches.md`; references DELETED, not retargeted (gate-2 entry above lists every site incl. the lefthook glob, the lint allowlist handling, and the spec-clause REMOVALS via revise — revise lands before or atomically with the move). Ride-along: `.ai-instructions/ob1-fork.md` archives alongside. |
 | `research/ob1-inline-autonomous-factory.md` | ARCHIVE | → `archive/research/ob1-inline-autonomous-factory.md`; retarget `scripts/promote.ts:6` comment. |
 | README layout rows | edit | `README.md:375` `research/` row removed once the directory is gone. |
 

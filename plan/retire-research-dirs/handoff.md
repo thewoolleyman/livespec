@@ -51,22 +51,34 @@ history required.
 
 ## The next action
 
-**Finish Phase 0: take design gate 2** (gate 1 is DECIDED — see the
-residual map: the whole `research/loop-reflection-gate/` directory
-moves to top-level `loop-reflection-gate/` in
-livespec-orchestrator-beads-fabro, executed via a dedicated PR that
-also opens that repo's `plan/loop-reflection-gate/` thread on epic
-`livespec-impl-beads-29f`):
+**Run Phase 1 — per-repo execution.** Both Phase 0 gates are DECIDED
+(see the residual map's gate section): gate 1 = whole
+`research/loop-reflection-gate/` → top-level `loop-reflection-gate/`
+in livespec-orchestrator-beads-fabro; gate 2 = openbrain
+`ob1-fork-patches.md` ARCHIVES with its references DELETED (fork no
+longer maintained). Execution state and ordering:
 
-2. New home for openbrain's live `ob1-fork-patches.md` registry
-   (recommendation: `docs/ob1-fork-patches.md`) — one picker,
-   recommendation first.
-
-Record the verdict in the residual map's gate section ("DECIDED:
-<home>") via this thread's worktree → PR flow. Then proceed to
-Phase 1 for the three remaining repos (livespec, dev-tooling,
-openbrain) — the orchestrator's share is done when the gate-1 PR is
-merged.
+1. **Blocker first:** the orchestrator repo's master is RED — the
+   dev-tooling v0.31.3 `check-fleet-marketplace-relative-sources`
+   check rejects the object-form local source the fleet's Codex
+   catalogs require, and its canonical slug is unwired in that repo's
+   justfile. The fix (accept object-form local sources) lands in
+   livespec-dev-tooling, then a release + pin bump + justfile wiring
+   in the orchestrator repo greens master. Only then does the gate-1
+   move mission (TDD lessons_path change + git mv + retargets +
+   `plan/loop-reflection-gate/` thread on epic `livespec-impl-beads-29f`
+   + a new brief-injection-consumer child item) execute — a halted
+   first attempt left reusable findings: no existing test asserts the
+   `lessons_path` default (Red must ADD one to
+   `tests/livespec_orchestrator_beads_fabro/commands/test_dispatcher_reflector_oob.py`);
+   the 29f epic description carries the exact substring
+   `research/loop-reflection-gate/best-practices-and-design.md` once.
+2. livespec, dev-tooling, openbrain executions per the residual map
+   (file-disjoint, parallel once the blocker clears; openbrain's
+   changeset now follows the DECIDED gate-2 deletions).
+3. livespec core is pinned to dev-tooling v0.31.2 and will hit the
+   same marketplace-check breakage at its next pin bump — expect the
+   fan-out to carry the fixed release.
 
 ## Phase plan
 
@@ -112,3 +124,15 @@ merged.
   ledger repoint + the new `plan/loop-reflection-gate/` thread + a new
   child work-item for the missing lessons brief-injection consumer.
   Gate 2 (ob1-fork-patches home) remains open.
+- Gate-1 move mission HALTED correctly on a pre-existing red master in
+  the orchestrator repo (dev-tooling v0.31.3 marketplace check vs the
+  fleet's object-form Codex catalog sources — mutually incompatible
+  with codex_plugin_structure; nothing landed, worktree cleaned).
+  Dispatched the root-cause fix in livespec-dev-tooling (accept
+  object-form local sources) with release + tag confirmation in the
+  brief.
+- Maintainer DECIDED gate 2: the OB1 fork is no longer maintained —
+  `ob1-fork-patches.md` ARCHIVES and every reference is DELETED
+  (lefthook glob, lint allowlist, spec clauses via revise, doc
+  mentions); `.ai-instructions/ob1-fork.md` archives as an aligned
+  ride-along. Residual map updated; next action advanced to Phase 1.
