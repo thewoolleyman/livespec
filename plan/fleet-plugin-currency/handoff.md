@@ -43,13 +43,28 @@ from this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
-1. **Phase 4 — design the guarantee (draft in progress).** A design agent is
-   drafting the currency-guarantee design against `research-plan.md` §"Design
-   constraints"; **maintainer design review is the gate** before anything
-   implements. The stall that inverted the plan's invariant is now fixed (the
-   release train is unstalled — see §"Session 1 (continued)"), so the design can
-   fix the release pipeline as a settled precondition and only THEN decide
-   release-tracking vs master-tracking for the currency mechanism.
+1. **Phase 4 design DRAFT landed (`research/design-draft.md`); maintainer review
+   PENDING — re-ask these three decisions, one per turn, each with the
+   recommendation first:**
+   - **D1 (Invariant):** redefine plugin-currency to master-HEAD tracking (gate
+     asserts running snapshot SHA == freshly-fetched marketplace-clone master
+     HEAD), keeping code pins release-tag-based on their own axis? RECOMMENDED:
+     yes (never staler than release-tracking; tag-install is unsupported by
+     Claude Code; during the stall the release target was the broken build).
+     Alt: yes + upstream install-at-tag feature request; Alt: keep literal
+     release-tag invariant (needs custom tooling; delivers older builds during
+     stalls).
+   - **D2 (Gate severity on Unknown):** when the gate cannot determine
+     "expected" (offline / no marketplace clone / legacy semver-named dir) —
+     warn-by-default with a `LIVESPEC_CURRENCY_GATE=fail` env lever set in
+     CI/dispatch (RECOMMENDED, matches carve-out-as-severity-lever), or
+     fail-hard-always (stricter; can block legitimate offline sessions).
+     Confirmed-Stale ALWAYS fails hard regardless.
+   - **D3 (Host-level pre-session sweep):** provision a systemd-timer sweep
+     updating all governed repos' project scopes pre-session, or DEFER and rely
+     on uniform hook + `/reload-plugins` lag-closing + the hard gate
+     (RECOMMENDED — a timer is a new silently-breakable host surface; revisit
+     only if the reload lag proves painful).
 2. **After design review — groom + dispatch the filed defect items.** The
    Phase 3 child work-items (enumerated in §"Session 1 (continued)") are FILED
    but ungroomed. Groom each and factory-dispatch the ready, factory-safe ones
@@ -186,3 +201,8 @@ from this file alone via the read-first chain — no chat history required.
     `ensure-plugins` hook adoption.
 - **Research docs landed on master via PR #788** (`research/semantics.md` +
   `research/fleet-audit.md`) — the curated Phase 0–2 findings referenced above.
+- **Phase 4 design draft delivered + landed.** Design draft delivered by the
+  `phase4-design` agent and landed via this PR (`research/design-draft.md`,
+  banner-marked DRAFT); maintainer AFK at review time, so the three open
+  decisions (§"The next action" item 1) remain PENDING; gate held (no
+  implementation dispatched from the draft).
