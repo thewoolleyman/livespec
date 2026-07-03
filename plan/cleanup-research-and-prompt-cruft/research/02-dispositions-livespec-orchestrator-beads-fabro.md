@@ -61,3 +61,11 @@ Exact edits (all paths repo-root-relative, line numbers per `origin/master` at v
 9. CONTINGENT (cross-repo): `.github/workflows/copier-update-drift.yml:26` — update the `research/workflow-processes/multi-repo-split-execution-plan.md` citation only if livespec core's Phase 3 relocates that doc; new path per core's disposition.
 
 Explicit no-edits: `justfile:816-818` (names the allowlist key, no research path); all `research/loop-reflection-gate/` code refs (STAYS); `_orchestrator_spec_reader.py:13` + `test_orchestrator.py:167` (spec-tree examples); `plan/archive/*` (thread-relative); `.fabro` workflow `@prompts/*` (workflow-internal); archived w7 file contents incl. `e2e-repo-reaper.md:71,78` internal allowlist mentions (frozen).
+
+## Phase 2 verdicts — CONFIRMED by the maintainer (2026-07-03)
+
+| Escalation | CONFIRMED verdict |
+|---|---|
+| 1 — w7 relocation vs repo-local `research/archive/` convention | **Relocate** to top-level `archive/research/w7-orchestrator-convergence/`, rewriting the `research/CLAUDE.md` convention paragraph atomically with all five reference edits (obligations 1, 3–8 stand as written). |
+| 2 — context-completeness final call | **ARCHIVE confirmed** → `archive/research/context-completeness/` (obligation 2 stands). |
+| 3 — cross-repo `copier-update-drift.yml:26` citation | Handled: livespec IS relocating `multi-repo-split-execution-plan.md`, so obligation 9 fires — repoint the comment to livespec's `archive/research/workflow-processes/multi-repo-split-execution-plan.md` in this repo's Phase 3 PR. |

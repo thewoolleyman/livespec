@@ -48,3 +48,11 @@ Contingent (only if livespec core relocates `research/factory-conformance/`):
 - `livespec_dev_tooling/worktree_pack/branch-protection.sh:15` — rewrite the comment's `research/factory-conformance/cross-repo-conformance-pattern.md` pointer. Note this file is shipped fleet-wide via the worktree pack, so the edit lands here (single source) and propagates on the next stamp.
 
 No obligations for the two STAYS items (`research/justcheck-performance/`, `research/CLAUDE.md`) — anchors `ci.yml:92`, `red_leg_scope.py:15`, `test_red_leg_scope.py:11`, and core `ci.yml:81-82` all hold unchanged as of 2026-07-03.
+
+## Phase 2 verdicts — CONFIRMED by the maintainer (2026-07-03)
+
+No MAINTAINER rows in this repo. The one escalation (core-row addendum:
+`branch-protection.sh:15` → livespec `research/factory-conformance/`)
+needs no action — the livespec target STAYS per its Phase 2 pass, so
+the contingent comment rewrite never fires. All four dispositions
+execute as tabled (ARCHIVE ×1, STAYS ×2, PLAN-THREAD ×1).

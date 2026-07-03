@@ -77,3 +77,28 @@
 - `SPECIFICATION/non-functional-requirements.md:174` and `:182` — reference the `research/` TREE as a concept; research/ remains spec-blessed under D1.
 - `.github/workflows/ci.yml:81` — cites livespec-dev-tooling's `research/justcheck-performance` (STAYS in that repo per its own table).
 - `templates/orchestrator-plugin/copier-questions.yml:75`, livespec-dev-tooling `branch-protection.sh:15`, openbrain `AGENTS.md:304` — their targets STAY.
+
+## Phase 2 verdicts — CONFIRMED by the maintainer (2026-07-03)
+
+Every MAINTAINER row above is now resolved; the verdicts below are
+authoritative over the table's queued dispositions.
+
+| Item | CONFIRMED verdict |
+|---|---|
+| `research/dark-factory-operability/work-breakdown.md` | **ARCHIVE** → `archive/research/dark-factory-operability/work-breakdown.md` (sibling `preconditions.md` + dir `CLAUDE.md` STAY). |
+| `research/workflow-processes/livespec-as-contract-and-reference-implementations{,-reframing}.md` | **ARCHIVE + retarget README** (maintainer OVERRODE the STAYS recommendation) → `archive/research/workflow-processes/`; obligation 9 ("README.md:119–121 retarget") is now UNCONDITIONAL. |
+| `research/workflow-processes/mermaid-vs-plantuml-llm-readable-specs.md` | **ARCHIVE** → `archive/research/workflow-processes/`. |
+| `prompts/livespec-overseer-startup.md` | **RELOCATE** → `.claude/skills/overseer/livespec-overseer-startup.md` (beside the retained local overseer SKILL.md; archives later when the console cockpit retires the overseer). |
+| `prompts/fleet-terminology-migration-{epic,prompt}.md` | **ARCHIVE + file residual work-item**: file ONE ledger item (livespec tenant, citing livespec-ztepy5) to classify/fix the ~13 residual active-scope `family` occurrences from Corrections #4, THEN `git mv` both files to `archive/prompts/`. |
+
+Consequences for the obligations list: obligation 9 becomes
+unconditional; obligation 10's two preconditions are now decided
+(relocation YES; residual work-item YES). With the workflow-processes
+pair and mermaid doc archived alongside the SPEC-ABSORB artifacts and
+the already-ARCHIVE rows, everything under
+`research/workflow-processes/` leaves `research/` — the executor
+archives the whole directory (preserving subpaths under
+`archive/research/workflow-processes/`) once the mandate-retirement
+revise lands. `research/` residents after execution: `CLAUDE.md`,
+`beads/`, `dark-factory-operability/{CLAUDE.md,preconditions.md}`,
+`factory-conformance/`, `planning-workflow-gap/`.
