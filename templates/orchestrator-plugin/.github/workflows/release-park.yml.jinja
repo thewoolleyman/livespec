@@ -1,0 +1,32 @@
+# release-park.yml — release-PARK freshness backstop shim.
+#
+# Generated from livespec/templates/orchestrator-plugin/.github/workflows/
+# release-park.yml.jinja at copier-copy time; re-sync via
+# `copier update --vcs-ref=master` when livespec publishes a new release.
+#
+# Authority: livespec plan/fleet-plugin-currency/research/design.md §L0c
+#   ("park-staleness backstop"). This shim delegates to the shared
+#   reusable workflow in livespec-dev-tooling.
+#
+# Daily (13:00 UTC, mirroring pin-freshness) and on manual trigger, it
+# FAILS LOUD when this repo has an OPEN release-please PR that has been
+# parked past the threshold (default 24h) — the INDEPENDENT backstop to
+# auto-enable-merge.yml (L0a), so a stalled release train can never again
+# sit silent (the 2026-06-30..2026-07-03 six-repo stall). It performs NO
+# auto-merge and NO mutation; a red scheduled job on the Actions tab IS
+# the alarm.
+
+name: Release park freshness
+
+on:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  release-park:
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-release-park.yml@master
