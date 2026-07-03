@@ -176,3 +176,23 @@ other core work in this inventory are DEFERRED until it completes. The full orde
 execution plan + live-status snapshot live in `handoff.md` §"The next action" +
 §"Session 9 (continued 3)". `admission:auto` is pre-authorized for the group-0 threads
 by that directive (keep scope-guard + PR review).
+
+**Session 12 (continued, 2026-07-03) — cross-tenant items FILED from core; 127o groomed; D10 decided.**
+Proved cross-tenant filing from the core session (`bd -C <repo> create` routes to any tenant;
+the cwd-tenant trap is avoidable). Each verified live against the owning repo first. Dispositions
+(status read from the ledger):
+- **B4 (item 4) → FILED `bd-ib-09c`** (beads-fabro, P3 feature — migrate-tenant command).
+- **C7 (item 7) → FILED `livespec-driver-codex-wqo`** (driver-codex, P3 — the DEFERRED docs are in
+  `.livespec.jsonc` + `AGENTS.md`, tenant verified connected).
+- **C8 (item 8) → DISPOSED as already-fixed** (git-jsonl `contracts.md:406-411` already documents
+  drop-on-write; only a FROZEN `plan/archive/` cell is stale — do not edit).
+- **D9 (item 9) → FILED `livespec-dev-tooling-5kv`** (dev-tooling, P3 — single-source worktree-pack
+  hydrate fix; supersedes/prose-links the narrow git-jsonl `bd-gj-hew`).
+- **D10 (item 10) → DECIDED, no change:** keep checks-only / 0 required reviews (requiring reviews
+  would break factory auto-merge); revisit on external contributors. No ledger item.
+- **`livespec-127o` (group A) GROOMED** → `livespec-127o.1` (spec README contract, propose-change
+  FILED `SPECIFICATION/proposed_changes/readme-contract.md`, CORE-only scope) + `livespec-127o.2`
+  (rewrite README, `depends_on .1`). Slice-1 content is maintainer-gated at `/livespec:revise`.
+- **`livespec-jcc6.4` (reaper pruner) HELD** under the new P0 epic `livespec-c1k9`
+  (fleet-plugin-currency / coherent cache; thread `plan/fleet-plugin-currency/`) — it subsumes the
+  dead-entry-cleanup domain; do not dispatch standalone. See `handoff.md` §"Session 12 (continued)".
