@@ -43,43 +43,43 @@ from this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
-1. **Phase 4 design DRAFT landed (`research/design-draft.md`); maintainer review
-   PENDING — re-ask these three decisions, one per turn, each with the
-   recommendation first:**
-   - **D1 (Invariant mechanism, CORRECTED):** SHA-pin every fleet catalog entry
-     to the latest release-tag commit with CI auto-bump on each release
-     (RECOMMENDED — preserves the original "latest released pin" invariant
-     natively; ecosystem-standard per Anthropic's community marketplace; rides
-     existing bump-pin discipline; requires converting catalog entries from
-     relative-path to git-subdir sources, end-to-end verification of
-     git-subdir+sha in flight). Alt: master-HEAD tracking (draft's original —
-     simplest, fastest delivery, but ships un-release-gate-validated builds).
-     Alt: SHA-pin + explicit --plugin-dir dev carve-out for core dogfooding.
-   - **D2 (Gate severity on Unknown):** when the gate cannot determine
-     "expected" (offline / no marketplace clone / legacy semver-named dir /
-     catalog entry not yet SHA-pinned during transition) —
-     warn-by-default with a `LIVESPEC_CURRENCY_GATE=fail` env lever set in
-     CI/dispatch (RECOMMENDED, matches carve-out-as-severity-lever), or
-     fail-hard-always (stricter; can block legitimate offline sessions).
-     Confirmed-Stale ALWAYS fails hard regardless.
-   - **D3 (Host-level pre-session sweep):** provision a systemd-timer sweep
-     updating all governed repos' project scopes pre-session, or DEFER and rely
-     on uniform hook + `/reload-plugins` lag-closing + the hard gate
-     (RECOMMENDED — a timer is a new silently-breakable host surface; revisit
-     only if the reload lag proves painful).
-2. **After design review — groom + dispatch the filed defect items.** The
-   Phase 3 child work-items (enumerated in §"Session 1 (continued)") are FILED
-   but ungroomed. Groom each and factory-dispatch the ready, factory-safe ones
-   (`/livespec-orchestrator-beads-fabro:orchestrate`); host-only self-machinery
-   stays maintainer-side.
-3. **Console tactical fix may be fast-tracked.** `livespec-console-beads-fabro-vfd`
-   (P0 — console SessionStart `ensure-plugins` hook + active-pointer refresh) may
-   jump ahead of grooming if the maintainer asks, since the console is the
-   concrete trigger repo for the whole investigation.
-4. **Verify the two late-caught release auto-merges landed.**
-   `livespec-orchestrator-git-jsonl` #156 → 0.4.0 and `livespec-dev-tooling`
-   #224 → 0.31.1 were armed with rebase auto-merge (land on green); confirm each
-   merged and cut its release.
+**Phase 4 design review PASSED** (2026-07-03, maintainer decisions via
+structured picker — all three recommendations accepted):
+
+- **D1 = SHA-pin to releases:** every fleet catalog entry converts from the
+  relative-path source to a git-based source pinned at `sha` = the latest
+  release-tag commit; CI auto-bumps the pin on each release (rides the existing
+  `bump-pin` discipline); the freshness guard extends to a parked pin-bump; the
+  staleness gate compares running snapshot vs the catalog's pinned sha.
+  Preserves the research-plan's ORIGINAL "latest released pin" invariant.
+- **D2 = Warn + fail lever on Unknown:** confirmed-Stale ALWAYS fails hard;
+  Unknown (offline / clone missing / unpinned-transition / legacy snapshot)
+  warns loudly and proceeds interactively, with `LIVESPEC_CURRENCY_GATE=fail`
+  set in CI and factory dispatch making Unknown fail hard there.
+- **D3 = Host-level pre-session sweep DEFERRED:** rely on the uniform
+  SessionStart hook + `/reload-plugins` lag-closing nudge + the hard gate;
+  revisit only if the reload lag proves painful.
+
+Next actions, in order:
+
+1. **Await the sha-pin-experiment verdict** — scratch verification of
+   git-subdir+sha end-to-end (in flight). If it CONTRADICTS the docs, bring the
+   contradiction back to the maintainer BEFORE implementing D1.
+2. **Finalize `research/design-draft.md` → `research/design.md`** —
+   incorporate D1–D3 + the experiment findings, drop the DRAFT banner.
+3. **Re-groom the filed defect items to the decided design, and file the NEW
+   implementation items.**
+   - Re-groom: `c1k9.2` resolution = reload nudge; `c1k9.3` target = catalog
+     pinned sha + D2 severity; `c1k9.5` largely mitigated by sha-pinning;
+     `c1k9.6` executable.
+   - File NEW implementation items: per-repo catalog sha-pin conversion + CI
+     pin-bump automation; release-park freshness guard (reusable workflow in
+     `dev-tooling` + per-repo wiring); hook-presence check; hook rollout
+     already filed per-repo.
+4. **Phase 5 — factory-dispatch the ready, factory-safe items;** host-only +
+   spec-side stays maintainer-side. Exit gate = the mechanized fleet-wide
+   fresh-session assertion + the negative test (a deliberately-staled cache
+   fails loudly).
 
 ## Session log
 
@@ -215,3 +215,9 @@ from this file alone via the read-first chain — no chat history required.
   docs check refuted it (catalog plugin-entry sources support `ref`+`sha`);
   correction landed in `research/design-draft.md`; scratch verification of
   `git-subdir`+`sha` dispatched; the three decisions still pending.
+
+### Session 1 (continued) — Phase 4 design review PASSED (2026-07-03)
+
+- Design review passed with all three recommendations accepted: D1 = sha-pin
+  to releases, D2 = warn + `LIVESPEC_CURRENCY_GATE=fail` lever on Unknown,
+  D3 = defer the host-level pre-session sweep. Decisions recorded via this PR.
