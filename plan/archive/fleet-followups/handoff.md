@@ -56,8 +56,8 @@ alone via the read-first chain — no chat history required.
      (janitor green-by-execution + provision livespec core) + **`bd-ib-mxr.1`**
      (broader real-dispatch E2E). **THE UNBLOCKER** for reliable non-core dispatch.
   All careful self-modifications — human-approved admission, never auto-dispatch blind.
-- **Epic anchor:** `livespec-jcc6` (core tenant, `backlog`). Status is READ from
-  the ledger, never from this file:
+- **Epic anchor:** `livespec-jcc6` (core tenant, **CLOSED 4/4** — §"Session 15
+  (continued)"). Status is READ from the ledger, never from this file:
   ```bash
   source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-jcc6
   ```
@@ -87,14 +87,16 @@ rejected: the pending proposal was WITHDRAWN from `SPECIFICATION/proposed_change
 (the deferred state; deferral comment on the epic). To resume later: restore the
 proposal from git history (or re-run `/livespec:propose-change` from `.1`), then
 run the revise → close-`.1` → dispatch-`.2` chain recorded in §"Session 14".
-**The active next action: the Session-15 autonomous completion run** (maintainer:
-"continue on with everything else left") — unhold + dispatch `livespec-jcc6.4`
-(the §"Session 14" recommendation, now authorized), bring the three filed
-cross-tenant items (`bd-ib-09c`, `livespec-driver-codex-wqo`,
-`livespec-dev-tooling-5kv`) to DoR and dispatch them via the factory, dispose the
-remaining stragglers, then take the epic to its close boundary. The block after
-the `---` is patched with per-item dispositions — most are DONE/FILED; do NOT
-re-run its items as originally written.
+**⚑ THREAD CLOSED (Session 15 continued, 2026-07-03).** The Session-15
+autonomous completion run FINISHED everything: epic `livespec-jcc6` closed at
+**4/4 — "eligible for close"** per the ledger, every gathered item done,
+relocated, superseded, or maintainer-deferred (full record in §"Session 15
+(continued)"). This directory is archived under `plan/archive/`; there is NO
+next action. Reopening the epic unarchives the thread (move the directory
+back). The only deliberately-deferred piece is the README-contract track
+(`livespec-127o`, above) — resume it from that epic's ledger record, not from
+this thread. The block after the `---` is the historical execution record — do
+NOT re-run its items.
 
 The completed plan, retained for the record:
 
@@ -943,6 +945,49 @@ everything else left in fleet-followups."** Dispositions:
   `livespec-aava`, `bd-ib-24l`, `bd-gj-hew`, needs-regroom `nylyhi`/`rmew4k`);
   then the epic close boundary. Outcomes are recorded in the follow-up Session-15
   entries below as they land (status stays READ from the ledger, never from here).
+
+## Session 15 (continued, 2026-07-03) — everything-else run COMPLETE; epic CLOSED 4/4; thread ARCHIVED
+
+Under the maintainer's "continue on with everything else left in fleet-followups"
+directive, the full remaining set was driven to done in one session — six factory
+dispatches (strictly serial), one operator PR, five straggler dispositions, and
+the close boundary:
+
+- **`livespec-jcc6.4` DONE (core PR #813).** Unheld (c1k9's finalized design does
+  not cover its domain — §"Session 14"), dispatched via factory: the reaper now
+  imports `dev-tooling/claude_plugin_registry.py` and drops dead project-scope
+  plugin entries (backup + `--dry-run` + v2-format guard), exactly the 4 scoped
+  files. Epic children 4/4.
+- **Cross-tenant items DONE:** `bd-ib-09c` (beads-fabro PR #262, migrate-tenant
+  command); `livespec-driver-codex-wqo` (operator PR #52 — factory-circularity:
+  driver-codex's `.livespec.jsonc` had NO connection block, so the dispatcher's
+  `resolve_store_config` raised `ConnectionPrefixMissingError` for ANY dispatch
+  there; the block now mirrors the driver-claude pattern and unblocked the lane,
+  proven by 1du/heg landing right after); `livespec-dev-tooling-5kv`
+  (dev-tooling PR #238, worktree-create/hydrate now provision the discipline
+  pack) → git-jsonl `bd-gj-hew` closed as superseded.
+- **Stragglers disposed:** `livespec-mpkaz4` closed already-fixed (verified BY
+  EXECUTION: bare-name reaper invocation exits 0 since yc8e PR #742);
+  `livespec-rmew4k` closed already-realized (file, spec clause, and all code
+  references already carry `.livespec-fleet-manifest.jsonc`; zero old-name refs);
+  `livespec-aava` relocated → `livespec-driver-codex-1du` DONE (PR #54,
+  skill-picker non-TTY robustness); `livespec-nylyhi` groomed into its own
+  prescribed slices → `livespec-driver-codex-heg` DONE (PR #55, footgun-guard
+  FD-duplication misparse) + `bd-ib-4ax` DONE (beads-fabro PR #269, Codex-binding
+  root-resolution validation); `bd-ib-24l` DONE (beads-fabro PR #273, canary
+  path-detection glob fix — careful self-mod, merged diff scope-reviewed: exactly
+  `_dispatcher_self_update.py` + its test).
+- **Factory lessons filed in beads-fabro (`backlog`):** `bd-ib-h55` — a
+  newly-starting dispatch force-removes the fixed-name `livespec-orch-realwork`
+  container and can KILL an in-flight run (observed exit 137 + stuck-`active`
+  ledger state; dispatches are strictly SERIAL until fixed). `bd-ib-cur` — the
+  pre-dispatch conformance gate hard-blocks on the beads-native `open` default
+  every fresh `bd create` produces, so any concurrently-filing session blocks
+  all dispatch (three blocked attempts this session; fix at source:
+  file-as-backlog and/or gate auto-normalizes bare `open`).
+- **Close boundary:** epic `livespec-jcc6` CLOSED (completion comment carries the
+  full PR map); this thread archived `plan/fleet-followups/` →
+  `plan/archive/fleet-followups/` in the same PR as this record.
 
 ## Read-first chain (in order)
 
