@@ -187,6 +187,32 @@ def test_prune_history_main_emits_no_op_finding_when_only_v001_exists(
     assert payload["findings"][0]["status"] == "skipped"
 
 
+def test_prune_history_main_no_op_message_names_the_only_v001_cause(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The only-v001 no-op message states ITS cause, not the marker cause.
+
+    The two no-op short-circuits are distinct: (i) only `v001`
+    exists; (ii) the oldest surviving v-directory already contains
+    a `PRUNED_HISTORY.json` marker. A single shared message claiming
+    "oldest surviving history is already PRUNED_HISTORY.json" is
+    factually wrong for cause (i) — observed live against a freshly
+    seeded tree with only v001 and no marker anywhere (resume
+    adopter verification, 2026-07-04). Each cause must name itself.
+    """
+    project_root = _make_v001_only_spec_root(tmp_path=tmp_path)
+    exit_code = prune_history.main(argv=["--project-root", str(project_root)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    message = json.loads(captured.out)["findings"][0]["message"]
+    assert "only v001" in message, f"the only-v001 no-op must name its own cause; got {message!r}"
+    assert "PRUNED_HISTORY.json" not in message, (
+        "the only-v001 no-op must not claim the pruned-marker cause; " f"got {message!r}"
+    )
+
+
 def test_prune_history_main_accepts_project_root_flag(
     *,
     tmp_path: Path,
