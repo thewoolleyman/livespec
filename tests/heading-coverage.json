@@ -484,7 +484,7 @@
     "heading": "## Tool-agnostic workflow — spec / implementation lifecycle",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
-    "test": "TODO",
-    "reason": "Introductory diagram + caption section; carries no MUST/SHOULD behavior clause, hence no clauses[] scenario links. Diagram-only — the architecture-diagram single-source discipline is exercised by tests.test_architecture_diagram_single_source; a dedicated test ID replaces this TODO via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "test": "tests.test_lifecycle_diagram_single_source.test_readme_does_not_duplicate_lifecycle_diagram",
+    "reason": "Introductory diagram + caption section; carries no MUST/SHOULD behavior clause, hence no clauses[] scenario links. Diagram-only — its testable discipline is single-sourcing: tests/test_lifecycle_diagram_single_source.py (sibling of the architecture-diagram guard) asserts the lifecycle diagram lives under this heading, the README references the section by anchor, and no README Mermaid block reproduces the diagram's distinguishing signature (plane names are unusable as the signature — shared with the canonical architecture diagram per the deliberate different-zoom-levels exception — so it keys on the intent-entry and Dispatcher-parallelism labels unique to this view)."
   }
 ]
