@@ -39,7 +39,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "tests.test_workflow_planes_terminology.test_terminology_guard_present",
-    "reason": "The section is descriptive architecture framing (the three planes Spec/Orchestrator/Control, the Planning Lane, the Control-Plane role); its one normative imperative is the terminology guard — the operator console is the Control Plane / operator cockpit and is NEVER a 'Driver' (the per-agent-runtime binding), to be kept distinct in all prose and diagrams. The mapped test pins that guard on core's own spec.md: it asserts the three plane names are present, the guard clauses are stated verbatim, and (structurally) no Mermaid subgraph labels the console a Driver while a distinct DRIVER subgraph is rendered. Tests core's authored artifact, not a mock, per the no-escape-hatch directive (livespec-besm.5)."
+    "reason": "The section is descriptive architecture framing (the three planes Spec/Orchestrator/Control, the Planning Lane, the Control-Plane role); its one normative imperative is the terminology guard \u2014 the operator console is the Control Plane / operator cockpit and is NEVER a 'Driver' (the per-agent-runtime binding), to be kept distinct in all prose and diagrams. The mapped test pins that guard on core's own spec.md: it asserts the three plane names are present, the guard clauses are stated verbatim, and (structurally) no Mermaid subgraph labels the console a Driver while a distinct DRIVER subgraph is rendered. Tests core's authored artifact, not a mock, per the no-escape-hatch directive (livespec-besm.5)."
   },
   {
     "heading": "## Contract + reference implementations architecture",
@@ -138,7 +138,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.validate.test_livespec_config.test_validate_livespec_config_spec_clis_default_to_core_reference_wrappers",
-    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). The Phase-2 impl follow-up decomposed each spec-side skill into prose + CLI. The mapped test asserts all seven spec-side CLI names (seed, propose-change, revise, critique, doctor, prune-history, next) pre-populate with core's argv-form reference defaults; the sibling test_validate_livespec_config_spec_clis_individually_overridable asserts overriding one CLI leaves every sibling at its default — covering per-CLI config naming, reference-default pre-population, and individual overridability."
+    "reason": "Landed in v103 (contract-and-reference-implementations-phase-1 proposal accept). The Phase-2 impl follow-up decomposed each spec-side skill into prose + CLI. The mapped test asserts all seven spec-side CLI names (seed, propose-change, revise, critique, doctor, prune-history, next) pre-populate with core's argv-form reference defaults; the sibling test_validate_livespec_config_spec_clis_individually_overridable asserts overriding one CLI leaves every sibling at its default \u2014 covering per-CLI config naming, reference-default pre-population, and individual overridability."
   },
   {
     "heading": "## CLI shape conventions",
@@ -325,6 +325,13 @@
     "test": "tests.dev-tooling.checks.test_behavior_scenario_link.test_warn_mode_is_non_blocking_but_surfaces_unlinked"
   },
   {
+    "heading": "## Conflicting ratified statements resolve toward the cited design record",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "tests.test_intent_preservation_lockstep.test_scenarios_section_carries_the_three_conflict_resolution_scenarios",
+    "reason": "Ratified at v159. Integration-tier via the module's pytest.mark.integration marker (cross-artifact lockstep spanning the spec tree and the plugin prose); the LLM-behavioral scenario legs additionally land clauses[] links via the documented behavior_scenario_link warn-tier backlog."
+  },
+  {
     "heading": "## Author identifier resolution",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
@@ -471,20 +478,27 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.test_template_beads_access_guard",
-    "reason": "Landed by the revise pass accepting the proposed change that introduced the fleet-universal agent-instruction core. The heading mandates several paired obligations; the mapped test covers the load-bearing beads-access-guard MUST (\"Beads-backed members MUST ship a beads-access guard: a Claude Code PreToolUse hook ... that blocks a bare bd, dolt, or direct tenant mysql invocation unless it runs under a recognized per-project credential-injection wrapper\"). tests.test_template_beads_access_guard exercises the template-shipped guard's should_block predicate and its main stdin->decision deny/allow path against bare vs. wrapped bd/dolt/tenant-mysql commands. The remaining facets — the fleet-universal core's content (mutation protocol, daily commands, beads-runtime prereqs), the AGENTS.md / .claude/CLAUDE.md symlink shape, and the fleet-wide OBLIGATION_ROWS instruction-surface enforcement — ship from livespec-dev-tooling's fleet-membership obligation suite with its own tests; no live drift meanwhile (this repo's guard + symlink shape are present and green)."
+    "reason": "Landed by the revise pass accepting the proposed change that introduced the fleet-universal agent-instruction core. The heading mandates several paired obligations; the mapped test covers the load-bearing beads-access-guard MUST (\"Beads-backed members MUST ship a beads-access guard: a Claude Code PreToolUse hook ... that blocks a bare bd, dolt, or direct tenant mysql invocation unless it runs under a recognized per-project credential-injection wrapper\"). tests.test_template_beads_access_guard exercises the template-shipped guard's should_block predicate and its main stdin->decision deny/allow path against bare vs. wrapped bd/dolt/tenant-mysql commands. The remaining facets \u2014 the fleet-universal core's content (mutation protocol, daily commands, beads-runtime prereqs), the AGENTS.md / .claude/CLAUDE.md symlink shape, and the fleet-wide OBLIGATION_ROWS instruction-surface enforcement \u2014 ship from livespec-dev-tooling's fleet-membership obligation suite with its own tests; no live drift meanwhile (this repo's guard + symlink shape are present and green)."
   },
   {
     "heading": "## Built-in template contracts",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.livespec.doctor.static.test_gherkin_blank_line_format.test_run_returns_skipped_for_minimal_shape_with_no_gherkin_blocks",
-    "reason": "Relocated into the main contracts.md from the retired dogfooding sub-specs (SPECIFICATION/templates/livespec and SPECIFICATION/templates/minimal) in v135. Consolidates several template-internal contracts; the mapped test covers the load-bearing minimal-template MUST (\"The doctor static gherkin-blank-line-format check MUST exempt minimal-shape spec_roots whose SPECIFICATION.md contains no fenced ```gherkin blocks (emitting status='skipped')\"): it seeds a minimal-shape single-file SPECIFICATION.md with no gherkin fences and asserts status='skipped' with the exemption message, and its sibling test_run_applies_normally_for_minimal_shape_with_gherkin_blocks asserts the check applies normally when gherkin IS present. The other facets — the livespec template's NLSpec reference doc and doctor_llm_*_checks_prompt paths, and the minimal template's spec_root './' single-file shape, null doctor_llm opt-out, and HTML-comment region markers — are exercised by the template-config (tests.livespec.validate.test_template_config) and doctor-static suites; no live drift meanwhile."
+    "reason": "Relocated into the main contracts.md from the retired dogfooding sub-specs (SPECIFICATION/templates/livespec and SPECIFICATION/templates/minimal) in v135. Consolidates several template-internal contracts; the mapped test covers the load-bearing minimal-template MUST (\"The doctor static gherkin-blank-line-format check MUST exempt minimal-shape spec_roots whose SPECIFICATION.md contains no fenced ```gherkin blocks (emitting status='skipped')\"): it seeds a minimal-shape single-file SPECIFICATION.md with no gherkin fences and asserts status='skipped' with the exemption message, and its sibling test_run_applies_normally_for_minimal_shape_with_gherkin_blocks asserts the check applies normally when gherkin IS present. The other facets \u2014 the livespec template's NLSpec reference doc and doctor_llm_*_checks_prompt paths, and the minimal template's spec_root './' single-file shape, null doctor_llm opt-out, and HTML-comment region markers \u2014 are exercised by the template-config (tests.livespec.validate.test_template_config) and doctor-static suites; no live drift meanwhile."
   },
   {
-    "heading": "## Tool-agnostic workflow — spec / implementation lifecycle",
+    "heading": "## Tool-agnostic workflow \u2014 spec / implementation lifecycle",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "tests.test_lifecycle_diagram_single_source.test_readme_does_not_duplicate_lifecycle_diagram",
-    "reason": "Introductory diagram + caption section; carries no MUST/SHOULD behavior clause, hence no clauses[] scenario links. Diagram-only — its testable discipline is single-sourcing: tests/test_lifecycle_diagram_single_source.py (sibling of the architecture-diagram guard) asserts the lifecycle diagram lives under this heading, the README references the section by anchor, and no README Mermaid block reproduces the diagram's distinguishing signature (plane names are unusable as the signature — shared with the canonical architecture diagram per the deliberate different-zoom-levels exception — so it keys on the intent-entry and Dispatcher-parallelism labels unique to this view)."
+    "reason": "Introductory diagram + caption section; carries no MUST/SHOULD behavior clause, hence no clauses[] scenario links. Diagram-only \u2014 its testable discipline is single-sourcing: tests/test_lifecycle_diagram_single_source.py (sibling of the architecture-diagram guard) asserts the lifecycle diagram lives under this heading, the README references the section by anchor, and no README Mermaid block reproduces the diagram's distinguishing signature (plane names are unusable as the signature \u2014 shared with the canonical architecture diagram per the deliberate different-zoom-levels exception \u2014 so it keys on the intent-entry and Dispatcher-parallelism labels unique to this view)."
+  },
+  {
+    "heading": "## Intent preservation and design-record authority",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "test": "tests.test_intent_preservation_lockstep.test_spec_section_carries_the_four_intent_preservation_rules",
+    "reason": "Ratified at v159 (intent-preservation-and-design-record-authority). The lockstep guard mechanically enforces the section + operational-prose co-update contract; the section's LLM-behavioral clauses land clauses[] scenario links via the documented behavior_scenario_link warn-tier backlog per the ratified proposal."
   }
 ]

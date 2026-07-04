@@ -318,6 +318,26 @@ and exit code is `0` (NOT an error).
      `accept`, `modify`, or `reject` decision per
      `## Proposal` section, with rationale and (for
      `accept` / `modify`) the updated `resulting_files[]`.
+   - **Intent-preservation gate** (per `SPECIFICATION/spec.md`
+     §"Intent preservation and design-record authority").
+     Before presenting a decision that resolves a conflict
+     between ratified statements, check the resolution
+     against the design record cited by the load-bearing
+     semantic definition involved. A resolution that
+     contradicts a cited design record MUST NOT be presented
+     for ratification unless the presentation names the
+     contradiction explicitly and the maintainer's confirmed
+     decision acknowledges it (the acknowledgment lands in
+     the revision record's `## Decision and Rationale` body,
+     naming the departed-from record and the deliberate
+     departure). When no design record is cited or reachable
+     for the conflicting statements, surface that absence to
+     the maintainer together with the conflict; the dialogue
+     MUST NOT self-resolve it in either direction — and the
+     "delegate remaining proposals to the LLM" toggle never
+     delegates this acknowledgment: a delegated pass reaching
+     such a contradiction MUST fall back to the explicit
+     per-proposal confirmation for that proposal.
    - **Prompt the user for confirmation.** Present each
      per-proposal decision (decision verb, rationale,
      resulting-files list when applicable) and capture
@@ -594,7 +614,11 @@ On exit 0, the CLI has:
   `decision`, `revised_at` UTC ISO-8601 seconds,
   `author_human`, `author_llm`) validated against
   `revision_front_matter.schema.json`, followed by
-  `## Decision and Rationale` (always),
+  `## Decision and Rationale` (always; when the accepted
+  resolution departs from a cited design record, this body
+  MUST name the departed-from record and the deliberate
+  departure, per SPECIFICATION/spec.md §"Intent preservation
+  and design-record authority"),
   `## Modifications` (required when `decision == "modify"`),
   `## Resulting Changes` (required when `decision` is
   `accept` or `modify`), and `## Rejection Notes`
