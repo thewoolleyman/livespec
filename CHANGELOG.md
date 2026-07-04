@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/thewoolleyman/livespec/compare/v0.6.1...v0.6.2) (2026-07-04)
+
+
+### Bug Fixes
+
+* plugin-currency staleness gate in core _bootstrap.py — fail loud on stale running build (livespec-c1k9.3) ([ec415f6](https://github.com/thewoolleyman/livespec/commit/ec415f6efa3e1fef89a7b7d6d1e29472e0faa9a2))
+
 ## [0.6.1](https://github.com/thewoolleyman/livespec/compare/v0.6.0...v0.6.1) (2026-07-03)
 
 
