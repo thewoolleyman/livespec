@@ -472,6 +472,11 @@ existing file):
   cross-cutting discipline (TDD red-green-replay, the worktree → PR flow, the
   1Password secret-wrapper, no-local-memory), and for the session-end
   standing-handoff print rule.
+- **`.ai/adding-an-adopter.md`** — read BEFORE touching
+  `.livespec-fleet-manifest.jsonc` to register a new adopter repo, and before
+  planning or driving any adopter's onboarding (registration is
+  fleet-maintainer work HERE; onboarding is END-USER work in the adopter repo
+  via `docs/installation.md` → `docs/livespec-installation-prompt.md`).
 
 ## Working with the maintainer
 

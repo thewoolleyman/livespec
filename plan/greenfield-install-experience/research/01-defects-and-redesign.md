@@ -67,22 +67,60 @@ infrastructure) with a later beads migration is a valid greenfield
 route the doc already half-promises ("You can start on git-jsonl and
 migrate").
 
+## Design directive (maintainer, 2026-07-04) — prompt-based installer
+
+The fix does NOT take the form of in-place prose repairs to the old
+288-line guide. The maintainer's directive reshapes the install
+surface:
+
+- **The user-facing instructions ARE a paste-able prompt** —
+  `docs/livespec-installation-prompt.md` — that an LLM executes in
+  the target project. It handles greenfield AND brownfield (and
+  detects already-governed as the verify-only path), walks the agent
+  through every requirement up to seed-readiness, and prompts the
+  user for exactly two choices — the Driver(s) (claude / codex /
+  both) and the orchestrator backend (beads-fabro recommended;
+  git-jsonl with requirements and trade-offs; defer allowed) — using
+  the harness's structured question facility with a recommendation
+  first.
+- **`docs/installation.md` becomes minimal** — what livespec is and
+  how to run the prompt in each supported harness (Claude Code and
+  Codex today).
+- **The prompt is idempotent** — survey before mutate; already-set-up
+  components are skipped; missing or drifted ones are added or
+  repaired; a final report table proves a no-change re-run is a
+  no-op.
+
+Each of the six defects maps into the prompt rather than into prose
+fixes: (1) the prompt forbids hand-authoring `.livespec.jsonc` (seed
+writes it — its Phase 4); (2) every marketplace/install pins
+`release`, and the idempotency rules upgrade an unpinned existing
+entry; (3) the beads-fabro description names the single bare
+`BEADS_DOLT_PASSWORD`; (4) and the `credential_wrapper` declaration;
+(5) `compat` pins are described as concrete release tags, never
+branch names; (6) tenant provisioning is explicitly post-seed
+infrastructure per the orchestrator plugin's own documentation — out
+of the install prompt's blocking path (authoring that full procedure
+remains follow-up work where that plugin's docs live).
+
 ## The dogfooding loop (fix-first, then live test)
 
-Fix the six known defects FIRST (they are already evidence-backed;
-walking a maintainer-attended bootstrap into known breakage wastes
-the interview), THEN run the resume bootstrap strictly by the fixed
-doc, as a real user, from inside `/data/projects/resume`:
+Land the prompt-based installer FIRST (the six defects are already
+evidence-backed; walking a maintainer-attended bootstrap into known
+breakage wastes the interview), THEN run the resume bootstrap
+strictly by the published path, as a real user, from inside
+`/data/projects/resume`:
 
-- commit `.claude/settings.json` per the fixed §3;
-- reload plugins; run `/livespec:seed` there, maintainer-attended
-  (product inspiration: `interactive-resume.gitlab.io`, reimagined
-  AI-centric — the archived false-start thread's research note,
+- run the installation prompt there exactly as `docs/installation.md`
+  says an end user would;
+- then run `/livespec:seed` there, maintainer-attended (product
+  inspiration: `interactive-resume.gitlab.io`, reimagined AI-centric
+  — the archived false-start thread's research note,
   `plan/archive/resume-adopter-onboarding/research/01-onboarding-context.md`,
   still carries the product context and open questions; it remains
   valid INPUT even though its coordination model was wrong);
 - every friction point the live test surfaces gets filed against this
-  thread and folded back into the doc.
+  thread and folded back into the prompt.
 
 What was and was not a false start: the manifest registration
 (livespec PR #825) and the resume repo bootstrap (root commit,
@@ -95,11 +133,17 @@ archived).
 
 ## Agent-discipline codification
 
-One durable line for `AGENTS.md` (or `.ai/agent-disciplines.md`) in
-livespec, filed as part of this thread's doc work: **when the task is
-dogfooding an end-user path, orient from the published user docs
-first (README → docs/), not from fleet-internal machinery; the
-fleet's own conventions are the maintainer's view, not the user's.**
-Rationale: the false start happened precisely because the session's
-context was saturated with fleet discipline and never consulted
-`docs/installation.md`, despite livespec's README pointing at it.
+Per maintainer direction (2026-07-04), NOT a one-liner in `AGENTS.md`
+and NOT the earlier vague "orient from published user docs" phrasing:
+a dedicated progressively-loaded topic file,
+**`.ai/adding-an-adopter.md`**, referenced from `AGENTS.md` with the
+explicit trigger "read BEFORE touching `.livespec-fleet-manifest.jsonc`
+to register a new adopter repo, and before planning or driving any
+adopter's onboarding". The file separates the two roles (registration
+= fleet-maintainer work in livespec; onboarding = end-user work in
+the adopter repo) and names the explicit published-path files
+(`docs/installation.md` → `docs/livespec-installation-prompt.md`)
+rather than hand-waving at them. Rationale: the false start happened
+precisely because the session's context was saturated with fleet
+discipline and never consulted `docs/installation.md`, despite
+livespec's README pointing at it.
