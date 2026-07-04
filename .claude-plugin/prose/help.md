@@ -27,7 +27,8 @@ the right operation for their intent.
    You author natural-language specifications, and livespec's
    operations govern the workflow: seeding the initial spec,
    filing proposed changes, critiquing, revising into version
-   snapshots, and running structural-invariant checks."
+   snapshots, running validation checks, and ranking the
+   next spec-side action."
 
 2. **Route to the right operation.** Map the user's goal to
    one of:
@@ -45,15 +46,19 @@ the right operation for their intent.
    - **revise** — process all pending proposed-changes with
      per-proposal accept/modify/reject decisions, cut a new
      history/vNNN/ snapshot.
-   - **doctor** — run static-invariant checks across the main
-     spec + each sub-spec tree. The LLM-driven objective +
-     subjective post-step phases are not yet wired; only the
-     static phase runs today.
+   - **doctor** — validate the main spec + each sub-spec tree:
+     the static structural-invariant phase plus the LLM-driven
+     objective and subjective phases.
    - **prune-history** — destructively collapse old
      `history/vNNN/` snapshots into a single
      `PRUNED_HISTORY.json` marker. Requires explicit user
      invocation; the LLM MUST NOT auto-activate this
      operation.
+   - **next** — rank the most-ripe next spec-side action
+     (revise, propose-change, critique, prune-history, or
+     none) over the current `proposed_changes/` and
+     `history/` state, emitting structured JSON. Use when
+     unsure what spec-side work to do next.
 
 3. **Pointer to per-operation CLI help.** Mention that each
    operation's backing CLI supports `-h` / `--help` (e.g.,
@@ -67,7 +72,6 @@ No CLI invocation; no post-step LLM-driven phase.
 ## Failure handling
 
 No CLI exit codes — this operation is pure LLM narration. If
-the user asks about a capability that is not yet wired
-(e.g., the LLM-driven objective/subjective doctor phases),
-say so directly and point at the static phase as the
+the user asks about a capability the installed version does
+not carry, say so directly and point at the nearest
 currently-available behavior.
