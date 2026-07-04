@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3](https://github.com/thewoolleyman/livespec/compare/v0.6.2...v0.6.3) (2026-07-04)
+
+
+### Bug Fixes
+
+* currency gate reads the real registry shape; checkout mode exits the gate's domain (livespec-e3nk) ([796cca6](https://github.com/thewoolleyman/livespec/commit/796cca6e0e148ae6ef83c982e31ec9d203a4cd77))
+
 ## [0.6.2](https://github.com/thewoolleyman/livespec/compare/v0.6.1...v0.6.2) (2026-07-04)
 
 
