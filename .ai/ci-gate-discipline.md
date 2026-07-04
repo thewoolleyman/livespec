@@ -48,3 +48,25 @@ env var to having NO effect).
   `test_red_conclusion_fails_regardless_of_lever_env` in
   livespec-dev-tooling) is the durable guard — prefer adding one when
   removing any rejected escape mechanism.
+
+## The fleet App's missing `workflows` permission is a deliberate boundary
+
+The fleet GitHub App (`livespec-pr-bot`) deliberately does NOT hold the
+`workflows` permission, so GitHub refuses any App-token push whose
+branch history creates or updates a file under `.github/workflows/`.
+This is the same boundary as the gates above, one layer down: workflow
+files ARE the CI gate definitions, and an agent-pushed branch must
+never be able to modify them (maintainer decision, 2026-07-04, when a
+factory run for `livespec-c1k9.3` was push-rejected for exactly this).
+
+- NEVER request, grant, or work around the `workflows` permission for
+  the App; the rejection is the boundary working.
+- Factory-dispatched work-items must not include `.github/workflows/`
+  edits in their branch. When an implementation legitimately needs a
+  workflow change, CARVE IT OUT: the agent branch restores the workflow
+  file to master's content, publishes everything else, and reports the
+  dropped diff; the workflow edit lands via a separate MAINTAINER-side
+  commit (worktree → PR under the maintainer's own credentials).
+- When grooming or briefing a work-item whose acceptance implies
+  workflow edits (e.g. wiring an env var into CI), split the workflow
+  wiring into an explicitly maintainer-side step up front.
