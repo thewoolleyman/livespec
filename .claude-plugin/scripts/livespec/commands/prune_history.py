@@ -227,10 +227,15 @@ def _maybe_no_op_or_resolve(
     """
     max_version = _find_max_version(children=children)
     if max_version == 1:
-        _emit_no_op_finding()
+        _emit_no_op_finding(message="nothing to prune; only v001 exists")
         return IOResult.from_value(None)
     if _oldest_below_has_pruned_marker(children=children, max_version=max_version):
-        _emit_no_op_finding()
+        _emit_no_op_finding(
+            message=(
+                "nothing to prune; the oldest surviving history version "
+                "already contains PRUNED_HISTORY.json"
+            ),
+        )
         return IOResult.from_value(None)
     return _resolve_first_via_marker_or_children(
         children=children,

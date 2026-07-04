@@ -175,7 +175,7 @@ def _emit_pruned_finding(*, first: int, last: int) -> None:
     _ = sys.stdout.write(json.dumps(payload) + "\n")
 
 
-def _emit_no_op_finding() -> None:
+def _emit_no_op_finding(*, message: str) -> None:
     """Write the canonical prune-history-no-op skipped finding to stdout.
 
     Per spec.md prune-history paragraph: the wrapper emits a
@@ -183,15 +183,16 @@ def _emit_no_op_finding() -> None:
     no-op", "status": "skipped", "message": "..."}]}` JSON document
     to stdout. The commands/-tree exemption in the
     `check-no-write-direct` allowlist permits this stdout-write.
+    The caller supplies the message so each no-op short-circuit
+    names its ACTUAL cause (only-v001 vs pruned-marker-present) —
+    a shared message misdiagnoses the only-v001 case.
     """
     payload = {
         "findings": [
             {
                 "check_id": "prune-history-no-op",
                 "status": "skipped",
-                "message": (
-                    "nothing to prune; oldest surviving history is " "already PRUNED_HISTORY.json"
-                ),
+                "message": message,
             },
         ],
     }
