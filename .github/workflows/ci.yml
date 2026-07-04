@@ -18,6 +18,11 @@ name: CI
 # and never contacts PyPI at all.
 env:
   UV_HTTP_RETRIES: "5"
+  # The plugin-currency staleness gate's severity lever (design D2,
+  # plan/fleet-plugin-currency/research/design.md): the _bootstrap.py gate
+  # warns on an UNDETERMINABLE currency locally, but CI fails hard on it —
+  # confirmed-stale always hard-fails everywhere (livespec-c1k9.3).
+  LIVESPEC_CURRENCY_GATE: "fail"
 
 on:
   pull_request:
