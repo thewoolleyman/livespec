@@ -1,4 +1,4 @@
-"""Top-level pytest conftest — autouse env scrubbing for inherited GIT_* vars.
+"""Top-level pytest conftest — autouse env scrubbing for inherited vars.
 
 When the test suite runs under a git pre-commit hook (lefthook),
 git exports `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, etc.,
@@ -38,9 +38,13 @@ _GIT_ENV_PASSTHROUGH_VARS: tuple[str, ...] = (
     "GIT_PREFIX",
 )
 
+_LIVESPEC_ENV_PASSTHROUGH_VARS: tuple[str, ...] = ("LIVESPEC_CURRENCY_GATE",)
+
 
 @pytest.fixture(autouse=True)
 def _scrub_inherited_git_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Remove inherited GIT_* env vars for every test."""
+    """Remove inherited ambient env vars for every test."""
     for var in _GIT_ENV_PASSTHROUGH_VARS:
         monkeypatch.delenv(var, raising=False)
+    for var in _LIVESPEC_ENV_PASSTHROUGH_VARS:
+        monkeypatch.setenv(var, "warn")
