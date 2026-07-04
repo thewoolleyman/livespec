@@ -643,6 +643,18 @@ existing file):
   with `proposal_topic` = the file stem (front-matter topic), never a
   `## Proposal:` section name (mismatch → silent exit 3); for selective
   disposition, split proposals across separate files.
+- **Independent Fable review before every ratification.** Every proposed
+  change — in ANY fleet repo — gets an independent, READ-ONLY adversarial
+  review by a separately-spawned Fable-model agent BEFORE `/livespec:revise`
+  accepts it (maintainer-declared 2026-07-04). The reviewer verifies at
+  minimum: replacement-target fidelity (every quoted replace-target exists
+  verbatim in the live file), design-record fidelity (the change matches the
+  cited design record, never merely the shipped implementation), drift-sweep
+  completeness (no unamended statement is left contradicting the change),
+  ratification mechanics (topic/stem match, `tests/heading-coverage.json`
+  co-edits for any `## ` heading change), and cross-repo consistency. A
+  NO-BLOCKERS verdict is a precondition for driving the accept; any blocker
+  routes to the maintainer with a recommended fix — it is never self-waived.
 - **`depends_on` entries are typed dicts** `{"kind": "local", "work_item_id":
   "..."}`, never bare id strings — the store wrapper accepts bare strings but
   doctor-static (full `just check`) rejects them; copy the shape from an existing
