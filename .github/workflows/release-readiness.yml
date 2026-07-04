@@ -1,0 +1,77 @@
+# Release-readiness canary — daily fail-mode dry-run of the fast
+# release-gate checks against master.
+#
+# Why this exists (2026-07-04): per-commit CI deliberately ALLOWS
+# registered debt (a heading-coverage `test: "TODO"`, an LLOC
+# soft-band file) that the Release-tag workflow then REJECTS in
+# fail mode. That two-tier design armed a time bomb: a TODO landed
+# 2026-06-26 and every release from v0.6.0 through v0.6.4 failed its
+# gate unnoticed while the `release` branch sat stale. This canary
+# runs the same fail-mode levers against master daily, so "master is
+# currently un-releasable" surfaces within a day of the debt landing,
+# not at the next release attempt.
+#
+# check-mutation is deliberately EXCLUDED: it is the heavy release-only
+# tier, and its inputs (product Python) are already constrained
+# per-commit by the coverage gates; the time-bomb class this canary
+# targets is the warn-by-default levers.
+#
+# The export-telemetry job ships the outcome to Honeycomb (dataset
+# github-ci, ci.workflow = "Release readiness"), where the
+# release-pipeline-failure trigger emails the maintainer on any failed
+# job. Same closed-loop export as ci.yml: the export job itself fails
+# if Honeycomb does not accept the data.
+
+name: Release readiness
+
+on:
+  schedule:
+    - cron: '17 13 * * *'   # daily 13:17 UTC
+  workflow_dispatch: {}
+
+jobs:
+  release-readiness:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    env:
+      LIVESPEC_FAIL_IF_HEADING_COVERAGE_TODOS_EXIST: "true"
+      LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST: "true"
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - check-no-todo-registry
+          - check-no-lloc-soft-warnings
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pinned binaries via mise
+        uses: jdx/mise-action@v2
+
+      - name: Install Python dev deps via uv
+        run: uv sync --all-groups
+
+      - name: just ${{ matrix.target }}
+        run: just ${{ matrix.target }}
+
+  export-telemetry:
+    name: export-telemetry
+    needs: [release-readiness]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Export release-readiness run telemetry to Honeycomb
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC: ${{ secrets.HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC }}
+        run: bash .github/scripts/export-ci-telemetry.sh
