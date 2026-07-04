@@ -183,6 +183,7 @@ check:
         check-comment-line-anchors
         check-commit-pairs-source-and-test
         check-file-lloc
+        check-fleet-marketplace-relative-sources
         check-global-writes
         check-heading-coverage
         check-keyword-only-args
@@ -804,6 +805,13 @@ check-check-tools:
 # completeness.
 check-file-lloc:
     uv run python -m livespec_dev_tooling.checks.file_lloc
+
+# Fleet marketplace ref-pin guard: catalog plugin sources MUST stay
+# checkout-relative (`./...`). Github-type or other non-relative
+# sources silently ignore the registered marketplace ref pin and clone
+# default HEAD instead.
+check-fleet-marketplace-relative-sources:
+    uv run python -m livespec_dev_tooling.checks.fleet_marketplace_relative_sources
 
 # Canonical-slug alias for the full per-file 100% line+branch
 # coverage gate. The canonical slug derived from the module name

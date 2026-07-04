@@ -59,47 +59,62 @@ SessionStart `ensure-plugins` hooks de-drifted onto committed settings, the
 L0b release-park guard, and the L1b marketplace ref-pinning have all merged.
 The invariant was proven LIVE mid-rollout — an unattended `fix:` push cut
 v0.6.1 and fast-forwarded `refs/heads/release` with NO human in the loop (see
-§"Fast-path implementation waves"). `livespec-c1k9.1`, `.8`, and `.9` are
-CLOSED. Status is READ from the ledger, never from this file. What remains is
-the Python currency gate, the recipe collapse, the spec codification, and the
-mechanized exit-gate assertion.
+§"Fast-path implementation waves"). `livespec-c1k9.1`, `.8`, `.9`, and `.10`
+are CLOSED; dev-tooling `be9`/`a62` SHIPPED (PRs #241/#243). Status is READ
+from the ledger, never from this file. What remains is the Python currency
+gate, the recipe collapse, the spec codification, and the mechanized
+exit-gate assertion — plus the Session 2 cascade residue (two maintainer
+flags in item 3 below).
 
 Remaining work, in order:
 
-1. **Python / TDD-disciplined path (factory-dispatch, or TDD red-green-replay
-   for the product `.py`).**
-   - `livespec-c1k9.3` — the **currency gate in core `_bootstrap.py`**: compare
-     the running `gitCommitSha` against the marketplace clone's pinned-ref
-     (`release`) tip; confirmed-**Stale** hard-fails, **Unknown** warns and
-     proceeds behind the `LIVESPEC_CURRENCY_GATE=fail` lever (CI + factory
-     dispatch set it). Includes the **staled-cache NEGATIVE test** (a
-     deliberately-staled cache must fail loudly).
-   - `livespec-dev-tooling-be9` — the **relative-source (`./.claude-plugin`)
-     structural check** (the ref-pin mechanism only holds for relative-source
-     plugins, so this guards the precondition).
-   - `livespec-dev-tooling-a62` (REGROOMED) — the **derive-from-settings shared
-     entry point** `python -m livespec_dev_tooling.fleet.ensure_plugins`, the
-     shrunken hook-wired / wrapper-present check, and the stale-docstring
-     ride-along at `fleet/_rows_local.py:172-174`. This supersedes the earlier
-     consistency-check framing.
+1. **Re-dispatch `livespec-c1k9.3`** (currency gate in core `_bootstrap.py`)
+   once core master is GREEN — the PR carrying THIS handoff update also wires
+   `check-fleet-marketplace-relative-sources` into core's `just check`, the
+   last piece of core's master repair. The item carries a **REDISPATCH
+   RIDER** comment with the two blocking design-divergence fixes from run 1
+   (expected id via `git rev-parse HEAD` in the ref-pinned marketplace clone,
+   NOT a PINNED-REF file; `running_build_id` PRIMARY source = the registry's
+   `gitCommitSha`, path basename only as 12-hex fallback); run 2 died at the
+   Red commit against the then-broken master state. Design:
+   `research/design.md` §L2b. Includes the **staled-cache NEGATIVE test**.
 
-2. **`livespec-c1k9.11` — fleet recipe collapse onto the shared entry point.**
-   Collapse every repo's `ensure-plugins` recipe onto the -a62 entry point
-   (`python -m livespec_dev_tooling.fleet.ensure_plugins`). **STEP-ZERO
-   precondition:** reconcile the git-jsonl settings-vs-recipe orchestrator
-   mismatch — now also filed as ACTIVE bug **`bd-gj-hj8`** in the git-jsonl
-   tenant (every SessionStart there dirties the tracked `settings.json`). Fix
-   that before collapsing git-jsonl's recipe.
+2. **`livespec-c1k9.11` — fleet recipe collapse onto the shared entry point**
+   (`python -m livespec_dev_tooling.fleet.ensure_plugins`, SHIPPED in
+   dev-tooling PR #243). Step-zero `bd-gj-hj8` was RE-DISPATCHED 2026-07-04
+   after git-jsonl's master greened (run 1 implemented it fully but was
+   refused by the red-master gate) — read its state from the ledger.
+   c1k9.11's acceptance now ALSO includes **restoring the
+   `claude-plugin-currency` conformance row to error severity** (demoted to
+   warning in dev-tooling PR #245 because the row shipped ahead of this
+   rollout; the demotion comment in `fleet/_rows_files.py` names this item).
 
-3. **Evaluate `livespec-c1k9.10` (Codex upgrade wiring)** against the
-   now-pinned `ensure-codex-plugins` recipes — the L1b/L1c waves may already
-   have satisfied it. **Close or narrow** it rather than re-implementing.
+3. **Maintainer flags (surface for a verdict, don't self-resolve):**
+   - The `LIVESPEC_MASTER_CI_GREEN=warn` repair lever added to
+     `master_ci_green` in dev-tooling PR #245 may conflict with the recorded
+     wontfix **`li-4x3a45`** (no skip lever on that gate). It broke the
+     red-master repair circularity — without it the repair commit itself
+     could not be authored — and CI never sets it, so CI keeps the hard
+     posture. Confirm the maintainer's post-hoc verdict (keep / reshape /
+     revert); the cleanup-research-and-prompt-cruft session was also asked
+     to flag it.
+   - **Systemic gap:** a dev-tooling release that ADDS a canonical check
+     slug + the direct-push bump-pin fan-out ⇒ a guaranteed red-master
+     window in every consumer until each justfile wires the new slug (the
+     2026-07-03/04 cascade, §Session 2 below). Decide the mechanism: fan-out
+     carries the wiring / aggregate-completeness grace for newly-added
+     slugs / accept the manual wave.
 
 4. **Lower-priority follow-ups:** `livespec-c1k9.2` (reload nudge — lands with
    the gate work), `livespec-c1k9.5` (cache-pruning posture),
    `livespec-c1k9.7` (upstream docs-vs-behavior report — execution),
-   `livespec-dev-tooling-r5m` (uv.lock release drift), and
-   `livespec-dev-tooling-afd` (release-park follow-ups).
+   `livespec-dev-tooling-r5m` (uv.lock release drift — one instance repaired
+   as a PR #245 ride-along; the release-flow root fix stays open),
+   `livespec-dev-tooling-afd` (release-park follow-ups), and **`bd-ib-yig`**
+   (orchestrator tenant, NEW: the Dispatcher's tenant addressing splits
+   between `--repo` and process cwd — `bd` reads the WRONG tenant when they
+   diverge; workaround until fixed: always launch the Dispatcher with cwd
+   inside the target repo).
 
 5. **`livespec-c1k9.6` — spec codification.** Single-source the invariant + gate
    guarantee in core `SPECIFICATION/non-functional-requirements.md` (with the
@@ -111,8 +126,9 @@ Remaining work, in order:
    pinned-ref tip == latest release tag) — already partially evidenced by
    `c1k9.9`'s 24/24 Claude + 4/4 Codex verification — PLUS the
    **deliberately-staled-cache negative test** (gated on `c1k9.3`) PLUS the
-   now-**SATISFIED** live observation of an unattended release (the v0.6.1 cut,
-   recorded below). Close `livespec-c1k9` when all three hold.
+   now-**SATISFIED** live observation of an unattended release (the v0.6.1
+   cut, recorded below; re-proven 2026-07-04 by the v0.32.1 cut + fan-out).
+   Close `livespec-c1k9` when all three hold.
 
 ## Session log
 
@@ -393,3 +409,61 @@ Remaining work, in order:
   `livespec-driver-claude-nm9`, `livespec-driver-codex-045`,
   `livespec-dev-tooling-6da`, `livespec-runtime-m2u`,
   `livespec-dev-tooling-ldd`.
+
+### Session 2 (2026-07-03/04) — Python-wave dispatch; canonical-slug cascade; fleet repair
+
+- **Maintainer approved a five-strand parallel fan-out**; all strands ran.
+- **`livespec-c1k9.10` CLOSED as already-satisfied** (read-only evaluation:
+  the Codex `marketplace upgrade` wiring predates the item — landed
+  2026-06-23 — and the c1k9 waves completed the ref pinning + recipe routing
+  around it; per-repo evidence in the item's closing comment).
+- **Dispatcher operational learnings** (first factory dispatches driven from
+  this thread): items need `status: ready` AND the human approval recorded as
+  an `admission:auto` label (default admission policy is `manual` — the
+  maintainer's fan-out approval IS that approval); the Dispatcher must be
+  launched with **cwd inside the target repo** (bd resolves the tenant from
+  cwd's `.beads/config.yaml`, NOT from `--repo` — divergence reads the WRONG
+  tenant; filed as **`bd-ib-yig`**); pass `--fabro-bin
+  /home/ubuntu/.local/bin/fabro` (not on this shell's PATH).
+- **`be9` + `a62` SHIPPED factory-side** (dev-tooling PRs #241/#243, TDD
+  trailers intact) — but their post-merge janitors red-lined, which unwound
+  into the **canonical-slug cascade**: (a) be9's new check
+  `check-fleet-marketplace-relative-sources` became a canonical slug that NO
+  consumer justfile wired, so the v0.31.3 bump-pin direct-pushes turned
+  core / beads-fabro / git-jsonl masters RED on aggregate-completeness; (b)
+  the check itself FALSE-POSITIVED on the Codex catalog's object-form local
+  source (`{"source": "local", "path": "./..."}`), including dev-tooling's
+  own vendored `.livespec-core/` copy (filed + closed as
+  **`livespec-dev-tooling-b7i`**); (c) a62's `claude-plugin-currency`
+  conformance row shipped at ERROR severity ahead of its rollout item
+  (c1k9.11), reddening dev-tooling's own master; (d) `master_ci_green` then
+  blocked every repair push — the Red leg cannot even be authored while
+  master IS the broken state (working-tree gates read remote/master state).
+- **Repair (dev-tooling PR #245, maintainer-side, merged ~00:08Z):** the
+  check accepts both legitimate catalog shapes; the currency row is demoted
+  to warning until c1k9.11; `master_ci_green` gained the
+  `LIVESPEC_MASTER_CI_GREEN=warn` repair lever (CI never sets it). Landed
+  via the **suite-green TDD leg** (full pytest suite against the staged
+  tree) since a Red commit was structurally impossible; the push rode the
+  lever it shipped. Ride-along: uv.lock regenerated (the `r5m` drift).
+  **v0.32.1 cut + fan-out succeeded unattended** (fan-out's own
+  fleet-conformance preflight passes at warning severity).
+- **Consumer wiring wave:** git-jsonl PR #174 MERGED (master green);
+  beads-fabro PR #281 auto-merge armed; core = THIS PR (justfile wiring; the
+  canonical-slugs projection was restamped by another session in `d8f1837`).
+  Core's `doctor-wiring-completeness-cross-repo` reads each member's
+  COMMITTED master, so it greens only after this PR merges.
+- **`bd-gj-hj8` RE-DISPATCHED** on green git-jsonl master (run 1 had a
+  complete branch-green implementation; only the red-master gate refused it).
+- **c1k9.3 attempts:** run 1 failed in-run review with two blocking
+  design divergences (now a REDISPATCH RIDER comment on the item); run 2
+  died at the Red commit against broken core master. Re-dispatch after this
+  PR merges.
+- **Cross-session coordination:** the `cleanup-research-and-prompt-cruft`
+  session (tmux `livespec3`) had maintainer authorization for a GitHub-side
+  REVERT of a62's `ad807ea` as its own escape from the same deadlock — my
+  session's #245 repair made that unnecessary; it was messaged to stand
+  down (a revert would also destroy the `ensure_plugins` entry point that
+  c1k9.11 needs). Its halted marketplace-fix worktree is superseded by #245.
+- **Redundant in-flight b7i factory run steered to stand down** (the
+  maintainer-side #245 superseded it; no duplicate PR was pushed).
