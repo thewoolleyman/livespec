@@ -149,6 +149,18 @@ and exit code is `0` (NOT an error).
    field for the LLM's self-declaration; the CLI
    resolves it per the four-step precedence.
 
+   Per `SPECIFICATION/spec.md` §"Intent preservation and
+   design-record authority", when a finding reports a
+   conflict between ratified statements, the finding MUST
+   state the cited design record's position on the conflict
+   when such a record exists (not merely the fact of the
+   conflict), MUST NOT treat consistency with the shipped
+   implementation as the presumed resolution, and — when no
+   design record is cited or reachable for the conflicting
+   statements — MUST surface that absence as part of the
+   finding for the maintainer instead of self-resolving the
+   conflict in either direction.
+
 5. **Write payload to temp file.** Write the generated JSON
    to a temp file. Pass the tempfile path as
    `--findings-json` to the CLI.
