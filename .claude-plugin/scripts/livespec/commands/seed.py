@@ -53,6 +53,7 @@ from livespec.commands._seed_railway_emits import (
     _run_post_step_doctor,
 )
 from livespec.commands._seed_railway_writes import (
+    _refuse_when_seed_targets_exist,
     _write_main_spec_files,
     _write_main_spec_history_v001,
     _write_sub_spec_files,
@@ -160,7 +161,8 @@ def main(*, argv: list[str] | None = None) -> int:
 
     Threads argv through the railway:
       parse_argv -> read --seed-json -> jsonc.loads ->
-      validate_seed_input -> write .livespec.jsonc ->
+      validate_seed_input -> refuse when any declared
+      target exists (idempotency) -> write .livespec.jsonc ->
       write main-spec files -> write sub-spec files ->
       write main-spec history/v001/ -> write sub-spec
       history/v001/ -> emit seed.md proposed-change ->
@@ -179,6 +181,12 @@ def main(*, argv: list[str] | None = None) -> int:
             _load_seed_json(namespace=namespace)
             .bind(lambda text: _parse_payload(text=text))
             .bind(lambda payload: _validate_payload(payload=payload))
+            .bind(
+                lambda si: _refuse_when_seed_targets_exist(
+                    seed_input=si,
+                    project_root=_resolve_project_root(namespace=namespace),
+                ),
+            )
             .bind(
                 lambda si: _write_livespec_config(
                     seed_input=si,

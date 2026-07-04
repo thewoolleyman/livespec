@@ -29,11 +29,12 @@ from pathlib import Path
 
 from returns.io import IOResult
 
-from livespec.errors import LivespecError
+from livespec.errors import LivespecError, PreconditionError
 from livespec.io import fs
 from livespec.schemas.dataclasses.seed_input import SeedInput
 
 __all__: list[str] = [
+    "_refuse_when_seed_targets_exist",
     "_write_main_spec_files",
     "_write_main_spec_history_v001",
     "_write_sub_spec_files",
@@ -48,6 +49,55 @@ __all__: list[str] = [
 # (≥ 4 parts).
 _MIN_PARTS_MAIN_SPEC: int = 2
 _MIN_PARTS_SUB_SPEC: int = 4
+
+
+def _declared_target_paths(*, seed_input: SeedInput, project_root: Path) -> list[Path]:
+    """Every payload-declared target path: main `files[]` + each sub-spec's."""
+    targets: list[Path] = []
+    for entry in seed_input.files:
+        targets.append(project_root / entry["path"])
+    for sub_spec in seed_input.sub_specs:
+        files_list = sub_spec["files"]
+        if not isinstance(files_list, list):
+            continue
+        for entry in files_list:
+            if not isinstance(entry, dict):
+                continue
+            targets.append(project_root / str(entry["path"]))
+    return targets
+
+
+def _refuse_when_seed_targets_exist(
+    *,
+    seed_input: SeedInput,
+    project_root: Path,
+) -> IOResult[SeedInput, LivespecError]:
+    """Idempotency guard: refuse before ANY write when a declared target exists.
+
+    Per prose/seed.md, seed refuses with exit 3 when any template-
+    declared target file already exists — a re-run against an
+    already-seeded project must never clobber the live spec tree.
+    Runs between payload validation and the config write so the
+    refusal rail leaves the tree byte-identical.
+    """
+    existing = [
+        str(target)
+        for target in _declared_target_paths(
+            seed_input=seed_input,
+            project_root=project_root,
+        )
+        if target.exists()
+    ]
+    if existing:
+        return IOResult.from_failure(
+            PreconditionError(
+                "seed: refusing to overwrite existing target file(s) "
+                "(idempotency): " + ", ".join(existing) + ". Seed only "
+                "authors a brand-new spec tree; use the propose-change "
+                "operation to amend an existing one.",
+            ),
+        )
+    return IOResult.from_value(seed_input)
 
 
 def _write_main_spec_files(

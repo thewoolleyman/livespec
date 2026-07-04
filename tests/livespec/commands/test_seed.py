@@ -1894,3 +1894,67 @@ def test_seed_module_declares_hkt_erosion_pragma() -> None:
         "reportUnknownVariableType=none, "
         "reportUnknownArgumentType=none\n",
     ), "commands/seed.py must declare the HKT-erosion pragma as its first line"
+
+
+def test_seed_main_refuses_with_precondition_when_main_spec_target_exists(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Re-seed refusal: an existing payload-declared target → exit 3, untouched.
+
+    Per `prose/seed.md`: seed "refuses with exit 3 (idempotency) when
+    any template-declared target file already exists". The guard MUST
+    fire before ANY write — a re-run of seed against an already-seeded
+    project must not clobber the live spec tree (found live 2026-07-04
+    against the seeded resume adopter repo; ledger bug livespec-igls).
+    """
+    project_root = tmp_path / "proj"
+    spec_dir = project_root / "SPECIFICATION"
+    spec_dir.mkdir(parents=True)
+    existing = spec_dir / "spec.md"
+    original_content = "# Pre-existing spec — must not be clobbered\n"
+    _ = existing.write_text(original_content, encoding="utf-8")
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path)
+    exit_code = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    assert exit_code == 3
+    assert existing.read_text(encoding="utf-8") == original_content
+    assert not (
+        project_root / ".livespec.jsonc"
+    ).exists(), "the idempotency guard must fire before the config write stage"
+    assert not (
+        spec_dir / "history"
+    ).exists(), "no history/v001 materialization may happen on the refusal rail"
+
+
+def test_seed_main_refuses_with_precondition_when_sub_spec_target_exists(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Re-seed refusal also covers sub-spec payload-declared targets."""
+    project_root = tmp_path / "proj"
+    sub_spec_file = project_root / "SPECIFICATION" / "templates" / "livespec" / "spec.md"
+    sub_spec_file.parent.mkdir(parents=True)
+    original_content = "# Pre-existing sub-spec — must not be clobbered\n"
+    _ = sub_spec_file.write_text(original_content, encoding="utf-8")
+    sub_specs: list[dict[str, object]] = [
+        {
+            "template_name": "livespec",
+            "files": [
+                {
+                    "path": "SPECIFICATION/templates/livespec/spec.md",
+                    "content": "# Overwriting sub-spec content\n",
+                },
+            ],
+        },
+    ]
+    payload_path = _write_valid_seed_payload(tmp_path=tmp_path, sub_specs=sub_specs)
+    exit_code = seed.main(
+        argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
+    )
+    assert exit_code == 3
+    assert sub_spec_file.read_text(encoding="utf-8") == original_content
+    assert not (
+        project_root / "SPECIFICATION" / "spec.md"
+    ).exists(), "the refusal must leave the whole tree unwritten, not just the sub-spec"
