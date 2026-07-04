@@ -260,23 +260,67 @@ record it "already present".
 Record this in the final idempotency report: "session self-update
 hook — already present / added / updated".
 
-## Phase 4 — Do NOT hand-author `.livespec.jsonc`
+## Phase 4 — Record the orchestrator selection in `.livespec.jsonc`
 
-If the survey found no `.livespec.jsonc`: leave it absent. The seed
-operation is the ONLY livespec operation designed to run before
-`.livespec.jsonc` exists, and its CLI **writes** `.livespec.jsonc`
-itself — atomically, together with the spec tree — during
-`/livespec:seed`. Hand-authoring the config first either duplicates
-what seed would write or makes seed refuse (it refuses when
-template-declared target files already exist).
+Choosing an orchestrator in Phase 2 has TWO independent effects, and
+the install is not done until BOTH are in place:
 
-If the survey found an existing `.livespec.jsonc` (already-governed
-project): leave its contents alone, with one exception — if an
-orchestrator was chosen in Phase 2 and the file has no section for
-it, tell the user the orchestrator's section (its `format`, `compat`
-pin — a concrete release tag, not a branch name — and its
-store-specific keys) is added per that orchestrator plugin's own
-documentation, and offer to do it.
+- **Enablement** (Phase 3) — the `.claude/settings.json`
+  `enabledPlugins` entry (Claude) or the `codex plugin add`
+  registration (Codex) makes the orchestrator's `/<plugin>:*` skills
+  *available* in the harness.
+- **Selection** (this phase) — the `implementation.plugin` key in
+  `.livespec.jsonc` *names* that orchestrator as THIS project's
+  active one. This is the key livespec's OWN prose reads to route to
+  the orchestrator: `/livespec:doctor`'s `capture-as-work-item`
+  disposition, the auto-memory redirect hook, and `/livespec:revise`'s
+  post-step gap check each resolve their work-item front-end from
+  `implementation.plugin` — never from harness enablement. Enabling
+  the plugin WITHOUT setting this key leaves the skills installed but
+  unreachable through livespec: the exact symptom
+  "`capture-as-work-item` isn't offered — no impl orchestrator
+  (`implementation.plugin`) is configured."
+
+Never PRE-CREATE `.livespec.jsonc` before seed runs, but DO record the
+selection once the file exists:
+
+- **No `.livespec.jsonc` yet (greenfield / brownfield):** leave it
+  absent for now. `/livespec:seed` is the only operation designed to
+  run before the config exists, and its CLI writes the file itself,
+  atomically with the spec tree. (Seed refuses only when a
+  template-declared *spec* file already exists, and it PRESERVES an
+  existing `.livespec.jsonc` verbatim rather than clobbering it — so
+  it is the spec tree, not this config file, that a premature write
+  would collide with.) Recording `implementation.plugin` for this
+  project therefore happens AFTER seed, in Phase 5.
+- **Existing `.livespec.jsonc` (already-governed project, or a re-run
+  after seed):** if an orchestrator was chosen in Phase 2, MERGE the
+  selection key into the file — without prompting; this is the
+  mechanical consequence of the Phase-2 choice, not a new decision —
+  preserving all other keys and comments:
+
+  ```jsonc
+  { "implementation": { "plugin": "<chosen-orchestrator>" } }
+  ```
+
+  Substitute the chosen plugin name (e.g.
+  `livespec-orchestrator-git-jsonl` or
+  `livespec-orchestrator-beads-fabro`). Idempotency: if the key is
+  already present and names the chosen orchestrator, record it
+  "already present"; if it names a DIFFERENT orchestrator, that is a
+  conflict — surface it to the user rather than silently overwriting.
+
+  SEPARATELY, the chosen orchestrator MAY own a top-level config
+  section named for itself (`"<plugin-name>": { … }`) carrying its
+  `format`, a `compat` pin (a concrete release tag, not a branch
+  name), and any store-specific keys — add it per that orchestrator
+  plugin's own documentation. For `livespec-orchestrator-git-jsonl`
+  this section is OPTIONAL (the store defaults to `work-items.jsonl`
+  at the project root), so a bare `implementation.plugin` is already a
+  complete, working selection. For `livespec-orchestrator-beads-fabro`
+  the section carries the Dolt tenant connection block and needs
+  values from that plugin's onboarding; offer to add it, and note the
+  post-seed infrastructure (Phase 5) it depends on.
 
 ## Phase 5 — Verify, then hand off to the spec lifecycle
 
@@ -297,9 +341,18 @@ documentation, and offer to do it.
      (and writes `.livespec.jsonc`). For brownfield, note the
      interview will draw on the existing codebase. Offer to start it
      now if the user is ready — seeding is an attended dialogue, not
-     an unattended step.
+     an unattended step. **If seed runs in this session AND an
+     orchestrator was chosen (not deferred), record the selection
+     immediately afterward** per Phase 4's already-governed rule —
+     seed writes only the skeleton `{ "template": … }` config, so
+     `implementation.plugin` must be merged into the now-existing
+     `.livespec.jsonc` before the work-item routing (`doctor`'s
+     `capture-as-work-item`, the auto-memory redirect, `revise`'s gap
+     check) becomes reachable.
    - **Already governed**: run `/livespec:doctor` and surface its
-     findings. Do not seed.
+     findings. Do not seed. (Phase 4 has already recorded
+     `implementation.plugin` if an orchestrator was chosen, so
+     `capture-as-work-item` is offered on every non-`pass` finding.)
 3. **If beads-fabro was chosen**, note (do not execute) the post-seed
    infrastructure that remains before implementation work-items can
    flow, per the orchestrator plugin's own documentation: the `bd`
