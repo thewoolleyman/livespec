@@ -143,12 +143,22 @@ Three plugins (or two, if the orchestrator was deferred): **core**
 **orchestrator**. Everything pins `release` — released builds are the
 validated artifact; never install from a default branch.
 
+**Each Driver registers ONLY in its own harness's mechanism.** The
+Claude Driver goes in the project's `.claude/settings.json`; the
+Codex Driver goes in `~/.codex/config.toml` via the `codex` CLI.
+NEVER add `livespec-driver-codex` to `.claude/settings.json` — that
+repo ships no Claude packaging, so Claude's marketplace add fails on
+every session start (and never add `livespec-driver-claude` via the
+`codex` CLI). "Both Drivers" therefore means: do the Claude block
+below AND run the Codex commands below — not cross-registering
+either Driver in the other harness's config. Core and the
+orchestrator DO register in both places when both Drivers are
+chosen (each harness resolves them independently).
+
 **Claude Code** — merge (do not overwrite) the following into the
 project's `.claude/settings.json`, keeping existing keys; substitute
 the chosen orchestrator for the `livespec-orchestrator-beads-fabro`
-lines, or drop them if deferred; add the `livespec-driver-codex`
-analogues only if "both Drivers" was chosen (the Codex Driver itself
-still installs via the Codex CLI below):
+lines, or drop them if deferred:
 
 ```jsonc
 {
@@ -213,7 +223,13 @@ documentation, and offer to do it.
 1. **Plugins loaded**: `/livespec:help` (Codex:
    `codex exec 'livespec:help'`) lists the eight operations. If it
    does not, the harness has not reloaded plugins — resolve that
-   before continuing.
+   before continuing. A Driver installed for the OTHER harness
+   cannot be verified from this session: tell the user to open that
+   harness in this project and verify there (Claude Code: start a
+   session — or `/reload-plugins` in a running one — then
+   `/livespec:help`; Codex: `codex exec 'livespec:help'`), and mark
+   that Driver "installed — verification pending in <harness>" in
+   the final report rather than claiming it verified.
 2. **By classification**:
    - **Greenfield / brownfield** (no spec yet): tell the user the
      project is seed-ready, and that running `/livespec:seed` starts
