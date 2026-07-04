@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.5](https://github.com/thewoolleyman/livespec/compare/v0.6.4...v0.6.5) (2026-07-04)
+
+
+### Bug Fixes
+
+* prune-history no-op finding names its actual cause ([24e94cf](https://github.com/thewoolleyman/livespec/commit/24e94cf51b7dac53fb56426fbbbe50aa191d9ad0))
+
 ## [0.6.4](https://github.com/thewoolleyman/livespec/compare/v0.6.3...v0.6.4) (2026-07-04)
 
 
