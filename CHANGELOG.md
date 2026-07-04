@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.4](https://github.com/thewoolleyman/livespec/compare/v0.6.3...v0.6.4) (2026-07-04)
+
+
+### Bug Fixes
+
+* seed refuses (exit 3) when a template-declared target file already exists ([2912df9](https://github.com/thewoolleyman/livespec/commit/2912df9707e164e6ee52d737cb82a383d2c93de9))
+
 ## [0.6.3](https://github.com/thewoolleyman/livespec/compare/v0.6.2...v0.6.3) (2026-07-04)
 
 
