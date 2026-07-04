@@ -723,6 +723,18 @@ contract diagram) and their rationale live in
 
 ## Enforcement-suite and tooling discipline
 
+- **"Done" means rolled out and exercised live — never merely merged +
+  CI-green + AI-accepted.** Completion of any behavior-bearing change
+  requires driving the SHIPPED behavior end-to-end in its real
+  environment, including every cross-boundary shape the change claims to
+  support (a `--repo` flag exercised cross-repo, a cross-tenant path
+  exercised against a second real tenant — not only the same-repo happy
+  path its tests cover). The post-merge acceptance leg (`accept:`) and
+  any "track complete" report MUST carry live-exercise evidence journaled
+  on the item; an overseer/operator MUST NOT trigger `accept:` without
+  it. Maintainer-declared 2026-07-04, after the `approve:` operator
+  surface shipped green through the full factory gate and its FIRST real
+  cross-repo use found a wrong-tenant correctness bug.
 - **The task runner is the single source of truth.** The justfile owns every
   check/build/test/lint/format/coverage invocation; lefthook and CI delegate via
   `just <target>` and never call underlying tools directly.
