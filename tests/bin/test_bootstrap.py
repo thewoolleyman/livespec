@@ -81,9 +81,9 @@ def test_bootstrap_fails_loudly_when_running_plugin_is_stale(
 ) -> None:
     """A stale running gitCommitSha refuses to proceed before command imports."""
     bootstrap_module = _import_bootstrap()
-    plugin_root = tmp_path / "cache" / "livespec"
-    plugin_root.mkdir(parents=True)
     home = tmp_path / "home"
+    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
     marketplace = home / ".claude" / "plugins" / "marketplaces" / "livespec"
     marketplace.mkdir(parents=True)
     registry = home / ".claude" / "plugins" / "installed_plugins.json"
@@ -91,13 +91,18 @@ def test_bootstrap_fails_loudly_when_running_plugin_is_stale(
         json.dumps(
             {
                 "version": 2,
-                "plugins": [
-                    {
-                        "name": "livespec",
-                        "installPath": str(plugin_root),
-                        "gitCommitSha": "111111111111",
-                    }
-                ],
+                "plugins": {
+                    "livespec@livespec": [
+                        {
+                            "scope": "user",
+                            "installPath": str(plugin_root),
+                            "version": "0.6.1",
+                            "installedAt": "2026-07-04T00:00:00.000Z",
+                            "lastUpdated": "2026-07-04T00:01:00.000Z",
+                            "gitCommitSha": "1111111111112222",
+                        }
+                    ]
+                },
             }
         ),
         encoding="utf-8",
@@ -124,9 +129,9 @@ def test_bootstrap_proceeds_when_running_plugin_matches_expected_pin(
 ) -> None:
     """The registry gitCommitSha is the primary running-build source."""
     bootstrap_module = _import_bootstrap()
-    plugin_root = tmp_path / "cache" / "semver-name"
-    plugin_root.mkdir(parents=True)
     home = tmp_path / "home"
+    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
     marketplace = home / ".claude" / "plugins" / "marketplaces" / "livespec"
     marketplace.mkdir(parents=True)
     registry = home / ".claude" / "plugins" / "installed_plugins.json"
@@ -134,13 +139,18 @@ def test_bootstrap_proceeds_when_running_plugin_matches_expected_pin(
         json.dumps(
             {
                 "version": 2,
-                "plugins": [
-                    {
-                        "name": "livespec",
-                        "installPath": str(plugin_root),
-                        "gitCommitSha": "222222222222",
-                    }
-                ],
+                "plugins": {
+                    "livespec@livespec": [
+                        {
+                            "scope": "user",
+                            "installPath": str(plugin_root),
+                            "version": "0.6.1",
+                            "installedAt": "2026-07-04T00:00:00.000Z",
+                            "lastUpdated": "2026-07-04T00:01:00.000Z",
+                            "gitCommitSha": "2222222222223333",
+                        }
+                    ]
+                },
             }
         ),
         encoding="utf-8",
@@ -168,9 +178,9 @@ def test_bootstrap_falls_back_to_sha_cache_dir_when_registry_lacks_commit(
 ) -> None:
     """A 12-hex cache directory basename is a fallback running-build source."""
     bootstrap_module = _import_bootstrap()
-    plugin_root = tmp_path / "cache" / "333333333333"
-    plugin_root.mkdir(parents=True)
     home = tmp_path / "home"
+    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "333333333333"
+    plugin_root.mkdir(parents=True)
     marketplace = home / ".claude" / "plugins" / "marketplaces" / "livespec"
     marketplace.mkdir(parents=True)
     registry = home / ".claude" / "plugins" / "installed_plugins.json"
@@ -178,7 +188,7 @@ def test_bootstrap_falls_back_to_sha_cache_dir_when_registry_lacks_commit(
         json.dumps(
             {
                 "version": 2,
-                "plugins": [{"name": "livespec", "installPath": str(plugin_root)}],
+                "plugins": {"livespec@livespec": [{"installPath": str(plugin_root)}]},
             }
         ),
         encoding="utf-8",
@@ -202,11 +212,11 @@ def test_bootstrap_falls_back_to_sha_cache_dir_when_registry_lacks_commit(
 def test_bootstrap_warns_by_default_when_currency_is_unknown(
     *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Unknown currency warns by default so local sessions can still proceed."""
+    """Unknown installed-cache currency warns by default so local sessions can still proceed."""
     bootstrap_module = _import_bootstrap()
-    plugin_root = tmp_path / "cache" / "semver-name"
-    plugin_root.mkdir(parents=True)
     home = tmp_path / "home"
+    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
     monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
     monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
     monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
@@ -222,11 +232,11 @@ def test_bootstrap_warns_by_default_when_currency_is_unknown(
 def test_bootstrap_warns_by_default_when_running_build_is_unknown_but_expected_pin_is_known(
     *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Unknown running-build currency is not stale unless the fail lever is set."""
+    """Unknown installed-cache running-build currency is not stale unless fail is set."""
     bootstrap_module = _import_bootstrap()
-    plugin_root = tmp_path / "cache" / "semver-name"
-    plugin_root.mkdir(parents=True)
     home = tmp_path / "home"
+    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
     marketplace = home / ".claude" / "plugins" / "marketplaces" / "livespec"
     marketplace.mkdir(parents=True)
     monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
@@ -248,14 +258,36 @@ def test_bootstrap_warns_by_default_when_running_build_is_unknown_but_expected_p
     assert str(_BUNDLE_SCRIPTS) in sys.path
 
 
+def test_bootstrap_skips_currency_gate_for_repo_checkout_even_when_fail_is_set(
+    *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Checkout-mode execution is outside the installed-plugin currency gate."""
+    bootstrap_module = _import_bootstrap()
+    home = tmp_path / "home"
+    plugin_root = tmp_path / "repo" / ".claude-plugin"
+    plugin_root.mkdir(parents=True)
+    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
+    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
+    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
+    monkeypatch.setenv("LIVESPEC_CURRENCY_GATE", "fail")
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    bootstrap_module.bootstrap()  # type: ignore[attr-defined]
+
+    captured = capsys.readouterr()
+    assert "running from a repo checkout; plugin-currency gate not applicable" in captured.err
+    assert "livespec plugin currency could not be verified" not in captured.err
+    assert str(_BUNDLE_SCRIPTS) in sys.path
+
+
 def test_bootstrap_fails_when_currency_is_unknown_and_gate_is_fail(
     *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """CI and dispatch can promote unknown currency from warning to failure."""
+    """CI and dispatch can promote installed-cache unknown currency to failure."""
     bootstrap_module = _import_bootstrap()
-    plugin_root = tmp_path / "cache" / "semver-name"
-    plugin_root.mkdir(parents=True)
     home = tmp_path / "home"
+    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
     monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
     monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
     monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))

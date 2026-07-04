@@ -57,6 +57,102 @@ def test_registry_helpers_reject_unknown_shapes(
     assert bootstrap_module._read_json_object(path=registry) is None
 
 
+def test_registry_helpers_read_real_installed_plugin_registry_shape(
+    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The installed-plugin registry is keyed by plugin@marketplace."""
+    bootstrap_module = _import_bootstrap()
+    plugin_root = tmp_path / "cache" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
+    home = tmp_path / "home"
+    registry = home / ".claude" / "plugins" / "installed_plugins.json"
+    registry.parent.mkdir(parents=True)
+    registry.write_text(
+        json.dumps(
+            {
+                "version": 2,
+                "plugins": {
+                    "broken@marketplace": {"installPath": str(plugin_root)},
+                    "livespec@livespec": [
+                        {
+                            "scope": "user",
+                            "installPath": str(plugin_root),
+                            "version": "0.6.1",
+                            "installedAt": "2026-07-04T00:00:00.000Z",
+                            "lastUpdated": "2026-07-04T00:01:00.000Z",
+                            "gitCommitSha": "abcdef1234567890",
+                        }
+                    ],
+                    "other@marketplace": [
+                        {
+                            "scope": "user",
+                            "installPath": str(tmp_path / "other"),
+                            "version": "1.0.0",
+                            "installedAt": "2026-07-04T00:00:00.000Z",
+                            "lastUpdated": "2026-07-04T00:01:00.000Z",
+                            "gitCommitSha": "1111111111112222",
+                        }
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    assert (
+        bootstrap_module._running_build_id_from_registry(plugin_root=plugin_root) == "abcdef123456"
+    )
+
+
+def test_registry_helpers_ignore_legacy_list_registry_shape(
+    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A synthetic list-shaped registry is not a supported source."""
+    bootstrap_module = _import_bootstrap()
+    plugin_root = tmp_path / "cache" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
+    home = tmp_path / "home"
+    registry = home / ".claude" / "plugins" / "installed_plugins.json"
+    registry.parent.mkdir(parents=True)
+    registry.write_text(
+        json.dumps(
+            {
+                "version": 2,
+                "plugins": [
+                    {
+                        "scope": "user",
+                        "installPath": str(plugin_root),
+                        "version": "0.6.1",
+                        "installedAt": "2026-07-04T00:00:00.000Z",
+                        "lastUpdated": "2026-07-04T00:01:00.000Z",
+                        "gitCommitSha": "abcdef1234567890",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    assert bootstrap_module._running_build_id_from_registry(plugin_root=plugin_root) is None
+
+
+def test_installed_plugin_cache_path_detection_covers_claude_and_codex(*, tmp_path: Path) -> None:
+    """Only installed plugin-cache roots are inside the currency gate."""
+    bootstrap_module = _import_bootstrap()
+
+    assert bootstrap_module._is_installed_plugin_cache_path(
+        plugin_root=tmp_path / "home" / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
+    )
+    assert bootstrap_module._is_installed_plugin_cache_path(
+        plugin_root=tmp_path / "home" / ".codex" / "plugins" / "cache" / "livespec" / "0.6.1"
+    )
+    assert not bootstrap_module._is_installed_plugin_cache_path(
+        plugin_root=tmp_path / "repo" / ".claude-plugin"
+    )
+
+
 def test_git_rev_parse_head_accepts_success(
     *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
