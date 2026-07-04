@@ -89,21 +89,25 @@ Remaining work, in order:
    warning in dev-tooling PR #245 because the row shipped ahead of this
    rollout; the demotion comment in `fleet/_rows_files.py` names this item).
 
-3. **Maintainer flags (surface for a verdict, don't self-resolve):**
-   - The `LIVESPEC_MASTER_CI_GREEN=warn` repair lever added to
-     `master_ci_green` in dev-tooling PR #245 may conflict with the recorded
-     wontfix **`li-4x3a45`** (no skip lever on that gate). It broke the
-     red-master repair circularity — without it the repair commit itself
-     could not be authored — and CI never sets it, so CI keeps the hard
-     posture. Confirm the maintainer's post-hoc verdict (keep / reshape /
-     revert); the cleanup-research-and-prompt-cruft session was also asked
-     to flag it.
-   - **Systemic gap:** a dev-tooling release that ADDS a canonical check
-     slug + the direct-push bump-pin fan-out ⇒ a guaranteed red-master
-     window in every consumer until each justfile wires the new slug (the
-     2026-07-03/04 cascade, §Session 2 below). Decide the mechanism: fan-out
-     carries the wiring / aggregate-completeness grace for newly-added
-     slugs / accept the manual wave.
+3. **Maintainer flags:**
+   - **RESOLVED — lever REJECTED (maintainer verdict, 2026-07-04).** The
+     `LIVESPEC_MASTER_CI_GREEN=warn` repair lever briefly added in
+     dev-tooling PR #245 was ruled absolutely unacceptable: NO escape gates
+     on CI-green gates, ever — they WILL be abused; the remedy for a gate
+     deadlock is a server-side REVERT PR of the breaking change and a
+     re-land in the right order. Removed same day via dev-tooling PR #249
+     (impl reverted byte-for-byte; a regression test pins the env var to
+     having NO effect). `li-4x3a45` upheld and broadened; the durable rule
+     is codified in core `.ai/ci-gate-discipline.md` (referenced from
+     AGENTS.md) — read it BEFORE touching any CI-green gate.
+   - **Systemic gap (still open):** a dev-tooling release that ADDS a
+     canonical check slug + the direct-push bump-pin fan-out ⇒ a guaranteed
+     red-master window in every consumer until each justfile wires the new
+     slug (the 2026-07-03/04 cascade, §Session 2 below). Decide the
+     mechanism: fan-out carries the wiring / aggregate-completeness grace
+     for newly-added slugs / accept the manual wave. Per the new
+     `.ai/ci-gate-discipline.md`, enforcement must not land at error
+     severity ahead of the rollout it asserts.
 
 4. **Lower-priority follow-ups:** `livespec-c1k9.2` (reload nudge — lands with
    the gate work), `livespec-c1k9.5` (cache-pruning posture),

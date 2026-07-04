@@ -477,6 +477,11 @@ existing file):
   planning or driving any adopter's onboarding (registration is
   fleet-maintainer work HERE; onboarding is END-USER work in the adopter repo
   via `docs/installation.md` → `docs/livespec-installation-prompt.md`).
+- **`.ai/ci-gate-discipline.md`** — read BEFORE touching any CI-green or
+  merge-blocking gate (e.g. `check-master-ci-green`) and whenever such a gate
+  blocks a repair. NEVER add a lever/env-var/escape mechanism to such a gate
+  or demote it to warning — revert the breaking change (server-side revert PR
+  when local commits are blocked) and re-land in the right order.
 
 ## Working with the maintainer
 
