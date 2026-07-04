@@ -59,37 +59,47 @@ SessionStart `ensure-plugins` hooks de-drifted onto committed settings, the
 L0b release-park guard, and the L1b marketplace ref-pinning have all merged.
 The invariant was proven LIVE mid-rollout — an unattended `fix:` push cut
 v0.6.1 and fast-forwarded `refs/heads/release` with NO human in the loop (see
-§"Fast-path implementation waves"). `livespec-c1k9.1`, `.8`, `.9`, and `.10`
-are CLOSED; dev-tooling `be9`/`a62` SHIPPED (PRs #241/#243). Status is READ
-from the ledger, never from this file. What remains is the Python currency
-gate, the recipe collapse, the spec codification, and the mechanized
-exit-gate assertion — plus the Session 2 cascade residue (two maintainer
-flags in item 3 below).
+§"Fast-path implementation waves"). `livespec-c1k9.1`, `.3`, `.8`, `.9`,
+`.10`, and `.11` are CLOSED (6/11); `.4` is NARROWED to the Codex-side gate
+operands. The gate itself is LANDED AND LIVE: `_bootstrap.py` fail-loud
+staleness gate (PRs #848 + #857), ci.yml `LIVESPEC_CURRENCY_GATE=fail`
+(re-landed #859, master green with it), the fleet-wide one-line
+`ensure-plugins` wrapper, and the `claude-plugin-currency` conformance row
+at ERROR severity over a verified-clean 8-member fleet. Status is READ from
+the ledger, never from this file. What remains is the spec codification, the
+narrowed Codex gate leg, the low-priority items, and the exit-gate
+assertion.
 
 Remaining work, in order:
 
-1. **Re-dispatch `livespec-c1k9.3`** (currency gate in core `_bootstrap.py`)
-   once core master is GREEN — the PR carrying THIS handoff update also wires
-   `check-fleet-marketplace-relative-sources` into core's `just check`, the
-   last piece of core's master repair. The item carries a **REDISPATCH
-   RIDER** comment with the two blocking design-divergence fixes from run 1
-   (expected id via `git rev-parse HEAD` in the ref-pinned marketplace clone,
-   NOT a PINNED-REF file; `running_build_id` PRIMARY source = the registry's
-   `gitCommitSha`, path basename only as 12-hex fallback); run 2 died at the
-   Red commit against the then-broken master state. Design:
-   `research/design.md` §L2b. Includes the **staled-cache NEGATIVE test**.
+1. **`livespec-c1k9.6` — spec codification** (the next ripe piece): single-
+   source the invariant + gate guarantee in core
+   `SPECIFICATION/non-functional-requirements.md` (with the
+   `tests/heading-coverage.json` co-edit per the revise discipline); the
+   dev-tooling `contracts.md` parity piece rides `livespec-dev-tooling-afd`.
+   The mechanism to codify is now fully LANDED and verified: the
+   `_bootstrap.py` gate (PRs #848 + #857 — registry dict-of-lists shape,
+   checkout-mode out-of-domain skip, staled-cache negative tests), the
+   ci.yml `LIVESPEC_CURRENCY_GATE=fail` lever (re-landed #859, master green
+   with it live), the fleet-wide one-line `ensure-plugins` wrapper, and the
+   `claude-plugin-currency` conformance row at ERROR severity.
 
-2. **`livespec-c1k9.11` — fleet recipe collapse onto the shared entry point**
-   (`python -m livespec_dev_tooling.fleet.ensure_plugins`, SHIPPED in
-   dev-tooling PR #243). Step-zero `bd-gj-hj8` was RE-DISPATCHED 2026-07-04
-   after git-jsonl's master greened (run 1 implemented it fully but was
-   refused by the red-master gate) — read its state from the ledger.
-   c1k9.11's acceptance now ALSO includes **restoring the
-   `claude-plugin-currency` conformance row to error severity** (demoted to
-   warning in dev-tooling PR #245 because the row shipped ahead of this
-   rollout; the demotion comment in `fleet/_rows_files.py` names this item).
+2. **`livespec-c1k9.4` (NARROWED) — Codex-side gate operands.** The gate
+   runs under `codex exec` but reads Claude-only state (evidence in the
+   item's comment); extend it to resolve the Codex running build
+   (`~/.codex/plugins/cache/.../<ver>` and/or `codex plugin list --json`)
+   vs the Codex marketplace clone's `release` tip. Same file as the landed
+   gate work. NOTE: core-repo factory dispatch currently dies at fabro's
+   30s checkpoint-commit timeout (`bd-ib-6ka`, orchestrator tenant) — until
+   that lands, expect to publish maintainer-side by sandbox extraction (the
+   pattern used for #848/#857, recorded in §Session 2).
 
-3. **Maintainer flags:**
+3. **Factory-half of the D2 lever:** `bd-ib-4nk` (orchestrator tenant) —
+   the Dispatcher's run-config overlay projects `LIVESPEC_CURRENCY_GATE=fail`
+   into sandbox env. Dispatchable in the orchestrator repo (its own factory
+   is unaffected by `bd-ib-6ka`'s core-sized gates).
+
+4. **Maintainer flags:**
    - **RESOLVED — lever REJECTED (maintainer verdict, 2026-07-04).** The
      `LIVESPEC_MASTER_CI_GREEN=warn` repair lever briefly added in
      dev-tooling PR #245 was ruled absolutely unacceptable: NO escape gates
@@ -109,30 +119,30 @@ Remaining work, in order:
      `.ai/ci-gate-discipline.md`, enforcement must not land at error
      severity ahead of the rollout it asserts.
 
-4. **Lower-priority follow-ups:** `livespec-c1k9.2` (reload nudge — lands with
+5. **Lower-priority follow-ups:** `livespec-c1k9.2` (reload nudge — lands with
    the gate work), `livespec-c1k9.5` (cache-pruning posture),
    `livespec-c1k9.7` (upstream docs-vs-behavior report — execution),
-   `livespec-dev-tooling-r5m` (uv.lock release drift — one instance repaired
-   as a PR #245 ride-along; the release-flow root fix stays open),
-   `livespec-dev-tooling-afd` (release-park follow-ups), and **`bd-ib-yig`**
-   (orchestrator tenant, NEW: the Dispatcher's tenant addressing splits
-   between `--repo` and process cwd — `bd` reads the WRONG tenant when they
-   diverge; workaround until fixed: always launch the Dispatcher with cwd
-   inside the target repo).
-
-5. **`livespec-c1k9.6` — spec codification.** Single-source the invariant + gate
-   guarantee in core `SPECIFICATION/non-functional-requirements.md` (with the
-   `tests/heading-coverage.json` co-edit per the revise discipline); the
-   dev-tooling `contracts.md` parity piece rides `livespec-dev-tooling-afd`.
+   `livespec-dev-tooling-r5m` (uv.lock release drift — two instances repaired
+   as ride-alongs in dev-tooling PRs #245/#249; the release-flow root fix
+   stays open), `livespec-dev-tooling-afd` (release-park follow-ups), and the
+   **orchestrator robustness family** from this session's incidents (all
+   orchestrator tenant, backlog): `bd-ib-yig` (cwd tenant addressing),
+   `bd-ib-lgv` (no-workflow-edits boundary declared + enforced pre-push),
+   `bd-ib-6vu` (parked-run credential re-projection), `bd-ib-18r` (blocked
+   as a first-class Dispatcher outcome), `bd-ib-6ka` (fabro 30s checkpoint
+   timeout vs core's multi-minute gates — the reason core items currently
+   publish maintainer-side).
 
 6. **EPIC EXIT GATE.** The mechanized **fleet-wide fresh-session assertion**
    (every repo × Claude interactive × `codex exec`: running `gitCommitSha` ==
    pinned-ref tip == latest release tag) — already partially evidenced by
    `c1k9.9`'s 24/24 Claude + 4/4 Codex verification — PLUS the
-   **deliberately-staled-cache negative test** (gated on `c1k9.3`) PLUS the
-   now-**SATISFIED** live observation of an unattended release (the v0.6.1
-   cut, recorded below; re-proven 2026-07-04 by the v0.32.1 cut + fan-out).
-   Close `livespec-c1k9` when all three hold.
+   **deliberately-staled-cache negative test** (now IN-TREE via `c1k9.3`,
+   `tests/bin/test_bootstrap*.py`) PLUS the now-**SATISFIED** live
+   observation of an unattended release (v0.6.1; re-proven repeatedly
+   2026-07-04: v0.32.1/v0.32.2/v0.33.x and core v0.6.3 all cut + fanned out
+   unattended). Close `livespec-c1k9` when all three hold — the Codex leg of
+   the assertion depends on the narrowed `c1k9.4`.
 
 ## Session log
 
@@ -470,4 +480,65 @@ Remaining work, in order:
   down (a revert would also destroy the `ensure_plugins` entry point that
   c1k9.11 needs). Its halted marketplace-fix worktree is superseded by #245.
 - **Redundant in-flight b7i factory run steered to stand down** (the
-  maintainer-side #245 superseded it; no duplicate PR was pushed).
+  maintainer-side #245 superseded it; no duplicate PR was pushed — its
+  orphaned duplicate PR #247 surfaced later with automerge ARMED and was
+  closed + branch-deleted before it could act).
+
+### Session 2 (continued, 2026-07-04) — gate landed; lever verdict; collapse complete; c1k9.3/.11 CLOSED
+
+- **MAINTAINER VERDICT — the `LIVESPEC_MASTER_CI_GREEN=warn` lever was
+  REJECTED outright** ("will absolutely be abused"): removed same day via
+  dev-tooling PR #249 (impl reverted byte-for-byte; regression test pins the
+  env var to NO effect); `li-4x3a45` upheld and broadened; the durable rule
+  codified in core `.ai/ci-gate-discipline.md` (+ AGENTS.md reference):
+  NEVER add escape gates to CI-green gates — REVERT the breaking change
+  (server-side when local commits are blocked) and re-land in order.
+- **`livespec-c1k9.3` CLOSED (gate merged, core PR #848).** Three factory
+  runs, three distinct blockers, each root-caused: (1) design-divergence
+  review failure → rider; (2) Red commit died against broken master;
+  (3) run complete + twice-reviewed but push-rejected — the fleet App
+  deliberately lacks the `workflows` permission (maintainer: KEEP the
+  boundary; carve workflow edits out to maintainer-side — codified in
+  `.ai/ci-gate-discipline.md`), then its 1-hour sandbox token died during
+  the multi-hour park. Published maintainer-side by container extraction +
+  full Red/Green ritual; content byte-identical to the validated sandbox
+  tree.
+- **The D2 lever wired then repaired by the book:** ci.yml
+  `LIVESPEC_CURRENCY_GATE=fail` landed (#850) → false-positived on CI
+  runners (checkout context = permanent Unknown) → REVERTED (#855, master
+  green) → gate fix merged (#857: real dict-of-lists registry shape +
+  checkout-mode exits the gate's domain; item `livespec-e3nk`, discovered by
+  the `.4` evaluation, verified first-hand) → lever RE-LANDED (#859) →
+  **master GREEN with the lever live** (8011fa2). Revert-and-reland,
+  zero escape hatches.
+- **`livespec-c1k9.4` NARROWED** (evaluation evidence on the item): the
+  shared chokepoint runs under `codex exec` but reads Claude-only operands →
+  permanent Unknown on Codex; remaining scope = Codex running-build vs Codex
+  marketplace-clone comparison. Sequenced behind the same-file gate work
+  (now landed) and fabro's checkpoint-timeout fix.
+- **`livespec-c1k9.11` CLOSED.** All 8 repos' `ensure-plugins` recipes
+  collapsed to the one-line derive-from-settings wrapper (4 parallel
+  sub-agents + console by hand: PRs livespec #852, driver-claude #88,
+  driver-codex #65, beads-fabro #293, git-jsonl #182, dev-tooling #261,
+  runtime #125, console #90). Console's PR also fixed its FROZEN dev-tooling
+  pin (v0.31.0→v0.33.3) and added its MISSING `bump-pin-from-dispatch.yml`
+  shim — the fan-out "success" no-op root cause. `bd-gj-hj8` closed-merged
+  (PR #175; its janitor red exposed pre-existing `bd-gj-9sj`: `just check`
+  invokes an untracked `dev-tooling/branch-protection.sh`). Severity
+  restore: `livespec-dev-tooling-zxq` dispatched → **fully green factory
+  run** (PR #262, post-merge janitor green) → row back at ERROR against a
+  sweep-verified clean fleet.
+- **Orchestrator robustness family filed** from this session's incidents:
+  `bd-ib-lgv` (declare+enforce the no-workflow-edits boundary pre-push),
+  `bd-ib-6vu` (parked-run credential re-projection; docstring claims
+  re-minting that does not reach resumed sandboxes), `bd-ib-18r` (blocked
+  runs orphaned as "failed"), `bd-ib-6ka` (fabro 30s checkpoint-commit
+  timeout < core's gate runtime — why core items currently publish
+  maintainer-side), `bd-ib-4nk` (Dispatcher overlay projects the D2 lever
+  into sandboxes — the factory half of "CI and factory dispatch set it").
+- **Sandbox-extraction publication pattern** (used for #848 and #857, until
+  `bd-ib-6ka` lands): `docker cp` the validated files from the (stopped)
+  `fabro-run-<id>` container, pre-verify the full set in a fresh worktree,
+  reset to master keeping ONE changed test file, prove a genuine Red, commit,
+  Green-amend the rest, push through the full gates. Provenance recorded in
+  each commit body.
