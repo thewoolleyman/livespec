@@ -66,3 +66,31 @@ jobs:
 
       - name: just ${{ matrix.target }}
         run: just ${{ matrix.target }}
+
+  # Release-gate observability: export this run's outcome to Honeycomb
+  # (dataset github-ci, ci.workflow = "Release tag") whether the gate
+  # passed or failed. A Honeycomb trigger on ci.run failures for this
+  # workflow emails the maintainer — a red release gate must never be
+  # silent again (v0.6.0..v0.6.4 all failed unnoticed for ~25h while the
+  # release branch sat stale; 2026-07-04). Closed-loop like ci.yml's
+  # export: this job itself fails if Honeycomb does not accept the data.
+  export-telemetry:
+    name: export-telemetry
+    needs: [release-gate]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Export release-gate run telemetry to Honeycomb
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC: ${{ secrets.HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC }}
+        run: bash .github/scripts/export-ci-telemetry.sh

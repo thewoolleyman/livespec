@@ -46,16 +46,20 @@ run_end="$(iso_to_nanos "$(jq -r '.updatedAt' <<<"$run_json")")"
 run_concl="$(jq -r '.conclusion // ""' <<<"$run_json")"
 run_code=2; [ "$run_concl" = "success" ] && run_code=1
 
+WORKFLOW_NAME="${WORKFLOW_NAME:-}"   # optional: github.workflow, for per-workflow triggers
+
 run_span="$(jq -nc \
   --arg trace "$trace_id" --arg span "$run_span_id" \
   --arg start "$run_start" --arg end "$run_end" \
   --arg repo "$REPO" --argjson run_id "$RUN_ID" --argjson code "$run_code" \
+  --arg workflow "$WORKFLOW_NAME" \
   --argjson run "$run_json" '
   {traceId:$trace, spanId:$span, name:"ci.run", kind:1,
    startTimeUnixNano:$start, endTimeUnixNano:$end,
    attributes:[
      {key:"repo",value:{stringValue:$repo}},
      {key:"ci.run_id",value:{intValue:($run_id|tostring)}},
+     {key:"ci.workflow",value:{stringValue:$workflow}},
      {key:"ci.conclusion",value:{stringValue:($run.conclusion // "")}},
      {key:"ci.title",value:{stringValue:($run.displayTitle // "")}},
      {key:"git.commit.sha",value:{stringValue:($run.headSha // "")}},
@@ -76,12 +80,14 @@ while IFS=$'\t' read -r jid jname jconcl jstart_iso jend_iso; do
     --arg trace "$trace_id" --arg span "$jspan_id" --arg parent "$run_span_id" \
     --arg name "ci.job.$jname" --arg start "$jstart" --arg end "$jend" \
     --arg repo "$REPO" --argjson run_id "$RUN_ID" \
+    --arg workflow "$WORKFLOW_NAME" \
     --arg jname "$jname" --arg jconcl "$jconcl" --argjson code "$jcode" '
     {traceId:$trace, spanId:$span, parentSpanId:$parent, name:$name, kind:1,
      startTimeUnixNano:$start, endTimeUnixNano:$end,
      attributes:[
        {key:"repo",value:{stringValue:$repo}},
        {key:"ci.run_id",value:{intValue:($run_id|tostring)}},
+       {key:"ci.workflow",value:{stringValue:$workflow}},
        {key:"ci.job.name",value:{stringValue:$jname}},
        {key:"ci.job.conclusion",value:{stringValue:$jconcl}}
      ],
