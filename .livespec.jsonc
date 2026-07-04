@@ -49,6 +49,9 @@
       "SPECIFICATION/contracts.md §\"Cross-repo coordination automation surface\"",
       "SPECIFICATION/contracts.md §\"Sibling discovery\"",
       "SPECIFICATION/contracts.md §\"Semver discipline\""
+    ],
+    "openbrain": [
+      "SPECIFICATION/constraints.md §\"Merged-branch cleanup\""
     ]
   },
   "cross_repo_targets": {
