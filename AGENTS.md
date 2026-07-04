@@ -78,7 +78,7 @@ surface (`mode`/`budget`), janitor hard-gate, and structured iteration
 journal are codified in the orchestrator repo's own specification. The
 retired skill and agent are recoverable from git history; the duties
 they performed and their relocation homes are recorded in
-`research/dark-factory-operability/preconditions.md`. Spec-side
+`archive/research/dark-factory-operability/preconditions.md`. Spec-side
 `/livespec:*` lifecycle work and host-only self-machinery changes are
 driven directly by a maintainer (or surfaced by the Dispatcher for a
 human), not by a resident loop skill.
@@ -482,6 +482,10 @@ existing file):
   blocks a repair. NEVER add a lever/env-var/escape mechanism to such a gate
   or demote it to warning — revert the breaking change (server-side revert PR
   when local commits are blocked) and re-land in the right order.
+- **`.ai/beads-gaps-workarounds.md`** — read when integrating with, working
+  around, or debugging the `bd` (beads) work-items backend, and before filing
+  a beads issue upstream: the living catalogue of beads gaps and the
+  workarounds the fleet carries, one upstream-liftable entry per gap.
 
 ## Working with the maintainer
 
@@ -702,7 +706,7 @@ authoring or revising any architecture diagram:
 
 The three increment-1 framing diagrams (planes; skills; the canonical
 contract diagram) and their rationale live in
-`research/planning-workflow-gap/planning-lane-design.md`
+`archive/research/planning-workflow-gap/planning-lane-design.md`
 §"Architecture diagrams".
 
 ## Enforcement-suite and tooling discipline

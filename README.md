@@ -146,7 +146,7 @@ stays a plan and the ledger stays the single source of truth. The
 architecture is framed in
 [`SPECIFICATION/spec.md` §"Workflow planes and the Planning Lane"](SPECIFICATION/spec.md#workflow-planes-and-the-planning-lane);
 the design rationale lives in
-[`research/planning-workflow-gap/`](research/planning-workflow-gap/).
+[`archive/research/planning-workflow-gap/`](archive/research/planning-workflow-gap/).
 
 ## Cross-repo orchestration
 
