@@ -1,5 +1,10 @@
 # Handoff — retire-research-dirs
 
+**THREAD CLOSED 2026-07-04.** All phases executed; epic
+`livespec-gt7crt` closed; this directory is archived under
+`plan/archive/`. Root `research/` (and `prompts/`) no longer exist in
+any fleet repo or the openbrain adopter.
+
 The single resumable entry point for fully retiring the root
 `research/` directories across the livespec fleet and the openbrain
 adopter — the maintainer-directed successor to the
@@ -51,34 +56,11 @@ history required.
 
 ## The next action
 
-**Run Phase 1 — per-repo execution.** Both Phase 0 gates are DECIDED
-(see the residual map's gate section): gate 1 = whole
-`research/loop-reflection-gate/` → top-level `loop-reflection-gate/`
-in livespec-orchestrator-beads-fabro; gate 2 = openbrain
-`ob1-fork-patches.md` ARCHIVES with its references DELETED (fork no
-longer maintained). Execution state and ordering:
-
-1. **Blocker first:** the orchestrator repo's master is RED — the
-   dev-tooling v0.31.3 `check-fleet-marketplace-relative-sources`
-   check rejects the object-form local source the fleet's Codex
-   catalogs require, and its canonical slug is unwired in that repo's
-   justfile. The fix (accept object-form local sources) lands in
-   livespec-dev-tooling, then a release + pin bump + justfile wiring
-   in the orchestrator repo greens master. Only then does the gate-1
-   move mission (TDD lessons_path change + git mv + retargets +
-   `plan/loop-reflection-gate/` thread on epic `livespec-impl-beads-29f`
-   + a new brief-injection-consumer child item) execute — a halted
-   first attempt left reusable findings: no existing test asserts the
-   `lessons_path` default (Red must ADD one to
-   `tests/livespec_orchestrator_beads_fabro/commands/test_dispatcher_reflector_oob.py`);
-   the 29f epic description carries the exact substring
-   `research/loop-reflection-gate/best-practices-and-design.md` once.
-2. livespec, dev-tooling, openbrain executions per the residual map
-   (file-disjoint, parallel once the blocker clears; openbrain's
-   changeset now follows the DECIDED gate-2 deletions).
-3. livespec core is pinned to dev-tooling v0.31.2 and will hit the
-   same marketplace-check breakage at its next pin bump — expect the
-   fan-out to carry the fixed release.
+None — the thread is CLOSED. Phase 1 landed in all four repos
+(livespec PR #839 → spec v158; orchestrator PR #282 move + PR #285 →
+spec v028; dev-tooling PR #251; openbrain 72558e9+a41f49a → spec
+v094); Phase 2's fleet-wide assertion returned CLEAN for all nine
+repos. Children closed; epic closed; thread archived.
 
 ## Phase plan
 
@@ -136,3 +118,26 @@ longer maintained). Execution state and ordering:
   (lefthook glob, lint allowlist, spec clauses via revise, doc
   mentions); `.ai-instructions/ob1-fork.md` archives as an aligned
   ride-along. Residual map updated; next action advanced to Phase 1.
+
+### Session 1 continued (2026-07-04) — Phases 1–2 executed; thread CLOSED
+
+- Gate-1 move landed: orchestrator PR #282 (TDD lessons_path change,
+  whole directory to top-level `loop-reflection-gate/`, new
+  `plan/loop-reflection-gate/` thread on epic `livespec-impl-beads-29f`
+  with new child `29f.10` for the lessons brief-injection consumer).
+- Mid-flight coordination with the fleet-plugin-currency session
+  (tmux livespec2): its PR #245 fixed the marketplace check +
+  reshaped the reddening postures (revert of ad807ea stood down as
+  moot); the maintainer ruled its LIVESPEC_MASTER_CI_GREEN=warn lever
+  removed (li-4x3a45 posture stands) — executed upstream at 188bca6,
+  tracked and closed as livespec-dev-tooling-0wk.
+- Phase 1 executed and verified in all four repos; children
+  livespec-2ksw22, bd-ib-5tjc34, livespec-dev-tooling-udnht6,
+  ob-twhc3t closed with merge evidence. Straggler routed: the stale
+  "(or research/ when durable)" aside in
+  loop-reflection-gate/best-practices-and-design.md is commented on
+  epic livespec-impl-beads-29f for its own thread.
+- Phase 2 assertion: `git ls-tree` of every default branch across all
+  nine repos shows NO top-level `research` or `prompts` entry.
+- Closed epic livespec-gt7crt; archived this thread to
+  `plan/archive/retire-research-dirs/`.
