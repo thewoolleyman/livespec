@@ -200,6 +200,66 @@ codex plugin add livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-f
 (For `livespec-orchestrator-git-jsonl`, the same two lines with that
 name. Remind the user this registration is host-wide.)
 
+**Ongoing currency — wire the self-update mechanism (idempotent).**
+Pinning a marketplace to `release` above makes a *fresh* install
+resolve the latest released build, but it does NOT keep an
+already-installed build current — a build advances only when an
+explicit update runs, and `claude plugin update` applies at the NEXT
+session ("restart required to apply"). So each governed project owns a
+small self-update step that refreshes the pinned marketplaces and
+updates the installed plugins at session start. This is how an adopter
+stays current WITHOUT the fleet enforcing anything on it and WITHOUT
+depending on any fleet-internal toolchain (`just` / `mise` / `uv`) —
+plain harness-native commands only. Wire it per harness; if an
+equivalent session-start updater is already present, leave it and
+record it "already present".
+
+- **On Claude Code** — merge (do not overwrite) a `SessionStart` hook
+  into the project's `.claude/settings.json`, preserving any existing
+  hooks. It refreshes every registered marketplace to its pinned `ref`
+  and updates each enabled plugin at project scope:
+
+  ```jsonc
+  {
+    "hooks": {
+      "SessionStart": [
+        {
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "claude plugin marketplace update >/dev/null 2>&1 || true; for p in livespec@livespec livespec@livespec-driver-claude livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro; do claude plugin update \"$p\" -s project >/dev/null 2>&1 || true; done"
+            }
+          ]
+        }
+      ]
+    }
+  }
+  ```
+
+  Substitute the project's OWN enabled plugins for the `for` list —
+  exactly the `enabledPlugins` keys committed in Phase 3 (drop the
+  orchestrator entry if it was deferred). `claude plugin marketplace
+  update` with no name refreshes ALL registered marketplaces to their
+  pinned refs, so it needs no per-marketplace list. Because `claude
+  plugin update` applies at the next session start, this keeps the
+  project one release-tick behind the tip rather than instantly
+  current — the trade-off for a zero-infrastructure updater; a session
+  that must be current immediately can `/reload-plugins` after the
+  hook runs. (Fleet repos wrap this same behavior in a `just
+  ensure-plugins` recipe that derives the plugin list from settings;
+  adopters need no `just`/`mise` — the raw `claude plugin` commands
+  above are the decoupled equivalent.)
+
+- **On Codex** — Codex holds its plugin snapshot until an explicit
+  upgrade and has no project scope, so add `codex plugin marketplace
+  upgrade` to the project's session bootstrap (or run it at the start
+  of a `codex exec` session). It refreshes every host-registered
+  livespec marketplace to its pinned `--ref release` tip.
+
+Record this in the final idempotency report: "session self-update
+hook — already present / added / updated".
+
 ## Phase 4 — Do NOT hand-author `.livespec.jsonc`
 
 If the survey found no `.livespec.jsonc`: leave it absent. The seed
