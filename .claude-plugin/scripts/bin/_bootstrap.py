@@ -17,6 +17,7 @@ _MARKETPLACE_NAME = "livespec"
 _CURRENCY_GATE_FAIL = "fail"
 _EXIT_CODE_VERSION_MISMATCH = 127
 _EXIT_CODE_STALE_PLUGIN = 78
+_CHECKOUT_MODE_MESSAGE = "INFO: running from a repo checkout; plugin-currency gate not applicable\n"
 _SHA12_RE = re.compile(r"^[0-9a-f]{12}$")
 
 
@@ -35,6 +36,9 @@ def bootstrap() -> None:
 
 def _verify_currency() -> None:
     plugin_root = _plugin_root()
+    if not _is_installed_plugin_cache_path(plugin_root=plugin_root):
+        _ = sys.stderr.write(_CHECKOUT_MODE_MESSAGE)
+        return
     running_build_id = _running_build_id(plugin_root=plugin_root)
     expected_build_id = _expected_build_id()
     message = _currency_message(
@@ -72,18 +76,30 @@ def _running_build_id_from_registry(*, plugin_root: Path) -> str | None:
     if registry is None:
         return None
     plugins = registry.get("plugins")
-    if not isinstance(plugins, list):
+    if not isinstance(plugins, dict):
         return None
-    plugin_entries = cast("list[object]", plugins)
+    plugin_records_by_name = cast("dict[object, object]", plugins)
     normalized_plugin_root = _normalize_path(path=plugin_root)
-    for plugin in plugin_entries:
-        build_id = _registry_plugin_build_id(
-            plugin=plugin,
-            normalized_plugin_root=normalized_plugin_root,
-        )
-        if build_id is not None:
-            return build_id
+    for plugin_records in plugin_records_by_name.values():
+        if not isinstance(plugin_records, list):
+            continue
+        for plugin in cast("list[object]", plugin_records):
+            build_id = _registry_plugin_build_id(
+                plugin=plugin,
+                normalized_plugin_root=normalized_plugin_root,
+            )
+            if build_id is not None:
+                return build_id
     return None
+
+
+def _is_installed_plugin_cache_path(*, plugin_root: Path) -> bool:
+    normalized_plugin_root = _normalize_path(path=plugin_root)
+    parts = normalized_plugin_root.parts
+    for index, part in enumerate(parts[:-1]):
+        if part == "plugins" and parts[index + 1] == "cache":
+            return True
+    return False
 
 
 def _registry_plugin_build_id(*, plugin: object, normalized_plugin_root: Path) -> str | None:
