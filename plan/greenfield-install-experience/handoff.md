@@ -1,12 +1,13 @@
 # Handoff — greenfield-install-experience
 
 The single resumable entry point for the **greenfield install
-experience** thread: fix the six verified defects in
-`docs/installation.md` so a greenfield end user reaches an in-repo
-`/livespec:seed` by following the doc alone, then prove the doc by
-bootstrapping the resume adopter strictly through it. A fresh session
-can execute the next action from this file alone via the read-first
-chain — no chat history required.
+experience** thread: replace the old 288-line install guide with the
+paste-able idempotent installer prompt
+(`docs/livespec-installation-prompt.md`, pointed at by a minimal
+`docs/installation.md`) that carries an end user to an in-repo
+`/livespec:seed`, then prove it by bootstrapping the resume adopter
+strictly through it. A fresh session can execute the next action from
+this file alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
@@ -42,33 +43,29 @@ chain — no chat history required.
 
 ## The next action
 
-Fix `docs/installation.md` (livespec repo, worktree → PR → merge):
+Run the live test of the prompt-based installer. (The installer
+itself — `docs/livespec-installation-prompt.md`, the minimal
+`docs/installation.md` pointing at it, and `.ai/adding-an-adopter.md`
++ its `AGENTS.md` reference — lands with this thread's doc-work PR;
+the PR number is commented on `livespec-rh0i`. If that PR is still
+open, finishing its review/merge is the immediate step.)
 
 1. **Compose status LIVE** first: `bd show livespec-rh0i` (command
-   above). If its comments show the doc fix already landed, skip to
-   step 4.
-2. **Apply the six fixes** enumerated (with their evidence) in
-   `research/01-defects-and-redesign.md` §"The six verified defects" —
-   headline: restructure the ordered path into an explicit greenfield
-   path (settings.json → reload → `/livespec:seed` writes
-   `.livespec.jsonc`) vs existing-project path; add `"ref": "release"`;
-   correct the secret convention to bare `BEADS_DOLT_PASSWORD`; show
-   `credential_wrapper`; pin release tags in examples; add or point to
-   tenant provisioning. Also state the orchestrator is deferrable
-   (seed needs core + Driver only). In the same change, add the
-   agent-discipline line from the research note §"Agent-discipline
-   codification" to `AGENTS.md` (or `.ai/agent-disciplines.md`).
-3. **Land it** through the normal livespec PR flow (doc-only), then
-   comment the PR number on `livespec-rh0i`.
-4. **Run the live test** — a maintainer-attended session with working
-   directory `/data/projects/resume`, following the FIXED doc as a
-   real user: commit `.claude/settings.json` per §3, reload, run
-   `/livespec:seed` there (product context and open questions:
+   above) — its comments carry the doc-work PR number and any
+   friction already filed.
+2. **Run the installation prompt in the resume repo** exactly as an
+   end user: a maintainer-attended session with working directory
+   `/data/projects/resume`, following `docs/installation.md`'s "Run
+   it" section for Claude Code (fetch the raw
+   `livespec-installation-prompt.md` and follow it). No livespec
+   clone consulted, no fleet credential, no maintainer shortcut.
+3. **Then run `/livespec:seed` there**, maintainer-attended (product
+   context and open questions:
    `plan/archive/resume-adopter-onboarding/research/01-onboarding-context.md`).
-   File every friction point as a comment on `livespec-rh0i`; a
-   friction point that needs code or doc change becomes a child
-   work-item of this epic.
-5. **Close** when the live test completes with zero unfixed friction:
+   File every friction point — from the prompt run AND the seed —
+   as a comment on `livespec-rh0i`; a friction point needing code or
+   doc change becomes a child work-item of this epic.
+4. **Close** when the live test completes with zero unfixed friction:
    close `livespec-rh0i` (completion comment: the doc PR list + the
    resume seed PR) and archive this thread
    (`git mv plan/greenfield-install-experience/ plan/archive/`).
@@ -76,10 +73,10 @@ Fix `docs/installation.md` (livespec repo, worktree → PR → merge):
 ## Read-first chain (in order)
 
 1. **`research/01-defects-and-redesign.md`** — the six verified
-   defects with evidence, the fix-first rationale, the live-test
-   protocol, what survives from the false start, and the
-   agent-discipline line to codify. (The only companion file;
-   everything else needed is in this handoff.)
+   defects with evidence, the maintainer's prompt-based-installer
+   design directive, the live-test protocol, what survives from the
+   false start, and the `.ai/adding-an-adopter.md` codification. (The
+   only companion file; everything else needed is in this handoff.)
 
 ## Resume command
 
