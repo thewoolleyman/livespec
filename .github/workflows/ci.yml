@@ -78,7 +78,7 @@ jobs:
       # and even then the prefix restore-key means just the delta wheels
       # re-fetch (in parallel, with UV_HTTP_RETRIES) — which does not
       # justify taxing every run's wall-clock. See
-      # livespec-dev-tooling research/justcheck-performance (work-item
+      # livespec-dev-tooling archive/research/justcheck-performance (work-item
       # livespec-dev-tooling-7us.10).
 
   check-python:

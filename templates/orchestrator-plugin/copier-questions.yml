@@ -72,7 +72,7 @@ github_repo:
 # FRAMEWORK are NOT questions: `just` and `lefthook` are mandated
 # NON-FUNCTIONALLY across all fleet + adopter repos (per the zs22 locked
 # decision and the Conformance Pattern in
-# research/factory-conformance/cross-repo-conformance-pattern.md) — Installer =
+# archive/research/factory-conformance/cross-repo-conformance-pattern.md) — Installer =
 # a `just` recipe, commit gate wired via `lefthook → just check`. The worktree
 # lifecycle is driven by the `just worktree-{create,hydrate,land,reap}` recipes,
 # which the root justfile `import?`s from the from-package

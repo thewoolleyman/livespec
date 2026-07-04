@@ -9,13 +9,25 @@ so it can be filed upstream as a discrete proposal — observation,
 current workaround in livespec, proposed change(s) to eliminate the
 need.
 
+Maintenance lifecycle (the living-index contract this file
+carries): each numbered entry is written so it can be lifted
+directly into an upstream GitHub issue. When an upstream beads
+change lands that addresses a workaround: (1) update the entry's
+**Status / pointers** section with the released bd version and the
+issue / PR pointer; (2) remove the workaround from whatever code
+carries it, in a paired commit; (3) mark the entry retired (or
+delete it) once the workaround removal has shipped. Nothing here
+is load-bearing spec content — any finding that matures into
+"livespec MUST do X about beads" flows through
+`/livespec:propose-change` → `/livespec:revise`.
+
 ## Provenance and scope
 
 This document complements (does not replace) the foundational
-catalogue at
-`dev-tooling/implementation/research/beads-problems.md`, which
-was vendored from Open Brain's `research/beads-problems.md` at
-livespec bootstrap. That file documents Problems 1–8 (Dolt
+`beads-problems.md` catalogue vendored from Open Brain at
+livespec bootstrap (retired from this repo with the
+implementation-gaps subsystem at commit `4916bfa`, 2026-06-24;
+recoverable from git history). That file documents Problems 1–8 (Dolt
 remote synthesis, embedded-mode `bd doctor`, workspace identity
 mismatch, lock files, symlinked CLAUDE.md, 0700 permissions,
 lefthook npm postinstall, etc.) with upstream issue / PR
@@ -596,8 +608,8 @@ while excluding host-specific bits.
 
 ### Status / pointers
 
-Not yet filed upstream. Open Brain's `setup-beads.sh` and
-`research/beads-problems.md` capture the workaround and
+Not yet filed upstream. Open Brain's `setup-beads.sh` and its
+`beads-problems.md` research catalogue capture the workaround and
 rationale.
 
 ---
