@@ -59,7 +59,9 @@ Detect the current state before changing anything:
    - Claude Code: `.claude/settings.json` — which of the
      marketplaces/plugins in Phase 3 are already declared;
    - Codex: `codex plugin marketplace list` and the
-     `[plugins."…"]` entries in `~/.codex/config.toml`;
+     `[plugins."…"]` entries in `~/.codex/config.toml` — record
+     these as HOST-wide facts, never as this project's choices
+     (see Phase 2);
    - a `.beads/` directory (an existing Beads/Dolt work-items store).
 3. **Classify the project.** Exactly one of:
    - **Already governed**: `.livespec.jsonc` exists AND the spec tree
@@ -79,9 +81,26 @@ Detect the current state before changing anything:
 ## Phase 2 — The two choices
 
 Ask these two questions (structured picker, recommendation first).
-Skip any question the survey already answered — e.g. a Driver or
-orchestrator plugin that is already installed and enabled is a made
-choice; do not re-ask.
+Skip a question ONLY when a **project-level** artifact already
+answers it. Host state is NOT project choice — in particular, Codex
+plugin enablement is HOST-WIDE, so entries in `~/.codex/config.toml`
+may exist because OTHER projects on this host installed them; their
+presence never answers a question for THIS project. Concretely:
+
+- **The Driver question is answered only by** the project's own
+  enablement: on Claude Code, a committed `.claude/settings.json`
+  that already enables a Driver. If the current harness's Driver is
+  already installed host-wide (Codex), the install step later
+  becomes a no-op, but you still ASK — the user may want the other
+  harness's Driver wired for this project too (for Claude, that
+  wiring is the project-scoped settings file, which only this
+  question surfaces).
+- **The orchestrator question is answered only by** the project's
+  `.livespec.jsonc` naming one (`implementation.plugin`), or — on
+  Claude Code — the project's committed settings enabling exactly
+  ONE orchestrator plugin. Host-wide registrations never answer it,
+  and MULTIPLE installed orchestrator plugins are ambiguity, not an
+  answer: ask.
 
 **Question 1 — which Driver(s)?**
 
