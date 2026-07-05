@@ -1,5 +1,5 @@
 ---
-name: prototype-autonomous-ready-queue-drain-prompt
+name: ready-queue-drain
 description: >-
   PROTOTYPE / PLACEHOLDER prompt (not an auto-discovered skill, not
   fleet-synced). Invoke by handing its ABSOLUTE PATH to a fresh repo-scoped
