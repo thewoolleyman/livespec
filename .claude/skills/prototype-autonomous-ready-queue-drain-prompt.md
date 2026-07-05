@@ -226,5 +226,5 @@ Divergences found and resolved: mode (`autonomous` vs `shadow`), explicit
 verify-the-lane vs. trust-the-exit-code. This prototype is the LEAN operating
 prompt those sessions converged on. The coordinating layer that spawns a session
 like this per repo and feeds it this file is the local `overseer` skill
-(`.claude/skills/overseer/SKILL.md`, §"Driving per-repo autonomous ready-queue
-drains").
+(`.claude/skills/overseer/SKILL.md`, section "Driving per-repo autonomous
+ready-queue drains").
