@@ -46,8 +46,10 @@ REPO="$(git rev-parse --show-toplevel)"
 
 # The orchestrator plugin is installed once per host; resolve the NEWEST cache
 # build (the sha in the path changes with every plugin release — never hard-code it).
+# Use `command ls` (or `find`) — a plain `ls` may be shell-aliased (e.g. to lsd),
+# which decorates the output and corrupts the captured path.
 CACHE=/home/ubuntu/.claude/plugins/cache/livespec-orchestrator-beads-fabro/livespec-orchestrator-beads-fabro
-BIN="$(ls -td "$CACHE"/*/scripts/bin 2>/dev/null | head -1)"
+BIN="$(find "$CACHE" -maxdepth 3 -type d -name bin -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
 DISP="$BIN/dispatcher.py"       # the factory engine (admit -> Fabro -> verify -> merge -> accept)
 ORCH="$BIN/orchestrate.py"      # plan enumeration + the human-delegable policy VALVES
 

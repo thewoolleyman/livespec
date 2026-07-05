@@ -290,6 +290,55 @@ attention — but keep working; the note is not a gate.
 
 ---
 
+## Surfacing not-yet-ready items — backlog + pending-approval
+
+The dispatch loop and the drain sessions only ever move **ready** work. Two
+statuses sit BEFORE ready and each needs a maintainer decision to advance — they
+are invisible to the ready-dispatch path, so a stalled queue looks "quiet" when
+it is actually waiting on you. **Every survey, for each watched repo, enumerate
+both and surface them** so nothing strands silently:
+
+- **`backlog`** — failed the Definition-of-Ready gate (or is an intake epic / a
+  Dispatcher non-convergence bounce). Advancing it is a **`groom`** cut (the
+  maintainer owns the slice). Command to hand the maintainer, run in a session
+  on THAT repo: `/livespec-orchestrator-beads-fabro:groom <id>` — it decomposes
+  the item into ready, dependency-layered slices.
+- **`pending-approval`** — cleared the Definition-of-Ready gate but its effective
+  admission policy is `manual` (the default when no `admission:auto` label is
+  set), so it rests until a human approves it. Advancing it is the **approve**
+  valve: `orchestrate run --repo <repo> --action approve:<id>`
+  (pending-approval → ready). An item explicitly marked `admission:auto` is
+  auto-approved by the Dispatcher on the next dispatch and needs nothing from
+  you — the approve valve REFUSES such an item ("requires an effective-manual
+  item"), and that refusal means "just let it dispatch," not an error.
+
+Enumerate LIVE from each repo's own ledger — via the credential wrapper, with
+`-C` targeting the sibling (never from a stored snapshot):
+
+```bash
+source /data/projects/1password-env-wrapper/with-livespec-env.sh \
+  bd -C <repo> list --status backlog --json
+source /data/projects/1password-env-wrapper/with-livespec-env.sh \
+  bd -C <repo> list --status pending-approval --json
+```
+
+Present what you find as a **Not-yet-ready — needs your action** list directly
+under the status table — one row per item, columns
+**Repo · Item · Status · Title · Command** — with the exact command spelled out
+per row and the OWNING REPO named explicitly (derive the repo from which ledger
+you queried; never assume the id encodes it). Then **prompt the maintainer to
+run each** — one item at a time via the maintainer's preferred structured picker,
+leading with a recommended action — because both are maintainer-owned governance
+surfaces (a `groom` cut, an approval). The overseer SURFACES the command and the
+maintainer runs it in the appropriate repo; it never groom-cuts or approves on
+its own, and never auto-promotes a backlog item by poking the store. An empty
+list is the healthy case — say so in one line and move on. This scan is the
+overseer's stopgap realization of the "needs-attention" surface the ready-queue
+drain names as not-yet-existing; keep it until that track lands a first-class
+console.
+
+---
+
 ## Maintainer-owned gates (surface WITH a recommendation; don't freeze)
 
 Decide-and-inform beats ask-and-wait for anything reversible or clearly within
@@ -298,6 +347,9 @@ established intent — make the call yourself and tell the maintainer what you d
 maintainer's preferred ONE clickable picker at a time) only:
 
 - **`groom` cuts** — the maintainer owns the slice/acceptance decision.
+- **Backlog promotions + `pending-approval` approvals** — surfaced by the
+  not-yet-ready scan above (the section just before this one); the maintainer
+  owns each promotion/approval and runs it in the owning repo.
 - **Spec ratification** — accepting/rejecting a `/livespec:*` proposed change.
 - **Irreversible / outward-facing actions** the maintainer hasn't pre-authorized.
 - **The exit gate** — declaring the system dogfooded and closing the anchor epic.
