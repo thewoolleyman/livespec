@@ -108,6 +108,16 @@ this skill's history proves is destructive.
 - Ready, factory-safe impl → `/livespec-orchestrator-beads-fabro:orchestrate`
   (`run --action impl:<work-item-id>`). It runs on **Codex/Fabro**, gated by the
   janitor — better code AND it spends Codex quota instead of Claude.
+  - **Nuance for a full ready-queue DRAIN** (reconciled 2026-07-05 from two live
+    drain sessions): `orchestrate run --action impl:<id>` hardcodes `--mode
+    shadow` in `build_dispatcher_argv` and hit a fabro-launch PATH failure under
+    the credential wrapper. So a repo-scoped **autonomous drain** drives
+    `dispatcher.py loop --mode autonomous --budget 1 --parallel 1 --item <id>
+    --fabro-bin <path>` **directly** (still the factory, still janitor-gated —
+    NOT hand-coding), and uses `orchestrate run --action <valve>` only for the
+    policy valves (`set-admission:<id>:auto`, `accept:<id>`,
+    `reject:<id>:rework|regroom`). This is codified in the drain prompt referenced
+    in §"Driving per-repo autonomous ready-queue drains".
 - **"Re-engage a track" means dispatch, not re-open an inline coder.** When a
   track's next step is implementation, the overseer routes it to the factory; it
   does not open an editor in this pane.
@@ -209,6 +219,53 @@ Confirm the repo is clean + on master + the orchestrator plugin enabled + its
 tenant reachable before kicking off. Landing the brief is the durable artifact;
 spinning up the tracking session is a **separate go** — do it when the maintainer
 is ready to run the work, not automatically.
+
+---
+
+## Driving per-repo autonomous ready-queue drains
+
+When a track's job is simply to **clear its repo's ready impl queue** (not
+open-ended planning), the overseer drives it as a **per-repo drain session**
+rather than dispatching each item by hand from this pane. This is the pattern
+two live sessions converged on, distilled into a reusable prototype prompt.
+
+- **The drain prompt.** `/data/projects/livespec/.claude/skills/prototype-autonomous-ready-queue-drain-prompt.md`
+  (a PROTOTYPE/placeholder — a single `.md`, not an auto-discovered skill, not
+  fleet-synced). It makes a repo-scoped session drive its own ready queue to
+  `done` one item at a time in rank order through the Dispatcher/Fabro factory:
+  dispatch → land → AI-approve → accept-on-behalf → close, verifying every
+  landing and halting on any real failure. It is repo-agnostic — it derives the
+  target repo from the session's cwd. **Temporary** until the needs-attention
+  development track supplies a real surface.
+- **One tmux session per repo, named after the repo.** For each repo whose queue
+  you're draining, use (or create) a tmux session named for that repo
+  (e.g. `livespec-orchestrator-beads-fabro`, `livespec-console-beads-fabro`),
+  running Claude in that repo's checkout. Feed it the drain prompt by absolute
+  path using the send-keys mechanics in §"Re-engaging a track":
+
+  ```bash
+  command tmux send-keys -t <repo-session> -l \
+    "read /data/projects/livespec/.claude/skills/prototype-autonomous-ready-queue-drain-prompt.md and follow it against THIS repo. Start now."
+  command tmux send-keys -t <repo-session> Enter
+  # verify it submitted (capture the pane; re-send Enter if it shows [Pasted text])
+  ```
+
+- **Authorize accept-on-behalf ONCE per batch.** The `ai-then-human` default
+  acceptance policy parks landed items in `acceptance` until a human accepts. A
+  drain session asks the first time whether it may accept on the maintainer's
+  behalf; relay the maintainer's answer, then it holds for that batch. This is a
+  genuine maintainer gate (§"Maintainer-owned gates") — surface it, don't invent
+  the authorization.
+- **Serialize Fabro across drains.** Factory dispatch is host-wide **sequential**
+  (the Fabro `--network host` sandboxes collide) — so do NOT have two drain
+  sessions dispatching a Fabro run at the same instant. Stagger them: only one
+  session in its *dispatch* phase at a time; their enumerate / verify / accept
+  phases overlap freely. Oversee them with the same Monitor re-arm + status table
+  as any other track; a drain session is `done` when its ready set empties.
+- **Verify their claims, don't trust their self-summary.** A drain session that
+  reports "landed" may have parked in `acceptance`, not closed. Confirm live lane
+  (`bd show <id>`) + master-ancestor of the merge before you count an item done
+  (§"Anti-stall + don't rabbit-hole").
 
 ---
 
