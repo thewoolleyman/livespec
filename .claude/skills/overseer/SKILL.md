@@ -229,7 +229,7 @@ open-ended planning), the overseer drives it as a **per-repo drain session**
 rather than dispatching each item by hand from this pane. This is the pattern
 two live sessions converged on, distilled into a reusable prototype prompt.
 
-- **The drain prompt.** `/data/projects/livespec/.claude/skills/prototype-autonomous-ready-queue-drain-prompt.md`
+- **The drain prompt.** `/data/projects/livespec/.claude/skills/ready-queue-drain.md`
   (a PROTOTYPE/placeholder — a single `.md`, not an auto-discovered skill, not
   fleet-synced). It makes a repo-scoped session drive its own ready queue to
   `done` one item at a time in rank order through the Dispatcher/Fabro factory:
@@ -245,7 +245,7 @@ two live sessions converged on, distilled into a reusable prototype prompt.
 
   ```bash
   command tmux send-keys -t <repo-session> -l \
-    "read /data/projects/livespec/.claude/skills/prototype-autonomous-ready-queue-drain-prompt.md and follow it against THIS repo. Start now."
+    "read /data/projects/livespec/.claude/skills/ready-queue-drain.md and follow it against THIS repo. Start now."
   command tmux send-keys -t <repo-session> Enter
   # verify it submitted (capture the pane; re-send Enter if it shows [Pasted text])
   ```
