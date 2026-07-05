@@ -50,6 +50,19 @@ from this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
+> **★ SESSION 5 (2026-07-05) — READ THIS FIRST; supersedes Session 4 below (retained as history). Status is READ from the ledger/PRs, never stored here.**
+>
+> **Resolved this session (the one standing maintainer decision, unasked since Session 2):**
+> - **Systemic red-master gap → RESOLVED + FILED.** Maintainer chose the **"fan-out writes the wiring"** mechanism: the direct-push bump-pin fan-out RECONCILES each consumer's `check:` canonical block to the newly-pinned canonical-check set (add/drop/reorder the `check-<slug>:` recipe + `targets=(...)` entry, all derived from `livespec_dev_tooling.canonical_checks`), ATOMICALLY in the SAME push that bumps the pin — so the rollout carries the enforcement (per `.ai/ci-gate-discipline.md`'s corollary) and no red-master window exists. The fan-out becomes the WRITER of the canonical block; `aggregate_completeness` stays the VERIFIER. The grace-period-soft-warn and accept-the-manual-wave alternatives were weighed and rejected (rationale recorded on the item). **Filed `livespec-dev-tooling-adqmnm`** (dev-tooling tenant, `feature`, status BLOCKED: `depends_on livespec-dev-tooling-9j8.1` — build the reconciler in the ported `pin_rewrite` harness, NOT `action.yml` heredocs; `blocked-reason:needs-human`, autonomy tier at groom). This RETIRES Session-4 next-action item 2 and "Remaining work, in order" item 4's "Systemic gap (still open)".
+>
+> **Next actions, in order (carried from Session 4, minus the now-retired red-master item):**
+> 1. **bd-ib-6ka — OPTION 1 (unchanged):** drive the UPSTREAM Fabro configurable-checkpoint-timeout PR (fabro source `/data/projects/fabro`, remote `github.com/fabro-sh/fabro`; propose `[run.checkpoint] commit_timeout_ms`, default ~30000; core needs ≥600000). Unblocks core-repo factory dispatch + the Codex gate (c1k9.4). Keep the maintainer-side extract+publish path meanwhile; record the verdict on `bd-ib-6ka` (orchestrator tenant).
+> 2. **Groom + advance `livespec-dev-tooling-adqmnm`** once `9j8.1` lands (settle the autonomy tier; confirm it builds on the ported `pin_rewrite` harness).
+> 3. **Remaining epic children:** c1k9.4 (Codex-side gate operands — needs bd-ib-6ka OR maintainer-side extraction), c1k9.2 (one-session lag), c1k9.5 (cache-ambiguity, P2), c1k9.7 (upstream Claude-Code plugin-source-pin report — maintainer files EXTERNALLY).
+> 4. **dev-tooling debt epic `goucoq`:** groom (settle `7bfhkm`'s migrate-vs-refine), clear `kkmhwo` + `7bfhkm`, then re-drive the afd revise (re-verify its 3 replace-targets first), then land `tem4t2` (wire doctor-static into dev-tooling CI — MUST land only after the debt clears, else red master).
+> 5. **One OTHER core proposal needs a rebase:** `SPECIFICATION/proposed_changes/owned-heading-coverage-todos.md` is another thread's work (fleet-merged-branch-cleanup already ratified `v161`); c1k9.6 shifted `nfr.md`, so its replace-targets must be rebased before its own revise. NOT this thread's to ratify.
+> 6. **EPIC EXIT GATE (unchanged, see below).**
+
 > **★ SESSION 4 (2026-07-04/05) — READ THIS FIRST; supersedes Session 3 below (retained as history). Status is READ from the ledger/PRs, never stored here.**
 >
 > **Landed this session (verify each via `gh`/ledger):**
@@ -145,14 +158,15 @@ Remaining work, in order:
      having NO effect). `li-4x3a45` upheld and broadened; the durable rule
      is codified in core `.ai/ci-gate-discipline.md` (referenced from
      AGENTS.md) — read it BEFORE touching any CI-green gate.
-   - **Systemic gap (still open):** a dev-tooling release that ADDS a
-     canonical check slug + the direct-push bump-pin fan-out ⇒ a guaranteed
-     red-master window in every consumer until each justfile wires the new
-     slug (the 2026-07-03/04 cascade, §Session 2 below). Decide the
-     mechanism: fan-out carries the wiring / aggregate-completeness grace
-     for newly-added slugs / accept the manual wave. Per the new
-     `.ai/ci-gate-discipline.md`, enforcement must not land at error
-     severity ahead of the rollout it asserts.
+   - **Systemic gap (RESOLVED, Session 5 2026-07-05):** a dev-tooling
+     release that ADDS a canonical check slug + the direct-push bump-pin
+     fan-out ⇒ a guaranteed red-master window in every consumer until each
+     justfile wires the new slug (the 2026-07-03/04 cascade, §Session 2
+     below). Maintainer chose **fan-out carries the wiring**; filed
+     `livespec-dev-tooling-adqmnm` (dev-tooling, `feature`, BLOCKED on
+     `9j8.1`). The fan-out reconciles each consumer's canonical block
+     atomically with the pin bump; `aggregate_completeness` stays the
+     verifier — no severity relaxation, per `.ai/ci-gate-discipline.md`.
 
 5. **Lower-priority follow-ups:** `livespec-c1k9.2` (reload nudge — lands with
    the gate work), `livespec-c1k9.5` (cache-pruning posture),
@@ -600,3 +614,11 @@ Remaining work, in order:
 - **Debt captured:** dev-tooling epic `goucoq` (children `kkmhwo` allowlist + `7bfhkm` migration/refine), systemic `tem4t2` (CI doesn't gate doctor-static); `afd`+`tem4t2` blocked-by the two children; graph cycle-free; `afd`+`2kt` deferral/correction notes added; the halted `revise-afd-release-park` worktree cleaned up.
 - The two mechanical spec-ratification PR cycles were driven by scoped worktree executors (proven reliable).
 - Rotated for context at the maintainer's prompt; refreshed this handoff (Session 4) as the durable resume point.
+
+### Session 5 (2026-07-05) — the standing red-master decision resolved + filed
+
+- Maintainer strand: `/plan fleet-plugin-currency` → chose "resolve the red-master gap" (the one item unasked since Session 2, blocked only on the maintainer).
+- **Grounded the decision first** (read-only): read `.ai/ci-gate-discipline.md` and the actual mechanism — `aggregate_completeness` (discovers the canonical set live from the pinned dev-tooling, fails a consumer whose `just check` omits a slug), `canonical_checks` (filesystem-derived slug set; recipe body is always `uv run python -m livespec_dev_tooling.checks.<module>`, so the wiring is 100% derivable), and the direct-push bump-pin fan-out (already writes each consumer's master). Confirmed both wiring lines (recipe + `targets=` entry) are deterministically generatable and the fan-out already writes justfiles' sibling files.
+- **Decision (maintainer): "fan-out writes the wiring."** The fan-out reconciles each consumer's `check:` canonical block to the newly-pinned set atomically with the pin bump (reusing `aggregate_completeness`'s parser); the check stays the verifier. Rejected: grace-period soft-warn (drift-prone state + softens the check) and manual-wave (the status quo that caused the cascade).
+- **Filed `livespec-dev-tooling-adqmnm`** via the `capture-work-item` store-writer, tenant-targeted at dev-tooling (chdir so `resolve_store_config(cwd=…)` resolves the dev-tooling `.beads/config.yaml`): `feature`, `origin:freeform`, `gap_id:null`, `depends_on livespec-dev-tooling-9j8.1`; DoR intake routed it to BLOCKED / `blocked-reason:needs-human` (autonomy tier deferred to groom). Full decision + rejected alternatives + acceptance criteria are on the item.
+- Refreshed this handoff (Session 5) as the durable resume point; the red-master item is retired from the next-action list.
