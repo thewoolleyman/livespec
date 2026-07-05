@@ -51,6 +51,18 @@ coordinates others, overseer skill or not:
   authoring, migrations, and handoff-file writes to sub-agents — their context,
   not the coordinator's. Keep status updates terse: a one-line tick per routine
   event, full detail only at milestones and blockers.
+- **Auto-enable-merge opt-out for review-before-merge dispatches.** Every fleet
+  impl-plugin repo carries `.github/workflows/auto-enable-merge.yml`, which
+  auto-merges (rebase) any non-draft, un-`do-not-merge`-labeled PR authored by
+  the maintainer allowlist or the release-please App on a `release-please--`
+  branch the moment CI goes green — deliberate, load-bearing autonomy (it keeps
+  the release train and factory unattended) and never to be disabled to obtain
+  a review gate. When you dispatch a manual implementer PR you intend to review
+  BEFORE it merges — e.g. a factory-repair PR the broken factory cannot carry
+  itself — the dispatch brief MUST instruct the sub-agent to open the PR as
+  DRAFT or apply the `do-not-merge` label; otherwise a green PR merges before
+  the overseer can review it (observed 2026-07-05: a fabro-fix PR auto-merged
+  pre-review, shipping a regression a follow-up release corrected).
 
 **Why this matters.** The manual overseer is being retired precisely because a
 single coordinator's context does not scale across a long multi-track rollout —
