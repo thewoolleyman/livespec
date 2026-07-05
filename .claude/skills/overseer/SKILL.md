@@ -117,7 +117,7 @@ this skill's history proves is destructive.
     NOT hand-coding), and uses `orchestrate run --action <valve>` only for the
     policy valves (`set-admission:<id>:auto`, `accept:<id>`,
     `reject:<id>:rework|regroom`). This is codified in the drain prompt referenced
-    in §"Driving per-repo autonomous ready-queue drains".
+    in **Driving per-repo autonomous ready-queue drains**.
 - **"Re-engage a track" means dispatch, not re-open an inline coder.** When a
   track's next step is implementation, the overseer routes it to the factory; it
   does not open an editor in this pane.
@@ -241,7 +241,7 @@ two live sessions converged on, distilled into a reusable prototype prompt.
   you're draining, use (or create) a tmux session named for that repo
   (e.g. `livespec-orchestrator-beads-fabro`, `livespec-console-beads-fabro`),
   running Claude in that repo's checkout. Feed it the drain prompt by absolute
-  path using the send-keys mechanics in §"Re-engaging a track":
+  path using the send-keys mechanics in **Re-engaging a track**:
 
   ```bash
   command tmux send-keys -t <repo-session> -l \
@@ -254,7 +254,7 @@ two live sessions converged on, distilled into a reusable prototype prompt.
   acceptance policy parks landed items in `acceptance` until a human accepts. A
   drain session asks the first time whether it may accept on the maintainer's
   behalf; relay the maintainer's answer, then it holds for that batch. This is a
-  genuine maintainer gate (§"Maintainer-owned gates") — surface it, don't invent
+  genuine maintainer gate (see **Maintainer-owned gates**) — surface it, don't invent
   the authorization.
 - **Serialize Fabro across drains.** Factory dispatch is host-wide **sequential**
   (the Fabro `--network host` sandboxes collide) — so do NOT have two drain
@@ -265,7 +265,7 @@ two live sessions converged on, distilled into a reusable prototype prompt.
 - **Verify their claims, don't trust their self-summary.** A drain session that
   reports "landed" may have parked in `acceptance`, not closed. Confirm live lane
   (`bd show <id>`) + master-ancestor of the merge before you count an item done
-  (§"Anti-stall + don't rabbit-hole").
+  (see **Anti-stall + don't rabbit-hole**).
 
 ---
 
