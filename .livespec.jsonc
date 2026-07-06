@@ -22,7 +22,7 @@
   "credential_wrapper": ["/usr/local/bin/with-livespec-env.sh", "--"],
   "livespec-orchestrator-beads-fabro": {
     "format": "beads",
-    "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "v0.6.5" },
+    "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "v0.6.10" },
     // Per-repo beads tenant CONNECTION block. The tenant DB name is the load-bearing tenant
     // identity (database == server_user == tenant — one <=32-char Dolt name serving all three).
     // The beads issue-ID `prefix` is bd's server-stored create-prefix; it is DECOUPLED from the
