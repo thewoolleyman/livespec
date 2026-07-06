@@ -40,8 +40,11 @@ recommendation (one clickable pick at a time) and continuing autonomously
 between gates:
 
 1. **Dispatch** RT1 (runtime tenant) + OR1 (orchestrator tenant) through the
-   factory once it frees (host-wide sequential — confirm free first). Ask
-   ONCE for accept-on-behalf per batch, then hold.
+   factory once it frees (host-wide sequential — confirm free first).
+   Accept-on-behalf is a STANDING authorization for this whole track (see
+   "Standing authorizations + operating disciplines" below) — do NOT re-ask
+   per batch; close each landed item once its live-exercise evidence is
+   journaled.
 2. **SP2:** once the console currency fix lands, push → independent **CODEX**
    sub-agent review (Fable is out of free usage; Opus 4.8 fallback ok) →
    surface `/livespec:revise` ratification.
@@ -60,10 +63,33 @@ between gates:
 
 | Step | Overseer does | Maintainer gate |
 |---|---|---|
-| Dispatch RT1/OR1 | dispatches ready items through the factory (drain) | **accept-on-behalf** authorized once per batch |
+| Dispatch RT1/OR1 | dispatches ready items through the factory; closes each landed item after journaling live-exercise evidence | **accept-on-behalf is STANDING for this track** (no per-batch ask) |
 | SP2 spec | drives push + spawns independent CODEX review; surfaces ratification | **spec ratification** (+ mandatory independent review) |
 | Next-wave code | files ripe slices; dispatches through the factory | groom / approve per item as needed |
 | Close | surfaces the exit gate | **exit gate** (close the epic) |
+
+## Standing authorizations + operating disciplines (this track only)
+
+Maintainer-declared 2026-07-06 for the `needs-attention` track (epic
+`livespec-bj9x`) **only** — NOT system-wide, NOT permanent; these expire when
+the epic closes. Also journaled on the epic (read them there too, via the
+read-first chain).
+
+- **Auto-acceptance (accept-on-behalf) is authorized for EVERY item in this
+  track, and PERSISTS ACROSS overseer handoffs.** A fresh overseer does NOT
+  re-ask — it closes each landed item (`acceptance → done` via the `accept:`
+  valve) without prompting the maintainer. **Guardrail (unchanged):** accept an
+  item ONLY after live-exercise evidence is journaled on it (the "done means
+  exercised live" discipline); weak or absent evidence → HALT and surface that
+  item, never accept on faith. Covers the RT1+OR1 batch and every future slice
+  (RT2, OR2/OR3, CO1/CO2, CN1, BR1–4, and any follow-ups).
+- **Do not surface a handoff / rotation gate until the overseer's context
+  exceeds ~50%.** Below that, keep driving autonomously — never park ready work
+  behind a "my context is heavy" rationale.
+- **Run non-factory work in scoped subagents** (doc PRs, spec propose-change /
+  revise authoring, independent adversarial reviews, grep-migrations) to keep
+  the overseer context lean; the overseer retains plan / dispatch / synthesis
+  and the maintainer-gated exit.
 
 ## Standing constraints
 
