@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.7](https://github.com/thewoolleyman/livespec/compare/v0.6.6...v0.6.7) (2026-07-06)
+
+
+### Bug Fixes
+
+* resolve codex local-source plugin currency ([74630cc](https://github.com/thewoolleyman/livespec/commit/74630cc4a905d2c19ceac2c9e8257d581c2b282f))
+
 ## [0.6.6](https://github.com/thewoolleyman/livespec/compare/v0.6.5...v0.6.6) (2026-07-06)
 
 
