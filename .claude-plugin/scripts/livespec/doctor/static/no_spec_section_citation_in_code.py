@@ -76,17 +76,24 @@ _SECTION_MARKER: str = '§"'
 # Path segments whose presence anywhere in a file's path excludes
 # it from the scan: vendored third-party code, byte-cache dirs,
 # the git db, node deps, the project virtualenv (installed
-# third-party packages are not project source), and frozen
-# historical artifacts.
+# third-party packages are not project source), frozen historical
+# artifacts, and the vendored livespec-core checkout. A consuming
+# repo checks livespec core out into `.livespec-core/` at its
+# project root and runs this check with `--project-root .`; core's
+# own source legitimately carries the section-sign citations core
+# forbids in the projects IT governs, so it is a vendored
+# dependency (exactly like `_vendor`) and MUST NOT be linted here —
+# otherwise a consumer's CI is held hostage to core-master content.
 _EXCLUDED_SEGMENTS: frozenset[str] = frozenset(
-    {"archive", "_vendor", "__pycache__", ".git", ".venv", "node_modules"},
+    {"archive", "_vendor", "__pycache__", ".git", ".venv", "node_modules", ".livespec-core"},
 )
 
 # Top-level directories handed to `fs.list_tree`'s exclude set so
-# the recursive walk never descends into them at all. The spec-root
-# basename is added dynamically per `ctx`.
+# the recursive walk never descends into them at all (including the
+# vendored `.livespec-core/` core checkout in a consuming repo). The
+# spec-root basename is added dynamically per `ctx`.
 _EXCLUDED_TOP_LEVEL: frozenset[str] = frozenset(
-    {"archive", ".git", ".venv", "node_modules"},
+    {"archive", ".git", ".venv", "node_modules", ".livespec-core"},
 )
 
 
