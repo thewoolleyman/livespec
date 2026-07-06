@@ -150,10 +150,10 @@ def _codex_plugin_record_matches(
     ):
         return True
     plugin_name = plugin.get("name")
-    marketplace_name = plugin.get("marketplace")
+    marketplace_name = plugin.get("marketplaceName", plugin.get("marketplace"))
     if plugin_name == _PLUGIN_NAME and marketplace_name == _MARKETPLACE_NAME:
         return True
-    plugin_id = plugin.get("id")
+    plugin_id = plugin.get("pluginId", plugin.get("id"))
     return plugin_id == f"{_PLUGIN_NAME}@{_MARKETPLACE_NAME}"
 
 

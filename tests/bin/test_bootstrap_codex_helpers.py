@@ -124,13 +124,22 @@ def test_codex_running_build_accepts_real_local_source_shape_without_commit_fiel
         "_codex_plugin_list_json",
         lambda: {
             "plugins": {
-                "livespec@livespec": {
-                    "version": "0.6.5",
-                    "source": {
-                        "source": "local",
-                        "path": str(marketplace / ".claude-plugin"),
-                    },
-                }
+                "installed": [
+                    {
+                        "authPolicy": "prompt",
+                        "enabled": True,
+                        "installPolicy": "allow",
+                        "installed": True,
+                        "marketplaceName": "livespec",
+                        "name": "livespec",
+                        "pluginId": "livespec@livespec",
+                        "source": {
+                            "source": "local",
+                            "path": str(marketplace / ".claude-plugin"),
+                        },
+                        "version": "0.6.5",
+                    }
+                ]
             }
         },
     )
