@@ -44,6 +44,14 @@ a harness.
 - No spec yet: run `/livespec:seed` — the attended interview that
   authors the initial specification and writes `.livespec.jsonc`.
 - Already governed: `/livespec:doctor` validates the existing tree.
+- Chose the `livespec-orchestrator-beads-fabro` backend and will
+  dispatch implementation work into the factory? The prompt's final
+  phase (post-seed factory-infrastructure prerequisites) walks the
+  project's own GitHub App, the full dispatch credential set, the
+  work-items tenant, and the per-tenant Fabro server that unattended
+  dispatch needs — none of which blocks seeding. A
+  `livespec-orchestrator-git-jsonl` adopter has no such infrastructure
+  and is done once the spec lifecycle runs.
 
 Authoritative contract surface: `SPECIFICATION/contracts.md` §"Plugin
 distribution" and `SPECIFICATION/non-functional-requirements.md`; the
