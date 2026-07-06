@@ -14,50 +14,36 @@ ledger; never trust a status written here).
 2. `research/design.md` — the settled design + the full cross-repo rollout.
 3. `research/glossary.md` — every term used below.
 
-## Current state (2026-07-06; verify live against the ledger, don't trust this)
+## Current state (2026-07-07; verify live against the ledger, don't trust this)
 
-- **Gate 1 decompose:** DONE — approved 14-slice cut (in the ledger's
-  DECOMPOSITION comment).
-- **SP1 spec** (`orchestrate→drive` rename + `next` scope-asymmetry):
-  **RATIFIED** — `history/v031`, PR #345 in `livespec-orchestrator-beads-fabro`.
-- **OR1** (`orchestrate→drive` CODE rename): FILED `bd-ib-sesq5u`
-  (orchestrator tenant), lane READY.
-- **RT1** (`livespec-runtime-bvtkzm`; attention_item schema + compose fn):
-  READY. **RT2** (`livespec-runtime-xtri75`; hygiene-scan): dep-gated on RT1.
-- **SP2 spec** (`Attention→needs-attention`, console): committed `6776a46`
-  in worktree `needs-attention-sp2-attention-rename`; PARKED on the console
-  currency defect (external fix).
+**7 slices + 3 spec cycles DONE** this track: SP1 (v031), RT1, OR1, SP2 (v015),
+RT2, BR1, OR2-spec (v032), OR2-code. **The needs-attention surface now works
+end-to-end** (list-plan-threads enumerates unarchived plan threads; needs-attention
+composes a flat `attention[]` via the vendored runtime compose fn with drive-grammar
+handoffs; it dogfoods). The **newest RESUME RECIPE comment on epic `livespec-bj9x`
+is authoritative** for the full remaining phase and exact next actions — read it
+first (read-first chain step 1).
 
 ## How to drive this track
 
-Driven by the **local `overseer` skill** (`.claude/skills/overseer/SKILL.md`)
-against this ONE track (in isolation, no other tracks this run). Read
-%Complete and every lane LIVE from the ledger; print the
-`Epic · Track · Status · %Complete` table before any gate or status.
+The exact remaining phase + next actions live in the epic's **newest RESUME RECIPE
+comment** (read-first chain step 1) — follow that; it supersedes any older step list.
+Remaining phase in brief:
 
-Drive in this order, surfacing each maintainer-owned gate WITH a
-recommendation (one clickable pick at a time) and continuing autonomously
-between gates:
-
-1. **Dispatch** RT1 (runtime tenant) + OR1 (orchestrator tenant) through the
-   factory once it frees (host-wide sequential — confirm free first).
-   Accept-on-behalf is a STANDING authorization for this whole track (see
-   "Standing authorizations + operating disciplines" below) — do NOT re-ask
-   per batch; close each landed item once its live-exercise evidence is
-   journaled.
-2. **SP2:** once the console currency fix lands, push → independent **CODEX**
-   sub-agent review (Fable is out of free usage; Opus 4.8 fallback ok) →
-   surface `/livespec:revise` ratification.
-3. **Next-wave code** (per `research/design.md` "Rollout"), file + dispatch
-   as deps land: BR1/BR2 (driver-claude/codex binding renames) + BR3
-   (openbrain) + BR4 (resume, manual) + orchestrator repo-root README —
-   AFTER OR1 lands & `drive` exists; OR2 (list-plan-threads + needs-attention
-   binding) + OR3 (git-jsonl binding) + CO1 (reaper refactor) + CO2
-   (needs-attention-internal/-fleet) after RT1/RT2 build; CN1 (console port)
-   after SP2 + RT1 + OR2.
-4. Enumerate backlog + pending-approval every survey so nothing strands.
-5. **EXIT GATE:** when every piece is `done`, surface closing `livespec-bj9x`;
-   do not close it autonomously.
+1. **CO2** (needs-attention-internal + needs-attention-fleet, local/unsynced CORE
+   skills) — NOT filed; deps done → file as CORE children + dispatch (mind the CO1
+   pin-churn caveat).
+2. **CN1** (console snapshot port + diff adapter + `attention_item.*` events) — NOT
+   filed; deps done → file in the console tenant + dispatch (verify straddle first).
+3. **OR3** (git-jsonl) + **BR2** (driver-codex) — BACKLOG; each needs a governed-spec
+   split (propose-change → independent CODEX review → revise) BEFORE its code part
+   (pattern proven by OR2).
+4. **CO1** (`livespec-bj9x.1`, CORE, READY) — clean factory, DISPATCH DEFERRED
+   (core-tenant dispatch churns the core pin mid-session); dispatch from a fresh
+   session or at session-end.
+5. **design.md handoff-form reconcile** (minor plan-doc edit) + **orchestrator
+   repo-root README follow-up** (doc-fix work-item). BR3/BR4 NOT needed.
+5. **EXIT GATE:** surface closing `livespec-bj9x` when every piece is done.
 
 ## Gate map
 
