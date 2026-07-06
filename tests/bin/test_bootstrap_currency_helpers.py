@@ -153,6 +153,25 @@ def test_installed_plugin_cache_path_detection_covers_claude_and_codex(*, tmp_pa
     )
 
 
+def test_codex_local_source_build_id_rejects_unusable_sources() -> None:
+    """Local-source fallback only accepts a local source with a string path."""
+    bootstrap_module = _import_bootstrap()
+
+    assert bootstrap_module._codex_local_source_build_id(plugin={}) is None
+    assert (
+        bootstrap_module._codex_local_source_build_id(
+            plugin={"source": {"source": "github", "path": "/tmp/livespec"}}
+        )
+        is None
+    )
+    assert (
+        bootstrap_module._codex_local_source_build_id(
+            plugin={"source": {"source": "local", "path": 123}}
+        )
+        is None
+    )
+
+
 def test_git_rev_parse_head_accepts_success(
     *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

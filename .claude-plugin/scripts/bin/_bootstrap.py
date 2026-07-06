@@ -100,11 +100,15 @@ def _running_build_id_from_codex_plugin_list(*, plugin_root: Path) -> str | None
 
 def _plugin_records_from_mapping(*, mapping: dict[object, object]) -> list[object]:
     records: list[object] = []
-    for value in mapping.values():
-        if isinstance(value, list):
-            records.extend(cast("list[object]", value))
-        elif isinstance(value, dict):
-            records.append(cast("dict[object, object]", value))
+    for key, value in mapping.items():
+        values = cast("list[object]", value) if isinstance(value, list) else [value]
+        for item in values:
+            if isinstance(item, dict) and isinstance(key, str):
+                item_dict = dict(cast("dict[object, object]", item))
+                item_dict["id"] = item_dict.get("id", key)
+                records.append(item_dict)
+            else:
+                records.append(cast("object", item))
     return records
 
 
@@ -120,7 +124,20 @@ def _codex_plugin_build_id(*, plugin: object, normalized_plugin_root: Path) -> s
         build_id = plugin_dict.get(field_name)
         if isinstance(build_id, str):
             return build_id[:12].lower()
-    return None
+    return _codex_local_source_build_id(plugin=plugin_dict)
+
+
+def _codex_local_source_build_id(*, plugin: dict[object, object]) -> str | None:
+    source = plugin.get("source")
+    if not isinstance(source, dict):
+        return None
+    source_dict = cast("dict[object, object]", source)
+    if source_dict.get("source") != "local":
+        return None
+    source_path = source_dict.get("path")
+    if not isinstance(source_path, str):
+        return None
+    return _git_rev_parse_head(repository=Path(source_path).expanduser())
 
 
 def _codex_plugin_record_matches(
