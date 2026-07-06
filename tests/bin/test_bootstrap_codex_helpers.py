@@ -113,6 +113,12 @@ def test_codex_running_build_accepts_mapping_shaped_plugin_list(
 def test_codex_running_build_accepts_real_local_source_shape_without_commit_field(
     *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """The real `codex plugin list --json` keys records under top-level `installed`.
+
+    Its top level is `installed`/`available`, not `plugins`; a local-source record
+    carries `source:{local,path}`, `pluginId`, `marketplaceName`, and no commit field.
+    The gate must resolve the running build from that real shape.
+    """
     bootstrap_module = _import_bootstrap()
     home = tmp_path / "home"
     codex_root = _codex_plugin_root(home=home)
@@ -123,24 +129,23 @@ def test_codex_running_build_accepts_real_local_source_shape_without_commit_fiel
         bootstrap_module,
         "_codex_plugin_list_json",
         lambda: {
-            "plugins": {
-                "installed": [
-                    {
-                        "authPolicy": "prompt",
-                        "enabled": True,
-                        "installPolicy": "allow",
-                        "installed": True,
-                        "marketplaceName": "livespec",
-                        "name": "livespec",
-                        "pluginId": "livespec@livespec",
-                        "source": {
-                            "source": "local",
-                            "path": str(marketplace / ".claude-plugin"),
-                        },
-                        "version": "0.6.5",
-                    }
-                ]
-            }
+            "installed": [
+                {
+                    "authPolicy": "prompt",
+                    "enabled": True,
+                    "installPolicy": "allow",
+                    "installed": True,
+                    "marketplaceName": "livespec",
+                    "name": "livespec",
+                    "pluginId": "livespec@livespec",
+                    "source": {
+                        "source": "local",
+                        "path": str(marketplace / ".claude-plugin"),
+                    },
+                    "version": "0.6.5",
+                }
+            ],
+            "available": [],
         },
     )
 

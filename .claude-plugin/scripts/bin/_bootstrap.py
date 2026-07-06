@@ -82,7 +82,7 @@ def _running_build_id_from_codex_plugin_list(*, plugin_root: Path) -> str | None
     if plugin_list is None:
         return None
     normalized_plugin_root = _normalize_path(path=plugin_root)
-    plugins = plugin_list.get("plugins")
+    plugins = plugin_list.get("installed") or plugin_list.get("plugins")
     if isinstance(plugins, list):
         plugin_records = cast("list[object]", plugins)
     elif isinstance(plugins, dict):
