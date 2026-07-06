@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.9](https://github.com/thewoolleyman/livespec/compare/v0.6.8...v0.6.9) (2026-07-06)
+
+
+### Bug Fixes
+
+* resolve codex plugin currency for real installed-key shape ([6056829](https://github.com/thewoolleyman/livespec/commit/6056829d3a22be5c0920298f5b8de438df411641))
+
 ## [0.6.8](https://github.com/thewoolleyman/livespec/compare/v0.6.7...v0.6.8) (2026-07-06)
 
 
