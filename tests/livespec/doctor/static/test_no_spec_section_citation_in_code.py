@@ -206,6 +206,47 @@ def test_run_ignores_section_marker_in_excluded_segments(*, tmp_path: Path) -> N
     assert mod.run(ctx=ctx) == IOSuccess(_pass_finding(spec_root=spec_root))
 
 
+def test_run_excludes_vendored_livespec_core_checkout(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) does NOT scan a vendored `.livespec-core/` checkout.
+
+    A consuming repo checks livespec core out into `.livespec-core/`
+    at its project root and runs this check with `--project-root .`.
+    The vendored core's own source legitimately carries the
+    section-sign citations core forbids in the projects IT governs,
+    so it MUST be excluded here just like any other vendored
+    dependency — otherwise a consumer's CI is held hostage to
+    core-master content. A same-citation file OUTSIDE
+    `.livespec-core/` is still flagged.
+    """
+    monkeypatch.chdir(tmp_path)
+    ctx, project_root, _spec_root = _ctx(tmp_path=tmp_path)
+
+    vendored_dir = project_root / ".livespec-core" / "scripts"
+    vendored_dir.mkdir(parents=True)
+    vendored_py = vendored_dir / "vendored.py"
+    _ = vendored_py.write_text(
+        "# Per " + _cite(heading="Vendored") + "\n",
+        encoding="utf-8",
+    )
+
+    real_dir = project_root / "scripts"
+    real_dir.mkdir(parents=True)
+    real_py = real_dir / "real.py"
+    _ = real_py.write_text(
+        "# Per " + _cite(heading="Real") + "\n",
+        encoding="utf-8",
+    )
+
+    finding = _run_and_unwrap(ctx=ctx)
+    assert finding.status == "fail"
+    assert finding.path == str(real_py)
+    assert ".livespec-core" not in str(finding.path)
+
+
 def test_run_ignores_section_marker_in_spec_tree(*, tmp_path: Path) -> None:
     """run(ctx) does NOT scan `.py` files inside the spec tree.
 
