@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.8](https://github.com/thewoolleyman/livespec/compare/v0.6.7...v0.6.8) (2026-07-06)
+
+
+### Bug Fixes
+
+* detect codex local plugin records ([8350506](https://github.com/thewoolleyman/livespec/commit/8350506386f41d98269949cff18f2e0072f429f7))
+
 ## [0.6.7](https://github.com/thewoolleyman/livespec/compare/v0.6.6...v0.6.7) (2026-07-06)
 
 
