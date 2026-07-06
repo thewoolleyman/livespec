@@ -7,6 +7,7 @@ bin/ so raise SystemExit is permitted by check-supervisor-discipline.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ _EXIT_CODE_VERSION_MISMATCH = 127
 _EXIT_CODE_STALE_PLUGIN = 78
 _CHECKOUT_MODE_MESSAGE = "INFO: running from a repo checkout; plugin-currency gate not applicable\n"
 _SHA12_RE = re.compile(r"^[0-9a-f]{12}$")
+_CODEX_CACHE_PARENT_PARTS = (".codex", "plugins", "cache", _MARKETPLACE_NAME, _PLUGIN_NAME)
 
 
 def bootstrap() -> None:
@@ -40,7 +42,7 @@ def _verify_currency() -> None:
         _ = sys.stderr.write(_CHECKOUT_MODE_MESSAGE)
         return
     running_build_id = _running_build_id(plugin_root=plugin_root)
-    expected_build_id = _expected_build_id()
+    expected_build_id = _expected_build_id(plugin_root=plugin_root)
     message = _currency_message(
         running_build_id=running_build_id,
         expected_build_id=expected_build_id,
@@ -64,10 +66,102 @@ def _running_build_id(*, plugin_root: Path) -> str | None:
     registry_build_id = _running_build_id_from_registry(plugin_root=plugin_root)
     if registry_build_id is not None:
         return registry_build_id
+    codex_plugin_list_build_id = _running_build_id_from_codex_plugin_list(plugin_root=plugin_root)
+    if codex_plugin_list_build_id is not None:
+        return codex_plugin_list_build_id
     cache_dir_name = plugin_root.name.lower()
     if _SHA12_RE.fullmatch(cache_dir_name):
         return cache_dir_name
     return None
+
+
+def _running_build_id_from_codex_plugin_list(*, plugin_root: Path) -> str | None:
+    if not _is_codex_installed_plugin_cache_path(plugin_root=plugin_root):
+        return None
+    plugin_list = _codex_plugin_list_json()
+    if plugin_list is None:
+        return None
+    normalized_plugin_root = _normalize_path(path=plugin_root)
+    plugins = plugin_list.get("plugins")
+    if isinstance(plugins, list):
+        plugin_records = cast("list[object]", plugins)
+    elif isinstance(plugins, dict):
+        plugin_records = _plugin_records_from_mapping(mapping=cast("dict[object, object]", plugins))
+    else:
+        plugin_records: list[object] = []
+    for plugin in plugin_records:
+        build_id = _codex_plugin_build_id(
+            plugin=plugin, normalized_plugin_root=normalized_plugin_root
+        )
+        if build_id is not None:
+            return build_id
+    return None
+
+
+def _plugin_records_from_mapping(*, mapping: dict[object, object]) -> list[object]:
+    records: list[object] = []
+    for value in mapping.values():
+        if isinstance(value, list):
+            records.extend(cast("list[object]", value))
+        elif isinstance(value, dict):
+            records.append(cast("dict[object, object]", value))
+    return records
+
+
+def _codex_plugin_build_id(*, plugin: object, normalized_plugin_root: Path) -> str | None:
+    if not isinstance(plugin, dict):
+        return None
+    plugin_dict = cast("dict[object, object]", plugin)
+    if not _codex_plugin_record_matches(
+        plugin=plugin_dict, normalized_plugin_root=normalized_plugin_root
+    ):
+        return None
+    for field_name in ("gitCommitSha", "commitSha", "sourceCommitSha", "commit", "buildId"):
+        build_id = plugin_dict.get(field_name)
+        if isinstance(build_id, str):
+            return build_id[:12].lower()
+    return None
+
+
+def _codex_plugin_record_matches(
+    *, plugin: dict[object, object], normalized_plugin_root: Path
+) -> bool:
+    install_path = plugin.get("installPath")
+    if (
+        isinstance(install_path, str)
+        and _normalize_path(path=Path(install_path)) == normalized_plugin_root
+    ):
+        return True
+    plugin_name = plugin.get("name")
+    marketplace_name = plugin.get("marketplace")
+    if plugin_name == _PLUGIN_NAME and marketplace_name == _MARKETPLACE_NAME:
+        return True
+    plugin_id = plugin.get("id")
+    return plugin_id == f"{_PLUGIN_NAME}@{_MARKETPLACE_NAME}"
+
+
+def _codex_plugin_list_json() -> dict[str, object] | None:
+    codex = shutil.which("codex")
+    if codex is None:
+        return None
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [codex, "plugin", "list", "--json"],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    try:
+        loaded = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(loaded, dict):
+        return None
+    return cast("dict[str, object]", loaded)
 
 
 def _running_build_id_from_registry(*, plugin_root: Path) -> str | None:
@@ -115,9 +209,21 @@ def _registry_plugin_build_id(*, plugin: object, normalized_plugin_root: Path) -
     return git_commit_sha[:12].lower()
 
 
-def _expected_build_id() -> str | None:
-    marketplace = Path.home() / ".claude" / "plugins" / "marketplaces" / _MARKETPLACE_NAME
+def _expected_build_id(*, plugin_root: Path) -> str | None:
+    if _is_codex_installed_plugin_cache_path(plugin_root=plugin_root):
+        marketplace = Path.home() / ".codex" / ".tmp" / "marketplaces" / _MARKETPLACE_NAME
+    else:
+        marketplace = Path.home() / ".claude" / "plugins" / "marketplaces" / _MARKETPLACE_NAME
     return _git_rev_parse_head(repository=marketplace)
+
+
+def _is_codex_installed_plugin_cache_path(*, plugin_root: Path) -> bool:
+    parts = _normalize_path(path=plugin_root).parts
+    parent_part_count = len(_CODEX_CACHE_PARENT_PARTS)
+    return (
+        len(parts) > parent_part_count
+        and parts[-(parent_part_count + 1) : -1] == _CODEX_CACHE_PARENT_PARTS
+    )
 
 
 def _git_rev_parse_head(*, repository: Path) -> str | None:
