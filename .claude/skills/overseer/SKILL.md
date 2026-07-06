@@ -174,6 +174,14 @@ Authoritative detail: the factory-dispatch discipline in
    list it as done in the status table).
 6. **Rotate the role before ~50% context** — refresh your own coordinator
    handoff and hand off to a fresh overseer session.
+7. **Close every background session before handing off.** Before offering ANY
+   handoff, pause, or session exit, TERMINATE every background sub-agent and
+   subprocess this session spawned — `TaskStop` each named agent by name, and
+   stop any `run_in_background` shells. Their durable state (worktrees,
+   committed branches, the ledger) survives the process being stopped, so
+   stopping them loses nothing. A handoff that leaves live background sessions
+   running is INCOMPLETE — it blocks the maintainer from exiting the session.
+   Verify none remain before declaring the handoff done.
 
 ---
 

@@ -41,6 +41,16 @@ coordinates others, overseer skill or not:
   session, which resumes lean via the resume command. There is no reason to drive
   a coordinator to 80%+ and autocompact — that is the concrete failure these
   rules exist to prevent.
+- **Close every spawned background session before handing off.** Before
+  offering a handoff, pause, or session exit, TERMINATE every background
+  sub-agent and subprocess this session spawned — `TaskStop` each named agent
+  by name, and stop any `run_in_background` shells. Their durable state
+  (worktrees, committed branches, the ledger) survives the process being
+  stopped, so nothing is lost. A hand-off that leaves live background
+  sessions/subprocesses running is INCOMPLETE — it blocks the maintainer from
+  exiting the session; verify none remain before declaring the handoff done.
+  (Maintainer-declared 2026-07-06, after an overseer paused a track with five
+  sub-agents still running and the session could not be exited.)
 - **Never park ready work behind a "my context is heavy" rationale.** Track work
   runs in each tracked session's OWN context; kicking or re-engaging a track
   costs the coordinator only ~3 cheap `tmux` calls. The coordinator's context
