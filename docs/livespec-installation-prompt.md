@@ -18,8 +18,14 @@ orchestrator owns the implementation-side work-item ledger.
 
 Your goal: bring THIS project to the point where the spec lifecycle
 can start — `/livespec:seed` for a project with no spec yet, or a
-clean `/livespec:doctor` run for a project that already has one.
-Follow the phases in order. Do not skip the survey.
+clean `/livespec:doctor` run for a project that already has one — and,
+for a project that will DISPATCH implementation work through the
+Beads/Dolt + Fabro factory, stand up (or explicitly flag) the
+post-seed factory infrastructure that unattended dispatch needs
+(Phase 6). Follow the phases in order. Do not skip the survey. Where a
+phase's work depends on a Phase-2 choice it says so: a project on the
+zero-infrastructure `livespec-orchestrator-git-jsonl` backend is done
+at Phase 5, and Phase 6 is a no-op for it.
 
 ## Ground rules
 
@@ -122,8 +128,10 @@ presence never answers a question for THIS project. Concretely:
   reachable over TCP, a per-tenant SQL user + database, and the
   tenant password supplied as the single bare `BEADS_DOLT_PASSWORD`
   environment variable injected by a credential wrapper the project
-  declares in `.livespec.jsonc` (`credential_wrapper`). Choose this
-  when multiple agents or an unattended loop will write the ledger
+  declares in `.livespec.jsonc` (`credential_wrapper`) — plus, for
+  unattended DISPATCH, the project's own GitHub App and a per-tenant
+  Fabro server holding it, all walked in Phase 6. Choose this when
+  multiple agents or an unattended loop will write the ledger
   concurrently.
 - **`livespec-orchestrator-git-jsonl`** — serial, zero
   infrastructure: work-items and memos are committed JSONL files in
@@ -320,7 +328,7 @@ selection once the file exists:
   complete, working selection. For `livespec-orchestrator-beads-fabro`
   the section carries the Dolt tenant connection block and needs
   values from that plugin's onboarding; offer to add it, and note the
-  post-seed infrastructure (Phase 5) it depends on.
+  post-seed factory infrastructure (Phase 6) it depends on.
 
 ## Phase 5 — Verify, then hand off to the spec lifecycle
 
@@ -353,14 +361,238 @@ selection once the file exists:
      findings. Do not seed. (Phase 4 has already recorded
      `implementation.plugin` if an orchestrator was chosen, so
      `capture-as-work-item` is offered on every non-`pass` finding.)
-3. **If beads-fabro was chosen**, note (do not execute) the post-seed
-   infrastructure that remains before implementation work-items can
-   flow, per the orchestrator plugin's own documentation: the `bd`
-   CLI, the Dolt server, the per-tenant SQL user/database, the
-   project's `credential_wrapper` injecting the bare
-   `BEADS_DOLT_PASSWORD`, and the `.beads/` pointer files. None of it
-   blocks seeding.
+3. **Factory infrastructure — branch on the Phase-2 orchestrator
+   choice.** Spec-side work is complete once the above passes;
+   implementation work-items can be filed now. Whether DISPATCHING one
+   into a sandbox needs more setup depends on the orchestrator:
+   - **`livespec-orchestrator-beads-fabro`:** post-seed infrastructure
+     remains before an implementation work-item can be dispatched and
+     driven — the project's GitHub App, the full dispatch credential
+     set, the work-items tenant, and the per-tenant Fabro server.
+     **Phase 6** walks it. None of it blocks seeding or any spec-side
+     operation; proceed to Phase 6.
+   - **`livespec-orchestrator-git-jsonl` or orchestrator deferred:**
+     there is NO factory infrastructure to stand up — git-jsonl
+     dispatches serially with no sandbox, no Fabro server, and no
+     GitHub App; a deferred orchestrator has nothing to provision yet.
+     This project is DONE after the report below (Phase 6 is a no-op
+     you still record as such).
 4. **Print the idempotency report**: every component this prompt
    touched or verified, marked "already present", "added", or
    "updated" — so a re-run that changes nothing proves itself as a
-   no-op.
+   no-op. For a `livespec-orchestrator-git-jsonl` or
+   orchestrator-deferred project this is the FINAL step. For a
+   `livespec-orchestrator-beads-fabro` project, continue to Phase 6
+   FIRST and print the report at its end, so the factory-infrastructure
+   rows are included.
+
+## Phase 6 — Post-seed factory-infrastructure prerequisites (dispatch)
+
+**Bottom line first.** Phases 1–5 brought the SPEC lifecycle to life.
+This phase provisions the separate infrastructure the IMPLEMENTATION
+side needs before a work-item can be *dispatched* — drained from the
+ledger into an isolated **Fabro sandbox**, driven Red→Green, and landed
+as a merged pull request by the unattended **Dispatcher** (the
+"factory"). It runs POST-seed and is **branched by the orchestrator you
+chose in Phase 2**; for most adopters it is either the whole job or
+nothing:
+
+- **`livespec-orchestrator-git-jsonl` → NO-OP.** git-jsonl is the
+  serial, zero-infrastructure backend: work-items are JSONL files
+  committed in the repo and driven one writer at a time, with NO
+  sandbox, NO Fabro server, and NO GitHub App. If you chose git-jsonl
+  you are DONE at Phase 5 — do NOT create a GitHub App, do NOT stand up
+  a server, and do NOT ask the user for any dispatch credential. Record
+  each Phase-6 row in the report as "n/a — git-jsonl (no factory
+  infrastructure)".
+- **Orchestrator deferred → deferred with the choice.** The factory
+  infrastructure is only meaningful once a beads-fabro orchestrator is
+  selected. Tell the user that re-running this prompt and choosing
+  `livespec-orchestrator-beads-fabro` later will walk this phase then;
+  record the Phase-6 rows as "deferred with orchestrator".
+- **`livespec-orchestrator-beads-fabro` → APPLIES.** Work the steps
+  below. Keep them idempotent throughout: a re-run leaves correct setup
+  alone, repairs what is missing, and SURFACES (never silently
+  overwrites) a conflict.
+
+**Why this phase exists (the failure it prevents).** A Fabro server
+holds exactly ONE GitHub App identity — a structural fact of the
+engine. Dispatching an adopter's work-item through a server that holds a
+DIFFERENT App (for example the fleet's shared server) fails at
+sandbox-creation time with *"the GitHub App is not installed for the
+`<org>` organization"* — that server's App has no installation on the
+adopter's target org/repo. An adopter therefore brings its OWN GitHub
+App, its OWN dispatch credential set, and its OWN per-tenant Fabro
+server holding that App. livespec is adopter-agnostic: the fleet is
+"adopter #0" with no privileged path, so every adopter — the fleet
+included — walks exactly these steps.
+
+1. **Surface the full dispatch credential set — up front, not one
+   failure at a time.** Enumerate for the user EVERY credential the
+   dispatch path consumes, so readiness is known before the first
+   dispatch rather than discovered as a chain of mid-run failures. The
+   orchestrator's contract requires the dispatch TARGET's own configured
+   `credential_wrapper` to inject the FULL per-dispatch set, and every
+   credential-consuming seam on the dispatch path fails closed naming
+   the specific missing variable AND the target's own wrapper as the fix
+   (never a fleet wrapper). The set:
+   - **GitHub App environment** — `GITHUB_APP_ID` + `GITHUB_PRIVATE_KEY`
+     (the App's private-key PEM); optionally `GITHUB_APP_INSTALLATION_ID`
+     (pin when the App has more than one installation) and
+     `GITHUB_API_URL` (a GitHub Enterprise API root). This is the SOLE
+     GitHub credential on the dispatch path — there is no personal
+     access token fallback.
+   - **Work-items store secret** — `BEADS_DOLT_PASSWORD` (the bare
+     variable, no per-tenant suffix): the tenant's Dolt password.
+   - **Engine LLM credential** — `CLAUDE_CODE_OAUTH_TOKEN` today (the
+     model auth the Dispatcher projects into each sandbox; the variable
+     is engine-specific by nature).
+
+   All THREE live in the adopter's OWN `credential_wrapper` (Step 3);
+   name them here so the user can gather them before proceeding. Do NOT
+   read, echo, or commit any value — presence is probed by byte count
+   only (`printenv NAME | wc -c`).
+
+2. **Create and install the adopter's own GitHub App** (guided — YOU
+   walk the human through the GitHub UI actions you cannot perform, and
+   wire what is wireable). Idempotency probe FIRST: if Step 6's preflight
+   already mints a token and the App is installed on the target org/repo,
+   this App is set up — record "already present" and skip creation.
+   Otherwise:
+   - **Create the App (human, GitHub UI):** Settings → Developer settings
+     → GitHub Apps → New GitHub App. Grant the repository permissions the
+     dispatch operations imply:
+     - **Contents: Read & write** — the in-sandbox fresh clones and the
+       branch/commit pushes.
+     - **Pull requests: Read & write** — the in-sandbox `gh pr create`
+       leg and the merge-poll.
+     - **Workflows: Read & write** — REQUIRED: a push that touches any
+       `.github/workflows/` file structurally needs the App's `workflows`
+       grant, or the push is rejected.
+
+     Capture the numeric **App ID**.
+   - **Generate the private key (human, GitHub UI):** on the App's page,
+     "Generate a private key" → download the `.pem`. This is the durable
+     App secret — it goes into the credential wrapper's secret backend
+     (Step 3), NEVER into the repo, a log, or `.livespec.jsonc`.
+   - **Install the App on the target (human, GitHub UI):** the App's
+     "Install App" tab → install on the org/account that owns the target
+     repo, scoped to that repo (or "All repositories" if the tenant
+     dispatches several). Capture the **installation ID** from the
+     resulting URL (`…/settings/installations/<installation_id>`) —
+     needed as `GITHUB_APP_INSTALLATION_ID` only if the App ends up with
+     more than one installation.
+
+   State clearly which parts are human-only UI actions (App creation, key
+   generation, installation) and which you will wire (the wrapper entries
+   in Step 3, the preflight in Step 6).
+
+3. **Wire the `credential_wrapper` to inject the full set.** The adopter
+   declares, in `.livespec.jsonc`, a `credential_wrapper` — an opaque
+   argv prefix the orchestrator's bd-backed CLIs and the dispatch path
+   re-exec through, so a bare invocation self-heals its secrets by
+   injecting them from the adopter's OWN secret backend. Shape (an
+   existing adopter's precedent):
+
+   ```jsonc
+   { "credential_wrapper": ["/path/to/with-<tenant>-env.sh", "--"] }
+   ```
+
+   The wrapper is the adopter's own (backed by the adopter's own secret
+   store — e.g. a 1Password Environment); it must inject the full Step-1
+   set (`GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY`, optionally
+   `GITHUB_APP_INSTALLATION_ID`, `BEADS_DOLT_PASSWORD`, and
+   `CLAUDE_CODE_OAUTH_TOKEN`) into the environment of anything it wraps.
+   An adopter that already runs `bd` through a wrapper for
+   `BEADS_DOLT_PASSWORD` EXTENDS that same wrapper to add the App
+   environment + engine credential — it does NOT create a second wrapper.
+   Idempotency: if `credential_wrapper` is present and each required
+   variable probes non-empty under it (`printenv NAME | wc -c`, byte
+   count only), record "already present" and add only the missing keys;
+   otherwise add the key/entries. NEVER commit a secret value, and for an
+   INDEPENDENT (non-fleet) tenant NEVER reference the fleet's wrapper —
+   the dispatch-path diagnostics name the TARGET's own wrapper as the
+   fix.
+
+4. **Provision the work-items tenant (`bd` / Dolt).** The beads backend
+   needs host-level runtime that plugin installation does NOT provision:
+   the `bd` CLI (pinned v1.0.5) with `LIVESPEC_BD_PATH` pointing at it, a
+   running Dolt `sql-server` reachable over TCP (the fleet reference is
+   `127.0.0.1:3307`), a per-tenant SQL user + DB-scoped grant (the
+   isolation boundary — password distinctness is NOT the boundary), and
+   the `.beads/` pointer files in the repo: a committed `config.yaml`
+   carrying the `dolt.*` server host/port/user/database keys (NO `socket`
+   key, NO password) and a gitignored, regenerable `metadata.json`. This
+   is a REFERENCE, not a duplication: follow the orchestrator plugin's
+   own tenant-provisioning documentation and the Beads runtime-
+   prerequisites procedure it points to; do NOT run `bd init` inside a
+   primary checkout or worktree (it auto-commits and clobbers `.beads/`).
+   Idempotency probe: `bd list` (under the credential wrapper) returns
+   the ledger without a "no beads database found" error.
+
+5. **Stand up the adopter's per-tenant Fabro server holding its OWN App
+   identity.** This is the ROOT of the "App is not installed for the
+   `<org>` organization" dispatch failure. A Fabro server holds exactly
+   ONE App integration, so an adopter's dispatch MUST run against a
+   server instance that holds the ADOPTER's App — a dedicated
+   `FABRO_HOME` carrying the adopter's `app_id`, its PEM in the server
+   process environment, and its own listen port and authentication —
+   NEVER the fleet's shared server (whose App is not installed for the
+   adopter's target). A dispatch preflight SHOULD verify the serving App
+   can reach the target repo before launching, refusing with an
+   actionable diagnostic rather than failing inside the engine run. The
+   requirement, its shape, and the root cause are authoritative; the
+   fleet's reference realization is the containerized orchestrator
+   supervisor (`orchestrator-image/` + `orchestrator-entrypoint.sh` in
+   the orchestrator plugin's repository), which provisions a Fabro server
+   from the injected `GITHUB_APP_ID` / `GITHUB_PRIVATE_KEY` (a
+   hand-written `settings.toml` with `[server.integrations.github]
+   strategy = "app"` + the App id, the PEM in the server process env, and
+   a chosen listen port) and re-mints installation tokens on demand.
+
+   > **TODO: authoritative adopter per-tenant Fabro-server onboarding
+   > procedure needed.** A crisp, adopter-EXECUTABLE standup procedure —
+   > decoupled from the fleet's privileged Docker-in-Docker image, its
+   > `just` / `mise` helpers, and its gitignored pinned `fabro` binary —
+   > does not yet exist in publishable form (the per-tenant-identity work
+   > is tracked upstream as in-flight, not shipped). Until it does, DO
+   > NOT fabricate one. Tell the user: dispatch requires a Fabro server
+   > holding THIS tenant's App; generalize the fleet reference
+   > realization named above, and follow the orchestrator plugin's own
+   > server-standup documentation when it publishes. The GitHub App
+   > (Step 2), the credential set (Steps 1, 3), and the tenant (Step 4)
+   > remain correct, required prerequisites for that server regardless.
+
+6. **Idempotent preflight — confirm readiness up front.** Verify the
+   GitHub App credential resolves and mints an installation token BEFORE
+   the first dispatch, so readiness is known now rather than at
+   sandbox-creation time. Run the orchestrator plugin's token-mint CLI
+   UNDER the adopter's credential wrapper, discarding stdout (the token
+   is a secret) and checking only the exit status — resolve the script
+   from the orchestrator plugin root (`${CLAUDE_PLUGIN_ROOT}` on Claude
+   Code):
+
+   ```bash
+   <credential-wrapper> -- python3 \
+     "${CLAUDE_PLUGIN_ROOT}/scripts/bin/mint_app_token.py" >/dev/null
+   ```
+
+   Exit 0 confirms the App environment is present and an installation
+   token was minted (the App has a resolvable installation); a non-zero
+   exit prints an actionable diagnostic on stderr naming the missing or
+   empty variable and the wrapper to fix. If the App has more than one
+   installation the mint refuses until `GITHUB_APP_INSTALLATION_ID` pins
+   the target's installation — set it in the wrapper. Finally confirm the
+   installation covers THIS target repo: in the GitHub UI, the App's
+   installation settings must list the target org/repo among its
+   repository access. (Verifying the SERVING App can reach the target
+   automatically at dispatch time is part of the preflight the per-tenant
+   server in Step 5 owns.)
+
+**Idempotency report (terminal step for a beads-fabro adopter).** Extend
+the Phase-5 report with a factory-infrastructure section — one row each:
+GitHub App, dispatch credential set (wrapper), work-items tenant,
+per-tenant Fabro server, and preflight — marked "already present" /
+"added" / "updated" / "TODO (see Step 5)" so a re-run that changes
+nothing proves itself a no-op and the outstanding server standup stays
+visible.
