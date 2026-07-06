@@ -1,71 +1,92 @@
-# needs-attention — handoff
+# needs-attention — track handoff (overseer run-prompt)
 
-**Thread:** `plan/needs-attention/` (repo `thewoolleyman/livespec`)
-**Ledger epic anchor:** `livespec-bj9x` (read status from the ledger; never trust a status written here)
+**Track:** `needs-attention` · **Repo:** `thewoolleyman/livespec` ·
+**Ledger epic anchor:** `livespec-bj9x` (read status LIVE from the
+ledger; never trust a status written here).
 
-## Read-first chain
+**Read-first chain (open these, in order, before acting):**
 
-1. **`research/design.md`** — the complete, settled design and the full
-   rollout list. Read it in full before acting; it is the single source
-   of truth for every decision (the four surfaces, the `attention_item`
-   schema, the peer `needs-attention`/`drive` split, the console
-   snapshot/diff boundary, product-vs-internal, and the deferred
-   observability context).
+1. `research/design.md` — the settled design + the full cross-repo rollout.
+2. `research/glossary.md` — every term used below.
 
-That is the whole chain — everything needed to proceed is in
-`design.md`. Do not consult chat history.
+## How to drive this track
 
-## Status (derive, never store)
+This track is driven by the **local `overseer` skill**
+(`.claude/skills/overseer/SKILL.md`) running it as a single plan-driven
+track. Adequacy note (see "Gate map" below): the overseer + the
+`ready-queue-drain` prototype drive the **autonomous factory portion**
+(dispatching ready code work-items once they exist), but this track's
+critical path is front-loaded with **by-design maintainer-owned gates**
+(the initial `groom`, each spec ratification with its independent Fable
+review, and the exit gate). The overseer **surfaces** those with a
+recommendation; it does not resolve them, and it should not — auto-
+resolving them would violate the declared maintainer-owned-gate
+disciplines. So this track runs **semi-autonomously**: hands-off between
+gates, maintainer at each gate.
 
-Compose current status by reading the ledger, not this file:
+### The prompt to run (paste into an overseer session)
 
-```bash
-# open children of the epic + ripest next impl action
-/usr/local/bin/with-livespec-env.sh -- python3 \
-  "$CLAUDE_PLUGIN_ROOT/scripts/bin/list_work_items.py" --json --project-root /data/projects/livespec
+```
+Run the overseer skill (.claude/skills/overseer/SKILL.md). Register ONE
+plan-driven track and drive it to completion, in isolation (no other
+tracks this run):
+
+  Track:  needs-attention
+  Repo:   /data/projects/livespec   (epic anchor: livespec-bj9x)
+  Thread: plan/needs-attention/  (read research/design.md + research/glossary.md first)
+
+Read %Complete and every lane LIVE from the ledger (bd -C /data/projects/livespec
+show livespec-bj9x, via the credential wrapper). Print the
+Epic · Track · Status · %Complete table before any gate or status report.
+
+Drive it in this order, surfacing each maintainer-owned gate WITH a
+recommendation (one clickable pick at a time) and continuing autonomously
+between gates:
+
+1. DECOMPOSE FIRST. livespec-bj9x has no children yet. Surface
+   `/livespec-orchestrator-beads-fabro:groom livespec-bj9x` as the first
+   gate — the maintainer owns the cut. Feed the groomer research/design.md
+   section "Rollout" as the slice source, foundational-first:
+   livespec-runtime -> orchestrator plugins -> livespec core -> console -> adopters.
+
+2. SPEC PIECES route through the spec lifecycle: /livespec:propose-change
+   in the owning repo -> independent Fable review (mandatory, read-only,
+   separately spawned) -> surface ratification (/livespec:revise) as a
+   maintainer gate. The spec pieces are: the orchestrate->drive rename +
+   the next scope-asymmetry note (orchestrator repos), and the Attention
+   narrow/broad reconciliation + needs-attention rename (console repo).
+
+3. CODE PIECES, once groomed to `ready` and their spec deps landed, are
+   dispatched through the factory. Drive the ready queue with the
+   ready-queue-drain prototype
+   (.claude/skills/ready-queue-drain.md) against each owning repo:
+   dispatch -> land -> AI-approve -> accept-on-behalf -> close, sequential,
+   verifying each landing. Ask ONCE for accept-on-behalf authorization per
+   batch; hold thereafter.
+
+4. Enumerate backlog + pending-approval every survey (the not-yet-ready
+   scan) so nothing strands; surface groom cuts and approvals.
+
+5. EXIT GATE: when every child is `done`, surface closing the epic
+   livespec-bj9x to the maintainer; do not close it autonomously.
+
+Never hand-code inline; never --no-verify; verify every landing against
+the live ledger + master-ancestor, not a session's self-summary.
 ```
 
-At the time this handoff was written the epic `livespec-bj9x` had **no
-children yet** — the design is settled and anchored, but the rollout is
-not yet decomposed into work-items.
+## Gate map (what will surface, and why it is correct)
 
-## Next action (exactly one)
+| Step | Overseer does | Maintainer gate |
+|---|---|---|
+| Decompose epic | surfaces `groom livespec-bj9x` | **groom cut** (maintainer owns the slice) |
+| Spec pieces | drives propose-change + spawns Fable review; surfaces ratification | **spec ratification** (+ mandatory Fable review) |
+| Code pieces | dispatches ready items through the factory (drain) | **accept-on-behalf** authorized once per batch |
+| Not-yet-ready scan | enumerates backlog/pending-approval | groom / approve, per item |
+| Close | surfaces the exit gate | **exit gate** (close the epic) |
 
-**Decompose the rollout in `research/design.md` §"Rollout — one
-cross-repo epic" into this epic's children.** Route each piece by kind
-(per the `plan` operation's two seams — this session FILES ripe work
-and NEVER hand-codes it):
+## Standing constraints
 
-- *code work* → file via the `capture-work-item` operation as a CHILD
-  of `livespec-bj9x` (linked `depends_on`, typed dicts
-  `{"kind":"local","work_item_id":"..."}`).
-- *spec change* → open via `/livespec:propose-change` against the owning
-  repo's spec, then independent Fable review → `/livespec:revise`.
-
-**Dependency order (foundational first):**
-
-1. `livespec-runtime` — the shared `needs-attention` compose function + the `hygiene-scan` module + thin CLI. Everything composes over this; do it first.
-2. orchestrator plugins (`livespec-orchestrator-beads-fabro` first, then `livespec-orchestrator-git-jsonl` in parallel where independent) — the `needs-attention` thin binding; `list-plan-threads`; the `orchestrate`→`drive` rename + retire `orchestrate plan`; `list-work-items` lane filters if needed. Spec proposals here: the `orchestrate`→`drive` rename and the `next` scope-asymmetry note.
-3. `livespec` core — `needs-attention-internal` + `needs-attention-fleet` local/unsynced skills; refactor the reaper to share `hygiene-scan` detection.
-4. `livespec-console-beads-fabro` — spec proposal reconciling the narrow/broad Attention contradiction + the ubiquitous-language rename to `needs-attention`; then the snapshot port + diff adapter + `attention_item.*` events.
-5. adopters (`openbrain`, `resume`) — grep-and-migrate committed `orchestrate`→`drive`; verify pins.
-
-The rename blast radius (both driver bindings, console Scenario 11, the
-pending proposals) travels with step 2's rename work-item.
-
-**Redirect note:** the pending `orchestrate-plan-surfaces-unarchived-
-plan-threads` proposal in `livespec-orchestrator-beads-fabro` must be
-redirected into the new `list-plan-threads` primitive rather than a
-third source inside the retiring `orchestrate plan` — fold this into
-step 2.
-
-## Constraints (standing)
-
-- Spec touches: `propose-change` → independent Fable review → `revise`;
-  co-edit `tests/heading-coverage.json` for any `##` heading change.
-- Code: worktree → PR → merge → cleanup; TDD red-green-replay for
-  product `.py`.
-- Ripe work is built **factory-side** under the janitor gate (the
-  Dispatcher / `drive`), never hand-coded in the planning session.
-- Observability/telemetry is deferred (design.md §"Deferred"); do not
-  scope it into the initial rollout.
+- Status is derived from the ledger, never stored here (no shadow queue).
+- Repo mutations: worktree → PR → rebase-merge; `mise exec -- git`; never `--no-verify`.
+- Ripe work is built factory-side under the janitor gate, never hand-coded.
+- Observability/telemetry is deferred (`design.md` §"Deferred") — out of this rollout.
