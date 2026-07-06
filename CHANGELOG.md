@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.6](https://github.com/thewoolleyman/livespec/compare/v0.6.5...v0.6.6) (2026-07-06)
+
+
+### Bug Fixes
+
+* verify codex plugin currency ([3f88b5b](https://github.com/thewoolleyman/livespec/commit/3f88b5b2041b818c7b468bf36ee22ad6c1a2f49b))
+
 ## [0.6.5](https://github.com/thewoolleyman/livespec/compare/v0.6.4...v0.6.5) (2026-07-04)
 
 
