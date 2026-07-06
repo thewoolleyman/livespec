@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.10](https://github.com/thewoolleyman/livespec/compare/v0.6.9...v0.6.10) (2026-07-06)
+
+
+### Bug Fixes
+
+* exclude vendored .livespec-core checkout from reference-discipline doctor scan ([bb6549c](https://github.com/thewoolleyman/livespec/commit/bb6549c84c1d0425b9de9124fad4b0a4bfdc8c9f))
+
 ## [0.6.9](https://github.com/thewoolleyman/livespec/compare/v0.6.8...v0.6.9) (2026-07-06)
 
 
