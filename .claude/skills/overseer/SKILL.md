@@ -3,9 +3,11 @@ name: overseer
 description: >-
   Oversee multiple livespec tracks running in parallel tmux sessions and keep
   them all moving — the LEAN, plan-skill-driven, factory-dispatching coordinator.
-  Each track is a `/livespec-orchestrator-beads-fabro:plan` thread with a
-  durable, self-sufficient `plan/<topic>/handoff.md`; the overseer
-  resumes/refreshes those handoffs, dispatches ready implementation through the
+  A track is any repo it watches this run: a plan-driven track (a
+  `/livespec-orchestrator-beads-fabro:plan` thread with a durable
+  `plan/<topic>/handoff.md` + epic) or a lighter watch-only track (just a
+  reachable ledger + session). The overseer resumes/refreshes plan handoffs,
+  dispatches ready implementation through the
   factory (NEVER hand-codes it inline), reads status LIVE from the ledger,
   re-engages tracks at clean boundaries, watches for stalls, makes safe
   decisions autonomously, and surfaces only genuinely unavoidable gates WITH a
@@ -67,11 +69,29 @@ and treat them as authoritative; this file only summarizes:
 
 ---
 
-## The operating model — one plan thread per track
+## The operating model — tracks: plan-driven and watch-only
 
-Each track is a **`/livespec-orchestrator-beads-fabro:plan` thread** with a
-durable, self-sufficient **`plan/<topic>/handoff.md`** as its single resumable
-entry point. The overseer's job is to keep those threads advancing:
+A **track** is any repo the overseer is watching this run. There is **no
+persistent registry** — the watch-set, like the Monitors, lives only for the
+current overseer session; a fresh overseer re-registers from scratch.
+"Registering a track" just means adding a repo to that watch-set (see the
+operating loop's **Register & resume** step). Tracks come in two shapes, and the
+overseer treats them uniformly for the status table, the stall Monitor, and the
+not-yet-ready scan:
+
+- **Plan-driven track** — a **`/livespec-orchestrator-beads-fabro:plan` thread**
+  with a durable, self-sufficient **`plan/<topic>/handoff.md`** as its single
+  resumable entry point, anchored to an **epic**. The full shape: the overseer
+  resumes/refreshes the handoff and reads `%Complete` from the epic.
+- **Watch-only track** — a repo you just want kept moving: dispatch its ready
+  work, scan its backlog / pending-approval, watch its session for stalls. It
+  needs only a **reachable ledger** (`bd -C <repo> …` via the credential wrapper)
+  and — for pane status + re-engagement — a **tmux session**. NO plan thread and
+  NO epic are required; its Epic ID and `%Complete` show `—`, and its Status
+  comes from the pane + ready-queue state. This is the right shape for "just
+  drain/watch this repo's queue."
+
+For a **plan-driven track**, keep its thread advancing:
 
 - **Resume / refresh handoffs.** A fresh tracked session resumes from its
   handoff alone via the thread's resume command
@@ -135,9 +155,14 @@ Authoritative detail: the factory-dispatch discipline in
 
 ## The operating loop
 
-1. **Register & resume** each track: confirm its plan thread + epic + tenant,
-   then resume it from its handoff (see **Re-engaging a track**). For a brand-new
-   track, land a kickoff brief first (see **Kicking off a new track**).
+1. **Register & resume** each track — registering is just adding it to this run's
+   watch-set (nothing persists between overseer sessions). For a **plan-driven
+   track**, confirm its plan thread + epic + tenant, then resume it from its
+   handoff (see **Re-engaging a track**); for a brand-new one, land a kickoff
+   brief first (see **Kicking off a new track**). For a **watch-only track**,
+   confirm only that its ledger is reachable (`bd -C <repo> …`) and — if you want
+   pane status + re-engagement — that it has a tmux session; no handoff or epic
+   needed.
 2. **Arm a Monitor per tracked session** (see **Monitor re-arm**) so a sustained
    stall in any track notifies you.
 3. **On each notification** (stall trigger or heartbeat): read the track's pane
