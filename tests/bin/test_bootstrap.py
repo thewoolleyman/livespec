@@ -173,6 +173,90 @@ def test_bootstrap_proceeds_when_running_plugin_matches_expected_pin(
     assert str(_BUNDLE_VENDOR) in sys.path
 
 
+def test_bootstrap_fails_loudly_when_codex_running_plugin_is_stale(
+    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Codex cache installs compare the running plugin-list commit to the Codex pin."""
+    bootstrap_module = _import_bootstrap()
+    home = tmp_path / "home"
+    plugin_root = home / ".codex" / "plugins" / "cache" / "livespec" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
+    marketplace = home / ".codex" / ".tmp" / "marketplaces" / "livespec"
+    marketplace.mkdir(parents=True)
+    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
+    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
+    monkeypatch.setattr(bootstrap_module, "_plugin_root", lambda: plugin_root)
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    def expected_build_id(*, repository: Path) -> str:
+        assert repository == marketplace
+        return "222222222222"
+
+    monkeypatch.setattr(bootstrap_module, "_git_rev_parse_head", expected_build_id)
+    monkeypatch.setattr(
+        bootstrap_module,
+        "_codex_plugin_list_json",
+        lambda: {
+            "plugins": [
+                {
+                    "name": "livespec",
+                    "marketplace": "livespec",
+                    "installPath": str(plugin_root),
+                    "gitCommitSha": "1111111111112222",
+                }
+            ]
+        },
+        raising=False,
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        bootstrap_module.bootstrap()  # type: ignore[attr-defined]
+
+    assert excinfo.value.code == _EXIT_CODE_STALE_PLUGIN
+
+
+def test_bootstrap_proceeds_when_codex_running_plugin_matches_expected_pin(
+    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Codex plugin-list metadata is the running-build source for semver cache dirs."""
+    bootstrap_module = _import_bootstrap()
+    home = tmp_path / "home"
+    plugin_root = home / ".codex" / "plugins" / "cache" / "livespec" / "livespec" / "0.6.1"
+    plugin_root.mkdir(parents=True)
+    marketplace = home / ".codex" / ".tmp" / "marketplaces" / "livespec"
+    marketplace.mkdir(parents=True)
+    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
+    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
+    monkeypatch.setattr(bootstrap_module, "_plugin_root", lambda: plugin_root)
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    def expected_build_id(*, repository: Path) -> str:
+        assert repository == marketplace
+        return "222222222222"
+
+    monkeypatch.setattr(bootstrap_module, "_git_rev_parse_head", expected_build_id)
+    monkeypatch.setattr(
+        bootstrap_module,
+        "_codex_plugin_list_json",
+        lambda: {
+            "plugins": [
+                {
+                    "name": "livespec",
+                    "marketplace": "livespec",
+                    "installPath": str(plugin_root),
+                    "gitCommitSha": "2222222222223333",
+                }
+            ]
+        },
+        raising=False,
+    )
+
+    bootstrap_module.bootstrap()  # type: ignore[attr-defined]
+
+    assert str(_BUNDLE_SCRIPTS) in sys.path
+    assert str(_BUNDLE_VENDOR) in sys.path
+
+
 def test_bootstrap_falls_back_to_sha_cache_dir_when_registry_lacks_commit(
     *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
