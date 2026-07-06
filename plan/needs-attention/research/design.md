@@ -97,12 +97,18 @@ to this one shape:
       "handoff": {
         "kind": "drive",                       // drive | livespec-op | plan | shell  (routes the consumer)
         "action_id": "approve:abc123",         // the drive-grammar token (the real contract); null for non-drive
-        "command": "drive approve:abc123"       // ready-to-run string for humans/Markdown
+        "command": "python3 <plugin-root>/scripts/bin/drive.py --repo <repo> --action approve:abc123 --json"  // runnable drive.py invocation for humans/Markdown
       }
     }
   ]
 }
 ```
+
+For a drive-kind item the binding renders `command` as the runnable
+`python3 <plugin-root>/scripts/bin/drive.py --repo <repo> --action
+<action-id> --json` invocation (`<plugin-root>` and `<repo>` resolve to
+absolute paths), and `action_id` carries the full drive-grammar token
+(e.g. `approve:abc123`) — not the older `drive <action-id>` shorthand.
 
 Id stability is load-bearing (it is the console's diff key): `id` is a
 stable natural key per kind — `valve:<verb>:<work-item-id>`,
