@@ -29,6 +29,11 @@ action-only safety skips on top of detection:
   - CURRENT-WORKING-DIRECTORY skip: the worktree the process is standing
     in is never removed (the seam excludes only the primary, so the
     current worktree can appear as a candidate).
+  - DEFAULT-BRANCH skip: a candidate checked out ON the repo's default
+    branch (`master`/`main`, resolved from `origin/HEAD`) is MAINLINE and
+    is SKIPPED — a belt-and-suspenders guard so that even if detection
+    ever regressed and flagged a default-branch worktree, the reaper
+    never runs `git worktree remove` + `branch -D <default>` on it.
   - LIVE-PROCESS-LOCK skip: a locked worktree whose lock reason carries
     a `(pid N)` token for a LIVE pid is in use by another session and is
     SKIPPED. A stale (dead-pid) lock is unlocked, then reaped. A lock
@@ -223,6 +228,48 @@ def _branch_was_pushed(*, repo: Path, branch: str) -> bool:
     return tracking.returncode == 0
 
 
+def _resolve_default_branch(*, repo: Path) -> str | None:
+    """Resolve `repo`'s default branch name from `refs/remotes/origin/HEAD`.
+
+    Reads `git symbolic-ref refs/remotes/origin/HEAD` (e.g.
+    `refs/remotes/origin/master`) and strips the `refs/remotes/origin/`
+    prefix, yielding the short default-branch name (`master`/`main`).
+    Returns None when `origin/HEAD` is unset (no origin, or a fresh clone
+    that never resolved it), so the action-layer guard applies NO
+    default-branch skip rather than guarding on a bogus name.
+    """
+    result = _run_git(
+        repo=repo,
+        args=["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip().removeprefix("refs/remotes/origin/")
+
+
+def _candidate_on_default_branch(*, candidate: GitWorktree, default_branch: str | None) -> bool:
+    """Return True if `candidate` is checked out ON the repo's default branch.
+
+    A secondary worktree whose CURRENT BRANCH is the default branch
+    (`master`/`main`) is MAINLINE, never a stale/merged feature branch, so
+    it must NEVER be reaped — removing it runs `git worktree remove` +
+    `branch -D <default>`, destroying a mainline worktree and its default
+    branch. This is the action-layer belt-and-suspenders counterpart to the
+    detection seam's own default-branch guard: even if detection ever
+    regressed and surfaced such a worktree as a candidate, this skip stops
+    the destructive removal. A detached worktree (`branch is None`) does not
+    match — it holds no named branch to `branch -D`, so removing it is
+    `git worktree remove` only. When the default branch is UNRESOLVED
+    (`default_branch is None`) no candidate matches.
+    """
+    return (
+        candidate.branch is not None
+        and default_branch is not None
+        and candidate.branch == default_branch
+    )
+
+
 def _is_current_worktree(*, worktree_path: Path) -> bool:
     """Return True if the process cwd is at or inside `worktree_path`.
 
@@ -266,22 +313,32 @@ def _action_reapable(
     *,
     repo: Path,
     candidate: GitWorktree,
+    default_branch: str | None,
     locked_reason: str | None,
     log: structlog.stdlib.BoundLogger,
 ) -> bool:
     """Return True if `candidate` should be reaped from where the process stands.
 
     Applies the action-layer safety the detection seam deliberately
-    omits: the current-working-directory skip, the live-process-lock
-    skip, and (for non-prunable candidates) the never-pushed skip. A
-    prunable candidate is always reapable (its working directory is
-    gone); a detached candidate with no branch is reapable when it
-    survives the current/lock skips (the seam only flags a detached
-    worktree when it is clean and its HEAD is merged).
+    omits: the current-working-directory skip, the default-branch skip,
+    the live-process-lock skip, and (for non-prunable candidates) the
+    never-pushed skip. A prunable candidate is always reapable (its
+    working directory is gone); a detached candidate with no branch is
+    reapable when it survives the current/lock skips (the seam only flags
+    a detached worktree when it is clean and its HEAD is merged).
     """
     path_str = str(candidate.path)
     if _is_current_worktree(worktree_path=candidate.path):
         log.info("worktree is the current working directory; skipping", path=path_str)
+        return False
+    if _candidate_on_default_branch(candidate=candidate, default_branch=default_branch):
+        log.info(
+            "worktree is checked out on the repo default branch; skipping "
+            "(belt-and-suspenders guard: never `git worktree remove` + "
+            "`branch -D <default>` a mainline worktree, even if detection regresses)",
+            path=path_str,
+            branch=candidate.branch,
+        )
         return False
     if _lock_blocks_reap(locked_reason=locked_reason, path=path_str, log=log):
         return False
@@ -357,6 +414,7 @@ def reap_worktrees(*, repo: Path, dry_run: bool) -> list[str]:
     )
     log = structlog.get_logger("reap_stale_worktrees")
     candidates = detect_stale_worktrees(repo_path=repo)
+    default_branch = _resolve_default_branch(repo=repo)
     listing = _run_git(repo=repo, args=["worktree", "list", "--porcelain"], check=True)
     locked_by_path = {
         worktree.path: worktree.locked_reason
@@ -366,7 +424,11 @@ def reap_worktrees(*, repo: Path, dry_run: bool) -> list[str]:
     for candidate in candidates:
         locked_reason = locked_by_path.get(str(candidate.path))
         if not _action_reapable(
-            repo=repo, candidate=candidate, locked_reason=locked_reason, log=log
+            repo=repo,
+            candidate=candidate,
+            default_branch=default_branch,
+            locked_reason=locked_reason,
+            log=log,
         ):
             continue
         if dry_run:
