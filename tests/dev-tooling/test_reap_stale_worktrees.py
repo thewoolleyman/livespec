@@ -663,3 +663,82 @@ def test_skips_clean_merged_never_pushed_worktree(*, tmp_path: Path) -> None:
     assert wt.is_dir()
     branches = _git(cwd=primary, args=["branch", "--list", "feat-fresh"]).stdout
     assert branches.strip() != ""
+
+
+def test_never_reaps_default_branch_worktree_but_still_reaps_orphan(*, tmp_path: Path) -> None:
+    """The ORIGINAL DESTRUCTIVE repro: a secondary worktree ON the default branch
+    (`master`) is SKIPPED in BOTH dry-run and real run, while a genuine
+    rebase-merged orphan IS still reaped (no over-correction).
+
+    Before the v0.9.1 detection fix + the action-layer default-branch guard, a
+    clean secondary worktree checked out on `master` was a trivial ancestor of
+    `origin/HEAD`, so detection flagged it and the reaper ran
+    `git worktree remove` + `branch -D master` — destroying a mainline worktree
+    and its default branch. This asserts the fixed behavior end-to-end: the
+    master worktree survives the dry-run (never listed as would-reap) and the
+    real run (still on disk, local `master` branch intact), while a pushed-then-
+    remote-gone feature orphan is still reaped so the guard does not over-correct.
+    """
+    module = _load_module()
+    primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
+    _set_origin_head(primary=primary)
+    # A SECOND worktree checked out ON master (the mainline default branch).
+    # `--force` is required because master is already checked out in the primary.
+    wt_master = primary.parent / "wt-master"
+    _ = _git(cwd=primary, args=["worktree", "add", "--force", "-q", str(wt_master), "master"])
+    # A genuine rebase-merged orphan: pushed with upstream, then remote-gone.
+    wt_orphan = _add_worktree(primary=primary, name="wt-orphan", branch="feat-orphan")
+    _make_branch_done(primary=primary, push_from=wt_orphan, origin=origin, branch="feat-orphan")
+
+    # DRY-RUN: the master worktree is NOT reported as would-reap; the orphan is.
+    dry = module.reap_worktrees(repo=primary, dry_run=True)
+    assert str(wt_master) not in dry
+    assert wt_master.is_dir()
+    assert str(wt_orphan) in dry
+    assert wt_orphan.is_dir()  # dry-run mutates nothing
+
+    # REAL run: the master worktree survives on disk with its branch intact;
+    # the orphan is reaped.
+    reaped = module.reap_worktrees(repo=primary, dry_run=False)
+    assert str(wt_master) not in reaped
+    assert wt_master.is_dir()
+    master_branch = _git(cwd=primary, args=["branch", "--list", "master"]).stdout
+    assert master_branch.strip() != ""  # never `branch -D master`
+    assert str(wt_orphan) in reaped
+    assert not wt_orphan.exists()
+
+
+def test_action_guard_skips_default_branch_even_if_detection_regresses(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Belt-and-suspenders: even if the detection seam REGRESSED and surfaced a
+    default-branch worktree as a stale candidate, the reaper's action layer
+    SKIPS it in BOTH dry-run and real run.
+
+    Detection is monkeypatched to force the pre-v0.9.1 destructive
+    false-positive — the `master` worktree is returned as a candidate. The
+    action-layer default-branch guard must still refuse to remove it, so the
+    guard alone protects a mainline worktree from
+    `git worktree remove` + `branch -D master` independently of detection.
+    """
+    module = _load_module()
+    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    _set_origin_head(primary=primary)
+    wt_master = primary.parent / "wt-master"
+    _ = _git(cwd=primary, args=["worktree", "add", "--force", "-q", str(wt_master), "master"])
+
+    def _regressed_detect(*, repo_path: Path) -> list[object]:
+        _ = repo_path
+        return [module.GitWorktree(path=wt_master, branch="master", prunable_reason=None)]
+
+    monkeypatch.setattr(module, "detect_stale_worktrees", _regressed_detect)
+
+    dry = module.reap_worktrees(repo=primary, dry_run=True)
+    assert str(wt_master) not in dry
+    assert wt_master.is_dir()
+
+    reaped = module.reap_worktrees(repo=primary, dry_run=False)
+    assert str(wt_master) not in reaped
+    assert wt_master.is_dir()
+    master_branch = _git(cwd=primary, args=["branch", "--list", "master"]).stdout
+    assert master_branch.strip() != ""  # never `branch -D master`
