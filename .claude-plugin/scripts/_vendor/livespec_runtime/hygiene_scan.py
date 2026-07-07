@@ -254,6 +254,8 @@ def _stale_worktree_finding(
     worktree: GitWorktree,
 ) -> HygieneScanFinding | None:
     label = str(worktree.path)
+    if _is_default_branch_worktree(context=context, worktree=worktree):
+        return None
     if worktree.prunable_reason is not None:
         return HygieneScanFinding(
             type="stale-worktree",
@@ -288,6 +290,35 @@ def _stale_worktree_finding(
             command=remove_command,
         )
     return None
+
+
+def _is_default_branch_worktree(*, context: _ScanContext, worktree: GitWorktree) -> bool:
+    """Return True if `worktree` is checked out ON the repo's default branch.
+
+    A secondary worktree whose CURRENT BRANCH is the default branch
+    (`master`/`main`, derived from `origin/HEAD` in `_build_context`) is
+    MAINLINE, not a stale/merged feature branch. It is clean and its HEAD
+    is trivially an ancestor of `origin/HEAD` (the default branch IS
+    `origin/HEAD`) and its remote branch is never gone, so the
+    merged/rebase-merge predicates below would wrongly flag it — and the
+    consuming reaper would `git worktree remove` + `branch -D <default>`
+    (which errors on the checked-out default branch). It must NEVER be
+    flagged; this guard runs FIRST in `_stale_worktree_finding`, ahead of
+    the prunable/ancestor/rebase-merge cases, which apply only to
+    non-default branches.
+
+    DETACHED-HEAD decision (deliberate): a worktree DETACHED at the
+    default-branch commit has NO branch name (`worktree.branch is None`),
+    so it does NOT match this guard and remains subject to the existing
+    predicates. That is intentional — the regression being fixed is the
+    destructive `branch -D <default>` on a NAMED default branch; a
+    detached checkout holds no named branch, so removing it is
+    `git worktree remove` only (never `branch -D`), and guarding it would
+    REGRESS the existing merged-detached-worktree cleanup the reaper
+    legitimately performs. The guard keys on the branch NAME precisely
+    because branch deletion is the danger.
+    """
+    return worktree.branch is not None and worktree.branch == context.default_branch
 
 
 def _branch_was_rebase_merged(*, context: _ScanContext, worktree: GitWorktree) -> bool:
