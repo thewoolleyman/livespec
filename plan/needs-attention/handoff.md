@@ -6,9 +6,9 @@ ledger; never trust a status written here).
 
 **Read-first chain (open these, in order, before acting):**
 
-1. The `livespec-bj9x` ledger comments, top-to-bottom — the newest is a
-   self-contained RESUME RECIPE with full live state. Read via the
-   credential wrapper: `source
+1. The `livespec-bj9x` ledger comments, top-to-bottom — the newest is the
+   **2026-07-07 RESUME RECIPE (needs-attention overseer)**, a self-contained
+   snapshot with full live state. Read via the credential wrapper: `source
    /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C
    /data/projects/livespec show livespec-bj9x`.
 2. `research/design.md` — the settled design + the full cross-repo rollout.
@@ -16,13 +16,15 @@ ledger; never trust a status written here).
 
 ## Current state (2026-07-07; verify live against the ledger, don't trust this)
 
-**7 slices + 3 spec cycles DONE** this track: SP1 (v031), RT1, OR1, SP2 (v015),
-RT2, BR1, OR2-spec (v032), OR2-code. **The needs-attention surface now works
-end-to-end** (list-plan-threads enumerates unarchived plan threads; needs-attention
-composes a flat `attention[]` via the vendored runtime compose fn with drive-grammar
-handoffs; it dogfoods). The **newest RESUME RECIPE comment on epic `livespec-bj9x`
-is authoritative** for the full remaining phase and exact next actions — read it
-first (read-first chain step 1).
+**ALL 3 STRADDLE SPEC-SPLITS RATIFIED this session** (2026-07-07): BR2
+(driver-codex v004, PR #78), OR3 (git-jsonl v017, PR #195), CN1 (console v016,
+PR #101/#102). The needs-attention **spec surface is now fully specified across
+every repo it touches**. Peripheral doc-fixes (design.md #907, orchestrator
+README #352) and the maintainer-directed **openbrain install-prompt side-quest**
+(Phase 6 + real step-5 per-tenant Fabro-server recipe, both-orchestrator-correct;
+livespec #908/#909/#910/#911) also merged. The **newest RESUME RECIPE comment on
+epic `livespec-bj9x` (2026-07-07) is authoritative** for the full remaining phase
++ exact next actions — read it first.
 
 ## How to drive this track
 
@@ -30,20 +32,20 @@ The exact remaining phase + next actions live in the epic's **newest RESUME RECI
 comment** (read-first chain step 1) — follow that; it supersedes any older step list.
 Remaining phase in brief:
 
-1. **CO2** (needs-attention-internal + needs-attention-fleet, local/unsynced CORE
-   skills) — NOT filed; deps done → file as CORE children + dispatch (mind the CO1
-   pin-churn caveat).
-2. **CN1** (console snapshot port + diff adapter + `attention_item.*` events) — NOT
-   filed; deps done → file in the console tenant + dispatch (verify straddle first).
-3. **OR3** (git-jsonl) + **BR2** (driver-codex) — BACKLOG; each needs a governed-spec
-   split (propose-change → independent CODEX review → revise) BEFORE its code part
-   (pattern proven by OR2).
-4. **CO1** (`livespec-bj9x.1`, CORE, READY) — clean factory, DISPATCH DEFERRED
-   (core-tenant dispatch churns the core pin mid-session); dispatch from a fresh
-   session or at session-end.
-5. **design.md handoff-form reconcile** (minor plan-doc edit) + **orchestrator
-   repo-root README follow-up** (doc-fix work-item). BR3/BR4 NOT needed.
-5. **EXIT GATE:** surface closing `livespec-bj9x` when every piece is done.
+1. **CODE-SLICE DISPATCHES** (factory, host-wide sequential; fleet App works —
+   the openbrain failure was adopter-App-specific): OR3-code `bd-gj-8nh`
+   (git-jsonl), BR2-code `livespec-driver-codex-01a` (driver-codex), CN1-code
+   `livespec-console-beads-fabro-xb7bcr` (console) — all spec-ratified,
+   dispatch-ready; accept-on-behalf after live-exercise evidence.
+2. **CO1** `livespec-bj9x.1` (core reaper refactor) + **CO2** (file
+   needs-attention-internal/-fleet local CORE skills) — core-tenant dispatch
+   churns the pin → fresh session / session-end.
+3. **bd-ib-z2ctra build** (openbrain durable unblock; groom cut DRAFTED —
+   slices A/B/C/D1/D2a + NEW **E** = dispatcher resolves `dispatcher.fabro_home`;
+   DROP the parameterized-prepare sub-goal) — needs maintainer approval of the cut.
+4. **EXIT GATE:** surface closing `livespec-bj9x` when every piece is done.
+Follow-ups: git-jsonl skill-count drift; fresh-worktree worktree-pack hydration
+(`just install-worktree-pack`).
 
 ## Gate map
 
