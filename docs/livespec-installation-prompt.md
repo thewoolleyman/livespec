@@ -678,30 +678,59 @@ included — walks exactly these steps.
      credential (`CLAUDE_CODE_OAUTH_TOKEN`) into each sandbox itself, so no
      LLM secret is ever written to `settings.toml`.
 
-   **Point the dispatch AT this server — the single line that fixes the
-   `"App is not installed"` failure.** Setting up the server is NOT enough:
-   the dispatch's `fabro` CLI must be told to USE it. Set
-   `FABRO_HOME=~/.fabro-<tenant>` in the adopter's `credential_wrapper`
-   (Step 3), so EVERY dispatch's `fabro` CLI reads THIS home's `auth.json`
-   and connects to the per-tenant server holding the adopter's App. WITHOUT
-   this line the dispatch's fabro CLI defaults to `~/.fabro` — the fleet's
-   shared server, whose App is not installed for the adopter — and fails at
-   sandbox-creation with the "App is not installed for the `<org>`
-   organization" error. This is the actual fix the openbrain dogfood
-   proved; treat it as the load-bearing step, not an afterthought:
+   **Point the dispatch AT this server — the targeting that fixes the
+   `"App is not installed"` failure.** Standing the server up is NOT
+   enough: the dispatch's `fabro` CLI must be told to USE it, or it
+   defaults to `~/.fabro` — the fleet's shared server, whose App is not
+   installed for the adopter — and fails at sandbox-creation with the "App
+   is not installed for the `<org>` organization" error. Targeting is by
+   `FABRO_HOME`, a NON-secret host path pointing at Step 5's per-tenant
+   server home. Because it is non-secret it is **dispatch CONFIGURATION,
+   not a credential — it does NOT go in the `credential_wrapper`**, which
+   is a pure secret injector (`op run`); putting a plain host path there
+   would be a category error. Two forms, one intended and one executable
+   today:
 
-   ```bash
-   # inside the adopter's own with-<tenant>-env.sh (the credential_wrapper),
-   # alongside its GITHUB_APP_ID / GITHUB_PRIVATE_KEY / BEADS_DOLT_PASSWORD /
-   # CLAUDE_CODE_OAUTH_TOKEN exports:
-   export FABRO_HOME="$HOME/.fabro-<tenant>"
-   ```
+   - **Intended holistic mechanism — `.livespec.jsonc`
+     `dispatcher.fabro_home`.** Commit the per-tenant home as a dispatcher
+     config key, mirroring the existing `dispatcher.fabro_bin`:
 
-   (In-flight, tracked as orchestrator ledger item `bd-ib-z2ctra`: a
-   dispatch preflight that verifies the TARGETED server's App actually
-   reaches the target repo before launching, plus a cleaner dispatch config
-   key than wrapper-`FABRO_HOME`. Until those ship, the wrapper-`FABRO_HOME`
-   line above is the EXECUTABLE targeting mechanism today.)
+     ```jsonc
+     {
+       "livespec-orchestrator-beads-fabro": {
+         "dispatcher": { "fabro_home": "~/.fabro-<tenant>" }
+       }
+     }
+     ```
+
+     The dispatcher is intended to resolve this exactly as it resolves
+     `fabro_bin` — env `LIVESPEC_FABRO_HOME` > `.livespec.jsonc`
+     `dispatcher.fabro_home` > default `~/.fabro` — and export the result
+     as `FABRO_HOME` onto the `fabro` subprocess. **HONESTY: this
+     resolution is NOT yet shipped** (a pending slice of orchestrator
+     ledger item `bd-ib-z2ctra`); committing the key now records intent
+     but has NO effect until that slice lands, so it cannot be the
+     mechanism you dispatch with today.
+   - **Interim executable form (the stopgap until the key resolves) — a
+     manual `FABRO_HOME=` env prefix on the dispatch invocation.** Set it
+     as an AMBIENT env var on the command line (NOT inside the wrapper);
+     the credential wrapper still injects the secrets and passes the
+     ambient `FABRO_HOME` straight through to the `fabro` subprocess:
+
+     ```bash
+     FABRO_HOME="$HOME/.fabro-<tenant>" <credential-wrapper> -- python3 \
+       "${CLAUDE_PLUGIN_ROOT}/scripts/bin/drive.py" \
+       --action impl:<work-item-id> --repo <target-repo>
+     ```
+
+     This is the actual openbrain-proven targeting today. The same
+     `FABRO_HOME=` ambient prefix rides ANY dispatch entry point,
+     including the `dispatcher.py dispatch --workflow …` form in Step 6.
+
+   (Also in-flight under `bd-ib-z2ctra`: a dispatch preflight that verifies
+   the TARGETED server's App can reach the target repo BEFORE launching,
+   refusing with an actionable diagnostic instead of failing inside the
+   engine run.)
 
 6. **Adapt the dispatch workflow to the adopter's toolchain — only if it
    is not the fleet's `uv`/Python toolchain.** The default
