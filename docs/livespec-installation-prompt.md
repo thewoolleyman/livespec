@@ -455,7 +455,7 @@ included — walks exactly these steps.
 
 2. **Create and install the adopter's own GitHub App** (guided — YOU
    walk the human through the GitHub UI actions you cannot perform, and
-   wire what is wireable). Idempotency probe FIRST: if Step 6's preflight
+   wire what is wireable). Idempotency probe FIRST: if Step 7's preflight
    already mints a token and the App is installed on the target org/repo,
    this App is set up — record "already present" and skip creation.
    Otherwise:
@@ -485,7 +485,8 @@ included — walks exactly these steps.
 
    State clearly which parts are human-only UI actions (App creation, key
    generation, installation) and which you will wire (the wrapper entries
-   in Step 3, the preflight in Step 6).
+   in Step 3, the per-tenant server standup in Step 5, and the preflight in
+   Step 7).
 
 3. **Wire the `credential_wrapper` to inject the full set.** The adopter
    declares, in `.livespec.jsonc`, a `credential_wrapper` — an opaque
@@ -550,20 +551,178 @@ included — walks exactly these steps.
    strategy = "app"` + the App id, the PEM in the server process env, and
    a chosen listen port) and re-mints installation tokens on demand.
 
-   > **TODO: authoritative adopter per-tenant Fabro-server onboarding
-   > procedure needed.** A crisp, adopter-EXECUTABLE standup procedure —
-   > decoupled from the fleet's privileged Docker-in-Docker image, its
-   > `just` / `mise` helpers, and its gitignored pinned `fabro` binary —
-   > does not yet exist in publishable form (the per-tenant-identity work
-   > is tracked upstream as in-flight, not shipped). Until it does, DO
-   > NOT fabricate one. Tell the user: dispatch requires a Fabro server
-   > holding THIS tenant's App; generalize the fleet reference
-   > realization named above, and follow the orchestrator plugin's own
-   > server-standup documentation when it publishes. The GitHub App
-   > (Step 2), the credential set (Steps 1, 3), and the tenant (Step 4)
-   > remain correct, required prerequisites for that server regardless.
+   **Executable standup (adopter-generalized from that reference).**
+   HAND-provision the server — do NOT run `fabro install`: its GitHub step
+   validates a *static* gh token and REJECTS App installation tokens
+   (`ghs_*`), whereas fabro natively supports App auth via
+   `[server.integrations.github] strategy = "app"` + `app_id`, minting and
+   refreshing its OWN installation tokens from the PEM held in the server
+   process environment. The steps below reproduce the fleet entrypoint's
+   `provision_fabro` (orchestrator plugin repo,
+   `orchestrator-image/orchestrator-entrypoint.sh`), differing only in that
+   a PER-TENANT server uses a DEDICATED `FABRO_HOME` and its OWN loopback
+   port instead of the fleet default `~/.fabro`:
 
-6. **Idempotent preflight — confirm readiness up front.** Verify the
+   - **Choose (human) a dedicated home and a free loopback port.** Set
+     `FABRO_HOME=~/.fabro-<tenant>` (the fleet's openbrain reference uses
+     `~/.fabro-openbrain`) and pick an unused port `<port>` (openbrain uses
+     `32277`). These two are operator choices; everything below is
+     scriptable.
+   - **Idempotency probe FIRST.** If `<FABRO_HOME>/settings.toml` already
+     names the adopter's App id
+     (`grep -q 'app_id = "<APP_ID>"' "<FABRO_HOME>/settings.toml"`) AND the
+     server answers (`curl -sf -o /dev/null "http://127.0.0.1:<port>/"`),
+     the per-tenant server is already standing — record "already present"
+     and SKIP the rest of this step.
+   - **Generate the control-plane credentials** (the dev token that gates
+     the control plane + a session secret), exactly as the entrypoint does:
+
+     ```bash
+     dev_token="fabro_dev_$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+     session_secret="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+     mkdir -p "$FABRO_HOME/storage" "$FABRO_HOME/environments"
+     ```
+   - **Write the generated server credentials** (both mode `0600`; the dev
+     token is a secret — write it, never echo it):
+
+     ```bash
+     ( umask 077
+       printf 'FABRO_DEV_TOKEN=%s\nSESSION_SECRET=%s\n' "$dev_token" "$session_secret" \
+         > "$FABRO_HOME/storage/server.env"
+       printf '{"servers":{"http://127.0.0.1:%s":{"kind":"dev-token","token":"%s","logged_in_at":"%s"}}}\n' \
+         "<port>" "$dev_token" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+         > "$FABRO_HOME/auth.json" )
+     ```
+   - **Write `settings.toml` — `app_id` ONLY, NEVER the PEM.** The private
+     key lives in the server process env (a later step) and NOWHERE in
+     settings on disk:
+
+     ```toml
+     _version = 1
+
+     [cli.target]
+     type = "http"
+     url = "http://127.0.0.1:<port>"
+
+     [server.api]
+     url = "http://127.0.0.1:<port>/api/v1"
+
+     [server.auth]
+     methods = ["dev-token"]
+
+     [server.integrations.github]
+     strategy = "app"
+     app_id = "<APP_ID>"
+
+     [server.listen]
+     address = "127.0.0.1:<port>"
+     type = "tcp"
+
+     [server.web]
+     enabled = true
+     url = "http://127.0.0.1:<port>"
+     ```
+
+     Bind loopback (`127.0.0.1`). The fleet entrypoint binds `0.0.0.0` ONLY
+     because it runs inside a container and publishes the port to the host
+     loopback; a host-local per-tenant server binds loopback directly —
+     this is exactly the openbrain reference's `address = "127.0.0.1:32277"`.
+   - **Provide the `livespec-ci` execution environment.** The dispatch
+     workflow runs in a fabro execution environment NAMED `livespec-ci`;
+     create `<FABRO_HOME>/environments/livespec-ci.toml` defining it (a
+     `provider = "docker"` sandbox environment naming the sandbox image +
+     resources). This file carries NO secret: the Dispatcher appends the
+     per-run `[environments.livespec-ci.env]` secret table to a mode-`600`
+     overlay at dispatch time and deletes it post-run. The fleet reference
+     targets the published family sandbox image; a non-Python adopter points
+     it at its own image (paired with the adapted workflow in Step 6).
+   - **Start the server with the PEM in its PROCESS ENV only** (never argv,
+     never a settings key), under the chosen `FABRO_HOME`:
+
+     ```bash
+     export GITHUB_APP_PRIVATE_KEY="$GITHUB_PRIVATE_KEY"   # PEM: process env ONLY
+     FABRO_HOME="$FABRO_HOME" fabro server start --no-upgrade-check
+     ```
+
+     Like the fleet reference, the engine LLM credential MAY ride the SAME
+     server-process-env channel (the entrypoint's `ANTHROPIC_API_KEY`
+     export); the Dispatcher additionally projects the per-run engine
+     credential (`CLAUDE_CODE_OAUTH_TOKEN`) into each sandbox itself, so no
+     LLM secret is ever written to `settings.toml`.
+
+   **Point the dispatch AT this server — the single line that fixes the
+   `"App is not installed"` failure.** Setting up the server is NOT enough:
+   the dispatch's `fabro` CLI must be told to USE it. Set
+   `FABRO_HOME=~/.fabro-<tenant>` in the adopter's `credential_wrapper`
+   (Step 3), so EVERY dispatch's `fabro` CLI reads THIS home's `auth.json`
+   and connects to the per-tenant server holding the adopter's App. WITHOUT
+   this line the dispatch's fabro CLI defaults to `~/.fabro` — the fleet's
+   shared server, whose App is not installed for the adopter — and fails at
+   sandbox-creation with the "App is not installed for the `<org>`
+   organization" error. This is the actual fix the openbrain dogfood
+   proved; treat it as the load-bearing step, not an afterthought:
+
+   ```bash
+   # inside the adopter's own with-<tenant>-env.sh (the credential_wrapper),
+   # alongside its GITHUB_APP_ID / GITHUB_PRIVATE_KEY / BEADS_DOLT_PASSWORD /
+   # CLAUDE_CODE_OAUTH_TOKEN exports:
+   export FABRO_HOME="$HOME/.fabro-<tenant>"
+   ```
+
+   (In-flight, tracked as orchestrator ledger item `bd-ib-z2ctra`: a
+   dispatch preflight that verifies the TARGETED server's App actually
+   reaches the target repo before launching, plus a cleaner dispatch config
+   key than wrapper-`FABRO_HOME`. Until those ship, the wrapper-`FABRO_HOME`
+   line above is the EXECUTABLE targeting mechanism today.)
+
+6. **Adapt the dispatch workflow to the adopter's toolchain — only if it
+   is not the fleet's `uv`/Python toolchain.** The default
+   `implement-work-item` workflow's *prepare* steps — the commands that
+   provision each fresh sandbox clone before Red→Green runs — are the FLEET
+   toolchain's realization, hardcoded to `uv` + `lefthook` + the
+   `livespec_dev_tooling` Python package:
+
+   - `git fetch --unshallow --quiet`
+   - `mise trust && mise install --quiet`
+   - `uv sync --all-groups`
+   - `uv run lefthook install`
+   - `uv run python -m livespec_dev_tooling.install_commit_refuse_hooks`
+   - `git config livespec.sandboxExempt true`
+   - `uv run python -m livespec_dev_tooling.checks.primary_checkout_commit_refuse_hook_installed`
+   - `uv run python -m livespec_dev_tooling.checks.plugin_resolution`
+
+   On an adopter whose toolchain is NOT `uv`/Python (for example a
+   pnpm/TypeScript repo) those `uv …` prepare steps FAIL, aborting the run
+   BEFORE any work is driven — the SECOND wall, behind the server-identity
+   one in Step 5. Prepare steps are TARGET-TOOLCHAIN facts, not fleet
+   constants. The executable fix today: author a TARGET-repo-local workflow
+   at `<target-repo>/.fabro/workflows/implement-work-item/workflow.toml`
+   carrying the adopter's OWN prepare chain (its dependency install, its
+   hook install, its equivalent conformance gates), then pass it to the
+   Dispatcher via the existing `--workflow` override — e.g. when the
+   Dispatcher is invoked directly:
+
+   ```bash
+   <credential-wrapper> -- python3 \
+     "${CLAUDE_PLUGIN_ROOT}/scripts/bin/dispatcher.py" dispatch \
+     --repo <target-repo> --item <work-item-id> \
+     --workflow <target-repo>/.fabro/workflows/implement-work-item/workflow.toml
+   ```
+
+   The Dispatcher already honors this: `--workflow <path>` overrides the
+   plugin-default workflow (its `_workflow_toml` resolver returns the passed
+   path when `--workflow` is set, else the plugin-root default).
+   Idempotency: if the target-local `workflow.toml` already exists with the
+   adopter's prepare chain, record "already present". (In-flight, orchestrator
+   ledger item `bd-ib-z2ctra` deliverable (d): DURABLE auto-resolution — the
+   target's `.fabro/workflows/implement-work-item/workflow.toml` taking
+   precedence over the plugin payload automatically, plus parameterized
+   per-toolchain prepare steps, so no hand-carried `--workflow` flag is
+   needed. Until it ships, the `--workflow` recipe above is the executable
+   mechanism.) A fleet-`uv` adopter needs neither the override nor this
+   step — record it "n/a" and continue.
+
+7. **Idempotent preflight — confirm readiness up front.** Verify the
    GitHub App credential resolves and mints an installation token BEFORE
    the first dispatch, so readiness is known now rather than at
    sandbox-creation time. Run the orchestrator plugin's token-mint CLI
@@ -592,7 +751,6 @@ included — walks exactly these steps.
 **Idempotency report (terminal step for a beads-fabro adopter).** Extend
 the Phase-5 report with a factory-infrastructure section — one row each:
 GitHub App, dispatch credential set (wrapper), work-items tenant,
-per-tenant Fabro server, and preflight — marked "already present" /
-"added" / "updated" / "TODO (see Step 5)" so a re-run that changes
-nothing proves itself a no-op and the outstanding server standup stays
-visible.
+per-tenant Fabro server, adapted dispatch workflow (n/a for a fleet-`uv`
+adopter), and preflight — marked "already present" / "added" / "updated" /
+"n/a" so a re-run that changes nothing proves itself a no-op.
