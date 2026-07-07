@@ -494,7 +494,7 @@ dev = [
     { name = "hypothesis-jsonschema", specifier = "==0.23.1" },
     { name = "import-linter", specifier = "==2.1" },
     { name = "livespec-dev-tooling", git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v0.33.5" },
-    { name = "livespec-runtime", git = "https://github.com/thewoolleyman/livespec-runtime.git?tag=v0.8.0" },
+    { name = "livespec-runtime", git = "https://github.com/thewoolleyman/livespec-runtime.git?tag=v0.9.0" },
     { name = "mutmut", specifier = "==3.2.3" },
     { name = "pyright", specifier = "==1.1.391" },
     { name = "pytest", specifier = "==8.3.4" },
@@ -511,8 +511,8 @@ source = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=
 
 [[package]]
 name = "livespec-runtime"
-version = "0.8.0"
-source = { git = "https://github.com/thewoolleyman/livespec-runtime.git?tag=v0.8.0#9cbe178d18b9187260e46a24d3d593ae5da15e24" }
+version = "0.9.0"
+source = { git = "https://github.com/thewoolleyman/livespec-runtime.git?tag=v0.9.0#67066b4145d8199ccc455346f12357877df3f8cd" }
 dependencies = [
     { name = "typing-extensions" },
 ]
