@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/thewoolleyman/livespec/compare/v0.7.0...v0.7.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* **reaper:** guard default-branch worktrees against destructive reap ([62960cd](https://github.com/thewoolleyman/livespec/commit/62960cdfd6fbc30c4634da40ec958548e5b5fb7b))
+
 ## [0.7.0](https://github.com/thewoolleyman/livespec/compare/v0.6.10...v0.7.0) (2026-07-07)
 
 
