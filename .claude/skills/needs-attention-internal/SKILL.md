@@ -96,12 +96,19 @@ PRs it filed:
 
 ```bash
 gh run list --repo thewoolleyman/livespec --workflow "Pin freshness sweep" --branch master --limit 1
-gh pr list --repo thewoolleyman/livespec --search "bump pin"
+# open bump PRs, read by the bump-PR BRANCH convention (precise), not free text:
+gh pr list --repo thewoolleyman/livespec --state open \
+  --json number,title,headRefName \
+  --jq '.[] | select(.headRefName | startswith("chore/bump-"))'
 ```
 
 A failed sweep is one item; each OPEN bump PR is one item (the pin is stale until
-that PR merges). Repeat the `gh pr list` query per fleet repo whose pins you want
-covered, or scope it to the repos the sweep targets.
+that PR merges). Read the open bump PRs by their **head-branch convention**
+(`chore/bump-*`, the branch name the pin-freshness automation uses) — NOT a
+free-text `--search "bump pin"`, which false-positives on any unrelated PR whose
+title or body merely mentions those words (verified: it matched an unrelated
+skills PR during this skill's own live-exercise). Repeat the query per fleet repo
+whose pins you want covered, or scope it to the repos the sweep targets.
 
 ### Signal 4 — cross-repo consistency drift
 
