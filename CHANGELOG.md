@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/thewoolleyman/livespec/compare/v0.6.10...v0.7.0) (2026-07-07)
+
+
+### Features
+
+* reaper consumes runtime detect_stale_worktrees seam ([cd14427](https://github.com/thewoolleyman/livespec/commit/cd14427df87d88e4b0f115524d5fa84b76d8cba8))
+
 ## [0.6.10](https://github.com/thewoolleyman/livespec/compare/v0.6.9...v0.6.10) (2026-07-06)
 
 
