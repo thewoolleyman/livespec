@@ -1,52 +1,58 @@
 """reap_stale_worktrees — deterministic, idempotent reaper for merged worktrees.
 
-The Layer 3 orchestrator (per `.claude/skills/livespec-orchestrate/
-SKILL.md`) dispatches sub-agents into fleet repos with worktree
-isolation. When a sub-agent's PR rebase-merges, the remote branch is
-deleted but the local self-managed worktree + its branch linger. The
-doctor `no-stale-worktree` check only WARNS (detection); this tool is
-the deterministic ACTION layer the orchestrator runs to mechanically
-clean those orphans up.
+Cross-repo dispatch (carried by the Beads/Dolt + Fabro Dispatcher since
+the W6 dark-factory cutover) leaves self-managed worktrees + their
+branches lingering after a sub-agent's PR rebase-merges. This tool is
+the deterministic ACTION layer that mechanically cleans those orphans
+up. It operates on ANY fleet repo path (`--repo <path>`).
 
-It operates on ANY fleet repo path (the orchestrator is livespec-
-resident and reaps each repo by `--repo <path>`). For every NON-primary
-worktree (per `git worktree list --porcelain`), it reaps the worktree
-(`git worktree remove` + `git branch -D <branch>` + `git worktree
-prune`) IF AND ONLY IF ALL of the following hold:
+DETECTION is delegated to the shared runtime seam
+`livespec_runtime.hygiene_scan.detect_stale_worktrees(repo_path=...)`,
+which returns the NON-PRIMARY stale-worktree CANDIDATE set — a SUPERSET
+of "safe to remove" by any of three signals:
 
-  - The branch was PUSHED at some point: it carries upstream config
-    (`branch.<name>.merge`, written by `git push -u` and surviving
-    `fetch --prune`) OR a remote-tracking ref
-    (`refs/remotes/origin/<name>`, written by plain push/fetch and
-    surviving until `fetch --prune`). A local-only branch with
-    NEITHER signal was never pushed: its worktree is a dispatched
-    agent's in-progress work, NOT an orphan, and is SKIPPED —
-    remote-absence alone is ambiguous between "merged then deleted"
-    and "not pushed yet".
-  - The branch is "done": its remote branch is ABSENT
-    (`git ls-remote --heads origin <branch>` succeeds with empty
-    output). Pushed-then-remote-gone is the reliable rebase-merge
-    signal. If `ls-remote` errors (no `origin`, network failure),
-    done-ness is UNDETERMINED and the worktree is SKIPPED — never
-    reaped on an ambiguous signal.
-  - The working tree is CLEAN (`git status --porcelain` empty).
-  - It is NOT held by a LIVE process lock. A locked worktree's reason
-    string may carry a `(pid N)` token; if pid N is still alive the
-    worktree is in use by another session and is SKIPPED. A stale
-    (dead-pid) lock is unlocked, then the worktree is reaped. A lock
-    whose reason carries no parseable pid is treated as LIVE
-    (conservative) and SKIPPED.
+  - prunable (its gitdir is gone);
+  - clean AND its HEAD is an ancestor of `origin/HEAD` (a normal
+    fast-forward / merge-commit merge);
+  - clean AND its branch was pushed AND its origin branch is now gone
+    (the rebase-merge orphan signal — rebase rewrites SHAs so the HEAD
+    is not a literal ancestor of `origin/HEAD`).
 
-Safety + idempotency: the primary worktree is NEVER touched;
-never-pushed, dirty, remote-present, live-locked, and detached-HEAD
-worktrees are skipped.
+That seam is the SINGLE detection path: this reaper no longer carries
+its own clean/pushed/done predicates. It EXCLUDES only the primary
+checkout and applies NONE of the reaper's action-layer safety.
+
+This module is that action layer. For each candidate it decides whether
+to remove it RIGHT NOW, FROM WHERE THE PROCESS STANDS, by layering these
+action-only safety skips on top of detection:
+
+  - CURRENT-WORKING-DIRECTORY skip: the worktree the process is standing
+    in is never removed (the seam excludes only the primary, so the
+    current worktree can appear as a candidate).
+  - LIVE-PROCESS-LOCK skip: a locked worktree whose lock reason carries
+    a `(pid N)` token for a LIVE pid is in use by another session and is
+    SKIPPED. A stale (dead-pid) lock is unlocked, then reaped. A lock
+    with no parseable pid is treated as LIVE (conservative) and SKIPPED.
+  - NEVER-PUSHED skip: a non-prunable candidate whose branch carries NO
+    local evidence of ever having been pushed is a dispatched agent's
+    in-progress work (a fresh worktree at `origin/HEAD` is trivially
+    "merged" but holds unlanded work). It is SKIPPED. The seam's own
+    rebase-merge signal already requires pushed-ness; this guard
+    additionally protects worktrees flagged ONLY by the trivial
+    ancestor-of-`origin/HEAD` signal.
+  - DETACHED / PRUNABLE handling: a candidate with no branch (detached)
+    is removed without a branch delete; a prunable candidate is cleaned
+    via `git worktree prune` (its working directory is already gone).
+
+Safety + idempotency: the primary worktree is NEVER a candidate;
+current, live-locked, and never-pushed worktrees are skipped.
 `--dry-run` reports the would-reap set without mutating anything.
 
-This is a maintainer/orchestrator action tool, invoked via
-`just reap-stale-worktrees repo=<path>` (NOT part of `just check` —
-it is an action, not a check). Following the `dev-tooling/` house
-style it is standalone: it shells out to git via its own
-`subprocess.run` calls and does NOT import from `livespec/io/git.py`.
+This is a maintainer/Dispatcher action tool, invoked via
+`just reap-stale-worktrees repo=<path>` (NOT part of `just check` — it
+is an action, not a check). Following the `dev-tooling/` house style it
+is standalone: it shells out to git via its own `subprocess.run` calls
+and does NOT import from `livespec/io/git.py`.
 
 Output discipline: per spec, `print` (T20) and `sys.stderr.write`
 (`check-no-write-direct`) are banned in dev-tooling/**. Diagnostics
@@ -75,6 +81,10 @@ if str(_DEV_TOOLING_DIR) not in sys.path:
 
 import structlog  # noqa: E402  — path-aware import after sys.path insert.
 from claude_plugin_registry import prune_dead_project_plugin_entries  # noqa: E402
+from livespec_runtime.hygiene_scan import (  # noqa: E402  — path-aware import after sys.path insert.
+    GitWorktree,
+    detect_stale_worktrees,
+)
 
 __all__: list[str] = ["main", "reap_worktrees"]
 
@@ -86,11 +96,12 @@ _PID_PATTERN = re.compile(r"\(pid (\d+)\)")
 class Worktree:
     """One entry from `git worktree list --porcelain`.
 
-    `path` is the absolute worktree path; `branch` is the short
-    branch name (None for a detached-HEAD worktree); `is_primary`
-    is True for the first entry (the main working tree, which is
-    never reaped); `locked_reason` is the lock reason string when
-    the worktree is locked, else None.
+    Parsed by the reaper solely to recover the per-worktree LOCK reason
+    (the runtime `GitWorktree` candidate record carries no lock state).
+    `path` is the absolute worktree path; `branch` is the short branch
+    name (None for a detached-HEAD worktree); `is_primary` is True for
+    the first entry (the main working tree); `locked_reason` is the lock
+    reason string when the worktree is locked, else None.
     """
 
     path: str
@@ -183,19 +194,6 @@ def _run_git(*, repo: Path, args: list[str], check: bool) -> subprocess.Complete
     )
 
 
-def _worktree_is_clean(*, worktree_path: str) -> bool:
-    """Return True if the worktree has no uncommitted changes."""
-    result = subprocess.run(
-        ["git", "-C", worktree_path, "status", "--porcelain"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        return False
-    return result.stdout.strip() == ""
-
-
 def _branch_was_pushed(*, repo: Path, branch: str) -> bool:
     """Return True if `branch` carries local evidence of ever having been pushed.
 
@@ -208,11 +206,11 @@ def _branch_was_pushed(*, repo: Path, branch: str) -> bool:
         written by a plain `git push origin <name>` (and by fetch)
         and lingering until `fetch --prune` removes it.
 
-    A branch with NEITHER signal is local-only never-pushed work:
-    its absence from origin means "not pushed yet", not "merged and
-    remote-deleted", so the caller must treat the worktree as a
-    dispatched agent's in-progress work rather than as a reapable
-    orphan.
+    This is the reaper's ACTION-layer never-pushed guard: a branch with
+    NEITHER signal is local-only never-pushed work, so even when the
+    detection seam flags its worktree (a fresh worktree at `origin/HEAD`
+    is a trivial ancestor of `origin/HEAD`), the action layer treats it
+    as a dispatched agent's in-progress work and SKIPS it.
     """
     upstream = _run_git(repo=repo, args=["config", "--get", f"branch.{branch}.merge"], check=False)
     if upstream.returncode == 0 and upstream.stdout.strip() != "":
@@ -225,111 +223,110 @@ def _branch_was_pushed(*, repo: Path, branch: str) -> bool:
     return tracking.returncode == 0
 
 
-def _branch_is_done(*, repo: Path, branch: str) -> bool:
-    """Return True if `branch`'s remote-tracking head is ABSENT on origin.
+def _is_current_worktree(*, worktree_path: Path) -> bool:
+    """Return True if the process cwd is at or inside `worktree_path`.
 
-    Remote-gone is the reliable rebase-merge signal (the remote
-    branch is deleted on merge) — but ONLY once `_branch_was_pushed`
-    has established the branch ever reached origin; the caller gates
-    on that first. If `git ls-remote` errors (no `origin`
-    configured, network failure), done-ness is UNDETERMINED and this
-    returns False so the caller skips the worktree rather than
-    reaping on an ambiguous signal.
+    The reaper must never remove the worktree it is standing in —
+    removing it pulls the ground out from under the running process.
+    `detect_stale_worktrees` deliberately excludes only the primary
+    checkout and defers this current-directory guard to the action
+    layer, so the current worktree CAN appear as a candidate.
     """
-    result = _run_git(repo=repo, args=["ls-remote", "--heads", "origin", branch], check=False)
-    if result.returncode != 0:
-        return False
-    return result.stdout.strip() == ""
+    return Path.cwd().resolve().is_relative_to(worktree_path.resolve())
 
 
-def _lock_blocks_reap(*, worktree: Worktree, log: structlog.stdlib.BoundLogger) -> bool:
-    """Return True if `worktree`'s lock should block reaping (live lock).
+def _lock_blocks_reap(
+    *, locked_reason: str | None, path: str, log: structlog.stdlib.BoundLogger
+) -> bool:
+    """Return True if a worktree's lock should block reaping (live lock).
 
     Unlocked -> does not block. Locked by a parseable LIVE pid ->
     blocks. Locked by a parseable DEAD pid -> does not block (the
     caller unlocks then reaps). Locked with no parseable pid ->
     treated as LIVE (conservative) -> blocks.
     """
-    if worktree.locked_reason is None:
+    if locked_reason is None:
         return False
-    pid = _parse_locked_pid(reason=worktree.locked_reason)
+    pid = _parse_locked_pid(reason=locked_reason)
     if pid is None:
         log.info(
             "worktree locked without parseable pid; treating as live",
-            path=worktree.path,
-            locked_reason=worktree.locked_reason,
+            path=path,
+            locked_reason=locked_reason,
         )
         return True
     if _pid_is_alive(pid=pid):
-        log.info(
-            "worktree locked by live pid; skipping",
-            path=worktree.path,
-            pid=pid,
-        )
+        log.info("worktree locked by live pid; skipping", path=path, pid=pid)
         return True
-    log.info(
-        "worktree locked by dead pid; stale lock",
-        path=worktree.path,
-        pid=pid,
-    )
+    log.info("worktree locked by dead pid; stale lock", path=path, pid=pid)
     return False
 
 
-def _remove_worktree(
-    *, repo: Path, worktree: Worktree, branch: str, log: structlog.stdlib.BoundLogger
-) -> None:
-    """Remove `worktree`, delete its local `branch`, and prune.
+def _action_reapable(
+    *,
+    repo: Path,
+    candidate: GitWorktree,
+    locked_reason: str | None,
+    log: structlog.stdlib.BoundLogger,
+) -> bool:
+    """Return True if `candidate` should be reaped from where the process stands.
 
-    A stale (dead-pid) lock is unlocked first so `git worktree
-    remove` does not refuse. The branch delete uses `-D` (force)
-    because a rebase-merged branch is not fast-forward-merged into
-    the local default and `-d` would refuse it. `branch` is passed
-    in explicitly because the caller (`reap_worktrees`) only reaches
-    this path once `_should_reap` has guaranteed `worktree.branch`
-    is not None.
+    Applies the action-layer safety the detection seam deliberately
+    omits: the current-working-directory skip, the live-process-lock
+    skip, and (for non-prunable candidates) the never-pushed skip. A
+    prunable candidate is always reapable (its working directory is
+    gone); a detached candidate with no branch is reapable when it
+    survives the current/lock skips (the seam only flags a detached
+    worktree when it is clean and its HEAD is merged).
     """
-    if worktree.locked_reason is not None:
-        _ = _run_git(repo=repo, args=["worktree", "unlock", worktree.path], check=False)
-    _ = _run_git(repo=repo, args=["worktree", "remove", "--force", worktree.path], check=True)
-    _ = _run_git(repo=repo, args=["branch", "-D", branch], check=False)
-    _ = _run_git(repo=repo, args=["worktree", "prune"], check=False)
-    log.info("reaped worktree", path=worktree.path, branch=branch)
-
-
-def _reapable_branch(
-    *, repo: Path, worktree: Worktree, log: structlog.stdlib.BoundLogger
-) -> str | None:
-    """Return the branch name if `worktree` is reapable, else None.
-
-    Returns None (skip) for the primary worktree, detached-HEAD
-    worktrees, dirty worktrees, worktrees whose branch was never
-    pushed (no upstream config, no remote-tracking ref — a
-    dispatched agent's in-progress work), worktrees whose branch is
-    not "done" (remote-present or undetermined), and live-locked
-    worktrees. Returning the narrowed branch name lets the caller
-    delete it without re-narrowing `str | None`.
-    """
-    if worktree.is_primary:
-        return None
-    branch = worktree.branch
-    if branch is None:
-        return None
-    skip_reason: str | None = None
-    if not _worktree_is_clean(worktree_path=worktree.path):
-        skip_reason = "worktree dirty; skipping"
-    elif not _branch_was_pushed(repo=repo, branch=branch):
-        skip_reason = (
+    path_str = str(candidate.path)
+    if _is_current_worktree(worktree_path=candidate.path):
+        log.info("worktree is the current working directory; skipping", path=path_str)
+        return False
+    if _lock_blocks_reap(locked_reason=locked_reason, path=path_str, log=log):
+        return False
+    if candidate.prunable_reason is not None:
+        return True
+    branch = candidate.branch
+    if branch is not None and not _branch_was_pushed(repo=repo, branch=branch):
+        log.info(
             "branch never pushed (no upstream config, no remote-tracking ref); "
-            "in-progress work, skipping"
+            "in-progress work, skipping",
+            path=path_str,
         )
-    elif not _branch_is_done(repo=repo, branch=branch):
-        skip_reason = "branch not done (remote present or undetermined); skipping"
-    if skip_reason is not None:
-        log.info(skip_reason, path=worktree.path)
-        return None
-    if _lock_blocks_reap(worktree=worktree, log=log):
-        return None
-    return branch
+        return False
+    return True
+
+
+def _remove_worktree(
+    *,
+    repo: Path,
+    candidate: GitWorktree,
+    locked_reason: str | None,
+    log: structlog.stdlib.BoundLogger,
+) -> None:
+    """Remove `candidate`, delete its local branch (if any), and prune.
+
+    A prunable candidate's working directory is already gone, so
+    `git worktree remove` would refuse — `git worktree prune` cleans its
+    stale administrative entry instead. For a live candidate, a stale
+    (dead-pid) lock is unlocked first so `git worktree remove` does not
+    refuse; the branch delete uses `-D` (force) because a rebase-merged
+    branch is not fast-forward-merged into the local default and `-d`
+    would refuse it. A detached candidate has no branch to delete.
+    """
+    path_str = str(candidate.path)
+    if candidate.prunable_reason is not None:
+        _ = _run_git(repo=repo, args=["worktree", "prune"], check=False)
+        log.info("pruned stale worktree", path=path_str, prunable_reason=candidate.prunable_reason)
+        return
+    if locked_reason is not None:
+        _ = _run_git(repo=repo, args=["worktree", "unlock", path_str], check=False)
+    _ = _run_git(repo=repo, args=["worktree", "remove", "--force", path_str], check=True)
+    if candidate.branch is not None:
+        _ = _run_git(repo=repo, args=["branch", "-D", candidate.branch], check=False)
+    _ = _run_git(repo=repo, args=["worktree", "prune"], check=False)
+    log.info("reaped worktree", path=path_str, branch=candidate.branch)
 
 
 def _resolve_repo_path(*, repo: Path) -> Path:
@@ -341,11 +338,14 @@ def _resolve_repo_path(*, repo: Path) -> Path:
 
 
 def reap_worktrees(*, repo: Path, dry_run: bool) -> list[str]:
-    """Reap every reapable non-primary worktree in `repo`.
+    """Reap every action-reapable non-primary worktree in `repo`.
 
-    Returns the sorted list of worktree paths that were (or, under
-    `dry_run`, WOULD be) reaped. Under `dry_run` no worktree is
-    removed and no branch is deleted.
+    Detection (which non-primary worktrees are stale candidates) is
+    delegated to `detect_stale_worktrees`; this function layers the
+    action-time safety skips on top and performs the removal. Returns
+    the sorted list of worktree paths that were (or, under `dry_run`,
+    WOULD be) reaped. Under `dry_run` no worktree is removed and no
+    branch is deleted.
     """
     structlog.configure(
         processors=[
@@ -356,18 +356,26 @@ def reap_worktrees(*, repo: Path, dry_run: bool) -> list[str]:
         logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
     )
     log = structlog.get_logger("reap_stale_worktrees")
+    candidates = detect_stale_worktrees(repo_path=repo)
     listing = _run_git(repo=repo, args=["worktree", "list", "--porcelain"], check=True)
-    worktrees = _parse_worktrees(porcelain=listing.stdout)
+    locked_by_path = {
+        worktree.path: worktree.locked_reason
+        for worktree in _parse_worktrees(porcelain=listing.stdout)
+    }
     reaped: list[str] = []
-    for worktree in worktrees:
-        branch = _reapable_branch(repo=repo, worktree=worktree, log=log)
-        if branch is None:
+    for candidate in candidates:
+        locked_reason = locked_by_path.get(str(candidate.path))
+        if not _action_reapable(
+            repo=repo, candidate=candidate, locked_reason=locked_reason, log=log
+        ):
             continue
         if dry_run:
-            log.info("would reap worktree (dry-run)", path=worktree.path, branch=branch)
+            log.info(
+                "would reap worktree (dry-run)", path=str(candidate.path), branch=candidate.branch
+            )
         else:
-            _remove_worktree(repo=repo, worktree=worktree, branch=branch, log=log)
-        reaped.append(worktree.path)
+            _remove_worktree(repo=repo, candidate=candidate, locked_reason=locked_reason, log=log)
+        reaped.append(str(candidate.path))
     return sorted(reaped)
 
 
