@@ -397,14 +397,29 @@ as a merged pull request by the unattended **Dispatcher** (the
 chose in Phase 2**; for most adopters it is either the whole job or
 nothing:
 
-- **`livespec-orchestrator-git-jsonl` → NO-OP.** git-jsonl is the
-  serial, zero-infrastructure backend: work-items are JSONL files
-  committed in the repo and driven one writer at a time, with NO
-  sandbox, NO Fabro server, and NO GitHub App. If you chose git-jsonl
-  you are DONE at Phase 5 — do NOT create a GitHub App, do NOT stand up
-  a server, and do NOT ask the user for any dispatch credential. Record
-  each Phase-6 row in the report as "n/a — git-jsonl (no factory
-  infrastructure)".
+- **`livespec-orchestrator-git-jsonl` → NO-OP (this is CORRECT and
+  COMPLETE — a genuine no-op, not a hand-wave).** git-jsonl is the
+  serial, zero-infrastructure backend, and Phase 6 provisions nothing for
+  it for three concrete reasons:
+  1. **Dispatch is IN-SESSION, not a factory.** git-jsonl's `implement`
+     walks the user through Red→Green live in the session — author the
+     failing test, implement until it passes, close the work-item — so
+     there is NO Dispatcher, NO Fabro sandbox, and NO Fabro server to
+     stand up.
+  2. **GitHub goes through the operator's OWN commit / PR cycle.** The
+     change lands as a commit inline or via the consumer's own PR cycle
+     under the operator's ambient `gh` auth — so there is NO per-tenant
+     GitHub App to create and NO `FABRO_HOME` to target.
+  3. **The work-items store is a local file.** Work-items are a
+     `work-items.jsonl` committed alongside the code and merged one
+     writer at a time — so there is NO Dolt tenant and NO
+     `BEADS_DOLT_PASSWORD`.
+
+  If you chose git-jsonl you are DONE at Phase 5 — do NOT create a GitHub
+  App, do NOT stand up a Fabro server, and do NOT ask the user for any
+  dispatch credential. Record each Phase-6 row in the report as "n/a —
+  git-jsonl (in-session Red→Green; PRs via your own cycle; local JSONL
+  store)".
 - **Orchestrator deferred → deferred with the choice.** The factory
   infrastructure is only meaningful once a beads-fabro orchestrator is
   selected. Tell the user that re-running this prompt and choosing
@@ -426,6 +441,17 @@ App, its OWN dispatch credential set, and its OWN per-tenant Fabro
 server holding that App. livespec is adopter-agnostic: the fleet is
 "adopter #0" with no privileged path, so every adopter — the fleet
 included — walks exactly these steps.
+
+> **Scope — the seven steps below are `livespec-orchestrator-beads-fabro`
+> ONLY.** The GitHub App, the dispatch credential set, the Dolt tenant,
+> the per-tenant Fabro server, the `FABRO_HOME` targeting, and the
+> preflight are all beads-fabro FACTORY machinery. A
+> `livespec-orchestrator-git-jsonl` adopter does NONE of them — it is
+> already DONE at Phase 5 per the branch table above (in-session
+> Red→Green, PRs via the operator's own cycle, local JSONL store). Never
+> tell a git-jsonl adopter to create a GitHub App or stand up a Fabro
+> server. If your Phase-2 choice was not beads-fabro, skip this entire
+> numbered sequence.
 
 1. **Surface the full dispatch credential set — up front, not one
    failure at a time.** Enumerate for the user EVERY credential the
@@ -532,8 +558,10 @@ included — walks exactly these steps.
    the ledger without a "no beads database found" error.
 
 5. **Stand up the adopter's per-tenant Fabro server holding its OWN App
-   identity.** This is the ROOT of the "App is not installed for the
-   `<org>` organization" dispatch failure. A Fabro server holds exactly
+   identity.** *(beads-fabro ONLY — a git-jsonl adopter has no Fabro
+   server and skips this entire step; see the scope note above.)* This is
+   the ROOT of the "App is not installed for the `<org>` organization"
+   dispatch failure. A Fabro server holds exactly
    ONE App integration, so an adopter's dispatch MUST run against a
    server instance that holds the ADOPTER's App — a dedicated
    `FABRO_HOME` carrying the adopter's `app_id`, its PEM in the server
