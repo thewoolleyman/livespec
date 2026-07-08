@@ -116,12 +116,20 @@ So "confused about wrappers" = a **sandbox-incompatible credential-wrapper
 self-heal (`sudo`)**, NOT a plugin-root/resolution bug.
 
 **Remaining steps (DELEGATE / DISPATCH — do not serialize inline):**
-1. **Groom `livespec-3wh4`** into per-repo/per-runtime fix slices in their OWNING
-   tenants (the `livespec-bj9x` per-tenant + cross-repo-prose model), each with a
-   red test + a live fixture. Candidate fixes: (a) the credential wrapper avoids
-   `sudo` / degrades under sandbox; (b) `needs-attention` fail-SOFT with a clear
-   message when the credential env can't be injected, instead of leaking `sudo`
-   errors. Correct the `livespec-runtime` mischaracterization in `yes5`/`3wh4`.
+1. **Fix — GROOMED + RT LANDED + OR IN FLIGHT (2026-07-08).** `livespec-3wh4` was
+   groomed into 2 slices: **RT `livespec-runtime-2y1`** (pure `credentials.py` Fail
+   message) — **LANDED** (PR #145; in `livespec-runtime` v0.9.2, now pinned into
+   `livespec-orchestrator-beads-fabro`); **OR `bd-ib-0s7`** (`_bootstrap.py`
+   supervised re-exec that prints RT's message) — **dispatching through the factory**
+   (final item of the `livespec-orchestrator-beads-fabro` drain). WHEN OR LANDS, the
+   remaining work is:
+   - **Live-verify** ("done means exercised live"): re-run `needs-attention` under
+     the DEFAULT Codex sandbox in `livespec-runtime` — it must now emit the clean
+     fail-soft message ("credential injection … could not run in this environment …")
+     and leave stdout clean, NOT the raw `sudo` dump. Also confirm the non-sandbox
+     path still works (`--dangerously-bypass-approvals-and-sandbox` → real list).
+   - **Close `livespec-3wh4`** (→ `livespec-yes5` 1/1) and correct the stale
+     `livespec-runtime` "no backend" framing in `yes5`/`3wh4` descriptions.
 2. **Prove the matrix.** Run `needs-attention` on BOTH runtimes across the repo
    classes (core, runtime library, driver plugin, both orchestrators, console,
    `openbrain`, `resume`); each cell = correct list OR correct fail-soft. Matrix
