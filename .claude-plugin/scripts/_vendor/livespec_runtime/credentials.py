@@ -38,6 +38,7 @@ __all__: list[str] = [
     "Proceed",
     "Reexec",
     "decide_credentials",
+    "wrapper_launch_failure",
 ]
 
 # The livespec-namespaced marker the caller sets on ``os.environ`` before
@@ -93,6 +94,26 @@ class Fail:
 
 
 CredentialDecision = Proceed | Reexec | Fail
+
+
+def wrapper_launch_failure(
+    *,
+    required: Sequence[str],
+    credential_wrapper: Sequence[str],
+) -> Fail:
+    """Build the fail-soft diagnostic for a failed wrapper handoff."""
+    return Fail(
+        message=(
+            f"credential_wrapper could not run in this environment "
+            f"(wrapper {list(credential_wrapper)!r}; required secret env "
+            f"var(s) {list(required)!r}). This can happen in a sandbox "
+            f"that blocks sudo or sets no_new_privs, preventing the wrapper "
+            f"from reaching the root-only systemd-creds credstore. Re-run "
+            f"under the credential wrapper with the required secret(s) already "
+            f"present, or, when running Codex, with "
+            f"--dangerously-bypass-approvals-and-sandbox."
+        ),
+    )
 
 
 def decide_credentials(
