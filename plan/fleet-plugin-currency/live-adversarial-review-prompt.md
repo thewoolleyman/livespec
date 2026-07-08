@@ -53,13 +53,14 @@ Read first:
 
 Core claim to refute: "A default (`posture: released`) livespec adopter
 auto-updates to the latest released build on every session, on Claude AND Codex,
-using only that runtime's own CLI and committed config — no fleet tooling; a
-`posture: pinned` adopter stays put and updates only manually; and the gate never
-dead-ends an adopter, printing only runnable remediation when it fires." Your
-default posture: some variant of the `resume` trap still exists — a hook that is
-present but does not advance the pin, a Claude fix with Codex merely assumed, a
-pinned adopter that still trips the gate off the shared marketplace clone, or a
-message that still names `just ensure-plugins`.
+using only that runtime's own CLI/config — no fleet tooling; a `posture: pinned`
+adopter stays put and updates only manually; and the gate never dead-ends an
+adopter, printing only runnable remediation when it fires." Your default posture:
+some variant of the `resume` trap still exists — a hook that is present but does
+not advance the pin, Codex native auto-upgrade claimed but not actually observed
+in the installed cache, a Claude fix with Codex merely assumed, a pinned adopter
+that still trips the gate off a moving marketplace ref, or a message that still
+names `just ensure-plugins`.
 
 Operating stance:
 
@@ -79,12 +80,15 @@ Operating stance:
   submit a highlighted/default option.
 - Read the effect, not the presence of a string. A `SessionStart` hook existing
   in settings is NOT proof it advanced the pin. Verify the project-scope entry in
-  `~/.claude/plugins/installed_plugins.json` (Claude) / the installed record on
-  `~/.codex` (Codex) actually flipped to the latest release build.
+  `~/.claude/plugins/installed_plugins.json` (Claude) / the configured
+  marketplace clone plus installed cache in `~/.codex` (Codex) actually flipped
+  to the latest release build.
 - Do not accept "works on Claude" as done. Codex is host-wide
-  (`~/.codex/config.toml`), does not self-refresh, and updates via
-  `codex plugin marketplace upgrade` + re-add — a DIFFERENT mechanism. Demand a
-  live Codex proof of its own.
+  (`~/.codex/config.toml`) and, on codex-cli 0.142.5, live evidence says Git
+  marketplaces whose ref is `release` auto-upgrade natively at session start.
+  Treat that as a claim to reproduce, not a reason to skip review: demand a
+  live Codex proof that plain session startup advances the clone/cache, and a
+  paired pinned-tag control that stays fixed.
 - Do not nitpick style. Findings are concrete: an adopter that does not become
   current, a pinned adopter that hard-fails, a message that names fleet tooling,
   a doc that omits the hook/posture, a gate quietly weakened, or a claim proven
@@ -99,21 +103,23 @@ Specific attack points (this scope):
    `--scope user` is a SILENT no-op on a project-scope install (the exact resume
    trap). A hook that runs but leaves the pin frozen is a false green.
 
-2. Codex parity is REAL, not assumed. Repeat point 1 on real `~/.codex`: a
-   `posture: released` Codex adopter must auto-update to the latest release on
-   session start. Verify the trigger actually fires (Codex has no project-scoped
-   per-session hook like Claude — confirm the driver's chosen mechanism, not a
-   hand-wave) and that `codex plugin marketplace upgrade` + re-add landed the new
-   build. "The Claude leg works" is NOT proof for Codex.
+2. Codex parity is REAL, not assumed. Repeat point 1 under a throwaway
+   `CODEX_HOME` or otherwise isolated Codex home: a `posture: released` Codex
+   adopter must auto-update to the latest release on session start. Verify the
+   trigger actually fires (current live claim: Codex native startup auto-upgrade,
+   not a committed hook) and that a plain `codex exec` startup advances BOTH the
+   marketplace clone and the installed cache. A `codex plugin marketplace
+   upgrade` hook or manual command is useful as a control, but is not proof of
+   native session-start currency. "The Claude leg works" is NOT proof for Codex.
 
 3. Opt-out both-directions (`posture: pinned`). On a pinned scratch adopter
    (marketplace pinned to a FIXED release tag, no updater): (a) confirm it does
    NOT auto-update; and (b) confirm the gate does NOT hard-fail it. The subtle
-   trap: the gate compares the running build to the marketplace CLONE tip, and on
-   a shared host there is ONE clone per marketplace name — verify a pinned
-   adopter's registration yields a FIXED expected build (its own pinned tag), not
-   the shared moving `release` HEAD that a co-resident released repo advances. A
-   pinned adopter that still trips the gate is a finding.
+   trap differs by runtime: Claude has project-scoped installs, while Codex
+   posture is host-wide per `CODEX_HOME` marketplace config. Verify the expected
+   build/ref is the adopter's fixed tag, not a moving `release` ref advanced by
+   a co-resident released setup. A pinned adopter that still trips the gate is a
+   finding.
 
 4. Message names only runnable commands. Force the gate to fire (put a scratch
    adopter's running build behind its expected pin) and read `_currency_message`
@@ -136,15 +142,18 @@ Specific attack points (this scope):
    finding — the doc is the adopter's only contract.
 
 7. Gate NOT quietly weakened. Confirm the fix did not "solve" the adopter case by
-   defanging the gate: no new skip flag, no `LIVESPEC_CURRENCY_GATE` default
-   flipped to warn, no posture-blindness removed in a way that lets a genuinely
-   stale adopter run silently. The design KEEPS enforcement and ADDS the updater;
-   a gate that now passes stale adopters is a regression dressed as a fix.
+   defanging the gate: no new skip flag, no undocumented no-op branch, and no
+   posture-blindness removed in a way that lets a genuinely stale adopter run
+   silently. Claude's confirmed-stale path stays a hard gate. For Codex, compare
+   the shipped behavior to the maintainer's explicit gate-severity decision
+   after the native-auto-upgrade evidence, not to stale prompt text; a hidden
+   relaxation without that decision is a finding.
 
 8. Illegal-middle eliminated. Confirm the install contract makes "`ref: release`
-   with no updater" (the resume state) impossible or clearly steered-against. If
-   the docs still let an adopter track the release channel without the updater,
-   the trap is intact.
+   with no effective updater" (the Claude resume state) impossible or clearly
+   steered-against. On Codex, live evidence says `ref = "release"` is the
+   updater trigger itself because Codex auto-upgrades Git marketplaces at startup;
+   verify the docs state that asymmetry instead of prescribing a redundant hook.
 
 9. Premature close. No child closes on unit-tests-only. The epic does not
    re-close until BOTH runtimes are live-proven for BOTH postures, the message is
@@ -172,8 +181,9 @@ for r in d["plugins"].get("livespec@livespec", []):
 PY
 # Marketplace clone HEAD the gate compares against (shared, host-level):
 git -C ~/.claude/plugins/marketplaces/livespec rev-parse --short=12 HEAD
-# Codex install state:
+# Codex install state and configured marketplace refs:
 codex plugin list --json 2>/dev/null | head
+sed -n '/^\\[marketplaces\\./,/^$/p' ~/.codex/config.toml 2>/dev/null
 ```
 
 Required watcher loop:
@@ -233,7 +243,8 @@ it, and hold the close until I rerun the reproducer.
 Exit checklist:
 
 - `posture: released` adopter proven auto-updating to latest on session start,
-  LIVE, on Claude AND on Codex (project-scope pin flip observed, not inferred).
+  LIVE, on Claude AND on Codex (Claude project-scope pin flip observed; Codex
+  marketplace clone/cache flip observed), not inferred.
 - `posture: pinned` adopter proven to (a) not auto-update and (b) not trip the
   gate, on both runtimes — its expected build is its own fixed tag, not the
   shared moving HEAD.
@@ -242,7 +253,8 @@ Exit checklist:
 - One-session lag collapsed (or correctly surfaced as restart) on both runtimes.
 - `docs/livespec-installation-prompt.md` demonstrated sufficient on a fresh
   adopter for both postures, both runtimes; the illegal middle is steered against.
-- Gate fire/no-fire logic verified UNCHANGED (no new hatch, no default flip).
+- Gate fire/no-fire logic verified against the maintainer's current severity
+  decision (no hidden hatch, no undocumented no-op).
 - Every worktree you created removed after merge; every PR merged or handed off;
   all touched primary checkouts clean/current on `master`.
 - The thread stays OPEN until both runtimes are live-proven and the maintainer
