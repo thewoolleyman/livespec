@@ -50,7 +50,33 @@ from this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
-> **★ SESSION 5 (2026-07-05/06) — READ THIS FIRST; supersedes Session 4 below (retained as history). Status is READ from the ledger/PRs, never stored here.**
+> **★ SESSION 6 (2026-07-08) — READ THIS FIRST; supersedes Session 5 below (retained as history). Status is READ from the ledger, never stored here.**
+>
+> **EPIC REOPENED.** `livespec-c1k9` was CLOSED 2026-07-06 (9/9 — it delivered fleet currency). It is now **REOPENED (`in_progress`)** with a new **ADOPTER-parity** scope. Trigger: the `resume` adopter (`/data/projects/resume`, a genuine third-party consumer — installs `livespec@livespec` from the GitHub marketplace at `ref: release`, uses the git-jsonl orchestrator, NO fleet tooling) **hard-failed exit 78** on every `/livespec:*` op. Root cause, verified live: the currency gate ships INSIDE core's plugin and enforces on adopters, but the ONLY auto-updater is the fleet-only `just ensure-plugins` SessionStart hook — absent in adopters. So an adopter tracking `ref: release` freezes its installed build (`resume` sat on `2d73188a7e10` from 07-04) while the SHARED host marketplace clone HEAD advances (`f906c7481cb4`), and the gate correctly-but-uselessly hard-blocks it with remediation naming fleet tooling it does not have. Enforcement without an updater = a lock with no key. (Immediate unblock already applied to `resume`: `claude plugin update livespec@livespec --scope project` advanced its pin to current; the default `--scope user` — which the stuck session tried — does NOT touch a project-scope install.)
+>
+> **DESIGN (maintainer 2026-07-08).** The fix is NOT to weaken/opt-out the gate; it is to give adopters the missing updater and make the two `posture` states clean. Gate fire/no-fire logic is UNCHANGED.
+> - **`posture: released` (DEFAULT the maintainer wants for every adopter he owns):** marketplace tracks `ref: release` AND a **portable per-driver auto-updater** pulls the project-scope install to the latest release every session. Always current → gate passes.
+> - **`posture: pinned` (OPT-OUT for adopters who are not the maintainer):** marketplace pinned to a FIXED release tag, no updater, manual update when they choose. Running == pinned tag → structurally coherent, gate never trips (the spec's existing reasoning holds).
+> - **Eliminate the illegal middle** (`ref: release` with no updater — what `resume` was).
+> - **Every driver:** works on **Claude** and **Codex** now; structured so **Pi** slots in later. The updater default is **per-adopter COMMITTED settings** (maintainer controls exactly which owned adopters auto-update), NOT Driver-force-shipped for all third parties.
+>
+> **REMAINING CHILDREN (all `backlog`/open under the reopened epic; status live from ledger):**
+> - **`c1k9.12`** (P1, core) — posture contract (`released`/`pinned`) + `docs/livespec-installation-prompt.md` docs, BOTH runtimes. The design/contract anchor the impl children consume.
+> - **`c1k9.13`** (P1, `livespec-driver-claude`) — Claude portable auto-updater: committed `.claude/settings.json` `SessionStart` hook, plain `claude plugin update --scope project`, no fleet tooling.
+> - **`c1k9.14`** (P1, `livespec-driver-codex`) — Codex parity. **FIRST TASK = RESEARCH** the Codex per-session update trigger (host-wide `~/.codex/config.toml`; `codex plugin marketplace upgrade`; does Codex fire a hangable session hook?) — read the recipe + Codex docs + test on real `~/.codex`, do NOT guess. Then implement.
+> - **`c1k9.15`** (P2, core `_bootstrap.py` + `tests/bin/test_bootstrap.py`) — remediation-message fix: name adopter-runnable commands per runtime, drop fleet-only `just ensure-plugins`. Quick, low-risk; product-`.py` → red-green-replay ritual. Message text only.
+> - **`c1k9.2`** (P1, per-driver) — reload nudge collapses the one-session lag on Claude (`/reload-plugins`) AND Codex (equivalent). Pairs with the updater.
+> - **`c1k9.7`** (P2, terminal) — upstream Claude Code plugin-source-pin report; **maintainer files externally** (draft: `tmp/fleet-plugin-currency/session3/c1k9.7-upstream-report-draft.md`). Relocate the draft onto the item so it survives any future archive.
+>
+> **NEXT ACTIONS, in order:** (1) `c1k9.14` Codex research (unblocks the Codex leg + de-risks the whole exit gate); (2) `c1k9.12` posture contract + docs (anchors both impl legs); (3) `c1k9.15` message fix (quick win); (4) `c1k9.13` Claude updater; then `c1k9.14` Codex impl + `c1k9.2` per-driver nudge. Factory-dispatch the ready driver-repo impl; host-only self-machinery stays maintainer-side.
+>
+> **EPIC EXIT CRITERIA (BOTH runtimes required — no "Claude works, Codex assumed"):** on a fresh adopter, LIVE-demonstrated on **Claude** AND on **Codex**: (a) a `posture: released` adopter auto-updates to the latest release on session start; (b) a `posture: pinned` adopter stays put and updates only manually; (c) the gate, when it fires, prints only adopter-runnable remediation for the firing runtime. Unit tests are necessary but NOT sufficient — "done means exercised live."
+>
+> **Adversarial review:** `plan/fleet-plugin-currency/live-adversarial-review-prompt.md` (this session) — run a second, independent session against every auto-update / opt-out / cross-runtime completion claim before any child closes or the epic re-closes.
+>
+> **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-plugin-currency`.
+
+> **★ SESSION 5 (2026-07-05/06) — supersedes Session 4 below (retained as history). Status is READ from the ledger/PRs, never stored here.**
 >
 > **★ TRACK SCOPE (maintainer 2026-07-06): the Fabro checkpoint-timeout PR is a COMPLETELY SEPARATE TRACK, not part of fleet-plugin-currency.** So `c1k9.4` (which depends on it) is the ONE fleet-plugin-currency exit-gate blocker whose dependency lives OUTSIDE this track; everything else here is driven to its boundary.
 >
