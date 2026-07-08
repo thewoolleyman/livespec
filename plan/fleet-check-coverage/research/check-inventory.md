@@ -173,7 +173,7 @@ Per-repo tracked `.py` counts (via each repo's own `git ls-files`):
 
 | repo | total .py | minus `_vendor/` | minus `_vendor/`+tests | character |
 |---|---:|---:|---:|---|
-| livespec | 412 | 238 | 116 | genuine product (`.claude-plugin/scripts/` 102, `dev-tooling` 11, `templates` 2, `.claude` 1) |
+| livespec | 412 | 238 | 120 | genuine product (`.claude-plugin/scripts/` 108 [livespec pkg 99 + bin 9], `dev-tooling` 11, `.claude` 1; `templates/**` now excluded) |
 | livespec-dev-tooling | 207 | 181 | 88 | genuine product (flat `livespec_dev_tooling/` 87, `.claude` 1) |
 | livespec-orchestrator-beads-fabro | 211 | 183 | 78 | **the trigger** — product under `.claude-plugin/scripts/` (66) + `dev-tooling` 6 + `orchestrator-image` 2 + `acceptance` 2 + `.claude` 2 (sums to 78; the earlier "77" was an arithmetic typo) |
 | livespec-console-beads-fabro | **0** | 0 | 0 | **genuinely codeless** (no Python at all) — must PASS on empty universe |
@@ -182,20 +182,22 @@ Per-repo tracked `.py` counts (via each repo's own `git ls-files`):
 | livespec-driver-claude | 9 | 9 | **2** | near-codeless: only 2 first-party non-test `.py`, BOTH hooks |
 | livespec-driver-codex | 11 | 11 | **3** | near-codeless: only 3 first-party non-test `.py`, ALL hooks |
 
-> **Authoritative counts (updated 2026-07-08).** The figures above were computed
-> by hand with an any-segment `tests` exclusion and before the `templates/**`
-> exemption existed. The **landed** `iter_first_party_py_files` (v0.34.1) is now
-> the source of truth; its live first-party counts are `livespec` **120**,
-> `livespec-dev-tooling` 88, `livespec-orchestrator-beads-fabro` **78**,
-> `livespec-console-beads-fabro` 0, `livespec-orchestrator-git-jsonl` 40,
+> **Authoritative counts (updated 2026-07-08).** The third-column figures above
+> are now the LIVE `iter_first_party_py_files` (v0.34.1) source-of-truth counts:
+> `livespec` 120, `livespec-dev-tooling` 88, `livespec-orchestrator-beads-fabro`
+> 78, `livespec-console-beads-fabro` 0, `livespec-orchestrator-git-jsonl` 40,
 > `livespec-runtime` 27, `livespec-driver-claude` 2, `livespec-driver-codex` 3
-> (see `handoff.md`'s fleet table). Two rows above differ from live: `livespec`
-> reads 116 (live **120** — the predicate excludes `templates/**` but INCLUDES
-> nested-`tests/` dirs outside the root `tests_tree_prefix`, e.g.
-> `orchestrator-image/e2e-skeleton/tests/`), and the orchestrator row is corrected
-> to 78 inline. Nested-`tests/` files counting as first-party is correct-by-design:
-> the fail-closed predicate surfaces them so each repo must explicitly claim or
-> exempt them in Phase 1.
+> (matching `handoff.md`'s fleet table). Two rows were corrected from the original
+> hand analysis, which used an any-segment `tests` exclusion and predated the
+> `templates/**` exemption:
+> - `livespec` 116 → **120**: the predicate excludes the 2 `templates/**` `.py`,
+>   but the `.claude-plugin/scripts/` first-party set is 108 (pkg 99 + bin 9), not
+>   the hand figure's 102 — net +4. Core has NO nested-`tests/` files.
+> - `livespec-orchestrator-beads-fabro` 77 → **78** (corrected inline): the 78th
+>   file is `orchestrator-image/e2e-skeleton/tests/test_skeleton_sanity.py`, a
+>   nested-`tests/` path OUTSIDE the root `tests_tree_prefix`. Such files counting
+>   as first-party is correct-by-design — the fail-closed predicate surfaces them
+>   so the repo must explicitly claim or exempt them in Phase 1.
 
 Exact non-test first-party `.py` in the small/thin repos:
 - `livespec-driver-claude`: `.claude-plugin/hooks/no_shadow_ledger.py`,
