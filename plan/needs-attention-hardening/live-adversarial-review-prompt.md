@@ -92,6 +92,13 @@ Message delivery discipline:
 - If the pane remains idle for multiple 5-minute polls, report "still waiting on
   maintainer input at <prompt summary>" in your own session and keep the loop
   armed. A long idle prompt is a watch state, not an exit condition.
+- While the watched track is active, print a status table every 15 minutes in
+  the controlling session. The table must include every watched epic, drain,
+  release, and fix track with columns named `Epic / anchor`, `Track (repo)`,
+  `Status`, and `%Complete`, read live from the ledger, GitHub, and the relevant
+  tmux panes. Include one short note below the table for any stall, blocker,
+  completion, or newly cleared gate. If the 15-minute timer is session-local,
+  re-establish it after any overseer rotation before resuming review.
 - If the watched session waits at a picker and the answer is clear, answer it
   only after verifying the pane is idle at that picker.
 - If it stalls in analysis, force a checkpoint: ask for the branch, PR, blocker,
