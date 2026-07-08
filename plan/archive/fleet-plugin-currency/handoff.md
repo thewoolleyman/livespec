@@ -1,6 +1,6 @@
-**BLOCKING ARCHIVE REVIEW — EPIC REOPENED (2026-07-09).** The
-2026-07-08 close was premature. Two completion gaps were found after the
-archive review:
+**✓ EPIC RE-CLOSED AFTER BLOCKING ARCHIVE REVIEW REPAIR (2026-07-09).**
+The 2026-07-08 close was premature. Two completion gaps were found after the
+archive review, fixed, revalidated, and then re-closed:
 
 1. The registered adopter posture and committed adopter settings diverged.
    Livespec core `.livespec-fleet-manifest.jsonc` declares both `openbrain`
@@ -13,10 +13,20 @@ archive review:
    checkout; `check-fleet-marketplace-relative-sources` scanned them and failed
    on non-relative plugin sources.
 
-`livespec-c1k9` is reopened until the pinned adopter settings are committed,
-the scratch catalogs are quarantined outside the livespec core checkout, full
-validation passes, and a reviewer revalidates the landed state. The previous
-close record remains below as history only.
+The repair landed in the owned repos: `openbrain` commit `e239485`, `resume`
+`master` commit `c4ae6d8` plus local `feat/phase-1-mvp` commit `63d8030`, and
+livespec core PR #972 merge commit `f4f9cd7`. The ignored scratch catalog was
+quarantined at
+`/home/ubuntu/.livespec-quarantine/fleet-plugin-currency/scratch-20260709`.
+Primary-checkout validation passed in livespec core:
+`mise exec -- just check-fleet-marketplace-relative-sources`,
+`mise exec -- uv run pytest tests/bin/test_bootstrap.py tests/_currency -q`
+(50 passed), and `mise exec -- just check` (all 59 targets passed).
+
+Independent reviewer `019f43f1-309c-75c0-a36b-ba7d7de2531c` returned PASS on
+the landed state: adopter posture and settings match pinned posture, the scratch
+catalog is absent, PR #972 is merged, validation is recorded/passing, and the
+ledger was open pending this re-close. Everything below is read-only history.
 
 # Handoff — fleet-plugin-currency
 
@@ -70,7 +80,7 @@ from this file alone via the read-first chain — no chat history required.
 
 ## The next action
 
-> **★ SESSION 7 (2026-07-09) — CURRENT BLOCKING REOPEN. Status is READ from the ledger, never stored here.**
+> **★ SESSION 7 (2026-07-09) — BLOCKING REOPEN REPAIRED + REVIEWER PASS; THREAD RE-CLOSED. Status is READ from the ledger, never stored here.**
 >
 > **REOPEN REASON:** archive review found two concrete gaps in the adopter-parity close:
 > (1) the livespec core manifest declared `openbrain` and `resume` pinned while their
@@ -96,31 +106,27 @@ from this file alone via the read-first chain — no chat history required.
 >   → 50 passed.
 > - Full livespec core aggregate passed:
 >   `mise exec -- just check` → all 59 targets passed.
+> - The same full aggregate passed again from the primary livespec core
+>   checkout after PR #972 merged:
+>   `mise exec -- just check` → all 59 targets passed.
 > - `openbrain` pinned-posture settings fix landed on `main` at commit
 >   `e239485` (`chore: pin livespec plugin settings`). Its pre-push gate passed.
 > - `resume` pinned-posture settings fix landed on `master` at commit
 >   `c4ae6d8` (`chore: pin livespec plugin settings`). The active local
 >   `/data/projects/resume` feature checkout also has the same settings-only
->   commit `c084516` on top of `feat/phase-1-mvp`; unrelated dirty app work was
+>   commit `63d8030` on top of `feat/phase-1-mvp`; unrelated dirty app work was
 >   left untouched.
+> - Independent reviewer `019f43f1-309c-75c0-a36b-ba7d7de2531c` returned PASS:
+>   no blockers on adopter posture, scratch cleanup, PR #972 merge state,
+>   validation, or ledger reopen state.
 >
-> **ACTIVE WORKTREES:**
-> - livespec core: `/home/ubuntu/.worktrees/livespec/fpc-archive-reopen`
->   (branch `fpc-archive-reopen`) — moved this plan from
->   `plan/archive/fleet-plugin-currency/` back to `plan/fleet-plugin-currency/`
->   and refreshed this handoff.
-> - openbrain worktree `/home/ubuntu/.worktrees/openbrain/fpc-pin-livespec-settings`
->   is landed and ready for cleanup after the primary checkout is refreshed.
-> - resume worktrees `/home/ubuntu/.worktrees/resume/fpc-pin-livespec-settings`
->   and `/home/ubuntu/.worktrees/resume/fpc-pin-livespec-settings-master` are
->   superseded by the local feature-branch commit and the pushed `master` commit;
->   remove them after verification.
+> **CLEANUP STATUS:** all temporary worktrees from the repair wave were removed:
+> livespec core `fpc-archive-reopen`, openbrain `fpc-pin-livespec-settings`, and
+> resume `fpc-pin-livespec-settings` / `fpc-pin-livespec-settings-master`.
 >
-> **NEXT ACTIONS, in order:**
-> 1. Commit, PR, and merge the livespec core handoff/unarchive change.
-> 2. Refresh `/data/projects/livespec` to `origin/master`, remove the completed
->    worktrees, and verify primary checkouts.
-> 3. Run a reviewer revalidation against the landed state before re-closing the epic.
+> **NEXT ACTION:** none for this thread. Keep detached follow-ups detached:
+> `livespec-c1k9.7` (maintainer-external upstream Claude Code report) and
+> `livespec-dev-tooling-g28`.
 >
 > **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-plugin-currency`.
 
