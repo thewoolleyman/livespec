@@ -1,4 +1,22 @@
-**✓ EPIC CLOSED — fleet-plugin-currency COMPLETE (2026-07-08, tmux livespec2).** Epic `livespec-c1k9` re-closed after the adopter-parity scope landed and was live-proven on BOTH runtimes (Claude committed `--scope project` SessionStart hook; Codex native session-start auto-upgrade — no hook), the runtime-aware fail-soft Codex currency gate shipped (impl `fb7ba5b` + spec `v162` + 5-scenario live proof), and the livespec3 reviewer's final pass returned CLEAN (no blockers). All six adopter-parity children (c1k9.2/.4/.12/.13/.14/.15) are CLOSED. Standalone follow-ups (do NOT reopen this thread): `livespec-c1k9.7` (maintainer-external upstream Claude-Code plugin-source-pin report) and `livespec-dev-tooling-g28` (make check-wrapper-shape `_EXEMPT_NAMES` + red_green_replay `_IMPL_PREFIXES` config-driven). Optional cosmetic follow-up: runtime-aware wording of the "pinned release build" stale message. Everything below is read-only history.
+**BLOCKING ARCHIVE REVIEW — EPIC REOPENED (2026-07-09).** The
+2026-07-08 close was premature. Two completion gaps were found after the
+archive review:
+
+1. The registered adopter posture and committed adopter settings diverged.
+   Livespec core `.livespec-fleet-manifest.jsonc` declares both `openbrain`
+   and `resume` as `posture: "pinned"`, but `/data/projects/openbrain` still
+   tracked `ref: "release"` and carried the Claude `SessionStart` plugin
+   updater hook, while `/data/projects/resume` still tracked `ref: "release"`
+   with no updater hook — the exact illegal middle that reopened the epic.
+2. Livespec core `just check` failed because ignored scratch experiment
+   catalogs under `tmp/fleet-plugin-currency/scratch/` were still inside the
+   checkout; `check-fleet-marketplace-relative-sources` scanned them and failed
+   on non-relative plugin sources.
+
+`livespec-c1k9` is reopened until the pinned adopter settings are committed,
+the scratch catalogs are quarantined outside the livespec core checkout, full
+validation passes, and a reviewer revalidates the landed state. The previous
+close record remains below as history only.
 
 # Handoff — fleet-plugin-currency
 
@@ -51,6 +69,60 @@ from this file alone via the read-first chain — no chat history required.
 - **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-plugin-currency`.
 
 ## The next action
+
+> **★ SESSION 7 (2026-07-09) — CURRENT BLOCKING REOPEN. Status is READ from the ledger, never stored here.**
+>
+> **REOPEN REASON:** archive review found two concrete gaps in the adopter-parity close:
+> (1) the livespec core manifest declared `openbrain` and `resume` pinned while their
+> committed Claude settings were not pinned; (2) ignored scratch catalogs under
+> `tmp/fleet-plugin-currency/scratch/` made livespec core `just check` fail through
+> `check-fleet-marketplace-relative-sources`.
+>
+> **DECISION:** keep both adopters `posture: "pinned"` in
+> `.livespec-fleet-manifest.jsonc`. Repair the adopter repos to match pinned
+> posture: fixed marketplace tags, no plugin auto-updater. The tags chosen from
+> the current release branches are:
+> - `livespec@livespec` → `v0.7.3`
+> - `livespec@livespec-driver-claude` → `v0.2.1`
+> - `livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro` → `v0.13.9`
+>
+> **REPAIR STATUS (2026-07-09):**
+> - Scratch catalog quarantined outside the livespec core checkout at
+>   `/home/ubuntu/.livespec-quarantine/fleet-plugin-currency/scratch-20260709`;
+>   `/data/projects/livespec/tmp/fleet-plugin-currency/scratch/` no longer
+>   exists.
+> - Targeted currency/bootstrap tests passed in livespec core:
+>   `mise exec -- uv run pytest tests/bin/test_bootstrap.py tests/_currency -q`
+>   → 50 passed.
+> - Full livespec core aggregate passed:
+>   `mise exec -- just check` → all 59 targets passed.
+> - `openbrain` pinned-posture settings fix landed on `main` at commit
+>   `e239485` (`chore: pin livespec plugin settings`). Its pre-push gate passed.
+> - `resume` pinned-posture settings fix landed on `master` at commit
+>   `c4ae6d8` (`chore: pin livespec plugin settings`). The active local
+>   `/data/projects/resume` feature checkout also has the same settings-only
+>   commit `c084516` on top of `feat/phase-1-mvp`; unrelated dirty app work was
+>   left untouched.
+>
+> **ACTIVE WORKTREES:**
+> - livespec core: `/home/ubuntu/.worktrees/livespec/fpc-archive-reopen`
+>   (branch `fpc-archive-reopen`) — moved this plan from
+>   `plan/archive/fleet-plugin-currency/` back to `plan/fleet-plugin-currency/`
+>   and refreshed this handoff.
+> - openbrain worktree `/home/ubuntu/.worktrees/openbrain/fpc-pin-livespec-settings`
+>   is landed and ready for cleanup after the primary checkout is refreshed.
+> - resume worktrees `/home/ubuntu/.worktrees/resume/fpc-pin-livespec-settings`
+>   and `/home/ubuntu/.worktrees/resume/fpc-pin-livespec-settings-master` are
+>   superseded by the local feature-branch commit and the pushed `master` commit;
+>   remove them after verification.
+>
+> **NEXT ACTIONS, in order:**
+> 1. Commit, PR, and merge the livespec core handoff/unarchive change.
+> 2. Refresh `/data/projects/livespec` to `origin/master`, remove the completed
+>    worktrees, and verify primary checkouts.
+> 3. Run a reviewer revalidation against the landed state before re-closing the epic.
+>
+> **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-plugin-currency`.
 
 > **★ SESSION 6 (2026-07-08) — READ THIS FIRST; supersedes Session 5 below (retained as history). Status is READ from the ledger, never stored here.**
 >
