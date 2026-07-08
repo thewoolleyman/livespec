@@ -76,6 +76,38 @@ from this file alone via the read-first chain — no chat history required.
 >
 > **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-plugin-currency`.
 
+> **★ SESSION 6 — LIVE PROGRESS (2026-07-08, tmux livespec2; adversarial reviewer at livespec3). Appended to the Session-6 scope banner above; supersedes its NEXT-ACTIONS order. Status READ from the ledger, never here.**
+>
+> **Adopter-parity scope is mostly PROVEN + LANDED.** A live adversarial-reviewer refutation reshaped the Codex leg mid-session; all decisions below are evidence-driven and journaled on the ledger items.
+>
+> **KEY FINDINGS (live-proven this session):**
+> - **Codex auto-upgrades NATIVELY** at every session start for `--ref release` git marketplaces (proven 3/3; no hook, no trust, unconditional; keys off config `[marketplaces.<mkt>] last_revision` < remote ref tip). So the Codex "updater" is FREE — adopters ship NO hook. Pinned = `--ref <vX.Y.Z tag>` (auto-upgrade no-op, proven).
+> - The `resume` illegal-middle trap (ref:release + no updater → freeze) is **CLAUDE-ONLY** — Codex can't hit it.
+> - **Claude updater LIVE-PROVEN** (c1k9.13): stale project-scope install → `claude plugin update <p>@<mkt> --scope project` flips it; default `--scope user` is the silent no-op/failure (the resume trap). The committed SessionStart hook in `docs/livespec-installation-prompt.md` is verified correct.
+> - **Codex gate was a proven no-op** (reviewer refutation, confirmed): `CLAUDE_PLUGIN_ROOT` = the cache-copy path so the Codex branch engages but compares clone-HEAD to itself (tautology). Real staleness axis = local `last_revision` vs REMOTE ref tip (a network compare).
+>
+> **DECISIONS (maintainer, 2026-07-08):**
+> 1. **Codex gate = FIX IT, FAIL-SOFT.** Compare config `last_revision` vs remote `ls-remote origin <ref>`; Codex confirmed-behind → WARN + proceed; hard-fail (exit 78) ONLY under `LIVESPEC_CURRENCY_GATE=fail`. Claude gate UNCHANGED (hard). Read `last_revision`, never a bare clone rev-parse.
+> 2. **Currency machinery extracted (Path L')** to a top-level stdlib-only `.claude-plugin/scripts/_currency/` package (NOT under `livespec/` — its `__init__` configures structlog). `_bootstrap.py` now 24 LLOC; gate returns a `CurrencyVerdict`, `_bootstrap` raises. Pre-import safety preserved.
+> 3. **Codex updater = no hook** (native); posture doc documents released/pinned × both runtimes.
+>
+> **LANDED (verify via `gh`/ledger):**
+> - **c1k9.15** message fix + `_currency/` extraction — PR #953 MERGED, release 0.7.2. `_currency/` modules all <200 LLOC (running_build 162, verify 54, locate 49, expected_build 32).
+> - **c1k9.12** posture docs — PR #951 MERGED (`docs/livespec-installation-prompt.md`: released/pinned × both runtimes, Claude-only illegal-middle, Codex-no-hook). Verified on origin/master.
+>
+> **IN FLIGHT / NEXT (in order):**
+> - **c1k9.4 Codex gate fix** — CODE executor (`c1k9-4-gate`) building the fail-soft compare on `_currency/` (new `_currency/codex_remote.py`: plain-text parse of `~/.codex/config.toml` `[marketplaces.livespec]` last_revision+ref, `ls-remote` with short timeout; verify.py severity → Codex-behind = `gate_sensitive` not `hard_fail`). Instructed to open a GREEN PR and HOLD (not merge) for spec coordination. NOTE `_currency/` is not in `red_green_replay._IMPL_PREFIXES` (see dev-tooling-g28) → manual red-green + CI, same as #953.
+> - **SPEC AMENDMENT (nfr §"Plugin currency and the release train")** — REQUIRED, maintainer-gated. Amend: (a) gate is RUNTIME-AWARE (Claude local running-vs-clone; Codex local `last_revision` vs remote configured-ref, network); (b) qualify "confirmed-stale always fails hard regardless of the lever" — Codex confirmed-behind is lever-gated SOFT because Codex auto-upgrades natively; (c) native auto-upgrade is Codex's mechanism (a). Flow: `/livespec:propose-change` → INDEPENDENT Fable review (must be NO-BLOCKERS) → `/livespec:revise` (maintainer accepts) + `tests/heading-coverage.json` co-edit IF any H2 changes. Land close to the c1k9.4 code PR (merge both together).
+> - **c1k9.4 LIVE PROOF** (after code merges): stale Codex scratch install → gate WARNs normally / exit-78 under `LIVESPEC_CURRENCY_GATE=fail`; pinned scratch → silent pass. Reuse the `codex-research` agent (has scratch-CODEX_HOME method).
+> - **c1k9.2** — DISPOSITION: the auto reload-nudge is INFEASIBLE (Claude `/reload-plugins` is a slash command a shell hook can't invoke; Codex one-session lag is benign). Resolution: the fail-loud gate + the documented manual `/reload-plugins` (already in c1k9.12) handle the lag. Journal + close as resolved-by-finding.
+> - **CLOSE-OUTS** (hold until the livespec3 reviewer independently confirms + maintainer accepts re-close): c1k9.12, c1k9.13, c1k9.14 substantively done; c1k9.15 done. c1k9.7 is maintainer-external (upstream Claude-Code report; draft `tmp/fleet-plugin-currency/session3/c1k9.7-upstream-report-draft.md`).
+>
+> **Filed follow-up:** `livespec-dev-tooling-g28` — make check-wrapper-shape `_EXEMPT_NAMES` AND red_green_replay `_IMPL_PREFIXES` config-driven (the two hardcoded core-tree gaps the extraction surfaced).
+>
+> **EPIC EXIT (unchanged):** both postures live-proven on BOTH runtimes (Claude ✓, Codex ✓ native), gate fires with runnable remediation (message ✓; Codex fail-soft gate pending), docs demonstrated (✓ landed) — then maintainer accepts re-close. Hold every close until the livespec3 reviewer re-runs its reproducers and fails to refute.
+>
+> **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-plugin-currency`.
+
 > **★ SESSION 5 (2026-07-05/06) — supersedes Session 4 below (retained as history). Status is READ from the ledger/PRs, never stored here.**
 >
 > **★ TRACK SCOPE (maintainer 2026-07-06): the Fabro checkpoint-timeout PR is a COMPLETELY SEPARATE TRACK, not part of fleet-plugin-currency.** So `c1k9.4` (which depends on it) is the ONE fleet-plugin-currency exit-gate blocker whose dependency lives OUTSIDE this track; everything else here is driven to its boundary.
