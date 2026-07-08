@@ -9,6 +9,8 @@ created_at: 2026-07-08T10:11:34Z
 ### Target specification files
 
 - contracts.md
+- spec.md
+- non-functional-requirements.md
 
 ### Summary
 
@@ -101,7 +103,7 @@ surface as a cross-orchestrator, cross-runtime contract, exactly as
 an operator MUST find the SAME orchestrator operations regardless of which
 orchestrator plugin is installed or which agent runtime drives it. This
 contract does NOT make core depend on any orchestrator — core remains
-standalone-installable per `non-functional-requirements.md` §"Spec" (its
+standalone-installable per `non-functional-requirements.md` §"Spec" (the
 orchestrator-side skills are simply unavailable until a consumer installs
 an orchestrator plugin) — it constrains what an orchestrator plugin MUST
 ship WHEN one is installed.
@@ -153,6 +155,224 @@ The check's own realization is enforcement-suite implementation detail; this
 section owns the contract it enforces.
 ```
 
+**Drift-sweep co-amendments (applied atomically by the same accepting
+revise).** The new §"Orchestrator skill-set contract — the canonical twelve"
+makes core's contract SEE the orchestrator skill surface (the operator seam)
+alongside the three orchestrator CLIs (the machine seam). Several live
+statements in `spec.md`, `non-functional-requirements.md`, and `contracts.md`
+currently assert the OPPOSITE — that core sees ONLY / EXACTLY the three CLIs,
+that the orchestrator skills are INTERNAL / invisible to core, or that the
+grooming and Planning-Lane patterns introduce "NO new core skill". Left
+unamended, the ratified spec would be self-contradictory. The accepting revise
+MUST therefore apply the following prose- and diagram-label co-amendments in the
+SAME `resulting_files[]` payload as the `contracts.md` new section above. Every
+one is prose- or diagram-label-only: NONE adds, removes, or renames a `## `
+heading, so the single heading-coverage co-edit below stays complete and
+correct.
+
+Each amendment is a verbatim replace: locate the quoted **From** text
+(character-exact — em dashes and backticks included) in the named live file and
+replace it with the **To** text.
+
+_`spec.md` — Site A (§"Terminology", the **Orchestrator** entry):_
+
+From:
+
+```
+Core's contract sees only its three config-named CLIs; everything else about it (store, prompts, internal state) is private.
+```
+
+To:
+
+```
+Core's contract sees its three config-named CLIs (the machine seam) plus its operator skill surface per `contracts.md` §"Orchestrator skill-set contract — the canonical twelve"; everything else about it (store, prompts, internal state) is private.
+```
+
+_`spec.md` — Site B (§"Contract + reference implementations architecture", the "Orchestrator internal decomposition" paragraph):_
+
+From:
+
+```
+core's contract sees exactly the three orchestrator CLIs of `contracts.md` §"Orchestrator CLI contract — the three named CLIs" and never names Ledger/Loop/Dispatcher in any config key or invariant.
+```
+
+To:
+
+```
+core's contract sees exactly the three orchestrator CLIs of `contracts.md` §"Orchestrator CLI contract — the three named CLIs" plus the canonical skill surface of §"Orchestrator skill-set contract — the canonical twelve", and never names Ledger/Loop/Dispatcher in any config key or invariant.
+```
+
+_`spec.md` — Site C (the canonical architecture diagram in §"Contract + reference implementations architecture"): move the `oskills` node OUT of the `internals` subgraph — which is labeled "INTERNAL (invisible to core AND Driver)" — into the `orch` (orchestrator-plane) subgraph as a peer of the visible `rdr` / `gap` / `drift` CLI nodes, and relabel it to cite the contract instead of an unmarked six. `dispatcher` / `ledger` / `loop` stay inside `internals`. The node's existing edges (`console --> oskills`, `oskills -.-> gap`, `oskills -.-> drift`, `oskills -->|plan: writes| planstore`) reference it by id and stay valid unchanged. Apply as this single block replace:_
+
+From:
+
+```
+        rdr["spec-reader CLI"]
+        gap["gap-capture CLI"]
+        drift["drift-capture CLI"]
+        subgraph internals["INTERNAL (invisible to core AND Driver)"]
+            dispatcher["Dispatcher: owns parallelism"]
+            ledger[("Ledger: work-items + deps")]
+            loop["Loop: per-work-item producer"]
+            oskills["orchestrator skills: plan, groom, capture-work-item, capture-impl-gaps, capture-spec-drift, implement"]
+        end
+```
+
+To:
+
+```
+        rdr["spec-reader CLI"]
+        gap["gap-capture CLI"]
+        drift["drift-capture CLI"]
+        oskills["orchestrator skills: the canonical twelve<br/>(contracts.md §Orchestrator skill-set contract)"]
+        subgraph internals["INTERNAL (invisible to core AND Driver)"]
+            dispatcher["Dispatcher: owns parallelism"]
+            ledger[("Ledger: work-items + deps")]
+            loop["Loop: per-work-item producer"]
+        end
+```
+
+_`spec.md` — Site E-1 (the planes diagram in §"Workflow planes and the Planning Lane", the `orchskills` node): mark the enumerated six as an explicit subset of the canonical twelve (an unmarked subset is the only thing the different-zoom convention forbids):_
+
+From:
+
+```
+orchskills["orchestrator skills: plan, groom, capture-work-item,<br/>capture-impl-gaps, capture-spec-drift, implement"]
+```
+
+To:
+
+```
+orchskills["orchestrator skills (subset of the canonical twelve): plan, groom, capture-work-item,<br/>capture-impl-gaps, capture-spec-drift, implement"]
+```
+
+_`spec.md` — Site E-2 (the Planning-Lane diagram in §"Workflow planes and the Planning Lane", the `op` subgraph label enumerating eight): mark it as an explicit subset of the canonical twelve:_
+
+From:
+
+```
+op["ORCHESTRATOR-PLANE skills: reference beads-fabro"]
+```
+
+To:
+
+```
+op["ORCHESTRATOR-PLANE skills (subset of the canonical twelve): reference beads-fabro"]
+```
+
+(The canonical diagram's own former unmarked-six label at the `oskills` node is
+already reconciled by Site C, which relabels it to "the canonical twelve"; no
+separate Site E amendment is needed there.)
+
+_`non-functional-requirements.md` — Site D-1 (§"Orchestrator plugin ecosystem"):_
+
+From:
+
+```
+Cross-boundary conformance is the orchestrator CLI contract published by `livespec` (`contracts.md` §"Orchestrator CLI contract — the three named CLIs"): the orchestrator owns its work-item machinery, and core's contract sees only the three named CLIs.
+```
+
+To:
+
+```
+Cross-boundary conformance comprises TWO published surfaces — the orchestrator CLI contract (`contracts.md` §"Orchestrator CLI contract — the three named CLIs" — the machine seam) AND the orchestrator skill-set contract (`contracts.md` §"Orchestrator skill-set contract — the canonical twelve" — the operator surface): the orchestrator owns its work-item machinery, and core's contract sees those two published surfaces.
+```
+
+_`non-functional-requirements.md` — Site D-2 (§"Orchestrator contract delegation"):_
+
+From:
+
+```
+`livespec` publishes only the orchestrator CLI contract (`contracts.md` §"Orchestrator CLI contract — the three named CLIs"): the orchestrator owns its work-item machinery, and core's contract sees only the three named CLIs.
+```
+
+To:
+
+```
+`livespec` publishes two orchestrator-facing cross-boundary contracts — the orchestrator CLI contract (`contracts.md` §"Orchestrator CLI contract — the three named CLIs" — the machine seam) AND the orchestrator skill-set contract (`contracts.md` §"Orchestrator skill-set contract — the canonical twelve" — the operator surface): the orchestrator owns its work-item machinery, and core's contract sees those two published surfaces.
+```
+
+_`contracts.md` — borderline reconciliation (§"Orchestrator CLI contract — the three named CLIs", opening sentence): scope "cross-boundary contract" to the machine seam now that the skill-set contract is a second cross-boundary surface:_
+
+From:
+
+```
+The cross-boundary contract is a CLI surface wired by `.livespec.jsonc`:
+```
+
+To:
+
+```
+The machine cross-boundary contract is a CLI surface wired by `.livespec.jsonc`:
+```
+
+_`non-functional-requirements.md` — borderline reconciliation, §"Orchestrator-internal grooming guidance" (two sentences): the grooming pattern now NAMES `groom` (and `plan`) as canonical skills whose existence core requires, so the "core neither names nor verifies any of it" / "NO new core skill" phrasings must be scoped to the discipline's realization:_
+
+From:
+
+```
+Like the Dispatcher guidance above, this is explicitly NON-normative on core's contract: core neither names nor verifies any of it.
+```
+
+To:
+
+```
+Like the Dispatcher guidance above, this grooming discipline is explicitly NON-normative on core's contract: core neither names nor verifies its realization or mechanics (core requires each canonical skill's existence by name per `contracts.md` §"Orchestrator skill-set contract — the canonical twelve"; its realization and discipline stay orchestrator-private).
+```
+
+From:
+
+```
+Core deliberately gets the GUIDANCE only. This pattern introduces NO new core skill, NO new core CLI, and NO new core doctor invariant.
+```
+
+To:
+
+```
+Core deliberately gets the GUIDANCE only. This pattern introduces no new core CLI or doctor invariant (core requires each canonical skill's existence by name per `contracts.md` §"Orchestrator skill-set contract — the canonical twelve"; its realization and discipline stay orchestrator-private).
+```
+
+_`non-functional-requirements.md` — borderline reconciliation, §"Planning Lane guidance" (two spans within the same paragraph): the Planning-Lane pattern now NAMES `plan` (and `list-plan-threads`) as canonical skills whose existence core requires, so the same two phrasings must be scoped:_
+
+From:
+
+```
+Like the Dispatcher and grooming guidance above, this is explicitly NON-normative on core's contract: core neither names nor verifies any of it.
+```
+
+To:
+
+```
+Like the Dispatcher and grooming guidance above, this Planning-Lane discipline is explicitly NON-normative on core's contract: core neither names nor verifies its realization or mechanics (core requires each canonical skill's existence by name per `contracts.md` §"Orchestrator skill-set contract — the canonical twelve"; its realization and discipline stay orchestrator-private).
+```
+
+From (the `— an interactive, stateful `plan` front-end` tail is REQUIRED to
+disambiguate this Planning-Lane span from the byte-identical opening clause of
+the §"Control-Plane guidance" disclaimer, which is DELIBERATELY left unamended
+per the scope note below — match ONLY this occurrence):
+
+```
+This pattern introduces NO new core skill, NO new core CLI, and NO new core doctor invariant; the concrete realization — an interactive, stateful `plan` front-end
+```
+
+To:
+
+```
+This pattern introduces no new core CLI or doctor invariant (core requires each canonical skill's existence by name per `contracts.md` §"Orchestrator skill-set contract — the canonical twelve"; its realization and discipline stay orchestrator-private); the concrete realization — an interactive, stateful `plan` front-end
+```
+
+**Scope note (drift-sweep completeness).** Three families of nearby "NON-normative
+/ NO new core skill" statements are DELIBERATELY left unamended because P1 does
+not contradict them: (a) `non-functional-requirements.md` §"Orchestrator-internal
+Dispatcher guidance" ("core neither names nor verifies any of it") — its "it" is
+the loop discipline (mode / budget / janitor / journal), which P1 does not name;
+(b) the §"Control-Plane guidance" disclaimer — about the `livespec-console-*`
+console, not an orchestrator plugin, so none of the canonical twelve applies; and
+(c) the §"Conformance Pattern" / §"governed-repo lifecycle" / §"release-freshness"
+"NO new core skill … on core's *functional* surface" statements — fleet
+self-application infrastructure, not the orchestrator skill surface. Amending any
+of these would broaden the change beyond the contradiction.
+
 **Heading-coverage co-edit (applied by the accepting revise, per
 `spec.md` §"Self-application").** This proposal adds ONE new `## ` heading to
 `contracts.md` — `## Orchestrator skill-set contract — the canonical twelve`.
@@ -170,8 +390,10 @@ The revise pass that accepts this proposal MUST, in the SAME
 }
 ```
 
-No other spec file's `## ` heading set changes; only this one entry is
-added. (This co-edit is NOT applied in the propose-change PR itself — a
+No other spec file's `## ` heading set changes — the drift-sweep
+co-amendments above are all prose- and diagram-label-only and add, remove, or
+rename NO heading — so only this one entry is added. (This co-edit is NOT
+applied in the propose-change PR itself — a
 heading-coverage entry for a heading not yet present in the live
 `contracts.md` would orphan-fail the `check-heading-coverage` guard; it is
 applied atomically by the accepting revise, which adds the heading and the
