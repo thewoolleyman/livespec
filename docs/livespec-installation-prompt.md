@@ -208,24 +208,47 @@ codex plugin add livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-f
 (For `livespec-orchestrator-git-jsonl`, the same two lines with that
 name. Remind the user this registration is host-wide.)
 
-**Ongoing currency — wire the self-update mechanism (idempotent).**
-Pinning a marketplace to `release` above makes a *fresh* install
-resolve the latest released build, but it does NOT keep an
-already-installed build current — a build advances only when an
-explicit update runs, and `claude plugin update` applies at the NEXT
-session ("restart required to apply"). So each governed project owns a
-small self-update step that refreshes the pinned marketplaces and
-updates the installed plugins at session start. This is how an adopter
-stays current WITHOUT the fleet enforcing anything on it and WITHOUT
-depending on any fleet-internal toolchain (`just` / `mise` / `uv`) —
-plain harness-native commands only. Wire it per harness; if an
-equivalent session-start updater is already present, leave it and
-record it "already present".
+**Ongoing currency — choose a posture, then wire it (idempotent).**
+An adopter tracks livespec updates under one of TWO explicit
+**currency postures**. Pick one now and set it up per harness; if an
+equivalent setup is already present, leave it and record it "already
+present".
 
-- **On Claude Code** — merge (do not overwrite) a `SessionStart` hook
-  into the project's `.claude/settings.json`, preserving any existing
-  hooks. It refreshes every registered marketplace to its pinned `ref`
-  and updates each enabled plugin at project scope:
+- **`released` (DEFAULT — recommended for any adopter the maintainer
+  owns or keeps current).** Track the moving `release` channel and
+  stay auto-current every session: each new release reaches the
+  project at its next session start with no manual step.
+- **`pinned` (opt-out — for an adopter that wants to control its own
+  updates).** Pin a FIXED release tag and update manually when the
+  adopter chooses. The running build never drifts from the tag until
+  someone bumps it.
+
+Posture is a **local setup choice**, not a new `.livespec.jsonc`
+field. It is realized entirely by the marketplace `ref` (a moving
+`release` vs. a fixed `vX.Y.Z` tag) plus, on Claude, whether the
+session-start updater hook is committed. For a fleet-TRACKED adopter,
+the fleet manifest's `adopters[].posture` is the central declaration
+of which posture that repo runs; a self-governing third-party adopter
+simply chooses its `ref` (and, on Claude, the hook) directly. Either
+way, nothing about posture is written into `.livespec.jsonc`.
+
+livespec itself surfaces a stale plugin build so a drifted install
+does not go unnoticed — blocking on Claude, and a non-blocking warning
+on Codex (which auto-updates). Under `released` you never see it
+(you stay current); under `pinned` it stays quiet because the running
+build already matches the pinned tag.
+
+**Claude Code.** Claude does NOT auto-update a project-scope install —
+a build advances only when an explicit `claude plugin update` runs,
+and it applies at the NEXT session ("restart required to apply"). So
+on Claude a committed updater hook is load-bearing, and the posture is
+realized by the marketplace `ref` PLUS that hook:
+
+- **`released`** — keep the Phase-3 `extraKnownMarketplaces` entries
+  pinned to `"ref": "release"` AND commit a `SessionStart` updater
+  hook. Merge it (do not overwrite) into the project's
+  `.claude/settings.json`, preserving any existing hooks. For the
+  `released` posture this hook is REQUIRED, not optional:
 
   ```jsonc
   {
@@ -246,27 +269,82 @@ record it "already present".
   ```
 
   Substitute the project's OWN enabled plugins for the `for` list —
-  exactly the `enabledPlugins` keys committed in Phase 3 (drop the
-  orchestrator entry if it was deferred). `claude plugin marketplace
-  update` with no name refreshes ALL registered marketplaces to their
-  pinned refs, so it needs no per-marketplace list. Because `claude
-  plugin update` applies at the next session start, this keeps the
-  project one release-tick behind the tip rather than instantly
-  current — the trade-off for a zero-infrastructure updater; a session
-  that must be current immediately can `/reload-plugins` after the
-  hook runs. (Fleet repos wrap this same behavior in a `just
-  ensure-plugins` recipe that derives the plugin list from settings;
-  adopters need no `just`/`mise` — the raw `claude plugin` commands
-  above are the decoupled equivalent.)
+  exactly the `enabledPlugins` keys committed in Phase 3, each spelled
+  `plugin@marketplace` (drop the orchestrator entry if it was
+  deferred). Two load-bearing details:
 
-- **On Codex** — Codex holds its plugin snapshot until an explicit
-  upgrade and has no project scope, so add `codex plugin marketplace
-  upgrade` to the project's session bootstrap (or run it at the start
-  of a `codex exec` session). It refreshes every host-registered
-  livespec marketplace to its pinned `--ref release` tip.
+  - **`-s project` is load-bearing.** The default `-s user` scope is a
+    silent no-op (or failure) against a project-scope install, so an
+    updater missing `-s project` never actually advances the build —
+    the exact `resume`-adopter trap. `claude plugin marketplace
+    update` with no name refreshes ALL registered marketplaces to
+    their pinned refs, so it needs no per-marketplace list.
+  - **Never track `release` WITHOUT this hook.** That "illegal middle"
+    — a moving `release` ref and no updater — freezes the installed
+    build in place while the marketplace advances underneath it, so
+    the project silently falls behind. Do not do it: either commit the
+    hook (`released`) or pin a tag (`pinned`), never neither.
 
-Record this in the final idempotency report: "session self-update
-hook — already present / added / updated".
+  One-session lag: because `claude plugin update` applies at the next
+  session start, the project lands one release-tick behind the tip
+  rather than instantly current — the trade-off for a
+  zero-infrastructure updater. A session that must be current
+  immediately can run `/reload-plugins` AFTER the hook has run;
+  `/reload-plugins` is a slash command the user types, so the shell
+  hook cannot auto-invoke it. (Fleet repos wrap this same behavior in
+  a `just ensure-plugins` recipe that derives the plugin list from
+  settings; adopters need no `just`/`mise` — the raw `claude plugin`
+  commands above are the decoupled equivalent.)
+
+- **`pinned`** — set the Phase-3 marketplace entries to a FIXED
+  release tag, `"ref": "<vX.Y.Z>"`, and OMIT the updater hook
+  entirely. Update by editing the `ref` to a newer tag when the
+  adopter chooses. The stale-build gate never trips, because the
+  running build already matches the pinned tag.
+
+**Codex.** Codex auto-upgrades a release-tracking git marketplace to
+its `--ref` tip at every session start, so on Codex you do NOT ship a
+hook — the posture is realized entirely by the `--ref` passed in the
+Phase-3 Codex registration:
+
+- **`released`** — the Phase-3 `--ref release` registration is already
+  the released posture; there is nothing further to wire:
+
+  ```bash
+  codex plugin marketplace add thewoolleyman/livespec --ref release
+  codex plugin add livespec@livespec
+  ```
+
+  Codex automatically upgrades this release-tracking marketplace to
+  the release tip at every session start — no hook, no manual step. Do
+  NOT commit a Codex `SessionStart` `codex plugin marketplace upgrade`
+  hook: it is redundant AND races Codex's native auto-upgrade, logging
+  non-fatal errors for no benefit. (Same one-session lag as Claude;
+  the auto-upgrade needs network at session start.)
+
+- **`pinned`** — register (in Phase 3) with a FIXED tag instead of
+  `release`:
+
+  ```bash
+  codex plugin marketplace add thewoolleyman/livespec --ref <vX.Y.Z>
+  ```
+
+  Native auto-upgrade is a no-op on an immutable tag, so the build
+  stays put; bump by re-adding the marketplace with a newer tag.
+
+**The runtime asymmetry (read this before choosing).** Claude
+REQUIRES a committed updater hook to stay current — it does not
+auto-update a project-scope install — whereas Codex is auto-current
+NATIVELY with no hook at all. So the "illegal middle" (tracking
+`release` with no updater) is a **Claude-only hazard**; it cannot
+occur on Codex, where the auto-upgrade is unconditional. Note too that
+Codex enablement is **host-wide** (`~/.codex/config.toml`, applying to
+every project on the host), unlike Claude's project-scoped, committed
+enablement.
+
+Record the outcome in the final idempotency report, per harness:
+"currency posture (`released` / `pinned`) + session self-update hook —
+already present / added / updated".
 
 ## Phase 4 — Record the orchestrator selection in `.livespec.jsonc`
 
