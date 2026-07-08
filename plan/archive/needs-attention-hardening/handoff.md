@@ -1,3 +1,5 @@
+> ARCHIVED 2026-07-08 — track complete, epic livespec-yes5 CLOSED. needs-attention dogfood-proven on both runtimes across the shipped surface; the git-jsonl-Codex-packaging cells were carved out (see the closed livespec-3wh4). The 3 carry-over follow-ups (livespec-runtime-dnu, livespec-console-beads-fabro-fpo/-ipi) persist as standalone backlog items in their own tenants. Reference-only.
+
 # needs-attention-hardening — LIVING plan thread HANDOFF (resumable entry point)
 
 **Purpose:** drove the unaddressed follow-ups from the just-closed `needs-attention`
