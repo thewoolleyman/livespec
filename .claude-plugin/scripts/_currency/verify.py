@@ -28,10 +28,12 @@ class CurrencyVerdict(NamedTuple):
     """What the bin supervisor should do with a currency check result.
 
     - `message`: stderr text to emit, or None to stay silent.
-    - `hard_fail`: confirmed stale (both builds known and mismatched) —
-      the supervisor always exits.
-    - `gate_sensitive`: currency unknown — the supervisor exits only when
-      `LIVESPEC_CURRENCY_GATE=fail`.
+    - `hard_fail`: a confirmed-stale CLAUDE install (both builds known and
+      mismatched) — the supervisor always exits. A confirmed-stale CODEX
+      install is fail-soft (Codex auto-upgrades natively at session start),
+      so it sets `gate_sensitive` instead.
+    - `gate_sensitive`: currency unknown OR a confirmed-stale Codex install —
+      the supervisor exits only when `LIVESPEC_CURRENCY_GATE=fail`.
     """
 
     message: str | None
@@ -45,17 +47,19 @@ def verify_currency() -> CurrencyVerdict:
         return CurrencyVerdict(
             message=_CHECKOUT_MODE_MESSAGE, hard_fail=False, gate_sensitive=False
         )
+    codex = _is_codex_installed_plugin_cache_path(plugin_root=plugin_root)
     running_build_id = _running_build_id(plugin_root=plugin_root)
     expected_build_id = _expected_build_id(plugin_root=plugin_root)
     message = _currency_message(
         running_build_id=running_build_id,
         expected_build_id=expected_build_id,
-        codex=_is_codex_installed_plugin_cache_path(plugin_root=plugin_root),
+        codex=codex,
     )
     if message is None:
         return CurrencyVerdict(message=None, hard_fail=False, gate_sensitive=False)
-    stale = running_build_id is not None and expected_build_id is not None
-    return CurrencyVerdict(message=message, hard_fail=stale, gate_sensitive=not stale)
+    confirmed_stale = running_build_id is not None and expected_build_id is not None
+    hard_fail = confirmed_stale and not codex
+    return CurrencyVerdict(message=message, hard_fail=hard_fail, gate_sensitive=not hard_fail)
 
 
 def _currency_message(

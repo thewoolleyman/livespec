@@ -5,9 +5,10 @@ pre-import plugin-currency gate package. One test module per source
 module:
 
 - `test_locate.py` — plugin-root / installed-cache detection / JSON read
-- `test_expected_build.py` — marketplace-clone pin resolution
-- `test_running_build.py` — installed-registry + Codex plugin-list
-  running-build detection
+- `test_codex_remote.py` — Codex `config.toml` parse + `ls-remote` tip
+- `test_expected_build.py` — Claude clone HEAD / Codex remote-ref pin
+- `test_running_build.py` — Claude installed-registry / Codex
+  `last_revision` running-build detection
 - `test_verify.py` — `verify_currency()` verdict orchestration and the
   stale/unknown message
 

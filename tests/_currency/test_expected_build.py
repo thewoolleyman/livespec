@@ -30,20 +30,21 @@ def test_expected_build_id_reads_claude_marketplace_for_claude_cache(
     assert expected_build._expected_build_id(plugin_root=claude_root) == "abcdef123456"
 
 
-def test_expected_build_id_reads_codex_marketplace_for_codex_cache(
+def test_expected_build_id_reads_codex_remote_ref_for_codex_cache(
     *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A Codex installed-cache root resolves the Codex marketplace clone HEAD."""
+    """A Codex installed-cache root resolves the REMOTE ref tip, not the clone HEAD.
+
+    The clone HEAD is tautologically equal to the running build (Codex derives
+    both from the same clone), so the expected build must come from the remote.
+    """
     home = tmp_path / "home"
     monkeypatch.setattr(Path, "home", lambda: home)
     codex_root = home / ".codex" / "plugins" / "cache" / "livespec" / "livespec" / "0.6.1"
-    expected_marketplace = home / ".codex" / ".tmp" / "marketplaces" / "livespec"
-
-    def fake_head(*, repository: Path) -> str:
-        assert repository == expected_marketplace
-        return "cccccccccccc"
-
-    monkeypatch.setattr(expected_build, "_git_rev_parse_head", fake_head)
+    monkeypatch.setattr(expected_build, "_codex_remote_ref_build_id", lambda: "cccccccccccc")
+    # A sentinel on the clone-HEAD source: consulting it for a Codex install
+    # would surface this value and fail the assertion.
+    monkeypatch.setattr(expected_build, "_git_rev_parse_head", lambda **_kwargs: "clone-head")
     assert expected_build._expected_build_id(plugin_root=codex_root) == "cccccccccccc"
 
 
