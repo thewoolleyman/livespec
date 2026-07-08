@@ -41,49 +41,68 @@ continued work lives.
 
 ---
 
+## Orchestration discipline (RE-ASSERT in EVERY handoff refresh for this track)
+
+Maintainer-directed (2026-07-08): do **NOT** serialize this track's work inline in
+one session, and do not hand-run heavy work that a sub-agent or the factory should
+carry. Operate in orchestration mode, and **carry this section forward verbatim
+into every handoff refresh for this track**:
+
+- **Parallelize through the factory.** Dispatch every pre-authorized, independent,
+  non-conflicting `ready` work-item in parallel via the Dispatcher / the `drive`
+  operation — across ALL unblocked tracks, not only this one. Never hand-crank one
+  item while other ready work sits idle. Take a ready-work census each session
+  (`bd -C /data/projects/<tenant> list` per tenant; e.g. at 2026-07-08
+  `livespec-orchestrator-beads-fabro` had `bd-ib-mwz/cur/h55/9ch/v5n` ready and
+  core/runtime/console had ready items too).
+- **Delegate heavy work to sub-agents.** Keep the MAIN session for
+  plan / dispatch / synthesis; delegate reproduction, investigation, multi-file
+  authoring, and implementation to scoped sub-agents (or a parallel Workflow) with
+  self-contained briefs (forbid `--no-verify`; halt + report on hook failure).
+  Do NOT run the heavy lifting inline.
+- **Sequence only genuine conflicts** (work-items overlapping the same files). A
+  "pause" means "start a new session," not "confirm every step."
+
 ## NEXT ACTION (execute from this file alone)
 
-The kickoff FIRST ACTIONS are **DONE** — the epic (`livespec-yes5`) and the anchor
-slice (`livespec-3wh4`) are filed and the carry-overs are routed (see below). The
-next action is to START PROVING the runtime × repo matrix, beginning with the
-reported anchor defect:
+The kickoff FIRST ACTIONS are **DONE** (epic `livespec-yes5` + anchor slice
+`livespec-3wh4` filed, carry-overs routed). **Step 1 (reproduce) is also DONE** —
+finding below. Remaining steps are grooming + fix + matrix proof; per the
+**Orchestration discipline** above they are **delegated to sub-agents / dispatched
+through the factory**, NOT hand-cranked inline.
 
-1. **Reproduce the anchor defect LIVE.** Drive `needs-attention` under **Codex** in
-   **`livespec-runtime`** (a pure LIBRARY — no orchestrator `.livespec.jsonc`, no
-   work-items backend) and capture the exact failure (the maintainer's "confused
-   about wrappers" report). Invocation:
-   - **Codex** (host-wide plugins, `~/.codex/config.toml`, `ref=release`) — from
-     the repo dir, name-select the orchestrator skill via `codex exec`:
-     `cd /data/projects/livespec-runtime && codex exec "livespec-orchestrator-beads-fabro:needs-attention"`.
-     Confirm the exact name-selection against the installed Codex plugin as the
-     first reproduce sub-step:
-     `codex plugin list --json -m livespec-orchestrator-beads-fabro`.
-   - **Claude** (project-scoped plugins) — from a Claude Code session in the repo,
-     the slash command `/livespec-orchestrator-beads-fabro:needs-attention`.
+**REPRODUCTION FINDING** (2026-07-08, live `codex exec` in `livespec-runtime`,
+plugin 0.13.1; full detail on `livespec-3wh4`):
+- **Premise correction:** `livespec-runtime` is **NOT** backendless. Its
+  `.livespec.jsonc` names `livespec-orchestrator-beads-fabro` as impl plugin, it
+  has a LIVE beads tenant, and
+  `credential_wrapper=[/usr/local/bin/with-livespec-env.sh --]`;
+  `harnesses.{claude,codex}="exempt"` (ships no skill surface of its own). The old
+  "pure library / no backend" framing was WRONG (also correct it in `yes5`/`3wh4`).
+- **Plugin-root resolution is SOUND** — the Codex SKILL.md 3-tier resolver
+  correctly resolves the installed cache in `livespec-runtime`; no wrong-plugin-root.
+- **The real seam:** under the DEFAULT Codex **sandbox**, `needs-attention` FAILS.
+  The credential-wrapper self-heal (`required credential env absent; re-invoking
+  under credential_wrapper`) shells out to `sudo` (via `with-livespec-env.sh`),
+  which the sandbox's no-new-privileges flag BLOCKS → no attention list (a HARD
+  failure, not fail-soft). With `--dangerously-bypass-approvals-and-sandbox` it
+  works (correct Markdown + VALID `--json` envelope; the credential line is
+  stderr-only and does not corrupt `--json`).
 
-   Expected-vs-wrong behavior is pinned in
-   `plan/needs-attention-hardening/live-adversarial-review-prompt.md` attack
-   point #1: CORRECT = an explicit fail-soft ("no applicable needs-attention
-   backend in this repo"); WRONG = chasing a nonexistent local wrapper, resolving
-   the wrong plugin-root, or a stack trace / import error. Capture: command, repo,
-   runtime, plugin version + installed cache path, and full output — distinguish
-   fresh output from scrollback.
-2. **Locate the resolution seam.** The fix mirrors the cross-plane CORE-CLI
-   resolver just built for spec-`next` (`livespec-runtime-ego`, CLOSED — 3 tiers:
-   fleet-sibling → Claude `installed_plugins.json` → Codex installed cache
-   `~/.codex/plugins/cache/livespec/livespec/<version>`). Find where the
-   beads-fabro + git-jsonl `needs-attention` bindings resolve the plugin-root/CLI,
-   and where a library repo with no applicable backend should fail **soft** with a
-   clear, actionable message ("no needs-attention backend in this repo") instead of
-   a wrapper/plugin-root error or a stack trace.
-3. **Groom `livespec-3wh4` into per-repo/per-runtime fix slices** once the fix
-   shape is known — filed into their OWNING tenants (beads-fabro, git-jsonl, core;
-   the `livespec-bj9x` per-tenant + cross-repo-prose model). Each fix slice carries
-   a red test for its named failure mode + a live fail-soft/correct-list fixture.
-4. **Prove the matrix.** Run `needs-attention` on BOTH runtimes across the repo
+So "confused about wrappers" = a **sandbox-incompatible credential-wrapper
+self-heal (`sudo`)**, NOT a plugin-root/resolution bug.
+
+**Remaining steps (DELEGATE / DISPATCH — do not serialize inline):**
+1. **Groom `livespec-3wh4`** into per-repo/per-runtime fix slices in their OWNING
+   tenants (the `livespec-bj9x` per-tenant + cross-repo-prose model), each with a
+   red test + a live fixture. Candidate fixes: (a) the credential wrapper avoids
+   `sudo` / degrades under sandbox; (b) `needs-attention` fail-SOFT with a clear
+   message when the credential env can't be injected, instead of leaking `sudo`
+   errors. Correct the `livespec-runtime` mischaracterization in `yes5`/`3wh4`.
+2. **Prove the matrix.** Run `needs-attention` on BOTH runtimes across the repo
    classes (core, runtime library, driver plugin, both orchestrators, console,
-   `openbrain`, `resume`); each cell = correct attention list OR correct fail-soft.
-   The authoritative matrix table + attack points live in
+   `openbrain`, `resume`); each cell = correct list OR correct fail-soft. Matrix
+   table + attack points live in
    `plan/needs-attention-hardening/live-adversarial-review-prompt.md`.
 
 Injectable seams (mirror `livespec_runtime.github_auth.MintSeams`) for any I/O that
