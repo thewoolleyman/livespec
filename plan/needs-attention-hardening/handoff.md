@@ -76,6 +76,15 @@ into every handoff refresh for this track**:
   the exit gate. Litmus test before surfacing anything: "is it irreversible AND not
   clearly what they want?" — if no, do it and inform. When one track genuinely
   needs a gate, keep the OTHER tracks moving; never stop the whole loop on it.
+- **Print the status table every 15 minutes (maintainer-directed 2026-07-08).**
+  While coordinating, run a recurring 15-minute status tick that prints the
+  `Epic · Track · Status · %Complete` table (read LIVE from the ledger + drain
+  session panes) for every watched track, with a one-line note under it for any
+  stall/blocker/completion. Set it up with `/loop 15m <status-tick prompt>` (which
+  schedules a `3,18,33,48 * * * *` cron — offset off the :00/:30 marks). This cron
+  is **session-only**, so **a fresh overseer session/rotation MUST re-establish it**
+  as its first coordination act (this is why it is codified here, not just in a live
+  session).
 
 ## NEXT ACTION (execute from this file alone)
 
