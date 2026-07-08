@@ -108,16 +108,22 @@ The empty-walk guard's correctness on the ONE genuinely empty-universe repo
 acceptance case — as is confirming the Driver repos' hook `.py` are COVERED (they
 are NOT codeless). See the adversarial prompt.
 
-**Pin / fan-out status (verified 2026-07-08 after PR1).** `livespec-dev-tooling` is
-at **v0.34.2** (carries the `file_lloc` reroute). The fan-out bumped `livespec`
-core and `livespec-orchestrator-beads-fabro` to v0.34.2 (console has an in-flight
-bump PR). **⚠ Fan-out lag to watch:** four repos are stranded THREE releases back at
-**v0.33.5** — `livespec-orchestrator-git-jsonl`, `livespec-runtime`,
-`livespec-driver-claude`, `livespec-driver-codex`. They will not SEE the reroute's
-WARN coverage until their pins advance, so unsticking the fan-out for them is a
-Phase-1 prerequisite (not a PR1 blocker — PR1 is WARN-only and non-breaking). Verify
-each repo's pin + live check output individually; do not assume the fan-out reached
-everyone.
+**Pin / fan-out status (CORRECTED 2026-07-08 after PR1).** `livespec-dev-tooling` is
+at **v0.34.2** (carries the `file_lloc` reroute), and the fan-out is **healthy —
+ALL seven consumers are pinned to v0.34.2** (`livespec`, both orchestrators, both
+Drivers, `livespec-runtime`, `livespec-console-beads-fabro`), verified against each
+repo's `origin/master` after `git fetch`. An earlier note in this handoff claimed
+four repos were "stranded at v0.33.5" — that was a **FALSE ALARM from stale local
+`origin/master` refs** (reading `git show origin/master:` in a sibling clone WITHOUT
+fetching it first shows a stale ref; the bump-pin PRs had in fact merged, e.g.
+`livespec-runtime` #151→v0.34.2). **Lesson: `git fetch` a sibling clone before
+reading its `origin/master` for cross-repo state.** Because every consumer now pins
+v0.34.2, the reroute's WARN coverage is LIVE fleet-wide. Live universe confirmed via
+the shipped code: `livespec-driver-claude` universe=2 (both hooks covered),
+`livespec-driver-codex` universe=3 (all hooks covered) — the Drivers are NOT
+codeless; `livespec-console-beads-fabro` universe=0 (`has_first_party_py=False` —
+genuinely codeless, passes on empty); `livespec-orchestrator-git-jsonl`=40,
+`livespec-runtime`=27 (matching the fleet table). No fan-out fix is needed.
 
 ## Progress log
 
