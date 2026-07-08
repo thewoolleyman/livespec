@@ -125,7 +125,7 @@ with tmp dirs, never HOME monkeypatching.
   pane (no `spec:next` pointer). The cross-plane CORE-CLI resolver (3 tiers) is the
   reference for the anchor-slice work above.
 
-## CARRY-OVER FOLLOW-UPS (routed into epic `livespec-yes5`)
+## CARRY-OVER FOLLOW-UPS (routing status per item)
 
 **needs-attention residuals (filed, backlog; back-linked to `yes5`):**
 - `livespec-console-beads-fabro-ipi` — migrate the console **TUI render path**
@@ -136,14 +136,22 @@ with tmp dirs, never HOME monkeypatching.
   id prefix although `kind="internal"` is first-class; add `internal` to
   `_THREE_PART_PREFIXES` in `livespec_runtime/attention_item.py` + test. Bug.
 
-**Fleet skill/doc hygiene (TO FILE / audit):**
-- **git-jsonl skill-count drift** — README ("9-skill") vs contracts ("seven-skill")
-  vs constraints (missing `detect-impl-gaps`); reconcile to one source via
-  `/livespec:propose-change` (governed-spec counts). Spec-lifecycle piece, NOT a
-  factory slice. Not yet filed.
+**Fleet skill/doc audit (folded into the anchor slice `livespec-3wh4`):**
 - **`needs-attention-internal` + `-fleet` local skills** (livespec core,
   `.claude/skills/`, unsynced): the `dnu` id-prefix issue above is their one known
   seam. Re-audit them under Codex as part of the anchor-slice cross-runtime audit.
+
+**Reassigned OUT of this epic (2026-07-08):**
+- **git-jsonl skill-count drift** — REASSIGNED to `livespec-xfqd`
+  (orchestrator-surface-parity), NOT filed under `yes5`. It is a surface/count
+  matter (how many skills exist + are documented across git-jsonl's
+  README/contracts/constraints), owned by `xfqd` **P2** (mechanical
+  skill-set-consistency check) + **P4** (git-jsonl spec supersede, 8→12 full peer)
+  per the confirmed scope split. Reconciling the count under `yes5` would duplicate
+  and be obsoleted by xfqd's 8→12 rewrite. The specifics (README self-contradiction
+  "10-skill" vs "Seven"; contracts "seven-skill surface") are recorded on the
+  `xfqd` epic + `plan/orchestrator-surface-parity/research/design.md` §"Slice plan
+  (6)" P4.
 
 **Factory robustness (coordinate with the SEPARATE `livespec-nrdk` epic — do NOT
 re-drive nrdk from this track, but these block clean factory completion):**
