@@ -509,7 +509,16 @@ existing file):
   (`https://github.com/thewoolleyman/<repo>/blob/<branch>/<path>`) over a bare
   repo-relative path; "on master" is meaningless without the repo. When the
   maintainer will review locally, name which clone to pull. Never assume the
-  session's cwd repo is the reader's mental default.
+  session's cwd repo is the reader's mental default. **NEVER abbreviate a repo to
+  a family-suffix shorthand that more than one repo shares — this is a hard ban,
+  in prose to the maintainer exactly as much as in commands.** The bare word
+  **`beads-fabro` is BANNED as a standalone repo name** because TWO repos end in
+  it — `livespec-orchestrator-beads-fabro` (the orchestrator plugin) and
+  `livespec-console-beads-fabro` (the operator console app); always write the FULL
+  name so the maintainer never has to guess which. The same applies to any shared
+  suffix (`orchestrator`, `driver`, `git-jsonl`): write
+  `livespec-orchestrator-git-jsonl`, `livespec-driver-claude`,
+  `livespec-driver-codex` in full, every time.
 - **Always recommend.** In any interview or critique dialogue, never present
   options as a neutral menu: lead with an explicit recommended option (first,
   labeled "Recommended"), state the reasoning, and yield gracefully if challenged.
