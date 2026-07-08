@@ -126,6 +126,35 @@ do
 done
 ```
 
+Required watcher loop:
+
+- Start a watcher loop as one of your first actions, before waiting on the
+  overseer or any child agent. Manual one-off polling is not sufficient for this
+  role; the loop is how the reviewer keeps reviewing while the overseer works,
+  waits on CI, or idles at maintainer input.
+- The loop must capture the driver pane, check for new fleet PR/worktree
+  activity, and re-read the live ledger item once the driver anchors it. Keep it
+  running until the maintainer explicitly stops the review, the watched session
+  is explicitly stood down, or the plan thread closes with independently
+  verified evidence.
+- Use short output windows so the reviewer session stays usable. A concrete
+  starting point:
+
+```sh
+while true; do
+  printf '\n--- fleet-check-coverage-review %s ---\n' "$(date -Is)"
+  tmux capture-pane -t <PANE_TARGET> -p -S -80 | tail -140
+  git -C /data/projects/livespec worktree list --porcelain | sed -n '1,120p'
+  gh pr list --repo thewoolleyman/livespec-dev-tooling --state open --limit 10 \
+    --json number,title,headRefName,updatedAt,url
+  gh pr list --repo thewoolleyman/livespec --state open --limit 10 \
+    --json number,title,headRefName,updatedAt,url
+  /data/projects/1password-env-wrapper/with-livespec-env.sh \
+    bd -C /data/projects/livespec show <epic-or-item-id> | sed -n '1,80p'
+  sleep 120
+done
+```
+
 Message-delivery discipline (if coordinating with a live driver pane):
 
 - Poll the driver pane every 15-30s while active; every ~5 min while it idles at

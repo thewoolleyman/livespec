@@ -75,6 +75,37 @@ Operating stance:
   actionable. A Python import error, missing wrapper, stale plugin path, or
   wrong-plugin root is a failure, not fail-soft.
 
+Required watcher loop:
+
+- Start a watcher loop as one of your first actions, before waiting on the
+  driver or any child agent. Manual one-off polling is not sufficient for this
+  role; the loop is how the reviewer keeps reviewing while the driver works,
+  waits on CI, or idles at maintainer input.
+- The loop must capture the watched pane, check for new fleet/adopter
+  PR/worktree activity, and re-read live ledger state for the active hardening
+  item or epic when relevant. Keep it running until the maintainer explicitly
+  stops the review, the watched session is explicitly stood down, or the plan
+  thread closes with independently verified evidence.
+- Use short output windows so the reviewer session stays usable. A concrete
+  starting point:
+
+```sh
+while true; do
+  printf '\n--- needs-attention-hardening-review %s ---\n' "$(date -Is)"
+  tmux capture-pane -t <PANE_TARGET> -p -S -80 | tail -140
+  git -C /data/projects/livespec worktree list --porcelain | sed -n '1,120p'
+  gh pr list --repo thewoolleyman/livespec --state open --limit 10 \
+    --json number,title,headRefName,updatedAt,url
+  gh pr list --repo thewoolleyman/openbrain --state open --limit 10 \
+    --json number,title,headRefName,updatedAt,url
+  gh pr list --repo thewoolleyman/resume --state open --limit 10 \
+    --json number,title,headRefName,updatedAt,url
+  /data/projects/1password-env-wrapper/with-livespec-env.sh \
+    bd -C /data/projects/livespec show <item-or-epic-id> | sed -n '1,80p'
+  sleep 120
+done
+```
+
 Message delivery discipline:
 
 - Poll the watched pane every 15-30 seconds while it is active.

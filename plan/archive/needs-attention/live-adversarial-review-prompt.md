@@ -86,6 +86,33 @@ Message delivery discipline:
 - If a background agent keeps running after you have superseded its work,
   interrupt it and make the parent session reconcile with the authoritative PR.
 
+Required watcher loop:
+
+- Start a watcher loop as one of your first actions, before waiting on the
+  driver or any child agent. Manual one-off polling is not sufficient for this
+  role; the loop is how the reviewer keeps reviewing while the driver works,
+  waits on CI, or idles at maintainer input.
+- Keep the loop running until the maintainer explicitly stops the review, the
+  watched session is explicitly stood down, or the plan thread closes with
+  independently verified evidence. If foreground output would interrupt your
+  review, run the loop in a separate tmux pane or background process and inspect
+  its log.
+- Use short output windows so the reviewer session stays usable. A concrete
+  starting point:
+
+```sh
+while true; do
+  printf '\n--- needs-attention-review %s ---\n' "$(date -Is)"
+  tmux capture-pane -t <PANE_TARGET> -p -S -80 | tail -140
+  git -C /data/projects/livespec worktree list --porcelain | sed -n '1,120p'
+  gh pr list --repo thewoolleyman/livespec --state open --limit 10 \
+    --json number,title,headRefName,updatedAt,url
+  /data/projects/1password-env-wrapper/with-livespec-env.sh \
+    bd -C /data/projects/livespec show livespec-bj9x | sed -n '1,80p'
+  sleep 120
+done
+```
+
 Useful tmux commands:
 
 ```sh
