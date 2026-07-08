@@ -1,3 +1,5 @@
+**✓ EPIC CLOSED — fleet-plugin-currency COMPLETE (2026-07-08, tmux livespec2).** Epic `livespec-c1k9` re-closed after the adopter-parity scope landed and was live-proven on BOTH runtimes (Claude committed `--scope project` SessionStart hook; Codex native session-start auto-upgrade — no hook), the runtime-aware fail-soft Codex currency gate shipped (impl `fb7ba5b` + spec `v162` + 5-scenario live proof), and the livespec3 reviewer's final pass returned CLEAN (no blockers). All six adopter-parity children (c1k9.2/.4/.12/.13/.14/.15) are CLOSED. Standalone follow-ups (do NOT reopen this thread): `livespec-c1k9.7` (maintainer-external upstream Claude-Code plugin-source-pin report) and `livespec-dev-tooling-g28` (make check-wrapper-shape `_EXEMPT_NAMES` + red_green_replay `_IMPL_PREFIXES` config-driven). Optional cosmetic follow-up: runtime-aware wording of the "pinned release build" stale message. Everything below is read-only history.
+
 # Handoff — fleet-plugin-currency
 
 The single resumable entry point for the **fleet plugin currency** root-cause
