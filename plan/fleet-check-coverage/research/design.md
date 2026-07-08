@@ -72,6 +72,16 @@ but this check saw none of it" (fail). Getting this wrong in either direction
 re-creates a silent hole (false pass) or a false alarm on the genuinely-empty
 console repo.
 
+**Root-anchoring (residual surfaced by PR1's adversarial review, 2026-07-08).** The
+guard MUST resolve the git repo ROOT (e.g. `git rev-parse --show-toplevel`) rather
+than trusting `Path.cwd()`. A check invoked from a repo SUBDIRECTORY that happens to
+hold no `.py` walks zero and exits 0 silently — and a naive guard computing
+`has_first_party_py` on that same `cwd` would ALSO see zero and wrongly conclude
+"genuinely codeless," missing the hole. Anchoring both the universe and the guard to
+the repo root closes it (recipes normally run at root, but the guard must not DEPEND
+on that). The same root-anchoring makes every applies-to-all reroute
+invocation-location-independent.
+
 **Partition-completeness meta-check.** The role-partition checks (io vs pure vs
 commands, etc.) genuinely need semantic config — keep it. But add one guard:
 every tracked first-party `.py` must be claimed by exactly one role OR a named,
@@ -102,9 +112,19 @@ already ships (`LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST` already models
 warn-vs-fail, flipped by CI):
 
 - **Phase 0 — mechanism, WARN severity only.** Land derived-coverage +
-  fail-closed guards + partition check in `livespec-dev-tooling`, all emitting at
-  `warning` (exit 0). Release + fan-out so every repo SEES its true coverage with
-  nothing going red.
+  fail-closed guards + partition check in `livespec-dev-tooling`. Release + fan-out
+  so every repo SEES its true coverage with nothing going red. **Severity is
+  delta-WARN (REFINED 2026-07-08, PR1):** rather than demoting EVERY diagnostic to
+  `warning` (which would regress the hard gates core already enforces), a file that
+  was ALREADY covered under the pre-reroute allowlist retains its current severity
+  (e.g. `file_lloc`'s hard-fail >250), while a file NEWLY pulled into the
+  git-derived universe emits at `warning` (exit 0) even when it would otherwise
+  hard-fail. This regresses no existing gate AND keeps `livespec-dev-tooling`'s own
+  release unblocked (its newly-covered files are all WARN, so the
+  `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST` release lever cannot escalate them —
+  the release-lever trap). Realized in `file_lloc` via a `_LEGACY_HARDFAIL_TREES`
+  classifier (the old `_COVERED_TREES`); every subsequent applies-to-all reroute
+  follows the same pattern.
 - **Phase 1 — burndown, in parallel across all repos.** Each repo's warnings are
   its worklist: refactor over-ceiling files, resolve every check's findings,
   claim/exempt unclaimed files. Driven by a parallel overseer through the factory
@@ -138,7 +158,14 @@ is not enforced — verify wiring, not availability.
 3. **The precise per-repo flip mechanism (STILL OPEN — Phase 2)** — a per-repo env
    lever set in every CI job, vs a committed per-repo `gate=hard` marker the check
    reads. Whichever is chosen must be set in ALL of a repo's CI jobs (a lever set
-   in one job and not another is a silent hole).
+   in one job and not another is a silent hole). **Phase-0 severity is now settled
+   (delta-WARN, PR1 — see Staged rollout):** newly-covered files WARN, legacy-covered
+   files keep their gate. This gives OQ3 a natural shape — flipping a repo warn→fail
+   means moving its (now warning-clean) newly-covered set INTO the hard-fail
+   severity (e.g. dropping the repo from the `_LEGACY_HARDFAIL_TREES`-style
+   classifier so its WHOLE first-party universe hard-fails), which is severity-only,
+   NO new escape hatch. The open part is purely WHERE that per-repo flip signal
+   lives (env lever in every CI job vs committed marker) and how it is read.
 4. **Applies-to-all vs role-scoped classification — RESOLVED 2026-07-08 (OQ4):**
    see `check-inventory.md` §2 — 13 applies-to-all checks derive their universe
    from the git-index choke point; ~11 stay role-scoped (semantic config +

@@ -42,8 +42,10 @@ alone via the read-first chain — no chat history required.
     AND block-comment open delimiters `/*`, `<!--`).
   - `has_first_party_py(*, repo_root)` — trivial derivation, ahead of need for the
     empty-walk guard.
-  These are a PURE ADDITION — **not yet wired into any check**. Rerouting is the
-  next action.
+  These are the substrate. **PR1 (2026-07-08) wired them into `file_lloc`**
+  (released **v0.34.2**, adversarially reviewed NO-BLOCKERS, accepted — see
+  Progress log). The remaining **12 applies-to-all checks + the empty-walk guard +
+  the partition meta-check** are the next action.
 - **Companion adversarial prompt.**
   `plan/fleet-check-coverage/live-adversarial-review-prompt.md` — hand this to an
   independent reviewer session; a NO-BLOCKERS verdict is a precondition for
@@ -87,7 +89,7 @@ alone via the read-first chain — no chat history required.
 
 The mechanism lands in `livespec-dev-tooling`; the burndown + flip touch every
 repo that ships first-party Python. Counts below are LIVE from the landed
-`iter_first_party_py_files` (v0.34.1), verified 2026-07-08 — authoritative over
+`iter_first_party_py_files` (v0.34.2), verified 2026-07-08 — authoritative over
 any older figure in the research docs:
 
 | Repo | Role | first-party `.py` | Note |
@@ -105,6 +107,17 @@ The empty-walk guard's correctness on the ONE genuinely empty-universe repo
 (`livespec-console-beads-fabro`, 0 tracked `.py` → MUST pass) is a first-class
 acceptance case — as is confirming the Driver repos' hook `.py` are COVERED (they
 are NOT codeless). See the adversarial prompt.
+
+**Pin / fan-out status (verified 2026-07-08 after PR1).** `livespec-dev-tooling` is
+at **v0.34.2** (carries the `file_lloc` reroute). The fan-out bumped `livespec`
+core and `livespec-orchestrator-beads-fabro` to v0.34.2 (console has an in-flight
+bump PR). **⚠ Fan-out lag to watch:** four repos are stranded THREE releases back at
+**v0.33.5** — `livespec-orchestrator-git-jsonl`, `livespec-runtime`,
+`livespec-driver-claude`, `livespec-driver-codex`. They will not SEE the reroute's
+WARN coverage until their pins advance, so unsticking the fan-out for them is a
+Phase-1 prerequisite (not a PR1 blocker — PR1 is WARN-only and non-breaking). Verify
+each repo's pin + live check output individually; do not assume the fan-out reached
+everyone.
 
 ## Progress log
 
@@ -126,48 +139,90 @@ are NOT codeless). See the adversarial prompt.
   - **Coordination note:** another session left an orphaned worktree/branch
     `fix/generated-block-comment-syntax` (commit `abd5430`) — a redundant parallel
     block-comment fix that never opened a PR (superseded by #283). It is NOT this
-    thread's branch; leave it for that session/maintainer to reap.
+    thread's branch; leave it for that session/maintainer to reap. (Still present
+    2026-07-08 — a PR #285 has since been opened on it by that other session; NOT
+    ours to touch.)
+- **2026-07-08 — Phase-0 REROUTE PR1 landed + ACCEPTED (`file_lloc`, the trigger).**
+  - `livespec-dev-tooling` PR #286 → merged commit `4562773` → released **v0.34.2**.
+    `file_lloc` now derives its universe from `iter_first_party_py_files` (dropped
+    the hardcoded `_COVERED_TREES` walk); the three legacy paths were repurposed as
+    a severity classifier `_LEGACY_HARDFAIL_TREES`.
+  - **Severity model DECIDED — delta-WARN** (the "how does the lever behave for the
+    newly-covered set" question, now resolved for Phase-0): a file UNDER a legacy
+    tree keeps today's severity (soft-warn 201–250, **hard-fail >250, exit 1**); a
+    file NEWLY pulled into the git-derived universe emits ALL LLOC diagnostics at
+    **WARN (exit 0), even >250**. This is strictly safer than design.md's blanket
+    "all WARN": it regresses NO existing gate (core keeps its hard ceiling) AND
+    keeps dev-tooling's OWN release unblocked (the newly-covered 88 files are all
+    WARN, dodging the release-lever trap). Phase-2 flips a repo by dropping it from
+    the legacy classifier so its whole universe hard-fails (a natural OQ3 story).
+    This is the established pattern for EVERY subsequent applies-to-all reroute.
+  - **Live cross-repo evidence** (overseer-run, then independently reproduced):
+    `livespec-orchestrator-beads-fabro` exit 0 / `dispatcher.py` (1586 LLOC) WARNS /
+    0 errors; `livespec-console-beads-fabro` exit 0 on empty universe;
+    `livespec` core exit 0 / 10 legacy-soft-band warnings / **0 errors** (no
+    regression); `livespec-dev-tooling` exit 0 / 88 WARN / 0 errors (own release
+    unblocked).
+  - **Independent Fable adversarial review: NO-BLOCKERS** — every claim reproduced
+    with throwaway git fixtures (no-allowlist-regression incl. a `livespec_extra/`
+    sibling-prefix edge that `is_relative_to` classifies correctly; delta-WARN both
+    directions; codeless pass; exemptions un-launderable; wiring intact).
+  - **Residuals carried to later increments (non-blocking):** (1) invoking a check
+    from a repo SUBDIRECTORY walks zero and exits 0 silently — the deferred
+    empty-walk guard as designed (`has_first_party_py` on the same cwd) would NOT
+    catch it either; the guard PR must address the invocation contract (recipes run
+    at repo root). (2) `no_lloc_soft_warnings` is still fail-open (not yet rerouted)
+    — in the PR2 set. (3) The `@generated` sentinel is position-unconstrained (a
+    full-line sentinel comment anywhere exempts) — possible future head-of-file
+    tightening.
+  - Cleanup: PR1 executor's worktree/branch reaped; `livespec-dev-tooling` primary
+    clean on master. Ledger child `livespec-fa3eu5` → `in_progress`, PR1 acceptance
+    journaled as a comment.
 
 ## The next action
 
-> **Phase 0 — REROUTE increment (WARN-only), the next PR(s) in `livespec-dev-tooling`.**
-> The foundation primitive is landed (v0.34.1); now wire it in. MAINTAINER-DRIVEN
-> host-side; expect auto-merge on green CI. Read `research/check-inventory.md` §2
-> for the exact per-check classification. Deliverables:
-> - Reroute the **13 applies-to-all checks** to derive their universe from
->   `iter_first_party_py_files` instead of hardcoded trees / `config.covered_trees`
->   / `config.source_trees`: `file_lloc` (drop `_COVERED_TREES`),
->   `no_lloc_soft_warnings`, `all_declared`, `assert_never_exhaustiveness`,
->   `global_writes`, `keyword_only_args`, `match_keyword_only`, `no_inheritance`,
->   `private_calls`, `comment_line_anchors`, `main_guard`, `rop_pipeline_shape`,
->   and `no_write_direct` (HYBRID — git-derived universe, keep
->   `commands_trees`/`supervisor_entry_files` as write-permitted exemptions). Six
->   of these currently raw-`rglob` hardcoded trees and bypass `load_config` —
->   reroute them through the shared choke point.
-> - Add the **empty-walk guard**: a check whose resolved universe is empty in a
->   repo with a NON-empty first-party set is an error; a genuinely-empty repo
->   (`livespec-console-beads-fabro`) PASSES. Use `has_first_party_py`.
-> - Add the **partition-completeness meta-check** (new `checks/` module). NOTE:
->   adding a new `checks/<name>.py` auto-joins `canonical_check_slugs()`, so it
->   requires wiring `check-<slug>` into EVERY consumer justfile (the fan-out
->   `bump-pin` reconciles the `check:` block — precedent
->   `livespec-dev-tooling-adqmnm`, "the fan-out writes the wiring").
-> - **⚠ Release-lever TRAP (why this is staged, WARN-only):**
->   `checks/no_lloc_soft_warnings.py` reads `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST`,
->   which **CI/release sets to `true`**. Rerouting it (and any check gaining a
->   fail-lever) to the full 88-file universe would make dev-tooling's OWN release
->   gate FAIL on newly-covered soft-band files — blocking the release the fan-out
->   needs. In Phase 0, ALL new/changed diagnostics from the rerouted universe MUST
->   emit at WARN (exit 0) regardless of the release context. Decide deliberately
->   how the lever behaves for the newly-covered set (the Phase-2 per-repo flip is
->   OQ3, still open).
-> - Exemptions unchanged: `_vendor/` + test tree (+conftest) + `@generated`-marked
->   + `templates/**`; each repo's OWN hooks ARE covered.
-> - Release + fan-out: cut a `livespec-dev-tooling` release; `bump-pin` rewrites
->   every consumer's pin AND reconciles each consumer's `check:` canonical block.
-> - Confirm LIVE (not just green CI): `livespec-orchestrator-beads-fabro` WARNS on
->   `dispatcher.py` + siblings; `livespec-console-beads-fabro` PASSES on empty; the
->   Driver hooks are covered; `just check` stays exit 0 fleet-wide.
+> **Phase 0 — REROUTE, continuing (WARN-only), the next PR in `livespec-dev-tooling`.**
+> **PR1 (`file_lloc`) is DONE + ACCEPTED (v0.34.2)** — see Progress log. The
+> **delta-WARN** severity model it established is the pattern for EVERY remaining
+> applies-to-all reroute: git-derived universe via `iter_first_party_py_files`;
+> files under `_LEGACY_HARDFAIL_TREES` keep today's severity; newly-covered files
+> emit at WARN (exit 0). MAINTAINER-DRIVEN host-side; expect auto-merge on green CI.
+> Read `research/check-inventory.md` §2 for the per-check classification.
+>
+> **Remaining applies-to-all reroutes (12), in small PRs — recommended grouping:**
+> - **PR2 — the `config:source_trees` family (7, one coherent batch, same universe
+>   pattern):** `all_declared`, `assert_never_exhaustiveness`, `global_writes`,
+>   `keyword_only_args`, `match_keyword_only`, `no_inheritance`, `private_calls`.
+>   Introduce the **empty-walk guard as a shared helper** here (now NON-vacuous:
+>   these resolve from config trees that can be empty-while-code-exists — the exact
+>   original bug). Guard: universe empty AND `has_first_party_py` → error; genuinely
+>   codeless (console) → pass. **Address the subdir-invocation residual** (Fable
+>   PR1 finding): a check invoked from a repo subdirectory walks zero and exits 0
+>   silently, and `has_first_party_py` on the same cwd would not catch it — resolve
+>   the git repo ROOT (e.g. `git rev-parse --show-toplevel`) rather than trusting
+>   `cwd`, so the universe and the guard are both root-anchored.
+> - **PR3 — the raw-`rglob` hardcoded + hybrid stragglers:** `main_guard`,
+>   `rop_pipeline_shape`, `comment_line_anchors`, and `no_write_direct` (HYBRID —
+>   git-derived universe, keep `commands_trees`/`supervisor_entry_files` as
+>   write-permitted exemptions). Plus `no_lloc_soft_warnings` — STILL FAIL-OPEN
+>   (Fable PR1 finding); it carries the `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST`
+>   release lever, so its newly-covered set MUST emit at WARN regardless of the
+>   release context (delta-WARN), or dev-tooling's own release gate FAILs on
+>   newly-covered soft-band files — the release-lever trap.
+> - **PR4 — the partition-completeness meta-check** (new `checks/` module): every
+>   first-party `.py` is claimed by exactly one role OR a named exclusion; unclaimed
+>   → error naming the file (WARN this phase). NOTE: a new `checks/<name>.py`
+>   auto-joins `canonical_check_slugs()`, so it requires wiring `check-<slug>` into
+>   EVERY consumer justfile — the fan-out `bump-pin` reconciles the `check:` block
+>   (precedent `livespec-dev-tooling-adqmnm`, "the fan-out writes the wiring").
+>
+> Exemptions unchanged across all: `_vendor/` + test tree (+conftest) +
+> `@generated`-marked + `templates/**`; each repo's OWN hooks ARE covered. Each PR:
+> release + fan-out (`bump-pin` rewrites pins + reconciles `check:`), then confirm
+> LIVE (not just green CI) — orchestrator WARNS on its product code,
+> `livespec-console-beads-fabro` PASSES on empty, Driver hooks covered, `just check`
+> stays exit 0 fleet-wide — and an independent adversarial review of the merged
+> commit before recording acceptance.
 >
 > **Then Phase 1** — the per-repo burndown, in parallel through the factory
 > (over-ceiling refactors, other check findings, claim/exempt unclaimed files).
