@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.2](https://github.com/thewoolleyman/livespec/compare/v0.7.1...v0.7.2) (2026-07-08)
+
+
+### Bug Fixes
+
+* name adopter-runnable remediation in the plugin-currency stale message ([51e4297](https://github.com/thewoolleyman/livespec/commit/51e4297d683d26569310104dd82fef0c09754895))
+
+
+### Refactoring
+
+* extract the plugin-currency gate into a stdlib-only _currency package ([188f98b](https://github.com/thewoolleyman/livespec/commit/188f98be92e178ce5ccfc9eb50c7406d35c519ba))
+
 ## [0.7.1](https://github.com/thewoolleyman/livespec/compare/v0.7.0...v0.7.1) (2026-07-07)
 
 
