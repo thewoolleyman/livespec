@@ -78,20 +78,36 @@ Operating stance:
 Message delivery discipline:
 
 - Poll the watched pane every 15-30 seconds while it is active.
-- If the watched session waits at a picker and the answer is clear, answer it.
+- If the watched session waits at a picker and the answer is clear, answer it
+  only after verifying the pane is idle at that picker.
 - If it stalls in analysis, force a checkpoint: ask for the branch, PR, blocker,
-  or live evidence.
+  or live evidence in your own chat/report unless the watched pane is idle and
+  ready to receive input.
+- Do NOT type into a busy Claude pane. `tmux send-keys ... Enter` is not an
+  atomic "send message" operation while Claude is thinking, running a command,
+  waiting on a sub-agent, or otherwise not at an idle prompt. The characters can
+  land in the input composer and remain unsubmitted, confusing the next operator.
 - Treat a tmux message as undelivered until you capture the pane and see that it
-  was submitted. Long notes should go through a tmux buffer, paste, Enter, then
-  capture. If the note remains at the prompt, send Enter again.
+  was submitted and processed. If the note is still visible in the input field,
+  it is NOT delivered. Do not keep sending more text. Either wait for an idle
+  prompt and submit exactly once, or report the required directive in the
+  controlling chat for the maintainer/session owner to send.
+- Prefer not to send messages into the watched session at all during adversarial
+  review. Observe, verify, and report in your own session. Only send into the
+  watched pane when immediate coordination is necessary, the pane is idle, and
+  you can verify submission.
+- For a long note to an idle pane, use a tmux buffer, paste it, send Enter once,
+  then capture the pane. If the note remains at the prompt, stop and report the
+  failed delivery; do not assume repeated `Enter` will fix a busy-pane state.
 
 Useful tmux commands:
 
 ```sh
 tmux list-panes -a -F '#S:#I.#P #{pane_current_path} #{pane_current_command} #{pane_title}'
 tmux capture-pane -t <PANE_TARGET> -p -S -80
-tmux send-keys -t <PANE_TARGET> "<DIRECTIVE>" Enter
 
+# Only use these send commands after capture shows the watched pane is idle at
+# an input prompt. Never send into a pane that is thinking/running/waiting.
 tmux set-buffer "<LONG DIRECTIVE>"
 tmux paste-buffer -t <PANE_TARGET>
 tmux send-keys -t <PANE_TARGET> C-m
