@@ -1,12 +1,14 @@
 # needs-attention-hardening — LIVING plan thread HANDOFF (resumable entry point)
 
-**Purpose:** drive the unaddressed follow-ups from the just-closed `needs-attention`
+**Purpose:** drove the unaddressed follow-ups from the just-closed `needs-attention`
 rollout (`livespec-bj9x`, CLOSED) plus newly-surfaced cross-runtime / cross-repo
-skill-correctness problems, until the `needs-attention` surface is
-**dogfood-proven** on BOTH runtimes (Claude + Codex) across ALL fleet members AND
-adopters. This doc is the single resumable entry point — a fresh session should be
-able to execute the NEXT ACTION below from this file alone (via the read-first
-chain), no chat history required.
+skill-correctness problems, until the `needs-attention` surface was
+**dogfood-proven** on BOTH runtimes (Claude + Codex) across the entire SHIPPED
+repo-class matrix. **That shipped-surface mission is now COMPLETE (2026-07-08)**
+(see STATUS below); the thread STAYS OPEN as the living home for the three
+prose-linked carry-over follow-ups. This doc is the single resumable entry point —
+a fresh session should be able to execute the NEXT ACTION below from this file alone
+(via the read-first chain), no chat history required.
 
 Repo: `thewoolleyman/livespec` (host checkout `/data/projects/livespec`).
 Ledger via the wrapper: `source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C <repo> ...`.
@@ -86,59 +88,25 @@ into every handoff refresh for this track**:
   as its first coordination act (this is why it is codified here, not just in a live
   session).
 
-## NEXT ACTION (execute from this file alone)
+## STATUS — CORE MISSION COMPLETE (2026-07-08)
 
-The kickoff FIRST ACTIONS are **DONE** (epic `livespec-yes5` + anchor slice
-`livespec-3wh4` filed, carry-overs routed). **Step 1 (reproduce) is also DONE** —
-finding below. Remaining steps are grooming + fix + matrix proof; per the
-**Orchestration discipline** above they are **delegated to sub-agents / dispatched
-through the factory**, NOT hand-cranked inline.
+The `needs-attention` surface is **dogfood-proven on BOTH runtimes (Claude + Codex) across the entire SHIPPED repo-class matrix** — core, runtime library, driver plugin, both orchestrators, console, openbrain, resume. Anchor slice `livespec-3wh4` is **CLOSED** (full per-column evidence in its ledger comments). Epic `livespec-yes5` is 1/1 and **stays OPEN as the LIVING thread** for the follow-ups below.
 
-**REPRODUCTION FINDING** (2026-07-08, live `codex exec` in `livespec-runtime`,
-plugin 0.13.1; full detail on `livespec-3wh4`):
-- **Premise correction:** `livespec-runtime` is **NOT** backendless. Its
-  `.livespec.jsonc` names `livespec-orchestrator-beads-fabro` as impl plugin, it
-  has a LIVE beads tenant, and
-  `credential_wrapper=[/usr/local/bin/with-livespec-env.sh --]`;
-  `harnesses.{claude,codex}="exempt"` (ships no skill surface of its own). The old
-  "pure library / no backend" framing was WRONG (also correct it in `yes5`/`3wh4`).
-- **Plugin-root resolution is SOUND** — the Codex SKILL.md 3-tier resolver
-  correctly resolves the installed cache in `livespec-runtime`; no wrong-plugin-root.
-- **The real seam:** under the DEFAULT Codex **sandbox**, `needs-attention` FAILS.
-  The credential-wrapper self-heal (`required credential env absent; re-invoking
-  under credential_wrapper`) shells out to `sudo` (via `with-livespec-env.sh`),
-  which the sandbox's no-new-privileges flag BLOCKS → no attention list (a HARD
-  failure, not fail-soft). With `--dangerously-bypass-approvals-and-sandbox` it
-  works (correct Markdown + VALID `--json` envelope; the credential line is
-  stderr-only and does not corrupt `--json`).
+**What landed (do NOT redo):**
+- Both credential-fail-soft fix halves: RT `livespec-runtime-2y1` (v0.9.2) + OR `bd-ib-0s7` (orchestrator v0.13.7, PR #370). Under the DEFAULT Codex sandbox, `needs-attention` now fails SOFT with a clean actionable message instead of a raw `sudo` dump.
+- Codex + Claude matrix columns swept CLEAN for the shipped surface. Attack #5 (no `spec:next` pointer) holds everywhere; attack #7 (`internal:` id rejection) is latent/not-manifested.
+- The one defect found — the local `needs-attention-fleet` skill hardcoded the fleet credential wrapper, silently dropping independent-tenant `openbrain` — FIXED + live-verified + merged (PR #941).
 
-So "confused about wrappers" = a **sandbox-incompatible credential-wrapper
-self-heal (`sudo`)**, NOT a plugin-root/resolution bug.
+**CARVE-OUT (documented, deliberately deferred):** the two git-jsonl Codex cells (git-jsonl-orchestrator × Codex + `resume` × Codex) are NOT proven — git-jsonl ships no `.codex-plugin` skill packaging. This is a git-jsonl PACKAGING prerequisite, not a `needs-attention` behavior gap. The full-peer packaging epic `livespec-xfqd` was **DROPPED** (2026-07-08) as duplicative of / superseded by `plan/make-git-jsonl-real/` in the `livespec-orchestrator-git-jsonl` repo — which delivers git-jsonl's functional drive-loop/executor but NOT its Codex skill packaging. If git-jsonl later gains Codex skill packaging, re-verify + retro-journal these 2 cells against the closed `livespec-3wh4`.
 
-**Remaining steps (DELEGATE / DISPATCH — do not serialize inline):**
-1. **Fix — GROOMED + RT LANDED + OR IN FLIGHT (2026-07-08).** `livespec-3wh4` was
-   groomed into 2 slices: **RT `livespec-runtime-2y1`** (pure `credentials.py` Fail
-   message) — **LANDED** (PR #145; in `livespec-runtime` v0.9.2, now pinned into
-   `livespec-orchestrator-beads-fabro`); **OR `bd-ib-0s7`** (`_bootstrap.py`
-   supervised re-exec that prints RT's message) — **dispatching through the factory**
-   (final item of the `livespec-orchestrator-beads-fabro` drain). WHEN OR LANDS, the
-   remaining work is:
-   - **Live-verify** ("done means exercised live"): re-run `needs-attention` under
-     the DEFAULT Codex sandbox in `livespec-runtime` — it must now emit the clean
-     fail-soft message ("credential injection … could not run in this environment …")
-     and leave stdout clean, NOT the raw `sudo` dump. Also confirm the non-sandbox
-     path still works (`--dangerously-bypass-approvals-and-sandbox` → real list).
-   - **Close `livespec-3wh4`** (→ `livespec-yes5` 1/1) and correct the stale
-     `livespec-runtime` "no backend" framing in `yes5`/`3wh4` descriptions.
-2. **Prove the matrix.** Run `needs-attention` on BOTH runtimes across the repo
-   classes (core, runtime library, driver plugin, both orchestrators, console,
-   `openbrain`, `resume`); each cell = correct list OR correct fail-soft. Matrix
-   table + attack points live in
-   `plan/needs-attention-hardening/live-adversarial-review-prompt.md`.
+## REMAINING (yes5 living scope) — needs maintainer promote/groom
 
-Injectable seams (mirror `livespec_runtime.github_auth.MintSeams`) for any I/O that
-would otherwise need a hermetic `~/.codex` / `~/.claude` — unit-test tier logic
-with tmp dirs, never HOME monkeypatching.
+Three prose-linked carry-over follow-ups, all in backlog (each needs a maintainer promotion/groom to advance — the overseer surfaces, the maintainer runs the command in the owning repo):
+- `livespec-runtime-dnu` (runtime tenant, P3 bug) — `validate_attention_item_id` rejects the `internal:` prefix. CONFIRMED latent/not-manifested under the shipped local skills (they never validate an `internal:` id) — real but not urgent.
+- `livespec-console-beads-fabro-fpo` (console tenant, P2 bug) — `work_item stream_seq` u64→SQLite signed overflow; apply the 63-bit mask.
+- `livespec-console-beads-fabro-ipi` (console tenant, P3 task) — migrate the console TUI render path from lane-derived to the `attention_item.*` stream.
+
+NEXT ACTION: surface each follow-up for maintainer promotion (one at a time), or the maintainer routes them. There is no ready impl work to dispatch on this track until one is promoted.
 
 ## Read-first chain (open these, in order, before acting)
 
@@ -222,12 +190,7 @@ re-drive nrdk from this track, but these block clean factory completion):**
 - `livespec-nrdk` — factory-safe-by-default (factory-safe default + machine-readable
   `not-factory-safe:<reason>` admission gate + capability widening + host-only
   needs-attention lane). Carries the token-TTL fix.
-- `livespec-xfqd` — orchestrator-surface-parity (git-jsonl becomes a full peer:
-  identical cross-runtime + cross-orchestrator skill surfaces, mechanically
-  enforced). **Scope reconciled (2026-07-08):** `xfqd` owns surface/packaging
-  PARITY (which skills exist + are packaged where, static + mechanically enforced);
-  THIS epic owns runtime BEHAVIOR correctness (resolution + fail-soft, dogfood-
-  proven). Cross-link, do not duplicate.
+- `livespec-xfqd` — orchestrator-surface-parity: **DROPPED/CLOSED 2026-07-08** as duplicative of `plan/make-git-jsonl-real/` (in the `livespec-orchestrator-git-jsonl` repo). The P1 core-spec proposal was withdrawn unratified (PR #945); the epic + slice `livespec-xfqd.1` are closed. Its non-duplicate residue (P5/P6 description conventions + the git-jsonl skill-count drift) is recorded in the epic's close reason if it needs re-homing.
 
 ## Standing disciplines (apply throughout)
 
