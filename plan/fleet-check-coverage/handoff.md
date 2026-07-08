@@ -17,21 +17,26 @@ alone via the read-first chain — no chat history required.
   exist in a repo whose package dir is named `livespec_orchestrator_beads_fabro/`
   — so it walked zero files and exited 0. Every other structural check has the
   same class of blindness there (its per-repo `[tool.livespec_dev_tooling]` block
-  restates core's `livespec/` paths verbatim). Read BOTH research docs before
+  restates core's `livespec/` paths verbatim). Read the research docs before
   acting:
   - `plan/fleet-check-coverage/research/root-cause.md` — why the allowlist model
     fails open, with reproduce commands.
   - `plan/fleet-check-coverage/research/design.md` — the target
     (filesystem-derived universe via `git ls-files`, fail-closed empty guard,
     partition-completeness meta-check), the exemption policy (`_vendor/` + tests +
-    generated code), the three-phase rollout, and the open questions.
+    `@generated`-marked + `templates/**`), the three-phase rollout, and the
+    (now-resolved) open questions.
+  - `plan/fleet-check-coverage/research/check-inventory.md` — the Phase-0
+    classification: which checks derive their universe vs stay role-scoped, the
+    per-repo first-party `.py` counts, and the wiring/severity facts.
 - **Companion adversarial prompt.**
   `plan/fleet-check-coverage/live-adversarial-review-prompt.md` — hand this to an
   independent reviewer session; a NO-BLOCKERS verdict is a precondition for
   accepting any Phase-2 flip.
-- **No epic yet (deliberate).** This thread was authored plan-first; the ledger
-  epic is intentionally NOT created. Anchoring it is the FIRST action below.
-  Until then there is no ledger status to read and none is stored here.
+- **Epic anchored.** `livespec-i5ebqd` [EPIC] is the thread's status anchor; the
+  Phase-0 mechanism is tracked as child `livespec-fa3eu5` (MAINTAINER-DRIVEN,
+  blocked/needs-human — do NOT auto-dispatch). Status is READ live from the ledger
+  (`bd show <id>`), never stored here.
 - **⚑ Golden rules.**
   - Ready, factory-safe implementation is **factory-dispatched** — never
     hand-coded inline in the overseer session. The overseer FILES and DISPATCHES;
@@ -67,50 +72,60 @@ trusting this table:
 | `livespec-dev-tooling` | the shared check package | mechanism lands here; also self-covers |
 | `livespec` (core) | hub / dogfood | already covered today; verify no regression |
 | `livespec-orchestrator-beads-fabro` | orchestrator | large backlog (dispatcher.py + siblings) — the trigger |
-| `livespec-console-beads-fabro` | operator console app | likely same hidden backlog class |
+| `livespec-console-beads-fabro` | operator console app | **0 tracked `.py`** — the ONE genuinely empty-universe repo; empty-walk guard MUST PASS, not error |
 | `livespec-orchestrator-git-jsonl` | orchestrator | real coverage; verify |
 | `livespec-runtime` | library | real coverage; verify |
-| `livespec-driver-claude` | thin runtime binding | may be genuinely codeless → empty-walk guard MUST pass, not error |
-| `livespec-driver-codex` | thin runtime binding | same as above |
+| `livespec-driver-claude` | thin runtime binding | NOT codeless: 2 first-party hook `.py` (`.claude-plugin/hooks/`, `.claude/hooks/`) — MUST be covered |
+| `livespec-driver-codex` | thin runtime binding | NOT codeless: 3 first-party hook `.py` (`livespec/hooks/`) — MUST be covered |
 
-The empty-walk guard's correctness on the (near-)codeless Driver repos is a
-first-class acceptance case, not an afterthought — see the adversarial prompt.
+The empty-walk guard's correctness on the ONE genuinely empty-universe repo
+(`livespec-console-beads-fabro`, 0 tracked `.py` → MUST pass) is a first-class
+acceptance case — as is confirming the Driver repos' hook `.py` are COVERED (they
+are NOT codeless). See the adversarial prompt.
 
 ## The next action
 
-> **Phase 0 — mechanism, warn-only. Start here.**
+> **Phase 0 — mechanism, warn-only.**
 >
-> 1. **Anchor the epic.** File via the `capture-work-item` operation an `epic`
->    titled *"fleet-check-coverage: filesystem-derived structural-check coverage
->    across the fleet (staged warn → burndown → fail)"*. Then file the Phase-0
->    child items below as its children (`depends_on` the epic, typed-dict form).
-> 2. **Enumerate + classify the check set.** In `livespec-dev-tooling`, list
->    `checks/*.py` and classify each: *applies-to-all* (derive its universe from
->    `git ls-files '*.py'` minus exemptions) vs *role-scoped* (keep semantic
->    config, gain the partition guard). This classification is Phase 0's first
->    real artifact.
-> 3. **Resolve the two blocking open questions** (design.md): the "generated
->    code" marker, and the empty-walk guard's "first-party `.py`" predicate that
->    distinguishes a codeless Driver repo (pass) from a mis-config (fail). These
->    two gate the mechanism; the others (flip mechanism, test-ceiling) can wait.
-> 4. **Implement, WARN severity only.** Route `file_lloc` (drop its hardcoded
->    `_COVERED_TREES`) and every applies-to-all check through the shared
->    filesystem-derived `iter_py_files`; add the empty-walk guard and the
->    partition-completeness meta-check. All new/changed diagnostics emit at
->    `warning` (exit 0) this phase.
-> 5. **Release + fan-out.** Cut a `livespec-dev-tooling` release; let `bump-pin`
->    rewrite every consumer's pin AND reconcile each consumer's `check:` canonical
->    block (wiring, not just availability).
-> 6. **Confirm the fanned-out state:** every repo with product `.py` now WARNS
->    and its true coverage is visible (dispatcher.py et al. appear); every
->    codeless Driver repo PASSES on an empty universe without erroring.
+> **DONE (2026-07-08):** epic `livespec-i5ebqd` anchored; the dev-tooling check
+> set enumerated + classified (→ `research/check-inventory.md`); the two blocking
+> open questions resolved (→ `research/design.md`): OQ1 = generic `@generated`
+> sentinel (native-comment-syntax registry); OQ5 = first-party predicate; plus
+> OQ2 = cover each repo's own hooks, exempt the `templates/**` copier payload.
 >
-> **Then Phase 1** — dispatch the per-repo burndown in parallel through the
-> factory (over-ceiling refactors, other check findings, claim/exempt unclaimed
-> files); one child track per repo under the epic.
+> **RIPE NEXT ACTION — drive the Phase-0 mechanism PR** (tracked as child
+> `livespec-fa3eu5`: MAINTAINER-DRIVEN host-side `livespec-dev-tooling` PR, WARN
+> severity — do NOT auto-dispatch to the factory). Read `bd show livespec-fa3eu5`
+> and `research/check-inventory.md` for the full deliverable list. In brief:
+> - Add a git-index-derived `iter_first_party_py_files(*, repo_root)` (shells
+>   `git ls-files '*.py'` minus the exemptions); keep `iter_py_files(root=...)`
+>   for role-scoped per-tree walks.
+> - Add the generic `@generated` sentinel primitive (native-comment-syntax
+>   registry) and the empty-walk guard (fail closed on non-empty-but-saw-zero;
+>   pass on the genuinely-empty console repo).
+> - Route the 13 applies-to-all checks through the git-derived universe (drop
+>   `file_lloc`'s `_COVERED_TREES`; reroute the 6 raw-`rglob` checks); add the
+>   partition-completeness meta-check; role-scoped checks keep config + gain it.
+> - Exemptions: `_vendor/` + test tree (+conftest) + `@generated`-marked +
+>   `templates/**`. Own hooks ARE covered. ALL new/changed diagnostics WARN
+>   (exit 0) this phase.
+> - Release + fan-out: cut a `livespec-dev-tooling` release; `bump-pin` rewrites
+>   every consumer's pin AND reconciles each consumer's `check:` canonical block.
+> - Confirm LIVE: `livespec-orchestrator-beads-fabro` now WARNS on `dispatcher.py`
+>   (2,616 lines) + siblings; `livespec-console-beads-fabro` PASSES on empty; the
+>   Driver hooks are covered; `just check` stays exit 0 fleet-wide.
 >
-> **Then Phase 2** — flip warn→fail per repo the moment it is warning-clean,
-> after an independent adversarial review (companion prompt) returns NO-BLOCKERS.
+> **Then Phase 1** — the per-repo burndown, in parallel through the factory
+> (over-ceiling refactors, other check findings, claim/exempt unclaimed files).
+> `groom` the epic into one ready track per repo. NOTE: do NOT link a child to the
+> epic via `depends_on` — an OPEN-epic edge perpetually blocks the child
+> (`lifecycle._entry_blocks`); narrate epic membership in the description and
+> reserve `depends_on` for genuine cross-item blockers.
+>
+> **Then Phase 2** — flip warn→fail per repo the moment it is warning-clean, after
+> an independent adversarial review (companion prompt) returns NO-BLOCKERS. The
+> flip is severity only — NO new escape hatch (`.ai/ci-gate-discipline.md`). The
+> flip mechanism itself (env lever vs committed marker) is still-open OQ3.
 >
 > Do NOT archive this thread until every in-scope repo is warning-clean AND
 > flipped to hard-fail, and the maintainer explicitly accepts archival.

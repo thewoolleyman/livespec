@@ -48,7 +48,10 @@ Operating stance:
 - Do not accept "works in livespec core." Core is the ONE repo where the original
   bug cannot bite (its package dir really is named `livespec/`). Demand proof in
   the non-`livespec`-named repos (`livespec-orchestrator-beads-fabro`,
-  `livespec-console-beads-fabro`) and on the (near-)codeless Driver repos.
+  `livespec-console-beads-fabro`) and on the Driver repos — whose hook `.py`
+  (`livespec-driver-claude` 2, `livespec-driver-codex` 3) are NON-empty and MUST
+  be covered. The one genuinely empty-universe repo is `livespec-console-beads-fabro`
+  (0 tracked `.py`), which MUST pass on empty.
 - Do not accept "the module exists" as "the check runs." Verify it is wired into
   `just check` (the aggregate), lefthook, AND CI in each repo — not merely
   importable.
@@ -64,21 +67,28 @@ Specific attack points (this thread):
 2. Empty-walk guard, BOTH directions. (a) False pass: in a repo with product
    `.py`, force a check's resolved universe empty (rename/mis-point config, or
    the pre-fix state) and confirm it now ERRORS instead of exiting 0. (b) False
-   alarm: on a genuinely codeless Driver repo (`livespec-driver-claude` /
-   `livespec-driver-codex`), confirm the guard PASSES on an empty universe and
-   does not red a repo that legitimately has no first-party `.py`. Both must hold.
+   alarm: on the ONE genuinely codeless repo (`livespec-console-beads-fabro`, 0
+   tracked `.py`), confirm the guard PASSES on an empty universe and does not red
+   a repo that legitimately has no first-party `.py`. (c) Driver hooks are NOT
+   empty: on `livespec-driver-claude` (2 hook `.py`) and `livespec-driver-codex`
+   (3 hook `.py`), confirm their `.claude/hooks/**` / `.claude-plugin/hooks/**` /
+   `livespec/hooks/**` files are SEEN and covered — not silently skipped as if the
+   repo were codeless. All three must hold.
 
 3. Partition-completeness. Add a tracked first-party `.py` that no role claims and
    no exemption covers; confirm the meta-check FAILS and names the file. A silent
    pass here means a file can still be invisible to the role-scoped checks.
 
-4. Exemption laundering. Exemptions are `_vendor/` + tests + generated code only.
-   Attack: (a) move an over-ceiling product module into the tests tree or a
-   `generated/`-style dir and confirm it does NOT become silently exempt unless
-   it genuinely matches the agreed marker; (b) verify "generated" is a REAL
-   committed marker (header sentinel or explicit glob), not a directory name that
-   is a dumping ground; (c) verify the exemption set is explicit, visible, and
-   justified — not a broad catch-all pattern.
+4. Exemption laundering. Exemptions are `_vendor/` + tests + `@generated`-marked +
+   `templates/**` copier payload only. Attack: (a) move an over-ceiling product
+   module into the tests tree, a `templates/`-style dir, or add a bogus
+   `@generated` line, and confirm it does NOT become silently exempt unless it
+   genuinely qualifies; (b) verify "generated" is the REAL generic `@generated`
+   sentinel (the token in the file's native comment syntax), NOT a bare directory
+   name and NOT a per-repo glob list (a glob list recreates the fail-open
+   allowlist); (c) verify `templates/**` is exempt as adopter-facing payload, not
+   used to launder a real product module; (d) verify the exemption set is explicit,
+   visible, and justified — not a broad catch-all pattern.
 
 5. LLOC-counter gaming. During burndown, verify over-ceiling files were genuinely
    DECOMPOSED, not gamed: statements crammed onto fewer physical lines, logic
@@ -194,12 +204,15 @@ Exit checklist:
 
 - Every in-scope repo individually proven: pinned to the new dev-tooling release,
   checks wired into its aggregate + CI, universe filesystem-derived, empty-walk
-  guard correct (pass on codeless, fail on mis-config), partition check live.
+  guard correct (pass on the genuinely-empty console, fail on mis-config),
+  partition check live.
 - Every over-ceiling file genuinely decomposed (re-counted), not gamed or
   relabeled into an exemption.
 - Every Phase-2 flip verified: lever/marker in ALL CI jobs, warning-clean not
   suppressed, no new escape hatch.
-- Codeless Driver repos verified passing, not erroring.
+- The one genuinely codeless repo (`livespec-console-beads-fabro`) verified passing
+  on empty, not erroring; the Driver repos' hook `.py` verified COVERED (they are
+  NOT codeless).
 - Every worktree you created removed after merge; every PR merged or handed off;
   all touched primary checkouts clean/current on `master`.
 - The thread remains OPEN unless the full fleet is flipped and the maintainer
