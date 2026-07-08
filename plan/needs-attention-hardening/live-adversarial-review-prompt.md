@@ -78,6 +78,20 @@ Operating stance:
 Message delivery discipline:
 
 - Poll the watched pane every 15-30 seconds while it is active.
+- Treat an idle pane at a prompt, picker, or "what would you like to do next?"
+  question as **still active unless the driver explicitly says to stand down**.
+  That state usually means the driver is waiting for the maintainer; once the
+  maintainer answers, it will become active again. Do not stop watching, send a
+  final report, or assume the work is done just because the pane is idle.
+- When the watched pane is idle waiting for maintainer input and you do not have
+  a directive to answer it yourself, switch to a slower watch loop: capture the
+  pane at least every 5 minutes, compare it with the prior capture, and continue
+  until one of these happens: the pane resumes work, you are explicitly stood
+  down, the maintainer tells you to stop, or you hand off the still-watched pane
+  with its target, current prompt, and last capture time.
+- If the pane remains idle for multiple 5-minute polls, report "still waiting on
+  maintainer input at <prompt summary>" in your own session and keep the loop
+  armed. A long idle prompt is a watch state, not an exit condition.
 - If the watched session waits at a picker and the answer is clear, answer it
   only after verifying the pane is idle at that picker.
 - If it stalls in analysis, force a checkpoint: ask for the branch, PR, blocker,
@@ -183,9 +197,14 @@ done
 Review loop:
 
 1. Track the active driver pane and any sub-agent panes it spawns.
-2. Watch every PR it opens and every commit that lands on `master` in touched
+2. Maintain the polling loop for the full review, including idle/user-wait
+   periods: 15-30 seconds while commands, thinking, CI, releases, or sub-agents
+   are active; at least every 5 minutes while the pane is idle at a maintainer
+   prompt or picker. Do not exit the loop merely because the pane is waiting for
+   a human answer.
+3. Watch every PR it opens and every commit that lands on `master` in touched
    repos.
-3. For every implementation PR:
+4. For every implementation PR:
    - read the diff;
    - verify tests cover the named failure mode, not only a happy path;
    - verify `just check`/doctor/CI state;
@@ -193,17 +212,17 @@ Review loop:
    - verify sibling release-dispatch and bump-pin effects if a release happened;
    - verify installed plugin caches and restarted runtimes when live behavior is
      claimed.
-4. For every spec/prose change:
+5. For every spec/prose change:
    - verify the spec says architecture and contract, not only mechanism;
    - verify any heading changes update `tests/heading-coverage.json`;
    - require independent adversarial review before ratification.
-5. For every claimed live run:
+6. For every claimed live run:
    - capture command, repo, runtime, plugin version/cache path, and output;
    - distinguish old scrollback from fresh output;
    - rerun at least suspicious cases yourself.
-6. If a blocker is found, message the driver with the exact repo, PR/commit,
+7. If a blocker is found, message the driver with the exact repo, PR/commit,
    violated requirement, reproducer, and required red coverage/live fixture.
-7. After the driver fixes it, review the red and green evidence separately and
+8. After the driver fixes it, review the red and green evidence separately and
    rerun your fixture.
 
 Specific attack points for this hardening track:
