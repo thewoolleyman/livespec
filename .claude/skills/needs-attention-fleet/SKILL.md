@@ -57,31 +57,59 @@ value).
 For every fleet member AND every adopter, invoke that repo's shipped product
 `needs-attention` in JSON mode and collect its `attention[]`.
 
-**Resolve the surface per repo.** A repo's product `needs-attention` is supplied
-by whichever orchestrator plugin it uses, named in its
-`/data/projects/<repo>/.livespec.jsonc` under `implementation.plugin` (one of
-`livespec-orchestrator-beads-fabro` or `livespec-orchestrator-git-jsonl`). Both
-orchestrators have source checkouts at `/data/projects/<orchestrator>`, so
-resolve the wrapper there and point it at the target repo:
+**Resolve BOTH per-repo facts from the target repo's OWN `.livespec.jsonc`.**
+Two facts drive the invocation, and both are read from
+`/data/projects/<repo>/.livespec.jsonc` — NOT from this repo's config, and NOT
+hardcoded:
+
+1. **The orchestrator plugin** — named under `implementation.plugin` (one of
+   `livespec-orchestrator-beads-fabro` or `livespec-orchestrator-git-jsonl`).
+   Each orchestrator has a source checkout at `/data/projects/<orchestrator>`
+   that supplies the `needs_attention.py` CLI.
+2. **The credential wrapper** — the argv-prefix under the top-level
+   `credential_wrapper` key (e.g.
+   `["/usr/local/bin/with-livespec-env.sh", "--"]` for a fleet member;
+   `["/data/projects/1password-env-wrapper/with-openbrain-env.sh", "--"]` for
+   the INDEPENDENT-tenant adopter `openbrain`). It is an opaque argv PREFIX:
+   invoke the CLI as `[*credential_wrapper, python3, <cli>, ...args]` — exactly
+   the `os.execvp` shape the orchestrator's own `_bootstrap` credential
+   self-heal uses. A repo that declares NO `credential_wrapper` (e.g. a
+   git-jsonl store like `resume`) is invoked bare.
+
+**Do NOT hardcode the fleet wrapper for every beads-backed repo.** Each
+independent-tenant adopter injects its OWN tenant secret (`BEADS_DOLT_PASSWORD`)
+from its OWN 1Password Environment; running the fleet `with-livespec-env.sh`
+against an adopter's Dolt tenant is a cross-tenant `Access denied` failure that
+silently drops that adopter's real items from the fleet view. Resolve the
+credential wrapper the SAME per-repo way as the plugin — from each repo's own
+`.livespec.jsonc` — and point the CLI at the target repo:
 
 ```bash
-# beads-fabro–backed repo (needs the credential wrapper for the ledger read):
-source /data/projects/1password-env-wrapper/with-livespec-env.sh \
+# beads-fabro–backed FLEET member — its OWN credential_wrapper (with-livespec-env.sh):
+/usr/local/bin/with-livespec-env.sh -- \
   python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/needs_attention.py \
-  --json --project-root /data/projects/<repo> --repo-name <repo>
+  --json --project-root /data/projects/livespec --repo-name livespec
 
-# git-jsonl–backed repo (git-backed store, no credential wrapper needed):
+# beads-fabro–backed INDEPENDENT-tenant adopter (openbrain) — its OWN wrapper (with-openbrain-env.sh):
+/data/projects/1password-env-wrapper/with-openbrain-env.sh -- \
+  python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/needs_attention.py \
+  --json --project-root /data/projects/openbrain --repo-name openbrain
+
+# git-jsonl–backed repo (git-backed store, NO credential_wrapper declared → invoke bare):
 python3 /data/projects/livespec-orchestrator-git-jsonl/.claude-plugin/scripts/bin/needs_attention.py \
   --json --project-root /data/projects/<repo> --repo-name <repo>
 ```
 
 The `--json` envelope is `{"attention": [ ...attention_item... ]}`. Collect its
 `attention[]` and **confirm each item's `source_ref.repo` is the member repo** —
-the wrapper already sets it from `--repo-name`, so it should already read
-`<repo>`; the flat merged list stays attributable through that field alone.
+the CLI already sets it from `--repo-name`, so it should already read `<repo>`;
+the flat merged list stays attributable through that field alone.
 
 Only a repo with an orchestrator plugin resolvable AND a reachable ledger has
-this surface. See the fail-soft rule below for the rest.
+this surface. A repo whose declared `credential_wrapper` cannot run (missing
+binary, wrong tenant, non-zero exit) is skipped and named per the fail-soft rule
+below — never silently dropped, and never retried under a DIFFERENT repo's
+wrapper.
 
 ## Step 3 — fold in `needs-attention-internal`
 
@@ -124,8 +152,11 @@ For any repo whose surface cannot be reached — no `.livespec.jsonc` /
 no `implementation.plugin`, the orchestrator wrapper missing, the ledger
 unreachable (e.g. an adopter whose Dolt tenant registration is still deferred, or
 any non-zero wrapper exit / `BeadsCommandError`) — **SKIP it and NAME it** in the
-output, e.g. "skipped: `openbrain` (needs-attention surface unreachable: ledger
-access denied)". Never let one unreachable member abort the whole fan-out. This
+output, e.g. "skipped: `<adopter>` (needs-attention surface unreachable: Dolt
+tenant registration still deferred)". A cross-tenant `Access denied` is NOT a
+fail-soft case — it is the resolution bug above (the fleet wrapper run against an
+adopter's own tenant); resolve each repo's OWN `credential_wrapper` instead of
+skipping. Never let one unreachable member abort the whole fan-out. This
 mirrors the design's graceful-degrade ethos and the fleet's "readers fail soft;
 name the offender" discipline. Collect the skip list into its own short section
 under the merged output so nothing strands silently.
