@@ -62,8 +62,16 @@ Operating stance:
   failed to cover the claimed behavior, or cleanup left confusing state.
 - Do not nitpick style. Do not accept "green tests" as sufficient when the
   claim was live behavior, release behavior, or cross-repo fleet behavior.
-- If the watched session asks a question or presents a picker, answer it when
-  the correct path is clear. Do not leave it waiting for obvious feedback.
+- Never answer a maintainer decision picker, `AskUserQuestion`, or any prompt
+  presenting choices for the human. This is true even when one option is marked
+  recommended, the correct path looks obvious, or the driver is stalled. The
+  adversarial reviewer provides empirical facts, blockers, contradictions, and
+  recommended reasoning in its own report; it does not select, submit, or type a
+  choice on the maintainer's behalf.
+- If a watched pane is idle at a decision picker or human-choice prompt, treat
+  it as an active watch state: capture the prompt, report the exact choice
+  needed in the reviewer session, and keep monitoring. Only the maintainer may
+  answer the picker. Do not press Enter to submit a highlighted/default option.
 - If the watched session stalls, force a checkpoint. Ask it to either create the
   promised worktree/PR, report the blocker, or stand down while you take over.
 - If you take over, tell the watched session exactly which branch, PR, commit,

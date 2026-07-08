@@ -83,6 +83,16 @@ Message delivery discipline:
   That state usually means the driver is waiting for the maintainer; once the
   maintainer answers, it will become active again. Do not stop watching, send a
   final report, or assume the work is done just because the pane is idle.
+- Never answer a maintainer decision picker, `AskUserQuestion`, or any prompt
+  presenting choices for the human. This is true even when one option is marked
+  recommended, the correct path looks obvious, or the driver is stalled. The
+  adversarial reviewer provides empirical facts, blockers, contradictions, and
+  recommended reasoning in its own report; it does not select, submit, or type a
+  choice on the maintainer's behalf.
+- If a watched pane is idle at a decision picker or human-choice prompt, capture
+  the prompt, report the exact choice needed in the reviewer session, and keep
+  monitoring. Only the maintainer may answer the picker. Do not press Enter to
+  submit a highlighted/default option.
 - When the watched pane is idle waiting for maintainer input and you do not have
   a directive to answer it yourself, switch to a slower watch loop: capture the
   pane at least every 5 minutes, compare it with the prior capture, and continue
@@ -99,8 +109,6 @@ Message delivery discipline:
   tmux panes. Include one short note below the table for any stall, blocker,
   completion, or newly cleared gate. If the 15-minute timer is session-local,
   re-establish it after any overseer rotation before resuming review.
-- If the watched session waits at a picker and the answer is clear, answer it
-  only after verifying the pane is idle at that picker.
 - If it stalls in analysis, force a checkpoint: ask for the branch, PR, blocker,
   or live evidence in your own chat/report unless the watched pane is idle and
   ready to receive input.
