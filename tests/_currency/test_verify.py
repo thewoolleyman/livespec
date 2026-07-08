@@ -13,6 +13,7 @@ from _currency.verify import CurrencyVerdict
 __all__: list[str] = []
 
 _CLAUDE_CACHE = ".claude/plugins/cache/livespec/0.6.1"
+_CODEX_CACHE = ".codex/plugins/cache/livespec/livespec/0.6.1"
 _NON_CACHE = "repo/.claude-plugin"
 
 
@@ -67,16 +68,55 @@ def test_verify_currency_hard_fails_when_running_is_stale(
     assert verdict.gate_sensitive is False
 
 
-def test_currency_message_covers_unknown_match_and_stale() -> None:
-    """`_currency_message` returns unknown/None/stale text for the three cases."""
-    unknown = verify._currency_message(running_build_id=None, expected_build_id="bbbbbbbbbbbb")
+def test_verify_currency_stale_message_names_claude_command_for_claude_cache(
+    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A stale Claude install is told to run the scope-correct `claude plugin update`."""
+    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(tmp_path / _CLAUDE_CACHE))
+    monkeypatch.setattr(verify, "_running_build_id", lambda **_kwargs: "aaaaaaaaaaaa")
+    monkeypatch.setattr(verify, "_expected_build_id", lambda **_kwargs: "bbbbbbbbbbbb")
+    verdict = verify.verify_currency()
+    assert verdict.message is not None
+    assert "claude plugin update livespec@livespec --scope project" in verdict.message
+    assert "just ensure-plugins" not in verdict.message
+    assert "mise" not in verdict.message
+    assert "codex plugin marketplace upgrade" not in verdict.message
+
+
+def test_verify_currency_stale_message_names_codex_command_for_codex_cache(
+    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A stale Codex install is told to run `codex plugin marketplace upgrade`."""
+    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(tmp_path / _CODEX_CACHE))
+    monkeypatch.setattr(verify, "_running_build_id", lambda **_kwargs: "aaaaaaaaaaaa")
+    monkeypatch.setattr(verify, "_expected_build_id", lambda **_kwargs: "bbbbbbbbbbbb")
+    verdict = verify.verify_currency()
+    assert verdict.message is not None
+    assert "codex plugin marketplace upgrade livespec" in verdict.message
+    assert "claude plugin update" not in verdict.message
+    assert "just ensure-plugins" not in verdict.message
+
+
+def test_currency_message_covers_unknown_match_and_per_runtime_stale() -> None:
+    """`_currency_message` returns unknown/None text and runtime-specific stale text."""
+    unknown = verify._currency_message(
+        running_build_id=None, expected_build_id="bbbbbbbbbbbb", codex=False
+    )
     assert unknown is not None
     assert "could not be verified" in unknown
-    assert verify._currency_message(running_build_id="a" * 12, expected_build_id="a" * 12) is None
-    stale = verify._currency_message(
-        running_build_id="aaaaaaaaaaaa", expected_build_id="bbbbbbbbbbbb"
+    assert (
+        verify._currency_message(running_build_id="a" * 12, expected_build_id="a" * 12, codex=False)
+        is None
     )
-    assert stale is not None
-    assert "is stale" in stale
-    assert "aaaaaaaaaaaa" in stale
-    assert "bbbbbbbbbbbb" in stale
+    claude_stale = verify._currency_message(
+        running_build_id="aaaaaaaaaaaa", expected_build_id="bbbbbbbbbbbb", codex=False
+    )
+    assert claude_stale is not None
+    assert "claude plugin update livespec@livespec --scope project" in claude_stale
+    assert "just ensure-plugins" not in claude_stale
+    codex_stale = verify._currency_message(
+        running_build_id="aaaaaaaaaaaa", expected_build_id="bbbbbbbbbbbb", codex=True
+    )
+    assert codex_stale is not None
+    assert "codex plugin marketplace upgrade livespec" in codex_stale
+    assert "claude plugin update" not in codex_stale

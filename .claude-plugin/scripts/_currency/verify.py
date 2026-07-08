@@ -11,7 +11,9 @@ from typing import NamedTuple
 
 from _currency.expected_build import _expected_build_id
 from _currency.locate import (
+    _MARKETPLACE_NAME,
     _PLUGIN_NAME,
+    _is_codex_installed_plugin_cache_path,
     _is_installed_plugin_cache_path,
     _plugin_root,
 )
@@ -48,6 +50,7 @@ def verify_currency() -> CurrencyVerdict:
     message = _currency_message(
         running_build_id=running_build_id,
         expected_build_id=expected_build_id,
+        codex=_is_codex_installed_plugin_cache_path(plugin_root=plugin_root),
     )
     if message is None:
         return CurrencyVerdict(message=None, hard_fail=False, gate_sensitive=False)
@@ -55,7 +58,9 @@ def verify_currency() -> CurrencyVerdict:
     return CurrencyVerdict(message=message, hard_fail=stale, gate_sensitive=not stale)
 
 
-def _currency_message(*, running_build_id: str | None, expected_build_id: str | None) -> str | None:
+def _currency_message(
+    *, running_build_id: str | None, expected_build_id: str | None, codex: bool
+) -> str | None:
     if running_build_id is None or expected_build_id is None:
         return (
             "livespec plugin currency could not be verified; running build or pinned "
@@ -64,9 +69,13 @@ def _currency_message(*, running_build_id: str | None, expected_build_id: str | 
         )
     if running_build_id == expected_build_id:
         return None
+    if codex:
+        command = f"codex plugin marketplace upgrade {_MARKETPLACE_NAME}"
+        restart = "restart the session"
+    else:
+        command = f"claude plugin update {_PLUGIN_NAME}@{_MARKETPLACE_NAME} --scope project"
+        restart = "restart Claude Code (or run /reload-plugins)"
     return (
-        f"livespec plugin '{_PLUGIN_NAME}' is stale: running build {running_build_id} "
-        f"does not match pinned release build {expected_build_id}. Reload plugins or "
-        "run `mise exec -- just ensure-plugins` and restart Claude Code; for Codex, "
-        "run `codex plugin marketplace upgrade` and restart the session.\n"
+        f"livespec plugin '{_PLUGIN_NAME}' is stale: running build {running_build_id} does not "
+        f"match pinned release build {expected_build_id}. Run `{command}` and {restart}.\n"
     )
