@@ -12,7 +12,7 @@ created_at: 2026-07-08T12:57:31Z
 
 ### Summary
 
-Make the fleet plugin-currency runtime gate RUNTIME-AWARE and fail-soft on Codex, in `SPECIFICATION/non-functional-requirements.md` §"Plugin currency and the release train". Three surgical prose edits inside the five-slot Conformance-Pattern member bullets: (1) the currency chokepoint's compare is now runtime-aware — on interactive Claude Code it stays a local, offline-safe compare of the running installed build against the LOCAL marketplace-clone tip, while on `codex exec` (where Codex installs a version-keyed cache copy and natively auto-upgrades its marketplace clone to the configured ref's REMOTE tip every session start, making a local running-vs-clone compare tautological) it instead compares the registration's recorded local revision (Codex config `last_revision`) against the REMOTE tip of its configured ref, a short-timeout network read; (2) a confirmed-stale build still fails HARD on Claude, but a confirmed-BEHIND build on Codex is a lever-gated SOFT signal that WARNS-and-proceeds by default and fails hard only under `LIVESPEC_CURRENCY_GATE=fail` (CI/dispatch), because Codex auto-upgrades a release-tracking marketplace before the session is usable so an interactive hard block over the benign one-session-lag window is inappropriate; (3) the “applies updates before the session exists” mechanism is native on Codex (Codex's own session-start marketplace auto-upgrade, no livespec hook) versus the committed `SessionStart` updater hook on Claude, mirroring the adopter posture contract in `docs/livespec-installation-prompt.md`. The undeterminable/offline warn case and the `LIVESPEC_CURRENCY_GATE` warn-default/fail-in-CI framing are unchanged. No `## ` (H2) heading is touched, so no `tests/heading-coverage.json` co-edit is required.
+Make the fleet plugin-currency runtime gate RUNTIME-AWARE and fail-soft on Codex, in `SPECIFICATION/non-functional-requirements.md` §"Plugin currency and the release train". Three surgical prose edits inside the five-slot Conformance-Pattern member bullets: (1) the currency chokepoint's compare is now runtime-aware — on interactive Claude Code it stays a local, offline-safe compare of the running installed build against the LOCAL marketplace-clone tip, while on `codex exec` (where Codex installs a version-keyed cache copy and natively auto-upgrades its marketplace clone to the configured ref's REMOTE tip every session start, making a local running-vs-clone compare tautological) it instead compares the registration's recorded local revision (Codex config `last_revision`) against the REMOTE tip of its configured ref, a short-timeout network read; (2) a confirmed-stale build still fails HARD on Claude, but a confirmed-BEHIND build on Codex is a lever-gated SOFT signal that WARNS-and-proceeds by default and fails hard only under `LIVESPEC_CURRENCY_GATE=fail` (CI/dispatch), because Codex auto-upgrades a release-tracking marketplace before the session is usable so an interactive hard block over the benign one-session-lag window is inappropriate; (3) the “applies updates before the session exists” mechanism is native on Codex (Codex's own session-start marketplace auto-upgrade, no livespec hook) versus the committed `SessionStart` updater hook on Claude, mirroring the adopter posture contract in `docs/livespec-installation-prompt.md`. Three further drift-sweep co-fixes (added from the independent Fable review) keep the rest of the same section consistent with those amendments: (4) the `**Installer**` bullet's now-false Codex-self-refresh rationale is re-grounded (the `ensure-codex-plugins` recipe forces an upgrade because it runs OUTSIDE a Codex session, not because Codex never self-refreshes); (5) the `**The currency invariant.**` sentence's unconditional "MUST FAIL LOUDLY" is qualified with the Codex fail-soft path; and (6) the `**Plain-language summary.**`'s unconditional "fail loudly" is qualified to the runtime-aware, fail-soft posture. The undeterminable/offline warn case and the `LIVESPEC_CURRENCY_GATE` warn-default/fail-in-CI framing are unchanged. No `## ` (H2) heading is touched, so no `tests/heading-coverage.json` co-edit is required.
 
 ### Motivation
 
@@ -20,7 +20,7 @@ The plugin-currency contract (ratified as v160/v161, work-item livespec-c1k9.6) 
 
 ### Proposed Changes
 
-This proposal makes THREE surgical prose edits to `SPECIFICATION/non-functional-requirements.md`, all inside the `### Plugin currency and the release train` sub-section's `**Conformance-Pattern member (all five slots).**` bullets. Each edit replaces exactly the sentence(s) that Codex's real behavior has made false; the section's structure and its `LIVESPEC_CURRENCY_GATE` warn-default/fail-in-CI framing are preserved. No `## ` (H2) heading is added, renamed, or removed, so no `tests/heading-coverage.json` co-edit is required. Every replace-target below is quoted VERBATIM from the live section.
+This proposal makes SIX surgical prose edits to `SPECIFICATION/non-functional-requirements.md`, all inside the `### Plugin currency and the release train` sub-section. Edits 1a/1b/2/3 are the three core amendments (inside the `**Conformance-Pattern member (all five slots).**` bullets); Edits 4/5/6 are three drift-sweep co-fixes added from the independent Fable review that keep the rest of the same section consistent with those amendments (the `**Installer**` bullet's rationale, the `**The currency invariant.**` sentence, and the `**Plain-language summary.**`). Each edit replaces exactly the sentence(s) that Codex's real behavior has made false; the section's structure and its `LIVESPEC_CURRENCY_GATE` warn-default/fail-in-CI framing are preserved. No `## ` (H2) heading is added, renamed, or removed, so no `tests/heading-coverage.json` co-edit is required. Every replace-target below is quoted VERBATIM from the live section.
 
 **Edit 1 — Runtime-aware compare (two co-fixes: the `Mechanism` bullet's compare, and the `Exemption` bullet's re-statement of it).**
 
@@ -75,4 +75,46 @@ with:
 ```
 (a) a per-plugin-repo `release` ref that advances to each release tag, at which the fleet marketplaces register, so a new session resolves the latest-released build with no manual re-pinning per release — a mechanism that applies updates BEFORE the session exists, realized per runtime: on `codex exec` by Codex's OWN native session-start marketplace auto-upgrade, which pulls the advanced `release` ref with no livespec hook, and on interactive Claude Code by the committed `SessionStart` updater hook (Claude does not auto-update a project-scoped install), mirroring the adopter posture contract in `docs/livespec-installation-prompt.md`;
 ```
+
+**Edit 4 — Installer bullet rationale (drift-sweep co-fix; Fable Blocker 1).** In the `- **Installer**` bullet's `ensure-codex-plugins` clause, replace this exact text (verbatim):
+
+```
+and, because the Codex install does NOT self-refresh, it runs an explicit `codex plugin marketplace upgrade` on the currency path before re-adding each plugin
+```
+
+with:
+
+```
+and, because it runs from a plain shell where no Codex session start occurs — so Codex's native session-start marketplace auto-upgrade (Mechanism (a)) never fires on this path — it runs an explicit `codex plugin marketplace upgrade` on the currency path before re-adding each plugin
+```
+
+(Reconciles the Installer rationale with Edits 1a/3: Codex DOES natively auto-upgrade at session start, so "does NOT self-refresh" was false as a blanket claim; the recipe forces the upgrade because it runs OUTSIDE a Codex session, not because Codex never self-refreshes.)
+
+**Edit 5 — Currency-invariant sentence (drift-sweep co-fix; Fable Blocker 2a).** In `**The currency invariant.**`, replace this exact text (verbatim):
+
+```
+A `/livespec:*` operation that would run a build OLDER than the one the repo's marketplace registration pins MUST FAIL LOUDLY, naming the exact fix, rather than proceed on the stale build.
+```
+
+with:
+
+```
+A `/livespec:*` operation that would run a build OLDER than the one the repo's marketplace registration pins MUST FAIL LOUDLY, naming the exact fix, rather than proceed on the stale build (on `codex exec` the running build always equals what the registration currently records, so the confirmed-BEHIND signal is instead the registration lagging its configured ref's remote tip — a lever-gated SOFT signal per the Exemption slot: warn-and-proceed by default, hard only under `LIVESPEC_CURRENCY_GATE=fail`).
+```
+
+(Qualifies the unconditional "MUST FAIL LOUDLY" so it no longer contradicts Edit 2's Codex fail-soft posture; the Claude hard-fail wording is preserved verbatim and the Codex path is appended as a parenthetical before the terminal period.)
+
+**Edit 6 — Plain-language summary (drift-sweep co-fix; Fable Blocker 2b).** In `**Plain-language summary.**`, replace this exact text (verbatim):
+
+```
+MUST fail loudly rather than lag unnoticed
+```
+
+with:
+
+```
+MUST surface loudly — failing hard on interactive Claude Code and in CI/dispatch, warn-by-default on `codex exec` (where Codex natively auto-upgrades at session start, per the Exemption slot) — rather than lag unnoticed
+```
+
+(Qualifies the plain-language summary's unconditional "fail loudly" to the runtime-aware, fail-soft posture, consistent with Edits 2/5.)
 
