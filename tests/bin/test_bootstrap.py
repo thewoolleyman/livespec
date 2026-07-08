@@ -1,20 +1,24 @@
 """Tests for .claude-plugin/scripts/bin/_bootstrap.py.
 
-Covers `_bootstrap.bootstrap()`: both sides of the
-`sys.version_info < (3, 10)` check are exercised via
-`monkeypatch.setattr(sys, "version_info", ...)`. Pragma exclusions
-on `bin/*.py` are forbidden by the coverage-thresholds spec, so
-branch coverage of the exit-127 path is achieved exclusively
-through monkeypatching.
+Covers `_bootstrap.bootstrap()`: the `sys.version_info < (3, 10)`
+check (both branches, via `monkeypatch.setattr`), the sys.path
+insertion, and the wiring that delegates the plugin-currency gate to
+the sibling `_currency` package and acts on the returned
+`CurrencyVerdict` (writes the message, raises SystemExit). The
+currency LOGIC itself is covered under `tests/_currency/`.
+
+Pragma exclusions on `bin/*.py` are forbidden by the coverage-
+thresholds spec, so branch coverage of the exit-127 path is achieved
+exclusively through monkeypatching.
 """
 
 from __future__ import annotations
 
 import importlib
-import json
 import sys
 from pathlib import Path
 
+import _currency
 import pytest
 
 __all__: list[str] = []
@@ -64,8 +68,8 @@ def test_bootstrap_inserts_paths_when_missing(*, monkeypatch: pytest.MonkeyPatch
 def test_bootstrap_skips_paths_already_present(*, monkeypatch: pytest.MonkeyPatch) -> None:
     """When a bundle path is already in sys.path, bootstrap() does NOT duplicate it.
 
-    Covers the False branch of `if path_str not in sys.path` so
-    branch coverage of the loop body stays at 100%.
+    Covers the False branch of `if entry_str not in sys.path` so
+    branch coverage of `_insert_sys_path` stays at 100%.
     """
     bootstrap_module = _import_bootstrap()
     seeded_path: list[str] = [str(_BUNDLE_SCRIPTS), str(_BUNDLE_VENDOR), "/usr/lib/python3.10"]
@@ -76,309 +80,68 @@ def test_bootstrap_skips_paths_already_present(*, monkeypatch: pytest.MonkeyPatc
     assert sys.path.count(str(_BUNDLE_VENDOR)) == 1
 
 
-def test_bootstrap_fails_loudly_when_running_plugin_is_stale(
-    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """A stale running gitCommitSha refuses to proceed before command imports."""
+def _stub_verdict_bootstrap(
+    *, monkeypatch: pytest.MonkeyPatch, verdict: _currency.CurrencyVerdict
+) -> object:
+    """Import `_bootstrap` with `_currency.verify_currency` stubbed to `verdict`."""
     bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
-    plugin_root.mkdir(parents=True)
-    marketplace = home / ".claude" / "plugins" / "marketplaces" / "livespec"
-    marketplace.mkdir(parents=True)
-    registry = home / ".claude" / "plugins" / "installed_plugins.json"
-    registry.write_text(
-        json.dumps(
-            {
-                "version": 2,
-                "plugins": {
-                    "livespec@livespec": [
-                        {
-                            "scope": "user",
-                            "installPath": str(plugin_root),
-                            "version": "0.6.1",
-                            "installedAt": "2026-07-04T00:00:00.000Z",
-                            "lastUpdated": "2026-07-04T00:01:00.000Z",
-                            "gitCommitSha": "1111111111112222",
-                        }
-                    ]
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
     monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
     monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
-    monkeypatch.setattr(Path, "home", lambda: home)
+    monkeypatch.setattr(_currency, "verify_currency", lambda: verdict)
+    return bootstrap_module
 
-    def expected_build_id(*, repository: Path) -> str:
-        assert repository == marketplace
-        return "222222222222"
 
-    monkeypatch.setattr(bootstrap_module, "_git_rev_parse_head", expected_build_id)
-
+def test_bootstrap_writes_message_and_hard_fails_on_stale_verdict(
+    *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A hard-fail verdict makes bootstrap write the message and raise SystemExit(78)."""
+    verdict = _currency.CurrencyVerdict(
+        message="stale-message\n", hard_fail=True, gate_sensitive=False
+    )
+    bootstrap_module = _stub_verdict_bootstrap(monkeypatch=monkeypatch, verdict=verdict)
     with pytest.raises(SystemExit) as excinfo:
         bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
     assert excinfo.value.code == _EXIT_CODE_STALE_PLUGIN
+    assert "stale-message" in capsys.readouterr().err
 
 
-def test_bootstrap_proceeds_when_running_plugin_matches_expected_pin(
-    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_bootstrap_writes_checkout_message_without_exiting(
+    *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The registry gitCommitSha is the primary running-build source."""
-    bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
-    plugin_root.mkdir(parents=True)
-    marketplace = home / ".claude" / "plugins" / "marketplaces" / "livespec"
-    marketplace.mkdir(parents=True)
-    registry = home / ".claude" / "plugins" / "installed_plugins.json"
-    registry.write_text(
-        json.dumps(
-            {
-                "version": 2,
-                "plugins": {
-                    "livespec@livespec": [
-                        {
-                            "scope": "user",
-                            "installPath": str(plugin_root),
-                            "version": "0.6.1",
-                            "installedAt": "2026-07-04T00:00:00.000Z",
-                            "lastUpdated": "2026-07-04T00:01:00.000Z",
-                            "gitCommitSha": "2222222222223333",
-                        }
-                    ]
-                },
-            }
-        ),
-        encoding="utf-8",
+    """A non-failing verdict with a message writes it and proceeds to set up sys.path."""
+    verdict = _currency.CurrencyVerdict(
+        message="checkout-message\n", hard_fail=False, gate_sensitive=False
     )
-    fresh_path: list[str] = ["/usr/lib/python3.10"]
-    monkeypatch.setattr(sys, "path", fresh_path)
-    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
-    monkeypatch.setattr(Path, "home", lambda: home)
-
-    def expected_build_id(*, repository: Path) -> str:
-        assert repository == marketplace
-        return "222222222222"
-
-    monkeypatch.setattr(bootstrap_module, "_git_rev_parse_head", expected_build_id)
-
+    bootstrap_module = _stub_verdict_bootstrap(monkeypatch=monkeypatch, verdict=verdict)
     bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
-    assert str(_BUNDLE_SCRIPTS) in sys.path
+    assert "checkout-message" in capsys.readouterr().err
     assert str(_BUNDLE_VENDOR) in sys.path
 
 
-def test_bootstrap_fails_loudly_when_codex_running_plugin_is_stale(
-    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_bootstrap_gate_sensitive_verdict_warns_by_default_and_fails_under_gate(
+    *, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Codex cache installs compare the running plugin-list commit to the Codex pin."""
-    bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = home / ".codex" / "plugins" / "cache" / "livespec" / "livespec" / "0.6.1"
-    plugin_root.mkdir(parents=True)
-    marketplace = home / ".codex" / ".tmp" / "marketplaces" / "livespec"
-    marketplace.mkdir(parents=True)
-    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
-    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setattr(bootstrap_module, "_plugin_root", lambda: plugin_root)
-    monkeypatch.setattr(Path, "home", lambda: home)
-
-    def expected_build_id(*, repository: Path) -> str:
-        assert repository == marketplace
-        return "222222222222"
-
-    monkeypatch.setattr(bootstrap_module, "_git_rev_parse_head", expected_build_id)
-    monkeypatch.setattr(
-        bootstrap_module,
-        "_codex_plugin_list_json",
-        lambda: {
-            "plugins": [
-                {
-                    "name": "livespec",
-                    "marketplace": "livespec",
-                    "installPath": str(plugin_root),
-                    "gitCommitSha": "1111111111112222",
-                }
-            ]
-        },
-        raising=False,
+    """A gate-sensitive verdict proceeds by default and hard-fails when the gate is `fail`."""
+    verdict = _currency.CurrencyVerdict(
+        message="unknown-message\n", hard_fail=False, gate_sensitive=True
     )
-
-    with pytest.raises(SystemExit) as excinfo:
-        bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
-    assert excinfo.value.code == _EXIT_CODE_STALE_PLUGIN
-
-
-def test_bootstrap_proceeds_when_codex_running_plugin_matches_expected_pin(
-    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Codex plugin-list metadata is the running-build source for semver cache dirs."""
-    bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = home / ".codex" / "plugins" / "cache" / "livespec" / "livespec" / "0.6.1"
-    plugin_root.mkdir(parents=True)
-    marketplace = home / ".codex" / ".tmp" / "marketplaces" / "livespec"
-    marketplace.mkdir(parents=True)
-    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
-    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setattr(bootstrap_module, "_plugin_root", lambda: plugin_root)
-    monkeypatch.setattr(Path, "home", lambda: home)
-
-    def expected_build_id(*, repository: Path) -> str:
-        assert repository == marketplace
-        return "222222222222"
-
-    monkeypatch.setattr(bootstrap_module, "_git_rev_parse_head", expected_build_id)
-    monkeypatch.setattr(
-        bootstrap_module,
-        "_codex_plugin_list_json",
-        lambda: {
-            "plugins": [
-                {
-                    "name": "livespec",
-                    "marketplace": "livespec",
-                    "installPath": str(plugin_root),
-                    "gitCommitSha": "2222222222223333",
-                }
-            ]
-        },
-        raising=False,
-    )
-
+    bootstrap_module = _stub_verdict_bootstrap(monkeypatch=monkeypatch, verdict=verdict)
     bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
-    assert str(_BUNDLE_SCRIPTS) in sys.path
     assert str(_BUNDLE_VENDOR) in sys.path
 
-
-def test_bootstrap_falls_back_to_sha_cache_dir_when_registry_lacks_commit(
-    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """A 12-hex cache directory basename is a fallback running-build source."""
-    bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "333333333333"
-    plugin_root.mkdir(parents=True)
-    marketplace = home / ".claude" / "plugins" / "marketplaces" / "livespec"
-    marketplace.mkdir(parents=True)
-    registry = home / ".claude" / "plugins" / "installed_plugins.json"
-    registry.write_text(
-        json.dumps(
-            {
-                "version": 2,
-                "plugins": {"livespec@livespec": [{"installPath": str(plugin_root)}]},
-            }
-        ),
-        encoding="utf-8",
-    )
-    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
-    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
-    monkeypatch.setattr(Path, "home", lambda: home)
-
-    def expected_build_id(*, repository: Path) -> str:
-        assert repository == marketplace
-        return "333333333333"
-
-    monkeypatch.setattr(bootstrap_module, "_git_rev_parse_head", expected_build_id)
-
-    bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
-    assert str(_BUNDLE_SCRIPTS) in sys.path
-
-
-def test_bootstrap_warns_by_default_when_currency_is_unknown(
-    *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Unknown installed-cache currency warns by default so local sessions can still proceed."""
-    bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
-    plugin_root.mkdir(parents=True)
-    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
-    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
-    monkeypatch.setattr(Path, "home", lambda: home)
-
-    bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
-    captured = capsys.readouterr()
-    assert "livespec plugin currency could not be verified" in captured.err
-    assert str(_BUNDLE_SCRIPTS) in sys.path
-
-
-def test_bootstrap_warns_by_default_when_running_build_is_unknown_but_expected_pin_is_known(
-    *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Unknown installed-cache running-build currency is not stale unless fail is set."""
-    bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
-    plugin_root.mkdir(parents=True)
-    marketplace = home / ".claude" / "plugins" / "marketplaces" / "livespec"
-    marketplace.mkdir(parents=True)
-    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
-    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
-    monkeypatch.setenv("LIVESPEC_CURRENCY_GATE", "warn")
-    monkeypatch.setattr(Path, "home", lambda: home)
-
-    def expected_build_id(*, repository: Path) -> str:
-        assert repository == marketplace
-        return "222222222222"
-
-    monkeypatch.setattr(bootstrap_module, "_git_rev_parse_head", expected_build_id)
-
-    bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
-    captured = capsys.readouterr()
-    assert "livespec plugin currency could not be verified" in captured.err
-    assert str(_BUNDLE_SCRIPTS) in sys.path
-
-
-def test_bootstrap_skips_currency_gate_for_repo_checkout_even_when_fail_is_set(
-    *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Checkout-mode execution is outside the installed-plugin currency gate."""
-    bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = tmp_path / "repo" / ".claude-plugin"
-    plugin_root.mkdir(parents=True)
-    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
-    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
     monkeypatch.setenv("LIVESPEC_CURRENCY_GATE", "fail")
-    monkeypatch.setattr(Path, "home", lambda: home)
-
-    bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
-    captured = capsys.readouterr()
-    assert "running from a repo checkout; plugin-currency gate not applicable" in captured.err
-    assert "livespec plugin currency could not be verified" not in captured.err
-    assert str(_BUNDLE_SCRIPTS) in sys.path
-
-
-def test_bootstrap_fails_when_currency_is_unknown_and_gate_is_fail(
-    *, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """CI and dispatch can promote installed-cache unknown currency to failure."""
-    bootstrap_module = _import_bootstrap()
-    home = tmp_path / "home"
-    plugin_root = home / ".claude" / "plugins" / "cache" / "livespec" / "0.6.1"
-    plugin_root.mkdir(parents=True)
-    monkeypatch.setattr(sys, "path", ["/usr/lib/python3.10"])
-    monkeypatch.setattr(sys, "version_info", (3, 12, 0, "final", 0))
-    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin_root))
-    monkeypatch.setenv("LIVESPEC_CURRENCY_GATE", "fail")
-    monkeypatch.setattr(Path, "home", lambda: home)
-
     with pytest.raises(SystemExit) as excinfo:
         bootstrap_module.bootstrap()  # type: ignore[attr-defined]
-
     assert excinfo.value.code == _EXIT_CODE_STALE_PLUGIN
+
+
+def test_bootstrap_proceeds_silently_on_current_verdict(
+    *, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A silent verdict (no message) writes nothing and completes sys.path setup."""
+    verdict = _currency.CurrencyVerdict(message=None, hard_fail=False, gate_sensitive=False)
+    bootstrap_module = _stub_verdict_bootstrap(monkeypatch=monkeypatch, verdict=verdict)
+    bootstrap_module.bootstrap()  # type: ignore[attr-defined]
+    assert capsys.readouterr().err == ""
+    assert str(_BUNDLE_SCRIPTS) in sys.path
+    assert str(_BUNDLE_VENDOR) in sys.path
