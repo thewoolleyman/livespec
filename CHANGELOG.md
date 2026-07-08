@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.3](https://github.com/thewoolleyman/livespec/compare/v0.7.2...v0.7.3) (2026-07-08)
+
+
+### Bug Fixes
+
+* **test:** isolate cached structlog stream per test (kill closed-file flake) ([970bef0](https://github.com/thewoolleyman/livespec/commit/970bef09a313a8c3280b1ae3988570ee79a6d0f0))
+
 ## [0.7.2](https://github.com/thewoolleyman/livespec/compare/v0.7.1...v0.7.2) (2026-07-08)
 
 
