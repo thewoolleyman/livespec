@@ -62,6 +62,20 @@ into every handoff refresh for this track**:
   Do NOT run the heavy lifting inline.
 - **Sequence only genuine conflicts** (work-items overlapping the same files). A
   "pause" means "start a new session," not "confirm every step."
+- **Move the track; gate ONLY genuine blockers — never freeze the loop to ask a
+  non-blocker.** (Maintainer-directed 2026-07-08, after a session halted ALL work
+  to ask permission for a fix whose slicing the investigation had already pinned to
+  exact files/functions.) DECIDE-AND-INFORM on anything clear, reversible, or
+  within established intent: file the obvious slices, dispatch ready work, extend a
+  batch authorization the maintainer already granted, dispose a flagged side-issue.
+  A groom cut whose slicing is **unambiguous** is mechanical execution, NOT a
+  maintainer-owned gate — file it and dispatch, then report what you did. Reserve
+  gates for GENUINE blockers ONLY: the FIRST accept-on-behalf authorization of a
+  campaign, spec ratification, irreversible/outward-facing actions not pre-
+  authorized, an **ambiguous** cut where the slicing is a real judgment call, and
+  the exit gate. Litmus test before surfacing anything: "is it irreversible AND not
+  clearly what they want?" — if no, do it and inform. When one track genuinely
+  needs a gate, keep the OTHER tracks moving; never stop the whole loop on it.
 
 ## NEXT ACTION (execute from this file alone)
 
