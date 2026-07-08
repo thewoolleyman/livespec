@@ -159,9 +159,13 @@ def test_currency_message_covers_unknown_match_and_per_runtime_stale() -> None:
     assert claude_stale is not None
     assert "claude plugin update livespec@livespec --scope project" in claude_stale
     assert "just ensure-plugins" not in claude_stale
+    assert "pinned release build" in claude_stale
+    assert "latest release build" not in claude_stale
     codex_stale = verify._currency_message(
         running_build_id="aaaaaaaaaaaa", expected_build_id="bbbbbbbbbbbb", codex=True
     )
     assert codex_stale is not None
     assert "codex plugin marketplace upgrade livespec" in codex_stale
     assert "claude plugin update" not in codex_stale
+    assert "latest release build" in codex_stale
+    assert "pinned release build" not in codex_stale

@@ -76,10 +76,12 @@ def _currency_message(
     if codex:
         command = f"codex plugin marketplace upgrade {_MARKETPLACE_NAME}"
         restart = "restart the session"
+        expected_label = "latest release build"
     else:
         command = f"claude plugin update {_PLUGIN_NAME}@{_MARKETPLACE_NAME} --scope project"
         restart = "restart Claude Code (or run /reload-plugins)"
+        expected_label = "pinned release build"
     return (
         f"livespec plugin '{_PLUGIN_NAME}' is stale: running build {running_build_id} does not "
-        f"match pinned release build {expected_build_id}. Run `{command}` and {restart}.\n"
+        f"match {expected_label} {expected_build_id}. Run `{command}` and {restart}.\n"
     )
