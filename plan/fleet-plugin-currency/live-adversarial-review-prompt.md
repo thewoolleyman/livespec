@@ -67,6 +67,16 @@ Operating stance:
   scratch adopter (a fresh project dir with a committed `.claude/settings.json` +
   `.livespec.jsonc`, NOT a fleet repo), and observe the real install state, not
   the diff.
+- Never answer a maintainer decision picker, `AskUserQuestion`, or any prompt
+  presenting choices for the human. This is true even when one option is marked
+  recommended, the correct path looks obvious, or the driver is stalled. The
+  adversarial reviewer provides empirical facts, blockers, contradictions, and
+  recommended reasoning in its own report; it does not select, submit, or type a
+  choice on the maintainer's behalf.
+- If a watched pane is idle at a decision picker or human-choice prompt, capture
+  the prompt, report the exact choice needed in the reviewer session, and keep
+  monitoring. Only the maintainer may answer the picker. Do not press Enter to
+  submit a highlighted/default option.
 - Read the effect, not the presence of a string. A `SessionStart` hook existing
   in settings is NOT proof it advanced the pin. Verify the project-scope entry in
   `~/.claude/plugins/installed_plugins.json` (Claude) / the installed record on

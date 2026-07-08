@@ -131,6 +131,16 @@ Message-delivery discipline (if coordinating with a live driver pane):
 - Poll the driver pane every 15-30s while active; every ~5 min while it idles at
   a maintainer prompt/picker. An idle prompt is a watch state, not an exit
   condition — do not stop watching or declare done because the pane is idle.
+- Never answer a maintainer decision picker, `AskUserQuestion`, or any prompt
+  presenting choices for the human. This is true even when one option is marked
+  recommended, the correct path looks obvious, or the driver is stalled. The
+  adversarial reviewer provides empirical facts, blockers, contradictions, and
+  recommended reasoning in its own report; it does not select, submit, or type a
+  choice on the maintainer's behalf.
+- If a watched pane is idle at a decision picker or human-choice prompt, capture
+  the prompt, report the exact choice needed in the reviewer session, and keep
+  monitoring. Only the maintainer may answer the picker. Do not press Enter to
+  submit a highlighted/default option.
 - Do NOT type into a busy pane. Only send after a capture shows it idle at an
   input prompt; treat a message as undelivered until a follow-up capture shows it
   submitted. Prefer reporting blockers in your OWN session over injecting them.
