@@ -72,7 +72,7 @@ from this file alone via the read-first chain — no chat history required.
 >
 > **EPIC EXIT CRITERIA (BOTH runtimes required — no "Claude works, Codex assumed"):** on a fresh adopter, LIVE-demonstrated on **Claude** AND on **Codex**: (a) a `posture: released` adopter auto-updates to the latest release on session start; (b) a `posture: pinned` adopter stays put and updates only manually; (c) the gate, when it fires, prints only adopter-runnable remediation for the firing runtime. Unit tests are necessary but NOT sufficient — "done means exercised live."
 >
-> **Adversarial review:** `plan/fleet-plugin-currency/live-adversarial-review-prompt.md` (this session) — run a second, independent session against every auto-update / opt-out / cross-runtime completion claim before any child closes or the epic re-closes.
+> **Adversarial review:** `plan/fleet-plugin-currency/live-adversarial-review-prompt.md` (this session) — run a second, independent session against every auto-update / opt-out / cross-runtime completion claim before any child closes or the epic re-closes. **Live pane map for the 2026-07-08 run:** the overseer is tmux session `livespec2`; the adversarial reviewer is tmux session `livespec3`. Treat any older `livespec3` reference below as historical, not the current overseer target.
 >
 > **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-plugin-currency`.
 

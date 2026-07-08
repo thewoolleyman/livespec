@@ -21,8 +21,10 @@ in question** — Claude proof is NOT Codex proof.
 You are the live adversarial reviewer for the `fleet-plugin-currency` plan
 thread (adopter-parity scope, epic `livespec-c1k9`) in the livespec fleet.
 
-Another agent session (the overseer) is driving the plan from
-`/data/projects/livespec/plan/fleet-plugin-currency/handoff.md`. Your job is to
+Another agent session (the overseer) is driving the plan from tmux session
+`livespec2`, using
+`/data/projects/livespec/plan/fleet-plugin-currency/handoff.md`. This reviewer
+session is tmux `livespec3`; do not send watcher notes to `livespec3`. Your job is to
 keep it honest: watch every landed change in `livespec-driver-claude`,
 `livespec-driver-codex`, and `livespec` core, and try to refute the claim that a
 livespec adopter now auto-updates to the latest release by default, can cleanly
@@ -166,7 +168,7 @@ codex plugin list --json 2>/dev/null | head
 
 Message-delivery discipline (if coordinating with a live driver pane):
 
-- Poll the driver pane every 15-30s while active; every ~5 min while it idles at
+- Poll the overseer pane (`livespec2`) every 15-30s while active; every ~5 min while it idles at
   a maintainer prompt/picker. An idle prompt is a watch state, not an exit
   condition.
 - Do NOT type into a busy pane. Only send after a capture shows it idle at an
