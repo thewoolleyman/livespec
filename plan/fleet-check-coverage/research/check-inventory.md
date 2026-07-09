@@ -18,8 +18,13 @@ Read-only research artifact — the durable Phase-0 classification for the
   `supervisor_entry_files`, `dataclasses_tree`, `pure_trees`, `covered_trees`,
   `source_tree_prefixes`, `tests_tree_prefix`, `target_dirs`, `mirror_pairings`).
   When the block is **absent** it returns `_livespec_core_config()` — the
-  hardcoded historical livespec-core layout (this is why core stays green: the
-  fallback IS core's real layout).
+  hardcoded historical livespec-core layout. **(Corrected 2026-07-09 — do not
+  overread this.)** The fallback fires ONLY when the block is ABSENT; core's
+  `[tool.livespec_dev_tooling]` block is PRESENT but OMITS `source_trees`, so for
+  the 7 `config:source_trees` checks the fallback does NOT fire — effective
+  `config.source_trees = ()` — and core is fail-open on those 7 (see §4). So "the
+  fallback IS core's real layout → core stays green" holds only for `file_lloc`'s
+  separate hardcoded trees, NOT for the 7 config-driven checks.
 - **A shared walker ALREADY EXISTS:** `config.iter_py_files(*, root: Path)`
   (config.py:169). It `rglob("*.py")` under a **passed-in root**, skipping any
   path with a `_vendor` or `__pycache__` segment. It is exported in `__all__`.
