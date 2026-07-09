@@ -47,9 +47,11 @@ alone via the read-first chain — no chat history required.
   Progress log). **PR2 + PR2b (2026-07-09) then rerouted the 7 `config:source_trees`
   checks through the shared `resolve_check_universe()` and reshaped the resolver to
   OWN root-resolution** (released **v0.34.4**, independently reviewed NO-BLOCKERS,
-  accepted — see Progress log). The remaining **PR3 (the raw-`rglob`/hybrid
-  stragglers + `no_lloc_soft_warnings`) + PR4 (the partition-completeness
-  meta-check)** are the next action.
+  accepted — see Progress log). **PR3 (2026-07-09) then rerouted the raw-`rglob`/
+  hybrid stragglers + `no_lloc_soft_warnings`, and rejected empty
+  `tests_tree_prefix`** (released **v0.34.5**, independently reviewed NO-BLOCKERS,
+  accepted — see Progress log). **PR4 (the partition-completeness meta-check)**
+  is the next action.
 - **Companion adversarial prompt.**
   `plan/fleet-check-coverage/live-adversarial-review-prompt.md` — hand this to an
   independent reviewer session; a NO-BLOCKERS verdict is a precondition for
@@ -112,23 +114,25 @@ The empty-walk guard's correctness on the ONE genuinely empty-universe repo
 acceptance case — as is confirming the Driver repos' hook `.py` are COVERED (they
 are NOT codeless). See the adversarial prompt.
 
-**Pin / fan-out status (CORRECTED 2026-07-09 after PR2+PR2b).** `livespec-dev-tooling`
-is at **v0.34.4** (PR2 reroute of the 7 `config:source_trees` checks + PR2b resolver
-reshape, on top of PR1's `file_lloc` reroute), and the fan-out is **healthy — ALL
-seven consumers are pinned to v0.34.4** (`livespec`, both orchestrators, both
-Drivers, `livespec-runtime`, `livespec-console-beads-fabro`), verified against each
-repo's `origin/master` after `git fetch` (2026-07-09). An earlier note in this handoff
+**Pin / fan-out status (UPDATED 2026-07-09 after PR3).** `livespec-dev-tooling`
+is at **v0.34.5** (PR3 reroute of the remaining applies-to-all stragglers, on top
+of PR1 `file_lloc` + PR2/PR2b source-tree-family reroutes), and the fan-out is
+**healthy — ALL seven consumers are pinned to v0.34.5** (`livespec`, both
+orchestrators, both Drivers, `livespec-runtime`, `livespec-console-beads-fabro`),
+verified against each repo's `origin/master` after `git fetch` (2026-07-09). An
+earlier note in this handoff
 claimed four repos were "stranded at v0.33.5" — that was a **FALSE ALARM from stale
 local `origin/master` refs** (reading `git show origin/master:` in a sibling clone
 WITHOUT fetching it first shows a stale ref; the bump-pin PRs had in fact merged, e.g.
 `livespec-runtime` #151→v0.34.2). **Lesson: `git fetch` a sibling clone before
 reading its `origin/master` for cross-repo state.** Because every consumer now pins
-v0.34.4, the reroute's WARN coverage is LIVE fleet-wide. Live universe confirmed via
-the shipped code: `livespec-driver-claude` universe=2 (both hooks covered),
-`livespec-driver-codex` universe=3 (all hooks covered) — the Drivers are NOT
-codeless; `livespec-console-beads-fabro` universe=0 (`has_first_party_py=False` —
-genuinely codeless, passes on empty); `livespec-orchestrator-git-jsonl`=40,
-`livespec-runtime`=27 (matching the fleet table). No fan-out fix is needed.
+v0.34.5, the PR3 WARN coverage is LIVE fleet-wide. Live validation with the
+released `livespec-dev-tooling` code against fetched `origin/master` secondary
+worktrees: all five PR3 checks (`no_lloc_soft_warnings`, `no_write_direct`,
+`comment_line_anchors`, `main_guard`, `rop_pipeline_shape`) exited 0 in every
+consumer; newly-covered diagnostics emitted WARN-only (`newly_covered=true`) and
+no errors. `livespec-console-beads-fabro` remained genuinely codeless (0
+diagnostics, exit 0). No fan-out fix is needed.
 
 ## Progress log
 
@@ -219,7 +223,7 @@ genuinely codeless, passes on empty); `livespec-orchestrator-git-jsonl`=40,
   - **Independent Fable adversarial review: NO-BLOCKERS** (all 6 dimensions reproduced).
   - **Concern filed → `livespec-sw19`:** reject empty `tests_tree_prefix` (a residual fail-open
     corner — `startswith("")` exempts every file → empty universe; pre-existing with the foundation
-    filter, no fleet repo hits it today). May ride PR3.
+    filter, no fleet repo hits it today). Resolved in PR3.
   - **Correction (Concern 2) — core was ALSO fail-open on the 7:** core/orchestrator/drivers OMIT
     `source_trees` in their `[tool.livespec_dev_tooling]` block → effective `config.source_trees=()`
     (block-present + omitted key defaults empty, NOT the core fallback). So pre-PR2 the 7
@@ -227,26 +231,54 @@ genuinely codeless, passes on empty); `livespec-orchestrator-git-jsonl`=40,
     orchestrator. Post-PR2 the ONLY repo where the 7 hard-fail anything is dev-tooling
     (`source_trees=["livespec_dev_tooling"]`); everywhere else the whole universe is newly-covered
     (WARN) until the Phase-2 flip. `root-cause.md` + `check-inventory.md` corrected in this PR.
+- **2026-07-09 — Phase-0 REROUTE PR3 (remaining stragglers) landed + ACCEPTED.**
+  - `livespec-dev-tooling` PR #292 → merged `c047da19` (carrying authored commit
+    `ae1c797`) → release PR #293 → **v0.34.5**. Red→Green replay preserved the
+    Red trailers for `tests/livespec_dev_tooling/checks/test_config_driven_checks.py`
+    and Green verified at `2026-07-09T05:12:25Z`.
+  - Rerouted the remaining applies-to-all checks through `resolve_check_universe()`:
+    `no_lloc_soft_warnings`, `no_write_direct`, `comment_line_anchors`,
+    `main_guard`, and `rop_pipeline_shape`. `no_write_direct` keeps its
+    command/supervisor write-permitted exemptions; the other four use the shared
+    git-derived universe and legacy classifier. Legacy offenders keep today's
+    severity; newly-covered offenders emit `phase="0-warn"` +
+    `newly_covered=True` and exit 0.
+  - Folded in **`livespec-sw19`**: `tests_tree_prefix = ""` now raises
+    `ConfigParseError` instead of exempting every tracked `.py`.
+  - **Fan-out:** all 7 consumers repinned to **v0.34.5** (auto-merged on green CI):
+    `livespec` PR #978, `livespec-orchestrator-beads-fabro` PR #384,
+    `livespec-orchestrator-git-jsonl` PR #217, `livespec-runtime` PR #154,
+    `livespec-driver-claude` PR #110, `livespec-driver-codex` PR #89,
+    `livespec-console-beads-fabro` PR #121.
+  - **Live evidence (Codex overseer run against fetched `origin/master` secondary
+    worktrees using released v0.34.5 code):** all five PR3 checks exited 0 in
+    every consumer; no errors; newly-covered diagnostics were WARN-only. Counts:
+    core (`livespec`) WARNs `10/10/0/10/0` for
+    `no_lloc_soft_warnings`/`no_write_direct`/`comment_line_anchors`/`main_guard`/
+    `rop_pipeline_shape`; `livespec-orchestrator-beads-fabro` WARNs
+    `4/69/0/10/0`; `livespec-orchestrator-git-jsonl` WARNs `0/2/0/4/0`;
+    `livespec-runtime` WARNs `0/0/0/3/0`; `livespec-driver-claude` WARNs
+    `0/1/0/1/0`; `livespec-driver-codex` WARNs `0/2/0/2/0`;
+    `livespec-console-beads-fabro` WARNs `0/0/0/0/0`.
+  - **Independent Godel adversarial review: NO-BLOCKERS.** The reviewer verified
+    all five checks route through `resolve_check_universe()`, WARN-only
+    newly-covered diagnostics include the required fields, legacy buckets still
+    control exit status, empty `tests_tree_prefix` is rejected and covered, and
+    resolver-backed fixtures use real git repos.
+  - Cleanup: `livespec-dev-tooling` PR worktree/branch reaped; primary checkout
+    fast-forwarded to `origin/master` at v0.34.5 and clean. The pre-existing
+    unrelated `fix/generated-block-comment-syntax` worktree remains outside this
+    thread's cleanup scope, per the earlier coordination note.
 
 ## The next action
 
 > **Phase 0 — REROUTE, continuing (WARN-only). PR1 (`file_lloc`), PR2 (7 `source_trees` checks),
-> PR2b (reshape) are DONE + ACCEPTED (fleet at v0.34.4).** The shared `resolve_check_universe()`
-> (OWNS root-resolution, returns `(root, universe)`) + delta-WARN (legacy = `config.source_trees`
-> or `_LEGACY_HARDFAIL_TREES`) is the established pattern for every remaining reroute.
+> PR2b (reshape), and PR3 (remaining stragglers + `tests_tree_prefix` guard) are DONE + ACCEPTED
+> (fleet at v0.34.5).** The shared `resolve_check_universe()` (OWNS root-resolution, returns
+> `(root, universe)`) + delta-WARN (legacy = `config.source_trees` / `_LEGACY_HARDFAIL_TREES` /
+> check-specific legacy classifiers) is the established pattern.
 >
-> **Remaining applies-to-all reroutes — PR3, in small PRs:** route each through
-> `resolve_check_universe()`, WARN-only:
-> - `no_lloc_soft_warnings` — STILL fail-open; carries the
->   `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST` release lever, so its newly-covered set MUST emit at
->   WARN regardless of the release context (delta-WARN), or dev-tooling's OWN release gate fails on
->   newly-covered soft-band files — the release-lever trap.
-> - `no_write_direct` — HYBRID: git-derived universe, keep `commands_trees`/`supervisor_entry_files`
->   as write-permitted exemptions.
-> - `comment_line_anchors`, `main_guard`, `rop_pipeline_shape` — raw-rglob/hardcoded stragglers.
-> - Fold in **`livespec-sw19`** (reject empty `tests_tree_prefix`) — can ride PR3.
->
-> **Then PR4 — the partition-completeness meta-check** (new `checks/` module): every first-party
+> **PR4 — the partition-completeness meta-check** (new `checks/` module): every first-party
 > `.py` claimed by exactly one role OR a named exclusion; unclaimed → error naming the file (WARN
 > this phase). A new `checks/<name>.py` auto-joins `canonical_check_slugs()`, so it requires wiring
 > `check-<slug>` into EVERY consumer justfile (the fan-out `bump-pin` reconciles the `check:` block).
