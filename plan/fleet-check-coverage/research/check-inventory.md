@@ -199,6 +199,19 @@ Per-repo tracked `.py` counts (via each repo's own `git ls-files`):
 >   as first-party is correct-by-design — the fail-closed predicate surfaces them
 >   so the repo must explicitly claim or exempt them in Phase 1.
 
+> **Correction (2026-07-09) — core's 120 is a POTENTIAL universe, not coverage the 7
+> checks actually had.** The 120 first-party `.py` figure is core's derivable
+> universe, NOT proof the structural suite inspected it. Pre-PR2 the 7
+> `config:source_trees` checks (`all_declared`, `assert_never_exhaustiveness`,
+> `global_writes`, `keyword_only_args`, `match_keyword_only`, `no_inheritance`,
+> `private_calls`) scanned ZERO of core's 120 — core's `[tool.livespec_dev_tooling]`
+> block OMITS `source_trees`, so effective `config.source_trees = ()`. Core was
+> fail-open on those 7 (the SAME bug class as the orchestrator), NOT "genuine product
+> coverage" for them (proven by running v0.34.2 `no_inheritance` against core →
+> scanned nothing, exit 0). Post-PR2 all 120 route through the git-derived universe
+> and are newly-covered at WARN until the Phase-2 flip. The counts themselves are
+> unchanged.
+
 Exact non-test first-party `.py` in the small/thin repos:
 - `livespec-driver-claude`: `.claude-plugin/hooks/no_shadow_ledger.py`,
   `.claude/hooks/livespec_footgun_guard.py`

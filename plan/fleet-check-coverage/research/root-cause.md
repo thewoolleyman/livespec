@@ -42,13 +42,27 @@ outside every structural check.** `livespec-console-beads-fabro` (also a
 non-`livespec` package name) almost certainly shares the class; verify in
 Phase 0.
 
-## Why core stayed honest
+## Why core stayed honest — only for `file_lloc`, NOT the whole suite
 
-In livespec CORE the product code genuinely lives in
-`.claude-plugin/scripts/livespec/`, so the hardcoded tree matches and the check
-works as intended. The defect is invisible from core — it only manifests in a
-repo whose package directory is not named `livespec`. That is why it went
-unnoticed: the dogfood hub is the one repo where the bug cannot bite.
+**For `file_lloc`:** in livespec CORE the product code genuinely lives in
+`.claude-plugin/scripts/livespec/`, so the hardcoded `_COVERED_TREES` tree matches
+and the check works as intended. That defect is invisible from core — it only
+manifests in a repo whose package directory is not named `livespec`. That is why the
+LLOC blindness went unnoticed: the dogfood hub is the one repo where THAT bug cannot
+bite.
+
+**Correction (2026-07-09) — core was NOT honest on the seven config-driven checks.**
+The "core stayed honest" framing holds ONLY for `file_lloc`'s hardcoded tree. For the
+SEVEN `config:source_trees` checks (`all_declared`, `assert_never_exhaustiveness`,
+`global_writes`, `keyword_only_args`, `match_keyword_only`, `no_inheritance`,
+`private_calls`), core's `[tool.livespec_dev_tooling]` block is PRESENT but OMITS
+`source_trees`, so `load_config` returns effective `config.source_trees = ()` — a
+present block with an omitted key defaults empty; it does NOT fall back to
+`_livespec_core_config()`, which fires only when the block is ABSENT. So those 7
+checks scanned ZERO first-party `.py` on core too — core was ALSO fail-open on them,
+the SAME bug class as the orchestrator (proven by running v0.34.2 `no_inheritance`
+against core → scanned nothing, exit 0). The "core stayed honest" story was true only
+for the LLOC ceiling, not for the whole structural suite.
 
 ## The disease, named
 
