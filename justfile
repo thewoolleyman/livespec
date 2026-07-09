@@ -191,6 +191,7 @@ check:
         check-no-raise-outside-io
         check-no-todo-registry
         check-no-write-direct
+        check-partition-completeness
         check-pbt-coverage-pure-modules
         check-per-file-coverage
         check-plugin-resolution
@@ -1029,3 +1030,6 @@ vendor-update lib:
 #   just reap-stale-worktrees /path/to/repo --dry-run  # preview a sibling
 reap-stale-worktrees repo="." *args="":
     uv run python3 dev-tooling/reap_stale_worktrees.py --repo {{repo}} {{args}}
+
+check-partition-completeness:
+    uv run python -m livespec_dev_tooling.checks.partition_completeness
