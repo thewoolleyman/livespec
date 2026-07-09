@@ -64,6 +64,18 @@ alone via the read-first chain — no chat history required.
   host-side `livespec-dev-tooling` work — do NOT auto-dispatch to the factory).
   Status is READ live from the ledger (`bd show <id>`), never stored here.
 - **⚑ Golden rules.**
+  - **DRIVE THE WHOLE PLAN AUTONOMOUSLY.** On resume, do NOT stop to ask the
+    maintainer which action to take. Execute the next action end-to-end —
+    groom the epic into ready per-repo tracks, close stale ledger items,
+    detect gaps, dispatch/drive implementation through the factory, land PRs,
+    run the independent adversarial review, accept — continuously until you
+    hit ~50% context (then rotate this handoff and print the resume command)
+    OR you are genuinely BLOCKED (an irreversible/outward-facing action needing
+    authorization, a real product/values decision, or an unresolvable ambiguity).
+    A structured picker offering "do the obvious next thing vs. defer it" is the
+    anti-pattern the maintainer explicitly rejected (2026-07-09): if the next
+    action is obvious from this handoff, JUST DO IT. Surface findings and
+    decisions as you go, but keep working — never idle waiting for a go-ahead.
   - Ready, factory-safe implementation is **factory-dispatched** — never
     hand-coded inline in the overseer session. The overseer FILES and DISPATCHES;
     the factory (Dispatcher / the `drive` operation) builds each item under the
@@ -300,37 +312,81 @@ clone before reading its `origin/master` for cross-repo state.**
     `just stamp-canonical-slugs`, adding `check-partition-completeness` to
     `templates/orchestrator-plugin/canonical-slugs.yml`, and merging with
     `check-canonical-slugs-projection` + `check-copier-template-smoke` green.
+- **2026-07-09 — Phase-1 GROOMED: live inventory measured, 7 per-repo tracks filed.**
+  - Closed stale ledger item `livespec-sw19` (empty `tests_tree_prefix` — landed
+    in PR3/v0.34.5, verified on dev-tooling `config.py:259`; item was stale-open).
+  - Measured the full fleet Phase-1 `newly_covered` WARN inventory at v0.35.1 and
+    recorded it in `research/phase1-inventory.md` (authoritative). **Measurement
+    lesson (bit me once mid-session): NEVER measure with a repo's OWN local venv —
+    they were all stale (runtime/drivers at v0.33.5; orchestrator between
+    v0.34.2–v0.34.5). Measure with the dev-tooling v0.35.1 venv python from the
+    target repo cwd, or in a fresh factory sandbox.** Fleet totals (WARN):
+    core 176 (partition 120), orchestrator-beads-fabro 164 (no_write_direct 69,
+    file_lloc 16 incl dispatcher.py 1586), dev-tooling 104 (main_guard 64),
+    runtime 55, git-jsonl 39, driver-codex 15, driver-claude 10, console 0. ≈563.
+  - **7 child tracks filed** (each narrates epic membership in its description; NO
+    `depends_on` to the open epic; labeled `origin:freeform`):
+    `livespec-9bym` core, `livespec-236f` orchestrator-beads-fabro,
+    `livespec-iily` dev-tooling (HOST-SIDE, do NOT auto-dispatch to the factory),
+    `livespec-8x7d` runtime, `livespec-t4e0` orchestrator-git-jsonl,
+    `livespec-gqte` driver-codex, `livespec-v74p` driver-claude. (console: no track.)
+  - **TWO design findings surfaced (see `research/phase1-inventory.md` §"Two
+    findings"); they block a clean burndown until decided:**
+    1. **main_guard mis-classification.** main_guard BANS `if __name__ ==
+       "__main__":` in the source tree (core's convention: entry points live in
+       `bin/*.py` wrappers). dev-tooling's 64 hits are modules correctly invoked
+       as `python -m …` that legitimately carry main guards — NOT violations. PR3
+       rerouted main_guard as applies-to-all, but it is actually ROLE-SCOPED (only
+       valid under the bin/-wrapper convention). FIX is in the CHECK (dev-tooling),
+       not deleting 64 correct guards; it shrinks Phase-1 scope fleetwide
+       (also hits orchestrator 10, git-jsonl 4, runtime 3, drivers 1–2).
+    2. **Shared-hook single-source.** `livespec_footgun_guard.py`
+       (keyword_only_args etc.) is COPIED into ≥4 repos with identical violations;
+       fix the canonical copy once and propagate vs. 4 divergent per-repo edits.
 
 ## The next action
 
-> **Phase 0 — REROUTE, continuing (WARN-only). PR1 (`file_lloc`), PR2 (7 `source_trees` checks),
-> PR2b (reshape), and PR3 (remaining stragglers + `tests_tree_prefix` guard) are DONE + ACCEPTED
-> (through PR3, fleet reached v0.34.5). PR4 (`check-partition-completeness`) is LANDED in `livespec-dev-tooling`
-> and released as v0.35.1 after the bump-pin wiring hotfix.** The shared
-> `resolve_check_universe()` (OWNS root-resolution, returns `(root, universe)`) + delta-WARN
-> (legacy = `config.source_trees` / `_LEGACY_HARDFAIL_TREES` / check-specific legacy classifiers)
-> is the established pattern.
+> **Phase 0 is DONE + ACCEPTED through PR4 (fleet at v0.35.1). Phase 1 is
+> GROOMED — the fleet inventory is measured (`research/phase1-inventory.md`) and
+> 7 per-repo burndown tracks are filed (ids in the Progress log).** The shared
+> `resolve_check_universe()` + delta-WARN pattern is established. Read
+> `research/phase1-inventory.md` FIRST — it carries the authoritative per-repo
+> WARN table, the measurement caveat (never a repo's own stale venv), the
+> per-check character (which are config vs refactor), factory-safety routing, and
+> the two design findings.
 >
-> **Next: Phase 1** — per-repo burndown in parallel through the factory; `groom` the epic into one
-> ready track per repo. Before filing those tracks, read the live ledger and print the
-> `Epic · Track (repo) · Status · %Complete` table. NOTE (corrected): for the 7
-> config-driven checks EVERY non-dev-tooling repo is currently WARN-only
-> (empty/nonexistent `source_trees`), so their Phase-1 = bring the whole first-party
-> universe warning-clean, and DECIDE per repo whether to set `source_trees` (to hard-gate
-> a subtree earlier) or rely on the Phase-2 whole-universe flip. Do NOT link a child to
-> the epic via `depends_on` (an OPEN-epic edge perpetually blocks the child via
-> `lifecycle._entry_blocks`) — narrate epic membership in the description.
+> **Immediate next: resolve the TWO design findings BEFORE dispatching burndown**
+> (they are dependencies, not parallel work — dispatching first would have agents
+> add pointless main guards and make 4 divergent copies of the footgun_guard fix):
+> 1. **main_guard classification** (`livespec-iily`, HOST-SIDE dev-tooling). Decide
+>    + land: scope main_guard's newly-covered universe to the bin/-wrapper
+>    convention (reclassify it role-scoped), so the 64 dev-tooling hits + the
+>    smaller per-repo hits stop being false positives. This is a dev-tooling CHECK
+>    change → host-side maintainer-driven PR + release + fan-out, exactly like the
+>    Phase-0 reroutes. Independent adversarial NO-BLOCKERS review before accept.
+> 2. **footgun_guard single-source.** Locate the canonical copy, decide fix-once-
+>    and-propagate vs per-repo, before the driver/core/dev-tooling tracks touch it.
 >
-> Each PR: release + fan-out, confirm LIVE (not just green CI), independent adversarial review of the
-> merged commit before recording acceptance. Expect auto-merge on green; `refactor:` DOES cut a
-> release here.
+> **Then dispatch Phase-1 burndown in parallel** — the FACTORY-SAFE tracks
+> (`livespec-236f` orchestrator, `livespec-8x7d` runtime, `livespec-t4e0`
+> git-jsonl, `livespec-gqte`/`livespec-v74p` drivers) through the Dispatcher /
+> `drive` under the janitor gate; `livespec-iily` (dev-tooling) and the
+> partition-config restate in `livespec-9bym` (core) are HOST-SIDE maintainer-
+> driven. Each track: partition-config first (unblocks the largest bucket), then
+> targeted per-check fixes, then the big-module splits (split-vs-exempt judgment).
+> Re-measure each in its sandbox against a fresh pin (NEVER a local venv). Each PR:
+> green `just check`, independent adversarial NO-BLOCKERS review of the merged
+> commit before acceptance. Expect auto-merge on green where the repo auto-merges.
+> Do NOT link any child to the epic via `depends_on` (an OPEN-epic edge perpetually
+> blocks the child via `lifecycle._entry_blocks`) — epic membership is narrated.
 >
-> **Then Phase 2** — flip warn→fail per repo the moment it is warning-clean, after an independent
-> adversarial NO-BLOCKERS review. Severity only — NO new escape hatch (`.ai/ci-gate-discipline.md`).
-> The per-repo flip mechanism (env lever vs committed marker) is still-open OQ3. PREREQUISITE: the
-> aggregate `check:` wiring is non-uniform — `livespec-console-beads-fabro` + both Driver repos do
-> NOT wire the structural checks into their justfiles, so driver-hook coverage only bites in their
-> CI once the wiring/fan-out lands.
+> **Then Phase 2** — flip warn→fail per repo the moment it is warning-clean, after
+> an independent adversarial NO-BLOCKERS review. Severity only — NO new escape
+> hatch (`.ai/ci-gate-discipline.md`). The per-repo flip mechanism (env lever vs
+> committed marker) is still-open OQ3. PREREQUISITE: the aggregate `check:` wiring
+> is non-uniform — `livespec-console-beads-fabro` + both Driver repos do NOT wire
+> the structural checks into their justfiles, so driver-hook coverage only bites in
+> their CI once the wiring/fan-out lands.
 >
-> Do NOT archive this thread until every in-scope repo is warning-clean AND flipped to hard-fail,
-> and the maintainer explicitly accepts archival.
+> Do NOT archive this thread until every in-scope repo is warning-clean AND flipped
+> to hard-fail, and the maintainer explicitly accepts archival.
