@@ -52,8 +52,8 @@ alone via the read-first chain — no chat history required.
   `tests_tree_prefix`** (released **v0.34.5**, independently reviewed NO-BLOCKERS,
   accepted — see Progress log). **PR4 (the partition-completeness meta-check)**
   then landed in `livespec-dev-tooling` and is released as **v0.35.1** after a
-  bump-pin wiring hotfix (see Progress log). The next action after the current
-  `livespec` template-projection repair lands is Phase 1 burndown planning.
+  bump-pin wiring hotfix (see Progress log). The `livespec` template-projection
+  repair landed in PR #982. The next action is Phase 1 burndown planning.
 - **Companion adversarial prompt.**
   `plan/fleet-check-coverage/live-adversarial-review-prompt.md` — hand this to an
   independent reviewer session; a NO-BLOCKERS verdict is a precondition for
@@ -126,10 +126,10 @@ under v0.35.0: `livespec-runtime` PR #156, `livespec-orchestrator-git-jsonl`
 PR #219, `livespec-orchestrator-beads-fabro` PR #386, plus both Driver repos
 (`livespec-driver-claude` PR #112, `livespec-driver-codex` PR #91). The
 `livespec` v0.35.1 bump PR #981 merged with two non-required checks still red:
-`check-copier-template-smoke` and `check-canonical-slugs-projection`. This
-handoff update accompanies the `livespec` repair that regenerates
-`templates/orchestrator-plugin/canonical-slugs.yml` so new orchestrator-plugin
-adopters also inherit `check-partition-completeness`.
+`check-copier-template-smoke` and `check-canonical-slugs-projection`. `livespec`
+PR #982 regenerated `templates/orchestrator-plugin/canonical-slugs.yml`, added
+`check-partition-completeness`, and merged with those checks green so new
+orchestrator-plugin adopters also inherit the new slug.
 
 Earlier note retained because it keeps preventing bad reads: an earlier handoff
 claimed four repos were "stranded at v0.33.5" — that was a **FALSE ALARM from
@@ -293,15 +293,13 @@ clone before reading its `origin/master` for cross-repo state.**
     bump PRs merged in `livespec-runtime` (#156),
     `livespec-orchestrator-git-jsonl` (#219),
     `livespec-orchestrator-beads-fabro` (#386), `livespec-driver-claude` (#112),
-    and `livespec-driver-codex` (#91). `livespec-console-beads-fabro` PR #123 was
-    still running its longer Rust checks at the time this handoff was refreshed.
+    `livespec-driver-codex` (#91), and `livespec-console-beads-fabro` (#123).
   - `livespec` PR #981 merged its v0.35.1 pin but left two non-required checks
     red because the orchestrator-plugin template projection had not been stamped
-    with the new canonical slug. The current `livespec` worktree
-    `chore/stamp-canonical-slugs-partition` runs `just stamp-canonical-slugs`,
-    adding `check-partition-completeness` to
-    `templates/orchestrator-plugin/canonical-slugs.yml`, and verifies
-    `check-canonical-slugs-projection` + `check-copier-template-smoke`.
+    with the new canonical slug. `livespec` PR #982 fixed that by running
+    `just stamp-canonical-slugs`, adding `check-partition-completeness` to
+    `templates/orchestrator-plugin/canonical-slugs.yml`, and merging with
+    `check-canonical-slugs-projection` + `check-copier-template-smoke` green.
 
 ## The next action
 
@@ -313,22 +311,19 @@ clone before reading its `origin/master` for cross-repo state.**
 > (legacy = `config.source_trees` / `_LEGACY_HARDFAIL_TREES` / check-specific legacy classifiers)
 > is the established pattern.
 >
-> **Immediate cleanup before Phase 1:** land the current `livespec`
-> `chore/stamp-canonical-slugs-partition` PR so `templates/orchestrator-plugin/canonical-slugs.yml`
-> includes `check-partition-completeness` and the two non-required checks that failed on `livespec`
-> PR #981 are green on master.
+> **Next: Phase 1** — per-repo burndown in parallel through the factory; `groom` the epic into one
+> ready track per repo. Before filing those tracks, read the live ledger and print the
+> `Epic · Track (repo) · Status · %Complete` table. NOTE (corrected): for the 7
+> config-driven checks EVERY non-dev-tooling repo is currently WARN-only
+> (empty/nonexistent `source_trees`), so their Phase-1 = bring the whole first-party
+> universe warning-clean, and DECIDE per repo whether to set `source_trees` (to hard-gate
+> a subtree earlier) or rely on the Phase-2 whole-universe flip. Do NOT link a child to
+> the epic via `depends_on` (an OPEN-epic edge perpetually blocks the child via
+> `lifecycle._entry_blocks`) — narrate epic membership in the description.
 >
 > Each PR: release + fan-out, confirm LIVE (not just green CI), independent adversarial review of the
 > merged commit before recording acceptance. Expect auto-merge on green; `refactor:` DOES cut a
 > release here.
->
-> **Then Phase 1** — per-repo burndown in parallel through the factory; `groom` the epic into one
-> ready track per repo. NOTE (corrected): for the 7 config-driven checks EVERY non-dev-tooling repo
-> is currently WARN-only (empty/nonexistent `source_trees`), so their Phase-1 = bring the whole
-> first-party universe warning-clean, and DECIDE per repo whether to set `source_trees` (to hard-gate
-> a subtree earlier) or rely on the Phase-2 whole-universe flip. Do NOT link a child to the epic via
-> `depends_on` (an OPEN-epic edge perpetually blocks the child via `lifecycle._entry_blocks`) —
-> narrate epic membership in the description.
 >
 > **Then Phase 2** — flip warn→fail per repo the moment it is warning-clean, after an independent
 > adversarial NO-BLOCKERS review. Severity only — NO new escape hatch (`.ai/ci-gate-discipline.md`).
