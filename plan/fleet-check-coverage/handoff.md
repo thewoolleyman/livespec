@@ -343,6 +343,29 @@ clone before reading its `origin/master` for cross-repo state.**
     2. **Shared-hook single-source.** `livespec_footgun_guard.py`
        (keyword_only_args etc.) is COPIED into ≥4 repos with identical violations;
        fix the canonical copy once and propagate vs. 4 divergent per-repo edits.
+- **2026-07-09 — design finding #1 RESOLVED + main_guard fix landed; #2 self-resolved.**
+  - **Maintainer decided: main_guard is ROLE-SCOPED** (not fleet-wide-intentional).
+    Fix the check, do NOT refactor 64 correct guards. Decision + predicate recorded
+    on ledger `livespec-iily`.
+  - **`livespec-dev-tooling` PR #300** (branch `reclassify-main-guard-scope`, commit
+    `06f97dc`) lands it: main_guard now inspects ONLY files under a
+    `.claude-plugin/scripts/` tree (any package, git-derived — no fail-open
+    regression). Files outside it (dev-tooling's `livespec_dev_tooling/**` run via
+    `python -m`, libraries, harness hooks) are skipped. Delta-WARN preserved
+    (legacy `.claude-plugin/scripts/livespec/` ERROR; other plugin trees WARN).
+    Red→Green single commit; drift-swept the shared
+    `test_config_driven_checks.py::test_main_guard_warns_for_newly_covered_package`
+    fixture into a `.claude-plugin/scripts/` tree; main_guard.py 100% per-file
+    coverage; all 50 `just check` targets green. Measured effect: dev-tooling
+    main_guard 64→0; keeps the real `.claude-plugin/scripts/**` plugin-tree hits
+    (orchestrator etc.). Auto-merge enabled — expect merge → release → bump-pin
+    fan-out. **Independent adversarial NO-BLOCKERS review of the merged commit is
+    still REQUIRED before recording acceptance on `livespec-iily`.**
+  - **Finding #2 self-resolved:** `livespec_footgun_guard.py` is copied into all 7
+    repos (6 at `.claude/hooks/`, driver-codex at `livespec/hooks/`); no copier
+    template source. Disposition: treat livespec core's `.claude/hooks/` copy as
+    canonical, fix once, propagate to the other 6 (identify the sync path) rather
+    than 6 divergent edits. Folded into the driver/core track notes.
 
 ## The next action
 
@@ -355,17 +378,21 @@ clone before reading its `origin/master` for cross-repo state.**
 > per-check character (which are config vs refactor), factory-safety routing, and
 > the two design findings.
 >
-> **Immediate next: resolve the TWO design findings BEFORE dispatching burndown**
-> (they are dependencies, not parallel work — dispatching first would have agents
-> add pointless main guards and make 4 divergent copies of the footgun_guard fix):
-> 1. **main_guard classification** (`livespec-iily`, HOST-SIDE dev-tooling). Decide
->    + land: scope main_guard's newly-covered universe to the bin/-wrapper
->    convention (reclassify it role-scoped), so the 64 dev-tooling hits + the
->    smaller per-repo hits stop being false positives. This is a dev-tooling CHECK
->    change → host-side maintainer-driven PR + release + fan-out, exactly like the
->    Phase-0 reroutes. Independent adversarial NO-BLOCKERS review before accept.
-> 2. **footgun_guard single-source.** Locate the canonical copy, decide fix-once-
->    and-propagate vs per-repo, before the driver/core/dev-tooling tracks touch it.
+> **Immediate next — the ONE critical-path gate: `livespec-dev-tooling` PR #300
+> (main_guard role-scoping) must MERGE → RELEASE → FAN OUT before dispatching any
+> burndown.** Both design findings are now decided (finding #1 → PR #300 in-flight;
+> finding #2 → fix-once-and-propagate, self-resolved). When you resume:
+> 1. Check PR #300 state (`gh pr view 300 --repo thewoolleyman/livespec-dev-tooling`).
+>    If merged + released, confirm the bump-pin fan-out repinned the consumers to
+>    the new dev-tooling version (the `main_guard`-corrected baseline).
+> 2. **Independent adversarial NO-BLOCKERS review of the merged PR #300 commit**
+>    (separate Fable/Godel reviewer, read-only) is REQUIRED before recording
+>    acceptance on `livespec-iily`. Verify: the `.claude-plugin/scripts/` scoping is
+>    git-derived (no hardcoded package = no fail-open regression); dev-tooling
+>    main_guard 64→0 reproduces; a `.claude-plugin/scripts/<pkg>/` guard is STILL
+>    flagged; delta-WARN legacy/newly split intact; drift-swept shared test correct.
+> 3. Re-measure the fleet WARN baseline (main_guard rows will drop) before filing
+>    burndown PRs — several per-repo main_guard counts go to ~0.
 >
 > **Then dispatch Phase-1 burndown in parallel** — the FACTORY-SAFE tracks
 > (`livespec-236f` orchestrator, `livespec-8x7d` runtime, `livespec-t4e0`
