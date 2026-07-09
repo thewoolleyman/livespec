@@ -29,6 +29,12 @@ alone via the read-first chain — no chat history required.
   - `plan/fleet-check-coverage/research/check-inventory.md` — the Phase-0
     classification: which checks derive their universe vs stay role-scoped, the
     per-repo first-party `.py` counts, and the wiring/severity facts.
+  - **`plan/fleet-check-coverage/research/phase1-grooming.md` — READ FIRST for the
+    burndown.** The AUTHORITATIVE Phase-1 slice spec: the v0.35.2 WARN inventory,
+    the load-bearing correction (role declaration IS the Phase-2 flip, so partition
+    is not a Phase-1 bucket), the footgun per-copy disposition, the driver/console
+    wiring prerequisite, factory-safety routing, and the per-repo slice table. It
+    supersedes the ordering in `phase1-inventory.md`.
 - **The FOUNDATION primitive is already LANDED** (see Progress log). It lives in
   `livespec-dev-tooling`'s `livespec_dev_tooling/config.py`, released in
   **v0.34.1**, and is the substrate the Phase-0 reroute sequence built on:
@@ -52,8 +58,11 @@ alone via the read-first chain — no chat history required.
   `tests_tree_prefix`** (released **v0.34.5**, independently reviewed NO-BLOCKERS,
   accepted — see Progress log). **PR4 (the partition-completeness meta-check)**
   then landed in `livespec-dev-tooling` and is released as **v0.35.1** after a
-  bump-pin wiring hotfix (see Progress log). The `livespec` template-projection
-  repair landed in PR #982. The next action is Phase 1 burndown planning.
+  bump-pin wiring hotfix (see Progress log). The `main_guard` role-scope fix then
+  released **v0.35.2** (fanned out fleetwide). The `livespec` template-projection
+  repair landed in PR #982. Phase 1 is now GROOMED (corrected model in
+  `research/phase1-grooming.md`); the next action is DISPATCH — see "The next
+  action".
 - **Companion adversarial prompt.**
   `plan/fleet-check-coverage/live-adversarial-review-prompt.md` — hand this to an
   independent reviewer session; a NO-BLOCKERS verdict is a precondition for
@@ -374,62 +383,95 @@ clone before reading its `origin/master` for cross-repo state.**
     template source. Disposition: treat livespec core's `.claude/hooks/` copy as
     canonical, fix once, propagate to the other 6 (identify the sync path) rather
     than 6 divergent edits. Folded into the driver/core track notes.
+- **2026-07-09 — Phase-1 GROOMED with a corrected model; both gate-findings resolved.**
+  (This session. Primary refreshed to `f7a3642` = merged handoff PR #989 + v0.35.2
+  pin bump #988; the merged `gate-cleared` worktree reaped.) Wrote
+  `research/phase1-grooming.md` — now the AUTHORITATIVE slice spec — after two
+  read-only research passes and a check-source study that CORRECTED the plan:
+  - **Re-measured the fleet at v0.35.2:** grand total **474** newly_covered WARN
+    (−89 vs v0.35.1, entirely the main_guard fix). Per-repo: core 166,
+    orchestrator 156, runtime 53, dev-tooling 40, git-jsonl 37, driver-codex 13,
+    driver-claude 9, console 0. (Orchestrator + git-jsonl keep 2 main_guard rows
+    each — REAL `.claude-plugin/scripts/**` hits, not check bugs.) file_lloc
+    per-file lists + orchestrator no_write breakdown are in the grooming note §1.
+  - **THE CORRECTION (grooming note §2):** `partition_completeness` is NOT a
+    separate burndown bucket, and the handoff's "partition-config restate FIRST"
+    ordering was BACKWARDS. Every `[tool.livespec_dev_tooling]` role key is a
+    check SEVERITY classifier (`source_trees`→the 7; `covered_trees`→no_write +
+    no_lloc_soft; `source_tree_prefixes`→coverage gate). So declaring roles to
+    claim files for partition IS the Phase-2 hard-fail flip — it would break CI
+    if the code violations aren't fixed first. Corrected model: **Phase 1 fixes
+    the NON-partition code violations while files stay newly_covered/WARN; Phase 2
+    declares the role layout = claim-for-partition + severity flip in one reviewed
+    config commit.** The 165 fleetwide partition WARN resolve automatically at the
+    flip. This resolves the bulk of OQ3: the flip lever is a committed pyproject
+    role declaration, not an env var. RESIDUAL: file_lloc's legacy tree is
+    hardcoded to `.claude-plugin/scripts/livespec/`, so non-core repos can't flip
+    file_lloc via config — a dev-tooling follow-up under `livespec-iily`.
+  - **Finding #2 (footgun) CORRECTED:** there is NO sync mechanism and the 7
+    copies are hand-forked into 4 behaviorally-divergent groups; "fix core, copy
+    to 6" would CLOBBER driver-codex's intentional variant. Disposition:
+    **per-copy signature fix** (behavior-neutral `*,` + keyword call sites),
+    folded into each repo's keyword_only slice — NOT propagation.
+  - **New prerequisite found (§4):** driver-claude, driver-codex, console wire
+    ZERO structural checks into justfile+CI — their hook coverage is theoretical
+    until wired. §6.1 is the maintainer decision (full suite vs subset).
+  - **All 7 tracks made READY:** acceptance criteria + corrected-scope notes
+    appended via `bd update` (scope = code fixes only; partition/flip is a
+    separate host-side Phase-2 item; footgun per-copy). The grooming note §5 table
+    is the per-repo slice spec.
 
 ## The next action
 
-> **Phase 0 is DONE + ACCEPTED through PR4 (fleet at v0.35.1). Phase 1 is
-> GROOMED — the fleet inventory is measured (`research/phase1-inventory.md`) and
-> 7 per-repo burndown tracks are filed (ids in the Progress log).** The shared
-> `resolve_check_universe()` + delta-WARN pattern is established. Read
-> `research/phase1-inventory.md` FIRST — it carries the authoritative per-repo
-> WARN table, the measurement caveat (never a repo's own stale venv), the
-> per-check character (which are config vs refactor), factory-safety routing, and
-> the two design findings.
+> **Phase 0 is DONE + ACCEPTED (fleet at dev-tooling v0.35.2). Phase 1 is GROOMED
+> with a CORRECTED model — read `research/phase1-grooming.md` FIRST; it is the
+> authoritative slice spec and supersedes the ordering in `phase1-inventory.md`.**
+> All 7 tracks are READY (acceptance + scope set on the ledger). The two
+> pre-dispatch gate-findings are BOTH resolved (partition-vs-flip correction;
+> footgun per-copy). What remains is DISPATCH + the flips.
 >
-> **The main_guard gate is CLEARED** (dev-tooling v0.35.2 released + fanned out +
-> reviewed NO-BLOCKERS — see Progress log). Both design findings decided (finding
-> #1 landed; finding #2 → fix-once-and-propagate). The fleet now runs the
-> main_guard-CORRECTED baseline. Two things gate the actual burndown dispatch:
+> **The corrected model (grooming note §2, load-bearing):** Phase 1 fixes only the
+> NON-partition code violations (keyword_only `*,`; all_declared `__all__`;
+> no_write→`io/` surface; no_lloc_soft + file_lloc split/exempt; no_inh/priv/global
+> where present) while files stay newly_covered/WARN. Declaring role config is
+> NOT a Phase-1 step — it claims-for-partition AND flips severity to hard in one
+> action, so it is the reviewed **Phase-2** flip. Do NOT groom a "partition-config
+> first" slice; partition WARN resolves at the flip.
 >
-> 1. **Groom the large tracks into ready slices (the `groom` operation).** The
->    per-repo tracks I filed are COARSE epic children, not Definition-of-Ready
->    slices. The orchestrator (`livespec-236f`, 164 WARN) and core (`livespec-9bym`,
->    176 WARN) especially are NOT one ready slice each — e.g. splitting
->    dispatcher.py (1586 LLOC) + 15 more modules + no_write_direct 69 +
->    keyword_only 29 is many slices with a split-vs-exempt judgment per big file.
->    Groom each large track into ordered ready slices (partition-config first — it
->    unblocks the biggest bucket — then per-check fixes, then the big-module
->    splits). The drivers (10/15) and git-jsonl (39) may be one slice each.
->    Re-measure each in its sandbox against v0.35.2 (NEVER a local venv); the
->    main_guard rows have dropped (runtime 3→0, drivers→0; the orchestrator's
->    `.claude-plugin/scripts/**` hits stay).
-> 2. **Settle the footgun_guard propagation mechanism (finding #2).** Before ANY
->    driver/core/dev-tooling track touches `livespec_footgun_guard.py` (the
->    keyword_only_args cluster), find how the 7 copies are kept in sync (no copier
->    template — check for a fleet-sync tool / `just` recipe). Fix the canonical
->    `.claude/hooks/` copy once and propagate; do NOT let 6 tracks make divergent
->    edits. This is a cross-cutting slice of its own.
+> **DISPATCH the 5 wired factory-safe code-fix tracks in parallel** through the
+> Dispatcher / `drive` under the janitor gate:
+> - `livespec-236f` orchestrator (156) — sub-slice by check-family: S1 no_write(69),
+>   S2 keyword_only+all_declared+no_inh+priv+main_guard, S3 file_lloc splits
+>   (dispatcher.py 1586 the split-vs-exempt tentpole).
+> - `livespec-8x7d` runtime (53), `livespec-t4e0` git-jsonl (37) — one code-fix
+>   slice each.
+> - `livespec-9bym` core (166): its CODE fixes (46 non-partition) are factory-safe;
+>   ONLY core's role-declaration flip is host-side.
+> Re-measure each sandbox against the current pin with the dev-tooling venv python
+> (NEVER a repo's own stale venv — see grooming note / phase1-inventory caveat).
+> Each slice PR: green `just check` + independent adversarial NO-BLOCKERS review of
+> the merged commit before acceptance (auto-merge repos: land→review→fix-forward).
+> Do NOT `depends_on`-link any child to the OPEN epic (perpetual block via
+> `lifecycle._entry_blocks`) — narrate epic membership.
 >
-> **Then dispatch the ready slices in parallel** — the FACTORY-SAFE tracks
-> (`livespec-236f` orchestrator, `livespec-8x7d` runtime, `livespec-t4e0`
-> git-jsonl, `livespec-gqte`/`livespec-v74p` drivers) through the Dispatcher /
-> `drive` under the janitor gate; `livespec-iily` (dev-tooling) and the
-> partition-config restate in `livespec-9bym` (core) are HOST-SIDE maintainer-
-> driven. Each track: partition-config first (unblocks the largest bucket), then
-> targeted per-check fixes, then the big-module splits (split-vs-exempt judgment).
-> Re-measure each in its sandbox against a fresh pin (NEVER a local venv). Each PR:
-> green `just check`, independent adversarial NO-BLOCKERS review of the merged
-> commit before acceptance. Expect auto-merge on green where the repo auto-merges.
-> Do NOT link any child to the epic via `depends_on` (an OPEN-epic edge perpetually
-> blocks the child via `lifecycle._entry_blocks`) — epic membership is narrated.
+> **HOST-SIDE maintainer-driven (NOT factory):** `livespec-iily` dev-tooling (40)
+> AND the file_lloc flip-mechanism follow-up (make its legacy tree config-driven so
+> non-core repos can flip file_lloc — grooming note §2 residual); each repo's
+> Phase-2 role-declaration flip.
 >
-> **Then Phase 2** — flip warn→fail per repo the moment it is warning-clean, after
-> an independent adversarial NO-BLOCKERS review. Severity only — NO new escape
-> hatch (`.ai/ci-gate-discipline.md`). The per-repo flip mechanism (env lever vs
-> committed marker) is still-open OQ3. PREREQUISITE: the aggregate `check:` wiring
-> is non-uniform — `livespec-console-beads-fabro` + both Driver repos do NOT wire
-> the structural checks into their justfiles, so driver-hook coverage only bites in
-> their CI once the wiring/fan-out lands.
+> **BLOCKED on a maintainer decision (grooming note §6.1):** the driver
+> (`livespec-gqte`/`livespec-v74p`) + console tracks — those 3 repos wire ZERO
+> structural checks into justfile+CI, so their coverage is theoretical. Decide:
+> wire the full applies-to-all suite (recommended — uniform coverage is the whole
+> point) vs a subset, as a prerequisite Slice0 before their burndown + flip.
+> Console (0 files) needs only the wiring so its flip is a verified no-op.
+>
+> **Then Phase 2 per repo** — declare the role layout (= claim-for-partition +
+> severity flip) the moment the repo is warning-clean, after an independent
+> NO-BLOCKERS review. Severity only — NO escape hatch (`.ai/ci-gate-discipline.md`).
+> The flip lever is the committed pyproject role declaration (OQ3 largely resolved,
+> grooming note §2); the file_lloc residual (non-core) needs the dev-tooling
+> follow-up first.
 >
 > Do NOT archive this thread until every in-scope repo is warning-clean AND flipped
 > to hard-fail, and the maintainer explicitly accepts archival.
