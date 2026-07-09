@@ -57,30 +57,37 @@ Anything not matching an exemption is covered. There is no catch-all bucket.
 
 ## Fail-closed guards
 
-**Empty-walk guard.** If a check's resolved universe is empty in a repo that has
-tracked first-party `.py`, that is a hard error — the exact
-"walked-a-nonexistent-dir → green" bug can never recur. **Subtlety that must be
-gotten right:** a repo with GENUINELY zero first-party `.py` legitimately produces
-an empty universe and MUST pass — but in THIS fleet that is exactly ONE repo,
-`livespec-console-beads-fabro` (0 tracked `.py`). **Correction (verified
-2026-07-08):** the Driver repos are NOT codeless — `livespec-driver-claude` carries
-2 first-party hook `.py` and `livespec-driver-codex` 3 (under `.claude/hooks/` /
-`.claude-plugin/hooks/` / `livespec/hooks/`); their universes are NON-empty and
-their hooks MUST be covered, not passed over. The guard distinguishes "no
-first-party code exists here" (pass — the console) from "first-party code exists
-but this check saw none of it" (fail). Getting this wrong in either direction
-re-creates a silent hole (false pass) or a false alarm on the genuinely-empty
-console repo.
+**Root-ownership (the shipped protection, v0.34.4).** The applies-to-all checks
+share ONE entry point, `resolve_check_universe()`, which OWNS root-resolution: it
+resolves the git toplevel itself (returns `(root, universe)`) rather than trusting a
+`Path.cwd()` or a caller-passed root, so a check CANNOT run against a mis-anchored or
+subdirectory root. This is what makes every applies-to-all reroute
+invocation-location-independent — a check invoked from a repo subdirectory still
+resolves the same repo-root universe.
 
-**Root-anchoring (residual surfaced by PR1's adversarial review, 2026-07-08).** The
-guard MUST resolve the git repo ROOT (e.g. `git rev-parse --show-toplevel`) rather
-than trusting `Path.cwd()`. A check invoked from a repo SUBDIRECTORY that happens to
-hold no `.py` walks zero and exits 0 silently — and a naive guard computing
-`has_first_party_py` on that same `cwd` would ALSO see zero and wrongly conclude
-"genuinely codeless," missing the hole. Anchoring both the universe and the guard to
-the repo root closes it (recipes normally run at root, but the guard must not DEPEND
-on that). The same root-anchoring makes every applies-to-all reroute
-invocation-location-independent.
+**Fail-closed = root-ownership + typed git errors.** The fail-closed protection is
+(a) that root-ownership, plus (b) the typed git failures the resolver raises:
+`GitToplevelError` (the cwd is not inside a git repo) and `GitLsFilesError` (the
+index listing failed). A universe that resolves to EMPTY therefore means the repo is
+GENUINELY codeless — in this fleet exactly ONE repo, `livespec-console-beads-fabro`
+(0 tracked `.py`) — which is a legitimate pass, not a masked hole. (The Driver repos
+are NOT codeless: `livespec-driver-claude` carries 2 first-party hook `.py` and
+`livespec-driver-codex` 3, so their universes are non-empty and their hooks ARE
+covered.)
+
+**No per-check "empty-but-code-exists" guard — it was vacuous, and removed.** The
+design originally called for a per-check runtime guard "universe empty AND
+`has_first_party_py(repo_root)` → error." That guard was VACUOUS: both sides derive
+from the SAME root-anchored `iter_first_party_py_files`, so the condition is
+`not universe and bool(universe)` == always False — dead code that never fired. It
+(and its `EmptyUniverseError`) was REMOVED in **v0.34.4 (PR #290)** after an
+independent adversarial review caught it. Cross-check completeness — ensuring no
+first-party `.py` is silently uncovered — is the job of the PARTITION-COMPLETENESS
+meta-check below (PR4), not a per-check runtime comparison.
+
+Note: one residual config fail-open corner remains — `tests_tree_prefix = ""`
+(`startswith("")` exempts every file → an empty universe) — tracked as
+`livespec-sw19`; no fleet repo hits it today.
 
 **Partition-completeness meta-check.** The role-partition checks (io vs pure vs
 commands, etc.) genuinely need semantic config — keep it. But add one guard:
