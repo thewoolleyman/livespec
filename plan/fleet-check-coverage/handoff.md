@@ -31,7 +31,7 @@ alone via the read-first chain — no chat history required.
     per-repo first-party `.py` counts, and the wiring/severity facts.
 - **The FOUNDATION primitive is already LANDED** (see Progress log). It lives in
   `livespec-dev-tooling`'s `livespec_dev_tooling/config.py`, released in
-  **v0.34.1**, and is the substrate the next action builds on:
+  **v0.34.1**, and is the substrate the Phase-0 reroute sequence built on:
   - `iter_first_party_py_files(*, repo_root)` — the git-index-derived universe
     (`git ls-files '*.py'` minus exemptions). IO wrapper; raises `GitLsFilesError`.
   - `filter_first_party_py(*, tracked_py, repo_root, tests_tree_prefix)` — the
@@ -51,7 +51,9 @@ alone via the read-first chain — no chat history required.
   hybrid stragglers + `no_lloc_soft_warnings`, and rejected empty
   `tests_tree_prefix`** (released **v0.34.5**, independently reviewed NO-BLOCKERS,
   accepted — see Progress log). **PR4 (the partition-completeness meta-check)**
-  is the next action.
+  then landed in `livespec-dev-tooling` and is released as **v0.35.1** after a
+  bump-pin wiring hotfix (see Progress log). The next action after the current
+  `livespec` template-projection repair lands is Phase 1 burndown planning.
 - **Companion adversarial prompt.**
   `plan/fleet-check-coverage/live-adversarial-review-prompt.md` — hand this to an
   independent reviewer session; a NO-BLOCKERS verdict is a precondition for
@@ -114,25 +116,27 @@ The empty-walk guard's correctness on the ONE genuinely empty-universe repo
 acceptance case — as is confirming the Driver repos' hook `.py` are COVERED (they
 are NOT codeless). See the adversarial prompt.
 
-**Pin / fan-out status (UPDATED 2026-07-09 after PR3).** `livespec-dev-tooling`
-is at **v0.34.5** (PR3 reroute of the remaining applies-to-all stragglers, on top
-of PR1 `file_lloc` + PR2/PR2b source-tree-family reroutes), and the fan-out is
-**healthy — ALL seven consumers are pinned to v0.34.5** (`livespec`, both
-orchestrators, both Drivers, `livespec-runtime`, `livespec-console-beads-fabro`),
-verified against each repo's `origin/master` after `git fetch` (2026-07-09). An
-earlier note in this handoff
-claimed four repos were "stranded at v0.33.5" — that was a **FALSE ALARM from stale
-local `origin/master` refs** (reading `git show origin/master:` in a sibling clone
-WITHOUT fetching it first shows a stale ref; the bump-pin PRs had in fact merged, e.g.
-`livespec-runtime` #151→v0.34.2). **Lesson: `git fetch` a sibling clone before
-reading its `origin/master` for cross-repo state.** Because every consumer now pins
-v0.34.5, the PR3 WARN coverage is LIVE fleet-wide. Live validation with the
-released `livespec-dev-tooling` code against fetched `origin/master` secondary
-worktrees: all five PR3 checks (`no_lloc_soft_warnings`, `no_write_direct`,
-`comment_line_anchors`, `main_guard`, `rop_pipeline_shape`) exited 0 in every
-consumer; newly-covered diagnostics emitted WARN-only (`newly_covered=true`) and
-no errors. `livespec-console-beads-fabro` remained genuinely codeless (0
-diagnostics, exit 0). No fan-out fix is needed.
+**Pin / fan-out status (UPDATED 2026-07-09 after PR4 + hotfix).**
+`livespec-dev-tooling` is at **v0.35.1**. PR4 first released
+`check-partition-completeness` as **v0.35.0**, then `livespec-dev-tooling` PR #296
+fixed the bump-pin composite action so new canonical check slugs are reconciled
+into consumer `justfile` aggregate wiring. Release **v0.35.1** fanned out and
+confirmed the fix in the Python consumers that had failed `check-aggregate-completeness`
+under v0.35.0: `livespec-runtime` PR #156, `livespec-orchestrator-git-jsonl`
+PR #219, `livespec-orchestrator-beads-fabro` PR #386, plus both Driver repos
+(`livespec-driver-claude` PR #112, `livespec-driver-codex` PR #91). The
+`livespec` v0.35.1 bump PR #981 merged with two non-required checks still red:
+`check-copier-template-smoke` and `check-canonical-slugs-projection`. This
+handoff update accompanies the `livespec` repair that regenerates
+`templates/orchestrator-plugin/canonical-slugs.yml` so new orchestrator-plugin
+adopters also inherit `check-partition-completeness`.
+
+Earlier note retained because it keeps preventing bad reads: an earlier handoff
+claimed four repos were "stranded at v0.33.5" — that was a **FALSE ALARM from
+stale local `origin/master` refs** (reading `git show origin/master:` in a sibling
+clone WITHOUT fetching it first shows a stale ref; the bump-pin PRs had in fact
+merged, e.g. `livespec-runtime` #151→v0.34.2). **Lesson: `git fetch` a sibling
+clone before reading its `origin/master` for cross-repo state.**
 
 ## Progress log
 
@@ -269,19 +273,50 @@ diagnostics, exit 0). No fan-out fix is needed.
     fast-forwarded to `origin/master` at v0.34.5 and clean. The pre-existing
     unrelated `fix/generated-block-comment-syntax` worktree remains outside this
     thread's cleanup scope, per the earlier coordination note.
+- **2026-07-09 — Phase-0 PR4 (partition-completeness meta-check) landed; fan-out
+  hotfix landed.**
+  - `livespec-dev-tooling` PR #294 → **v0.35.0** added
+    `check-partition-completeness`, the first role-partition meta-check. It
+    verifies every first-party `.py` is claimed by exactly one configured role or
+    a named exclusion, with Phase-0 WARN severity.
+  - v0.35.0 exposed a real fan-out gap: the new canonical slug auto-joined
+    `canonical_check_slugs()`, but the bump-pin composite action did not insert
+    missing canonical slugs into consumer `justfile` aggregates. That made
+    `check-aggregate-completeness` fail in Python consumers such as
+    `livespec-runtime` PR #155 and `livespec-orchestrator-git-jsonl` PR #218.
+  - `livespec-dev-tooling` PR #296 → **v0.35.1** fixed the bump-pin composite
+    action to reconcile canonical justfile wiring: add missing slugs to the
+    aggregate `check:` target and append generic zero-argument recipes when the
+    consumer already uses `check-aggregate-completeness`. It deliberately does
+    not edit CI matrices.
+  - v0.35.1 fan-out verified the hotfix: aggregate completeness passed and the
+    bump PRs merged in `livespec-runtime` (#156),
+    `livespec-orchestrator-git-jsonl` (#219),
+    `livespec-orchestrator-beads-fabro` (#386), `livespec-driver-claude` (#112),
+    and `livespec-driver-codex` (#91). `livespec-console-beads-fabro` PR #123 was
+    still running its longer Rust checks at the time this handoff was refreshed.
+  - `livespec` PR #981 merged its v0.35.1 pin but left two non-required checks
+    red because the orchestrator-plugin template projection had not been stamped
+    with the new canonical slug. The current `livespec` worktree
+    `chore/stamp-canonical-slugs-partition` runs `just stamp-canonical-slugs`,
+    adding `check-partition-completeness` to
+    `templates/orchestrator-plugin/canonical-slugs.yml`, and verifies
+    `check-canonical-slugs-projection` + `check-copier-template-smoke`.
 
 ## The next action
 
 > **Phase 0 — REROUTE, continuing (WARN-only). PR1 (`file_lloc`), PR2 (7 `source_trees` checks),
 > PR2b (reshape), and PR3 (remaining stragglers + `tests_tree_prefix` guard) are DONE + ACCEPTED
-> (fleet at v0.34.5).** The shared `resolve_check_universe()` (OWNS root-resolution, returns
-> `(root, universe)`) + delta-WARN (legacy = `config.source_trees` / `_LEGACY_HARDFAIL_TREES` /
-> check-specific legacy classifiers) is the established pattern.
+> (through PR3, fleet reached v0.34.5). PR4 (`check-partition-completeness`) is LANDED in `livespec-dev-tooling`
+> and released as v0.35.1 after the bump-pin wiring hotfix.** The shared
+> `resolve_check_universe()` (OWNS root-resolution, returns `(root, universe)`) + delta-WARN
+> (legacy = `config.source_trees` / `_LEGACY_HARDFAIL_TREES` / check-specific legacy classifiers)
+> is the established pattern.
 >
-> **PR4 — the partition-completeness meta-check** (new `checks/` module): every first-party
-> `.py` claimed by exactly one role OR a named exclusion; unclaimed → error naming the file (WARN
-> this phase). A new `checks/<name>.py` auto-joins `canonical_check_slugs()`, so it requires wiring
-> `check-<slug>` into EVERY consumer justfile (the fan-out `bump-pin` reconciles the `check:` block).
+> **Immediate cleanup before Phase 1:** land the current `livespec`
+> `chore/stamp-canonical-slugs-partition` PR so `templates/orchestrator-plugin/canonical-slugs.yml`
+> includes `check-partition-completeness` and the two non-required checks that failed on `livespec`
+> PR #981 are green on master.
 >
 > Each PR: release + fan-out, confirm LIVE (not just green CI), independent adversarial review of the
 > merged commit before recording acceptance. Expect auto-merge on green; `refactor:` DOES cut a

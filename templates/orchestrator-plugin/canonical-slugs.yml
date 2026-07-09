@@ -38,6 +38,7 @@
 - check-no-raise-outside-io
 - check-no-todo-registry
 - check-no-write-direct
+- check-partition-completeness
 - check-pbt-coverage-pure-modules
 - check-per-file-coverage
 - check-plugin-resolution
