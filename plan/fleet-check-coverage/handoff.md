@@ -358,9 +358,17 @@ clone before reading its `origin/master` for cross-repo state.**
     fixture into a `.claude-plugin/scripts/` tree; main_guard.py 100% per-file
     coverage; all 50 `just check` targets green. Measured effect: dev-tooling
     main_guard 64→0; keeps the real `.claude-plugin/scripts/**` plugin-tree hits
-    (orchestrator etc.). Auto-merge enabled — expect merge → release → bump-pin
-    fan-out. **Independent adversarial NO-BLOCKERS review of the merged commit is
-    still REQUIRED before recording acceptance on `livespec-iily`.**
+    (orchestrator etc.).
+  - **ACCEPTED + released + fanned out.** PR #300 rebase-merged to dev-tooling
+    master as commit `8b88bb2` (byte-identical to the branch `06f97dc`), released
+    as **dev-tooling v0.35.2** (release PR #301). Bump-pin fan-out repinned the
+    consumers to v0.35.2: `livespec` #988, `livespec-orchestrator-beads-fabro`
+    #388, `livespec-runtime` #158, `livespec-orchestrator-git-jsonl` #221,
+    `livespec-driver-claude` #114, `livespec-driver-codex` #93 (all merged);
+    `livespec-console-beads-fabro` #126 (open, 0-py, trivial). **Independent Fable
+    adversarial review returned NO-BLOCKERS** — reproduced all 6 checks live
+    (64→0; in-scope still bites WARN/ERROR; delta-WARN both arms; drift-sweep real;
+    17 tests; fail-open angles dismissed). Acceptance journaled on `livespec-iily`.
   - **Finding #2 self-resolved:** `livespec_footgun_guard.py` is copied into all 7
     repos (6 at `.claude/hooks/`, driver-codex at `livespec/hooks/`); no copier
     template source. Disposition: treat livespec core's `.claude/hooks/` copy as
@@ -378,23 +386,31 @@ clone before reading its `origin/master` for cross-repo state.**
 > per-check character (which are config vs refactor), factory-safety routing, and
 > the two design findings.
 >
-> **Immediate next — the ONE critical-path gate: `livespec-dev-tooling` PR #300
-> (main_guard role-scoping) must MERGE → RELEASE → FAN OUT before dispatching any
-> burndown.** Both design findings are now decided (finding #1 → PR #300 in-flight;
-> finding #2 → fix-once-and-propagate, self-resolved). When you resume:
-> 1. Check PR #300 state (`gh pr view 300 --repo thewoolleyman/livespec-dev-tooling`).
->    If merged + released, confirm the bump-pin fan-out repinned the consumers to
->    the new dev-tooling version (the `main_guard`-corrected baseline).
-> 2. **Independent adversarial NO-BLOCKERS review of the merged PR #300 commit**
->    (separate Fable/Godel reviewer, read-only) is REQUIRED before recording
->    acceptance on `livespec-iily`. Verify: the `.claude-plugin/scripts/` scoping is
->    git-derived (no hardcoded package = no fail-open regression); dev-tooling
->    main_guard 64→0 reproduces; a `.claude-plugin/scripts/<pkg>/` guard is STILL
->    flagged; delta-WARN legacy/newly split intact; drift-swept shared test correct.
-> 3. Re-measure the fleet WARN baseline (main_guard rows will drop) before filing
->    burndown PRs — several per-repo main_guard counts go to ~0.
+> **The main_guard gate is CLEARED** (dev-tooling v0.35.2 released + fanned out +
+> reviewed NO-BLOCKERS — see Progress log). Both design findings decided (finding
+> #1 landed; finding #2 → fix-once-and-propagate). The fleet now runs the
+> main_guard-CORRECTED baseline. Two things gate the actual burndown dispatch:
 >
-> **Then dispatch Phase-1 burndown in parallel** — the FACTORY-SAFE tracks
+> 1. **Groom the large tracks into ready slices (the `groom` operation).** The
+>    per-repo tracks I filed are COARSE epic children, not Definition-of-Ready
+>    slices. The orchestrator (`livespec-236f`, 164 WARN) and core (`livespec-9bym`,
+>    176 WARN) especially are NOT one ready slice each — e.g. splitting
+>    dispatcher.py (1586 LLOC) + 15 more modules + no_write_direct 69 +
+>    keyword_only 29 is many slices with a split-vs-exempt judgment per big file.
+>    Groom each large track into ordered ready slices (partition-config first — it
+>    unblocks the biggest bucket — then per-check fixes, then the big-module
+>    splits). The drivers (10/15) and git-jsonl (39) may be one slice each.
+>    Re-measure each in its sandbox against v0.35.2 (NEVER a local venv); the
+>    main_guard rows have dropped (runtime 3→0, drivers→0; the orchestrator's
+>    `.claude-plugin/scripts/**` hits stay).
+> 2. **Settle the footgun_guard propagation mechanism (finding #2).** Before ANY
+>    driver/core/dev-tooling track touches `livespec_footgun_guard.py` (the
+>    keyword_only_args cluster), find how the 7 copies are kept in sync (no copier
+>    template — check for a fleet-sync tool / `just` recipe). Fix the canonical
+>    `.claude/hooks/` copy once and propagate; do NOT let 6 tracks make divergent
+>    edits. This is a cross-cutting slice of its own.
+>
+> **Then dispatch the ready slices in parallel** — the FACTORY-SAFE tracks
 > (`livespec-236f` orchestrator, `livespec-8x7d` runtime, `livespec-t4e0`
 > git-jsonl, `livespec-gqte`/`livespec-v74p` drivers) through the Dispatcher /
 > `drive` under the janitor gate; `livespec-iily` (dev-tooling) and the
