@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.4](https://github.com/thewoolleyman/livespec/compare/v0.7.3...v0.7.4) (2026-07-09)
+
+
+### Bug Fixes
+
+* **templates:** stamp partition completeness slug ([8dc7a37](https://github.com/thewoolleyman/livespec/commit/8dc7a37c7699487ac3eb31e96aa6043a5705c6c3))
+
 ## [0.7.3](https://github.com/thewoolleyman/livespec/compare/v0.7.2...v0.7.3) (2026-07-08)
 
 
