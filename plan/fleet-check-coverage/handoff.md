@@ -420,6 +420,13 @@ clone before reading its `origin/master` for cross-repo state.**
     appended via `bd update` (scope = code fixes only; partition/flip is a
     separate host-side Phase-2 item; footgun per-copy). The grooming note §5 table
     is the per-repo slice spec.
+  - **MAINTAINER DECISION 2026-07-10 (grooming §6.1 resolved):** WIRE THE FULL
+    applies-to-all structural suite into the 3 unwired repos (both Drivers +
+    console) via `check-aggregate-completeness` — uniform coverage. Slice0 = wire
+    full suite (prerequisite) before each thin repo's WARN fix + flip. Recorded on
+    `livespec-gqte`, `livespec-v74p`, and a NEW console track **`livespec-q7bx`**
+    (console = wire + verify empty-universe no-op flip). All 8 in-scope repos are
+    now tracked and UNBLOCKED. Next action: DISPATCH (below).
 
 ## The next action
 
@@ -459,12 +466,13 @@ clone before reading its `origin/master` for cross-repo state.**
 > non-core repos can flip file_lloc — grooming note §2 residual); each repo's
 > Phase-2 role-declaration flip.
 >
-> **BLOCKED on a maintainer decision (grooming note §6.1):** the driver
-> (`livespec-gqte`/`livespec-v74p`) + console tracks — those 3 repos wire ZERO
-> structural checks into justfile+CI, so their coverage is theoretical. Decide:
-> wire the full applies-to-all suite (recommended — uniform coverage is the whole
-> point) vs a subset, as a prerequisite Slice0 before their burndown + flip.
-> Console (0 files) needs only the wiring so its flip is a verified no-op.
+> **DISPATCH the thin-repo tracks (wiring DECIDED 2026-07-10 = full suite):**
+> `livespec-gqte` driver-codex (13), `livespec-v74p` driver-claude (9), and
+> `livespec-q7bx` console (0). Each begins with **Slice0 = wire the full
+> applies-to-all structural suite into justfile + CI** (via
+> `check-aggregate-completeness`, the app-repo mechanism), THEN fix the repo's
+> WARN, THEN flip. Console's Slice0 is wire-only → its flip is a verified
+> empty-universe no-op. FACTORY-SAFE.
 >
 > **Then Phase 2 per repo** — declare the role layout (= claim-for-partition +
 > severity flip) the moment the repo is warning-clean, after an independent

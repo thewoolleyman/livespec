@@ -181,7 +181,7 @@ their repo; big repos sub-slice by check-family so each is one sandbox-sized PR)
 | driver-codex `livespec-gqte` | PREREQ wire checks into justfile+CI, THEN keyword_only (8, footgun) + all_declared (2) + no_write (2) + file_lloc (footgun 263) | declare role layout |
 | driver-claude `livespec-v74p` | PREREQ wire checks, THEN keyword_only (6, footgun) + all_declared (2) + no_write (1) | declare role layout |
 | dev-tooling `livespec-iily` (HOST-SIDE) | file_lloc (17) + no_write (8) + no_lloc_soft (7) + keyword_only (6) + partition (1) + all_declared (1) | already declares source_trees; extend to full universe |
-| console (no track) | wire checks only (0 files) | flip = verified no-op |
+| console `livespec-q7bx` | wire full suite only (0 files) | flip = verified no-op |
 
 Ordering within a factory-safe repo: do the mechanical per-check slices in any
 order (they are independent — different files/edits), THEN the file_lloc splits
@@ -193,9 +193,12 @@ via `lifecycle._entry_blocks`) — narrate epic membership in the description.
 
 ## 6. Open decisions surfaced to the maintainer
 
-1. **Driver/console wiring (§4).** Wire the full applies-to-all suite into the 3
-   unwired repos (recommended), or scope a subset? Blocks the driver/console
-   flip, not the 5 wired repos' burndown.
+1. **Driver/console wiring (§4). — RESOLVED 2026-07-10: WIRE THE FULL SUITE.**
+   Maintainer chose the full applies-to-all suite (via `check-aggregate-completeness`,
+   the app-repo mechanism) into all 3 unwired repos' justfile + CI. Slice0 (wire
+   full suite) is the prerequisite before each thin repo's WARN fix + flip.
+   Recorded on `livespec-gqte`, `livespec-v74p`, and the new console track
+   `livespec-q7bx` (console = wire + verify empty-universe no-op flip).
 2. **file_lloc flip mechanism for non-core repos (§2 residual).** Make
    dev-tooling's file_lloc legacy tree config-driven so the orchestrator's 16
    over-ceiling files (dispatcher.py 1586) can flip. Host-side dev-tooling work;
