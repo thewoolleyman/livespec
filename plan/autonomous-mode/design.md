@@ -222,7 +222,11 @@ spec revision) with the stated evidence.
   to `done` unattended → the console observes and reflects each auto-resolution →
   a truly-unresolvable item surfaces in-TUI as needs-attention and is actionable
   there. Per the "done means rolled out and exercised live" discipline, this live
-  evidence is the MVP acceptance. **Gate:** C3 AND O2.
+  evidence is the MVP acceptance. **Gate:** C3 AND O2 AND the §9 operability
+  conditions (a verified cost ceiling and a real failure-surfacing path — see
+  §9's `livespec-0jxs` entry; note orchestrator bug `bd-ib-18r` means an
+  in-loop park does not reach the ledger today, so the truly-unresolvable
+  plant must be ledger-level or that bug triaged first).
 
 **Dependency graph (text):**
 ```
