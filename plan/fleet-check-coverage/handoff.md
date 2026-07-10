@@ -10,12 +10,15 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
-- **⇒ 2026-07-10 UPDATE — READ THE "CURRENT STATE" BLOCK AT THE TOP OF `## The next
-  action` FIRST.** The rollout gap is CLOSED and the v0.37.1 image fix is VALIDATED
-  live (orchestrator release 0.13.12); the current next action is **Option A** (fix the
-  acceptance-criteria review-leak → re-dispatch core-A to exercise the `review` node →
-  fix the unattended human-gate → fan out the held slices). Everything below this bullet
-  is prior-phase context that the CURRENT STATE block supersedes where they conflict.
+- **⇒ 2026-07-10 (SESSION 2) UPDATE — READ THE "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST.** Option A steps 1–3 are DONE and the factory is now
+  VALIDATED END-TO-END: core-A (`livespec-2j46re`) flowed
+  `implement→janitor→REVIEW→pr→MERGED` (PR #1037, merge `150ccfd`, release 0.7.5) — the
+  never-before-run `review` node WORKS and the hardened factory produces a clean merged
+  PR. WARN delta verified (all_declared 17→0, keyword_only 8→0, global_writes 1→0). The
+  ONLY remaining work is **Option A step 4 = the held-slice FAN-OUT**. Everything below
+  this bullet is prior-phase context that the CURRENT STATE block supersedes where they
+  conflict.
 - **What this is.** A `dispatcher.py` (>2,600 lines,
   `livespec-orchestrator-beads-fabro/.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/dispatcher.py`)
   sailed past the fleet's per-file logical-line ceiling because the `file_lloc`
@@ -733,9 +736,124 @@ clone before reading its `origin/master` for cross-repo state.**
     local nuisance. Every dev-tooling release re-stales it. The bump-pin lockstep root fix
     (teach bump-pin to update `workflow.toml`) is on `livespec-iily` and is now ELEVATED
     (recurred 2× in one session).
+- **2026-07-10 (SESSION 2) — Option A steps 1–3 DONE; factory VALIDATED end-to-end; a NEW
+  workflow-push-race found.** Drove Option A autonomously.
+  - **Step 1 (review-leak):** data-scrubbed the leaked review clause from all 8 slice
+    `Acceptance:` descriptions (each now `+ green just check.`); added the implement.md
+    ACCEPTANCE-CRITERIA SCOPE guard (orch PR #420, merged); corrected `phase1-grooming.md` §5
+    (slice acceptance = autonomously-verifiable only; external review is the overseer's
+    separate ratification). Root: the groom prose already required "autonomously-verifiable",
+    so the clause was a convention VIOLATION, not something the prose prescribed.
+  - **Two lockstep drifts:** PR #422 (image v0.37.1→v0.37.2) then, after dev-tooling v0.37.3
+    landed mid-session, a delegated sub-agent landed PR #424 (→v0.37.3). Orch now release
+    0.13.15, image v0.37.3 (verified bwrap+codex), lockstep green.
+  - **Step 3 (unattended human-gate):** delegated to a scoped sub-agent → orch PR #427 (merged
+    `7d822d8`, release 0.13.15): `_bounce_blocked` routes blocked→`backlog` (mirrors the
+    non-convergence bounce; fail-soft; journals `blocked-bounce`). Independent review
+    NO-BLOCKERS. LIVE-EXERCISE still owed (a real gate-parked run → backlog).
+  - **Step 2 (re-dispatch core-A):** FIRST re-dispatch reached `review`+`pr` (the review node
+    WORKS) but its PR push was BLOCKED by the **workflow-push-race** (mid-run bump-pin fan-out
+    `04be668` changed `.github/workflows/bump-pin-from-dispatch.yml`; sandbox's stale-base
+    branch differs on a workflow file → App lacks `workflows` permission). Root-caused via
+    container inspection. Re-dispatch #2 on stable master flowed
+    `implement→janitor→REVIEW→pr→MERGED` (PR #1037, `150ccfd`, release 0.7.5). WARN delta
+    verified 17/8/1→0 on the 120-file universe. core-A now in `acceptance`; Fable review
+    spawned; accept + fan-out (step 4) is the remaining work.
 
 ## The next action
 
+> ### ⇒ 2026-07-10 SESSION 2 — CURRENT STATE, READ FIRST (supersedes EVERYTHING below, including the ROLLOUT-GAP block)
+>
+> **Option A steps 1–3 are DONE; the factory is VALIDATED END-TO-END. The ONLY
+> remaining work is step 4 = the held-slice FAN-OUT.**
+>
+> **✅ Step 1 — acceptance-criteria review-leak FIXED (3 parts):**
+> - Data-scrubbed the leaked `+ independent adversarial NO-BLOCKERS review before
+>   acceptance` clause from ALL 8 in-flight slices' `Acceptance:` descriptions
+>   (core `livespec-2j46re`/`7jcdfk`/`txn2bq`; orch `bd-ib-jnf`/`dpj`/`ll0`;
+>   runtime `livespec-runtime-uy8`; git-jsonl `bd-gj-5i1`). Each now ends `+ green just check.`
+> - implement.md ACCEPTANCE-CRITERIA SCOPE guard: orchestrator **PR #420** (merged) — the
+>   implement agent satisfies only in-sandbox conditions; a downstream/external review line
+>   is the `review` node + overseer's job, never spawned by the agent.
+> - Grooming convention corrected in `research/phase1-grooming.md` §5 (this PR): a slice's
+>   acceptance carries ONLY autonomously-verifiable conditions; the external adversarial
+>   review is the overseer's separate pre-`accept:` ratification, never a slice criterion.
+>
+> **✅ Step 2 — review node VALIDATED END-TO-END.** core-A (`livespec-2j46re`) was
+> re-dispatched and flowed `start→implement→janitor→REVIEW→pr→MERGED` — the never-run
+> `review` node WORKS. Merged as **livespec PR #1037**, merge commit **`150ccfd`**, release
+> 0.7.5, RGR trailers genuine. **WARN delta verified** on master (120-file universe, pinned
+> dev-tooling v0.37.3): all_declared 17→0, keyword_only 8→0, global_writes 1→0.
+> core-A is in **`acceptance`**; an independent Fable adversarial review was spawned
+> (verify honesty/no-evasion + WARN delta). **NEXT on resume: confirm that review NO-BLOCKERS,
+> then `accept:livespec-2j46re`** (via `drive --action accept:livespec-2j46re --repo
+> /data/projects/livespec`), journaling the merged-PR + WARN-delta + review evidence.
+> Then its chain: core B `livespec-7jcdfk` → C `livespec-txn2bq`.
+>
+> **✅ Step 3 — unattended human-gate FIXED + reviewed.** Orchestrator **PR #427** (merged
+> `7d822d8`, release 0.13.15): new `_bounce_blocked` in `dispatcher.py` routes a `blocked`
+> (human-gate-parked) terminal → `backlog` (mirroring the non-convergence bounce; fail-soft;
+> journals `blocked-bounce` carrying the attach hint). Independent review NO-BLOCKERS.
+> **⚠ LIVE-EXERCISE OBLIGATION (carry until satisfied):** confirm a REAL dispatched run that
+> parks at the human gate actually lands in `backlog` (not just the merged integration test)
+> — satisfy opportunistically during the fan-out, or with a controlled check.
+>
+> **✅ Two lockstep drifts fixed (the recurring treadmill):** orchestrator image pin
+> re-staled on EVERY dev-tooling release. **PR #422** (v0.37.1→v0.37.2) then **PR #424**
+> (→v0.37.3, after dev-tooling v0.37.3 landed mid-session). Orchestrator now at **release
+> 0.13.15**, image **v0.37.3** (verified bwrap+codex), lockstep GREEN. Root fix (teach
+> bump-pin to move the workflow.toml image in lockstep) still on `livespec-iily`, ELEVATED.
+>
+> **⚠ NEW DURABLE FINDING — the WORKFLOW-PUSH-RACE (host-side factory fix; NOT yet filed
+> formally — FILE IT).** core-A's FIRST re-dispatch reached `review`+`pr` but its PR PUSH was
+> BLOCKED: mid-run, livespec master advanced `0cb0a19→04be668` (the v0.37.3 bump-pin fan-out),
+> which MODIFIED `.github/workflows/bump-pin-from-dispatch.yml` (`@v0.37.2`→`@v0.37.3`). The
+> sandbox's branch (stale clone base) carried the OLD workflow → differs from master on a
+> `.github/workflows/` file → the fleet App (no `workflows` permission) is push-blocked.
+> Re-dispatch #2 on stable master SUCCEEDED. **Durable fix:** the sandbox/pr-node must
+> re-fetch + rebase onto latest `origin/master` before the PR push, so a bump-pin fan-out
+> touching a workflow file mid-run cannot block the App push (shares the bump-pin root cause;
+> every fleet repo has its own `bump-pin-from-dispatch.yml`, so this can bite ANY repo's
+> fan-out). Host-side orchestrator/fabro-pr-node work — track on `livespec-iily` or an
+> orchestrator (`bd-ib`) item. Until fixed, keep the fan-out's dispatches SHORT / avoid
+> dispatching while a dev-tooling release is fanning out.
+>
+> **⇒ STEP 4 — THE FAN-OUT (the remaining work). Factory is hardened + validated; dispatch
+> the held slices per chain, each: `drive --action impl:<id> --repo <work-repo>` (background,
+> `CLAUDE_PLUGIN_ROOT=/data/projects/livespec-orchestrator-beads-fabro/.claude-plugin`) →
+> on green, find the merged PR → WARN-delta verify (pinned venv) → independent Fable review
+> (no-evasion!) → `accept:<id>`. Approve each next chain link with `approve:<id>` as its
+> blocker closes.** The Slice ledger + per-tenant chains are in the (still-valid) block below
+> ("Slice ledger (current, per tenant …)"). Concretely:**
+> - CORE (hub): `livespec-2j46re` A **[in acceptance — accept FIRST]** → `livespec-7jcdfk` B
+>   (no_write) → `livespec-txn2bq` C (no_lloc_soft). Dispatch with `--repo /data/projects/livespec`.
+> - ORCH (`bd-ib`): `bd-ib-jnf` B (no_write 69) → `bd-ib-dpj` C → `bd-ib-ll0` D (file_lloc,
+>   dispatcher.py tentpole). `approve:bd-ib-jnf` then `drive impl:` with
+>   `--repo /data/projects/livespec-orchestrator-beads-fabro`. (A `bd-ib-1ka` already done.)
+> - RUNTIME (`livespec-runtime`): `livespec-runtime-uy8` (file_lloc hygiene_scan). `--repo
+>   /data/projects/livespec-runtime`. (mech `livespec-runtime-qi9` already done.)
+> - GIT-JSONL (`bd-gj`): `bd-gj-5i1` (file_lloc). `--repo /data/projects/livespec-orchestrator-git-jsonl`.
+>   (mech `bd-gj-cn4` already done.)
+> - DRIVERS/CONSOLE (hub tracks `livespec-gqte` codex / `livespec-v74p` claude / `livespec-q7bx`
+>   console): NOT yet groomed/re-tenanted. Each needs Slice0 = wire the full applies-to-all
+>   suite (`check-aggregate-completeness`) + re-tenant into its own tenant + groom, THEN fix +
+>   flip. (Re-tenant + groom recipes are in the still-valid detail below.)
+> - HOST-SIDE (maintainer-driven, NOT factory): dev-tooling `livespec-iily` (WARN burndown +
+>   the bump-pin lockstep root fix + the NEW workflow-push-race fix + the file_lloc flip-mechanism
+>   follow-up); each repo's **Phase-2 role-declaration flip** (= claim-for-partition + severity
+>   flip, after warning-clean + independent review; NO escape hatch per `.ai/ci-gate-discipline.md`).
+>
+> **STATE (clean at this handoff):** livespec primary on master (0.7.5, incl core-A PR #1037);
+> orchestrator primary on master (release 0.13.15, image v0.37.3, lockstep green); no zombie
+> sandboxes (all fabro-run containers exited; ~10 dead containers could be `docker rm`'d as
+> housekeeping). core-A `livespec-2j46re` = `acceptance`. The `handoff-fcc-option-a` branch
+> carries THIS handoff refresh + the §5 grooming-convention fix.
+>
+> ---
+> *(Everything below — the ROLLOUT-GAP block and the burndown-dispatch detail — is PRIOR
+> context, superseded where it conflicts. The Slice ledger + re-tenant/merge-evidence recipes
+> below remain valid reference for the fan-out.)*
+>
 > ### ⇒ 2026-07-10 ROLLOUT-GAP SESSION — CURRENT STATE, READ FIRST (supersedes the burndown-dispatch detail below)
 >
 > **The rollout gap is CLOSED and the v0.37.1 image fix is VALIDATED live.** The
