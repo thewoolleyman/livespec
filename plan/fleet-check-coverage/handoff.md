@@ -482,6 +482,40 @@ clone before reading its `origin/master` for cross-repo state.**
     chain deps within the tenant. Core (`livespec-2j46re`/`7jcdfk`/`txn2bq`) needs NO
     re-tenant. dev-tooling (`livespec-iily`) is host-side (not factory) — may stay a
     hub tracking item.
+- **2026-07-10 (this session) — RE-TENANT EXECUTED + first factory dispatches launched +
+  runtime/git-jsonl groomed & re-tenanted.** Drove the decided dispatch model end-to-end.
+  - **Orchestrator re-tenant CLEANUP DONE.** Re-filed the A→B→C→D chain into the **`bd-ib`**
+    tenant (`cwd=/data/projects/livespec-orchestrator-beads-fabro`), preserving scope/acceptance
+    and correcting the stale `Repo target: livespec` → `livespec-orchestrator-beads-fabro`:
+    **`bd-ib-1ka`** (A mechanical, `ready`), **`bd-ib-jnf`** (B no_write), **`bd-ib-dpj`**
+    (C structural), **`bd-ib-ll0`** (D file_lloc) — B/C/D `pending-approval`, chained
+    blocked-by A→B→C. Applied `apply_intake_dor` (all 6 gates True) to route them (raw
+    `bd create` lands items in `open`, OUTSIDE the orchestrator lifecycle — intake is what
+    routes `open`→`ready`/`pending-approval`; this is the reusable re-tenant recipe). CLOSED
+    the 4 hub copies (`y4f7hp`/`tlvsn4`/`my2s7k`/`umabdn`) with "re-tenanted to <bd-ib id>"
+    reasons. Orchestrator `next` now surfaces `bd-ib-1ka` as the sole ready candidate.
+  - **Runtime + git-jsonl GROOMED (mechanical + file_lloc split) & RE-TENANTED.** Filed into
+    their own tenants: runtime **`livespec-runtime-qi9`** (mech, `ready`) + **`livespec-runtime-uy8`**
+    (file_lloc hygiene_scan.py 471, `pending-approval`, chained); git-jsonl **`bd-gj-cn4`**
+    (mech, `ready`) + **`bd-gj-5i1`** (file_lloc 3 files, `pending-approval`, chained). Intake
+    applied; hub tracks `livespec-8x7d` + `livespec-t4e0` CLOSED with re-tenant notes.
+  - **TWO factory dispatches IN FLIGHT (background, launched via `drive --action impl:`):**
+    (1) CORE `livespec-2j46re` (9bym-A, hub tenant, `--repo /data/projects/livespec`) —
+    validates the hub-tenant path; (2) ORCH `bd-ib-1ka` (236f-A, bd-ib tenant,
+    `--repo /data/projects/livespec-orchestrator-beads-fabro`) — validates the FIRST
+    sibling-tenant dispatch (the linchpin of the re-tenant model). Neither had completed at
+    checkpoint (Fabro sandbox runs are long; `drive` output buffers to completion). Logs:
+    `scratchpad/drive-core-2j46re.log`, `scratchpad/drive-orch-1ka.log` (session-local —
+    NOT durable across sessions; re-derive dispatch state from the ledger + open PRs).
+  - **HELD (deliberately):** runtime `livespec-runtime-qi9` + git-jsonl `bd-gj-cn4` mechanical
+    slices are `ready` but NOT yet dispatched — waiting for core/orch A to confirm the dispatch
+    flow works end-to-end before fanning out to 4 concurrent sandboxes. Drivers/console (step 4)
+    NOT yet filed.
+  - **Credential note for the resumer:** `bd`/`drive.py`/`next.py` need `BEADS_DOLT_PASSWORD`,
+    absent from the bare session env — prefix EVERY invocation with the fleet wrapper
+    `/usr/local/bin/with-livespec-env.sh -- …`. For direct package calls (e.g. `apply_intake_dor`),
+    also set `PYTHONPATH=<plugin-root>/scripts:<plugin-root>/scripts/_vendor` (vendored
+    `livespec_runtime`) and pass `resolve_store_config(cwd=Path(<repo>))` a Path, not a str.
 
 ## The next action
 
@@ -500,33 +534,60 @@ clone before reading its `origin/master` for cross-repo state.**
 > action, so it is the reviewed **Phase-2** flip. Do NOT groom a "partition-config
 > first" slice; partition WARN resolves at the flip.
 >
-> **DISPATCH-MODEL DECIDED (Progress log 2026-07-10): re-tenant sibling slices into
-> per-repo tenants.** Concrete next steps, in order:
-> 1. **Dispatch CORE now** (cleanly dispatchable, work-repo == hub tenant):
->    `drive --action impl:livespec-2j46re --repo /data/projects/livespec` (9bym-A
->    mechanical), then 9bym-B `livespec-7jcdfk` → 9bym-C `livespec-txn2bq`. This
->    validates the factory flow while re-tenanting proceeds.
-> 2. **Re-tenant the orchestrator slices** (CLEANUP OWED — Progress log): re-file the
->    A→B→C→D chain into the **`bd-ib`** tenant (`cwd=/data/projects/livespec-orchestrator-beads-fabro`),
->    then CLOSE the 4 hub copies (`y4f7hp`/`tlvsn4`/`my2s7k`/`umabdn`). Dispatch the
->    bd-ib mechanical slice.
-> 3. **Groom + re-tenant** runtime (`livespec-8x7d`→tenant `livespec-runtime`) and
->    git-jsonl (`livespec-t4e0`→tenant `bd-gj`): split each into mechanical + file_lloc
->    slices (same pattern), file into their tenants, dispatch.
-> 4. **Drivers + console** (`gqte`/`v74p`/`q7bx`): Slice0 = wire full suite (DECIDED),
->    re-tenant into `livespec-driver-claude` (claude) / driver-codex tenant (prefix
->    UNSET — set on first create) / `livespec-console-beads-fabro`, then fix + flip.
+> **DISPATCH-MODEL DECIDED + LARGELY EXECUTED (Progress log 2026-07-10, this session).**
+> Re-tenant of orchestrator + runtime + git-jsonl is DONE; core + orch-A dispatched.
+> Updated concrete next steps, in order:
+> 1. **[MUST RECONCILE FIRST] Two validation dispatches were launched then their local
+>    `drive` driver processes were KILLED at session end while both items were still
+>    `active` (mid-build).** CORE `livespec-2j46re` (`--repo /data/projects/livespec`) and
+>    ORCH `bd-ib-1ka` (`--repo /data/projects/livespec-orchestrator-beads-fabro`). The
+>    Fabro sandboxes may be orphaned or may have opened PRs independently. **RECONCILE
+>    before re-dispatching:** (a) `bd show <id>` — if still `active`, the driver died; (b)
+>    `gh pr list` in each repo for an opened/merged slice PR; (c) if a clean PR landed,
+>    review→verify WARN delta→`accept:<id>`; if the item is stuck `active` with no usable
+>    PR, reset it (`drive --action reject:<id>:regroom` reverts the recorded SHA and returns
+>    it toward backlog, or move it back to `ready`) and RE-DISPATCH fresh. Do NOT assume the
+>    kill was clean. Re-derive everything from the ledger + open PRs (session logs are not
+>    durable): `bd show <id>` for status, `gh pr list` in each repo. On
+>    each landed PR: independent adversarial NO-BLOCKERS review of the merged commit
+>    (auto-merge repos: land→review→fix-forward), verify the WARN delta with the
+>    dev-tooling-pinned venv (green `just check` does NOT prove WARN dropped), then
+>    `drive --action accept:<id>`. THEN dispatch the next chained slice
+>    (core 9bym-B `livespec-7jcdfk`→9bym-C `livespec-txn2bq`; orch B `bd-ib-jnf`→C
+>    `bd-ib-dpj`→D `bd-ib-ll0` — approve each via `drive --action approve:<id>` as its
+>    blocker closes).
+> 2. **[READY, HELD] Dispatch runtime + git-jsonl mechanical** once step 1 validates the
+>    flow: `drive --action impl:livespec-runtime-qi9 --repo /data/projects/livespec-runtime`
+>    and `drive --action impl:bd-gj-cn4 --repo /data/projects/livespec-orchestrator-git-jsonl`.
+>    Their file_lloc slices (`livespec-runtime-uy8`, `bd-gj-5i1`) approve+dispatch after
+>    their mechanical blocker closes.
+> 3. **[NOT STARTED] Drivers + console** (`gqte`/`v74p`/`q7bx`): Slice0 = wire full
+>    applies-to-all suite into justfile + CI via `check-aggregate-completeness` (DECIDED),
+>    re-tenant into `livespec-driver-claude` (claude) / driver-codex tenant (prefix UNSET —
+>    set on first create) / `livespec-console-beads-fabro`, then fix WARN + flip. Console =
+>    wire-only → flip is a verified empty-universe no-op.
 >
-> **The big tracks are GROOMED** (both regroomed-out into ready layered slices —
-> Progress log 2026-07-10 has every id). Ready NOW:
-> - **`livespec-2j46re`** (9bym-A core mechanical) — CLEANLY DISPATCHABLE (work-repo
->   == hub tenant): `drive --action impl:livespec-2j46re --repo /data/projects/livespec`.
->   Then 9bym-B `livespec-7jcdfk` → 9bym-C `livespec-txn2bq`.
-> - **`livespec-y4f7hp`** (236f-A orchestrator mechanical) READY but BLOCKED on the
->   dispatch-model decision (sibling tenant). Then B/C/D (`tlvsn4`/`my2s7k`/`umabdn`).
-> - `livespec-8x7d` runtime (53), `livespec-t4e0` git-jsonl (37) — still COARSE
->   single tracks (mechanical + a little file_lloc mixed); groom each into
->   mechanical + file_lloc slices before dispatch (same pattern), and re-tenant.
+> **Re-tenant recipe (proven this session, reuse for drivers/console):** `bd create`
+> in the target repo tenant (`cwd=/data/projects/<repo>`) with `--labels
+> admission:auto,origin:freeform`, wire intra-repo chain via `bd dep add <later>
+> --blocked-by <earlier>`, then run `apply_intake_dor` (all 6 Definition-of-Ready gates
+> True) per item so mechanical→`ready` and dependent→`pending-approval`; finally `bd close`
+> the hub track with a "re-tenanted to <id>" reason. All `bd`/package calls need the
+> `with-livespec-env.sh --` wrapper (+ PYTHONPATH for direct package imports).
+>
+> **Slice ledger (current, per tenant — every big track is groomed + re-tenanted):**
+> - CORE (hub tenant): `livespec-2j46re` 9bym-A mechanical [DISPATCHED, in flight] →
+>   `livespec-7jcdfk` 9bym-B no_write [pending-approval] → `livespec-txn2bq` 9bym-C
+>   no_lloc_soft [pending-approval].
+> - ORCH (`bd-ib` tenant): `bd-ib-1ka` A mechanical [DISPATCHED, in flight] → `bd-ib-jnf`
+>   B no_write → `bd-ib-dpj` C structural → `bd-ib-ll0` D file_lloc [B/C/D pending-approval].
+>   (Old hub copies `y4f7hp`/`tlvsn4`/`my2s7k`/`umabdn` are CLOSED — do not dispatch them.)
+> - RUNTIME (`livespec-runtime` tenant): `livespec-runtime-qi9` mechanical [READY, held] →
+>   `livespec-runtime-uy8` file_lloc (hygiene_scan.py 471) [pending-approval].
+> - GIT-JSONL (`bd-gj` tenant): `bd-gj-cn4` mechanical [READY, held] → `bd-gj-5i1` file_lloc
+>   (3 files) [pending-approval].
+> - DRIVERS/CONSOLE: hub tracks `livespec-gqte` (codex), `livespec-v74p` (claude),
+>   `livespec-q7bx` (console) still open + un-re-tenanted — NOT yet groomed/filed (step 3 above).
 > Re-measure each sandbox against the current pin with the dev-tooling venv python
 > (NEVER a repo's own stale venv). NOTE: because newly_covered diagnostics are WARN
 > (exit 0), green `just check` does NOT prove the WARN dropped — acceptance MUST
