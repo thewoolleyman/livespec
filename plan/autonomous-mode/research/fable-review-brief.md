@@ -1,16 +1,23 @@
 # Fable fresh-review brief — autonomous-mode plans (review-loop round N)
 
 **Who runs this:** a FRESH Fable-model session with NO prior involvement in
-authoring or revising these plans. A session that revised the plans MUST NOT
-review them (no self-certification — maintainer-declared 2026-07-10).
+authoring or revising these plans. A session that landed fixes MUST NOT be
+the one that reviews them and clears the gate (no self-certification —
+maintainer-declared 2026-07-10); each round's session reviews, FIXES, records
+the round, and hands off to the NEXT fresh session.
 
 **The loop this brief serves.** The fable-review phase does NOT exit until
 BOTH hold: (1) a fresh-session review of the current plans finds NOTHING
-BLOCKING, and (2) the MAINTAINER certifies. Any blocking finding routes to a
-fable-revise pass (fixes landed in the plan texts via worktree → PR → merge),
-after which ANOTHER fresh session runs this brief again. Implementation
-(console C1 / orchestrator O1) MUST NOT start before the gate is met. The
-loop state lives in `plan/autonomous-mode/handoff.md` (repo
+BLOCKING — affirmatively certifying all three plans SOLID, EXECUTABLE, and
+MVP-MEETING — and (2) the MAINTAINER certifies. YOU FIX WHAT YOU FIND: every
+problem this review surfaces is fixed BY THIS SESSION, in the plan texts,
+via worktree → PR → merge in the affected repo(s), while you hold the review
+context. A read-only findings dump is NOT a valid round output
+(maintainer-corrected 2026-07-10: "FIX ALL THE PROBLEMS WITH ALL THREE OF
+THE PLANS. Not just randomly spew some non-actioned text."). After a round
+that landed fixes, ANOTHER fresh session runs this brief again.
+Implementation (console C1 / orchestrator O1) MUST NOT start before the gate
+is met. The loop state lives in `plan/autonomous-mode/handoff.md` (repo
 `thewoolleyman/livespec`).
 
 ## What to review (all three, current `origin/master`)
@@ -27,9 +34,9 @@ and `research/fable-revising-session-self-assessment.md` (the revising
 session's own claims — treat every claim in both as a hypothesis to verify,
 never as truth).
 
-## How to review
+## How to review (and fix)
 
-READ-ONLY: no edits, no commits, no ledger writes. Verify — do not trust —
+REVIEW-AND-FIX. Verify — do not trust —
 the plans' factual claims against the real spec trees (`git show
 origin/master:<path>`), the crate/script sources, the Beads ledgers (`bd
 show <id> --json` via the repo's credential wrapper, run from inside each
@@ -55,18 +62,28 @@ repo), and master CI (`gh run list --workflow CI`). Cover at minimum:
   Red-Green-Replay, heading-coverage co-edits, per-ratification Fable
   review).
 
-## Verdict (your only output)
+**Fix as you go.** Land every fix in the plan texts themselves (the overall
+plan in `thewoolleyman/livespec` and/or the sibling repos' plans) via
+worktree → PR → merge, `mise exec -- git …`, never `--no-verify`,
+`docs(plan):` subjects. Plan-doc edits only — no ledger writes, no
+implementation code, no dispatching C1/O1. If you near ~50% context mid-fix,
+update the core handoff's Loop state so the NEXT session CONTINUES your
+fixes where you left off (a continuation, not a new round), then stop
+cleanly.
+
+## Round record (your output)
 
 ```
-## Round N fresh review: NOTHING-BLOCKING | BLOCKERS FOUND
+## Round N fresh review: NOTHING-BLOCKING | FIXES LANDED
 ### Per-plan: <one line each>
-### Blockers (if any): what, where, why it blocks, recommended fix
+### Fixed this round (if any): finding → fix → merged PR link, per repo
 ### Non-blocking observations
 ### Currency findings
 ```
 
-Deliver the verdict in-session; the driver/maintainer records it as
+Deliver the record in-session; the driver/maintainer records it as
 `research/fable-review-round-N.md` on this thread and updates the handoff's
-loop state. NOTHING-BLOCKING → present to the maintainer for certification.
-BLOCKERS FOUND → a revise pass lands the fixes, then a NEW fresh session
-runs this brief.
+loop state. NOTHING-BLOCKING (a round that needed NO fixes) must
+affirmatively certify all three plans SOLID, EXECUTABLE, and MVP-MEETING →
+present to the maintainer for certification. FIXES LANDED → a NEW fresh
+session runs this brief as round N+1.

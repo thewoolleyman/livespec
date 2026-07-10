@@ -1,11 +1,18 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
 **Status: FABLE-REVIEW LOOP OPEN — implementation is HARD-GATED.** The loop
-(maintainer-declared 2026-07-10): fresh Fable sessions review ALL THREE plans
-until a FRESH session finds NOTHING BLOCKING, then the MAINTAINER certifies;
-only that double gate exits the phase. A session that revised the plans MUST
-NOT be the one that clears them (no self-certification). C1/O1 dispatch MUST
-NOT happen before the gate is met.
+(maintainer-declared 2026-07-10): each round, a FRESH Fable session reviews
+ALL THREE plans AND FIXES every problem it finds — in-session, in the plan
+texts, via worktree → PR → merge. A read-only findings dump is NOT a valid
+round output (maintainer-corrected 2026-07-10: "the read-only handoff
+instructions were WRONG … FIX ALL THE PROBLEMS WITH ALL THREE OF THE PLANS.
+Not just randomly spew some non-actioned text."). The loop exits only on the
+double gate: (1) a FRESH session's review finds NOTHING BLOCKING —
+affirmatively certifying all three plans SOLID, EXECUTABLE, and MVP-MEETING —
+and (2) the MAINTAINER certifies. A session that landed fixes MUST NOT be the
+one that clears the gate (no self-certification); the clean verdict always
+comes from the NEXT fresh session. C1/O1 dispatch MUST NOT happen before the
+gate is met.
 
 **Loop state:**
 - Round 1 (2026-07-10, Fable session `livespec-autonomous-mode`): Step-0
@@ -15,8 +22,8 @@ NOT happen before the gate is met.
   PRs #1000 + this one) and wrote
   `research/fable-revising-session-self-assessment.md` — which does NOT
   clear the gate, because reviser and reviewer were the same session.
-- Round 2: NOT YET RUN. The REVISED plans await their first fresh-session
-  review. → This is the next action.
+- Round 2: NOT YET RUN — the first fresh-session review-AND-FIX round over
+  the REVISED plans. → This is the next action.
 - Maintainer certification: NOT YET GIVEN.
 
 **Thread role:** the OVERALL cross-repo plan. Ties together the console operator
@@ -46,7 +53,7 @@ operator.
 ## The spine (see design.md §7 for the full step catalogue)
 ```
 Step 0 (fable-review LOOP — HARD GATE, exit = fresh-session nothing-blocking + MAINTAINER certification)
-  status: round 1 done (validate + revise); round 2 fresh review PENDING; maintainer certification PENDING
+  status: round 1 done (validate + revise); round 2 fresh review-and-fix PENDING; maintainer certification PENDING
   ├─ Console track (session console-autonomous-mode):  C1 spec fixes ─► C2 command foundation ─► C3 autonomous feature
   └─ Orchestrator track (session orchestrator-autonomous-mode): O1 spec fixes + publish arming contract ─► O2 build engine (bd-ib-82a)
                           O1 arming contract (I1) ─► C3 (and C1's persistence-seam portion)
@@ -60,19 +67,24 @@ builds on it.
 
 1. **Run review round 2**: spawn (or have the maintainer run) a FRESH Fable
    session with `research/fable-review-brief.md`. Fresh = no prior involvement
-   in authoring or revising these plans. The reviewer is READ-ONLY and outputs
-   the round verdict.
-2. **Record the round**: commit the verdict as
-   `research/fable-review-round-2.md` (a `docs(plan):` PR) and update this
-   handoff's Loop state.
-3. **Branch on the verdict**:
-   - BLOCKERS FOUND → run a fable-revise pass (fixes landed in the affected
-     plan texts via worktree → PR → merge, like round 1's), then go to step 1
-     with round N+1 and ANOTHER fresh session. The revising session never
-     reviews its own fixes.
-   - NOTHING-BLOCKING → present the round verdict to the MAINTAINER for
-     certification. Only the maintainer's recorded certification (update the
-     Loop state above) exits the phase.
+   in authoring or revising these plans. The session REVIEWS all three plans
+   AND FIXES every problem it finds in-session — plan-text changes landed via
+   worktree → PR → merge in the affected repo(s). It never emits a
+   non-actioned findings dump.
+2. **Record the round**: commit the round record — the verdict PLUS what was
+   fixed, with PR links — as `research/fable-review-round-2.md` (a
+   `docs(plan):` PR) and update this handoff's Loop state. If the session
+   nears ~50% context mid-fix, it updates this handoff so the NEXT session
+   CONTINUES the same round's fixes where it left off (a continuation, not a
+   new round), then stops cleanly.
+3. **Branch on the round's outcome**:
+   - FIXES LANDED (anything blocking was found) → go to step 1 with round
+     N+1 and ANOTHER fresh session. A session that landed fixes never clears
+     the gate on its own round (no self-certification).
+   - NOTHING-BLOCKING (a round that needed no fixes) → the round verdict must
+     affirmatively certify all three plans SOLID, EXECUTABLE, and MVP-MEETING;
+     present it to the MAINTAINER for certification. Only the maintainer's
+     recorded certification (update the Loop state above) exits the phase.
 4. **Only after the gate is met — dispatch O1 and C1 in parallel** to the two
    delegate sessions per the delegation model below. Briefs point each
    delegate at its OWN revised plan (`plan/autonomous-mode/handoff.md` in its
@@ -91,8 +103,8 @@ builds on it.
 - Driver: Claude session `autonomous-mode` in tmux pane `livespec-autonomous-mode` (cwd `/data/projects/livespec`).
 - Delegate: session/pane `console-autonomous-mode` (cwd console repo) → C1/C2/C3.
 - Delegate: session/pane `orchestrator-autonomous-mode` (cwd orchestrator repo) → O1/O2.
-- Reviewer: a FRESH Fable session per round (any pane; read-only; no continuity
-  with revising sessions).
+- Reviewer: a FRESH Fable session per round (any pane; review-AND-FIX — it
+  lands its own fixes; no continuity with sessions whose fixes it reviews).
 
 ## Ledger items in play (per repo tenant)
 - Console: `rt4` (operator surface; epic-shaped feature, stale v013 pointer), `pke3y3` (epic, "7 unimplemented commands" — regroom + split per its plan), `ipi` (attention-stream TUI migration), `mb64bv` (backlog-bounce vocab rename — verify the rename target against the orchestrator's actual journal field `bounced_to_regroom` before landing).
