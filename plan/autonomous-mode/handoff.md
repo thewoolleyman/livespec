@@ -129,11 +129,12 @@ builds on it.
   lands its own fixes; no continuity with sessions whose fixes it reviews).
 
 ## Ledger items in play (per repo tenant)
-- Core: **this thread's OWN epic anchor is NOT YET FILED** (round-2 finding:
-  every other active core thread has one; review rounds are barred from ledger
-  writes, so the DRIVER files it via the `capture-work-item` operation at next
-  touch — until then the thread is invisible to the ledger's
-  open-planning-epics list and archive-on-close cannot bind).
+- Core: `livespec-bvuy4w` — this thread's epic anchor (driver filed it
+  2026-07-10 via the `capture-work-item` operation, closing the round-2
+  finding; epic-shaped → `backlog` per the intake Definition-of-Ready
+  checklist; edges: `livespec-nrdk` blocks, `livespec-0jxs` related — bd
+  refuses an epic→task `blocks` edge by design, so the task dependency
+  carries a `related` edge instead).
 - Console: `rt4` (operator surface; epic-shaped feature, stale v013 pointer), `pke3y3` (epic, "7 unimplemented commands" — regroom + split per its plan), `ipi` (attention-stream TUI migration), `mb64bv` (chore: backlog-bounce vocab rename — verify the rename target against the orchestrator's actual journal field `bounced_to_regroom` before landing).
 - Orchestrator: `bd-ib-82a` (the engine; stale v025 pointer).
 - Core deps TRACKED not re-owned: `livespec-nrdk` (factory-safe admission gate), `livespec-0jxs` (operability preconditions); orchestrator `plan/fabro-token-refresh` (long-run publish robustness); orchestrator bugs `bd-ib-18r` / `bd-ib-6vu` (unattended-run robustness — sequence around).
