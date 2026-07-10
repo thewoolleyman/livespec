@@ -76,8 +76,8 @@ always came from the NEXT fresh session.
 
 **Thread role:** the OVERALL cross-repo plan. Ties together the console operator
 surface and the orchestrator decision engine, owns the dependency graph, and
-defines the tmux/session delegation model. livespec core authors no product code
-here.
+defines the driver + per-repo delegate-context delegation model (design.md §8).
+livespec core authors no product code here.
 
 ## Read first
 1. This file, then `design.md` in this directory (the full plan).
@@ -139,11 +139,16 @@ builds on it.
      present it to the MAINTAINER for certification. Only the maintainer's
      recorded certification (update the Loop state above) exits the phase.
 4. **Only after the gate is met — dispatch O1 and C1 in parallel** to the two
-   delegate sessions per the delegation model below. Briefs point each
-   delegate at its OWN revised plan (`plan/autonomous-mode/handoff.md` in its
-   repo — the review-round findings are baked in; no side-channel content).
-   Both briefs MUST forbid `--no-verify`, require worktree → PR → merge, and
-   instruct halt-and-report on hook failure.
+   per-repo delegate contexts per the delegation model below (the driver
+   dispatches each as a scoped subagent — NOT a tmux pane; see design.md §8).
+   Briefs point each delegate at its OWN revised plan
+   (`plan/autonomous-mode/handoff.md` in its repo — the review-round findings
+   are baked in; no side-channel content). Both briefs MUST forbid
+   `--no-verify`, require worktree → PR → merge, and instruct halt-and-report
+   on hook failure. Each delegate FILES its propose-change and halts; the
+   DRIVER runs the independent read-only Fable review and dispatches the revise
+   on a NO-BLOCKERS verdict (the review gate is never delegated to the
+   authoring context).
 5. **Gates thereafter:** C2 after C1's MAIN ratification (the I1-gated
    persistence-seam amendment gates C3, not C2 — that keeps C2 concurrent
    with O1→O2); C3 after C1 + C2 + I1; O2 after O1; I2
@@ -155,11 +160,17 @@ builds on it.
    review → revise, co-editing `tests/heading-coverage.json` for any H2 change.
 
 ## Delegation model (design.md §8)
-- Driver: Claude session `autonomous-mode` in tmux pane `livespec-autonomous-mode` (cwd `/data/projects/livespec`).
-- Delegate: session/pane `console-autonomous-mode` (cwd console repo) → C1/C2/C3.
-- Delegate: session/pane `orchestrator-autonomous-mode` (cwd orchestrator repo) → O1/O2.
-- Reviewer: a FRESH Fable session per round (any pane; review-AND-FIX — it
-  lands its own fixes; no continuity with sessions whose fixes it reviews).
+Driver + per-repo delegate contexts; the driver dispatches each delegate as a
+scoped subagent (NOT a tmux pane — that mechanism is retired). Delegate contexts
+are named for their repo so cross-plan status references resolve.
+- Driver: Claude session `autonomous-mode` (cwd `/data/projects/livespec`) — owns
+  the plan, gates, dispatch, synthesis, and the ratification review gate.
+- Delegate `console-autonomous-mode` (cwd console repo) → C1/C2/C3.
+- Delegate `orchestrator-autonomous-mode` (cwd orchestrator repo) → O1/O2.
+- Reviewer: a FRESH Fable session per round for the Step-0 loop (review-AND-FIX —
+  it lands its own fixes; no continuity with sessions whose fixes it reviews).
+  For per-step ratification (C1/O1 etc.), the DRIVER spawns the read-only
+  independent Fable review after a delegate files its propose-change.
 
 ## Ledger items in play (per repo tenant)
 - Core: `livespec-bvuy4w` — this thread's epic anchor (driver filed it
