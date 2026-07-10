@@ -35,10 +35,13 @@ alone via the read-first chain — no chat history required.
     is not a Phase-1 bucket), the footgun per-copy disposition, the driver/console
     wiring prerequisite, factory-safety routing, and the per-repo slice table. It
     supersedes the ordering in `phase1-inventory.md`.
-  - **`plan/fleet-check-coverage/research/wrapper-shape-conflict.md` — READ FIRST for the
-    CURRENT top priority.** The `all_declared`×`wrapper_shape` conflict the first factory
-    slice hit, the factory's wrong self-resolution (gate fork), the maintainer decision
-    (exempt `bin/*.py` wrappers from `all_declared`), and the ordered fix-forward sequence.
+  - **`plan/fleet-check-coverage/research/wrapper-shape-conflict.md` — the B1 fork record
+    (fix-forward now COMPLETE + reviewed NO-BLOCKERS, 2026-07-10; PRs #396+#397 merged — see
+    Progress log).** The `all_declared`×`wrapper_shape` conflict the first factory slice hit,
+    the factory's wrong self-resolution (gate fork), the maintainer decision (exempt
+    `bin/*.py` wrappers from `all_declared`), and the ordered fix-forward sequence. **The
+    CURRENT top priority is now step 4 in "The next action": accept `bd-ib-1ka` (needs
+    merge-evidence reconstruction), then dispatch its B/C/D chain + re-dispatch core-A.**
 - **The FOUNDATION primitive is already LANDED** (see Progress log). It lives in
   `livespec-dev-tooling`'s `livespec_dev_tooling/config.py`, released in
   **v0.34.1**, and is the substrate the Phase-0 reroute sequence built on:
@@ -564,6 +567,60 @@ clone before reading its `origin/master` for cross-repo state.**
     `livespec-orchestrator-git-jsonl` #222 (drivers/console fan out on the same mechanism).
     The orchestrator is now pinned v0.35.3, so its bin wrappers are exempt from all_declared —
     the fork-revert (next action) will pass its acceptance test.
+- **2026-07-10 (this session) — ORCHESTRATOR FORK-REVERT FIX-FORWARD LANDED + reviewed
+  NO-BLOCKERS; a pre-existing master red fixed en route.** Executed step 3 end-to-end.
+  (Process note: the maintainer flagged mid-session that this scoped mechanical fix-forward
+  should have been dispatched to a briefed sub-agent, not hand-driven inline in the overseer;
+  the work was already authored+verified green so it was pushed rather than re-done, and the
+  REMAINING dispatch work is to be delegated. Carry this discipline: even host-side
+  non-factory fixes are authored via scoped worktree agents under review, not inline.)
+  - **PR #396 (fabro-pin, pre-existing master red — fixed first).** The v0.35.3 bump-pin
+    fan-out (`ea45dde`) rewrote `pyproject.toml` but NOT the Fabro sandbox image tag in
+    `.claude-plugin/.fabro/workflows/implement-work-item/workflow.toml`, so
+    `check-fabro-sandbox-image-pin-freshness` was RED on the orch master's pre-push/local
+    `just check` aggregate (CI's per-target matrix does NOT run that check, so master CI
+    stayed green while the aggregate was red — ANY push in the repo was blocked). Bumped the
+    tag v0.35.2→v0.35.3 (GHCR image verified present, HTTP 200). `chore(deps):` config-only,
+    no TDD ritual. Merged → `ee42f9e`. **Root cause = a bump-pin composite-action gap**
+    (updates pyproject but not workflow.toml sandbox tag); filed as a host-side dev-tooling
+    follow-up NOTE on `livespec-iily` (teach bump-pin to rewrite the workflow.toml image tag
+    in lockstep, same class as PR #296). Any repo carrying a Fabro workflow.toml is affected.
+  - **PR #397 (the B1 fork revert).** Deleted `dev-tooling/checks/wrapper-shape-compat.sh`,
+    restored `justfile:960` `check-wrapper-shape` to the shared pinned module, and stripped
+    `__all__` from the 10 `bin/*.py` WRAPPERS (restored from `6ee0118~1`; `_bootstrap.py`
+    KEPT its `__all__`, and the ~20 non-bin `__all__` adds from `6ee0118` were left intact).
+    Added a regression test `test_check_wrapper_shape_uses_strict_shared_gate` (asserts fork
+    shim absent + recipe invokes the shared module + `wrapper_shape.main()==0`). Red→Green
+    replay ritual (single commit, both trailer sets; genuine Red on master where the fork
+    shim exists). Mutation-probed: `raise SystemExit(1)` in a wrapper is REJECTED again by the
+    restored shared gate. Full `just check` = all 57 targets pass. Merged → `a8a69f0` (release
+    0.13.11).
+  - **Independent Fable review of `a148956`/`a8a69f0`: NO-BLOCKERS** (all 7 dimensions
+    reproduced in a throwaway worktree — fork fully gone incl. no dangling ref; exactly the 10
+    wrappers stripped + `_bootstrap.py` retained + no over-revert; strict gate restored, both
+    fork-weaknesses provably gone via `SystemExit(1)` + `__all__` mutations; all_declared exit
+    0 ZERO newly_covered wrappers-exempt-not-warned; regression test genuinely guards; no
+    escape hatch; `just check` 57/57). One non-blocking note: test assertion (b) is a
+    whole-file substring check (a commented module ref could slip past) — assertion (c) still
+    catches any real weakening, no action needed.
+  - **Housekeeping DONE:** both merged worktrees reaped, local branches deleted, orch primary
+    fast-forwarded to `origin/master` (`326f81e`, release 0.13.11). The orch primary still
+    carries an unrelated uncommitted `orchestrator-image/real-work-dispatch.sh` change (NOT
+    ours — preserved untouched across the ff-only pull).
+  - **⚠ bd-ib-1ka ACCEPTANCE — merge-evidence reconstruction REQUIRED (discovered this
+    session).** The slice is now clean (fork reverted; Fable re-confirmed all_declared 0 /
+    green on current master; earlier WARN delta keyword_only 29→0 / all_declared 26→0 /
+    private_calls 1→0 holds). BUT it is stuck `active` (driver died post-merge) with NO merge
+    evidence. The `accept:` valve requires `acceptance` state AND does NOT itself record merge
+    evidence; the `work_item_merge_evidence` static check REQUIRES every `done`/closed
+    non-epic item to carry a non-empty `merge_sha` that (a) `git cat-file -e` resolves locally
+    and (b) is `git merge-base --is-ancestor` of `origin/master`. bd-ib-1ka's WORK merged as
+    PR #391 = `6ee0118` (ancestor of orch origin/master). So reconciling it to `done` MUST
+    record merge_sha `6ee0118` + an `AuditRecord` (not just flip status) or the
+    merge-evidence gate fails. Find the store API that writes the impl-resolution AuditRecord
+    (`store.py` `resolution`/`merge_sha`⇄beads mapping) — a bare `update_work_item_status`
+    to `done` is INSUFFICIENT. Journal "PR #391/6ee0118 reconciled; fork reverted; review
+    NO-BLOCKERS; WARN delta 0" on accept.
 
 ## The next action
 
@@ -582,35 +639,38 @@ clone before reading its `origin/master` for cross-repo state.**
 > action, so it is the reviewed **Phase-2** flip. Do NOT groom a "partition-config
 > first" slice; partition WARN resolves at the flip.
 >
-> **TOP PRIORITY — execute the wrapper-conflict fix-forward (see
-> `research/wrapper-shape-conflict.md` for the full record). In strict order:**
+> **✅ TOP-PRIORITY WRAPPER-CONFLICT FIX-FORWARD IS FULLY DONE + REVIEWED (2026-07-10, see
+> Progress log). Steps 1-3 complete.** The IMMEDIATE next action is now **step 4** (accept
+> `bd-ib-1ka`), which needs merge-evidence reconstruction — read the ⚠ note below carefully.
 > 1. **✅ DONE — dev-tooling `all_declared` wrapper-exemption** → v0.35.3 (PR #302 / `0cd2145`),
 >    independent Fable review NO-BLOCKERS. (See Progress log.)
 > 2. **✅ DONE (auto) — fan-out** → consumers pinned v0.35.3 (livespec #997, orch #394,
 >    runtime #160, git-jsonl #222). Orchestrator now exempts bin wrappers from all_declared.
-> **→ IMMEDIATE NEXT ACTION is step 3.**
-> 3. **[IMMEDIATE] Fix-forward the orchestrator fork** (`livespec-orchestrator-beads-fabro`): a
->    NEW commit that (a) DELETES `dev-tooling/checks/wrapper-shape-compat.sh`; (b) restores the
->    `justfile:960` `check-wrapper-shape` recipe to the shared pinned check — see the pre-fork
->    form via `git show 6ee0118 -- justfile` (revert that hunk); (c) STRIPS `__all__` from the
->    ACTUAL wrapper scripts ONLY. ⚠ Do NOT strip `__all__` from `.claude-plugin/scripts/bin/_bootstrap.py`
->    — it is NOT a wrapper (wrapper_shape exempts it) so it is NOT exempt from all_declared and
->    MUST keep its `__all__ = ["bootstrap"]`. The `6ee0118` diff added `__all__` to `_bootstrap.py`
->    (keep) + the wrapper scripts (strip). ⚠ WORKING-STATE: the orch PRIMARY checkout is behind
->    origin AND carries an unrelated uncommitted `orchestrator-image/real-work-dispatch.sh` change
->    (NOT ours) — do NOT touch/reset it; do all work in a worktree cut from `origin/master`.
->    Verify: `tests/test_phase1_mechanical_coverage.py` still passes (wrappers now exempt via
->    v0.35.3), the shared `wrapper_shape` check is back in `just check`, the weakened-gate
->    regression is gone (`raise SystemExit(1)` in a wrapper is rejected again), and full
->    `just check` green. Fix-forward (auto-merge repo — never force-update the merged PR); then
->    independently review the merged commit. TDD note: stripping `__all__` from wrappers is a
->    product-.py edit — the red_green_replay hook may demand the ritual; the existing
->    `test_phase1_mechanical_coverage.py` is the behavioral anchor. If the hook blocks on a
->    pure-revert, halt and reason it through (it is a behavior-neutral revert of a mechanical add).
-> 4. **Accept `bd-ib-1ka`** (now clean). Its ledger item is stuck `active` with NO recorded
->    merge_sha (driver died post-merge) — the `accept:` valve needs `acceptance` state, so
->    reconcile it directly (store writer → `done`, or move to `acceptance` then `accept:`),
->    journaling "PR #391/`6ee0118` reconciled; fork reverted; review NO-BLOCKERS; WARN delta 0."
+> 3. **✅ DONE — orchestrator fork revert** → PR #397 merged `a8a69f0` (release 0.13.11);
+>    independent Fable review NO-BLOCKERS. Fork shim deleted, justfile recipe restored to the
+>    shared module, 10 wrappers stripped (+ `_bootstrap.py` kept), regression test added via
+>    Red→Green. Pre-existing master red also fixed first: **PR #396** bumped the stale Fabro
+>    sandbox image pin v0.35.2→v0.35.3 (merged `ee42f9e`). Both worktrees reaped; orch primary
+>    at `326f81e`. (See Progress log for the full record + the bump-pin follow-up on `livespec-iily`.)
+> **→ IMMEDIATE NEXT ACTION is step 4.**
+> 4. **[IMMEDIATE] Accept `bd-ib-1ka`** (slice now clean — fork reverted, Fable re-confirmed
+>    all_declared 0 / green on current orch master; WARN delta keyword_only 29→0 /
+>    all_declared 26→0 / private_calls 1→0). ⚠ It is stuck `active` (driver died post-merge)
+>    with NO merge evidence. **Merge-evidence reconstruction is REQUIRED — a bare status flip
+>    to `done` FAILS the `work_item_merge_evidence` static check.** That check requires every
+>    closed non-epic item to carry a non-empty `merge_sha` that `git cat-file -e` resolves
+>    locally AND is `git merge-base --is-ancestor` of `origin/master`. bd-ib-1ka's work merged
+>    as PR #391 = `6ee0118` (an ancestor of orch `origin/master`). The `accept:` valve
+>    (`drive.py::_accept_item`) requires `acceptance` state AND does NOT record merge evidence
+>    itself — normal items get it recorded at the active→acceptance transition by the sandbox
+>    (which died here). So: find the store-writer API that writes the impl-resolution
+>    `AuditRecord` + `merge_sha` (see `store.py` `resolution`/`merge_sha`⇄beads-field mapping,
+>    and `work_item_state_invariants.py`/`work_item_merge_evidence.py` for the required shape),
+>    record merge_sha `6ee0118`, set `done`, and journal "PR #391/`6ee0118` reconciled; fork
+>    reverted; review NO-BLOCKERS; WARN delta 0." Verify with the dev-tooling checks
+>    (`work_item_merge_evidence`, `work_item_state_invariants`) before moving on. (Prefer
+>    dispatching this reconciliation authoring to a scoped agent per the process note above,
+>    but it is careful single-write ledger work, so inline-with-review is also fine.)
 >    THEN dispatch the chained B/C/D (`bd-ib-jnf`→`bd-ib-dpj`→`bd-ib-ll0`; `approve:<id>` each as
 >    its blocker closes).
 > 5. **Re-dispatch core-A `livespec-2j46re`** (parked in `backlog`): set `ready`, then
