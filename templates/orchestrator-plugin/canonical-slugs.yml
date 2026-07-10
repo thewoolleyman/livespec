@@ -15,6 +15,7 @@
 - check-all-declared
 - check-assert-never-exhaustiveness
 - check-branch-protection-alignment
+- check-canonical-recipe-fidelity
 - check-check-coverage-incremental
 - check-check-mutation
 - check-check-tools
