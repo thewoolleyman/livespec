@@ -457,6 +457,31 @@ clone before reading its `origin/master` for cross-repo state.**
     cross_repo path exists for exactly this); (2) scoped-agent per-repo dispatch
     reading the spec from the hub; (3) a factory cross-repo-tenant enhancement.
     RECOMMEND (1). Until decided, do NOT dispatch sibling-repo slices.
+- **2026-07-10 — DISPATCH-MODEL DECIDED: re-tenant sibling slices into per-repo
+  tenants (maintainer chose option 1).** Each sibling repo's factory slices must be
+  filed in THAT repo's OWN beads tenant (the hub epic `livespec-i5ebqd` stays as
+  cross-tenant rollup, membership narrated). The maintainer's choice authorizes the
+  cross-tenant writes. **Confirmed sibling tenant prefixes** (reachable via the fleet
+  wrapper, `cd /data/projects/<repo>` then `bd`): orchestrator **`bd-ib`**, runtime
+  **`livespec-runtime`**, git-jsonl **`bd-gj`**, driver-claude
+  **`livespec-driver-claude`**, console **`livespec-console-beads-fabro`**,
+  driver-codex prefix UNSET (empty tenant — set on first create). CORE slices stay in
+  the hub tenant (work-repo == hub = correct).
+  - **⚠ CLEANUP OWED:** the 4 orchestrator slices I filed via `groom` are in the
+    WRONG (hub) tenant: `livespec-y4f7hp` / `livespec-tlvsn4` / `livespec-my2s7k` /
+    `livespec-umabdn`. Re-file their equivalents into the **`bd-ib`** tenant
+    (`cd /data/projects/livespec-orchestrator-beads-fabro`; preserve the A→B→C→D
+    chain + scope/acceptance from the Progress log above / grooming §5), THEN CLOSE
+    the 4 hub copies with a "re-tenanted to <bd-ib id>" note. `livespec-236f` is
+    already regroomed-out (hub) — do NOT try to re-groom it; file the bd-ib slices
+    fresh (bd create with chain deps, or the capture-work-item/append_work_item path
+    run with cwd=orchestrator). Do NOT dispatch the hub-tenant orchestrator copies.
+  - **Re-tenant procedure (per sibling repo):** run the filing with
+    `cwd=/data/projects/<repo>` so `resolve_store_config` picks THAT tenant; narrate
+    epic membership (no cross-tenant `depends_on` to the hub epic); keep intra-repo
+    chain deps within the tenant. Core (`livespec-2j46re`/`7jcdfk`/`txn2bq`) needs NO
+    re-tenant. dev-tooling (`livespec-iily`) is host-side (not factory) — may stay a
+    hub tracking item.
 
 ## The next action
 
@@ -475,12 +500,22 @@ clone before reading its `origin/master` for cross-repo state.**
 > action, so it is the reviewed **Phase-2** flip. Do NOT groom a "partition-config
 > first" slice; partition WARN resolves at the flip.
 >
-> **⚠ FIRST resolve the DISPATCH-MODEL blocker (Progress log 2026-07-10).** Sibling-
-> repo factory slices are filed in the livespec HUB tenant but `drive` builds from
-> the `--repo`'s OWN tenant — so they can't be dispatched as-filed. RECOMMEND: re-file
-> each sibling repo's factory slices into THAT repo's own beads tenant (the
-> `file_approved_slices` cross_repo path), leaving the hub epic as rollup. Until this
-> is decided, only CORE slices are dispatchable.
+> **DISPATCH-MODEL DECIDED (Progress log 2026-07-10): re-tenant sibling slices into
+> per-repo tenants.** Concrete next steps, in order:
+> 1. **Dispatch CORE now** (cleanly dispatchable, work-repo == hub tenant):
+>    `drive --action impl:livespec-2j46re --repo /data/projects/livespec` (9bym-A
+>    mechanical), then 9bym-B `livespec-7jcdfk` → 9bym-C `livespec-txn2bq`. This
+>    validates the factory flow while re-tenanting proceeds.
+> 2. **Re-tenant the orchestrator slices** (CLEANUP OWED — Progress log): re-file the
+>    A→B→C→D chain into the **`bd-ib`** tenant (`cwd=/data/projects/livespec-orchestrator-beads-fabro`),
+>    then CLOSE the 4 hub copies (`y4f7hp`/`tlvsn4`/`my2s7k`/`umabdn`). Dispatch the
+>    bd-ib mechanical slice.
+> 3. **Groom + re-tenant** runtime (`livespec-8x7d`→tenant `livespec-runtime`) and
+>    git-jsonl (`livespec-t4e0`→tenant `bd-gj`): split each into mechanical + file_lloc
+>    slices (same pattern), file into their tenants, dispatch.
+> 4. **Drivers + console** (`gqte`/`v74p`/`q7bx`): Slice0 = wire full suite (DECIDED),
+>    re-tenant into `livespec-driver-claude` (claude) / driver-codex tenant (prefix
+>    UNSET — set on first create) / `livespec-console-beads-fabro`, then fix + flip.
 >
 > **The big tracks are GROOMED** (both regroomed-out into ready layered slices —
 > Progress log 2026-07-10 has every id). Ready NOW:
