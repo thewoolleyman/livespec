@@ -427,6 +427,36 @@ clone before reading its `origin/master` for cross-repo state.**
     `livespec-gqte`, `livespec-v74p`, and a NEW console track **`livespec-q7bx`**
     (console = wire + verify empty-universe no-op flip). All 8 in-scope repos are
     now tracked and UNBLOCKED. Next action: DISPATCH (below).
+- **2026-07-10 — the two BIG tracks GROOMED into ready layered factory slices; a
+  DISPATCH-MODEL blocker surfaced.** Ran the `groom` operation on both (set to
+  `backlog` first; both now CLOSED / regroomed-out):
+  - **Orchestrator `livespec-236f` → 4 chained slices** (by check-family, layered
+    A→B→C→D by `dispatcher.py`/`_dispatcher_*` file overlap): **`livespec-y4f7hp`**
+    236f-A mechanical (keyword_only 29 + all_declared 26 + private_calls 1) — READY;
+    **`livespec-tlvsn4`** 236f-B no_write_direct (69→io/); **`livespec-my2s7k`**
+    236f-C structural (no_inheritance 4 + main_guard 2 + no_lloc_soft 3);
+    **`livespec-umabdn`** 236f-D file_lloc (16 split/exempt, dispatcher.py 1586 the
+    tentpole, highest review). B/C/D gated behind their blocker.
+  - **Core `livespec-9bym` → 3 chained slices:** **`livespec-2j46re`** 9bym-A
+    mechanical (all_declared 17 + keyword_only 8 incl footgun + global_writes 1) —
+    READY; **`livespec-7jcdfk`** 9bym-B no_write_direct (10→io/); **`livespec-txn2bq`**
+    9bym-C no_lloc_soft (10 band). Partition (120) + role-flip stay host-side Phase-2.
+  - **⚠ DISPATCH-MODEL BLOCKER (cross-repo/tenant — do NOT guess):** `drive
+    --action impl:<id>` resolves the work-item from the `--repo`'s OWN beads tenant
+    (`resolve_store_config(cwd=repo)`) and builds THERE. But every sibling repo has
+    its OWN per-repo Dolt tenant, and ALL this thread's tracks/slices were filed in
+    the **livespec HUB tenant** (matching how the original 8 tracks were filed). So a
+    hub-tenant slice whose WORK is in a sibling repo (orchestrator/runtime/git-jsonl/
+    drivers) canNOT be cleanly factory-dispatched: `--repo=livespec` would build in
+    the WRONG repo; `--repo=<sibling>` can't find the hub-tenant item. **Only CORE
+    slices (work-repo == hub tenant, e.g. `livespec-2j46re`) dispatch cleanly
+    as-filed.** This is a genuine architectural question about the thread's
+    dispatch/tenanting model — surfaced to the maintainer, NOT self-resolved. Options
+    under consideration: (1) re-file each sibling repo's factory slices into THAT
+    repo's own tenant (the factory's per-repo model; the `file_approved_slices`
+    cross_repo path exists for exactly this); (2) scoped-agent per-repo dispatch
+    reading the spec from the hub; (3) a factory cross-repo-tenant enhancement.
+    RECOMMEND (1). Until decided, do NOT dispatch sibling-repo slices.
 
 ## The next action
 
@@ -445,21 +475,28 @@ clone before reading its `origin/master` for cross-repo state.**
 > action, so it is the reviewed **Phase-2** flip. Do NOT groom a "partition-config
 > first" slice; partition WARN resolves at the flip.
 >
-> **DISPATCH the 5 wired factory-safe code-fix tracks in parallel** through the
-> Dispatcher / `drive` under the janitor gate:
-> - `livespec-236f` orchestrator (156) — sub-slice by check-family: S1 no_write(69),
->   S2 keyword_only+all_declared+no_inh+priv+main_guard, S3 file_lloc splits
->   (dispatcher.py 1586 the split-vs-exempt tentpole).
-> - `livespec-8x7d` runtime (53), `livespec-t4e0` git-jsonl (37) — one code-fix
->   slice each.
-> - `livespec-9bym` core (166): its CODE fixes (46 non-partition) are factory-safe;
->   ONLY core's role-declaration flip is host-side.
+> **⚠ FIRST resolve the DISPATCH-MODEL blocker (Progress log 2026-07-10).** Sibling-
+> repo factory slices are filed in the livespec HUB tenant but `drive` builds from
+> the `--repo`'s OWN tenant — so they can't be dispatched as-filed. RECOMMEND: re-file
+> each sibling repo's factory slices into THAT repo's own beads tenant (the
+> `file_approved_slices` cross_repo path), leaving the hub epic as rollup. Until this
+> is decided, only CORE slices are dispatchable.
+>
+> **The big tracks are GROOMED** (both regroomed-out into ready layered slices —
+> Progress log 2026-07-10 has every id). Ready NOW:
+> - **`livespec-2j46re`** (9bym-A core mechanical) — CLEANLY DISPATCHABLE (work-repo
+>   == hub tenant): `drive --action impl:livespec-2j46re --repo /data/projects/livespec`.
+>   Then 9bym-B `livespec-7jcdfk` → 9bym-C `livespec-txn2bq`.
+> - **`livespec-y4f7hp`** (236f-A orchestrator mechanical) READY but BLOCKED on the
+>   dispatch-model decision (sibling tenant). Then B/C/D (`tlvsn4`/`my2s7k`/`umabdn`).
+> - `livespec-8x7d` runtime (53), `livespec-t4e0` git-jsonl (37) — still COARSE
+>   single tracks (mechanical + a little file_lloc mixed); groom each into
+>   mechanical + file_lloc slices before dispatch (same pattern), and re-tenant.
 > Re-measure each sandbox against the current pin with the dev-tooling venv python
-> (NEVER a repo's own stale venv — see grooming note / phase1-inventory caveat).
-> Each slice PR: green `just check` + independent adversarial NO-BLOCKERS review of
-> the merged commit before acceptance (auto-merge repos: land→review→fix-forward).
-> Do NOT `depends_on`-link any child to the OPEN epic (perpetual block via
-> `lifecycle._entry_blocks`) — narrate epic membership.
+> (NEVER a repo's own stale venv). NOTE: because newly_covered diagnostics are WARN
+> (exit 0), green `just check` does NOT prove the WARN dropped — acceptance MUST
+> measure the WARN delta. Each slice PR: green `just check` + independent adversarial
+> NO-BLOCKERS review before acceptance (auto-merge repos: land→review→fix-forward).
 >
 > **HOST-SIDE maintainer-driven (NOT factory):** `livespec-iily` dev-tooling (40)
 > AND the file_lloc flip-mechanism follow-up (make its legacy tree config-driven so
