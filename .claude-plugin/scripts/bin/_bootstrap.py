@@ -12,6 +12,7 @@ the vendor path, the livespec package, or any command code is loaded.
 import os
 import sys
 from pathlib import Path
+from typing import TextIO
 
 _EXIT_CODE_VERSION_MISMATCH = 127
 _EXIT_CODE_STALE_PLUGIN = 78
@@ -22,7 +23,10 @@ __all__: list[str] = ["bootstrap"]
 
 def bootstrap() -> None:
     if sys.version_info < (3, 10):
-        _ = sys.stderr.write("livespec requires Python 3.10+; install via your package manager.\n")
+        _ = _write_stream(
+            stream=sys.stderr,
+            text="livespec requires Python 3.10+; install via your package manager.\n",
+        )
         raise SystemExit(_EXIT_CODE_VERSION_MISMATCH)
     bundle_scripts = Path(__file__).resolve().parent.parent
     _insert_sys_path(entry=bundle_scripts)
@@ -30,11 +34,15 @@ def bootstrap() -> None:
 
     verdict = verify_currency()
     if verdict.message is not None:
-        _ = sys.stderr.write(verdict.message)
+        _ = _write_stream(stream=sys.stderr, text=verdict.message)
     gate_fail = os.environ.get("LIVESPEC_CURRENCY_GATE") == _CURRENCY_GATE_FAIL
     if verdict.hard_fail or (verdict.gate_sensitive and gate_fail):
         raise SystemExit(_EXIT_CODE_STALE_PLUGIN)
     _insert_sys_path(entry=bundle_scripts / "_vendor")
+
+
+def _write_stream(*, stream: TextIO, text: str) -> int:
+    return stream.write(text)
 
 
 def _insert_sys_path(*, entry: Path) -> None:

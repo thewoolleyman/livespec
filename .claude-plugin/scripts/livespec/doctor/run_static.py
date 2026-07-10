@@ -56,7 +56,7 @@ from typing_extensions import assert_never
 from livespec.context import DoctorContext
 from livespec.doctor.static import APPLICABILITY_BY_TREE_KIND, TreeKind
 from livespec.errors import LivespecError
-from livespec.io import cli
+from livespec.io import cli, streams
 from livespec.schemas.dataclasses.finding import Finding
 from livespec.types import SpecRoot
 
@@ -128,7 +128,7 @@ def _emit_findings_json(*, findings: list[Finding]) -> None:
     dataclasses.asdict.
     """
     payload = {"findings": [dataclasses.asdict(finding) for finding in findings]}
-    _ = sys.stdout.write(json.dumps(payload) + "\n")
+    _ = streams.write_stdout(text=json.dumps(payload) + "\n")
 
 
 def _derive_exit_code(*, findings: list[Finding]) -> int:

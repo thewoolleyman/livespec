@@ -52,7 +52,7 @@ from typing_extensions import assert_never
 
 from livespec import templates
 from livespec.errors import LivespecError, PreconditionError
-from livespec.io import cli
+from livespec.io import cli, streams
 
 __all__: list[str] = ["build_parser", "main"]
 
@@ -125,7 +125,7 @@ def _emit_resolved_path(*, path: Path) -> IOResult[Path, LivespecError]:
     """Emit the resolved path on stdout per the v1-frozen contract.:
     exactly one line, absolute POSIX path, trailing `\\n`.
     """
-    _ = sys.stdout.write(f"{path}\n")
+    _ = streams.write_stdout(text=f"{path}\n")
     return IOSuccess(path)
 
 

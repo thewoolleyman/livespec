@@ -71,7 +71,7 @@ from livespec.commands._next_ranking import (
     _threshold_from_config_text,
 )
 from livespec.errors import LivespecError, PreconditionError, UsageError, ValidationError
-from livespec.io import cli, fs
+from livespec.io import cli, fs, streams
 from livespec.parse import front_matter, jsonc
 from livespec.schemas.dataclasses.next_output import NextCandidate, NextOutput
 from livespec.validate import next_output as validate_next_output_module
@@ -379,7 +379,7 @@ def _rank_pipeline(
 
 def _emit_payload(*, payload: str) -> IOResult[str, LivespecError]:
     """Write the JSON payload + newline to stdout per the wire contract."""
-    _ = sys.stdout.write(f"{payload}\n")
+    _ = streams.write_stdout(text=f"{payload}\n")
     return IOSuccess(payload)
 
 

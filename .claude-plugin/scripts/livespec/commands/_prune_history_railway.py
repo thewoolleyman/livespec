@@ -38,7 +38,7 @@ from returns.io import IOResult
 from returns.result import Success, safe
 
 from livespec.errors import LivespecError, PreconditionError
-from livespec.io import fs, proc
+from livespec.io import fs, proc, streams
 from livespec.parse import jsonc
 
 __all__: list[str] = [
@@ -172,7 +172,7 @@ def _emit_pruned_finding(*, first: int, last: int) -> None:
             },
         ],
     }
-    _ = sys.stdout.write(json.dumps(payload) + "\n")
+    _ = streams.write_stdout(text=json.dumps(payload) + "\n")
 
 
 def _emit_no_op_finding(*, message: str) -> None:
@@ -196,7 +196,7 @@ def _emit_no_op_finding(*, message: str) -> None:
             },
         ],
     }
-    _ = sys.stdout.write(json.dumps(payload) + "\n")
+    _ = streams.write_stdout(text=json.dumps(payload) + "\n")
 
 
 def _emit_pre_step_skipped_finding() -> None:
@@ -222,7 +222,7 @@ def _emit_pre_step_skipped_finding() -> None:
             },
         ],
     }
-    _ = sys.stdout.write(json.dumps(payload) + "\n")
+    _ = streams.write_stdout(text=json.dumps(payload) + "\n")
 
 
 def _resolve_skip_from_config_text(*, text: str) -> bool:
@@ -323,7 +323,7 @@ def _fold_pre_step_doctor_completed_process(
                 f"pre-step doctor reported {fail_count} fail-status finding(s)",
             ),
         )
-    _ = sys.stdout.write(completed.stdout)
+    _ = streams.write_stdout(text=completed.stdout)
     return IOResult.from_value(None)
 
 
