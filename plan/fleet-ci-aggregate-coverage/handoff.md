@@ -10,6 +10,41 @@ fleet-wide 2026-07-10** (livespec-dev-tooling v0.37.0; pre-req
 (per-repo data in "Slice 5 grooming" below — pending execution); slice 6
 (codify) remains. See "Progress" below.
 
+## Next session — START HERE
+
+Slices `livespec-y9lb` + 1 are DONE and live-exercised fleet-wide
+(livespec-dev-tooling v0.37.0; 7/7 consumer bump PRs merged green).
+Remaining epic work, **in dependency order**:
+
+1. **FIRST — fix `livespec-dev-tooling-o6b`** (P2 bug, dev-tooling tenant):
+   the shipped drift-guard's assertion (b) UNDER-ENFORCES. It requires
+   `ci-green.needs` to cover only CANONICAL-check jobs, so dedicated
+   non-canonical gating jobs (`e2e-cli`, `acceptance`, `check-doctor-static`)
+   are NEVER required in `ci-green.needs`. A repo could require only
+   `ci-green`, pass this guard with those jobs omitted, and still merge a
+   red `e2e-cli`/`acceptance`/`doctor-static`. This MUST land BEFORE slice 5
+   arms any repo's guard to fail (`LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST`),
+   or armed-(b) gives false confidence. Full fix design + acceptance are on
+   the work-item (broaden (b)'s check-bearing to "runs any `just <target>`",
+   keeping (a) canonical-scoped).
+2. **Slice 5 — wire the 5 large-track repos** (see "Slice 5 grooming" below
+   for each repo's canonical gap + target `ci-green.needs` recipe). The five
+   are independent (no shared files) → parallelizable. Each: complete the
+   matrix, add `ci-green`, arm the guard, flip branch protection. File
+   per-repo work-items in each repo's OWN tenant first (epic
+   `livespec-cf4bcu` is the cross-tenant hub). **When authoring each
+   `ci-green.needs`, include the matrix job + EVERY dedicated check/test job
+   (incl. `e2e-cli`/`acceptance`/`check-doctor-static`) manually** — until
+   o6b lands, the guard will not catch omissions of the non-canonical ones.
+3. **Slice 6 — codify** the single-all-green-gate-job rule as a fleet
+   contract (propose-change → revise on the relevant NFR), coordinating with
+   livespec-runtime PR #161's clause alignment.
+
+Discipline notes: `check-ci-matrix-completeness` is warn-default fleet-wide
+today. Every CI-config edit is maintainer-side (the fleet App lacks
+`workflows` permission) — worktree → PR, `chore(ci):`, never the factory.
+Fetch each repo's real `ci.yml` — job sets are non-uniform.
+
 ## Progress (2026-07-10)
 
 | Slice | Repo | State | PR / evidence |
@@ -20,7 +55,8 @@ fleet-wide 2026-07-10** (livespec-dev-tooling v0.37.0; pre-req
 | 4. Quick win | livespec-driver-codex | ✅ DONE | PR #95 merged; matrix += `check-plugin-resolution`; `ci-green` added + required; `ci-green.needs = [check, check-doctor-static, red-green-replay]` |
 | Pre-req: bump-pin re-stamp | livespec-dev-tooling (`livespec-y9lb`) | ✅ DONE + live-exercised | PR #312 merged; core bump #1019 re-stamped `canonical-slugs.yml` atomically, stayed green |
 | 1. Drift-guard impl | livespec-dev-tooling (`livespec-dev-tooling-f13`) | ✅ DONE + live-exercised | PR #313 merged, released **v0.37.0**; `check-ci-matrix-completeness` warn-default; 6/7 fleet bump PRs auto-merged green (console pending slow Rust checks) |
-| 5. Large tracks | runtime, core, orch-beads-fabro, orch-git-jsonl, dev-tooling | 🟨 GROOMED (see below) | per-repo gap + `ci-green.needs` recipe computed 2026-07-10; execution pending |
+| 1b. Drift-guard (b) fix | livespec-dev-tooling (`livespec-dev-tooling-o6b`) | ⬜ filed (P2) | (b) under-enforces: non-canonical gating jobs (`e2e-cli`/`acceptance`/`check-doctor-static`) not required in `ci-green.needs`. **Land BEFORE arming slice 5.** |
+| 5. Large tracks | runtime, core, orch-beads-fabro, orch-git-jsonl, dev-tooling | 🟨 GROOMED (see below) | per-repo gap + `ci-green.needs` recipe computed 2026-07-10; execution pending (author `ci-green.needs` to include ALL gating jobs manually until o6b lands) |
 | 6. Codify rule | fleet NFR | ⬜ not started | coordinate w/ runtime PR #161 |
 
 **Validated on driver-claude:** `ci-green` runs, passes, correctly
@@ -401,23 +437,41 @@ five can run in parallel once approved. Each is one maintainer-driven
 worktree → PR (CI-config + no product `.py`, so `chore(ci):`, no
 red-green-replay).
 
-### Finding surfaced during grooming — drift-guard (b) scoping edge
+### Finding surfaced during grooming — drift-guard (b) under-enforces → `livespec-dev-tooling-o6b` (P2)
+
+**FILED as `livespec-dev-tooling-o6b` (P2 bug, dev-tooling tenant). Land it
+BEFORE slice 5 arms any repo's guard.**
 
 The shipped guard defines **check-bearing = "a job contributing ≥1
-*canonical* slug"**. A matrix/job running **only non-canonical** checks
-(`check-lint`/`check-format`/`check-types`/`check-coverage`, or the
-`e2e-cli`/`acceptance` jobs) contributes zero canonical slugs, so
-assertion (b) does **not** require `ci-green.needs` to gate it. Impact is
-**low**: (a) it is warn-default; (b) once slice 5 completes each matrix,
-the `check-python` matrix job runs canonical checks and becomes
-check-bearing, self-resolving the matrix case. **Mitigation (already in
-the recipes above):** author each `ci-green.needs` to include the matrix
-job + **every** dedicated check/test job regardless of the guard's
-canonical-only view. **Optional follow-up:** refine check-bearing to also
-count any job whose `strategy.matrix.target` is a list of `check-*`
-entries (a matrix job runs checks by definition), and/or any job whose
-`run:` invokes `just check-<x>` for a non-canonical `check-` target.
-Filed as a candidate refinement, NOT a blocker.
+*canonical* slug"** (canonical = a `livespec_dev_tooling/checks/` module).
+A job running **only non-canonical** gating commands contributes zero
+canonical slugs, so assertion (b) does **not** require `ci-green.needs` to
+cover it. Real fleet jobs this misses: the orchestrator repos' `e2e-cli`
+(`just e2e-cli`) and `acceptance` jobs, and `check-doctor-static`
+(`just check-doctor-static`) everywhere. Consequence: a repo can require
+only `ci-green`, pass this guard with a `ci-green.needs` omitting those,
+and still merge a RED `e2e-cli`/`acceptance`/`doctor-static` — defeating
+(b)'s purpose.
+
+**Correction to an earlier framing in this handoff:** this is NOT fully
+"self-resolving." It self-resolves ONLY for the `check-python` MATRIX job
+(which becomes check-bearing once slice 5 puts canonical checks in its
+matrix). It does **NOT** self-resolve for the dedicated non-canonical jobs
+(`e2e-cli`/`acceptance`/`check-doctor-static`), which never become
+check-bearing. Impact today is bounded by warn-default, but slice 5 ARMS
+the guard to fail per repo — so fix o6b first, or armed-(b) is false
+confidence.
+
+**Fix (on o6b):** split (a) vs (b) job classification — keep (a)
+canonical-scoped; broaden (b)'s check-bearing to "a job that runs any
+`just <target>` command (or has a `strategy.matrix.target` list)", so
+`e2e-cli`/`acceptance`/`check-doctor-static`/the matrix all count while
+`export-telemetry`/`enable-auto-merge` (which run no `just`) still
+auto-exclude without a hardcoded denylist.
+
+**Interim mitigation (in the slice-5 recipes above):** author each
+`ci-green.needs` to include the matrix job + **every** dedicated
+check/test job manually, regardless of the guard's canonical-only view.
 
 ## Related work
 
