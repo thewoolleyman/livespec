@@ -110,10 +110,6 @@ __all__: list[str] = ["route_drift_outcome", "write_auto_backfill_artifacts"]
 _MakeFinding = Callable[..., Finding]
 
 
-_HISTORY_SUBDIR_NAME: str = "history"
-_PROPOSED_CHANGES_SUBDIR_NAME: str = "proposed_changes"
-
-
 def _show_or_none(
     *,
     ctx: DoctorContext,
@@ -269,13 +265,13 @@ def write_auto_backfill_artifacts(
     proposal_filename = f"{topic}.md"
     revision_filename = f"{topic}-revision.md"
 
-    v_next_dir = ctx.spec_root / _HISTORY_SUBDIR_NAME / next_label
-    v_next_proposed_changes = v_next_dir / _PROPOSED_CHANGES_SUBDIR_NAME
+    v_next_dir = ctx.spec_root / "history" / next_label
+    v_next_proposed_changes = v_next_dir / "proposed_changes"
     proposed_change_path = v_next_proposed_changes / proposal_filename
     revision_path = v_next_proposed_changes / revision_filename
 
     spec_root_repo_rel = ctx.spec_root.relative_to(ctx.project_root)
-    history_repo_rel = spec_root_repo_rel / _HISTORY_SUBDIR_NAME / latest_version_label
+    history_repo_rel = spec_root_repo_rel / "history" / latest_version_label
 
     revision_body = _compose_revision_body(
         proposal_filename=proposal_filename,
@@ -358,8 +354,7 @@ def route_drift_outcome(
         )
     files_csv = ", ".join(diverging_files)
     fail_message = (
-        f"out-of-band edits detected at HEAD against "
-        f"history/{latest_version_label}: {files_csv}"
+        f"out-of-band edits detected at HEAD against history/{latest_version_label}: {files_csv}"
     )
     return write_auto_backfill_artifacts(
         ctx=ctx,

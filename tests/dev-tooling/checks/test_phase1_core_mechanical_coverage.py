@@ -7,7 +7,12 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
-from livespec_dev_tooling.checks import all_declared, global_writes, keyword_only_args
+from livespec_dev_tooling.checks import (
+    all_declared,
+    global_writes,
+    keyword_only_args,
+    no_lloc_soft_warnings,
+)
 
 __all__: list[str] = []
 
@@ -18,6 +23,7 @@ _CHECKS = (
     all_declared,
     keyword_only_args,
     global_writes,
+    no_lloc_soft_warnings,
 )
 
 
