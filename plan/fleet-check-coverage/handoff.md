@@ -784,11 +784,16 @@ clone before reading its `origin/master` for cross-repo state.**
 > `review` node WORKS. Merged as **livespec PR #1037**, merge commit **`150ccfd`**, release
 > 0.7.5, RGR trailers genuine. **WARN delta verified** on master (120-file universe, pinned
 > dev-tooling v0.37.3): all_declared 17→0, keyword_only 8→0, global_writes 1→0.
-> core-A is in **`acceptance`**; an independent Fable adversarial review was spawned
-> (verify honesty/no-evasion + WARN delta). **NEXT on resume: confirm that review NO-BLOCKERS,
-> then `accept:livespec-2j46re`** (via `drive --action accept:livespec-2j46re --repo
-> /data/projects/livespec`), journaling the merged-PR + WARN-delta + review evidence.
-> Then its chain: core B `livespec-7jcdfk` → C `livespec-txn2bq`.
+> core-A is **ACCEPTED → `done`** (accepted via `drive --action accept:`; evidence journaled).
+> Independent Fable adversarial review: **NO-BLOCKERS** (honest fixes verified against detector
+> INTENT; footgun hook differential-tested 30/30; pre-fix parent counts 9/8/1 map 1:1 to
+> touched files; RGR genuine). Two non-blocking notes carried: (a) slice desc said all_declared
+> 17 but parent was 9 (17→9 was the earlier wrapper-exemption) — acceptance (0 newly_covered)
+> holds; (b) two behavior-neutral ride-alongs inside the footgun guard hook → a FACTORY-PROMPT
+> follow-up: tell the implement prompt to avoid opportunistic tidying inside behavior-critical
+> guard hooks (host-side, track with `livespec-iily`/orchestrator). **NEXT on resume: step 4
+> fan-out, starting with core B `livespec-7jcdfk` (`approve:` then `drive impl:`) → C
+> `livespec-txn2bq`, in parallel with the other repos' chains.**
 >
 > **✅ Step 3 — unattended human-gate FIXED + reviewed.** Orchestrator **PR #427** (merged
 > `7d822d8`, release 0.13.15): new `_bounce_blocked` in `dispatcher.py` routes a `blocked`
@@ -804,8 +809,8 @@ clone before reading its `origin/master` for cross-repo state.**
 > 0.13.15**, image **v0.37.3** (verified bwrap+codex), lockstep GREEN. Root fix (teach
 > bump-pin to move the workflow.toml image in lockstep) still on `livespec-iily`, ELEVATED.
 >
-> **⚠ NEW DURABLE FINDING — the WORKFLOW-PUSH-RACE (host-side factory fix; NOT yet filed
-> formally — FILE IT).** core-A's FIRST re-dispatch reached `review`+`pr` but its PR PUSH was
+> **⚠ NEW DURABLE FINDING — the WORKFLOW-PUSH-RACE (host-side factory fix; FILED as a note on
+> `livespec-iily`).** core-A's FIRST re-dispatch reached `review`+`pr` but its PR PUSH was
 > BLOCKED: mid-run, livespec master advanced `0cb0a19→04be668` (the v0.37.3 bump-pin fan-out),
 > which MODIFIED `.github/workflows/bump-pin-from-dispatch.yml` (`@v0.37.2`→`@v0.37.3`). The
 > sandbox's branch (stale clone base) carried the OLD workflow → differs from master on a
