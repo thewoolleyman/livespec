@@ -546,6 +546,24 @@ clone before reading its `origin/master` for cross-repo state.**
   - **[IN FLIGHT at handoff]** dev-tooling `all_declared` wrapper-exemption fix authored via a
     scoped worktree agent (host-side, NOT factory). Reconcile the PR/version from
     dev-tooling's GitHub PRs on resume (`gh pr list` there); do not assume it merged.
+- **2026-07-10 (this session, cont.) — wrapper-exemption LANDED + reviewed; fan-out auto-done.**
+  - **dev-tooling `all_declared` wrapper-exemption:** PR #302 → merged `0cd2145` → released
+    **v0.35.3**. Factored a shared `config.is_bin_wrapper` predicate BOTH `all_declared` and
+    `wrapper_shape` read (single source of truth, no drift); `all_declared` skips only the
+    wrapper set (`_bootstrap.py` retained — it is NOT a wrapper, keeps its `__all__`);
+    `wrapper_shape` left exactly strict. Live-verified: core `all_declared` 17→9 (the 8 wrappers
+    dropped). Full `just check` green, 100% per-file coverage, red_green_replay ritual followed.
+  - **Independent Fable review: NO-BLOCKERS** (all 7 dimensions — single-source, scoped-not-
+    fail-open, wrapper_shape unweakened, delta-WARN, no escape hatch, genuine TDD, predicate
+    correctness). Non-blocking observation to carry (relocate, don't drop): `file_lloc.py`,
+    `tests_mirror_pairing.py`, `red_green_replay.py` still carry their OWN
+    `.claude-plugin/scripts/bin` literals — a future consolidation onto the shared
+    `BIN_WRAPPER_TREE` (host-side dev-tooling `livespec-iily` follow-up, non-urgent).
+  - **Fan-out AUTO-DONE:** v0.35.3 consumer bump PRs already merged — `livespec` #997,
+    `livespec-orchestrator-beads-fabro` #394, `livespec-runtime` #160,
+    `livespec-orchestrator-git-jsonl` #222 (drivers/console fan out on the same mechanism).
+    The orchestrator is now pinned v0.35.3, so its bin wrappers are exempt from all_declared —
+    the fork-revert (next action) will pass its acceptance test.
 
 ## The next action
 
@@ -566,18 +584,29 @@ clone before reading its `origin/master` for cross-repo state.**
 >
 > **TOP PRIORITY — execute the wrapper-conflict fix-forward (see
 > `research/wrapper-shape-conflict.md` for the full record). In strict order:**
-> 1. **[IN FLIGHT] dev-tooling `all_declared` wrapper-exemption.** Reconcile it from
->    dev-tooling's GitHub PRs (`gh -R thewoolleyman/livespec-dev-tooling pr list`): confirm the
->    wrapper-exemption PR merged + note the released version. If it did NOT land (agent halted /
->    CI red), diagnose + re-author (host-side worktree, NOT factory). Then independently review
->    the merged commit (NO-BLOCKERS) — it is the shared enforcement package.
-> 2. **Fan-out** the new dev-tooling release pin to all consumers (bump-pin, auto-merge on green).
-> 3. **Fix-forward the orchestrator fork** (`livespec-orchestrator-beads-fabro`): a NEW commit
->    that DELETES `dev-tooling/checks/wrapper-shape-compat.sh`, restores `justfile:960` to the
->    shared `wrapper_shape` check, and STRIPS `__all__` from the 12 `bin/*.py` wrappers. Verify
->    `tests/test_phase1_mechanical_coverage.py` still passes (wrappers now exempt) AND the
->    weakened-gate regression is gone (`raise SystemExit(1)` in a wrapper is rejected again).
->    Fix-forward (auto-merge repo — never force-update the merged PR).
+> 1. **✅ DONE — dev-tooling `all_declared` wrapper-exemption** → v0.35.3 (PR #302 / `0cd2145`),
+>    independent Fable review NO-BLOCKERS. (See Progress log.)
+> 2. **✅ DONE (auto) — fan-out** → consumers pinned v0.35.3 (livespec #997, orch #394,
+>    runtime #160, git-jsonl #222). Orchestrator now exempts bin wrappers from all_declared.
+> **→ IMMEDIATE NEXT ACTION is step 3.**
+> 3. **[IMMEDIATE] Fix-forward the orchestrator fork** (`livespec-orchestrator-beads-fabro`): a
+>    NEW commit that (a) DELETES `dev-tooling/checks/wrapper-shape-compat.sh`; (b) restores the
+>    `justfile:960` `check-wrapper-shape` recipe to the shared pinned check — see the pre-fork
+>    form via `git show 6ee0118 -- justfile` (revert that hunk); (c) STRIPS `__all__` from the
+>    ACTUAL wrapper scripts ONLY. ⚠ Do NOT strip `__all__` from `.claude-plugin/scripts/bin/_bootstrap.py`
+>    — it is NOT a wrapper (wrapper_shape exempts it) so it is NOT exempt from all_declared and
+>    MUST keep its `__all__ = ["bootstrap"]`. The `6ee0118` diff added `__all__` to `_bootstrap.py`
+>    (keep) + the wrapper scripts (strip). ⚠ WORKING-STATE: the orch PRIMARY checkout is behind
+>    origin AND carries an unrelated uncommitted `orchestrator-image/real-work-dispatch.sh` change
+>    (NOT ours) — do NOT touch/reset it; do all work in a worktree cut from `origin/master`.
+>    Verify: `tests/test_phase1_mechanical_coverage.py` still passes (wrappers now exempt via
+>    v0.35.3), the shared `wrapper_shape` check is back in `just check`, the weakened-gate
+>    regression is gone (`raise SystemExit(1)` in a wrapper is rejected again), and full
+>    `just check` green. Fix-forward (auto-merge repo — never force-update the merged PR); then
+>    independently review the merged commit. TDD note: stripping `__all__` from wrappers is a
+>    product-.py edit — the red_green_replay hook may demand the ritual; the existing
+>    `test_phase1_mechanical_coverage.py` is the behavioral anchor. If the hook blocks on a
+>    pure-revert, halt and reason it through (it is a behavior-neutral revert of a mechanical add).
 > 4. **Accept `bd-ib-1ka`** (now clean). Its ledger item is stuck `active` with NO recorded
 >    merge_sha (driver died post-merge) — the `accept:` valve needs `acceptance` state, so
 >    reconcile it directly (store writer → `done`, or move to `acceptance` then `accept:`),
