@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.6](https://github.com/thewoolleyman/livespec/compare/v0.7.5...v0.7.6) (2026-07-10)
+
+
+### Bug Fixes
+
+* route stream writes through io facade ([8f5d5df](https://github.com/thewoolleyman/livespec/commit/8f5d5df3a1c1f0677af37e353fc3d30016ea3125))
+
 ## [0.7.5](https://github.com/thewoolleyman/livespec/compare/v0.7.4...v0.7.5) (2026-07-10)
 
 
