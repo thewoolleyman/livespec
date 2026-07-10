@@ -1,18 +1,48 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
-**Status: STEP-0 GATE MET (2026-07-10) — the fable-review loop is EXITED;
-C1/O1 dispatch is UNBLOCKED.** Both halves of the double gate are recorded
-in the Loop state below: round 6's fresh-session NOTHING-BLOCKING verdict
-(affirmatively certifying all three plans SOLID, EXECUTABLE, and
-MVP-MEETING) and the maintainer's certification. The loop's rules are kept
-below for the historical record: each round, a FRESH Fable session reviewed
-ALL THREE plans AND FIXED every problem it found — in-session, in the plan
-texts, via worktree → PR → merge; a read-only findings dump was not a valid
-round output (maintainer-corrected 2026-07-10: "the read-only handoff
-instructions were WRONG … FIX ALL THE PROBLEMS WITH ALL THREE OF THE PLANS.
-Not just randomly spew some non-actioned text."); a session that landed
-fixes could not clear the gate (no self-certification) — the clean verdict
-always came from the NEXT fresh session.
+**Status: SPEC FOUNDATIONS RATIFIED (2026-07-10) — Step 0 met; O1 and C1 both
+ratified; the build phase (C2, O2) is NEXT and PAUSED at the maintainer's
+request.** The Step-0 fable-review loop exited (round-6 NOTHING-BLOCKING +
+maintainer certification, in the Loop state below); the driver then dispatched
+O1 and C1 as scoped subagents and drove each through propose-change →
+independent read-only Fable review → revise.
+
+**Ratification record (2026-07-10):**
+- **O1 → orchestrator v033 (RATIFIED).** Two propose-changes (irreducible human
+  touchpoints; arming/audit contract): filed by the delegate (orchestrator
+  PR #415), reconciled by the driver toward a fuller parallel maintainer/Fable
+  draft (folded amendments K/L/O + the Scenario-33 routine qualifier; PR #416),
+  Fable-reviewed NOTHING-BLOCKING, revised accept/accept to v033 (PR #417).
+  **Arming/audit contract FROZEN → overall I1 SATISFIED** → console C3 and
+  orchestrator O2 unblocked. On master: `drive --mode autonomous`=0;
+  `loop --mode autonomous` is the mode surface; the design-human-gated set +
+  `human-only` carve-out + single-persistent-permission key are live.
+- **C1 → console v017 (RATIFIED).** Two propose-changes (citation-currency;
+  autonomous-resolution delegation): filed (console PR #147), Fable-reviewed
+  NOTHING-BLOCKING, revised accept/accept to v017 (PR #149) with a
+  behavioral-coverage lockstep co-edit (process note below). MAIN ratification
+  done; the persistence-seam amendment stays DEFERRED but is now I1-unblocked.
+  `rt4` version pointer refreshed v013→v016.
+- Reaped two stale/absorbed branches: orchestrator
+  `o1-autonomous-mode-touchpoints-arming` (absorbed parallel draft; source at
+  git 1f25529 + driver scratchpad), console `autonomous-mode-c1-spec-currency`
+  (empty stale).
+
+**PROCESS NOTE (carry forward) — console behavioral-coverage co-edit.** The
+console repo's coverage gate binds normative-CLAUSE gap-ids (content-hashes of
+each MUST/SHOULD line) to scenarios — NOT H2 names. ANY console spec revise that
+adds/removes/rewords a normative clause REQUIRES a lockstep co-edit
+(`tests/heading-coverage.json` clause-gap-id rebinding + the
+`crates/console-spec-check/src/tests.rs` ground-truth count refresh) even with
+zero `## ` H2 changes — the console analogue of core's H2 heading-coverage
+co-edit (precedent: console v016 CN1 + v014). Future console propose-changes
+should carry this in their `resulting_files`.
+
+The Step-0 loop rules are kept below for the historical record: each round, a
+FRESH Fable session reviewed ALL THREE plans AND FIXED every problem it found
+(via worktree → PR → merge); a session that landed fixes could not clear the
+gate (no self-certification) — the clean verdict always came from the NEXT fresh
+session.
 
 **Loop state:**
 - Round 1 (2026-07-10, Fable session `livespec-autonomous-mode`): Step-0
@@ -101,63 +131,62 @@ operator.
 
 ## The spine (see design.md §7 for the full step catalogue)
 ```
-Step 0 (fable-review LOOP — HARD GATE, exit = fresh-session nothing-blocking + MAINTAINER certification)
-  status: GATE MET 2026-07-10 — rounds 1-5 landed fixes; round 6 NOTHING-BLOCKING; maintainer certified. C1/O1 dispatch unblocked.
-  ├─ Console track (session console-autonomous-mode):  C1 spec fixes ─► C2 command foundation ─► C3 autonomous feature
-  └─ Orchestrator track (session orchestrator-autonomous-mode): O1 spec fixes + publish arming contract ─► O2 build engine (bd-ib-82a)
-                          O1 arming contract (I1) ─► C3 (and C1's persistence-seam portion)
+Step 0 (fable-review LOOP — HARD GATE) ✓ MET 2026-07-10 (round 6 NOTHING-BLOCKING + maintainer certification)
+  status: O1 RATIFIED (orch v033, I1 satisfied) ✓ · C1 MAIN RATIFIED (console v017) ✓ · build phase (C2, O2) NEXT — PAUSED at maintainer request.
+  ├─ Console track (delegate console-autonomous-mode):  C1 spec fixes ✓ ─► C2 command foundation ─► C3 autonomous feature
+  └─ Orchestrator track (delegate orchestrator-autonomous-mode): O1 spec fixes + arming contract ✓ ─► O2 build engine (bd-ib-82a)
+                          O1 arming contract (I1) ✓ ─► C3 (and C1's persistence-seam portion, now I1-unblocked)
   Integration (driver session autonomous-mode): I2 end-to-end live exercise on a real tenant = MVP "done"
 ```
 Console C2 and orchestrator O1→O2 run in parallel — but ONLY after the Step-0
 loop exits. Contract-first: O1 publishes the arming/audit contract before C3
 builds on it.
 
-## Next actions (exact steps for a new session)
+## Next actions (exact steps for a new session — the BUILD phase)
 
-1. **Run the next review round (COMPLETE — the loop exited 2026-07-10
-   with round 6's NOTHING-BLOCKING verdict plus the maintainer's
-   certification; steps 1-3 are the historical loop algorithm, and the
-   CURRENT next step is step 4)**:
-   spawn (or have the maintainer run) a FRESH Fable
-   session with `research/fable-review-brief.md`. Fresh = no prior involvement
-   in authoring or revising these plans. The session REVIEWS all three plans
-   AND FIXES every problem it finds in-session — plan-text changes landed via
-   worktree → PR → merge in the affected repo(s). It never emits a
-   non-actioned findings dump.
-2. **Record the round**: commit the round record — the verdict PLUS what was
-   fixed, with PR links — as `research/fable-review-round-N.md` (a
-   `docs(plan):` PR) and update this handoff's Loop state. If the session
-   nears ~50% context mid-fix, it updates this handoff so the NEXT session
-   CONTINUES the same round's fixes where it left off (a continuation, not a
-   new round), then stops cleanly.
-3. **Branch on the round's outcome**:
-   - FIXES LANDED (anything blocking was found) → go to step 1 with round
-     N+1 and ANOTHER fresh session. A session that landed fixes never clears
-     the gate on its own round (no self-certification).
-   - NOTHING-BLOCKING (a round that needed no fixes) → the round verdict must
-     affirmatively certify all three plans SOLID, EXECUTABLE, and MVP-MEETING;
-     present it to the MAINTAINER for certification. Only the maintainer's
-     recorded certification (update the Loop state above) exits the phase.
-4. **Only after the gate is met — dispatch O1 and C1 in parallel** to the two
-   per-repo delegate contexts per the delegation model below (the driver
-   dispatches each as a scoped subagent — NOT a tmux pane; see design.md §8).
-   Briefs point each delegate at its OWN revised plan
-   (`plan/autonomous-mode/handoff.md` in its repo — the review-round findings
-   are baked in; no side-channel content). Both briefs MUST forbid
-   `--no-verify`, require worktree → PR → merge, and instruct halt-and-report
-   on hook failure. Each delegate FILES its propose-change and halts; the
-   DRIVER runs the independent read-only Fable review and dispatches the revise
-   on a NO-BLOCKERS verdict (the review gate is never delegated to the
-   authoring context).
-5. **Gates thereafter:** C2 after C1's MAIN ratification (the I1-gated
-   persistence-seam amendment gates C3, not C2 — that keeps C2 concurrent
-   with O1→O2); C3 after C1 + C2 + I1; O2 after O1; I2
-   after C3 + O2 AND the design.md §9 operability conditions (verified cost
-   ceiling + a real failure-surfacing path — note orchestrator bug `bd-ib-18r`:
-   an in-loop park today orphans without ledger write-back, so I2's
-   truly-unresolvable plant must be ledger-level or `bd-ib-18r` triaged first).
-6. Every spec change in either repo routes propose-change → independent Fable
-   review → revise, co-editing `tests/heading-coverage.json` for any H2 change.
+Step 0 + O1 + C1(main) are DONE (see Ratification record at top). The build
+phase is PAUSED at the maintainer's request. C2 and O2 run concurrently; both
+open now. Resume:
+
+1. **O2 — implement the orchestrator engine (`bd-ib-82a`).** FIRST groom
+   `bd-ib-82a` into dependency-layered slices — grooming is a MAINTAINER-OWNED
+   cut (`/livespec-orchestrator-beads-fabro:groom`; the front-end drafts, the
+   maintainer owns the acceptance), so set it up FOR the maintainer, do NOT
+   auto-slice. Then build: the `dispatcher.autonomous_mode` key + `loop --mode
+   autonomous` gate-collapse + the NEW LLM `needs-human` resolution stage +
+   truly-unresolvable escalation + per-decision audit journal, composing the
+   shipped valve/escalation/cost-gate machinery. Sequence the auto-admit slice
+   around `livespec-nrdk` (factory-safe admission gate; design.md §9). Gate: O1
+   (met). Refresh `bd-ib-82a`'s stale v025 spec pointer to v033 as it opens.
+2. **C2 — console command foundation.** Add the five `work_item.*` valve/policy
+   `CommandType` variants + handlers + a port onto the orchestrator's published
+   `drive` action surface + the Scenario-11 test (TDD, console Red-Green ritual).
+   Folds `pke3y3` (regroom against the current valve model — MAINTAINER-OWNED
+   cut). Gate: C1's MAIN ratification (met). Runs concurrently with O2.
+3. **Persistence-seam amendment (console, now I1-unblocked).** File the small
+   console propose-change that drops/derives the console's own
+   `livespec-console-beads-fabro.autonomous_mode.enabled` block so ONLY the
+   orchestrator's `dispatcher.autonomous_mode` key persists (the C1 persistence
+   portion deferred to I1; O1 froze the arming contract at v033). Route
+   propose-change → independent read-only Fable review → revise, and per the
+   PROCESS NOTE at top carry the `tests/heading-coverage.json` clause-rebinding +
+   `console-spec-check` ground-truth co-edit in `resulting_files`. Gates C3.
+4. **C3 — console autonomous feature.** Gate: C1 + C2 + I1 (I1 met; needs C2 +
+   the persistence-seam amendment). Build `config.autonomous_mode_set` +
+   `.livespec.jsonc` persistence/audit + `factory.autonomous_mode_*_requested` +
+   TUI toggle/confirm-modal/dangerous-label/header + the Scenario-10
+   enable/observe/reflect/escalate loop (NOT a console-side resolver — the engine
+   owns resolution, per the ratified delegation re-scope).
+5. **I2 — end-to-end live exercise (MVP "done").** Gate: C3 + O2 AND the
+   design.md §9 operability conditions (verified cost ceiling + a real
+   failure-surfacing path — note orchestrator bug `bd-ib-18r`: an in-loop park
+   today orphans without ledger write-back, so I2's truly-unresolvable plant
+   must be ledger-level or `bd-ib-18r` triaged first).
+6. Every spec change routes propose-change → independent read-only Fable review →
+   revise; core H2 changes co-edit `tests/heading-coverage.json`; CONSOLE
+   normative-clause changes carry the clause-rebinding co-edit (PROCESS NOTE).
+   Ratification is DRIVER-held: a delegate FILES + halts; the driver runs the
+   Fable review and dispatches the revise on a NO-BLOCKERS verdict.
 
 ## Delegation model (design.md §8)
 Driver + per-repo delegate contexts; the driver dispatches each delegate as a
@@ -179,26 +208,31 @@ are named for their repo so cross-plan status references resolve.
   checklist; edges: `livespec-nrdk` blocks, `livespec-0jxs` related — bd
   refuses an epic→task `blocks` edge by design, so the task dependency
   carries a `related` edge instead).
-- Console: `rt4` (operator surface; epic-shaped feature, stale v013 pointer), `pke3y3` (epic, "7 unimplemented commands" — regroom + split per its plan), `ipi` (attention-stream TUI migration), `mb64bv` (chore: backlog-bounce vocab rename — verify the rename target against the orchestrator's actual journal field `bounced_to_regroom` before landing).
-- Orchestrator: `bd-ib-82a` (the engine; stale v025 pointer).
+- Console: `rt4` (operator surface → C3; version pointer refreshed v013→v016 during C1, but its description substance still reads pre-re-scope — refresh at C3 grooming), `pke3y3` (epic, "7 unimplemented commands" — regroom + split for C2, maintainer-owned cut), `ipi` (attention-stream TUI migration), `mb64bv` (chore: backlog-bounce vocab rename — verify the rename target against the orchestrator's actual journal field `bounced_to_regroom` before landing).
+- Orchestrator: `bd-ib-82a` (the engine → O2; stale v025 pointer — refresh to v033 when O2 opens).
 - Core deps TRACKED not re-owned: `livespec-nrdk` (factory-safe admission gate), `livespec-0jxs` (operability preconditions); orchestrator `plan/fabro-token-refresh` (long-run publish robustness); orchestrator bugs `bd-ib-18r` / `bd-ib-6vu` (unattended-run robustness — sequence around).
 
-## Key cross-repo risks (design.md §6) — round-1 disposition
-1. Persistence-model seam: RESOLVABLE as planned; O1 must additionally pin the
-   orchestrator's own config key, the launcher identity, and the
-   `drive`-vs-`loop` mode placement (round-1 verdict obs. 2).
-2. Division of resolution: RESOLVABLE via the engine-owns-all-gate-resolution
-   reading; C1 ratifies the console Scenario-10 re-scope (round-1 verdict obs. 3).
-3. Vocab drift: lanes/enums verified clean; two drift instances fixed into C1's
-   scope (`orchestrate run` → `drive`; lane-ownership attribution) (obs. 4).
+## Key cross-repo risks (design.md §6) — ALL THREE now RESOLVED by O1/C1 ratification
+1. Persistence-model seam: RESOLVED at O1 v033 — the arming contract pins the
+   orchestrator `dispatcher.autonomous_mode` key as the single persistent
+   permission, the console factory-drain path as launcher, and `loop` (not
+   `drive`) as the `--mode autonomous` surface. (Residual: the console still
+   drops/derives its own duplicate block — the I1-unblocked persistence-seam
+   amendment, Next actions step 3.)
+2. Division of resolution: RESOLVED at C1 v017 — the Scenario-10 re-scope makes
+   the engine own ALL gate resolution; the console enables/observes/reflects; the
+   double-resolution race is explicitly killed (console-side resolver deferred).
+3. Vocab drift: RESOLVED at C1 v017 — all four citation sites swept
+   (`orchestrate`/`orchestrate run` → `drive`; lane-vocab ownership → orchestrator).
 
 ## Next action
-Dispatch O1 and C1 in parallel (Next actions, step 4) per the delegation
-model — briefs point each delegate at its OWN repo's
-`plan/autonomous-mode/handoff.md`, forbid `--no-verify`, require
-worktree → PR → merge, and instruct halt-and-report on hook failure. The
-Step-0 gate was met 2026-07-10 (round-6 NOTHING-BLOCKING + maintainer
-certification, both recorded in the Loop state above).
+Build phase is PAUSED at the maintainer's request (2026-07-10). Resume order
+(Next actions above): O2 (groom `bd-ib-82a` WITH the maintainer, then build) and
+C2 (console command foundation) run concurrently; the I1-unblocked console
+persistence-seam amendment can land in parallel; C3 then needs C1 + C2 + I1; I2
+is the MVP live-exercise gate. Both grooming cuts (`bd-ib-82a`, `pke3y3`) are
+maintainer-owned — set them up, do not auto-slice. O1 (orch v033) and C1 (console
+v017) are RATIFIED (Ratification record at top); I1 is satisfied.
 
 ## Pointers
 - Ledger read (per tenant): `bd list --json` (or `bd show <id> --json`) run from
