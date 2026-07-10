@@ -38,8 +38,8 @@ across two repos and reconciles the seams between their already-written specs.
 
 Already landed (do not re-litigate):
 - **livespec core** — the deterministic work-item lifecycle + the two
-  human-delegable policy valves + the Control-Plane console guidance (closed epics
-  `livespec-35s3zo` and `livespec-zs22.6`). The plane boundary this
+  human-delegable policy valves + the Control-Plane console guidance (closed epic
+  `livespec-35s3zo` and closed task `livespec-zs22.6`). The plane boundary this
   MVP relies on is already spec law.
 - **console (spec v016)** — a complete normative definition of the operator-facing
   Full Autonomous Mode, the TUI Contract, and the five `work_item.*` valve/policy
@@ -337,8 +337,9 @@ Coordination discipline:
   (gh-free publish via GitHub REST/GraphQL proven end-to-end on
   `livespec-console-beads-fabro` PR #136; a genuine >60-min run pushed green
   past the TTL) but NOT YET LANDED in production fabro — the landing sequence
-  (upstream fabro PR, production pin, PR #136 cleanup) awaits maintainer
-  decisions recorded in that thread's handoff. A long autonomous run must be
+  (upstream fabro PR, production pin) awaits maintainer decisions recorded in
+  that thread's handoff (its third question, PR #136 cleanup, resolved by
+  event: the validation vehicle auto-merged 2026-07-10). A long autonomous run must be
   able to publish, so it REMAINS a robustness precondition for I2 until
   production fabro carries the fix. No shared code surface with gate-resolution.
 
