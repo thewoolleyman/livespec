@@ -10,6 +10,12 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-10 UPDATE — READ THE "CURRENT STATE" BLOCK AT THE TOP OF `## The next
+  action` FIRST.** The rollout gap is CLOSED and the v0.37.1 image fix is VALIDATED
+  live (orchestrator release 0.13.12); the current next action is **Option A** (fix the
+  acceptance-criteria review-leak → re-dispatch core-A to exercise the `review` node →
+  fix the unattended human-gate → fan out the held slices). Everything below this bullet
+  is prior-phase context that the CURRENT STATE block supersedes where they conflict.
 - **What this is.** A `dispatcher.py` (>2,600 lines,
   `livespec-orchestrator-beads-fabro/.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/dispatcher.py`)
   sailed past the fleet's per-file logical-line ceiling because the `file_lloc`
@@ -730,6 +736,85 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-10 ROLLOUT-GAP SESSION — CURRENT STATE, READ FIRST (supersedes the burndown-dispatch detail below)
+>
+> **The rollout gap is CLOSED and the v0.37.1 image fix is VALIDATED live.** The
+> dark-factory `drive`/dispatcher resolves its `workflow.toml` (+ dispatcher code)
+> from the FROZEN installed plugin cache = last RELEASE, not the repo. Image-pin
+> bumps were authored `chore(deps):`, which release-please never releases, so no
+> release ever shipped the fixed image into the cache — every real dispatch ran the
+> broken (no-bwrap/codex) image. CLOSED via **orchestrator release 0.13.12**
+> (PR #413 → merged `b2c63c2` deps: + `d7b4120` fix:): sandbox image → **v0.37.1**
+> (bwrap 0.9.0 + codex-acp 0.16.0, smoke-verified), lockstep-correct (pyproject
+> dev-tooling tag == image tag), the misleading `check-fabro-sandbox-image-pin-freshness`
+> renamed → `…-pin-lockstep` with honest messaging (verifies REPO lockstep, NOT
+> rollout — Fable NO-BLOCKERS), and `deps:` made release-triggering (release-please
+> changelog-section `{"type":"deps",…,"hidden":false}`, verified releasable).
+>
+> **VALIDATED:** core-A (`livespec-2j46re`) dispatched on v0.37.1 (run the LIVE 0.13.12
+> drive: `CLAUDE_PLUGIN_ROOT=/data/projects/livespec-orchestrator-beads-fabro/.claude-plugin
+> with-livespec-env.sh -- python3 <that root>/scripts/bin/drive.py --action
+> impl:livespec-2j46re --repo /data/projects/livespec`) IMPLEMENTED CLEANLY — proper
+> RGR commit, `just check` 62/62 green, all target warnings (all_declared/keyword_only/
+> global_writes) → 0. The prior 3 "stalls" were the broken image (ACP exit_code=137);
+> GONE. **The image fix works.**
+>
+> **BUT the run failed at the IMPLEMENT node (it NEVER reached the dedicated `review`
+> node — `node_visits: {start:1, implement:1}`).** The slice's acceptance-criteria line
+> `"+ independent adversarial NO-BLOCKERS review before acceptance"` LEAKED into the
+> implement brief (`prompts/implement.md`: "satisfy … its acceptance criteria"), so the
+> codex implement agent tried to run that review ITSELF (spawned a review sub-agent),
+> which timed out 2×; it honestly reported `{"outcome":"failed"}` (the anti-evasion brief
+> WORKED), routed to the `escalate` human gate, and — unattended, no `fabro attach`
+> answerer — drive exited 1. **This is a WORK-ITEM-AUTHORING LEAK, not an architecture
+> flaw:** the `.fabro` graph HAS a proper separate `review` node (Claude high-thinking via
+> `review_adapter`, with a bounded `review⇄review_fix` kickback loop) — it has simply NOT
+> been exercised yet. In-factory review = the graph's `review` node; the external
+> adversarial review = the overseer's pre-ratification step, done OUTSIDE the factory.
+>
+> **OPTION A — next actions (maintainer-chosen 2026-07-10):**
+> 1. **Fix the acceptance-criteria leak.** Remove the "independent adversarial
+>    NO-BLOCKERS review before acceptance" line from the slice ACCEPTANCE criteria the
+>    implement agent reads (it belongs to the graph's `review` node + the external
+>    overseer, NOT the implement agent). Scrub it from the ready/held slice criteria
+>    (core-A `livespec-2j46re` + the held slices) AND fix the grooming convention going
+>    forward. Optionally clarify `prompts/implement.md` that acceptance-criteria review
+>    lines are downstream, not the implement agent's job.
+> 2. **Re-dispatch core-A** (`livespec-2j46re`, status=`ready`) after step 1 — it should
+>    now flow implement → janitor → **`review`** (the never-exercised node) → pr; watch
+>    the review node and confirm a clean merged PR. (Its already-done work is commit
+>    `41e1edd` in the validation sandbox, but re-dispatch-after-fix is cleaner and also
+>    exercises the review node.)
+> 3. **Fix the unattended human-gate** (C-follow-up, host-side orchestrator):
+>    `_dispatcher_engine.py::_blocked_outcome` — auto-abandon / route-to-`needs-regroom` a
+>    `blocked`/`human_input_required` run in UNATTENDED mode (else it hangs; here exit 1
+>    after 30 min).
+> 4. **Then fan out the held burndown slices** on the now-working factory: orch B
+>    `bd-ib-jnf`→C `bd-ib-dpj`→D `bd-ib-ll0`; core B `livespec-7jcdfk`→C `livespec-txn2bq`;
+>    runtime `livespec-runtime-uy8`; git-jsonl `bd-gj-5i1`; drivers/console
+>    (`livespec-gqte`/`livespec-v74p`/`livespec-q7bx`).
+>
+> **DURABLE dev-tooling epic (recurrence-prevention, tracked on ledger `livespec-iily` —
+> full corrected findings are journaled there as a 2026-07-10 comment):** teach
+> bump-pin / pin-autodiscovery to move the `workflow.toml` sandbox image in LOCKSTEP with
+> the pyproject dev-tooling pin (root cause of the 3× drift today: v0.36.3→v0.37.0→v0.37.1,
+> each merged green because the lockstep check isn't a PR gate); author the runtime image
+> bump as releasable `deps:`; and WIRE the lockstep check into CI as a real PR gate —
+> **MAINTAINER-SIDE** `.github/workflows/` edit per `.ai/ci-gate-discipline.md`, sequenced
+> AFTER lockstep is restored (the fleet App lacks `workflows` permission; enforcement must
+> not precede adoption).
+>
+> **STATE (clean at handoff):** orchestrator primary clean on master `0b77bab` (release
+> 0.13.12), lockstep v0.37.1; livespec primary clean on master; no fleet worktrees except
+> this handoff branch (being merged); core-A `livespec-2j46re` = `ready`. **⚠ The
+> validation sandbox `fabro-run-01KX5X9W94M6HKDDQ1DJ0QMMZ8` may still be UP (zombie waiting
+> on the un-answerable interview) — `docker stop` it before re-dispatching (verify no live
+> 2j46re container first: `docker ps` + inspect `OTEL_RESOURCE_ATTRIBUTES` work.item.id).**
+>
+> ---
+> *(The burndown-dispatch next-action detail below remains valid for the held-slice
+> fan-out, gated behind Option-A steps 1–3 above.)*
+>
 > **Phase 0 is DONE + ACCEPTED (fleet at dev-tooling v0.35.2). Phase 1 is GROOMED
 > with a CORRECTED model — read `research/phase1-grooming.md` FIRST; it is the
 > authoritative slice spec and supersedes the ordering in `phase1-inventory.md`.**
