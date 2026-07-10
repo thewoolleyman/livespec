@@ -176,17 +176,29 @@ Notation: **owner** = which delegate session drives it (see §10); **gate** = wh
 must be true before it may start; each step's *done* is a merged PR (or a ratified
 spec revision) with the stated evidence.
 
-### Step 0 — multi-model validation (FIRST STEP OF EVERY PLAN; hard gate)
+### Step 0 — the fable-review LOOP (FIRST STEP OF EVERY PLAN; hard gate)
 - **Owner:** driver session `autonomous-mode`, with the maintainer running the
   Fable sessions.
-- **What:** an independent multi-model (Fable) validation pass over ALL THREE plans
-  (this overall plan + the console plan + the orchestrator plan) confirming they are
-  internally sound, dependency-correct, seam-reconciled (§6), and will actually
-  reach the console-MVP goal. Aligns with the standing "independent Fable review
-  before every ratification" discipline.
+- **What:** an iterated review-and-revise loop over ALL THREE plans (this
+  overall plan + the console plan + the orchestrator plan), maintainer-declared
+  2026-07-10. Each round, a FRESH Fable session — one with no prior involvement
+  in authoring or revising these plans — runs
+  `research/fable-review-brief.md`: it re-verifies factual currency, internal
+  soundness, cross-plan dependency correctness, the pinned seam resolutions
+  (§6), and goal reachability. Blocking findings route into a fable-revise
+  pass that fixes the plan texts (worktree → PR → merge), after which ANOTHER
+  fresh session reviews. A revising session never reviews its own fixes — no
+  self-certification. Aligns with (and is stricter than) the standing
+  "independent Fable review before every ratification" discipline.
 - **Gate:** none — this is the entry gate for everything else.
-- **Done:** a NO-BLOCKERS verdict recorded on this thread; any blocker routes back
-  into the relevant plan before implementation starts.
+- **Done (BOTH required):** (1) a FRESH-session round verdict of
+  NOTHING-BLOCKING recorded on this thread
+  (`research/fable-review-round-N.md`), and (2) the MAINTAINER's recorded
+  certification (handoff Loop state). Implementation (C1/O1) MUST NOT be
+  dispatched before both hold. Loop history: round 1 = the 2026-07-10 Step-0
+  validation (`research/step0-fable-verdict.md`) + the same-session revise
+  pass (`research/fable-revising-session-self-assessment.md` — NOT
+  gate-clearing).
 
 ### Console track — owner: session `console-autonomous-mode`
 - **C1 — console spec currency + seam reconciliation.** Diff the console spec's
