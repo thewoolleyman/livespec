@@ -19,6 +19,7 @@
 - check-check-coverage-incremental
 - check-check-mutation
 - check-check-tools
+- check-ci-matrix-completeness
 - check-claude-md-coverage
 - check-comment-line-anchors
 - check-commit-pairs-source-and-test

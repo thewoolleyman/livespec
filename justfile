@@ -172,6 +172,7 @@ check:
         check-check-coverage-incremental
         check-check-mutation
         check-check-tools
+        check-ci-matrix-completeness
         check-claude-md-coverage
         check-comment-line-anchors
         check-commit-pairs-source-and-test
@@ -1037,3 +1038,6 @@ check-partition-completeness:
 
 check-canonical-recipe-fidelity:
     uv run python -m livespec_dev_tooling.checks.canonical_recipe_fidelity
+
+check-ci-matrix-completeness:
+    uv run python -m livespec_dev_tooling.checks.ci_matrix_completeness
