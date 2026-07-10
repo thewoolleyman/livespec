@@ -19,7 +19,12 @@ from _currency.locate import (
 )
 from _currency.running_build import _running_build_id
 
-__all__ = ["_CHECKOUT_MODE_MESSAGE", "CurrencyVerdict", "_currency_message", "verify_currency"]
+__all__: list[str] = [
+    "_CHECKOUT_MODE_MESSAGE",
+    "CurrencyVerdict",
+    "_currency_message",
+    "verify_currency",
+]
 
 _CHECKOUT_MODE_MESSAGE = "INFO: running from a repo checkout; plugin-currency gate not applicable\n"
 

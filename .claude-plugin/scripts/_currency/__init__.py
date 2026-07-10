@@ -10,4 +10,4 @@ package clear of `check-supervisor-discipline`.
 
 from _currency.verify import CurrencyVerdict, verify_currency
 
-__all__ = ["CurrencyVerdict", "verify_currency"]
+__all__: list[str] = ["CurrencyVerdict", "verify_currency"]

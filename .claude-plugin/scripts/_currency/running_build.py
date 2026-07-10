@@ -18,7 +18,7 @@ from _currency.locate import (
     _read_json_object,
 )
 
-__all__ = [
+__all__: list[str] = [
     "_registry_plugin_build_id",
     "_running_build_id",
     "_running_build_id_from_registry",

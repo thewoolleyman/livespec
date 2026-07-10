@@ -36,7 +36,7 @@ import re
 from base64 import b32encode
 from dataclasses import dataclass
 
-__all__ = [
+__all__: list[str] = [
     "RuleMatch",
     "derive_gap_id",
     "extract_rules_from_file",
