@@ -621,6 +621,24 @@ clone before reading its `origin/master` for cross-repo state.**
     (`store.py` `resolution`/`merge_sha`⇄beads mapping) — a bare `update_work_item_status`
     to `done` is INSUFFICIENT. Journal "PR #391/6ee0118 reconciled; fork reverted; review
     NO-BLOCKERS; WARN delta 0" on accept.
+- **2026-07-10 (this session, cont.) — bd-ib-1ka RECONCILED to done; mechanical fan-out
+  batch 1 DISPATCHED.**
+  - **bd-ib-1ka accepted** via the merge-evidence recipe (now codified in the Slice-ledger
+    "♻ MERGE-EVIDENCE RECONCILIATION RECIPE" block): loaded the WorkItem via
+    `read_work_items`, closed-in-place via `append_work_item` with
+    `resolution="completed"` + `AuditRecord(merge_sha="6ee011860a01c5d7e58ec32306152d806411cecb", pr_number=391)`.
+    Live-verified: `bd show bd-ib-1ka` → CLOSED with the reconcile reason; B (`bd-ib-jnf`)
+    now shows blocker A ✓ (unblocked, pending-approval). (The `just check-work-item-*`
+    targets run against a FAKE backend `LIVESPEC_BEADS_FAKE=1` — they validate fixtures, not
+    the live tenant; verify live via `bd show` + the ancestry check.)
+  - **Mechanical fan-out batch 1 dispatched** (background `drive impl:`, low-risk mechanical
+    class): CORE-A `livespec-2j46re` (set backlog→ready via `update_work_item_status` first),
+    RUNTIME `livespec-runtime-qi9`, GIT-JSONL `bd-gj-cn4`. All three buffer output to
+    completion (no interim output) and will likely finish after this session — reconcile via
+    ledger + PRs on resume (see the ⚠ IN-FLIGHT block). HELD the riskier slices (orch-B
+    no_write/69, C/D, file_lloc chains) for after batch 1 reviews clean.
+  - **Surfaced the anti-fork dispatch-guard recommendation** (see the ⚑ block in "The next
+    action") — the systemic fix for the B1 class; recommend before the drivers/console fan-out.
 
 ## The next action
 
@@ -652,27 +670,38 @@ clone before reading its `origin/master` for cross-repo state.**
 >    Red→Green. Pre-existing master red also fixed first: **PR #396** bumped the stale Fabro
 >    sandbox image pin v0.35.2→v0.35.3 (merged `ee42f9e`). Both worktrees reaped; orch primary
 >    at `326f81e`. (See Progress log for the full record + the bump-pin follow-up on `livespec-iily`.)
-> **→ IMMEDIATE NEXT ACTION is step 4.**
-> 4. **[IMMEDIATE] Accept `bd-ib-1ka`** (slice now clean — fork reverted, Fable re-confirmed
->    all_declared 0 / green on current orch master; WARN delta keyword_only 29→0 /
->    all_declared 26→0 / private_calls 1→0). ⚠ It is stuck `active` (driver died post-merge)
->    with NO merge evidence. **Merge-evidence reconstruction is REQUIRED — a bare status flip
->    to `done` FAILS the `work_item_merge_evidence` static check.** That check requires every
->    closed non-epic item to carry a non-empty `merge_sha` that `git cat-file -e` resolves
->    locally AND is `git merge-base --is-ancestor` of `origin/master`. bd-ib-1ka's work merged
->    as PR #391 = `6ee0118` (an ancestor of orch `origin/master`). The `accept:` valve
->    (`drive.py::_accept_item`) requires `acceptance` state AND does NOT record merge evidence
->    itself — normal items get it recorded at the active→acceptance transition by the sandbox
->    (which died here). So: find the store-writer API that writes the impl-resolution
->    `AuditRecord` + `merge_sha` (see `store.py` `resolution`/`merge_sha`⇄beads-field mapping,
->    and `work_item_state_invariants.py`/`work_item_merge_evidence.py` for the required shape),
->    record merge_sha `6ee0118`, set `done`, and journal "PR #391/`6ee0118` reconciled; fork
->    reverted; review NO-BLOCKERS; WARN delta 0." Verify with the dev-tooling checks
->    (`work_item_merge_evidence`, `work_item_state_invariants`) before moving on. (Prefer
->    dispatching this reconciliation authoring to a scoped agent per the process note above,
->    but it is careful single-write ledger work, so inline-with-review is also fine.)
->    THEN dispatch the chained B/C/D (`bd-ib-jnf`→`bd-ib-dpj`→`bd-ib-ll0`; `approve:<id>` each as
->    its blocker closes).
+> **→ IMMEDIATE NEXT ACTION on resume: RECONCILE the 3 in-flight mechanical dispatches
+> (see the "⚠ IN-FLIGHT DISPATCH RECONCILIATION" + "♻ MERGE-EVIDENCE" blocks in the Slice
+> ledger below), then continue the fan-out.**
+> 4. **✅ DONE — accepted `bd-ib-1ka`** (reconciled active→done with merge_sha `6ee0118`/PR
+>    #391 via the merge-evidence recipe; fork reverted; Fable NO-BLOCKERS; WARN delta 0).
+>    B (`bd-ib-jnf`) is now UNBLOCKED (pending-approval).
+> 4a. **[IN FLIGHT] Mechanical fan-out batch 1 DISPATCHED this session** (background
+>    `drive impl:`): CORE-A `livespec-2j46re` (hub, `--repo /data/projects/livespec`),
+>    RUNTIME `livespec-runtime-qi9` (`--repo /data/projects/livespec-runtime`), GIT-JSONL
+>    `bd-gj-cn4` (`--repo /data/projects/livespec-orchestrator-git-jsonl`). Reconcile each on
+>    resume (recipe below). These are the low-risk mechanical class (same as the succeeded
+>    orch-A); the wrapper conflict that bit orch-A is fixed fleetwide, so re-conflict risk is
+>    low — but STILL independent-review each merged PR (incl. the anti-fork dimension below)
+>    before acceptance.
+> 4b. **[HELD — dispatch after batch 1 reconciles clean] the riskier slices:**
+>    `approve:bd-ib-jnf` + dispatch orch-B (no_write 69), then orch C/D
+>    (`bd-ib-dpj`→`bd-ib-ll0`, file_lloc dispatcher.py tentpole), core B/C
+>    (`livespec-7jcdfk`→`livespec-txn2bq`), and the runtime/git-jsonl file_lloc chains
+>    (`livespec-runtime-uy8`, `bd-gj-5i1`) as each blocker closes (`approve:<id>` per link).
+> 4c. **[NOT STARTED] Drivers + console** (step 3 below): groom + re-tenant + Slice0-wire +
+>    fix + flip for `livespec-gqte`/`livespec-v74p`/`livespec-q7bx`.
+>
+> **⚑ RECOMMENDED SYSTEMIC FOLLOW-UP (surfaced by B1 + carried here): the anti-fork
+> dispatch guard.** Both fleet-wide check conflicts found during burndown (main_guard,
+> wrapper_shape) were fixed upstream, but a factory slice CAN still auto-merge a fork/weaken
+> of a shared check before the post-merge review catches it (that is exactly what B1 did).
+> The durable fix is a host-side guard — a dev-tooling check and/or dispatch-brief/janitor
+> rule that FAILS a factory slice PR that edits `dev-tooling/checks/**` or repoints a
+> `check-*` justfile recipe away from a pinned `livespec_dev_tooling.checks.*` module. Until
+> it exists, every dispatched slice's independent review MUST include the anti-fork
+> dimension. Recommend prioritizing this guard before the larger drivers/console fan-out.
+> (Host-side dev-tooling — track alongside `livespec-iily`.)
 > 5. **Re-dispatch core-A `livespec-2j46re`** (parked in `backlog`): set `ready`, then
 >    `drive --action impl:livespec-2j46re --repo /data/projects/livespec`. Now safe (wrappers
 >    exempt fleetwide; core's `all_declared` slice count shrinks). THEN its chain
@@ -702,20 +731,58 @@ clone before reading its `origin/master` for cross-repo state.**
 > the hub track with a "re-tenanted to <id>" reason. All `bd`/package calls need the
 > `with-livespec-env.sh --` wrapper (+ PYTHONPATH for direct package imports).
 >
-> **Slice ledger (current, per tenant — every big track is groomed + re-tenanted):**
-> - CORE (hub tenant): `livespec-2j46re` 9bym-A mechanical [HALTED → `backlog`; re-dispatch at
->   step 5 after the wrapper fix] → `livespec-7jcdfk` 9bym-B no_write [pending-approval] →
->   `livespec-txn2bq` 9bym-C no_lloc_soft [pending-approval].
-> - ORCH (`bd-ib` tenant): `bd-ib-1ka` A mechanical [MERGED `6ee0118`/PR #391 but BLOCKED on the
->   gate-fork revert (steps 3-4); stuck `active`, NOT accepted] → `bd-ib-jnf`
->   B no_write → `bd-ib-dpj` C structural → `bd-ib-ll0` D file_lloc [B/C/D pending-approval].
+> **Slice ledger (current, per tenant — UPDATED 2026-07-10 after bd-ib-1ka reconcile +
+> mechanical fan-out batch 1 dispatched):**
+> - CORE (hub tenant): `livespec-2j46re` 9bym-A mechanical **[DISPATCHED in-flight this
+>   session — `drive impl:` bg; RECONCILE via ledger + `gh pr list` in livespec]** →
+>   `livespec-7jcdfk` 9bym-B no_write [pending-approval] → `livespec-txn2bq` 9bym-C
+>   no_lloc_soft [pending-approval].
+> - ORCH (`bd-ib` tenant): `bd-ib-1ka` A mechanical **[✅ DONE — reconciled active→done with
+>   merge_sha `6ee0118`/PR #391; fork reverted; Fable NO-BLOCKERS; WARN delta 0]** →
+>   `bd-ib-jnf` B no_write **[NOW UNBLOCKED — pending-approval; NEXT: `approve:bd-ib-jnf`
+>   then `drive impl:` — HELD this session as the riskier no_write/69-hit slice]** →
+>   `bd-ib-dpj` C structural → `bd-ib-ll0` D file_lloc [C/D pending-approval].
 >   (Old hub copies `y4f7hp`/`tlvsn4`/`my2s7k`/`umabdn` are CLOSED — do not dispatch them.)
-> - RUNTIME (`livespec-runtime` tenant): `livespec-runtime-qi9` mechanical [READY, held] →
->   `livespec-runtime-uy8` file_lloc (hygiene_scan.py 471) [pending-approval].
-> - GIT-JSONL (`bd-gj` tenant): `bd-gj-cn4` mechanical [READY, held] → `bd-gj-5i1` file_lloc
->   (3 files) [pending-approval].
+> - RUNTIME (`livespec-runtime` tenant): `livespec-runtime-qi9` mechanical **[DISPATCHED
+>   in-flight this session — bg; RECONCILE via ledger + PRs]** → `livespec-runtime-uy8`
+>   file_lloc (hygiene_scan.py 471) [pending-approval].
+> - GIT-JSONL (`bd-gj` tenant): `bd-gj-cn4` mechanical **[DISPATCHED in-flight this session —
+>   bg; RECONCILE via ledger + PRs]** → `bd-gj-5i1` file_lloc (3 files) [pending-approval].
 > - DRIVERS/CONSOLE: hub tracks `livespec-gqte` (codex), `livespec-v74p` (claude),
 >   `livespec-q7bx` (console) still open + un-re-tenanted — NOT yet groomed/filed (step 3 above).
+>
+> **⚠ IN-FLIGHT DISPATCH RECONCILIATION (first action on resume).** Three mechanical
+> slices were dispatched via background `drive impl:` this session and will likely finish
+> AFTER it (Fabro sandboxes are long; a killed local driver does NOT stop the sandbox — it
+> auto-merges). Reconcile each via the RECONCILE-KILLED-DISPATCH recipe: `gh pr list` in the
+> work-repo (livespec / livespec-runtime / livespec-orchestrator-git-jsonl); if the slice PR
+> merged → independent review + WARN-delta verify (dev-tooling-pinned venv) + reconcile to
+> `done` via the MERGE-EVIDENCE recipe below; if no PR and the sandbox is dead → reset to
+> `ready` and re-dispatch. Dispatch bg IDs are session-local (gone on resume) — the ledger +
+> PRs are authoritative.
+>
+> **♻ MERGE-EVIDENCE RECONCILIATION RECIPE (proven this session on bd-ib-1ka).** A bare
+> status flip to `done` FAILS `work_item_merge_evidence`. To close a killed-dispatch item
+> that DID merge, replicate the dispatcher's `_close_item`: load the WorkItem via
+> `read_work_items`, then `append_work_item` (close-in-place) with an `AuditRecord`:
+> ```python
+> from dataclasses import replace
+> from pathlib import Path
+> from livespec_orchestrator_beads_fabro.store import read_work_items, append_work_item
+> from livespec_orchestrator_beads_fabro.commands._config import resolve_store_config
+> from livespec_orchestrator_beads_fabro.commands._dispatcher_io import utc_now_iso
+> from livespec_orchestrator_beads_fabro.types import AuditRecord
+> config = resolve_store_config(cwd=Path("/data/projects/<work-repo>"), work_items_arg=None)
+> item = {i.id: i for i in read_work_items(path=config)}["<id>"]
+> audit = AuditRecord(verification_timestamp=utc_now_iso(), commits=(), files_changed=(),
+>                     merge_sha="<full-40-char-merge-sha>", pr_number=<PR#>)
+> append_work_item(path=config, item=replace(item, status="done", resolution="completed",
+>                  reason="<reconcile note>", audit=audit))
+> ```
+> Run it via `with-livespec-env.sh -- env PYTHONPATH="<plugin-root>/scripts:<plugin-root>/scripts/_vendor" python3 …`
+> from the work-repo cwd. Verify the merge_sha is `git merge-base --is-ancestor` of the
+> repo's `origin/master` first. (`resolve_store_config` needs `work_items_arg=None` — accepted
+> but unused under beads.)
 > Re-measure each sandbox against the current pin with the dev-tooling venv python
 > (NEVER a repo's own stale venv). NOTE: because newly_covered diagnostics are WARN
 > (exit 0), green `just check` does NOT prove the WARN dropped — acceptance MUST
