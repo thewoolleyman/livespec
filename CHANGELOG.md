@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.5](https://github.com/thewoolleyman/livespec/compare/v0.7.4...v0.7.5) (2026-07-10)
+
+
+### Bug Fixes
+
+* clear phase1 core mechanical warnings ([150ccfd](https://github.com/thewoolleyman/livespec/commit/150ccfd3195cf649f2fdc223dd7765623172c8b7))
+
 ## [0.7.4](https://github.com/thewoolleyman/livespec/compare/v0.7.3...v0.7.4) (2026-07-09)
 
 
