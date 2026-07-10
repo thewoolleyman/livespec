@@ -6,37 +6,38 @@
 gate job); slices 2–4 (reference pattern + both quick wins) DONE;
 **slice 1 drift-guard `check-ci-matrix-completeness` DONE + live-exercised
 fleet-wide 2026-07-10** (livespec-dev-tooling v0.37.0; pre-req
-`livespec-y9lb` DONE + live-exercised); **slice 5 GROOMED 2026-07-10**
-(per-repo data in "Slice 5 grooming" below — pending execution); slice 6
-(codify) remains. See "Progress" below.
+`livespec-y9lb` DONE + live-exercised); **slice 1b drift-guard (b) fix
+`livespec-dev-tooling-o6b` DONE + live-exercised 2026-07-10** (PR #315
+merged, release 0.37.1 — (b) now requires every gating job, not only
+canonical); **slice 5 GROOMED 2026-07-10** (per-repo data in "Slice 5
+grooming" below — pending execution); slice 6 (codify) remains. See
+"Progress" below.
 
 ## Next session — START HERE
 
-Slices `livespec-y9lb` + 1 are DONE and live-exercised fleet-wide
-(livespec-dev-tooling v0.37.0; 7/7 consumer bump PRs merged green).
-Remaining epic work, **in dependency order**:
+Slices `livespec-y9lb` + 1 + **1b (`o6b`)** are DONE and live-exercised
+(dev-tooling v0.37.0 for slice 1; v0.37.1 / PR #315 for the o6b (b) fix).
+The drift guard now requires `ci-green.needs` to cover **every gating job**
+(canonical OR non-canonical: `e2e-cli`/`acceptance`/`check-doctor-static`
+and the `check-python` matrix), so slice 5 can arm the guard to fail with
+full trust. Remaining epic work, **in dependency order**:
 
-1. **FIRST — fix `livespec-dev-tooling-o6b`** (P2 bug, dev-tooling tenant):
-   the shipped drift-guard's assertion (b) UNDER-ENFORCES. It requires
-   `ci-green.needs` to cover only CANONICAL-check jobs, so dedicated
-   non-canonical gating jobs (`e2e-cli`, `acceptance`, `check-doctor-static`)
-   are NEVER required in `ci-green.needs`. A repo could require only
-   `ci-green`, pass this guard with those jobs omitted, and still merge a
-   red `e2e-cli`/`acceptance`/`doctor-static`. This MUST land BEFORE slice 5
-   arms any repo's guard to fail (`LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST`),
-   or armed-(b) gives false confidence. Full fix design + acceptance are on
-   the work-item (broaden (b)'s check-bearing to "runs any `just <target>`",
-   keeping (a) canonical-scoped).
-2. **Slice 5 — wire the 5 large-track repos** (see "Slice 5 grooming" below
-   for each repo's canonical gap + target `ci-green.needs` recipe). The five
-   are independent (no shared files) → parallelizable. Each: complete the
-   matrix, add `ci-green`, arm the guard, flip branch protection. File
-   per-repo work-items in each repo's OWN tenant first (epic
-   `livespec-cf4bcu` is the cross-tenant hub). **When authoring each
-   `ci-green.needs`, include the matrix job + EVERY dedicated check/test job
-   (incl. `e2e-cli`/`acceptance`/`check-doctor-static`) manually** — until
-   o6b lands, the guard will not catch omissions of the non-canonical ones.
-3. **Slice 6 — codify** the single-all-green-gate-job rule as a fleet
+1. **FIRST — Slice 5 — wire the 5 large-track repos** (see "Slice 5
+   grooming" below for each repo's canonical gap + target `ci-green.needs`
+   recipe). The five are independent (no shared files) → parallelizable.
+   Each: complete the matrix, add `ci-green`, arm the guard
+   (`LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST=true`), flip branch protection.
+   File per-repo work-items in each repo's OWN tenant first (epic
+   `livespec-cf4bcu` is the cross-tenant hub). The o6b fix means the guard
+   now MECHANICALLY catches any `ci-green.needs` that omits a gating job
+   (incl. the non-canonical ones) — so authoring the recipe is guard-checked,
+   not just hand-verified. NOTE: the o6b (b) fix reaches each consumer only
+   on the next dev-tooling release bump-pin fan-out (v0.37.1); before that
+   pin lands in a given repo, that repo's local `check-ci-matrix-completeness`
+   still runs the pre-o6b (b) — so still author each `ci-green.needs` to
+   include the matrix job + EVERY dedicated check/test job manually, and let
+   the guard confirm once the v0.37.1 pin lands.
+2. **Slice 6 — codify** the single-all-green-gate-job rule as a fleet
    contract (propose-change → revise on the relevant NFR), coordinating with
    livespec-runtime PR #161's clause alignment.
 
@@ -55,8 +56,8 @@ Fetch each repo's real `ci.yml` — job sets are non-uniform.
 | 4. Quick win | livespec-driver-codex | ✅ DONE | PR #95 merged; matrix += `check-plugin-resolution`; `ci-green` added + required; `ci-green.needs = [check, check-doctor-static, red-green-replay]` |
 | Pre-req: bump-pin re-stamp | livespec-dev-tooling (`livespec-y9lb`) | ✅ DONE + live-exercised | PR #312 merged; core bump #1019 re-stamped `canonical-slugs.yml` atomically, stayed green |
 | 1. Drift-guard impl | livespec-dev-tooling (`livespec-dev-tooling-f13`) | ✅ DONE + live-exercised | PR #313 merged, released **v0.37.0**; `check-ci-matrix-completeness` warn-default; 6/7 fleet bump PRs auto-merged green (console pending slow Rust checks) |
-| 1b. Drift-guard (b) fix | livespec-dev-tooling (`livespec-dev-tooling-o6b`) | ⬜ filed (P2) | (b) under-enforces: non-canonical gating jobs (`e2e-cli`/`acceptance`/`check-doctor-static`) not required in `ci-green.needs`. **Land BEFORE arming slice 5.** |
-| 5. Large tracks | runtime, core, orch-beads-fabro, orch-git-jsonl, dev-tooling | 🟨 GROOMED (see below) | per-repo gap + `ci-green.needs` recipe computed 2026-07-10; execution pending (author `ci-green.needs` to include ALL gating jobs manually until o6b lands) |
+| 1b. Drift-guard (b) fix | livespec-dev-tooling (`livespec-dev-tooling-o6b`) | ✅ DONE + live-exercised | PR #315 merged, released **v0.37.1**; (b) now requires every GATING job (`just <target>` run OR `matrix.target` list), not only canonical — new `CiJob.gating` flag. Live-exercised vs real orch-beads-fabro/runtime ci.yml (required-set grew from `[check-metadata]` to the full gating set; `setup`/`export-telemetry`/`enable-auto-merge` auto-excluded). |
+| 5. Large tracks | runtime, core, orch-beads-fabro, orch-git-jsonl, dev-tooling | 🟨 GROOMED (see below) | per-repo gap + `ci-green.needs` recipe computed 2026-07-10; execution pending. o6b landed → armed (b) now trustworthy; still author each `ci-green.needs` manually until the v0.37.1 pin reaches each repo. |
 | 6. Codify rule | fleet NFR | ⬜ not started | coordinate w/ runtime PR #161 |
 
 **Validated on driver-claude:** `ci-green` runs, passes, correctly
@@ -439,8 +440,9 @@ red-green-replay).
 
 ### Finding surfaced during grooming — drift-guard (b) under-enforces → `livespec-dev-tooling-o6b` (P2)
 
-**FILED as `livespec-dev-tooling-o6b` (P2 bug, dev-tooling tenant). Land it
-BEFORE slice 5 arms any repo's guard.**
+**✅ DONE + live-exercised 2026-07-10** — `livespec-dev-tooling-o6b` fixed in
+PR #315 (merged), release 0.37.1. (b) now requires every gating job; the
+description below records the original finding + the shipped fix.
 
 The shipped guard defines **check-bearing = "a job contributing ≥1
 *canonical* slug"** (canonical = a `livespec_dev_tooling/checks/` module).
@@ -462,12 +464,12 @@ check-bearing. Impact today is bounded by warn-default, but slice 5 ARMS
 the guard to fail per repo — so fix o6b first, or armed-(b) is false
 confidence.
 
-**Fix (on o6b):** split (a) vs (b) job classification — keep (a)
-canonical-scoped; broaden (b)'s check-bearing to "a job that runs any
-`just <target>` command (or has a `strategy.matrix.target` list)", so
-`e2e-cli`/`acceptance`/`check-doctor-static`/the matrix all count while
-`export-telemetry`/`enable-auto-merge` (which run no `just`) still
-auto-exclude without a hardcoded denylist.
+**Fix (shipped in o6b, PR #315):** split (a) vs (b) job classification —
+kept (a) canonical-scoped; broadened (b)'s check-bearing to a new
+`CiJob.gating` flag = "a job that runs any `just <target>` command OR has a
+`strategy.matrix.target` list", so `e2e-cli`/`acceptance`/`check-doctor-static`/the
+matrix all count while `export-telemetry`/`enable-auto-merge`/`setup` (which
+run no `just`) still auto-exclude without a hardcoded denylist.
 
 **Interim mitigation (in the slice-5 recipes above):** author each
 `ci-green.needs` to include the matrix job + **every** dedicated
