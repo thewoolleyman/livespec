@@ -178,7 +178,9 @@ hub anchor and coordination point.
    matrix-⊇-aggregate + `ci-green.needs`-completeness check to the
    shared check package, with a warn-vs-fail env lever so it can land
    before every repo is wired. Ships the check; does NOT yet arm it in
-   sibling aggregates.
+   sibling aggregates. **Full self-sufficient implementation brief for a
+   clean session: see "Next session — drift-guard (slice 1) implementation
+   brief" below.**
 2. **Reference `ci-green` pattern** (`livespec-driver-claude` tenant) —
    add the `ci-green` job + flip branch protection to require it. Lowest
    matrix-gap repo, so it isolates the gate-job change; becomes the
@@ -196,6 +198,157 @@ hub anchor and coordination point.
    relevant NFR), so it is a contract, not just working notes. Coordinate
    with runtime PR #161's pending clause alignment.
 
+## Next session — drift-guard (slice 1) implementation brief
+
+Self-sufficient brief to implement slice 1 in a **clean session**. All
+paths verified live 2026-07-10. The check is a normal
+change-verifying check (it inspects one repo's own committed CI config),
+so the fleet's warn-vs-fail severity-lever convention APPLIES (it is not
+a world-gate like `check-master-ci-green`).
+
+### Goal
+
+One new self-contained check module in the shared `livespec-dev-tooling`
+package that, from a repo's **own committed files only**, asserts:
+
+- **(a) CI runs the whole aggregate:** the set of canonical slugs CI
+  runs (matrix `target:` list ∪ dedicated check-bearing jobs) is a
+  **superset of** the justfile `check:` aggregate `targets=(...)`.
+- **(b) `ci-green` gates the whole aggregate:** a `ci-green` job exists
+  and its `needs:` lists **every check-bearing job** (so requiring only
+  `ci-green` blocks merges on everything).
+
+Naming to follow the sibling: module
+`livespec_dev_tooling/checks/ci_matrix_completeness.py` → slug
+`check-ci-matrix-completeness` (adjust the noun if a better one fits;
+keep `check-` prefix).
+
+### Patterns to mirror (do NOT invent; copy these — the package
+convention is self-contained modules that each duplicate small regex
+parsers rather than share one; see `livespec_dev_tooling/checks/CLAUDE.md`)
+
+- **justfile aggregate parser + local structlog emitters + exit codes +
+  hermetic override** → `livespec_dev_tooling/checks/aggregate_completeness.py`
+  (+ test `tests/livespec_dev_tooling/checks/test_aggregate_completeness.py`).
+  Reuse its 3-regex idiom (`^check:\s*$` header → `targets=(` … `)` block
+  → keep `check-`-prefixed tokens), its `structlog`-JSON-to-stderr local
+  `_emit_*` functions (records carry `check_id`/`failure_mode`/`status`),
+  its exit codes (0 pass, 4 violation, 2 usage error), and its
+  `--canonical-from <json>` override (`{"slugs":[...]}`) used ONLY for
+  hermetic tests.
+- **ci.yml matrix parser** → `livespec_dev_tooling/checks/tool_backed_check_completeness.py`
+  (`_parse_ci_matrix_targets`, `_collect_ci_matrix_targets` — globs
+  `*.yml`+`*.yaml`) and `branch_protection_alignment.py` (`_parse_ci_matrix`).
+  3-regex idiom: `^\s*matrix:\s*$` → `^\s*target:\s*$` → `^\s*-\s*([\w-]+)\s*$`.
+- **warn-vs-fail severity lever** → `no_todo_registry.py` /
+  `no_lloc_soft_warnings.py`: env var `LIVESPEC_FAIL_IF_<CONDITION>_EXIST`
+  (e.g. `LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST`); the scan ALWAYS runs
+  (no skip carve-out — the old `LIVESPEC_RELEASE_GATE` skip design is
+  explicitly rejected in those docstrings); `fail = bool(os.environ.get(_ENV))`;
+  `emit = log.error if fail else log.warning`; `return 1 if fail else 0`.
+  Do NOT copy `check_mutation.py`'s `LIVESPEC_RUN_MUTATION` or
+  `plugin_resolution.py`'s `LIVESPEC_E2E_HARNESS` — those are mode
+  selectors, not severity levers.
+- **test layout** → mirror `tests/livespec_dev_tooling/checks/test_tool_backed_check_completeness.py`:
+  outside-in subprocess tests (`_run_check(*, cwd, extra_argv)` shells
+  `python <module>` in `tmp_path`), fixture builders that write a
+  synthetic `justfile` and `.github/workflows/ci.yml`
+  (`_write_ci_workflow(*, cwd, matrix_targets, name="ci.yml")`), a
+  `--…-from` JSON override to keep the canonical set hermetic, and
+  assertions that parse the structlog JSON from `result.stderr` and check
+  `finding["failure_mode"]`.
+
+### The NOVEL work (beyond the mirrored parsers)
+
+The existing parsers only read `matrix.target`. This check additionally
+needs to (1) enumerate **top-level jobs** and their `needs:` lists, and
+(2) decide which jobs are **check-bearing**. Recommended robust approach
+(name-matching is fragile — driver-codex's replay job is
+`red-green-replay`, NOT `check-red-green-replay`; console has no replay
+job at all):
+
+- **CI-covered slug set** = for the `check` matrix job, its `target:`
+  list; PLUS, for every other top-level job, any canonical `check-<slug>`
+  it runs — detect by scanning that job's `run:` lines for
+  `just <canonical-slug>` (the matrix leg is `just ${{ matrix.target }}`).
+  A job is **check-bearing** iff it contributes ≥1 canonical slug this
+  way. Telemetry/export/`enable-auto-merge` jobs contribute none and are
+  thus excluded automatically — no hardcoded exclude-list needed.
+- Assert (a): CI-covered slug set ⊇ justfile aggregate.
+- Assert (b): a job named `ci-green` exists and its `needs:` ⊇ the set of
+  check-bearing job names.
+
+### Registration + fleet-wide propagation — READ BEFORE SHIPPING
+
+`livespec_dev_tooling/canonical_checks.py::canonical_check_slugs()` is
+computed **dynamically** by `pkgutil.iter_modules` over `checks/`
+(filename → `check-kebab` slug). So **merely dropping the new module
+makes `check-ci-matrix-completeness` a canonical slug** — no registry
+edit. Consequence: on the next dev-tooling release, the new slug
+propagates to every repo (core `just stamp-canonical-slugs` → template
+release → `copier update` per consumer + hand-add to non-templated
+repos), and **`check-aggregate-completeness` will then FAIL any repo
+whose justfile aggregate lacks the new slug** — this is the SAME
+propagation hazard that reddened master on the v0.36.0 bump (see
+`livespec-y9lb`).
+
+**Two implications the clean session MUST honor:**
+
+1. **Fix `livespec-y9lb` FIRST (or in lockstep).** That P1 makes the
+   bump-pin fan-out auto-run `just stamp-canonical-slugs`, so the new
+   canonical slug lands in each repo's aggregate cleanly instead of
+   reddening it. Shipping this check before y9lb repeats the v0.36.0
+   breakage.
+2. **Ship warn-DEFAULT.** With the lever unset by default, when the slug
+   propagates to a not-yet-wired repo the check WARNS about that repo's
+   own CI gaps without reddening it. Each repo then flips to fail in its
+   own wiring PR (below). This is what makes propagation safe.
+3. **VERIFY (open question):** confirm how each repo gets the
+   `check-ci-matrix-completeness:` **recipe body** (delegating to the
+   module), not just the aggregate `targets=(...)` entry — is the recipe
+   body generated by `templates/orchestrator-plugin/justfile.jinja`, or
+   hand-added per repo? Resolve before rollout; a slug in the aggregate
+   with no recipe body breaks `just check`.
+
+### Rollout ordering
+
+1. (Pre-req) fix `livespec-y9lb` so bump-pin auto-stamps.
+2. Ship `ci_matrix_completeness.py` warn-default in dev-tooling via the
+   TDD red-green-replay ritual (new-module stub technique: at Red, a stub
+   that makes the one staged test's assertion FAIL — not merely
+   unimportable; stage exactly ONE test file at Red, the rest + impl at
+   the Green `--amend`).
+3. Let it propagate (warns fleet-wide, reddens nothing).
+4. Each large-track repo's wiring PR (slice 5) completes its matrix +
+   `ci-green`, then sets `LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST=true` for
+   this check's CI job → flips it to fail for that repo.
+5. Once every repo is wired, optionally flip the module default to fail
+   (and drop the now-uniform per-repo env), or leave the self-documenting
+   per-repo env in place.
+
+### Standing constraints (both confirmed this epic)
+
+- **CI-wiring stays maintainer-side.** The fleet App (`livespec-pr-bot`)
+  deliberately lacks `workflows` permission, so factory-dispatched
+  branches cannot touch `.github/workflows/`. Every `ci.yml`/gate edit in
+  this epic must be pushed with maintainer credentials (worktree → PR),
+  never via the factory. (See `.ai/ci-gate-discipline.md`.)
+- **`ci-green.needs` is non-uniform per repo** — parse each repo's real
+  `ci.yml`; never assume a uniform job set.
+
+### Definition-of-Ready / acceptance for slice 1
+
+- New check module + mirrored test land in `livespec-dev-tooling` via the
+  red-green-replay ritual; `just check` green there.
+- The check, run against a synthetic repo whose matrix omits an aggregate
+  slug, reports finding (a); against one whose `ci-green.needs` omits a
+  check-bearing job, reports (b); against a fully-wired repo, exits 0.
+- Warn-default verified: unset lever → warning + exit 0; lever set → error
+  + exit non-zero, same findings.
+- Clean session's FIRST action: file the slice-1 work-item in the
+  **`livespec-dev-tooling` tenant** (epic `livespec-cf4bcu` is the
+  cross-tenant hub), then implement.
+
 ## Related work
 
 - **livespec-runtime PR #161** (MERGED 2026-07-10) — propose-change
@@ -209,3 +362,10 @@ hub anchor and coordination point.
 - Reference for the per-target matrix convention: livespec core
   `SPECIFICATION/contracts.md` §"Pre-commit step ordering" (zero-`.py`
   subsetting), which prescribes the matrix shape this epic completes.
+- **`livespec-y9lb`** (core tenant, P1 bug, filed 2026-07-10) — bump-pin
+  fan-out must re-stamp `canonical-slugs.yml` on slug-adding dev-tooling
+  bumps. Discovered mid-session when the v0.36.0 pin bump reddened master
+  (repaired via livespec PR #1008). NOT part of this epic, but a **hard
+  pre-req for shipping the drift-guard** (slice 1): a new canonical slug
+  propagates cleanly only once bump-pin auto-stamps. See the slice-1
+  brief above.
