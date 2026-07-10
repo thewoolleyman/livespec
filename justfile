@@ -168,6 +168,7 @@ check:
         check-all-declared
         check-assert-never-exhaustiveness
         check-branch-protection-alignment
+        check-canonical-recipe-fidelity
         check-check-coverage-incremental
         check-check-mutation
         check-check-tools
@@ -1033,3 +1034,6 @@ reap-stale-worktrees repo="." *args="":
 
 check-partition-completeness:
     uv run python -m livespec_dev_tooling.checks.partition_completeness
+
+check-canonical-recipe-fidelity:
+    uv run python -m livespec_dev_tooling.checks.canonical_recipe_fidelity
