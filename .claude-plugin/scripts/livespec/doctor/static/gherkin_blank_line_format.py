@@ -68,13 +68,8 @@ from returns.io import IOResult, IOSuccess
 
 from livespec.context import DoctorContext
 from livespec.doctor.static._gherkin_helpers import (
-    _CLOSING_FENCE_PATTERN,
     _MINIMAL_SHAPE_FILENAME,
-    _OPENING_FENCE_PATTERN,
-    _find_closing_fence,
     _has_gherkin_fence,
-    _is_blank_above,
-    _is_blank_below,
     _is_minimal_shape,
     _list_top_level_md_files,
     _scan_text_for_violation,
@@ -88,13 +83,6 @@ __all__: list[str] = ["SLUG", "run"]
 
 
 SLUG: CheckId = CheckId("doctor-gherkin-blank-line-format")
-_ = (
-    _CLOSING_FENCE_PATTERN,
-    _OPENING_FENCE_PATTERN,
-    _find_closing_fence,
-    _is_blank_above,
-    _is_blank_below,
-)
 
 
 def _pass_finding(*, ctx: DoctorContext) -> Finding:

@@ -27,8 +27,12 @@ from livespec.doctor.static._no_cross_spec_reference_allowlist import (
     _allowlist_match,
     _flatten_allowlist,
 )
+from livespec.doctor.static._no_cross_spec_reference_findings import (
+    SLUG,
+    _fail_finding,
+    _pass_finding,
+)
 from livespec.schemas.dataclasses.finding import Finding
-from livespec.types import CheckId, SpecRoot
 
 __all__: list[str] = [
     "SLUG",
@@ -48,9 +52,6 @@ __all__: list[str] = [
     "_scan_all",
     "_scan_text_for_violation",
 ]
-
-
-SLUG: CheckId = CheckId("doctor-no-cross-spec-reference")
 
 # The minimal-template's single-file end-user output marker (per
 # the sibling anchor_reference_resolution check's same
@@ -95,51 +96,6 @@ class _Resolver:
     headings_by_file: dict[str, frozenset[str]]
     entry_strings: frozenset[str]
     entry_headings: frozenset[str]
-
-
-def _pass_finding(*, ctx: DoctorContext) -> Finding:
-    """Construct the canonical pass-status Finding for this check."""
-    return Finding(
-        check_id=SLUG,
-        status="pass",
-        message=(
-            "every section citation resolves same-tree or via the external_references allowlist"
-        ),
-        path=None,
-        line=None,
-        spec_root=SpecRoot(str(ctx.spec_root)),
-    )
-
-
-def _fail_finding(
-    *,
-    ctx: DoctorContext,
-    file_path: Path,
-    line_number: int,
-    citation: str,
-    suggested_entry: str,
-) -> Finding:
-    """Construct a fail-status Finding naming the unresolved citation.
-
-    `citation` is the literal offending citation text; `line_number`
-    is 1-indexed per editor convention; `suggested_entry` is the
-    file-plus-heading string the user would add under an
-    `external_references` repo key to allowlist the reference.
-    """
-    return Finding(
-        check_id=SLUG,
-        status="fail",
-        message=(
-            f"{file_path.name}:{line_number} section citation "
-            f"'{citation}' does not resolve to a heading in the same "
-            f"SPECIFICATION/ tree and is not allowlisted; add "
-            f"'{suggested_entry}' under an external_references repo key "
-            f"in .livespec.jsonc to allow it"
-        ),
-        path=str(file_path),
-        line=line_number,
-        spec_root=SpecRoot(str(ctx.spec_root)),
-    )
 
 
 def _collect_headings(*, text: str) -> set[str]:
@@ -205,9 +161,7 @@ def _prose_lines(*, text: str) -> list[str]:
 
 def _citation_text(*, file_prefix: str | None, heading: str) -> str:
     """Reconstruct the literal citation text for messages/matching."""
-    if file_prefix is None:
-        return f'§"{heading}"'
-    return f'{file_prefix} §"{heading}"'
+    return f'§"{heading}"' if file_prefix is None else f'{file_prefix} §"{heading}"'
 
 
 def _same_tree_match(
@@ -226,12 +180,7 @@ def _same_tree_match(
     """
     if file_prefix is None:
         return heading in all_headings
-    if "/" in file_prefix:
-        return False
-    sibling_headings = headings_by_file.get(file_prefix)
-    if sibling_headings is None:
-        return False
-    return heading in sibling_headings
+    return "/" not in file_prefix and heading in headings_by_file.get(file_prefix, set())
 
 
 def _scan_text_for_violation(
