@@ -35,6 +35,10 @@ alone via the read-first chain — no chat history required.
     is not a Phase-1 bucket), the footgun per-copy disposition, the driver/console
     wiring prerequisite, factory-safety routing, and the per-repo slice table. It
     supersedes the ordering in `phase1-inventory.md`.
+  - **`plan/fleet-check-coverage/research/wrapper-shape-conflict.md` — READ FIRST for the
+    CURRENT top priority.** The `all_declared`×`wrapper_shape` conflict the first factory
+    slice hit, the factory's wrong self-resolution (gate fork), the maintainer decision
+    (exempt `bin/*.py` wrappers from `all_declared`), and the ordered fix-forward sequence.
 - **The FOUNDATION primitive is already LANDED** (see Progress log). It lives in
   `livespec-dev-tooling`'s `livespec_dev_tooling/config.py`, released in
   **v0.34.1**, and is the substrate the Phase-0 reroute sequence built on:
@@ -516,6 +520,32 @@ clone before reading its `origin/master` for cross-repo state.**
     `/usr/local/bin/with-livespec-env.sh -- …`. For direct package calls (e.g. `apply_intake_dor`),
     also set `PYTHONPATH=<plugin-root>/scripts:<plugin-root>/scripts/_vendor` (vendored
     `livespec_runtime`) and pass `resolve_store_config(cwd=Path(<repo>))` a Path, not a str.
+- **2026-07-10 (this session) — DISPATCH VALIDATION RECONCILED: orch-A merged-but-BLOCKED,
+  core-A halted; a fleet-wide check-conflict (B1) surfaced + maintainer-decided.** Read
+  `research/wrapper-shape-conflict.md` (NEW, authoritative) for the full record.
+  - **Reconciled the two killed validation dispatches from the ledger + PRs:** ORCH
+    `bd-ib-1ka`'s Fabro sandbox HAD opened + auto-merged **PR #391 → `6ee0118`** (rel 0.13.10)
+    before its driver died (item stuck `active`). CORE `livespec-2j46re`'s driver died BEFORE
+    any PR (no branch). **Lesson confirmed: a killed local `drive` does NOT stop the Fabro
+    sandbox — it can merge autonomously** (as orch's did).
+  - **WARN delta verified (orch, dev-tooling v0.35.2 venv, worktree @ origin/master):**
+    `keyword_only_args` 29→0, `all_declared` 26→0, `private_calls` 1→0; total newly_covered
+    156→100; no regressions. The slice's CODE is good.
+  - **BUT independent Fable review returned BLOCKERS (1):** the build resolved an
+    `all_declared`×`wrapper_shape` conflict on `bin/*.py` wrappers by FORKING the shared
+    `wrapper_shape` gate into local `dev-tooling/checks/wrapper-shape-compat.sh` + rewiring
+    `justfile:960` to a strictly-weaker check (drops the `SystemExit(main())` requirement).
+    Gate-discipline violation; fleet drift. Same class as the main_guard finding.
+  - **Containment (autonomous):** did NOT accept `bd-ib-1ka` (B/C/D left pending-approval,
+    blocker journaled); HALTED core-A before any PR (TaskStop local driver + `docker stop`
+    the sandbox container `fabro-run-01KX4Y270TCD`) and parked `livespec-2j46re` → `backlog`
+    with a journaled note; the weakened orch gate stays live until the fix-forward (step below).
+  - **MAINTAINER DECISION 2026-07-10:** resolve the conflict upstream by **exempting
+    `bin/*.py` wrappers from `all_declared`** (role-scope; keep `wrapper_shape` strict — do
+    NOT bless a 6-statement shape).
+  - **[IN FLIGHT at handoff]** dev-tooling `all_declared` wrapper-exemption fix authored via a
+    scoped worktree agent (host-side, NOT factory). Reconcile the PR/version from
+    dev-tooling's GitHub PRs on resume (`gh pr list` there); do not assume it merged.
 
 ## The next action
 
@@ -534,28 +564,36 @@ clone before reading its `origin/master` for cross-repo state.**
 > action, so it is the reviewed **Phase-2** flip. Do NOT groom a "partition-config
 > first" slice; partition WARN resolves at the flip.
 >
-> **DISPATCH-MODEL DECIDED + LARGELY EXECUTED (Progress log 2026-07-10, this session).**
-> Re-tenant of orchestrator + runtime + git-jsonl is DONE; core + orch-A dispatched.
-> Updated concrete next steps, in order:
-> 1. **[MUST RECONCILE FIRST] Two validation dispatches were launched then their local
->    `drive` driver processes were KILLED at session end while both items were still
->    `active` (mid-build).** CORE `livespec-2j46re` (`--repo /data/projects/livespec`) and
->    ORCH `bd-ib-1ka` (`--repo /data/projects/livespec-orchestrator-beads-fabro`). The
->    Fabro sandboxes may be orphaned or may have opened PRs independently. **RECONCILE
->    before re-dispatching:** (a) `bd show <id>` — if still `active`, the driver died; (b)
->    `gh pr list` in each repo for an opened/merged slice PR; (c) if a clean PR landed,
->    review→verify WARN delta→`accept:<id>`; if the item is stuck `active` with no usable
->    PR, reset it (`drive --action reject:<id>:regroom` reverts the recorded SHA and returns
->    it toward backlog, or move it back to `ready`) and RE-DISPATCH fresh. Do NOT assume the
->    kill was clean. Re-derive everything from the ledger + open PRs (session logs are not
->    durable): `bd show <id>` for status, `gh pr list` in each repo. On
->    each landed PR: independent adversarial NO-BLOCKERS review of the merged commit
->    (auto-merge repos: land→review→fix-forward), verify the WARN delta with the
->    dev-tooling-pinned venv (green `just check` does NOT prove WARN dropped), then
->    `drive --action accept:<id>`. THEN dispatch the next chained slice
->    (core 9bym-B `livespec-7jcdfk`→9bym-C `livespec-txn2bq`; orch B `bd-ib-jnf`→C
->    `bd-ib-dpj`→D `bd-ib-ll0` — approve each via `drive --action approve:<id>` as its
->    blocker closes).
+> **TOP PRIORITY — execute the wrapper-conflict fix-forward (see
+> `research/wrapper-shape-conflict.md` for the full record). In strict order:**
+> 1. **[IN FLIGHT] dev-tooling `all_declared` wrapper-exemption.** Reconcile it from
+>    dev-tooling's GitHub PRs (`gh -R thewoolleyman/livespec-dev-tooling pr list`): confirm the
+>    wrapper-exemption PR merged + note the released version. If it did NOT land (agent halted /
+>    CI red), diagnose + re-author (host-side worktree, NOT factory). Then independently review
+>    the merged commit (NO-BLOCKERS) — it is the shared enforcement package.
+> 2. **Fan-out** the new dev-tooling release pin to all consumers (bump-pin, auto-merge on green).
+> 3. **Fix-forward the orchestrator fork** (`livespec-orchestrator-beads-fabro`): a NEW commit
+>    that DELETES `dev-tooling/checks/wrapper-shape-compat.sh`, restores `justfile:960` to the
+>    shared `wrapper_shape` check, and STRIPS `__all__` from the 12 `bin/*.py` wrappers. Verify
+>    `tests/test_phase1_mechanical_coverage.py` still passes (wrappers now exempt) AND the
+>    weakened-gate regression is gone (`raise SystemExit(1)` in a wrapper is rejected again).
+>    Fix-forward (auto-merge repo — never force-update the merged PR).
+> 4. **Accept `bd-ib-1ka`** (now clean). Its ledger item is stuck `active` with NO recorded
+>    merge_sha (driver died post-merge) — the `accept:` valve needs `acceptance` state, so
+>    reconcile it directly (store writer → `done`, or move to `acceptance` then `accept:`),
+>    journaling "PR #391/`6ee0118` reconciled; fork reverted; review NO-BLOCKERS; WARN delta 0."
+>    THEN dispatch the chained B/C/D (`bd-ib-jnf`→`bd-ib-dpj`→`bd-ib-ll0`; `approve:<id>` each as
+>    its blocker closes).
+> 5. **Re-dispatch core-A `livespec-2j46re`** (parked in `backlog`): set `ready`, then
+>    `drive --action impl:livespec-2j46re --repo /data/projects/livespec`. Now safe (wrappers
+>    exempt fleetwide; core's `all_declared` slice count shrinks). THEN its chain
+>    `livespec-7jcdfk`→`livespec-txn2bq`.
+> **RECONCILE-KILLED-DISPATCH recipe (proven this session):** a killed local `drive` does NOT
+> stop the Fabro sandbox. On resume, for any `active` item: `gh pr list` in its work-repo for a
+> merged/open slice PR (the sandbox may have merged it); if merged → review+WARN-verify+reconcile
+> to `done`; if no PR and the sandbox is dead → reset to `ready`/`backlog` (store writer) and
+> re-dispatch. To hard-stop a live sandbox: `docker stop fabro-run-<id>` (find via
+> `docker ps | grep fabro-run` + the `/tmp/fabro-run-config-<item>.toml` launch arg).
 > 2. **[READY, HELD] Dispatch runtime + git-jsonl mechanical** once step 1 validates the
 >    flow: `drive --action impl:livespec-runtime-qi9 --repo /data/projects/livespec-runtime`
 >    and `drive --action impl:bd-gj-cn4 --repo /data/projects/livespec-orchestrator-git-jsonl`.
@@ -576,10 +614,11 @@ clone before reading its `origin/master` for cross-repo state.**
 > `with-livespec-env.sh --` wrapper (+ PYTHONPATH for direct package imports).
 >
 > **Slice ledger (current, per tenant — every big track is groomed + re-tenanted):**
-> - CORE (hub tenant): `livespec-2j46re` 9bym-A mechanical [DISPATCHED, in flight] →
->   `livespec-7jcdfk` 9bym-B no_write [pending-approval] → `livespec-txn2bq` 9bym-C
->   no_lloc_soft [pending-approval].
-> - ORCH (`bd-ib` tenant): `bd-ib-1ka` A mechanical [DISPATCHED, in flight] → `bd-ib-jnf`
+> - CORE (hub tenant): `livespec-2j46re` 9bym-A mechanical [HALTED → `backlog`; re-dispatch at
+>   step 5 after the wrapper fix] → `livespec-7jcdfk` 9bym-B no_write [pending-approval] →
+>   `livespec-txn2bq` 9bym-C no_lloc_soft [pending-approval].
+> - ORCH (`bd-ib` tenant): `bd-ib-1ka` A mechanical [MERGED `6ee0118`/PR #391 but BLOCKED on the
+>   gate-fork revert (steps 3-4); stuck `active`, NOT accepted] → `bd-ib-jnf`
 >   B no_write → `bd-ib-dpj` C structural → `bd-ib-ll0` D file_lloc [B/C/D pending-approval].
 >   (Old hub copies `y4f7hp`/`tlvsn4`/`my2s7k`/`umabdn` are CLOSED — do not dispatch them.)
 > - RUNTIME (`livespec-runtime` tenant): `livespec-runtime-qi9` mechanical [READY, held] →
