@@ -21,7 +21,7 @@ on:
 
 jobs:
   dispatch:
-    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-release-dispatch.yml@v0.36.1
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-release-dispatch.yml@v0.36.2
     secrets: inherit
     with:
       source_repo: livespec
