@@ -686,6 +686,47 @@ clone before reading its `origin/master` for cross-repo state.**
     get a separately-spawned Fable review; fix-forwards of already-reviewed slices get a
     rigorous SELF independent-verification (overseer authored neither). All acceptances still
     carry an independent check + WARN-delta evidence.
+- **2026-07-10 (this session, cont.) — FUNDAMENTAL FACTORY DEFECT root-caused (the hub-tenant
+  "bug" is fleet-wide); anti-evasion brief LANDED; runtime accepted. Maintainer chose to KEEP
+  Codex + fix the image.** Drove the recommended order #1→#2→#3:
+  - **#1 anti-evasion brief LANDED** — orchestrator PR (docs) added the "HONEST checks — no
+    detector evasion (non-negotiable)" hard rule to all 3 Fabro standing prompts
+    (`prompts/implement.md`, `review-fix.md`, `review.md`): forbids fork/`.buffer.write`/
+    `type()`-dodge/`:Any`-silencing, and REQUIRES surfacing a check-vs-legitimate-pattern
+    conflict via the needs-human `{"outcome":"failed"}` protocol instead of dodging. On master.
+  - **#2 hub-tenant stall ROOT-CAUSED (fleet-wide, not hub-specific).** The factory's
+    implementer is hardcoded to the **Codex** adapter (`CODEX_IMPLEMENTER_ADAPTER =
+    "npx -y @zed-industries/codex-acp@0.16.0"` in `_dispatcher_plan.py`), but the sandbox image
+    `ghcr.io/thewoolleyman/livespec-fabro-sandbox` (built from
+    `livespec-dev-tooling/docker/fabro-sandbox/Dockerfile`) ships ONLY the Claude adapter + NO
+    `bubblewrap`. codex-acp needs bwrap for its sandbox AND `apply_patch`; without it every
+    command+edit degrades to fragile "escalated local writes" → agent exhaustion → parks at a
+    `blocked`/`human_input_required` node nobody answers (unattended) → `drive` exits 1, no PR.
+    Siblings (runtime, git-jsonl) survived by LIGHTER LOAD; core-livespec (heavy repo + strict
+    57-target `just check` + RGR) exhausted. ("Empty docker logs" was a red herring — PID1 is
+    `sleep infinity`; agent I/O is in the codex rollout JSONL.) **This means the whole factory
+    has been running degraded — the accepted slices are still valid (output-verified) but the
+    process was fragile, and this degradation likely FED the evasion behavior.**
+  - **MAINTAINER DECISION 2026-07-10: KEEP Codex, FIX THE IMAGE** (not switch to the Claude
+    adapter). **Delegated (IN FLIGHT):** add `bubblewrap` + preinstall `@zed-industries/codex-acp@0.16.0`
+    to the dev-tooling Dockerfile, republish the image (release-tagged), bump the orchestrator
+    `workflow.toml` pin to the new version. This unblocks ALL factory dispatch.
+  - **Two C-follow-ups (clear operability bugs, drive after B lands — NOT decisions):**
+    (i) unattended factory has no `fabro attach` answerer → a `human_input_required` run hangs
+    to the 15h ceiling; auto-abandon / route-to-`needs-regroom` a blocked run in unattended mode
+    (`_dispatcher_engine.py::_blocked_outcome`). (ii) RGR-exemption for mechanical style-only
+    `.py` changes (add-`__all__`/`*,` slices have no natural failing test; the agent burns cycles
+    manufacturing one).
+  - **runtime `livespec-runtime-qi9` ACCEPTED** — the type()-dodge fix (PR #166, conform:
+    visible `Exception` subclass) independently verified; reconciled → done (merge_sha via #162).
+  - **core-A `livespec-2j46re` PARKED → backlog** (3× dispatch failures = the image defect; do
+    NOT re-dispatch until the image fix lands). Cleaned a 4-hr zombie + 2 stuck containers this
+    session.
+  - **RECURRING fabro-pin staleness fixed AGAIN** (PR #406, v0.35.3→v0.36.2) — it blocks
+    pre-push `just check`, so it's a HARD prerequisite for any orchestrator push, not just a
+    local nuisance. Every dev-tooling release re-stales it. The bump-pin lockstep root fix
+    (teach bump-pin to update `workflow.toml`) is on `livespec-iily` and is now ELEVATED
+    (recurred 2× in one session).
 
 ## The next action
 
@@ -717,29 +758,35 @@ clone before reading its `origin/master` for cross-repo state.**
 >    Red→Green. Pre-existing master red also fixed first: **PR #396** bumped the stale Fabro
 >    sandbox image pin v0.35.2→v0.35.3 (merged `ee42f9e`). Both worktrees reaped; orch primary
 >    at `326f81e`. (See Progress log for the full record + the bump-pin follow-up on `livespec-iily`.)
-> **→ IMMEDIATE NEXT ACTIONS on resume (batch-1 mostly reconciled; anti-evasion in flight):**
-> (a) **Reconcile the in-flight fix-forwards** — the anti-fork guard `--canonical-from`
->   bypass fix (dev-tooling, guard agent), and the runtime `type()`-dodge fix (conform
->   decision); re-review each; then **accept `livespec-runtime-qi9`** (currently in
->   `acceptance`, blocked) via `accept:` once its fix lands clean (it's already in `acceptance`,
->   so the `accept:` valve works directly — no merge-evidence reconstruction needed).
-> (b) **Reconcile core-A `livespec-2j46re`** — re-dispatched clean this session; `gh pr list`
->   in livespec + `bd show`; if merged → review + reconcile (merge-evidence recipe); if the
->   sandbox died again → investigate the hub-tenant dispatch path (it failed once already).
-> (c) **Drive the remaining ANTI-EVASION systemic work** (the maintainer's "anti-fork" =
->   anti-evasion): (i) close evasion #3 in dev-tooling — teach `no_inheritance` to detect
->   `type(name, (bases…), …)` class construction; (ii) add a **factory anti-evasion brief /
->   janitor rule**: dispatch briefs MUST forbid resolving a check conflict by evading its
->   detector (no check-fork, no `.buffer.write`, no `type()`-dodge, no `: Any` escape) — a
->   conflict must be SURFACED (fail + route to maintainer). This is the orchestrator-side root
->   fix and the highest-leverage remaining item.
-> (d) **THEN release the held `no_write` slices** (orch-B `bd-ib-jnf` 69 hits, core-B
->   `livespec-7jcdfk`) — now protected by the buffer.write closure (v0.36.1) + anti-fork guard.
->   Approve+dispatch per the chain.
-> **Deferred follow-up (reviewers repeatedly hit it):** the worktree-pack hydration gap —
-> `just check` runs `dev-tooling/branch-protection.sh` which a raw `git worktree add` does NOT
-> materialize (only `just install-worktree-pack` does; the hydrate hook only `uv sync`s).
-> Decide: hydrate should install the pack, OR the check skip gracefully when absent. Track on `livespec-iily`.
+> **→ IMMEDIATE NEXT ACTIONS on resume — the FACTORY IMAGE FIX is the critical path that
+> unblocks all remaining dispatch:**
+> (a) **Reconcile the image fix (B)** — the delegated dev-tooling Dockerfile change (add
+>   `bubblewrap` + preinstall `@zed-industries/codex-acp@0.16.0`) → new dev-tooling release +
+>   republished sandbox image → orchestrator `workflow.toml` pin bump. VERIFY the new image
+>   actually has bwrap + codex baked (`docker run --rm <image> bash -lc 'which bwrap && npm ls
+>   -g @zed-industries/codex-acp'`). Independently review the Dockerfile change. This is the
+>   gate for ALL factory dispatch (the image mismatch degrades every sandbox, not just core).
+> (b) **PROVE the factory works end-to-end on the fixed image** before fanning out — re-dispatch
+>   ONE slice (core-A `livespec-2j46re`, set `ready` first — it's parked in `backlog`) and
+>   confirm it produces a clean PR WITHOUT the escalated-write degradation / blocked stall.
+>   Watch a live `docker exec` if it still stalls. Only after this proves green do the fan-out.
+> (c) **Drive the two C operability follow-ups** (clear bugs, not decisions):
+>   (i) `_dispatcher_engine.py::_blocked_outcome` — auto-abandon / route-to-`needs-regroom` a
+>   `human_input_required`/`blocked` run in UNATTENDED mode (else it hangs to the 15h ceiling
+>   with no `fabro attach` answerer); (ii) RGR-exemption for mechanical style-only `.py` changes.
+> (d) **Close evasion #3 in dev-tooling** (companion to the landed anti-fork guard v0.36.2 +
+>   buffer.write closure v0.36.1): teach `no_inheritance` to detect `type(name, (bases…), …)`
+>   dynamic class construction. (The anti-evasion BRIEF already forbids it prose-side; this is
+>   the mechanical enforcement.) On `livespec-iily`.
+> (e) **THEN release the held slices via the factory** (now on the fixed image + protected by
+>   the anti-evasion brief + the 2 mechanical closures): orch-B `bd-ib-jnf` (no_write 69) →
+>   C/D chain; core-A/B/C; runtime/git-jsonl file_lloc chains; drivers/console. NOTE: orch-B
+>   and all heavy slices need the image fix (B) — do NOT dispatch before B lands + (b) proves green.
+> **Elevated follow-up:** bump-pin lockstep root fix (teach bump-pin to update `workflow.toml`
+> sandbox pin in lockstep) — recurred 2× this session, blocks every orchestrator push after a
+> dev-tooling release. **Deferred:** worktree-pack hydration gap (`just check` runs
+> `dev-tooling/branch-protection.sh` which a raw `git worktree add` doesn't materialize — only
+> `just install-worktree-pack` does). Both on `livespec-iily`.
 > 4. **✅ DONE — accepted `bd-ib-1ka`** (reconciled active→done with merge_sha `6ee0118`/PR
 >    #391 via the merge-evidence recipe; fork reverted; Fable NO-BLOCKERS; WARN delta 0).
 >    B (`bd-ib-jnf`) is now UNBLOCKED (pending-approval).
