@@ -17,7 +17,7 @@ from _currency.locate import (
     _is_codex_installed_plugin_cache_path,
 )
 
-__all__ = ["_expected_build_id", "_git_rev_parse_head"]
+__all__: list[str] = ["_expected_build_id", "_git_rev_parse_head"]
 
 
 def _expected_build_id(*, plugin_root: Path) -> str | None:

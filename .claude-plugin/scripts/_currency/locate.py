@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import cast
 
-__all__ = [
+__all__: list[str] = [
     "_MARKETPLACE_NAME",
     "_PLUGIN_NAME",
     "_SHA12_RE",

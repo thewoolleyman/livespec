@@ -71,10 +71,17 @@ def parse_argv(
     exception; `.alt(...)` then maps that to a UsageError per
     the canonical pattern in `livespec/parse/jsonc.py`.
     """
-    return _raw_parse_argv(parser=parser, argv=argv).alt(_map_parse_error)
+    return _raw_parse_argv(parser=parser, argv=argv).alt(_ParseErrorMapper())
 
 
-def _map_parse_error(exc: argparse.ArgumentError | SystemExit) -> HelpRequestedError | UsageError:
+class _ParseErrorMapper:
+    def __call__(self, exc: argparse.ArgumentError | SystemExit) -> HelpRequestedError | UsageError:
+        return _map_parse_error(exc=exc)
+
+
+def _map_parse_error(
+    *, exc: argparse.ArgumentError | SystemExit
+) -> HelpRequestedError | UsageError:
     """Map argparse's exception-shaped exits to domain errors."""
     if isinstance(exc, SystemExit) and exc.code == 0:
         return HelpRequestedError("argparse: help requested")

@@ -38,6 +38,8 @@ import re
 import shlex
 import sys
 
+__all__: list[str] = ["main"]
+
 _NO_VERIFY_REASON = (
     "NEVER use --no-verify in the livespec fleet. The lefthook gates "
     "(commit-msg, pre-commit, pre-push, Red-Green-Replay trailers) are "
@@ -111,7 +113,7 @@ _MEM_WRITE_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 
 
-def _strip_heredoc_bodies(command: str) -> str:
+def _strip_heredoc_bodies(*, command: str) -> str:
     """Remove here-doc BODIES (they are file data, not executed commands).
 
     `cat > f <<'EOF'\n...body...\nEOF` — the body lines are data; analyzing them
@@ -141,12 +143,12 @@ def _strip_heredoc_bodies(command: str) -> str:
     return "\n".join(out)
 
 
-def _segments(command: str) -> list[str]:
-    cleaned = _strip_heredoc_bodies(command)
+def _segments(*, command: str) -> list[str]:
+    cleaned = _strip_heredoc_bodies(command=command)
     return [s.strip() for s in _SEGMENT_SPLIT.split(cleaned) if s.strip()]
 
 
-def _strip_leading_noise(tokens: list[str]) -> tuple[list[str], bool]:
+def _strip_leading_noise(*, tokens: list[str]) -> tuple[list[str], bool]:
     """Strip leading env-assignments and `mise exec [--] ` / `sudo` / `env`.
 
     Returns (remaining tokens, lefthook_disabled_seen).
@@ -186,7 +188,7 @@ def _strip_leading_noise(tokens: list[str]) -> tuple[list[str], bool]:
     return tokens[i:], lefthook_off
 
 
-def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
+def _git_subcommand(*, tokens: list[str]) -> tuple[str | None, list[str]]:
     """If tokens is a git invocation, return (subcommand, args_after_subcommand)."""
     if not tokens:
         return None, []
@@ -209,7 +211,7 @@ def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
     return tokens[i], tokens[i + 1 :]
 
 
-def _memory_write_reason(seg: str) -> str | None:
+def _memory_write_reason(*, seg: str) -> str | None:
     """Return the deny reason iff `seg` WRITES to the Claude memory store.
 
     Regex-based and run on the raw segment string (no shlex), so a quoting trick
@@ -222,7 +224,7 @@ def _memory_write_reason(seg: str) -> str | None:
     return None
 
 
-def _check_segment(seg: str) -> tuple[bool, str]:
+def _check_segment(*, seg: str) -> tuple[bool, str]:
     try:
         tokens = shlex.split(seg, posix=True)
     except ValueError:
@@ -230,18 +232,15 @@ def _check_segment(seg: str) -> tuple[bool, str]:
     # An empty token list (only possible for a blank segment, which `_segments`
     # already drops) falls through harmlessly: `_git_subcommand([])` returns
     # `None`, so the segment is treated as not-a-footgun.
-    core, lefthook_off = _strip_leading_noise(tokens)
+    core, lefthook_off = _strip_leading_noise(tokens=tokens)
     if lefthook_off:
         return True, _LEFTHOOK_REASON
-    sub, args = _git_subcommand(core)
-    if sub is None:
-        return False, ""  # leading command isn't git → not a footgun
+    sub, args = _git_subcommand(tokens=core)
     if sub in ("commit", "push") and "--no-verify" in args:
         return True, _NO_VERIFY_REASON
-    if sub == "config":
-        # Reads/removes are fine; only a SET of core.bare to a truthy value is the footgun.
-        if any(a in ("--get", "--unset", "--list", "--get-all", "--unset-all") for a in args):
-            return False, ""
+    if sub == "config" and not any(
+        a in ("--get", "--unset", "--list", "--get-all", "--unset-all") for a in args
+    ):
         joined = " ".join(args)
         # The two independent word-boundary searches also catch the
         # `core.bare=true` / `core.bare=1` equals forms (`\bcore\.bare\b` and
@@ -254,7 +253,7 @@ def _check_segment(seg: str) -> tuple[bool, str]:
     return False, ""
 
 
-def _deny(reason: str, command: str) -> None:
+def _deny(*, reason: str, command: str) -> None:
     payload = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -269,7 +268,7 @@ def _deny(reason: str, command: str) -> None:
             ),
         }
     }
-    print(json.dumps(payload))
+    json.dump(payload, sys.stdout)
     sys.exit(0)
 
 
@@ -284,13 +283,13 @@ def main() -> None:
         command = data.get("tool_input", {}).get("command", "")
         if not command:
             sys.exit(0)
-        for seg in _segments(command):
-            mem_reason = _memory_write_reason(seg)
+        for seg in _segments(command=command):
+            mem_reason = _memory_write_reason(seg=seg)
             if mem_reason is not None:
-                _deny(mem_reason, command)
-            blocked, reason = _check_segment(seg)
+                _deny(reason=mem_reason, command=command)
+            blocked, reason = _check_segment(seg=seg)
             if blocked:
-                _deny(reason, command)
+                _deny(reason=reason, command=command)
         sys.exit(0)
     except json.JSONDecodeError:
         sys.exit(0)

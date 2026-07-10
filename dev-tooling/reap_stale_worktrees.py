@@ -124,41 +124,31 @@ def _parse_worktrees(*, porcelain: str) -> list[Worktree]:
     detached HEAD), and an optional `locked [<reason>]` line.
     """
     worktrees: list[Worktree] = []
-    path: str | None = None
-    branch: str | None = None
-    locked_reason: str | None = None
-    is_first = True
-
-    def _flush() -> None:
-        nonlocal path, branch, locked_reason, is_first
+    for record in porcelain.split("\n\n"):
+        if not record.strip():
+            continue
+        path: str | None = None
+        branch: str | None = None
+        locked_reason: str | None = None
+        for raw_line in record.splitlines():
+            line = raw_line.rstrip("\n")
+            if line.startswith("worktree "):
+                path = line[len("worktree ") :]
+            elif line.startswith("branch "):
+                ref = line[len("branch ") :]
+                branch = ref[len("refs/heads/") :] if ref.startswith("refs/heads/") else ref
+            elif line.startswith("locked"):
+                rest = line[len("locked") :].strip()
+                locked_reason = rest
         if path is not None:
             worktrees.append(
                 Worktree(
                     path=path,
                     branch=branch,
-                    is_primary=is_first,
+                    is_primary=len(worktrees) == 0,
                     locked_reason=locked_reason,
                 )
             )
-            is_first = False
-        path = None
-        branch = None
-        locked_reason = None
-
-    for raw_line in porcelain.splitlines():
-        line = raw_line.rstrip("\n")
-        if line == "":
-            _flush()
-            continue
-        if line.startswith("worktree "):
-            path = line[len("worktree ") :]
-        elif line.startswith("branch "):
-            ref = line[len("branch ") :]
-            branch = ref[len("refs/heads/") :] if ref.startswith("refs/heads/") else ref
-        elif line.startswith("locked"):
-            rest = line[len("locked") :].strip()
-            locked_reason = rest
-    _flush()
     return worktrees
 
 

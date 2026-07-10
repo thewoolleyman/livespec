@@ -18,7 +18,7 @@ from pathlib import Path
 
 from _currency.locate import _MARKETPLACE_NAME, _SHA12_RE
 
-__all__ = [
+__all__: list[str] = [
     "_codex_config_marketplace_section",
     "_codex_last_revision_build_id",
     "_codex_remote_ref_build_id",

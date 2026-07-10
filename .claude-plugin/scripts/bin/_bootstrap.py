@@ -17,6 +17,8 @@ _EXIT_CODE_VERSION_MISMATCH = 127
 _EXIT_CODE_STALE_PLUGIN = 78
 _CURRENCY_GATE_FAIL = "fail"
 
+__all__: list[str] = ["bootstrap"]
+
 
 def bootstrap() -> None:
     if sys.version_info < (3, 10):

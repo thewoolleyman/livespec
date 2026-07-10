@@ -180,6 +180,25 @@ def test_parse_worktrees_handles_detached_head() -> None:
     assert parsed[0].locked_reason is None
 
 
+def test_parse_worktrees_skips_records_without_worktree_path() -> None:
+    """Malformed records without a `worktree` line are skipped."""
+    module = _load_module()
+    porcelain = (
+        "HEAD orphan\n"
+        "branch refs/heads/ignored\n"
+        "\n"
+        "worktree /repo/primary\n"
+        "HEAD aaaa\n"
+        "branch refs/heads/master\n"
+    )
+
+    parsed = module._parse_worktrees(porcelain=porcelain)  # noqa: SLF001
+
+    assert len(parsed) == 1
+    assert parsed[0].path == "/repo/primary"
+    assert parsed[0].is_primary is True
+
+
 def test_parse_locked_pid_extracts_and_handles_absence() -> None:
     """`_parse_locked_pid` returns the int pid when present, else None."""
     module = _load_module()
