@@ -2,17 +2,19 @@
 
 **Epic anchor:** `livespec-cf4bcu` (core tenant, `type=epic`, `status=backlog`)
 **Opened:** 2026-07-10
-**Status:** open — charter recorded; slices not yet groomed/filed.
+**Status:** open — **wiring rule DECIDED 2026-07-10** (single all-green
+gate job); reference-impl re-audited; slices groomed below, not yet filed.
 
 ## Thesis
 
 Every livespec-Python-governed repo's CI must **provably run the full
 `just check` canonical aggregate** — either by invoking the aggregate,
 or via a per-target matrix that a drift guard proves is a **superset**
-of the canonical block — with each newly-wired slug added to
-branch-protection required checks. Today most repos run a per-target CI
-matrix that covers only a *subset* of what `just check` runs locally, so
-many canonical checks run at pre-push but **never in CI**.
+of the canonical block — and must **block merges on all of it** via a
+single all-green gate job (see "Decision" below). Today most repos run a
+per-target CI matrix that covers only a *subset* of what `just check`
+runs locally, so many canonical checks run at pre-push but **never in
+CI**.
 
 ## Root cause (why this seam is orphaned)
 
@@ -46,25 +48,77 @@ shell repo, one `shellcheck`).
 | livespec (core) | ~27 | medium |
 | livespec-console-beads-fabro | **1** (`check-plugin-resolution`) | quick win |
 | livespec-driver-codex | **1** (`check-plugin-resolution`) | quick win |
-| livespec-driver-claude | **0** — already complete | **reference impl** |
+| livespec-driver-claude | **0** matrix-gap — matrix reference impl | **reference impl** |
 | dolt-server | n/a (shell; single `shellcheck` aggregate) | n/a |
 
 Method note: figures are per-repo comparisons of the justfile `check:`
 aggregate `targets=(...)` block against the CI matrix entries; the large
 tracks carry explicit "starter scaffold … add the corresponding
-`check-<slug>` targets" comments in their `ci.yml`.
+`check-<slug>` targets" comments in their `ci.yml`. Verified live
+2026-07-10 for the two quick wins (each = exactly `check-plugin-resolution`)
+and for driver-claude (matrix runs all 8 aggregate checks).
 
-## Mechanism
+## Decision (2026-07-10) — wiring rule: single all-green gate job
 
-1. **Drift guard (shared).** Extend `check-aggregate-completeness` (or a
-   sibling check) in `livespec-dev-tooling` to assert
-   **CI-matrix ⊇ canonical aggregate** — a slug that runs locally but
-   not in CI must **fail CI**. This is the enforcement that makes the
-   remaining coverage self-closing (a new canonical slug that isn't
-   CI-wired reddens CI until it is).
-2. **Per-repo wiring.** Add the missing `check-<slug>` matrix entries +
-   branch-protection required checks, using **driver-claude** as the
-   pattern (it already runs the full aggregate as a matrix).
+"Done" for a repo = **CI provably runs the full aggregate AND blocks
+merges on all of it**, realized via a **single all-green gate job**
+(maintainer-chosen 2026-07-10 over per-check required contexts, which
+are brittle: N context-names that deadlock master merges on any target
+rename and live out-of-band from git — no PR, no history). Concretely,
+each repo:
+
+1. **Matrix ⊇ aggregate.** Every canonical `just check` target runs in
+   CI — in the `check` matrix, or as a dedicated job (the pattern
+   `check-doctor-static` / `check-red-green-replay` already use for
+   targets that need a second checkout or full history).
+2. **One all-green gate job.** A summary job `needs:` every
+   check-bearing job and fails if any dependency failed or was
+   cancelled — a pure GitHub-expression gate, no external action, no
+   direct tool invocation (so it satisfies NFR §"Toolchain pins"):
+
+   ```yaml
+   ci-green:
+     name: ci-green
+     needs: [check, check-doctor-static, check-red-green-replay]
+     if: always()
+     runs-on: ubuntu-latest
+     steps:
+       - name: All required checks passed
+         if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+         run: exit 1
+   ```
+
+3. **Branch protection requires only `ci-green`.** One stable
+   context-name blocks merges on the entire matrix and never churns as
+   checks are added — so no per-check protection edits ever again. The
+   old curated per-check required contexts are replaced by `ci-green`
+   (flip protection AFTER the PR that adds `ci-green` merges, so the
+   context has reported on a real run and cannot deadlock PRs).
+4. **Drift guard (shared, dev-tooling).** A new check in
+   `livespec-dev-tooling` (sibling to `check-aggregate-completeness`)
+   asserts, from **committed files only**, that the CI `check` matrix +
+   dedicated check jobs are a **superset of the justfile aggregate**,
+   and that `ci-green.needs` covers every check-bearing job. A canonical
+   slug that runs locally but not in CI then FAILS CI. Branch-protection
+   membership stays out-of-band — but `ci-green` is a single stable
+   context set ONCE per repo, so it carries no drift risk the guard
+   needs to police.
+
+## Reference-impl finding (2026-07-10)
+
+Under this rule **no repo is currently at target** — including the
+"0-gap" reference `livespec-driver-claude`. It runs all 8 aggregate
+checks across matrix + dedicated jobs (so it IS the matrix-coverage
+reference), BUT its `export-telemetry` job
+(`needs: [check, check-red-green-replay]`, `if: !cancelled()`) is a
+telemetry exporter, **not** an all-green gate, and its branch protection
+requires 4 individual contexts (`check-plugin-structure`, `check-lint`,
+`check-format`, `check-e2e-cli`), not a gate job. So every repo
+(driver-claude included) needs a NEW `ci-green` gate job + a
+branch-protection flip. Branch-protection required-sets are non-uniform
+today: console requires all 9 of its matrix entries; driver-codex 6 of
+7; driver-claude 4 of 7 — the gate-job rule normalizes all of them to a
+single `ci-green`.
 
 ## Scope boundary (what this epic is NOT)
 
@@ -73,24 +127,45 @@ tracks carry explicit "starter scaffold … add the corresponding
   not edit CI matrices"* (PR #296). Confirmed distinct.
 - **Absorbs** the orphaned `livespec-fgqgnk` Phase-G.4 CI-wiring intent.
 - Not a change to *which* checks exist or their severity — purely
-  whether CI *runs* the checks the aggregate already defines.
+  whether CI *runs* the checks the aggregate already defines and *gates*
+  merges on them.
 
-## First slices (worklist — not yet filed)
+## Groomed slices (2026-07-10 — not yet filed)
 
 Per the sibling-repo tenanting model, per-repo slices live in **each
-repo's own beads tenant**; this epic (`livespec-cf4bcu`) is the hub
-anchor and coordination point.
+repo's own beads tenant**; epic `livespec-cf4bcu` (core tenant) is the
+hub anchor and coordination point.
 
-1. **Drift-guard slice** (`livespec-dev-tooling` tenant) — land the
-   CI-matrix ⊇ canonical assertion in the shared check package. Blocks
-   the large tracks (they need the guard to be self-closing).
-2. **Quick win: console** (`livespec-console-beads-fabro` tenant) — add
-   `check-plugin-resolution` to the CI matrix (1 line).
-3. **Quick win: driver-codex** (`livespec-driver-codex` tenant) — add
-   `check-plugin-resolution` to the CI matrix (1 line).
-4. **Large tracks** — runtime (~35), core (~27), both orchestrators
-   (~40 / ~35), dev-tooling (~48). Groom each per repo; wire matrix
-   entries + branch protection; use driver-claude as reference.
+**Ordering invariants.**
+- The drift guard is landed in dev-tooling FIRST, but each repo arms it
+  in its `just check` aggregate only in the SAME PR that completes its
+  matrix + `ci-green` job, so `just check` stays green throughout.
+- Per-repo PRs merge FIRST (the `ci-green` context must report on a real
+  run), THEN branch protection is flipped to require `ci-green`.
+- Slices 1 (guard) and 2 (reference pattern) are foundational — do them
+  first / in parallel; everything else copies slice 2's `ci-green` shape.
+
+1. **Drift-guard impl** (`livespec-dev-tooling` tenant) — add the
+   matrix-⊇-aggregate + `ci-green.needs`-completeness check to the
+   shared check package, with a warn-vs-fail env lever so it can land
+   before every repo is wired. Ships the check; does NOT yet arm it in
+   sibling aggregates.
+2. **Reference `ci-green` pattern** (`livespec-driver-claude` tenant) —
+   add the `ci-green` job + flip branch protection to require it. Lowest
+   matrix-gap repo, so it isolates the gate-job change; becomes the
+   copy-source for every other repo.
+3. **Quick win: console** (`livespec-console-beads-fabro` tenant) —
+   matrix += `check-plugin-resolution`; add `ci-green`; require `ci-green`.
+4. **Quick win: driver-codex** (`livespec-driver-codex` tenant) —
+   matrix += `check-plugin-resolution`; add `ci-green`; require `ci-green`.
+5. **Large tracks** — runtime (~35), core (~27),
+   orchestrator-beads-fabro (~40), orchestrator-git-jsonl (~35),
+   dev-tooling (~48). Each: complete the matrix, add `ci-green`, arm the
+   drift-guard in the aggregate, flip protection. Groom each per repo.
+6. **Codify the rule** — record the single-all-green-gate-job CI
+   convention as a fleet contract (propose-change → revise on the
+   relevant NFR), so it is a contract, not just working notes. Coordinate
+   with runtime PR #161's pending clause alignment.
 
 ## Related work
 
@@ -99,7 +174,9 @@ anchor and coordination point.
   §"Task-runner discipline" clause (the sole fleet outlier that mandated
   CI invoke `just check`) to bless the completeness-guarded per-target
   matrix. Pending `/livespec:revise` ratification. Resolved gap
-  `gap-rsfmjjzl` (runtime work-item `livespec-runtime-woe5gi`).
+  `gap-rsfmjjzl` (runtime work-item `livespec-runtime-woe5gi`). Slice 6
+  (codify the gate-job rule) should land alongside/after this revise so
+  the NFR describes the final gate-job shape.
 - Reference for the per-target matrix convention: livespec core
   `SPECIFICATION/contracts.md` §"Pre-commit step ordering" (zero-`.py`
   subsetting), which prescribes the matrix shape this epic completes.
