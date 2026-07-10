@@ -43,7 +43,8 @@ gate is met.
   clear the gate.
 - Round 4 (2026-07-10, fresh Fable session spawned by the driver): third
   fresh-session review-AND-FIX → FIXES LANDED (verdict + fixes:
-  `research/fable-review-round-4.md`; core PR #1022). Every rounds-1-3
+  `research/fable-review-round-4.md`; fixes in core PR #1022, record +
+  loop state in core PR #1023). Every rounds-1-3
   revision re-verified against live state; the two fixes were small
   consistency/currency, both in the overall plan (design §7 graph missing
   the `I1 ─► C1 persistence-seam` edge its own prose asserts; stale
