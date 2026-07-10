@@ -1,50 +1,51 @@
 # fleet-ci-aggregate-coverage — handoff
 
-**Epic anchor:** `livespec-cf4bcu` (core tenant, `type=epic`, `status=backlog`)
-**Opened:** 2026-07-10
-**Status:** open — **wiring rule DECIDED 2026-07-10** (single all-green
-gate job); slices 2–4 (reference pattern + both quick wins) DONE;
-**slice 1 drift-guard `check-ci-matrix-completeness` DONE + live-exercised
-fleet-wide 2026-07-10** (livespec-dev-tooling v0.37.0; pre-req
-`livespec-y9lb` DONE + live-exercised); **slice 1b drift-guard (b) fix
-`livespec-dev-tooling-o6b` DONE + live-exercised 2026-07-10** (PR #315
-merged, release 0.37.1 — (b) now requires every gating job, not only
-canonical); **slice 5 GROOMED 2026-07-10** (per-repo data in "Slice 5
-grooming" below — pending execution); slice 6 (codify) remains. See
-"Progress" below.
+**Epic anchor:** `livespec-cf4bcu` (core tenant, `type=epic`, `status=CLOSED`)
+**Opened:** 2026-07-10 · **Closed:** 2026-07-10
+**Status:** ✅ **COMPLETE — epic CLOSED 2026-07-10.** All 6 slices done.
+See "EPIC COMPLETE" immediately below; the beads epic `livespec-cf4bcu`
+carries the authoritative final record. The slice-by-slice detail further
+down is retained for provenance only.
 
-## Next session — START HERE
+## EPIC COMPLETE (2026-07-10)
 
-Slices `livespec-y9lb` + 1 + **1b (`o6b`)** are DONE and live-exercised
-(dev-tooling v0.37.0 for slice 1; v0.37.1 / PR #315 for the o6b (b) fix).
-The drift guard now requires `ci-green.needs` to cover **every gating job**
-(canonical OR non-canonical: `e2e-cli`/`acceptance`/`check-doctor-static`
-and the `check-python` matrix), so slice 5 can arm the guard to fail with
-full trust. Remaining epic work, **in dependency order**:
+All 6 slices are DONE and the epic `livespec-cf4bcu` is CLOSED. Nothing
+remains. Final state:
 
-1. **FIRST — Slice 5 — wire the 5 large-track repos** (see "Slice 5
-   grooming" below for each repo's canonical gap + target `ci-green.needs`
-   recipe). The five are independent (no shared files) → parallelizable.
-   Each: complete the matrix, add `ci-green`, arm the guard
-   (`LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST=true`), flip branch protection.
-   File per-repo work-items in each repo's OWN tenant first (epic
-   `livespec-cf4bcu` is the cross-tenant hub). The o6b fix means the guard
-   now MECHANICALLY catches any `ci-green.needs` that omits a gating job
-   (incl. the non-canonical ones) — so authoring the recipe is guard-checked,
-   not just hand-verified. NOTE: the o6b (b) fix reaches each consumer only
-   on the next dev-tooling release bump-pin fan-out (v0.37.1); before that
-   pin lands in a given repo, that repo's local `check-ci-matrix-completeness`
-   still runs the pre-o6b (b) — so still author each `ci-green.needs` to
-   include the matrix job + EVERY dedicated check/test job manually, and let
-   the guard confirm once the v0.37.1 pin lands.
-2. **Slice 6 — codify** the single-all-green-gate-job rule as a fleet
-   contract (propose-change → revise on the relevant NFR), coordinating with
-   livespec-runtime PR #161's clause alignment.
+- **Slices 1 / 1b / 1c** — drift-guard `check-ci-matrix-completeness`
+  (matrix ⊇ aggregate; `ci-green.needs` ⊇ gating jobs) + world-gate
+  exclusion + `branch_protection_alignment` top-level-gate-job recognition,
+  shipped in livespec-dev-tooling v0.37.0–v0.37.3, live-exercised
+  fleet-wide.
+- **Slices 2–4** — reference `ci-green` pattern (livespec-driver-claude) +
+  quick wins (livespec-console-beads-fabro, livespec-driver-codex). DONE.
+- **Slice 5** — wire the 5 large-track repos + flip branch protection. DONE
+  fleet-wide: all 5 large-track repos (livespec, livespec-runtime,
+  livespec-orchestrator-beads-fabro, livespec-orchestrator-git-jsonl,
+  livespec-dev-tooling) plus the 3 non-core repos now require ONLY
+  `ci-green`; the guard is armed everywhere. The final pending item — the
+  livespec-orchestrator-beads-fabro protection flip — was completed +
+  live-exercised this session (`check-branch-protection-alignment` exit 0
+  against the post-flip live protection; its prior blocker, the Fabro
+  sandbox-image lockstep, had resolved on master).
+- **Slice 6** — codify the single-all-green-gate-job rule. RATIFIED in both
+  repos after independent Fable adversarial review (NO-BLOCKERS, 2 rounds):
+  - livespec core `/livespec:revise` **v163** — NFR §"CI as a merge gate
+    (branch protection)". PRs: #1043 (file), #1044 (Fable-blocker fixes),
+    #1047 (ratify).
+  - livespec-runtime `/livespec:revise` **v010** — NFR §"Task-runner
+    discipline". PRs: #161/#177 (align to gate-job shape), #179 (ratify).
+    Resolved `gap-rsfmjjzl` (`livespec-runtime-woe5gi`).
 
-Discipline notes: `check-ci-matrix-completeness` is warn-default fleet-wide
-today. Every CI-config edit is maintainer-side (the fleet App lacks
-`workflows` permission) — worktree → PR, `chore(ci):`, never the factory.
-Fetch each repo's real `ci.yml` — job sets are non-uniform.
+Orthogonal follow-ups (NOT this epic): `livespec-dev-tooling-65c` (P3) —
+`branch_protection_alignment` does not verify `enforce_admins` despite the
+ratified NFR contract (kept as contract, impl gap filed); and
+`bd-ib-wwe` (livespec-orchestrator-beads-fabro Fabro image-pin-lockstep)
+remains open, independent of this epic.
+
+Discipline note retained: every CI-config edit is maintainer-side (the
+fleet App lacks `workflows` permission) — worktree → PR, `chore(ci):`,
+never the factory.
 
 ## Progress (2026-07-10)
 
