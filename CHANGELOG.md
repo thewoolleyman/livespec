@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.7](https://github.com/thewoolleyman/livespec/compare/v0.7.6...v0.7.7) (2026-07-10)
+
+
+### Bug Fixes
+
+* clear core no-lloc soft warnings ([8eda216](https://github.com/thewoolleyman/livespec/commit/8eda2169c8ea078fe0aef1b1207c1b0cb6cd32fa))
+
 ## [0.7.6](https://github.com/thewoolleyman/livespec/compare/v0.7.5...v0.7.6) (2026-07-10)
 
 
