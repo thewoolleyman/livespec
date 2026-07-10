@@ -39,7 +39,7 @@ across two repos and reconciles the seams between their already-written specs.
 Already landed (do not re-litigate):
 - **livespec core** — the deterministic work-item lifecycle + the two
   human-delegable policy valves + the Control-Plane console guidance (closed epics
-  `livespec-35s3zo` "Open Engine" and `livespec-zs22.6`). The plane boundary this
+  `livespec-35s3zo` and `livespec-zs22.6`). The plane boundary this
   MVP relies on is already spec law.
 - **console (spec v016)** — a complete normative definition of the operator-facing
   Full Autonomous Mode, the TUI Contract, and the five `work_item.*` valve/policy
@@ -82,20 +82,30 @@ existing plane boundary. That is why:
 
 ## 4. Irreducible human touchpoints (a hard boundary on the engine)
 
-core `SPECIFICATION/spec.md` §"Contract + reference implementations architecture"
-and `non-functional-requirements.md` grooming guidance declare three decisions
-that survive even a fully autonomous orchestrator and MUST remain human:
-- **drift acceptance** — "Orchestrators MAY file drift (the machine path); only
-  humans accept it."
-- **spec-change slices** — human-gated; route through propose-change/revise; never
-  auto-dispatched.
-- **regroom / backlog-bounce** — "the one human-in-the-loop step: the Dispatcher
-  SURFACES needs-regroom items (escalate, do not drop); a human grooms and
-  approves."
+Three decisions MUST remain human even under a fully autonomous orchestrator.
+Attribution (corrected per Step-0 verification — core never enumerates them
+together, and only the first carries normative "survives full autonomy"
+wording):
+- **drift acceptance** — NORMATIVE core law, `SPECIFICATION/spec.md`
+  §"Contract + reference implementations architecture": "the irreducible human
+  touchpoint that survives even a fully autonomous orchestrator. Orchestrators
+  MAY file drift (the machine path); only humans accept it."
+- **spec-change slices** — human-gated (route through propose-change/revise;
+  never auto-dispatched) — stated as an intake Definition-of-Ready bullet in
+  core `non-functional-requirements.md` grooming guidance, which core marks
+  "explicitly NON-normative on core's contract."
+- **regroom / backlog-bounce** — "the one human-in-the-loop step" (a human
+  grooms and approves; a non-convergence bounce lands in `backlog` and
+  escalates) — same non-normative core guidance.
 
-These are part of the "truly-unresolvable" set **by design, not by low
-confidence.** The orchestrator engine (step O2) MUST leave them as needs-attention;
-Step-0 validation MUST confirm the orchestrator spec agrees.
+The latter two are promoted to hard boundary by maintainer declaration
+(2026-07-10), to be CODIFIED in the orchestrator spec via O1's REQUIRED
+propose-change. Step-0 verified the orchestrator spec does NOT yet protect
+them: its truly-unresolvable definition is only a general three-pronged test,
+and its `manual`-admission collapse would auto-admit a spec-change slice (see
+the orchestrator plan's O1 for the full deliverable). All three are part of the
+"truly-unresolvable" set **by design, not by low confidence**; the engine (O2)
+MUST leave them as needs-attention.
 
 ## 5. Current state synthesis (from the 2026-07-10 surveys)
 
@@ -111,16 +121,21 @@ These are cross-repo tensions between two already-written specs. The plan SURFAC
 them; the Step-0 multi-model validation (see §8) and the C1/O1 spec-currency steps
 RESOLVE them via propose-change where a real gap exists.
 
-1. **Persistence-model seam (the #1 risk).** The console spec persists a per-repo
-   `autonomous_mode.enabled` preference in `.livespec.jsonc` (a durable operator
-   intent). The orchestrator spec says autonomous mode is a per-invocation
-   `drive --mode autonomous` opt-in that **MUST NOT persist beyond the
-   invocation**, though it also names a `dispatcher.autonomous_mode` config key.
-   Reconcile precisely: the console persists *intent*; whatever LAUNCHES the
-   Dispatcher loop reads that intent and passes `--mode autonomous` per run. Define
-   what published orchestrator surface the console's
-   `factory.autonomous_mode_enable_requested` command maps to, given the
-   orchestrator holds no persistent "enabled" state to flip.
+1. **Persistence-model seam (the #1 risk) — Step-0 resolution.** The console
+   spec persists a per-repo `autonomous_mode.enabled` preference in
+   `.livespec.jsonc` (durable operator intent). The orchestrator spec is NOT
+   persistence-free: it defines a PERSISTENT permission key
+   (`livespec-orchestrator-beads-fabro.dispatcher.autonomous_mode`, same file,
+   default `false`) plus a REQUIRED per-invocation `drive --mode autonomous`
+   flag — "MUST NOT persist beyond the invocation" governs the armed MODE, not
+   the key. So two persistent booleans would coexist. O1 pins (recommended):
+   the console's `factory.autonomous_mode_enable/disable_requested` commands
+   set the ORCHESTRATOR's key (the single persistent permission); the console's
+   own block is dropped or derived (C1 amends the console contract to match);
+   the loop launcher — recommended: the console's existing factory-drain path —
+   reads the permission and passes `--mode autonomous` per run; and O1 pins
+   whether `drive` or the dispatcher `loop` subcommand carries the flag (the
+   spec says `drive`, the shipped mode-bearing entry point is `loop`).
 2. **Division of resolution (avoid double-resolution).** The console spec says the
    console "MUST resolve — via an LLM standing in for the operator — the operator
    decisions it would otherwise prompt a human for" (Scenario 10) AND "where a
@@ -130,14 +145,23 @@ RESOLVE them via propose-change where a real gap exists.
    engine, so the two layers never both resolve the same gate. Recommended MVP
    reading: the orchestrator engine owns all gate resolution; the console's
    autonomous responsibility is enable + observe + reflect + surface-unresolvable,
-   keeping the console's own LLM layer thin or deferred.
-3. **Vocabulary drift ("livespec moved forward").** The console spec cites the
-   orchestrator contract by reference (the correct pattern), but confirm three
-   vocabularies still match current core/orchestrator: (a) the seven lane names +
-   the `blocked:dependency` overlay; (b) the acceptance-policy enum
+   keeping the console's own LLM layer thin or deferred. Step-0 finding: this
+   reading REQUIRES a console spec revision (Scenario 10's first case has the
+   console record the auto-decision command — unsatisfiable when the engine
+   resolves upstream); C1 ratifies the re-scope, and the revision must
+   explicitly kill the double-resolution race (a console-side resolver acting
+   on items resting between engine runs).
+3. **Vocabulary drift ("livespec moved forward") — Step-0 results.** Verified
+   DRIFT-FREE: (a) the seven lane names (the blocked-for-dependency overlay
+   flows as lane `blocked` + `lane_reason`); (b) the acceptance-policy enum
    `{ai-only, human-only, ai-then-human}` and reject modes `{rework, regroom}`;
-   (c) the `attention_item.*` schema versus core's current `needs-attention`
-   schema (console item `ipi` / Scenario 12).
+   (c) the `attention_item.*` fields versus core's SHIPPED runtime schema
+   (`livespec/.claude-plugin/scripts/_vendor/livespec_runtime/attention_item.py`
+   — core's SPECIFICATION/ defines no such schema; the shipped runtime is the
+   diff target). CONFIRMED DRIFT, fixed by C1: (d) the console contract's
+   "`orchestrate run`" citation — the orchestrator's published surface is now
+   `drive`; (e) the console contract's "lane vocabulary is owned by livespec
+   core" — it is owned by `livespec-orchestrator-beads-fabro`.
 4. **Operability preconditions for SAFE unattended running.** core item
    `livespec-0jxs` records that the dark factory today has NO failure-notification
    path, NO escalation, NO telemetry shipping, and NO verified cost ceiling. An
@@ -169,11 +193,14 @@ spec revision) with the stated evidence.
   borrowed vocab against current core/orchestrator (§6.3); resolve the persistence
   seam (§6.1) and the resolution-division question (§6.2); resolve the
   `config.autonomous_mode_set` naming-consistency question versus the factory
-  `autonomous_mode_enable/disable_requested` pair. Route any real change via
+  `autonomous_mode_enable/disable_requested` pair; fix the two confirmed
+  citation drifts (§6.3 d/e). Route any real change via
   `/livespec:propose-change` → independent Fable review → `/livespec:revise`.
   Refresh the stale version pointer on item `rt4` (cites v013; spec is v016).
-  **Gate:** Step 0. **Done:** console spec revision ratified (or a documented
-  "no change needed" with the seams pinned).
+  The console plan's C1 carries the authoritative step text.
+  **Gate:** Step 0 (passed); the persistence-seam portion additionally gates on
+  I1. **Done:** console spec revision RATIFIED (Step 0 confirmed "no change
+  needed" is unavailable) with the seams pinned.
 - **C2 — console command foundation.** Add the five `work_item.*` valve/policy
   `CommandType` variants (`approve`, `accept`, `reject:…:{rework,regroom}`,
   `set-admission:…:{auto,manual}`, `set-acceptance:…:{ai-only,human-only,ai-then-human}`)
@@ -195,15 +222,19 @@ spec revision) with the stated evidence.
   intent → orchestrator arming command → observed outcome.
 
 ### Orchestrator track — owner: session `orchestrator-autonomous-mode`
-- **O1 — orchestrator spec currency + publish the arming contract.** The engine is
-  already fully spec'd (v032, scenarios 33-37); this step VALIDATES currency, not
-  authors design. Confirm internal consistency, confirm consistency with the
-  core irreducible-touchpoints (§4), and — the contract-first deliverable — pin the
-  exact PUBLISHED command surface the console calls to arm/disarm autonomous mode
-  and to read per-decision audit, resolving the persistence seam (§6.1). Route any
-  real change via propose-change → Fable review → revise. **Gate:** Step 0.
-  **Done:** the arming/audit contract is frozen and cross-referenced by the console
-  plan (this unblocks C3).
+- **O1 — orchestrator spec fixes + publish the arming contract.** The engine is
+  fully spec'd (v032, scenarios 33-37) and Step 0 completed the currency
+  validation; O1 executes its findings: (1) the REQUIRED
+  irreducible-touchpoints propose-change (§4 — the v032 collapse would
+  auto-admit a spec-change slice; also reconcile the `human-only`-acceptance
+  carve-out), and (2) — the contract-first deliverable — pin the exact
+  PUBLISHED surface the console calls to arm/disarm autonomous mode and to read
+  per-decision audit, resolving the persistence seam per §6.1's three pins.
+  Route via propose-change → independent Fable review → revise. The
+  orchestrator plan's O1 carries the authoritative step text. **Gate:** Step 0
+  (passed). **Done:** the arming/audit contract is frozen and cross-referenced
+  by the console plan (this unblocks C3), and the touchpoints propose-change is
+  ratified.
 - **O2 — implement the engine (`bd-ib-82a`).** Groom `bd-ib-82a` into
   dependency-layered slices, then build: the `dispatcher.autonomous_mode` config key
   + `drive --mode autonomous` gate-collapse (effective admission→auto, effective

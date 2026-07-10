@@ -1,10 +1,13 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
-**Status:** Step 0 PASSED — the independent Fable-model validation pass ran
-2026-07-10 over all three plans and returned **NO-BLOCKERS** on each (full
-verdict: `research/step0-fable-verdict.md` in this directory). Implementation
-may begin: dispatch console C1 and orchestrator O1 in parallel, with the
-verdict's observations pinned into each brief (see "Next actions" below).
+**Status:** Step 0 PASSED and the fable-revise phase is COMPLETE + CERTIFIED.
+The independent Fable-model validation ran 2026-07-10 over all three plans
+(NO-BLOCKERS each; verdict: `research/step0-fable-verdict.md`); the SAME
+full-context Fable session then FIXED every finding directly in all three
+plans (orchestrator PR #395, console PR #134, this repo's follow-up PR) and
+issued the exit certification that the plans are solid, executable, and will
+meet the MVP: `research/fable-certification.md`. Implementation may begin:
+dispatch console C1 and orchestrator O1 in parallel (see "Next actions").
 First-drafted 2026-07-10 from a three-repo survey.
 
 **Thread role:** the OVERALL cross-repo plan. Ties together the console operator
@@ -14,9 +17,10 @@ here.
 
 ## Read first
 1. This file, then `design.md` in this directory (the full plan), then
-   `research/step0-fable-verdict.md` (the Step-0 verdict — its numbered
-   observations are dispatch-brief inputs, not optional reading).
-2. The two sibling repo plans it coordinates:
+   `research/fable-certification.md` (the fable-revise exit certification) and
+   `research/step0-fable-verdict.md` (the underlying Step-0 verdict).
+2. The two sibling repo plans it coordinates (both REVISED 2026-07-10 to carry
+   the Step-0 findings in their own step texts — they are self-sufficient):
    - `livespec-console-beads-fabro/plan/autonomous-mode/design.md`
    - `livespec-orchestrator-beads-fabro/plan/autonomous-mode/design.md`
 
@@ -43,49 +47,18 @@ arming/audit contract before C3 builds on it.
 1. **Dispatch O1 and C1 in parallel** to the two delegate sessions per the
    delegation model below. Both briefs MUST forbid `--no-verify`, require
    worktree → PR → merge, and instruct halt-and-report on hook failure.
-2. **The O1 brief MUST carry, verbatim from the verdict** (observations 1, 2,
-   and 5):
-   - The O1 propose-change is REQUIRED, not "likely": orchestrator spec v032's
-     collapse auto-approves stored-`manual` items while its own grooming clause
-     names `manual` admission the realization of the human-gated **spec-change**
-     marker; and the blanket acceptance→`ai-only` collapse conflicts with
-     Scenario 36's `human-only` carve-out. The propose-change must name the
-     design-human-gated set (drift acceptance, spec-change slices,
-     regroom/backlog-bounce), define how the engine distinguishes design-gated
-     `manual` from routine `manual`, and reconcile the `human-only` tension.
-     Attribute the touchpoints precisely: only drift-acceptance is normative core
-     law; spec-change gating and regroom are core NON-normative guidance being
-     promoted into the orchestrator spec by maintainer declaration.
-   - The arming contract must pin: the disposition of the orchestrator's own
-     persistent `dispatcher.autonomous_mode` permission key versus the console's
-     namespaced intent block (avoid two persistent booleans in the same
-     `.livespec.jsonc` — recommended: the console's enable/disable commands set
-     the orchestrator's key; the console block is dropped or derived); WHO the
-     loop launcher is (recommended: the console's factory-drain path extended to
-     pass the mode); and which surface carries `--mode autonomous` (spec says
-     `drive`, a one-action executor; the shipped mode-bearing entry point is the
-     dispatcher `loop` subcommand).
-   - Refresh `bd-ib-82a`'s stale spec pointer (cites v025; spec is v032).
-3. **The C1 brief MUST carry, verbatim from the verdict** (observations 3, 4,
-   and 5):
-   - Expect a ratified console revision, not "no change needed": Scenario 10's
-     first Gherkin case (the console records an auto-decision command) is
-     unsatisfiable for orchestrator-owned gates under the recommended
-     engine-owns-all-gate-resolution reading; re-scope it (and the §"Full
-     Autonomous Mode" blanket resolve-MUST) to the delegation model.
-   - Add two confirmed drift instances to the vocab diff: the console contract's
-     "`orchestrate run`" citation (the orchestrator surface is now `drive`) and
-     its "lane vocabulary is owned by livespec core" attribution (it is owned by
-     `livespec-orchestrator-beads-fabro`). The lane names, `blocked:dependency`
-     overlay routing, and acceptance/reject enums verified drift-free.
-   - Sequence C1's persistence-seam portion AFTER O1's arming contract freezes
-     (I1), or resolve it as an explicit joint decision at a driver boundary —
-     do not ratify a console-side persistence resolution before I1.
-   - Refresh `rt4`'s stale version pointer (cites v013; spec is v016); when
-     regrooming `pke3y3`, SPLIT out the four still-contract commands C2/C3 do
-     not cover (`factory.dispatch_item_requested`, `factory.pause_requested`,
-     `factory.resume_requested`, `spec.doctor_requested`) rather than narrowing
-     them away.
+2. **The O1 brief**: point the delegate at its OWN revised plan
+   (`livespec-orchestrator-beads-fabro/plan/autonomous-mode/handoff.md` →
+   `design.md` §3 O1) — the Step-0 findings are baked in there (the REQUIRED
+   touchpoints propose-change with its three deliverables; the three
+   arming-contract pins; the `bd-ib-82a` pointer refresh). No side-channel
+   content is needed.
+3. **The C1 brief**: point the delegate at its OWN revised plan
+   (`livespec-console-beads-fabro/plan/autonomous-mode/handoff.md` →
+   `design.md` §4 C1) — the Step-0 findings are baked in there (the two
+   citation-drift fixes; the Scenario-10 re-scope; the persistence-seam
+   portion gated on I1; the `rt4` refresh and `pke3y3` split-not-narrow
+   regroom). No side-channel content is needed.
 4. **Gates unchanged:** C2 after C1; C3 after C1 + C2 + I1; O2 after O1; I2
    after C3 + O2 AND the design.md §9 operability conditions (verified cost
    ceiling + a real failure-surfacing path — note orchestrator bug `bd-ib-18r`:
