@@ -59,9 +59,18 @@ gate is met.
   record-carrying PR #1023). BOTH sibling plans passed clean again
   (console's third consecutive clean round; orchestrator's second).
   Because a fix landed, this round does NOT clear the gate.
-- Round 6: NOT YET RUN — the next fresh-session review-AND-FIX round.
-  → This is the next action.
-- Maintainer certification: NOT YET GIVEN.
+- Round 6 (2026-07-10, fresh Fable session spawned by the driver): fifth
+  fresh-session review → **NOTHING-BLOCKING** (verdict:
+  `research/fable-review-round-6.md`; a purely read-only round — no fix
+  was warranted, none was landed, so the no-self-certification rule is
+  satisfied). Every load-bearing claim in all three plans re-verified
+  first-hand as true; both sibling plans clean for the fourth/third
+  consecutive round (console/orchestrator); the convergence trajectory
+  (9 obs → 6 → 2 → 2 → 1 fixes) reaches zero. The verdict affirmatively
+  certifies all three plans SOLID, EXECUTABLE, and MVP-MEETING.
+- Maintainer certification: PENDING — round 6's NOTHING-BLOCKING verdict
+  awaits it. → This is the next action; only the maintainer's recorded
+  certification here exits the Step-0 phase.
 
 **Thread role:** the OVERALL cross-repo plan. Ties together the console operator
 surface and the orchestrator decision engine, owns the dependency graph, and
@@ -91,7 +100,7 @@ operator.
 ## The spine (see design.md §7 for the full step catalogue)
 ```
 Step 0 (fable-review LOOP — HARD GATE, exit = fresh-session nothing-blocking + MAINTAINER certification)
-  status: rounds 1-5 done (each landed fixes); round 6 fresh review-and-fix PENDING; maintainer certification PENDING
+  status: rounds 1-5 done (each landed fixes); round 6 NOTHING-BLOCKING (no fixes; certifies SOLID/EXECUTABLE/MVP-MEETING); maintainer certification PENDING — the only remaining Step-0 gate
   ├─ Console track (session console-autonomous-mode):  C1 spec fixes ─► C2 command foundation ─► C3 autonomous feature
   └─ Orchestrator track (session orchestrator-autonomous-mode): O1 spec fixes + publish arming contract ─► O2 build engine (bd-ib-82a)
                           O1 arming contract (I1) ─► C3 (and C1's persistence-seam portion)
@@ -103,7 +112,9 @@ builds on it.
 
 ## Next actions (exact steps for a new session)
 
-1. **Run the next review round (per Loop state above — currently round 6)**:
+1. **Run the next review round (per Loop state above — round 6 returned
+   NOTHING-BLOCKING, so the CURRENT next step is step 3's second branch:
+   maintainer certification, not another round)**:
    spawn (or have the maintainer run) a FRESH Fable
    session with `research/fable-review-brief.md`. Fresh = no prior involvement
    in authoring or revising these plans. The session REVIEWS all three plans
@@ -168,8 +179,10 @@ builds on it.
    scope (`orchestrate run` → `drive`; lane-ownership attribution) (obs. 4).
 
 ## Next action
-Run review round 6 (Next actions, step 1). Nothing dispatches to
-implementation until the Step-0 loop exits with maintainer certification.
+Present round 6's NOTHING-BLOCKING verdict
+(`research/fable-review-round-6.md`) to the MAINTAINER for certification
+(Next actions, step 3). Nothing dispatches to implementation until the
+maintainer's recorded certification exits the Step-0 loop.
 
 ## Pointers
 - Ledger read (per tenant): `bd list --json` (or `bd show <id> --json`) run from
