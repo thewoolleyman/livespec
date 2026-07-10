@@ -3,9 +3,12 @@
 **Epic anchor:** `livespec-cf4bcu` (core tenant, `type=epic`, `status=backlog`)
 **Opened:** 2026-07-10
 **Status:** open — **wiring rule DECIDED 2026-07-10** (single all-green
-gate job); reference pattern + both quick wins LANDED (slices 2–4 DONE,
-2026-07-10); drift-guard + large tracks + codify remain. See "Progress"
-below.
+gate job); slices 2–4 (reference pattern + both quick wins) DONE;
+**slice 1 drift-guard `check-ci-matrix-completeness` DONE + live-exercised
+fleet-wide 2026-07-10** (livespec-dev-tooling v0.37.0; pre-req
+`livespec-y9lb` DONE + live-exercised); **slice 5 GROOMED 2026-07-10**
+(per-repo data in "Slice 5 grooming" below — pending execution); slice 6
+(codify) remains. See "Progress" below.
 
 ## Progress (2026-07-10)
 
@@ -15,8 +18,9 @@ below.
 | 2. Reference `ci-green` pattern | livespec-driver-claude | ✅ DONE | PR #116 merged; `ci-green` green on master; branch protection now requires only `ci-green` |
 | 3. Quick win | livespec-console-beads-fabro | ✅ DONE | PR #137 merged; matrix += `check-plugin-resolution`; `ci-green` added + required; `ci-green.needs = [check, check-doctor-static]` |
 | 4. Quick win | livespec-driver-codex | ✅ DONE | PR #95 merged; matrix += `check-plugin-resolution`; `ci-green` added + required; `ci-green.needs = [check, check-doctor-static, red-green-replay]` |
-| 1. Drift-guard impl | livespec-dev-tooling | ⬜ not started | foundational; heaviest (product Python + TDD) |
-| 5. Large tracks | runtime, core, orch-beads-fabro, orch-git-jsonl, dev-tooling | ⬜ not started | each: complete matrix + `ci-green` + arm guard + flip protection |
+| Pre-req: bump-pin re-stamp | livespec-dev-tooling (`livespec-y9lb`) | ✅ DONE + live-exercised | PR #312 merged; core bump #1019 re-stamped `canonical-slugs.yml` atomically, stayed green |
+| 1. Drift-guard impl | livespec-dev-tooling (`livespec-dev-tooling-f13`) | ✅ DONE + live-exercised | PR #313 merged, released **v0.37.0**; `check-ci-matrix-completeness` warn-default; 6/7 fleet bump PRs auto-merged green (console pending slow Rust checks) |
+| 5. Large tracks | runtime, core, orch-beads-fabro, orch-git-jsonl, dev-tooling | 🟨 GROOMED (see below) | per-repo gap + `ci-green.needs` recipe computed 2026-07-10; execution pending |
 | 6. Codify rule | fleet NFR | ⬜ not started | coordinate w/ runtime PR #161 |
 
 **Validated on driver-claude:** `ci-green` runs, passes, correctly
@@ -198,7 +202,15 @@ hub anchor and coordination point.
    relevant NFR), so it is a contract, not just working notes. Coordinate
    with runtime PR #161's pending clause alignment.
 
-## Next session — drift-guard (slice 1) implementation brief
+## Next session — drift-guard (slice 1) implementation brief — ✅ DONE 2026-07-10
+
+**DONE:** shipped as `livespec_dev_tooling/checks/ci_matrix_completeness.py`
+(+ private sibling `_ci_matrix_parse.py`) in livespec-dev-tooling PR #313,
+released v0.37.0, live-exercised fleet-wide (work-item
+`livespec-dev-tooling-f13`, closed). Open-question #3 RESOLVED: consumer
+recipe bodies auto-generate from the bump-pin composite Action's "Reconcile
+canonical check wiring" step — no `justfile.jinja` edit, no hand-add. The
+brief below is retained for provenance.
 
 Self-sufficient brief to implement slice 1 in a **clean session**. All
 paths verified live 2026-07-10. The check is a normal
@@ -348,6 +360,64 @@ propagation hazard that reddened master on the v0.36.0 bump (see
 - Clean session's FIRST action: file the slice-1 work-item in the
   **`livespec-dev-tooling` tenant** (epic `livespec-cf4bcu` is the
   cross-tenant hub), then implement.
+
+## Slice 5 grooming (2026-07-10) — per-repo, pending execution
+
+Computed by dogfooding the shipped drift-guard's own parsers
+(`_ci_matrix_parse`) against each repo's `origin/master` `justfile` +
+`.github/workflows/ci.yml` (read-only `git show`; script in that session's
+scratchpad). Canonical slug count at v0.37.0 = **46**. "Gap" = canonical
+aggregate slugs that run at pre-push but **not** in CI. No repo has a
+`ci-green` job yet.
+
+| Repo | Canonical gap | Current CI jobs (excl. `setup`/`export-telemetry`) | Target `ci-green.needs` recipe |
+|---|---|---|---|
+| livespec (core) | **22** | `check-python` (matrix), `check-metadata` | `[check-python, check-metadata]` |
+| livespec-runtime | **42** | `check-python` (matrix=lint/format/types/coverage only), `check-metadata`, `check-doctor-static` | `[check-python, check-metadata, check-doctor-static]` |
+| livespec-orchestrator-beads-fabro | **41** | `check-python`, `check-doctor-static`, `check-metadata`, `e2e-cli`, `acceptance` | `[check-python, check-doctor-static, check-metadata, e2e-cli, acceptance]` |
+| livespec-orchestrator-git-jsonl | **41** | `check-python`, `check-doctor-static`, `check-metadata`, `e2e-cli`, `acceptance` | `[check-python, check-doctor-static, check-metadata, e2e-cli, acceptance]` |
+| livespec-dev-tooling | **39** | `check-python`, `check-fleet-conformance`, `check-metadata` | `[check-python, check-fleet-conformance, check-metadata]` |
+
+**Per-repo slice-5 work (each in its own tenant; epic `livespec-cf4bcu` is
+the cross-tenant hub):**
+1. **Complete the matrix.** Add the repo's missing canonical slugs to the
+   `check-python` `strategy.matrix.target` list (or dedicated jobs for the
+   two-checkout / full-history checks, per the `check-doctor-static`
+   pattern). runtime/orch-*/dev-tooling matrices are today "starter
+   scaffolds" running only lint/format/types/coverage + a few metadata
+   checks — the large gaps are real.
+2. **Add the `ci-green` gate job** with the `needs:` recipe above.
+3. **Arm the guard.** Set `LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST=true` for
+   this repo's `check-ci-matrix-completeness` run once matrix + `ci-green`
+   are complete, flipping the (already-propagated, warn-default) guard to
+   fail for that repo.
+4. **Flip branch protection** to require only `ci-green` (AFTER the wiring
+   PR merges so the context has reported on a real run). CI-wiring is
+   **maintainer-side** (the App lacks `workflows` permission) — worktree →
+   PR, never via the factory.
+
+**Ordering:** these are independent across repos (no shared files) → all
+five can run in parallel once approved. Each is one maintainer-driven
+worktree → PR (CI-config + no product `.py`, so `chore(ci):`, no
+red-green-replay).
+
+### Finding surfaced during grooming — drift-guard (b) scoping edge
+
+The shipped guard defines **check-bearing = "a job contributing ≥1
+*canonical* slug"**. A matrix/job running **only non-canonical** checks
+(`check-lint`/`check-format`/`check-types`/`check-coverage`, or the
+`e2e-cli`/`acceptance` jobs) contributes zero canonical slugs, so
+assertion (b) does **not** require `ci-green.needs` to gate it. Impact is
+**low**: (a) it is warn-default; (b) once slice 5 completes each matrix,
+the `check-python` matrix job runs canonical checks and becomes
+check-bearing, self-resolving the matrix case. **Mitigation (already in
+the recipes above):** author each `ci-green.needs` to include the matrix
+job + **every** dedicated check/test job regardless of the guard's
+canonical-only view. **Optional follow-up:** refine check-bearing to also
+count any job whose `strategy.matrix.target` is a list of `check-*`
+entries (a matrix job runs checks by definition), and/or any job whose
+`run:` invokes `just check-<x>` for a non-canonical `check-` target.
+Filed as a candidate refinement, NOT a blocker.
 
 ## Related work
 
