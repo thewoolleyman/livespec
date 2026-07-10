@@ -221,10 +221,13 @@ spec revision) with the stated evidence.
   `CommandType` variants (`approve`, `accept`, `reject:…:{rework,regroom}`,
   `set-admission:…:{auto,manual}`, `set-acceptance:…:{ai-only,human-only,ai-then-human}`)
   + handlers + a port that issues them through the orchestrator's EXISTING published
-  `orchestrate run` action surface (these actions already ship on the orchestrator
+  `drive` action surface (these actions already ship on the orchestrator
   `drive` skill — the console wires to them, it does not invent new orchestrator
   commands). Folds console items `pke3y3` (regroom against the current valve model)
-  and the Scenario-11 test. **Gate:** C1. **Done:** merged PR; the TUI can issue
+  and the Scenario-11 test. **Gate:** C1's MAIN ratification (the
+  citation-drift + Scenario-10 + naming revision) — NOT the I1-gated
+  persistence-seam amendment, which gates C3 only; this is what keeps C2
+  concurrent with O1→O2. **Done:** merged PR; the TUI can issue
   each valve manually against a real tenant.
 - **C3 — console autonomous-mode feature.** Add `config.autonomous_mode_set` +
   a Configuration context that reads/writes the `.livespec.jsonc` `autonomous_mode`
@@ -329,9 +332,15 @@ Coordination discipline:
   gate the I2 live exercise on at least the cost-ceiling and a failure-surfacing
   path being real.
 - **`livespec-orchestrator-beads-fabro/plan/fabro-token-refresh/`** (active, infra):
-  the Fabro GitHub-App installation-token 60-minute TTL kills long factory runs at
-  the publish/PR node. A long autonomous run must be able to publish. No shared code
-  surface with gate-resolution; track as a robustness precondition for I2.
+  the Fabro GitHub-App installation-token 60-minute TTL killed long factory runs
+  at the publish/PR node. STATE MOVED 2026-07-10: the fix is VALIDATED LIVE
+  (gh-free publish via GitHub REST/GraphQL proven end-to-end on
+  `livespec-console-beads-fabro` PR #136; a genuine >60-min run pushed green
+  past the TTL) but NOT YET LANDED in production fabro — the landing sequence
+  (upstream fabro PR, production pin, PR #136 cleanup) awaits maintainer
+  decisions recorded in that thread's handoff. A long autonomous run must be
+  able to publish, so it REMAINS a robustness precondition for I2 until
+  production fabro carries the fix. No shared code surface with gate-resolution.
 
 ## 10. Definition of done (MVP)
 

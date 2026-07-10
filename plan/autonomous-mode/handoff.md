@@ -22,8 +22,17 @@ gate is met.
   PRs #1000 + this one) and wrote
   `research/fable-revising-session-self-assessment.md` — which does NOT
   clear the gate, because reviser and reviewer were the same session.
-- Round 2: NOT YET RUN — the first fresh-session review-AND-FIX round over
-  the REVISED plans. → This is the next action.
+- Round 2 (2026-07-10, fresh Fable session, this repo's session
+  `livespec-autonomous-mode` pane): first fresh-session review-AND-FIX over the
+  REVISED plans → FIXES LANDED (verdict + fixes:
+  `research/fable-review-round-2.md`; core PR #1004, console PR #141,
+  orchestrator PR #404). All round-1 revisions re-verified against live state;
+  fixes were currency + internal-soundness precision (stale `orchestrate run`
+  in core C2 step text; C2-gate two-phase-C1 ambiguity; fabro-token-refresh
+  state moved; mb64bv type; O2 done-surface pin). Because fixes landed, this
+  round does NOT clear the gate.
+- Round 3: NOT YET RUN — the next fresh-session review-AND-FIX round.
+  → This is the next action.
 - Maintainer certification: NOT YET GIVEN.
 
 **Thread role:** the OVERALL cross-repo plan. Ties together the console operator
@@ -38,8 +47,8 @@ here.
    (`research/step0-fable-verdict.md`,
    `research/fable-revising-session-self-assessment.md`,
    `research/fable-review-round-N.md` as they accumulate).
-3. The two sibling repo plans this coordinates (both REVISED 2026-07-10 to
-   carry the round-1 findings in their own step texts):
+3. The two sibling repo plans this coordinates (both carry the review-round
+   findings in their own step texts — revised rounds 1-2, 2026-07-10):
    - `livespec-console-beads-fabro/plan/autonomous-mode/design.md`
    - `livespec-orchestrator-beads-fabro/plan/autonomous-mode/design.md`
 
@@ -53,7 +62,7 @@ operator.
 ## The spine (see design.md §7 for the full step catalogue)
 ```
 Step 0 (fable-review LOOP — HARD GATE, exit = fresh-session nothing-blocking + MAINTAINER certification)
-  status: round 1 done (validate + revise); round 2 fresh review-and-fix PENDING; maintainer certification PENDING
+  status: rounds 1-2 done (each landed fixes); round 3 fresh review-and-fix PENDING; maintainer certification PENDING
   ├─ Console track (session console-autonomous-mode):  C1 spec fixes ─► C2 command foundation ─► C3 autonomous feature
   └─ Orchestrator track (session orchestrator-autonomous-mode): O1 spec fixes + publish arming contract ─► O2 build engine (bd-ib-82a)
                           O1 arming contract (I1) ─► C3 (and C1's persistence-seam portion)
@@ -65,14 +74,15 @@ builds on it.
 
 ## Next actions (exact steps for a new session)
 
-1. **Run review round 2**: spawn (or have the maintainer run) a FRESH Fable
+1. **Run the next review round (per Loop state above — currently round 3)**:
+   spawn (or have the maintainer run) a FRESH Fable
    session with `research/fable-review-brief.md`. Fresh = no prior involvement
    in authoring or revising these plans. The session REVIEWS all three plans
    AND FIXES every problem it finds in-session — plan-text changes landed via
    worktree → PR → merge in the affected repo(s). It never emits a
    non-actioned findings dump.
 2. **Record the round**: commit the round record — the verdict PLUS what was
-   fixed, with PR links — as `research/fable-review-round-2.md` (a
+   fixed, with PR links — as `research/fable-review-round-N.md` (a
    `docs(plan):` PR) and update this handoff's Loop state. If the session
    nears ~50% context mid-fix, it updates this handoff so the NEXT session
    CONTINUES the same round's fixes where it left off (a continuation, not a
@@ -88,10 +98,12 @@ builds on it.
 4. **Only after the gate is met — dispatch O1 and C1 in parallel** to the two
    delegate sessions per the delegation model below. Briefs point each
    delegate at its OWN revised plan (`plan/autonomous-mode/handoff.md` in its
-   repo — the round-1 findings are baked in; no side-channel content). Both
-   briefs MUST forbid `--no-verify`, require worktree → PR → merge, and
+   repo — the review-round findings are baked in; no side-channel content).
+   Both briefs MUST forbid `--no-verify`, require worktree → PR → merge, and
    instruct halt-and-report on hook failure.
-5. **Gates thereafter:** C2 after C1; C3 after C1 + C2 + I1; O2 after O1; I2
+5. **Gates thereafter:** C2 after C1's MAIN ratification (the I1-gated
+   persistence-seam amendment gates C3, not C2 — that keeps C2 concurrent
+   with O1→O2); C3 after C1 + C2 + I1; O2 after O1; I2
    after C3 + O2 AND the design.md §9 operability conditions (verified cost
    ceiling + a real failure-surfacing path — note orchestrator bug `bd-ib-18r`:
    an in-loop park today orphans without ledger write-back, so I2's
@@ -107,7 +119,12 @@ builds on it.
   lands its own fixes; no continuity with sessions whose fixes it reviews).
 
 ## Ledger items in play (per repo tenant)
-- Console: `rt4` (operator surface; epic-shaped feature, stale v013 pointer), `pke3y3` (epic, "7 unimplemented commands" — regroom + split per its plan), `ipi` (attention-stream TUI migration), `mb64bv` (backlog-bounce vocab rename — verify the rename target against the orchestrator's actual journal field `bounced_to_regroom` before landing).
+- Core: **this thread's OWN epic anchor is NOT YET FILED** (round-2 finding:
+  every other active core thread has one; review rounds are barred from ledger
+  writes, so the DRIVER files it via the `capture-work-item` operation at next
+  touch — until then the thread is invisible to the ledger's
+  open-planning-epics list and archive-on-close cannot bind).
+- Console: `rt4` (operator surface; epic-shaped feature, stale v013 pointer), `pke3y3` (epic, "7 unimplemented commands" — regroom + split per its plan), `ipi` (attention-stream TUI migration), `mb64bv` (chore: backlog-bounce vocab rename — verify the rename target against the orchestrator's actual journal field `bounced_to_regroom` before landing).
 - Orchestrator: `bd-ib-82a` (the engine; stale v025 pointer).
 - Core deps TRACKED not re-owned: `livespec-nrdk` (factory-safe admission gate), `livespec-0jxs` (operability preconditions); orchestrator `plan/fabro-token-refresh` (long-run publish robustness); orchestrator bugs `bd-ib-18r` / `bd-ib-6vu` (unattended-run robustness — sequence around).
 
@@ -121,7 +138,7 @@ builds on it.
    scope (`orchestrate run` → `drive`; lane-ownership attribution) (obs. 4).
 
 ## Next action
-Run review round 2 (Next actions, step 1). Nothing dispatches to
+Run review round 3 (Next actions, step 1). Nothing dispatches to
 implementation until the Step-0 loop exits with maintainer certification.
 
 ## Pointers
