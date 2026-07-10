@@ -1,18 +1,18 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
-**Status: FABLE-REVIEW LOOP OPEN — implementation is HARD-GATED.** The loop
-(maintainer-declared 2026-07-10): each round, a FRESH Fable session reviews
-ALL THREE plans AND FIXES every problem it finds — in-session, in the plan
-texts, via worktree → PR → merge. A read-only findings dump is NOT a valid
+**Status: STEP-0 GATE MET (2026-07-10) — the fable-review loop is EXITED;
+C1/O1 dispatch is UNBLOCKED.** Both halves of the double gate are recorded
+in the Loop state below: round 6's fresh-session NOTHING-BLOCKING verdict
+(affirmatively certifying all three plans SOLID, EXECUTABLE, and
+MVP-MEETING) and the maintainer's certification. The loop's rules are kept
+below for the historical record: each round, a FRESH Fable session reviewed
+ALL THREE plans AND FIXED every problem it found — in-session, in the plan
+texts, via worktree → PR → merge; a read-only findings dump was not a valid
 round output (maintainer-corrected 2026-07-10: "the read-only handoff
 instructions were WRONG … FIX ALL THE PROBLEMS WITH ALL THREE OF THE PLANS.
-Not just randomly spew some non-actioned text."). The loop exits only on the
-double gate: (1) a FRESH session's review finds NOTHING BLOCKING —
-affirmatively certifying all three plans SOLID, EXECUTABLE, and MVP-MEETING —
-and (2) the MAINTAINER certifies. A session that landed fixes MUST NOT be the
-one that clears the gate (no self-certification); the clean verdict always
-comes from the NEXT fresh session. C1/O1 dispatch MUST NOT happen before the
-gate is met.
+Not just randomly spew some non-actioned text."); a session that landed
+fixes could not clear the gate (no self-certification) — the clean verdict
+always came from the NEXT fresh session.
 
 **Loop state:**
 - Round 1 (2026-07-10, Fable session `livespec-autonomous-mode`): Step-0
@@ -68,9 +68,11 @@ gate is met.
   consecutive round (console/orchestrator); the convergence trajectory
   (9 obs → 6 → 2 → 2 → 1 fixes) reaches zero. The verdict affirmatively
   certifies all three plans SOLID, EXECUTABLE, and MVP-MEETING.
-- Maintainer certification: PENDING — round 6's NOTHING-BLOCKING verdict
-  awaits it. → This is the next action; only the maintainer's recorded
-  certification here exits the Step-0 phase.
+- Maintainer certification: **GIVEN 2026-07-10** — the maintainer
+  certified round 6's NOTHING-BLOCKING verdict in the driver session
+  (recorded here by the driver). THE STEP-0 LOOP IS EXITED; C1/O1
+  dispatch is unblocked (Next actions, step 4). → Dispatching C1 and O1
+  in parallel is the next action.
 
 **Thread role:** the OVERALL cross-repo plan. Ties together the console operator
 surface and the orchestrator decision engine, owns the dependency graph, and
@@ -100,7 +102,7 @@ operator.
 ## The spine (see design.md §7 for the full step catalogue)
 ```
 Step 0 (fable-review LOOP — HARD GATE, exit = fresh-session nothing-blocking + MAINTAINER certification)
-  status: rounds 1-5 done (each landed fixes); round 6 NOTHING-BLOCKING (no fixes; certifies SOLID/EXECUTABLE/MVP-MEETING); maintainer certification PENDING — the only remaining Step-0 gate
+  status: GATE MET 2026-07-10 — rounds 1-5 landed fixes; round 6 NOTHING-BLOCKING; maintainer certified. C1/O1 dispatch unblocked.
   ├─ Console track (session console-autonomous-mode):  C1 spec fixes ─► C2 command foundation ─► C3 autonomous feature
   └─ Orchestrator track (session orchestrator-autonomous-mode): O1 spec fixes + publish arming contract ─► O2 build engine (bd-ib-82a)
                           O1 arming contract (I1) ─► C3 (and C1's persistence-seam portion)
@@ -112,9 +114,10 @@ builds on it.
 
 ## Next actions (exact steps for a new session)
 
-1. **Run the next review round (per Loop state above — round 6 returned
-   NOTHING-BLOCKING, so the CURRENT next step is step 3's second branch:
-   maintainer certification, not another round)**:
+1. **Run the next review round (COMPLETE — the loop exited 2026-07-10
+   with round 6's NOTHING-BLOCKING verdict plus the maintainer's
+   certification; steps 1-3 are the historical loop algorithm, and the
+   CURRENT next step is step 4)**:
    spawn (or have the maintainer run) a FRESH Fable
    session with `research/fable-review-brief.md`. Fresh = no prior involvement
    in authoring or revising these plans. The session REVIEWS all three plans
@@ -179,10 +182,12 @@ builds on it.
    scope (`orchestrate run` → `drive`; lane-ownership attribution) (obs. 4).
 
 ## Next action
-Present round 6's NOTHING-BLOCKING verdict
-(`research/fable-review-round-6.md`) to the MAINTAINER for certification
-(Next actions, step 3). Nothing dispatches to implementation until the
-maintainer's recorded certification exits the Step-0 loop.
+Dispatch O1 and C1 in parallel (Next actions, step 4) per the delegation
+model — briefs point each delegate at its OWN repo's
+`plan/autonomous-mode/handoff.md`, forbid `--no-verify`, require
+worktree → PR → merge, and instruct halt-and-report on hook failure. The
+Step-0 gate was met 2026-07-10 (round-6 NOTHING-BLOCKING + maintainer
+certification, both recorded in the Loop state above).
 
 ## Pointers
 - Ledger read (per tenant): `bd list --json` (or `bd show <id> --json`) run from
