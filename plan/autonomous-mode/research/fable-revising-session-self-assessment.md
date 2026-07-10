@@ -1,6 +1,15 @@
-# Fable certification — autonomous-mode MVP plans (fable-revise phase exit)
+# Fable revising-session SELF-ASSESSMENT — autonomous-mode MVP plans
 
-**Certifier:** independent Fable-model session `livespec-autonomous-mode`.
+> **THIS IS NOT THE PHASE-EXIT GATE.** This document was originally written
+> as a "certification" by the SAME Fable session that revised the plans —
+> a self-certification the maintainer rejected (2026-07-10). It is retained
+> as the revising session's self-assessment and as input to the fresh
+> reviews. The fable-review phase exits ONLY when a FRESH Fable session
+> (per `fable-review-brief.md`) finds nothing blocking AND the MAINTAINER
+> certifies; the loop state lives in `plan/autonomous-mode/handoff.md`.
+
+**Author:** Fable-model session `livespec-autonomous-mode` (the session that
+performed the Step-0 validation AND the fable-revise fixes).
 **Date:** 2026-07-10.
 
 ## Basis
@@ -29,10 +38,10 @@
      §6.1–6.3 seam resolutions/results, §7 step-text mirrors, plus this
      certification.
 
-## Certification
+## Self-assessment (a fresh reviewer must independently re-verify all of this)
 
 Having authored and re-verified the revisions against the validation
-findings, I certify that the three autonomous-mode plans, as revised at the
+findings, I assess that the three autonomous-mode plans, as revised at the
 commits named above, are:
 
 - **SOLID** — internally consistent, dependency-correct (Step 0 → C1 → C2 →
@@ -58,9 +67,9 @@ commits named above, are:
   ceiling + a real failure-surfacing path, with the `bd-ib-18r` ledger-level
   plant constraint).
 
-## Scope limits (stated so the certification stays honest)
+## Scope limits (stated so the self-assessment stays honest)
 
-- Certification covers the PLANS as revised, not the future spec revisions or
+- This assessment covers the PLANS as revised, not the future spec revisions or
   code they call for: the C1/O1 proposed changes still each require their own
   independent Fable review at ratification (standing rule, 2026-07-04), and
   O2/C2/C3 still gate on `just check`, review, and live evidence as the plans

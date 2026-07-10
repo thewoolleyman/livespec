@@ -1,14 +1,23 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
-**Status:** Step 0 PASSED and the fable-revise phase is COMPLETE + CERTIFIED.
-The independent Fable-model validation ran 2026-07-10 over all three plans
-(NO-BLOCKERS each; verdict: `research/step0-fable-verdict.md`); the SAME
-full-context Fable session then FIXED every finding directly in all three
-plans (orchestrator PR #395, console PR #134, this repo's follow-up PR) and
-issued the exit certification that the plans are solid, executable, and will
-meet the MVP: `research/fable-certification.md`. Implementation may begin:
-dispatch console C1 and orchestrator O1 in parallel (see "Next actions").
-First-drafted 2026-07-10 from a three-repo survey.
+**Status: FABLE-REVIEW LOOP OPEN — implementation is HARD-GATED.** The loop
+(maintainer-declared 2026-07-10): fresh Fable sessions review ALL THREE plans
+until a FRESH session finds NOTHING BLOCKING, then the MAINTAINER certifies;
+only that double gate exits the phase. A session that revised the plans MUST
+NOT be the one that clears them (no self-certification). C1/O1 dispatch MUST
+NOT happen before the gate is met.
+
+**Loop state:**
+- Round 1 (2026-07-10, Fable session `livespec-autonomous-mode`): Step-0
+  validation of the ORIGINAL plans → NO-BLOCKERS with 9 observations
+  (`research/step0-fable-verdict.md`); the SAME session then FIXED every
+  finding in all three plans (orchestrator PR #395, console PR #134, core
+  PRs #1000 + this one) and wrote
+  `research/fable-revising-session-self-assessment.md` — which does NOT
+  clear the gate, because reviser and reviewer were the same session.
+- Round 2: NOT YET RUN. The REVISED plans await their first fresh-session
+  review. → This is the next action.
+- Maintainer certification: NOT YET GIVEN.
 
 **Thread role:** the OVERALL cross-repo plan. Ties together the console operator
 surface and the orchestrator decision engine, owns the dependency graph, and
@@ -16,11 +25,14 @@ defines the tmux/session delegation model. livespec core authors no product code
 here.
 
 ## Read first
-1. This file, then `design.md` in this directory (the full plan), then
-   `research/fable-certification.md` (the fable-revise exit certification) and
-   `research/step0-fable-verdict.md` (the underlying Step-0 verdict).
-2. The two sibling repo plans it coordinates (both REVISED 2026-07-10 to carry
-   the Step-0 findings in their own step texts — they are self-sufficient):
+1. This file, then `design.md` in this directory (the full plan).
+2. For the review loop: `research/fable-review-brief.md` (the brief each
+   fresh reviewer runs), then the prior rounds
+   (`research/step0-fable-verdict.md`,
+   `research/fable-revising-session-self-assessment.md`,
+   `research/fable-review-round-N.md` as they accumulate).
+3. The two sibling repo plans this coordinates (both REVISED 2026-07-10 to
+   carry the round-1 findings in their own step texts):
    - `livespec-console-beads-fabro/plan/autonomous-mode/design.md`
    - `livespec-orchestrator-beads-fabro/plan/autonomous-mode/design.md`
 
@@ -33,62 +45,72 @@ operator.
 
 ## The spine (see design.md §7 for the full step catalogue)
 ```
-Step 0 (Fable validation of ALL plans — HARD GATE)  ✅ PASSED 2026-07-10, NO-BLOCKERS
-  ├─ Console track (session console-autonomous-mode):  C1 spec-currency ─► C2 command foundation ─► C3 autonomous feature
-  └─ Orchestrator track (session orchestrator-autonomous-mode): O1 spec-currency + publish arming contract ─► O2 build engine (bd-ib-82a)
-                          O1 arming contract (I1) ─► C3
+Step 0 (fable-review LOOP — HARD GATE, exit = fresh-session nothing-blocking + MAINTAINER certification)
+  status: round 1 done (validate + revise); round 2 fresh review PENDING; maintainer certification PENDING
+  ├─ Console track (session console-autonomous-mode):  C1 spec fixes ─► C2 command foundation ─► C3 autonomous feature
+  └─ Orchestrator track (session orchestrator-autonomous-mode): O1 spec fixes + publish arming contract ─► O2 build engine (bd-ib-82a)
+                          O1 arming contract (I1) ─► C3 (and C1's persistence-seam portion)
   Integration (driver session autonomous-mode): I2 end-to-end live exercise on a real tenant = MVP "done"
 ```
-Console C2 and orchestrator O1→O2 run in parallel. Contract-first: O1 publishes the
-arming/audit contract before C3 builds on it.
+Console C2 and orchestrator O1→O2 run in parallel — but ONLY after the Step-0
+loop exits. Contract-first: O1 publishes the arming/audit contract before C3
+builds on it.
 
 ## Next actions (exact steps for a new session)
 
-1. **Dispatch O1 and C1 in parallel** to the two delegate sessions per the
-   delegation model below. Both briefs MUST forbid `--no-verify`, require
-   worktree → PR → merge, and instruct halt-and-report on hook failure.
-2. **The O1 brief**: point the delegate at its OWN revised plan
-   (`livespec-orchestrator-beads-fabro/plan/autonomous-mode/handoff.md` →
-   `design.md` §3 O1) — the Step-0 findings are baked in there (the REQUIRED
-   touchpoints propose-change with its three deliverables; the three
-   arming-contract pins; the `bd-ib-82a` pointer refresh). No side-channel
-   content is needed.
-3. **The C1 brief**: point the delegate at its OWN revised plan
-   (`livespec-console-beads-fabro/plan/autonomous-mode/handoff.md` →
-   `design.md` §4 C1) — the Step-0 findings are baked in there (the two
-   citation-drift fixes; the Scenario-10 re-scope; the persistence-seam
-   portion gated on I1; the `rt4` refresh and `pke3y3` split-not-narrow
-   regroom). No side-channel content is needed.
-4. **Gates unchanged:** C2 after C1; C3 after C1 + C2 + I1; O2 after O1; I2
+1. **Run review round 2**: spawn (or have the maintainer run) a FRESH Fable
+   session with `research/fable-review-brief.md`. Fresh = no prior involvement
+   in authoring or revising these plans. The reviewer is READ-ONLY and outputs
+   the round verdict.
+2. **Record the round**: commit the verdict as
+   `research/fable-review-round-2.md` (a `docs(plan):` PR) and update this
+   handoff's Loop state.
+3. **Branch on the verdict**:
+   - BLOCKERS FOUND → run a fable-revise pass (fixes landed in the affected
+     plan texts via worktree → PR → merge, like round 1's), then go to step 1
+     with round N+1 and ANOTHER fresh session. The revising session never
+     reviews its own fixes.
+   - NOTHING-BLOCKING → present the round verdict to the MAINTAINER for
+     certification. Only the maintainer's recorded certification (update the
+     Loop state above) exits the phase.
+4. **Only after the gate is met — dispatch O1 and C1 in parallel** to the two
+   delegate sessions per the delegation model below. Briefs point each
+   delegate at its OWN revised plan (`plan/autonomous-mode/handoff.md` in its
+   repo — the round-1 findings are baked in; no side-channel content). Both
+   briefs MUST forbid `--no-verify`, require worktree → PR → merge, and
+   instruct halt-and-report on hook failure.
+5. **Gates thereafter:** C2 after C1; C3 after C1 + C2 + I1; O2 after O1; I2
    after C3 + O2 AND the design.md §9 operability conditions (verified cost
    ceiling + a real failure-surfacing path — note orchestrator bug `bd-ib-18r`:
    an in-loop park today orphans without ledger write-back, so I2's
    truly-unresolvable plant must be ledger-level or `bd-ib-18r` triaged first).
-5. Every spec change in either repo routes propose-change → independent Fable
+6. Every spec change in either repo routes propose-change → independent Fable
    review → revise, co-editing `tests/heading-coverage.json` for any H2 change.
 
 ## Delegation model (design.md §8)
 - Driver: Claude session `autonomous-mode` in tmux pane `livespec-autonomous-mode` (cwd `/data/projects/livespec`).
 - Delegate: session/pane `console-autonomous-mode` (cwd console repo) → C1/C2/C3.
 - Delegate: session/pane `orchestrator-autonomous-mode` (cwd orchestrator repo) → O1/O2.
+- Reviewer: a FRESH Fable session per round (any pane; read-only; no continuity
+  with revising sessions).
 
 ## Ledger items in play (per repo tenant)
-- Console: `rt4` (operator surface; epic-shaped feature, stale v013 pointer), `pke3y3` (epic, "7 unimplemented commands" — regroom + split per Next actions), `ipi` (attention-stream TUI migration), `mb64bv` (backlog-bounce vocab rename — verify the rename target against the orchestrator's actual journal field `bounced_to_regroom` before landing).
+- Console: `rt4` (operator surface; epic-shaped feature, stale v013 pointer), `pke3y3` (epic, "7 unimplemented commands" — regroom + split per its plan), `ipi` (attention-stream TUI migration), `mb64bv` (backlog-bounce vocab rename — verify the rename target against the orchestrator's actual journal field `bounced_to_regroom` before landing).
 - Orchestrator: `bd-ib-82a` (the engine; stale v025 pointer).
 - Core deps TRACKED not re-owned: `livespec-nrdk` (factory-safe admission gate), `livespec-0jxs` (operability preconditions); orchestrator `plan/fabro-token-refresh` (long-run publish robustness); orchestrator bugs `bd-ib-18r` / `bd-ib-6vu` (unattended-run robustness — sequence around).
 
-## Key cross-repo risks (design.md §6) — Step-0 disposition
+## Key cross-repo risks (design.md §6) — round-1 disposition
 1. Persistence-model seam: RESOLVABLE as planned; O1 must additionally pin the
    orchestrator's own config key, the launcher identity, and the
-   `drive`-vs-`loop` mode placement (verdict obs. 2).
+   `drive`-vs-`loop` mode placement (round-1 verdict obs. 2).
 2. Division of resolution: RESOLVABLE via the engine-owns-all-gate-resolution
-   reading; expect a console Scenario-10 re-scope in C1 (verdict obs. 3).
-3. Vocab drift: lanes/enums verified clean; two extra drift instances found for
-   C1 (`orchestrate run` → `drive`; lane-ownership attribution) (verdict obs. 4).
+   reading; C1 ratifies the console Scenario-10 re-scope (round-1 verdict obs. 3).
+3. Vocab drift: lanes/enums verified clean; two drift instances fixed into C1's
+   scope (`orchestrate run` → `drive`; lane-ownership attribution) (obs. 4).
 
 ## Next action
-Execute "Next actions" above: the driver dispatches C1 and O1 in parallel to the
-two delegate sessions. Step 0 is complete; nothing else gates the dispatch.
+Run review round 2 (Next actions, step 1). Nothing dispatches to
+implementation until the Step-0 loop exits with maintainer certification.
 
 ## Pointers
 - Ledger read (per tenant): `bd list --json` (or `bd show <id> --json`) run from
