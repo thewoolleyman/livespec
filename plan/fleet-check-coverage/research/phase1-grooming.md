@@ -185,11 +185,27 @@ their repo; big repos sub-slice by check-family so each is one sandbox-sized PR)
 
 Ordering within a factory-safe repo: do the mechanical per-check slices in any
 order (they are independent — different files/edits), THEN the file_lloc splits
-(judgment-heavy), THEN hand the repo to the host-side flip once WARN-clean. Each
-slice PR: green `just check` + independent adversarial NO-BLOCKERS review of the
-merged commit before acceptance (auto-merge repos: land-then-review-then-fix-
-forward). Do NOT `depends_on`-link any child to the OPEN epic (perpetual block
-via `lifecycle._entry_blocks`) — narrate epic membership in the description.
+(judgment-heavy), THEN hand the repo to the host-side flip once WARN-clean.
+
+**Two gates, kept separate — the slice's acceptance vs. the overseer's
+ratification (convention correction, 2026-07-10).** A slice's `Acceptance:` line
+is read verbatim by the Fabro implement agent (`render_goal` → `{{ goal }}`),
+so it MUST contain ONLY conditions that agent can verify ITSELF in-sandbox: the
+target checks measured to 0 `newly_covered` WARN (dev-tooling-pinned venv) + a
+green `just check`. Do NOT author the external adversarial review INTO the slice
+acceptance — the groom prose already requires an acceptance to be
+"autonomously-verifiable", and a downstream reviewer is not. When a leaked
+"+ independent adversarial NO-BLOCKERS review before acceptance" clause rode in
+the slice acceptance, the implement agent tried to run that review itself,
+timed out, and stalled at the unattended human gate (core-A `livespec-2j46re`,
+v0.37.1 validation). The independent adversarial NO-BLOCKERS review of the
+merged commit is the OVERSEER's separate pre-`accept:` ratification gate, done
+OUTSIDE the factory (and, in-factory, the graph's own `review` node) — it is NOT
+a slice acceptance criterion. (Auto-merge repos: land → overseer review → fix-
+forward.) The `implement.md` prompt now also carries an ACCEPTANCE-CRITERIA
+SCOPE guard as defense-in-depth. Do NOT `depends_on`-link any child to the OPEN
+epic (perpetual block via `lifecycle._entry_blocks`) — narrate epic membership
+in the description.
 
 ## 6. Open decisions surfaced to the maintainer
 
