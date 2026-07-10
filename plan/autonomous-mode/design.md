@@ -2,8 +2,8 @@
 
 **Repo:** `thewoolleyman/livespec` · **Thread:** `plan/autonomous-mode/` · **Role:** the
 OVERALL orchestrating plan that ties the console and orchestrator repo plans
-together, owns the cross-repo dependency graph, and defines the tmux/session
-delegation model. This repo (livespec core) authors NO product code for this
+together, owns the cross-repo dependency graph, and defines the driver +
+per-repo delegate-context delegation model. This repo (livespec core) authors NO product code for this
 effort; it holds the coordination plan and tracks the two upstream core items
 the safety story depends on.
 
@@ -172,7 +172,7 @@ RESOLVE them via propose-change where a real gap exists.
 
 ## 7. Step catalogue — small, delegatable steps with explicit gates
 
-Notation: **owner** = which delegate session drives it (see §10); **gate** = what
+Notation: **owner** = which delegate context drives it (see §8); **gate** = what
 must be true before it may start; each step's *done* is a merged PR (or a ratified
 spec revision) with the stated evidence.
 
@@ -285,35 +285,56 @@ Step 0 ─► O1 ─► O2 ─────────► I2
         O1 (arming contract, I1) ─► C3 (and C1's persistence-seam portion)
 ```
 C2 (console) and O1→O2 (orchestrator) run **concurrently** after their spec steps —
-that concurrency is the entire reason for two delegate sessions.
+that concurrency is the entire reason for two delegate contexts.
 
-## 8. tmux / session delegation model
+## 8. Delegation model (driver + per-repo delegate contexts)
 
-This overall plan is driven from a single **driver** Claude session named
-`autonomous-mode`, running in the tmux pane/window **`livespec-autonomous-mode`**
-(working directory `/data/projects/livespec`). The driver owns this plan, the
-dependency gates, dispatch, and synthesis; it does NOT hand-code the repo work
-inline.
+This overall plan is driven from a single **driver** context — the Claude session
+named `autonomous-mode` (working directory `/data/projects/livespec`). The driver
+owns this plan, the dependency gates, dispatch, and synthesis; it does NOT
+hand-code the repo work inline.
 
-Two **delegate** sessions, each a Claude session named the same as its tmux pane,
-drive one repo apiece and resume their own repo's `plan/autonomous-mode/handoff.md`:
+The driver dispatches work into **per-repo delegate contexts**, one repo apiece.
+The delegation architecture — not its mechanism — is what matters: two delegate
+contexts run **concurrently** (console vs. orchestrator), each scoped to a single
+repo's tenant/ledger/worktree, driven by a single gate-owning driver. The
+**current realization is a driver-dispatched scoped subagent** per bounded
+work-piece (the harness Agent facility); an equivalent realization is a separate
+interactive delegate session the maintainer runs. (Earlier drafts of this plan
+prescribed named tmux panes; that mechanism is retired — do NOT reintroduce a
+pane-provisioning step. A future session should read this section as
+"dispatch a delegate context," not "open a tmux window.")
 
-| tmux pane / Claude session | Working dir | Drives | Steps |
+Each delegate context is **named for its repo** so status references across the
+three plans resolve to it:
+
+| Delegate context (name) | Working dir | Drives | Steps |
 |---|---|---|---|
-| `livespec-autonomous-mode` (driver session `autonomous-mode`) | `/data/projects/livespec` | this overall plan + Step 0 + integration | Step 0, I1, I2 |
+| driver `autonomous-mode` | `/data/projects/livespec` | this overall plan + Step 0 + integration | Step 0, I1, I2 |
 | `console-autonomous-mode` | `/data/projects/livespec-console-beads-fabro` | console operator surface | C1, C2, C3 |
 | `orchestrator-autonomous-mode` | `/data/projects/livespec-orchestrator-beads-fabro` | orchestrator decision engine | O1, O2 |
+
+A dispatched delegate reads its repo's `plan/autonomous-mode/handoff.md` first
+(the brief points it there — no side-channel content), executes its bounded piece
+under the repo mutation protocol, and halts-and-reports at the ratification gate.
 
 Coordination discipline:
 - **Contract-first:** the orchestrator publishes its arming/audit contract (O1/I1)
   before the console builds against it (C3). This is the single most important
   sequencing rule — it lets the two tracks proceed in parallel without diverging.
+- **The driver holds the ratification gate.** A delegate FILES a proposed change
+  (propose-change) and halts; the **driver** spawns the separate READ-ONLY
+  independent Fable review and, only on a NO-BLOCKERS verdict, dispatches the
+  revise. The authoring context never reviews its own change — the load-bearing
+  "independent Fable review before every ratification" discipline stays under
+  direct driver control, not delegated to the context that wrote the change.
 - Each delegate uses the repo mutation protocol (worktree → PR → merge → cleanup)
-  and its own tenant's ledger/credentials. Sessions do not touch another session's
-  worktree or branch.
-- The driver re-engages delegates only at clean boundaries (a merged PR, a ratified
-  revision) and surfaces only genuinely unavoidable gates to the maintainer, each
-  with a recommendation.
+  and its own tenant's ledger/credentials. A delegate never touches another
+  delegate's worktree or branch, and its brief forbids `--no-verify` and requires
+  halt-and-report on hook failure.
+- The driver re-engages a repo's delegate only at clean boundaries (a merged PR, a
+  ratified revision) and surfaces only genuinely unavoidable gates to the
+  maintainer, each with a recommendation.
 
 ## 9. Upstream dependencies this plan TRACKS (does not re-own)
 
