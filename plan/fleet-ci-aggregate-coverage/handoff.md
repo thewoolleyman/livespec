@@ -3,7 +3,36 @@
 **Epic anchor:** `livespec-cf4bcu` (core tenant, `type=epic`, `status=backlog`)
 **Opened:** 2026-07-10
 **Status:** open — **wiring rule DECIDED 2026-07-10** (single all-green
-gate job); reference-impl re-audited; slices groomed below, not yet filed.
+gate job); reference pattern + both quick wins LANDED (slices 2–4 DONE,
+2026-07-10); drift-guard + large tracks + codify remain. See "Progress"
+below.
+
+## Progress (2026-07-10)
+
+| Slice | Repo | State | PR / evidence |
+|---|---|---|---|
+| Decision recorded | livespec (core) | ✅ DONE | PR #1005 (merged) |
+| 2. Reference `ci-green` pattern | livespec-driver-claude | ✅ DONE | PR #116 merged; `ci-green` green on master; branch protection now requires only `ci-green` |
+| 3. Quick win | livespec-console-beads-fabro | ✅ DONE | PR #137 merged; matrix += `check-plugin-resolution`; `ci-green` added + required; `ci-green.needs = [check, check-doctor-static]` |
+| 4. Quick win | livespec-driver-codex | ✅ DONE | PR #95 merged; matrix += `check-plugin-resolution`; `ci-green` added + required; `ci-green.needs = [check, check-doctor-static, red-green-replay]` |
+| 1. Drift-guard impl | livespec-dev-tooling | ⬜ not started | foundational; heaviest (product Python + TDD) |
+| 5. Large tracks | runtime, core, orch-beads-fabro, orch-git-jsonl, dev-tooling | ⬜ not started | each: complete matrix + `ci-green` + arm guard + flip protection |
+| 6. Codify rule | fleet NFR | ⬜ not started | coordinate w/ runtime PR #161 |
+
+**Validated on driver-claude:** `ci-green` runs, passes, correctly
+ignores the skipped push-only `export-telemetry` job (not in its
+`needs`), and GitHub accepts `ci-green` as the sole required merge-gate
+context. The three landed non-core repos each now require ONLY `ci-green`
+(replacing their prior per-check required sets: driver-claude 4 contexts,
+driver-codex 6, console 9).
+
+**Per-repo `ci-green.needs` recipe (confirmed non-uniform).** List the
+`check` matrix job plus every dedicated check-bearing top-level job, and
+EXCLUDE telemetry/auto-merge jobs. Job names differ across repos —
+driver-codex's replay job is `red-green-replay` (NOT
+`check-red-green-replay`); console (Rust) has no replay job. So the
+drift-guard (slice 1) must read each repo's real ci.yml, not assume a
+uniform job set.
 
 ## Thesis
 
