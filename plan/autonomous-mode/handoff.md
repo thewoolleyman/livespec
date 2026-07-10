@@ -51,7 +51,15 @@ gate is met.
   "revised rounds 1-2" Read-first annotation). BOTH sibling plans passed
   clean (console's second consecutive clean round; orchestrator's first).
   Because fixes landed, this round does NOT clear the gate.
-- Round 5: NOT YET RUN — the next fresh-session review-AND-FIX round.
+- Round 5 (2026-07-10, fresh Fable session spawned by the driver): fourth
+  fresh-session review-AND-FIX → FIXES LANDED (verdict + fixes:
+  `research/fable-review-round-5.md`; fix in core PR #1024, record + loop
+  state in the core PR carrying this bullet). One currency fix, in the
+  overall plan's own Loop state (the round-4 bullet omitted its
+  record-carrying PR #1023). BOTH sibling plans passed clean again
+  (console's third consecutive clean round; orchestrator's second).
+  Because a fix landed, this round does NOT clear the gate.
+- Round 6: NOT YET RUN — the next fresh-session review-AND-FIX round.
   → This is the next action.
 - Maintainer certification: NOT YET GIVEN.
 
@@ -83,7 +91,7 @@ operator.
 ## The spine (see design.md §7 for the full step catalogue)
 ```
 Step 0 (fable-review LOOP — HARD GATE, exit = fresh-session nothing-blocking + MAINTAINER certification)
-  status: rounds 1-4 done (each landed fixes); round 5 fresh review-and-fix PENDING; maintainer certification PENDING
+  status: rounds 1-5 done (each landed fixes); round 6 fresh review-and-fix PENDING; maintainer certification PENDING
   ├─ Console track (session console-autonomous-mode):  C1 spec fixes ─► C2 command foundation ─► C3 autonomous feature
   └─ Orchestrator track (session orchestrator-autonomous-mode): O1 spec fixes + publish arming contract ─► O2 build engine (bd-ib-82a)
                           O1 arming contract (I1) ─► C3 (and C1's persistence-seam portion)
@@ -95,7 +103,7 @@ builds on it.
 
 ## Next actions (exact steps for a new session)
 
-1. **Run the next review round (per Loop state above — currently round 5)**:
+1. **Run the next review round (per Loop state above — currently round 6)**:
    spawn (or have the maintainer run) a FRESH Fable
    session with `research/fable-review-brief.md`. Fresh = no prior involvement
    in authoring or revising these plans. The session REVIEWS all three plans
@@ -160,7 +168,7 @@ builds on it.
    scope (`orchestrate run` → `drive`; lane-ownership attribution) (obs. 4).
 
 ## Next action
-Run review round 5 (Next actions, step 1). Nothing dispatches to
+Run review round 6 (Next actions, step 1). Nothing dispatches to
 implementation until the Step-0 loop exits with maintainer certification.
 
 ## Pointers
