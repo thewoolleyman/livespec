@@ -44,7 +44,7 @@ from returns.io import IOResult
 from returns.result import Success, safe
 
 from livespec.errors import LivespecError, PreconditionError
-from livespec.io import proc
+from livespec.io import proc, streams
 from livespec.schemas.dataclasses.revise_input import RevisionInput
 
 __all__: list[str] = [
@@ -104,7 +104,7 @@ def _fold_post_step_doctor_completed_process(
         if isinstance(finding, dict) and finding.get("status") == "fail"
     )
     if fail_count > 0:
-        _ = sys.stdout.write(completed.stdout)
+        _ = streams.write_stdout(text=completed.stdout)
         return IOResult.from_failure(
             PreconditionError(
                 f"post-step doctor reported {fail_count} fail-status finding(s)",
