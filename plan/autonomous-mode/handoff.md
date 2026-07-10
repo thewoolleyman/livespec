@@ -25,7 +25,7 @@ gate is met.
 - Round 2 (2026-07-10, fresh Fable session, this repo's session
   `livespec-autonomous-mode` pane): first fresh-session review-AND-FIX over the
   REVISED plans → FIXES LANDED (verdict + fixes:
-  `research/fable-review-round-2.md`; core PR #1004, console PR #141,
+  `research/fable-review-round-2.md`; core PR #1014, console PR #141,
   orchestrator PR #404). All round-1 revisions re-verified against live state;
   fixes were currency + internal-soundness precision (stale `orchestrate run`
   in core C2 step text; C2-gate two-phase-C1 ambiguity; fabro-token-refresh

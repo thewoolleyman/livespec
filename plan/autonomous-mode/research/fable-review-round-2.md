@@ -42,7 +42,7 @@ another fresh session.
 1. **Core design §7 C2 cited the stale `orchestrate run` surface** — the
    very citation the plans themselves declare CONFIRMED DRIFT (§6.3 d; the
    published surface is `drive`). Fixed to `drive`. → repo
-   `thewoolleyman/livespec` PR #1004.
+   `thewoolleyman/livespec` PR #1014.
 2. **C2's gate was ambiguous after round 1 made C1 two-phase.** Round 1
    split C1 into a main ratification + an I1-gated persistence-seam
    amendment, but C2 stayed gated on bare "C1" — read literally, C2
@@ -51,7 +51,7 @@ another fresh session.
    affirmed. Clarified in all three places (core design §7 C2 gate + core
    handoff step 5; console design §4 C2 gate + console handoff gates line):
    C2 gates on C1's MAIN ratification; the persistence-seam amendment gates
-   C3 only. → `thewoolleyman/livespec` PR #1004,
+   C3 only. → `thewoolleyman/livespec` PR #1014,
    `thewoolleyman/livespec-console-beads-fabro` PR #141.
 3. **fabro-token-refresh state moved after round 1** (round-1 revisions
    merged 03:37–03:51Z; the thread's validation landed 04:55Z). The 60-min
@@ -61,7 +61,7 @@ another fresh session.
    fabro PR, production pin, PR #136 cleanup) awaits maintainer decisions in
    that thread's handoff. Plans no longer describe the TTL as an active
    killer; it remains an I2 precondition until production fabro carries the
-   fix. → `thewoolleyman/livespec` PR #1004,
+   fix. → `thewoolleyman/livespec` PR #1014,
    `thewoolleyman/livespec-orchestrator-beads-fabro` PR #404.
 4. **`mb64bv` is a `chore`, not "task"** in the console design §6 (verified
    against the live console tenant). →
