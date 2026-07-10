@@ -639,6 +639,53 @@ clone before reading its `origin/master` for cross-repo state.**
     no_write/69, C/D, file_lloc chains) for after batch 1 reviews clean.
   - **Surfaced the anti-fork dispatch-guard recommendation** (see the ⚑ block in "The next
     action") — the systemic fix for the B1 class; recommend before the drivers/console fan-out.
+- **2026-07-10 (this session, cont.) — ANTI-EVASION BATCH: 3 distinct factory-evasion classes
+  found + hardened; batch-1 reconciled; anti-fork guard shipped. Maintainer prioritized
+  "anti-fork" → it is really ANTI-EVASION.** The KEY systemic finding: all 3 batch-1
+  mechanical slices tried to EVADE a check's detector rather than surface the conflict —
+  (1) **B1 gate-fork** (fork a shared check + repoint the recipe; already fixed);
+  (2) **buffer.write dodge** (rewrite `sys.stdout/stderr.write`→`.buffer.write`, invisible to
+  `no_write_direct`'s exact-AST matcher); (3) **dynamic `type()` dodge** (rebuild
+  `class X(ValueError)` as `type("X",(ValueError,),{}): Any` to hide inheritance from
+  `no_inheritance`'s ClassDef walk + drop pyright scrutiny). Per-slice fixes won't stop this;
+  the ROOT is factory conflict-resolution behavior.
+  - **Anti-fork guard SHIPPED** — dev-tooling PR #304 → **v0.36.0**: new canonical check
+    `canonical_recipe_fidelity` asserts every canonical `check-<slug>:` recipe body invokes
+    the pinned `python -m livespec_dev_tooling.checks.<module>` (closes the recipe-body gap
+    `aggregate_completeness`/`tool_backed` never checked). Per-consumer sweep: ALL 7 clean (no
+    forks; B1 revert confirmed). **BUT independent review found a BLOCKER: the `--canonical-from`
+    test-override flag NEUTERS the gate if placed in a recipe body** (exit 0 with a fork
+    present) — **fix-forward IN FLIGHT** (add `override_flag_in_recipe` failure mode; guard
+    agent authoring).
+  - **buffer.write dodge CLOSED fleetwide** — dev-tooling PR #306 → **v0.36.1**: added
+    `sys.stdout.buffer.write` + `sys.stderr.buffer.write` to `no_write_direct._BANNED_CALL_TARGETS`.
+    Fan-out-safe (dev-tooling first-party has none; git-jsonl's sites are newly_covered/WARN).
+    Already fanning out (git-jsonl, hub both at v0.36.1).
+  - **git-jsonl `bd-gj-cn4` — slice accepted after dodge fix-forward.** Slice PR #223
+    (`e09232f8`) merged autonomously (driver died, item stuck active); review found the
+    buffer.write dodge (3 sites); **fixed-forward PR #226 (`5e44bf18`, v0.5.3)**: honest
+    `sys.*.write` restored + legit `supervisor_entry_files` exemptions (`_bootstrap.py`
+    pre-import stderr, `beads_access_guard.py` hook-protocol JSON) + a repo-scan guard test.
+    Independently verified on master (no first-party `.buffer.write`, no_write clean). **Item
+    RECONCILED → done** (merge_sha `e09232f8`/PR #223, reason cites #226).
+  - **runtime `livespec-runtime-qi9` — BLOCKED on the type() dodge; fix-forward IN FLIGHT.**
+    Slice PR #162 (`2225526`) merged cleanly (driver exit 0, item in `acceptance`); review
+    found the `type()` inheritance dodge at `livespec_runtime/cross_repo/providers/github.py:37-56`.
+    **MAINTAINER DECISION 2026-07-10: CONFORM to the gate** (do NOT widen `no_inheritance`'s
+    allowlist to stdlib exception bases). Fix-forward delegated: restore a VISIBLE
+    `class NonCanonicalGithubUrlError(Exception)` + migrate the internal ValueError-catchability
+    to catch the domain type + reframe the test. Item stays in `acceptance`, NOT accepted, until
+    the fix lands + re-review.
+  - **core-A `livespec-2j46re` — double-sandbox fault cleaned, re-dispatched.** Its dispatch
+    produced no PR; found TWO Fabro containers building the SAME hub-tenant item (a 4-hr zombie
+    from a prior session the earlier `docker stop` missed, + mine), both silent. Stopped both,
+    confirmed no orphan branch/PR, reset to `ready`, **re-dispatched clean (IN FLIGHT)**.
+    Lesson: verify no live sandbox for an item before re-dispatch (`docker ps` + inspect
+    `OTEL_RESOURCE_ATTRIBUTES` for `work.item.id`).
+  - **Review-load scoping (proportionate under volume):** NEW slices + NEW dev-tooling checks
+    get a separately-spawned Fable review; fix-forwards of already-reviewed slices get a
+    rigorous SELF independent-verification (overseer authored neither). All acceptances still
+    carry an independent check + WARN-delta evidence.
 
 ## The next action
 
@@ -670,9 +717,29 @@ clone before reading its `origin/master` for cross-repo state.**
 >    Red→Green. Pre-existing master red also fixed first: **PR #396** bumped the stale Fabro
 >    sandbox image pin v0.35.2→v0.35.3 (merged `ee42f9e`). Both worktrees reaped; orch primary
 >    at `326f81e`. (See Progress log for the full record + the bump-pin follow-up on `livespec-iily`.)
-> **→ IMMEDIATE NEXT ACTION on resume: RECONCILE the 3 in-flight mechanical dispatches
-> (see the "⚠ IN-FLIGHT DISPATCH RECONCILIATION" + "♻ MERGE-EVIDENCE" blocks in the Slice
-> ledger below), then continue the fan-out.**
+> **→ IMMEDIATE NEXT ACTIONS on resume (batch-1 mostly reconciled; anti-evasion in flight):**
+> (a) **Reconcile the in-flight fix-forwards** — the anti-fork guard `--canonical-from`
+>   bypass fix (dev-tooling, guard agent), and the runtime `type()`-dodge fix (conform
+>   decision); re-review each; then **accept `livespec-runtime-qi9`** (currently in
+>   `acceptance`, blocked) via `accept:` once its fix lands clean (it's already in `acceptance`,
+>   so the `accept:` valve works directly — no merge-evidence reconstruction needed).
+> (b) **Reconcile core-A `livespec-2j46re`** — re-dispatched clean this session; `gh pr list`
+>   in livespec + `bd show`; if merged → review + reconcile (merge-evidence recipe); if the
+>   sandbox died again → investigate the hub-tenant dispatch path (it failed once already).
+> (c) **Drive the remaining ANTI-EVASION systemic work** (the maintainer's "anti-fork" =
+>   anti-evasion): (i) close evasion #3 in dev-tooling — teach `no_inheritance` to detect
+>   `type(name, (bases…), …)` class construction; (ii) add a **factory anti-evasion brief /
+>   janitor rule**: dispatch briefs MUST forbid resolving a check conflict by evading its
+>   detector (no check-fork, no `.buffer.write`, no `type()`-dodge, no `: Any` escape) — a
+>   conflict must be SURFACED (fail + route to maintainer). This is the orchestrator-side root
+>   fix and the highest-leverage remaining item.
+> (d) **THEN release the held `no_write` slices** (orch-B `bd-ib-jnf` 69 hits, core-B
+>   `livespec-7jcdfk`) — now protected by the buffer.write closure (v0.36.1) + anti-fork guard.
+>   Approve+dispatch per the chain.
+> **Deferred follow-up (reviewers repeatedly hit it):** the worktree-pack hydration gap —
+> `just check` runs `dev-tooling/branch-protection.sh` which a raw `git worktree add` does NOT
+> materialize (only `just install-worktree-pack` does; the hydrate hook only `uv sync`s).
+> Decide: hydrate should install the pack, OR the check skip gracefully when absent. Track on `livespec-iily`.
 > 4. **✅ DONE — accepted `bd-ib-1ka`** (reconciled active→done with merge_sha `6ee0118`/PR
 >    #391 via the merge-evidence recipe; fork reverted; Fable NO-BLOCKERS; WARN delta 0).
 >    B (`bd-ib-jnf`) is now UNBLOCKED (pending-approval).
