@@ -57,8 +57,9 @@ here.
    (`research/step0-fable-verdict.md`,
    `research/fable-revising-session-self-assessment.md`,
    `research/fable-review-round-N.md` as they accumulate).
-3. The two sibling repo plans this coordinates (both carry the review-round
-   findings in their own step texts — revised rounds 1-2, 2026-07-10):
+3. The two sibling repo plans this coordinates (both carry the accumulated
+   review-round findings in their own step texts, kept current across the
+   review-loop rounds):
    - `livespec-console-beads-fabro/plan/autonomous-mode/design.md`
    - `livespec-orchestrator-beads-fabro/plan/autonomous-mode/design.md`
 
