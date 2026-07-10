@@ -282,7 +282,7 @@ spec revision) with the stated evidence.
 ```
 Step 0 ─► C1 ─► C2 ─► C3 ─► I2
 Step 0 ─► O1 ─► O2 ─────────► I2
-        O1 (arming contract, I1) ─► C3
+        O1 (arming contract, I1) ─► C3 (and C1's persistence-seam portion)
 ```
 C2 (console) and O1→O2 (orchestrator) run **concurrently** after their spec steps —
 that concurrency is the entire reason for two delegate sessions.
