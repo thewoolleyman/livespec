@@ -21,6 +21,39 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ---
 
+## Session handoff — where to start
+
+**State:** the design in this document is FINAL. Nothing is implemented
+yet, and this is not yet a beads epic — formalizing it into an epic with
+per-phase work-items is the first tracking step if you want the ledger to
+drive it.
+
+**Hard constraints for the next session:**
+- **Do NOT use the Fabro factory** — it is being upgraded by another
+  session in `livespec-orchestrator-beads-fabro`. Work locally in-session
+  or via subagents that do NOT dispatch through the factory.
+- All repo changes go through the worktree → PR → merge flow (docs use
+  `docs(...)`; the Red-Green-Replay ritual applies only to product `.py`).
+
+**First action — Phase P-host (factory-independent, startable now):**
+1. Edit `/data/projects/claude-collector/config.yaml`: add a `hostmetrics`
+   receiver (cpu, memory, disk, load, paging) + a `docker_stats` receiver,
+   and wire both into the EXISTING `metrics` pipeline (it already exports
+   via `otlp/honeycomb`). Reload the collector.
+2. Confirm a new `livespec-host-metrics` metrics dataset appears in the
+   `livespec` Honeycomb environment (team `thewoolleyweb`).
+3. Capture a multi-day baseline, then freeze the health-check thresholds
+   (disk is resolved — lead with CPU-utilization/PSI + memory + CI
+   queue-wait, not bare load-avg).
+
+Then proceed Phases 0 → 1 → 2 → 3 → 4 per the plan below.
+
+**Already-settled facts (do not relitigate):** keep the CI matrix (tune
+runner slots ≈18, do NOT collapse); full-history clones (no mirror, no
+shallow); disk resolved (~91 GB free + a doubling on order — caches on the
+local disk); the runner must be socket-less + secret-isolated +
+fork-PR-routed (public repos).
+
 ## Bottom line
 
 The livespec factory and CI still pay a **live-work tax on every run**:
@@ -237,28 +270,48 @@ A phase-end point-in-time glance is the wrong shape on a bursty host
 
 ### Phase P — Observability prerequisite (blocks everything)
 
-**Deliverables**
-- `hostmetrics` receiver (cpu, memory, disk, load, paging) + a
-  `docker_stats` receiver (per-container attribution) added to the
-  running collector → new `livespec-host-metrics` metrics dataset. Scope
-  scrapers + interval to control per-PID cardinality/cost.
-- Verify/repair the OTel trace egress (factory datasets
-  `livespec-dispatcher`, `fabro-sandbox`, `livespec-rgr` appear silent
-  since ~2026-06-13; re-verify and restore).
-- Prepare-step timing spans — emitted by wrapping the step SCRIPTS with
-  span shims (Fabro is third-party; we instrument the scripts we own or
-  consume Fabro's telemetry), so before/after is measured.
-- Multi-day baseline captured; thresholds + the continuous health-check
-  trigger + runner-liveness alert implemented.
+Split so the host-resource half needs **NO factory** and can start
+**immediately**. The running `otelcol-contrib`
+(`/data/projects/claude-collector/config.yaml`) ALREADY exports to
+Honeycomb (`otlp/honeycomb` exporter + a `metrics` pipeline); it just has
+no host/container-metrics receiver yet. So the host half is a
+two-receiver config add + a collector reload — nothing touches the Fabro
+factory.
+
+**P-host — factory-INDEPENDENT (START HERE, now):**
+- Add a `hostmetrics` receiver (cpu, memory, disk, load, paging) + a
+  `docker_stats` receiver (per-container attribution) and wire them into
+  the existing Honeycomb `metrics` pipeline → new `livespec-host-metrics`
+  metrics dataset. Scope scrapers + interval to control per-PID
+  cardinality/cost.
+- Capture a multi-day baseline; freeze thresholds; implement the
+  continuous health-check trigger + runner-liveness alert.
 - Set the local-disk cache budget + prune automation + the cold-cache
   validation schedule. (Disk breathing room already made by the Docker
   sweep; a disk doubling is on order — no separate cache volume needed.)
+- **Where:** `claude-collector` (config); resource tooling in
+  `livespec-dev-tooling`. **No factory, no orchestrator repo.**
 
-**Where:** `claude-collector` (collector config); resource tooling in
-`livespec-dev-tooling`; span shims in `livespec-orchestrator-beads-fabro`.
+**P-factory — factory-COUPLED (deferred).** All changes here are in OUR
+code — NOT the Fabro codebase (`/data/projects/fabro` is the third-party
+runner we never modify):
+- Verify/repair the OTel TRACE egress — OUR Dispatcher's OTel emission
+  (`livespec-orchestrator-beads-fabro`'s `_otel_*` + `dispatcher.py`) plus
+  the `claude-collector` config; factory datasets `livespec-dispatcher`,
+  `fabro-sandbox`, `livespec-rgr` have been silent since ~2026-06-13.
+- Prepare-step timing span shims — wrap the prepare-step `script =` lines
+  in OUR `.fabro/workflows/implement-work-item/workflow.toml`.
+- **Deferred for TWO reasons, neither about Fabro's code:** (1) validating
+  either needs a real factory RUN (a dispatch), which we are told not to
+  use; and (2) the orchestrator repo is being ACTIVELY edited by the
+  in-flight factory-upgrade session, so editing it now risks a collision.
+  P-host avoids both — it touches only `claude-collector` +
+  `livespec-dev-tooling`.
 
-**Exit:** metrics + traces flowing; baseline + thresholds frozen; cache
-budget + prune set; resource health check + liveness alert live.
+**Exit (P-host — the actual blocker):** host metrics flowing to
+`livespec-host-metrics`; baseline + thresholds frozen; health check +
+liveness alert live; cache budget + prune set. P-factory can complete
+later WITHOUT blocking Phases 0–1.
 
 ### Phase 0 — Local-runner shadow lane (non-gating)
 
