@@ -61,11 +61,20 @@ drive it.
 
 **First action — Phase P-host (factory-independent, startable now):**
 1. Edit `/data/projects/otel-collector/config.yaml`: add a `hostmetrics`
-   receiver (cpu, memory, disk, load, paging) + a `docker_stats` receiver,
-   and wire both into the EXISTING `metrics` pipeline (it already exports
-   via `otlp/honeycomb`). Reload the collector.
-2. Confirm a new `livespec-host-metrics` metrics dataset appears in the
-   `livespec` Honeycomb environment (team `thewoolleyweb`).
+   receiver (cpu, memory, disk, load, paging) + a `docker_stats` receiver.
+   **Routing caveat (confirmed 2026-07-11):** the collector currently
+   exports to the **`agent-activity`** Honeycomb env (its API key), and its
+   `otlp/honeycomb` metrics exporter sends NO `x-honeycomb-dataset` header,
+   so metrics AUTO-ROUTE to a Honeycomb-chosen dataset — they will NOT
+   auto-appear as a `livespec-host-metrics` dataset in the `livespec` env.
+   So Phase P-host must (a) DECIDE the target env (keep `agent-activity`,
+   or add a metrics exporter keyed to the `livespec` env) and (b) add an
+   explicit `x-honeycomb-dataset` header via a dedicated metrics
+   pipeline/exporter to land host/container metrics in a named dataset.
+   Reload with `sudo systemctl restart otel-collector`.
+2. Confirm the host/container metrics land in the chosen dataset + env (the
+   `collector.otel-collector` marker already flows there as a sanity
+   anchor).
 3. Capture a multi-day baseline, then freeze the health-check thresholds
    (disk is resolved — lead with CPU-utilization/PSI + memory + CI
    queue-wait, not bare load-avg).
@@ -316,10 +325,12 @@ factory.
 
 **P-host — factory-INDEPENDENT (START HERE, now):**
 - Add a `hostmetrics` receiver (cpu, memory, disk, load, paging) + a
-  `docker_stats` receiver (per-container attribution) and wire them into
-  the existing Honeycomb `metrics` pipeline → new `livespec-host-metrics`
-  metrics dataset. Scope scrapers + interval to control per-PID
-  cardinality/cost.
+  `docker_stats` receiver (per-container attribution) and route them to a
+  named metrics dataset via an explicit `x-honeycomb-dataset` header (NOT
+  the bare `otlp/honeycomb` metrics export, which auto-routes — see the
+  First-action routing caveat: the collector exports to the
+  `agent-activity` env today; decide env + dataset). Scope scrapers +
+  interval to control per-PID cardinality/cost.
 - Capture a multi-day baseline; freeze thresholds; implement the
   continuous health-check trigger + runner-liveness alert.
 - Set the local-disk cache budget + prune automation + the cold-cache
@@ -360,8 +371,9 @@ thread; this plan does NOT address it, and the resource health gating does
 NOT depend on it (it runs on host/container metrics + Dispatcher spans, so
 it gates Codex runs fine even while Codex is internally dark).
 
-**Exit (P-host — the actual blocker):** host metrics flowing to
-`livespec-host-metrics`; baseline + thresholds frozen; health check +
+**Exit (P-host — the actual blocker):** host metrics flowing to the
+chosen named dataset + env (per the First-action routing caveat); baseline
++ thresholds frozen; health check +
 liveness alert live; cache budget + prune set. P-factory can complete
 later WITHOUT blocking Phases 0–1.
 
