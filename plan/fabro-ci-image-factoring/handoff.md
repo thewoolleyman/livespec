@@ -162,7 +162,7 @@ local-disk directory** surviving across ephemeral jobs — NOT
 |---|---|---|---|
 | Python deps | wheel download + build | persistent `~/.cache/uv` dir (primary — replaces reliance on baked pre-warm) | 0 |
 | Rust deps | crate index + source fetch | persistent `~/.cargo/registry` dir | 0 |
-| Git | full re-clone per job | local **bare mirror** per repo; clone via `--reference` | 0 |
+| Git | shallow-clone history limits + re-fetch | **full-history clone every run** — drop the current shallow (depth=10) + `git fetch --unshallow` dance; ~10 MB packed for `livespec`, so it is cheap AND hands agents complete history. NO bare mirror (a `--reference` clone creates a fragile alternates dependency for near-zero gain) | 0 |
 | Rust compilation | recompiling across runs/repos | `sccache` local backend + persistent `target/` — **trusted-tier only** | 2 |
 | Tool caches | re-analysis | persistent pyright/mypy/ruff/pytest/coverage dirs | 2 |
 | Package fetch (residual) | anything the volumes miss | **per-ecosystem mirrors** (devpi / a crates mirror / npm proxy) IF measured worthwhile — a transparent MITM proxy is REJECTED (HTTPS/TLS). Likely deferred; the uv/cargo caches already remove most fetches | (defer) |
@@ -267,8 +267,10 @@ budget + prune set; resource health check + liveness alert live.
   running the baked image directly + a runner **supervisor** with the
   registration-credential design.
 - **Trusted-event routing** so fork PRs cannot reach the runner.
-- Persistent secret-free cache dirs (uv, cargo registry) + per-repo git
-  bare mirrors.
+- Persistent secret-free cache dirs (uv, cargo registry). Git:
+  **full-history clones every run** (drop the current depth=10 shallow +
+  `--unshallow`; ~10 MB packed — cheap, and hands agents complete
+  history). No bare mirror.
 - **CI runner-slot count (KEEP the matrix — do NOT collapse it):** the
   fleet's CI is a per-target MATRIX (~40 `just <target>` jobs) that gives
   per-check failure isolation + individual PR status checks + granular
@@ -392,8 +394,8 @@ status checks, granular required-checks, and per-check logs the matrix
 gives for FREE — a real regression. The only motivation to collapse was
 avoiding 40× per-job setup, and correct caching removes that anyway:
 baked image → `mise install` is a no-op (tools pre-baked); hot
-`~/.cache/uv` volume → `uv sync` is a cache-hit; local bare-mirror →
-`git` checkout is near-instant. Per-job setup drops from ~20–40 s to a
+`~/.cache/uv` volume → `uv sync` is a cache-hit; a full-history clone is
+~10 MB packed (a couple seconds; no mirror needed). Per-job setup drops from ~20–40 s to a
 few seconds (an `actions/checkout` + a fresh `.venv` link + runner
 workspace setup remain — small, not literally zero). So the Phase 0
 concurrency knob is **"how many runner slots" (≈18, core count), NOT
