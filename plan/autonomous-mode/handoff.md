@@ -8,6 +8,49 @@
    the heavy lifting (repairs, authoring, multi-file work, live-run iteration
    where feasible) in scoped sub-agents or the factory; keep the driver session
    for plan / dispatch / synthesis.
+3. **Dogfood the console TUI as the overseer's operator-steering surface
+   (maintainer-declared 2026-07-12).** As soon as possible, drive operator work
+   through the live console TUI myself — launched in a tmux session named
+   EXACTLY `console-autonomous-mode` (so the maintainer can attach and watch),
+   one pane per repo tenant when overseeing more than one. Launch per repo with
+   `just tui` from that repo's checkout (builds the release binary + runs it
+   under `with-livespec-env.sh -- … serve`). **Any operator-steering action I
+   cannot cleanly drive through the TUI is a USABILITY HOLE** — log it and route
+   it to the maintainer for a fix discussion, do NOT silently fall back to the
+   CLI for it. See "## TUI dogfooding — scope boundary" below for the
+   in-scope (holes) vs. by-design-CLI (not holes) split, agreed with the
+   maintainer.
+
+## TUI dogfooding — scope boundary (maintainer-declared 2026-07-12)
+The console is the **Control Plane / operator cockpit** — deliberately NOT a
+Driver and NOT a dev environment (the plane model). So there is a real line
+between operator-steering work (must be TUI-drivable; a gap is a hole) and
+driver/dev work (the console was never meant to carry it; CLI there is
+by-design). Default posture: assume an action SHOULD be TUI-drivable and only
+carve out the genuinely-architectural boundaries below.
+
+**Drive via the TUI — a gap is a USABILITY HOLE:**
+- Watch each track's ledger / factory / needs-attention state.
+- Flip autonomous mode on/off (this IS the I2 acceptance).
+- Per-item valves: approve / accept / reject / set-admission / set-acceptance.
+- Drain the factory; observe auto-resolutions reflected.
+- Triage a truly-unresolvable needs-attention item.
+
+**Stays CLI / sub-agent — by design, NOT a hole:**
+- Spec lifecycle (`/livespec:*` seed/propose-change/critique/revise/doctor/next).
+- Grooming a work-item (maintainer-owned drafting conversation).
+- Code authoring/repair + running the golden-master acceptance script.
+- worktree → PR → merge git mechanics.
+- Sub-agent / Fabro factory dispatch internals; diff & PR review.
+
+**First confirmed hole: Track D** — the per-item valves are NOT bound to any TUI
+key (verified at wind-down: `console-tui` constructs none of the valve command
+types; the palette recognizes only `drain`). Driving a valve from the TUI fails
+on contact, which is the intended forcing function. Track D's build closes it.
+
+The right-hand (by-design-CLI) list is provisional and subject to maintainer
+revision — if the maintainer rules any of it SHOULD be TUI-drivable, it moves to
+the hole list.
 
 ## WIND-DOWN STATE — 2026-07-12 (resume from here in a fresh session)
 
