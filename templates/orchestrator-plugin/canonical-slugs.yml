@@ -35,6 +35,7 @@
 - check-no-direct-destructive-cli
 - check-no-direct-tool-invocation
 - check-no-except-outside-io
+- check-no-fmt-directives
 - check-no-inheritance
 - check-no-lloc-soft-warnings
 - check-no-raise-outside-io

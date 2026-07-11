@@ -104,6 +104,7 @@ jobs:
           - check-supervisor-discipline
           - check-no-raise-outside-io
           - check-no-except-outside-io
+          - check-no-fmt-directives
           - check-public-api-result-typed
           - check-schema-dataclass-pairing
           - check-main-guard
