@@ -169,6 +169,31 @@ hard-gate, and structured iteration journal are codified in the
 orchestrator repo's own specification. The retired skill is
 recoverable from git history.
 
+## Operator console (the Control Plane)
+
+The **Control Plane** is the operator cockpit:
+[`livespec-console-beads-fabro`](https://github.com/thewoolleyman/livespec-console-beads-fabro),
+a single Rust binary with a **TUI-first** operator experience. It
+observes live state across the spec lifecycle, the Beads work-items, the
+Dispatcher waves and journals, Fabro runs and human gates, and GitHub
+pull requests — and it is where an operator flips **full autonomous
+mode** on (a dangerous, type-to-confirm switch) so the factory drives
+ready work to `done` unattended, surfacing only the truly-unresolvable
+items back to the cockpit.
+
+Launch the TUI with:
+
+```bash
+livespec-console-beads-fabro serve
+```
+
+The console is intended to be a standalone downloadable binary;
+release-binary publishing is still being set up, so for now it is built
+from source. See the console repo's
+[README](https://github.com/thewoolleyman/livespec-console-beads-fabro#running-the-console-the-tui)
+for the full launch command, prerequisites, keybindings, and the
+autonomous-mode enable flow.
+
 ## The work-item lifecycle
 
 livespec runs software work as an explicit, **deterministic state
