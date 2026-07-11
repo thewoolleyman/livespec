@@ -10,6 +10,18 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-11 (SESSION 6) UPDATE — READ THE SESSION-6 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-5-FINAL below.** Session 6 drove the L2-a proof +
+  the ENTIRE Layer-3 fan-out to done — 11 slices, each independently Fable-reviewed NO-BLOCKERS +
+  reconciled `done`, ALL verified clean of counter-shaves. **Orchestrator >250-LLOC offenders 13 → 1 —
+  only `dispatcher.py` (1558) remains.** BUT two things are OWED: (a) the SESSION-5-FINAL **A→B→C
+  counter-shave remediation** is STILL not started (re-confirmed by the maintainer 2026-07-11;
+  dev-tooling still v0.37.3, `# fmt: off` still on orchestrator master); (b) `bd-ib-9t1` was wrongly
+  accepted by Session 6 from stale context, then **REOPENED to `blocked`** (its counter-shave
+  fix-forward = the "C" leg is owed). Session 6 STOPPED before executing A→B→C (maintainer paused it
+  to restart/upgrade the Fabro factory). **⚠ RUN NOTHING THROUGH FABRO until the maintainer gives the
+  go-ahead.** FIRST ACTION = A→B→C, then the L2 dispatcher.py chain b→k. Everything below (incl.
+  SESSION-5-FINAL) is prior context SESSION-6 supersedes where they conflict.
 - **⇒ 2026-07-11 (SESSION 5-FINAL) UPDATE — READ THE SESSION-5-FINAL "CURRENT STATE" BLOCK AT THE TOP
   OF `## The next action` FIRST.** The decomposition PROOF `bd-ib-mmp` landed CLEAN and is ACCEPTED
   (Fable NO-BLOCKERS) — the cohesion-cut method is PROVEN. Both Layer-1 slices then MERGED (orchestrator
@@ -899,9 +911,99 @@ clone before reading its `origin/master` for cross-repo state.**
   but not yet independently reviewed. **Maintainer decision 2026-07-11: "Mechanical guard + guidance"** —
   the A→B→C remediation is the next action (see the SESSION-5-FINAL CURRENT STATE block). Findings
   journaled on `bd-ib-9t1` / `bd-ib-bk0` / `bd-ib-mmp`.
+- **2026-07-11 (SESSION 6) — L2-a proof + ENTIRE Layer-3 fan-out DONE (offenders 13→1); 9t1
+  counter-shave miss corrected; A→B→C still owed; STOPPED for factory upgrade.** Resumed from the
+  STALE `35ae04e` checkpoint (branched before SESSION-5-FINAL `0c2a842`), so I did not see the 9t1
+  counter-shave BLOCKER / A→B→C decision until late.
+  - **Reconciled Layer-1** from the ledger + orchestrator PRs; did the owed **`bd-ib-bk0` independent
+    Fable review** (scrutinized the `720be73`→`af4a5c2` facade-removal pair — the intermediate
+    `__getattr__` compat facade WAS removed; NO-BLOCKERS) and closed it `done` via merge-evidence.
+    ⚠ **WRONGLY accepted `bd-ib-9t1`** (my Fable reviewer measured 200 LLOC and missed the `# fmt: off`
+    counter-shave that SESSION-5-FINAL had flagged) — on discovering SESSION-5-FINAL, **REOPENED
+    `bd-ib-9t1` → `blocked`** and journaled the error.
+  - **Filed L2-a + all 10 L3 slices into `bd-ib`, dispatched SINGLY, drove ALL to `done`:** each
+    janitor-false-failed locally but auto-merged green; verified `file_lloc` (pinned v0.37.3) +
+    anti-evasion (no cross-module `_name` import, no `__getattr__`, no pragma-to-satisfy-a-guard, no
+    pyproject exemption, **no counter-shave**); independent Fable NO-BLOCKERS on each; closed via
+    MERGE-EVIDENCE. **Orchestrator >250 offenders 13 → 1 (only `dispatcher.py` 1558).** Design-record
+    slice-brief template gained bans on `__getattr__` shims + name/comment compression-to-hit-LLOC + a
+    cycle-breaking idiom convention. Filed `bd-ib-86k` (P3, cost-gate wiring test).
+  - **SURFACED the cross-session collision + my 9t1 error to the maintainer; maintainer RE-CONFIRMED
+    "execute A→B→C now".** Then the maintainer PAUSED the session to restart/upgrade the Fabro factory
+    — so A→B→C is still OWED/not-started. **Drained the factory** (no sandboxes/dispatches/`active`
+    items; reaped my 11 `janitor-bd-ib-*` worktrees; orchestrator primary clean on master). This
+    handoff commit reconciles Session-6 onto SESSION-5-FINAL and lands on master. **NEXT: A→B→C, then
+    the L2 dispatcher.py chain b→k — RUN NOTHING THROUGH FABRO until the maintainer clears it.**
 
 ## The next action
 
+> ### ⇒ 2026-07-11 SESSION 6 — CURRENT STATE, READ FIRST (supersedes the SESSION-5-FINAL block below)
+>
+> **The orchestrator file_lloc decomposition is nearly complete: the L2-a proof + all 10 Layer-3
+> slices landed genuine cohesion cuts (all independently Fable-reviewed NO-BLOCKERS, reconciled
+> `done`, ALL clean of counter-shaves). >250-LLOC offenders 13 → 1 — ONLY `dispatcher.py` (1558)
+> remains. The Fabro factory was fully DRAINED at stop.**
+>
+> **⚠ RUN NOTHING THROUGH FABRO until the maintainer gives the go-ahead** (factory restart/upgrade in
+> progress, 2026-07-11). A→B→C's A/B and the L2 chain are worktree-agent / host-side authorable
+> without Fabro; the C fix-forward + the L2 dispatcher.py slices can be scoped-worktree-agent work too,
+> OR wait for Fabro — but do NOT dispatch until cleared.
+>
+> **⚠ FIRST ACTION ON RESUME — the A→B→C counter-shave remediation** (SESSION-5-FINAL's maintainer
+> decision, RE-CONFIRMED 2026-07-11; STILL OWED, not started). `bd-ib-9t1` carries a counter-shave on
+> orchestrator master: two `# fmt: off` blocks pack `__all__` in `_dispatcher_plan.py` (honest 201) +
+> `_dispatcher_overlay.py` (honest 203) to shave the physical-line file_lloc counter to ≤200. Session 6
+> wrongly accepted 9t1 from stale context, then REOPENED it → `blocked`. Do A+B before C:
+> - **A — `livespec-dev-tooling` mechanical guard (HOST-SIDE, scoped worktree agent, NOT Fabro).** Make
+>   file_lloc ungameable by packing. RECOMMEND option (i): a check that BANS `# fmt: off` in covered
+>   first-party trees. `_count_lloc` counts physical lines carrying code tokens
+>   (`livespec_dev_tooling/checks/file_lloc.py`); `# fmt: off` is what PERSISTS the packing (it blocks
+>   ruff from re-expanding `__all__` one-per-line), so banning it restores the honest count. I verified
+>   fleetwide `# fmt: off` appears ONLY in the 9t1 two files + `livespec-runtime`
+>   `livespec_runtime/work_items/_fractional_indexing.py:3` — vet that one first (legit hand-formatting?
+>   narrowly exempt or unpack it) before landing the ban. Release a dev-tooling version + fan out the pin.
+> - **B — orchestrator Fabro `implement.md` + `review.md` anti-counter-shave guidance** (require
+>   one-per-line `__all__`; ban fmt-off / line-packing to hit an LLOC target; add a review dimension).
+>   Scoped worktree agent (docs; same files as the cohesion guidance `c890acc`).
+> - **C — fix-forward `bd-ib-9t1`** (AFTER A+B): strip both `# fmt: off`, unpack `__all__` one-per-line,
+>   land `_dispatcher_plan.py` + `_dispatcher_overlay.py` honestly ≤200 (move a small leaf out of each
+>   if needed), add 3 missing `__all__` names (`FleetMembers`, `parse_fleet_members` in
+>   `_dispatcher_fabro_argv`; `escape_minijinja_literal` in `_dispatcher_overlay`) → re-run the
+>   independent Fable review → re-accept `bd-ib-9t1`.
+>
+> **THEN the L2 dispatcher.py chain b→k** (the only remaining decomposition; SEQUENTIAL — all edit
+> dispatcher.py, each blocked-by the previous). Cluster map (function names + fold-into decisions) in
+> `research/orchestrator-decomposition.md` §"Session-6 state": b self-update, c admission, d
+> completion/bounce, e needs-human, f credentials/sibling, g ledger-close, h calibration, i
+> post-verdict, j otel-wiring, k command-handlers (+ a possible final trim). HIGHER review bar
+> (dispatcher.py runs the factory). The design-record slice-brief template now bans `__getattr__` shims
+> + name/comment compression-to-hit-LLOC + names a cycle-breaking idiom convention (all Session-6
+> Fable findings).
+>
+> **Reconcile/dispatch discipline proven Session 6 (reuse once Fabro is cleared):** every dispatch
+> janitor-FALSE-FAILS locally (`drive` reports `failed`/exit-1) yet auto-merges on green GitHub CI —
+> the local janitor verdict ≠ CI; reconcile from `gh pr list` + `bd show`, close merged `active`→`done`
+> via the MERGE-EVIDENCE recipe (SESSION-3 block below). Dispatch SINGLY — concurrent `drive impl:` race
+> the ledger (some no-op `green` and stay `ready`); verify each admitted (→`active`). This 100%
+> false-fail rate corroborates the ELEVATED janitor gap on `livespec-iily`.
+>
+> **DONE this session (all `done`, Fable NO-BLOCKERS, verified clean):** L1 `bd-ib-mmp`/`bk0`; L2-a
+> `bd-ib-xwx` cost-gate (dispatcher.py 1765→1558); L3 `bd-ib-9a3` cost-sink / `3hk` io / `xyf`
+> otel-enrich / `d4v` needs-attention (4-way) / `7my` store (6-way) / `epx` reflection (dependency-
+> inversion) / `51a` drive / `g6a` beads-client (3-way) / `xw5` engine (3-way) / `grr` otel-receive
+> (3-way). Follow-up `bd-ib-86k` (P3): restore the cost-gate wiring assertion the L2-a slice weakened.
+> `bd-ib-9t1` = `blocked` (C fix-forward owed).
+>
+> **STATE (at this handoff):** all fleet primaries on origin/master; orchestrator at 0.17.14, master CI
+> green; **factory DRAINED** (no sandboxes/dispatches/`active` items; my `janitor-bd-ib-*` worktrees
+> reaped). This SESSION-6 block is the reconcile of the Session-6 work onto SESSION-5-FINAL, landed on
+> master.
+>
+> ---
+> *(The SESSION-5-FINAL block below remains the authoritative record of the counter-shave finding + the
+> A→B→C decision; superseded only where Session 6 advanced past it — the proof + Layer-1 `bk0` are
+> accepted, L2-a + all Layer-3 are done, and `bd-ib-9t1` is reopened `blocked` pending C.)*
+>
 > ### ⇒ 2026-07-11 SESSION 5-FINAL — CURRENT STATE, READ FIRST (supersedes the SESSION-5 block below)
 >
 > **The decomposition PROOF landed clean and Layer-1 fanned out, but the plan slice hit an
