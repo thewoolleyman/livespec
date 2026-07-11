@@ -269,11 +269,15 @@ budget + prune set; resource health check + liveness alert live.
 - **Trusted-event routing** so fork PRs cannot reach the runner.
 - Persistent secret-free cache dirs (uv, cargo registry) + per-repo git
   bare mirrors.
-- **CI concurrency model decision:** the fleet's CI is a per-target
-  MATRIX (~45 canonical `just <target>` jobs in `livespec-dev-tooling`) —
-  choose matrix-collapse (one aggregate `just check` job on local) vs. N
-  runner slots; record the concurrency number the resource projections
-  will use.
+- **CI runner-slot count (KEEP the matrix — do NOT collapse it):** the
+  fleet's CI is a per-target MATRIX (~40 `just <target>` jobs) that gives
+  per-check failure isolation + individual PR status checks + granular
+  required-checks for FREE; collapsing into one job would force us to
+  reinvent all of that (a real regression). Provision enough runner slots
+  (≈18, ≈ core count) to run the matrix in parallel — the full matrix is
+  only ~591 CPU-seconds/run (see Additional research), so 18 cores match
+  GitHub's current wall-clock, and correct caching makes per-job setup
+  near-free. Record the slot count the resource projections use.
 - One repo's `just check` green on the runner as a NON-gating lane; verify
   the runner user cannot read the Kind-2 secret paths.
 
@@ -368,6 +372,53 @@ run is dominated by agent/LLM time):
 - Phase P's prepare-step spans set the headline number; do not justify the
   epic fleet-wide on the console's figures.
 
+## Additional research (2026-07-11) — parallelism + janitor critical path
+
+### Parallelism — keep the matrix; caching (not collapsing) removes the overhead
+
+Measured over 30d (`github-ci`), per CI run on `livespec`:
+- **~40 jobs/run** (24,108 job-spans ÷ 598 runs).
+- **~591 CPU-seconds of work/run** (SUM of job durations ÷ runs), avg
+  **13 s/job**, P95 21 s.
+- GitHub packs that into **~70 s wall-clock — ~8× parallelism, not 40×**;
+  the jobs are short and mostly not CPU-saturating.
+- On this host's **18 cores: 591 ÷ 18 ≈ 33 s floor, ~40–70 s realistic** —
+  matches/beats GitHub.
+
+**Conclusion (corrects an earlier draft that floated matrix-collapse):
+KEEP the per-target matrix.** Collapsing 40 checks into one job would
+force us to reinvent the per-check failure isolation, individual PR
+status checks, granular required-checks, and per-check logs the matrix
+gives for FREE — a real regression. The only motivation to collapse was
+avoiding 40× per-job setup, and correct caching removes that anyway:
+baked image → `mise install` is a no-op (tools pre-baked); hot
+`~/.cache/uv` volume → `uv sync` is a cache-hit; local bare-mirror →
+`git` checkout is near-instant. Per-job setup drops from ~20–40 s to a
+few seconds (an `actions/checkout` + a fresh `.venv` link + runner
+workspace setup remain — small, not literally zero). So the Phase 0
+concurrency knob is **"how many runner slots" (≈18, core count), NOT
+"collapse vs matrix."**
+
+### Janitor `just check` is on the critical path ~5–6× per work-item
+
+Measured (`livespec-dispatcher`, mid-June shakedown, ~44 dispatches — the
+factory has been quiet since, so this is a real but dated snapshot):
+- `dispatcher.stage.janitor-post-merge` (one `just check`): **93 s P50,
+  175 s P95**, cold.
+- `dispatcher.stage.fabro-run`: **17 min P50** (LLM-agent-dominated).
+
+Per work-item, `just check` runs on the critical path: in-sandbox janitor
++ fix loop (**1–4×**, inferred from the graph's 3-fix-visit cap) +
+Dispatcher post-merge (**1×**, measured) + CI on branch and master
+(**2×**) ≈ **~8–10 min of `just check` per work-item, almost all cold**.
+Baked images + hot caches shave ~30–50% off EACH →
+**~3–5 min saved per work-item on the critical path** (non-overlapping
+time, so it directly shortens the loop and speeds agent iteration — the
+leverage the per-PR CI figure understates). Caveat: the in-sandbox
+janitor count is INFERRED from the workflow graph, not measured — Fabro's
+internal nodes don't emit to Honeycomb, which is exactly why Phase P adds
+janitor-node spans to make it measured.
+
 ## Rollback (per phase)
 
 Each phase is cheaply reversible and reversal is written into its
@@ -393,7 +444,9 @@ valid pause point.
 - **Disk (resolved)** — local-disk caches; ~41 GB swept from stale Docker
   images (91 GB free); disk doubling on order; keep a per-cache cap +
   prune.
-- **CI matrix concurrency** — matrix-collapse vs. N runner slots (Phase 0).
+- **CI matrix concurrency** — KEEP the matrix (free per-check failure
+  isolation + reporting); tune the runner-slot count, NOT collapse (see
+  Additional research).
 - **Autodiscovery gap** — close now (auto-bump `workflow.toml` image tags)
   vs. keep manual per-repo pins guarded by lockstep.
 - **Cache-warming strategy** — persistent local-disk cache (primary) vs.
