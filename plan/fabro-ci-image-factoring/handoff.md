@@ -1,9 +1,23 @@
-# Plan — Minimal baked sandbox images + local hot CI runners + resource-gated fleet rollout
+# Plan — Minimal baked sandbox images + local hot CI runners + resource-health-gated fleet rollout
 
 **Status:** draft for maintainer review; incorporates an independent
-Fable-model adversarial review (2026-07-11).
+Fable-model adversarial review AND maintainer corrections (2026-07-11).
 **Scope languages:** Python + Rust now. Haskell explicitly deferred.
 **Owning session:** livespec core, 2026-07-11.
+
+**Maintainer corrections folded in (2026-07-11):**
+- **Disk is resolved, not a constraint.** ~41 GB of stale, unrelated
+  Docker images were swept (91 GB free now, 74% used), and a disk-size
+  DOUBLING is on order. Caches live on the LOCAL disk — there is NO
+  separate/"Contabo cache volume" requirement (that was an unverified
+  assumption; removed).
+- **Load framing corrected.** The "2.4 vs 23" figures were MEASUREMENTS of
+  the host's existing work at two moments — NOT a prediction of what this
+  plan causes. On 18 cores, a load of 23 is mild, transient
+  oversubscription, not overload.
+- **Factory untouched.** This plan was authored and updated entirely with
+  local git; the Fabro factory was NOT used (another session is upgrading
+  it in the orchestrator repo).
 
 ---
 
@@ -15,14 +29,15 @@ repo's `uv sync` is only partially warmed (the baked image pre-warms the
 uv cache from `livespec-dev-tooling`'s OWN lockfile, not each consumer's);
 and CI on GitHub-hosted runners re-runs `mise` setup + restores/saves
 `actions/cache` every job. We replace that with **minimal, layered,
-pinned images** (compilers baked, caches on persistent local volumes) and
-move CI onto **local self-hosted runners co-located on this host**, so
+pinned images** (compilers baked, caches on persistent LOCAL-disk volumes)
+and move CI onto **local self-hosted runners co-located on this host**, so
 images and caches are hot, local, and free — and CI runs the SAME image
 the Fabro sandbox uses, collapsing "green in CI, red in sandbox" drift.
-Because everything converges on one host, the plan gates every phase on
-**host-resource observability that does not exist yet**, and **stops for a
-Contabo provision** when the host is overloaded. It then fans out to
-**all 8 fleet members** and seeds **work-items in every adopter repo**.
+Because everything converges on one host, the plan adds **host-resource
+observability that does not exist yet** and a **resource health check**;
+if CPU/memory genuinely saturate during rollout it **pauses so the
+maintainer can bump resources**. It then fans out to **all 8 fleet
+members** and seeds **work-items in every adopter repo**.
 
 The Fabro factory itself already runs locally (Dispatcher on host, docker
 sandbox local) — GitHub-hosted CI is the one component that leaves the
@@ -46,23 +61,25 @@ loop.
    cache" means `actions/cache` (10 GB/repo cap, LRU eviction, network
    restore+save each run) or a paid external cache.
 4. **Containment is mandatory and multi-layered** (see Threat model).
-5. **Resource gating is a hard prerequisite** — built FIRST; every phase
-   is gated by a continuous resource signal, not a point-in-time glance.
+5. **Resource observability is a hard prerequisite** — built FIRST; the
+   rollout is watched by a continuous health check, not a point-in-time
+   glance.
 
-## Host baseline (measured 2026-07-11 — SINGLE SAMPLE, do not freeze on it)
+## Host baseline (measured 2026-07-11)
 
 | Resource | Value | Read |
 |---|---|---|
 | vCPU | 18 | Generous; Fabro budget is 4 CPU/run |
-| RAM | 94 GiB (84 GiB available) | Not the binding constraint |
+| RAM | 94 GiB (84 GiB available) | Not a binding constraint |
 | Swap | 0 B | Any memory breach is a hard OOM — no cushion |
-| Load avg (15m) | **highly variable** — sampled 2.4 early, but 10.6–19.9 during the review pass | Bursty; a one-off sample is NOT a baseline |
-| **Disk** | **338 GB, ~84% used, ~54–58 GB free (single shared `sda1`; `/` and `/data` are the same volume)** | **The real constraint** |
+| Load avg (15m) | bursty: same-day samples ranged 0.8–23 | These are MEASUREMENTS of existing work, not predictions. On 18 cores, load 23 ≈ 5 processes briefly waiting — mild, transient, not overload. |
+| Disk | 91 GB free (74% used) after sweeping ~41 GB of stale non-Fabro Docker images; a disk-size **doubling is on order** | **Resolved — no longer a constraint** |
 | OTel collector | `otelcol-contrib` already running | Host metrics = a config add |
 
-**Honest recalibration:** CPU/RAM have large headroom; **disk is the
-constraint that bites**, and load is bursty enough that thresholds MUST
-come from a multi-day percentile window (Phase P), not this sample.
+**Recalibration:** CPU, RAM, and disk all have comfortable headroom (disk
+resolved by the Docker sweep + the ordered upgrade). Load is bursty but
+the box is strong; resource thresholds still come from real measurement in
+Phase P, framed as a **health check** — not a tripwire we expect to hit.
 
 ## Architecture — layered images
 
@@ -114,8 +131,8 @@ scripts" — it includes **untrusted actors**, because the repos are
    therefore cannot run on it — they stay on the privileged/trusted
    builder.
 3. **Ephemeral execution + secret-free cache volumes** — fresh runner per
-   job; caches are mounted volumes carrying no secrets (see Caching trust
-   tiers).
+   job; caches are mounted local-disk dirs carrying no secrets (see
+   Caching trust tiers).
 4. **Host-resident secret inventory (Kind 2)** the runner user must NOT
    reach: the systemd-creds 1Password token, the Dolt tenant password,
    the GitHub App private key, `/var/lib/doltdb`, **and the new runner
@@ -138,16 +155,17 @@ scripts" — it includes **untrusted actors**, because the repos are
 
 Local runners + local disk let us cache aggressively and eliminate live
 downloads (the main flakiness source). Every cache is a **persistent
-mounted volume** surviving across ephemeral jobs — NOT `actions/cache`.
+local-disk directory** surviving across ephemeral jobs — NOT
+`actions/cache`.
 
 | Layer | Kills | Mechanism | Phase |
 |---|---|---|---|
-| Python deps | wheel download + build | persistent `~/.cache/uv` volume (primary — replaces reliance on baked pre-warm) | 0 |
-| Rust deps | crate index + source fetch | persistent `~/.cargo/registry` volume | 0 |
+| Python deps | wheel download + build | persistent `~/.cache/uv` dir (primary — replaces reliance on baked pre-warm) | 0 |
+| Rust deps | crate index + source fetch | persistent `~/.cargo/registry` dir | 0 |
 | Git | full re-clone per job | local **bare mirror** per repo; clone via `--reference` | 0 |
 | Rust compilation | recompiling across runs/repos | `sccache` local backend + persistent `target/` — **trusted-tier only** | 2 |
 | Tool caches | re-analysis | persistent pyright/mypy/ruff/pytest/coverage dirs | 2 |
-| Package fetch (residual) | anything the volumes miss | **per-ecosystem mirrors** (devpi / a crates mirror / npm proxy) IF measured worthwhile — a transparent MITM proxy is REJECTED (HTTPS/TLS). Likely deferred; the uv/cargo volumes already remove most fetches | (defer) |
+| Package fetch (residual) | anything the volumes miss | **per-ecosystem mirrors** (devpi / a crates mirror / npm proxy) IF measured worthwhile — a transparent MITM proxy is REJECTED (HTTPS/TLS). Likely deferred; the uv/cargo caches already remove most fetches | (defer) |
 
 **Trust-tiered caches (non-negotiable — a job writes its cache as a side
 effect, so "populate only from trusted sources" is otherwise
@@ -164,55 +182,60 @@ unenforceable):**
 **Cache-integrity guardrails:** content-addressed keys (lockfile/toolchain
 hashes) on read; **a scheduled cold-cache validation run** (no-cache `just
 check`, cadence a Phase-P decision) to catch cache-masked "false green";
-disk budget + LRU eviction per cache, watched by the resource gate.
+per-cache size cap + LRU eviction, watched by the resource health check.
 
 **Image pre-warm demotion (staleness fix).** The current Dockerfile
 pre-warms uv from `livespec-dev-tooling`'s lockfile only, and
 `fabro-sandbox-image.yml`'s `paths:` triggers watch only dev-tooling
 files — so consumer-lockfile changes never rebuild the image and warm
-layers silently rot. Therefore: **persistent volumes are the primary dep
-cache; image layers carry base tools only** (no per-repo dep pre-warm
-unless the lockfile plumbing + rebuild triggers are built explicitly).
+layers silently rot. Therefore: **persistent local-disk caches are the
+primary dep cache; image layers carry base tools only** (no per-repo dep
+pre-warm unless the lockfile plumbing + rebuild triggers are built
+explicitly).
 
-**Disk reality.** ~54–58 GB free on ONE shared volume — NOT "lots of
-room." Cargo `target/` + sccache + registry volumes + image variants +
-per-run sandbox clones (each Fabro run clones the repo + up to 7 depth-1
-siblings inside the container) consume it fast. **Resolution: a dedicated
-Contabo cache volume is a Phase P DELIVERABLE (not an open decision)**, so
-cache growth cannot starve `/`; prune automation (docker image GC,
-BuildKit GC, cache LRU) is a named dev-tooling tool.
+**Disk (resolved).** Caches live on the **local disk** — no separate
+volume needed. Breathing room was already made by sweeping ~41 GB of
+stale, unrelated Docker images (91 GB free now), and a disk-size doubling
+is on order. The only guardrail needed is a **per-cache size cap + prune
+automation** (docker image GC, cache LRU) as a named `livespec-dev-tooling`
+tool, watched by the resource health check. Cargo `target/` dirs are the
+largest single consumer (the fleet's one Rust repo, the console, is ~2.7
+GB — modest; the 45 GB `fabro/target` is the Fabro TOOL's own build, not
+something we cache).
 
-## Resource gate (spec — corrected to continuous, baseline-derived)
+## Resource health check (spec — continuous, baseline-derived)
 
-A phase-end point-in-time "checkpoint" is wrong on this bursty host — it
-would randomly pass in troughs and STOP in spikes (the review measured
-load 23 mid-pass). Instead:
+A phase-end point-in-time glance is the wrong shape on a bursty host
+(same-day load ranged 0.8–23 purely from existing work). Instead:
 
 - **Baseline from data, not a sample.** Phase P collects a multi-day
   window in the new metrics dataset; thresholds are frozen from its
-  percentiles BEFORE any gating.
+  percentiles BEFORE any gating, and read as a health check rather than a
+  tripwire we expect to hit.
 - **Continuous sustained-duration trigger** (Honeycomb trigger + burn
   window), not a one-shot report — a phase "passes" only if no sustained
   breach occurred across its active window.
-- **Signals** (provisional; finalize in Phase P): disk free (primary),
-  CPU utilization + PSI pressure (NOT bare load-avg — load > vCPU is
-  normal for I/O-heavy builds), memory available + any swap-in, **and CI
-  queue-wait time** (on a single host, queue latency saturates before CPU
-  does — a first-class signal).
-- **Runner-liveness/absence alert** — the gate watches resource EXCESS;
+- **Signals** (provisional; finalize in Phase P): CPU utilization + PSI
+  pressure (NOT bare load-avg — load > vCPU is normal for I/O-heavy
+  builds), memory available + any swap-in, **CI queue-wait time** (on a
+  single host, queue latency saturates before CPU does), and a lighter
+  disk watch (disk is already resolved, so it is a hygiene check, not the
+  binding signal).
+- **Runner-liveness/absence alert** — the check watches resource EXCESS;
   nothing yet watches runner ABSENCE (a down runner queues jobs silently
   up to 24h). Add liveness alerting in Phase P.
-- **STOP action:** emit report + per-process/per-container attribution
-  (Fabro vs runner vs Dolt; prefer the `docker_stats` receiver over
-  process-name matching) + a recommended Contabo target (vCPU/RAM tier, or
-  storage for a disk breach), and halt. Provisioning is a manual
-  maintainer action in the Contabo panel.
+- **PAUSE action:** on a sustained CPU/memory saturation breach, emit a
+  report + per-container attribution (Fabro vs runner vs Dolt; prefer the
+  `docker_stats` receiver over process-name matching) and **pause so the
+  maintainer can bump host resources**. This is the maintainer-requested
+  stop-to-provision gate; disk is already handled, so the realistic
+  trigger is CPU/memory, not disk.
 
 ---
 
 ## Phases
 
-### Phase P — Observability + provisioning prerequisite (blocks everything)
+### Phase P — Observability prerequisite (blocks everything)
 
 **Deliverables**
 - `hostmetrics` receiver (cpu, memory, disk, load, paging) + a
@@ -225,16 +248,17 @@ load 23 mid-pass). Instead:
 - Prepare-step timing spans — emitted by wrapping the step SCRIPTS with
   span shims (Fabro is third-party; we instrument the scripts we own or
   consume Fabro's telemetry), so before/after is measured.
-- Multi-day baseline captured; thresholds + the continuous trigger +
-  runner-liveness alert implemented.
-- **Provision the dedicated Contabo cache volume** and the cold-cache
-  validation schedule.
+- Multi-day baseline captured; thresholds + the continuous health-check
+  trigger + runner-liveness alert implemented.
+- Set the local-disk cache budget + prune automation + the cold-cache
+  validation schedule. (Disk breathing room already made by the Docker
+  sweep; a disk doubling is on order — no separate cache volume needed.)
 
 **Where:** `claude-collector` (collector config); resource tooling in
 `livespec-dev-tooling`; span shims in `livespec-orchestrator-beads-fabro`.
 
 **Exit:** metrics + traces flowing; baseline + thresholds frozen; cache
-volume mounted; STOP-gate + liveness alert live.
+budget + prune set; resource health check + liveness alert live.
 
 ### Phase 0 — Local-runner shadow lane (non-gating)
 
@@ -243,8 +267,8 @@ volume mounted; STOP-gate + liveness alert live.
   running the baked image directly + a runner **supervisor** with the
   registration-credential design.
 - **Trusted-event routing** so fork PRs cannot reach the runner.
-- Persistent secret-free cache volumes (uv, cargo registry) + per-repo
-  git bare mirrors.
+- Persistent secret-free cache dirs (uv, cargo registry) + per-repo git
+  bare mirrors.
 - **CI concurrency model decision:** the fleet's CI is a per-target
   MATRIX (~45 canonical `just <target>` jobs in `livespec-dev-tooling`) —
   choose matrix-collapse (one aggregate `just check` job on local) vs. N
@@ -276,8 +300,7 @@ pilot repo shadow lane.
 little).
 
 **Exit:** images published + pinned + lockstep-green; console +
-orchestrator dispatch green on baked images; **no sustained resource
-breach (disk-watch)**.
+orchestrator dispatch green on baked images; no sustained resource breach.
 
 ### Phase 2 — Cut CI over to the local runner + baked image
 
@@ -309,8 +332,8 @@ sandbox `just check`, like-with-like) passes; no sustained breach.
 disposition table; verify green.
 
 **Exit per repo:** green on local runner in-image, AND the continuous
-resource signal holds as load accumulates (the STOP fires here if the host
-saturates → Contabo provision). A mid-fan-out STOP leaves the fleet
+resource signal holds as load accumulates (a sustained CPU/memory breach
+here pauses for a resource bump). A mid-fan-out pause leaves the fleet
 temporarily split across two CI models — an acceptable interim steady
 state.
 
@@ -327,7 +350,7 @@ citing this epic's reference implementation.
 
 | Repo | Share | What |
 |---|---|---|
-| `livespec-dev-tooling` | **bulk** | layered images + matrix build, pin-lockstep extensions, runner/supervisor/containment tooling, resource + STOP-gate + liveness tooling, cache prune automation, fan-out automation |
+| `livespec-dev-tooling` | **bulk** | layered images + matrix build, pin-lockstep extensions, runner/supervisor/containment tooling, resource health-check + liveness tooling, cache prune automation, fan-out automation |
 | `claude-collector` | prerequisite | `hostmetrics` + `docker_stats` receivers + Honeycomb metrics pipeline |
 | `livespec-orchestrator-beads-fabro` | a little | prepare-step span shims; own `workflow.toml` → `python`; shipped default |
 | `livespec-console-beads-fabro` | a little | `workflow.toml` → `python-rust`; drop per-run `rustup` |
@@ -350,8 +373,8 @@ run is dominated by agent/LLM time):
 Each phase is cheaply reversible and reversal is written into its
 work-item: image-pin revert (via lockstep/pins), `ci.yml` `runs-on` →
 `ubuntu-latest` + restore `actions/cache`, runner deregistration, cache
-volume teardown. A Phase-3 partial state (some repos local, some hosted)
-is a valid pause point.
+dir teardown. A Phase-3 partial state (some repos local, some hosted) is a
+valid pause point.
 
 ## Risks & open decisions
 
@@ -362,25 +385,30 @@ is a valid pause point.
 - **Cache poisoning** — trust-tiered caches; sccache trusted-only/deferred.
 - **Single-host merge-gate** — fallback mechanism designed in Phase 2 +
   liveness alert in Phase P.
-- **No swap cushion** — treat any sustained swap-in as an immediate STOP;
-  consider a swap safety net.
-- **Bursty load / threshold baseline** — freeze thresholds from a
-  multi-day window, not a sample.
+- **No swap cushion** — treat any sustained swap-in as an immediate
+  PAUSE-for-provision; consider a swap safety net.
+- **Bursty load** (0.8–23 same day, all from existing work) — set
+  thresholds from a multi-day measurement and read them as a health check,
+  not a level we expect the plan to reach.
+- **Disk (resolved)** — local-disk caches; ~41 GB swept from stale Docker
+  images (91 GB free); disk doubling on order; keep a per-cache cap +
+  prune.
 - **CI matrix concurrency** — matrix-collapse vs. N runner slots (Phase 0).
 - **Autodiscovery gap** — close now (auto-bump `workflow.toml` image tags)
   vs. keep manual per-repo pins guarded by lockstep.
-- **Cache-warming strategy** — persistent volume (primary) vs. per-repo
-  image pre-warm (demoted; needs lockfile plumbing + triggers if revived).
+- **Cache-warming strategy** — persistent local-disk cache (primary) vs.
+  per-repo image pre-warm (demoted; needs lockfile plumbing + triggers if
+  revived).
 
 ## Dependency diagram
 
 ```mermaid
 flowchart TD
-    P["Phase P<br/>Observability + cache volume + thresholds"] --> Z["Phase 0<br/>Local-runner shadow lane"]
+    P["Phase P<br/>Observability + thresholds"] --> Z["Phase 0<br/>Local-runner shadow lane"]
     P --> I["Phase 1<br/>Baked layered images"]
     Z --> C["Phase 2<br/>Cut CI over (in-image, local)"]
     I --> C
     C --> F["Phase 3<br/>Fleet fan-out (8 members)"]
     F --> A["Phase 4<br/>Adopter work-items"]
-    P -. "continuous resource signal + STOP gate across all phases" .- F
+    P -. "continuous resource health check across all phases" .- F
 ```
