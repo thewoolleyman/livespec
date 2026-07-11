@@ -1,17 +1,17 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
-**Status: BUILD PHASE COMPLETE (2026-07-11) — Step 0 + O1 + C1 ratified; the
-maintainer RESUMED the build 2026-07-11 and it is now DONE. O2 (orchestrator
-engine, 4/4 slices) COMPLETE + wrapped; C2 (console command foundation, 5/5
-commands) COMPLETE; the console persistence-seam amendment RATIFIED to console
-v018. Everything merged, reviewed sound, green on master. REMAINING to MVP: C3
-(console autonomous feature) → I2 (end-to-end live exercise = MVP "done"). The
-maintainer chose to CHECKPOINT here for a FRESH session to build C3/I2 with full
-context. See "## Build phase progress" below for the full record + resume
-pointers.** The Step-0 fable-review loop exited (round-6 NOTHING-BLOCKING +
-maintainer certification, in the Loop state below); the driver then dispatched O1
-and C1 as scoped subagents and drove each through propose-change → independent
-read-only Fable review → revise.
+**Status: C3 COMPLETE (2026-07-11) — ONLY I2 (end-to-end live exercise = MVP
+"done") REMAINS. Step 0 + O1 + C1 ratified; O2 (orchestrator engine, 4/4)
+COMPLETE; C2 (console command foundation, 5/5) COMPLETE; persistence-seam
+RATIFIED to console v018; and now C3 (console autonomous feature — 3/3 slices
+`rt4.1/.2/.3` + folded finding `d6o`) COMPLETE, all merged, post-merge-reviewed
+SOUND, console master green (`e749a6c`). The maintainer CHECKPOINTED AGAIN at
+C3-complete (2026-07-11) before I2 — the maintainer-gated MVP acceptance. See
+"## Build phase progress" (the C3 record) + "## Remaining to MVP" (the I2 plan +
+recommendation) below for the next session's resume pointers.** The Step-0
+fable-review loop exited (round-6 NOTHING-BLOCKING + maintainer certification, in
+the Loop state below); the driver dispatched O1 and C1 as scoped subagents and
+drove each through propose-change → independent read-only Fable review → revise.
 
 **Ratification record (2026-07-10):**
 - **O1 → orchestrator v033 (RATIFIED).** Two propose-changes (irreducible human
@@ -64,11 +64,18 @@ drafted by scoped read-only delegates, ACCEPTED by the maintainer, and FILED:
   was illusory.
 
 **Merge posture (maintainer-approved 2026-07-11): auto-merge-on-green +
-post-merge review.** The fleet repos' `livespec-pr-bot` auto-merges green PRs by
-design; a manual pre-merge gate fights that. So delegates build → PR → the bot
-auto-merges on CI-green → the driver post-merge-reviews each diff and reverts
-ONLY on a real problem (revert is driver-held). Full worktree/TDD/`just check`
-discipline unchanged; delegates halt-and-report on any red.
+post-merge review.** The approved intent is NO pre-merge gate: a green PR merges
+and the driver reviews AFTER, reverting only on a real problem (revert is
+driver-held). CORRECTION (found during C3): the
+`livespec-console-beads-fabro` repo has NO auto-merge bot and NO `livespec-pr-bot`
+(only `ci.yml` + `bump-pin-from-dispatch.yml`); its green PRs merge by the
+delegate/driver running `gh pr merge --rebase` (recent PRs showed `autoMerge=yes`
+only because someone's token ENABLED auto-merge — the `mergedBy: thewoolleyman`
+just reflects who enabled it). So under the approved posture the merger IS the
+delegate/driver, not a bot; each C3 slice delegate rebase-merged its own green PR
+and the driver post-merge-reviewed the diff on master. Do NOT wait on a
+nonexistent bot. Full worktree/TDD/`just check` discipline unchanged; delegates
+halt-and-report on any red.
 
 **O2 (orchestrator engine): COMPLETE.** All four `bd-ib-82a` slices merged,
 reviewed sound, closed; master CI green; releases 0.14.0–0.17.0. orch-S4's
@@ -116,24 +123,64 @@ release 0.17.2), verified by 325 repeated runs — not `@flaky`/skipped.
   landed work was lost (committed slices + unpushed local branches all recovered;
   a merged-but-not-yet-closed slice is normal serialized-close lag, not failure).
 
-**Remaining to MVP (the FRESH session's work — O2, C2, persistence-seam are all DONE):**
-- **C3 — console autonomous feature.** Gate: C1 + C2 + persistence-seam + I1 — ALL
-  MET. Build `config.autonomous_mode_set` + `.livespec.jsonc` audit +
-  `factory.autonomous_mode_*_requested` + the TUI toggle / confirm-modal /
-  dangerous-label / header-indicator + the Scenario-10 enable/observe/reflect/
-  escalate loop. NOT a console-side resolver — the engine owns ALL gate
-  resolution (ratified delegation re-scope); the console enables/observes/reflects
-  by reading the orchestrator's published audit surface (`read_autonomous_decisions`,
-  now fail-open-hardened). FOLD IN finding `d6o` (the `human-only` attention gap).
-  Persistence writes the orchestrator's `dispatcher.autonomous_mode` key via its
-  command surface (per the v018 seam), NOT a console-owned block.
-- **I2 — end-to-end live exercise (MVP "done").** Gate: C3 + O2 (met) AND the
-  design.md §9 operability conditions — a verified cost ceiling AND a real
-  failure-surfacing path. NOTE orchestrator bug `bd-ib-18r`: an in-loop park today
-  orphans WITHOUT ledger write-back, so I2's truly-unresolvable plant must be
-  ledger-level, or `bd-ib-18r` must be triaged first. I2 NEEDS the maintainer for
-  the live-exercise acceptance ("done means rolled out and exercised live on a real
-  tenant" — not merely merged + green).
+## Remaining to MVP — I2 only (C3 is DONE)
+
+**C3 — console autonomous feature: COMPLETE (2026-07-11).** Groomed
+(maintainer-approved 3-slice cut) from epic `rt4` into `rt4.1/.2/.3`; all merged,
+post-merge-reviewed SOUND, console master green (`e749a6c`); epic + all children +
+folded finding `d6o` CLOSED:
+- **`rt4.1` (console PR #160, `395fa87`)** — the Configuration context:
+  `config.autonomous_mode_set` (confirmed-guard rejects an unconfirmed enable with
+  NO effect — no port call, no key write, no audit event); the
+  `factory.autonomous_mode_{enable,disable}_requested` commands +
+  `LivespecJsoncArmingPort` that writes the orchestrator `dispatcher.autonomous_mode`
+  key DIRECTLY in the consumer `.livespec.jsonc` (declarative shared config;
+  comment-preserving minimal edit); the `config.autonomous_mode.{enabled,disabled}`
+  audit events; `read_autonomous_mode_from_jsonc` derive-on-read (absent = disabled).
+  `not_wired` honesty, never fabricated success.
+- **`rt4.2` (console PR #162, `e749a6c`)** — the TUI surface: autonomous toggle,
+  "dangerous / use with caution" label, type-to-confirm modal (enable only; disable
+  no-confirm; submits `confirmed:true`), header mode indicator DERIVED-and-reflected
+  (never owned).
+- **`rt4.3` (console PR #161, `747a81c`)** — the autonomous RUN: the factory-drain
+  launcher passes `--mode autonomous` to `loop` (re-derived per drain from the key;
+  NOT `drive`); observe/reflect via `JournalAutonomousDecisionsPort` mirroring the
+  orchestrator's published `read_autonomous_decisions`, reflecting each
+  auto-resolution through the console's OWN command+outcome-event path
+  (`factory.autonomous_decision_reflected` + `attention_item.resolved`; idempotent;
+  NO console-side resolver, no double-resolution); truly-unresolvable left in the
+  inbox; folded `d6o` (VERIFIED: a `human-only` acceptance item rests in
+  `Lane::Acceptance`, so `requires_attention_from_lane`'s Acceptance arm extended to
+  `AiThenHuman | HumanOnly`, AiOnly unflagged).
+
+**I2 — end-to-end live exercise (MVP "done"): the SOLE remaining step;
+maintainer-gated.** Gate: C3 ✓ + O2 ✓ AND the design.md §9 operability conditions —
+BOTH now MET: the cost ceiling is real and fail-closed (`cost_gate_decision`, LIVE in
+the orchestrator), and the failure-surfacing path is C3's observe/reflect/
+needs-attention. On a REAL tenant: flip autonomous mode ON from the TUI → the
+orchestrator engine drives ready work to `done` unattended → the console
+observes/reflects each auto-resolution → a truly-unresolvable item surfaces in-TUI as
+an actionable needs-attention item. "Done means rolled out and exercised live" — this
+live evidence IS the MVP acceptance.
+
+**RECOMMENDED I2 approach (driver-drafted; the maintainer CHECKPOINTED at C3-complete
+2026-07-11 BEFORE choosing an I2 approach — so this is a recommendation, not a
+decision):** run I2's truly-unresolvable plant at the LEDGER LEVEL — seed a
+`human-only` acceptance item, which the engine will NOT collapse (deliberate gate), so
+it rests in `Lane::Acceptance` and the console surfaces it as needs-attention via the
+`d6o` fix `rt4.3` shipped. This AVOIDS the in-loop-park path that orchestrator bug
+`bd-ib-18r` breaks (`bd-ib-18r` + `bd-ib-6vu` BOTH still OPEN/backlog as of 2026-07-11)
+— no park, so the bug never bites. The alternative is to triage `bd-ib-18r`
+(blocked-as-first-class + ledger write-back on park) first, then I2 with a genuine
+mid-run park — more faithful to long unattended runs but pulls engine bug-fixing into
+the MVP critical path. `bd-ib-18r`/`bd-ib-6vu` affect LONG unattended runs, not the MVP
+demonstration; keep them tracked follow-ups.
+
+**SEAM to assert at I2 (flagged by the `rt4.3` delegate):** if the needs-attention
+surface lags the ledger (still lists an item the engine already auto-resolved), ingest
+re-appears it and idempotent reflect won't re-resolve it; in practice the engine updates
+the ledger → the surface drops it, and reflect runs AFTER ingest so it wins on first
+sighting. I2 may want to assert surface/ledger convergence.
 
 **Checkpoint note (2026-07-11):** the build phase ran end-to-end in one long
 driver session through two token-limit interruptions with zero lost work; the
@@ -235,7 +282,7 @@ operator.
 ## The spine (see design.md §7 for the full step catalogue)
 ```
 Step 0 (fable-review LOOP — HARD GATE) ✓ MET 2026-07-10 (round 6 NOTHING-BLOCKING + maintainer certification)
-  status (2026-07-11): O1 RATIFIED (orch v033, I1 satisfied) ✓ · C1 MAIN RATIFIED (console v017) ✓ · O2 COMPLETE ✓ · C2 3/4 (con-S4 building) · then persistence-seam + C3 + I2.
+  status (2026-07-11): O1 ✓ (orch v033, I1) · C1 ✓ (console v017) · O2 ✓ · C2 ✓ · persistence-seam ✓ (console v018) · C3 ✓ (rt4.1/.2/.3 + d6o; console master e749a6c) · ONLY I2 remains (maintainer-gated).
   ├─ Console track (delegate console-autonomous-mode):  C1 spec fixes ✓ ─► C2 command foundation ─► C3 autonomous feature
   └─ Orchestrator track (delegate orchestrator-autonomous-mode): O1 spec fixes + arming contract ✓ ─► O2 build engine (bd-ib-82a)
                           O1 arming contract (I1) ✓ ─► C3 (and C1's persistence-seam portion, now I1-unblocked)
@@ -338,21 +385,20 @@ are named for their repo so cross-plan status references resolve.
    (`orchestrate`/`orchestrate run` → `drive`; lane-vocab ownership → orchestrator).
 
 ## Next action
-Build phase COMPLETE (2026-07-11); maintainer CHECKPOINTED for a fresh C3/I2
-session. **O2 ✓, C2 ✓, persistence-seam RATIFIED (console v018) ✓** (see "##
-Build phase progress"). The fresh session's next action is **C3 — the console
-autonomous feature** (gate C1 + C2 + persistence-seam + I1, all MET): build
-`config.autonomous_mode_set` + `.livespec.jsonc` audit + `factory.autonomous_mode_*_requested`
-+ TUI toggle/confirm-modal/dangerous-label/header + the Scenario-10
-enable/observe/reflect/escalate loop (engine owns resolution; console
-observes via `read_autonomous_decisions`; write the orchestrator's
-`dispatcher.autonomous_mode` key per the v018 seam; fold in finding `d6o`). Then
-**I2** — end-to-end live exercise on a real tenant = MVP "done" (mind design.md §9
-operability + orchestrator bug `bd-ib-18r`; needs maintainer for the live
-acceptance). Merge posture is auto-merge-on-green + driver post-merge review. O1
-(orch v033), C1 (console v017), O2 (bd-ib-82a), and the persistence-seam (console
-v018) are all landed; I1 is satisfied. Both sibling repos are clean on master and
-green; all delegates + worktrees are wound down.
+**C3 COMPLETE (2026-07-11); the maintainer CHECKPOINTED at C3-complete before I2.**
+All of Step 0, O1 (orch v033), C1 (console v017), O2 (`bd-ib-82a`), C2 (`pke3y3`),
+the persistence-seam (console v018), and C3 (`rt4` → `rt4.1/.2/.3` + `d6o`) are
+landed, reviewed sound, and green. The SOLE remaining step is **I2 — the end-to-end
+live exercise on a real tenant = MVP "done"** (maintainer-gated; needs the maintainer
+for the live acceptance). Its gate (C3 + O2 + §9 operability — cost ceiling +
+failure-surfacing path) is MET; the ONE open decision is the
+truly-unresolvable-plant approach — see "## Remaining to MVP" for the driver's
+RECOMMENDATION (a ledger-level `human-only`-acceptance plant that sidesteps still-open
+orchestrator bug `bd-ib-18r`) and the alternative (triage `bd-ib-18r` first). Merge
+posture: green PRs merge by the delegate/driver via `gh pr merge --rebase` (the console
+repo has NO auto-merge bot — see the corrected merge-posture note above) + driver
+post-merge review. All C3 delegates + worktrees are wound down; core, console, and
+orchestrator are clean on master and green.
 
 ## Pointers
 - Ledger read (per tenant): `bd list --json` (or `bd show <id> --json`) run from
