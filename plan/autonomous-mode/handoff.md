@@ -1,11 +1,13 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
-**Status: SPEC FOUNDATIONS RATIFIED (2026-07-10) — Step 0 met; O1 and C1 both
-ratified; the build phase (C2, O2) is NEXT and PAUSED at the maintainer's
-request.** The Step-0 fable-review loop exited (round-6 NOTHING-BLOCKING +
-maintainer certification, in the Loop state below); the driver then dispatched
-O1 and C1 as scoped subagents and drove each through propose-change →
-independent read-only Fable review → revise.
+**Status: BUILD PHASE IN PROGRESS (2026-07-11) — Step 0 met; O1 and C1 both
+ratified; the maintainer RESUMED the build 2026-07-11. O2 (orchestrator engine)
+is COMPLETE (all 4 `bd-ib-82a` slices merged, reviewed sound, closed; master CI
+green); C2 (console command foundation) is at 3/4 with con-S4 (set-acceptance)
+building. See "## Build phase progress" below.** The Step-0 fable-review loop
+exited (round-6 NOTHING-BLOCKING + maintainer certification, in the Loop state
+below); the driver then dispatched O1 and C1 as scoped subagents and drove each
+through propose-change → independent read-only Fable review → revise.
 
 **Ratification record (2026-07-10):**
 - **O1 → orchestrator v033 (RATIFIED).** Two propose-changes (irreducible human
@@ -37,6 +39,62 @@ adds/removes/rewords a normative clause REQUIRES a lockstep co-edit
 zero `## ` H2 changes — the console analogue of core's H2 heading-coverage
 co-edit (precedent: console v016 CN1 + v014). Future console propose-changes
 should carry this in their `resulting_files`.
+
+## Build phase progress (2026-07-11 — driver session `autonomous-mode`)
+
+The maintainer resumed the build phase 2026-07-11. Both grooming cuts were
+drafted by scoped read-only delegates, ACCEPTED by the maintainer, and FILED:
+
+- **Orchestrator `bd-ib-82a` → 4 slices** (`.1` two-factor arm / `.2` per-decision
+  audit record + published read surface / `.3` two-valve collapse / `.4` in-band
+  LLM `needs-human` resolve-or-escalate). Epic re-based v025→v033, surface
+  `loop --mode autonomous`. Backstop for the spec-change tier = option (a): a
+  conservative guard on the existing `spec_commitment_hint` signal, NO new field.
+- **Console `pke3y3` → 4 slices** (`.1` shared `drive` port + approve / `.2`
+  accept+reject / `.3` set-admission / `.4` set-acceptance), re-based onto the
+  v017 valve model; the 4 still-contract factory/spec commands split to new
+  sibling `8aw`; the 3 v014-retired commands dropped. All five commands ride ONE
+  shared `drive` port + a single `work_item.action.*` event family (thin console
+  validation; orchestrator is state-legality authority). `mb64bv` was already
+  landed (rename in `3eca905`) → CLOSED as already-fixed; con-S4's supposed block
+  was illusory.
+
+**Merge posture (maintainer-approved 2026-07-11): auto-merge-on-green +
+post-merge review.** The fleet repos' `livespec-pr-bot` auto-merges green PRs by
+design; a manual pre-merge gate fights that. So delegates build → PR → the bot
+auto-merges on CI-green → the driver post-merge-reviews each diff and reverts
+ONLY on a real problem (revert is driver-held). Full worktree/TDD/`just check`
+discipline unchanged; delegates halt-and-report on any red.
+
+**O2 (orchestrator engine): COMPLETE.** All four `bd-ib-82a` slices merged,
+reviewed sound, closed; master CI green; releases 0.14.0–0.17.0. orch-S4's
+in-band LLM `needs-human` stage (`resolution_resolves`) fails safe toward
+escalation on every branch (not-confident / design-gated / `human-only`), the
+production resolver fail-safes to escalate on any subprocess/parse error, and
+not-armed behavior is exactly the pre-existing bounce.
+
+**C2 (console command foundation): 3/4 merged** (con-S1/S2/S3 sound; Scenario 11
+fully bound). con-S4 (set-acceptance; first extends read-side `AcceptancePolicy`
+to `{ai-only,human-only,ai-then-human}`) building. When it lands + closes, the
+`pke3y3` epic closes → C2 complete.
+
+**Operational learnings (carry forward):**
+- Dispatching build executors as context-inheriting FORKS spikes tokens (a fork
+  inherits the parent delegate's large context) and hit a session rate limit
+  mid-build. Prefer LIGHT self-contained general-purpose agents for executors.
+- An idle subagent does NOT self-wake on external CI completion — the driver (or
+  the delegate's own Monitor) must watch master CI and nudge/close the slice.
+- Concurrent slices editing the same file (orch-S3/S4 both touched
+  `dispatcher.py`) need the second-to-merge to rebase-own-branch +
+  `--force-with-lease`; the bot will NOT auto-merge a CONFLICTING PR. Sequence,
+  or accept the rebase on the second.
+- Two session rate-limit interruptions cost only build/coordination time — no
+  landed work was lost (committed slices + unpushed local branches all recovered;
+  a merged-but-not-yet-closed slice is normal serialized-close lag, not failure).
+
+**Remaining build work:** (a) con-S4 lands → C2 complete; (b) the console
+persistence-seam amendment (Next actions step 3, now I1-unblocked); (c) C3
+console autonomous feature; (d) I2 end-to-end live exercise = MVP "done".
 
 The Step-0 loop rules are kept below for the historical record: each round, a
 FRESH Fable session reviewed ALL THREE plans AND FIXED every problem it found
@@ -132,7 +190,7 @@ operator.
 ## The spine (see design.md §7 for the full step catalogue)
 ```
 Step 0 (fable-review LOOP — HARD GATE) ✓ MET 2026-07-10 (round 6 NOTHING-BLOCKING + maintainer certification)
-  status: O1 RATIFIED (orch v033, I1 satisfied) ✓ · C1 MAIN RATIFIED (console v017) ✓ · build phase (C2, O2) NEXT — PAUSED at maintainer request.
+  status (2026-07-11): O1 RATIFIED (orch v033, I1 satisfied) ✓ · C1 MAIN RATIFIED (console v017) ✓ · O2 COMPLETE ✓ · C2 3/4 (con-S4 building) · then persistence-seam + C3 + I2.
   ├─ Console track (delegate console-autonomous-mode):  C1 spec fixes ✓ ─► C2 command foundation ─► C3 autonomous feature
   └─ Orchestrator track (delegate orchestrator-autonomous-mode): O1 spec fixes + arming contract ✓ ─► O2 build engine (bd-ib-82a)
                           O1 arming contract (I1) ✓ ─► C3 (and C1's persistence-seam portion, now I1-unblocked)
@@ -144,9 +202,11 @@ builds on it.
 
 ## Next actions (exact steps for a new session — the BUILD phase)
 
-Step 0 + O1 + C1(main) are DONE (see Ratification record at top). The build
-phase is PAUSED at the maintainer's request. C2 and O2 run concurrently; both
-open now. Resume:
+Step 0 + O1 + C1(main) are DONE (Ratification record at top). The build phase is
+RESUMED and IN PROGRESS (see "## Build phase progress"): **step 1 (O2) is
+COMPLETE; step 2 (C2) is 3/4 with con-S4 building.** The live remaining steps are
+3 (persistence-seam), 4 (C3), 5 (I2). Steps 1–2 below are kept as the executed
+record; steps 3–6 are the forward work:
 
 1. **O2 — implement the orchestrator engine (`bd-ib-82a`).** FIRST groom
    `bd-ib-82a` into dependency-layered slices — grooming is a MAINTAINER-OWNED
@@ -202,6 +262,13 @@ are named for their repo so cross-plan status references resolve.
   independent Fable review after a delegate files its propose-change.
 
 ## Ledger items in play (per repo tenant)
+> **Currency note (2026-07-11):** several descriptions below are superseded by
+> "## Build phase progress" — `bd-ib-82a` is groomed into `.1`–`.4` and CLOSED
+> (O2 complete); `pke3y3` is re-based onto the v017 valve model (`.1`–`.4`, con-S4
+> in flight), NOT "7 unimplemented commands"; the factory/spec split lives in new
+> sibling `8aw`; `mb64bv` is CLOSED (already-fixed via `3eca905`). Trust the Build
+> phase progress section for current slice/close state.
+
 - Core: `livespec-bvuy4w` — this thread's epic anchor (driver filed it
   2026-07-10 via the `capture-work-item` operation, closing the round-2
   finding; epic-shaped → `backlog` per the intake Definition-of-Ready
@@ -226,13 +293,16 @@ are named for their repo so cross-plan status references resolve.
    (`orchestrate`/`orchestrate run` → `drive`; lane-vocab ownership → orchestrator).
 
 ## Next action
-Build phase is PAUSED at the maintainer's request (2026-07-10). Resume order
-(Next actions above): O2 (groom `bd-ib-82a` WITH the maintainer, then build) and
-C2 (console command foundation) run concurrently; the I1-unblocked console
-persistence-seam amendment can land in parallel; C3 then needs C1 + C2 + I1; I2
-is the MVP live-exercise gate. Both grooming cuts (`bd-ib-82a`, `pke3y3`) are
-maintainer-owned — set them up, do not auto-slice. O1 (orch v033) and C1 (console
-v017) are RATIFIED (Ratification record at top); I1 is satisfied.
+Build phase RESUMED and in progress (2026-07-11). **O2 COMPLETE; C2 3/4 with
+con-S4 building** (see "## Build phase progress"). Immediate next: (1) con-S4
+lands → console delegate closes the `pke3y3` epic → C2 complete; (2) file the
+I1-unblocked console persistence-seam amendment (step 3 — propose-change →
+independent Fable review → revise, carrying the PROCESS NOTE clause-rebinding
+co-edit); (3) C3 console autonomous feature (needs C1 + C2 + persistence-seam +
+I1); (4) I2 end-to-end live exercise on a real tenant = MVP "done" (mind the
+design.md §9 operability conditions + orchestrator bug `bd-ib-18r`). Merge
+posture is auto-merge-on-green + driver post-merge review (see above). O1 (orch
+v033), C1 (console v017), and O2 (bd-ib-82a) are all landed; I1 is satisfied.
 
 ## Pointers
 - Ledger read (per tenant): `bd list --json` (or `bd show <id> --json`) run from
