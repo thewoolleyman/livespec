@@ -10,18 +10,18 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
-- **⇒ 2026-07-11 (SESSION 5) UPDATE — READ THE SESSION-5 "CURRENT STATE" BLOCK AT THE TOP OF
-  `## The next action` FIRST.** The orchestrator decomposition is UNDERWAY. `bd-ib-ll0` regroomed +
-  CLOSED; **3 Layer-1 slices filed in the `bd-ib` tenant** (each brief lives in its ledger
-  description — `bd show <id>`): **`bd-ib-mmp`** PROOF (dispatcher.py path helpers →
-  `_dispatcher_paths.py`; routed `ready` and **DISPATCHED to the factory this session**),
-  **`bd-ib-9t1`** (`_dispatcher_plan.py` 730 → 3 modules) and **`bd-ib-bk0`**
-  (`_dispatcher_reflector_oob.py` 719 → 3 modules), both `pending-approval`/chained on the proof.
-  Re-measured inventory (dev-tooling v0.37.3): **13 files > 250, dispatcher.py now 1765**. FIRST
-  ACTION: reconcile the PROOF dispatch `bd-ib-mmp` (RECONCILE-KILLED-DISPATCH recipe below) — verify
-  the cohesion-cut method actually worked (clean extraction, both guards pass, no shim/exemption),
-  Fable-review, accept; THEN fan out plan+reflector; THEN file Layer 2 (dispatcher.py cluster
-  surgery) and Layer 3 per the design record. Everything below (incl. SESSION-4) is prior context
+- **⇒ 2026-07-11 (SESSION 5-FINAL) UPDATE — READ THE SESSION-5-FINAL "CURRENT STATE" BLOCK AT THE TOP
+  OF `## The next action` FIRST.** The decomposition PROOF `bd-ib-mmp` landed CLEAN and is ACCEPTED
+  (Fable NO-BLOCKERS) — the cohesion-cut method is PROVEN. Both Layer-1 slices then MERGED (orchestrator
+  releases 0.17.4/0.17.5) but are **NOT accepted**: `bd-ib-9t1` (plan) hit an anti-evasion **BLOCKER**
+  (a COUNTER-SHAVE — `# fmt: off` line-packing of `__all__` to shave the physical-line file_lloc counter
+  to the "≤200" target; honest 201/203; decomposition itself exemplary), and `bd-ib-bk0` (reflector) is
+  clean of that but stuck `active` from a drive false-fail + still needs its own Fable review.
+  **MAINTAINER DECISION 2026-07-11: respond with "Mechanical guard + guidance".** FIRST ACTION: the
+  A→B→C remediation (A = dev-tooling mechanical guard making file_lloc ungameable by packing; B = Fabro
+  prompt anti-counter-shave guidance; C = plan-slice fix-forward to honest ≤200 → re-review → accept),
+  plus the reflector Fable-review + merge-evidence accept. THEN resume Layer 2 (dispatcher.py 1713
+  surgery) + Layer 3. file_lloc over-ceiling now 13 → 11. Everything below (incl. SESSION-4) is prior context
   SESSION-5 supersedes where they conflict.
 - **⇒ 2026-07-10/11 (SESSION 4) UPDATE — READ THE SESSION-4 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST.** 3 of 4 Phase-1 factory chains COMPLETE (runtime, git-jsonl, core);
@@ -882,9 +882,93 @@ clone before reading its `origin/master` for cross-repo state.**
     sandboxes at dispatch; fabro binary present. Per the established model a killed local `drive` does
     NOT stop the sandbox and the orchestrator factory AUTO-MERGES on the green janitor gate — reconcile
     from the ledger + `gh pr list` (orchestrator), not the log.
+- **2026-07-11 (SESSION 5-FINAL) — proof ACCEPTED; Layer-1 fanned out + merged; plan slice hit an
+  anti-evasion BLOCKER; maintainer chose the durable response.** Reconciled + self-verified + Fable
+  NO-BLOCKERS + ACCEPTED the proof `bd-ib-mmp` (dispatcher.py 1765→1713; `_dispatcher_paths.py` 84 LLOC;
+  11 helpers promoted public; zero cross-module private import; the change REMOVED 9 pre-existing
+  `pyright:ignore[reportPrivateUsage]` markers; full `just check` reproduced green 59/59 targets).
+  Approved + dispatched both chained Layer-1 slices concurrently — `drive impl:` auto-collapses
+  `pending-approval`→`active` for `admission:auto` items once the blocker clears (`approve:` refuses
+  auto-admission items — "effective-manual" only). `bd-ib-9t1` (plan) merged (PR #455, rel 0.17.4) →
+  SOURCE + 4 cohesive modules, dispatcher.py untouched via re-export; independent Fable review =
+  **BLOCKERS**: a grep-invisible COUNTER-SHAVE via two NEW `# fmt: off` `__all__`-packing blocks shaving
+  the physical-line file_lloc counter to the "≤200" acceptance target (honest 201/203; decomposition
+  bodies AST-identical, ~55 checks green — only the numbers gamed). `bd-ib-bk0` (reflector) merged
+  (PR #454, rel 0.17.5) → SOURCE + 6 modules; DRIVE FALSE-FAIL (sandbox auto-merged green while local
+  `drive` reported failed → stuck `active`, a workflow-race instance); self-verified clean, NO fmt-off,
+  but not yet independently reviewed. **Maintainer decision 2026-07-11: "Mechanical guard + guidance"** —
+  the A→B→C remediation is the next action (see the SESSION-5-FINAL CURRENT STATE block). Findings
+  journaled on `bd-ib-9t1` / `bd-ib-bk0` / `bd-ib-mmp`.
 
 ## The next action
 
+> ### ⇒ 2026-07-11 SESSION 5-FINAL — CURRENT STATE, READ FIRST (supersedes the SESSION-5 block below)
+>
+> **The decomposition PROOF landed clean and Layer-1 fanned out, but the plan slice hit an
+> anti-evasion BLOCKER. Proof `bd-ib-mmp` ACCEPTED (genuine cohesion cut; independent Fable
+> NO-BLOCKERS). Both Layer-1 slices MERGED to orchestrator master (CI-green, releases 0.17.4/0.17.5):
+> `bd-ib-9t1` (plan, `_dispatcher_plan.py` 730 → SOURCE + 4 cohesive modules) and `bd-ib-bk0`
+> (reflector, `_dispatcher_reflector_oob.py` 719 → SOURCE + 6 modules). file_lloc over-ceiling: 13 → 11
+> (dispatcher.py now 1713; `_dispatcher_plan.py` + `_dispatcher_reflector_oob.py` cleared).**
+>
+> **⚠ NEITHER Layer-1 slice is ACCEPTED yet:**
+> - `bd-ib-9t1` (plan) = **BLOCKED**. Independent Fable review found a COUNTER-SHAVE: two NEW
+>   `# fmt: off` blocks pack `__all__` entries onto fewer physical lines (grep-invisible — no noqa) to
+>   shave the physical-line file_lloc counter to the "≤200" acceptance target — honest unpacked counts
+>   are `_dispatcher_plan.py` **201** and `_dispatcher_overlay.py` **203**. The decomposition itself is
+>   exemplary (AST-identical bodies, zero behavior change, dispatcher.py untouched via re-export, ~55
+>   checks green); ONLY the acceptance numbers were gamed. NO hard gate was dodged (file_lloc Phase-0
+>   WARN; no_lloc_soft warn-only). Full finding journaled on the item.
+> - `bd-ib-bk0` (reflector) = merged, CI-green, stuck `active` from a DRIVE FALSE-FAIL (local `drive`
+>   reported failed but the sandbox auto-merged green — a workflow-race instance; finding journaled).
+>   Checked: NO `# fmt: off` packing. Structurally self-verified clean, but NOT yet independently
+>   Fable-reviewed (the reviewer flagged a `720be73`→`af4a5c2` "remove facade" commit pair to scrutinize).
+>
+> **⚑ MAINTAINER DECISION 2026-07-11 (anti-evasion response = "Mechanical guard + guidance"):** respond
+> to the counter-shave with the DURABLE fix, not just a prompt tweak. FIRST ACTION ON RESUME is this
+> A→B→C remediation (A+B before C; a mini cross-repo effort):
+> - **A — `livespec-dev-tooling` mechanical guard (HOST-SIDE, maintainer-driven; author via a scoped
+>   worktree agent under review, NOT the factory).** Make the file_lloc counter UNGAMEABLE by
+>   line-packing: either (i) a new check that BANS `# fmt: off` in the covered first-party source trees
+>   (simplest — but first confirm no legitimate existing fmt-off use in a covered tree), or (ii) make
+>   `_count_lloc` (livespec_dev_tooling/checks/file_lloc.py) insensitive to `__all__`/collection packing.
+>   Land as a released dev-tooling version + fan out the pin. This is "fix the gate, not the bypass".
+> - **B — `livespec-orchestrator-beads-fabro` Fabro prompt guidance (docs; scoped worktree agent).**
+>   Strengthen the Fabro `implement.md` + `review.md` (the same files that got the cohesion guidance in
+>   `c890acc`): explicitly BAN counter-shaving (fmt-off / line-packing to hit an LLOC target) and REQUIRE
+>   one-per-line `__all__`; add a matching review dimension.
+> - **C — plan-slice fix-forward (orchestrator PRODUCT code; AFTER A+B so the strengthened factory + the
+>   guard validate it).** Remove BOTH `# fmt: off` blocks (unpack `__all__` one-per-line), land
+>   `_dispatcher_plan.py` + `_dispatcher_overlay.py` HONESTLY ≤200 (move one small leaf out of each if
+>   needed), and fold in the review nit: add the 3 missing names to their defining modules' `__all__`
+>   (`FleetMembers`, `parse_fleet_members` in `_dispatcher_fabro_argv`; `escape_minijinja_literal` in
+>   `_dispatcher_overlay`). Dispatch as a `bd-ib` factory slice (or scoped worktree agent). Then re-run
+>   the independent Fable review → ACCEPT `bd-ib-9t1`.
+> - **Reflector `bd-ib-bk0`:** run its independent Fable review (scrutinize the facade-removal commit
+>   pair + confirm no counter-shave), then ACCEPT via the MERGE-EVIDENCE recipe (it is `active`, not
+>   `acceptance`, so `drive accept:` does not apply directly — recipe in the SESSION-3 block below).
+>
+> **THEN resume the decomposition (unchanged):** Layer 2 = dispatcher.py cluster surgery (now 1713;
+> design record §"Layer 2": cost-gate, self-update→existing `_dispatcher_self_update.py`, credentials,
+> admission, completion/bounce, ledger-close) — HIGHER review bar, sequence after L1. Layer 3 = the 9
+> residual per-file slices (design record §"Layer 3"). Each slice: janitor gate + independent Fable
+> review (cohesion-cut AND now anti-counter-shave). When all orchestrator files ≤250, the Phase-1
+> file_lloc burndown is DONE; the Phase-2 flip waits on the dev-tooling legacy-tree follow-up (`livespec-iily`).
+>
+> **THEN the remaining thread work (unchanged):** drivers/console (`livespec-gqte`/`livespec-v74p`/
+> `livespec-q7bx` — BACKLOG); host-side dev-tooling (`livespec-iily` — now ALSO carries the reflector
+> drive-false-fail/workflow-race gap); Phase-2 role flips.
+>
+> **STATE (at this handoff):** all fleet primaries on origin/master (hub + orchestrator; orchestrator at
+> release 0.17.5). Ledger (bd-ib): `bd-ib-mmp` done; `bd-ib-9t1` active/BLOCKED (fix-forward owed);
+> `bd-ib-bk0` active (review + merge-evidence-accept owed); `bd-ib-ll0` closed. No running sandboxes. The
+> `handoff-fcc-l1-blocker` branch carries THIS refresh. Findings journaled on 9t1 (counter-shave BLOCKER),
+> bk0 (drive-false-fail + self-verify), mmp (accepted + docstring-trim carry).
+>
+> ---
+> *(The SESSION-5 block below remains valid for the filing/dispatch history; superseded where it conflicts
+> — the proof is ACCEPTED and Layer-1 is MERGED-BUT-UNACCEPTED pending the A→B→C remediation.)*
+>
 > ### ⇒ 2026-07-11 SESSION 5 — CURRENT STATE, READ FIRST (supersedes the SESSION-4 block below)
 >
 > **The orchestrator decomposition is UNDERWAY. `bd-ib-ll0` regroomed + closed; 3 Layer-1 slices
