@@ -188,6 +188,7 @@ check:
         check-no-direct-destructive-cli
         check-no-direct-tool-invocation
         check-no-except-outside-io
+        check-no-fmt-directives
         check-no-inheritance
         check-no-lloc-soft-warnings
         check-no-raise-outside-io
@@ -1041,3 +1042,6 @@ check-canonical-recipe-fidelity:
 
 check-ci-matrix-completeness:
     uv run python -m livespec_dev_tooling.checks.ci_matrix_completeness
+
+check-no-fmt-directives:
+    uv run python -m livespec_dev_tooling.checks.no_fmt_directives
