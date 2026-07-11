@@ -1,5 +1,88 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
+## SESSION UPDATE — 2026-07-12 (driver `autonomous-mode`): I2 unblocking + new deliverables
+
+**"ONLY I2 remains" is superseded.** Driving I2 live surfaced that the
+disposable-tenant factory substrate had bit-rotted and that the console is not
+yet a real (downloadable) deliverable. The MVP now carries FOUR tracked
+additions (A–D). **Landed this session:**
+- **Orchestrator credential precheck fix — MERGED** (`livespec-orchestrator-beads-fabro`
+  PR #489, release 0.17.15): the dispatcher bootstrap demanded
+  `BEADS_DOLT_PASSWORD` even for EMBEDDED ledgers (which need none); now derived
+  from `.beads/config.yaml` `dolt.mode: server`. Exercised live.
+- **Orchestrator test-hermeticity fixes — MERGED** (`livespec-orchestrator-beads-fabro`
+  PR #488): two non-hermetic tests that reddened local `just check` on a
+  dogfooding host (codex-resolution reading real `~/.codex`; a reflector line
+  needing `claude` absent).
+- **Console TUI docs — IN FLIGHT**: console README "Running the console (TUI)"
+  guide (`livespec-console-beads-fabro` PR #165, up); main livespec README
+  console blurb (the PR carrying this update).
+
+### Track A — repair the embedded factory substrate (I2 prerequisite)
+The core beads CLIENT dropped embedded-ledger support (accumulated
+server-mode-assuming gates). Gates found in the dispatch path:
+1. bootstrap credential precheck — **FIXED** (`livespec-orchestrator-beads-fabro` PR #489).
+2. `resolve_store_config` requires `connection.prefix`, absent from the
+   e2e-skeleton — **FIXED in a worktree, NOT yet committed/PR'd.** The 2
+   recoverable edits: `orchestrator-image/e2e-skeleton/.livespec.jsonc`
+   connection block gains `"prefix": "e2egreet"`; `acceptance-live-golden-master.sh`
+   `bd init --prefix "e2egreet"` (was `"${rand}greet"`).
+3. `_beads_client_shell.py::invoke` demands `BEADS_DOLT_PASSWORD` AND asserts a
+   SERVER tenant identity match — both meaningless for embedded — **PENDING.**
+Maintainer chose **option 1 (holistic)**: make the beads client embedded-aware
+(embedded → skip the password + tenant-match; server path untouched), with the
+fix's own ritual tests. Capped per gate: if fixing #3 reveals yet another
+embedded gate, reassess vs. the server-tenant-pivot alternative.
+
+### Track B — anti-rot cadence for the live golden-master (NEW, maintainer-directed)
+The live golden-master (`acceptance-live-golden-master.yml`) is NON-BLOCKING +
+operator-triggered only, so it rotted silently while the dispatcher's
+credential/config layers evolved (the per-PR `acceptance` check is a HERMETIC
+mirror that never exercised the embedded path). Close the gating hole with
+BOTH a **daily** scheduled run that REDS master on failure AND a **pre-release
+blocking gate** — engineered against transient live-infra flake: tight inner
+retries around infra calls PLUS a capped whole-test retry-with-backoff (fail →
+wait 1 min → retry → fail → wait 10 min → retry → then real failure). Red ONLY
+on a genuine dispatch/merge/greeting-assert failure. Token burn per run is
+small.
+
+### Track C — console release-binary publishing (NEW, maintainer-directed)
+`livespec-console-beads-fabro` has **no release pipeline**: no release-please,
+no CI build-and-attach job, zero published releases — the only way to get it is
+a source build. Per the maintainer, "it's not a real deliverable until it's
+published on the version schedule via release-please." Deliverable: add
+release-please + a CI job that cross-compiles the standalone binary and
+attaches it to each GitHub Release on the version schedule. **Gates the MVP
+being a REAL deliverable** (the operator must download the cockpit, not compile
+Rust). File as a console-repo epic.
+
+### Track D — wire the operator valves into the TUI (NEW, verified gap)
+The per-item valves (approve / accept / reject / set-admission / set-acceptance)
+are server-side command handlers but are NOT bound to any TUI key (verified:
+`console-tui` constructs none of the valve command types; the command palette
+recognizes only `drain`). I2's DoD requires the truly-unresolvable item to
+surface in-TUI as an **actionable** needs-attention item; today it surfaces
+(flagged + shown in Detail) but is not TUI-actionable. Likely an additional MVP
+deliverable — confirm scope with the maintainer.
+
+### Next-session resume order
+1. Finish Track A: commit the `connection.prefix` fix + land the beads-client
+   `invoke` embedded fix (option 1), then run the live golden-master GREEN
+   (from a checkout carrying the fixes — the dispatcher runs from the
+   bind-mounted repo, no image rebuild).
+2. Build + run the autonomous I2 on the now-green substrate (embedded tenant +
+   `--mode autonomous` + the VALIDATED human-only plant: `bd config set
+   status.custom "..."`, `bd update <id> --status acceptance`, `bd update <id>
+   --add-label acceptance:human-only`). Assert ready→done + `autonomous-decision`
+   audit records + the human-only item rests in `Lane::Acceptance`.
+3. Land Tracks B, C, D (each its own PR/epic). Track D likely blocks the full
+   I2 "actionable in-TUI" DoD; Track C blocks "real deliverable."
+4. The MAINTAINER's TUI acceptance is the human core of I2 "done."
+
+Everything below predates this update; trust this section for current state.
+
+---
+
 **Status: C3 COMPLETE (2026-07-11) — ONLY I2 (end-to-end live exercise = MVP
 "done") REMAINS. Step 0 + O1 + C1 ratified; O2 (orchestrator engine, 4/4)
 COMPLETE; C2 (console command foundation, 5/5) COMPLETE; persistence-seam
