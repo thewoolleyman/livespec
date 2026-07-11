@@ -10,6 +10,12 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-10 (SESSION 3) UPDATE — READ THE SESSION-3 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST.** Step-4 fan-out is nearly done: 3 of 4 Phase-1 factory chains
+  are COMPLETE + accepted (runtime, git-jsonl, core A/B/C; all independent Fable NO-BLOCKERS +
+  WARN-delta-0). ONLY orch-D `bd-ib-ll0` (file_lloc, dispatcher.py-1586 tentpole) remains, IN
+  FLIGHT — reconcile it FIRST on resume. Everything below (incl. the SESSION-2 bullet) is
+  prior-phase context the SESSION-3 block supersedes where they conflict.
 - **⇒ 2026-07-10 (SESSION 2) UPDATE — READ THE "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST.** Option A steps 1–3 are DONE and the factory is now
   VALIDATED END-TO-END: core-A (`livespec-2j46re`) flowed
@@ -759,9 +765,100 @@ clone before reading its `origin/master` for cross-repo state.**
     `implement→janitor→REVIEW→pr→MERGED` (PR #1037, `150ccfd`, release 0.7.5). WARN delta
     verified 17/8/1→0 on the 120-file universe. core-A now in `acceptance`; Fable review
     spawned; accept + fan-out (step 4) is the remaining work.
+- **2026-07-10 (SESSION 3) — STEP-4 FAN-OUT DRIVEN: 3 of 4 Phase-1 factory chains
+  COMPLETE + accepted (all independent Fable NO-BLOCKERS); orch-D in flight.** Resumed at
+  d4715dc (core-A already accepted by SESSION 2). Reconciled the live ledger, ran a factory
+  preflight (image v0.37.3 bwrap+codex, zero zombie sandboxes, no dev-tooling fan-out active),
+  then dispatched every repo's next chain-link in parallel via background `drive impl:`.
+  **Auto-admission learning:** the pending-approval B-slices are `admission:auto` with closed
+  deps, so `drive impl:` AUTO-PROMOTES them (dispatcher `plan_admissions`) — NO `approve:`
+  needed; the handoff's "approve then impl" assumed MANUAL admission (approve: rejects an auto
+  item with `invalid-source-state`).
+  - **Wave 1 (4 parallel):** core-B `livespec-7jcdfk` no_write PR #1041 (10→0); orch-B
+    `bd-ib-jnf` no_write PR #432 (70→0, 69 cmd sites); runtime `livespec-runtime-uy8` file_lloc
+    PR #175 (hygiene_scan 471→62 + 5 modules); git-jsonl `bd-gj-5i1` file_lloc PR #238 (3-file
+    split). All merged; each self-verified (WARN-delta 0, honest fix, no evasion) + a
+    separately-spawned Fable review = NO-BLOCKERS.
+  - **git-jsonl JANITOR FALSE-FAILURE (elevated finding):** `bd-gj-5i1`'s post-merge janitor
+    `just check` false-failed ONLY on `./dev-tooling/branch-protection.sh: No such file or
+    directory` — the worktree-pack hydration gap (branch-protection.sh is deliberately untracked,
+    not materialized by a fresh `git worktree add`; the hydrated primary has it; all other check
+    modules passed). Slice clean; item stuck `active` → reconciled active→done via the
+    MERGE-EVIDENCE recipe. ELEVATED on `livespec-iily` (also breaks the primary's
+    `check-primary-checkout-commit-refuse-hook-installed`; host fix `just install-worktree-pack`).
+  - **Wave 2 (chained):** core-C `livespec-txn2bq` no_lloc_soft PR #1045 (10 band files →≤200);
+    orch-C `bd-ib-dpj` structural PR #438 (no_inheritance 4 + main_guard 2 + no_lloc_soft 3 → 0).
+    The no_inheritance fix CONFORMED (Exception base + Protocol + composition, ZERO type() dodge);
+    its ~62-min run was the in-factory review⇄review_fix loop WORKING (a 3-commit series). Both
+    merged, self-verified + Fable NO-BLOCKERS, accepted.
+  - **ACCEPT MECHANISM (proven this session):** acceptance-parked items → `drive accept:<id>` +
+    a `bd comment <id>` journaling evidence (the accept: valve records NO audit-field merge
+    evidence — core-A is `done` with audit=None; matches SESSION-2's pattern). Active-but-merged
+    (janitor-false-failed) items → the MERGE-EVIDENCE recipe (`append_work_item` close-in-place
+    with an AuditRecord carrying merge_sha + pr_number).
+  - **PHASE-2 CARRY-FORWARD (no_write_direct hardening, journaled on 7jcdfk + bd-ib-jnf):** the
+    io/-facade (`stream=`-param `target.write`) and the `json.dump(payload, sys.stdout)` hook
+    idiom both pass no_write_direct by AST SHAPE, not by an exemption — HONEST here (blessed
+    fleet idioms, zero exemption added) but latent dodge vectors. At each repo's Phase-2 flip,
+    no_write_direct should explicitly exempt `io_trees` + `.claude/hooks/` OR codify those idioms
+    in the check prose. Also: core `_bootstrap.py`'s stderr write is now matcher-invisible → the
+    Phase-2 role-config slice must declare `supervisor_entry_files`.
 
 ## The next action
 
+> ### ⇒ 2026-07-10 SESSION 3 — CURRENT STATE, READ FIRST (supersedes the SESSION-2 block below)
+>
+> **STEP-4 FAN-OUT is nearly done: 3 of 4 Phase-1 factory-burndown chains COMPLETE +
+> accepted (runtime, git-jsonl, core A/B/C), each with an independent Fable NO-BLOCKERS +
+> WARN-delta-0 evidence journaled on its ledger item. The orchestrator chain is at A/B/C
+> done+accepted; ONLY orch-D remains, IN FLIGHT.**
+>
+> **⚠ FIRST ACTION ON RESUME — reconcile orch-D `bd-ib-ll0`** (236f-D file_lloc, the
+> dispatcher.py-1586 tentpole; dispatched via background `drive impl:` this session with
+> `--repo /data/projects/livespec-orchestrator-beads-fabro`). It is the HARDEST/longest slice
+> (dispatcher.py 1586 + siblings _dispatcher_plan.py 730 / _beads_client.py 462 /
+> _dispatcher_engine.py 445 / _otel_receive.py 439 — the last grew from orch-C's no_inheritance
+> conform). Reconcile via the RECONCILE-KILLED-DISPATCH recipe below: `gh pr list` in the
+> orchestrator; if a slice PR merged → self-verify (file_lloc WARN-delta 0 with the pinned
+> venv; dispatcher.py genuinely DECOMPOSED into cohesive modules or a NAMED-JUSTIFIED file_lloc
+> exemption — NOT a shim-split gaming the per-file counter) + spawn a Fable review (no-evasion,
+> file_lloc dimension) → accept (`drive accept:` if `acceptance`, or MERGE-EVIDENCE recipe if
+> stuck `active` from a janitor false-fail). On accept, the ORCH CHAIN and ALL 4 PHASE-1
+> FACTORY-BURNDOWN CHAINS are DONE.
+>
+> **THEN the remaining thread work (all lower-priority / host-side):**
+> - **Drivers/console** (`livespec-gqte` codex / `livespec-v74p` claude / `livespec-q7bx`
+>   console — still BACKLOG, un-groomed/un-re-tenanted). Each: Slice0 = wire the full
+>   applies-to-all suite via `check-aggregate-completeness` (justfile + CI matrix) → re-tenant
+>   into its own tenant (driver-codex prefix UNSET) → groom → fix WARN (codex 13 / claude 9 /
+>   console 0) → Phase-2 flip. **DEFERRED/blocked:** Slice0's CI-matrix edit touches
+>   `.github/workflows/`, which the Fabro App can't push (workflows perm — the active
+>   `fabro-token-refresh` thread is changing exactly that App-token scope); consider splitting
+>   Slice0 into a factory justfile-wiring slice + a host-side CI-matrix edit. Re-tenant + groom
+>   recipes are in the still-valid detail below.
+> - **HOST-SIDE dev-tooling (`livespec-iily`, maintainer-driven, NOT factory):** the janitor
+>   worktree-pack hydration gap (ELEVATED — journaled with root-cause options); the bump-pin
+>   lockstep root fix (teach bump-pin to move the workflow.toml image pin); the workflow-push-race
+>   fix (sandbox re-fetch+rebase before the PR push); the file_lloc flip-mechanism (make the
+>   legacy tree config-driven so non-core repos can flip file_lloc — needed BEFORE the orch
+>   Phase-2 flip).
+> - **Phase-2 per-repo role-declaration flips** (host-side): declare the role layout
+>   (= claim-for-partition + severity flip) once each repo is warning-clean, after an independent
+>   NO-BLOCKERS review; NO escape hatch (`.ai/ci-gate-discipline.md`). Carry the no_write_direct
+>   hardening caveats above.
+>
+> **STATE (clean at this handoff):** fleet primaries refreshed to origin/master — livespec (incl
+> core-B #1041 / core-C #1045 + releases 0.7.6/0.7.7), orchestrator (incl orch-B #432 / orch-C #438
+> + releases 0.14.x/0.15.0), runtime (#175), git-jsonl (#238) all merged + accepted (done). orch-D
+> `bd-ib-ll0` = the only in-flight item (`active`). Zero zombie sandboxes at dispatch time. The
+> `handoff-fcc-wave1-accepted` branch carries THIS refresh. Findings journaled on the ledger
+> (livespec-iily janitor gap; 7jcdfk / bd-ib-jnf Phase-2 no_write_direct hardening).
+>
+> ---
+> *(Everything below is prior-session context, superseded where it conflicts. The Slice ledger,
+> re-tenant recipe, RECONCILE-KILLED-DISPATCH recipe, and MERGE-EVIDENCE recipe below remain VALID
+> reference for reconciling orch-D and for the drivers/console re-tenant.)*
+>
 > ### ⇒ 2026-07-10 SESSION 2 — CURRENT STATE, READ FIRST (supersedes EVERYTHING below, including the ROLLOUT-GAP block)
 >
 > **Option A steps 1–3 are DONE; the factory is VALIDATED END-TO-END. The ONLY
