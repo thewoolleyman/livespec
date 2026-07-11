@@ -19,6 +19,23 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
   local git; the Fabro factory was NOT used (another session is upgrading
   it in the orchestrator repo).
 
+**Codex handling + collector rename folded in (2026-07-11, later):**
+- **This plan is dual-runtime, not Claude-only.** The Fabro sandbox is
+  runtime-agnostic (`acp.command={{ inputs.acp_adapter }}`); the
+  Dispatcher routes each run to Claude OR Codex per provider. The baked
+  image already carries BOTH ACP adapters + `bubblewrap` (a hard
+  codex-acp requirement). Codex-specific obligations are now named
+  explicitly below — image contents, adapter-version lockstep, and
+  runtime-agnostic observability — rather than hidden behind the generic
+  phrase "ACP adapters".
+- **The `claude-collector` rename is a separate, self-contained task**
+  (maintainer-approved 2026-07-11). The collector is functionally the
+  host's shared OTel collector (Claude Agent-Timeline shaping is just one
+  processor), so it will be renamed to a neutral name. Tracked in
+  `plan/collector-otel-rename/handoff.md`; it does NOT block Phase P-host,
+  which continues to target the current
+  `/data/projects/claude-collector/config.yaml` until the rename lands.
+
 ---
 
 ## Session handoff — where to start
@@ -117,12 +134,24 @@ Phase P, framed as a **health check** — not a tripwire we expect to hit.
 ## Architecture — layered images
 
 ```
-base          buildpack-deps:noble + system libs + mise/just/lefthook/gh/node/bubblewrap/ACP adapters
+base          buildpack-deps:noble + system libs + mise/just/lefthook/gh/node + BOTH ACP adapters (Claude claude-agent-acp + Codex codex-acp) + bubblewrap (HARD codex-acp requirement)
   └─ python   + CPython + uv  (base tools only; deps come from persistent volumes, not baked pre-warm)
        └─ python-rust  + rustc/cargo (rust-toolchain pin)
        └─ (later) python-haskell   + GHC/cabal   [OUT OF SCOPE]
 ```
 
+- **Dual-runtime (Claude + Codex) is baked, and MUST stay baked.** The
+  sandbox runs whichever ACP adapter the Dispatcher selects per provider
+  (`acp.command={{ inputs.acp_adapter }}`; default Claude, Codex via
+  `fabro run --input acp_adapter=…`). So the `base` layer bakes BOTH
+  `@agentclientprotocol/claude-agent-acp` AND `@zed-industries/codex-acp`
+  globally, plus `bubblewrap` (the codex-acp adapter needs it for
+  `require_escalated` exec AND `apply_patch`). A "minimal image" pass MUST
+  NOT drop the Codex adapter or bubblewrap — that silently breaks
+  Codex-driven runs. And the Codex command pins a version
+  (`…codex-acp@0.16.0`), so the baked `CODEX_ACP_VERSION` must match it or
+  `npx -y …@0.16.0` re-fetches at runtime — see the adapter-version
+  lockstep in Phase 1.
 - Built by the EXISTING image CI track
   (`livespec-dev-tooling/.github/workflows/fabro-sandbox-image.yml`,
   `runs-on: ubuntu-latest`), generalized to a matrix emitting the layered
@@ -308,6 +337,20 @@ runner we never modify):
   P-host avoids both — it touches only `claude-collector` +
   `livespec-dev-tooling`.
 
+**Runtime-agnostic by construction (Claude + Codex).** Everything Phase P
+measures sits BELOW the ACP adapter, so it is identical for Claude- and
+Codex-driven runs: `hostmetrics`/`docker_stats` observe the sandbox
+container the same way whichever adapter runs inside (`docker_stats` gives
+per-container attribution), and the Dispatcher/prepare-step timing spans
+are emitted by OUR code regardless of provider. The one thing that DOES
+differ — agent-INTERNAL telemetry — is out of scope here: Claude Code
+emits rich OTel (shaped by the collector) while Codex
+(`@zed-industries/codex-acp@0.16.0`) emits NONE. That gap is owned by the
+separate `livespec-orchestrator-beads-fabro/plan/codex-factory-telemetry/`
+thread; this plan does NOT address it, and the resource health gating does
+NOT depend on it (it runs on host/container metrics + Dispatcher spans, so
+it gates Codex runs fine even while Codex is internally dark).
+
 **Exit (P-host — the actual blocker):** host metrics flowing to
 `livespec-host-metrics`; baseline + thresholds frozen; health check +
 liveness alert live; cache budget + prune set. P-factory can complete
@@ -352,6 +395,23 @@ pilot repo shadow lane.
   `livespec-console-beads-fabro/rust-toolchain.toml`; decide the
   `workflow.toml` autodiscovery gap (image pins are manual today — the
   console `workflow.toml` PIN SURFACE NOTE confirms this verbatim).
+- **ACP-adapter version lockstep (Codex + Claude) — NEW.** The image's
+  `CODEX_ACP_VERSION` ARG mirrors the orchestrator's hardcoded Codex
+  adapter pin (`CODEX_IMPLEMENTER_ADAPTER = "npx -y
+  @zed-industries/codex-acp@0.16.0"` in
+  `livespec-orchestrator-beads-fabro`'s
+  `.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_fabro_argv.py`).
+  Today `fabro_image_pin_lockstep.py`'s docstring EXPLICITLY DISCLAIMS
+  this ("the ACP adapter … carry no lockstep obligation"), so the two can
+  silently drift. Extend the check with a **cross-repo**
+  `CODEX_ACP_VERSION` ↔ orchestrator-pin lockstep (same shape as the Rust
+  one). This is NOT cosmetic: the Codex command requests the version
+  explicitly (`…@0.16.0`), so on drift `npx` re-fetches the adapter at
+  runtime — reintroducing the per-run adapter tax the baked image exists
+  to remove. Also decide the `CLAUDE_AGENT_ACP_VERSION` source: the
+  default `workflow.toml` `acp_adapter` command carries NO version, so it
+  resolves the baked global (lower drift risk) — name it either way for
+  symmetry with Codex.
 - Console `workflow.toml` → baked `python-rust` image; DELETE the per-run
   `rustup` step. Orchestrator `workflow.toml` → `python` image.
 
@@ -409,8 +469,8 @@ citing this epic's reference implementation.
 
 | Repo | Share | What |
 |---|---|---|
-| `livespec-dev-tooling` | **bulk** | layered images + matrix build, pin-lockstep extensions, runner/supervisor/containment tooling, resource health-check + liveness tooling, cache prune automation, fan-out automation |
-| `claude-collector` | prerequisite | `hostmetrics` + `docker_stats` receivers + Honeycomb metrics pipeline |
+| `livespec-dev-tooling` | **bulk** | layered images + matrix build (both ACP adapters — Claude + Codex — baked), pin-lockstep extensions incl. the cross-repo Codex adapter-version lockstep, runner/supervisor/containment tooling, resource health-check + liveness tooling, cache prune automation, fan-out automation |
+| `claude-collector` (neutral-name rename pending → `plan/collector-otel-rename/`) | prerequisite | `hostmetrics` + `docker_stats` receivers + Honeycomb metrics pipeline |
 | `livespec-orchestrator-beads-fabro` | a little | prepare-step span shims; own `workflow.toml` → `python`; shipped default |
 | `livespec-console-beads-fabro` | a little | `workflow.toml` → `python-rust`; drop per-run `rustup` |
 | each fleet repo | mechanical | image pin + per-job `ci.yml` disposition + `actions/cache` removal |
@@ -424,6 +484,12 @@ run is dominated by agent/LLM time):
   install + cold cargo builds — the real win.
 - **Python repos:** the residual is the per-repo `uv sync` delta (already
   partially image-warmed) — likely well under 10%.
+- **Both providers pay the same tax below the ACP layer.** The wins
+  (baked toolchain, hot caches, no per-run `rustup`, warm `uv`) apply
+  equally to Claude- and Codex-driven runs; the Codex adapter-version
+  lockstep (Phase 1) is specifically what keeps the per-run `npx` adapter
+  fetch eliminated for Codex. At the first live dual-provider dispatch,
+  confirm the per-run-tax delta holds for both.
 - Phase P's prepare-step spans set the headline number; do not justify the
   epic fleet-wide on the console's figures.
 
@@ -507,6 +573,14 @@ valid pause point.
 - **Cache-warming strategy** — persistent local-disk cache (primary) vs.
   per-repo image pre-warm (demoted; needs lockfile plumbing + triggers if
   revived).
+- **Codex adapter-version drift** — `CODEX_ACP_VERSION` (baked image) vs.
+  the orchestrator's explicit `codex-acp@0.16.0` command pin: on drift,
+  `npx` re-fetches the adapter every Codex run (the per-run tax returns).
+  Close it via the Phase 1 cross-repo ACP-adapter lockstep.
+- **Collector is Claude-named but host-shared** — the `hostmetrics`/
+  `docker_stats` additions land in `claude-collector`, whose name
+  undersells its host-wide OTel role; neutral-name rename tracked
+  separately (`plan/collector-otel-rename/`), not folded into this epic.
 
 ## Dependency diagram
 
