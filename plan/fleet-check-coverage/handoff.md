@@ -19,9 +19,10 @@ alone via the read-first chain — no chat history required.
   dev-tooling still v0.37.3, `# fmt: off` still on orchestrator master); (b) `bd-ib-9t1` was wrongly
   accepted by Session 6 from stale context, then **REOPENED to `blocked`** (its counter-shave
   fix-forward = the "C" leg is owed). Session 6 STOPPED before executing A→B→C (maintainer paused it
-  to restart/upgrade the Fabro factory). **⚠ RUN NOTHING THROUGH FABRO until the maintainer gives the
-  go-ahead.** FIRST ACTION = A→B→C, then the L2 dispatcher.py chain b→k. Everything below (incl.
-  SESSION-5-FINAL) is prior context SESSION-6 supersedes where they conflict.
+  to restart/upgrade the Fabro factory). **✅ The Fabro factory is BACK UP and usable (maintainer
+  cleared it 2026-07-11) — dispatch to the factory normally.** FIRST ACTION = A→B→C, then the L2
+  dispatcher.py chain b→k. Everything below (incl. SESSION-5-FINAL) is prior context SESSION-6
+  supersedes where they conflict.
 - **⇒ 2026-07-11 (SESSION 5-FINAL) UPDATE — READ THE SESSION-5-FINAL "CURRENT STATE" BLOCK AT THE TOP
   OF `## The next action` FIRST.** The decomposition PROOF `bd-ib-mmp` landed CLEAN and is ACCEPTED
   (Fable NO-BLOCKERS) — the cohesion-cut method is PROVEN. Both Layer-1 slices then MERGED (orchestrator
@@ -933,7 +934,9 @@ clone before reading its `origin/master` for cross-repo state.**
     — so A→B→C is still OWED/not-started. **Drained the factory** (no sandboxes/dispatches/`active`
     items; reaped my 11 `janitor-bd-ib-*` worktrees; orchestrator primary clean on master). This
     handoff commit reconciles Session-6 onto SESSION-5-FINAL and lands on master. **NEXT: A→B→C, then
-    the L2 dispatcher.py chain b→k — RUN NOTHING THROUGH FABRO until the maintainer clears it.**
+    the L2 dispatcher.py chain b→k.** (The maintainer CLEARED the Fabro factory 2026-07-11 — it is back
+    up and dispatchable normally; A/B stay host-side scoped-worktree work, C + the L2 slices are
+    factory-dispatchable.)
 
 ## The next action
 
@@ -944,10 +947,11 @@ clone before reading its `origin/master` for cross-repo state.**
 > `done`, ALL clean of counter-shaves). >250-LLOC offenders 13 → 1 — ONLY `dispatcher.py` (1558)
 > remains. The Fabro factory was fully DRAINED at stop.**
 >
-> **⚠ RUN NOTHING THROUGH FABRO until the maintainer gives the go-ahead** (factory restart/upgrade in
-> progress, 2026-07-11). A→B→C's A/B and the L2 chain are worktree-agent / host-side authorable
-> without Fabro; the C fix-forward + the L2 dispatcher.py slices can be scoped-worktree-agent work too,
-> OR wait for Fabro — but do NOT dispatch until cleared.
+> **✅ The Fabro factory is BACK UP and usable (maintainer cleared it 2026-07-11) — dispatch to the
+> factory normally.** A→B→C's **A** (dev-tooling guard) + **B** (Fabro prompt docs) remain HOST-SIDE
+> scoped-worktree-agent work (not factory — dev-tooling is maintainer-driven); the **C** fix-forward +
+> the **L2 dispatcher.py slices** are factory-dispatchable `bd-ib` slices (or scoped-worktree agents,
+> your call).
 >
 > **⚠ FIRST ACTION ON RESUME — the A→B→C counter-shave remediation** (SESSION-5-FINAL's maintainer
 > decision, RE-CONFIRMED 2026-07-11; STILL OWED, not started). `bd-ib-9t1` carries a counter-shave on
@@ -980,7 +984,7 @@ clone before reading its `origin/master` for cross-repo state.**
 > + name/comment compression-to-hit-LLOC + names a cycle-breaking idiom convention (all Session-6
 > Fable findings).
 >
-> **Reconcile/dispatch discipline proven Session 6 (reuse once Fabro is cleared):** every dispatch
+> **Reconcile/dispatch discipline proven Session 6 (reuse it — Fabro is back up):** every dispatch
 > janitor-FALSE-FAILS locally (`drive` reports `failed`/exit-1) yet auto-merges on green GitHub CI —
 > the local janitor verdict ≠ CI; reconcile from `gh pr list` + `bd show`, close merged `active`→`done`
 > via the MERGE-EVIDENCE recipe (SESSION-3 block below). Dispatch SINGLY — concurrent `drive impl:` race
