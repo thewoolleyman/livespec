@@ -10,6 +10,19 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-11 (SESSION 5) UPDATE — READ THE SESSION-5 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST.** The orchestrator decomposition is UNDERWAY. `bd-ib-ll0` regroomed +
+  CLOSED; **3 Layer-1 slices filed in the `bd-ib` tenant** (each brief lives in its ledger
+  description — `bd show <id>`): **`bd-ib-mmp`** PROOF (dispatcher.py path helpers →
+  `_dispatcher_paths.py`; routed `ready` and **DISPATCHED to the factory this session**),
+  **`bd-ib-9t1`** (`_dispatcher_plan.py` 730 → 3 modules) and **`bd-ib-bk0`**
+  (`_dispatcher_reflector_oob.py` 719 → 3 modules), both `pending-approval`/chained on the proof.
+  Re-measured inventory (dev-tooling v0.37.3): **13 files > 250, dispatcher.py now 1765**. FIRST
+  ACTION: reconcile the PROOF dispatch `bd-ib-mmp` (RECONCILE-KILLED-DISPATCH recipe below) — verify
+  the cohesion-cut method actually worked (clean extraction, both guards pass, no shim/exemption),
+  Fable-review, accept; THEN fan out plan+reflector; THEN file Layer 2 (dispatcher.py cluster
+  surgery) and Layer 3 per the design record. Everything below (incl. SESSION-4) is prior context
+  SESSION-5 supersedes where they conflict.
 - **⇒ 2026-07-10/11 (SESSION 4) UPDATE — READ THE SESSION-4 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST.** 3 of 4 Phase-1 factory chains COMPLETE (runtime, git-jsonl, core);
   orchestrator A/B/C done+accepted. orch-D (file_lloc tentpole) FAILED HONESTLY and PIVOTED to a
@@ -836,9 +849,96 @@ clone before reading its `origin/master` for cross-repo state.**
   - **COHESION/COUPLING GUIDANCE LANDED in the Fabro prompts** (orch PR merged c890acc): a new
     "Refactoring for size — decompose by cohesion, not by line count" section in `implement.md` +
     a matching review dimension in `review.md`. Systemic fix — every future refactor slice reads it.
+- **2026-07-11 (SESSION 5) — orchestrator decomposition STARTED: `bd-ib-ll0` regroomed + closed; 3
+  Layer-1 slices filed; PROOF dispatched.** Resumed at 67870b3; fleet green (hub + orchestrator
+  master CI success). Re-measured orchestrator `file_lloc` with the dev-tooling-PINNED venv (`uv run
+  python -m livespec_dev_tooling.checks.file_lloc`, v0.37.3, @ origin/master): **13 files > 250** —
+  dispatcher.py **1765** (grew from 1634 as orch-B/C landed), `_dispatcher_plan.py` 730,
+  `_dispatcher_reflector_oob.py` 719, `_beads_client.py` 462, `_otel_receive.py` 456,
+  `_dispatcher_engine.py` 445, `drive.py` 424, `_dispatcher_reflection.py` 402, `store.py` 389,
+  `needs_attention.py` 385, `_otel_enrich.py` 302, `_dispatcher_cost_sink.py` 259, `_dispatcher_io.py`
+  253. (`codex_plugin_structure.py` 246 is soft-band legacy, NOT in the >250 newly_covered set.)
+  - **Regroomed `bd-ib-ll0`** (the old "split-or-exempt" framing) → **CLOSED** with a regroom note
+    pointing to the Layer-1 slices; `research/orchestrator-decomposition.md` is authoritative (ceiling
+    STAYS 200/250; cut along PUBLIC-ENTRY-POINT boundaries; layered L1→L2→L3).
+  - **Filed 3 Layer-1 slices into the `bd-ib` tenant** via the established re-tenant recipe (`bd
+    create` + `apply_intake_dor` all-6-gates-True; intake routes `open`→`ready`/`pending-approval`).
+    Each slice's full DESIGN-SPECIFYING brief lives in its ledger description (`bd show <id>`) — the
+    fix for the mechanical failure is that every brief names the SOURCE + TARGET module(s), the
+    promote-to-public pattern (private MODULE, public FUNCTION names in `__all__`, private helpers kept
+    internal — the `_dispatcher_plan.py` shape), and the hard "no shim/`type()`/facade/exemption/`#
+    noqa`" rules:
+    - **`bd-ib-mmp`** PROOF — dispatcher.py path/config helpers → new `_dispatcher_paths.py`. No deps →
+      `ready`. Lowest-risk leaf; validates the method (does NOT need to bring dispatcher.py <250 —
+      Layer 2 does that).
+    - **`bd-ib-9t1`** — `_dispatcher_plan.py` 730 → `_dispatcher_fabro_argv.py` +
+      `_dispatcher_run_status.py` + `_dispatcher_overlay.py` (source ≤200, public API unchanged so
+      dispatcher.py untouched). Chained on mmp → `pending-approval`.
+    - **`bd-ib-bk0`** — `_dispatcher_reflector_oob.py` 719 → `_reflector_findings_parse.py` +
+      `_reflector_spans.py` + `_reflector_lessons.py` (classes; keep the Protocol/composition shape, no
+      reintroduced inheritance). Chained on mmp → `pending-approval`.
+  - **DISPATCHED the PROOF `bd-ib-mmp`** to the factory (background `drive --action impl:bd-ib-mmp
+    --repo /data/projects/livespec-orchestrator-beads-fabro`; session-local log NOT durable). No zombie
+    sandboxes at dispatch; fabro binary present. Per the established model a killed local `drive` does
+    NOT stop the sandbox and the orchestrator factory AUTO-MERGES on the green janitor gate — reconcile
+    from the ledger + `gh pr list` (orchestrator), not the log.
 
 ## The next action
 
+> ### ⇒ 2026-07-11 SESSION 5 — CURRENT STATE, READ FIRST (supersedes the SESSION-4 block below)
+>
+> **The orchestrator decomposition is UNDERWAY. `bd-ib-ll0` regroomed + closed; 3 Layer-1 slices
+> filed in the `bd-ib` tenant; the PROOF slice `bd-ib-mmp` was DISPATCHED to the factory this
+> session. 3 of 4 Phase-1 factory chains remain COMPLETE+accepted (runtime, git-jsonl, core); the
+> orchestrator is at A/B/C accepted and orch-D is now this decomposition sub-project.**
+>
+> **⚠ FIRST ACTION ON RESUME — reconcile the PROOF dispatch `bd-ib-mmp`** (236f-D decompose proof:
+> dispatcher.py path helpers → `_dispatcher_paths.py`). Use the RECONCILE-KILLED-DISPATCH recipe
+> below: `gh pr list` in `/data/projects/livespec-orchestrator-beads-fabro`; check `bd show
+> bd-ib-mmp`.
+> - If a slice PR MERGED (the orchestrator factory auto-merges on the green janitor gate): SELF-VERIFY
+>   it is a genuine COHESION cut — `_dispatcher_paths.py` exists with promoted PUBLIC names in
+>   `__all__`, dispatcher.py imports them publicly, NO cross-module `_name` import, NO
+>   shim/`type()`/exemption/`# noqa`; re-measure `file_lloc` with the pinned venv (dispatcher.py
+>   dropped by the moved cluster, no new offender); spawn an independent Fable review (cohesion-cut,
+>   anti-evasion, file_lloc dimension); then ACCEPT (`drive accept:` if `acceptance`, or the
+>   MERGE-EVIDENCE recipe if stuck `active`).
+> - If the driver died BEFORE any PR, or the sandbox reported `{outcome:failed}` honestly again: read
+>   the item journal / sandbox result. A repeat honest failure means the BRIEF's method needs
+>   adjustment — diagnose before re-dispatching (do NOT weaken the guards). Reset ACTIVE→backlog +
+>   journal.
+>
+> **ONCE THE PROOF VALIDATES THE METHOD:**
+> 1. **Fan out Layer 1** — dispatch `bd-ib-9t1` (plan) and `bd-ib-bk0` (reflector); they become
+>    admissible once `bd-ib-mmp` closes (they touch DIFFERENT files → safe to run concurrently; each
+>    source re-exports its public API so dispatcher.py is untouched → no conflict). Reconcile +
+>    Fable-review + accept each.
+> 2. **File + dispatch Layer 2** — dispatcher.py cluster surgery (design record §"Layer 2": cost-gate,
+>    self-update→existing `_dispatcher_self_update.py`, credentials, admission, completion/bounce,
+>    ledger-close clusters). HIGHER review bar — this is the code that runs the factory; sequence AFTER
+>    Layer 1 (all touch dispatcher.py). File into `bd-ib` with the same design-specifying briefs.
+> 3. **File + dispatch Layer 3** — the residual per-file slices (design record §"Layer 3":
+>    `_beads_client.py`, `_dispatcher_engine.py`, `_otel_receive.py` [+ extract the orch-C hand-rolled
+>    HTTP handler], `drive.py`, `_dispatcher_reflection.py`, `store.py`, `needs_attention.py`,
+>    `_otel_enrich.py`, `_dispatcher_cost_sink.py`, `_dispatcher_io.py`) — one extraction each.
+> When ALL 13 orchestrator files are ≤250 (pinned venv, `just check` green), the orchestrator Phase-1
+> file_lloc burndown is DONE; the Phase-2 file_lloc flip then waits on the dev-tooling legacy-tree
+> follow-up (`livespec-iily`) so a non-core repo can flip file_lloc via config.
+>
+> **THEN the remaining thread work (unchanged, lower-priority / host-side):** drivers/console
+> (`livespec-gqte`/`livespec-v74p`/`livespec-q7bx` — BACKLOG); host-side dev-tooling (`livespec-iily`);
+> Phase-2 per-repo role-declaration flips. See the SESSION-4 block below for detail.
+>
+> **STATE (at this handoff):** all fleet primaries on origin/master; hub + orchestrator master CI
+> green. `bd-ib-mmp` dispatched (in flight or completed — reconcile from ledger/PRs); `bd-ib-9t1` +
+> `bd-ib-bk0` pending-approval/chained; `bd-ib-ll0` closed (regroomed). The `handoff-fcc-session5`
+> branch carries THIS refresh. No zombie sandboxes at dispatch time.
+>
+> ---
+> *(The SESSION-4 block below remains valid for the decomposition design context and the
+> drivers/console + host-side detail; superseded where it conflicts — the PROOF is now DISPATCHED,
+> not merely "to be filed".)*
+>
 > ### ⇒ 2026-07-10/11 SESSION 4 — CURRENT STATE, READ FIRST (supersedes the SESSION-3 block below)
 >
 > **The Phase-1 factory burndown is COMPLETE for 3 of 4 repos (runtime, git-jsonl, core A/B/C —
