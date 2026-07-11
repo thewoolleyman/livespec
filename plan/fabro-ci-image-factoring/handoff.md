@@ -81,59 +81,53 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State:** the design in this document is FINAL. **Phase P-host step 1 is
-LANDED (2026-07-11):** host + per-container metrics (`hostmetrics` +
-`docker_stats`) now flow to the **`livespec-host-metrics`** dataset in the
-**`agent-activity`** Honeycomb env, via `otel-collector` PR #3 (commit
-`417e5d8`; collector marker `0.6`) — verified live (load-avg,
-filesystem-free, `container.*` columns present). The plan is now anchored by
-the **beads epic `livespec-3lev`** (in the `livespec` tenant) with per-phase
-children: `.1` P-host (in_progress), `.2` P-factory, `.3` Phase 0, `.4`
-Phase 1, `.5` Phase 2, `.6` Phase 3, `.7` Phase 4 (`.2`–`.7` backlog;
-phase-order deps wired, no cycles). **P-host is now MET** — the "multi-day
-baseline" was over-engineered and is dead (2026-07-12 correction above); it no
-longer gates Phases 0–1.
+**State (fresh-session entry point, 2026-07-12).** The plan is anchored by
+the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase children
+`.1`–`.7`. Done so far:
+- **P-host (`.1`) — MET.** Host + per-container metrics (`hostmetrics` +
+  `docker_stats`) flow to the **`livespec-host-metrics`** dataset (`agent-activity`
+  Honeycomb env) via `otel-collector` PR #3 (commit `417e5d8`, marker `0.6`),
+  verified live. The "multi-day baseline" was over-engineered and is **dead** (a
+  load test confirmed the headroom); P-host **no longer gates Phases 0–1**.
+  Follow-ons (non-blocking): wire the Honeycomb resource trigger at conservative
+  hardware thresholds (needs an alert-destination decision), runner-liveness
+  alert (waits for Phase 0), cache budget/prune.
+- **Designs drafted** (read these companion docs before implementing a phase):
+  `phase0-runner-containment-design.md`, `phase1-layered-image-design.md`,
+  `phase2-ci-disposition-livespec.md`.
+- **Blocked on the active `dispatcher.py` refactor (`bd-ib-s7e`):** P-factory
+  (`.2`), the Codex version-less fix, and the Phase 1 consumer-switch — all
+  touch `livespec-orchestrator-beads-fabro`/`livespec-console-beads-fabro`
+  workflow.toml or `dispatcher.py`; do NOT edit those repos while that dispatch
+  is active. Re-check before starting.
 
-**Hard constraints for the next session:**
-- **The Fabro factory is back up and usable (maintainer-confirmed
-  2026-07-11).** The earlier "do NOT use the factory — it is being
-  upgraded" constraint is LIFTED: the next session MAY dispatch this
-  track's implementation work through the factory. Quick doc/scoping steps
-  can still run locally in-session or via subagents.
-- All repo changes go through the worktree → PR → merge flow (docs use
-  `docs(...)`; the Red-Green-Replay ritual applies only to product `.py`).
+**Hard constraints:**
+- **No-Circular-Dependency Directive** (`.ai/no-circular-dependency.md`,
+  maintainer-declared 2026-07-12): a foundational/upstream repo
+  (`livespec-dev-tooling`, `livespec` core) must NEVER read INTO a downstream
+  consumer. Cross-repo checks live on the consumer side, or the coupling is
+  designed away. This is why the Codex/Rust "cross-repo lockstep" was scrapped.
+- The Fabro factory is up and usable; the next session MAY dispatch this track's
+  implementation through it.
+- All repo changes go through worktree → PR → merge (docs use `docs(...)`; the
+  Red-Green-Replay ritual applies only to product `.py`).
 
-**First action — Phase P-host (remaining, baseline-gated):**
-Steps 1–2 are **DONE (2026-07-11)**, kept here for context; the next
-session starts at step 3.
-1. ✅ **DONE.** Added a `hostmetrics` receiver (cpu, load, memory, paging,
-   disk, filesystem — no `process` scraper, to avoid per-PID cardinality) +
-   a `docker_stats` receiver to `/data/projects/otel-collector/config.yaml`
-   on a dedicated `metrics/host` pipeline. **Env decision RESOLVED
-   (maintainer 2026-07-11): keep the `agent-activity` env** — a dedicated
-   `otlp/honeycomb_hostmetrics` exporter reuses the existing key and sets
-   `x-honeycomb-dataset: livespec-host-metrics`, so host metrics sit
-   alongside the factory dispatcher/sandbox trace spans they correlate with.
-   `otel-collector` PR #3 (commit `417e5d8`); marker bumped to `0.6`;
-   `sudo systemctl restart otel-collector` done.
-2. ✅ **DONE.** Confirmed host/container metrics land in
-   `livespec-host-metrics` (agent-activity env) under
-   `collector.otel-collector.version=0.6`.
-3. ✅ **Baseline is NOT needed (2026-07-12 correction).** Set conservative
-   hardware-derived thresholds NOW (no multi-day wait): RAM-available floor
-   ≈ 8 GiB as a hard-but-unreachable PAUSE-and-bump stop; sustained
-   CPU-idle≈0% *duration* as a soft "reduce concurrency" hint; disk free
-   floor as hygiene. A load test (8 concurrent CI suites + a live factory
-   dispatch) already confirmed the headroom empirically (RAM never below
-   65 GiB free, zero OOM, CPU oversubscribed gracefully). Remaining
-   (not blocking Phases 0–1): wire the continuous Honeycomb resource trigger
-   at those thresholds; the runner-liveness/absence alert (waits for a
-   runner — Phase 0); the local-disk cache budget + prune. Tracked as epic
-   child `livespec-3lev.1`.
+**First action — Phase 0 (`livespec-3lev.3`): the dual adversarial-review gate.**
+`phase0-runner-containment-design.md` is drafted but **must pass a gate before
+ANY host mutation** (maintainer-declared 2026-07-12):
+1. Run a **separate adversarial review by (a) a Fable-model agent AND (b) a
+   Codex agent**, each independent + READ-ONLY, each hunting **serious** security
+   blockers (fork-PR code-execution escape, secret leakage into the job env,
+   privilege escalation, docker-socket/host exposure, registration-credential
+   exposure) — **not nitpicks**.
+2. **Iterate the design until BOTH return no serious blockers.** Record each
+   round's findings + resolutions on `livespec-3lev.3`.
+3. Only THEN implement Phase 0 (create the `ci-runner` user, install the
+   ephemeral runner, wire trusted-event routing, run the isolation tests).
 
-Then proceed Phases 0 → 1 → 2 → 3 → 4 per the plan below (epic children
-`livespec-3lev.3`–`.7`; P-factory is `livespec-3lev.2`, deferred, does not
-block Phases 0–1).
+Then proceed Phases 1 → 2 → 3 → 4 per the plan below (Phase 1's image-split +
+Rust-bake + console-rustup-removal core is unblocked now; its consumer-switch +
+the Codex fix wait on `bd-ib-s7e`).
 
 **Already-settled facts (do not relitigate):** keep the CI matrix (tune
 runner slots ≈18, do NOT collapse); full-history clones (no mirror, no
@@ -437,6 +431,10 @@ liveness alert live; cache budget + prune set. P-factory can complete
 later WITHOUT blocking Phases 0–1.
 
 ### Phase 0 — Local-runner shadow lane (non-gating)
+
+> **Full design + the mandatory dual adversarial-review gate:**
+> `phase0-runner-containment-design.md`. Implementation MUST NOT begin until a
+> Fable agent AND a Codex agent each find no *serious* security blockers.
 
 **Deliverables**
 - One ephemeral, unprivileged, secret-isolated runner (NO docker socket)

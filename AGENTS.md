@@ -486,6 +486,11 @@ existing file):
   around, or debugging the `bd` (beads) work-items backend, and before filing
   a beads issue upstream: the living catalogue of beads gaps and the
   workarounds the fleet carries, one upstream-liftable entry per gap.
+- **`.ai/no-circular-dependency.md`** — read BEFORE adding any cross-repo
+  check, tool, or read to a fleet repo. The No-Circular-Dependency Directive:
+  a foundational/upstream repo (e.g. `livespec-dev-tooling`) must NEVER read
+  INTO a downstream consumer; cross-repo consistency checks live on the
+  consumer side reading the producer, or the coupling is designed away.
 
 ## Working with the maintainer
 
