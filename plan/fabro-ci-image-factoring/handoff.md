@@ -15,9 +15,11 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
   the host's existing work at two moments — NOT a prediction of what this
   plan causes. On 18 cores, a load of 23 is mild, transient
   oversubscription, not overload.
-- **Factory untouched.** This plan was authored and updated entirely with
-  local git; the Fabro factory was NOT used (another session is upgrading
-  it in the orchestrator repo).
+- **Factory untouched (during authoring).** This plan was authored and
+  updated entirely with local git; the Fabro factory was NOT used at the
+  time (another session was upgrading it). **Update 2026-07-11: the factory
+  is back up and usable (maintainer-confirmed) — the earlier do-not-use
+  constraint is LIFTED (see Hard constraints).**
 
 **Codex handling + collector rename folded in (2026-07-11, later):**
 - **This plan is dual-runtime, not Claude-only.** The Fabro sandbox is
@@ -28,13 +30,16 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
   explicitly below — image contents, adapter-version lockstep, and
   runtime-agnostic observability — rather than hidden behind the generic
   phrase "ACP adapters".
-- **The `claude-collector` rename is a separate, self-contained task**
-  (maintainer-approved 2026-07-11). The collector is functionally the
-  host's shared OTel collector (Claude Agent-Timeline shaping is just one
-  processor), so it will be renamed to a neutral name. Tracked in
-  `plan/collector-otel-rename/handoff.md`; it does NOT block Phase P-host,
-  which continues to target the current
-  `/data/projects/claude-collector/config.yaml` until the rename lands.
+- **The collector was renamed `claude-collector` → `otel-collector`**
+  (maintainer-approved 2026-07-11; VPS side LANDED 2026-07-11). It is
+  functionally the host's shared OTel collector (Claude Agent-Timeline
+  shaping is just one processor). The live systemd service is now
+  `otel-collector.service` against
+  `/data/projects/otel-collector/config.yaml`, stamping the
+  `collector.otel-collector` marker. The macOS-side migration is still
+  pending on the Mac (tracked in the collector repo's `AGENTS.md` +
+  `plan/rename-to-otel-collector-macos-migration.md`). See
+  `plan/collector-otel-rename/handoff.md`.
 
 ---
 
@@ -46,14 +51,16 @@ per-phase work-items is the first tracking step if you want the ledger to
 drive it.
 
 **Hard constraints for the next session:**
-- **Do NOT use the Fabro factory** — it is being upgraded by another
-  session in `livespec-orchestrator-beads-fabro`. Work locally in-session
-  or via subagents that do NOT dispatch through the factory.
+- **The Fabro factory is back up and usable (maintainer-confirmed
+  2026-07-11).** The earlier "do NOT use the factory — it is being
+  upgraded" constraint is LIFTED: the next session MAY dispatch this
+  track's implementation work through the factory. Quick doc/scoping steps
+  can still run locally in-session or via subagents.
 - All repo changes go through the worktree → PR → merge flow (docs use
   `docs(...)`; the Red-Green-Replay ritual applies only to product `.py`).
 
 **First action — Phase P-host (factory-independent, startable now):**
-1. Edit `/data/projects/claude-collector/config.yaml`: add a `hostmetrics`
+1. Edit `/data/projects/otel-collector/config.yaml`: add a `hostmetrics`
    receiver (cpu, memory, disk, load, paging) + a `docker_stats` receiver,
    and wire both into the EXISTING `metrics` pipeline (it already exports
    via `otlp/honeycomb`). Reload the collector.
@@ -301,7 +308,7 @@ A phase-end point-in-time glance is the wrong shape on a bursty host
 
 Split so the host-resource half needs **NO factory** and can start
 **immediately**. The running `otelcol-contrib`
-(`/data/projects/claude-collector/config.yaml`) ALREADY exports to
+(`/data/projects/otel-collector/config.yaml`) ALREADY exports to
 Honeycomb (`otlp/honeycomb` exporter + a `metrics` pipeline); it just has
 no host/container-metrics receiver yet. So the host half is a
 two-receiver config add + a collector reload — nothing touches the Fabro
@@ -318,7 +325,7 @@ factory.
 - Set the local-disk cache budget + prune automation + the cold-cache
   validation schedule. (Disk breathing room already made by the Docker
   sweep; a disk doubling is on order — no separate cache volume needed.)
-- **Where:** `claude-collector` (config); resource tooling in
+- **Where:** `otel-collector` (config); resource tooling in
   `livespec-dev-tooling`. **No factory, no orchestrator repo.**
 
 **P-factory — factory-COUPLED (deferred).** All changes here are in OUR
@@ -326,15 +333,17 @@ code — NOT the Fabro codebase (`/data/projects/fabro` is the third-party
 runner we never modify):
 - Verify/repair the OTel TRACE egress — OUR Dispatcher's OTel emission
   (`livespec-orchestrator-beads-fabro`'s `_otel_*` + `dispatcher.py`) plus
-  the `claude-collector` config; factory datasets `livespec-dispatcher`,
+  the `otel-collector` config; factory datasets `livespec-dispatcher`,
   `fabro-sandbox`, `livespec-rgr` have been silent since ~2026-06-13.
 - Prepare-step timing span shims — wrap the prepare-step `script =` lines
   in OUR `.fabro/workflows/implement-work-item/workflow.toml`.
-- **Deferred for TWO reasons, neither about Fabro's code:** (1) validating
-  either needs a real factory RUN (a dispatch), which we are told not to
-  use; and (2) the orchestrator repo is being ACTIVELY edited by the
-  in-flight factory-upgrade session, so editing it now risks a collision.
-  P-host avoids both — it touches only `claude-collector` +
+- **Deferral reasons (2026-07-11 update).** Originally deferred because (1)
+  validating either needs a real factory RUN (a dispatch), which we were
+  told not to use, and (2) the orchestrator repo was being actively edited
+  by the factory-upgrade session. Both have eased: the factory is back up
+  and usable, so a validating dispatch is now possible; confirm the
+  orchestrator upgrade has landed before editing that repo. P-host remains
+  the cleaner starting point — it touches only `otel-collector` +
   `livespec-dev-tooling`.
 
 **Runtime-agnostic by construction (Claude + Codex).** Everything Phase P
@@ -470,7 +479,7 @@ citing this epic's reference implementation.
 | Repo | Share | What |
 |---|---|---|
 | `livespec-dev-tooling` | **bulk** | layered images + matrix build (both ACP adapters — Claude + Codex — baked), pin-lockstep extensions incl. the cross-repo Codex adapter-version lockstep, runner/supervisor/containment tooling, resource health-check + liveness tooling, cache prune automation, fan-out automation |
-| `claude-collector` (neutral-name rename pending → `plan/collector-otel-rename/`) | prerequisite | `hostmetrics` + `docker_stats` receivers + Honeycomb metrics pipeline |
+| `otel-collector` (renamed from `claude-collector`; VPS side landed 2026-07-11, Mac migration pending) | prerequisite | `hostmetrics` + `docker_stats` receivers + Honeycomb metrics pipeline |
 | `livespec-orchestrator-beads-fabro` | a little | prepare-step span shims; own `workflow.toml` → `python`; shipped default |
 | `livespec-console-beads-fabro` | a little | `workflow.toml` → `python-rust`; drop per-run `rustup` |
 | each fleet repo | mechanical | image pin + per-job `ci.yml` disposition + `actions/cache` removal |
@@ -577,10 +586,11 @@ valid pause point.
   the orchestrator's explicit `codex-acp@0.16.0` command pin: on drift,
   `npx` re-fetches the adapter every Codex run (the per-run tax returns).
   Close it via the Phase 1 cross-repo ACP-adapter lockstep.
-- **Collector is Claude-named but host-shared** — the `hostmetrics`/
-  `docker_stats` additions land in `claude-collector`, whose name
-  undersells its host-wide OTel role; neutral-name rename tracked
-  separately (`plan/collector-otel-rename/`), not folded into this epic.
+- **Collector renamed to `otel-collector` (was `claude-collector`).** The
+  `hostmetrics`/`docker_stats` additions land in the host's shared OTel
+  collector; the VPS-side rename landed 2026-07-11 (service
+  `otel-collector.service`, `/data/projects/otel-collector/`), Mac
+  migration pending. Tracked in `plan/collector-otel-rename/`.
 
 ## Dependency diagram
 
