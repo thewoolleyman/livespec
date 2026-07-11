@@ -41,6 +41,42 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
   `plan/rename-to-otel-collector-macos-migration.md`). See
   `plan/collector-otel-rename/handoff.md`.
 
+**Maintainer corrections (2026-07-12) — two framings below are WRONG; these supersede them:**
+- **The "multi-day baseline" is DEAD — do not wait for days of data.** The
+  resource health check is a **safety net**, not a precision instrument: its
+  job is to PAUSE-and-bump only on *genuine* saturation, and those thresholds
+  come from the **hardware**, not from a multi-day percentile window.
+  Empirically confirmed by a load test (2026-07-12): 8 concurrent CI-style
+  test-suite runs **on top of** a live factory dispatch held RAM-free at
+  **65+ GiB throughout** (of 94 GiB), zero swap activity, zero OOM kills;
+  CPU oversubscribed to run-queue 45 on 18 cores and handled it **gracefully**
+  (jobs queue, nothing crashes). So: **memory (RAM) is a near-unreachable hard
+  floor** (the swap=0 "OOM" fear is moot — RAM never approaches pressure), and
+  the only signal that flexes is **sustained CPU-idle≈0% *duration*** (the
+  "consider reducing concurrency" hint, which degrades softly). Set conservative
+  hardware-derived thresholds NOW (RAM-available floor ≈ 8 GiB hard-stop;
+  sustained-CPU-saturation duration as a soft hint; disk free floor as
+  hygiene). **P-host is MET** (metrics flowing + headroom empirically shown);
+  it **no longer gates Phases 0–1.** Everywhere below that says "capture a
+  multi-day baseline / freeze percentiles / baseline-derived" is superseded by
+  this.
+- **The cross-repo pin lockstep as written is a CIRCULAR DEPENDENCY — do NOT
+  build it.** Phase 1 below says to extend `livespec-dev-tooling`'s
+  `fabro_image_pin_lockstep.py` to READ the orchestrator's Codex pin (and the
+  console's `rust-toolchain.toml`). That is `dev-tooling → orchestrator/console
+  → dev-tooling`: `livespec-dev-tooling` is the foundational enforcement-suite
+  repo those consumers depend ON, so it must never reach INTO them. Fixes:
+  (a) **Codex — design the drift away, no check:** make the orchestrator's Codex
+  adapter command **version-less** (`npx -y @zed-industries/codex-acp`, dropping
+  `@0.16.0`) so it resolves the baked global exactly as the Claude adapter
+  already does — then the image's `CODEX_ACP_VERSION` is the single source of
+  truth, nothing can drift, and there is no cross-repo read. (b) **Rust (and any
+  belt-and-suspenders pin check):** the check lives on the **downstream/consumer
+  side** (e.g. the console asserting its `rust-toolchain.toml` matches the baked
+  image ARG — a legit consumer→producer read), **never** in `dev-tooling`. Both
+  orchestrator/console edits wait behind the active `dispatcher.py` refactor
+  (item `bd-ib-s7e`).
+
 ---
 
 ## Session handoff — where to start
@@ -54,8 +90,9 @@ filesystem-free, `container.*` columns present). The plan is now anchored by
 the **beads epic `livespec-3lev`** (in the `livespec` tenant) with per-phase
 children: `.1` P-host (in_progress), `.2` P-factory, `.3` Phase 0, `.4`
 Phase 1, `.5` Phase 2, `.6` Phase 3, `.7` Phase 4 (`.2`–`.7` backlog;
-phase-order deps wired, no cycles). Remaining P-host work is
-**baseline-gated** (multi-day) — see the reframed First action below.
+phase-order deps wired, no cycles). **P-host is now MET** — the "multi-day
+baseline" was over-engineered and is dead (2026-07-12 correction above); it no
+longer gates Phases 0–1.
 
 **Hard constraints for the next session:**
 - **The Fabro factory is back up and usable (maintainer-confirmed
@@ -82,14 +119,17 @@ session starts at step 3.
 2. ✅ **DONE.** Confirmed host/container metrics land in
    `livespec-host-metrics` (agent-activity env) under
    `collector.otel-collector.version=0.6`.
-3. **NEXT:** capture a multi-day baseline in `livespec-host-metrics`, then
-   freeze the health-check thresholds (disk is resolved — lead with
-   CPU-utilization/PSI + memory + CI queue-wait, not bare load-avg). Then
-   implement the continuous sustained-duration Honeycomb resource-health
-   trigger (PAUSE-for-provision on sustained CPU/memory saturation, with
-   per-container attribution) + the runner-liveness/absence alert, and set
-   the local-disk cache budget + prune automation + cold-cache validation
-   schedule. Tracked as epic child `livespec-3lev.1`.
+3. ✅ **Baseline is NOT needed (2026-07-12 correction).** Set conservative
+   hardware-derived thresholds NOW (no multi-day wait): RAM-available floor
+   ≈ 8 GiB as a hard-but-unreachable PAUSE-and-bump stop; sustained
+   CPU-idle≈0% *duration* as a soft "reduce concurrency" hint; disk free
+   floor as hygiene. A load test (8 concurrent CI suites + a live factory
+   dispatch) already confirmed the headroom empirically (RAM never below
+   65 GiB free, zero OOM, CPU oversubscribed gracefully). Remaining
+   (not blocking Phases 0–1): wire the continuous Honeycomb resource trigger
+   at those thresholds; the runner-liveness/absence alert (waits for a
+   runner — Phase 0); the local-disk cache budget + prune. Tracked as epic
+   child `livespec-3lev.1`.
 
 Then proceed Phases 0 → 1 → 2 → 3 → 4 per the plan below (epic children
 `livespec-3lev.3`–`.7`; P-factory is `livespec-3lev.2`, deferred, does not
@@ -297,15 +337,18 @@ largest single consumer (the fleet's one Rust repo, the console, is ~2.7
 GB — modest; the 45 GB `fabro/target` is the Fabro TOOL's own build, not
 something we cache).
 
-## Resource health check (spec — continuous, baseline-derived)
+## Resource health check (spec — continuous, hardware-threshold-derived)
 
 A phase-end point-in-time glance is the wrong shape on a bursty host
 (same-day load ranged 0.8–23 purely from existing work). Instead:
 
-- **Baseline from data, not a sample.** Phase P collects a multi-day
-  window in the new metrics dataset; thresholds are frozen from its
-  percentiles BEFORE any gating, and read as a health check rather than a
-  tripwire we expect to hit.
+- **Thresholds from the hardware, not a multi-day baseline (2026-07-12
+  correction).** A safety net does not need normal-P95; it needs conservative
+  absolute limits near the hardware ceiling. Set them from the box's specs +
+  a quick load test (done), not a days-long window: RAM-available floor
+  (≈ 8 GiB hard stop; swap=0 so there is no soft zone below it), sustained
+  CPU-saturation *duration*, disk free floor. These sit far above real
+  working load, so they will not false-fire.
 - **Continuous sustained-duration trigger** (Honeycomb trigger + burn
   window), not a one-shot report — a phase "passes" only if no sustained
   breach occurred across its active window.
@@ -427,28 +470,28 @@ pilot repo shadow lane.
 **Deliverables**
 - `base / python / python-rust` layered Dockerfiles + matrix build in
   `fabro-sandbox-image.yml` (builds STAY GitHub-hosted/trusted-builder).
-- Pin/lockstep: extend `fabro_image_pin_lockstep.py` for the Rust `ARG`;
-  add the **cross-repo** Rust pin lockstep against
-  `livespec-console-beads-fabro/rust-toolchain.toml`; decide the
-  `workflow.toml` autodiscovery gap (image pins are manual today — the
-  console `workflow.toml` PIN SURFACE NOTE confirms this verbatim).
-- **ACP-adapter version lockstep (Codex + Claude) — NEW.** The image's
-  `CODEX_ACP_VERSION` ARG mirrors the orchestrator's hardcoded Codex
-  adapter pin (`CODEX_IMPLEMENTER_ADAPTER = "npx -y
-  @zed-industries/codex-acp@0.16.0"` in
-  `livespec-orchestrator-beads-fabro`'s
-  `.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_fabro_argv.py`).
-  Today `fabro_image_pin_lockstep.py`'s docstring EXPLICITLY DISCLAIMS
-  this ("the ACP adapter … carry no lockstep obligation"), so the two can
-  silently drift. Extend the check with a **cross-repo**
-  `CODEX_ACP_VERSION` ↔ orchestrator-pin lockstep (same shape as the Rust
-  one). This is NOT cosmetic: the Codex command requests the version
-  explicitly (`…@0.16.0`), so on drift `npx` re-fetches the adapter at
-  runtime — reintroducing the per-run adapter tax the baked image exists
-  to remove. Also decide the `CLAUDE_AGENT_ACP_VERSION` source: the
-  default `workflow.toml` `acp_adapter` command carries NO version, so it
-  resolves the baked global (lower drift risk) — name it either way for
-  symmetry with Codex.
+- Pin/lockstep — **CORRECTED per the 2026-07-12 note; the original
+  "cross-repo lockstep in `dev-tooling`" bullets were a circular dependency.**
+  `livespec-dev-tooling` is upstream of the consumers, so its checks must NOT
+  read the consumers' pins. Instead:
+  - **Codex — design the drift away, no check.** Make the orchestrator's Codex
+    adapter command **version-less** (`npx -y @zed-industries/codex-acp`,
+    dropping the `@0.16.0` in `CODEX_IMPLEMENTER_ADAPTER`) so it resolves the
+    baked global exactly as the Claude adapter command already does. Then the
+    image's `CODEX_ACP_VERSION` is the single source of truth, nothing drifts,
+    and no cross-repo read exists. (Edit is in the orchestrator; waits behind
+    the `dispatcher.py` refactor, item `bd-ib-s7e`.)
+  - **Rust — downstream-side check only.** If a guard is wanted that the baked
+    rust matches `livespec-console-beads-fabro/rust-toolchain.toml` (channel
+    1.92.0 + clippy/rustfmt), it lives in the **console** repo reading the
+    image ARG (consumer→producer, cycle-free) — never in `dev-tooling`.
+  - `CLAUDE_AGENT_ACP_VERSION`: its `workflow.toml` command already carries no
+    version (resolves the baked global), so it is already drift-free by the
+    same principle — nothing to add.
+  - Still decide the `workflow.toml` image-tag autodiscovery gap (image pins
+    are manual today — the console `workflow.toml` PIN SURFACE NOTE confirms
+    this); that is a pin-bump-automation question, independent of the (now
+    removed) cross-repo lockstep.
 - Console `workflow.toml` → baked `python-rust` image; DELETE the per-run
   `rustup` step. Orchestrator `workflow.toml` → `python` image.
 
@@ -596,9 +639,11 @@ valid pause point.
   liveness alert in Phase P.
 - **No swap cushion** — treat any sustained swap-in as an immediate
   PAUSE-for-provision; consider a swap safety net.
-- **Bursty load** (0.8–23 same day, all from existing work) — set
-  thresholds from a multi-day measurement and read them as a health check,
-  not a level we expect the plan to reach.
+- **Bursty load** (0.8–23 same day, all from existing work) — RESOLVED as a
+  non-issue: a 2026-07-12 load test (8 concurrent CI suites + a live factory
+  dispatch) held RAM > 65 GiB free and merely oversubscribed CPU gracefully.
+  Set conservative hardware thresholds (not a multi-day baseline); load is not
+  a level the plan is expected to reach.
 - **Disk (resolved)** — local-disk caches; ~41 GB swept from stale Docker
   images (91 GB free); disk doubling on order; keep a per-cache cap +
   prune.
@@ -613,7 +658,10 @@ valid pause point.
 - **Codex adapter-version drift** — `CODEX_ACP_VERSION` (baked image) vs.
   the orchestrator's explicit `codex-acp@0.16.0` command pin: on drift,
   `npx` re-fetches the adapter every Codex run (the per-run tax returns).
-  Close it via the Phase 1 cross-repo ACP-adapter lockstep.
+  Close it by making the orchestrator's Codex command **version-less** (drop
+  `@0.16.0` → resolves the baked global, like Claude already does) — NOT via a
+  cross-repo lockstep in `dev-tooling`, which would be a circular dependency
+  (2026-07-12 correction).
 - **Collector renamed to `otel-collector` (was `claude-collector`).** The
   `hostmetrics`/`docker_stats` additions land in the host's shared OTel
   collector; the VPS-side rename landed 2026-07-11 (service
