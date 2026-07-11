@@ -10,6 +10,14 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-11 (SESSION 7) UPDATE — READ THE SESSION-7 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-6 below.** The **A→B→C counter-shave remediation is
+  COMPLETE + RATIFIED** (dev-tooling guard `check-no-fmt-directives` v0.38.1 armed on dev-tooling +
+  orchestrator; Fabro anti-shave prompts PR #485; `bd-ib-9t1` fix-forward PR #491 CLOSED, Fable
+  NO-BLOCKERS). The guard is wired fleet-wide (core/runtime/git-jsonl WARN; orchestrator ARMED before
+  L2). **The only remaining thread work is the L2 dispatcher.py decomposition chain (b→k)** — L2-b
+  `bd-ib-kg7` is dispatched (reconcile FIRST). A reusable L2 filing+dispatch recipe is in the SESSION-7
+  block. Everything below (incl. SESSION-6) is prior context SESSION-7 supersedes where they conflict.
 - **⇒ 2026-07-11 (SESSION 6) UPDATE — READ THE SESSION-6 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-5-FINAL below.** Session 6 drove the L2-a proof +
   the ENTIRE Layer-3 fan-out to done — 11 slices, each independently Fable-reviewed NO-BLOCKERS +
@@ -940,6 +948,81 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-11 SESSION 7 — CURRENT STATE, READ FIRST (supersedes the SESSION-6 block below)
+>
+> **The A→B→C counter-shave remediation is COMPLETE + RATIFIED. The remaining work is the L2
+> dispatcher.py decomposition chain (b→k) — the ONLY path left to drive dispatcher.py 1558 → ≤250.**
+>
+> **✅ A→B→C DONE (the SESSION-6 FIRST ACTION):**
+> - **A — mechanical guard.** `livespec-dev-tooling` `check-no-fmt-directives` bans formatter-suppression
+>   directives (`# fmt: off`/`on`/`skip`) in the first-party universe, released **v0.38.1** (PR #326 then
+>   fix-forward PR #328). Severity = an **env-lever** `LIVESPEC_FAIL_IF_FMT_DIRECTIVES_EXIST` (blessed
+>   warn-vs-fail pattern, mirrors `check-ci-matrix-completeness`; the original `config.target_dirs`
+>   delta-WARN classifier was WRONG for a net-new check — it would have reddened the orchestrator before
+>   C). Default WARN everywhere; **ARMED in dev-tooling's own CI**. Runtime verbatim-port
+>   `_fractional_indexing.py` marked `@generated` (PR #180) so it drops from the universe uniformly.
+> - **B — factory prompt guidance.** Orchestrator Fabro `implement.md` + `review.md` now BAN counter-shaving
+>   (fmt-off / line-packing to hit an LLOC target) + REQUIRE one-per-line `__all__` + a review dimension
+>   (PR #485, `764f680`), beside the `c890acc` cohesion guidance.
+> - **C — honest fix-forward.** `bd-ib-9t1` counter-shave undone: both `# fmt: off` removed, `__all__`
+>   unpacked one-per-line, `_dispatcher_plan.py`=194 / `_dispatcher_overlay.py`=141 honest LLOC (≤200),
+>   host-only routing → new `_dispatcher_host_only.py`, goal-brief → new `_dispatcher_goal.py`, 3 missing
+>   `__all__` names added; dispatcher.py imports UNCHANGED (PR #491, `61112ef`, release 0.17.16).
+>   Independent **Fable review NO-BLOCKERS** (all 6 dimensions). `bd-ib-9t1` **CLOSED** via the
+>   merge-evidence recipe (merge_sha 61112ef, PR #491).
+> - **Guard rollout (new canonical slug → per-consumer host-side CI-matrix wiring, bump-pin can't push
+>   `.github/workflows/`):** wired into core (PR #1072, incl `just stamp-canonical-slugs` + cross-repo
+>   doctor clear), runtime (#183), git-jsonl (#243) as **WARN-only** at v0.38.1; **orchestrator (#493,
+>   `aef2c91`) wired in the `check-metadata` matrix beside the lever + ARMED + proven effective (negative
+>   test), + Fabro sandbox-image lockstep bumped v0.37.3→v0.38.1 (GHCR image verified published).** So
+>   the orchestrator's guard is ARMED **before** L2 — any counter-shave in an L2 slice HARD-FAILS the
+>   sandbox CI. NOTE: to ARM core/runtime/git-jsonl later, MOVE their slug from `check-python` to
+>   `check-metadata` (co-located with the lever) or arming is a silent no-op.
+>
+> **⚠ FIRST ACTION ON RESUME — reconcile the in-flight L2-b dispatch `bd-ib-kg7`** (self-update cluster →
+> `_dispatcher_self_update.py`), factory-dispatched via background `drive impl:` (SESSION 7). Use the
+> RECONCILE-KILLED-DISPATCH recipe below: `gh pr list` in the orchestrator + `bd show bd-ib-kg7`. If a PR
+> merged: self-verify (pinned-venv file_lloc — dispatcher.py dropped, target ≤200, no new >250 offender;
+> genuine cohesion cut, NO cross-module private import, NO `# fmt:` directive [now hard-fails], NO
+> shim/`type()`/exemption) → independent Fable review → accept via the MERGE-EVIDENCE recipe. If the
+> driver died before a PR / the sandbox `{outcome:failed}` honestly → read the item journal, diagnose,
+> re-dispatch (do NOT weaken guards).
+>
+> **THEN the rest of the L2 chain c→k** (SEQUENTIAL — all edit dispatcher.py; file each after the prior
+> lands). Cluster map VALIDATED against live dispatcher.py (SESSION 7) — design record §"Session-6 state"
+> §"Layer 2" is accurate: c admission→`_dispatcher_admission.py`, d completion/bounce→`_dispatcher_completion.py`,
+> e needs-human→existing `_dispatcher_needs_human.py`, f credentials/sibling→`_dispatcher_credentials.py`,
+> g ledger-close→`_dispatcher_ledger_close.py`, h calibration→existing `_dispatcher_calibration.py`,
+> i post-verdict→`_dispatcher_post_verdict.py`, j otel-wiring→`_dispatcher_otel_wiring.py`, k command-handlers→
+> `_dispatcher_run_commands.py`. Spine to KEEP in dispatcher.py: `main`, `_build_parser`, `_prepare`,
+> `_candidates`, `_ready_items`, `_is_dispatch_candidate`, `_dispatch_one`, `_post_run_dispositions`,
+> `_run_id`, `_janitor_core_ref`. A final trim slice may be needed. When all files ≤250, the Phase-1
+> file_lloc burndown is DONE; the Phase-2 flip waits on the dev-tooling legacy-tree follow-up (`livespec-iily`).
+>
+> **REUSABLE L2 FILING+DISPATCH RECIPE (SESSION 7, validated):** (1) FILE — `bd create "<title>" --type task
+> --labels "admission:auto,origin:freeform" --acceptance "<criteria>" --body-file <brief>` (run under
+> `/usr/local/bin/with-livespec-env.sh --`, cwd=orchestrator; captures a `bd-ib-XXX` id, lands `open`).
+> (2) ROUTE — `apply_intake_dor(path=store_config(repo=<orch>), item_id=<id>, checklist=DefinitionOfReadyChecklist(all 6 True))`
+> → `ready` (admission auto + no depends_on → auto-ready; import from `livespec_orchestrator_beads_fabro.intake_dor`;
+> `PYTHONPATH=<scripts>:<scripts>/_vendor`). (3) DISPATCH — `env PYTHONPATH=<orch>/.claude-plugin/scripts
+> python3 <orch>/.claude-plugin/scripts/bin/drive.py --action impl:<id> --repo <orch>` (background, under the
+> wrapper). (4) RECONCILE from PRs+ledger. (5) MERGE-EVIDENCE close (recipe below). Dispatch SINGLY.
+>
+> **Non-blocking carries:** (a) Fable-review nit on C — the line-117 coverage test in
+> `test_reflector_extracted_modules.py` is REDUNDANT (ancestor `1febde8` already covers it); dedupe as a
+> tiny ride-along/cleanup. (b) L2-a follow-up `bd-ib-86k` (P3): restore the cost-gate wiring assertion the
+> L2-a slice weakened.
+>
+> **STATE (at this handoff):** all fleet primaries on origin/master; dev-tooling v0.38.1 (armed);
+> orchestrator at 0.17.16 pin v0.38.1 (guard armed), master CI green; core/runtime/git-jsonl at v0.38.1
+> (guard WARN-wired). `bd-ib-kg7` (L2-b) = ready→dispatched (in flight; reconcile first). The
+> `handoff-fcc-session7` branch carries THIS refresh.
+>
+> ---
+> *(The SESSION-6 block below remains valid for the L2/L3 slice-ledger detail, the reconcile/merge-evidence
+> recipes, and the cluster map; superseded where it conflicts — A→B→C is now DONE + ratified and the L2
+> chain is UNDERWAY, not "owed".)*
+>
 > ### ⇒ 2026-07-11 SESSION 6 — CURRENT STATE, READ FIRST (supersedes the SESSION-5-FINAL block below)
 >
 > **The orchestrator file_lloc decomposition is nearly complete: the L2-a proof + all 10 Layer-3
