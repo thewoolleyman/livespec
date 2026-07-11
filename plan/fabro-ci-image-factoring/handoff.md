@@ -45,10 +45,17 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State:** the design in this document is FINAL. Nothing is implemented
-yet, and this is not yet a beads epic — formalizing it into an epic with
-per-phase work-items is the first tracking step if you want the ledger to
-drive it.
+**State:** the design in this document is FINAL. **Phase P-host step 1 is
+LANDED (2026-07-11):** host + per-container metrics (`hostmetrics` +
+`docker_stats`) now flow to the **`livespec-host-metrics`** dataset in the
+**`agent-activity`** Honeycomb env, via `otel-collector` PR #3 (commit
+`417e5d8`; collector marker `0.6`) — verified live (load-avg,
+filesystem-free, `container.*` columns present). The plan is now anchored by
+the **beads epic `livespec-3lev`** (in the `livespec` tenant) with per-phase
+children: `.1` P-host (in_progress), `.2` P-factory, `.3` Phase 0, `.4`
+Phase 1, `.5` Phase 2, `.6` Phase 3, `.7` Phase 4 (`.2`–`.7` backlog;
+phase-order deps wired, no cycles). Remaining P-host work is
+**baseline-gated** (multi-day) — see the reframed First action below.
 
 **Hard constraints for the next session:**
 - **The Fabro factory is back up and usable (maintainer-confirmed
@@ -59,32 +66,41 @@ drive it.
 - All repo changes go through the worktree → PR → merge flow (docs use
   `docs(...)`; the Red-Green-Replay ritual applies only to product `.py`).
 
-**First action — Phase P-host (factory-independent, startable now):**
-1. Edit `/data/projects/otel-collector/config.yaml`: add a `hostmetrics`
-   receiver (cpu, memory, disk, load, paging) + a `docker_stats` receiver.
-   **Routing caveat (confirmed 2026-07-11):** the collector currently
-   exports to the **`agent-activity`** Honeycomb env (its API key), and its
-   `otlp/honeycomb` metrics exporter sends NO `x-honeycomb-dataset` header,
-   so metrics AUTO-ROUTE to a Honeycomb-chosen dataset — they will NOT
-   auto-appear as a `livespec-host-metrics` dataset in the `livespec` env.
-   So Phase P-host must (a) DECIDE the target env (keep `agent-activity`,
-   or add a metrics exporter keyed to the `livespec` env) and (b) add an
-   explicit `x-honeycomb-dataset` header via a dedicated metrics
-   pipeline/exporter to land host/container metrics in a named dataset.
-   Reload with `sudo systemctl restart otel-collector`.
-2. Confirm the host/container metrics land in the chosen dataset + env (the
-   `collector.otel-collector` marker already flows there as a sanity
-   anchor).
-3. Capture a multi-day baseline, then freeze the health-check thresholds
-   (disk is resolved — lead with CPU-utilization/PSI + memory + CI
-   queue-wait, not bare load-avg).
+**First action — Phase P-host (remaining, baseline-gated):**
+Steps 1–2 are **DONE (2026-07-11)**, kept here for context; the next
+session starts at step 3.
+1. ✅ **DONE.** Added a `hostmetrics` receiver (cpu, load, memory, paging,
+   disk, filesystem — no `process` scraper, to avoid per-PID cardinality) +
+   a `docker_stats` receiver to `/data/projects/otel-collector/config.yaml`
+   on a dedicated `metrics/host` pipeline. **Env decision RESOLVED
+   (maintainer 2026-07-11): keep the `agent-activity` env** — a dedicated
+   `otlp/honeycomb_hostmetrics` exporter reuses the existing key and sets
+   `x-honeycomb-dataset: livespec-host-metrics`, so host metrics sit
+   alongside the factory dispatcher/sandbox trace spans they correlate with.
+   `otel-collector` PR #3 (commit `417e5d8`); marker bumped to `0.6`;
+   `sudo systemctl restart otel-collector` done.
+2. ✅ **DONE.** Confirmed host/container metrics land in
+   `livespec-host-metrics` (agent-activity env) under
+   `collector.otel-collector.version=0.6`.
+3. **NEXT:** capture a multi-day baseline in `livespec-host-metrics`, then
+   freeze the health-check thresholds (disk is resolved — lead with
+   CPU-utilization/PSI + memory + CI queue-wait, not bare load-avg). Then
+   implement the continuous sustained-duration Honeycomb resource-health
+   trigger (PAUSE-for-provision on sustained CPU/memory saturation, with
+   per-container attribution) + the runner-liveness/absence alert, and set
+   the local-disk cache budget + prune automation + cold-cache validation
+   schedule. Tracked as epic child `livespec-3lev.1`.
 
-Then proceed Phases 0 → 1 → 2 → 3 → 4 per the plan below.
+Then proceed Phases 0 → 1 → 2 → 3 → 4 per the plan below (epic children
+`livespec-3lev.3`–`.7`; P-factory is `livespec-3lev.2`, deferred, does not
+block Phases 0–1).
 
 **Already-settled facts (do not relitigate):** keep the CI matrix (tune
 runner slots ≈18, do NOT collapse); full-history clones (no mirror, no
-shallow); disk resolved (~91 GB free + a doubling on order — caches on the
-local disk); the runner must be socket-less + secret-isolated +
+shallow); disk resolved (the doubling that was "on order" appears to have
+LANDED — the live collector now measures ~157 GB free on the largest
+filesystem vs the earlier ~91 GB; caches on the local disk — worth a
+confirming glance); the runner must be socket-less + secret-isolated +
 fork-PR-routed (public repos).
 
 ## Bottom line
