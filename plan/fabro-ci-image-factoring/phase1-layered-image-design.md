@@ -75,17 +75,22 @@ split those ARGs live in different layer files:
 
 - `JUST_VERSION`/`LEFTHOOK_VERSION` → **base** Dockerfile.
 - `UV_VERSION` → **python** Dockerfile; `PYTHON_VERSION` → **python**.
-- new `RUST_VERSION` → **python-rust** Dockerfile (↔ console
-  `rust-toolchain.toml`, a **cross-repo** source — first of its kind for
-  this check).
-- `CODEX_ACP_VERSION` → **base** (↔ the orchestrator's implementer-adapter
-  pin — cross-repo; **timing hazard**: defer until the orchestrator's
-  `dispatcher.py` decomposition, item `bd-ib-s7e`, settles — see
-  `livespec-3lev.4` notes).
+- new `RUST_VERSION` → **python-rust** Dockerfile.
+- `CODEX_ACP_VERSION` → **base**.
 
-So the lockstep parser must learn to read ARGs from the *set* of layer
-Dockerfiles, not a single path. Keep each ARG in exactly one layer (the one
-that consumes it) so there is a single source per pin.
+So the in-repo lockstep parser must learn to read ARGs from the *set* of
+layer Dockerfiles, not a single path. Keep each ARG in exactly one layer.
+
+**No cross-repo lockstep in `dev-tooling` (2026-07-12 correction).** An
+earlier draft here proposed binding `RUST_VERSION` ↔ the console's
+`rust-toolchain.toml` and `CODEX_ACP_VERSION` ↔ the orchestrator's pin *from
+inside this check*. That is a **circular dependency**: `livespec-dev-tooling`
+is the foundational repo those consumers depend ON, so it must not read into
+them. Correct approach: for **Codex**, design the drift away — make the
+orchestrator's adapter command version-less so it resolves the baked global
+(no check needed); for **Rust**, any match-check lives on the **console**
+side reading the image ARG (consumer→producer), never here. See
+`handoff.md` (2026-07-12 correction) and `livespec-3lev.4`.
 
 ## Pre-warm demotion (carry nothing stale)
 
@@ -122,10 +127,10 @@ image layers carry base tools only.
 
 ## Sequencing note
 
-Nothing in THIS design is gated by the P-host multi-day baseline — the
-layer split, build matrix, and consumer switch are all authorable now. Only
-Phase 1's EXIT criterion ("no sustained resource breach" on the first baked
-dispatches) depends on the P-host health check being live, and the
-`CODEX_ACP_VERSION` cross-repo lockstep is deferred behind the orchestrator
-refactor. The image split + Rust bake + console rustup removal are the
-unblocked core.
+Nothing in THIS design is gated by a P-host baseline — that "multi-day
+baseline" was over-engineered and is dead (see `handoff.md`, 2026-07-12);
+the layer split, build matrix, and consumer switch are all authorable now,
+and P-host no longer gates them. The Codex version-less-command fix (which
+removes any need for a Codex pin check) waits behind the orchestrator
+`dispatcher.py` refactor. The image split + Rust bake + console rustup
+removal are the unblocked core.
