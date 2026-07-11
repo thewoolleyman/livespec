@@ -10,6 +10,13 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-10/11 (SESSION 4) UPDATE — READ THE SESSION-4 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST.** 3 of 4 Phase-1 factory chains COMPLETE (runtime, git-jsonl, core);
+  orchestrator A/B/C done+accepted. orch-D (file_lloc tentpole) FAILED HONESTLY and PIVOTED to a
+  real decomposition sub-project — the maintainer kept the 200/250 ceiling and chose genuine
+  cohesion-driven decomposition; design record `research/orchestrator-decomposition.md`; the Fabro
+  prompts now carry cohesion/coupling guidance (orch c890acc). FIRST ACTION: begin the decomposition
+  (regroom `bd-ib-ll0`). Everything below (incl. SESSION-3) is prior context SESSION-4 supersedes.
 - **⇒ 2026-07-10 (SESSION 3) UPDATE — READ THE SESSION-3 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST.** Step-4 fan-out is nearly done: 3 of 4 Phase-1 factory chains
   are COMPLETE + accepted (runtime, git-jsonl, core A/B/C; all independent Fable NO-BLOCKERS +
@@ -803,9 +810,79 @@ clone before reading its `origin/master` for cross-repo state.**
     no_write_direct should explicitly exempt `io_trees` + `.claude/hooks/` OR codify those idioms
     in the check prose. Also: core `_bootstrap.py`'s stderr write is now matcher-invisible → the
     Phase-2 role-config slice must declare `supervisor_entry_files`.
+- **2026-07-10/11 (SESSION 4) — STEP-4 fan-out FINISHED except orch-D, which pivoted from a factory
+  slice to a DECOMPOSITION sub-project after an HONEST failure; ceiling decision made; cohesion/
+  coupling guidance landed in the Fabro prompts.** Resumed at cb35f71. Reconciled orch-C
+  (`bd-ib-dpj` structural PR #438 — no_inheritance CONFORMED via Exception base + Protocol +
+  composition, ZERO type() dodge; Fable NO-BLOCKERS; the ~62-min run was the in-factory
+  review⇄review_fix loop working) → accepted.
+  - **orch-D `bd-ib-ll0` FAILED HONESTLY (anti-evasion brief WORKED).** The file_lloc tentpole
+    (13 orch files >250, dispatcher.py 1634): the Fabro agent refused to shim-split, found a
+    mechanical split trips pyright strict `reportPrivateUsage` + the `private_calls` check
+    (cross-module private-helper imports), reported `{outcome:failed}` with a real design blocker,
+    cleaned up (no PR). Zombie sandbox docker-stopped; item reset ACTIVE→backlog + journaled.
+    OPERABILITY GAP: PR #427's `_bounce_blocked` did NOT fire (this was a `failed` fabro-run →
+    Retry/Reimplement/Abandon interview, not a `blocked` terminal) → item stuck active; the
+    unattended-human-gate protection misses the failed-then-interview path (host-side follow-up).
+  - **MAINTAINER DECISION: keep file_lloc 200/250 (NOT raised); decompose for real.** The fleet
+    LLOC distribution proves the ceiling is well-calibrated (core 128/129 ≤200, runtime 32/32 ≤200
+    — the functional style naturally produces small files); the orchestrator's fat tail (13>250,
+    8>400, 3>500) is real sprawl in the dispatcher god-modules, not the limit biting good code.
+    Raising to 500 would HIDE 5 of 8 oversized files (a forbidden invariant-relaxing carve-out).
+  - **DECOMPOSITION DESIGN RECORD:** `research/orchestrator-decomposition.md` — the root fix is to
+    CUT ALONG PUBLIC-ENTRY-POINT boundaries (move each public entry point WITH the private helpers
+    only it uses; only public names cross a module boundary — what the mechanical agent got wrong),
+    plus the layered cut (Layer 1 pure clusters → Layer 2 dispatcher.py surgery → Layer 3 residual).
+  - **COHESION/COUPLING GUIDANCE LANDED in the Fabro prompts** (orch PR merged c890acc): a new
+    "Refactoring for size — decompose by cohesion, not by line count" section in `implement.md` +
+    a matching review dimension in `review.md`. Systemic fix — every future refactor slice reads it.
 
 ## The next action
 
+> ### ⇒ 2026-07-10/11 SESSION 4 — CURRENT STATE, READ FIRST (supersedes the SESSION-3 block below)
+>
+> **The Phase-1 factory burndown is COMPLETE for 3 of 4 repos (runtime, git-jsonl, core A/B/C —
+> all accepted, Fable NO-BLOCKERS). The orchestrator is at A/B/C done+accepted; orch-D pivoted from
+> a factory slice to a REAL DECOMPOSITION sub-project (the maintainer's call after the honest
+> failure). The immediate blocker is RESOLVED — decision + plan + prompt guidance are all in place.
+> What remains is EXECUTION of the decomposition + the previously-deferred work.**
+>
+> **⚠ FIRST ACTION ON RESUME — begin the orchestrator decomposition (regroom `bd-ib-ll0`).** READ
+> `plan/fleet-check-coverage/research/orchestrator-decomposition.md` FIRST — the authoritative
+> design record: the ceiling STAYS 200/250, the cut-along-PUBLIC-ENTRY-POINT principle (the fix for
+> the mechanical failure), and the layered cut. The Fabro prompts now carry cohesion/coupling
+> guidance (orch c890acc), so a WELL-BRIEFED decomposition slice should succeed. Steps: (1) file the
+> Layer-1 slices into the `bd-ib` tenant (pure-cluster extractions: `_dispatcher_plan.py`→fabro_argv/
+> run_status/overlay; `_dispatcher_reflector_oob.py`→findings_parse/spans/lessons; `dispatcher.py`→
+> paths) with per-slice briefs naming the target module + public entry points + "move each public fn
+> with its exclusive private helpers; only public crosses the boundary; behavior-preserving; 100%
+> coverage; measure file_lloc". (2) DISPATCH ONE as the proof. (3) Fan out Layer 1, then Layer 2
+> (dispatcher.py cluster surgery — higher review bar; it runs the factory), then Layer 3. Each:
+> janitor gate + independent Fable review (cohesion-driven, not shim/exemption).
+>
+> **THEN the remaining thread work (unchanged, all lower-priority / host-side):**
+> - **Drivers/console** (`livespec-gqte`/`livespec-v74p`/`livespec-q7bx` — BACKLOG): Slice0 wire full
+>   suite + re-tenant + groom + fix + flip. Slice0's CI-matrix edit is blocked on the Fabro App
+>   `workflows` permission (the active `fabro-token-refresh` thread changes that); consider splitting
+>   Slice0 into factory justfile-wiring + host-side CI-matrix.
+> - **HOST-SIDE dev-tooling (`livespec-iily`, NOT factory):** janitor worktree-pack hydration gap
+>   (ELEVATED); bump-pin lockstep root fix; workflow-push-race fix; AND the NEW unattended-human-gate
+>   gap (`_bounce_blocked` misses the `failed`-then-interview path).
+> - **Phase-2 per-repo role-declaration flips** (host-side): once each repo is warning-clean, after an
+>   independent review; NO escape hatch. Carry the no_write_direct hardening caveats (SESSION-3). The
+>   orchestrator's Phase-2 file_lloc flip waits on the decomposition completing.
+>
+> **STATE (clean at this handoff):** all fleet primaries on origin/master. 3/4 Phase-1 chains done;
+> orch A/B/C accepted; orch-D `bd-ib-ll0` = backlog (decomposition planned). No running sandboxes. The
+> `handoff-fcc-decompose` branch carries THIS refresh + the decomposition design record. Findings
+> journaled: livespec-iily (janitor gap + the new unattended-gate gap); 7jcdfk/bd-ib-jnf (Phase-2
+> no_write hardening).
+>
+> ---
+> *(The SESSION-3 block below remains valid for the reconcile recipes, the Slice ledger, and the
+> still-pending drivers/console + host-side detail; superseded where it conflicts — orch-D is now a
+> decomposition sub-project, not a "reconcile the in-flight dispatch".)*
+>
 > ### ⇒ 2026-07-10 SESSION 3 — CURRENT STATE, READ FIRST (supersedes the SESSION-2 block below)
 >
 > **STEP-4 FAN-OUT is nearly done: 3 of 4 Phase-1 factory-burndown chains COMPLETE +
