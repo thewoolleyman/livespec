@@ -176,6 +176,23 @@ mid-run park — more faithful to long unattended runs but pulls engine bug-fixi
 the MVP critical path. `bd-ib-18r`/`bd-ib-6vu` affect LONG unattended runs, not the MVP
 demonstration; keep them tracked follow-ups.
 
+**I2 tenant (recommended target) — run on a DISPOSABLE `livespec-e2e-*` tenant, NOT a
+fleet/production tenant.** I2 auto-drives ready work to `done`, so it MUST NOT consume a
+real backlog. The `livespec-e2e-*` throwaway repos (in the disposable `livespec-e2e`
+GitHub org) are genuine "real tenants" — real GitHub repo + real beads/Dolt tenant + real
+Fabro factory dispatch — but disposable, which is exactly what "done means exercised live
+on a real tenant" needs without touching production. They are created by the dark-factory
+acceptance harness `livespec-orchestrator-beads-fabro/orchestrator-image/acceptance-live-golden-master.sh`
+(host-side create/clone/delete use `LIVESPEC_E2E_GITHUB_TOKEN`, injected by the 1Password
+env wrapper). Sweep orphans with the fail-safe reaper
+`orchestrator-image/reap-e2e-repos.sh` (or `just reap-e2e-repos`), run ONLY at boundaries
+(session-start / post-confirmed-merge / deliberate teardown), NEVER mid-dispatch. CAVEAT:
+provisioning a Fabro GitHub-App installation over the e2e throwaway repos is a HUMAN act in
+GitHub org settings, NOT factory-executable (orchestrator `bd-ib-w4iaaf`) — confirm that
+installation exists before the I2 run, or surface it to the maintainer. Running I2 against
+a live fleet/production tenant is an outward-facing, side-effecting act; get explicit
+maintainer authorization for the specific tenant before any non-disposable target.
+
 **SEAM to assert at I2 (flagged by the `rt4.3` delegate):** if the needs-attention
 surface lags the ledger (still lists an item the engine already auto-resolved), ingest
 re-appears it and idempotent reflect won't re-resolve it; in practice the engine updates
