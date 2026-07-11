@@ -1,5 +1,66 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
+## OPERATING DIRECTIVES (standing — maintainer-declared 2026-07-12)
+1. **Hand off at 50% context.** When driver/overseer context passes ~50%, STOP
+   at a clean boundary and hand off to a fresh session (land the plan + write a
+   resume prompt) — do not push past it.
+2. **Delegate to sub-agents / the Fabro factory to preserve driver context.** Do
+   the heavy lifting (repairs, authoring, multi-file work, live-run iteration
+   where feasible) in scoped sub-agents or the factory; keep the driver session
+   for plan / dispatch / synthesis.
+
+## WIND-DOWN STATE — 2026-07-12 (resume from here in a fresh session)
+
+Track A (repair the embedded golden-master → run I2) is mid-repair; Tracks B/C/D
+pending; two doc PRs merged; two sub-agents were in flight at wind-down.
+Everything below this section is prior context.
+
+**Landed / in-flight this session:**
+- **Embedded beads-client fix — MERGED** (`livespec-orchestrator-beads-fabro`
+  PR #489 credential precheck; PR #508 `connection.prefix` + `invoke`
+  embedded-awareness; releases 0.17.15 / 0.17.23).
+- **Golden-master staleness repair — UNVERIFIED, on branch
+  `fix-golden-master-custom-statuses` (orchestrator, commit `a102190`, NO PR
+  yet).** Adds gate #4 (register custom statuses after `bd init`) + gate #5 (seed
+  the item as `ready` + read `--status ready`). **NEXT: run it live to verify**,
+  from its worktree
+  (`~/.worktrees/livespec-orchestrator-beads-fabro/fix-golden-master-custom-statuses`):
+  `/usr/local/bin/with-livespec-env.sh -- bash orchestrator-image/acceptance-live-golden-master.sh --run --poll-attempts 80`.
+  Open question the run answers: does a `ready` item clear the
+  Definition-of-Ready ledger checks, or need more fields? If green → open+merge
+  that PR, then the autonomous I2. If a gate #6 appears → keep going (maintainer:
+  "whatever it takes").
+- **Console TUI docs — MERGED** (`livespec-console-beads-fabro` PR #165 TUI
+  guide; core PR #1077 README blurb + the SESSION UPDATE below).
+- **TUI usability PR — IN FLIGHT at wind-down** (delegated console sub-agent:
+  `just tui` recipe + `?` help overlay + ↑/↓ focus-nav). Check
+  `livespec-console-beads-fabro` for its PR and merge if green. (Maintainer's
+  live-test "pathing error" on run 2 = a copy-paste hyphen-split of the long
+  binary name, not a bug; `just tui` fixes it.)
+
+**Embedded golden-master gate ledger (context):** credential precheck ✓(#489) ·
+`connection.prefix` ✓(#508) · `invoke` embedded ✓(#508) · custom-statuses
+✓(branch `a102190`, unverified) · seed-as-ready ✓(branch `a102190`, unverified) ·
+[next live run reveals a gate #6 if any].
+
+**Open worktrees:** `fix-golden-master-custom-statuses` (orch — the live repair,
+keep) and `docs-plan-handoff-winddown` (core — this update). The stale
+`fix-embedded-ledger-credential-precheck` (orch, merged branch + now-redundant
+uncommitted edits) can be reaped.
+
+**Resume order (A→D→C→B, maintainer-chosen):**
+1. Verify + land the golden-master repair (branch above) → live golden-master GREEN.
+2. **Autonomous I2:** parameterize the golden-master with `--mode autonomous` +
+   the VALIDATED human-only plant (`bd config set status.custom …`; `bd update
+   <id> --status acceptance`; `bd update <id> --add-label acceptance:human-only`);
+   assert ready→`done` + `autonomous-decision` audit records + the human-only
+   item rests in `Lane::Acceptance`; then the console observe/reflect leg + the
+   MAINTAINER's TUI acceptance (the human core of I2 "done").
+3. Track D (wire TUI valves), Track C (console release-binary publishing via
+   release-please + CI), Track B (golden-master anti-rot cadence: daily +
+   pre-release blocking gate, capped whole-test retry-backoff 1min→10min→fail).
+   DELEGATE these per directive #2.
+
 ## SESSION UPDATE — 2026-07-12 (driver `autonomous-mode`): I2 unblocking + new deliverables
 
 **"ONLY I2 remains" is superseded.** Driving I2 live surfaced that the
