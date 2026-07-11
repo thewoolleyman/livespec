@@ -1,9 +1,37 @@
-# Plan — rename `claude-collector` → a neutral host OTel-collector name
+# Plan — rename `claude-collector` → `otel-collector` (host OTel collector)
 
-**Status:** spec'd, not started. Maintainer-approved 2026-07-11 as a
-**separate, self-contained task** (split out of
-`plan/fabro-ci-image-factoring/`). **Owning session:** livespec core,
-2026-07-11.
+**Status:** VPS side DONE (2026-07-11); macOS migration PENDING on the Mac.
+Maintainer-approved 2026-07-11 as a separate, self-contained task (split
+out of `plan/fabro-ci-image-factoring/`). **Owning session:** livespec
+core, 2026-07-11.
+
+**Settled decisions (2026-07-11):** name = `otel-collector`; cross-platform
+= runs on Linux or macOS (docs + code updated); marker migration = hard cut
+(`collector.claude-collector` → `collector.otel-collector`, version bumped
+0.4 → 0.5); GitHub repo renamed too (`thewoolleyman/otel-collector`,
+`upstream` jessitron left intact).
+
+**What LANDED (VPS, 2026-07-11):**
+- `thewoolleyman/otel-collector` (formerly `claude-collector`) PRs #1
+  (repo/docs rename + cross-platform) and #2 (macOS launchd label +
+  migration runbook + `AGENTS.md`), both merged.
+- GitHub repo renamed → `otel-collector`; local dir renamed
+  `/data/projects/claude-collector` → `/data/projects/otel-collector`;
+  live systemd unit swapped `claude-collector.service` →
+  `otel-collector.service` (verified active, config loaded, 4317 up).
+- Honeycomb: inventory found ZERO board/trigger dependency on the old
+  marker, so no dashboard migration was needed.
+
+**What's PENDING:**
+- **macOS migration** — run on the Mac via the collector repo's `AGENTS.md`
+  first-line reminder → `plan/rename-to-otel-collector-macos-migration.md`
+  (unload old-label LaunchAgent, install new, smoke-test, then delete the
+  reminder + archive that plan).
+- **Live-marker confirmation** — verify `collector.otel-collector` is
+  flowing in the `agent-activity` Honeycomb env once telemetry accumulates.
+
+The remainder of this document is the ORIGINAL task spec (kept for the
+migration-checklist detail); the decisions above are now settled.
 
 ## Bottom line
 
