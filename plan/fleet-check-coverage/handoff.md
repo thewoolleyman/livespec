@@ -10,6 +10,13 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-11 (SESSION 8) UPDATE — READ THE SESSION-8 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-7 below.** A→B→C is DONE (SESSION-7). The **L2
+  dispatcher.py decomposition chain is 5 slices in and going cleanly** (dispatcher.py 1558→1118; L2-b/c/d/e
+  ratified). **FIRST ACTION: reconcile the in-flight L2-f dispatch `bd-ib-s7e`, then continue slices g→k +
+  the deferred seam-reconciliation slice.** The SESSION-8 block carries the full reusable FILE→ROUTE→
+  DISPATCH→RATIFY cycle (scratchpad scripts are session-local — recreate them) + the by-name cluster map.
+  Everything below (incl. SESSION-7) is prior context SESSION-8 supersedes where they conflict.
 - **⇒ 2026-07-11 (SESSION 7) UPDATE — READ THE SESSION-7 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-6 below.** The **A→B→C counter-shave remediation is
   COMPLETE + RATIFIED** (dev-tooling guard `check-no-fmt-directives` v0.38.1 armed on dev-tooling +
@@ -948,6 +955,93 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-11 SESSION 8 — CURRENT STATE, READ FIRST (supersedes SESSION-7 below)
+>
+> **A→B→C counter-shave remediation is DONE + ratified (SESSION-7). The L2 dispatcher.py decomposition
+> chain is UNDERWAY and going cleanly: 5 of the ~11 target slices are ratified. dispatcher.py 2616(orig)
+> → 1558(after L1/L2-a) → 1438 → 1359 → 1192 → 1118. Only the factory + independent Fable review are
+> driving this; the overseer FILES, DISPATCHES, RECONCILES, and RATIFIES.**
+>
+> **L2 slices DONE + ratified (all Fable NO-BLOCKERS; merge-evidence closed):** L2-b `bd-ib-kg7`
+> (self-update → `_dispatcher_self_update.py` + `_dispatcher_self_update_decision.py`; its Fable review
+> BLOCKED on a docstring-strip → FIXED forward PR #496 `7371f0a` + the Fabro prompts hardened to forbid
+> doc-strip/untouched-body-rewrite/collection-error-Red); L2-c `bd-ib-4kt` (admission →
+> `_dispatcher_admission.py`); L2-d `bd-ib-5rq` (completion/bounce → `_dispatcher_completion.py`, and it
+> resolved L2-c's `host_only_refusal` injection seam); L2-e `bd-ib-48z` (needs-human → EXISTING
+> `_dispatcher_needs_human.py`, now 195/200 LLOC — DO NOT fold more into it, split any future needs-human).
+>
+> **⚠ FIRST ACTION ON RESUME — reconcile the in-flight L2-f dispatch `bd-ib-s7e`** (credentials/sibling/
+> overlay cluster → `_dispatcher_credentials.py`, factory-dispatched SESSION-8). RECONCILE recipe: `gh pr
+> list -R thewoolleyman/livespec-orchestrator-beads-fabro --state all --limit 4` + `bd show bd-ib-s7e`
+> (via the fleet wrapper). If the PR merged (item → `acceptance`): self-verify (pinned-venv file_lloc:
+> dispatcher.py dropped, new module(s) ≤200, no new >250 offender; genuine cohesion cut; NO cross-module
+> `_`-private import; NO `# fmt:` directive [armed guard hard-fails it]; docstrings VERBATIM, no
+> consolidation; NO shim/type()/exemption) → spawn an independent **Fable-model** review agent → on
+> NO-BLOCKERS, ratify via the MERGE-EVIDENCE close below.
+>
+> **THEN the remaining L2 slices g→k** (SEQUENTIAL, all edit dispatcher.py; design record §"Layer 2" has
+> the by-NAME cluster map, VALIDATED): **g** ledger-close → NEW `_dispatcher_ledger_close.py` (`_close_item`
+> [note: `_close_item` may already have moved with L2-d — verify], `_normalize_native_open_statuses`,
+> `_append_normalization_note`, `_ledger_blocked_after_normalization`, `_ledger_blocked`, `_write_findings`,
+> `_load_items`, `_emit_outcomes`); **h** calibration → EXISTING `_dispatcher_calibration.py` (`_emit_calibration`,
+> `_read_journal_records_for`, `_calibration_token_cost`, `_merged_pr_diff_size`, `_parse_pr_diff_size`);
+> **i** post-verdict → NEW `_dispatcher_post_verdict.py` (`_reflector_oob_after_verdict`, `_default_reflector_spawn`,
+> `_spawn_daemon`, `_spawn_daemon_joining`, `_alarm_on_terminal_failure`, `_ReflectorSpawn` — NOTE
+> `_post_verdict_runner`/`_github_token_error_supplier`/`_github_token_supplier` are the SEAM, handle in the
+> seam slice not here); **j** otel-wiring → NEW `_dispatcher_otel_wiring.py` (`_build_otel_receiver`,
+> `_ensure_otel_receiver`, `_parse_janitor`); **k** command-handlers → NEW `_dispatcher_run_commands.py`
+> (`_run_dispatch_command`, `_run_loop_command`, `_dispatch_preamble`, `_requested_items_preflight_error`,
+> `_resolve_fabro_bin_for`, `_fabro_preflight_error`, `_run_ledger_check`, `_run_spec_check`,
+> `_run_janitor_check`, `_emit_check_findings`). Spine to KEEP in dispatcher.py: `main`, `_build_parser`,
+> `_prepare`, `_candidates`, `_ready_items`, `_is_dispatch_candidate`, `_dispatch_one`,
+> `_post_run_dispositions`, `_run_id`, `_janitor_core_ref`. PLUS a **dedicated SEAM-RECONCILIATION slice**
+> (the L2-b carry, deferred from L2-f — full detail journaled on `bd-ib-kg7`): the github-token seam
+> (`github_token_supplier`/`post_verdict_runner`/`_github_token_error_supplier`) lives in
+> `_dispatcher_self_update.py` with DUPLICATE copies + the `_github_token_supplier` alias (dispatcher.py:~283)
+> + the `_run_id` wrapper in dispatcher.py; reconcile to ONE home (→ `_dispatcher_credentials.py`), re-plumb
+> the monkeypatch seam — DELICATE, its own careful slice. PLUS a possible final trim once a–k land. When all
+> files ≤250, Phase-1 file_lloc burndown is DONE; the Phase-2 flip waits on the dev-tooling legacy-tree
+> follow-up (`livespec-iily`).
+>
+> **REUSABLE L2 CYCLE (SESSION-8, proven 5×). Scratchpad scripts are SESSION-LOCAL — recreate them:**
+> - **FILE:** `cd /data/projects/livespec-orchestrator-beads-fabro && /usr/local/bin/with-livespec-env.sh --
+>   bd create "236f-D decompose L2-<x>: <title>" --type task --labels "admission:auto,origin:freeform"
+>   --acceptance "<criteria>" --body-file <brief>` → captures `bd-ib-XXX`, lands `open`. Brief = the
+>   design-specifying template (see the `l2*_brief.md` pattern / an existing DONE slice's `bd show`): cluster
+>   fns by NAME, target module, MOVE-VERBATIM (no strip/consolidation), genuine-assertion Red via
+>   `tests/livespec_orchestrator_beads_fabro/commands/test_dispatcher_decomposition_modules.py`, anti-evasion,
+>   spine list, ≤200 target / split-if-over.
+> - **ROUTE→ready:** run (PYTHONPATH=`<orch>/.claude-plugin/scripts:<...>/_vendor`, under the wrapper) a
+>   python snippet: `apply_intake_dor(path=store_config(repo=Path("/data/projects/livespec-orchestrator-beads-fabro")),
+>   item_id="bd-ib-XXX", checklist=DefinitionOfReadyChecklist(single_coherent_done=True, autonomously_verifiable=True,
+>   autonomy_tiered=True, dependency_linked=True, repo_targeted=True, above_floor=True))` (imports:
+>   `from livespec_orchestrator_beads_fabro.intake_dor import DefinitionOfReadyChecklist, apply_intake_dor`;
+>   `from livespec_orchestrator_beads_fabro.commands._dispatcher_paths import store_config`). admission:auto +
+>   no depends_on → auto-`ready`.
+> - **DISPATCH (background):** `/usr/local/bin/with-livespec-env.sh -- env PYTHONPATH=<orch>/.claude-plugin/scripts
+>   python3 <orch>/.claude-plugin/scripts/bin/drive.py --action impl:bd-ib-XXX --repo <orch>`. Dispatch SINGLY.
+>   The factory now runs CLEAN (green, item→`acceptance`) — the SESSION-3 janitor-false-fail is not recurring on
+>   these slices, but reconcile from PRs regardless.
+> - **RATIFY (merge-evidence close):** get the slice PR's merge sha (`gh pr view <PR> --json mergeCommit -q
+>   .mergeCommit.oid`; verify `git cat-file -e <sha>` + `git merge-base --is-ancestor <sha> origin/master`),
+>   then run (same PYTHONPATH/wrapper) a python snippet that loads the item via `read_work_items` and
+>   close-in-place: `append_work_item(path=store_config(repo=<orch>), item=replace(item, status="done",
+>   resolution="completed", reason="<evidence incl Fable NO-BLOCKERS>", audit=AuditRecord(
+>   verification_timestamp=utc_now_iso(), commits=(), files_changed=(), merge_sha="<sha>", pr_number=<PR>)))`
+>   (imports: `from dataclasses import replace`; `AuditRecord` from `...types`; `read_work_items` from `...store`;
+>   `append_work_item` from `..._store_mutations`; `store_config` from `...commands._dispatcher_paths`;
+>   `utc_now_iso` from `...commands._dispatcher_io`). A bare status flip FAILS the `work_item_merge_evidence`
+>   gate — the AuditRecord+merge_sha is REQUIRED. `accept:` valve does NOT record evidence, so use this recipe.
+>
+> **STATE (at this handoff):** all fleet primaries on origin/master; dev-tooling v0.38.1 (armed on dev-tooling
+> + orchestrator); orchestrator at release 0.17.20, pin v0.38.1, guard ARMED, master CI green. Ledger (bd-ib):
+> kg7/4kt/5rq/48z CLOSED; `bd-ib-s7e` (L2-f) dispatched (in flight — reconcile FIRST). The `handoff-fcc-session8`
+> branch carries THIS refresh. Non-blocking carries all journaled on the ledger items.
+>
+> ---
+> *(The SESSION-7 block below remains the authoritative record of the A→B→C remediation + guard rollout;
+> superseded only where SESSION-8 advances past it — A→B→C is done and the L2 chain is 5 slices in.)*
+>
 > ### ⇒ 2026-07-11 SESSION 7 — CURRENT STATE, READ FIRST (supersedes the SESSION-6 block below)
 >
 > **The A→B→C counter-shave remediation is COMPLETE + RATIFIED. The remaining work is the L2
