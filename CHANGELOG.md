@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/thewoolleyman/livespec/compare/v0.9.0...v0.9.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* **overseer:** correct pane parsing to the real Claude TUI shapes (live exercise) ([a1a475e](https://github.com/thewoolleyman/livespec/commit/a1a475e5c2b97333b1a95c443fd0c4ce7f73b823))
+
 ## [0.9.0](https://github.com/thewoolleyman/livespec/compare/v0.8.0...v0.9.0) (2026-07-12)
 
 
