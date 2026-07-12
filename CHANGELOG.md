@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/thewoolleyman/livespec/compare/v0.9.1...v0.9.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **overseer:** verify-submit loop so a respawned session's resume line auto-submits ([4af807e](https://github.com/thewoolleyman/livespec/commit/4af807e0f6b43d4f73bdcbab35fa139758e3f03d))
+
 ## [0.9.1](https://github.com/thewoolleyman/livespec/compare/v0.9.0...v0.9.1) (2026-07-12)
 
 
