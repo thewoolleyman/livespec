@@ -21,38 +21,102 @@
    in-scope (holes) vs. by-design-CLI (not holes) split, agreed with the
    maintainer.
 
-## TUI dogfooding — scope boundary (maintainer-declared 2026-07-12)
-The console is the **Control Plane / operator cockpit** — deliberately NOT a
-Driver and NOT a dev environment (the plane model). So there is a real line
-between operator-steering work (must be TUI-drivable; a gap is a hole) and
-driver/dev work (the console was never meant to carry it; CLI there is
-by-design). Default posture: assume an action SHOULD be TUI-drivable and only
-carve out the genuinely-architectural boundaries below.
+## TUI dogfooding — scope boundary (maintainer-declared + CORRECTED 2026-07-12)
+The maintainer SHARPENED this boundary mid-session: **almost everything is
+TUI-drivable, because almost everything is a groomed work-item the Fabro factory
+runs — and the operator drives/observes the factory from the cockpit.** Code
+authoring AND PR merges are NOT CLI-only work: they are the factory's OUTPUT for
+groomed work-items, so the operator drives them from the TUI (dispatch → watch →
+valve → observe merge). The ONLY off-factory exception is the narrow,
+already-documented subset: repo/dev-tooling PLUMBING that is incompatible or
+risky to run *through* the factory itself (e.g. the factory substrate, the
+commit-refuse hooks). This FORCES disciplined decomposition — every plan
+deliverable becomes a factory-runnable, groomed work-item — which is the point
+of the whole livespec ecosystem, not a burden.
 
-**Drive via the TUI — a gap is a USABILITY HOLE:**
+**Drive via the factory → TUI — a gap is a USABILITY HOLE:**
 - Watch each track's ledger / factory / needs-attention state.
 - Flip autonomous mode on/off (this IS the I2 acceptance).
 - Per-item valves: approve / accept / reject / set-admission / set-acceptance.
 - Drain the factory; observe auto-resolutions reflected.
 - Triage a truly-unresolvable needs-attention item.
+- **Code fixes, PR authoring + merge** — as groomed work-items dispatched
+  through the factory; the operator dispatches/observes/valves from the cockpit.
 
-**Stays CLI / sub-agent — by design, NOT a hole:**
-- Spec lifecycle (`/livespec:*` seed/propose-change/critique/revise/doctor/next).
-- Grooming a work-item (maintainer-owned drafting conversation).
-- Code authoring/repair + running the golden-master acceptance script.
-- worktree → PR → merge git mechanics.
-- Sub-agent / Fabro factory dispatch internals; diff & PR review.
+**Off-factory / CLI — the NARROW documented exception, NOT a hole:**
+- Repo/dev-tooling PLUMBING unsafe to self-run through the factory: the Track A
+  golden-master substrate repair, the commit-refuse hooks, the dispatch
+  machinery itself.
+- *Spec ratification keeps its DESIGNED human gate* (independent Fable review +
+  the maintainer's accept) and grooming is a maintainer-owned cut — deliberate
+  human touchpoints, not TUI holes.
 
-**First confirmed hole: Track D** — the per-item valves are NOT bound to any TUI
-key (verified at wind-down: `console-tui` constructs none of the valve command
-types; the palette recognizes only `drain`). Driving a valve from the TUI fails
-on contact, which is the intended forcing function. Track D's build closes it.
+The discipline this imposes: if a plan deliverable "can't" be a factory
+work-item, that is a smell — re-groom it until it can, or confirm it is the
+narrow plumbing exception.
 
-The right-hand (by-design-CLI) list is provisional and subject to maintainer
-revision — if the maintainer rules any of it SHOULD be TUI-drivable, it moves to
-the hole list.
+## DOGFOODING SESSION — 2026-07-12 (driver `livespec-autonomous-mode`): cockpit-readiness epic opened
 
-## WIND-DOWN STATE — 2026-07-12 (resume from here in a fresh session)
+Resumed under directive #3 (dogfood the console TUI). Launched the live console
+TUI in tmux session `console-autonomous-mode` (`just tui`; builds + runs under
+`with-livespec-env.sh`). Driving it immediately forced THREE usability holes.
+This supersedes "A→D→C→B" ordering: the cockpit itself is not yet drivable, so a
+new **console "cockpit-readiness" epic** is opened and (maintainer-chosen)
+runs **in PARALLEL** with Track A.
+
+**Findings (from driving the real TUI):**
+- **#1 blind cockpit.** The console's backing CLIs (`needs-attention`,
+  `list-work-items`, `livespec-orchestrator-drive`, `livespec-dispatcher-drain`,
+  `livespec`) don't resolve on PATH — even under the wrapper — so live views
+  (Attention/Lanes/Spec) silently show empty; only event-store views
+  (Events/Repos) populate. **Decision (maintainer): fix via a RESOLVER LADDER** —
+  the console locates the orchestrator plugin the SAME way livespec Drivers
+  resolve core (env override → governed checkout → installed cache) and invokes
+  its scripts directly; no PATH shims; serves Track C (downloadable deliverable).
+  Sub-finding: degradation is SILENT (no "not observed" surfaced).
+- **#2 valves unbound (== Track D).** `?` help confirms only `a` (autonomous
+  toggle), `:` (drain), and nav are bound; the five per-item valves
+  (approve/accept/reject/set-admission/set-acceptance) have NO TUI key.
+- **#3 hard crash on backfill (NEW).** `serve` from the orchestrator-repo cwd
+  dies at startup with `Adapter(AppendFailed)` during its journal backfill;
+  `doctor` (no backfill) is fine. Isolated: console-cwd works, orchestrator-cwd
+  fails, repo-id-alone is fine. A HARD crash, not the README's promised graceful
+  "not observed" degradation — so the cockpit can't even START against the
+  data-rich tenant.
+
+**Cockpit-readiness epic (console tenant) — 4 slices, groomed (maintainer-owned
+cut) + factory-dispatched:** S1 resolver ladder (#1) · S2 loud "not observed"
+(#1 sub) · S3 backfill robustness (#3) · S4 valve keybindings (#2/Track D). A
+read-only grooming-DRAFT sub-agent was dispatched (root-cause #3 + draft slices
+w/ Definition-of-Ready + console clause-gap-id co-edit discipline) for maintainer
+approval before any `capture-work-item` filing. These are console-repo work-items
+dispatchable through the factory NOW (factory works for the console tenant);
+bootstrap: dispatch/observe via the orchestrator CLI until the cockpit drives
+itself.
+
+**Track A status: BLOCKED on a HUMAN valve.** `bd-ib-w4iaaf` (orchestrator
+tenant) is `blocked` = "provision a GitHub App installation covering the
+livespec-e2e throwaway repos" — a GitHub org-settings act, NOT factory-executable
+(surfaced live as a `set-admission:bd-ib-w4iaaf:manual` needs-attention valve).
+The golden-master live run canNOT go green until the maintainer provisions this
+Fabro App installation. Track A's branch `fix-golden-master-custom-statuses`
+(orch, `a102190`, unverified, no PR) waits behind it.
+
+**Interim dogfooding tooling (scratch-only, LOCAL, not committed):** under the
+session scratchpad `…/scratchpad/` — `consolebin/` (shims resolving the backing
+CLIs to the orchestrator plugin `.venv` scripts, the Finding #1 workaround) +
+`launch-cockpit-orch.sh` (console TUI vs the orchestrator tenant). NOTE the
+orch-tenant launcher currently trips Finding #3 (backfill crash); the
+console-tenant cockpit (`just tui` from the console repo) launches clean but is
+data-light (attention 0). Delete this scratch when S1/S3 land.
+
+**Resume order (this session):** (1) synthesize the grooming-draft sub-agent's
+output → present slices for maintainer approval → `capture-work-item` the epic +
+S1–S4 in the console tenant → factory-dispatch. (2) Surface `bd-ib-w4iaaf` to the
+maintainer as the Track A human gate. (3) I2 stays last + maintainer-gated; its
+"actionable in-TUI" DoD now depends on S4. Tracks B/C unchanged (delegate).
+
+## WIND-DOWN STATE — 2026-07-12 (superseded by the DOGFOODING SESSION above; kept for prior context)
 
 Track A (repair the embedded golden-master → run I2) is mid-repair; Tracks B/C/D
 pending; two doc PRs merged; two sub-agents were in flight at wind-down.
