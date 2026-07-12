@@ -10,6 +10,20 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-12 (SESSION 16) UPDATE — READ THE SESSION-16 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-15 below.** ✅ **ALL 8 IN-SCOPE REPOS ARE
+  FLIPPED/RESOLVED — the epic's original file_lloc-coverage done-definition is COMPLETE.** `livespec-iily`
+  (dev-tooling) flipped this session via 10 genuine cohesion decompositions (PRs #334/#336/#338/#340) + a
+  hygiene PR (#342) + the flip (#343, `file_lloc_hard_gate = true`); independent Fable NO-BLOCKERS ratification
+  (AST-identity proof + flip bite-proof + mutation-killed mirror tests); dev-tooling master CI green; fleet-wide
+  CI green after the 0.40.1–0.40.4 fan-out (no regression). All 8 tracks CLOSED (9bym, 236f, 8x7d, t4e0, q7bx,
+  v74p, gqte, iily). **⚑ THE EPIC IS DELIBERATELY STILL OPEN.** Maintainer decision 2026-07-12: keep it open and
+  **FOLD IN `livespec-tawm`** (the cross-driver `no_shadow_ledger.py` byte-identity fix the driver work exposed)
+  as the FINAL piece before archival; archival is AUTHORIZED once tawm lands + is Fable-reviewed. **THE NEXT
+  SESSION'S JOB = groom + drive `livespec-tawm`, then archive** (see the SESSION-16 block + the read-first chain
+  `research/tawm-fold-in.md` + `bd show livespec-tawm`). This session WOUND UP for that handoff; nothing on the
+  original 8 repos remains. Everything below (incl. SESSION-15) is prior context SESSION-16 supersedes where
+  they conflict.
 - **⇒ 2026-07-12 (SESSION 15) UPDATE — READ THE SESSION-15 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-14 below.** ✅ **BOTH DRIVER TRACKS DONE — the epic is
   now 7 of 8 in-scope repos resolved.** driver-claude (core tracker `livespec-v74p`) and driver-codex (core
@@ -1066,6 +1080,43 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-12 SESSION 16 — CURRENT STATE, READ FIRST (supersedes SESSION-15 below)
+>
+> **✅ THE ORIGINAL EPIC IS COMPLETE — 8/8 in-scope repos flipped/resolved, all tracks CLOSED, fleet-wide CI
+> green.** Nothing on the original 8 repos remains. The epic (`livespec-i5ebqd`) is kept OPEN only for the
+> maintainer-folded-in final piece.
+>
+> **⚠ NEXT ACTION ON RESUME — the ONE remaining piece: `livespec-tawm`, then ARCHIVE.**
+> Read-first chain for this action: THIS block → `plan/fleet-check-coverage/research/tawm-fold-in.md` →
+> `bd -C /data/projects/livespec show livespec-tawm`. Steps:
+> 1. **Groom `livespec-tawm`** into ready, dependency-layered slices (it is a small cross-repo epic). It is the
+>    cross-driver `no_shadow_ledger.py` fix: (a) reconcile the two Drivers' copies to genuine byte-identity
+>    (`livespec-driver-claude:.claude-plugin/hooks/no_shadow_ledger.py` vs
+>    `livespec-driver-codex:livespec/hooks/no_shadow_ledger.py`; drift commits claude `9283b68` / codex `16c5c65`),
+>    (b) add `__all__` byte-identically to BOTH (clears the last residual `all_declared` Phase-0 WARN on both
+>    drivers), (c) add a mechanical byte-identity guard — FIRST decide the canonical source (does livespec core
+>    already own/ship the canonical body? per `.ai/no-circular-dependency.md` the guard lives CONSUMER-side reading
+>    the producer).
+> 2. **Drive it HOST-SIDE** (shared hook contract; NOT factory-safe). Scoped agents in worktrees under review;
+>    independent Fable NO-BLOCKERS before accepting each slice; driver PRs auto-merge on green → review-the-merged-
+>    commit + fix-forward. If the guard wires into driver `.github/workflows/`, use the host-side push with
+>    maintainer creds (the factory App lacks `workflows` permission — proven this epic).
+> 3. **THEN ARCHIVE** (maintainer PRE-AUTHORIZED archival-after-tawm; confirm tawm is genuinely done + reviewed
+>    first, re-confirm with the maintainer if anything is ambiguous): close the epic `livespec-i5ebqd`, then
+>    `git mv plan/fleet-check-coverage/ plan/archive/fleet-check-coverage/` in a PR (plan-thread lifecycle:
+>    archived iff the epic is closed). To keep any research note as living reference, relocate it deliberately.
+>
+> **STATE THAT IS DONE (do NOT redo):** all 8 flips + their Fable reviews + track closures. driver-codex install
+> is at v0.3.3 (live-exercised). The 4 already-flipped-earlier repos (core/orch/runtime/git-jsonl) + console
+> (won't-wire) + both drivers + dev-tooling are all flipped/resolved. dev-tooling's cosmetic `uv.lock`
+> self-version lag is a known non-blocker (every `uv sync` dirties it; `git checkout -- uv.lock`).
+>
+> **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-check-coverage`
+>
+> ---
+> *(SESSION-15 block below is prior context SESSION-16 supersedes where they conflict — the iily flip it names as
+> the next action is DONE; SESSION-16 completed it and left only the folded-in livespec-tawm.)*
+>
 > ### ⇒ 2026-07-12 SESSION 15 — CURRENT STATE, READ FIRST (supersedes SESSION-14 below)
 >
 > **✅ BOTH DRIVER TRACKS DONE (7 of 8 in-scope repos resolved).** driver-claude (`livespec-v74p`) + driver-codex
