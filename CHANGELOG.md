@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/thewoolleyman/livespec/compare/v0.8.0...v0.9.0) (2026-07-12)
+
+
+### Features
+
+* **overseer:** daemon — poll loop, tmux IO, state machine, table + CLI ([331ef04](https://github.com/thewoolleyman/livespec/commit/331ef04b2efc2fc6d06c68b195a8c3f91db5d88d))
+
 ## [0.8.0](https://github.com/thewoolleyman/livespec/compare/v0.7.7...v0.8.0) (2026-07-12)
 
 
