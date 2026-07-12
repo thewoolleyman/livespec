@@ -55,6 +55,89 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-12 (cont.): cockpit-readiness FILED + fpo through factory + e2e App created; golden-master at gate #6
+
+Continuation of the DOGFOODING SESSION below. Big progress on BOTH tracks; the
+sole remaining Track-A blocker is now a NEW substrate gate (#6), fully diagnosed.
+
+**Cockpit-readiness epic — FILED + first slice landed (console tenant):**
+- Groomed cut (maintainer-approved) filed to the console ledger: epic
+  **`livespec-console-beads-fabro-g06`** + **S1 `003`** (orchestrator-plugin
+  resolver ladder) / **S2 `d6f`** (header/status source-unavailability
+  indicator) / **S4 `nyh`** (bind the 5 valves to TUI keys + fix `drive --repo`
+  id→path). **S3 reconciled to the pre-existing `fpo`** (u64→i64 stream_seq
+  overflow + per-record backfill isolation). Layering `fpo → 003 → {d6f, nyh}`.
+  Decisions baked in: S1 = resolver ladder (env→governed-checkout→installed-cache,
+  like the Drivers resolve core) + loud "not observed"; S2 = header/status
+  indicator; S3 = 63-bit mask + isolation; S4 id→path via S1's resolver.
+- **`fpo` (S3) went fully through the factory:** dispatched via
+  `dispatcher.py dispatch --repo <console> --item <fpo> --json` → **PR #168**
+  merged + post-merge janitor green (`041343d fix: cover source adapter append
+  isolation`). VERIFIED LIVE: rebuilt the console binary, re-ran the Finding-#3
+  repro (`serve --preview` from the orchestrator-repo cwd) → **crash gone**
+  (`store ready, backfill events: 5`). fpo is now PARKED in `acceptance` under
+  the `ai-then-human` policy — **awaits a HUMAN accept** to reach `done` and
+  unblock S1. (Accepting it is itself a valve → blocked from the TUI by Track
+  D/S4 — a live demonstration of the hole; drive it CLI-side for now.)
+- Refined finding for S1: making the CLIs resolve on PATH is NECESSARY BUT NOT
+  SUFFICIENT — with read-shims in place the cockpit's **Lanes view still showed
+  0**; S1 must wire the full observation path + verify views populate, not just
+  PATH-resolve.
+
+**Track A — the e2e GitHub App is CREATED + wired (bd-ib-w4iaaf provisioning DONE):**
+- Created **`livespec-e2e-pr-bot`** (org-owned by the `livespec-e2e` org), **App
+  ID `4277313`**, **installation `146007016`**, **All-repositories** install
+  (covers dynamically-created throwaway repos), permissions matching the fleet
+  App `livespec-pr-bot` exactly (contents/pull_requests/workflows=write,
+  metadata=read), webhook off. Done in the maintainer's Chrome via Playwright
+  (manifest flow failed on a serialization quirk; used the UI form + direct
+  hidden-input permission setting + `form.submit()`).
+- Creds imported (by the maintainer) into the livespec 1Password environment
+  (`fufpvkvatwkmqjzvilvfnemsue`) under **`GITHUB_APP_ID_E2E` /
+  `GITHUB_PRIVATE_KEY_E2E` / `GITHUB_APP_INSTALLATION_ID_E2E`** — verified
+  present; fleet generics untouched (no collision). Raw PEM at
+  `/tmp/livespec-e2e-app/private-key.pem`; `.env` at `/tmp/livespec-e2e-app.env`.
+- Golden-master wired to PREFER the `_E2E` vars over the fleet generics: `chore`
+  commit **`5d7ca36`** on branch `fix-golden-master-custom-statuses` (pushed).
+  Container contract unchanged (`GITHUB_APP_ID` etc. per contracts.md
+  §"Self-contained plugin dispatch") → **no spec change**.
+- **SECURITY:** a bad `mint_app_token.py --help` call (that CLI has no `--help`;
+  it MINTS + prints a token) exposed a live FLEET App installation token; it was
+  **revoked (204)** immediately. LESSON: never run `mint_app_token.py` to "check
+  help" — it emits a real token.
+
+**Golden-master live run (`bix746u20`) — PASSED the App gate, FAILED at gate #6:**
+The e2e App WORKS: preflight green, throwaway repo created + seeded + pushed
+(host-side via `LIVESPEC_E2E_GITHUB_TOKEN`), dispatch reached the Fabro sandbox
+which **cloned + pushed the repo using the e2e App**. It then failed at the
+sandbox SETUP step: `uv run python -m livespec_dev_tooling.install_commit_refuse_hooks`
+→ **`ModuleNotFoundError: No module named 'livespec_dev_tooling'`**. Root cause:
+the e2e-skeleton (`orchestrator-image/e2e-skeleton/pyproject.toml`) carries
+`dependencies = []`, so the fleet-default prepare chain (which assumes
+`livespec_dev_tooling`) can't run. This IS the v024-flagged "prepare steps are
+per-target facts, not fleet constants" gap — tracked as **`bd-ib-z2ctra`**. Also
+observed: `workflow.fabro` `acp.command="{{ inputs… }}"` triggers
+`detemplated_attribute` warnings (current Fabro deprecated templating outside
+`prompt`/`goal`) — a currency issue to fix alongside.
+
+**RESUME ORDER (fresh session):**
+1. **Gate #6 (Track A):** fix the e2e-skeleton prepare chain so the sandbox setup
+   succeeds — either add `livespec_dev_tooling` to the e2e-skeleton deps, OR give
+   the skeleton a target-local workflow with a prepare step that doesn't assume
+   the fleet toolchain (v024 escape hatch / `bd-ib-z2ctra`); also refresh
+   `workflow.fabro`'s deprecated `acp.command` templating. Re-run from the
+   `fix-golden-master-custom-statuses` worktree:
+   `/usr/local/bin/with-livespec-env.sh -- bash orchestrator-image/acceptance-live-golden-master.sh --run --poll-attempts 80`.
+   When green → open+merge that PR → close `bd-ib-w4iaaf` → I2 unblocked.
+2. **Cockpit-readiness:** CLI-accept `fpo` (unblocks S1) → dispatch S1 `003`
+   (`dispatcher.py dispatch --repo <console> --item …-003`) → then S2 `d6f` / S4
+   `nyh`. Continue driving via the TUI in `console-autonomous-mode`.
+3. **I2** (maintainer-gated live acceptance) after the golden-master is green.
+4. Interim dogfooding tooling (scratch, LOCAL): `…/scratchpad/consolebin*/` shims
+   + `launch-cockpit-{orch,console}.sh`; delete once S1 lands. Console-tenant
+   cockpit works; orchestrator-tenant cockpit's Finding-#3 crash is now fixed on
+   master.
+
 ## DOGFOODING SESSION — 2026-07-12 (driver `livespec-autonomous-mode`): cockpit-readiness epic opened
 
 Resumed under directive #3 (dogfood the console TUI). Launched the live console
