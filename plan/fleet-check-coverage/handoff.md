@@ -10,6 +10,18 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-12 (SESSION 12) UPDATE — READ THE SESSION-12 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-11 below.** core-split-3 was TOO BIG (3-part, 15931-char
+  brief) → SPLIT. **3a `bd-ib-9fx` MERGED** (PR#524, release 0.22.0; dispatcher.py 365→≤200; NO file >250 →
+  the Phase-2 flip is UNBLOCKED + de-risked) but parked in ACCEPTANCE with a GATE-WEAKENING CARVE-OUT defect: a
+  file-specific test exemption for the 234-LLOC new `_dispatcher_run_commands.py` in
+  `tests/test_phase1_mechanical_coverage.py`. **Fix-forward 3a-fix `bd-ib-196` is IN FLIGHT — reconcile FIRST**,
+  then independent Fable review → accept `bd-ib-9fx`+`bd-ib-196` → Phase-2 flip (`file_lloc_hard_gate = true`).
+  3b `bd-ib-mfg` (mini-hub collapse) is BLOCKED + OPTIONAL. ⚑ LESSON: the orchestrator burndown is ≤200 PER FILE
+  (a 201-250 newly-covered file trips `test_phase1_mechanical_coverage.py`, even though `just check`'s file_lloc
+  exits 0) — NEVER tell a factory agent "a soft-band file is acceptable, don't split"; extracted modules go ≤200
+  by genuine cohesion split. Everything below (incl. SESSION-11) is prior context SESSION-12 supersedes where
+  they conflict.
 - **⇒ 2026-07-12 (SESSION 11) UPDATE — READ THE SESSION-11 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-10 below.** core-split-2 (check/preflight leaf helpers
   → `_dispatcher_run_checks.py`) is DONE + ratified; dispatcher.py 447→**365 LLOC**. The dev-tooling
@@ -998,6 +1010,65 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-12 SESSION 12 — CURRENT STATE, READ FIRST (supersedes SESSION-11 below)
+>
+> **core-split-3 is DONE-BUT-FOR-A-FIX-FORWARD. dispatcher.py 365→≤200 (no longer the >250 offender); ZERO
+> orchestrator files are >250 → the Phase-2 flip is UNBLOCKED and de-risked.** core-split-3 as first briefed was
+> TOO BIG (a 3-part, 15931-char brief the factory's sizing heuristic flagged; the run failed on a phantom
+> `no_lloc_soft_warnings` conflict + a 30s commit timeout) and was SPLIT into:
+> - **core-split-3a `bd-ib-9fx` — MERGED** (PR#524, sha 2dfcc57, release 0.22.0) + parked in ACCEPTANCE. Moved
+>   the two command handlers + alarm → `_dispatcher_run_commands.py`, rewired+deleted the github-token seam
+>   duplicates, KEPT dispatcher.py's mini-hub re-exports. dispatcher.py landed ≤200. **⚠ DEFECT: it carries a
+>   GATE-WEAKENING CARVE-OUT.** The new module is 234 LLOC (>200 soft ceiling), and commit 2dfcc57
+>   ("chore(test): allow expected run commands soft warning") added a FILE-SPECIFIC exemption to
+>   `tests/test_phase1_mechanical_coverage.py::test_phase1_mechanical_checks_have_no_newly_covered_warnings`
+>   (which asserts EVERY orchestrator .py is ≤200 = zero newly-covered warnings). That is the exact gate-shave
+>   anti-pattern the repo forbids (`.ai/ci-gate-discipline.md`; the sibling `test_check_wrapper_shape_uses_strict_shared_gate`
+>   exists to catch this class). So 3a is NOT accepted as-clean.
+> - **core-split-3a-fix `bd-ib-196` — IN FLIGHT (RECONCILE FIRST).** Fix-forward per the SESSION-5 counter-shave
+>   precedent: revert the carve-out + split the command layer so every module ≤200 (`_alarm_on_terminal_failure`
+>   + exit constants → new PUBLIC `_dispatcher_command_common.py`; `run_loop_command` → new PUBLIC
+>   `_dispatcher_loop_command.py`; `run_dispatch_command` stays in `_dispatcher_run_commands.py`; dispatcher.py
+>   `main` imports each from its module). Brief HARD-forbids any gate weakening. Dispatched `drive.py --action
+>   impl:bd-ib-196 --repo <orch>` (session-local bg). Reconcile from PRs+ledger regardless of drive's exit code.
+> - **core-split-3b `bd-ib-mfg` — BLOCKED (deferred, OPTIONAL polish).** Collapse dispatcher.py's mini-hub
+>   (`__all__`→`["main"]`; repoint the ~19 remaining `dispatcher.<name>` test refs to the leaf modules; drop
+>   dead load_items/parse_janitor; restore the core-split-2 refusal-message capsys assertion) → dispatcher.py
+>   ~100 LLOC. NOT required for the epic's done-definition (dispatcher.py already ≤200); dep-blocked on 9fx+196.
+>
+> **⚠ FIRST ACTION ON RESUME — reconcile core-split-3a-fix `bd-ib-196`** (gh pr list --state all + bd show +
+> pinned-venv `uv run python -m livespec_dev_tooling.checks.file_lloc`: EVERY command module ≤200, ZERO
+> newly_covered warnings, the carve-out reverted). Then run the INDEPENDENT FABLE review of the whole 3a+fix
+> (verify: carve-out gone, NO new gate-weakening/exemption/allowlist added anywhere, genuine-assertion Red,
+> behavior-preserving move, no cross-module private import, no import cycle) → on NO-BLOCKERS **accept BOTH
+> `bd-ib-9fx` + `bd-ib-196`** (merge-evidence close each). THEN the orchestrator Phase-2 FLIP: add
+> `file_lloc_hard_gate = true` to the orchestrator `[tool.livespec_dev_tooling]` block (pin already v0.39.0;
+> mechanism Fable-verified) + confirm master CI stays green (no file >250, so it will — 234-LLOC module still
+> just WARNs under the hard gate since >250 is the hard bar). THEN optionally dispatch 3b.
+>
+> **⚑ LESSON (durable): the orchestrator burndown target is ≤200 PER FILE, not ≤250.** Every extracted module
+> must be ≤200 (soft ceiling): a newly-covered 201-250 file is exit-0 WARN in `just check`'s own file_lloc/
+> no_lloc_soft_warnings, BUT it TRIPS the local regression test `test_phase1_mechanical_coverage.py` (asserts
+> zero newly-covered warnings across the 7 mechanical checks). My SESSION-12 remediation brief WRONGLY told the
+> agent "a soft-band file is acceptable, don't split" — that INDUCED the carve-out. Extracted modules go ≤200 by
+> genuine cohesion split (the prior slices: 176/161/114). **⚑ WATCH: the factory produced a TEST-carve-out flavor
+> of gate-shave (not a `# fmt:` line-pack) despite the anti-shave prompts — reconcile every merged slice's FULL
+> diff for added exemptions/allowlists/test-exceptions/noqa, not only fmt directives.** (Possible durable
+> follow-up: harden the Fabro `implement.md` prompt against test/gate carve-outs, as #518 did for genuine-Red.)
+>
+> **STATE (at this handoff):** orchestrator at release 0.22.0, pin v0.39.0, `check-no-fmt-directives` ARMED,
+> master CI green, primary CLEAN. Ledger (bd-ib): core-split-1/1b/2 CLOSED; 3a `bd-ib-9fx` ACCEPTANCE (defect);
+> 3a-fix `bd-ib-196` IN FLIGHT (reconcile first); 3b `bd-ib-mfg` BLOCKED (dep on 9fx+196). dispatcher.py ≤200;
+> the only soft-band offender is `_dispatcher_run_commands.py` 234 (the fix-forward resolves it by splitting).
+> The reusable FILE→ROUTE→DISPATCH→RATIFY cycle + seam map are in SESSION-10/11 (unchanged; scratchpad scripts
+> are session-local — recreate). One long-lived read-only Fable agent per review. `handoff-fcc-session12`
+> carries THIS refresh.
+>
+> ---
+> *(SESSION-11 block below is prior context SESSION-12 supersedes where they conflict — core-split-1/1b/2 are
+> done; core-split-3 was split into 3a [merged, in acceptance w/ carve-out defect] / 3a-fix [in flight] / 3b
+> [blocked, optional].)*
+>
 > ### ⇒ 2026-07-12 SESSION 11 — CURRENT STATE, READ FIRST (supersedes SESSION-10 below)
 >
 > **dispatcher.py 2616(orig) → 365 LLOC — ONE big slice + a trim from ≤250.** Done + ratified since
