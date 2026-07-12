@@ -1,0 +1,100 @@
+# ci-selfhosted-shadow.yml — Phase 0 NON-GATING local self-hosted CI shadow lane.
+#
+# This workflow is DELIBERATELY isolated from the real CI (ci.yml):
+#   * unique runner label `livespec-ci-pilot` — the real CI uses ubuntu-latest,
+#     so the local runner can never pick up a real CI job (label mismatch);
+#   * triggers ONLY on push to the throwaway `ci-shadow/**` branch namespace
+#     and manual workflow_dispatch — NEVER pull_request / merge_group, so it is
+#     not a status check on any PR and cannot gate a merge;
+#   * never added to branch protection / required checks — non-gating by
+#     construction, even when red.
+#
+# It runs its steps INSIDE the baked family image, driven by the ci-runner's
+# rootless podman via ACTIONS_RUNNER_CONTAINER_HOOKS — the same image the Fabro
+# sandbox uses, in a container that is PID/user/mount-namespace-isolated from the
+# runner agent (Phase 0 containment design). Least-privilege token; no secrets.
+#
+# Design: plan/fabro-ci-image-factoring/phase0-runner-containment-design.md
+name: CI self-hosted shadow (non-gating)
+
+on:
+  push:
+    branches:
+      - "ci-shadow/**"
+  workflow_dispatch: {}
+
+# Default-deny; each job grants only what it needs (read).
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-selfhosted-shadow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast, reliable proof that the runner + rootless-podman container +
+  # agent/job isolation + host-service denial all hold in a REAL job.
+  mechanism-and-isolation:
+    name: mechanism + live isolation
+    runs-on: [self-hosted, livespec-ci-pilot]
+    container:
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
+    permissions:
+      contents: read
+    steps:
+      - name: Identity — running in the baked image, not on the host
+        run: |
+          echo "whoami=$(id -un 2>/dev/null || echo '?') uid=$(id -u)"
+          echo "hostname=$(hostname)"
+          echo "container marker present: $( [ -f /run/.containerenv ] || [ -f /.dockerenv ] && echo yes || echo 'no (check cgroup)')"
+          echo "PIDs visible (should be a small, container-local set):"
+          ls /proc | grep -E '^[0-9]+$' | tr '\n' ' '; echo
+      - name: Live isolation — NO docker socket, NO host-loopback services, NO runner creds
+        run: |
+          set -u
+          fail=0
+          echo "--- (test 4) docker socket must be ABSENT ---"
+          if [ -S /var/run/docker.sock ]; then echo "FAIL: docker.sock present"; fail=1; else echo "PASS: no /var/run/docker.sock"; fi
+          echo "--- (test 8) host-loopback + host-self services must be DENIED ---"
+          probe() { timeout 3 bash -c "exec 3<>/dev/tcp/$1/$2" 2>/dev/null && { echo "FAIL: reachable $1:$2"; fail=1; } || echo "PASS: denied $1:$2"; }
+          probe 127.0.0.1 3307        # container loopback (Dolt not here)
+          probe host.containers.internal 3307
+          probe 169.254.169.254 80    # cloud metadata
+          echo "--- (test 11) runner-agent credential material must be UNREACHABLE ---"
+          if find / -xdev -maxdepth 6 \( -name '.credentials' -o -name '.jitconfig' -o -name '.runner' \) 2>/dev/null | grep -q .; then
+            echo "FAIL: runner credential file reachable in job fs"; fail=1
+          else echo "PASS: no runner credential material in job fs"; fi
+          echo "--- outbound internet SHOULD work (CI needs it) ---"
+          probe_ok() { timeout 5 bash -c "exec 3<>/dev/tcp/$1/$2" 2>/dev/null && echo "ok: $1:$2 reachable" || echo "WARN: $1:$2 unreachable"; }
+          probe_ok 1.1.1.1 443
+          echo "isolation result: fail=$fail"
+          [ "$fail" -eq 0 ]
+
+  # The actual shadow check: livespec's own `just check` in the baked image on
+  # the local runner. May need tuning (some targets need GitHub auth) — kept a
+  # SEPARATE job so a hiccup here never masks the mechanism proof above.
+  full-check:
+    name: just check (shadow)
+    runs-on: [self-hosted, livespec-ci-pilot]
+    container:
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
+    permissions:
+      contents: read
+    env:
+      # Read-scoped Actions token for the not-fully-hermetic targets
+      # (check-master-ci-green etc.); NEVER a Kind-2 secret.
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout (full history — no shallow, per Phase 0 design)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Toolchain sanity (baked image)
+        run: |
+          echo "just:   $(command -v just && just --version)"
+          echo "uv:     $(command -v uv && uv --version)"
+          echo "mise:   $(command -v mise && mise --version)"
+          echo "python: $(command -v python3 && python3 --version)"
+      - name: just check
+        run: |
+          just check
