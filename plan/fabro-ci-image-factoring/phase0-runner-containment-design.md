@@ -1,15 +1,16 @@
 # Phase 0 — local-runner containment & security design
 
 **Status:** design artifact, drafted 2026-07-12, grounded in a read-only host
-survey + the `handoff.md` threat model. **Revised through ROUND 3** of the dual
-adversarial review (each round a fresh Fable-model agent AND a fresh Codex agent,
-independent + read-only). Round 1 both SBF; round 2 both SBF; **round 3: Fable
-NO-SERIOUS-BLOCKERS, Codex one serious blocker** (runner-agent/job process
-separation) — resolved in this revision. Findings + resolutions per round in the
-§"Round N dual-review record" sections. **NO host was mutated** by any review or
-revision. This design remains **gated**: it must pass a FRESH round-4 dual review
-(§"Gate") before ANY host change is made. Companion to `handoff.md`; tracked as
-epic child `livespec-3lev.3`.
+survey + the `handoff.md` threat model. **GATE PASSED at round 4 (2026-07-12):
+both a fresh Fable-model agent AND a fresh Codex agent returned
+NO-SERIOUS-BLOCKERS** over four iterative rounds (each round a fresh independent
+pair; round 1 both SBF → round 2 both SBF → round 3 Fable clean / Codex 1 →
+round 4 both clean). Findings + resolutions per round in the §"Round N
+dual-review record" sections; this revision also folds the round-4 **non-blocking**
+observations (a polish pass — no further review round required). **NO host was
+mutated** by any review or revision. Implementation still requires **explicit
+maintainer authorization for the first host mutation** (§"Provisioning pre-gate").
+Companion to `handoff.md`; tracked as epic child `livespec-3lev.3`.
 
 ## Why this is the highest-risk phase
 
@@ -177,19 +178,42 @@ whatever the workflow **injects** into its environment, so:
      configuration** (`--jitconfig`) so there is no re-registerable registration
      token at all; the supervisor mints per-run JIT config (§"Supervisor").
    - **Agent/job process separation (the hard MUST — not an alternative to JIT).**
-     The **job step process runs as a DIFFERENT UID and in an ISOLATED PID
-     namespace from the runner agent**, so job code cannot see, `/proc`-inspect,
-     `ptrace`, or `gcore` the agent. Concretely: `/proc` protections
-     (`hidepid=2` / `ProtectProc=invisible` / `ProcSubset=pid` or the
-     container-equivalent), `ptrace` denied across the boundary, **no shared
-     runner working directory**, and any JIT/session material deleted or unmounted
-     from the job's reachable filesystem before job code starts. The job still
-     runs from the **same baked image** (image parity preserved — the boundary is
-     about process/UID isolation from the agent, not a different toolchain).
+     The **job step process runs in an ISOLATED PID namespace from the runner
+     agent, with no path to act as the agent's host UID**, so job code cannot see,
+     `/proc`-inspect, `ptrace`, or `gcore` the agent. The load-bearing security
+     property is stated on the **host-visible** identity: job code cannot become
+     or act as the runner-agent's host UID, and cannot reach the agent process —
+     achieved by separate **PID + user namespaces** (a separate PID namespace
+     alone makes the agent PID unaddressable; cross-userns `ptrace` is denied) and
+     no residual capability/setuid path back into the agent's UID boundary.
+     Concretely: `/proc` protections (`hidepid=2` / `ProtectProc=invisible` /
+     `ProcSubset=pid` or the container-equivalent), `ptrace` denied across the
+     boundary, **no shared runner working directory**, and any JIT/session
+     material deleted or unmounted from the job's reachable filesystem before job
+     code starts. The job still runs from the **same baked image** (image parity
+     preserved — the boundary is process/namespace isolation from the agent, not a
+     different toolchain).
+     - **Mechanism (named so an implementer does not build the naïve model and
+       only discover at test 11 that it can't pass):** the stock GitHub Actions
+       runner runs job steps as the **same UID + PID namespace** as the agent, so
+       the separation needs an explicit interposition —
+       **`ACTIONS_RUNNER_CONTAINER_HOOKS`** with a **rootless-podman / bwrap
+       backend** running the baked image is the clean, constraint-compatible
+       choice (it also covers JS and composite actions, which a "wrap the shell"
+       hack does NOT). Because the shipped `bwrap-userns-restrict` profile strips
+       the agent process's own caps, the job's namespaces must be created by a
+       **fresh nested `bwrap` / rootless-engine invocation** (which carries the
+       userns privilege via the shipped profile) — NOT by the agent calling
+       `unshare`/`setuid` directly, which would `EPERM`.
+     - **Either UID model is acceptable** so long as the host-visible property
+       holds: **subuid-range mapping** (job maps to a distinct host subuid) OR a
+       **single-uid two-sandbox** model (agent and job both map to the `ci-runner`
+       host UID but run in separate PID + user namespaces). Test 11 asserts the
+       security property, not a specific numeric-UID difference.
    - Verified by test 11 (a job actively attempts `/proc/<agent-pid>/{environ,
      cmdline,fd,mem}`, `ptrace`/`gcore` reads, runner-workdir credential reads,
-     and a token/JIT reuse — all must fail — and asserts the job's UID and PID
-     namespace differ from the agent's).
+     and a token/JIT reuse — all must fail — and asserts PID-namespace separation
+     from the agent plus no reachable path to the agent's host-UID identity).
 
 ## Provisioning pre-gate — verify shipped AppArmor + rootless stack (host mutation, gated)
 
@@ -358,13 +382,15 @@ Persistent local-disk cache dirs (`~/.cache/uv`, `~/.cargo/registry`) owned by
    path; **AND** both `kernel.apparmor_restrict_unprivileged_userns` and
    `..._unconfined` still read **`=1`**; **AND** the runtime binary is **not**
    setuid-root (`find … -perm -4000` finds none in the launch path).
-8. **(network — all host-loopback paths, dynamically enumerated)** from a job,
-   **no** host-loopback route the backend provides is reachable — container
+8. **(network — all host-loopback + link-local, dynamically enumerated)** from a
+   job, **no** host-loopback route the backend provides is reachable — container
    `127.0.0.1`, the backend gateway IP(s), `host.containers.internal`, any proxy
    path — against the **live** loopback listener set enumerated at test time on
-   IPv4 **and** `[::1]` (today: Dolt `:3307`, collector `:4317`,
-   `:9222/:5432/:445/:8000/:8001/:8888`); `--network=host` is not in effect. The
-   test asserts the isolated-netns / default-deny **principle**, not a fixed list.
+   IPv4 **and** `[::1]` (illustrative, **not** exhaustive: Dolt `:3307`, collector
+   `:4317`/`:4318`, `:9222/:5432/:445/:8000/:8001/:8888`), **and** the link-local
+   cloud-metadata endpoint `169.254.169.254` is unreachable (belt-and-suspenders,
+   in case the VPS exposes one); `--network=host` is not in effect. The test
+   asserts the isolated-netns / default-deny **principle**, not a fixed list.
 9. **(static workflow audit)** no self-hosted-labeled job is reachable from a
    forbidden trigger (`merge_group`, `pull_request_target`, `workflow_run`,
    `issue_comment`, label, `repository_dispatch`, `workflow_dispatch`);
@@ -373,8 +399,11 @@ Persistent local-disk cache dirs (`~/.cache/uv`, `~/.cargo/registry`) owned by
     read-only / throwaway; only a supervisor-classified trusted post-merge run
     writes back.
 11. **(runner-agent material not reachable — files, process, OR memory)** from
-    inside a job: (a) the job's UID **differs** from the runner agent's and the
-    job runs in an **isolated PID namespace** (the agent PID is not visible); (b)
+    inside a job: (a) the job runs in an **isolated PID namespace** from the agent
+    (the agent PID is not visible) and has **no path to act as the runner-agent's
+    host UID** — whether the job maps to a distinct host subuid or runs in a
+    separate user namespace under the same `ci-runner` host UID (the assertion is
+    on the host-visible identity, not an in-container numeric-UID difference); (b)
     active attempts to read `/proc/<agent-pid>/{environ,cmdline,fd,mem}`,
     `ptrace`/`gcore` the agent, and read any runner working-directory credential
     file all **fail**; (c) a reuse attempt of any JIT/registration material fails.
@@ -392,10 +421,14 @@ exposure, network reach to host services, registration-credential exposure —
 blockers**. A no-serious-blockers verdict from both is the precondition for
 implementation. Record each round's findings + resolutions on `livespec-3lev.3`.
 
-**Round 1: COMPLETE — both SBF. Round 2: COMPLETE — both SBF. Round 3: COMPLETE —
-Fable NO-SERIOUS-BLOCKERS, Codex one serious blocker** (agent/job process
-separation), resolved in this revision. **Round 4 (fresh Fable + fresh Codex over
-this revised design) is REQUIRED and pending** before any host mutation.
+**GATE STATUS: PASSED at round 4 (2026-07-12).** Round 1: both SBF. Round 2: both
+SBF. Round 3: Fable NO-SERIOUS-BLOCKERS, Codex one serious blocker (agent/job
+separation). **Round 4: BOTH NO-SERIOUS-BLOCKERS** (§"Round 4 dual-review record").
+The no-serious-blockers-from-both precondition for implementation is **met**; the
+refinements folded in this polish revision are the round-4 **non-blocking**
+observations (no further review round is required). Implementation still requires
+**explicit maintainer authorization for the first host mutation**
+(§"Provisioning pre-gate").
 
 ## Round 1 dual-review record — findings & resolutions (2026-07-12)
 
@@ -459,6 +492,46 @@ cred is runner-scoped + ephemeral, no root/tenant reach); Codex classified it
 runner impersonation on a public repo). The design **adopts the conservative
 Codex fix** — for a security-containment design the separation is low-cost and
 matches the design's no-privilege stance.
+
+## Round 4 dual-review record — GATE PASSED (2026-07-12)
+
+Fresh Fable + fresh Codex over the round-3 revision (Codex run directly via
+`codex exec --sandbox read-only`; Fable via an independent read-only agent).
+**Both returned NO-SERIOUS-BLOCKERS — the gate is PASSED.** Both confirmed the
+round-3 agent/job-separation fix (R3-B1) CLOSED and the R3-2/R3-3 folds accurate
+and hole-free (Fable host-verified that the shipped `bwrap-userns-restrict`
+profile stacks children under `unpriv_bwrap` with `audit deny capability`, so the
+in-userns cap-stripping — hence the hardening — is genuine, not illusory; its
+dynamic test-8 enumeration even surfaced a live `:4318` listener the illustrative
+list omitted, validating the dynamic-enumeration choice).
+
+The round-4 **non-blocking** observations (none gate the go-ahead) are folded into
+this polish revision:
+
+- **Name the R3-1 separation mechanism** (Fable): the stock GitHub Actions runner
+  runs job steps as the **same UID + PID namespace** as the agent, so the
+  separation needs an explicit interposition — `ACTIONS_RUNNER_CONTAINER_HOOKS`
+  with a rootless-podman/bwrap backend running the baked image (covers JS +
+  composite actions; a "wrap the shell" hack does not). Named in §"Runner design"
+  item 3 so an implementer does not build the naïve model and only discover at
+  test 11 that it can't pass.
+- **Reconcile the UID-separation wording** (Fable + Codex): the single-uid
+  two-sandbox option maps both agent and job to the same host UID, so "job UID
+  differs from agent UID" was inconsistent. The property is restated on the
+  **host-visible** identity (job code cannot become/act as the agent's host UID or
+  reach the agent process), holding via **PID + user namespaces** under either a
+  subuid-range or single-uid-two-sandbox model; test 11 now asserts the security
+  property, not a numeric-UID difference.
+- **Fresh-nested-`bwrap` requirement** (Fable): because `bwrap-userns-restrict`
+  strips the agent's caps, the job's namespaces must be created by a fresh nested
+  `bwrap`/rootless-engine invocation (which carries the userns privilege via the
+  shipped profile), not by the agent calling `unshare`/`setuid` directly (would
+  `EPERM`). Noted in the mechanism.
+- **Test 8 link-local + illustrative label** (Fable): added the cloud-metadata
+  endpoint `169.254.169.254` and `:4318`, and labelled the port list
+  illustrative-not-exhaustive (the test is dynamic).
+- **"different UID" = no path to regain the agent UID** (Codex): no residual
+  capability/setuid route back into the agent's UID boundary — folded into item 3.
 
 ## Rollback
 
