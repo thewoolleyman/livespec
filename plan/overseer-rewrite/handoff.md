@@ -1,8 +1,11 @@
 # Handoff — overseer rewrite (deterministic multi-track supervisor)
 
-**Status:** DESIGN RATIFIED 2026-07-12, **build not yet started**. **Owning
+**Status:** DESIGN RATIFIED 2026-07-12, **mechanics hardened by adversarial
+review (Fable + Codex) same day**, **build not yet started**. **Owning
 session:** livespec core, session "overseer-skill", 2026-07-12. A fresh session
-can execute the next action from this file alone.
+can execute the next action from this file alone. Build to the HARDENED
+mechanics (design.md §"Adversarial review" resolves 8 blockers) — not to any
+earlier printed-sentinel phrasing.
 
 ## Bottom line
 
@@ -41,15 +44,25 @@ read it first.**
 
 1. Loop engine = **deterministic top-pane supervisor daemon** (not Claude-driven,
    not hybrid).
-2. Judgment = **tracked-session sentinel** (LLM certifies; Python matches token).
+2. Judgment = **tracked-session, certified out-of-band via a `.overseer-ready`
+   marker file** (NOT a printed pane sentinel — pane text is echo/scroll/wrap
+   corrupted; see design.md §"Adversarial review"). Python validates the marker
+   (mtime > injection stamp, contents = `sha256sum` of the on-disk handoff).
 3. List = **discovery-driven** from `<repo>/plan/*/` minus `plan/archive/**`.
-4. `~/.livespec-overseer.jsonl` = **mapping store only** (topic↔tmux + pinned
-   session id + custom resume + threshold override).
+4. `~/.livespec-overseer.jsonl` = **mapping store only** (repo-qualified tmux id
+   `<repo-slug>:<topic>` + pinned session id + custom resume + threshold).
 5. **Surface-only** — never auto-spawn a session; unassigned plans show
    `unassigned`, flagged startable.
-6. **Cross-repo** — rows repo-scoped; never hardcode `/data/projects/livespec`.
+6. **Cross-repo** — rows repo-scoped; never hardcode `/data/projects/livespec`;
+   tmux ids repo-qualified; verify `#{pane_current_path}` before auto-linking.
 7. Language = **plain stdlib-only Python**, host-only, under
    `.claude/skills/overseer/`, outside the product gates.
+8. **Mechanics are hardened by the 2026-07-12 adversarial review** — anchored
+   fail-closed Ctx parse; bracketed-paste injection; state-precedence
+   (never inject into a busy/gate pane); `respawn-pane -k` restart with
+   `#{pane_current_command}` proof (no `❯` scraping). See design.md
+   §"Adversarial review" for all 8 resolved blockers — build to those, not to
+   any earlier printed-sentinel phrasing.
 
 ## Next action (concrete)
 
