@@ -10,6 +10,25 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-12 (SESSION 15) UPDATE — READ THE SESSION-15 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-14 below.** ✅ **BOTH DRIVER TRACKS DONE — the epic is
+  now 7 of 8 in-scope repos resolved.** driver-claude (core tracker `livespec-v74p`) and driver-codex (core
+  tracker `livespec-gqte`) are FLIPPED + independently Fable-reviewed NO-BLOCKERS + closed with full merge +
+  live-exercise evidence. driver-claude PR #132 (release 0.2.2); driver-codex PR #111 (coverage, release 0.3.2)
+  + PR #113 (footgun-guard 3-way cohesion decomposition 264→107 LLOC + flip, release 0.3.3). **KEY SESSION-15
+  DISCOVERIES (they change the driver-track model the SESSION-14 grooming assumed):** (1) **Drivers stay
+  OUTSIDE universal-propagation** — `check-aggregate-completeness` (the "wire every canonical check" gate)
+  over-applies to a thin per-runtime binding, so drivers wire ONLY the 14 applies-to-all COVERAGE checks, NOT
+  aggregate-completeness (maintainer decision 2026-07-12; same disposition as the main_guard role-scoping).
+  (2) **The driver flips are HOST-SIDE, not factory-safe** — they must edit `.github/workflows/ci.yml` (their
+  CI is a hardcoded matrix), which the factory GitHub App token cannot push (lacks `workflows` permission); so
+  they were driven host-side via scoped agents in worktrees (maintainer creds), same lane as the Phase-0
+  mechanism + `livespec-iily`. (3) driver-codex's footgun guard was a genuine 264>250 ceiling violation →
+  decomposed (NOT shaved) into `_footgun_shell.py` ← `_footgun_primary_checkout.py` ← the guard, and the
+  installed v0.3.3 codex hook was live-exercised (all 3 modules ship, imports resolve, live deny+allow). **THE
+  ONLY REMAINING TRACK IS `livespec-iily` (dev-tooling) — see the SESSION-15 block for its re-measured scope.**
+  A cross-driver residual was filed: `livespec-tawm` (no_shadow_ledger.py `__all__` + byte-identity drift +
+  missing guard). Everything below (incl. SESSION-14) is prior context SESSION-15 supersedes where they conflict.
 - **⇒ 2026-07-12 (SESSION 14) UPDATE — READ THE SESSION-14 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-13 below.** ✅ **WORKSTREAM (A) — the 3 remaining Phase-2
   file_lloc FLIPS — are DONE + MERGED + CI-green.** `file_lloc_hard_gate = true` armed on: livespec-runtime
@@ -1047,6 +1066,55 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-12 SESSION 15 — CURRENT STATE, READ FIRST (supersedes SESSION-14 below)
+>
+> **✅ BOTH DRIVER TRACKS DONE (7 of 8 in-scope repos resolved).** driver-claude (`livespec-v74p`) + driver-codex
+> (`livespec-gqte`) FLIPPED, Fable NO-BLOCKERS, closed with merge + live-exercise evidence. See the SESSION-15
+> read-first bullet for the three model-changing discoveries (drivers outside universal-propagation; driver flips
+> are HOST-SIDE due to the `workflows`-permission wall; the footgun decomposition). driver-codex's install was
+> refreshed to v0.3.3 and live-exercised (all 3 decomposed hook modules ship + live deny works).
+>
+> **⚠ NEXT ACTION ON RESUME — the LAST track: `livespec-iily` (livespec-dev-tooling burndown + flip).**
+> HOST-SIDE maintainer-driven (dev-tooling is the shared enforcement package — do NOT factory-dispatch; author via
+> scoped agents in worktrees under review; dev-tooling AUTO-MERGES on green CI → review-the-merged-commit +
+> fix-forward model). Read the re-measured inventory FIRST: `bd -C /data/projects/livespec show livespec-iily`
+> (the SESSION-15 comment — the DESCRIPTION's v0.35.1 numbers are STALE). Current scope (measured against
+> dev-tooling HEAD v0.40.0, ~42 newly-covered WARNs):
+> - **main_guard = 0** — the old "blocking design question" (64 mis-classifications) is MOOT (already fixed by the
+>   v0.35.2 role-scope). Drop it from scope.
+> - **file_lloc = 18 files, of which ~10 EXCEED the 250 hard ceiling** → these need GENUINE cohesion decomposition
+>   (like the orchestrator dispatcher.py + the driver-codex footgun — NEVER a shave; the maintainer keeps the
+>   ceiling and decomposes). The >250 targets: `fleet/contract.py` 399, `driver_checks/plugin_structure.py` 341,
+>   `testing/cli_e2e.py` 322, `cross_repo/pin_autodiscovery.py` 304, `agent_hooks/subagent_stop_guard.py` 298,
+>   `fleet/_rows_files.py` 285, `checks/tool_backed_check_completeness.py` 265, `checks/primary_checkout_commit_refuse_hook_installed.py`
+>   263, `checks/_red_green_replay_modes.py` 256, `checks/heading_coverage.py` 253. (The other 8 file_lloc hits are
+>   201-250 soft-band, also tripping no_lloc_soft_warnings.) This is the BULK of the work — a multi-PR decomposition.
+> - **no_write_direct = 8** (`canonical_checks.py:260`, `cross_repo/pin_autodiscovery.py:421-422`,
+>   `fleet/merged_branch_sweep.py:266/271/277`, `parallel_check_dispatcher.py:266`, `red_leg_scope.py:166`): triage
+>   each — legitimate CLI/supervisor stdout belongs on the `no_write_direct` exemption surface (role-scoped, like the
+>   drivers' `supervisor_entry_files` / core's `run_static.py`), NOT a rote rewrite; else route through the sanctioned
+>   writer. Decide per-site.
+> - **keyword_only_args 6, all_declared 1, partition_completeness 1** — honest small fixes.
+> - **THEN FLIP:** once every dev-tooling first-party file is ≤250 and warning-clean, set `file_lloc_hard_gate = true`
+>   in dev-tooling's own `pyproject.toml [tool.livespec_dev_tooling]` (dev-tooling's file_lloc legacy classifier is the
+>   hardcoded `.claude-plugin/scripts/livespec/` tree, which dev-tooling does NOT have, so its WHOLE `livespec_dev_tooling/**`
+>   universe is Phase-0 WARN until this flip). Independent Fable review before accepting, exactly like every prior flip.
+>   NO escape hatch / severity lever / skip (`.ai/ci-gate-discipline.md`).
+> - **After iily flips → all 8 repos done → the epic `livespec-i5ebqd` is complete.** Do NOT archive the thread until
+>   the maintainer EXPLICITLY accepts archival (epic description rule).
+>
+> **REUSABLE — the driver Phase-2 recipe (proven 2×, host-side):** for a repo that wires ZERO structural checks, one
+> host PR wires the 14 coverage checks into justfile `check:` + ci.yml matrix + `[tool.livespec_dev_tooling]` role
+> config (`source_tree_prefixes`, `supervisor_entry_files` for legit stdout writers), fixes the small WARNs
+> (keyword-only `*` markers, `__all__`), and flips `file_lloc_hard_gate = true` — UNLESS a file is >250, in which
+> case split coverage-wiring (PR#1, no flip) from a genuine decomposition+flip (PR#2). dev-tooling (`iily`) already
+> HAS the checks wired (it is the source repo), so it needs only the WARN burndown + decomposition + flip — no
+> justfile/ci.yml wiring. `handoff-fcc-session15` (this refresh) supersedes SESSION-14.
+>
+> ---
+> *(SESSION-14 block below is prior context SESSION-15 supersedes where they conflict — the driver dispatch it
+> describes is done; SESSION-15 completed both driver flips host-side and left only livespec-iily.)*
+>
 > ### ⇒ 2026-07-12 SESSION 14 — CURRENT STATE, READ FIRST (supersedes SESSION-13 below)
 >
 > **✅ WORKSTREAM (A) COMPLETE — all 3 remaining Phase-2 file_lloc flips merged + CI-green.** With the
