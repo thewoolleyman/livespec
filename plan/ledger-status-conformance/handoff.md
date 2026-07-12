@@ -1,11 +1,97 @@
 # Ledger status-conformance cleanup + beads create-status adoption — plan handoff (livespec core)
 
-> **Status: SEEDED, not yet driven.** This thread was spun off 2026-07-12 from the
-> `autonomous-mode` track (during an attempt to factory-dispatch a
-> `livespec-dev-tooling` work-item). It does NOT block the autonomous-mode track —
-> that track's remaining work runs on clean tenants, and its one dev-tooling item
-> (`fz4`) is being implemented via a scoped sub-agent that bypasses the dispatch
-> gate. Drive this as its own session.
+> **Status: DRIVING (2026-07-12 session).** Scope 1 remediation is DONE (fleet
+> green, 0 status-conformance fails across all 8 members). The plan was reshaped
+> after investigation into a **holistic detect + auto-fix + upstream-prevent**
+> design — see "## Driven session progress" below for the current authoritative
+> state, corrected findings, and dispatched work. The sections below the progress
+> log are the ORIGINAL seed framing (kept for context; superseded where the
+> progress log says so).
+>
+> _Original seed note:_ spun off 2026-07-12 from the `autonomous-mode` track
+> (during an attempt to factory-dispatch a `livespec-dev-tooling` work-item). Does
+> NOT block autonomous-mode.
+
+## Driven session progress (2026-07-12)
+
+**Confirmed direction (maintainer):** the recommended holistic option — **detect +
+auto-fix** — AND the upstream prevention is a REAL beads PR (not just an issue).
+Rationale the maintainer surfaced: a create-time `--status` option is never
+sufficient, because any code path / agent / human can forget it or run raw
+`bd create`/`bd --claim` and still mint a non-conformant item. So create-time
+correctness is defense-in-depth; the *guarantee* is detection + fix.
+
+**Scope 1 — DONE.** Remapped 12 drifted items to lifecycle statuses and verified
+0 status-conformance fails on all 8 members:
+- core: `3lev, 3lev.1, 3lev.3, gqte, v74p` (all `in_progress` → `active`; all the
+  live `fabro-ci-image-factoring` epic family).
+- dev-tooling: `2kt, 65c, 800, fz4, g28, q9a, xam` (all `open` → `backlog`).
+  `fz4` is the autonomous-mode top priority — flagged for possible `ready`/`active`
+  promotion (left at `backlog` for now).
+
+**Corrected Scope-2 finding (agent-verified).** The store's create path
+(`_store_mutations.py` `create_work_item`) ALREADY does the two-step (create →
+`update --status`), and all 5 create SKILLS route through it (statuses
+`backlog`/`pending-approval`). The drift came from **raw `bd` usage bypassing the
+store** (dev-tooling opens have no `origin:` label/rank metadata → raw
+`bd create`; core `in_progress` → raw `bd --claim`). The ONE genuine code gap is
+the **reflector filing path** `commands/_reflector_filing_store.py` `file_new()`
+(calls `create_issue` with no follow-up status set → lands `open`). No `--claim`
+or `in_progress` is emitted anywhere in code (root cause #2 is purely ad-hoc raw
+bd usage, not wrapper-fixable → handled by detection).
+
+**Beads version finding.** The maintainer's per-call `--status` PR is
+`gastownhall/beads` **#4536** (feature commit `d641cd90a`), merged 2026-07-05 to
+`main` — but it is **not in any tagged release**: latest release is **v1.1.0**
+(2026-07-04), and #4536 is **23 commits ahead of v1.1.0**. Installed host `bd` is
+**v1.0.5** (no create `--status`). Confirmed: beads has **no** tenant-level
+default-create-status config on any release/main — the only lever is the per-call
+flag. This is exactly why detection+auto-fix is the guarantee, and why a
+tenant-default is a worthwhile second upstream contribution.
+
+**The holistic design (4 workstreams, driven as one thread):**
+1. **Reflector fix** (livespec-orchestrator-beads-fabro) — add the status-setting
+   step to `file_new` so reflections file at `backlog`, not `open`. → DISPATCHED
+   (TDD Red-Green + worktree PR). Branch `fix/reflector-filing-lifecycle-status`.
+2. **Detect** (livespec core) — add a 5th signal (ledger status-conformance drift)
+   to the local `needs-attention-internal` skill, running the cheap per-tenant
+   `dispatcher.py ledger-check` status-conformance scan inline across the fleet
+   manifest, emitting an `attention_item` per drifted member with the normalizer
+   command as `handoff.command`. → prose change, IN PROGRESS.
+3. **Auto-fix** (livespec-orchestrator-beads-fabro) — a normalizer entry point
+   beside `ledger-check` (which already imports `ALLOWED_BEADS_STATUSES` from
+   `_store_statuses.py`) that safely remaps the two unambiguous beads built-ins
+   (`open`→`backlog`, `in_progress`→`active`) and REPORTS (never auto-touches)
+   `deferred`/`hooked`/`pinned`/anything else. → queued behind the reflector PR
+   (same repo; land sequentially to avoid PR churn).
+4. **Beads upstream PR** (external `gastownhall/beads`) — implement a
+   `status.default` DB config so a bare `bd create` uses a configured lifecycle
+   status instead of `open`. Precedence `--status` flag > `--defer` > `status.default`
+   > `open`; validate via `types.Status.IsValidWithCustom`; insertion point
+   `buildCreateIssue` (`cmd/bd/create.go:754`) via a new `DefaultStatus` param.
+   Opened as an UPSTREAM PR (fork `thewoolleyman/beads` → `gastownhall/beads:main`),
+   NOT merged (upstream reviews). → DISPATCHED. Branch
+   `feat/create-default-status-config`.
+
+**Tracking decision.** This THREAD's `handoff.md` (this file) is the authoritative
+cross-repo tracker for the 4 workstreams; the 2 dispatched PRs are self-tracking
+on GitHub. A separate formal ledger EPIC was deliberately NOT filed this session:
+filing it via raw `bd` would bypass the store two-step (the exact anti-pattern
+this thread fixes), and the interactive store-routed path (`plan`/`capture-work-item`)
+is disproportionate ceremony for in-session-driven work already tracked here. If
+this work outlives the session or needs factory dispatch, anchor it then via
+`/livespec-orchestrator-beads-fabro:plan ledger-status-conformance` (which files
+the epic through the store, correctly).
+
+**Deferred (release-gated):** once beads ships a release carrying #4536, collapse
+the store + reflector two-steps into single-step `bd create --status` (pure
+simplification). And once the `status.default` PR lands + releases, adopt it in
+the fleet tenants' `.beads/` config (holistic prevention).
+
+**Open question for a later turn:** whether the auto-fix normalizer runs on a
+SCHEDULE (truly hands-off) or only via the `needs-attention-internal` handoff
+(one-command). Built the mechanism first; scheduling is a small follow-up to
+confirm with the maintainer.
 
 ## The finding (why this thread exists)
 
