@@ -10,6 +10,20 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-12 (SESSION 13) UPDATE — READ THE SESSION-13 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-12 below.** ✅ **THE ORCHESTRATOR dispatcher.py
+  DECOMPOSITION + PHASE-2 file_lloc FLIP ARE COMPLETE + LIVE-VERIFIED.** dispatcher.py 2616→≤200 LLOC;
+  every orchestrator file ≤200; `file_lloc_hard_gate = true` armed on orchestrator master (PR #529, merge
+  c76a270) with master CI GREEN. All slices accepted with merge evidence + independent Fable NO-BLOCKERS
+  (3a `bd-ib-9fx`, 3a-fix `bd-ib-196`, hermeticity fix `bd-ib-gk0` — the review caught a dead-monkeypatch
+  real-socket leak, fixed forward). The orchestrator track (`livespec-236f`) is DONE. **The THREAD's original
+  next-action chain (core-split-3 → trim → flip) is FULLY DISCHARGED.** NEXT PHASE = the REST of the epic
+  `livespec-i5ebqd` (still open): Phase-2 flips for the other burned-down repos (core/runtime/git-jsonl —
+  verify pin ≥0.39.0 + no file >250, then flip like the orchestrator) + the 4 BACKLOG Phase-1 tracks
+  (`livespec-iily` dev-tooling [HOST-SIDE], `livespec-gqte` driver-codex, `livespec-v74p` driver-claude,
+  `livespec-q7bx` console). Orchestrator 3b `bd-ib-mfg` (mini-hub collapse → thin CLI ~100 LLOC) is filed +
+  BACKLOG + OPTIONAL (not required for the epic). Everything below (incl. SESSION-12) is prior context
+  SESSION-13 supersedes where they conflict.
 - **⇒ 2026-07-12 (SESSION 12) UPDATE — READ THE SESSION-12 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-11 below.** core-split-3 was TOO BIG (3-part, 15931-char
   brief) → SPLIT. **3a `bd-ib-9fx` MERGED** (PR#524, release 0.22.0; dispatcher.py 365→≤200; NO file >250 →
@@ -1010,6 +1024,66 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-12 SESSION 13 — CURRENT STATE, READ FIRST (supersedes SESSION-12 below)
+>
+> **✅ ORCHESTRATOR dispatcher.py DECOMPOSITION + PHASE-2 FLIP: DONE + LIVE-VERIFIED.** The multi-session
+> tentpole (SESSIONS 4–13) is complete. dispatcher.py 2616→≤200 LLOC across L2-a..j + core-split-1/1b/2/3a;
+> the command layer is 4 cohesive modules (`_dispatcher_run_commands`, `_dispatcher_loop_command`,
+> `_dispatcher_command_common`, + the loop/checks/self_update modules), every orchestrator file ≤200.
+> `file_lloc_hard_gate = true` is armed on orchestrator master (PR #529, merge c76a270, release-free chore),
+> master CI GREEN — arming the hard gate hard-fails nothing (verified: 0 files >250). Ledger (orchestrator
+> tenant): 3a `bd-ib-9fx`, 3a-fix `bd-ib-196`, hermeticity `bd-ib-gk0` ALL CLOSED with merge-evidence audit
+> records + reasons. Hub track `livespec-236f` (orchestrator Phase-1) CLOSED. **The thread's original
+> next-action chain (core-split-3 → trim → flip) is fully discharged.**
+>
+> **⚑ WHAT THIS SESSION LEARNED (durable):**
+> 1. **≤200 per file, not ≤250, is the orchestrator burndown bar** — a 201-250 newly-covered file passes
+>    `just check`'s file_lloc but TRIPS the local regression test `test_phase1_mechanical_coverage.py`
+>    (asserts zero newly_covered warnings). NEVER tell a factory agent "soft-band is fine, don't split."
+> 2. **The factory can gate-shave via a TEST carve-out** (not just `# fmt:` packing): core-split-3a's first
+>    merge exempted the oversized module from the regression test; caught in reconciliation + fixed forward.
+>    Reconcile every merged slice's FULL diff for added exemptions/allowlists/test-exceptions.
+> 3. **Independent review catches real defects** — the Fable review found a dead monkeypatch (`dispatcher.`
+>    namespace) that left an integration test binding a real OTLP socket + leaking a Honeycomb exporter
+>    process-globally (fail-open, so it "passed"). Fixed by `bd-ib-gk0`. A `from X import name` binding must
+>    be patched in the CONSUMER module's namespace, not the definition module.
+> 4. **Keep factory briefs SMALL + single-cohesive** — the first core-split-3 (3-part, 15931 chars) failed;
+>    the factory's own sizing heuristic warns >1500 chars / multiple enumerated parts.
+>
+> **⚠ NEXT ACTION ON RESUME — DRIVE THE REST OF THE EPIC `livespec-i5ebqd` (still open, BACKLOG).** Two
+> workstreams, verify per-repo state FIRST (the fleet is non-uniform):
+> - **(A) Phase-2 flips for the already-burned-down repos** — CLOSED Phase-1 tracks: `livespec-9bym` (core),
+>   `livespec-8x7d` (runtime), `livespec-t4e0` (git-jsonl). For EACH: confirm the dev-tooling pin ≥ v0.39.0
+>   (the flip lever) AND that NO first-party file is >250 LLOC (pinned-venv `file_lloc`), then add
+>   `file_lloc_hard_gate = true` to its `[tool.livespec_dev_tooling]` block (above any `[[...]]` sub-tables)
+>   and confirm CI stays green — EXACTLY the orchestrator recipe (PR #529 is the template). CAUTION: CORE
+>   (`livespec`) is special — it IS the hardcoded legacy hardfail tree (`.claude-plugin/scripts/livespec/`),
+>   so its flip EXTENDS the hard gate to core's whole git-derived universe (120 .py); verify no >250 outside
+>   the legacy tree before flipping. runtime/git-jsonl are pure newly-covered (simpler).
+> - **(B) Phase-1 burndown for the 4 BACKLOG tracks** — `livespec-iily` dev-tooling (HOST-SIDE maintainer-driven,
+>   do NOT auto-dispatch to the factory — the shared enforcement package), `livespec-gqte` driver-codex,
+>   `livespec-v74p` driver-claude, `livespec-q7bx` console (wire full suite + 0-file no-op flip). The
+>   drivers/console had a prerequisite: WIRE the full applies-to-all structural suite into justfile+CI first
+>   (maintainer decision, grooming §6.1) before their WARN fixes + flip.
+> - **(OPTIONAL) Orchestrator 3b `bd-ib-mfg`** (BACKLOG, dep-satisfied): collapse dispatcher.py's transitional
+>   mini-hub (`__all__`→`["main"]`; repoint ~19 `dispatcher.<name>` test refs to leaf modules; drop the
+>   `_COMPATIBILITY_REEXPORTS` device + dead load_items/parse_janitor; restore the core-split-2 refusal-message
+>   assertion; fix the stale docstring pointers at dispatcher.py:124/127, _dispatcher_notify.py:11,
+>   _dispatcher_reflection.py:7, _dispatcher_credentials.py:222) → dispatcher.py ~100 LLOC. NOT required for the
+>   epic (dispatcher.py already ≤200). Route it (`apply_intake_dor`) then factory-dispatch ONLY if the
+>   maintainer wants the thin-CLI polish.
+>
+> **REUSABLE RECIPES (this session, unchanged):** FILE→ROUTE→DISPATCH→RATIFY (SESSION-10/11 block); the
+> Phase-2 flip recipe = one-line pyproject `file_lloc_hard_gate = true` above the sub-tables, pinned-venv
+> file_lloc verify (exit 0, no >250), host-side worktree→PR→auto-merge→confirm CI green. Independent Fable
+> review before every accept (one long-lived read-only agent). Merge-evidence close via
+> `append_work_item(replace(item, status="done", resolution="completed", reason=..., audit=AuditRecord(...)))`.
+> `handoff-fcc-session13` carries THIS refresh.
+>
+> ---
+> *(SESSION-12 block below is prior context SESSION-13 supersedes where they conflict — the orchestrator
+> decomposition it describes as in-flight is now DONE + flipped; the remaining epic is the other repos.)*
+>
 > ### ⇒ 2026-07-12 SESSION 12 — CURRENT STATE, READ FIRST (supersedes SESSION-11 below)
 >
 > **core-split-3 is DONE-BUT-FOR-A-FIX-FORWARD. dispatcher.py 365→≤200 (no longer the >250 offender); ZERO
