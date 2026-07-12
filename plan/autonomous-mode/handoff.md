@@ -125,14 +125,23 @@ throwaway-repo PR), do NOT trust this session's scratch logs (they don't survive
   build-time guard in `orchestrator-image/build-and-verify.sh` (after line 56,
   `"$HERE/fabro" version`) asserting the staged binary version == the Dockerfile
   `FABRO_VERSION`. Without it any future `~/.fabro/bin` drift re-poisons the image.
-- **Latent fleet-wide bug FILED: `bd-ib-41k`** (orchestrator tenant, P2, open).
-  The `{{ }}`-in-`acp.command` pattern breaks EVERY dispatch the moment the fleet's
-  fabro is upgraded to ≥0.290. NOT urgent (0.254.0 works). The full researched fix
-  (env-indirection: `acp.command="$LIVESPEC_ACP_ADAPTER"` in BOTH repos' 5
-  workflow.fabro lines + `_dispatcher_overlay.py` env injection + drop the
-  `--input acp_adapter` in `_dispatcher_fabro_argv.py`; preserves Codex/Slice-B
-  routing) is in the item, with a non-live scratch-run verification recipe. DEFER;
-  do NOT bundle into Track A.
+- **CORRECTION (2026-07-12): the `{{ }}`-in-`acp.command` breakage was already tracked;
+  the item I filed for it (`bd-ib-41k`) was a DUPLICATE and is now CLOSED, folded into
+  the pre-existing `bd-ib-6qu`.** `bd-ib-6qu` (P3, backlog — "Deferred: migrate
+  self-hosted fabro 0.254 → 0.290, needs workflow migration") already owned this exact
+  breakage (fabro #474, which removes `acp.command` templating, shipped v0.256-nightly)
+  as its first scope bullet; the env-indirection migration recipe was folded there.
+  **Framing correction — the plan does NOT migrate off `{{ }}`:** per epic `bd-ib-2nq`
+  (maintainer Rec A), the fleet runs a self-hosted **fabro 0.254 + backported upstream
+  #568 fork** (`~/.fabro/bin/fabro`, still reports `0.254.0`) PRECISELY BECAUSE 0.254
+  preserves `{{ }}` templating (the fork does not contain fabro #474). The PREFERRED
+  exit is `bd-ib-2nq.4` — revert the orchestrator image to canonical fabro once upstream
+  fabro **#568** (a GitHub-App-token-refresh PR, unrelated to templating) merges + a
+  release ships — NOT modernizing to 0.290. The 0.290 migration (`bd-ib-6qu`) is the
+  deferred, non-preferred track. **So the gate-#8 `0.254.0` image rebuild above is
+  CORRECT and plan-aligned** (the image should stage the `0.254+#568` fork binary; the
+  drift to 0.290-nightly was a transient accident), not a workaround. See the
+  `plan/fabro-token-refresh/` thread (`bd-ib-2nq`) for the fork/self-host design.
 
 ### Track A remaining (golden master is GREEN — package into the PR)
 > The substantive work is DONE + proven live. What's left is mechanical PACKAGING
