@@ -74,6 +74,14 @@ _RESTART_POLL_INTERVAL = 0.5
 # changed, it is actively working and is skipped (treated as `working`).
 _SETTLE_DELAY = 0.6
 
+# Submit verification: a single Enter after a bracketed paste can be DROPPED by a
+# freshly-respawned session still drawing its welcome screen (verified live
+# 2026-07-13), leaving the resume line un-submitted. `_submit_prompt` re-sends
+# Enter up to this many times, polling `_SUBMIT_POLL` between, until the input box
+# clears. Extra Enters on an empty prompt are harmless no-ops.
+_SUBMIT_MAX_ENTERS = 8
+_SUBMIT_POLL = 0.5
+
 
 # --------------------------------------------------------------------------- #
 # The wrap-up message + resume line. Single-sourced here so Build C's
@@ -414,15 +422,27 @@ class Supervisor:
         self._log(f"restarted {track.repo}::{track.topic} (session {session})")
 
     def _submit_prompt(self, session: str, text: str) -> None:
-        """Bracketed-paste a payload then submit it with a single Enter keystroke.
+        """Bracketed-paste a payload, then submit it — re-sending Enter until the
+        input box clears.
 
-        The paste is atomic (never fragments — blocker #2); the lone Enter is a
-        submit, not payload typing. A brief pause lets the TUI ingest the paste
-        before the Enter arrives.
+        The paste is atomic (never fragments — blocker #2). A SINGLE Enter is
+        enough on a steady idle session, but a freshly-`respawn`-ed session is
+        often still drawing its welcome/news screen when the Enter arrives, and
+        that first Enter is dropped — leaving the resume line un-submitted and the
+        auto-restart stalled (verified live 2026-07-13). So we verify: after each
+        Enter, confirm the empty `❯` box is back (`signals.input_box_ready`,
+        which does NOT require not-busy, so a now-working pane also reads
+        submitted); re-send up to `_SUBMIT_MAX_ENTERS` times. An extra Enter on an
+        already-empty prompt is a harmless no-op (Claude never submits an empty
+        message).
         """
         self.tmux.bracketed_paste(session, text)
         self.sleep(_RESTART_POLL_INTERVAL)
-        self.tmux.send_keys(session, "Enter")
+        for _ in range(_SUBMIT_MAX_ENTERS):
+            self.tmux.send_keys(session, "Enter")
+            self.sleep(_SUBMIT_POLL)
+            if signals.input_box_ready(self.tmux.capture_pane(session)):
+                return
 
     # ----------------------------------------------------------------- #
     # Reboot recovery (startup-only, never per-tick).

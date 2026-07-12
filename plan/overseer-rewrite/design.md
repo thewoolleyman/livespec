@@ -437,11 +437,20 @@ test fixtures):
 
 Two things the live exercise CONFIRMED WORKING as designed:
 
-- **Submission** — a bracketed paste (`load-buffer` + `paste-buffer -p`) of a
-  single- OR multi-line payload submits reliably with a SINGLE `Enter` in the
-  current Claude Code. The old "repeat-Enter-until-`esc to interrupt`" concern
-  applied to `send-keys -l` typing, not to a bracketed paste; the design's
-  mechanic is correct as-is (no fix needed).
+- **Submission** — a bracketed paste (`load-buffer` + `paste-buffer -p`, single-
+  or multi-line) submits with a single `Enter` on a STEADY idle session; the old
+  "repeat-Enter" concern is NOT a `send-keys -l` payload-collapse problem (the
+  paste is always atomic). BUT the restart+rename validation found a real
+  fresh-TUI **submit-timing** bug: a freshly-`respawn`-ed session is still drawing
+  its welcome/news screen when the first `Enter` arrives and DROPS it, leaving the
+  resume line un-submitted and the auto-restart stalled. Fixed by a verify loop in
+  `_submit_prompt` (re-send `Enter` until `signals.input_box_ready`); validated
+  live — the restarted session then reads its handoff and follows the resume line
+  unattended. The atomic-paste mechanic itself is correct.
+- **Restart + rename** — `respawn-pane -k 'claude -n <topic>'` validated live: the
+  pane's PID changes (old process killed, fresh Claude launched), the old
+  session's context is gone (fresh), and the `-n <topic>` name shows in the input
+  box header (`──── <topic> ──`).
 - **`is_structured_gate`** — caught a real first-run trust prompt
   (`❯ 1. Yes …`), correctly suppressing injection.
 
