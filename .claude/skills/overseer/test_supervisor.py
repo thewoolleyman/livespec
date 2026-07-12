@@ -33,6 +33,7 @@ class FakeTmux:
         self.paths = {}
         self.calls = []
         self.on_paste = None  # callback(session, text) for stamp-before-paste checks
+        self._cap_idx = {}
 
     def session_exists(self, session):
         self.calls.append(("exists", session))
@@ -40,7 +41,17 @@ class FakeTmux:
 
     def capture_pane(self, session):
         self.calls.append(("capture", session))
-        return self.panes.get(session, "")
+        val = self.panes.get(session, "")
+        # A list value is a sequence of successive frames (for the settled-delta
+        # check): each capture returns the next frame, repeating the last once
+        # exhausted. A plain string returns the same frame every call (a settled
+        # pane). The daemon's `_pane_settled` captures twice; a 2-frame list with
+        # different content makes those two captures differ → "streaming".
+        if isinstance(val, list):
+            i = min(self._cap_idx.get(session, 0), len(val) - 1) if val else 0
+            self._cap_idx[session] = i + 1
+            return val[i] if val else ""
+        return val
 
     def pane_current_command(self, session):
         self.calls.append(("cmd", session))
@@ -82,12 +93,31 @@ class FakeTmux:
         return any(c[0] == method for c in self.calls)
 
 
-IDLE_BOX = "╭──────────╮\n│ >        │\n╰──────────╯\n  ? for shortcuts\n"
+# The REAL live Claude TUI idle shape (verified 2026-07-13): an empty `❯` prompt
+# between two horizontal rule lines, the statusline as the SECOND-to-last row,
+# and a footer hint as the LAST row (NOT a `╭─╮` box + `? for shortcuts`).
+_RULE = "─" * 40
+_HINT = "  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents"
+# The real active-generation spinner (a token counter / dot-elapsed / hook phase);
+# the lingering completed-turn summary "✻ Brewed for 25s" is deliberately NOT busy.
+_SPINNER = "✻ Galloping… (running stop hooks… 1/3 · 24s · ↓ 1.4k tokens)"
 
 
-def _idle_capture(ctx=None):
-    tail = f"  ~/repo  main  Ctx: {ctx}% left\n" if ctx is not None else ""
-    return IDLE_BOX + tail
+def _idle_capture(ctx=None, body=""):
+    status = "  Opus 4.8 (1M context) | /x/repo"
+    if ctx is not None:
+        status += f" | Ctx: {ctx}% left"
+    head = f"● {body}\n" if body else "● prior response\n"
+    return f"{head}{_RULE}\n❯ \n{_RULE}\n{status}\n{_HINT}\n"
+
+
+def _busy_capture(ctx=None):
+    """An actively-generating pane: the real spinner above the (idle-shaped) box."""
+    return f"● response\n{_SPINNER}\n" + _idle_capture(ctx)
+
+
+# Legacy alias kept for readability in tests that predate the real-shape fixtures.
+IDLE_BOX = _idle_capture()
 
 
 def _make_plan(tmp_path, repo_name="repo", topic="topic", handoff=b"HANDOFF v1\n"):
@@ -496,3 +526,40 @@ def test_wrapup_message_has_required_placeholders_filled():
     assert "/r/plan/t/handoff.md" in msg
     assert "/r/plan/t/.overseer-ready" in msg
     assert "/r/plan/t/.overseer-blocked" in msg
+
+
+def test_streaming_pane_is_working_not_idle(tmp_path):
+    """LIVE-EXERCISE regression: the real TUI shows NO persistent busy spinner
+    while streaming, so a single frame looks idle. The settled-delta must catch
+    the change between captures and classify it `working` — never injecting
+    despite ctx below threshold. (evaluate captures once, then _pane_settled
+    twice → 3 distinct frames make the two settled captures differ.)"""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = [
+        _idle_capture(ctx=40, body="line one"),
+        _idle_capture(ctx=40, body="line one two"),
+        _idle_capture(ctx=40, body="line one two three"),
+    ]
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert not fake.has("paste")  # never injected despite ctx 40 <= 50
+
+
+def test_settled_idle_pane_still_injects(tmp_path):
+    """Counterpart: an idle pane NOT changing between the two settled captures
+    (same frame every call) is still eligible to inject at/below threshold."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=40)  # plain string → identical frames → settled
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "warned"
+    assert fake.has("paste")  # settled idle + low ctx → wrap-up injected

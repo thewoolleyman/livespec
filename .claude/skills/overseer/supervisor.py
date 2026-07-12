@@ -67,6 +67,13 @@ DANGER_CTX_REMAINING = 20
 _RESTART_POLL_MAX = 30
 _RESTART_POLL_INTERVAL = 0.5
 
+# Delay between the two captures of the settled-check. The live Claude TUI shows
+# NO persistent busy spinner while streaming tokens (verified 2026-07-13), so a
+# single capture cannot tell active streaming from idle. Before acting on an
+# apparently-idle track, the daemon captures twice this far apart; if the pane
+# changed, it is actively working and is skipped (treated as `working`).
+_SETTLE_DELAY = 0.6
+
 
 # --------------------------------------------------------------------------- #
 # The wrap-up message + resume line. Single-sourced here so Build C's
@@ -269,6 +276,21 @@ class Supervisor:
             return current
         return state.last_ctx
 
+    def _pane_settled(self, session: str) -> bool:
+        """True if two captures ~``_SETTLE_DELAY`` apart are identical.
+
+        A single capture cannot distinguish active token-streaming from idle —
+        the live Claude TUI renders no persistent busy spinner while streaming
+        (verified 2026-07-13). Before the daemon INJECTS or RESTARTS an
+        apparently-idle track, it confirms the pane is not actively changing. A
+        changing pane is treated as busy (`working`) and skipped this tick —
+        over-firing busy is the safe direction.
+        """
+        first = signals.strip_ansi(self.tmux.capture_pane(session))
+        self.sleep(_SETTLE_DELAY)
+        second = signals.strip_ansi(self.tmux.capture_pane(session))
+        return first == second
+
     def evaluate(self, track: registry.Track, *, act: bool) -> RowView:
         """Derive a track's status and (when ``act``) perform its side effects.
 
@@ -302,7 +324,11 @@ class Supervisor:
 
         threshold = track.ctx_threshold
 
-        # Precedence, top to bottom.
+        # Precedence, top to bottom. Single-capture `busy` and the human gates
+        # are checked first. For an apparently-idle track that would ACT
+        # (restart / inject), the daemon first confirms the pane is SETTLED
+        # (`_pane_settled`) — a single frame can't see active token-streaming, so
+        # a changing pane is treated as `working` and skipped this tick.
         if busy:
             status = "working"
         elif gate or blocked is not None:
@@ -310,27 +336,30 @@ class Supervisor:
             if act:
                 detail = blocked if blocked else "structured gate on pane"
                 self._surface(f"{repo}::{topic} blocked on human: {detail}")
-        elif ready and idle:
+        elif not idle:
+            # Pane present but not a verified idle-input state and not busy —
+            # a transient/settling capture. Wait; never act.
+            status = "settling"
+        elif act and not self._pane_settled(session):
+            # One frame looks idle, but the pane is actively changing (streaming).
+            status = "working"
+        elif ready:
             status = "restarting"
             if act:
                 self._do_restart(track, session)
-        elif idle and eff_ctx is not None and eff_ctx <= threshold:
+        elif eff_ctx is not None and eff_ctx <= threshold:
             if act:
                 self._maybe_inject(track, session, eff_ctx, handoff)
             if eff_ctx <= DANGER_CTX_REMAINING and not ready:
                 status = "danger"
                 if act:
                     self._surface(
-                        f"{repo}::{topic} won't wrap up " f"(ctx {eff_ctx}% left, no ready marker)"
+                        f"{repo}::{topic} won't wrap up (ctx {eff_ctx}% left, no ready marker)"
                     )
             else:
                 status = "warned"
-        elif idle:
-            status = "idle"
         else:
-            # Pane present but not a verified idle-input state and not busy —
-            # a transient/settling capture. Wait; never act.
-            status = "settling"
+            status = "idle"
 
         return RowView(
             topic=topic,
