@@ -1,16 +1,49 @@
 # Ledger status-conformance cleanup + beads create-status adoption — plan handoff (livespec core)
 
-> **Status: DRIVING (2026-07-12 session).** Scope 1 remediation is DONE (fleet
-> green, 0 status-conformance fails across all 8 members). The plan was reshaped
-> after investigation into a **holistic detect + auto-fix + upstream-prevent**
-> design — see "## Driven session progress" below for the current authoritative
-> state, corrected findings, and dispatched work. The sections below the progress
-> log are the ORIGINAL seed framing (kept for context; superseded where the
-> progress log says so).
+> **Status: DRIVEN — all in-fleet work COMPLETE (2026-07-12 session).** Scopes
+> 1–3 are landed; the one external piece (beads `status.default` PR #4738) is
+> OPEN for upstream review. See "## Session close" for final states and the small
+> set of open/deferred follow-ups. The "## Driven session progress" section holds
+> the design narrative + corrected findings; the sections below it are the
+> ORIGINAL seed framing (kept for context; superseded where noted).
 >
 > _Original seed note:_ spun off 2026-07-12 from the `autonomous-mode` track
 > (during an attempt to factory-dispatch a `livespec-dev-tooling` work-item). Does
 > NOT block autonomous-mode.
+
+## Session close (2026-07-12) — final states
+
+| Workstream | Repo | Outcome |
+|---|---|---|
+| Scope 1 — remediate 12 drifted items | fleet | ✅ done — 0 drift across all 8 members (verified) |
+| Scope 2 — reflector `file_new` two-step | orchestrator | ✅ merged — PR #535 (`ea1e441`); reflections now file at `backlog` |
+| Scope 3a — detect (needs-attention-internal Signal 5) | core | ✅ merged — PR #1107 |
+| Scope 3b — auto-fix (`ledger-normalize` + generalize remap) | orchestrator | ✅ merged — PR #537 (`9ea4f1a`); LIVE-exercised (healed 3 fresh real `open` items → fleet 0 drift) |
+| Scope 4 — beads `status.default` config | external `gastownhall/beads` | 🔎 PR #4738 OPEN for upstream review (not merged) — precedence flag>defer>status.default>open; 4 cases live-verified; upstream CI running |
+
+**Live-verified end-to-end:** `ledger-normalize --dry-run` detects, the real run
+heals `open`→`backlog` / `in_progress`→`active` and persists, residual (deferred/
+hooked/ad-hoc) is report-only. The recurring-drift concern (any raw `bd create`/
+`--claim` can still mint a non-conformant item) is now covered by detection +
+auto-fix — proven when 3 new `open` items drifted in mid-session and were healed.
+
+**Open / deferred follow-ups (none blocking):**
+1. **beads #4738** — awaiting upstream review/merge. The sandbox embedded-Dolt
+   test harness was too slow to run the new `TestEmbeddedCreate/default_status_*`
+   subtests to completion; they are committed + compile-clean + the 4 behaviors
+   were live-verified, and upstream CI runs the full suite. Contributor worktree
+   kept at `/home/ubuntu/.worktrees/beads/feat-create-default-status-config`
+   (branch `feat/create-default-status-config`) in case review requests changes.
+2. **Fleet adoption of `status.default`** — once #4738 merges + releases, set
+   `status.default = backlog` in each fleet tenant's `.beads/` config (the
+   holistic PREVENTION layer: makes a bare/raw `bd create` land conformant).
+3. **Single-step create** — once a beads release carries #4536 (`bd create
+   --status`, currently 23 commits ahead of v1.1.0), collapse the store +
+   reflector two-steps into single-step (pure simplification).
+4. **Scheduling decision (for the maintainer)** — whether `ledger-normalize`
+   should run on a SCHEDULE (fully hands-off self-heal) or only via the
+   `needs-attention-internal` one-command handoff (current state). Mechanism
+   exists; scheduling is a small add if wanted.
 
 ## Driven session progress (2026-07-12)
 
