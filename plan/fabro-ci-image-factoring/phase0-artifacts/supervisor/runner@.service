@@ -25,8 +25,7 @@ Environment=ACTIONS_RUNNER_CONTAINER_HOOKS=/home/ci-runner/actions-runner/contai
 ExecStart=/usr/local/lib/ci-runner/run-jit-runner.sh
 # One job then gone — the supervisor owns the lifecycle; never auto-restart.
 Restart=no
-NoNewPrivileges=true
-# The runner needs its rootless podman socket under /run/user/1001; keep sandboxing
-# light enough not to sever it.
+# NOTE: do NOT set NoNewPrivileges (rootless podman's setuid newuidmap/newgidmap
+# must escalate) and do NOT ProtectHome the runner's own dir (it writes
+# _diag/_work under /home/ci-runner). ProtectSystem=true is safe (only /usr,/boot).
 ProtectSystem=true
-ProtectHome=read-only

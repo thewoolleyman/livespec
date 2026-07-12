@@ -111,6 +111,35 @@ Full dated detail is on beads **`livespec-3lev.3`**.
   `runner@.service` + supervisor unit + `49-…rules` + README) and
   `.github/workflows/ci-selfhosted-shadow.yml`. **Nothing merged to master.**
 
+**PRODUCTIONIZATION — DONE this session (2026-07-12 evening):** the
+`github-ci-runners` 1Password env (ID `gn4o4lmxjeovi6hwb7z64ujxfe`) + a dedicated
+service-account token exist; **`with-github-ci-runners-env.sh` generated + verified**
+(injects the 4 `GITHUB_*_CI_RUNNER` vars; token in systemd-creds; Linux group
+`github-ci-runners` created; `ubuntu` + `ci-sup` in it). `ci-sup` user created
+(home `/var/lib/ci-sup`); supervisor scripts → `/usr/local/lib/ci-runner/`;
+`runner@.service` + `ci-runner-supervisor.service` → `/etc/systemd/system/`; polkit
+→ `/etc/polkit-1/rules.d/49-ci-runner-supervisor.rules`. **Credential chain PROVEN
+LIVE** — the supervisor (as `ci-sup`, via the wrapper) minted JITs + registered
+`[self-hosted, local-ci]` ephemeral runners on livespec. Two unit fixes applied +
+reinstalled: supervisor unit dropped `NoNewPrivileges` (the wrapper must `sudo` to
+decrypt its cred); `runner@.service` dropped `NoNewPrivileges` + `ProtectHome`
+(rootless podman's setuid `newuidmap` must escalate; the runner writes
+`/home/ci-runner/actions-runner/_diag`+`_work`). `/tmp/{gcr,livespec-ci-app.*}`
+credential files DELETED. Supervisor is **STOPPED + DISABLED** (it was looping while
+`runner@` failed; 6 stray offline runners cleaned). Shadow workflow
+`ci-selfhosted-shadow.yml` label updated `livespec-ci-pilot` → `local-ci`.
+
+**ONLY REMAINING to finish Phase 0 productionization:** re-enable the supervisor
+(`sudo systemctl enable --now ci-runner-supervisor.service`), confirm one ephemeral
+`runner@` comes ONLINE (`gh api repos/thewoolleyman/livespec/actions/runners`), push
+a `ci-shadow/**` branch (workflow now targets `local-ci`) and verify the ephemeral
+runner runs the job in-container + auto-deregisters. If `runner@` still fails, read
+`journalctl -u 'runner@*'` (next likely snag: rootless podman under a system service
+needs `/run/user/1001` reachable + `newuidmap` — verify with a manual
+`sudo -u ci-runner ... podman run` first). THEN old NEXT ACTIONS below (caches for
+`just check` green; relocate `phase0-artifacts/` + 11-test suite into
+`livespec-dev-tooling`; land shadow workflow on master).
+
 **NEXT ACTIONS (in order):** (1) generate `with-github-ci-runners-env.sh`. The
 `github-ci-runners` environment ID is **`gn4o4lmxjeovi6hwb7z64ujxfe`** (verified —
 its 4 `GITHUB_*_CI_RUNNER` vars). REMAINING BLOCKER: a **service-account token with

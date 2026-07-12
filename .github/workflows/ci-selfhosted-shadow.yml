@@ -36,7 +36,7 @@ jobs:
   # agent/job isolation + host-service denial all hold in a REAL job.
   mechanism-and-isolation:
     name: mechanism + live isolation
-    runs-on: [self-hosted, livespec-ci-pilot]
+    runs-on: [self-hosted, local-ci]
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
     permissions:
@@ -78,7 +78,7 @@ jobs:
     # Serialize AFTER the isolation proof so the single pilot runner always
     # completes the fast containment job first (a slow check never blocks it).
     needs: [mechanism-and-isolation]
-    runs-on: [self-hosted, livespec-ci-pilot]
+    runs-on: [self-hosted, local-ci]
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
     permissions:
