@@ -10,6 +10,29 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-12 (SESSION 14) UPDATE — READ THE SESSION-14 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-13 below.** ✅ **WORKSTREAM (A) — the 3 remaining Phase-2
+  file_lloc FLIPS — are DONE + MERGED + CI-green.** `file_lloc_hard_gate = true` armed on: livespec-runtime
+  (PR #185, track livespec-8x7d), livespec-orchestrator-git-jsonl (PR #245, track livespec-t4e0), livespec
+  core (PR #1098, track livespec-9bym — the special legacy-tree-extending flip). Each verified pre-merge:
+  `check-file-lloc` exits 0 with the gate armed (zero files >250), full CI green. **The epic `livespec-i5ebqd`
+  is now 4-of-8 in-scope repos FULLY DONE** (orchestrator + core + runtime + git-jsonl all burned-down AND
+  flipped). Milestone journaled on the epic. **REMAINING = WORKSTREAM (B): the 4 BACKLOG tracks** (dev-tooling
+  livespec-iily HOST-SIDE, driver-codex livespec-gqte, driver-claude livespec-v74p, console livespec-q7bx).
+  **⚑ KEY STATE-DRIFT FINDINGS (verified this session, supersede the 2026-07-09 grooming assumptions):**
+  (1) **Both drivers are STRANDED at dev-tooling pin v0.37.3, NOT v0.39.0** — they missed the flip-lever
+  fan-out and pin-freshness reports them "fresh" (a fan-out/pin-freshness gap for the drivers; bump their pins
+  as track work). (2) **Each driver + console has its OWN beads tenant** (`livespec-driver-codex`/
+  `-claude`/`livespec-console-beads-fabro`), dispatched via livespec-orchestrator-beads-fabro — so the impl
+  work-items go in each repo's OWN tenant (the core-tenant tracks gqte/v74p/q7bx are epic trackers, exactly
+  like orchestrator track livespec-236f vs its bd-ib-* impl items). (3) **console is a RUST Control-Plane app,
+  0 first-party .py, harness-exempt** — genuinely codeless; its §6.1 "wire full Python structural suite +
+  no-op flip" is now a GENUINE PRODUCT DECISION to re-confirm (wiring a Python check-suite into a Rust repo
+  with no Python toolchain vs. leaving the empty-walk-guard correctness as a dev-tooling test acceptance case).
+  (4) The drivers still wire ZERO of the applies-to-all structural suite (grooming §4 confirmed); measured
+  newly-covered WARNs are small + concentrated: keyword_only_args (codex 8 / claude 6, the footgun-guard
+  hooks), all_declared (2 each), no_write_direct (1-2), codex file_lloc 1 soft-band. Everything below (incl.
+  SESSION-13) is prior context SESSION-14 supersedes where they conflict.
 - **⇒ 2026-07-12 (SESSION 13) UPDATE — READ THE SESSION-13 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-12 below.** ✅ **THE ORCHESTRATOR dispatcher.py
   DECOMPOSITION + PHASE-2 file_lloc FLIP ARE COMPLETE + LIVE-VERIFIED.** dispatcher.py 2616→≤200 LLOC;
@@ -1024,6 +1047,49 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-12 SESSION 14 — CURRENT STATE, READ FIRST (supersedes SESSION-13 below)
+>
+> **✅ WORKSTREAM (A) COMPLETE — all 3 remaining Phase-2 file_lloc flips merged + CI-green.** With the
+> orchestrator (SESSION-13) that makes **4 of 8 in-scope repos fully done** (burned-down AND flipped):
+> orchestrator (livespec-236f), core (livespec-9bym, PR #1098), runtime (livespec-8x7d, PR #185),
+> git-jsonl (livespec-t4e0, PR #245). Each flip = one-line `file_lloc_hard_gate = true` in
+> `[tool.livespec_dev_tooling]` (above any array-of-tables), verified `check-file-lloc` exit 0 with the
+> gate armed (zero files >250), host-side worktree→PR→merge→CI-green→primary-refreshed→worktree-reaped.
+> Core's was the special legacy-tree-EXTENDING flip (hard-gates the whole ~120-.py universe beyond
+> `.claude-plugin/scripts/livespec/`). Milestone journaled on epic `livespec-i5ebqd` (still open/backlog).
+>
+> **⚠ NEXT ACTION ON RESUME — WORKSTREAM (B): the 4 remaining BACKLOG tracks.** Verify per-repo state FIRST
+> (the SESSION-13 counts drifted — see the SESSION-14 read-first findings):
+> - **console `livespec-q7bx`** — ⛔ GATED ON A MAINTAINER DECISION (surfaced 2026-07-12): console is a RUST
+>   Control-Plane app, 0 first-party .py, harness-exempt, no Python toolchain. The §6.1 "wire full Python
+>   structural suite + no-op flip" now reads as low-value (vacuous no-op machinery in a Rust repo). RECOMMEND
+>   re-scoping to "NO wiring; keep the empty-walk-guard-on-codeless-repo correctness as a dev-tooling test
+>   acceptance case; close q7bx as won't-wire" — but this reverses a prior maintainer decision, so confirm.
+> - **driver-codex `livespec-gqte`** + **driver-claude `livespec-v74p`** — FACTORY-dispatched via each repo's
+>   OWN beads tenant (NOT the core tenant). Per-repo slice: (1) bump dev-tooling pin v0.37.3→v0.39.0; (2) WIRE
+>   the applies-to-all structural suite into justfile+CI (grooming §6.1 prereq; they wire ZERO today); (3) fix
+>   the small newly-covered WARN set (keyword_only_args codex 8 / claude 6 on the footgun-guard + other hooks;
+>   all_declared 2; no_write_direct 1-2; codex file_lloc 1 soft-band — measured via the v0.39.0 dev-tooling
+>   venv at `/data/projects/livespec-dev-tooling/.venv/bin/python -m livespec_dev_tooling.checks.<name>` run
+>   from the target repo cwd); (4) flip `file_lloc_hard_gate = true`. File the impl work-item(s) in the
+>   driver's OWN tenant, groom to ready, `drive --action impl:<id> --repo <driver>`, independent Fable review,
+>   merge-evidence accept, then close the core-tenant tracker.
+> - **dev-tooling `livespec-iily`** — HOST-SIDE maintainer-driven (do NOT factory-dispatch; it is the shared
+>   enforcement package). ~40 newly-covered WARNs to triage+burn down (some may be legitimately role-scoped
+>   like the main_guard precedent — fix the CHECK, not correct code), then flip. Authored via scoped agents in
+>   worktrees under review.
+>
+> **REUSABLE — the Phase-2 flip recipe (proven 4x):** refresh primary to origin/master; `git worktree add -b
+> phase2-flip-file-lloc ~/.worktrees/<repo>/phase2-flip-file-lloc master`; add `file_lloc_hard_gate = true`
+> right after `[tool.livespec_dev_tooling]` (above any `[[...]]`); `uv sync`; `uv run python -m
+> livespec_dev_tooling.checks.file_lloc` MUST exit 0; commit `chore:` (exempt from Red-Green); push; PR; merge
+> (core/git-jsonl auto-merge on green, runtime needs manual `gh pr merge --rebase`); reap worktree + refresh
+> primary. `handoff-fcc-session14` carries THIS refresh.
+>
+> ---
+> *(SESSION-13 block below is prior context SESSION-14 supersedes where they conflict — the orchestrator
+> decomposition + flip it describes is done; SESSION-14 completed the other 3 flips and scoped Workstream B.)*
+>
 > ### ⇒ 2026-07-12 SESSION 13 — CURRENT STATE, READ FIRST (supersedes SESSION-12 below)
 >
 > **✅ ORCHESTRATOR dispatcher.py DECOMPOSITION + PHASE-2 FLIP: DONE + LIVE-VERIFIED.** The multi-session
