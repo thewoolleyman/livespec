@@ -83,7 +83,8 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 **State (fresh-session entry point, 2026-07-12).** The plan is anchored by
 the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase children
-`.1`–`.7`. Done so far:
+`.1`–`.8` (`.8` = Phase 5, the closing efficiency report, added 2026-07-12).
+Done so far:
 - **P-host (`.1`) — MET.** Host + per-container metrics (`hostmetrics` +
   `docker_stats`) flow to the **`livespec-host-metrics`** dataset (`agent-activity`
   Honeycomb env) via `otel-collector` PR #3 (commit `417e5d8`, marker `0.6`),
@@ -95,11 +96,20 @@ the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase children
 - **Designs drafted** (read these companion docs before implementing a phase):
   `phase0-runner-containment-design.md`, `phase1-layered-image-design.md`,
   `phase2-ci-disposition-livespec.md`.
-- **Blocked on the active `dispatcher.py` refactor (`bd-ib-s7e`):** P-factory
-  (`.2`), the Codex version-less fix, and the Phase 1 consumer-switch — all
-  touch `livespec-orchestrator-beads-fabro`/`livespec-console-beads-fabro`
-  workflow.toml or `dispatcher.py`; do NOT edit those repos while that dispatch
-  is active. Re-check before starting.
+- **`bd-ib-s7e` (the blocking `dispatcher.py` refactor) is now CLOSED**
+  (L2-f ratified, PR #504, release 0.17.21, master CI green; verified
+  2026-07-12) — so P-factory (`.2`), the Codex version-less fix, and the
+  Phase 1 consumer-switch are **no longer blocked by that item**. CAVEAT:
+  `livespec-orchestrator-beads-fabro` still has other active worktrees
+  (`retire-fabro-image-pin-lockstep`,
+  `fix-embedded-ledger-credential-precheck`, `plan-codex-factory-telemetry`),
+  so re-check for a LIVE dispatch before editing that repo or
+  `livespec-console-beads-fabro`.
+- **Phase 5 (`.8`) added 2026-07-12** — the closing post-rollout efficiency
+  report (factory + CI, CPU + wall-clock). It hard-depends on P-factory
+  (`.2`), which makes repairing the factory trace egress a precondition for
+  the final report rather than an indefinitely-deferred follow-on. P-factory
+  is itself now unblocked (its verification was waiting on `bd-ib-s7e`).
 
 **Hard constraints:**
 - **No-Circular-Dependency Directive** (`.ai/no-circular-dependency.md`,
@@ -559,6 +569,75 @@ state.
 (adopters are independent: own credential wrappers, tenants, GitHub Apps),
 citing this epic's reference implementation.
 
+### Phase 5 — Post-rollout efficiency report (closing measurement gate)
+
+The epic's headline claim — baked images + local hot runners shave the
+per-run and per-work-item tax — is a **projection** until measured on the
+rolled-out fleet. Phase 5 is the closing gate that turns it into a
+**measured** before/after report of how much the factory AND CI actually
+improved, in **CPU-seconds and wall-clock time**.
+
+**Depends on:** Phase 3 (the fleet's factory + CI are actually running the
+baked-image + local-runner model) **AND P-factory (`.2`) as a HARD
+prerequisite** (maintainer-decided 2026-07-12). The factory OTel trace
+datasets (`livespec-dispatcher`, `fabro-sandbox`, `livespec-rgr`) have been
+silent since ~2026-06-13, so without the P-factory egress repair the
+factory half of this report is unmeasurable; the CI half (`github-ci`) is
+independent of P-factory. **Independent of Phase 4** — adopter work-items
+do not affect this fleet's own factory/CI efficiency.
+
+**Measurement window — count-based, not clock-based.** Accumulate a real
+post-rollout load window ("a day or two, or however long it takes") until
+there are enough samples to be meaningful — a floor of some N factory
+dispatches and M CI runs across the repo-classes, NOT a fixed calendar
+duration. The factory has been quiet, so the window may need deliberate
+load (real dispatches), not passive waiting.
+
+**Deliverables**
+- A comprehensive before/after report at
+  `plan/fabro-ci-image-factoring/phase5-efficiency-report.md`, reported
+  **PER repo-class** (Rust console vs Python repos), never one fleet-wide
+  number (a 16-min P50 Fabro run is agent/LLM-dominated — see the
+  Measurement section).
+- **Factory** (from `livespec-dispatcher` / `fabro-sandbox` /
+  `livespec-rgr`, now that P-factory restored egress + added prepare-step
+  janitor spans): per-work-item critical-path `just check` time (in-sandbox
+  janitor + fix loop — now MEASURED, not inferred — plus Dispatcher
+  post-merge), `fabro-run` wall-clock, per-run CPU-seconds. Validate against
+  the projection: ~3–5 min saved per work-item on the critical path,
+  ~30–50% off each cold `just check`.
+- **CI** (from `github-ci`): per-run wall-clock, per-run CPU-seconds (SUM
+  of job durations), per-job setup tax (`mise install` → no-op, `uv sync` →
+  cache-hit, full-history clone), and CI queue-wait — compared against the
+  frozen before-baseline (30d snapshot: ~591 CPU-s/run, ~70 s wall-clock,
+  ~40 jobs/run, avg 13 s/job).
+- **Host trade-off** (from `livespec-host-metrics`): the HONEST cost side.
+  Co-locating CI + factory on one host RAISES host CPU utilization; report
+  that delta so the outcome reads as "wall-clock + $-cost per run DOWN vs
+  host CPU utilization UP," never a one-sided win. Confirm the 2026-07-12
+  load-test headroom held under real accumulated load (no sustained
+  resource-health breach).
+- **Both providers:** confirm the per-run-tax delta holds for BOTH Claude-
+  and Codex-driven runs at a live dual-provider dispatch (the Phase 1 Codex
+  version-less adapter fix is what keeps the per-run `npx` adapter fetch
+  eliminated for Codex).
+
+**Before baseline (already captured — reuse, do not re-derive):** the
+"Additional research (2026-07-11)" numbers below ARE the frozen "before"
+(30d `github-ci`: ~591 CPU-s/run, ~70 s wall-clock; `livespec-dispatcher`
+janitor 93 s P50 / 175 s P95). Phase 5 re-runs the SAME Honeycomb queries
+over the post-rollout window and diffs.
+
+**Where:** measurement + report authoring in this plan thread (`livespec`
+core); queries read Honeycomb (`github-ci`, `livespec-dispatcher`,
+`fabro-sandbox`, `livespec-rgr`, `livespec-host-metrics`). No repo code
+change beyond the report artifact.
+
+**Exit:** the report is merged into the plan thread and summarized on the
+epic; the headline efficiency claim is now MEASURED (with honest
+CPU-vs-wall-clock framing), not projected — the epic's closing gate. The
+epic can close once it lands.
+
 ---
 
 ## Where the work lives (summary)
@@ -571,6 +650,7 @@ citing this epic's reference implementation.
 | `livespec-console-beads-fabro` | a little | `workflow.toml` → `python-rust`; drop per-run `rustup` |
 | each fleet repo | mechanical | image pin + per-job `ci.yml` disposition + `actions/cache` removal |
 | `openbrain`, `resume` (adopters) | Phase 4 | work-items only |
+| this plan thread (`livespec` core) + Honeycomb | Phase 5 | post-rollout efficiency report: before/after CPU-seconds + wall-clock for the factory (`livespec-dispatcher`/`fabro-sandbox`/`livespec-rgr` — needs P-factory) + CI (`github-ci`) + the host trade-off (`livespec-host-metrics`) |
 
 ## Measurement (before/after) — per repo class
 
@@ -588,6 +668,9 @@ run is dominated by agent/LLM time):
   confirm the per-run-tax delta holds for both.
 - Phase P's prepare-step spans set the headline number; do not justify the
   epic fleet-wide on the console's figures.
+- **Phase 5 is where this becomes measured, not projected** — the closing
+  gate re-runs these before/after comparisons over a real post-rollout
+  window and produces the comprehensive report (see Phase 5).
 
 ## Additional research (2026-07-11) — parallelism + janitor critical path
 
@@ -694,5 +777,7 @@ flowchart TD
     I --> C
     C --> F["Phase 3<br/>Fleet fan-out (8 members)"]
     F --> A["Phase 4<br/>Adopter work-items"]
+    F --> M["Phase 5<br/>Post-rollout efficiency report"]
+    P -. "P-factory trace-egress: hard prereq for Phase 5" .-> M
     P -. "continuous resource health check across all phases" .- F
 ```
