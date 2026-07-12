@@ -1,0 +1,42 @@
+# ci-runner-supervisor.service — the ephemeral-runner supervisor.
+# Runs as ci-sup, the ONLY account that reads the App private key. The key + config
+# come from the dedicated `github-ci-runners` 1Password environment, injected ONLY
+# into this service via its own wrapper — never into the shared livespec environment
+# and never into ci-runner or job containers. The supervisor mints JIT configs and
+# starts runner@*.service via the narrow polkit rule (49-ci-runner-supervisor.rules).
+[Unit]
+Description=CI runner supervisor (ephemeral JIT runner pool)
+After=network-online.target user@1001.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ci-sup
+Group=ci-sup
+# ci-sup is a supplementary member of ci-runner only if a shared read is needed;
+# the JIT handoff uses LoadCredential (root), so no group sharing is required.
+# /run/ci-runner is this unit's private runtime dir (0700 ci-sup); root (the runner
+# unit's LoadCredential) can still read the staged JIT files.
+RuntimeDirectory=ci-runner
+RuntimeDirectoryMode=0700
+# App key + config from the github-ci-runners 1Password environment (dedicated
+# wrapper the maintainer provisions, analogous to with-livespec-env.sh).
+ExecStart=/usr/local/bin/with-github-ci-runners-env.sh -- /usr/local/lib/ci-runner/ci-runner-supervisor.sh
+Restart=always
+RestartSec=10
+# Hardening — the supervisor holds the most powerful secret, so lock it down.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/run/ci-runner
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

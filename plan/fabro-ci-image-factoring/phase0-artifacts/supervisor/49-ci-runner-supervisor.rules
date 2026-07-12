@@ -1,0 +1,18 @@
+// 49-ci-runner-supervisor.rules — the NARROW privilege bridge.
+// Allows the low-priv `ci-sup` supervisor user to start/stop/restart ONLY
+// runner@*.service instances (the ephemeral runner units, fixed User=ci-runner).
+// It grants NO other systemctl authority, NO broad sudo, NO docker socket — so
+// neither ci-sup nor ci-runner nor a job can escalate through this bridge.
+// Install at /etc/polkit-1/rules.d/49-ci-runner-supervisor.rules.
+polkit.addRule(function(action, subject) {
+    if (action.id === "org.freedesktop.systemd1.manage-units" &&
+        subject.user === "ci-sup") {
+        var unit = action.lookup("unit") || "";
+        var verb = action.lookup("verb") || "";
+        if (/^runner@.+\.service$/.test(unit) &&
+            (verb === "start" || verb === "stop" || verb === "restart")) {
+            return polkit.Result.YES;
+        }
+    }
+    return polkit.Result.NOT_HANDLED;
+});

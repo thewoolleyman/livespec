@@ -1,0 +1,32 @@
+# runner@.service — a single EPHEMERAL GitHub Actions runner instance.
+# %i is the unique runner name the supervisor minted a JIT config for. The runner
+# runs exactly ONE job (JIT + ephemeral), then exits; the supervisor relaunches a
+# fresh instance. User=ci-runner (in none of docker/sudo/dolt). The JIT config is
+# staged by systemd's LoadCredential (root reads /run/ci-runner/%i.jit and exposes
+# it ONLY under this unit's $CREDENTIALS_DIRECTORY, ci-runner-readable) — the job
+# container (via the sanitize-hook mounts) never sees it.
+#
+# Fixed User= and fixed ExecStart mean instance-name variation grants no new
+# privilege; the polkit rule authorizes ci-sup to start runner@*.service only.
+[Unit]
+Description=Ephemeral contained GitHub Actions runner %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ci-runner
+Group=ci-runner
+WorkingDirectory=/home/ci-runner/actions-runner
+LoadCredential=jit:/run/ci-runner/%i.jit
+Environment=XDG_RUNTIME_DIR=/run/user/1001
+Environment=DOCKER_HOST=unix:///run/user/1001/podman/podman.sock
+Environment=ACTIONS_RUNNER_CONTAINER_HOOKS=/home/ci-runner/actions-runner/container-hooks/sanitize-hook.js
+ExecStart=/usr/local/lib/ci-runner/run-jit-runner.sh
+# One job then gone — the supervisor owns the lifecycle; never auto-restart.
+Restart=no
+NoNewPrivileges=true
+# The runner needs its rootless podman socket under /run/user/1001; keep sandboxing
+# light enough not to sever it.
+ProtectSystem=true
+ProtectHome=read-only
