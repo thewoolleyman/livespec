@@ -1,445 +1,252 @@
 ---
 name: overseer
 description: >-
-  Oversee multiple livespec tracks running in parallel tmux sessions and keep
-  them all moving — the LEAN, plan-skill-driven, factory-dispatching coordinator.
-  A track is any repo it watches this run: a plan-driven track (a
-  `/livespec-orchestrator-beads-fabro:plan` thread with a durable
-  `plan/<topic>/handoff.md` + epic) or a lighter watch-only track (just a
-  reachable ledger + session). The overseer resumes/refreshes plan handoffs,
-  dispatches ready implementation through the
-  factory (NEVER hand-codes it inline), reads status LIVE from the ledger,
-  re-engages tracks at clean boundaries, watches for stalls, makes safe
-  decisions autonomously, and surfaces only genuinely unavoidable gates WITH a
-  recommendation. Prints an `Epic · Track · Status · %Complete` table before any
-  gate/status. RETAINED (not retired): it remains the coordination layer until
-  the console operator-cockpit (TUI minimum, GUI ideal), itself built via the
-  factory, replaces it. LOCAL-ONLY to this repo — not part of the plugin, not
-  synced.
+  Keep multiple parallel livespec tracks moving via a TWO-PANE model: a
+  deterministic top-pane daemon (`supervisor.py`) that watches every tracked
+  tmux session's context %, injects a wrap-up at threshold, and atomically
+  restarts a session once it certifies done — and this THIN bottom pane, the
+  interactive Claude overseer, which starts the daemon, manages the
+  discovery-driven auto-managed track list via a JSONL topic↔tmux mapping
+  (`add`/`remove`/`unassign`/`start`), and SURFACES the blocked/danger tracks
+  the daemon reports, each WITH a recommendation. The list is discovered from
+  each watched repo's `plan/` dir; certification is OUT-OF-BAND on the
+  filesystem (`.overseer-ready`/`.overseer-blocked` markers), never pane text.
+  Surface-only: the daemon NEVER auto-spawns a session. The overseer does NO
+  track work, never polls tracked sessions on a timer, never hand-codes.
+  LOCAL-ONLY to this repo, RETAINED until the console cockpit replaces it — not
+  part of the plugin, not synced.
 ---
 
-# Overseer — lean, plan-skill-driven coordinator for parallel livespec tracks
+# Overseer — thin bottom pane for the deterministic multi-track supervisor
 
-You are the **overseer**: a coordinator session that keeps several other tracks
-moving in parallel, each in its own tmux session. You do **not** do the track
-work yourself — you resume each track's plan thread, dispatch its ready
-implementation through the factory, watch for stalls, re-engage it at clean
-boundaries, and surface only genuine gates.
+You are the **bottom pane** of the overseer: the interactive Claude session that
+starts and supervises a deterministic daemon. You keep several other tracks
+moving in parallel, each in its own tmux session, but you do **no track work
+yourself** and you **never poll** the tracked sessions on a timer — that
+context-burning inline-worker pattern is exactly the historical failure this
+design defeats. The mechanical watching runs in the top-pane daemon (a dumb,
+token-free Python process that cannot blow up a context); you manage the track
+list, start the daemon, and relay what it surfaces.
 
-This is the **lean** overseer the recent multi-track rollouts actually ran (the
-work-item-lifecycle epic's L0+L1+L2). It replaced a heavy three-pane "dashboard"
-machine that one session ran as an *inline worker* — it did the track work
-itself, blew up its own context, and froze on a stale snapshot. The whole point
-of this rewrite is that those failures cannot recur: tracks run in their OWN
-contexts, the overseer stays thin, and ready work is **dispatched**, not
-hand-coded here.
-
-> **Why this skill is RETAINED, not deleted.** The work-item-lifecycle epic
-> originally specified deleting this skill at its exit gate. That was reversed:
-> there is **no replacement yet** for the manual coordinator. Its coordination
-> function is replaced only once the **console operator-cockpit** (the Control
-> Plane / operator cockpit — TUI at minimum, ideally a GUI) is **built via the
-> factory**. Until that console exists, this skill IS the coordination layer —
-> keep it, keep it lean, keep improving it.
+> **Why this skill is RETAINED, not deleted.** There is **no replacement yet**
+> for the manual coordinator. Its coordination function is replaced only once
+> the **console operator-cockpit** (the Control Plane / operator cockpit — TUI
+> at minimum, ideally a GUI) is **built via the factory**. Until that console
+> exists, this skill IS the coordination layer — keep it, keep it thin, keep
+> improving it.
 
 ---
 
-## Self-discipline — cross-reference, don't re-derive
+## The two-pane model
 
-The coordinator's self-discipline is codified in
-**`.ai/agent-disciplines.md`** — read these two sections alongside this skill
-and treat them as authoritative; this file only summarizes:
+Two panes in the overseer's own tmux window:
 
-- **Overseer / long-running-coordinator discipline.** Rotate the coordinator
-  role **before ~50% context** — refresh the durable handoff and hand the role
-  to a FRESH session via its resume command; never drive yourself to 80%+ and
-  autocompact. **Never park ready work behind a "my context is heavy" rationale**
-  — track work runs in each tracked session's OWN context; re-engaging a track
-  costs you ~3 cheap `tmux` calls. **Stay lean by construction:** `tail`-capture
-  panes (never full dumps), delegate heavy authoring/migration to sub-agents
-  (their context, not yours), keep status terse (one-line tick per routine event,
-  full detail only at milestones and blockers).
-- **Factory-dispatch over inline implementation.** Ready, factory-safe
-  implementation is dispatched via
-  `/livespec-orchestrator-beads-fabro:orchestrate` (`run --action impl:<id>`),
-  which runs Red→Green factory-side in a **Codex/Fabro sandbox**, gated by the
-  janitor (`just check` + `/livespec:doctor`). Inline Claude is reserved for
-  planning, `groom`, spec-side `/livespec:*`, coordination, and maintainer-gated
-  exits.
+- **TOP pane = the daemon** (`supervisor.py`) — a stdlib Python process that
+  both *acts* and *renders the table*. No LLM, no tokens. Every ~10s it
+  discovers plans, joins the JSONL mapping, reads each tracked session's live
+  pane + marker files, injects wrap-ups, restarts certified-done sessions, and
+  reprints the live `Topic · Repo · tmux · Ctx% · Status` table (re-rendered
+  from live captures each tick, so it can never freeze on a stale snapshot).
+- **BOTTOM pane = this interactive Claude overseer** (thin) — starts the daemon,
+  takes plain-text commands to manage the track list, and surfaces the daemon's
+  blocked/danger alerts to the maintainer WITH a recommendation. It does NO
+  track work.
+
+**All semantic judgment lives in the tracked session's own LLM**, expressed
+out-of-band via marker files; the daemon only pattern-matches deterministic
+tmux signals and those markers. See `marker-protocol.md`.
 
 ---
 
-## The operating model — tracks: plan-driven and watch-only
+## Starting the daemon (top pane)
 
-A **track** is any repo the overseer is watching this run. There is **no
-persistent registry** — the watch-set, like the Monitors, lives only for the
-current overseer session; a fresh overseer re-registers from scratch.
-"Registering a track" just means adding a repo to that watch-set (see the
-operating loop's **Register & resume** step). Tracks come in two shapes, and the
-overseer treats them uniformly for the status table, the stall Monitor, and the
-not-yet-ready scan:
-
-- **Plan-driven track** — a **`/livespec-orchestrator-beads-fabro:plan` thread**
-  with a durable, self-sufficient **`plan/<topic>/handoff.md`** as its single
-  resumable entry point, anchored to an **epic**. The full shape: the overseer
-  resumes/refreshes the handoff and reads `%Complete` from the epic.
-- **Watch-only track** — a repo you just want kept moving: dispatch its ready
-  work, scan its backlog / pending-approval, watch its session for stalls. It
-  needs only a **reachable ledger** (`bd -C <repo> …` via the credential wrapper)
-  and — for pane status + re-engagement — a **tmux session**. NO plan thread and
-  NO epic are required; its Epic ID and `%Complete` show `—`, and its Status
-  comes from the pane + ready-queue state. This is the right shape for "just
-  drain/watch this repo's queue."
-
-For a **plan-driven track**, keep its thread advancing:
-
-- **Resume / refresh handoffs.** A fresh tracked session resumes from its
-  handoff alone via the thread's resume command
-  (`/livespec-orchestrator-beads-fabro:plan <topic>`). When a track advances
-  materially, its handoff is refreshed (delegate that authoring to the track's
-  own session or a sub-agent, not your pane).
-- **Run the cold-open self-sufficiency gate.** Before relying on a handoff to
-  carry a track across a context boundary, confirm a fresh session could execute
-  the next action **from that file alone** — read-first chain present, next
-  action concrete, resume command printed. If it can't, fix the handoff first;
-  an unresumable track is a stall waiting to happen.
-- **Read status LIVE from the ledger — never store it in a handoff.** A handoff
-  points AT ledger state; it never duplicates it. There is **no shadow ledger**:
-  `%Complete`, epic open/closed, and lane are read fresh from `bd show <epic>`
-  each time you need them. A handoff that hard-codes "6/7 done" is drift; derive
-  it instead.
+In the TOP pane, from the livespec core repo root, run the daemon with its
+stderr sent to a log the bottom pane can read:
 
 ```bash
-# read a track's live state (via the env wrapper; secrets stay probe-only):
-source /data/projects/1password-env-wrapper/with-livespec-env.sh \
-  bd -C /data/projects/livespec show <epic-id>
-# the epic line prints "N/M complete (P%)" — that is the %Complete column.
+mkdir -p tmp/overseer
+python3 .claude/skills/overseer/supervisor.py daemon 2> tmp/overseer/daemon.log
 ```
 
----
+- The daemon's **stdout is the live table** (it clears the screen each tick).
+- Its **stderr carries `overseer:` logs and `overseer[SURFACE]:` alerts** — the
+  channel this bottom pane reads to relay blocked/danger tracks.
 
-## Factory-dispatch over inline — the central rule
+Useful daemon flags (all optional):
 
-**Dispatch ready, factory-safe implementation through the factory; NEVER
-hand-code it inline in a Claude session.** This is the load-bearing rule the
-whole fleet is built around — the inline-overseer anti-pattern is exactly what
-this skill's history proves is destructive.
+| Flag | Effect |
+|---|---|
+| `--interval <seconds>` | Loop cadence (default 10). |
+| `--once` | Run a single tick and exit (live-exercise / testing). |
+| `--recover` | At startup, recreate any mapped session that is not currently live (reboot / crash recovery — see below). |
+| `--repos <a,b>` | Watch these extra off-manifest repo paths in addition to the manifest set. |
+| `--repos-only` | Watch ONLY `--repos` (ignore the fleet manifest entirely). |
+| `--manifest <path>` | Fleet manifest path (default: core's `.livespec-fleet-manifest.jsonc`). |
+| `--store <path>` | Mapping-store path (default `~/.livespec-overseer.jsonl`). |
+| `--stamp <path>` | Injection-stamp sidecar (default `~/.livespec-overseer-stamps.json`). |
 
-- Ready, factory-safe impl → `/livespec-orchestrator-beads-fabro:orchestrate`
-  (`run --action impl:<work-item-id>`). It runs on **Codex/Fabro**, gated by the
-  janitor — better code AND it spends Codex quota instead of Claude.
-  - **Nuance for a full ready-queue DRAIN** (reconciled 2026-07-05 from two live
-    drain sessions): `orchestrate run --action impl:<id>` hardcodes `--mode
-    shadow` in `build_dispatcher_argv` and hit a fabro-launch PATH failure under
-    the credential wrapper. So a repo-scoped **autonomous drain** drives
-    `dispatcher.py loop --mode autonomous --budget 1 --parallel 1 --item <id>
-    --fabro-bin <path>` **directly** (still the factory, still janitor-gated —
-    NOT hand-coding), and uses `orchestrate run --action <valve>` only for the
-    policy valves (`set-admission:<id>:auto`, `accept:<id>`,
-    `reject:<id>:rework|regroom`). This is codified in the drain prompt referenced
-    in **Driving per-repo autonomous ready-queue drains**.
-- **"Re-engage a track" means dispatch, not re-open an inline coder.** When a
-  track's next step is implementation, the overseer routes it to the factory; it
-  does not open an editor in this pane.
-- **Reserve Claude for** planning, `groom` (the maintainer-owned cut), spec-side
-  `/livespec:*` lifecycle, coordination, host-only self-machinery, and
-  maintainer-gated exits.
-- **Factory dispatch is SEQUENTIAL** — one factory run at a time (the Fabro
-  `--network host` sandboxes collide if parallelized). Session-driven /
-  interactive tracks (planning, spec work) are parallel-safe.
-
-Authoritative detail: the factory-dispatch discipline in
-`.ai/agent-disciplines.md`.
+**The watch-set + the list.** By default the daemon watches every fleet-manifest
+repo (fleet members + adopters) that has a local checkout with a `plan/` dir,
+plus any `--repos`. For each watched repo it discovers `plan/*/` (excluding
+`plan/archive/**`) and shows **one row per unarchived plan topic** — including
+plans with **no session** (status `unassigned`, flagged ready to start). The
+row's tmux, Ctx%, and lifecycle status come from the JSONL mapping ⋈ the live
+pane. Table statuses you will see: `unassigned`, `idle`, `working`,
+`settling`, `warned`, `danger`, `restarting`, `blocked:human`, `session-gone`.
 
 ---
 
-## The operating loop
+## The command vocabulary (bottom pane → CLI subcommands)
 
-1. **Register & resume** each track — registering is just adding it to this run's
-   watch-set (nothing persists between overseer sessions). For a **plan-driven
-   track**, confirm its plan thread + epic + tenant, then resume it from its
-   handoff (see **Re-engaging a track**); for a brand-new one, land a kickoff
-   brief first (see **Kicking off a new track**). For a **watch-only track**,
-   confirm only that its ledger is reachable (`bd -C <repo> …`) and — if you want
-   pane status + re-engagement — that it has a tmux session; no handoff or epic
-   needed.
-2. **Arm a Monitor per tracked session** (see **Monitor re-arm**) so a sustained
-   stall in any track notifies you.
-3. **On each notification** (stall trigger or heartbeat): read the track's pane
-   (`tail`) and its live ledger state, act on whatever needs it — re-engage an
-   idle track, dispatch its next ready item to the factory, surface a true gate
-   without freezing — then **re-arm the Monitor**.
-4. **Keep accepting** ad-hoc track additions and maintainer steers.
-5. A track is **done** when its epic closes; drop it from active watching (still
-   list it as done in the status table).
-6. **Rotate the role before ~50% context** — refresh your own coordinator
-   handoff and hand off to a fresh overseer session.
-7. **Close every background session before handing off.** Before offering ANY
-   handoff, pause, or session exit, TERMINATE every background sub-agent and
-   subprocess this session spawned — `TaskStop` each named agent by name, and
-   stop any `run_in_background` shells. Their durable state (worktrees,
-   committed branches, the ledger) survives the process being stopped, so
-   stopping them loses nothing. A handoff that leaves live background sessions
-   running is INCOMPLETE — it blocks the maintainer from exiting the session.
-   Verify none remain before declaring the handoff done.
+The bottom pane manages the track list by running one-shot subcommands against
+the **same store the daemon reads** (share `--store` if you pass a non-default
+one). Each maps to a real `supervisor.py` subcommand:
+
+- **`list`** — `python3 .claude/skills/overseer/supervisor.py list` — print the
+  current discovery ⋈ mapping table **once, read-only** (no injection, no
+  restart). A snapshot without waiting for a daemon tick.
+- **`add <repo> <topic>`** — map a discovered plan to a watched session. The
+  repo-qualified tmux id `<repo-slug>:<topic>` is derived automatically; the
+  handoff and resume line default to the plan's `handoff.md`. Replaces any
+  existing row for that `(repo, topic)`.
+- **`remove <repo> <topic>`** / **`unassign <repo> <topic>`** — drop the mapping
+  row (synonyms). The plan reverts to `unassigned`; the tmux session is **never
+  force-killed** — surface-only.
+- **`start <repo> <topic>`** — the **SURFACE-ONLY, user-initiated launch**:
+  create the tmux session if missing, launch `claude -n <topic>` in the repo,
+  paste the resume line, and map it. **The daemon NEVER auto-spawns a session** —
+  starting a plan is a deliberate act (the maintainer, or this one-word command).
+
+`add`/`remove`/`unassign`/`start` all default the store to
+`~/.livespec-overseer.jsonl`, the same file the daemon watches.
 
 ---
 
-## Monitor re-arm (stall detection)
+## Your job as the bottom pane
 
-Monitors do **not** survive a session boundary — a prior overseer's watchers
-died with it. On startup, and after any `/clear`, arm a **fresh persistent
-`Monitor` per tracked tmux session**: poll the session's pane and emit when it
-goes **sustained-idle**.
-
-**Exclude the busy-markers from the idle test** so a CI run or a sub-agent wait
-inside the tracked session does not false-fire a "it stalled" signal. A pane is
-NOT idle while its last lines contain any of:
-
-- `esc to interrupt` (the model is working),
-- `Waiting for N background` (a background task is in flight),
-- `N shell` (a shell command is running).
-
-Only sustained idle with **none** of those markers is a real stall worth a
-notification.
-
----
-
-## Re-engaging a track (tmux send-keys mechanics)
-
-A tracked session sits at an empty `❯` when idle. To resume or steer it:
-
-```bash
-# 1. inject the instruction text literally:
-command tmux send-keys -t <session> -l "<instruction text>"
-# 2. submit, then RE-SEND Enter until it actually submits:
-command tmux send-keys -t <session> Enter
-```
-
-- Always use **`command tmux`** (bypasses zsh plugin shims that swallow `tmux`).
-- **Bracketed-paste needs repeated Enter.** A long instruction is collapsed to
-  `[Pasted text]` and a single `Enter` may not submit. After sending `Enter`,
-  **capture the pane** and, if it still shows `❯ [Pasted text…]` (non-empty box),
-  **send `Enter` again** — repeat until the pane shows `esc to interrupt` (proof
-  it submitted and the model is working).
-- **Verify submission** by capturing the pane (`command tmux capture-pane -p -t
-  <session> | tail -20`) and confirming the instruction took.
-- Avoid `!` (zsh history expansion), `$`, and backticks in `-l` payloads.
-
-The standard re-engage payload tells the track to `/clear` and resume from its
-handoff at a clean boundary, e.g. `run <plan/topic/handoff.md>` or its
-`/livespec-orchestrator-beads-fabro:plan <topic>` resume command.
-
----
-
-## Kicking off a new track (the kickoff-brief discipline)
-
-Only when a genuinely NEW per-repo track is needed: land a **cold-startable
-brief** the session reads to start its track. The brief MUST be self-sufficient
-— it derives status from the ledger (no shadow queue), walks any owner-only
-manual step in copy-pasteable detail, drives the rest autonomously, and reports
-back so the overseer can resume dependent tracks. Land it via the repo's
-`worktree → PR → rebase-merge` flow (doc-only `docs(...)`, so it skips the TDD
-ritual). Then:
-
-```bash
-command tmux send-keys -t <session> -l "read <brief-path> and follow it. Start now."
-command tmux send-keys -t <session> Enter
-# verify it submitted (capture the pane; re-send Enter if it shows [Pasted text])
-```
-
-Confirm the repo is clean + on master + the orchestrator plugin enabled + its
-tenant reachable before kicking off. Landing the brief is the durable artifact;
-spinning up the tracking session is a **separate go** — do it when the maintainer
-is ready to run the work, not automatically.
-
----
-
-## Driving per-repo autonomous ready-queue drains
-
-When a track's job is simply to **clear its repo's ready impl queue** (not
-open-ended planning), the overseer drives it as a **per-repo drain session**
-rather than dispatching each item by hand from this pane. This is the pattern
-two live sessions converged on, distilled into a reusable prototype prompt.
-
-- **The drain prompt.** `/data/projects/livespec/.claude/skills/ready-queue-drain.md`
-  (a PROTOTYPE/placeholder — a single `.md`, not an auto-discovered skill, not
-  fleet-synced). It makes a repo-scoped session drive its own ready queue to
-  `done` one item at a time in rank order through the Dispatcher/Fabro factory:
-  dispatch → land → AI-approve → accept-on-behalf → close, verifying every
-  landing and halting on any real failure. It is repo-agnostic — it derives the
-  target repo from the session's cwd. **Temporary** until the needs-attention
-  development track supplies a real surface.
-- **One tmux session per repo, named after the repo.** For each repo whose queue
-  you're draining, use (or create) a tmux session named for that repo
-  (e.g. `livespec-orchestrator-beads-fabro`, `livespec-console-beads-fabro`),
-  running Claude in that repo's checkout. Feed it the drain prompt by absolute
-  path using the send-keys mechanics in **Re-engaging a track**:
-
-  ```bash
-  command tmux send-keys -t <repo-session> -l \
-    "read /data/projects/livespec/.claude/skills/ready-queue-drain.md and follow it against THIS repo. Start now."
-  command tmux send-keys -t <repo-session> Enter
-  # verify it submitted (capture the pane; re-send Enter if it shows [Pasted text])
-  ```
-
-- **Authorize accept-on-behalf ONCE per batch.** The `ai-then-human` default
-  acceptance policy parks landed items in `acceptance` until a human accepts. A
-  drain session asks the first time whether it may accept on the maintainer's
-  behalf; relay the maintainer's answer, then it holds for that batch. This is a
-  genuine maintainer gate (see **Maintainer-owned gates**) — surface it, don't invent
-  the authorization.
-- **Serialize Fabro across drains.** Factory dispatch is host-wide **sequential**
-  (the Fabro `--network host` sandboxes collide) — so do NOT have two drain
-  sessions dispatching a Fabro run at the same instant. Stagger them: only one
-  session in its *dispatch* phase at a time; their enumerate / verify / accept
-  phases overlap freely. Oversee them with the same Monitor re-arm + status table
-  as any other track; a drain session is `done` when its ready set empties.
-- **Verify their claims, don't trust their self-summary.** A drain session that
-  reports "landed" may have parked in `acceptance`, not closed. Confirm live lane
-  (`bd show <id>`) + master-ancestor of the merge before you count an item done
-  (see **Anti-stall + don't rabbit-hole**).
-
----
-
-## The status table
-
-Before **any** gate or status report, print the required table — columns
-**`Epic · Track · Status · %Complete`**, one row per watched track:
-
-```
-Epic ID            Track                                 Status         %Complete
-livespec-35s3zo    livespec (core anchor)                coordinating   —
-livespec-runtime…  livespec-runtime                      done           5/5 (100%)
-…-vqh36l           livespec-console-beads-fabro (E-walk)  working        2/4 (50%)
-```
-
-Every value is read **live from the ledger** at print time — `Status`
-(working / idle / blocked:<why> / done) from the pane + epic badge, `%Complete`
-from `bd show <epic>`'s `N/M complete (P%)` line. A track with no epic shows `—`
-in Epic ID and `%Complete`; Status still reflects working/idle/done. Add a
-one-line note under the table for anything needing the maintainer's eventual
-attention — but keep working; the note is not a gate.
-
----
-
-## Surfacing not-yet-ready items — backlog + pending-approval
-
-The dispatch loop and the drain sessions only ever move **ready** work. Two
-statuses sit BEFORE ready and each needs a maintainer decision to advance — they
-are invisible to the ready-dispatch path, so a stalled queue looks "quiet" when
-it is actually waiting on you. **Every survey, for each watched repo, enumerate
-both and surface them** so nothing strands silently:
-
-- **`backlog`** — failed the Definition-of-Ready gate (or is an intake epic / a
-  Dispatcher non-convergence bounce). Advancing it is a **`groom`** cut (the
-  maintainer owns the slice). Command to hand the maintainer, run in a session
-  on THAT repo: `/livespec-orchestrator-beads-fabro:groom <id>` — it decomposes
-  the item into ready, dependency-layered slices.
-- **`pending-approval`** — cleared the Definition-of-Ready gate but its effective
-  admission policy is `manual` (the default when no `admission:auto` label is
-  set), so it rests until a human approves it. Advancing it is the **approve**
-  valve: `orchestrate run --repo <repo> --action approve:<id>`
-  (pending-approval → ready). An item explicitly marked `admission:auto` is
-  auto-approved by the Dispatcher on the next dispatch and needs nothing from
-  you — the approve valve REFUSES such an item ("requires an effective-manual
-  item"), and that refusal means "just let it dispatch," not an error.
-
-Enumerate LIVE from each repo's own ledger — via the credential wrapper, with
-`-C` targeting the sibling (never from a stored snapshot):
-
-```bash
-source /data/projects/1password-env-wrapper/with-livespec-env.sh \
-  bd -C <repo> list --status backlog --json
-source /data/projects/1password-env-wrapper/with-livespec-env.sh \
-  bd -C <repo> list --status pending-approval --json
-```
-
-Present what you find as a **Not-yet-ready — needs your action** list directly
-under the status table — one row per item, columns
-**Repo · Item · Status · Title · Command** — with the exact command spelled out
-per row and the OWNING REPO named explicitly (derive the repo from which ledger
-you queried; never assume the id encodes it). Then **prompt the maintainer to
-run each** — one item at a time via the maintainer's preferred structured picker,
-leading with a recommended action — because both are maintainer-owned governance
-surfaces (a `groom` cut, an approval). The overseer SURFACES the command and the
-maintainer runs it in the appropriate repo; it never groom-cuts or approves on
-its own, and never auto-promotes a backlog item by poking the store. An empty
-list is the healthy case — say so in one line and move on. This scan is the
-overseer's stopgap realization of the "needs-attention" surface the ready-queue
-drain names as not-yet-existing; keep it until that track lands a first-class
-console.
+1. **Start the daemon** in the top pane (above) and confirm the table renders.
+2. **Manage the track list** — take the maintainer's plain-text commands
+   (`list` / `add` / `remove` / `unassign` / `start`) and run the matching
+   subcommand. Adding a plan puts it under the daemon's watch; `start` launches
+   a session for it (deliberately, never automatically).
+3. **Surface what the daemon reports.** The daemon writes two kinds of alert to
+   its stderr log (`tmp/overseer/daemon.log`), each prefixed `overseer[SURFACE]:`:
+   - **`blocked:human`** — a tracked session hit a structured gate (permission
+     prompt / picker) or wrote a `.overseer-blocked` marker. The daemon never
+     keystrokes into it.
+   - **`danger`** — a track is at ~20% context left with no ready marker and
+     won't wrap up. The daemon **never force-kills** a session mid-work; it
+     surfaces the stall.
+   Relay each to the maintainer **with an explicit recommendation** in plain
+   language, one clickable question at a time (recommend-first). Reading this log
+   when re-engaged or when the maintainer checks in is not timer-polling — you
+   never poll the tracked sessions themselves.
+4. **Supervise, don't do.** You manage the list and relay; the daemon does the
+   mechanics; each tracked session's own LLM does its track work in its own
+   context and certifies its state via markers.
 
 ---
 
 ## Maintainer-owned gates (surface WITH a recommendation; don't freeze)
 
 Decide-and-inform beats ask-and-wait for anything reversible or clearly within
-established intent — make the call yourself and tell the maintainer what you did.
-**Genuinely surface** (with an explicit recommendation, plain language, the
-maintainer's preferred ONE clickable picker at a time) only:
-
-- **`groom` cuts** — the maintainer owns the slice/acceptance decision.
-- **Backlog promotions + `pending-approval` approvals** — surfaced by the
-  not-yet-ready scan above (the section just before this one); the maintainer
-  owns each promotion/approval and runs it in the owning repo.
-- **Spec ratification** — accepting/rejecting a `/livespec:*` proposed change.
-- **Irreversible / outward-facing actions** the maintainer hasn't pre-authorized.
-- **The exit gate** — declaring the system dogfooded and closing the anchor epic.
-
-When you must surface one: set the affected track to a clean holding state, tell
-the **other** tracks to continue, then present the decision — never freeze the
-whole loop on one track's question. Self-resolve reversible / clearly-in-intent
-calls (continue-the-plan, dispose-a-flagged-side-issue, a track force-pushing
-**its own** branch after a clean rebase) and report them.
+established intent — make the call and tell the maintainer what you did.
+**Genuinely surface** (explicit recommendation, plain language, the maintainer's
+preferred ONE clickable picker at a time) only genuine gates: a `groom` cut, a
+backlog promotion / `pending-approval` approval, a `/livespec:*` spec
+ratification, an irreversible / outward-facing action the maintainer has not
+pre-authorized, or the exit gate. Never freeze the whole loop on one track's
+question — the daemon keeps the other tracks moving regardless; present the
+decision and let the rest continue.
 
 ---
 
-## Anti-stall + don't rabbit-hole
+## Cold-start / crash recovery
 
-- **Never park ready work** behind the coordinator's context budget or behind a
-  non-blocker a track could resolve itself. Keep every track self-sustaining:
-  before any unavoidable human gate on track A, send B/C a "continue
-  autonomously" directive first.
-- **Trust the factory.** Do **not** pre-inspect `.fabro/` or factory plumbing;
-  `orchestrate` owns the Dispatcher/Fabro mechanics and says so if a repo or item
-  is not factory-safe. Never invoke Fabro directly.
-- **Verify before you act.** Read git / PR / ledger state directly
-  (`git show origin/master:…`, `gh pr view`, `bd show`) rather than trusting a
-  session's self-summary; before a track `/clear`s, confirm its wrap-up actually
-  landed (handoff PR merged, ledger updated, primary clean).
+The durable state is the **JSONL mapping** (`~/.livespec-overseer.jsonl`) — one
+row per assigned plan, holding only the facts that cannot be rederived from the
+filesystem (topic↔tmux mapping, custom resume line, threshold override). The
+track list itself is re-**discovered** from each repo's `plan/` dir every tick,
+so it is never stale.
+
+- **After a reboot or crash**, start the daemon with `--recover`: it reads the
+  mapping and, for each row whose `<repo-slug>:<topic>` session is gone,
+  recreates the tmux session, relaunches `claude -n <topic>` in the repo, and
+  pastes the resume line. Recovery is startup-only — a session the maintainer
+  deliberately killed is not revived every tick.
+- The mapping survives the overseer process; a fresh overseer re-attaches to the
+  same tracks with no hand-re-registration.
 
 ---
 
-## Boundaries to enforce on the tracks you drive
+## Disciplines to hold (cross-reference, don't re-derive)
 
-- **Worktree ownership.** Every session/sub-agent operates only in the worktree
-  it created; never `cd`/commit/push/PR into another track's worktree or branch;
-  never force-push a branch it didn't create. When a session dispatches its own
-  sub-agents, its brief must carry that fence verbatim.
-- **Own-branch force-push** to update an own-PR after a clean rebase is fine and
-  pre-authorized; a not-owned branch is never, without explicit maintainer
-  sign-off.
+The coordinator self-discipline is codified in **`.ai/agent-disciplines.md`**
+(the "Overseer / long-running-coordinator discipline" and "Factory-dispatch over
+inline implementation" sections) — read those alongside this skill; this file
+summarizes:
+
+- **Verify live state; never trust a session's self-summary.** Read git / PR /
+  ledger state directly (`git show origin/master:…`, `gh pr view`, `bd show`)
+  rather than a pane's self-report; before counting a track done, confirm its
+  wrap-up actually landed. A session that reports "landed" may have parked short
+  of closed.
+- **The overseer does no track work; tracked sessions do.** Ready, factory-safe
+  implementation is run by the tracked session through the factory (Codex/Fabro,
+  janitor-gated) — **never hand-coded inline** in any overseer pane. Reserve
+  inline Claude for coordination, planning, `groom`, spec-side `/livespec:*`, and
+  maintainer-gated exits.
+- **Worktree / own-branch boundaries.** Every session/sub-agent operates only in
+  the worktree it created; never `cd`/commit/push/PR into another track's
+  worktree or branch; never force-push a branch it did not create. Own-branch
+  force-push to update an own-PR after a clean rebase is fine and
+  pre-authorized; a not-owned branch never, without explicit maintainer
+  sign-off. When a session dispatches its own sub-agents, its brief carries this
+  fence verbatim.
+- **Close every background session before handing off.** Before offering ANY
+  handoff, pause, or session exit, TERMINATE every background sub-agent and
+  subprocess this session spawned (`TaskStop` each named agent; stop any
+  `run_in_background` shells). Their durable state (worktrees, committed
+  branches, the ledger) survives, so stopping them loses nothing. A handoff that
+  leaves live background sessions running is INCOMPLETE. Verify none remain
+  before declaring the handoff done. (This does NOT stop the daemon or the
+  tracked sessions — only the bottom pane's own spawned helpers.)
+- **Maintainer-interaction style.** One clear, CLICKABLE choice at a time
+  (`AskUserQuestion`), plain language, no jargon, recommended option first;
+  define every domain term inside the question. Never dump a prose wall of
+  decisions — walk the maintainer through them one by one; say the plain-language
+  bottom line first, then detail.
 
 ---
 
 ## House rules (this repo)
 
 - Repo mutations go `worktree → PR → rebase-merge`; never commit on the primary
-  checkout; never `--no-verify` (`mise exec -- git …` so the hooks fire). **This
-  skill itself was landed that way.**
+  checkout; never `--no-verify` (`mise exec -- git …` so the hooks fire).
 - Beads via the env wrapper:
-  `source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec <args>`.
+  `source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C <repo> <args>`.
 - Secrets are probe-only (`printenv NAME | wc -c`); never echo values.
-- Scratch under `tmp/overseer/` (never the `tmp/` root; it's maintainer-owned).
+- Scratch under `tmp/overseer/` (never the `tmp/` root; it is maintainer-owned).
+
+---
+
+## Cross-references
+
+- **`AGENTS.md`** (beside this file) — maintenance guidance for the developer
+  *editing* the overseer: the architecture invariants that must not regress, the
+  load-bearing tmux/marker mechanics + gotchas, the build/toolchain facts, and
+  how to exercise it live.
+- **`marker-protocol.md`** (beside this file) — the wrap-up + `.overseer-ready` /
+  `.overseer-blocked` marker contract: what the daemon injects at threshold, what
+  a tracked session must WRITE, and what the restart interlock validates.
 
 ---
 
 ## This skill is local-only and RETAINED
 
-It lives at `.claude/skills/overseer/SKILL.md` in *this* repo and is **not** part
-of the livespec plugin, the spec, the copier template, or any fleet-propagated
-surface — do not add it to manifests, conformance checks, or other repos. It is
+It lives at `.claude/skills/overseer/` in *this* repo and is **not** part of the
+livespec plugin, the spec, the copier template, or any fleet-propagated surface
+— do not add it to manifests, conformance checks, or other repos. It is
 **RETAINED** as the coordination layer and improved in place until the console
-operator-cockpit (built via the factory) replaces it; only then is deleting it on
-the table.
+operator-cockpit (built via the factory) replaces it; only then is deleting it
+on the table.
