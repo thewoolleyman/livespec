@@ -563,3 +563,33 @@ def test_settled_idle_pane_still_injects(tmp_path):
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "warned"
     assert fake.has("paste")  # settled idle + low ctx → wrap-up injected
+
+
+def test_submit_prompt_resends_enter_until_box_clears(tmp_path):
+    """LIVE-EXERCISE regression: a freshly-respawned session can DROP the first
+    Enter while still drawing its welcome screen, leaving the resume line
+    un-submitted. `_submit_prompt` re-sends Enter until the empty box returns.
+    (The 3-frame list: box-with-text, box-with-text, empty box.)"""
+    fake = FakeTmux()
+    session = "s"
+    fake.sessions.add(session)
+    not_ready = "❯ read handoff.md and follow it\n" + ("─" * 40) + "\nwelcome screen\n"
+    fake.panes[session] = [not_ready, not_ready, _idle_capture()]  # 3rd frame = empty box
+    sup = _sup(tmp_path, fake)
+    sup._submit_prompt(session, "read handoff.md and follow it")
+    enters = [c for c in fake.calls if c[0] == "keys" and c[2] == "Enter"]
+    assert len(enters) == 3  # dropped twice, submitted on the third
+    assert fake.paste_texts() == ["read handoff.md and follow it"]  # pasted once
+
+
+def test_submit_prompt_single_enter_when_already_ready(tmp_path):
+    """On a steady session (empty box every capture) a single Enter suffices —
+    the verify loop returns immediately, not sending redundant Enters."""
+    fake = FakeTmux()
+    session = "s"
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture()  # empty box → input_box_ready True at once
+    sup = _sup(tmp_path, fake)
+    sup._submit_prompt(session, "hello")
+    enters = [c for c in fake.calls if c[0] == "keys" and c[2] == "Enter"]
+    assert len(enters) == 1

@@ -25,6 +25,7 @@ from pathlib import Path
 __all__ = [
     "blocked_marker",
     "blocked_marker_path",
+    "input_box_ready",
     "is_busy",
     "is_idle_input",
     "is_structured_gate",
@@ -207,6 +208,18 @@ def is_idle_input(capture_text: str) -> bool:
         return False
     if is_structured_gate(capture_text):
         return False
+    return _input_box_present(capture_text)
+
+
+def input_box_ready(capture_text: str) -> bool:
+    """True if the EMPTY `❯` input box is present (regardless of busy/gate).
+
+    Unlike :func:`is_idle_input`, this does NOT require not-busy — it is the
+    "the prompt cleared" signal the daemon uses to confirm a pasted prompt
+    actually SUBMITTED (after submit the box empties; while a fresh session is
+    still drawing its welcome screen the box holds the un-submitted paste, so
+    this stays False until an Enter lands).
+    """
     return _input_box_present(capture_text)
 
 

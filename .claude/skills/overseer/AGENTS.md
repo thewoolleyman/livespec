@@ -73,13 +73,17 @@ manifests, conformance checks, or any other repo.
   Claude TUI takes the whole blob as ONE pasted input that cannot fragment into
   separate submitted prompts. `send-keys -l` typing a multi-line payload would
   fragment it — do not.
-- **Bracketed-paste submission (`_submit_prompt`).** Paste, brief sleep, then ONE
-  `Enter` to submit. Verified live (2026-07-13): a bracketed paste (`load-buffer`
-  + `paste-buffer -p`) of a single- OR multi-line payload submits reliably with a
-  single `Enter` in the current Claude Code — the historical
-  "repeat-Enter-until-`esc to interrupt`" dance was needed only for the OLD
-  `send-keys -l` key-by-key typing, NOT for a bracketed paste. Keep the paste
-  atomic (never type a multi-line payload key-by-key).
+- **Bracketed-paste submission (`_submit_prompt`) — verified-submit loop.** Paste
+  (`load-buffer` + `paste-buffer -p`, single- or multi-line, atomic — never type
+  a payload key-by-key), then re-send `Enter` until the empty box returns
+  (`signals.input_box_ready`), up to `_SUBMIT_MAX_ENTERS`. Verified live
+  (2026-07-13): on a STEADY idle session a single `Enter` submits; but a
+  freshly-`respawn`-ed session is often still drawing its welcome/news screen when
+  the first `Enter` arrives and DROPS it, leaving the resume line un-submitted and
+  the auto-restart stalled. The verify loop fixes that (an extra `Enter` on an
+  already-empty prompt is a harmless no-op). Note: this is NOT the old
+  `send-keys -l` key-by-key-typing collapse problem — the paste is always atomic;
+  it is purely fresh-TUI submit TIMING.
 - **Anchored, fail-closed Ctx% parse (`signals.parse_ctx_remaining`).** Scan only
   the last FEW non-empty pane rows (`_CTX_TAIL_ROWS`), ANSI-stripped, taking the
   LAST `Ctx: N% left` match. The statusline is the SECOND-to-last row — a footer
