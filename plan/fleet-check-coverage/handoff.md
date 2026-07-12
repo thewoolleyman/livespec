@@ -10,6 +10,20 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-12 (SESSION 10) UPDATE — READ THE SESSION-10 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-9 below.** The core decomposition is UNDERWAY and
+  going cleanly. **core-split-1 (dispatch-loop primitives → `_dispatcher_loop.py` + `_dispatcher_loop_selection.py`)
+  and core-split-1b (facade removal + genuine-Red remediation) are DONE + ratified**; dispatcher.py
+  639→**447 LLOC**. The core-split-1 review found a FAKE-RED blocker (a collection-error Red, not a genuine
+  assertion) — maintainer decided "accept code + remediate": code kept (independently verified correct),
+  Fabro `implement.md` prompt HARDENED to forbid collection-error Reds + require the importlib+`is_file()`
+  pattern (PR #518), and core-split-1b modeled the genuine Red. **FIRST ACTION: reconcile the in-flight
+  core-split-2 dispatch `bd-ib-nzc`** (check/preflight leaf helpers → `_dispatcher_run_checks.py`), then
+  core-split-3 (command-layer + seam-cleanup) + trim. **PARALLEL WORKSTREAM (separate repo, non-conflicting):**
+  a background sub-agent is landing the Phase-2 file_lloc flip-mechanism in `livespec-dev-tooling`
+  (making `file_lloc`'s hard-gate legacy-tree per-repo-configurable; additive/behavior-preserving) — check
+  its PR/release and reconcile. The SESSION-10 block carries the full endgame + the (unchanged) reusable
+  cycle. Everything below (incl. SESSION-9) is prior context SESSION-10 supersedes where they conflict.
 - **⇒ 2026-07-12 (SESSION 9) UPDATE — READ THE SESSION-9 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-8 below.** The **entire L2 mechanical cluster chain
   (L2-a…j) is DONE + ratified** (each independent Fable NO-BLOCKERS + merge-evidence close);
@@ -974,6 +988,75 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-12 SESSION 10 — CURRENT STATE, READ FIRST (supersedes SESSION-9 below)
+>
+> **Core decomposition underway (maintainer decision "Decompose the core", 2026-07-12). dispatcher.py
+> 2616(orig) → 447 LLOC**, the ONLY >250 file in the orchestrator. DONE + ratified this session:
+> core-split-1 `bd-ib-7w2` PR#516 (dispatch-loop primitives → `_dispatcher_loop.py` [defines `dispatch_one`]
+> + `_dispatcher_loop_selection.py` [the 7 selection/prep primitives, all public]); core-split-1b `bd-ib-e3h`
+> PR#519 (removed the `_dispatcher_loop` re-export facade — dispatcher.py imports `dispatch_one` from loop +
+> the 7 directly from loop_selection — AND modeled the genuine-assertion Red).
+>
+> **FAKE-RED REMEDIATION (complete).** core-split-1's Red was a collection error (top-level import of the
+> not-yet-existing module → ModuleNotFoundError, zero assertions), not a genuine assertion; PR body
+> misrepresented it. Independent Fable flagged it BLOCKER (all code items passed). Maintainer decided
+> "accept code + remediate": (a) core-split-1 ratified with an honest deviation journal; (b) DURABLE fix —
+> Fabro `implement.md` prompt hardened (PR #518, MERGED) to forbid collection-error Reds and REQUIRE the
+> `importlib`-inside-body + `module_path.is_file()` first-assertion pattern for decomposition slices; (c)
+> core-split-1b modeled it (genuine Red `.........F..`). **All decomposition-slice briefs from here MUST use
+> that genuine-Red pattern (the prompt now enforces it).**
+>
+> **⚠ FIRST ACTION ON RESUME — reconcile the in-flight core-split-2 dispatch `bd-ib-nzc`** (check/preflight
+> leaf helpers → NEW `_dispatcher_run_checks.py`: `run_ledger_check`/`run_spec_check`/`run_janitor_check`/
+> `dispatch_preamble`/`requested_items_preflight_error` promoted public + `_emit_check_findings`/
+> `_resolve_fabro_bin_for`/`_fabro_preflight_error` private; `requested_items_preflight_error` imports
+> `ready_items` public from `_dispatcher_loop_selection`; no seam). Reconcile via the usual recipe (gh pr list
+> + bd show) → pinned-venv self-verify → independent Fable review → merge-evidence close.
+>
+> **THEN core-split-3 + trim (SEQUENTIAL, both edit dispatcher.py):**
+> - **core-split-3 command-layer + seam-cleanup** → NEW `_dispatcher_run_commands.py`: `_run_dispatch_command`,
+>   `_run_loop_command`, `_alarm_on_terminal_failure` (needs `run_id` → public from `_dispatcher_loop_selection`).
+>   Rewire their `_post_verdict_runner` calls → public `post_verdict_runner` (from `_dispatcher_self_update`,
+>   behavior-identical modulo docstring). THEN DELETE the now-orphaned dispatcher.py seam duplicates
+>   (`_post_verdict_runner`, `_github_token_supplier` alias, `_github_token_error_supplier`) — after this NO
+>   dispatcher.py code calls them (verify by grep). dispatcher.py ends ~90-110 LLOC: `main`, `_build_parser`,
+>   `_add_dispatch_common`. NOTE the command handlers call the SPINE primitives now public in
+>   `_dispatcher_loop`/`_dispatcher_loop_selection` (import them) — no cycle (loop modules don't import run_commands).
+> - **trim/verify**: pinned-venv file_lloc confirms ALL orchestrator files ≤250 → orchestrator Phase-1
+>   file_lloc burndown DONE. Phase-2 FLIP then needs the dev-tooling flip-mechanism (parallel workstream below).
+>
+> **∥ PARALLEL WORKSTREAM (separate repo — NON-conflicting with dispatcher.py):** a background sub-agent
+> (`devtooling-filelloc-flip`) is landing the Phase-2 file_lloc flip-mechanism in **`livespec-dev-tooling`**:
+> making `file_lloc`'s hard-gate legacy-tree (`.claude-plugin/scripts/livespec/`, hardcoded as
+> `_LEGACY_HARDFAIL_TREES`) per-repo-configurable via `[tool.livespec_dev_tooling]`, so a non-core repo can
+> flip file_lloc to a hard gate. ADDITIVE + behavior-preserving (default absent = today's behavior, safe to
+> auto-merge). On resume: check its PR/release, run the independent Fable review, confirm core still hard-fails
+> + a non-core repo can now opt in. This unblocks the Phase-2 FLIP for every repo (the `livespec-iily` lane).
+>
+> **SEAM MAP (github-token, unchanged):** canonical PUBLIC `github_token_supplier`/`post_verdict_runner` in
+> `_dispatcher_self_update.py`; dispatcher.py's `_post_verdict_runner`/`_github_token_error_supplier` are
+> behavior-identical duplicates (differ only by docstring), `_github_token_supplier` a pure alias. Each slice
+> rewires its callers to the public copies; core-split-3 deletes the orphans last.
+>
+> **REUSABLE CYCLE (unchanged; scratchpad scripts are SESSION-LOCAL — recreate):** FILE `bd create ... --labels
+> admission:auto,origin:freeform --acceptance "..." --body-file <brief>`; ROUTE `apply_intake_dor(path=store_config(
+> repo=<orch>), item_id=..., checklist=DefinitionOfReadyChecklist(all six True))`; DISPATCH background
+> `drive.py --action impl:<id> --repo <orch>`; RATIFY merge-evidence close via `append_work_item(... item=replace(
+> item, status="done", resolution="completed", reason="<evidence incl Fable NO-BLOCKERS>", audit=AuditRecord(
+> verification_timestamp=utc_now_iso(), commits=(), files_changed=(), merge_sha=<sha>, pr_number=<PR>)))`. PYTHONPATH
+> = `<orch>/.claude-plugin/scripts[:/_vendor]`, all under `/usr/local/bin/with-livespec-env.sh --`. One long-lived
+> read-only Fable agent is reused per slice (SendMessage the review brief). Each slice rebase-merges (1-2 commits;
+> find the range from the release commit before it to the merge tip).
+>
+> **STATE (at this handoff):** all fleet primaries on origin/master; orchestrator at release 0.20.1, guard
+> `check-no-fmt-directives` ARMED, master CI green. Ledger (bd-ib): core-split-1/1b CLOSED; `bd-ib-nzc`
+> (core-split-2) dispatched (in flight — reconcile FIRST). dev-tooling flip sub-agent in flight (separate repo).
+> The `handoff-fcc-session10` branch carries THIS refresh.
+>
+> ---
+> *(The SESSION-9 block below records the L2 mechanical chain completion; superseded where SESSION-10 advances —
+> the L2 chain + core-split-1/1b are done and the endgame is core-split-2 [in flight] → core-split-3 → trim.)*
+>
 > ### ⇒ 2026-07-12 SESSION 9 — CURRENT STATE, READ FIRST (supersedes SESSION-8 below)
 >
 > **The L2 mechanical cluster chain is COMPLETE: L2-a…j all done + ratified (each independent Fable
