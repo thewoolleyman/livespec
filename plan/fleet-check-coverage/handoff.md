@@ -10,6 +10,16 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-12 (SESSION 11) UPDATE — READ THE SESSION-11 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-10 below.** core-split-2 (check/preflight leaf helpers
+  → `_dispatcher_run_checks.py`) is DONE + ratified; dispatcher.py 447→**365 LLOC**. The dev-tooling
+  Phase-2 flip lever is DONE + independently verified (v0.39.0, journaled on `livespec-iily`). **ONLY
+  core-split-3 (command-layer + seam-cleanup) + a trim remain to reach dispatcher.py ≤250.** FIRST ACTION:
+  dispatch core-split-3 (fully specified in the SESSION-11 + SESSION-10 blocks). NEW OPERATIONAL GOTCHA:
+  `drive` can FALSE-FAIL (exit 1, EMPTY log) while the factory actually SUCCEEDED (PR merged, release cut) —
+  ALWAYS reconcile from PRs + ledger, and clean up the orphaned post-merge janitor worktree it leaves at
+  `<orch>/worktrees/janitor-<id>/` via `git worktree remove --force`. Everything below (incl. SESSION-10)
+  is prior context SESSION-11 supersedes where they conflict.
 - **⇒ 2026-07-12 (SESSION 10) UPDATE — READ THE SESSION-10 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-9 below.** The core decomposition is UNDERWAY and
   going cleanly. **core-split-1 (dispatch-loop primitives → `_dispatcher_loop.py` + `_dispatcher_loop_selection.py`)
@@ -988,6 +998,57 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-12 SESSION 11 — CURRENT STATE, READ FIRST (supersedes SESSION-10 below)
+>
+> **dispatcher.py 2616(orig) → 365 LLOC — ONE big slice + a trim from ≤250.** Done + ratified since
+> SESSION-10: core-split-2 `bd-ib-nzc` PR#522 (check/preflight leaf helpers → `_dispatcher_run_checks.py`;
+> release 0.21.0). The dev-tooling Phase-2 flip lever is DONE + Fable-verified NO-BLOCKERS (v0.39.0, PR#330,
+> journaled on `livespec-iily`) — orchestrator can opt in (`file_lloc_hard_gate = true` + pin ≥0.39.0) ONCE
+> dispatcher.py ≤250.
+>
+> **⚠ FIRST ACTION ON RESUME — dispatch core-split-3 (command-layer + seam-cleanup), the LAST decomposition
+> slice.** Spec (also in SESSION-10 block): move `_run_dispatch_command`, `_run_loop_command`,
+> `_alarm_on_terminal_failure` → NEW `_dispatcher_run_commands.py`. They call the SPINE primitives now public
+> in `_dispatcher_loop`/`_dispatcher_loop_selection` (import them public) — NO cycle (loop modules don't
+> import run_commands). `_alarm_on_terminal_failure` needs `run_id` (public in `_dispatcher_loop_selection`).
+> Rewire their `_post_verdict_runner` calls → public `post_verdict_runner` (from `_dispatcher_self_update`,
+> behavior-identical modulo docstring). THEN DELETE the now-orphaned dispatcher.py seam duplicates
+> (`_post_verdict_runner`, `_github_token_supplier` alias, `_github_token_error_supplier`) — after this NO
+> dispatcher.py code calls them (verify by grep). **ALSO fold in the core-split-2 review's follow-ups (see
+> below).** dispatcher.py ends ~90-110 LLOC: `main`, `_build_parser`, `_add_dispatch_common`. Use the
+> GENUINE-ASSERTION Red (importlib + `module_path.is_file()` pattern — the Fabro prompt now REQUIRES it).
+>
+> **THEN trim/verify:** pinned-venv file_lloc confirms ALL orchestrator files ≤250 → orchestrator Phase-1
+> file_lloc burndown DONE. Then the orchestrator Phase-2 FLIP (bump dev-tooling pin ≥0.39.0 — already at
+> 0.39.0 via fan-out — + set `file_lloc_hard_gate = true` in `[tool.livespec_dev_tooling]`; verify CI stays
+> green now that dispatcher.py ≤250).
+>
+> **FOLD INTO core-split-3 (core-split-2 Fable review non-blocking follow-ups):**
+> (1) DEAD RE-EXPORT RESIDUE — dispatcher.py still imports `load_items` (~L182) + `parse_janitor` (~L202)
+> and lists them in `__all__` (~L241/243) though their in-file consumers moved out; drop both imports +
+> `__all__` entries (same mini-hub shape #519 removed). (2) Restore the fabro-preflight refusal-MESSAGE
+> assertions (converted tests assert only exit 3; message text is verbatim-carried but future drift is
+> unguarded) — a capsys stderr assertion on `dispatch_preamble` restores it. (3) cosmetic: new decomposition
+> test cases should anchor `module_path` on `Path(dispatcher.__file__).parent`, not repo-root-relative.
+>
+> **⚠ DRIVE FALSE-FAIL GOTCHA (new this session):** core-split-2's `drive` exited 1 with an EMPTY log, but
+> the factory had SUCCEEDED (PR #522 merged, release cut) — the crash was in the post-merge janitor step.
+> Symptoms: item stuck `active` (not `acceptance`); an orphaned detached worktree at
+> `<orch>/worktrees/janitor-<id>/` (only untracked residue is `.livespec-core/`). Handling: reconcile from
+> PRs+ledger regardless of drive's exit code; the merge-evidence close sets `active`→`done`; remove the
+> janitor worktree with `git worktree remove --force <orch>/worktrees/janitor-<id>` + `git worktree prune`.
+>
+> **STATE (at this handoff):** all fleet primaries on origin/master; orchestrator at release 0.21.0, pin
+> v0.39.0, `check-no-fmt-directives` ARMED, master CI green, primary CLEAN (janitor residue reaped). Ledger
+> (bd-ib): core-split-1/1b/2 CLOSED; NO core-split slice in flight (nothing to reconcile — start core-split-3
+> fresh). The reusable FILE→ROUTE→DISPATCH→RATIFY cycle + seam map are in the SESSION-10 block (unchanged).
+> One long-lived read-only Fable agent handles each slice's independent review. `handoff-fcc-session11`
+> carries THIS refresh.
+>
+> ---
+> *(SESSION-10 block below carries the full core-split spec + reusable cycle + seam map, still authoritative
+> where SESSION-11 doesn't supersede — core-split-1/1b/2 are done; only core-split-3 + trim remain.)*
+>
 > ### ⇒ 2026-07-12 SESSION 10 — CURRENT STATE, READ FIRST (supersedes SESSION-9 below)
 >
 > **Core decomposition underway (maintainer decision "Decompose the core", 2026-07-12). dispatcher.py
