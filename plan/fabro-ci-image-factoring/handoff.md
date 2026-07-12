@@ -111,13 +111,20 @@ Full dated detail is on beads **`livespec-3lev.3`**.
   `runner@.service` + supervisor unit + `49-…rules` + README) and
   `.github/workflows/ci-selfhosted-shadow.yml`. **Nothing merged to master.**
 
-**NEXT ACTIONS (in order):** (1) generate `with-github-ci-runners-env.sh` — blocked
-only on the new env's `ONEPASSWORD_ENVIRONMENT_ID` (`op environment` has no `list`;
-get it from the maintainer's 1Password desktop). From `/data/projects/1password-env-wrapper`
-ensure a Linux group `github-ci-runners` and run `create-1password-env-wrapper.sh`
-with `IDENTIFIER=github-ci-runners` + env ID + a read-capable service-account token
-(first test the existing livespec token at `/etc/credstore.encrypted/1password-env-wrapper-livespec`
-via `op environment read`). (2) Install supervisor plumbing: `ci-sup` user; scripts →
+**NEXT ACTIONS (in order):** (1) generate `with-github-ci-runners-env.sh`. The
+`github-ci-runners` environment ID is **`gn4o4lmxjeovi6hwb7z64ujxfe`** (verified —
+its 4 `GITHUB_*_CI_RUNNER` vars). REMAINING BLOCKER: a **service-account token with
+read access to it**. The existing livespec token
+(`/etc/credstore.encrypted/1password-env-wrapper-livespec`) reads the livespec env
+fine but is **denied** on `gn4o4l…` (access-scoped, confirmed 2026-07-12). So the
+maintainer must either grant a service account read access to `github-ci-runners`
+OR (recommended, for isolation) create a **dedicated** service account scoped to
+only that environment and provide its `OP_SERVICE_ACCOUNT_TOKEN`. Then, from
+`/data/projects/1password-env-wrapper`, ensure a Linux group `github-ci-runners`
+and run `create-1password-env-wrapper.sh` with `IDENTIFIER=github-ci-runners`,
+`ONEPASSWORD_ENVIRONMENT_ID=gn4o4lmxjeovi6hwb7z64ujxfe`, and that token; verify it
+injects the four vars (`with-github-ci-runners-env.sh -- printenv | grep -c CI_RUNNER`,
+names only). (2) Install supervisor plumbing: `ci-sup` user; scripts →
 `/usr/local/lib/ci-runner/`; units → `/etc/systemd/system/`; polkit →
 `/etc/polkit-1/rules.d/`. (3) Test the ephemeral JIT flow live (supervisor mints →
 `runner@` runs a `[self-hosted, local-ci]` job → auto-deregisters); delete `/tmp`
