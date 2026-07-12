@@ -106,7 +106,7 @@ Two panes in the overseer's own tmux window:
 
   ```jsonc
   {"topic":"collector-otel-rename","repo":"/data/projects/livespec",
-   "tmux":"collector-otel-rename",
+   "tmux":"livespec:collector-otel-rename",
    "handoff":"/data/projects/livespec/plan/collector-otel-rename/handoff.md",
    "resume":"read /data/projects/livespec/plan/collector-otel-rename/handoff.md and follow it",
    "epic":"livespec-xxxx","ctx_threshold":50,"pinned_session_id":null,
@@ -114,9 +114,14 @@ Two panes in the overseer's own tmux window:
   ```
 
   Append to add; rewrite-filter to remove; `epic` optional (plan-driven → can
-  show `%Complete`; unassigned/watch-only → `—`). The daemon **auto-links** a
-  live tmux session whose name matches a discovered topic (so restarting the
-  overseer re-adopts running sessions with no manual step).
+  show `%Complete`; unassigned/watch-only → `—`). **The tmux session name is
+  repo-qualified `<repo-slug>:<topic>`** (the `claude -n` display name stays the
+  bare topic for humans) — because tmux session names are GLOBAL while plan
+  topics are only unique per repo (adversarial-review blocker #8; two repos with
+  the same topic would otherwise collide). The daemon **auto-links** a live tmux
+  session to a row only when the `(repo, topic)` match is unambiguous AND the
+  session's `#{pane_current_path}` resolves inside the row's `repo` — never by
+  topic name alone.
 
 - **Displayed table** = discovery LEFT-JOIN mapping. Columns:
   `Topic · Repo · tmux · Ctx% · Status` (+ optional `%Complete` for rows with
@@ -125,79 +130,121 @@ Two panes in the overseer's own tmux window:
 
 ### Per-track state machine (daemon-driven)
 
-| State | Trigger (from live pane capture) | Daemon action |
+Signals come from the trusted channels in "### Signal sources" below, NOT from
+raw whole-pane text. **State precedence is evaluated top-to-bottom** — `working`
+and `blocked:human` are detected BEFORE any injection can occur.
+
+| State | Trigger | Daemon action |
 |---|---|---|
 | `unassigned` | discovered, no session in mapping | show + flag *ready to start*; **never** auto-start |
-| `working` | `esc to interrupt` / `Waiting for N background` / `N shell` present | leave alone |
-| `idle` | idle at `❯`, `Ctx: left` above threshold | leave alone |
-| `warned` | `Ctx: left ≤ threshold` (default 50) | inject wrap-up once; re-send once if ctx keeps climbing |
-| `blocked:human` | structured-gate UI (permission prompt / picker) or `OVERSEER-BLOCKED-ON-HUMAN` sentinel | show in table; surface to the bottom pane |
-| `ready → restart` | `OVERSEER-READY-TO-RESTART:<exact handoff path>` **and** no busy markers **and** idle at `❯` | `/exit` → wait for shell → `claude -n <topic>` → wait for banner → paste resume line → `working` (fresh context, renamed) |
+| `working` | busy markers on the pane (`esc to interrupt` / `Waiting for N background` / `N shell`) | leave alone; **suppress injection** |
+| `blocked:human` | structured-gate UI (permission prompt / picker) on the pane, or a `.overseer-blocked` marker file | show in table; surface to the bottom pane; **suppress injection** (never keystroke into a gate) |
+| `idle` | verified idle-input state, ctx above threshold | leave alone |
+| `warned` | ctx `left ≤ threshold` (default 50) **and** verified idle-input state | record an injection stamp, then **bracketed-paste** the wrap-up once; re-send once if ctx keeps climbing |
+| `ready → restart` | fresh **`.overseer-ready` marker** (mtime > injection stamp, contents = daemon's `sha256sum` of the on-disk handoff) **and** no busy markers **and** verified idle-input | `respawn-pane -k -c <repo> 'claude -n <topic>'` → wait for `pane_current_command` transition → bracketed-paste resume line → delete marker → `working` |
 | (removed) | `<repo>/plan/<topic>/` archived or gone | drop the mapping row; note it |
-| danger | ctx ≈80% with no sentinel | **surface to the human; NEVER force-kill a session mid-work** |
+| danger | ctx ≈80% with no ready marker | **surface to the human; NEVER force-kill a session mid-work** |
 
-## The sentinel protocol (the heart of the design)
+### Signal sources (what is trusted from where)
+
+- **busy** — pane markers `esc to interrupt` / `Waiting for N background` / `N shell`.
+- **structured gate** — the pane's distinctive numbered-option permission/picker UI.
+- **idle-input** — a *verified* normal input state: prompt box present AND no busy markers AND no structured gate. "Not busy" alone is NOT idle-input.
+- **ctx %** — the anchored last-status-row parse (see "Context-% reading"); fail-closed to *unknown* on no-match.
+- **readiness / blocked** — **filesystem marker files** (`.overseer-ready` / `.overseer-blocked`), NOT printed pane text (adversarial review: pane text is echo/scroll/wrap-corrupted and cannot certify "asserts X now").
+- **process identity** — `#{pane_current_command}` (shell vs `node`/claude) and `#{pane_current_path}` (which repo), for restart proof and auto-link — never the `❯` glyph.
+
+## The certification protocol (the heart of the design)
 
 Some pane states are deterministic; one is not:
 
-| State | Detectable by regex from a captured pane? |
+| State | Detectable from a captured pane? |
 |---|---|
 | Actively working | Yes — `esc to interrupt` |
 | Background sub-agents / subprocess running | Yes — `Waiting for N background…`, `N shell` |
 | Blocked on a **structured** gate (permission prompt, picker) | Mostly — distinctive numbered-option UI |
 | Idle-and-**done** vs idle-and-**asking-a-prose-question** | **No** — both are an empty `❯` |
 
-The last row is why judgment must live in the tracked session, which alone
-knows which case it is. When the daemon sees `Ctx: left ≤ threshold`, it injects
-(via the send-keys mechanic) one wrap-up message:
+The last row is why the *judgment* must live in the tracked session, which alone
+knows which case it is. But the session must express that judgment through a
+channel Python can trust — and **pane text is NOT such a channel**
+(adversarial review, 2026-07-12, blockers #1–#4): the injected instruction is
+echoed back into the transcript, the model quotes tokens in narration, output
+scrolls above the visible capture, and long lines wrap — any of which turns a
+printed sentinel into a **false match**. So certification is **out-of-band, on
+the filesystem**, never a printed line.
+
+**The wrap-up injection.** When ctx `left ≤ threshold` AND the pane is in a
+verified idle-input state (see "Signal sources"), the daemon records an
+**injection stamp** (a timestamp/nonce in a sidecar) and **bracketed-pastes**
+(`tmux load-buffer` + `paste-buffer -p`, never line-by-line `send-keys`, so the
+multi-line body can't fragment into separate submitted prompts — blocker #2) one
+wrap-up message:
 
 ```
 Your context is now under {N}%. Wrap up for a clean session restart:
  1. Update {handoff} so a FRESH session can resume from it alone
     (read-first chain present, concrete next action, resume command printed).
  2. Stop every background sub-agent and subprocess you started.
- 3. ONLY when you are genuinely at a clean stopping point with the handoff
-    ready, print this exact line by itself, and then stop:
-        OVERSEER-READY-TO-RESTART: {handoff}
- If instead you are blocked on a human decision, print this and stop:
-        OVERSEER-BLOCKED-ON-HUMAN: <one-line summary of what you need>
+ 3. ONLY when genuinely at a clean stopping point with the handoff ready,
+    WRITE the ready marker (do not merely print it), then stop:
+        sha256sum {handoff} | cut -d' ' -f1 > {repo}/plan/{topic}/.overseer-ready
+ If instead you are blocked on a human decision, write:
+        echo "<one-line summary>" > {repo}/plan/{topic}/.overseer-blocked
 ```
 
-The restart interlock then requires **all four**, deterministically:
+**The restart interlock** requires **all** of, deterministically:
 
-1. `OVERSEER-READY-TO-RESTART: <the exact registry handoff path>` in the
-   capture, **and**
+1. the **`.overseer-ready` marker file exists**, its **mtime is newer than the
+   injection stamp**, and its contents equal the daemon's own `sha256sum` of the
+   current on-disk `handoff.md` — this proves the session actually updated the
+   handoff AND that the marker is from this round, not stale, **and**
 2. no `esc to interrupt`, **and**
 3. no `Waiting for N background` / `N shell`, **and**
-4. the pane idle at `❯`.
+4. the pane in a verified idle-input state.
 
-If the sentinel is present but a busy marker still shows, the interlock fails
-and it waits — belt and suspenders. **The restart is safe by construction:** a
-session blocked on the human will not print the ready sentinel, so no sentinel
-→ no restart, even for the prose-question case Python cannot read. Because step
-1 updates the handoff *before* the sentinel, even a premature restart just
-resumes from the handoff — bounded blast radius.
+A file write **cannot be forged by prompt-echo, cannot scroll off, and cannot
+line-wrap**, so blockers #1–#4 all dissolve. Pane scraping is retained ONLY for
+the busy/idle/gate signals, which are not echo-forgeable in a harmful direction.
+The daemon **deletes the marker** as it restarts, so it can never re-trigger.
+**Safe by construction:** no fresh, hash-matching marker → no restart; and
+because the marker is written only after the handoff update, a restart always
+resumes from an updated handoff.
 
-**Guards.** If context keeps climbing with no sentinel, re-send the wrap-up once
-after a few minutes; at a danger line (~80%) still with no sentinel, surface
+(Secondary confirmation, optional: read the tracked session's transcript
+`~/.claude/projects/<slug>/<session-id>.jsonl` and inspect the last *assistant*
+message — role-aware, so it distinguishes session output from injected user
+input. Kept as a cross-check only; the marker file is authoritative because the
+transcript format is internal and unstable.)
+
+**Guards.** If ctx keeps climbing with no ready marker, re-send the wrap-up once
+after a few minutes; at a danger line (~80%) still with no marker, surface
 "track X won't wrap up" to the human rather than force-kill.
 
-## Context-% reading (a documented coupling)
+## Context-% reading (anchored, fail-closed)
 
-The reader is `tmux capture-pane -p -t <session> | grep 'Ctx:'`. The global
-statusline (`~/.claude/statusline-command.sh`) prints `Ctx: N% left` on the
-bottom line of every pane, computed from `context_window.remaining_percentage`
-(correct for the 1M-context model automatically). **This is a coupling:** if
-that statusline stops emitting `Ctx: N% left`, the parser breaks. Verified
-2026-07-12: a live session computed to 27% used / ~73% left against its 1M
-window; the statusline JSON on stdin carries `context_window.remaining_percentage`
-and the script renders `Ctx: {rounded}% left`.
+The remaining-context % comes from the global statusline
+(`~/.claude/statusline-command.sh`), which prints `Ctx: N% left` from
+`context_window.remaining_percentage` on the **bottom status row** of the pane
+(correct for the 1M-context model automatically). Verified 2026-07-12: a live
+session computed to 27% used / ~73% left against its 1M window.
 
-(A transcript-file fallback exists — the last assistant `usage` block in
+Parsing is **anchored and fail-closed** (adversarial-review blocker #5): read
+only the **last non-empty row** of `tmux capture-pane -p -t <session>`, strip
+ANSI, and take the **last** `Ctx:\s*(\d+)%\s*left` match on that row — NEVER
+`grep` the whole capture, because page content (including this very design doc)
+contains the string `Ctx: N% left` and would yield a false reading. If the
+status row carries no match this tick, the value is **unknown → keep the last
+known value**, and unknown NEVER counts as a threshold crossing. This is the
+one coupling: if the statusline stops emitting `Ctx: N% left`, ctx reads
+*unknown* (the table shows "ctx unreadable"), degrading safely rather than into
+a spurious wrap-up or restart.
+
+(Transcript fallback: the last assistant `usage` block in
 `~/.claude/projects/<slug>/<session-id>.jsonl` sums `input_tokens +
-cache_read_input_tokens + cache_creation_input_tokens` = context fill — but it
-requires knowing the session-id→file mapping and the window size, so the
-statusline capture is primary.)
+cache_read_input_tokens + cache_creation_input_tokens` = context fill; it
+requires the session-id→file mapping and the window size, so the statusline row
+is primary.)
 
 ## Restart / rename / crash recovery mechanics
 
@@ -205,17 +252,26 @@ statusline capture is primary.)
   box, the `--resume` picker, **and the terminal title** (which tmux surfaces) —
   a cleaner equivalent of typing `/rename`, and it makes "which session resumes
   in which tmux" legible after a reboot.
-- **Restart.** `claude "<prompt>"` only *pre-fills* (does not auto-submit), so
-  the restart uses the proven mechanic: `/exit` → wait for the shell prompt →
-  `claude -n <topic>` (fresh context) → wait for the welcome banner →
-  `command tmux send-keys -l "<resume line>"` + repeated `Enter` until
-  `esc to interrupt`. A fresh context is the whole point; the updated handoff
-  carries continuity, so `--resume` is not used for the wrap-up restart.
+- **Restart — deterministic, no screen-scraped shell prompt** (adversarial-review
+  blockers #2, #7). Do NOT drive `/exit` and then guess when a shell returned:
+  `❯` is ambiguously BOTH the Claude idle prompt and the zsh prompt, so a
+  mis-timed "shell is back" could type `claude …` *into the still-live session*
+  and corrupt it. Instead **replace the pane's process atomically**:
+  `command tmux respawn-pane -k -c <repo> -t <pane> 'claude -n <topic>'` — kills
+  whatever ran in the pane and launches a fresh Claude in the row's repo. The
+  abrupt kill is safe: the interlock already proved the handoff is written and
+  the ready marker exists, so nothing is unsaved. Then **wait for the new TUI**
+  by polling `#{pane_current_command}` (→ `node`) and/or the welcome banner (not
+  the prompt glyph), **bracketed-paste** the row's resume line (`load-buffer` +
+  `paste-buffer -p`, so a multi-line resume can't fragment into separate
+  prompts), and finally **delete the `.overseer-ready` marker** so the restart
+  can't re-trigger. (`claude "<prompt>"` only pre-fills, no auto-submit — which
+  is why the resume line is pasted after launch, not passed as an argv.)
 - **Reboot recovery (a new strength).** A fresh overseer reads
   `~/.livespec-overseer.jsonl`, recreates any missing
-  `tmux new-session -s <topic> -c <repo>`, relaunches `claude -n <topic>`, and
-  pastes each row's resume line. The persistent mapping makes recovery
-  mechanical.
+  `tmux new-session -s <repo-slug>:<topic> -c <repo>`, relaunches
+  `claude -n <topic>`, and bracketed-pastes each row's resume line. The
+  persistent mapping makes recovery mechanical.
 
 ## Maintenance `AGENTS.md` in the skill folder
 
@@ -239,15 +295,21 @@ Content outline for `AGENTS.md`:
   console status; local-only + unsynced (do not add to manifests, conformance
   checks, or other repos).
 - **Architecture invariants that must not regress** — (1) supervisor owns
-  *mechanics only*; semantic judgment stays in the tracked session's LLM via
-  sentinels; (2) overseer stays thin, never does track work inline, never polls
-  from the Claude pane; (3) surface-only — never auto-spawn a session; (4)
-  discovery-driven list, JSONL = mapping only (do not regress to a hand-
-  maintained plan list); (5) cross-repo — rows repo-scoped, never hardcode core.
+  *mechanics only*; semantic judgment stays in the tracked session's LLM,
+  expressed via **out-of-band marker files** (never printed pane text —
+  echo/scroll/wrap corrupt it); (2) overseer stays thin, never does track work
+  inline, never polls from the Claude pane; (3) surface-only — never auto-spawn
+  a session; (4) discovery-driven list, JSONL = mapping only (do not regress to
+  a hand-maintained plan list); (5) cross-repo — rows repo-scoped, tmux ids
+  repo-qualified, never hardcode core.
 - **Load-bearing mechanics + gotchas** — `command tmux` (bypass the zsh shim);
-  bracketed-paste → repeated-Enter until `esc to interrupt`; the
-  statusline-`Ctx:` coupling; busy-marker list; the two sentinel tokens; the
-  4-condition interlock; `claude -n` sets name + terminal title;
+  **bracketed-paste** (`load-buffer`+`paste-buffer -p`) for multi-line payloads,
+  never line-by-line `send-keys`; the **anchored** statusline-`Ctx:` parse
+  (last row only, fail-closed) and its coupling; busy-marker list; the
+  `.overseer-ready`/`.overseer-blocked` **marker-file certification** (mtime >
+  injection stamp + handoff-hash match; delete on restart); the restart
+  interlock; **`respawn-pane -k`** restart + `#{pane_current_command}` proof (do
+  NOT screen-scrape the `❯` prompt); `claude -n` sets name + terminal title;
   `--session-id` / `--resume`.
 - **Build/toolchain facts** — stdlib-only Python, host-only, deliberately
   outside the product gates (footgun-guard precedent); do not wire it into
@@ -256,7 +318,9 @@ Content outline for `AGENTS.md`:
   threshold crossing, watch a real restart + rename, verify archive-GC); daemon
   log location under `tmp/overseer/`.
 - **Pointers** — `.ai/agent-disciplines.md` (overseer discipline, factory-
-  dispatch), `SKILL.md`, and the sentinel-convention doc.
+  dispatch), `SKILL.md`, the wrap-up + marker-protocol convention doc, and the
+  "## Adversarial review (2026-07-12)" section of this design (the 8 blockers
+  and why the mechanics are shaped as they are).
 
 `SKILL.md` gains a one-line cross-reference pointing maintainers at `AGENTS.md`.
 
@@ -278,26 +342,36 @@ picks up) instead of the nested-`.claude/` form. Either way the canonical
 ## Components to build
 
 1. **`supervisor.py`** (top pane) — the loop: discovery, mapping read/write/GC,
-   pane capture + parsers (Ctx%, busy-markers, sentinels, structured-gate,
-   welcome-banner), wrap-up injection, the restart interlock + kill/relaunch/
-   rename, archive-GC, and the table renderer (clear + reprint each loop).
-2. **Registry helpers** — read/write/filter `~/.livespec-overseer.jsonl` and the
-   discovery ⋈ mapping join.
+   anchored Ctx% parse (last status row, fail-closed), pane signal detection
+   (busy-markers, structured-gate, verified idle-input), `#{pane_current_command}`
+   / `#{pane_current_path}` process-identity checks, the **marker-file
+   certification** read (`.overseer-ready` mtime + handoff-hash match;
+   `.overseer-blocked`), bracketed-paste injection, the restart interlock via
+   `respawn-pane -k`, archive-GC, and the table renderer (clear + reprint each
+   loop).
+2. **Registry helpers** — read/write/filter `~/.livespec-overseer.jsonl`
+   (repo-qualified tmux ids, injection-stamp sidecar) and the discovery ⋈
+   mapping join.
 3. **Rewritten `SKILL.md`** (bottom pane, thin) — builds the 2-pane layout,
    starts the daemon, takes plain-text commands, surfaces gates.
-4. **Sentinel-convention doc** — the wrap-up text + the two sentinels,
-   referenced by `SKILL.md` and by tracked sessions' handoffs.
+4. **Wrap-up + marker-protocol convention doc** — the wrap-up text and the
+   `.overseer-ready` / `.overseer-blocked` marker contract (what the session
+   writes, what the daemon validates), referenced by `SKILL.md` and by tracked
+   sessions' handoffs.
 5. **Maintenance `AGENTS.md`** (+ symlink, + optional `.ai/`) — as above.
 6. **Retire `livespec-overseer-startup.md`** — fold live bits into `SKILL.md`.
 
 ## Build phases
 
 1. Registry schema + read/write/GC helpers (+ tests).
-2. Pane-parsers: Ctx%, busy-markers, sentinels, structured-gate, welcome-banner
-   — against captured pane fixtures (+ tests).
-3. `supervisor.py` wiring the above; the table renderer.
-4. Rewrite `SKILL.md`; author the sentinel-convention doc; add the maintenance
-   `AGENTS.md` (+ symlink); retire `livespec-overseer-startup.md`.
+2. Signal detection: anchored Ctx% parse, busy-markers, structured-gate,
+   verified idle-input, `pane_current_command`/`pane_current_path`, and the
+   marker-file certification read — against captured-pane + on-disk fixtures
+   (+ tests).
+3. `supervisor.py` wiring the above (bracketed-paste injection, `respawn-pane`
+   restart); the table renderer.
+4. Rewrite `SKILL.md`; author the wrap-up + marker-protocol convention doc; add
+   the maintenance `AGENTS.md` (+ symlink); retire `livespec-overseer-startup.md`.
 5. **Live exercise** (per "done means exercised live"): 2–3 real tracks across
    ≥2 repos, force a threshold crossing, watch a real auto-restart + rename,
    verify archive-GC and reboot-recovery from the mapping file.
@@ -308,14 +382,43 @@ Tests for the host-only Python live beside it (they are not part of the product
 
 ## Open / deferred (non-blocking)
 
-- **`OVERSEER-BLOCKED-ON-HUMAN` as a standing convention.** Whether to bake the
-  blocked sentinel into tracked-session handoffs for airtight blocked-detection,
-  vs. accepting the cosmetic prose-question gap (a prose question with no
-  sentinel shows as `idle` in the table; the restart stays safe regardless).
-  Decide in Phase 4.
+- **`.overseer-blocked` marker as a standing convention.** Whether to bake
+  "write `.overseer-blocked` when you stop to ask the human" into tracked-session
+  handoffs for airtight blocked-detection, vs. accepting the cosmetic
+  prose-question gap (a prose question with no marker shows as `idle` in the
+  table; the restart stays safe regardless, since restart requires the
+  `.overseer-ready` marker). Decide in Phase 4.
 - **`%Complete` cadence.** Reading epic `%Complete` needs the credential wrapper
   + tenant; keep it off the fast ~10s loop (slow refresh or on-demand from the
   bottom pane) to avoid hammering beads.
+
+## Adversarial review (2026-07-12)
+
+Before implementation, this design was reviewed READ-ONLY by two independent
+adversarial reviewers — a **Fable**-model agent (8 findings) and a **Codex**
+agent (5 findings, a corroborating subset). Both affirmed the **architecture**
+(deterministic daemon, discovery ⋈ mapping, surface-only, judgment-in-the-
+tracked-session) and found the blockers entirely in the **pane-signal
+mechanics**. The unifying lesson: **a pane's text stream cannot carry a
+trustworthy "the session asserts X now" signal** — prompt-echo, model
+quotation, scroll, and line-wrap all corrupt it — so certification moved
+out-of-band to the filesystem, and state detection to tmux process metadata.
+All 8 are resolved in the mechanics above:
+
+| # | Blocker | Resolution (folded in above) |
+|---|---|---|
+| 1 | Injected wrap-up contains the exact `OVERSEER-READY-TO-RESTART:` string → echo → false restart before the handoff was updated | Certification is an **out-of-band `.overseer-ready` marker file** (mtime > injection stamp, contents = daemon's `sha256sum` of the on-disk handoff); un-echoable, this-round, hash-validated |
+| 2 | Multi-line `send-keys` submits the bare sentinel line as its own prompt | **Bracketed paste** (`load-buffer` + `paste-buffer -p`) for all multi-line payloads |
+| 3 | A printed sentinel can scroll above the visible capture | Moot — the marker is a file (mtime-ordered), not screen text |
+| 4 | The long `…handoff.md` path line-wraps, breaking the exact match | Moot — file-based; any residual token is short + registry-verified |
+| 5 | Unanchored `grep 'Ctx:'` matches `Ctx: N% left` in page content | Parse **only the last status row**, last match, ANSI-stripped, no-match ⇒ *unknown/keep-last* (fail-closed) |
+| 6 | Injecting keystrokes while a permission/picker gate is up can approve actions | **State precedence** — `working`/`blocked:human` detected first; inject only in *verified idle-input* |
+| 7 | `/exit` shell-prompt detection is ambiguous (`❯` dual-use) → can type into the live session | **`respawn-pane -k`** atomic process replacement + `#{pane_current_command}` proof; no prompt-glyph scraping |
+| 8 | Auto-link by topic alone cross-links two repos sharing a topic | **Repo-qualified** tmux id `<repo-slug>:<topic>` + `#{pane_current_path}` verification before linking |
+
+Nits were ignored per the review scope. The reviews are the reason the
+"certification protocol", "Context-% reading", "Restart mechanics", and
+"Signal sources" sections read as they do.
 
 ## House rules (this repo)
 
