@@ -61,30 +61,43 @@ def strip_ansi(text: str) -> str:
 
 _CTX_RE = re.compile(r"Ctx:\s*(\d+)%\s*left")
 
+# How many trailing non-empty rows to scan for the statusline. The live Claude
+# TUI renders the statusline as the SECOND-to-last row — a footer hint line
+# (`⏵⏵ bypass permissions…` / `? for shortcuts`) renders BELOW it (verified
+# live 2026-07-13), so reading only the LAST row misses `Ctx:` entirely. A
+# small bound (not the whole capture) preserves the anti-false-match intent
+# (blocker #5): page content containing `Ctx: N% left` sits far above the
+# bottom few rows.
+_CTX_TAIL_ROWS = 4
 
-def _last_non_empty_line(capture_text: str) -> str | None:
-    """The last line whose ANSI-stripped, whitespace-stripped body is non-empty."""
+
+def _tail_non_empty_lines(capture_text: str, n: int) -> list[str]:
+    """The last ``n`` ANSI-stripped, non-empty lines, in top-to-bottom order."""
+    out: list[str] = []
     for raw in reversed(capture_text.splitlines()):
         line = strip_ansi(raw).strip()
         if line:
-            return line
-    return None
+            out.append(line)
+            if len(out) >= n:
+                break
+    out.reverse()
+    return out
 
 
 def parse_ctx_remaining(capture_text: str) -> int | None:
     """Remaining-context percent from the statusline, anchored + fail-closed.
 
-    Reads ONLY the last non-empty row of the capture (the statusline row),
-    strips ANSI, and returns the LAST ``Ctx: N% left`` match on that row.
-    Returns None ("unknown") if the last row carries no match — it NEVER scans
-    the whole capture, because page content (including the overseer design doc
-    itself) contains the literal string ``Ctx: N% left`` and would yield a
-    false reading. "unknown" must NEVER count as a threshold crossing upstream.
+    Scans only the last few non-empty rows (`_CTX_TAIL_ROWS`) — the statusline
+    is the SECOND-to-last row in the live TUI, with a footer hint line below it
+    — and returns the LAST ``Ctx: N% left`` match found across them. Returns
+    None ("unknown") if none of those rows carries a match; it NEVER scans the
+    whole capture, because page content (including the overseer design doc
+    itself) contains the literal string ``Ctx: N% left`` and would yield a false
+    reading. "unknown" must NEVER count as a threshold crossing upstream.
     """
-    last = _last_non_empty_line(capture_text)
-    if last is None:
-        return None
-    matches = _CTX_RE.findall(last)
+    matches: list[str] = []
+    for line in _tail_non_empty_lines(capture_text, _CTX_TAIL_ROWS):
+        matches.extend(_CTX_RE.findall(line))
     if not matches:
         return None
     return int(matches[-1])
@@ -96,23 +109,36 @@ def parse_ctx_remaining(capture_text: str) -> int | None:
 
 # `Waiting for N background…` where N is a number.
 _WAITING_RE = re.compile(r"Waiting for \d+ background", re.IGNORECASE)
-# `N shell` (running shell subprocesses), e.g. "2 shells".
-_SHELL_RE = re.compile(r"\b\d+\s+shells?\b", re.IGNORECASE)
+# Active-generation markers (verified live 2026-07-13). The live TUI busy
+# indicator is a spinner line such as
+#   ``✻ Galloping… (running stop hooks… 1/3 · 24s · ↓ 1.4k tokens)``
+# — NOT the string ``esc to interrupt``. These CONTENT signals fire only during
+# active generation and NOT on the lingering completed-turn summary
+# ``✻ Brewed for 25s`` (no parenthetical, no token counter, and `for Ns` rather
+# than the `· Ns ·` dot-delimited elapsed form). Glyph-independent, so a
+# rotating spinner glyph can't break it.
+_BUSY_ACTIVE_RE = re.compile(
+    r"esc to interrupt"  # kept: older/other layouts may still show it
+    r"|[↓↑]\s*[\d.]+\s*k?\s*tokens"  # streaming token counter (active only)
+    r"|·\s*\d+\s*s\s*[·)]"  # `· 24s ·` / `· 24s)` dot-delimited elapsed
+    r"|\(\s*running\b",  # `(running … hook…` phase
+    re.IGNORECASE,
+)
 
 
 def is_busy(capture_text: str) -> bool:
-    """True if any busy marker is present (`esc to interrupt`, `Waiting for N
-    background`, `N shell`).
+    """True if the pane is actively working.
 
-    A liberal (over-firing) busy detector is the SAFE direction: a false busy
-    merely suppresses an injection/restart; a missed busy is the dangerous one.
+    Fires on the live active-generation spinner (`_BUSY_ACTIVE_RE`) or a
+    `Waiting for N background` line. A liberal (over-firing) busy detector is the
+    SAFE direction: a false busy merely suppresses an injection/restart; a missed
+    busy is the dangerous one. The lingering completed-turn summary
+    (`✻ Brewed for 25s`) is deliberately NOT treated as busy.
     """
     text = strip_ansi(capture_text)
-    if "esc to interrupt" in text.lower():
-        return True
     if _WAITING_RE.search(text):
         return True
-    return bool(_SHELL_RE.search(text))
+    return bool(_BUSY_ACTIVE_RE.search(text))
 
 
 # The permission-prompt / picker cursor: a `❯` immediately before a numbered
@@ -135,32 +161,53 @@ def is_structured_gate(capture_text: str) -> bool:
     return "do you want to proceed" in text.lower()
 
 
-# The idle input box: the Claude TUI shows a `? for shortcuts` hint line only at
-# the idle prompt (when busy it is replaced by `esc to interrupt`). The border
-# fallback covers captures where the hint scrolled off but the box is present.
-_PROMPT_HINT = "? for shortcuts"
-_PROMPT_LINE_RE = re.compile(r"(?m)^\s*(?:│\s*)?>\s")
+# The live idle input box is an EMPTY `❯` prompt line sandwiched between two
+# horizontal rule lines (`────…`), with the statusline + footer hint below it
+# (verified live 2026-07-13 — NOT a `╭─╮` rounded box with `? for shortcuts`).
+# We detect that structural shape: it is stable across idle and busy and is
+# independent of the footer-hint wording and the spinner glyph.
+_RULE_RE = re.compile(r"^[─—━]{10,}$")
 
 
-def _prompt_box_present(text: str) -> bool:
-    if _PROMPT_HINT in text.lower():
-        return True
-    return "╭" in text and "╰" in text and bool(_PROMPT_LINE_RE.search(text))
+def _is_empty_prompt(line: str) -> bool:
+    """True if ``line`` is the empty idle prompt: the `❯` glyph with nothing after."""
+    return line.startswith("❯") and not line[1:].strip()
+
+
+def _input_box_present(text: str) -> bool:
+    """True if an EMPTY `❯` prompt sits between two horizontal rule lines.
+
+    Scans the non-empty lines and requires an empty `❯` with a rule line
+    immediately before and after it. The empty-prompt requirement means a box
+    that already holds typed/pasted input is NOT treated as idle (the daemon
+    must never inject over existing input). A numbered-option gate (`❯ 1.`) is
+    not empty and not rule-bracketed, so it is excluded here (and by
+    :func:`is_structured_gate`).
+    """
+    ne = [stripped for raw in text.splitlines() if (stripped := strip_ansi(raw).strip())]
+    for i, line in enumerate(ne):
+        if not _is_empty_prompt(line):
+            continue
+        above = i >= 1 and _RULE_RE.match(ne[i - 1]) is not None
+        below = i + 1 < len(ne) and _RULE_RE.match(ne[i + 1]) is not None
+        if above and below:
+            return True
+    return False
 
 
 def is_idle_input(capture_text: str) -> bool:
-    """True only for a VERIFIED normal input state.
+    """True only for a VERIFIED normal, EMPTY input state.
 
-    Prompt box present AND not busy AND not a structured gate. "Not busy" alone
-    is NOT idle-input (see design.md, signal sources) — a positive prompt-box
-    marker is required, so a blank/frozen pane is not mistaken for idle.
+    An empty `❯` prompt box (positive structural marker) is present AND the pane
+    is not busy AND not a structured gate. "Not busy" alone is NOT idle-input
+    (see design.md, signal sources) — a blank / frozen / booting pane has no
+    input box and is therefore not idle.
     """
-    text = strip_ansi(capture_text)
-    if not _prompt_box_present(text):
-        return False
     if is_busy(capture_text):
         return False
-    return not is_structured_gate(capture_text)
+    if is_structured_gate(capture_text):
+        return False
+    return _input_box_present(capture_text)
 
 
 # --------------------------------------------------------------------------- #

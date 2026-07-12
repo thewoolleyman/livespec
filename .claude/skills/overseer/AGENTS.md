@@ -73,27 +73,41 @@ manifests, conformance checks, or any other repo.
   Claude TUI takes the whole blob as ONE pasted input that cannot fragment into
   separate submitted prompts. `send-keys -l` typing a multi-line payload would
   fragment it — do not.
-- **Single-Enter submission caveat.** `_submit_prompt` pastes, sleeps briefly,
-  then sends ONE `Enter` to submit. A bracketed paste is collapsed to
-  `[Pasted text]`, and a single `Enter` does not always submit it. The
-  historical, robust mechanic is to re-send `Enter` and re-capture the pane
-  until it shows `esc to interrupt` (proof it submitted and the model is
-  working). If you touch the submit path, preserve or strengthen that
-  "repeat-Enter-until-`esc to interrupt`" behavior — the lone Enter is the
-  known edge.
-- **Anchored, fail-closed Ctx% parse (`signals.parse_ctx_remaining`).** Read the
-  remaining-% from the statusline by parsing ONLY the last non-empty pane row,
-  ANSI-stripped, taking the LAST `Ctx: N% left` match on that row. NEVER `grep`
-  the whole capture — page content (including the overseer design doc itself)
-  contains the literal string `Ctx: N% left` and would yield a false reading. No
-  match on the status row ⇒ **unknown**, which keeps the last known value and
-  NEVER counts as a threshold crossing. This is the one coupling: if the
-  statusline stops emitting `Ctx: N% left`, ctx reads unknown and the daemon
-  degrades safely (the table shows a dash) rather than into a spurious wrap-up.
-- **Busy markers (`signals.is_busy`).** `esc to interrupt`, `Waiting for N
-  background`, `N shell`. A liberal (over-firing) busy detector is the SAFE
-  direction: a false busy merely suppresses an injection/restart; a missed busy
-  is the dangerous one.
+- **Bracketed-paste submission (`_submit_prompt`).** Paste, brief sleep, then ONE
+  `Enter` to submit. Verified live (2026-07-13): a bracketed paste (`load-buffer`
+  + `paste-buffer -p`) of a single- OR multi-line payload submits reliably with a
+  single `Enter` in the current Claude Code — the historical
+  "repeat-Enter-until-`esc to interrupt`" dance was needed only for the OLD
+  `send-keys -l` key-by-key typing, NOT for a bracketed paste. Keep the paste
+  atomic (never type a multi-line payload key-by-key).
+- **Anchored, fail-closed Ctx% parse (`signals.parse_ctx_remaining`).** Scan only
+  the last FEW non-empty pane rows (`_CTX_TAIL_ROWS`), ANSI-stripped, taking the
+  LAST `Ctx: N% left` match. The statusline is the SECOND-to-last row — a footer
+  hint (`⏵⏵ …` / `? for shortcuts`) renders BELOW it (verified live 2026-07-13) —
+  so reading only the LAST row misses `Ctx:` entirely. NEVER scan the whole
+  capture — page content (including the overseer design doc itself) contains
+  `Ctx: N% left` and would yield a false reading; the small bound keeps that
+  anti-false-match intent. No match ⇒ **unknown**, which keeps the last known
+  value and NEVER counts as a threshold crossing. This is the one coupling: if
+  the statusline stops emitting `Ctx: N% left`, ctx reads unknown and the daemon
+  degrades safely (the table shows a dash).
+- **Busy detection (`signals.is_busy` + the daemon's settled-delta).** The live
+  TUI (verified 2026-07-13) renders NO persistent busy string while streaming
+  tokens — the input box looks idle and the response accumulates above it — so
+  single-capture markers are insufficient. `signals.is_busy` fires on the real
+  active-generation spinner (`✻ … (… · Ns · ↓ tokens)` / `(running … hook…)`),
+  `esc to interrupt` (older layouts), and `Waiting for N background`; it
+  deliberately does NOT fire on the lingering completed-turn summary
+  (`✻ Brewed for 25s`). Because streaming shows no spinner in the captured
+  region, the daemon ALSO runs a two-capture **settled-delta**
+  (`Supervisor._pane_settled`) before injecting/restarting an apparently-idle
+  track: two captures `_SETTLE_DELAY` apart that DIFFER ⇒ actively working ⇒
+  treated as `working` and skipped. Over-firing busy is the SAFE direction.
+- **Idle-input detection (`signals.is_idle_input`).** The real idle prompt is an
+  EMPTY `❯` between two horizontal rule lines (`────…`), statusline + hint below
+  — NOT a `╭─╮` box with `? for shortcuts` (verified live 2026-07-13). Detect
+  that structural shape (glyph/hint-independent); require the prompt EMPTY so the
+  daemon never injects over existing input; gate with not-busy + not-gate.
 - **Marker-file certification (`signals.ready_marker_valid` /
   `blocked_marker`).** The restart interlock fires ONLY when: an injection stamp
   exists for this round, the `.overseer-ready` file exists, its mtime is strictly

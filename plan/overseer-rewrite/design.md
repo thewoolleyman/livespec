@@ -420,6 +420,40 @@ Nits were ignored per the review scope. The reviews are the reason the
 "certification protocol", "Context-% reading", "Restart mechanics", and
 "Signal sources" sections read as they do.
 
+## Live-exercise corrections (2026-07-13)
+
+The live exercise (Phase 5 — driving the daemon against a REAL Claude TUI in an
+isolated scratch tmux session) validated the mechanics end-to-end and corrected
+THREE pane-parsing assumptions the mocked unit tests had baked in. The mocked
+tests all passed while the real behavior was wrong — exactly why "done means
+exercised live." Fixes landed in `signals.py` + `supervisor.py` (+ real-shape
+test fixtures):
+
+| # | Assumption (wrong) | Reality (verified live) | Fix |
+|---|---|---|---|
+| 1 | statusline is the LAST pane row | it is the SECOND-to-last — a footer hint (`⏵⏵ …` / `? for shortcuts`) renders below it | `parse_ctx_remaining` scans the last few rows (`_CTX_TAIL_ROWS`), still bounded to preserve the anti-false-match intent |
+| 2 | idle prompt is a `╭─╮` box + `? for shortcuts` | it is an EMPTY `❯` between horizontal rule lines | `is_idle_input` detects that structural shape (glyph/hint-independent), prompt required EMPTY |
+| 3 | busy = `esc to interrupt` | that string is not shown while streaming; the busy indicator is a `✻ … (… · Ns · ↓ tokens)` spinner — AND during main token-streaming NO persistent spinner is captured at all (the pane looks idle) | `is_busy` keys on the spinner content; the daemon adds a two-capture **settled-delta** (`_pane_settled`) so a changing pane reads `working` |
+
+Two things the live exercise CONFIRMED WORKING as designed:
+
+- **Submission** — a bracketed paste (`load-buffer` + `paste-buffer -p`) of a
+  single- OR multi-line payload submits reliably with a SINGLE `Enter` in the
+  current Claude Code. The old "repeat-Enter-until-`esc to interrupt`" concern
+  applied to `send-keys -l` typing, not to a bracketed paste; the design's
+  mechanic is correct as-is (no fix needed).
+- **`is_structured_gate`** — caught a real first-run trust prompt
+  (`❯ 1. Yes …`), correctly suppressing injection.
+
+Where the inline "### Signal sources", "Context-% reading", and state-machine
+`busy` descriptions above differ from this section, THIS section and the shipped
+`signals.py` / `supervisor.py` govern.
+
+**Known assumption recorded here:** a restart (`respawn-pane -k 'claude -n …'`)
+assumes the managed repo is already Claude-*trusted* (governed repos the
+maintainer runs are). In a never-trusted dir, the first-run trust prompt would
+intervene before the resume-line paste; managed repos do not hit this.
+
 ## House rules (this repo)
 
 - Repo mutations go `worktree → PR → rebase-merge`; never commit on the primary

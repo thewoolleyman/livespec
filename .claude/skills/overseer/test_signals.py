@@ -46,10 +46,26 @@ def test_parse_ctx_takes_last_match_on_the_row():
 
 def test_parse_ctx_ignores_body_when_last_line_is_a_normal_prompt():
     """ADVERSARIAL (blocker #5): the BODY contains 'Ctx: 5% left' (e.g. the
-    design doc scrolled by), but the last non-empty line is a normal prompt —
-    the result must be None, not a false 5%."""
-    capture = "The design doc says the statusline prints Ctx: 5% left near the end.\n" "> \n"
+    design doc scrolled by) far ABOVE the bottom rows, while the bottom
+    statusline carries no Ctx (a fresh session). The bounded last-rows scan must
+    NOT reach the stray body match — result None, not a false 5%."""
+    capture = (
+        "The design doc says the statusline prints Ctx: 5% left near the end.\n"
+        "filler A\nfiller B\nfiller C\nfiller D\n"
+        + ("─" * 40)
+        + "\n❯ \n"
+        + ("─" * 40)
+        + "\n  Opus 4.8 (1M context) | /x/repo\n"
+        + "  ⏵⏵ bypass permissions on (shift+tab to cycle)\n"
+    )
     assert signals.parse_ctx_remaining(capture) is None
+
+
+def test_parse_ctx_reads_statusline_above_the_hint_line():
+    """REGRESSION (live 2026-07-13): the statusline is the SECOND-to-last row —
+    a footer hint renders BELOW it — so reading only the LAST row returns None.
+    The bounded last-rows scan must still find the real 73%."""
+    assert signals.parse_ctx_remaining(_IDLE_CAPTURE) == 73
 
 
 def test_parse_ctx_reads_status_row_not_body_ctx():
@@ -84,7 +100,13 @@ def test_parse_ctx_skips_trailing_blank_lines_to_find_status_row():
 def test_is_busy_markers():
     assert signals.is_busy("... esc to interrupt ...") is True
     assert signals.is_busy("Waiting for 3 background tasks") is True
-    assert signals.is_busy("running: 2 shells") is True
+    # The real active-generation spinner (verified live 2026-07-13): a spinner
+    # line carrying a token counter / dot-delimited elapsed / hook phase.
+    assert signals.is_busy("✻ Galloping… (running stop hooks… 1/3 · 24s · ↓ 1.4k tokens)") is True
+    # The lingering completed-turn summary is deliberately NOT busy.
+    assert signals.is_busy("✻ Brewed for 25s") is False
+    # A plain idle capture is not busy.
+    assert signals.is_busy(_IDLE_CAPTURE) is False
 
 
 def test_is_busy_false_when_idle():
@@ -116,7 +138,17 @@ def test_is_structured_gate_false_for_plain_numbered_list():
 # is_idle_input — verified idle (not "just not busy").
 # --------------------------------------------------------------------------- #
 
-_IDLE_CAPTURE = "╭──────────╮\n│ >        │\n╰──────────╯\n  ? for shortcuts\n  Ctx: 73% left\n"
+# The REAL live Claude TUI idle shape (verified 2026-07-13): an empty `❯` prompt
+# between two horizontal rule lines, the statusline as the SECOND-to-last row,
+# and a footer hint LAST (NOT a `╭─╮` box + `? for shortcuts`).
+_IDLE_CAPTURE = (
+    "● prior response\n"
+    + ("─" * 40)
+    + "\n❯ \n"
+    + ("─" * 40)
+    + "\n  Opus 4.8 (1M context) | /x/repo | Ctx: 73% left\n"
+    + "  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents\n"
+)
 
 
 def test_is_idle_input_true_for_verified_idle():
