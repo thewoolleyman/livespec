@@ -75,6 +75,9 @@ jobs:
   # SEPARATE job so a hiccup here never masks the mechanism proof above.
   full-check:
     name: just check (shadow)
+    # Serialize AFTER the isolation proof so the single pilot runner always
+    # completes the fast containment job first (a slow check never blocks it).
+    needs: [mechanism-and-isolation]
     runs-on: [self-hosted, livespec-ci-pilot]
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
@@ -84,17 +87,22 @@ jobs:
       # Read-scoped Actions token for the not-fully-hermetic targets
       # (check-master-ci-green etc.); NEVER a Kind-2 secret.
       GH_TOKEN: ${{ github.token }}
+      # The baked image ships the pinned tools; a fresh container does not TRUST
+      # the repo .mise.toml, and mise's shim busy-loops on untrusted-config +
+      # auto-install. Disable shim auto-install (fail fast, never spin); we
+      # `mise trust` explicitly below so the baked tools resolve.
+      MISE_NOT_FOUND_AUTO_INSTALL: "0"
     steps:
       - name: Checkout (full history — no shallow, per Phase 0 design)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Toolchain sanity (baked image)
+      - name: mise trust + install (baked tools — install is a no-op)
         run: |
-          echo "just:   $(command -v just && just --version)"
-          echo "uv:     $(command -v uv && uv --version)"
-          echo "mise:   $(command -v mise && mise --version)"
-          echo "python: $(command -v python3 && python3 --version)"
+          mise trust
+          mise install
+          echo "just: $(just --version)  uv: $(uv --version)"
+      - name: uv sync (mirror ci.yml setup)
+        run: uv sync --all-groups
       - name: just check
-        run: |
-          just check
+        run: just check
