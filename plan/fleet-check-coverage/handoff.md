@@ -1060,20 +1060,26 @@ clone before reading its `origin/master` for cross-repo state.**
 >
 > **⚠ NEXT ACTION ON RESUME — WORKSTREAM (B): the 4 remaining BACKLOG tracks.** Verify per-repo state FIRST
 > (the SESSION-13 counts drifted — see the SESSION-14 read-first findings):
-> - **console `livespec-q7bx`** — ⛔ GATED ON A MAINTAINER DECISION (surfaced 2026-07-12): console is a RUST
->   Control-Plane app, 0 first-party .py, harness-exempt, no Python toolchain. The §6.1 "wire full Python
->   structural suite + no-op flip" now reads as low-value (vacuous no-op machinery in a Rust repo). RECOMMEND
->   re-scoping to "NO wiring; keep the empty-walk-guard-on-codeless-repo correctness as a dev-tooling test
->   acceptance case; close q7bx as won't-wire" — but this reverses a prior maintainer decision, so confirm.
-> - **driver-codex `livespec-gqte`** + **driver-claude `livespec-v74p`** — FACTORY-dispatched via each repo's
->   OWN beads tenant (NOT the core tenant). Per-repo slice: (1) bump dev-tooling pin v0.37.3→v0.39.0; (2) WIRE
->   the applies-to-all structural suite into justfile+CI (grooming §6.1 prereq; they wire ZERO today); (3) fix
->   the small newly-covered WARN set (keyword_only_args codex 8 / claude 6 on the footgun-guard + other hooks;
->   all_declared 2; no_write_direct 1-2; codex file_lloc 1 soft-band — measured via the v0.39.0 dev-tooling
->   venv at `/data/projects/livespec-dev-tooling/.venv/bin/python -m livespec_dev_tooling.checks.<name>` run
->   from the target repo cwd); (4) flip `file_lloc_hard_gate = true`. File the impl work-item(s) in the
->   driver's OWN tenant, groom to ready, `drive --action impl:<id> --repo <driver>`, independent Fable review,
->   merge-evidence accept, then close the core-tenant tracker.
+> - **console `livespec-q7bx`** — ✅ RESOLVED + CLOSED (won't-wire). Maintainer decided 2026-07-12 to
+>   RE-SCOPE (reversing §6.1): do NOT wire the Python structural suite into the Rust console; the
+>   codeless-repo-passes behavior is already locked by 9 dev-tooling per-check `*_accepts_codeless_repo`
+>   tests (incl. the coverage-critical file_lloc/partition_completeness/all_declared). q7bx closed with that
+>   reason. OPTIONAL dev-tooling follow-up (fold into livespec-iily): add codeless-repo tests for the 5
+>   checks that lack one (no_write_direct, comment_line_anchors, main_guard, rop_pipeline_shape,
+>   no_lloc_soft_warnings). Epic done-def unaffected (console has 0 py).
+> - **driver-codex `livespec-gqte`** + **driver-claude `livespec-v74p`** — impl items now FILED + READY in
+>   each driver's OWN beads tenant (NOT the core tenant): **`livespec-driver-codex-333`** and
+>   **`livespec-driver-claude-xfr`** (each: bump dev-tooling pin v0.37.3→v0.39.0; WIRE the full applies-to-all
+>   structural suite into justfile+CI mirroring the livespec-runtime template — they wire ZERO today; fix the
+>   small newly-covered WARN set — keyword_only_args codex 8 / claude 6 on the footgun-guard + other hooks,
+>   all_declared 2, no_write_direct 1-2, codex file_lloc 1 soft-band; flip `file_lloc_hard_gate = true`). The
+>   core-tenant trackers gqte/v74p are now `in_progress` and cross-reference these impl ids. ⚠ **NEXT ACTION =
+>   DISPATCH them:** the Fabro factory server IS UP (`fabro server tcp:127.0.0.1:32276`); run
+>   `drive --action impl:livespec-driver-codex-333 --repo /data/projects/livespec-driver-codex` (and the
+>   -claude-xfr equivalent), then independent Fable review, merge-evidence accept, then close gqte/v74p. NOTE
+>   the driver PRs AUTO-MERGE on green CI (auto-enable-merge.yml) → review-the-merged-commit model, fix-forward.
+>   ⚠ Another live session (`1d36d4f7…`) is running the console `serve` + shares the Fabro server — do NOT
+>   reap its worktrees; only dispatch, never force-touch another session's branches.
 > - **dev-tooling `livespec-iily`** — HOST-SIDE maintainer-driven (do NOT factory-dispatch; it is the shared
 >   enforcement package). ~40 newly-covered WARNs to triage+burn down (some may be legitimately role-scoped
 >   like the main_guard precedent — fix the CHECK, not correct code), then flip. Authored via scoped agents in
