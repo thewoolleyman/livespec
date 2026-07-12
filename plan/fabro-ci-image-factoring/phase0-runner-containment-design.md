@@ -1,15 +1,15 @@
 # Phase 0 — local-runner containment & security design
 
 **Status:** design artifact, drafted 2026-07-12, grounded in a read-only host
-survey + the `handoff.md` threat model. **Revised through ROUND 2** of the dual
+survey + the `handoff.md` threat model. **Revised through ROUND 3** of the dual
 adversarial review (each round a fresh Fable-model agent AND a fresh Codex agent,
-independent + read-only; rounds 1 and 2 BOTH returned SERIOUS-BLOCKERS-FOUND —
-findings + resolutions in §"Round 1 dual-review record" and §"Round 2 dual-review
-record"). **NO host was mutated** by any review or revision. This design remains
-**gated**: it must pass a FRESH round-3 dual review (§"Gate") before ANY host
-change (AppArmor-profile install, rootless-stack provisioning, user creation,
-runner install, registration) is made. Companion to `handoff.md`; tracked as epic
-child `livespec-3lev.3`.
+independent + read-only). Round 1 both SBF; round 2 both SBF; **round 3: Fable
+NO-SERIOUS-BLOCKERS, Codex one serious blocker** (runner-agent/job process
+separation) — resolved in this revision. Findings + resolutions per round in the
+§"Round N dual-review record" sections. **NO host was mutated** by any review or
+revision. This design remains **gated**: it must pass a FRESH round-4 dual review
+(§"Gate") before ANY host change is made. Companion to `handoff.md`; tracked as
+epic child `livespec-3lev.3`.
 
 ## Why this is the highest-risk phase
 
@@ -33,10 +33,10 @@ host:
    environment (containment of what the workflow *gives* the job, not only what
    it can read at rest).
 
-All three planes ultimately depend on the **rootless, user-namespaced** execution
-of the job — which, on this specific host, is **actively blocked by AppArmor**
-and can only be enabled by a *scoped* profile, never a host-wide downgrade (round
-2's central finding; see host survey + §"Provisioning pre-gate").
+All three planes rest on **rootless, user-namespaced** execution of the job — and
+on a fourth, process-level requirement round 3 surfaced: the job runs in a
+**different UID + isolated PID namespace from the runner agent**, so job code
+cannot read the agent's live credential material (§"Runner design" item 3).
 
 ### The host as it is today (survey, 2026-07-12)
 
@@ -48,17 +48,22 @@ and can only be enabled by a *scoped* profile, never a host-wide downgrade (roun
 - `/var/lib/doltdb` is `0750 dolt:dolt` (untraversable by a non-`dolt` user).
 - The 1Password wrapper secret (`/data/projects/1password-env-wrapper/.env.local`)
   is `0600 ubuntu` (unreadable by a non-`ubuntu` user).
-- **(round-2 verified — the load-bearing host fact) Unprivileged user-namespace
-  creation is ACTIVELY BLOCKED by AppArmor on this host.** The OS is Ubuntu 25.10;
-  both `kernel.apparmor_restrict_unprivileged_userns=1` **and**
-  `kernel.apparmor_restrict_unprivileged_unconfined=1` are set, and
-  `unshare -Ur -- true` / `unshare -Urn -- true` **both fail with
-  `Operation not permitted`** writing `/proc/self/uid_map` (the textbook
-  unprivileged-userns-restriction signature — not a missing-`newuidmap` error).
-  So a fresh unconfined `ci-runner` **cannot create a user namespace today**, and
-  **installing the rootless stack does NOT change this** — the block is at the LSM
-  layer, above the container runtime. This is the reason the provisioning pre-gate
-  requires a **scoped AppArmor profile** and forbids the host-wide downgrade (§).
+- **(round-2/round-3 verified — the load-bearing host fact) Unprivileged
+  user-namespace creation is AppArmor-restricted, but the host SHIPS enabling
+  profiles for the container binaries.** The OS is Ubuntu 25.10; both
+  `kernel.apparmor_restrict_unprivileged_userns=1` **and**
+  `kernel.apparmor_restrict_unprivileged_unconfined=1` are set, so an
+  **unconfined** `unshare -Ur`/`-Urn` fails EPERM on `/proc/self/uid_map`.
+  **However**, Ubuntu 25.10 ships
+  `/etc/apparmor.d/{bwrap-userns-restrict,podman,runc,unprivileged_userns}`, which
+  grant userns to those binaries **by attachment** — so `bwrap --unshare-user`
+  returns 0 **despite** the sysctls being `=1` (round-3 verified). The rootless
+  path therefore works **via the shipped profiles**, with **no** bespoke profile
+  needed and **without** touching the sysctls. The sysctls stay `=1` as
+  whole-host hardening; the design's job is to **verify + rely on** the shipped
+  profiled path and forbid the two shortcuts that would trade host-wide hardening
+  away (disabling the sysctls host-wide; a setuid-root runtime). See
+  §"Provisioning pre-gate".
 - **(round-1 verified) The rootless-container stack is NOT installed.** `podman`,
   `newuidmap`/`newgidmap` (the `uidmap` package), `slirp4netns`, and `crun` are
   all **absent**; the only container runtime present is **rootful `docker`**
@@ -68,13 +73,15 @@ and can only be enabled by a *scoped* profile, never a host-wide downgrade (roun
   before it can be relied upon (see §"Provisioning pre-gate"); until then the
   only working runtime is root-equivalent, which is why a docker-group / socket
   fallback is explicitly forbidden below.
-- **(round-1 verified, round-2 expanded) Host-loopback listeners.** The
+- **(round-1 verified, rounds 2–3 expanded) Host-loopback listeners.** The
   multi-tenant Dolt SQL server listens on `127.0.0.1:3307` serving every tenant;
-  the OTel collector also binds loopback; and a round-2 survey found the host
-  additionally listens on `127.0.0.1:9222` (Chrome DevTools remote-debug —
-  session/cookie theft if reachable), `:5432` (postgres ×2), `:445` (SMB), and
-  `:8000/8001/8888`. → Containment must deny the job **all** of these by **every**
-  backend path, not a named pair (see §"Network isolation").
+  the OTel collector binds loopback (incl. OTLP/gRPC `:4317`); and surveys found
+  the host additionally listens on `:9222` (Chrome DevTools remote-debug —
+  session/cookie theft if reachable), `:5432` (postgres, on `127.0.0.1` **and**
+  `[::1]`), `:445` (SMB), and `:8000/8001/8888`. → Containment must deny the job
+  **all** of these by **every** backend path, verified by **dynamic enumeration**
+  of the live IPv4 **and** IPv6 loopback listener set at test time, not a fixed
+  port list (see §"Network isolation").
 - **Image base vs host OS:** the baked image base is `buildpack-deps:noble`
   (24.04) while the host is Ubuntu **25.10**. Harmless for the container itself
   (no host-OS match needed), but the provisioning packages
@@ -82,19 +89,19 @@ and can only be enabled by a *scoped* profile, never a host-wide downgrade (roun
   paths/format** MUST be validated against **25.10**, not 24.04.
 
 **Isolation backbone:** the primary boundary is still a dedicated unprivileged
-user in **none** of `docker` / `sudo` / `dolt` — but it is now one of three
-planes (filesystem/user + network + injected-secret), each independently
-verified by the exit tests, and all three rest on the scoped-AppArmor-enabled
-rootless userns.
+user in **none** of `docker` / `sudo` / `dolt` — but it is one of several planes
+(filesystem/user + network + injected-secret + agent/job process separation),
+each independently verified by the exit tests, and all resting on the
+shipped-profile-enabled rootless userns.
 
 ## Kind-2 secret inventory the runner user MUST NOT reach
 
 The 1Password/systemd-creds token, the Dolt tenant password (`BEADS_DOLT_PASSWORD`
 source), the GitHub App private key, `/var/lib/doltdb`, and the **runner
-registration credential / agent material** (below). Verification tests
-(§"Isolation tests") assert each is unreadable by the runner user **and** absent
-from any job environment **and** (for the registration material) not visible from
-inside a job.
+registration credential / live agent credential material** (below). Verification
+tests (§"Isolation tests") assert each is unreadable by the runner user **and**
+absent from any job environment **and** (for the runner agent's material) not
+reachable from inside a job by file, process, or memory inspection.
 
 ## Injected-secret discipline (what the workflow HANDS the job)
 
@@ -123,18 +130,17 @@ whatever the workflow **injects** into its environment, so:
    socket is host-root-equivalent and would expose every Kind-2 secret,
    `/var/lib/doltdb`, and all tenants.
 2. **Rootless, user-namespaced container — a MUST, not a recommendation.** The
-   ephemeral GitHub Actions runner *and* the job it runs execute inside a
-   **rootless, user-namespaced** container instantiated from the baked toolchain
-   image, launched by a container engine running **as `ci-runner`**. CI thus runs
-   the *exact* image the Fabro sandbox uses, jobs execute directly in it (no
-   nested per-step containers), and **`/var/run/docker.sock` is never mounted**;
-   the docker daemon / `docker` group is never used. Concrete constraints, all
-   verified by exit tests:
-   - **the user namespace is enabled ONLY via a scoped AppArmor profile** (§
-     "Provisioning pre-gate") — never by disabling the host-wide
+   runner and its jobs execute inside a **rootless, user-namespaced** container
+   instantiated from the baked toolchain image, launched by a container engine
+   running **as `ci-runner`**. CI thus runs the *exact* image the Fabro sandbox
+   uses, and **`/var/run/docker.sock` is never mounted**; the docker daemon /
+   `docker` group is never used. Concrete constraints, all verified by exit tests:
+   - **the user namespace is enabled via the host's shipped AppArmor userns
+     profiles** (`bwrap-userns-restrict` / `podman`; see §"Provisioning pre-gate")
+     — **never** by disabling the host-wide
      `kernel.apparmor_restrict_unprivileged_userns` / `..._unconfined` sysctls,
-     and never via a setuid-root `bwrap`/runtime;
-   - container UID 0 maps to a subuid **that is NOT host uid 0** (a `ci-runner`
+     and **never** via a setuid-root `bwrap`/runtime;
+   - container UID 0 maps to a value **that is NOT host uid 0** (a `ci-runner`
      subuid, or — for engines that map container-root to the invoking user — the
      unprivileged `ci-runner` uid; the security property is *not host root*,
      which is what the test asserts);
@@ -148,55 +154,77 @@ whatever the workflow **injects** into its environment, so:
      + `slirp4netns`/`pasta` + `crun`) is the recommended default; rootless
      **dockerd** scoped to `ci-runner`, or a **bubblewrap**-based user-namespace
      sandbox (bubblewrap is already baked into the images per `handoff.md`), are
-     acceptable alternatives **iff** they meet the same verified constraints
-     **and** the scoped-AppArmor-profile requirement. Whatever the mechanism, it
-     **MUST** be rootless + user-namespaced — a rootful fallback is forbidden.
+     acceptable alternatives **iff** they meet the same verified constraints.
+     Whatever the mechanism, it **MUST** be rootless + user-namespaced (via the
+     shipped profiles) — a rootful fallback is forbidden.
    - *Alternative considered:* install the toolchain directly in `ci-runner`'s
      host environment (no container). Rejected: it drops the image-parity +
      throwaway-filesystem guarantees.
    - **Image builds do NOT run here** — building needs a privileged builder; it
      stays GitHub-hosted / on the trusted builder (see `handoff.md`).
-3. **Ephemeral execution + registration material never exposed to the job.**
-   `--ephemeral` runner — one job per registration, auto-deregisters after that
-   job; fresh filesystem each job. **The job MUST NOT be able to read the runner
-   registration token or agent credential material** (round-2 Codex B2: a token
-   reusable within its validity window would let approved-fork attacker code
-   register an attacker-controlled runner on the public repo). Concretely:
-   - Prefer GitHub's **just-in-time (JIT) runner configuration** (`--jitconfig`),
-     which yields true one-run semantics without a re-registerable token; OR
-     **split the registration/agent material from job execution** so job code
-     cannot read it (agent material owned by the supervisor / a separate user,
-     unmounted or deleted before the job accepts work).
-   - Verified by test 11 (no registration token / runner-credential files /
-     revealing process args / systemd-credential mounts are visible from inside a
-     job, and a reuse attempt of any exposed registration material fails).
+3. **Ephemeral execution + agent/job separation + no exposed runner material — a
+   hard MUST.** `--ephemeral` runner — one job per registration, auto-deregisters
+   after that job; fresh filesystem each job. **The job MUST NOT be able to read
+   the runner agent's registration OR live credential material — by file,
+   process, or memory inspection** (round-3 Codex B1: in a naïve one-container
+   model the job shares the agent's UID and PID namespace, so even with the token
+   *files* hidden, job code can read `/proc/<agent-pid>/{environ,fd,mem}` or
+   `ptrace` the agent and lift the live session/agent credential, then impersonate
+   the runner on the public repo — receiving later trusted jobs, poisoning
+   results, or capturing their secrets). Two independent controls, **both**
+   required:
+   - **JIT registration.** Use GitHub's **just-in-time (JIT) runner
+     configuration** (`--jitconfig`) so there is no re-registerable registration
+     token at all; the supervisor mints per-run JIT config (§"Supervisor").
+   - **Agent/job process separation (the hard MUST — not an alternative to JIT).**
+     The **job step process runs as a DIFFERENT UID and in an ISOLATED PID
+     namespace from the runner agent**, so job code cannot see, `/proc`-inspect,
+     `ptrace`, or `gcore` the agent. Concretely: `/proc` protections
+     (`hidepid=2` / `ProtectProc=invisible` / `ProcSubset=pid` or the
+     container-equivalent), `ptrace` denied across the boundary, **no shared
+     runner working directory**, and any JIT/session material deleted or unmounted
+     from the job's reachable filesystem before job code starts. The job still
+     runs from the **same baked image** (image parity preserved — the boundary is
+     about process/UID isolation from the agent, not a different toolchain).
+   - Verified by test 11 (a job actively attempts `/proc/<agent-pid>/{environ,
+     cmdline,fd,mem}`, `ptrace`/`gcore` reads, runner-workdir credential reads,
+     and a token/JIT reuse — all must fail — and asserts the job's UID and PID
+     namespace differ from the agent's).
 
-## Provisioning pre-gate — AppArmor profile + rootless stack (host mutation, gated)
+## Provisioning pre-gate — verify shipped AppArmor + rootless stack (host mutation, gated)
 
-Because unprivileged userns is **AppArmor-blocked** and the rootless stack is
-**absent** (host survey), Phase 0 implementation **begins** with provisioning —
-itself gated behind this design's round-3 re-review + explicit maintainer
-authorization. Order and MUST/MUST-NOT constraints:
+Because the rootless stack is **absent** and unprivileged userns is
+**AppArmor-gated to profiled binaries** (host survey), Phase 0 implementation
+**begins** with provisioning — itself gated behind this design's round-4
+re-review + explicit maintainer authorization. Order and MUST/MUST-NOT
+constraints:
 
-1. **Author + install a SCOPED AppArmor profile** that grants unprivileged
-   user-namespace creation **only** to the runner launcher (validated against
-   Ubuntu **25.10** profile paths/format). This is the ONLY acceptable way to
-   enable the userns on this host.
+1. **Verify + rely on the host's SHIPPED AppArmor userns profiles**
+   (`/etc/apparmor.d/bwrap-userns-restrict`, `podman`) rather than authoring a
+   bespoke exclusive profile — Ubuntu 25.10 already grants userns to those
+   binaries (round-3 verified: `bwrap --unshare-user` returns 0 with the sysctls
+   `=1`). Only if the chosen engine is **not** covered by a shipped profile does a
+   scoped profile get authored (validated against 25.10 profile paths/format);
+   it is still **launcher-scoped**, never host-wide.
 2. **MUST NOT** disable `kernel.apparmor_restrict_unprivileged_userns` or
    `kernel.apparmor_restrict_unprivileged_unconfined` host-wide — that removes a
    kernel hardening protecting **every** Dolt tenant, **every** Fabro sandbox, and
    the whole host, purely to run CI. **MUST NOT** use a setuid-root `bwrap` or
-   container runtime (a classic privesc surface).
+   container runtime (a classic privesc surface). *(Note: the `uidmap` package's
+   `newuidmap`/`newgidmap` ARE setuid-root helpers, but they are standard rootless
+   practice for subuid-**range** mapping and are distinct from a setuid-root
+   `bwrap`/runtime; single-uid `bwrap` mapping avoids even those — either is
+   acceptable.)*
 3. Install the rootless container stack: `podman` + `uidmap` +
    `slirp4netns`/`pasta` + `crun` (or the chosen mechanism's equivalents),
    package availability validated against Ubuntu 25.10.
-4. Add `ci-runner` **subuid/subgid** ranges.
+4. Add `ci-runner` **subuid/subgid** ranges (if using subuid-range mapping).
 5. **Verify — before any runner registration:** (a) both sysctls above still read
-   **`=1`** (host-wide hardening intact); (b) the container engine reports
-   rootless mode for `ci-runner`; (c) a positive mapping test shows a container
-   process maps to a value that is **NOT host uid 0** — and that this works **only
-   via the scoped profile**, proving containment was achieved WITHOUT a host-wide
-   downgrade.
+   **`=1`** (host-wide hardening intact); (b) the container engine runs rootless
+   as `ci-runner` via the shipped/profiled path; (c) a positive mapping test shows
+   a container process maps to a value that is **NOT host uid 0**; (d) the runtime
+   binary is **not** setuid-root (`find … -perm -4000`). This proves containment
+   was achieved WITHOUT a host-wide downgrade or a setuid runtime.
 6. **No runner registration precedes a passing rootless-verification test.**
 
 ## Network isolation
@@ -216,11 +244,13 @@ isolated).
   must reach a host service gets exactly that one service via a narrow proxied
   port — never raw host loopback.
 - The netns backend (`slirp4netns`/`pasta`) is part of the provisioning pre-gate.
-- **Verified (test 8):** from inside a job, **every** host-loopback path the
-  backend offers is denied — container `127.0.0.1`, the backend gateway IP(s),
-  `host.containers.internal`, and any configured proxy path — against **all** host
-  listeners (Dolt `:3307`, the OTel collector, and `:9222/:5432/:445/:8000/:8001/
-  :8888`). Any reachable host-loopback route is a **failed** gate.
+- **Verified (test 8):** the test asserts the **default-deny / isolated-netns
+  principle** — from inside a job, **every** host-loopback path the backend offers
+  is denied (container `127.0.0.1`, the backend gateway IP(s),
+  `host.containers.internal`, any proxy path) against **the live loopback listener
+  set enumerated dynamically at test time on both IPv4 and `[::1]`** (which today
+  includes Dolt `:3307`, the OTel collector `:4317`, and `:9222/:5432/:445/:8000/
+  :8001/:8888`). Any reachable host-loopback route is a **failed** gate.
 
 ## Trusted-event routing — a positive allowlist invariant
 
@@ -251,8 +281,8 @@ For a `pull_request` event a fork controls its **own** workflow YAML and can add
 boundary** is therefore the **repo setting requiring approval to run workflows
 for all outside collaborators / all fork PRs** (strictest tier). *Approving a
 fork PR to get CI = running attacker-controlled code on the runner*, contained
-only by the rootless / network / injected-secret planes above. (For
-base-controlled contexts such as `pull_request_target` the predicate *is*
+only by the rootless / network / injected-secret / agent-separation planes above.
+(For base-controlled contexts such as `pull_request_target` the predicate *is*
 reliable — but those stay hosted regardless.)
 
 **Repo setting:** require approval to run workflows for **all outside
@@ -267,27 +297,28 @@ containment, not by routing.
 ## Supervisor + registration credential (a Kind-2 secret)
 
 The owner is a personal account, so runners are **repo-level, ephemeral**; a
-**supervisor** re-registers after each job using short-lived registration tokens
-(or mints JIT configs, §"Runner design" item 3).
+**supervisor** mints per-run **JIT config** (no re-registerable registration
+token) and launches the runner after each job.
 
 - **Credential:** a **GitHub App** with repo-administration scope (recommended
   over a PAT — App tokens are short-lived, scoped, auditable). Its private key
   lives in **systemd-creds** (`LoadCredential=`), readable ONLY by the supervisor
   service — never by `ci-runner`, never mounted into the job container.
-- **Flow:** the supervisor mints a **short-lived registration token / JIT config**,
-  hands ONLY that to a freshly-launched ephemeral runner, which uses it once and
-  dies. The job never sees the App key or a re-registerable token.
+- **Flow:** the supervisor mints a **JIT config** for one run, hands ONLY that to
+  a freshly-launched ephemeral runner, which uses it once and dies. The job never
+  sees the App key, and the JIT material is unreachable from the job step (§
+  "Runner design" item 3).
 - **Launch mechanism + privilege bridge (named, not left open).** A hardened,
   low-privilege (or `DynamicUser=`) supervisor cannot itself start a process **as**
   a different user (`ci-runner`) without an explicit privilege bridge — and that
   bridge MUST be narrow. The design specifies: the supervisor **starts a
   pre-installed, templated systemd unit** (`runner@<id>.service` with a fixed
-  `User=ci-runner`) via a **narrowly-scoped polkit rule / systemd grant limited to
-  exactly that unit** — **NOT** a broad `sudo`, a blanket `systemctl` grant, or
-  the docker socket. Only the registration token / JIT config crosses to the unit,
-  via a systemd credential or a `ci-runner`-only runtime path. (Leaving this
-  bridge unspecified is what would otherwise be solved with a broad grant that
-  reintroduces privilege.)
+  `User=ci-runner` + fixed `ExecStart`) via a **narrowly-scoped polkit rule /
+  systemd grant limited to exactly that unit** — **NOT** a broad `sudo`, a blanket
+  `systemctl` grant, or the docker socket. Only the JIT config crosses to the unit,
+  via a systemd credential or a `ci-runner`-only runtime path. (The fixed
+  `User=`/`ExecStart` means instance-name variation grants no new privilege, and
+  neither `ci-runner` nor the job is authorized to invoke the unit.)
 - The supervisor runs as its own hardened systemd service (own low-priv user or
   `DynamicUser=`, `LoadCredential=` for the key, no shell for `ci-runner`).
 
@@ -316,22 +347,24 @@ Persistent local-disk cache dirs (`~/.cache/uv`, `~/.cargo/registry`) owned by
 3. As `ci-runner`: `sudo -n true` fails.
 4. The job container has **no** `/var/run/docker.sock`.
 5. **(generalized)** `printenv` in a job shows **no** Kind-2 secret (App key,
-   registration token, 1Password token, Dolt password) **and** the `GITHUB_TOKEN`
-   present is read-scoped.
+   registration/JIT material, 1Password token, Dolt password) **and** the
+   `GITHUB_TOKEN` present is read-scoped.
 6. An **honest fork PR** opened against a public repo does **not** trigger any
    self-hosted-labeled job (routed to `ubuntu-latest`).
 7. **(rootless + host-hardening intact)** the container engine runs **rootless as
-   `ci-runner`**; container UID 0 maps to a value that is **NOT host uid 0**;
-   `--privileged` is rejected; there are no broad host-filesystem mounts; a
-   process inside the container cannot read any Kind-2 path; **AND** both
-   `kernel.apparmor_restrict_unprivileged_userns` and `..._unconfined` still read
-   **`=1`** with the userns working **only via the scoped AppArmor profile** (no
-   host-wide downgrade, no setuid-root runtime).
-8. **(network — all host-loopback paths)** from a job, **no** host-loopback route
-   the backend provides is reachable — container `127.0.0.1`, the backend
-   gateway IP(s), `host.containers.internal`, and any proxy path — against Dolt
-   `:3307`, the OTel collector, and `:9222/:5432/:445/:8000/:8001/:8888`;
-   `--network=host` is not in effect.
+   `ci-runner`** via the shipped/profiled path; container UID 0 maps to a value
+   that is **NOT host uid 0**; `--privileged` is rejected; there are no broad
+   host-filesystem mounts; a process inside the container cannot read any Kind-2
+   path; **AND** both `kernel.apparmor_restrict_unprivileged_userns` and
+   `..._unconfined` still read **`=1`**; **AND** the runtime binary is **not**
+   setuid-root (`find … -perm -4000` finds none in the launch path).
+8. **(network — all host-loopback paths, dynamically enumerated)** from a job,
+   **no** host-loopback route the backend provides is reachable — container
+   `127.0.0.1`, the backend gateway IP(s), `host.containers.internal`, any proxy
+   path — against the **live** loopback listener set enumerated at test time on
+   IPv4 **and** `[::1]` (today: Dolt `:3307`, collector `:4317`,
+   `:9222/:5432/:445/:8000/:8001/:8888`); `--network=host` is not in effect. The
+   test asserts the isolated-netns / default-deny **principle**, not a fixed list.
 9. **(static workflow audit)** no self-hosted-labeled job is reachable from a
    forbidden trigger (`merge_group`, `pull_request_target`, `workflow_run`,
    `issue_comment`, label, `repository_dispatch`, `workflow_dispatch`);
@@ -339,113 +372,104 @@ Persistent local-disk cache dirs (`~/.cache/uv`, `~/.cargo/registry`) owned by
 10. **(cache write-denial)** an untrusted-lane job's cache mount is
     read-only / throwaway; only a supervisor-classified trusted post-merge run
     writes back.
-11. **(registration material not exposed)** from inside a job, no registration
-    token / runner-credential files / revealing process args / systemd-credential
-    mounts are visible, **and** a reuse attempt of any exposed registration
-    material fails.
+11. **(runner-agent material not reachable — files, process, OR memory)** from
+    inside a job: (a) the job's UID **differs** from the runner agent's and the
+    job runs in an **isolated PID namespace** (the agent PID is not visible); (b)
+    active attempts to read `/proc/<agent-pid>/{environ,cmdline,fd,mem}`,
+    `ptrace`/`gcore` the agent, and read any runner working-directory credential
+    file all **fail**; (c) a reuse attempt of any JIT/registration material fails.
 
 ## Gate — dual adversarial review before ANY host mutation
 
-**Maintainer-declared 2026-07-12.** Before installing the AppArmor profile,
-provisioning the rootless stack, creating the user, installing the runner, or
-registering anything, this design passes a **separate adversarial review by (a) a
-Fable-model agent AND (b) a Codex agent**, each running independently and
-READ-ONLY, each tasked to find **serious security blockers** — fork-PR
-code-execution escape, secret leakage into the job env, privilege escalation,
-socket/host-filesystem exposure, network reach to host services,
-registration-credential exposure — **not nitpicks**. Iterate the design until
-**BOTH** return **no serious blockers**. A no-serious-blockers verdict from both
-is the precondition for implementation. Record each round's findings +
-resolutions on `livespec-3lev.3`.
+**Maintainer-declared 2026-07-12.** Before verifying/installing the AppArmor +
+rootless stack, creating the user, installing the runner, or registering
+anything, this design passes a **separate adversarial review by (a) a Fable-model
+agent AND (b) a Codex agent**, each running independently and READ-ONLY, each
+tasked to find **serious security blockers** — fork-PR code-execution escape,
+secret leakage into the job env, privilege escalation, socket/host-filesystem
+exposure, network reach to host services, registration-credential exposure —
+**not nitpicks**. Iterate the design until **BOTH** return **no serious
+blockers**. A no-serious-blockers verdict from both is the precondition for
+implementation. Record each round's findings + resolutions on `livespec-3lev.3`.
 
-**Round 1: COMPLETE (2026-07-12) — both SERIOUS-BLOCKERS-FOUND** (§"Round 1
-dual-review record"). **Round 2: COMPLETE (2026-07-12) — both
-SERIOUS-BLOCKERS-FOUND** (§"Round 2 dual-review record"); this revision resolves
-every round-2 finding. **Round 3 (fresh Fable + fresh Codex over this revised
-design) is REQUIRED and pending** before any host mutation.
+**Round 1: COMPLETE — both SBF. Round 2: COMPLETE — both SBF. Round 3: COMPLETE —
+Fable NO-SERIOUS-BLOCKERS, Codex one serious blocker** (agent/job process
+separation), resolved in this revision. **Round 4 (fresh Fable + fresh Codex over
+this revised design) is REQUIRED and pending** before any host mutation.
 
 ## Round 1 dual-review record — findings & resolutions (2026-07-12)
 
-Both reviewers ran independently, read-only, and verified claims against the live
-host; **both returned SERIOUS-BLOCKERS-FOUND**. Six raw findings dedupe to four
-themes, all resolved:
-
-- **① Rootless containment backbone un-provisioned AND un-enforced** — *Fable B1*
-  (host survey: `podman`/`uidmap`/`slirp4netns`/`crun` absent; only rootful
-  `docker` present; exit tests never asserted rootlessness) **+ Codex B3**
-  (rootless written as "recommended" not a MUST; a rootful/`--privileged`/
-  host-mount fallback would silently invalidate the claim). → **Resolved:**
-  rootless is a **MUST** with a **provisioning pre-gate** + verified constraints
-  (test 7); the `docker`-group / socket fallback is explicitly forbidden.
-- **② Network plane omitted** — *Fable B2*: the multi-tenant Dolt server is
-  reachable on `127.0.0.1:3307`; `--network=host` opens a cross-tenant path. →
-  **Resolved:** §"Network isolation" + test 8.
-- **③ Trusted-event routing not deny-by-default** — *Codex B1* (`merge_group` can
-  carry fork commits) **+ Codex B2** (privileged non-PR triggers not banned) **+
-  Fable non-blocking** (the `head.repo == repository` predicate is
-  attacker-controllable). → **Resolved:** §"Trusted-event routing" rewritten as a
-  positive allowlist invariant; `merge_group` + privileged triggers hosted-only;
-  approval-gate named as the boundary; static workflow-audit test 9.
-- **④ Injected secrets, not just at-rest** — *Fable B3*: `just check` is not fully
-  hermetic (`GH_TOKEN` reaches subprocesses). → **Resolved:** §"Injected-secret
-  discipline" + generalized test 5.
-
-Secondary folded in: supervisor→`ci-runner` launch specified without socket/sudo;
-cache tiering supervisor-side keyed on the event + write-denial test 10;
-least-privilege `permissions:` on moved jobs.
+Both reviewers, independent + read-only, host-verified; **both SBF**. Six raw
+findings → four themes, all resolved: **①** rootless un-provisioned/un-enforced
+(Fable B1 + Codex B3) → rootless a MUST + provisioning pre-gate + test 7,
+docker-group/socket fallback forbidden; **②** network plane omitted (Fable B2) →
+§"Network isolation" + test 8; **③** routing not deny-by-default (Codex B1
+`merge_group` + B2 privileged triggers + Fable predicate-attacker-controllable) →
+positive-allowlist invariant, approval-gate as boundary, static audit test 9;
+**④** injected secrets (Fable B3) → §"Injected-secret discipline" + generalized
+test 5. Secondary: supervisor launch without socket/sudo; cache tiering
+supervisor-side keyed on event + test 10; least-priv `permissions:`.
 
 ## Round 2 dual-review record — findings & resolutions (2026-07-12)
 
-Fresh Fable + fresh Codex over the round-1-revised design; **both returned
-SERIOUS-BLOCKERS-FOUND** (fewer, deeper findings — the gate is converging). Both
-confirmed **Theme 3 (routing)** and **Theme 4 (injected secrets)** CLOSED. Three
-serious items, all resolved in this revision:
+Fresh Fable + fresh Codex over the round-1 revision; **both SBF** (deeper).
+Themes 3 + 4 confirmed CLOSED. Three items resolved: **①** rootless backbone
+AppArmor-blocked for the unconfined path + the pre-gate would accept a host-wide
+downgrade (Fable B1, host-verified) → pre-gate constrained to the profiled path,
+host-wide sysctl downgrade + setuid-root forbidden, test 7 sysctl-readback;
+**②** network isolation under-tested via the backend host-loopback gateway (Codex
+B1 + Fable) → no host-loopback route by ANY backend path, test 8 covers every
+path; **③** registration-token/agent-material exposure (Codex B2) → JIT config +
+no exposed material, negative test 11. Secondary: supervisor privilege bridge
+named; `noble`/25.10 base reconciled; test-7 "not host uid 0"; Phase-2
+sibling-clone flagged.
 
-- **① The rootless backbone is AppArmor-BLOCKED on this host, and the pre-gate
-  would accept a host-wide downgrade** — *Fable B1* (host-verified: Ubuntu 25.10,
-  both userns sysctls `=1`, `unshare -Ur`/`-Urn` EPERM; installing the stack does
-  not help; the "verify rootless works" test would pass after
-  `sysctl ...=0` or a setuid-root `bwrap`, silently trading away host-wide
-  hardening). → **Resolved:** the provisioning pre-gate now requires a **scoped
-  AppArmor profile** (the only acceptable path), forbids the host-wide sysctl
-  downgrade and setuid-root runtimes, validates against Ubuntu 25.10, and test 7
-  reads back both sysctls (`=1`) proving containment was achieved WITHOUT a
-  host-wide downgrade; the host-facts section now records userns as actively
-  AppArmor-blocked, not merely "absent."
-- **② Network isolation under-tested — the backend host-loopback gateway** —
-  *Codex B1* (serious) **+ Fable non-blocking**: a job blocked from container
-  `127.0.0.1` can still reach host-side Dolt via `host.containers.internal` / the
-  slirp/pasta gateway; and the host exposes more listeners than the tested pair
-  (`:9222/:5432/:445/:8000/:8001/:8888`). → **Resolved:** §"Network isolation"
-  now requires no host-loopback route by ANY backend path (host-loopback disabled
-  on the backend), and test 8 denies every backend path against all host
-  listeners.
-- **③ Registration-token / runner-agent-material exposure to the job** — *Codex
-  B2*: the job shares the container with the agent and could read its "single-use"
-  registration token; if reusable within its window, attacker code registers its
-  own runner. → **Resolved:** §"Runner design" item 3 now forbids exposing
-  registration/agent material to the job (JIT config or split agent material),
-  with a negative test 11 (no cred material visible from a job + reuse fails).
+## Round 3 dual-review record — findings & resolutions (2026-07-12)
 
-Secondary folded in: the supervisor's cross-user launch **privilege bridge** is
-now named (a narrowly-scoped polkit/systemd grant limited to the templated
-`runner@.service`, never broad `sudo`/`systemctl`); the `noble` (24.04) vs host
-25.10 base mismatch is recorded with a MUST to validate provisioning packages +
-AppArmor paths against 25.10; test 7's UID assertion is corrected to **"not host
-uid 0"** (some engines map container-root to the invoking user, not always a
-subuid); and the Phase-2 `/data/projects` sibling-clone plan is flagged against
-the "no host-fs bind mounts" rule (§"Sequencing").
+Fresh Fable + fresh Codex over the round-2 revision. Both confirmed **R2-1
+(AppArmor)** and **R2-2 (network)** CLOSED.
+
+- **Fable: NO-SERIOUS-BLOCKERS** (first clean verdict). Non-blocking observations,
+  folded into this revision: **O1** — the host ALREADY ships enabling AppArmor
+  profiles (`bwrap-userns-restrict`/`podman`/`runc`/`unprivileged_userns`), so
+  `bwrap --unshare-user` works with the sysctls `=1`; **no bespoke profile need be
+  authored** (host-facts + provisioning pre-gate corrected to "verify + rely on
+  the shipped profiles"; test 7's sysctl-readback retained). **O2** — test 8 now
+  asserts the default-deny *principle* + **dynamic** IPv4/`[::1]` listener
+  enumeration (adds `:4317`, `::1:5432`). **O4** — test 7 now mechanically checks
+  the runtime is not setuid-root (`-perm -4000`). **O5** — clarified that the
+  `uidmap` `newuidmap`/`newgidmap` setuid helpers are standard rootless practice,
+  distinct from the banned setuid-root `bwrap`/runtime.
+- **Codex: SERIOUS-BLOCKERS-FOUND (1) — B1: runner-agent memory/proc exposure
+  inside the job attack surface.** In a naïve one-container model the job shares
+  the agent's UID + PID namespace, so even with JIT hiding token *files*, job code
+  can read `/proc/<agent-pid>/{environ,fd,mem}` or `ptrace` the agent to lift its
+  live session/agent credential and impersonate the runner on the public repo.
+  Test 11 previously checked files only. → **Resolved:** §"Runner design" item 3
+  now makes **agent/job process separation a hard MUST** (different UID + isolated
+  PID namespace, `/proc` protections, `ptrace` denied, no shared workdir, JIT
+  material deleted before job code) **in addition to** JIT, and test 11 is
+  extended to actively attempt `/proc`/`ptrace`/`gcore`/workdir reads + a
+  JIT-reuse, and to assert the UID + PID-namespace separation.
+
+**Reviewer split, and the disposition:** Fable classified this same tension
+(its O3) as *non-blocking* (JIT kills the re-registerable token; the residual live
+cred is runner-scoped + ephemeral, no root/tenant reach); Codex classified it
+*serious* (same-UID `/proc`/memory inspection lifts the live agent credential →
+runner impersonation on a public repo). The design **adopts the conservative
+Codex fix** — for a security-containment design the separation is low-cost and
+matches the design's no-privilege stance.
 
 ## Rollback
 
 Each step is reversible and reversal is written into the Phase 0 work-item:
-deregister the runner (short-lived token), stop + disable the supervisor service,
-delete the `ci-runner` user + its caches, and (in CI) revert the moved jobs'
-`runs-on` to `ubuntu-latest`. If the local-runner approach is abandoned entirely,
-also uninstall the provisioned rootless stack **and remove the scoped AppArmor
-profile** (leaving the host-wide sysctls untouched — they were never changed). A
-partial state (runner built but CI not yet cut over — Phase 2) is a valid pause
-point.
+deregister the runner (JIT expires on its own), stop + disable the supervisor
+service, delete the `ci-runner` user + its caches, and (in CI) revert the moved
+jobs' `runs-on` to `ubuntu-latest`. If the local-runner approach is abandoned
+entirely, also uninstall the provisioned rootless stack (leaving the host-wide
+sysctls untouched — they were never changed; any launcher-scoped profile authored
+is removed). A partial state (runner built but CI not yet cut over — Phase 2) is a
+valid pause point.
 
 ## Sequencing
 
@@ -454,11 +478,12 @@ runner, not blocking merges) and is NOT gated by any P-host baseline (that was
 retired — see `handoff.md`). It **IS** gated by the dual adversarial review above.
 
 Implementation order once the gate clears (each step behind its passing exit
-tests): **provisioning pre-gate** (scoped AppArmor profile → rootless stack →
-subuid/subgid → rootless-verification test with sysctls still `=1`) → `ci-runner`
-user + supervisor + registration wiring (JIT / split agent material) →
-trusted-event routing + network isolation (all-loopback-path deny) → one repo's
-`just check` green on the runner as the non-gating shadow lane.
+tests): **provisioning pre-gate** (verify shipped AppArmor profiles → rootless
+stack → subuid/subgid → rootless-verification test with sysctls still `=1` + no
+setuid runtime) → `ci-runner` user + supervisor + JIT wiring with **agent/job
+UID+PID-ns separation** → trusted-event routing + network isolation
+(all-loopback-path deny) → one repo's `just check` green on the runner as the
+non-gating shadow lane.
 
 **Cross-phase flag (Phase 2).** Phase 2's plan to point checks at on-host
 `/data/projects` sibling clones (for cross-repo consistency checks) must be
