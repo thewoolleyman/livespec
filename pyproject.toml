@@ -143,8 +143,20 @@ line-length = 100
 # are agent-runtime infra, not livespec product/dev-tooling Python, so
 # they are out of scope for livespec's own style rules (mirrors how the
 # Driver's `.sh` hooks are not linted). pyright already scopes them out
-# via `[tool.pyright].include`.
-extend-exclude = ["**/_vendor/**", "**/__pycache__/**", "mutants/**", ".claude/hooks/**"]
+# via `[tool.pyright].include`. `.claude/skills/overseer/**` is the same
+# category: the LOCAL-ONLY, unsynced overseer supervisor daemon (host
+# tmux-coordination tooling, not product/dev-tooling Python), scoped out
+# of livespec's product style rules for the identical reason. pyright /
+# coverage / import-linter already exclude it (via `include` /
+# import-scope / not-imported-by-`tests/`); ruff's `.`-denylist scan is
+# the one gate that needs it named here.
+extend-exclude = [
+    "**/_vendor/**",
+    "**/__pycache__/**",
+    "mutants/**",
+    ".claude/hooks/**",
+    ".claude/skills/overseer/**",
+]
 
 [tool.ruff.lint]
 # 27 categories total. v011 baseline (11) + v012 additions (16).
