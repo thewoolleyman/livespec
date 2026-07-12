@@ -81,6 +81,57 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
+**LATEST (2026-07-12, evening) — Phase 0 IMPLEMENTED; containment PROVEN LIVE;
+productionization mid-flight.** This block supersedes the "design BANKED / pending
+authorization" framing further below (that gate passed and the maintainer then
+authorized implementation: "do path zero and continue implementing phase zero").
+Full dated detail is on beads **`livespec-3lev.3`**.
+
+- **Containment proven live** — livespec run `29183111924`, job "mechanism + live
+  isolation" = success: a real Actions job ran on the local `ci-runner` inside the
+  baked image via rootless podman, with no `/var/run/docker.sock`, host-loopback
+  (Dolt `:3307`)/metadata denied, no runner creds in the job fs, container-root →
+  ci-runner (not host root), AppArmor sysctls still `=1`. **Tasks 1–4, 6 done.**
+- **Host state (persists):** rootless stack installed (podman/crun/uidmap/
+  slirp4netns/passt/fuse-overlayfs/netavark/**aardvark-dns**); `ci-runner` uid 1001
+  (none of docker/sudo/dolt, nologin, subuid 165536, linger, rootless podman
+  socket, `containers.conf` public-DNS+private-netns, runner v2.335.1 +
+  container-hooks v0.8.1 + **`sanitize-hook.js`**). `livespec` fork-PR approval =
+  `all_external_contributors`; runner `livespec-ci-pilot` registered but OFFLINE.
+- **4 findings fixed:** docker.sock→sanitizer; DNS→resolvers; teardown→aardvark-dns;
+  mise busy-loop→`mise trust`+`MISE_NOT_FOUND_AUTO_INSTALL=0`.
+- **GitHub App (productionization):** `thewoolleyman-ci-runners` App ID **4278168**,
+  Administration:write only, installed on livespec (installation **146033367**),
+  one key. `mint-jitconfig.sh` verified (rc=0). **General-fleet** scope; label
+  **`local-ci`**; dedicated **`github-ci-runners`** 1Password env (maintainer
+  CREATED it). Creds staged `/tmp/livespec-ci-app.{env,pem}` (real-newline PEM).
+- **Artifacts pushed** to branch `phase0-selfhosted-shadow-lane`,
+  `plan/fabro-ci-image-factoring/phase0-artifacts/` (provision, sanitize-hook,
+  containers.conf, 11-test isolation suite, `supervisor/` = mint + loop +
+  `runner@.service` + supervisor unit + `49-…rules` + README) and
+  `.github/workflows/ci-selfhosted-shadow.yml`. **Nothing merged to master.**
+
+**NEXT ACTIONS (in order):** (1) generate `with-github-ci-runners-env.sh` — blocked
+only on the new env's `ONEPASSWORD_ENVIRONMENT_ID` (`op environment` has no `list`;
+get it from the maintainer's 1Password desktop). From `/data/projects/1password-env-wrapper`
+ensure a Linux group `github-ci-runners` and run `create-1password-env-wrapper.sh`
+with `IDENTIFIER=github-ci-runners` + env ID + a read-capable service-account token
+(first test the existing livespec token at `/etc/credstore.encrypted/1password-env-wrapper-livespec`
+via `op environment read`). (2) Install supervisor plumbing: `ci-sup` user; scripts →
+`/usr/local/lib/ci-runner/`; units → `/etc/systemd/system/`; polkit →
+`/etc/polkit-1/rules.d/`. (3) Test the ephemeral JIT flow live (supervisor mints →
+`runner@` runs a `[self-hosted, local-ci]` job → auto-deregisters); delete `/tmp`
+creds. (4) `just check` green — wire persistent uv/npm+pyright/cargo cache mounts
+(pyright cold-npm-download was the blocker). (5) Relocate `phase0-artifacts/` + the
+11-test suite into **`livespec-dev-tooling`** as a PR; land the shadow workflow on
+master (non-gating). (6) Phase 1 images / Phase 2 CI cutover / fan-out.
+
+**Open worktree (recorded, not orphaned):** `~/.worktrees/livespec/phase0-selfhosted-shadow-lane`
+(branch pushed, no PR yet); throwaway trigger branch `ci-shadow/pilot-1`; primary
+`/data/projects/livespec` clean on `master`; runner offline (no exposure).
+
+---
+
 **State (fresh-session entry point, 2026-07-12).** The plan is anchored by
 the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase children
 `.1`–`.7`. Done so far:
