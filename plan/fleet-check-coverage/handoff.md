@@ -10,6 +10,25 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-12 (SESSION 9) UPDATE — READ THE SESSION-9 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-8 below.** The **entire L2 mechanical cluster chain
+  (L2-a…j) is DONE + ratified** (each independent Fable NO-BLOCKERS + merge-evidence close);
+  dispatcher.py 2616→**639 LLOC** and is the ONLY >250 file left in the orchestrator. The mechanical
+  chain is EXHAUSTED — what remains is the tightly-coupled dispatch core, and the **MAINTAINER DECIDED
+  2026-07-12: "Decompose the core"** (the design record's "spine stays in dispatcher.py" is OVERRIDDEN —
+  it is mathematically incompatible with the ≤250 done-definition). The endgame is **3 CORE-SPLIT slices
+  + a trim**, each cycle-verified: **(1) engine-loop** `_dispatcher_loop.py` (dispatch primitives
+  `_dispatch_one`/`_prepare`/`_candidates`/`_ready_items`/`_is_dispatch_candidate`/`_post_run_dispositions`/
+  `_janitor_core_ref`/`_run_id`, all promoted PUBLIC, ONE seam-rewire of `_dispatch_one`'s
+  `_github_token_supplier`→public; **IN FLIGHT `bd-ib-7w2`, reconcile FIRST**); **(2) check-runners**
+  (the 8 leaf check/preflight helpers → new module); **(3) command-layer + seam-cleanup**
+  (`_run_dispatch_command`/`_run_loop_command`/`_alarm_on_terminal_failure` → `_dispatcher_run_commands.py`,
+  rewire seam calls to public, DELETE the orphaned dispatcher.py seam duplicates), leaving dispatcher.py a
+  thin CLI entry (~100 LLOC); then **trim/verify** all ≤250. The SESSION-9 block carries the numbers, the
+  cycle analysis, and the reusable FILE→ROUTE→DISPATCH→RATIFY cycle (unchanged from SESSION-8; scratchpad
+  scripts are session-local — recreate them). Independent Fable review is REUSED across slices via one
+  long-lived read-only agent. Everything below (incl. SESSION-8) is prior context SESSION-9 supersedes
+  where they conflict.
 - **⇒ 2026-07-11 (SESSION 8) UPDATE — READ THE SESSION-8 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-7 below.** A→B→C is DONE (SESSION-7). The **L2
   dispatcher.py decomposition chain is 5 slices in and going cleanly** (dispatcher.py 1558→1118; L2-b/c/d/e
@@ -955,6 +974,84 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-12 SESSION 9 — CURRENT STATE, READ FIRST (supersedes SESSION-8 below)
+>
+> **The L2 mechanical cluster chain is COMPLETE: L2-a…j all done + ratified (each independent Fable
+> NO-BLOCKERS + merge-evidence close). dispatcher.py 2616(orig) → 639 LLOC** and is the ONLY >250 file in
+> the orchestrator (codex_plugin_structure.py 246 is a pre-existing sub-250 WARN, unrelated). Slices this
+> session: L2-f `bd-ib-s7e` PR#504, L2-g `bd-ib-x6t` PR#506, L2-h `bd-ib-08a` PR#510 (seam-rewire),
+> L2-i `bd-ib-dx1` PR#512 (reflector + `_alarm_on_terminal_failure` DEFERRED), L2-j `bd-ib-qaa` PR#514
+> (otel). All CLOSED done/completed.
+>
+> **MAINTAINER DECISION 2026-07-12 — "Decompose the core."** The mechanical chain is exhausted; the
+> remaining 639 LLOC is the tightly-coupled dispatch core. The design record's "keep the spine in
+> dispatcher.py" is mathematically incompatible with the ≤250 done-definition (spine 220 + handlers 189 +
+> CLI 63 phys ≈ 470), so it is OVERRIDDEN. Endgame = 3 CORE-SPLIT slices + trim (all SEQUENTIAL, each edits
+> dispatcher.py). Per-group physical-line map (measured @ dispatcher.py 639 LLOC): engine primitives 220,
+> command handlers 189, leaf check/preflight helpers 113, CLI-stays 63, seam duplicates 22.
+>
+> **⚠ FIRST ACTION ON RESUME — reconcile the in-flight CORE-SPLIT-1 dispatch `bd-ib-7w2`** (engine-loop →
+> NEW `_dispatcher_loop.py`; MAXIMUM review bar — it moves the factory's LIVE dispatch loop). Reconcile via
+> the same recipe as the L2 chain: `gh pr list -R thewoolleyman/livespec-orchestrator-beads-fabro --state
+> all --limit 4` + `bd show bd-ib-7w2`. If merged (→acceptance): pinned-venv self-verify (dispatcher.py
+> dropped ~200 → ~420; `_dispatcher_loop.py` ≤200; no new >250; ONE seam-rewire only; NO cycle; docstrings
+> verbatim) → independent Fable review → merge-evidence close.
+>
+> **THEN core-split 2 → 3 → trim (SEQUENTIAL):**
+> - **core-split-2 check-runners** → NEW module (e.g. `_dispatcher_run_checks.py`): the 8 leaf helpers
+>   `_run_ledger_check`, `_run_spec_check`, `_run_janitor_check`, `_emit_check_findings`,
+>   `_resolve_fabro_bin_for`, `_fabro_preflight_error`, `_dispatch_preamble`,
+>   `_requested_items_preflight_error` (mostly leaf; `_requested_items_preflight_error` calls `ready_items`
+>   → import public from `_dispatcher_loop`). Promote spine-called ones public; import back.
+> - **core-split-3 command-layer + seam-cleanup** → NEW `_dispatcher_run_commands.py`:
+>   `_run_dispatch_command`, `_run_loop_command`, `_alarm_on_terminal_failure` (which needs `run_id` →
+>   public from `_dispatcher_loop`). Rewire their `_post_verdict_runner` calls to public
+>   `post_verdict_runner`. THEN DELETE the now-orphaned dispatcher.py seam duplicates (`_post_verdict_runner`,
+>   `_github_token_supplier` alias, `_github_token_error_supplier`) — after this slice NO dispatcher.py code
+>   calls them (verify). dispatcher.py ends ~90-110 LLOC: `main`, `_build_parser`, `_add_dispatch_common`.
+> - **trim/verify**: pinned-venv file_lloc confirms ALL orchestrator files ≤250 → orchestrator Phase-1
+>   file_lloc burndown DONE. The Phase-2 file_lloc FLIP still waits on the dev-tooling legacy-tree
+>   follow-up (`livespec-iily`) so a non-core repo can flip file_lloc via config.
+>
+> **CYCLE SAFETY (verified this session):** the engine primitives have NO back-deps except `_dispatch_one`'s
+> `_github_token_supplier` (seam, rewired to public) and `_post_run_dispositions`'s `emit_calibration`
+> (calibration_emit, public). The modules `_dispatcher_loop` imports (engine, calibration_emit, self_update)
+> reference ZERO spine primitives → no cycle. For core-split-3, `_alarm_on_terminal_failure` depends on
+> `_run_id` (now `run_id`, public in `_dispatcher_loop` after core-split-1) — that dependency is why alarm was
+> deferred from L2-i and rides here.
+>
+> **SEAM MAP (github-token):** the canonical PUBLIC `github_token_supplier`/`post_verdict_runner` live in
+> `_dispatcher_self_update.py`; dispatcher.py carries behavior-identical DUPLICATES (`_post_verdict_runner`
+> differs only by docstring; `_github_token_supplier` is a pure alias; `_github_token_error_supplier` differs
+> only by docstring). Each core-split rewires its callers to the public copies; core-split-3 deletes the
+> orphaned dispatcher.py duplicates last.
+>
+> **REUSABLE CYCLE (unchanged from SESSION-8; scratchpad scripts are SESSION-LOCAL — recreate them):**
+> FILE via `bd create ... --labels admission:auto,origin:freeform --acceptance "..." --body-file <brief>`;
+> ROUTE via `apply_intake_dor(path=store_config(repo=<orch>), item_id=..., checklist=DefinitionOfReadyChecklist(all six True))`
+> (imports: `livespec_orchestrator_beads_fabro.intake_dor` + `...commands._dispatcher_paths.store_config`);
+> DISPATCH background `drive.py --action impl:<id> --repo <orch>` (PYTHONPATH=`<orch>/.claude-plugin/scripts`);
+> RATIFY merge-evidence close: `append_work_item(path=store_config(repo=<orch>), item=replace(item,
+> status="done", resolution="completed", reason="<evidence incl Fable NO-BLOCKERS>", audit=AuditRecord(
+> verification_timestamp=utc_now_iso(), commits=(), files_changed=(), merge_sha=<sha>, pr_number=<PR>)))`
+> (a bare status flip FAILS the `work_item_merge_evidence` gate; `accept:` does NOT record evidence — use
+> this recipe). PYTHONPATH for the python snippets = `<orch>/.claude-plugin/scripts:<orch>/.claude-plugin/scripts/_vendor`,
+> all under `/usr/local/bin/with-livespec-env.sh --`.
+>
+> **INDEPENDENT REVIEW:** one long-lived read-only Fable-model agent is reused across slices (spawn once,
+> SendMessage each slice's review brief; it retains decomposition-review context). A NO-BLOCKERS verdict is
+> the precondition for each merge-evidence close. Each slice rebase-merges (may span 1-2 commits — find the
+> real range from the release commit before it to the slice merge tip).
+>
+> **STATE (at this handoff):** all fleet primaries on origin/master; orchestrator at release 0.19.0, pin
+> current, guard `check-no-fmt-directives` ARMED, master CI green. Ledger (bd-ib): L2-a…j CLOSED;
+> `bd-ib-7w2` (core-split-1) dispatched (in flight — reconcile FIRST). The `handoff-fcc-session9` branch
+> carries THIS refresh.
+>
+> ---
+> *(The SESSION-8 block below remains the record of the L2 mechanical chain g→j; superseded only where
+> SESSION-9 advances past it — the whole L2-a…j chain is done and the endgame is now the core-split.)*
+>
 > ### ⇒ 2026-07-11 SESSION 8 — CURRENT STATE, READ FIRST (supersedes SESSION-7 below)
 >
 > **A→B→C counter-shave remediation is DONE + ratified (SESSION-7). The L2 dispatcher.py decomposition
