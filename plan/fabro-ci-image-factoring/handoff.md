@@ -112,22 +112,40 @@ the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase children
 - All repo changes go through worktree → PR → merge (docs use `docs(...)`; the
   Red-Green-Replay ritual applies only to product `.py`).
 
-**First action — Phase 0 (`livespec-3lev.3`): the dual adversarial-review gate.**
-`phase0-runner-containment-design.md` is drafted but **must pass a gate before
-ANY host mutation** (maintainer-declared 2026-07-12):
-1. Run a **separate adversarial review by (a) a Fable-model agent AND (b) a
-   Codex agent**, each independent + READ-ONLY, each hunting **serious** security
-   blockers (fork-PR code-execution escape, secret leakage into the job env,
-   privilege escalation, docker-socket/host exposure, registration-credential
-   exposure) — **not nitpicks**.
-2. **Iterate the design until BOTH return no serious blockers.** Record each
-   round's findings + resolutions on `livespec-3lev.3`.
-3. Only THEN implement Phase 0 (create the `ci-runner` user, install the
-   ephemeral runner, wire trusted-event routing, run the isolation tests).
+**Phase 0 design gate — PASSED (2026-07-12); implementation BANKED / PAUSED
+pending maintainer authorization.** The `phase0-runner-containment-design.md`
+dual adversarial-review gate (maintainer-declared 2026-07-12) ran to completion:
+FOUR rounds, each a fresh Fable-model agent + a fresh Codex agent, independent +
+READ-ONLY, hunting serious blockers. Trajectory: r1 both SBF → r2 both SBF →
+r3 Fable-clean/Codex-1 → **r4 BOTH NO-SERIOUS-BLOCKERS = GATE PASSED**. Every
+round's findings + resolutions are on `livespec-3lev.3` (comments), and the
+design landed as `docs(plan)` PRs **#1084** (r1) → **#1085** (r2) → **#1086**
+(r3) → **#1087** (r4 gate-pass + non-blocking polish), all merged. **NO host was
+mutated across the entire gate.** The design now carries a "GATE PASSED at round
+4" status + all four §"Round N dual-review record" sections, and names the
+concrete containment surfaced by the reviews: the host SHIPS the enabling
+AppArmor userns profiles (`bwrap-userns-restrict`/`podman` — no bespoke profile
+needed; sysctls stay `=1`); a provisioned rootless stack; `ci-runner` in none of
+docker/sudo/dolt; a JIT runner with **agent/job UID+PID-ns separation via
+`ACTIONS_RUNNER_CONTAINER_HOOKS`**; a supervisor polkit/systemd bridge;
+all-host-loopback network isolation; and 11 isolation exit-tests.
 
-Then proceed Phases 1 → 2 → 3 → 4 per the plan below (Phase 1's image-split +
-Rust-bake + console-rustup-removal core is unblocked now; its consumer-switch +
-the Codex fix wait on `bd-ib-s7e`).
+**The maintainer chose to BANK the design here (2026-07-12) — NOT to authorize
+implementation.** Phase 0 implementation is a HOST MUTATION on this shared,
+multi-tenant host, so it needs an explicit maintainer go; do **not** self-start
+it. Next-session options (surface as a decision to the maintainer):
+1. **Phase 1 (baked images) next** — its `base`/`python`/`python-rust`
+   image-split + Rust-bake + console-`rustup`-removal core is UNBLOCKED and needs
+   NO host mutation (carries the concrete per-run wins). Consumer-switch + the
+   Codex version-less fix wait on `bd-ib-s7e`.
+2. **Authorize Phase 0 implementation** — run the pre-gate (verify shipped
+   AppArmor → provision rootless stack) → `ci-runner` + supervisor + JIT runner
+   with agent/job separation → trusted-event routing + network isolation → one
+   repo's `just check` green as the non-gating shadow lane; each step gated by its
+   exit tests. Reversible.
+3. **Reconsider the local-runner track's cost/benefit** — the gate revealed the
+   containment is non-trivial while Phase 0's payoff is mostly cost/hotness
+   (Phase 1 carries the concrete wins).
 
 **Already-settled facts (do not relitigate):** keep the CI matrix (tune
 runner slots ≈18, do NOT collapse); full-history clones (no mirror, no
