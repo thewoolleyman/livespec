@@ -3,11 +3,14 @@ name: needs-attention-internal
 description: >-
   Compose the livespec-fleet-DEVELOPMENT signals a fleet maintainer must watch
   but an end user does NOT control — CI red on any fleet repo, fleet-conformance
-  drift, stale cross-repo pins, and cross-repo consistency drift — into one
-  point-in-time attention list. It DETECTS NOTHING NEW: it reads signals already
-  computed elsewhere (GitHub Actions for CI, the dev-tooling conformance and
-  pin-freshness checks, `/livespec:doctor` for drift) and normalizes them into
-  the shared `attention_item` shape with `kind: "internal"`. This is the
+  drift, stale cross-repo pins, cross-repo consistency drift, and ledger
+  status-conformance drift — into one point-in-time attention list. It mostly
+  reads signals already computed elsewhere (GitHub Actions for CI, the dev-tooling
+  conformance and pin-freshness checks, `/livespec:doctor` for drift); the one
+  exception is the ledger status-conformance scan, which runs a cheap per-tenant
+  `ledger-normalize --dry-run` directly because no scheduled workflow computes it.
+  All are normalized into the shared `attention_item` shape with `kind: "internal"`.
+  This is the
   internal sibling of the shipped product `needs-attention`: the dividing test
   is *does an end user have actionable control?* — yes routes to the shipped
   `needs-attention` (plugin version, their repo's hygiene), no routes here
@@ -21,11 +24,13 @@ description: >-
 
 You are `needs-attention-internal`: a **maintainer-only, local/unsynced**
 awareness surface for the livespec fleet's own *development* health. When
-invoked, you gather four already-computed dev-tooling-facing signals across the
-fleet and compose them into one flat, point-in-time attention list. You detect
-nothing new — every signal is a status another system already produces; your job
-is to READ it cheaply, normalize it into the shared `attention_item` shape, and
-render it for the maintainer.
+invoked, you gather five dev-tooling-facing signals across the fleet and compose
+them into one flat, point-in-time attention list. Four are statuses another
+system already produces (you READ them cheaply); the fifth — ledger
+status-conformance drift — you compute yourself with a cheap per-tenant scan,
+because nothing else runs it outside a dispatch. Your job is to gather each
+cheaply, normalize it into the shared `attention_item` shape, and render it for
+the maintainer.
 
 This is the **internal** half of the `needs-attention` family. Its shipped
 sibling — the product `needs-attention` (in both orchestrator plugins) — answers
@@ -33,7 +38,7 @@ sibling — the product `needs-attention` (in both orchestrator plugins) — ans
 skill answers the complementary question a fleet maintainer owns: "is anything
 wrong with the fleet's own development machinery right now?"
 
-## The product-vs-internal dividing test (why these four are here)
+## The product-vs-internal dividing test (why these five are here)
 
 The single test that sorts a signal into product-vs-internal is: **does an end
 user have actionable control over it?**
@@ -42,11 +47,12 @@ user have actionable control over it?**
   of date (they can update), a stale worktree sits in their repo (they can
   reap). Those never appear here.
 - **No → internal** (this skill): livespec CI is red, fleet-conformance has
-  drifted, a cross-repo pin is stale, two repos have drifted out of consistency.
-  An end user cannot act on any of these — only a fleet maintainer can — so they
-  live here, local and unsynced, never shipped.
+  drifted, a cross-repo pin is stale, two repos have drifted out of consistency,
+  a tenant's ledger holds a work-item at a non-lifecycle status. An end user
+  cannot act on any of these — only a fleet maintainer can — so they live here,
+  local and unsynced, never shipped.
 
-## The four internal signals and how to gather each
+## The five internal signals and how to gather each
 
 Read the fleet member list LIVE from
 `/data/projects/livespec/.livespec-fleet-manifest.jsonc` (the `fleet` array of
@@ -119,6 +125,50 @@ the maintainer at the per-repo doctor command (a `livespec-op` handoff), or, if
 cheap, reading recent recorded findings. Do not run doctor across the whole fleet
 inline.
 
+### Signal 5 — ledger status-conformance drift
+
+Every fleet tenant's work-item ledger must hold each LIVE item at one of the seven
+livespec lifecycle statuses (`acceptance, active, backlog, blocked, closed,
+pending-approval, ready`). Beads' built-in `open` (a raw `bd create` default) or
+`in_progress` (a raw `bd --claim`), or any ad-hoc status, parks work in an unknown
+lane. Unlike Signals 1-4, NOTHING computes this outside a dispatch — the
+dispatcher's `ledger-check` runs the `status-conformance` invariant only at
+dispatch time — so this signal runs the check DIRECTLY (it is cheap: a `bd list` +
+status filter per tenant, comparable to Signal 1's per-repo `gh run list`).
+
+For each fleet member, run the standalone normalizer in DRY-RUN (it detects without
+mutating):
+
+```bash
+python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/dispatcher.py \
+  ledger-normalize --project-root /data/projects/<repo> --dry-run --json
+```
+
+The JSON is `{"dry_run": true, "remapped": [{item_id, from, to, reason}, …],
+"residual": [{check, item_id, message}, …]}`:
+
+- **`remapped`** — items at an auto-healable built-in (`open`→`backlog`,
+  `in_progress`→`active`). One-command-fixable → **medium** urgency.
+- **`residual`** — items at a non-lifecycle status the normalizer will NOT
+  auto-touch (`deferred`/`hooked`/`pinned`/any ad-hoc). Needs a maintainer's lane
+  decision → **high** urgency.
+
+Empty `remapped` AND empty `residual` for a tenant = healthy (emit nothing). Any
+non-empty yields one attention item for that tenant. The `handoff.command` for a
+remappable drift is the SAME command WITHOUT `--dry-run` — it self-heals the
+auto-mappable items and re-reports any residual:
+
+```bash
+python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/dispatcher.py \
+  ledger-normalize --project-root /data/projects/<repo>
+```
+
+For a residual (non-auto-mappable) drift, the handoff is the `bd update <id>
+--status <lifecycle>` the maintainer runs after deciding the right lane. This is
+the fleet-hygiene surface that catches ledger drift on ANY tenant WITHOUT needing
+a dispatch — the durable fix for the silent-accumulation gap (only the
+dispatcher's `ledger-check` used to catch it, and only for dispatch tenants).
+
 ## Shaping each signal into an `attention_item`
 
 Normalize every fired signal into the shared shape (defined in
@@ -127,9 +177,11 @@ Normalize every fired signal into the shared shape (defined in
 
 - **`id`** — a stable natural key of the form `internal:<signal>:<repo>`, e.g.
   `internal:ci-red:livespec-runtime`, `internal:conformance-drift:livespec-dev-tooling`,
-  `internal:pin-stale:livespec`, `internal:drift:livespec-console-beads-fabro`.
+  `internal:pin-stale:livespec`, `internal:drift:livespec-console-beads-fabro`,
+  `internal:ledger-drift:livespec`.
   For an open bump PR, key on the PR to stay stable across runs, e.g.
-  `internal:pin-stale:livespec#916`.
+  `internal:pin-stale:livespec#916`. For per-item ledger granularity, suffix the
+  work-item id, e.g. `internal:ledger-drift:livespec:livespec-3lev.8`.
   - **Grammar note (verified).** `validate_attention_item_id` in
     `livespec-runtime` currently accepts only the two-part prefixes `impl` /
     `plan` and the three-part prefixes `valve` / `hygiene` / `spec`; it REJECTS
@@ -145,7 +197,9 @@ Normalize every fired signal into the shared shape (defined in
 - **`kind`** — always `"internal"`.
 - **`urgency`** — `high` for CI red and conformance drift (the fleet is broken);
   `medium` for a stale pin or an open bump PR; `low`/`medium` for a doctor-drift
-  handoff (a consistency check to run, not a known break).
+  handoff (a consistency check to run, not a known break); `medium` for a
+  remappable ledger drift (`open`/`in_progress`, one-command fixable) and `high`
+  for a residual ledger drift (a non-lifecycle status needing a lane decision).
 - **`summary`** — one line naming the repo and what broke, e.g.
   "livespec-runtime CI is red on master (run 289…)".
 - **`source_ref`** — `{repo: "<repo>", path: <workflow-or-file>|null,
@@ -157,7 +211,10 @@ Normalize every fired signal into the shared shape (defined in
   - `command` is a ready-to-run string for the maintainer (e.g.
     `gh run view --repo thewoolleyman/<repo> <run-id>`,
     `gh pr merge --repo thewoolleyman/livespec <pr> --rebase`, or the per-repo
-    doctor invocation).
+    doctor invocation). For a remappable ledger drift, `kind: "shell"` with the
+    `dispatcher.py ledger-normalize --project-root /data/projects/<repo>` command
+    (self-heals the auto-mappable items); for a residual ledger drift, the
+    `bd update <id> --status <lifecycle>` the maintainer runs after choosing a lane.
 
 ## Fail-soft — name the offender, never crash the scan
 
@@ -170,16 +227,17 @@ repo must never abort the whole composition. This mirrors the fleet's
 
 ## Rendering — Markdown for the maintainer
 
-Render a Markdown list grouped by signal (CI / conformance / pins / drift) or by
-urgency (high first). Under each group, one row per item: the summary, the
-owning repo named explicitly, and the ready-to-run `handoff.command`. Put any
-`skipped:` notes in their own short section so nothing strands silently.
+Render a Markdown list grouped by signal (CI / conformance / pins / drift /
+ledger) or by urgency (high first). Under each group, one row per item: the
+summary, the owning repo named explicitly, and the ready-to-run
+`handoff.command`. Put any `skipped:` notes in their own short section so nothing
+strands silently.
 
 **The healthy case emits nothing.** When every fleet CI run is green,
-conformance passed, no pins are stale / no bump PRs are open, and there is no
-drift to chase, say so in one line ("fleet-dev is green — nothing internal needs
-attention") and stop. Emitting an empty list is the normal, expected outcome most
-of the time.
+conformance passed, no pins are stale / no bump PRs are open, there is no drift to
+chase, and every tenant's ledger is status-conformant, say so in one line
+("fleet-dev is green — nothing internal needs attention") and stop. Emitting an
+empty list is the normal, expected outcome most of the time.
 
 ## This skill is local-only
 
