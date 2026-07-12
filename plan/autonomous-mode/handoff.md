@@ -55,6 +55,105 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-12 (cont. 4): `fz4` DONE+proven-live; console cockpit-readiness all-but-`ecu` landed; `ecu` in flight → then I2
+
+Driver session `autonomous-mode`. Cleared the `fz4` top priority AND drove the
+console cockpit-readiness epic `g06` to near-completion. **RESUME: review+merge
+`ecu`'s PR when it lands → then I2.**
+
+### DONE this session
+- **`fz4` (bump-pin docker format) — DONE + PROVEN LIVE.** dev-tooling PR #332
+  merged → cut **v0.40.0**; the v0.40.0 fan-out bumped BOTH consumers' sandbox
+  docker pins ATOMICALLY (orchestrator `v0.39.0→v0.40.0`, console
+  `sha-ea684ad→v0.40.0`) alongside pyproject/compat. Grooming corrected the item
+  (it was really a **5th** format, not 4th) and found the true surface = **3
+  places**: the discovery walker (`pin_autodiscovery.py`, globs BOTH consumer
+  roots), the composite-action rewrite `case` (`.github/actions/bump-pin-rewrite/action.yml`),
+  and `SPECIFICATION/contracts.md`. Implemented via scoped sub-agent (not the
+  factory — see below).
+- **Interim lockstep check RETIRED.** orchestrator PR #533 merged (deleted
+  `check-fabro-sandbox-image-pin-lockstep` + module + tests, rewrote the false
+  workflow.toml PIN SURFACE NOTE); **`bd-ib-wwe` CLOSED**. `just check` 60→59.
+- **Ledger status-conformance drift — FOUND + spun off (maintainer now DRIVING
+  it).** The dispatcher's `ledger-check` rejects non-lifecycle statuses; a survey
+  of all 8 fleet members found 2 drifted (dev-tooling 7×`open`; core 3×`in_progress`
+  = the live `3lev` epic), the rest clean. NOT a blocker for autonomous-mode.
+  Seeded `plan/ledger-status-conformance/handoff.md` (core PR #1101); the
+  maintainer has since started driving it (master `c23133e`, "Scope 1 done").
+- **Console cockpit-readiness (epic `g06`):**
+  - **`003` (S1 resolver ladder) — CLOSED**, proven live (`serve --preview`
+    resolves the orchestrator CLIs; observe→emit pipeline works).
+  - **`gkh` (NEW, filed this session) — DONE.** The console couldn't observe real
+    work-items: `parse_orchestrator_observation` rejected a present JSON `null` on
+    `admission_policy`/`acceptance_policy` (`#[serde(default)]` only rescues a
+    MISSING key). Fixed (`Option<_>`) + a SECOND blocker found via live-verify (a
+    `lane:"open"` status-anchor record sank the whole array) → fail-soft per-record
+    parsing. **LIVE-VERIFIED: orchestrator adapter now observes 206 work-items
+    (was 0).** console PR #173 merged.
+  - **`nyh` (S4) SPLIT** (maintainer-approved; it was oversized like `003`):
+    `gu4` (S4a, `drive --repo` id→path invariant + guarding test — the prod fix
+    was already in `003`; PR #172 MERGED, closed) → `ecu` (S4b, bind 5 valve
+    keys; **IN FLIGHT via sub-agent**). `nyh` superseded/closed.
+  - **`d6f` (S2 header source-unavailability indicator) — DONE.** Header now shows
+    `sources: N unavailable (...)`; added a normative `contracts.md` clause +
+    full console co-edit (counts→38/124, Scenario 13, history/v020). console PR
+    #174 merged.
+
+### KEY DECISIONS (maintainer-approved this session)
+- **Console items go via SUB-AGENTS, not the factory.** The console Fabro sandbox
+  has NO Rust toolchain, so `d6f`'s factory dispatch FAILED: the RGR commit's
+  `just check-format` → `cargo fmt` pre-commit hook blocked it (no `cargo`;
+  `--no-verify` forbidden). Root-caused from the fabro run log. **`fz4` exonerated**
+  — both `sha-ea684ad` and `v0.40.0` images lack Rust equally; the console
+  provisions Rust per-run (the "live-work tax" that epic **`3lev`** targets:
+  "drop per-run rustup / bake Rust"). Until `3lev` bakes Rust, factory-dispatching
+  console (Rust) items is unreliable → use sub-agents.
+- **dev-tooling is NOT a lifecycle dispatch tenant** (raw `open` statuses fail
+  `ledger-check`), so `fz4` went via sub-agent too, not the factory.
+
+### FINDINGS worth follow-up (NOT filed as items; captured here)
+- **Factory OTel trace-egress is BROKEN** (the deferred P-factory gap in `3lev`).
+  Honeycomb `livespec` env has ONLY `github-ci`; the dispatcher/fabro
+  orchestration layer emits NO spans anywhere (the ACP agents themselves emit to
+  the `agent-activity` env, but not the fabro layer). So the factory is currently
+  unobservable in Honeycomb — a real gap for diagnosing dispatch failures.
+- **Orchestrator `list_work_items.py` lane-derivation gap:** it emitted `lane:"open"`
+  (a raw beads status) for a status-anchor row (`bd-ib-98c`) — the second blocker
+  `gkh` fail-soft-handled console-side. Real fix is orchestrator-side; likely
+  related to the ledger-status-conformance drift the maintainer is driving.
+- **Console local-gate fragility (3 sub-agents independently hit it):** on any dev
+  host with an installed orchestrator-plugin cache, `just check` fails — 3
+  non-hermetic `console-cli` tests + 1 coverage line, because `backing_cli`'s
+  resolver only accepts a SOURCE layout (`.claude-plugin/scripts/bin/`) and
+  rejects the flattened marketplace-cache layout (`scripts/bin/`). CI is green
+  only because a fresh runner has no installed plugin. Workaround: run the gate
+  under a mirror HOME excluding `~/.claude`. **Worth a console work-item** (accept
+  the flattened cache layout OR make the 3 tests hermetic).
+
+### OPEN WORKTREES to reap (deferred — `ecu` sub-agent is active in a console worktree)
+Reap after `ecu` lands: dev-tooling `fz4-docker-pin` (PR #332 merged); orchestrator
+`retire-fabro-image-pin-lockstep` (PR #533 merged); console `fix-gu4-drive-repo-path`,
+`fix-gkh-null-policy-parse`, `feat-d6f-source-unavail-indicator` (all merged) +
+`feat-ecu-valve-keys` (after it merges). core `docs-plan-autonomous-mode-session15`
+(this update). Do NOT run the reaper while `ecu` is active.
+
+### RESUME ORDER (fresh session)
+1. **Review + merge `ecu`'s PR** (S4b valve keys) when the sub-agent reports —
+   verify the 5 valves are TUI-invocable + confirm-modal for reject + the clause
+   co-edit counts; then close `ecu` and the `g06` epic. `ecu` is the LAST
+   cockpit-readiness slice.
+2. **Reap the merged worktrees** (list above) once `ecu` is done.
+3. **I2 — the maintainer-gated live autonomous-mode acceptance (the sole MVP
+   step).** Now unblocked: cockpit observes real work (`gkh`), surfaces source
+   unavailability (`d6f`), the 5 valves are TUI-bound (`ecu`), the resolver works
+   (`003`). Recommended plant: a ledger-level `human-only` acceptance item (per the
+   older I2 plan below). Flip autonomous mode ON from the TUI → engine drives ready
+   work to `done` → console observes/reflects → a truly-unresolvable item surfaces
+   in-TUI as an actionable needs-attention item. The maintainer's TUI acceptance IS
+   the MVP "done."
+
+---
+
 ## SESSION UPDATE — 2026-07-12 (cont. 3): Track A COMPLETE (golden master GREEN, merged, w4iaaf closed); bump-pin fix `fz4` is the NEW TOP PRIORITY
 
 ### ⇒ FIRST THING TO FIX (maintainer-directed 2026-07-12): `livespec-dev-tooling-fz4`
