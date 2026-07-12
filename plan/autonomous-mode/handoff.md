@@ -55,6 +55,159 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-12 (cont. 2): gates #6/#7 FIXED; gate #8 = golden-master IMAGE DRIFT (NOT a factory break); fpo ACCEPTED + S1 dispatched
+
+Continuation. Big Track-A progress + the golden-master red decisively root-caused
+as a benign fabro-version image drift, NOT a broken factory. Two background jobs
+were IN FLIGHT at handoff — **re-verify their outcomes from ground truth (ledger +
+throwaway-repo PR), do NOT trust this session's scratch logs (they don't survive).**
+
+### Track A — golden-master substrate (the sole I2 prerequisite)
+- **Gate #6 (dev-tooling dep): ✅ FIXED + committed** (`5083989` on branch
+  `fix-golden-master-custom-statuses`). The e2e-skeleton `pyproject.toml` had
+  `dependencies = []`; the UNMODIFIED production Fabro prepare chain runs
+  `python -m livespec_dev_tooling.install_commit_refuse_hooks`, so the sandbox
+  died `ModuleNotFoundError`. Added `livespec-dev-tooling` to the dev group +
+  `[tool.uv.sources]` git pin `v0.39.0`. Pre-flight-verified (`uv sync` resolves +
+  imports). Live-confirmed (re-run advanced PAST it).
+- **Gate #7 (`harnesses` declaration): ✅ FIXED + committed** (`ad0c945`). Next
+  prepare verifier `livespec_dev_tooling.checks.plugin_resolution` fleet-wide
+  REQUIRES a top-level `harnesses` block in `.livespec.jsonc`. Added claude/codex
+  `exempt` (a throwaway greeting skeleton has no interactive `/livespec:*` surface;
+  `exempt` PASSes the verifier with no smoke run). Pre-flight-verified.
+- **Gate #8 = IMAGE DRIFT, NOT a real factory break (decisively investigated).**
+  The implement node died `/bin/bash: line 1: {{: command not found` (exit 127).
+  Root cause: two different fabro binaries. Host + server + ALL real/shadow
+  dispatches run fabro **0.254.0** (where `acp.command="{{ inputs.acp_adapter }}"`
+  templating WORKS) — that is why `fpo` (PR #168, merged 04:57) and `003`/S1 are
+  healthy. But the `livespec-orchestrator:dev` image accidentally baked fabro
+  **0.290.0-nightly.0** (built 07-11 08:07 when `~/.fabro/bin/fabro` was
+  momentarily the nightly; host later rolled back to 0.254.0), and fabro ≥0.290
+  deprecates `{{ }}` templating outside `prompt`/`goal` → the literal `{{` is run
+  as a shell command. `fabro validate` does NOT catch it (only a full `fabro run`
+  does — which is why the earlier "non-fatal" read was wrong). **Fix = rebuild the
+  image with the now-0.254.0 host fabro.** Host fabro IS 0.254.0 now (verified,
+  matches `Dockerfile FABRO_VERSION=0.254.0`).
+- **REBUILD DONE → factory GREEN (gate #8 resolved).** `acceptance-live-golden-master.sh
+  --build-image --run` rebuilt `livespec-orchestrator:dev` with fabro 0.254.0 (image
+  `78f8a2c02a90`, `ENV FABRO_VERSION=0.254.0`) and the golden master then **dispatched
+  → implemented → janitored → opened AND MERGED a PR**: `merged PR #1` on throwaway
+  `livespec-e2e-dl2b1h5j`, reflection `1 green / 0 failed`. The implement node
+  templated `acp.command` correctly (no more literal `{{`). **The Beads/Dolt+Fabro
+  factory demonstrably produces a merged PR end-to-end on 0.254.0.** This was the
+  scary "is the factory broken?" question — answer: NO, it works.
+- **Two POST-dispatch harness/env gaps remain (NOT factory failures):**
+  - **Gate #9 (non-fatal WARN):** the post-merge janitor ran `just
+    install-commit-refuse-hooks` in the merged throwaway repo, but the e2e-skeleton's
+    `justfile` lacks that recipe → `janitor-env-degraded` warn (merge still confirmed
+    green). Skeleton-fidelity follow-up: add an `install-commit-refuse-hooks` recipe
+    to `orchestrator-image/e2e-skeleton/justfile` (calling
+    `uv run python -m livespec_dev_tooling.install_commit_refuse_hooks`, now that the
+    skeleton carries the dep). NON-BLOCKING.
+  - **Gate #10 (FIXED + committed `e170e46`):** the golden master's FINAL host-side
+    greeting assertion ran `uv run …` and died `uv: command not found` — the credential
+    wrapper `with-livespec-env.sh` resets PATH to a base set that drops mise's tool dirs
+    (verified: inside the wrapper `uv`=NOTFOUND but `mise`=`/usr/bin/mise`). Fix: route
+    the assertion through `mise exec -- uv run` (cd `REPO_ROOT` so mise reads this
+    repo's `.mise.toml`). This leg was only reached once the dispatch went green, so it
+    surfaced only after gate #8.
+- **✅ GOLDEN MASTER FULLY GREEN — `GM_EXIT=0`, verified live 3× (final run with the
+  gate-#10 fix).** Each of three full runs drove a MERGED PR on a fresh throwaway repo
+  (`livespec-e2e-{dl2b1h5j,nsmshwko,uub5ht1d}#1`), reflection `1 green / 0 failed`; the
+  final run passed the greeting assertion (`asserted greeting: Hello, Ada! ==
+  greet("Ada")`, `1 passed`) → `=== live golden-master PROOF COMPLETE ===`. The runs
+  exercised the FULL flow: dispatch → implement → janitor → PR → merge → item parked in
+  `acceptance` under `ai-then-human`. **Gate #8 resolved; the Beads/Dolt+Fabro factory
+  is proven end-to-end.** Branch `fix-golden-master-custom-statuses` = 5 commits
+  (custom-statuses, e2e-creds, #6 dep, #7 harnesses, #10 uv/mise-exec), rebased current
+  on master, tracked-clean.
+- **Recurrence-prevention TODO (NOT yet done — include in the Track-A PR):** add a
+  build-time guard in `orchestrator-image/build-and-verify.sh` (after line 56,
+  `"$HERE/fabro" version`) asserting the staged binary version == the Dockerfile
+  `FABRO_VERSION`. Without it any future `~/.fabro/bin` drift re-poisons the image.
+- **Latent fleet-wide bug FILED: `bd-ib-41k`** (orchestrator tenant, P2, open).
+  The `{{ }}`-in-`acp.command` pattern breaks EVERY dispatch the moment the fleet's
+  fabro is upgraded to ≥0.290. NOT urgent (0.254.0 works). The full researched fix
+  (env-indirection: `acp.command="$LIVESPEC_ACP_ADAPTER"` in BOTH repos' 5
+  workflow.fabro lines + `_dispatcher_overlay.py` env injection + drop the
+  `--input acp_adapter` in `_dispatcher_fabro_argv.py`; preserves Codex/Slice-B
+  routing) is in the item, with a non-live scratch-run verification recipe. DEFER;
+  do NOT bundle into Track A.
+
+### Track A remaining (golden master is GREEN — package into the PR)
+> The substantive work is DONE + proven live. What's left is mechanical PACKAGING
+> plus ONE cross-thread decision (the lockstep, step 3) surfaced to the maintainer.
+1. Add the build-and-verify.sh fabro-version guard (above). [optional-but-recommended]
+2. **Clean the root-owned `.pyc` pollution** the golden-master run leaves in the
+   worktree, or `just check` fails: `sudo find .claude-plugin/scripts -name
+   __pycache__ -type d -prune -exec rm -rf {} +` (the sandbox runs as root and
+   writes bytecode into the bind-mounted worktree; passwordless sudo is available).
+3. **Resolve the LOCKSTEP pre-push blocker.** `check-fabro-sandbox-image-pin-lockstep`
+   fails LOCALLY (pre-push) but master CI is GREEN — a pre-existing MASTER condition
+   from the dev-tooling-flip thread: pyproject pins dev-tooling `v0.39.0` but
+   `workflow.toml` line 153 pins sandbox image `livespec-fabro-sandbox:v0.38.1`. The
+   `v0.39.0` image EXISTS on GHCR → bump line 153 to `v0.39.0`. (Cross-thread: this is
+   the `fleet-check-coverage`/dev-tooling-flip domain; bumps to the same tag converge,
+   so low collision risk. Also repairs master's local-red.) **CAVEAT: this changes the
+   sandbox for EVERY dispatch, and the current `GM_EXIT=0` was with the `v0.38.1`
+   sandbox — so after the bump, RE-RUN the golden master to confirm green with the
+   `v0.39.0` sandbox before pushing** (the merge state owes its own live-verify). This
+   coupling (lockstep bump ⇒ golden-master re-verify) is exactly why it's a
+   maintainer-surfaced decision, not a silent self-resolve.
+4. Push (`--force-with-lease` — my thread's own branch, no PR) → open PR → merge
+   (rebase) → **close `bd-ib-w4iaaf`** → refresh primary. → **I2 unblocked.**
+
+### Cockpit-readiness (console tenant, epic `g06`)
+- **`fpo` (S3): ✅ ACCEPTED → done.** Journaled live-exercise evidence onto the item
+  first (PR #168/`041343d` on master + Rust Red-Green pair + prior live repro), then
+  accepted via `drive --action accept:livespec-console-beads-fabro-fpo --repo
+  <console>` (CLI, because S4 valve keys aren't bound yet — the known hole; this CLI
+  accept IS the documented bootstrap + a live demo of it).
+- **`003` (S1, resolver ladder): promoted backlog→ready + DISPATCHED** via
+  `dispatcher.py dispatch --repo <console> --item ...-003` (background `b7o17zqt3`).
+  Still `active`/`fabro`, `updated_at` unchanged since 06:18 at handoff (~48+ min).
+  The dispatcher WARNed it is a heavy item (2555 chars, "3 enumerated parts" = the 3
+  resolver rungs) that may exceed one unattended ACP turn. **WATCH: if it stalls/
+  orphans rather than merging a PR, S1 needs a finer maintainer-owned re-groom.**
+  VERIFY its outcome from the ledger + console PRs. (Explicit `--item` dispatch
+  bypasses the WIP cap, so the stale `active` `6tn` didn't block it.)
+- After S1 lands: dispatch **S2 `d6f`** (header/status source-unavailability
+  indicator) + **S4 `nyh`** (bind the 5 valves to TUI keys + fix `drive --repo`
+  id→path) — parallel (both depend only on S1). S1's DoD requires the Lanes view to
+  actually populate, not just PATH-resolve.
+
+### Side-findings (logged, not acted on)
+- **Recurring root-`.pyc` pollution hazard:** every golden-master run leaves
+  root-owned bytecode in the worktree (breaks `just check` until sudo-cleaned).
+  Worth a durable fix (sandbox shouldn't write root-owned files into the host
+  worktree, or auto-clean post-run). Not filed yet.
+- **Orphaned console items `6tn` (active) + `6sf` (ready)** — fabro-assigned,
+  created 2026-07-08, trivial doc-comment tasks, stale factory cruft. Reap at a
+  clean boundary — NOT while S1's dispatch is active.
+
+### State at handoff
+- Branch `fix-golden-master-custom-statuses` (orchestrator): **5 commits** — `4c07449`
+  (custom statuses), `7918506` (e2e `*_E2E` creds), `5083989` (gate #6 dep),
+  `ad0c945` (gate #7 harnesses), `e170e46` (gate #10 uv/mise-exec). Rebased current on
+  master, tracked-clean, **golden master GM_EXIT=0**, NO PR yet (blocked on the
+  lockstep, step 3).
+- Worktrees: KEEP orch `fix-golden-master-custom-statuses` (Track A). REAP after
+  merge: core `docs-plan-autonomous-mode-gate8` (this handoff PR). Not mine, leave:
+  orch `fix-embedded-ledger-credential-precheck`, `plan-codex-factory-telemetry`.
+- Background jobs do NOT survive the session — re-verify `b7o17zqt3` (S1) from the
+  ledger / console PRs, not scratch logs. (The golden-master runs already completed
+  green; nothing pending there.)
+
+### RESUME ORDER (fresh session)
+1. **Golden master is GREEN (GM_EXIT=0, verified 3×) — go straight to packaging:**
+   Track-A remaining steps 1–4 above. Step 3 (the lockstep bump) is the ONE
+   cross-thread decision surfaced to the maintainer — resolve that, then clean
+   pollution, push (`--force-with-lease`), open PR, merge, **close `bd-ib-w4iaaf`**.
+2. **Verify S1 `003` outcome**; if stalled/orphaned, re-groom (maintainer-owned cut).
+3. After S1 green: dispatch S2 `d6f` + S4 `nyh` (parallel).
+4. **I2** (maintainer-gated live acceptance) after the golden master is green AND S4
+   lands (the "actionable in-TUI" DoD depends on S4).
+
 ## SESSION UPDATE — 2026-07-12 (cont.): cockpit-readiness FILED + fpo through factory + e2e App created; golden-master at gate #6
 
 Continuation of the DOGFOODING SESSION below. Big progress on BOTH tracks; the
