@@ -81,7 +81,9 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State (fresh-session entry point, 2026-07-12).** The plan is anchored by
+**State (fresh-session entry point, 2026-07-13). CURRENT FOCUS: the
+Observability completion track (section below) — front-loaded, maintainer-directed,
+driven by this session, running parallel to the image work.** The plan is anchored by
 the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase children
 `.1`–`.8` (`.8` = Phase 5, the closing efficiency report, added 2026-07-12).
 Done so far:
@@ -110,6 +112,73 @@ Done so far:
   (`.2`), which makes repairing the factory trace egress a precondition for
   the final report rather than an indefinitely-deferred follow-on. P-factory
   is itself now unblocked (its verification was waiting on `bd-ib-s7e`).
+- **P-factory (`.2`) code LANDED + Defect A accepted LIVE (2026-07-13).** PR
+  #539 (`livespec-orchestrator-beads-fabro`) fixed both defects; a real
+  golden-master dispatch proved the dispatcher's own timing now flows
+  (`livespec-dispatcher` 0→5 spans). The sandbox-agent side (`fabro-sandbox`)
+  stayed dark because the factory runs Codex, which emits nothing — that is the
+  Observability completion track below, NOT a P-factory failure.
+
+## Observability completion track (front-loaded; maintainer-directed 2026-07-13)
+
+**Decision (2026-07-13):** finish ALL factory observability, driven by the
+maintainer's Claude session (not handed to the maintainer to run), front-loaded
+and running in PARALLEL with the image work (they no longer touch the same
+files). The closing efficiency report (Phase 5 / `.8`) DEPENDS on items 3 + 4a
+below being done — we never claim to have measured a factory we cannot see.
+
+Plain-English: "observability" = being able to open Honeycomb and see, per
+factory run, which steps ran, how long each took, and what it cost. Four pieces:
+
+1. **Machine + container resource usage** (CPU/mem/disk per container) — **DONE**
+   (P-host; powers the resource-health safety gate).
+2. **The orchestrator's own step timing** (dispatcher stages: post-merge check
+   pass, total run wall-clock) — **DONE + PROVEN LIVE** (P-factory Defect A;
+   `livespec-dispatcher` dataset).
+3. **Setup/check timing INSIDE each sandbox run** ("install tools → sync deps →
+   run the check suite") — **TODO, small, fully ours.** These are the
+   prepare-step timing shims: wrap the `script =` lines in
+   `.claude-plugin/.fabro/workflows/implement-work-item/workflow.toml` (L207–270)
+   through a small timing wrapper baked into the sandbox image
+   (`livespec-dev-tooling` Dockerfile). No dependency on the AI agent. This is
+   the P-factory prepare-step follow-on (was blocked behind Defect B; now
+   unblocked — the receiver binds `172.17.0.1`).
+4. **The AI agent's own activity + cost** — the real hole. The factory drives
+   with Codex, which emits NO telemetry. Two layers:
+   - **4a. Basic agent activity + rough token counts** — **TODO, medium.** Emit
+     from the Fabro harness (not from Codex), via the fabro-side OTLP exporter
+     that today exists only as unfinished/uncommitted work on a stale Fabro
+     version (must be re-derived vs current Fabro), plus teaching the host
+     receiver (`_otel_receive.py`) Fabro's protobuf wire format. This is the
+     Codex-telemetry track's "Approach 2." Its receiver-side prerequisite (the
+     `172.17.0.1` bind) is ALREADY landed by P-factory.
+   - **4b. True per-run dollar cost** (`total_usd_micros`) — **UPSTREAM-BLOCKED,
+     NO FORK (maintainer-declared 2026-07-13).** Requires a change to Codex
+     itself + per-sandbox config + disabling Codex's default Statsig metrics
+     egress to OpenAI. The maintainer explicitly does NOT want to carry a Codex
+     fork. File/keep as an OPEN, BLOCKED tracking issue against upstream Codex
+     spend-tracking support; the coarse token counts from 4a cover the near-term
+     need. Do not build 4b until upstream lands.
+
+**Next-session build order (drive it):**
+1. Groom items 3 and 4a into ready, dependency-layered work-items (item 3 under
+   the fabro-ci epic / P-factory follow-on; item 4a under the Codex-telemetry
+   epic in the orchestrator ledger). Reconcile 4a with the existing
+   fabro-OTLP-exporter item rather than duplicating it.
+2. Build item 3 first (small, no external dep): the prepare-step timing wrapper +
+   the 8 workflow.toml shims, via Red-Green-Replay, accept via a real
+   golden-master dispatch (confirm the setup/janitor timing spans appear).
+3. Build item 4a: re-derive the fabro-side exporter against current Fabro + teach
+   the receiver protobuf; accept by confirming agent-activity spans land on a
+   real Codex dispatch.
+4. Ensure the 4b upstream-blocked tracking issue is filed and cross-linked; do
+   NOT fork.
+5. Only after 3 + 4a are proven live is Phase 5 (the efficiency report)
+   measurable end-to-end.
+
+Full plain-English rationale is in the maintainer conversation of 2026-07-13; the
+Codex-side technical detail is in
+`livespec-orchestrator-beads-fabro/plan/codex-factory-telemetry/research/codex-otel-support.md`.
 
 **Hard constraints:**
 - **No-Circular-Dependency Directive** (`.ai/no-circular-dependency.md`,
