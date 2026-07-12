@@ -55,6 +55,62 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-12 (cont. 3): Track A COMPLETE (golden master GREEN, merged, w4iaaf closed); bump-pin fix `fz4` is the NEW TOP PRIORITY
+
+### ⇒ FIRST THING TO FIX (maintainer-directed 2026-07-12): `livespec-dev-tooling-fz4`
+`livespec-dev-tooling-fz4` (P1, **dev-tooling tenant**) — teach `bump-pin`
+(`pin_autodiscovery.py`) to rewrite the `workflow.toml` fabro-sandbox **docker image
+tag** as the missing 4th pin format, so a dev-tooling release moves BOTH the pyproject
+pin AND the sandbox image tag atomically (must cover BOTH `livespec-orchestrator-beads-fabro`
+AND `livespec-console-beads-fabro`). This is the ROOT CAUSE of the recurring
+`check-fabro-sandbox-image-pin-lockstep` local-red (v0.37, then v0.38→v0.39). Once it
+lands, the orchestrator's private interim lockstep check can RETIRE, and the
+orchestrator-tenant symptom tracker `bd-ib-wwe` can close (already prose-linked → `fz4`).
+It's a groomable, factory-dispatchable dev-tooling work-item — **do this first.**
+
+### Track A — COMPLETE ✅
+The live golden-master is GREEN end-to-end and the factory is proven. **PR #530**
+(`livespec-orchestrator-beads-fabro`) MERGED — 5 commits (custom-statuses, e2e-creds,
+gate #6 dev-tooling dep, gate #7 harnesses, gate #10 uv/mise-exec). `bd-ib-w4iaaf`
+CLOSED with live evidence. Verified `GM_EXIT=0` **on the actual merge state** (rebased
+current on master → `v0.39.0` sandbox + 0.254.0 orchestrator image): dispatch →
+implement → janitor → PR → MERGE → `asserted greeting: Hello, Ada!`, across throwaway
+repos `livespec-e2e-{dl2b1h5j,nsmshwko,uub5ht1d,pm5nvuye}#1`. `just check` = all 60
+targets pass. Worktree reaped; orchestrator primary clean on master.
+- **Gate #8 was fabro-version IMAGE DRIFT, not a factory break** (0.290-nightly baked
+  vs the 0.254 host); fixed by rebuilding `livespec-orchestrator:dev` with the
+  `0.254+#568` fork. **CORRECTION:** the acp.command `{{ }}` item I filed (`bd-ib-41k`)
+  was a DUPLICATE of pre-existing `bd-ib-6qu` — CLOSED, recipe folded. The plan (epic
+  `bd-ib-2nq`, Rec A) deliberately STAYS on the 0.254+#568 fork because 0.254 PRESERVES
+  `{{ }}` templating; the preferred exit is `bd-ib-2nq.4` (revert to canonical when
+  upstream fabro #568 merges), NOT the 0.290 migration. See `plan/fabro-token-refresh/`.
+- **The "lockstep decision" was a non-issue** — a transient bump-pin gap; master already
+  had both pins at `v0.39.0` (folded into dispatcher-refactor `456e40e`); my branch was
+  just stale and rebasing fixed it. The durable fix is `fz4` above.
+
+### Cockpit-readiness (console tenant, epic `g06`) — partial
+- **`fpo` (S3): ✅ done** (accepted; live evidence journaled).
+- **`003` (S1, resolver ladder): WORK LANDED but NEEDS RECONCILIATION.** The 3-rung
+  resolver merged via console **PR #169**; but the heavy-item dispatch didn't converge
+  (re-opened a stale PR #170 — driver CLOSED it; dispatch STOPPED; `003` left orphaned
+  `active`). Reconciliation context is journaled ON `003`. **Next: verify #169 satisfies
+  003's full Definition-of-Ready LIVE** (`serve --preview` Lanes view actually POPULATES,
+  not just merged — "done means exercised live"), then transition `003` out of `active`
+  (do NOT re-dispatch). LESSON: re-groom heavy items finer before factory-feeding (the
+  sizing WARN was right).
+- After 003 is reconciled: dispatch **S2 `d6f`** + **S4 `nyh`** (parallel; both gate on S1).
+
+### RESUME ORDER (fresh session)
+1. **`fz4` — the bump-pin fix (maintainer's top priority).** Groom + implement/dispatch.
+2. **Reconcile `003`** (verify #169's DoD live → transition out of `active`), then dispatch
+   S2 `d6f` + S4 `nyh`.
+3. **I2** (maintainer-gated live acceptance) — now unblocked by Track A green; also needs
+   cockpit S4 (the "actionable in-TUI" DoD). Recommended plant: ledger-level `human-only`
+   acceptance item (sidesteps orchestrator bug `bd-ib-18r`).
+- Side-findings still open (not filed): the **root-owned `.pyc` pollution hazard** (every
+  golden-master run writes root-owned bytecode into the host worktree → breaks `just check`
+  until sudo-cleaned) and the **orphaned console items `6tn`/`6sf`** (reap at a boundary).
+
 ## SESSION UPDATE — 2026-07-12 (cont. 2): gates #6/#7 FIXED; gate #8 = golden-master IMAGE DRIFT (NOT a factory break); fpo ACCEPTED + S1 dispatched
 
 Continuation. Big Track-A progress + the golden-master red decisively root-caused
