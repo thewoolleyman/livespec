@@ -94,6 +94,19 @@ livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.gi
 # SPECIFICATION/non-functional-requirements.md §"Destructive-default
 # CLI wrapping".
 [tool.livespec_dev_tooling]
+# Phase-2 file_lloc FLIP (fleet-check-coverage epic livespec-i5ebqd, track
+# livespec-9bym). Core is SPECIAL: `.claude-plugin/scripts/livespec/` is the
+# hardcoded legacy hardfail tree, so >250 files THERE already error. With this
+# key true, `file_lloc` extends the hard gate to core's WHOLE git-derived
+# first-party-.py universe (~120 files) — files OUTSIDE the legacy tree
+# (bin/, .claude/hooks/, dev-tooling/, tests helpers, etc.) now hard-fail at
+# >250 too, instead of WARN-only. Safe to arm: the Phase-1 burndown brought
+# every file under the ceiling (verified: `check-file-lloc` exits 0 with the
+# gate armed, zero files >250 anywhere); a 201-250 file still WARNs (soft
+# band), a >250 file fails. Severity increase, never a bypass (per
+# .ai/ci-gate-discipline.md and the fleet-check-coverage golden rules).
+# Requires livespec-dev-tooling >= v0.39.0 (the flip lever; pinned).
+file_lloc_hard_gate = true
 scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.consumer", "tests.bin"]
 destructive_cli_allowlist = []
 # Repo-root-relative path prefixes the `tests_no_subprocess_spawn` check
