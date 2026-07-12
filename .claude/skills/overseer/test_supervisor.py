@@ -1,0 +1,498 @@
+"""Tests for supervisor.py — the daemon state machine, injection, restart, GC.
+
+Run: ``uv run pytest .claude/skills/overseer/ -q``. A FAKE tmux object supplies
+canned pane captures / process-identity / session existence; NO real tmux runs.
+The adversarial-critical behaviors are covered: state precedence (busy/gate/
+blocked suppress injection), stamp-before-paste, the restart interlock firing
+ONLY on marker-valid + not-busy + idle, auto-link refusing a cross-repo session,
+archive-GC dropping an archived row, and ctx-unknown never injecting.
+"""
+
+import hashlib
+import io as _io
+import os
+
+import pytest
+import registry
+import signals
+import supervisor
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cwd(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+
+class FakeTmux:
+    """Injectable stand-in for tmuxio.TmuxIO — canned reads, recorded writes."""
+
+    def __init__(self):
+        self.sessions = set()
+        self.panes = {}
+        self.cmds = {}
+        self.paths = {}
+        self.calls = []
+        self.on_paste = None  # callback(session, text) for stamp-before-paste checks
+
+    def session_exists(self, session):
+        self.calls.append(("exists", session))
+        return session in self.sessions
+
+    def capture_pane(self, session):
+        self.calls.append(("capture", session))
+        return self.panes.get(session, "")
+
+    def pane_current_command(self, session):
+        self.calls.append(("cmd", session))
+        return self.cmds.get(session)
+
+    def pane_current_path(self, session):
+        self.calls.append(("path", session))
+        return self.paths.get(session)
+
+    def list_sessions(self):
+        return sorted(self.sessions)
+
+    def send_keys(self, session, keys):
+        self.calls.append(("keys", session, keys))
+        return True
+
+    def bracketed_paste(self, session, text):
+        self.calls.append(("paste", session, text))
+        if self.on_paste is not None:
+            self.on_paste(session, text)
+        return True
+
+    def respawn_pane(self, session, cwd, command):
+        self.calls.append(("respawn", session, cwd, command))
+        self.cmds[session] = "node"  # a fresh Claude TUI is now live
+        self.sessions.add(session)
+        return True
+
+    def new_session(self, name, cwd):
+        self.calls.append(("new", name, cwd))
+        self.sessions.add(name)
+        return True
+
+    # test helpers ---------------------------------------------------- #
+    def paste_texts(self):
+        return [c[2] for c in self.calls if c[0] == "paste"]
+
+    def has(self, method):
+        return any(c[0] == method for c in self.calls)
+
+
+IDLE_BOX = "╭──────────╮\n│ >        │\n╰──────────╯\n  ? for shortcuts\n"
+
+
+def _idle_capture(ctx=None):
+    tail = f"  ~/repo  main  Ctx: {ctx}% left\n" if ctx is not None else ""
+    return IDLE_BOX + tail
+
+
+def _make_plan(tmp_path, repo_name="repo", topic="topic", handoff=b"HANDOFF v1\n"):
+    repo = tmp_path / repo_name
+    plan = repo / "plan" / topic
+    plan.mkdir(parents=True)
+    (plan / "handoff.md").write_bytes(handoff)
+    return repo, topic
+
+
+def _mapped_track(repo, topic, session):
+    return registry.Track(
+        topic=topic,
+        repo=str(repo),
+        tmux=session,
+        handoff=supervisor.default_handoff(str(repo), topic),
+        resume=supervisor.default_resume(str(repo), topic),
+    )
+
+
+def _sup(tmp_path, fake, **kwargs):
+    return supervisor.Supervisor(
+        tmux=fake,
+        store_path=str(tmp_path / "map.jsonl"),
+        stamp_path=str(tmp_path / "stamps.json"),
+        out=_io.StringIO(),
+        now=lambda: 1000.0,
+        sleep=lambda _s: None,
+        **kwargs,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# State precedence: busy / gate / blocked SUPPRESS injection.
+# --------------------------------------------------------------------------- #
+
+
+def test_busy_suppresses_injection(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = "running... esc to interrupt\n  Ctx: 40% left\n"  # busy AND low ctx
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert not fake.has("paste")  # busy must suppress the wrap-up injection
+
+
+def test_structured_gate_suppresses_injection(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = "Do you want to proceed?\n❯ 1. Yes\n  2. No\n  Ctx: 40% left\n"
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "blocked:human"
+    assert not fake.has("paste")
+
+
+def test_blocked_marker_suppresses_injection(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    signals.blocked_marker_path(str(repo), topic).write_text("waiting on schema call\n")
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=40)  # idle + low ctx, but blocked marker present
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "blocked:human"
+    assert view.note == "waiting on schema call"
+    assert not fake.has("paste")
+
+
+# --------------------------------------------------------------------------- #
+# warned: stamp is written BEFORE the paste; ctx-unknown never injects.
+# --------------------------------------------------------------------------- #
+
+
+def test_warned_writes_stamp_before_pasting(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=40)  # below default threshold 50
+    stamp_path = str(tmp_path / "stamps.json")
+    seen = []
+    fake.on_paste = lambda _s, _t: seen.append(
+        registry.read_injection_stamp(str(repo), topic, stamp_path)
+    )
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "warned"
+    # The wrap-up was pasted AND the stamp already existed at paste time.
+    assert fake.paste_texts() and "Wrap up for a clean session restart" in fake.paste_texts()[0]
+    assert seen == [1000.0]  # stamp written BEFORE the paste, at now()==1000.0
+    # And it was submitted with a single Enter after the paste.
+    assert ("keys", session, "Enter") in fake.calls
+
+
+def test_ctx_unknown_never_injects(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=None)  # idle but NO Ctx line → unknown
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "idle"
+    assert view.ctx is None
+    assert not fake.has("paste")
+
+
+def test_idle_above_threshold_does_nothing(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=73)  # well above threshold
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "idle"
+    assert not fake.has("paste")
+
+
+def test_resend_once_when_ctx_keeps_dropping(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    sup = _sup(tmp_path, fake)
+    track = _mapped_track(repo, topic, session)
+    fake.panes[session] = _idle_capture(ctx=40)
+    sup.evaluate(track, act=True)  # first inject
+    fake.panes[session] = _idle_capture(ctx=30)
+    sup.evaluate(track, act=True)  # re-send (ctx dropped)
+    fake.panes[session] = _idle_capture(ctx=28)
+    sup.evaluate(track, act=True)  # capped: no third inject
+    wrapups = [t for t in fake.paste_texts() if "Wrap up for a clean session restart" in t]
+    assert len(wrapups) == 2
+
+
+def test_danger_surfaces_below_danger_line(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=15)  # <= DANGER_CTX_REMAINING, no ready marker
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "danger"
+
+
+# --------------------------------------------------------------------------- #
+# Restart interlock: fires ONLY on marker-valid + not-busy + idle; deletes marker.
+# --------------------------------------------------------------------------- #
+
+
+def _arm_ready_marker(repo, topic, *, mtime=1001.0):
+    handoff = repo / "plan" / topic / "handoff.md"
+    digest = hashlib.sha256(handoff.read_bytes()).hexdigest()
+    marker = signals.ready_marker_path(str(repo), topic)
+    marker.write_text(digest + "\n")
+    os.utime(marker, (mtime, mtime))
+    return marker
+
+
+def test_restart_fires_when_marker_valid_notbusy_idle(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=30)
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    marker = _arm_ready_marker(repo, topic, mtime=1001.0)
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "restarting"
+    assert ("respawn", session, str(repo), f"claude -n {topic}") in fake.calls
+    # The resume line was pasted after the respawn...
+    resume = supervisor.default_resume(str(repo), topic)
+    assert resume in fake.paste_texts()
+    # ...and the ready marker was deleted so the restart can't re-trigger.
+    assert not marker.exists()
+
+
+def test_no_restart_when_marker_hash_mismatch(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=30)
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    # Wrong contents → marker invalid.
+    marker = signals.ready_marker_path(str(repo), topic)
+    marker.write_text("deadbeef\n")
+    os.utime(marker, (1001.0, 1001.0))
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status != "restarting"
+    assert not fake.has("respawn")
+
+
+def test_no_restart_when_busy_even_with_valid_marker(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = "esc to interrupt\n  Ctx: 30% left\n"  # busy
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    _arm_ready_marker(repo, topic, mtime=1001.0)
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert not fake.has("respawn")
+
+
+def test_no_restart_when_not_idle(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = "stale scrollback with no prompt box\n"  # not verified idle, not busy
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    _arm_ready_marker(repo, topic, mtime=1001.0)
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "settling"
+    assert not fake.has("respawn")
+
+
+# --------------------------------------------------------------------------- #
+# session-gone (mapped row, session missing).
+# --------------------------------------------------------------------------- #
+
+
+def test_mapped_track_with_missing_session(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # session NOT added
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "session-gone"
+    assert not fake.has("capture")
+
+
+# --------------------------------------------------------------------------- #
+# auto-link: repo-qualified + cwd-verified; refuses a cross-repo session.
+# --------------------------------------------------------------------------- #
+
+
+def test_auto_link_refuses_different_repo(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    other_repo = tmp_path / "other-repo"
+    other_repo.mkdir()
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.paths[session] = str(other_repo)  # session cwd is a DIFFERENT repo
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
+
+    unassigned = registry.Track.make_unassigned(
+        repo=str(repo), topic=topic, handoff=supervisor.default_handoff(str(repo), topic)
+    )
+    assert sup.auto_link(unassigned) is None
+    assert registry.read_mapping(sup.store_path) == []  # nothing linked
+
+
+def test_auto_link_creates_mapping_when_cwd_in_repo(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.paths[session] = str(repo / "plan" / topic)  # cwd inside the repo
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
+
+    unassigned = registry.Track.make_unassigned(repo=str(repo), topic=topic)
+    linked = sup.auto_link(unassigned)
+    assert linked is not None
+    assert linked.tmux == session
+    rows = registry.read_mapping(sup.store_path)
+    assert [(r.repo, r.topic) for r in rows] == [(os.path.normpath(str(repo)), topic)]
+
+
+# --------------------------------------------------------------------------- #
+# archive-GC.
+# --------------------------------------------------------------------------- #
+
+
+def test_archive_gc_drops_archived_row(tmp_path):
+    repo = tmp_path / "repo"
+    (repo / "plan").mkdir(parents=True)
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    # A mapping row whose plan/<topic> does NOT exist → archived_or_gone True.
+    registry.append_mapping(
+        registry.Track(topic="ghost", repo=str(repo), tmux="repo:ghost"), sup.store_path
+    )
+    registry.append_mapping(
+        registry.Track(topic="live", repo=str(repo), tmux="repo:live"), sup.store_path
+    )
+    (repo / "plan" / "live").mkdir()  # 'live' still present
+
+    dropped = sup.archive_gc()
+    assert dropped == 1
+    remaining = {t.topic for t in registry.read_mapping(sup.store_path)}
+    assert remaining == {"live"}
+
+
+# --------------------------------------------------------------------------- #
+# Whole-tick integration: discovery ⋈ mapping renders unassigned + mapped rows.
+# --------------------------------------------------------------------------- #
+
+
+def test_tick_builds_unassigned_and_mapped_rows(tmp_path):
+    repo, topic = _make_plan(tmp_path, topic="mapped")
+    # a second, unmapped plan in the same repo
+    (repo / "plan" / "unmapped").mkdir(parents=True)
+    (repo / "plan" / "unmapped" / "handoff.md").write_text("h\n")
+    session = registry.tmux_id(str(repo), "mapped")
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=73)
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
+    registry.append_mapping(_mapped_track(repo, "mapped", session), sup.store_path)
+
+    views = sup.tick(act=True)
+    by_topic = {v.topic: v for v in views}
+    assert by_topic["mapped"].status == "idle"
+    assert by_topic["unmapped"].status == "unassigned"
+    assert by_topic["unmapped"].tmux is None
+
+
+def test_list_command_is_read_only(tmp_path):
+    """`list` (act=False) must derive status but never inject/restart."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.panes[session] = _idle_capture(ctx=40)  # below threshold — would warn if acting
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    views = sup.tick(act=False)
+    assert views[0].status == "warned"  # status still derived
+    assert not fake.has("paste")  # but NO side effect
+
+
+# --------------------------------------------------------------------------- #
+# Reboot recovery (startup-only).
+# --------------------------------------------------------------------------- #
+
+
+def test_recover_recreates_missing_mapped_session(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # session absent → must be recreated
+    sup = _sup(tmp_path, fake)
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    recovered = sup.recover_missing_sessions()
+    assert recovered == [session]
+    assert ("new", session, str(repo)) in fake.calls
+    assert ("respawn", session, str(repo), f"claude -n {topic}") in fake.calls
+    assert supervisor.default_resume(str(repo), topic) in fake.paste_texts()
+
+
+# --------------------------------------------------------------------------- #
+# CLI mapping edits.
+# --------------------------------------------------------------------------- #
+
+
+def test_cli_add_remove_roundtrip(tmp_path):
+    store = str(tmp_path / "map.jsonl")
+    repo = str(tmp_path / "repo")
+    assert supervisor.main(["add", "--store", store, repo, "alpha"]) == 0
+    rows = registry.read_mapping(store)
+    assert [(r.topic, r.tmux) for r in rows] == [("alpha", registry.tmux_id(repo, "alpha"))]
+
+    # add again is an upsert (no duplicate row)
+    assert supervisor.main(["add", "--store", store, repo, "alpha"]) == 0
+    assert len(registry.read_mapping(store)) == 1
+
+    assert supervisor.main(["remove", "--store", store, repo, "alpha"]) == 0
+    assert registry.read_mapping(store) == []
+
+
+def test_cli_unassign_is_remove(tmp_path):
+    store = str(tmp_path / "map.jsonl")
+    repo = str(tmp_path / "repo")
+    supervisor.main(["add", "--store", store, repo, "beta"])
+    assert supervisor.main(["unassign", "--store", store, repo, "beta"]) == 0
+    assert registry.read_mapping(store) == []
+
+
+def test_wrapup_message_has_required_placeholders_filled():
+    msg = supervisor.wrapup_message(
+        threshold=50, handoff="/r/plan/t/handoff.md", repo="/r", topic="t"
+    )
+    assert "under 50%" in msg
+    assert "/r/plan/t/handoff.md" in msg
+    assert "/r/plan/t/.overseer-ready" in msg
+    assert "/r/plan/t/.overseer-blocked" in msg
