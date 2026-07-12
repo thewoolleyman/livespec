@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/thewoolleyman/livespec/compare/v0.7.7...v0.8.0) (2026-07-12)
+
+
+### Features
+
+* **overseer:** supervisor core — registry + signal parsing + marker certification ([19fa688](https://github.com/thewoolleyman/livespec/commit/19fa688ce75061d7244e1b44b2d151eb8b046688))
+
 ## [0.7.7](https://github.com/thewoolleyman/livespec/compare/v0.7.6...v0.7.7) (2026-07-10)
 
 
