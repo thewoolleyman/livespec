@@ -23,6 +23,7 @@ Before acting, read these files in this order:
 4. `SPECIFICATION/contracts.md` §"Fleet agent-instruction core"
 5. `.livespec-fleet-manifest.jsonc`
 6. `plan/cloud-local-memory-cleanup/research/initial-inventory.md`
+7. `plan/cloud-local-memory-cleanup/research/2026-07-13-inventory-classification.md`
 
 Then refresh the live ledger state through the read-only operation:
 
@@ -38,6 +39,12 @@ below.
 The epic `livespec-xei45t` has been groomed and regroomed out. Its current
 state in the `livespec` ledger is `done` with resolution
 `no-longer-applicable`.
+
+The inventory slice `livespec-xhxasg` has now refreshed the host snapshot and
+recorded the classification artifact at
+`plan/cloud-local-memory-cleanup/research/2026-07-13-inventory-classification.md`.
+No Claude or Codex local-memory file was deleted, moved, or edited during this
+slice.
 
 The groomed replacement set is:
 
@@ -57,7 +64,7 @@ The groomed replacement set is:
 All non-inventory slices carry a dependency on `livespec-xhxasg`, so the next
 load-bearing action is to complete the `livespec` inventory slice first.
 
-Initial evidence from this host:
+Current evidence from this host:
 
 - `livespec` core has no Claude `memory/*.md` files.
 - Claude has 95 markdown memory files across other project slugs.
@@ -70,6 +77,10 @@ Initial evidence from this host:
 - Codex `~/.codex/memories/` contained no files.
 - Codex `~/.codex/memories_1.sqlite` existed, with zero `jobs` and zero
   `stage1_outputs` rows at capture time.
+- The 67 fleet/adopter-relevant Claude records are all classified in
+  `2026-07-13-inventory-classification.md`. The 28 remaining Claude records are
+  adjacent/non-governed or historical and are retained out of scope for this
+  slice.
 
 The existing contract already bans durable guidance in harness-local memory and
 requires driver guards for Claude plus Codex manual writes. The likely gap is
@@ -87,10 +98,25 @@ only for status/review/analysis.
 
 ## Next Action
 
-Drive `livespec-xhxasg` in the `livespec` repo: refresh the Claude/Codex
-local-memory inventory, classify every current record, and persist the
-classification artifact under `plan/cloud-local-memory-cleanup/`. Do not delete
-any local-memory file during this slice.
+Land the `livespec-xhxasg` inventory slice in the `livespec` repo through the
+worktree -> PR -> merge -> cleanup path, then close `livespec-xhxasg` as
+completed. After that, the next load-bearing actions are the dependent
+migration slices that now have a concrete inventory to work from:
+
+1. `livespec-dev-tooling-2amr6x`
+2. `livespec-driver-claude-vx6gmo`
+3. `bd-ib-jz62h3`
+4. `livespec-runtime-fsumlo`
+5. `ob-j5oend`
+
+Then run the guard/audit slices:
+
+1. `livespec-driver-claude-vxy7io`
+2. `livespec-driver-codex-ctzk3x`
+3. `livespec-dev-tooling-gcpm3y`
+
+Run `livespec-eclobt` only after durable destinations have landed or each source
+file has been explicitly classified as ephemeral.
 
 Do not delete any local-memory file before the groomed child item that owns its
 content has landed the durable destination or explicitly classified the file as
