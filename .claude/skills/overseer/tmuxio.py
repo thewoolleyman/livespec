@@ -190,6 +190,30 @@ class TmuxIO:
             return []
         return [line for line in (completed.stdout or "").splitlines() if line.strip()]
 
+    def pane_pid_sessions(self) -> dict[int, str]:
+        """``{pane_pid: session_name}`` for EVERY pane across all sessions (``{}`` on error).
+
+        ``tmux list-panes -a -F '#{pane_pid}\\t#{session_name}'`` — the process-side
+        of the registry→tmux join (:mod:`claude_sessions`): a claude PID is a
+        descendant of its pane's PID, so walking the claude PID up its parent chain
+        to one of these pane PIDs identifies the owning session. Every pane is
+        included (a session may have several), so any pane holding the worker
+        resolves. Malformed / non-integer rows are skipped fail-soft.
+        """
+        completed = self._call(["list-panes", "-a", "-F", "#{pane_pid}\t#{session_name}"])
+        if not self._ok(completed):
+            return {}
+        out: dict[int, str] = {}
+        for line in (completed.stdout or "").splitlines():
+            pid_str, _, session = line.partition("\t")
+            if not session.strip():
+                continue
+            try:
+                out[int(pid_str)] = session
+            except ValueError:
+                continue
+        return out
+
     # ----------------------------------------------------------------- #
     # Writes.
     # ----------------------------------------------------------------- #

@@ -12,6 +12,7 @@ failure propagation, marker/round lifecycle, read-only list, and the start guard
 
 import hashlib
 import io as _io
+import json
 import os
 from pathlib import Path
 
@@ -39,8 +40,12 @@ class FakeTmux:
         self.paste_ok = True  # set False to model a failed bracketed paste (B5)
         self.respawn_ok = True  # set False to model a failed respawn (B5)
         self.new_session_ok = True  # set False to model a failed new-session (Codex #3)
+        self.pane_pids = {}  # {pane_pid: session} for the registry→tmux adopt join
         self._cap_idx = {}
         self._cmd_idx = {}
+
+    def pane_pid_sessions(self):
+        return dict(self.pane_pids)
 
     def serve(self, session, repo, capture=None, cmd="node"):
         """Register ``session`` as a live Claude TUI whose cwd is inside ``repo``.
@@ -608,76 +613,118 @@ def test_auto_link_creates_mapping_when_cwd_in_repo(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# adopt: pick up existing worker sessions by their `claude -n <topic>` border.
+# adopt: pick up live Claude sessions by their registry name (~/.claude/sessions).
 # --------------------------------------------------------------------------- #
 
 
-def test_adopt_sessions_links_worker_by_n_topic_border(tmp_path):
-    """adopt maps a live worker session to a plan by the `claude -n <topic>`
-    input-box BORDER name (not the tmux session name): only when cwd is inside a
-    fleet repo, it runs a claude/codex worker, AND the border topic is an active
-    plan topic — mapped to the tmux session already holding it. A pure-rule
-    border (no `-n`) and an already-mapped (repo, topic) contribute nothing."""
+def _write_session(sessions_dir, pid, *, name, cwd, proc_start="pt"):
+    payload = {"pid": pid, "name": name, "cwd": str(cwd), "procStart": proc_start, "status": "idle"}
+    (sessions_dir / f"{pid}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _adopt_sup(tmp_path, fake, sessions_dir, ppid, starttimes, **kwargs):
+    return _sup(
+        tmp_path,
+        fake,
+        sessions_dir=str(sessions_dir),
+        ppid_of=ppid.get,
+        starttime_of=starttimes.get,
+        **kwargs,
+    )
+
+
+def test_adopt_sessions_links_by_registry_name(tmp_path):
+    """adopt maps each LIVE Claude session (from ~/.claude/sessions) to a plan when
+    its registry `cwd` is in a fleet repo AND its `name` is an active plan topic,
+    joined to the tmux session by PID. Registry membership proves it is a claude
+    process, so there is no worker-command guard. Non-matches, a session outside
+    tmux, a dead PID, and an already-mapped (repo, topic) contribute nothing."""
     repo_a, _ = _make_plan(tmp_path, repo_name="repo_a", topic="alpha")
     repo_b, _ = _make_plan(tmp_path, repo_name="repo_b", topic="beta")
-    for extra in ("gamma", "delta"):  # more active topics in repo_a
-        (repo_a / "plan" / extra).mkdir(parents=True)
-        (repo_a / "plan" / extra / "handoff.md").write_bytes(b"h\n")
+    (repo_a / "plan" / "gamma").mkdir(parents=True)
+    (repo_a / "plan" / "gamma" / "handoff.md").write_bytes(b"h\n")
 
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
     fake = FakeTmux()
-    # generic tmux session names; the TOPIC comes from the `-n` border in the capture
-    fake.serve("sesA", repo_a, cmd="claude", capture=_idle_capture(topic="alpha"))  # ADOPT
-    fake.serve("sesB", repo_b, cmd="zsh", capture=_idle_capture(topic="beta"))  # not a worker
-    fake.serve("sesN", repo_a, cmd="claude", capture=_idle_capture(topic="notaplan"))  # not a topic
-    fake.serve(
-        "sesD", "/somewhere/else", cmd="codex", capture=_idle_capture(topic="delta")
-    )  # border topic but cwd NOT in fleet
-    fake.serve("sesG", repo_a, cmd="bun", capture=_idle_capture(topic="gamma"))  # already mapped
-    fake.serve("sesP", repo_a, cmd="claude", capture=_idle_capture())  # pure-rule border, no -n
+    ppid: dict[int, int] = {}
+    starttimes: dict[int, str] = {}
 
-    sup = _sup(tmp_path, fake, watch_repos=[str(repo_a), str(repo_b)])
+    def live(pid, name, cwd, session, *, in_tmux=True, alive=True):
+        _write_session(sessions_dir, pid, name=name, cwd=cwd)
+        if alive:
+            starttimes[pid] = "pt"  # matches procStart → live
+        shell = pid + 1  # the claude PID's parent is its pane's shell
+        ppid[pid] = shell
+        if in_tmux:
+            fake.pane_pids[shell] = session
+
+    live(100, "alpha", repo_a, "sesA")  # ADOPT → repo_a::alpha
+    live(200, "beta", repo_b, "sesB")  # ADOPT → repo_b::beta
+    live(300, "notaplan", repo_a, "sesN")  # skip: name not an active topic
+    live(400, "delta", "/somewhere/else", "sesD")  # skip: cwd not in a fleet repo
+    live(500, "gamma", repo_a, "sesG")  # skip: (repo_a, gamma) already mapped below
+    live(600, "alpha", repo_a, "sesX", in_tmux=False)  # skip: not inside any tmux pane
+    live(700, "gamma", repo_a, "sesDead", alive=False)  # skip: dead PID (starttime mismatch)
+
+    sup = _adopt_sup(
+        tmp_path, fake, sessions_dir, ppid, starttimes, watch_repos=[str(repo_a), str(repo_b)]
+    )
     registry.append_mapping(
         _mapped_track(repo_a, "gamma", "gamma-existing"), sup.store_path, added_at="pre"
     )
 
     adopted = sup.adopt_sessions()
 
-    assert [(t.repo, t.topic, t.tmux) for t in adopted] == [
-        (os.path.normpath(str(repo_a)), "alpha", "sesA")
+    assert sorted((t.repo, t.topic, t.tmux) for t in adopted) == [
+        (os.path.normpath(str(repo_a)), "alpha", "sesA"),
+        (os.path.normpath(str(repo_b)), "beta", "sesB"),
     ]
     rows = {(r.repo, r.topic): r.tmux for r in registry.read_mapping(sup.store_path)}
     assert rows[(os.path.normpath(str(repo_a)), "alpha")] == "sesA"  # mapped to the SESSION name
-    assert (
-        rows[(os.path.normpath(str(repo_a)), "gamma")] == "gamma-existing"
-    )  # pre-existing untouched
-    assert (os.path.normpath(str(repo_b)), "beta") not in rows  # not a worker
-    assert (os.path.normpath(str(repo_a)), "notaplan") not in rows  # border topic not a plan
-    assert (os.path.normpath(str(repo_a)), "delta") not in rows  # cwd not in a fleet repo
-    # sesP (pure-rule border, no -n) contributes nothing
+    assert rows[(os.path.normpath(str(repo_b)), "beta")] == "sesB"
+    assert rows[(os.path.normpath(str(repo_a)), "gamma")] == "gamma-existing"  # untouched
+    assert (os.path.normpath(str(repo_a)), "notaplan") not in rows  # name not a plan topic
+    assert "delta" not in {topic for _repo, topic in rows}  # cwd not in a fleet repo
 
 
-def test_adopt_sessions_bun_codex_worker_is_eligible(tmp_path):
-    """A `bun` (codex) worker in a fleet repo with an active-topic border IS
-    adopted — `bun` is in the worker set. (In reality codex renders no titled
-    border; this pins the worker-guard, using a claude-shaped border in the fake.)"""
-    repo, _ = _make_plan(tmp_path, repo_name="repo_c", topic="omega")
+def test_adopt_sessions_empty_when_no_registry_match(tmp_path):
+    """A live registry session in the repo but whose name is NOT an active topic →
+    adopt returns [] and writes nothing."""
+    repo, _ = _make_plan(tmp_path)  # active topic: "topic"
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
     fake = FakeTmux()
-    fake.serve("sesX", repo, cmd="bun", capture=_idle_capture(topic="omega"))
-    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
-    adopted = sup.adopt_sessions()
-    assert [(t.topic, t.tmux) for t in adopted] == [("omega", "sesX")]
-
-
-def test_adopt_sessions_empty_when_no_match(tmp_path):
-    """adopt returns [] and writes nothing when no live worker has an active-topic
-    border: a shell (not a worker) and a claude with a PURE-rule border (no -n)."""
-    repo, topic = _make_plan(tmp_path)
-    fake = FakeTmux()
-    fake.serve("ses1", repo, cmd="zsh", capture=_idle_capture(topic=topic))  # not a worker
-    fake.serve("ses2", repo, cmd="claude", capture=_idle_capture())  # no -n border
-    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
+    ppid, starttimes = {100: 101}, {100: "pt"}
+    fake.pane_pids[101] = "s1"
+    _write_session(sessions_dir, 100, name="unrelated-name", cwd=repo)
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, ppid, starttimes, watch_repos=[str(repo)])
     assert sup.adopt_sessions() == []
     assert registry.read_mapping(sup.store_path) == []
+
+
+def test_adopt_is_continuous_across_ticks(tmp_path):
+    """adopt runs every tick via build_rows(act=True): a session not yet named as a
+    plan topic at one tick is picked up on a LATER tick once its registry name
+    matches — the fix for 'the daemon never re-adopted after the prompt cleared'."""
+    repo, topic = _make_plan(tmp_path)  # active topic: "topic"
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    fake = FakeTmux()
+    ppid, starttimes = {100: 101}, {100: "pt"}
+    fake.pane_pids[101] = "s1"
+
+    # Tick 1: session exists (in tmux, in the repo) but is named something else.
+    _write_session(sessions_dir, 100, name="scratch", cwd=repo)
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, ppid, starttimes, watch_repos=[str(repo)])
+    sup.build_rows(act=True)
+    assert registry.read_mapping(sup.store_path) == []  # not adopted yet
+
+    # Tick 2: the maintainer renamed it to the plan topic → adopted this tick.
+    _write_session(sessions_dir, 100, name=topic, cwd=repo)
+    sup.build_rows(act=True)
+    rows = {(r.repo, r.topic): r.tmux for r in registry.read_mapping(sup.store_path)}
+    assert rows.get((os.path.normpath(str(repo)), topic)) == "s1"
 
 
 # --------------------------------------------------------------------------- #

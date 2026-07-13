@@ -31,8 +31,6 @@ __all__ = [
     "is_structured_gate",
     "pane_is_claude",
     "pane_is_shell",
-    "pane_is_worker",
-    "parse_border_topic",
     "parse_ctx_remaining",
     "path_in_repo",
     "ready_marker_path",
@@ -242,44 +240,6 @@ def input_box_ready(capture_text: str) -> bool:
     return _input_box_present(capture_text)
 
 
-# The `claude -n <topic>` display name is rendered INTO the input box's TITLED
-# top border as `─── <topic> ──` (verified live 2026-07-13) — the line
-# immediately ABOVE the `❯` prompt. Unlike the terminal title (`#{pane_title}`),
-# which Claude Code DRIFTS to a generated task summary, this border name is
-# STABLE (it is the literal `-n` name), so it is the reliable per-session topic
-# signal that `adopt` matches on. A session NOT launched with `-n` shows a
-# pure-rule border above its `❯` and yields None; so does a non-Claude UI (codex
-# uses a `›` prompt with no titled border).
-_BORDER_TITLE_RE = re.compile(r"^[─—━]{3,}\s+(\S.*?)\s+[─—━]{2,}$")
-_RULE_CHAR_RE = re.compile(r"[─—━]")
-
-
-def parse_border_topic(capture_text: str) -> str | None:
-    """The `claude -n <topic>` name from the input-box TITLED top border, or None.
-
-    ANCHORED to the input box's structure: the topic is read from the border line
-    immediately ABOVE the BOTTOM-most `❯` prompt. The live input box is always at
-    the bottom of the pane, so scanning UP from the end finds it first and shadows
-    any border-like line in scrolled page content (which, unanchored, could
-    false-match on an active topic name). Returns None when that border is a pure
-    rule (a session started without `-n`), when the pane shows no `❯` box (codex's
-    `›` prompt, or a mid-gate pane), or when the line above the prompt is not a
-    border at all.
-    """
-    non_empty = [
-        stripped for raw in capture_text.splitlines() if (stripped := strip_ansi(raw).strip())
-    ]
-    for i in range(len(non_empty) - 1, 0, -1):
-        if not non_empty[i].startswith("❯"):
-            continue
-        match = _BORDER_TITLE_RE.match(non_empty[i - 1])
-        if match is None:
-            return None
-        name = match.group(1).strip()
-        return name if name and _RULE_CHAR_RE.search(name) is None else None
-    return None
-
-
 # --------------------------------------------------------------------------- #
 # Out-of-band marker certification (see design.md, the certification protocol,
 # blockers #1,#3,#4). These read the filesystem but NEVER a subprocess.
@@ -355,11 +315,6 @@ def blocked_marker(repo: str, topic: str) -> str | None:
 # A live Claude Code TUI runs as a `node` process; `claude` covers a wrapper.
 _CLAUDE_COMMANDS = frozenset({"node", "claude"})
 _SHELL_COMMANDS = frozenset({"zsh", "bash", "sh", "fish", "dash", "ksh"})
-# The adopt guard also recognizes Codex sessions. A real claude pane reports
-# `claude`, an older wrapper reports `node`, and a Codex session runs through bun
-# so its `#{pane_current_command}` is `bun` (verified live 2026-07-13) — with
-# `codex` kept for any wrapper that reports it directly.
-_WORKER_COMMANDS = frozenset({"node", "claude", "codex", "bun"})
 
 
 def pane_is_claude(pane_current_command: str | None) -> bool:
@@ -368,22 +323,6 @@ def pane_is_claude(pane_current_command: str | None) -> bool:
     if not cmd:
         return False
     return cmd in _CLAUDE_COMMANDS or "claude" in cmd
-
-
-def pane_is_worker(pane_current_command: str | None) -> bool:
-    """True if the pane runs a claude OR codex interactive session (adopt guard).
-
-    Broader than :func:`pane_is_claude`: the ``adopt`` pass links an EXISTING
-    worker session (claude or codex) whose ``-n`` border topic matches an active
-    plan topic, so it must recognize both runtimes. A codex session runs through
-    bun, so ``#{pane_current_command}`` is ``bun``; it is accepted here, and the
-    strong active-topic-border + in-fleet-repo guards keep a stray non-codex
-    ``bun`` app out.
-    """
-    cmd = (pane_current_command or "").strip().lower()
-    if not cmd:
-        return False
-    return cmd in _WORKER_COMMANDS or "claude" in cmd or "codex" in cmd
 
 
 def pane_is_shell(pane_current_command: str | None) -> bool:

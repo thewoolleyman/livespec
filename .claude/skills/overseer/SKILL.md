@@ -100,14 +100,17 @@ That one command (a self-invokable `uv` script) does everything deterministicall
    `overseerd`, keeping focus on your (bottom) pane. It targets `$TMUX_PANE` only,
    so the daemon pane always lands in *this* window — never in a separate session.
    It is idempotent (tags the pane `overseer-daemon`; re-running won't stack panes).
-3. **Adopts existing worker sessions.** It scans every tmux session and auto-tracks
-   any that are (a) cwd'd inside a fleet repo, (b) running a claude/codex worker,
-   AND (c) show an active plan topic in the `claude -n <topic>` input-box BORDER
-   (`─── <topic> ──`) — mapping each to the tmux session already holding it. The
-   match key is the `-n` border name, NOT the generic tmux session name and NOT
-   the `#{pane_title}` terminal title (Claude Code drifts that to a task summary).
-   A session launched without `-n` shows a pure-rule border and is skipped; a
-   codex/bun session renders no titled border and is not adopted yet (a known gap).
+3. **Adopts existing Claude sessions.** It reads Claude Code's own session
+   registry (`~/.claude/sessions/<pid>.json`, which carries each live session's
+   display `name` + `cwd`), joins each to its tmux session by PID, and auto-tracks
+   any whose `cwd` is inside a fleet repo AND whose `name` is an active plan topic
+   — mapping each to the tmux session holding it. The match key is that registry
+   `name`, NOT the tmux session name and NOT the `#{pane_title}` terminal title
+   (which drifts to a task summary), and NOT a screen-scrape (the old input-box
+   border vanished whenever a prompt was up). This also runs **every daemon tick**,
+   so a session that was mid-prompt, renamed, or launched later is picked up within
+   one interval. Codex sessions aren't in Claude's registry, so they're not adopted
+   yet (a known gap).
 
 - The daemon's **stdout is the live table** in the top pane (it clears + re-renders
   each tick). Its **stderr → `tmp/overseer/daemon.log`** — the channel this bottom
