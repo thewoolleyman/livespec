@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.5](https://github.com/thewoolleyman/livespec/compare/v0.9.4...v0.9.5) (2026-07-13)
+
+
+### Refactoring
+
+* **overseer:** de-gold-plate the invocation/config surface ([dc18a44](https://github.com/thewoolleyman/livespec/commit/dc18a4408af340702459fcbecce7b8ce7c572cf9))
+
 ## [0.9.4](https://github.com/thewoolleyman/livespec/compare/v0.9.3...v0.9.4) (2026-07-13)
 
 
