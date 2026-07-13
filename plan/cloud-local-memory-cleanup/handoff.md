@@ -44,13 +44,15 @@ The inventory slice `livespec-xhxasg` has now refreshed the host snapshot and
 recorded the classification artifact at
 `plan/cloud-local-memory-cleanup/research/2026-07-13-inventory-classification.md`.
 No Claude or Codex local-memory file was deleted, moved, or edited during this
-slice.
+slice. The slice landed in `livespec` PR #1173, merge
+`da9b217028fa64e892bba7f3fd64d818d531aa82`, and `livespec-xhxasg` is now
+`done`.
 
 The groomed replacement set is:
 
-| Owning repo | Work item | Status at filing | Purpose |
+| Owning repo | Work item | Current status | Purpose |
 |---|---:|---|---|
-| `livespec` | `livespec-xhxasg` | `ready` | Inventory and classify harness-local memory records for fleet/adopters |
+| `livespec` | `livespec-xhxasg` | `done` | Inventory and classify harness-local memory records for fleet/adopters |
 | `livespec-dev-tooling` | `livespec-dev-tooling-2amr6x` | `pending-approval` | Migrate `livespec-dev-tooling` local memory into durable repo homes |
 | `livespec-driver-claude` | `livespec-driver-claude-vx6gmo` | `pending-approval` | Migrate `livespec-driver-claude` local memory into durable repo homes |
 | `livespec-orchestrator-beads-fabro` | `bd-ib-jz62h3` | `pending-approval` | Migrate `livespec-orchestrator-beads-fabro` local memory into durable repo homes |
@@ -61,8 +63,9 @@ The groomed replacement set is:
 | `livespec-dev-tooling` | `livespec-dev-tooling-gcpm3y` | `pending-approval` | Implement consumer-side local-memory drift audit |
 | `livespec` | `livespec-eclobt` | `pending-approval` | Quarantine or remove migrated local-memory files after durable destinations land |
 
-All non-inventory slices carry a dependency on `livespec-xhxasg`, so the next
-load-bearing action is to complete the `livespec` inventory slice first.
+The non-inventory slices were filed with a dependency on `livespec-xhxasg`; the
+inventory dependency is now satisfied. The next load-bearing action is to drive
+the dependent migration slices.
 
 Current evidence from this host:
 
@@ -98,10 +101,8 @@ only for status/review/analysis.
 
 ## Next Action
 
-Land the `livespec-xhxasg` inventory slice in the `livespec` repo through the
-worktree -> PR -> merge -> cleanup path, then close `livespec-xhxasg` as
-completed. After that, the next load-bearing actions are the dependent
-migration slices that now have a concrete inventory to work from:
+Drive the dependent migration slices that now have a concrete inventory to work
+from:
 
 1. `livespec-dev-tooling-2amr6x`
 2. `livespec-driver-claude-vx6gmo`
