@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.4](https://github.com/thewoolleyman/livespec/compare/v0.9.3...v0.9.4) (2026-07-13)
+
+
+### Bug Fixes
+
+* **overseer:** resolve 7 fix-re-review findings (RB1-4 + Codex [#1](https://github.com/thewoolleyman/livespec/issues/1)/[#3](https://github.com/thewoolleyman/livespec/issues/3)) ([ffd9ddb](https://github.com/thewoolleyman/livespec/commit/ffd9ddb74602490c8f520691721104e2d4cad167))
+
 ## [0.9.3](https://github.com/thewoolleyman/livespec/compare/v0.9.2...v0.9.3) (2026-07-13)
 
 
