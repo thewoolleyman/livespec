@@ -136,13 +136,17 @@ factory run, which steps ran, how long each took, and what it cost. Four pieces:
    pass, total run wall-clock) — **DONE + PROVEN LIVE** (P-factory Defect A;
    `livespec-dispatcher` dataset).
 3. **Setup/check timing INSIDE each sandbox run** ("install tools → sync deps →
-   run the check suite") — **TODO, small, fully ours.** These are the
-   prepare-step timing shims: wrap the `script =` lines in
-   `.claude-plugin/.fabro/workflows/implement-work-item/workflow.toml` (L207–270)
-   through a small timing wrapper baked into the sandbox image
-   (`livespec-dev-tooling` Dockerfile). No dependency on the AI agent. This is
-   the P-factory prepare-step follow-on (was blocked behind Defect B; now
-   unblocked — the receiver binds `172.17.0.1`).
+   run the check suite") — **DONE + ACCEPTED LIVE (2026-07-13).** The
+   prepare-step timing shims shipped as a stdlib-only `livespec-step-timer`
+   wrapper baked into the fabro-sandbox image (WI-A `livespec-dev-tooling-bot`,
+   `livespec-dev-tooling` PR #352, in image `v0.42.0`) + the 8
+   `implement-work-item/workflow.toml` prepare-step shims (WI-B `bd-ib-l7c`,
+   `livespec-orchestrator-beads-fabro` PR #554). A real golden-master dispatch
+   emitted all 8 `prepare.*` spans to the `fabro-sandbox` dataset (was empty)
+   with real durations — `uv-sync` 4219 ms (dominant), `mise-install` 214 ms
+   (near-noop, confirming the baked toolchain), `sandbox-exempt` 4 ms. Both
+   WI-A/WI-B and the P-factory anchor `livespec-3lev.2` are CLOSED. The
+   in-sandbox setup timing is now MEASURED, not inferred.
 4. **The AI agent's own activity + cost** — the real hole. The factory drives
    with Codex, which emits NO telemetry. Two layers:
    - **4a. Basic agent activity + rough token counts** — **TODO, medium.** Emit
@@ -160,21 +164,25 @@ factory run, which steps ran, how long each took, and what it cost. Four pieces:
      spend-tracking support; the coarse token counts from 4a cover the near-term
      need. Do not build 4b until upstream lands.
 
-**Next-session build order (drive it):**
-1. Groom items 3 and 4a into ready, dependency-layered work-items (item 3 under
-   the fabro-ci epic / P-factory follow-on; item 4a under the Codex-telemetry
-   epic in the orchestrator ledger). Reconcile 4a with the existing
-   fabro-OTLP-exporter item rather than duplicating it.
-2. Build item 3 first (small, no external dep): the prepare-step timing wrapper +
-   the 8 workflow.toml shims, via Red-Green-Replay, accept via a real
-   golden-master dispatch (confirm the setup/janitor timing spans appear).
-3. Build item 4a: re-derive the fabro-side exporter against current Fabro + teach
-   the receiver protobuf; accept by confirming agent-activity spans land on a
-   real Codex dispatch.
-4. Ensure the 4b upstream-blocked tracking issue is filed and cross-linked; do
-   NOT fork.
-5. Only after 3 + 4a are proven live is Phase 5 (the efficiency report)
-   measurable end-to-end.
+**Build order — progress + remaining:**
+1. ~~Groom items 3 and 4a into ready work-items.~~ Item 3 groomed + BUILT +
+   ACCEPTED LIVE (2026-07-13; WI-A `livespec-dev-tooling-bot`, WI-B `bd-ib-l7c`,
+   both closed). **DONE.** Item 4a still needs grooming under the Codex-telemetry
+   epic `bd-ib-98c` (orchestrator ledger), reconciled with the existing
+   fabro-OTLP-exporter item `bd-ib-i4r`.
+2. ~~Build item 3 first.~~ **DONE** — see item 3 above; 8 `prepare.*` spans
+   verified live in `fabro-sandbox`.
+3. **NEXT — Build item 4a** (the real hole; medium): re-derive the fabro-side
+   OTLP exporter against current Fabro + teach the receiver (`_otel_receive.py`)
+   Fabro's protobuf wire format so Codex-driven runs emit agent node/turn spans
+   + coarse token counts; accept by confirming agent-activity spans land on a
+   real Codex dispatch. Its receiver prerequisite (`172.17.0.1` bind) is already
+   landed. Groom `bd-ib-98c`'s Approach-2 spine (steps 1–4) first.
+4. Ensure the 4b upstream-blocked tracking issue (`livespec-impl-beads-zbl`) is
+   filed and cross-linked; do NOT fork.
+5. The **setup-path** half of Phase 5 is now measurable (item 3 done); the full
+   Phase 5 factory report still waits on item 4a (agent-activity spans) to
+   measure the Codex-driven half end-to-end.
 
 Full plain-English rationale is in the maintainer conversation of 2026-07-13; the
 Codex-side technical detail is in
