@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/thewoolleyman/livespec/compare/v0.10.4...v0.11.0) (2026-07-13)
+
+
+### Features
+
+* **overseer:** configurable --warn-percent + escalating wrap-up notifications ([b1218ac](https://github.com/thewoolleyman/livespec/commit/b1218ac6ef78184263e63fd68f7c151daa561e95))
+
 ## [0.10.4](https://github.com/thewoolleyman/livespec/compare/v0.10.3...v0.10.4) (2026-07-13)
 
 
