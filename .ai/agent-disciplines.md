@@ -157,6 +157,49 @@ factory-safe *implementation* goes through the factory. Authoritative detail:
 the orchestrator's `SPECIFICATION/contracts.md` §"Dispatcher admission, WIP cap,
 and post-merge acceptance" and its `prose/plan.md` routing.
 
+## The Fabro factory is a shared concurrency surface — never gate on other runs
+
+The Fabro factory is a **shared, multi-tenant execution surface built to run
+many runs at once**. Other, unrelated runs living in it — a run parked idle at
+0% CPU, one blocked awaiting a human, another session's `fabro server` /
+`livespec-console-beads-fabro serve` cockpit, a tmux session driving the
+orchestrator — are its NORMAL operating state, NOT a conflict. Their presence
+MUST NOT stop, pause, or gate your own dispatch, golden-master, or accept: just
+proceed and run yours alongside them. The host is provisioned for it (18 cores,
+94 GiB RAM) and Fabro multiplexes runs by design (e.g. the golden-master already
+falls back to `HOST_PUBLISH_PORT` so its in-container `fabro` never contends with
+a host `fabro` server holding the same port).
+
+**Do not conflate this with the anti-clobber git discipline — they are different
+axes:**
+
+- **Persistent shared STATE is protected.** Never force-push or rewrite another
+  session's branch, reap its worktree during an active dispatch, or edit the
+  tracked files it is mid-commit on. (`AGENTS.md` §"Git and cross-repo working
+  discipline".)
+- **The factory's shared COMPUTE is meant to be shared.** The fabro server, the
+  docker daemon, the sandbox images, host CPU/RAM — running your own independent
+  run on them touches no other session's persistent state, so it needs no
+  deference and no permission.
+
+The handoff caveat "re-check for a LIVE dispatch before editing that repo"
+belongs to the STATE axis: it guards against conflicting file edits/commits in a
+repo, NOT against launching an independent run in the factory. A self-contained
+dispatch / golden-master / accept edits no tracked files and is always safe to
+run concurrently.
+
+**And never re-ask an already-authorized action on account of factory
+occupancy.** Once the maintainer has picked or authorized an action, discovering
+that something unrelated is also running is not new information that warrants a
+second confirmation — proceed. Surface a factory observation only when it is a
+genuine resource-exhaustion breach (the resource health check's job), never
+merely "another run is present."
+
+(Maintainer-declared 2026-07-14, after a session refused to run an
+already-authorized local golden-master because an unrelated, idle, human-blocked
+`livespec-dev-tooling` run was parked in the factory — and re-asked a question
+the maintainer had already answered.)
+
 ## Cross-cutting disciplines index
 
 Each entry names the discipline and points at its authoritative detail — read the
@@ -198,3 +241,11 @@ named section before acting; do not rely on this summary alone.
   planning / `groom` / spec-side / maintainer-gated exits only. Better code AND
   spares Claude quota. Detail: this file §"Factory-dispatch over inline
   implementation".
+- **The Fabro factory is a shared concurrency surface** — other unrelated runs in
+  the factory (even idle or human-blocked ones, another session's `fabro server`
+  or console cockpit) are its normal state and MUST NOT gate your own
+  dispatch/golden-master/accept; that is a different axis from the anti-clobber
+  rule, which protects persistent shared state (branches, worktrees, files), not
+  multiplexed factory compute. Never re-ask an already-authorized action because
+  unrelated work is running. Detail: this file §"The Fabro factory is a shared
+  concurrency surface — never gate on other runs".
