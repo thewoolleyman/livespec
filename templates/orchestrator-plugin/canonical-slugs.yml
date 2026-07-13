@@ -39,6 +39,7 @@
 - check-no-inheritance
 - check-no-lloc-soft-warnings
 - check-no-raise-outside-io
+- check-no-shadow-ledger-body-identical
 - check-no-todo-registry
 - check-no-write-direct
 - check-partition-completeness
