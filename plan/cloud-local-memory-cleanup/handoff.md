@@ -53,13 +53,14 @@ The groomed replacement set is:
 | Owning repo | Work item | Current status | Purpose |
 |---|---:|---|---|
 | `livespec` | `livespec-xhxasg` | `done` | Inventory and classify harness-local memory records for fleet/adopters |
-| `livespec-dev-tooling` | `livespec-dev-tooling-2amr6x` | `pending-approval` | Migrate `livespec-dev-tooling` local memory into durable repo homes |
+| `livespec-dev-tooling` | `livespec-dev-tooling-2amr6x` | `backlog` | Regroom before redispatch; the first factory run used committed repo `.claude/` files as source evidence and was reverted |
 | `livespec-driver-claude` | `livespec-driver-claude-vx6gmo` | `pending-approval` | Migrate `livespec-driver-claude` local memory into durable repo homes |
 | `livespec-orchestrator-beads-fabro` | `bd-ib-jz62h3` | `pending-approval` | Migrate `livespec-orchestrator-beads-fabro` local memory into durable repo homes |
 | `livespec-runtime` | `livespec-runtime-fsumlo` | `pending-approval` | Migrate `livespec-runtime` local memory into durable repo homes |
 | `openbrain` | `ob-j5oend` | `pending-approval` | Migrate `openbrain` adopter local memory into durable repo homes |
 | `livespec-driver-claude` | `livespec-driver-claude-vxy7io` | `pending-approval` | Verify and repair Claude Driver auto-memory guard |
 | `livespec-driver-codex` | `livespec-driver-codex-ctzk3x` | `pending-approval` | Verify and repair Codex Driver local-memory guard and background-memory audit handling |
+| `livespec-dev-tooling` | `livespec-dev-tooling-dgin5n` | `backlog` | Regroom source-evidence guard work; first dispatch produced an unwired helper and was not published |
 | `livespec-dev-tooling` | `livespec-dev-tooling-gcpm3y` | `pending-approval` | Implement consumer-side local-memory drift audit |
 | `livespec` | `livespec-eclobt` | `pending-approval` | Quarantine or remove migrated local-memory files after durable destinations land |
 
@@ -99,22 +100,77 @@ resume shape, do not stop to ask for a separate groom approval; the handoff's
 next-action instruction is the authorization to proceed unless the user asked
 only for status/review/analysis.
 
+## 2026-07-13 Wrong-Scope Migration Incident
+
+`livespec-dev-tooling-2amr6x` was dispatched once before the source-evidence
+guard existed. That factory run opened and merged `livespec-dev-tooling` PR
+#364 (`2bdeb2cd6546e0baadad36171a73a536ee69ebc1`) and incorrectly treated
+committed repo `.claude/` files as if they were host-local Claude memory source
+records. That was wrong: committed `.claude/CLAUDE.md`, `.claude/settings.json`,
+and `.claude/hooks/*` are repo-owned runtime/config files and were already in
+their correct committed location. The cleanup scope is only harness-private
+local-memory stores such as `~/.claude/projects/<slug>/memory/*.md` and Codex
+local/background memory surfaces.
+
+The bad `livespec-dev-tooling` change was reverted by PR #365, merge
+`a5e7a33622780276c814bd4deef8b759a8b98d09`. The `livespec-dev-tooling`
+primary checkout was refreshed to that merge and the revert worktree was
+removed.
+
+The same session audited current-day history across these repos:
+`livespec`, `livespec-dev-tooling`, `livespec-driver-claude`,
+`livespec-driver-codex`, `livespec-orchestrator-beads-fabro`,
+`livespec-orchestrator-git-jsonl`, `livespec-runtime`,
+`livespec-console-beads-fabro`, `openbrain`, and `resume`. The searched paths
+were `AGENTS.md`, `.ai`, `plan/cloud-local-memory-cleanup`,
+`.claude/CLAUDE.md`, `.claude/settings.json`, and `.claude/hooks`. The only
+wrong-scope migration commit found was `livespec-dev-tooling` PR #364; no other
+fleet or adopter repo showed the same bad committed `.claude/` migration.
+
+Root-cause status:
+
+- Existing Driver guards prevent new writes into Claude/Codex local-memory
+  stores. They do not prevent this incident by themselves, because this incident
+  was a wrong-source migration decision and committed repo `.claude/` files are
+  legitimate tracked files.
+- `livespec-dev-tooling-dgin5n` was filed and dispatched to add source-evidence
+  validation. The dispatch produced a useful predicate and tests in its sandbox,
+  but the Fabro wrapper wedged after green validation and no PR was opened. More
+  importantly, that output was only a helper, not an enforced conformance or
+  acceptance path. The item was moved back to `backlog` with a note to fold the
+  predicate into the real guard.
+- `livespec-dev-tooling-gcpm3y` now carries the root-cause prevention
+  requirement: the consumer-side drift/acceptance audit must accept only
+  explicit host-local Claude memory records under
+  `~/.claude/projects/<slug>/memory/*.md` or explicit Codex memory/database
+  audit surfaces; committed checkout `.claude/*` files must not count; empty or
+  unavailable source evidence must fail closed or route to regroom with an
+  attached source bundle. Keep this local-vantage only, with no
+  `livespec-dev-tooling` upstream-to-downstream repo reads.
+
 ## Next Action
 
-Drive the dependent migration slices that now have a concrete inventory to work
-from:
+Do not dispatch any remaining migration slice until the root-cause guard is
+landed or the slice has been regroomed with an explicit source bundle. A factory
+or sandbox worker that cannot see the host-local source records must fail closed;
+it must not infer source content from committed repo `.claude/` files.
 
-1. `livespec-dev-tooling-2amr6x`
-2. `livespec-driver-claude-vx6gmo`
-3. `bd-ib-jz62h3`
-4. `livespec-runtime-fsumlo`
-5. `ob-j5oend`
+Immediate next actions:
 
-Then run the guard/audit slices:
-
-1. `livespec-driver-claude-vxy7io`
-2. `livespec-driver-codex-ctzk3x`
-3. `livespec-dev-tooling-gcpm3y`
+1. Drive or regroom `livespec-dev-tooling-gcpm3y` so the consumer-side
+   local-memory drift/acceptance audit mechanically enforces the source-evidence
+   rule above.
+2. Regroom `livespec-dev-tooling-2amr6x` with explicit source evidence from
+   `~/.claude/projects/-data-projects-livespec-dev-tooling/memory/*.md`; do not
+   redispatch the old item text.
+3. Regroom the remaining migration slices
+   (`livespec-driver-claude-vx6gmo`, `bd-ib-jz62h3`,
+   `livespec-runtime-fsumlo`, `ob-j5oend`) so each carries either an attached
+   host-local source bundle or an explicit fail-closed instruction.
+4. Then run the Driver hook/audit slices:
+   `livespec-driver-claude-vxy7io`,
+   `livespec-driver-codex-ctzk3x`, and the landed form of
+   `livespec-dev-tooling-gcpm3y`.
 
 Run `livespec-eclobt` only after durable destinations have landed or each source
 file has been explicitly classified as ephemeral.
