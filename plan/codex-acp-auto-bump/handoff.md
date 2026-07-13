@@ -1,13 +1,22 @@
 # Handoff — codex-acp version auto-bump (factory-gated freshness)
 
-**State (SHIPPED, 2026-07-13).** All code is built and merged across both owning
-repos. The App permission grant is **DONE** (2026-07-13 —
-`Commit statuses: Read & write` granted and approved on the installation). The
-**only remaining maintainer-gated step** is one credentialed force-accept, after
-which epic `livespec-3lev.4` (the last Phase 1 deliverable) closes. This document
-is a self-sufficient resume anchor — whoever picks this up can run the accept and
-close the epic from here alone. See `design.md` beside this file for the
-architecture and the corrected mechanics.
+**State (code SHIPPED; force-accept BLOCKED at preflight, 2026-07-13).** All code
+is built and merged across both owning repos, and the App permission grant is
+**DONE** (2026-07-13 — `Commit statuses: Read & write` granted and approved on
+the installation). The force-accept was then **attempted and HALTED at preflight —
+BLOCKED on host infrastructure**: PR-C's gate (`acceptance-live-golden-master.yml`)
+requires a `[self-hosted, livespec-orchestrator]` GitHub Actions runner, and none
+is registered — `gh api
+repos/thewoolleyman/livespec-orchestrator-beads-fabro/actions/runners` returns
+`total_count: 0` (verified 2026-07-13); the workflow has never run. So the
+automated repository_dispatch → gate → status-callback → auto-merge path CANNOT
+execute until that runner is stood up. Beads/Dolt IS up (not a blocker) and the
+App `statuses:write` grant IS done (not a blocker). Epic `livespec-3lev.4` (the
+last Phase 1 deliverable) stays **OPEN** until an accept path completes. This
+document is a self-sufficient resume anchor — whoever picks this up can choose an
+accept path (see the THREE options in §REMAINING) and close the epic from here
+alone. See `design.md` beside this file for the architecture and the corrected
+mechanics.
 
 ## What shipped (all merged)
 
@@ -85,10 +94,26 @@ files in the primary checkout on master and validates targeted (no git); a Claud
 agent does the stash → worktree → Red-Green-Replay → push → PR. PR-B's code was
 built by a Claude agent for this reason.
 
-## REMAINING — the only open items (maintainer-gated)
+## REMAINING — open items (maintainer-gated)
 
 The maintainer chose "merge all + force accept." Step 1 (App permission grant) is
-**DONE** (2026-07-13); steps 2–3 below are all that remains; run them in order.
+**DONE** (2026-07-13). The force-accept (step 2) was then attempted and is
+**BLOCKED on host infrastructure** — see the root cause below and the THREE
+options that replace the single force-accept item. Step 3 (close the epic) stays
+open until whichever accept path completes.
+
+### Root cause / design gap (verified 2026-07-13)
+
+The golden-master was historically run **LOCALLY** — the operator invoking `just
+acceptance-live-golden-master` on the host under the 1Password wrapper. The
+**WORKFLOW automation** (a self-hosted GitHub Actions runner) that PR-C's
+cross-repo gate depends on was **never live**: `acceptance-live-golden-master.yml`
+targets a `[self-hosted, livespec-orchestrator]` runner, and `gh api
+repos/thewoolleyman/livespec-orchestrator-beads-fabro/actions/runners` returns
+`total_count: 0` — no runner is registered, and the workflow has never run.
+Standing up that runner is **Phase-0 host infrastructure**, which the parent plan
+(`plan/fabro-ci-image-factoring/handoff.md`) records as **BANKED / pending an
+explicit host-mutation authorization**.
 
 ### 1. App permission grant — ✅ DONE (2026-07-13)
 
@@ -105,16 +130,27 @@ commit status to `livespec-dev-tooling` — it will no longer 403.
 → **Repository permissions** → **Commit statuses** → **Read & write** → **Save**,
 then approve the new permission on the installation.)
 
-### 2. Force-accept — exercise the gate end-to-end (credentialed / costly — surface before firing)
+### 2. Force-accept — BLOCKED; THREE options for the maintainer
 
-"Done means exercised live." Fire a real `codex-acp-golden-master` dispatch and
-journal the live evidence on the epic:
+The force-accept was attempted and HALTED at preflight (no self-hosted runner —
+see Root cause above). Choose one:
+
+#### Option 1 (Recommended) — stand up the self-hosted runner, then run the full automated force-accept
+
+Install + register a GitHub Actions runner on **this host** with labels
+`self-hosted,livespec-orchestrator` (the host already has Fabro/bd/Dolt + the
+1Password wrapper). **HOST MUTATION — needs explicit maintainer go.** Once the
+runner is up, re-run the full automated force-accept below; the throwaway-PR →
+dispatch → watch → verify → journal → close procedure is ready. "Done means
+exercised live" — fire a real `codex-acp-golden-master` dispatch and journal the
+live evidence on the epic:
 
 1. Open a **throwaway dev-tooling PR** bumping `CODEX_ACP_VERSION` in
    `docker/fabro-sandbox/base/Dockerfile`. Use a **known-good** version (e.g.
    `0.16.0`, the empirically-verified baseline) so the overlay + projection are
    exercised on the happy path. Note its **head_sha** and **PR number**.
-2. Fire the dispatch (needs the App token / a token with `repository_dispatch`):
+2. Fire the dispatch (needs the App token / a token with `repository_dispatch`).
+   This is the "once the runner is up" resume command:
 
    ```bash
    gh api repos/thewoolleyman/livespec-orchestrator-beads-fabro/dispatches \
@@ -133,16 +169,31 @@ journal the live evidence on the epic:
 4. Journal this live-exercise evidence on epic `livespec-3lev.4` (per "done means
    rolled out and exercised live"). Close/discard the throwaway bump PR.
 
-Simpler-but-insufficient alternative: `gh workflow run
-acceptance-live-golden-master.yml -f mode=run` proves the version-less
-golden-master works (accepts PR-A) but does NOT exercise the cross-repo
-dispatch / callback / auto-merge. The full `repository_dispatch` above is the
-real accept.
+#### Option 2 — partial accept WITHOUT the runner (LOCAL golden-master)
+
+Run the golden-master **LOCALLY**, bypassing the workflow:
+
+```bash
+cd /data/projects/livespec-orchestrator-beads-fabro && \
+  /usr/local/bin/with-livespec-env.sh -- just acceptance-live-golden-master -- \
+  --run --build-image --codex-acp-version 0.16.0
+```
+
+This exercises PR-A's `npx --no-install` adapter + the version overlay + the
+credential-projection re-verification (`bd-ib-ss7rkr`), but **NOT** the cross-repo
+dispatch / status-callback / auto-merge — those are workflow-only. Credentialed /
+costly — surface before firing.
+
+#### Option 3 — defer
+
+Accept opportunistically once the runner is up **AND** a real newer codex-acp
+release triggers the freshness scan.
 
 ### 3. Close the epic
 
-After the force-accept is journaled, close epic `livespec-3lev.4` — the last
-Phase 1 (`fabro-ci-image-factoring`) deliverable. This closes Phase 1.
+After whichever accept path (Option 1 or 2 above) is journaled, close epic
+`livespec-3lev.4` — the last Phase 1 (`fabro-ci-image-factoring`) deliverable.
+This closes Phase 1. The epic stays OPEN until then.
 
 ## Follow-ups (non-blocking)
 
@@ -155,6 +206,11 @@ Phase 1 (`fabro-ci-image-factoring`) deliverable. This closes Phase 1.
   `statuses: write` via v025) — it does **not** list `workflows: write`. A minor
   future `contracts.md` sweep should add `workflows: write` to that permission
   list to end this pre-existing drift. **Not blocking this epic.**
+- **Orchestrator PR CI red on the automated bump-pin PRs (separate from this
+  epic).** The `livespec-orchestrator-beads-fabro` repo's PR CI is currently RED
+  on the automated "Bump pin from sibling dispatch" PRs (e.g. run 29287245277,
+  PR #587 `chore/bump-livespec-dev-tooling-v0.46.0`). Unrelated to the codex-acp
+  auto-bump epic, but worth a look. **Not blocking this epic.**
 
 ## Cross-references
 
