@@ -30,13 +30,32 @@ Then refresh the live ledger state through the read-only operation:
 /livespec-orchestrator-beads-fabro:list-work-items --json
 ```
 
-Filter that output for `livespec-xei45t`.
+Filter that output for `livespec-xei45t` plus the replacement slice ids listed
+below.
 
 ## Current State
 
-The epic `livespec-xei45t` is a backlog planning epic, not a dispatchable
-implementation slice. It was captured with `admission_policy=manual` and
-`acceptance_policy=ai-then-human`.
+The epic `livespec-xei45t` has been groomed and regroomed out. Its current
+state in the `livespec` ledger is `done` with resolution
+`no-longer-applicable`.
+
+The groomed replacement set is:
+
+| Owning repo | Work item | Status at filing | Purpose |
+|---|---:|---|---|
+| `livespec` | `livespec-xhxasg` | `ready` | Inventory and classify harness-local memory records for fleet/adopters |
+| `livespec-dev-tooling` | `livespec-dev-tooling-2amr6x` | `pending-approval` | Migrate `livespec-dev-tooling` local memory into durable repo homes |
+| `livespec-driver-claude` | `livespec-driver-claude-vx6gmo` | `pending-approval` | Migrate `livespec-driver-claude` local memory into durable repo homes |
+| `livespec-orchestrator-beads-fabro` | `bd-ib-jz62h3` | `pending-approval` | Migrate `livespec-orchestrator-beads-fabro` local memory into durable repo homes |
+| `livespec-runtime` | `livespec-runtime-fsumlo` | `pending-approval` | Migrate `livespec-runtime` local memory into durable repo homes |
+| `openbrain` | `ob-j5oend` | `pending-approval` | Migrate `openbrain` adopter local memory into durable repo homes |
+| `livespec-driver-claude` | `livespec-driver-claude-vxy7io` | `pending-approval` | Verify and repair Claude Driver auto-memory guard |
+| `livespec-driver-codex` | `livespec-driver-codex-ctzk3x` | `pending-approval` | Verify and repair Codex Driver local-memory guard and background-memory audit handling |
+| `livespec-dev-tooling` | `livespec-dev-tooling-gcpm3y` | `pending-approval` | Implement consumer-side local-memory drift audit |
+| `livespec` | `livespec-eclobt` | `pending-approval` | Quarantine or remove migrated local-memory files after durable destinations land |
+
+All non-inventory slices carry a dependency on `livespec-xhxasg`, so the next
+load-bearing action is to complete the `livespec` inventory slice first.
 
 Initial evidence from this host:
 
@@ -57,25 +76,21 @@ requires driver guards for Claude plus Codex manual writes. The likely gap is
 not prose alone; it is migration of existing local files plus mechanical
 verification that driver hooks/config/conformance actually prevent recurrence.
 
+Operational correction from the 2026-07-13 Codex session: the installed
+`livespec-orchestrator-beads-fabro` groom prose still says the front-end files
+nothing until maintainer approval, but `.ai/agent-disciplines.md`
+§"Planning-lane continuation rule" now says a resumed handoff is executable
+coordination and explicitly includes chaining to `groom`. For this plan-thread
+resume shape, do not stop to ask for a separate groom approval; the handoff's
+next-action instruction is the authorization to proceed unless the user asked
+only for status/review/analysis.
+
 ## Next Action
 
-Run `/livespec-orchestrator-beads-fabro:groom livespec-xei45t`.
-
-Recommended groom shape:
-
-- First child: inventory and classify every Claude/Codex local-memory record for
-  fleet members and registered adopters, with explicit ownership for adjacent
-  non-fleet slugs.
-- Second child: migrate durable guidance from each governed repo's local memory
-  into that repo's `AGENTS.md` / `.ai/*.md`, spec proposal, or work-item ledger
-  through normal worktree to PR to merge flow.
-- Third child: verify and repair Claude Driver and Codex Driver local-memory
-  guards, including Codex background-memory configuration or audit handling.
-- Fourth child: add fleet/adopter conformance so future local-memory drift is
-  detected mechanically without introducing upstream-to-downstream circular
-  reads.
-- Final child: perform host cleanup or quarantine of migrated local-memory files
-  and document exactly what was removed, retained, or intentionally ignored.
+Drive `livespec-xhxasg` in the `livespec` repo: refresh the Claude/Codex
+local-memory inventory, classify every current record, and persist the
+classification artifact under `plan/cloud-local-memory-cleanup/`. Do not delete
+any local-memory file during this slice.
 
 Do not delete any local-memory file before the groomed child item that owns its
 content has landed the durable destination or explicitly classified the file as
