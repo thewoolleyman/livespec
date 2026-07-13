@@ -10,6 +10,23 @@ alone via the read-first chain — no chat history required.
 
 ## For a fresh session — read first
 
+- **⇒ 2026-07-13 (SESSION 17) UPDATE — READ THE SESSION-17 "CURRENT STATE" BLOCK AT THE TOP OF
+  `## The next action` FIRST; it supersedes SESSION-16 below.** ✅ **The bump-pin fan-out bug that had
+  stranded both Drivers is FIXED + closed** (`livespec-dev-tooling-3vq`: PR #349, released v0.41.1; independent
+  Fable NO-BLOCKERS; rolled out live — both Drivers auto-advanced to v0.42.0; hardening follow-up
+  `livespec-dev-tooling-74a`). **⚑ `livespec-tawm` GREW: it is no longer a small "add `__all__` + reconcile
+  drift" fix.** Driving it surfaced that both Drivers' `just check` is RED locally on 5 checks (aggregate
+  ordering + coverage/types/subprocess/mirror-pairing gaps; CI is green only because those aren't CI jobs),
+  which blocks ALL local Driver work. Filed `livespec-uvgi` for it. The maintainer decided (2026-07-13) to go
+  full-fidelity: **refactor the Driver hooks to importable `main()` for REAL in-process coverage, co-designed
+  with the byte-identity single-sourcing** — merging `livespec-tawm` + `livespec-uvgi` into ONE Driver-hook-body
+  epic across 4 repos (both Drivers + `livespec-dev-tooling` + `livespec` core). **THE NEXT SESSION'S JOB = groom
+  + drive that unified hook-body epic** (full scope in the `livespec-uvgi` decision comment; `bd -C
+  /data/projects/livespec show livespec-uvgi` and `livespec-tawm`). **The original file_lloc-coverage goal
+  remains 100% done; the OPEN QUESTION is whether `fleet-check-coverage` should archive NOW (its own goal met)
+  with the hook-body work grooming as its own epic, vs. staying open — recommend the fresh session settle this
+  with the maintainer first.** Everything below (incl. SESSION-16) is prior context SESSION-17 supersedes where
+  they conflict.
 - **⇒ 2026-07-12 (SESSION 16) UPDATE — READ THE SESSION-16 "CURRENT STATE" BLOCK AT THE TOP OF
   `## The next action` FIRST; it supersedes SESSION-15 below.** ✅ **ALL 8 IN-SCOPE REPOS ARE
   FLIPPED/RESOLVED — the epic's original file_lloc-coverage done-definition is COMPLETE.** `livespec-iily`
@@ -1080,6 +1097,57 @@ clone before reading its `origin/master` for cross-repo state.**
 
 ## The next action
 
+> ### ⇒ 2026-07-13 SESSION 17 — CURRENT STATE, READ FIRST (supersedes SESSION-16 below)
+>
+> **✅ BUMP-PIN FAN-OUT BUG FIXED + CLOSED.** `livespec-dev-tooling-3vq` (surfaced this session): dev-tooling's
+> `bump-pin` appended a duplicate zero-arg `check-red-green-replay:` recipe when the consumer justfile already
+> defined it parameterized, breaking `just` parse and stranding both Drivers at pin v0.40.0. Fixed (extracted the
+> reconcile to a tested module `justfile_canonical_reconcile.py` + fixed the header-presence guard), PR #349 →
+> **v0.41.1**, independent Fable **NO-BLOCKERS**, rolled out + exercised live (release-dispatch auto-advanced both
+> Drivers cleanly; they are now on v0.42.0, master CI green, stale bump PRs swept). Non-blocking hardening filed:
+> `livespec-dev-tooling-74a` (single-source the recipe-header recognizer + close @/alias/variable edge gaps).
+>
+> **⚑ `livespec-tawm` GREW INTO A UNIFIED DRIVER-HOOK-BODY EPIC (with `livespec-uvgi`).** What began as "reconcile
+> the two `no_shadow_ledger.py` copies to byte-identity + add `__all__`" exposed that **both Drivers' `just check`
+> is RED locally on 5 checks** — `check-aggregate-completeness` (aggregate out of canonical order),
+> `check-tests-no-subprocess-spawn`, `check-per-file-coverage`, `check-check-coverage-incremental`,
+> `check-tool-backed-check-completeness` — which **blocks ALL local Driver pushes** (CI stayed green only because
+> those checks are not Driver CI jobs; filed `livespec-uvgi`). Investigating "make CI comprehensive" hit a real
+> wall: the Drivers' product code is script-hooks tested via SUBPROCESS, and `check-per-file-coverage` (100%,
+> no carve-out) can't cover a subprocess whose coverage the `subprocess_spawn_allowlist` mechanism scrubs — so
+> real coverage needs refactoring each hook to an importable `main()`.
+>
+> **MAINTAINER DECISION 2026-07-13 (full-fidelity):** refactor the Driver hooks to importable `main()` for REAL
+> in-process coverage, **co-designed with the byte-identity single-sourcing** — merging `livespec-tawm` +
+> `livespec-uvgi` into ONE Driver-hook-body epic across 4 repos (`livespec-driver-claude`,
+> `livespec-driver-codex`, `livespec-dev-tooling`, `livespec` core). This SUPERSEDES the SESSION-15 "drivers wire
+> only 14, not aggregate-completeness" role-scoping. **Full unified scope is in the `livespec-uvgi` decision
+> comment** (hook refactor reconciled with `main_guard` + byte-identity + coverage; byte-identity Verifier via the
+> Conformance Pattern five slots, reuse-from-dev-tooling per concern #1's precedent; coverage+types infra;
+> aggregate reorder; full CI matrix + `ci-green` + flip `LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST`).
+>
+> **⚠ NEXT ACTION ON RESUME:** read-first chain = THIS block → `bd -C /data/projects/livespec show livespec-uvgi`
+> (the full decision) + `livespec-tawm`. **(1) SETTLE THE ARCHIVAL QUESTION with the maintainer FIRST:** the
+> original file_lloc-coverage goal is 100% done, so `fleet-check-coverage` MAY be ready to archive now with the
+> unified hook-body work grooming as its OWN new epic/plan-thread (recommended — it is a genuinely separate
+> multi-repo project), vs. keeping this thread open. **(2) GROOM the unified hook-body epic** into ready,
+> dependency-layered slices (design-first: the importable-`main()` refactor is NOVEL — not in the livespec-runtime
+> template, which has no subprocess-tested hooks). **(3) DRIVE host-side** (touches `.github/workflows` → maintainer
+> creds), independent Fable review per slice, Driver PRs auto-merge on green. The interim tawm Slice 1 (add
+> `__all__` + docstring-align; committed then discarded, superseded by the refactor) is done being tracked here.
+>
+> **STATE:** bump-pin done (both Drivers healthy, v0.42.0). No in-flight Driver worktrees (the superseded Slice 1
+> worktree was reaped). Ledger: `livespec-dev-tooling-3vq` CLOSED, `-74a` open P3; `livespec-uvgi` open P1
+> (carries the full decision comment); `livespec-tawm` open (co-designed cross-ref). Epic `livespec-i5ebqd` still
+> OPEN (pending the archival decision).
+>
+> **Resume command:** `/livespec-orchestrator-beads-fabro:plan fleet-check-coverage`
+>
+> ---
+> *(SESSION-16 block below is prior context SESSION-17 supersedes — the "groom + drive livespec-tawm then archive"
+> next-action it names is superseded: tawm grew into the unified hook-body epic above, and archival is now an open
+> question to settle first.)*
+>
 > ### ⇒ 2026-07-12 SESSION 16 — CURRENT STATE, READ FIRST (supersedes SESSION-15 below)
 >
 > **✅ THE ORIGINAL EPIC IS COMPLETE — 8/8 in-scope repos flipped/resolved, all tracks CLOSED, fleet-wide CI
