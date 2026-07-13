@@ -472,10 +472,14 @@ intervene before the resume-line paste; managed repos do not hit this.
 - Secrets are probe-only (`printenv NAME | wc -c`); never echo values.
 - Scratch under `tmp/overseer/` (never the `tmp/` root; it is maintainer-owned).
 
-## This skill is local-only and RETAINED
+## This skill is local-only and PERMANENT
 
-It lives under `.claude/skills/overseer/` in *this* repo and is **not** part of
-the livespec plugin, the spec, the copier template, or any fleet-propagated
-surface — do not add it to manifests, conformance checks, or other repos. It is
-RETAINED as the coordination layer and improved in place until the console
-operator-cockpit (built via the factory) replaces it.
+It lives under `.claude/skills/overseer/` in *this* repo and is usable **only
+from this repo**; it is **not** part of the livespec plugin, the spec, the copier
+template, or any fleet-propagated surface — do not add it to manifests,
+conformance checks, or other repos. It is a **permanent, human-supervised
+alternate to autonomous mode** (the Beads/Dolt + Fabro Dispatcher / dark
+factory), NOT a stopgap awaiting the console cockpit: the two are standing peers —
+autonomous mode runs ready work-items unattended through the ledger, while the
+overseer keeps interactive plan tracks moving in parallel under a human driver.
+Maintain it in place.

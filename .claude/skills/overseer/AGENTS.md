@@ -29,11 +29,15 @@ Two prior failure modes shaped this design, and they MUST NOT recur:
    while nothing was live. → The table is re-rendered from live captures every
    tick (and time-stamped), so it can never freeze on a stale snapshot.
 
-Status: **RETAINED** as the coordination layer until the console
-operator-cockpit (built via the factory) replaces it — not retired.
-**LOCAL-ONLY and unsynced:** it lives under `.claude/skills/overseer/` in this
-repo only. Do NOT add it to the plugin, the spec, the copier template, fleet
-manifests, conformance checks, or any other repo.
+Status: **PERMANENT** — a human-supervised alternate to autonomous mode (the
+Beads/Dolt + Fabro Dispatcher / dark factory), not a stopgap awaiting a
+replacement. The two are standing peers: autonomous mode runs *ready work-items*
+unattended through the ledger; the overseer keeps *interactive plan tracks*
+moving in parallel under a human driver, automating only the context-% wrap-up +
+restart mechanics. Maintain it in place. **LOCAL-ONLY and unsynced:** it lives
+under `.claude/skills/overseer/` in this repo only and is usable only from it. Do
+NOT add it to the plugin, the spec, the copier template, fleet manifests,
+conformance checks, or any other repo.
 
 ## Architecture invariants that must not regress
 
@@ -56,7 +60,7 @@ manifests, conformance checks, or any other repo.
    the filesystem (topic↔tmux mapping, custom resume line, threshold override).
    Do NOT regress to a hand-maintained plan list.
 5. **Cross-repo by construction.** Rows are repo-scoped; tmux session ids are
-   repo-qualified `<repo-slug>:<topic>` (tmux names are global; plan topics are
+   repo-qualified `<repo-slug>--<topic>` (tmux names are global; plan topics are
    unique only per repo). Never hardcode `/data/projects/livespec`. Auto-link a
    live session to a discovered plan ONLY when the repo-qualified session exists
    AND its `#{pane_current_path}` resolves inside the row's repo — never by topic

@@ -30,6 +30,8 @@ Design invariants honored here (see ``design.md``):
 
 from __future__ import annotations
 
+import itertools
+import os
 import subprocess
 import sys
 from collections.abc import Callable
@@ -37,9 +39,18 @@ from typing import Any
 
 __all__ = ["TmuxIO"]
 
-# The tmux paste buffer the injector loads into. A fixed name keeps us from
-# growing the buffer stack; ``paste-buffer -d`` deletes it right after paste.
-_INJECT_BUFFER = "overseer-inject"
+# The tmux paste buffer the injector loads into. A UNIQUE name per paste (pid +
+# monotonic counter) so two overseer instances — or a daemon and the bottom-pane
+# CLI — cannot clobber each other's in-flight buffer between the load and the
+# paste (adversarial code review 2026-07-13, blocker B6: the fixed global name
+# ``overseer-inject`` raced across instances, pasting the wrong repo's text).
+# ``paste-buffer -d`` deletes the specific buffer right after paste.
+_INJECT_BUFFER_PREFIX = "overseer-inject"
+_buffer_counter = itertools.count()
+
+
+def _next_inject_buffer() -> str:
+    return f"{_INJECT_BUFFER_PREFIX}-{os.getpid()}-{next(_buffer_counter)}"
 
 
 def _warn(message: str) -> None:
@@ -119,8 +130,18 @@ class TmuxIO:
         return self._display(session, "#{pane_current_path}")
 
     def session_exists(self, session: str) -> bool:
-        """``tmux has-session -t <session>`` — True iff the session is live."""
-        return self._ok(self._call(["has-session", "-t", session]))
+        """True iff a session named EXACTLY ``session`` is live.
+
+        Uses exact membership in :meth:`list_sessions`, NOT ``tmux has-session -t
+        <session>``: a bare ``-t`` target PREFIX/fnmatch-matches, so ``has-session
+        -t foo`` succeeds when only ``foobar`` exists (verified live 2026-07-13,
+        adversarial code review blocker B1) — which let the daemon believe a gone
+        session was live and act on an unrelated prefix-matching one. Exact
+        membership is the only prefix-proof existence test. Every subsequent
+        ``-t <session>`` call is then safe because an EXACT session name takes
+        precedence over a prefix match, so it resolves to this exact session.
+        """
+        return session in self.list_sessions()
 
     def list_sessions(self) -> list[str]:
         """``tmux list-sessions -F '#{session_name}'`` → names (``[]`` on error)."""
@@ -150,11 +171,12 @@ class TmuxIO:
         input) and deletes the buffer. Submitting is the caller's separate
         :meth:`send_keys` ``Enter`` — because ``paste-buffer`` never submits.
         """
-        loaded = self._call(["load-buffer", "-b", _INJECT_BUFFER, "-"], input_text=text)
+        buffer_name = _next_inject_buffer()
+        loaded = self._call(["load-buffer", "-b", buffer_name, "-"], input_text=text)
         if not self._ok(loaded):
             _warn(f"load-buffer failed for session {session!r}")
             return False
-        pasted = self._call(["paste-buffer", "-b", _INJECT_BUFFER, "-p", "-d", "-t", session])
+        pasted = self._call(["paste-buffer", "-b", buffer_name, "-p", "-d", "-t", session])
         return self._ok(pasted)
 
     def respawn_pane(self, session: str, cwd: str, command: str) -> bool:
