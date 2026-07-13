@@ -28,6 +28,7 @@
 - check-global-writes
 - check-heading-coverage
 - check-keyword-only-args
+- check-local-memory-drift-audit
 - check-main-guard
 - check-master-ci-green
 - check-match-keyword-only
