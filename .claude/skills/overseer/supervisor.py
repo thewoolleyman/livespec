@@ -278,24 +278,34 @@ class Supervisor:
         return linked
 
     def adopt_sessions(self) -> list[registry.Track]:
-        """Adopt existing worker sessions whose NAME matches an active plan topic.
+        """Adopt existing worker sessions by their ``claude -n <topic>`` border name.
 
         A one-shot bootstrap pass (run by the `/overseer` skill at startup, after
         the daemon pane is up). For each live tmux session S: adopt it ONLY when
         (a) its ``#{pane_current_path}`` resolves inside a FLEET repo (the
         watch-set), (b) it runs a claude/codex worker (``signals.pane_is_worker``),
-        AND (c) its NAME equals an ACTIVE plan topic in that repo (a discovered
-        ``plan/<name>/`` with a ``handoff.md``). The mapping's ``tmux`` field is
-        the bare session name S — the EXISTING session already holding the work —
-        NOT the repo-qualified ``tmux_id`` the daemon would spawn. A ``(repo,
-        topic)`` already mapped is left untouched (no double-add). Returns the
-        adopted Tracks.
+        AND (c) the topic parsed from its input-box TITLED border
+        (``signals.parse_border_topic``) is an ACTIVE plan topic in that repo (a
+        discovered ``plan/<topic>/`` with a ``handoff.md``). The mapping's ``tmux``
+        field is the bare session name S — the EXISTING session already holding the
+        work — NOT the repo-qualified ``tmux_id`` the daemon would spawn. A
+        ``(repo, topic)`` already mapped is left untouched (no double-add).
+        Returns the adopted Tracks.
+
+        The match key is the ``claude -n <topic>`` display name that Claude Code
+        renders into the input box's top border as ``─── <topic> ──``, NOT the
+        tmux session name (those are generic — ``livespec``, ``livespec1``) and
+        NOT the ``#{pane_title}`` terminal title (Claude Code DRIFTS that to a
+        generated task summary). A session started without ``-n`` shows a
+        pure-rule border and is skipped. A codex/bun session renders a different
+        UI with no such titled border, so it yields no topic and is not adopted
+        yet (a known gap; codex would need its own topic signal).
 
         Distinct from :meth:`auto_link`, which links only the repo-qualified
         ``<repo-slug>--<topic>`` session the daemon itself launches; adopt is the
         opt-in "pick up the worker sessions I already have running" convenience,
-        with the extra fleet-dir + worker-command + active-topic guards making the
-        bare-name match safe.
+        with the fleet-dir + worker-command + active-topic-border guards making it
+        safe.
         """
         watch = self._resolve_watch()
         active: dict[str, set[str]] = {}
@@ -310,7 +320,9 @@ class Supervisor:
                 continue
             if not signals.pane_is_worker(self.tmux.pane_current_command(session)):
                 continue
-            topic = session
+            topic = signals.parse_border_topic(self.tmux.capture_pane(session))
+            if topic is None:
+                continue
             if topic not in active.get(repo, set()):
                 continue
             if (repo, topic) in existing:
