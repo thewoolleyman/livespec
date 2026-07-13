@@ -1,0 +1,63 @@
+#!/usr/bin/env -S uv run --script --no-project
+"""overseer-start — bootstrap the overseer two-pane setup from the /overseer skill.
+
+Run from the interactive Claude (bottom) pane. It:
+  1. detects the current tmux pane via $TMUX_PANE (Claude Code inherits it);
+  2. splits THIS window to create a TOP pane running `overseerd` (focus stays on
+     the bottom Claude pane; idempotent via a titled daemon pane);
+  3. adopts existing worker sessions that match active plan topics.
+
+It NEVER targets another tmux session by name (the old two-pane bug: the skill
+grabbed a separate `livespec-overseerd` session instead of splitting its own
+window). The only tmux target here is the skill's OWN pane ($TMUX_PANE).
+"""
+
+import os
+import sys
+from pathlib import Path
+
+# Pin this executable's own directory onto sys.path so the sibling modules import
+# regardless of cwd or how uv launches the script.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import supervisor  # noqa: E402  (intentional: after the sys.path pin above)
+import tmuxio  # noqa: E402
+
+_DAEMON_PANE_TITLE = "overseer-daemon"
+
+
+def main() -> int:
+    pane = os.environ.get("TMUX_PANE")
+    if not pane:
+        print(
+            "overseer-start: not inside a tmux pane ($TMUX_PANE unset). Run /overseer "
+            "from a Claude session that is itself running inside a tmux pane.",
+            file=sys.stderr,
+        )
+        return 1
+
+    core = Path(__file__).resolve().parents[3]  # <core-repo> (…/.claude/skills/overseer → repo root)
+    io = tmuxio.TmuxIO()
+
+    # 1. Start the daemon in a TOP pane of THIS window (idempotent).
+    if _DAEMON_PANE_TITLE in io.window_pane_titles(pane):
+        print("overseer-start: daemon pane already present in this window; leaving it.", file=sys.stderr)
+    else:
+        (core / "tmp" / "overseer").mkdir(parents=True, exist_ok=True)
+        command = ".claude/skills/overseer/overseerd 2> tmp/overseer/daemon.log"
+        new_pane = io.split_window_top(pane, str(core), command)
+        if new_pane is None:
+            print("overseer-start: FAILED to split the window for the daemon pane.", file=sys.stderr)
+            return 1
+        io.set_pane_title(new_pane, _DAEMON_PANE_TITLE)
+        print(f"overseer-start: started overseerd in top pane {new_pane}.", file=sys.stderr)
+
+    # 2. Adopt existing worker sessions that match active plan topics.
+    adopted = supervisor._build_supervisor().adopt_sessions()
+    for track in adopted:
+        print(f"overseer-start: adopted {track.tmux} → {track.repo}::{track.topic}", file=sys.stderr)
+    print(f"overseer-start: adopted {len(adopted)} existing session(s).", file=sys.stderr)
+    return 0
+
+
+raise SystemExit(main())

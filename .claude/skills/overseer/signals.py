@@ -31,6 +31,7 @@ __all__ = [
     "is_structured_gate",
     "pane_is_claude",
     "pane_is_shell",
+    "pane_is_worker",
     "parse_ctx_remaining",
     "path_in_repo",
     "ready_marker_path",
@@ -315,6 +316,9 @@ def blocked_marker(repo: str, topic: str) -> str | None:
 # A live Claude Code TUI runs as a `node` process; `claude` covers a wrapper.
 _CLAUDE_COMMANDS = frozenset({"node", "claude"})
 _SHELL_COMMANDS = frozenset({"zsh", "bash", "sh", "fish", "dash", "ksh"})
+# The adopt guard also recognizes Codex sessions (a real claude pane reports
+# `claude`, an older wrapper reports `node`, a Codex session reports `codex`).
+_WORKER_COMMANDS = frozenset({"node", "claude", "codex"})
 
 
 def pane_is_claude(pane_current_command: str | None) -> bool:
@@ -323,6 +327,19 @@ def pane_is_claude(pane_current_command: str | None) -> bool:
     if not cmd:
         return False
     return cmd in _CLAUDE_COMMANDS or "claude" in cmd
+
+
+def pane_is_worker(pane_current_command: str | None) -> bool:
+    """True if the pane runs a claude OR codex interactive session (adopt guard).
+
+    Broader than :func:`pane_is_claude`: the ``adopt`` pass links an EXISTING
+    worker session (claude or codex) whose NAME matches an active plan topic, so
+    it must recognize both runtimes.
+    """
+    cmd = (pane_current_command or "").strip().lower()
+    if not cmd:
+        return False
+    return cmd in _WORKER_COMMANDS or "claude" in cmd or "codex" in cmd
 
 
 def pane_is_shell(pane_current_command: str | None) -> bool:

@@ -70,30 +70,40 @@ tmux signals and those markers. See `marker-protocol.md`.
 
 ---
 
-## Starting the daemon (top pane)
+## Starting the daemon + adopting sessions (run the bootstrap FIRST)
 
-In the TOP pane, from the livespec core repo root, start the daemon with its
-stderr sent to a log the bottom pane can read. The daemon is the dedicated
-**`overseerd` executable** — a self-invokable `uv` script (its shebang runs it
-through `uv run --script --no-project`, so it executes directly, no `python3`).
-Run it with **no arguments, no options, no subcommands** — the file *is* the
-daemon:
+**The FIRST thing you do when `/overseer` starts is run the bootstrap** — do NOT
+hand-craft any tmux command, and do NOT target another session by name. From your
+interactive (BOTTOM) pane — the Claude session where `/overseer` is running — run:
 
 ```bash
-mkdir -p tmp/overseer
-.claude/skills/overseer/overseerd 2> tmp/overseer/daemon.log
+.claude/skills/overseer/overseer-start
 ```
 
-- The daemon's **stdout is the live table** (it clears the screen each tick).
-- Its **stderr carries `overseer:` logs and `overseer[SURFACE]:` alerts** — the
-  channel this bottom pane reads to relay blocked/danger tracks.
+That one command (a self-invokable `uv` script) does everything deterministically:
 
-`overseerd` takes **no arguments** — it watches the whole fleet with the fixed
-store/stamp paths and the default loop interval, and does not auto-recover dead
-sessions at startup (surface-only: it never auto-spawns; re-launching a
-mapped-but-dead session is a deliberate `start` — below). Path discovery is
-self-contained, so it works from any cwd (the manifest is resolved relative to
-the module file, not the working directory).
+1. **Detects your own pane** via `$TMUX_PANE`, which this Claude session inherits.
+   If `$TMUX_PANE` is unset it prints `not inside a tmux pane` and exits non-zero —
+   only then is the session genuinely not in tmux; start it inside a tmux session
+   and re-run. (Do NOT improvise a tmux check — this is the ONE authority.)
+2. **Splits YOUR OWN window** to create the daemon **TOP pane** running
+   `overseerd`, keeping focus on your (bottom) pane. It targets `$TMUX_PANE` only,
+   so the daemon pane always lands in *this* window — never in a separate session.
+   It is idempotent (tags the pane `overseer-daemon`; re-running won't stack panes).
+3. **Adopts existing worker sessions.** It scans every tmux session and auto-tracks
+   any that are (a) cwd'd inside a fleet repo, (b) running a claude/codex worker,
+   AND (c) named EXACTLY the same as an active plan topic in that repo — mapping
+   each to the tmux session already holding it.
+
+- The daemon's **stdout is the live table** in the top pane (it clears + re-renders
+  each tick). Its **stderr → `tmp/overseer/daemon.log`** — the channel this bottom
+  pane reads to relay blocked/danger alerts. `overseer-start`'s own progress
+  (pane created, sessions adopted) prints to its stderr as it runs.
+- `overseerd` itself takes **no arguments** — it watches the whole fleet with the
+  fixed store/stamp paths and the default loop interval, and does not auto-recover
+  dead sessions at startup (surface-only: it never auto-spawns; re-launching a
+  mapped-but-dead session is a deliberate `start` — below). Path discovery is
+  self-contained, so it works from any cwd.
 
 **The watch-set + the list.** The daemon watches every fleet-manifest repo
 (fleet members + adopters) that has a local checkout with a `plan/` dir — read

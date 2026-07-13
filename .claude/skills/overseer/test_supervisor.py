@@ -608,6 +608,61 @@ def test_auto_link_creates_mapping_when_cwd_in_repo(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# adopt: pick up existing worker sessions named exactly as an active plan topic.
+# --------------------------------------------------------------------------- #
+
+
+def test_adopt_sessions_links_worker_named_as_active_topic(tmp_path):
+    """adopt maps a live worker session to a plan ONLY when its cwd is inside a
+    fleet repo, it runs a claude/codex worker, AND its NAME is exactly an active
+    plan topic — to the tmux session already holding it. Non-matches are skipped,
+    and an already-mapped (repo, topic) is never double-added/overwritten."""
+    repo_a, _ = _make_plan(tmp_path, repo_name="repo_a", topic="alpha")
+    repo_b, _ = _make_plan(tmp_path, repo_name="repo_b", topic="beta")
+    for extra in ("gamma", "delta"):  # more active topics in repo_a
+        (repo_a / "plan" / extra).mkdir(parents=True)
+        (repo_a / "plan" / extra / "handoff.md").write_bytes(b"h\n")
+
+    fake = FakeTmux()
+    fake.serve("alpha", repo_a, cmd="claude")  # worker + active topic + in repo → ADOPT
+    fake.serve("beta", repo_b, cmd="zsh")  # active topic + in repo but NOT a worker → skip
+    fake.serve("notaplan", repo_a, cmd="claude")  # worker + in repo but name not a topic → skip
+    fake.serve(
+        "delta", "/somewhere/else", cmd="codex"
+    )  # worker + topic name but cwd NOT in fleet → skip
+    fake.serve("gamma", repo_a, cmd="codex")  # worker + active topic → but already mapped below
+
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo_a), str(repo_b)])
+    registry.append_mapping(
+        _mapped_track(repo_a, "gamma", "gamma-existing"), sup.store_path, added_at="pre"
+    )
+
+    adopted = sup.adopt_sessions()
+
+    assert [(t.repo, t.topic, t.tmux) for t in adopted] == [
+        (os.path.normpath(str(repo_a)), "alpha", "alpha")
+    ]
+    rows = {(r.repo, r.topic): r.tmux for r in registry.read_mapping(sup.store_path)}
+    assert rows[(os.path.normpath(str(repo_a)), "alpha")] == "alpha"  # adopted → session name
+    assert (
+        rows[(os.path.normpath(str(repo_a)), "gamma")] == "gamma-existing"
+    )  # pre-existing untouched
+    assert (os.path.normpath(str(repo_b)), "beta") not in rows  # not a worker
+    assert (os.path.normpath(str(repo_a)), "notaplan") not in rows  # not a plan topic
+    assert (os.path.normpath(str(repo_a)), "delta") not in rows  # cwd not in a fleet repo
+
+
+def test_adopt_sessions_empty_when_no_match(tmp_path):
+    """adopt returns [] and writes nothing when no live session matches."""
+    repo, topic = _make_plan(tmp_path)
+    fake = FakeTmux()
+    fake.serve(topic, repo, cmd="zsh")  # right name + repo, but a shell (not a worker)
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)])
+    assert sup.adopt_sessions() == []
+    assert registry.read_mapping(sup.store_path) == []
+
+
+# --------------------------------------------------------------------------- #
 # archive-GC.
 # --------------------------------------------------------------------------- #
 

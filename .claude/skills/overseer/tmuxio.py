@@ -206,3 +206,48 @@ class TmuxIO:
     def new_session(self, name: str, cwd: str) -> bool:
         """``tmux new-session -d -s <name> -c <cwd>`` — a detached session in ``cwd``."""
         return self._ok(self._call(["new-session", "-d", "-s", name, "-c", cwd]))
+
+    # ----------------------------------------------------------------- #
+    # Two-pane bootstrap (the `/overseer` skill splits its OWN window).
+    # ----------------------------------------------------------------- #
+
+    def split_window_top(self, pane: str, cwd: str, command: str) -> str | None:
+        """Split PANE's window; new pane ABOVE, focus stays on PANE; run COMMAND in CWD.
+
+        ``-v`` splits top/bottom, ``-b`` puts the NEW pane before (above) the
+        target, ``-d`` keeps focus on the target (the bottom Claude pane), and
+        ``-P -F '#{pane_id}'`` prints the new pane id. Targeting ``pane`` (the
+        skill's own ``$TMUX_PANE``) means the daemon pane is created in the
+        skill's OWN window — never in a session grabbed by name. Returns the new
+        pane id (e.g. ``%47``) or None on failure.
+        """
+        completed = self._call(
+            [
+                "split-window",
+                "-v",
+                "-b",
+                "-d",
+                "-P",
+                "-F",
+                "#{pane_id}",
+                "-t",
+                pane,
+                "-c",
+                cwd,
+                command,
+            ]
+        )
+        if not self._ok(completed):
+            return None
+        return (completed.stdout or "").strip() or None
+
+    def set_pane_title(self, pane: str, title: str) -> bool:
+        """``tmux select-pane -t <pane> -T <title>`` — tag a pane (idempotency)."""
+        return self._ok(self._call(["select-pane", "-t", pane, "-T", title]))
+
+    def window_pane_titles(self, pane: str) -> list[str]:
+        """Every pane title in PANE's window (``[]`` on error) — the idempotency read."""
+        completed = self._call(["list-panes", "-t", pane, "-F", "#{pane_title}"])
+        if not self._ok(completed):
+            return []
+        return [line for line in (completed.stdout or "").splitlines() if line.strip()]
