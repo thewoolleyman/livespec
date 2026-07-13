@@ -1,10 +1,12 @@
 # Design — codex-acp version auto-bump (factory-gated freshness)
 
-**Status:** design draft for maintainer review (2026-07-13). No code
-written; no repo mutated beyond this doc. Spin-off from
-`fabro-ci-image-factoring` Phase 1 (epic `livespec-3lev.4`); **supersedes**
-that plan's "orchestrator Codex version-less adapter" NEXT ACTION, whose
-premise was disproven (see §"Why not version-less").
+**Status:** design **APPROVED — all architecture decisions resolved by the
+maintainer 2026-07-13** (see §"Decisions"). No code written yet; the
+build-ready handoff is `handoff.md` beside this file, and building is the
+next-session priority. Spin-off from `fabro-ci-image-factoring` Phase 1 (epic
+`livespec-3lev.4`); **supersedes** that plan's "orchestrator Codex
+version-less adapter" NEXT ACTION, whose premise was disproven (see §"Why not
+version-less").
 
 **Owning repos of the eventual work:** `livespec-dev-tooling` (the image
 ARG + the freshness scan + the bump PR) and `livespec-orchestrator-beads-fabro`
@@ -157,19 +159,30 @@ reverted image on the next release. The gate prevents a bad version from
 merging in the first place, so rollback is a rare fallback, not the primary
 safety.
 
-## Open decisions (for the maintainer)
+## Decisions (resolved by the maintainer, 2026-07-13)
 
-1. **Single-SoT (image) vs keep-two-pins + equality check** — recommended
-   single-SoT; confirm.
-2. **Cadence + threshold** — how often the freshness scan runs, and whether it
-   bumps on *any* new codex-acp release or only when N releases behind.
-3. **Gate topology** — a NEW dedicated Codex-bump gate workflow, or extend the
-   existing golden-master workflow with a provider/candidate-image switch.
-4. **Candidate-image override mechanic** — confirm the Dispatcher overlay can
-   point the sandbox image at the candidate tag for the test (the one
-   unverified mechanic above).
-5. **Cost** — each bump runs a real Codex factory dispatch (~5–10 min + LLM
-   spend). Acceptable given codex-acp releases are infrequent; note it.
+1. **Pin home → IMAGE ONLY.** The image's `CODEX_ACP_VERSION` is the single
+   source of truth; the orchestrator drops its explicit version and consumes the
+   baked global fetch-free (`npx --no-install @zed-industries/codex-acp`). No
+   orchestrator pin to sync, no equality check needed.
+2. **Cadence → WEEKLY, bump on ANY new release.** The scheduled scan runs
+   weekly and opens a factory-gated bump PR on *any* new `zed-industries/codex-acp`
+   release (not batched/N-behind). Cost is bounded — codex-acp releases are
+   infrequent, and each bump is one ~5–10 min gated Codex dispatch.
+3. **Gate topology → EXTEND the existing golden-master.** Add a Codex-provider
+   switch + a candidate-image override to `acceptance-live-golden-master.sh`
+   rather than a new dedicated workflow. Reuse the proven harness; least new
+   surface.
+4. **Build priority → NEXT.** Building this is the next-session priority (the
+   last Phase 1 / `livespec-3lev.4` deliverable — closes Phase 1).
+
+### Still to verify during build (not a maintainer decision)
+
+- **Candidate-image override mechanic** — confirm the Dispatcher's per-dispatch
+  overlay can point `[environments.livespec-ci.image] docker` at the candidate
+  `…:python-sha-<short>` tag for the test run (the one unverified mechanic).
+  Fallback if it can't: a test-only `workflow.toml` or an env the overlay
+  honors. See `handoff.md` for the build steps.
 
 ## Cross-references
 
