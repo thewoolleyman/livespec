@@ -7,6 +7,13 @@
 > the design narrative + corrected findings; the sections below it are the
 > ORIGINAL seed framing (kept for context; superseded where noted).
 >
+> **SESSION 3 (2026-07-13):** the bd guard wrapper LANDED. PR #556 merged
+> (`livespec-orchestrator-beads-fabro`, release 0.26.0) after review found + fixed
+> 2 blockers (broken `rollback.sh`; `install.sh` self-exec-loop). Follow-up PR
+> #561 merged (guard `bd reopen`; `install.sh` fresh-provision relocate). See
+> "## SESSION 3" at the bottom. Host install of the guard remains maintainer-gated
+> (warn → observe → flip to `fail`).
+>
 > _Original seed note:_ spun off 2026-07-12 from the `autonomous-mode` track
 > (during an attempt to factory-dispatch a `livespec-dev-tooling` work-item). Does
 > NOT block autonomous-mode.
@@ -373,3 +380,73 @@ native `bd` usage by active sessions**, which our code cannot intercept:
   prevention (bypass, pre-wrapper, `bd-real` direct use).
 The guard wrapper + `status.default` are STOPGAP/durable prevention; both retire or
 simplify once beads ships proper custom-status handling upstream.
+
+---
+
+# SESSION 3 (2026-07-13) — bd guard wrapper reviewed, fixed, merged + hardened
+
+**Read this after SESSION 2.** SESSION 2 DISPATCHED the guard wrapper and left it
+as an OPEN PR for review. This session reviewed it, fixed the blockers review
+found, merged it, then merged an approved hardening follow-up. The guard wrapper
+is now MERGED + RELEASED; the only remaining guard step is the maintainer-gated
+host install.
+
+## Landed this session (all merged, `livespec-orchestrator-beads-fabro`)
+
+| What | PR | Merge commit | Notes |
+|---|---|---|---|
+| bd guard wrapper (warn-first) — original | #556 | `65b2d68` (feat) | The SESSION-2 dispatched wrapper. |
+| Fix: install/rollback self-recognition + claim/`--` holes | #556 | `299dc5e` (fix) | Review found 2 BLOCKERS the green suite missed. Shipped as **release 0.26.0**. |
+| Guard `bd reopen` + `install.sh` fresh-provision relocate | #561 | `6635f22` (feat) | The maintainer-approved "do both now" hardening. |
+
+## What the review caught (the 2 blockers — a real "green ≠ correct" case)
+
+Both from ONE root cause: `install.sh`/`rollback.sh` recognized the guard via
+`head -n 1 "$FILE" | grep -q 'bd-guard'`, but line 1 is the `#!/bin/sh` shebang, so
+the check NEVER matched. Result: `rollback.sh` ALWAYS aborted (its "trivially
+removable" guarantee was false) and a partial-install re-run could `mv` the guard
+onto `bd-real` → infinite exec loop. Fixed by grepping the WHOLE file for a
+distinctive `bd-guard-wrapper-sentinel` marker. Also fixed 2 review nits
+(`--claim=true` `=`-form bypass; root-level `--` wrong-block in fail mode). ROOT
+CAUSE of the miss: the test suite never exercised `install.sh`/`rollback.sh` —
+now it drives them end-to-end (byte-identical restore, idempotency,
+partial-install no-exec-loop). Both the initial review and a Fable delta review
+were NO-BLOCKERS; full `just check` green.
+
+## Guard scope now (3 ops)
+
+`bd update --status <non-lifecycle>`, `bd update --claim`, `bd reopen` (all
+warn/fail). Bare `bd create → open` remains deliberately out of scope (handled by
+the store normalizer + upstream `status.default`).
+
+## Open observation (optional future hardening, NOT a blocker)
+
+Fable's #561 review flagged a LOW/theoretical case in `install.sh`: `! grep -q
+sentinel` conflates a grep read-error (exit 2) with "no sentinel", so an
+UNREADABLE file at `bd` would be relocated onto `bd-real`. Unreachable on the real
+path (root reads mode-000 files; a non-root `mv` fails under `set -e` with zero
+mutation), and the same shape pre-exists at `install.sh` step 1. Optional fix if
+ever desired: gate on `[ -r "$WRAPPER_TARGET" ]` or distinguish grep exit 2.
+
+## Also this session
+
+- Healed 2 fresh ledger drift items (`livespec-uvgi`, `livespec-dev-tooling-74a`,
+  both `open → backlog`) → fleet back to 0 status-conformance drift. Confirms the
+  continuous-churn model: expect fresh `open`/`in_progress` on any survey; heal on
+  demand with `ledger-normalize`.
+- beads **#4738** (`status.default`) is now OUT OF DRAFT, all checks green,
+  mergeable — waiting purely on the upstream `gastownhall/beads` maintainer.
+
+## Still OPEN (unchanged from SESSION 2 — next-session candidates)
+
+1. **Host install of the guard** (maintainer-gated): `sudo bd-guard/install.sh`,
+   observe warn-mode offenders, fix raw-claim callers, then
+   `export LIVESPEC_BD_GUARD_MODE=fail`. One-command rollback: `sudo
+   bd-guard/rollback.sh` (now actually works).
+2. **Fleet gate → auto-heal-loud + rollout** (SESSION-2 workstream 2, not built):
+   convert the merged detect-and-fail prototype gate to auto-heal-loud; roll out to
+   all tenant repos (the installed-plugin dispatcher-resolution detail is unsolved).
+3. **beads #4738 review/merge** → then adopt `status.default = backlog` in each
+   tenant's `.beads/` config.
+4. **Wait for a beads release carrying #4536** → bump the `bd` pin, make the store
+   `create_work_item` single-step, retire the two-step + the guard.
