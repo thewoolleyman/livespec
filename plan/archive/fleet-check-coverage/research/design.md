@@ -50,9 +50,21 @@ explicit, visible, and justified (maintainer-decided 2026-07-08):
    template/extension code livespec ships but does not govern; livespec imposes
    nothing on extension/template code. (Core's 2 real `.py` under
    `templates/orchestrator-plugin/.claude/hooks/` are the only instances today.)
+5. **`.claude/skills/**` local-only agent-runtime skill infra** (RESOLVED
+   2026-07-13) — host-only, LOCAL-ONLY skills livespec ships to no one and
+   governs under their OWN plan thread, not the product/dev-tooling code rules
+   (e.g. the overseer daemon under `.claude/skills/overseer/**`, whose files
+   exceed the 250-LLOC ceiling by design). The exemption is deliberately
+   narrowed to `.claude/skills/` and NOT all of `.claude/`: `livespec-dev-tooling`
+   PR #344 (v0.41.0) first exempted all of `.claude/`, which silently un-covered
+   the `.claude/hooks/**` first-party hook `.py` below (a Driver repo's entire
+   universe); PR #360 (v0.43.2) narrowed it back to `.claude/skills/`. Matches
+   ruff `extend-exclude`, which already lists `.claude/skills/overseer/**`
+   separately from `.claude/hooks/**`.
 
 Each repo's OWN hooks (`.claude/hooks/**`, `.claude-plugin/hooks/**`) ARE covered
-(OQ2) — first-party livespec code, and the two Driver repos' entire codebase.
+(OQ2) — first-party livespec code, and the two Driver repos' entire codebase; the
+`.claude/skills/` exemption (5) deliberately does NOT reach them.
 Anything not matching an exemption is covered. There is no catch-all bucket.
 
 ## Fail-closed guards

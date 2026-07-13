@@ -8,6 +8,34 @@ fail-closed guards, rolled out **warn → burndown → per-repo-fail** so nothin
 breaks all at once. A fresh session can execute the next action from this file
 alone via the read-first chain — no chat history required.
 
+> ## ⇒ 2026-07-13 SESSION 18 — THREAD CLOSED + ARCHIVED (supersedes everything below)
+>
+> **✅ THE EPIC IS COMPLETE AND CLOSED; this thread is ARCHIVED.** A final two-reviewer
+> adversarial pass (independent Fable + independent Codex) over the whole epic confirmed the
+> file_lloc coverage-and-flip work genuinely done on all 8 in-scope repos, and surfaced ONE
+> post-completion regression: `livespec-dev-tooling` PR #344 (v0.41.0, no reviews, no ledger
+> item) had exempted ALL of `.claude/` from the first-party universe to keep the LOCAL-ONLY
+> overseer daemon (`.claude/skills/overseer/**`, >250 LLOC) off core's armed gate — but that
+> blanket exemption also silently un-covered `.claude/hooks/**` first-party hook `.py` (the
+> Driver-shipped footgun/no-shadow guards) that this epic's design record (§"Exemptions", L54)
+> requires COVERED (driver-claude's universe fell 2→1).
+>
+> **FIX (maintainer decision 2026-07-13: narrow to `.claude/skills/`):** `livespec-dev-tooling`
+> PR #360 → **v0.43.2** narrowed the exemption from `.claude/` to `.claude/skills/` (Red-Green-Replay
+> TDD; independent Fable NO-BLOCKERS after running all 15 universe checks vs every affected repo's
+> reconstructed origin/master — all exit 0; every re-covered hook ≤200 LLOC; overseer stays exempt).
+> Fanned out to v0.43.2 across the affected consumers; `design.md`'s exemption list amended 4→5 to
+> record `.claude/skills/`. Full narrative on epic `livespec-i5ebqd`'s close comment.
+>
+> **Non-blocking follow-ups filed/noted (NOT part of this epic):** partition-claim `.claude/hooks/`
+> via `source_tree_prefixes` in the repos that emit a Phase-0 partition WARN for it (driver-claude
+> already does); a PRE-EXISTING `livespec-orchestrator-beads-fabro` release-gate soft-warn
+> (`dev-tooling/checks/codex_plugin_structure.py` = 246 LLOC).
+>
+> **The unified Driver-hook-body work (`livespec-uvgi` + `livespec-tawm`) is a SEPARATE new
+> epic/plan thread — NOT this one.** Everything below is prior in-flight context, retained for the
+> archive record.
+
 ## For a fresh session — read first
 
 - **⇒ 2026-07-13 (SESSION 17) UPDATE — READ THE SESSION-17 "CURRENT STATE" BLOCK AT THE TOP OF
