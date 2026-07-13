@@ -4,28 +4,34 @@ Progressively-disclosed detail for `AGENTS.md` §"Agent-instruction `.ai/`
 convention". Read this when **ending a session** or before applying a
 **cross-cutting discipline**. Each discipline's AUTHORITATIVE detail lives in the
 named `AGENTS.md` section (or spec section); this file is the at-a-glance index
-plus the rules that have no other home — the session-end standing-handoff print
+plus the rules that have no other home — the session-end standing-handoff path
 rule and the overseer / long-running-coordinator discipline.
 
-## Session-end standing-handoff print rule
+## Session-end standing-handoff path rule
 
 When a session advanced a **standing-handoff track** — a refresh-each-session
 handoff, i.e. a plan thread's `plan/<topic>/handoff.md` — the session's closing
-recap MUST end by printing the exact resume command **verbatim, as the LAST
-line of the recap** (nothing after it):
+recap MUST end by printing the exact handoff path **verbatim, as the LAST line
+of the recap** (nothing after it):
 
 ```
-/livespec-orchestrator-beads-fabro:plan <topic>
+plan/<topic>/handoff.md
 ```
 
-Print it **verbatim and last, every time** — never paraphrased, never buried
-mid-summary, never omitted, and never with trailing prose after it. Never leave
-the next session to rediscover its entry point. This operationalizes
-`SPECIFICATION/non-functional-requirements.md` §"Planning Lane guidance" → "No
-shadow ledger" ("a session's closing summary names the exact command that
-launches the next session") at the agent-instruction layer. If the session
+Print the path **verbatim and last, every time** — never paraphrased, never
+buried mid-summary, never omitted, and never with trailing prose after it. The
+path is the runtime-neutral resume anchor: Claude Code, Codex, and a human can
+all open the same file, while slash-command or skill-invocation syntax is
+runtime-specific. Mention a runtime-specific invocation earlier in the recap
+only when it is valid for the current runtime and helpful; never make it the
+last-line standing-handoff anchor.
+
+This operationalizes `SPECIFICATION/non-functional-requirements.md` §"Planning
+Lane guidance" → "No shadow ledger" ("a session's closing summary names the
+exact command that launches the next session") at the agent-instruction layer by
+treating the committed handoff file as the portable launch point. If the session
 advanced the track materially, also refresh the handoff file itself (and the
-ledger state it points at) before printing the resume command.
+ledger state it points at) before printing the handoff path.
 
 ## Planning-lane continuation rule
 
@@ -61,7 +67,7 @@ coordinates others, overseer skill or not:
 - **Rotate the role before ~50% context — don't hoard it to exhaustion.** The
   coordinator role is fully resumable from its durable handoff
   (`plan/<topic>/handoff.md`): refresh that handoff and hand the role to a FRESH
-  session, which resumes lean via the resume command. There is no reason to drive
+  session, which resumes lean via the handoff path. There is no reason to drive
   a coordinator to 80%+ and autocompact — that is the concrete failure these
   rules exist to prevent.
 - **Close every spawned background session before handing off.** Before
