@@ -51,6 +51,14 @@
 > `open`->`backlog`, 0 drift). Flip-to-`fail` stays gated. See "## SESSION 7" at
 > the bottom.
 >
+> **SESSION 8 (2026-07-13, WRAP):** bd-guard telemetry (SESSION 7) is LIVE; the
+> only active work is the hourly fail-mode readiness monitor. Current: NOT READY,
+> gated on TIME (~21.5h more telemetry + a clean 12h raw-op window; only a leftover
+> test probe sits in the window, no real raw op; 0 guard-induced failures across
+> 161 calls / 4 callers). RESUME by re-arming the readiness `/loop` (verbatim
+> command in "## SESSION 8"). Flip-to-`fail` stays maintainer-gated. See
+> "## SESSION 8" at the bottom.
+>
 > _Original seed note:_ spun off 2026-07-12 from the `autonomous-mode` track
 > (during an attempt to factory-dispatch a `livespec-dev-tooling` work-item). Does
 > NOT block autonomous-mode.
@@ -741,3 +749,61 @@ rows show `bd.subcommand=/data/projects/...`). Cosmetic; the full argv is in
    adoption. (Developed a merge conflict; left for the gastownhall maintainer.)
 3. beads release carrying #4536 -> bump pin, single-step store, retire the
    two-step + eventually the guard.
+
+## SESSION 8 (2026-07-13, WRAP) — RESUME POINT: bd-guard fail-mode readiness monitor
+
+**Read this FIRST to resume, then SESSION 7 for instrument details.** Everything in
+SESSION 7 (the bd-guard -> Honeycomb telemetry instrument, board, checkpoint
+triggers) is LIVE and merged. The ONLY active work is the hourly readiness monitor
+that decides when it is safe to flip the guard to `fail` mode. NEVER auto-flip — the
+cutover is maintainer-gated.
+
+## State at wrap (2026-07-13 ~21:40 UTC)
+
+bd-guard telemetry is flowing to Honeycomb (livespec env, `bd-guard` dataset).
+Fail-mode readiness snapshot:
+- Volume: 161 `bd.invoke` in ~2.5h (~1,550/24h projected) — clears the >=500/24h bar.
+- Callers: 4 distinct `bd.caller.comm` (`python3` factory/store, `op` 1Password
+  wrapper, `zsh`, `bash`) — clears >=3.
+- Raw ops (`guard.warned=true`) in last 12h: 1 — a LEFTOVER TEST probe
+  (`zzz-route-probe --claim`), not a real caller. No real raw op has occurred.
+- Guard-induced failures: 0. (One benign `exit 141` = SIGPIPE on a piped `bd show` —
+  a genuine bd result, identical with or without the guard.)
+- **VERDICT: NOT READY** — gated only on TIME: need ~21.5h more telemetry (>=24h
+  bar), and the 12h raw-op window must go clean (the test probe ages out ~10h after
+  ~19:40 UTC; a REAL raw op resets it until that caller is fixed).
+
+## READINESS CRITERION (recommend cutover only when ALL hold)
+
+(a) >=24h telemetry AND >=500 `bd.invoke`/24h; (b) >=3 distinct `bd.caller.comm`;
+(c) `guard.warned=true` COUNT == 0 over the last 12h; (d) no unexpected
+`guard.warned=false` non-zero exits attributable to the guard (SIGPIPE 141 on a
+piped `bd show`, or `show` on a missing id, are benign — not guard-induced).
+
+## NEXT ACTION for the resuming session — RE-ARM the hourly readiness loop
+
+The SESSION-7/8 hourly cron was session-only and was STOPPED at wrap. Re-arm it
+verbatim (paste this whole line):
+
+    /loop 1h Assess bd-guard fail-mode readiness from Honeycomb and report (do NOT flip to fail — maintainer-gated). Query the Honeycomb `livespec` env, `bd-guard` dataset via honeycomb MCP run_query: (1) total bd.invoke COUNT over 24h + telemetry age; (2) distinct bd.caller.comm over 24h + top callers; (3) guard.warned=true COUNT over 1h/6h/12h by guard.op + bd.caller.cmd; (4) exit_code!=0 with guard.warned=false over 24h (SIGPIPE-141 on piped `bd show` and show-missing-id are benign). READY only when ALL: (a) >=24h AND >=500 calls/24h; (b) >=3 callers; (c) guard.warned==0 over 12h; (d) no guard-induced nonzero. Print the 4 numbers + verdict; if NOT READY say what is missing; if READY recommend `export LIVESPEC_BD_GUARD_MODE=fail` (do NOT run it); if guard.warned>0 name the caller (bd.caller.cmd + guard.op). Board: https://ui.honeycomb.io/thewoolleyweb/environments/livespec/board/j2MHvDsuWry
+
+When the loop reports READY, present it to the maintainer and recommend they run
+`export LIVESPEC_BD_GUARD_MODE=fail` host-wide. They decide — NEVER auto-flip.
+Whole-guard rollback (if ever needed):
+`sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/rollback.sh`.
+
+## Resume sanity checks (verify the instrument is still live)
+
+    grep -c LIVESPEC_BD_GUARD_OTLP /usr/local/bin/bd           # 2 = telemetry guard installed
+    systemctl is-active otel-collector; ss -ltn | grep 4319     # collector + HTTP door up
+    bd --version                                                # passthrough intact -> 1.0.5
+
+Honeycomb board (livespec env):
+https://ui.honeycomb.io/thewoolleyweb/environments/livespec/board/j2MHvDsuWry
+Checkpoint triggers: `VrKJu9hrgr` (telemetry-stalled), `nak9miYrs14` (raw-op detected).
+
+## Still OPEN (unchanged from SESSION 7)
+
+1. Flip guard to `fail` — gated on maintainer + the readiness monitor above.
+2. beads #4738 (`status.default`) upstream review/merge -> fleet `.beads/` adoption.
+3. beads release carrying #4536 -> bump pin, single-step store, retire two-step + guard.
