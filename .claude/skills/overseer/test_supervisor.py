@@ -13,6 +13,7 @@ failure propagation, marker/round lifecycle, read-only list, and the start guard
 import hashlib
 import io as _io
 import os
+from pathlib import Path
 
 import pytest
 import registry
@@ -826,21 +827,22 @@ def test_start_force_respawns_running_claude(tmp_path, monkeypatch):
 
 
 def test_cli_surface_has_no_config_knobs(tmp_path, monkeypatch):
-    """The de-gold-plated CLI (2026-07-13): the removed --store/--stamp/--repos/
+    """The de-gold-plated track-management CLI: the removed --store/--stamp/--repos/
     --repos-only/--manifest flags and the old positional repo/topic are all
-    rejected; --repo/--topic are required keyword flags."""
+    rejected; --repo/--topic are required keyword flags; and `daemon` is NO LONGER
+    a subcommand (it is the dedicated `overseerd` executable)."""
     _isolate_store(tmp_path, monkeypatch)
     repo = str(tmp_path / "repo")
-    # Removed watch-set / store / stamp knobs are unrecognized now.
-    removed = (
+    # Removed store / stamp knobs and the retired `daemon` subcommand are all
+    # unrecognized now (argparse exits nonzero).
+    rejected = (
         ["add", "--store", str(tmp_path / "x"), "--repo", repo, "--topic", "t"],
         ["add", "--repo", repo, "--topic", "t", "--stamp", str(tmp_path / "x")],
-        ["daemon", "--repos", repo],
-        ["daemon", "--repos-only"],
-        ["daemon", "--manifest", str(tmp_path / "m.jsonc")],
         ["list", "--store", str(tmp_path / "x")],
+        ["daemon"],  # retired subcommand: the daemon is now the overseerd executable
+        ["daemon", "--repos", repo],
     )
-    for argv in removed:
+    for argv in rejected:
         with pytest.raises(SystemExit):
             supervisor.main(argv)
     # The old positional form is gone; --repo and --topic are required.
@@ -849,8 +851,10 @@ def test_cli_surface_has_no_config_knobs(tmp_path, monkeypatch):
             supervisor.main(argv)
 
 
-def test_daemon_takes_no_required_args(monkeypatch):
-    """`daemon` runs argless: no watch-set/store/stamp flags, defaults applied."""
+def test_run_daemon_uses_fleet_defaults(monkeypatch):
+    """`run_daemon()` (the overseerd entrypoint) starts the fleet daemon with the
+    fixed defaults: the module loop interval, no single-tick, no startup recovery
+    (surface-only — the daemon never auto-spawns/revives at startup)."""
     seen: dict[str, object] = {}
 
     class _RunOnlySup:
@@ -858,8 +862,23 @@ def test_daemon_takes_no_required_args(monkeypatch):
             seen["args"] = (interval, once, recover)
 
     monkeypatch.setattr(supervisor, "_build_supervisor", lambda: _RunOnlySup())
-    assert supervisor.main(["daemon"]) == 0
+    assert supervisor.run_daemon() == 0
     assert seen["args"] == (supervisor.LOOP_INTERVAL_SECONDS, False, False)
+
+
+def test_overseerd_executable_is_the_daemon_entrypoint():
+    """The dedicated `overseerd` executable sits beside supervisor.py, is
+    executable, carries the uv self-invoking shebang, and delegates to
+    `supervisor.run_daemon` — the daemon is a dedicated executable, NOT a
+    subcommand."""
+    overseerd = Path(supervisor.__file__).resolve().parent / "overseerd"
+    assert overseerd.is_file(), "overseerd must sit beside supervisor.py"
+    assert os.access(overseerd, os.X_OK), "overseerd must be executable (chmod +x)"
+    body = overseerd.read_text(encoding="utf-8")
+    assert body.startswith(
+        "#!/usr/bin/env -S uv run --script --no-project\n"
+    ), "overseerd must carry the uv self-invoking shebang on line 1"
+    assert "supervisor.run_daemon()" in body, "overseerd must delegate to run_daemon()"
 
 
 def test_wrapup_message_has_required_placeholders_filled():

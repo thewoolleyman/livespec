@@ -2,7 +2,7 @@
 name: overseer
 description: >-
   Keep multiple parallel livespec tracks moving via a TWO-PANE model: a
-  deterministic top-pane daemon (`supervisor.py`) that watches every tracked
+  deterministic top-pane daemon (`overseerd`) that watches every tracked
   tmux session's context %, injects a wrap-up at threshold, and atomically
   restarts a session once it certifies done — and this THIN bottom pane, the
   interactive Claude overseer, which starts the daemon, manages the
@@ -52,8 +52,9 @@ list, start the daemon, and relay what it surfaces.
 
 Two panes in the overseer's own tmux window:
 
-- **TOP pane = the daemon** (`supervisor.py`) — a stdlib Python process that
-  both *acts* and *renders the table*. No LLM, no tokens. Every ~10s it
+- **TOP pane = the daemon** (`overseerd`, which runs the `supervisor.py` daemon
+  logic) — a stdlib Python process that both *acts* and *renders the table*. No
+  LLM, no tokens. Every ~10s it
   discovers plans, joins the JSONL mapping, reads each tracked session's live
   pane + marker files, injects wrap-ups, restarts certified-done sessions, and
   reprints the live `Topic · Repo · tmux · Ctx% · Status` table (re-rendered
@@ -71,32 +72,28 @@ tmux signals and those markers. See `marker-protocol.md`.
 
 ## Starting the daemon (top pane)
 
-In the TOP pane, from the livespec core repo root, run the daemon with its
-stderr sent to a log the bottom pane can read. The daemon is a **self-invokable
-`uv` script** (its shebang runs it through `uv run --script --no-project`, so it
-executes directly — no `python3`, no project sync):
+In the TOP pane, from the livespec core repo root, start the daemon with its
+stderr sent to a log the bottom pane can read. The daemon is the dedicated
+**`overseerd` executable** — a self-invokable `uv` script (its shebang runs it
+through `uv run --script --no-project`, so it executes directly, no `python3`).
+Run it with **no arguments, no options, no subcommands** — the file *is* the
+daemon:
 
 ```bash
 mkdir -p tmp/overseer
-.claude/skills/overseer/supervisor.py daemon 2> tmp/overseer/daemon.log
+.claude/skills/overseer/overseerd 2> tmp/overseer/daemon.log
 ```
 
 - The daemon's **stdout is the live table** (it clears the screen each tick).
 - Its **stderr carries `overseer:` logs and `overseer[SURFACE]:` alerts** — the
   channel this bottom pane reads to relay blocked/danger tracks.
 
-The daemon takes **no required arguments** — `daemon` alone watches the whole
-fleet with the fixed store paths. Its only flags are optional loop knobs:
-
-| Flag | Effect |
-|---|---|
-| `--interval <seconds>` | Loop cadence (default 10). |
-| `--once` | Run a single tick and exit (live-exercise / testing). |
-| `--recover` | At startup, recreate any mapped session that is not currently live (reboot / crash recovery — see below). |
-
-There are **no watch-set / store / stamp knobs** on the CLI (they were removed
-2026-07-13). The watch-set is the whole fleet, the store + injection-stamp paths
-are fixed — see "Fixed paths + fleet-only watch-set" below.
+`overseerd` takes **no arguments** — it watches the whole fleet with the fixed
+store/stamp paths and the default loop interval, and does not auto-recover dead
+sessions at startup (surface-only: it never auto-spawns; re-launching a
+mapped-but-dead session is a deliberate `start` — below). Path discovery is
+self-contained, so it works from any cwd (the manifest is resolved relative to
+the module file, not the working directory).
 
 **The watch-set + the list.** The daemon watches every fleet-manifest repo
 (fleet members + adopters) that has a local checkout with a `plan/` dir — read
@@ -110,20 +107,28 @@ will see: `unassigned`, `idle`, `working`, `settling`, `warned`, `danger`,
 
 ---
 
-## The command vocabulary (bottom pane → CLI subcommands)
+## The command vocabulary (bottom pane → track-management CLI)
 
 **You (the `/overseer` skill) are the sole operator surface.** The maintainer
 drives you in natural language ("start the ledger-status track", "unassign the
 overseer plan", "show me the table"); you translate that into one-shot
-`supervisor.py` subcommands. The repo + topic are **first-class arguments** of
-every track command: when the maintainer's request omits one, **prompt for it**
-(one clickable question, recommend-first) rather than guessing — then pass both
-as `--repo` / `--topic` keyword flags. There is no manual `python3 …` path; run
-the self-invokable script directly.
+track-management commands. Those are the `supervisor.py` **module** (a plain
+module, not the daemon — the daemon is the `overseerd` executable), invoked via
+the repo toolchain:
 
-- **`list`** — `.claude/skills/overseer/supervisor.py list` — print the current
-  discovery ⋈ mapping table **once, read-only** (no injection, no restart). A
-  snapshot without waiting for a daemon tick.
+```bash
+uv run --no-project python .claude/skills/overseer/supervisor.py <cmd> [args]
+```
+
+The repo + topic are **first-class arguments** of every track command: when the
+maintainer's request omits one, **prompt for it** (one clickable question,
+recommend-first) rather than guessing — then pass both as `--repo` / `--topic`
+keyword flags. (`<cmd>` is one of `list` / `add` / `remove` / `unassign` /
+`start`; there is no `daemon` subcommand — starting the daemon is `overseerd`.)
+
+- **`list`** — `… supervisor.py list` — print the current discovery ⋈ mapping
+  table **once, read-only** (no injection, no restart). A snapshot without
+  waiting for a daemon tick.
 - **`add --repo <repo> --topic <topic>`** — map a discovered plan to a watched
   session. The repo-qualified tmux id `<repo-slug>--<topic>` is derived
   automatically; the handoff and resume line default to the plan's `handoff.md`.
@@ -202,13 +207,16 @@ filesystem (topic↔tmux mapping, custom resume line, threshold override). The
 track list itself is re-**discovered** from each repo's `plan/` dir every tick,
 so it is never stale.
 
-- **After a reboot or crash**, start the daemon with `--recover`: it reads the
-  mapping and, for each row whose `<repo-slug>--<topic>` session is gone,
-  recreates the tmux session, relaunches `claude -n <topic>` in the repo, and
-  pastes the resume line. Recovery is startup-only — a session the maintainer
-  deliberately killed is not revived every tick.
-- The mapping survives the overseer process; a fresh overseer re-attaches to the
-  same tracks with no hand-re-registration.
+- **After a reboot or crash**, restart `overseerd` and re-`start` the tracks you
+  want live. `overseerd` is **surface-only — it does NOT auto-recover** dead
+  sessions at startup (the old `--recover` option is gone with the no-options
+  daemon); it never spawns a session on its own. For each mapped plan whose
+  `<repo-slug>--<topic>` session is gone, relaunch it with a deliberate
+  `start --repo <repo> --topic <topic>` (which recreates the tmux session,
+  relaunches `claude -n <topic>`, and pastes the resume line).
+- The mapping survives the overseer process; a fresh `overseerd` re-attaches its
+  table to the same tracks with no hand-re-registration, and `start` re-launches
+  any whose session is gone.
 
 ---
 

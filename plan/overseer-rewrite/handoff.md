@@ -27,12 +27,19 @@ surface was stripped to the intended shape WITHOUT regressing any correctness fi
 
 1. **`/overseer` skill is the sole operator surface** — no manual `python3 …`
    path.
-2. **Daemon is a self-invokable `uv` script** — shebang
-   `#!/usr/bin/env -S uv run --script --no-project` + `chmod +x` (mode
-   `100644 → 100755`), launched directly (`.claude/skills/overseer/supervisor.py
-   daemon`). Stdlib-only is now load-bearing (a third-party import would break the
-   `--no-project` launch). Verified end-to-end: run as an executable, the script's
-   own dir lands on `sys.path[0]`, so `import registry`/`signals`/`tmuxio` resolve.
+2. **Daemon is a DEDICATED self-invokable executable `overseerd`** (maintainer
+   correction 2026-07-13 — a dedicated daemon executable must NOT carry a
+   positional `daemon` subcommand; the file IS the daemon). `overseerd` (shebang
+   `#!/usr/bin/env -S uv run --script --no-project` + `chmod +x`) sits beside
+   `supervisor.py`, takes NO args/options/subcommands, and calls
+   `supervisor.run_daemon()`. `supervisor.py` reverts to a **plain module** (no
+   shebang, not executable) holding the logic + `run_daemon()` + the track CLI
+   (`list`/`add`/`remove`/`unassign`/`start`, no `daemon` subcommand); the skill
+   invokes it as `uv run --no-project python …/supervisor.py <cmd>`. `overseerd`
+   pins its own dir onto `sys.path` so `import supervisor`/siblings resolve from
+   any cwd, and the manifest is resolved relative to the module file — path
+   discovery "just works" from any cwd. Stdlib-only stays load-bearing (a
+   third-party import would break the `--no-project` launch).
 3. **Hard-coded store + stamp paths** (`~/.livespec-overseer.jsonl`,
    `~/.livespec-overseer-stamps.json`). Removed `--store`/`--stamp`.
 4. **Removed `--repos`/`--repos-only`/`--manifest`** — the watch-set is the whole

@@ -1,4 +1,3 @@
-#!/usr/bin/env -S uv run --script --no-project
 """supervisor.py — the overseer daemon: poll loop, state machine, table, CLI.
 
 Stdlib-only, host-only (see ``registry.py`` header — the whole skill folder is
@@ -829,9 +828,19 @@ def _upsert(track: registry.Track) -> None:
     registry.append_mapping(track, None, added_at=_iso_now())
 
 
-def _cmd_daemon(args: argparse.Namespace) -> int:
-    sup = _build_supervisor()
-    sup.run(interval=args.interval, once=args.once, recover=args.recover)
+def run_daemon() -> int:
+    """Start the fleet daemon with fixed defaults — the ``overseerd`` entrypoint.
+
+    Called by the dedicated ``overseerd`` executable, which takes NO arguments:
+    watch every fleet member (discovered from the manifest, resolved relative to
+    THIS file so it works from any cwd), with the hard-coded store + stamp paths
+    and the default loop interval. ``recover=False`` keeps the daemon a pure
+    surface-only watcher — it never auto-spawns/revives a session at startup;
+    (re)launching a mapped-but-dead session is a deliberate ``start`` via the
+    skill. This function does not return (the loop runs until the process is
+    killed); the ``int`` is a formality so ``overseerd`` can ``raise SystemExit``.
+    """
+    _build_supervisor().run(interval=LOOP_INTERVAL_SECONDS, once=False, recover=False)
     return 0
 
 
@@ -929,21 +938,19 @@ def _add_track_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """The track-management CLI (`list` / `add` / `remove` / `unassign` / `start`).
+
+    This is the MODULE's one-shot surface, invoked from the `/overseer` skill's
+    bottom pane. It deliberately carries NO `daemon` subcommand: the daemon is the
+    dedicated `overseerd` executable (which calls `run_daemon`), not a subcommand
+    here — a daemon that IS the executable has no business being a subcommand of a
+    track-management CLI. No watch-set / store / stamp knobs either; those are
+    fixed (see `_build_supervisor`).
+    """
     parser = argparse.ArgumentParser(
-        prog="overseer", description="livespec overseer supervisor daemon"
+        prog="overseer", description="livespec overseer track-management CLI"
     )
     sub = parser.add_subparsers(dest="command", required=True)
-
-    # daemon / list carry NO watch-set / store / stamp knobs: the watch-set is the
-    # whole fleet (the core repo's manifest) and the store + stamp are hard-coded
-    # (see `_build_supervisor`). `daemon` needs no required args.
-    p_daemon = sub.add_parser("daemon", help="run the poll loop + live table (whole fleet)")
-    p_daemon.add_argument("--interval", type=float, default=LOOP_INTERVAL_SECONDS)
-    p_daemon.add_argument("--once", action="store_true", help="run a single tick and exit")
-    p_daemon.add_argument(
-        "--recover", action="store_true", help="recreate missing sessions at startup"
-    )
-    p_daemon.set_defaults(func=_cmd_daemon)
 
     p_list = sub.add_parser("list", help="print the current joined table once (read-only)")
     p_list.set_defaults(func=_cmd_list)

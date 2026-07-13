@@ -1,0 +1,32 @@
+#!/usr/bin/env -S uv run --script --no-project
+"""overseerd — the dedicated overseer daemon executable.
+
+Run it with NO arguments, options, or subcommands: it starts the deterministic
+supervisor daemon watching every livespec fleet member. The file IS the daemon —
+there is nothing else to type. (Track management — list / add / remove / unassign
+/ start — is the supervisor MODULE, invoked one-shot from the ``/overseer`` skill,
+NOT this executable.)
+
+Path discovery is self-contained so it "just works" from any working directory:
+  * this script's own directory is pinned onto ``sys.path`` below, so
+    ``import supervisor`` (and supervisor's sibling ``registry`` / ``signals`` /
+    ``tmuxio``) resolve regardless of cwd or how uv launches the script;
+  * the fleet manifest is resolved RELATIVE TO the supervisor module file
+    (``_default_manifest``), not the cwd, so the watch-set is the real fleet no
+    matter where you launch from;
+  * the mapping store + injection-stamp paths are the hard-coded ``$HOME``
+    defaults.
+"""
+
+import sys
+from pathlib import Path
+
+# Pin this executable's own directory onto sys.path so the sibling modules import
+# no matter how/where it is launched. uv already puts the script dir on sys.path
+# when running a script, but pinning it makes the "just works from any cwd"
+# guarantee explicit rather than dependent on uv's launch behavior.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import supervisor  # noqa: E402  (intentional: after the sys.path pin above)
+
+raise SystemExit(supervisor.run_daemon())

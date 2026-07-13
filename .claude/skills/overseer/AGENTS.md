@@ -152,26 +152,34 @@ conformance checks, or any other repo.
   (`registry.py`, `signals.py`, `tmuxio.py`, `supervisor.py`) plus beside-tests.
   Precedent for host-only Python under `.claude/`:
   `.claude/hooks/livespec_footgun_guard.py`. Stdlib-only is now **load-bearing
-  for the invocation surface too**: `supervisor.py` carries a
+  for the invocation surface too**: the `overseerd` executable carries a
   `#!/usr/bin/env -S uv run --script --no-project` shebang, so it runs with an
   isolated interpreter and **no dependencies** — a third-party import would break
   the shebang launch (there is no project sync to satisfy it).
-- **Invocation surface (2026-07-13 de-gold-plating).** The `/overseer` skill is
-  the SOLE operator surface; there is no supported `python3 …/supervisor.py`
-  path. `supervisor.py` is a self-invokable `uv` script — the shebang above,
-  `chmod +x`, launched directly (`.claude/skills/overseer/supervisor.py daemon`).
-  When run as an executable, Python puts the script's own dir on `sys.path[0]`,
-  so `import registry` / `signals` / `tmuxio` resolve (verified). The CLI carries
-  **no config knobs**: store (`~/.livespec-overseer.jsonl`) and injection-stamp
-  (`~/.livespec-overseer-stamps.json`) paths are hard-coded via the `registry`
-  defaults, and the watch-set is the whole fleet read from
-  `.livespec-fleet-manifest.jsonc` — no `--store` / `--stamp` / `--repos` /
-  `--repos-only` / `--manifest`. The `Supervisor` dataclass keeps `store_path` /
-  `stamp_path` / `watch_repos` / `manifest_path` injectable, but **only the
-  beside-tests inject them** (they redirect `registry.DEFAULT_STORE_PATH` for CLI
-  isolation) — the CLI never exposes them. Track subcommands take `--repo` /
-  `--topic` KEYWORD flags (the skill prompts for whichever the maintainer omits);
-  `daemon` needs no args.
+- **Invocation surface (daemon vs module split; 2026-07-13).** Two homes:
+  - **`overseerd`** — the dedicated daemon **executable** (uv shebang above +
+    `chmod +x`). Run it with NO args/options/subcommands (`overseerd`): it calls
+    `supervisor.run_daemon()`, which watches the whole fleet. It pins its own dir
+    onto `sys.path` so `import supervisor` (and supervisor's siblings) resolve
+    from any cwd. This is the ONLY thing the `/overseer` skill launches in the top
+    pane.
+  - **`supervisor.py`** — a **plain module** (NO shebang, NOT executable). It
+    holds the `Supervisor` logic + `run_daemon()` + the one-shot track-management
+    CLI (`list` / `add` / `remove` / `unassign` / `start`, `--repo` / `--topic`
+    keyword flags). It carries NO `daemon` subcommand (a dedicated executable has
+    no business being a subcommand of a track CLI). The skill invokes it as
+    `uv run --no-project python .claude/skills/overseer/supervisor.py <cmd>` — a
+    module invoked from the skill, never a supported bare `python3` path.
+  There are **no config knobs** anywhere: store (`~/.livespec-overseer.jsonl`) and
+  injection-stamp (`~/.livespec-overseer-stamps.json`) paths are hard-coded via
+  the `registry` defaults, and the watch-set is the whole fleet read from
+  `.livespec-fleet-manifest.jsonc` (resolved relative to the module file, so it
+  works from any cwd) — no `--store` / `--stamp` / `--repos` / `--repos-only` /
+  `--manifest`, and `overseerd` takes no `--interval` / `--once` / `--recover`
+  (surface-only: no startup auto-recovery). The `Supervisor` dataclass keeps
+  `store_path` / `stamp_path` / `watch_repos` / `manifest_path` injectable, but
+  **only the beside-tests inject them** (they redirect `registry.DEFAULT_STORE_PATH`
+  for CLI isolation) — neither `overseerd` nor the module CLI exposes them.
 - **Deliberately OUTSIDE the product gates.** The folder is excluded from every
   product Python gate, by four concrete config facts (the design's "PR #1109 /
   dev-tooling `.claude/` universe exemption" labels are paraphrase for these):
@@ -234,16 +242,36 @@ For a change to the invocation / config surface (this file's usual subject), the
 end-to-end check is the discovery + render path, exercised safely read-only:
 
 1. Run a **read-only render** against the real fleet:
-   `.claude/skills/overseer/supervisor.py list` — it calls `tick(act=False)`, so
-   it discovers every fleet-manifest repo's `plan/*/`, joins the mapping, and
-   prints the `Topic · Repo · tmux · Ctx% · Status` table **without injecting or
-   restarting anything**. This exercises the whole reshaped CLI (no-flags launch,
-   fixed store path, fleet-only watch-set) with zero mutation risk.
-2. Optionally observe a **brief live daemon**
-   (`.claude/skills/overseer/supervisor.py daemon 2> tmp/overseer/daemon.log`,
-   stopped after a render or two) to confirm the loop renders and refreshes.
-   Surface-only means it will not act on any real session unless that session is
-   genuinely at threshold + certified + idle.
+   `uv run --no-project python .claude/skills/overseer/supervisor.py list` — it
+   calls `tick(act=False)`, so it discovers every fleet-manifest repo's `plan/*/`,
+   joins the mapping, and prints the `Topic · Repo · tmux · Ctx% · Status` table
+   **without injecting or restarting anything**. This exercises the whole reshaped
+   surface (module invocation, fixed store path, fleet-only watch-set) with zero
+   mutation risk.
+2. Optionally observe a **brief live daemon** (`.claude/skills/overseer/overseerd
+   2> tmp/overseer/daemon.log`, stopped after a render or two) to confirm the loop
+   renders and refreshes. Surface-only means it will not act on any real session
+   unless that session is genuinely at threshold + certified + idle.
+
+   **Isolation tip for exercising `overseerd` safely off the real fleet:** because
+   `overseerd` has no `--repos`/`--manifest` knob and resolves the manifest
+   relative to the module file, run a COPY of this folder inside a scratch repo
+   tree (`<scratch>/<repo>/.claude/skills/overseer/`) with a scratch
+   `.livespec-fleet-manifest.jsonc` beside it and a scratch `plan/<topic>/`. The
+   copied `overseerd` then discovers ONLY the scratch fleet — real sessions
+   untouched (verified: `overseerd` via its uv shebang renders the scratch fleet
+   identically from cwd `/tmp`, `/`, and `~`). Two gotchas learned the hard way:
+   - **Do NOT point `HOME` at a fresh empty dir to isolate the store.** `uv run`
+     keys its cache off `$HOME/.cache/uv`; an empty HOME forces uv to cold-rebuild
+     its whole environment and **hangs** (looks exactly like a daemon bug — it is
+     not). If you must isolate the store off `~`, symlink the warm cache in first
+     (`ln -s ~/.cache "$SCRATCH_HOME/.cache"`), or just run with the real `$HOME`:
+     an `act=True` scratch daemon with no live scratch sessions never writes to
+     the real store (it only auto-links sessions that actually exist).
+   - The render flushes each tick but `uv run` may swallow piped stdout when the
+     process is `timeout`-SIGTERM-killed; capture with a decent timeout and read
+     the streamed lines, or observe the pane directly. (Direct `python`/venv-python
+     runs the same body identically; the beside-tests remain the primary gate.)
 
 The daemon's diagnostics + `overseer[SURFACE]:` alerts go to stderr; redirect
 them to a log under `tmp/overseer/` (maintainer-owned scratch root — use a

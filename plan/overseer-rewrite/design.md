@@ -498,15 +498,25 @@ regressing any correctness fix (B1–B8, RB1–4, Codex #1/#3; Codex #2 kept):
    livespec repo. There is **no supported manual `python3 …/supervisor.py` usage
    path**. The skill is THE operator surface.
 
-2. **The daemon is a self-invokable script run via `uv`, NOT `python3`.** Give the
-   entrypoint a proper shebang that runs it through `uv` (repo standard —
-   `uv run`), make it executable (`chmod +x`), and have the skill launch it
-   directly (e.g. `.claude/skills/overseer/supervisor.py daemon`), never
-   `python3 …`. NOTE the CLAUDE.md plugin rule (`python3 "${CLAUDE_PLUGIN_ROOT}/…"`)
-   does NOT apply here — this is a LOCAL host-only skill, not a distributed plugin
-   script, so uv + shebang is correct. Confirm the shebang resolves the
-   stdlib-only sibling imports (`import registry` / `signals` / `tmuxio`) when run
-   as an executable script.
+2. **The daemon is a DEDICATED self-invokable executable run via `uv`, NOT
+   `python3`, and NOT a subcommand.** The daemon lives in its own executable file
+   **`overseerd`** beside `supervisor.py` (maintainer correction 2026-07-13: a
+   dedicated executable must not carry a positional `daemon` subcommand — the file
+   IS the daemon). `overseerd` has a proper shebang that runs it through `uv`
+   (repo standard — `uv run --script --no-project`), is `chmod +x`, and the skill
+   launches it directly (`.claude/skills/overseer/overseerd`) with **no arguments,
+   options, or subcommands**: it watches the whole fleet with the fixed paths.
+   `supervisor.py` reverts to a **plain module** (no shebang, not executable) that
+   `overseerd` imports (calling `supervisor.run_daemon()`) and that also carries
+   the one-shot track-management CLI (`list`/`add`/`remove`/`unassign`/`start`),
+   which the skill invokes as `uv run --no-project python …/supervisor.py <cmd>`.
+   NOTE the CLAUDE.md plugin rule (`python3 "${CLAUDE_PLUGIN_ROOT}/…"`) does NOT
+   apply here — this is a LOCAL host-only skill, not a distributed plugin script,
+   so uv + shebang is correct. `overseerd` pins its own directory onto `sys.path`
+   so the stdlib-only sibling imports (`import supervisor` → `registry` /
+   `signals` / `tmuxio`) resolve from any cwd, and the fleet manifest is resolved
+   relative to the module file (not the cwd) — so path discovery "just works"
+   regardless of where it is launched.
 
 3. **Hard-code the store + stamp paths.** `~/.livespec-overseer.jsonl` and
    `~/.livespec-overseer-stamps.json` are FIXED. Remove the `--store` and
