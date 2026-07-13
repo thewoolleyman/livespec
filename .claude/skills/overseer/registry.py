@@ -86,8 +86,10 @@ def _file_lock(target: str | os.PathLike[str]) -> Iterator[None]:
             handle.close()
 
 
-# The default remaining-context threshold at which the wrap-up is injected.
-DEFAULT_CTX_THRESHOLD = 50
+# The default remaining-context threshold (percent LEFT) at which the first
+# wrap-up is injected. Overridable per-daemon via `overseerd --warn-percent` and
+# per-track via a mapping-store override.
+DEFAULT_CTX_THRESHOLD = 45
 
 # The durable mapping store and the injection-stamp sidecar both live beside
 # the maintainer's home dir (NOT inside any governed repo — the marker files
@@ -384,11 +386,16 @@ def remove_mapping(
 def discover_plans(
     watch_repos: Iterable[str | os.PathLike[str]],
 ) -> list[tuple[str, str, str]]:
-    """Scan each watched repo's ``plan/*/`` for a ``handoff.md``.
+    """Enumerate each watched repo's ``plan/*/`` DIRECTORIES (a track per dir).
 
     Returns ``(repo, topic, abs-handoff-path)`` triples, sorted for
-    determinism. Excludes ``plan/archive/**`` (only direct children of
-    ``plan/`` are considered, and the literal ``archive`` dir is skipped).
+    determinism. Discovery keys on the ``plan/<topic>/`` DIRECTORY existing — it
+    does NOT read or stat any FILE inside it, because the overseer never touches
+    a session's ``plan/`` files (the handoff and its contents are the session's
+    own workflow). The returned handoff path (``plan/<topic>/handoff.md``) is a
+    CONVENTIONAL pointer the resume line hands to the session; the overseer never
+    opens it. Excludes ``plan/archive/**`` (only direct children of ``plan/`` are
+    considered, and the literal ``archive`` dir is skipped).
     Fail-soft: a repo with no ``plan/`` dir contributes nothing, and an OSError
     on ONE repo (a ``plan/`` that becomes unreadable between the ``is_dir`` check
     and ``iterdir`` — chmod, NFS hiccup, mid-clone) is warned and skipped rather
@@ -410,9 +417,10 @@ def discover_plans(
             try:
                 if not child.is_dir() or child.name == "archive":
                     continue
+                # Directory existence IS the track; the handoff path is only a
+                # conventional pointer for the resume line (never opened here).
                 handoff = child / "handoff.md"
-                if handoff.is_file():
-                    triples.append((repo_norm, child.name, str(handoff)))
+                triples.append((repo_norm, child.name, str(handoff)))
             except OSError as exc:
                 _warn(f"unreadable plan child {child}: {exc}")
                 continue
