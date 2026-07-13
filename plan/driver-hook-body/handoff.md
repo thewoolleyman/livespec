@@ -8,7 +8,7 @@ both Drivers. Spans 4 repos: `livespec-driver-claude`, `livespec-driver-codex`,
 `livespec-dev-tooling`, `livespec` (core). A fresh session executes the next action from
 this file alone via the read-first chain below — no chat history required.
 
-## State — GROOMED (2026-07-13). Now DRIVING.
+## State — S1 ✅ + S2 ✅ DONE (2026-07-13). Next: S3 + S4 (both READY).
 
 Epic `livespec-9z8h` was groomed into **6 dependency-layered slices**, filed in the
 **core tenant** (the epic stays OPEN as the narrative umbrella; `livespec-uvgi` and
@@ -26,23 +26,42 @@ truth. Re-derive with `bd -C /data/projects/livespec ready` (via the credential 
 | S5 Claude Driver aggregate reorder + CI wiring | `livespec-2ua9` | `livespec-driver-claude` | host-side (workflows) | S3 |
 | S6 Codex Driver aggregate reorder + CI wiring | `livespec-vuy3` | `livespec-driver-codex` | host-side (workflows) | S4 |
 
-Layering: **S1 → (S2, S3); S2 → (S3, S4); S3 → S5; S4 → S6.** Only **S1** is ready to start.
+Layering: **S1 → (S2, S3); S2 → (S3, S4); S3 → S5; S4 → S6.** **S1 + S2 are CLOSED** (merged + released — see "Done so far"); **S3 (`livespec-nj7d`) and S4 (`livespec-8wea`) are now READY** and run in parallel (independent repos, no shared files). S5/S6 unblock after S3/S4.
+
+## Done so far (S1 + S2)
+
+- **S1 (`livespec-pxj9`, CLOSED)** — core `SPECIFICATION/contracts.md` §"Driver-shipped hooks" amended via revise **v164** (PR `thewoolleyman/livespec#1181`): `.py` hooks permitted, importable-`main()` discipline (SHOULD), byte-identity narrowed to the neutral `no_shadow_ledger.py`, no-drift pointed at a consumer-side dev-tooling Verifier. Independent Fable review + maintainer approval.
+- **S2 (`livespec-8zxu`, CLOSED)** — `livespec-dev-tooling` byte-identity machinery, **released v0.44.0**:
+  - Code (PR `livespec-dev-tooling#367`): `CANONICAL_NO_SHADOW_LEDGER_BODY` (the `main()`-refactored neutral body) + `install_no_shadow_ledger` (`just install-no-shadow-ledger`) + `checks/no_shadow_ledger_body_identical` Verifier (imports the constant, byte-compares the consumer's configured `neutral_hook_body_path`, no-ops when absent) + the `neutral_hook_body_path` role key + justfile aggregate + CI-matrix wiring. Single-commit Red-Green-Replay, `just check` green.
+  - Spec (PR `livespec-dev-tooling#369`, revise **v024**): documents the Verifier's five slots + role key in dev-tooling `contracts.md`. Independent Fable NO-BLOCKERS review (2 blocker-fix rounds — the drift-sweep also surfaced + named the previously-undocumented `install_worktree_pack`).
+  - **Follow-ups filed in the `livespec-dev-tooling` tenant** (not blocking): `livespec-dev-tooling-okz` (Verifier compares decoded text, not bytes — switch to `read_bytes`), `-ckb` (commit-refuse-check H3 doesn't document its worktree-pack + vendored-copies arms), `-zbo` (justfile `install-worktree-pack` comment says "tracked" but the pack is gitignored).
 
 ## The next action
 
-**Drive S1 (`livespec-pxj9`) — the core-spec amendment** — then unblock the rest in
-dependency order. S1 amends `SPECIFICATION/contracts.md` §"Driver-shipped hooks" (H3) to:
-(a) permit the Claude auto-memory + plan-persistence hooks to ship as Python files invoked
-`python3 "${CLAUDE_PLUGIN_ROOT}/hooks/<name>.py"` (the section currently mandates `.sh` at
-the paragraphs naming `block-auto-memory.sh` / `warn-plan-persistence.sh`); (b) state the
-importable-`main()` entry discipline as the required in-process-testable form; (c) narrow
-the byte-identity mandate to the declared neutral shared body (`no_shadow_ledger.py`) and
-clarify runtime-specific hooks share behavior, not bytes; (d) point the mechanical no-drift
-guarantee at S2's dev-tooling Verifier.
+**Drive S3 (`livespec-nj7d`, `livespec-driver-claude`) and S4 (`livespec-8wea`,
+`livespec-driver-codex`) — the two Driver hook refactors — in parallel** (independent repos,
+no shared files). Read each slice's full scope from `bd show <id>` first. Each Driver:
 
-Drive it as a core spec-lifecycle op: `/livespec:propose-change` against core → **independent
-Fable NO-BLOCKERS review** → `/livespec:revise` → PR → merge. Host-side (core primary
-checkout, dogfooded). Read each slice's full scope from `bd show <id>`.
+1. **Bump its `livespec-dev-tooling` pin to v0.44.0** (carries the Verifier + constant + installer + role key).
+2. **Make its `no_shadow_ledger.py` byte-identical to `CANONICAL_NO_SHADOW_LEDGER_BODY`.** Declare the
+   `neutral_hook_body_path` role key in the Driver's `pyproject.toml [tool.livespec_dev_tooling]`
+   (Claude: `.claude-plugin/hooks/no_shadow_ledger.py`; Codex: `livespec/hooks/no_shadow_ledger.py`),
+   then either run `just install-no-shadow-ledger` to write the canonical body OR hand-apply the
+   `main()`-refactor and let the check confirm identity. Wire `check-no-shadow-ledger-body-identical`
+   into the Driver's `just check` aggregate (and CI matrix — HOST-SIDE, see S5/S6).
+3. **Convert the Driver's other run-on-import hooks to importable `main()`** for real per-file coverage.
+   Claude: the two `.sh` hooks (`block-auto-memory.sh` / `warn-plan-persistence.sh`) → `.py` invoked
+   `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/<name>.py"` — this needs the **Claude Driver's OWN-spec
+   propose-change** (its `spec.md` §Purpose + `contracts.md` §"Hook bundle" still say "POSIX shell
+   scripts"; independent Fable NO-BLOCKERS review before ratifying). Codex: normalize the existing
+   `main()` entries, remove internal `sys.exit()` calls, keep footgun/apply_patch coverage.
+4. **Test split**: in-process `main()` tests (monkeypatched stdin/stdout/cwd/env) + one subprocess
+   smoke per hook (declared in `subprocess_spawn_allowlist`); add coverage config; keep fail-open posture.
+
+S4 also fixes the stale `livespec-driver-codex` justfile comment (§"Resolved design-checks"). Then
+**S5 (`livespec-2ua9`) unblocks after S3, S6 (`livespec-vuy3`) after S4** — the `just check` aggregate
+reorder + full CI wiring (HOST-SIDE: `.github/workflows/`, maintainer creds; Driver PRs auto-merge on
+green CI → review-the-merged-commit + fix-forward).
 
 ### Driving disciplines (all slices)
 
@@ -61,7 +80,7 @@ checkout, dogfooded). Read each slice's full scope from `bd show <id>`.
 
 ## Resolved design-checks (grooming inputs — no longer open)
 
-- **Pins**: both Drivers are on `livespec-dev-tooling` **v0.43.2** on origin/master. No pin-bump gate.
+- **Pins**: S2 released **`livespec-dev-tooling` v0.44.0** (the Verifier + `CANONICAL_NO_SHADOW_LEDGER_BODY` + `install_no_shadow_ledger` + `neutral_hook_body_path` role key). Both Drivers were on v0.43.2 pre-S2; **S3/S4 MUST bump each Driver's pin to v0.44.0** to consume the Verifier.
 - **`.sh`→`.py` is a spec change** against BOTH livespec core (`contracts.md` §"Driver-shipped
   hooks") AND the Claude Driver's own spec (`spec.md` §Purpose + `contracts.md` §"Hook bundle"
   say "POSIX shell scripts"). → S1 (core) + the own-spec propose-change inside S3.
