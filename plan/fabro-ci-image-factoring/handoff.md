@@ -88,6 +88,40 @@ Phase 5, the closing efficiency report). The images half is essentially done; th
 CI-onto-local-runner half and the codex-acp live accept both funnel through **one
 banked decision: Phase 0 (stand up the self-hosted runner — host mutation).**
 
+**SESSION 2026-07-14 LANDED — read first:**
+- **codex-acp LOCAL partial accept (Option 2) — DONE + GREEN + journaled on `.4`.**
+  Ran `just acceptance-live-golden-master -- --run --build-image --codex-acp-version
+  0.16.0` (orchestrator, under the 1Password wrapper): `=== live golden-master PROOF
+  COMPLETE ===`. Fabro run `01KXEX4S6QP4PGV845A4TDZA9V`, item `e2egreet-nmr`, throwaway
+  repo `livespec-e2e/livespec-e2e-lck60tcq` (created → Codex implemented → PR #1 merged →
+  `greet("Ada")=="Hello, Ada!"` asserted from merged master → deleted). Proven live: the
+  version-less `npx --no-install @zed-industries/codex-acp` adapter (PR-A #572) + the
+  `codex-acp@0.16.0` runtime overlay + host Codex `auth.json` credential projection
+  (`bd-ib-ss7rkr`). NOT proven (workflow-only, still Phase-0-gated): the cross-repo
+  `repository_dispatch → codex-acp-golden-master gate → status callback → bump-PR
+  auto-merge` automation.
+- **`.4` NOT closed — ledger-gated on the intentionally-open `.1` (P-host); do NOT
+  force.** `bd close livespec-3lev.4` refuses with "blocked by open issues
+  [livespec-3lev.1]". `.1` is deliberately OPEN (its own note: "P-host functionally MET…
+  gating role over Phases 0-1 DISCHARGED," but retained-open for the Phase-0-coupled
+  follow-ons — resource trigger, runner-liveness alert, cache prune — and the `.1→.4`
+  edge is explicitly retained). So Phase 1's FINAL closure is entangled with Phase 0
+  regardless (via the open `.1` gate AND the Phase-0-gated automation live-exercise). Left
+  `.4` OPEN — the earlier "journal, then close it" (NEXT ACTION #2) was written without the
+  ledger gate. Resolution options for the maintainer: leave `.4` open pending Phase 0
+  (default); OR split `.4` so the image/adapter part closes and only the
+  automation-live-exercise part stays open; OR drop the now-moot `.1→.4` edge (its cited
+  rationale — the `dispatcher.py` refactor `bd-ib-s7e` — has since closed).
+- **Two ride-along landings:** (a) livespec **#1207** (merged, release 0.11.0) —
+  `.ai/agent-disciplines.md` §"The Fabro factory is a shared concurrency surface — never
+  gate on other runs" (a shared factory's unrelated / idle / human-blocked runs never gate
+  your own dispatch/accept; a different axis from the anti-clobber rule, which protects
+  persistent shared STATE, not multiplexed compute); (b) orchestrator **#593** (merged) —
+  drained `fabro version | head -1` in `acceptance-live-golden-master.sh` through `$()` so
+  the Rust fabro binary can't SIGPIPE-panic (exit 101) the whole accept when the host fabro
+  server's version RPC is slow (it was blocking THIS accept deterministically under the
+  busy shared server).
+
 **THIS SESSION (2026-07-13) LANDED — read before picking up:**
 - **Phase 1 PR2/PR3 (consumer image switches) DONE + ACCEPTED LIVE (later 2026-07-13).**
   Prereq **`livespec-dev-tooling` #358** shipped the **prefix-preserving** fabro docker
@@ -159,16 +193,16 @@ banked decision: Phase 0 (stand up the self-hosted runner — host mutation).**
    move — Phase 2 → Phase 3 → Phase 5.** See the "Phase 0 design gate" section below
    for the deliverables + 11 isolation exit-tests. Everything image-side is already
    done; this is the next real go/no-go.
-2. **codex-acp auto-bump — live accept (blocked on Phase 0; last Phase 1 `.4` item).**
-   Code is released and in use — only the live-exercise accept remains. The full
-   automated accept needs the Phase 0 runner (throwaway bump PR →
-   `codex-acp-golden-master` dispatch → gate → status → auto-merge; ready resume
-   commands in the archived handoff). A **LOCAL partial accept** is available anytime
-   WITHOUT the runner: `cd /data/projects/livespec-orchestrator-beads-fabro &&
-   /usr/local/bin/with-livespec-env.sh -- just acceptance-live-golden-master -- --run
-   --build-image --codex-acp-version 0.16.0` — verifies the `npx --no-install` adapter
-   + version overlay + credential projection (`bd-ib-ss7rkr`), but NOT the cross-repo
-   plumbing (workflow-only). Journal on `livespec-3lev.4`, then close it. Detail:
+2. **codex-acp auto-bump — FULL automated accept (blocked on Phase 0; last Phase 1 `.4`
+   item).** The **LOCAL partial accept is now DONE + GREEN** (SESSION 2026-07-14 above) —
+   the `npx --no-install` adapter + `@0.16.0` overlay + credential projection are
+   live-proven and journaled on `.4`. What REMAINS for `.4` is (a) the cross-repo
+   automation's live-exercise, which needs the Phase 0 runner (throwaway bump PR →
+   `codex-acp-golden-master` dispatch → gate → status → auto-merge; ready resume commands
+   in the archived handoff), and (b) resolving the ledger gate — `.4` cannot `bd close`
+   while `.1` (P-host) is open, so on Phase 1 closure either close `.1`, split `.4`, or drop
+   the `.1→.4` edge. NOTE the earlier "journal, then close it" was written before the ledger
+   gate was known — the journal is done; the close is Phase-0-entangled. Detail:
    `plan/archive/codex-acp-auto-bump/handoff.md` §REMAINING.
 3. **Item 4a exporter** — surface the OUTWARD-FACING upstream Fabro exporter
    re-derivation (`bd-ib-i4r` + `bd-ib-98c.1`, re-derive `otel.rs` vs current Fabro
