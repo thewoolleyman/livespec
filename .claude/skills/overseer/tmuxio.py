@@ -113,13 +113,39 @@ class TmuxIO:
             return ""
         return completed.stdout
 
-    def _display(self, session: str, fmt: str) -> str | None:
-        """``tmux display-message -p -t <session> '<fmt>'`` → stripped value or None."""
-        completed = self._call(["display-message", "-p", "-t", session, fmt])
+    def _pane_field(self, target: str, fmt: str) -> str | None:
+        """One RELIABLE per-pane read via ``list-panes`` (not ``display-message``).
+
+        ``display-message -p -t <session>`` was observed returning EMPTY for some
+        detached sessions (prior-session live note 2026-07-13); ``list-panes -t
+        <target> -F`` reads the pane list directly and is reliable (re-verified
+        2026-07-13: 21/21 sessions, repeatedly). ``target`` may be a SESSION NAME
+        (→ the active pane's field) or an exact PANE ID like ``%5`` (→ that pane's
+        field, filtered by ``#{pane_id}`` so RB3 exactness holds and a dead pane
+        fails soft to None rather than a prefix sibling). None on any error or
+        empty value.
+        """
+        completed = self._call(
+            ["list-panes", "-t", target, "-F", "#{pane_id}\t#{pane_active}\t" + fmt]
+        )
         if not self._ok(completed):
             return None
-        value = (completed.stdout or "").strip()
-        return value or None
+        rows = [
+            parts
+            for line in (completed.stdout or "").splitlines()
+            if line.strip()
+            for parts in [line.split("\t", 2)]
+            if len(parts) == 3
+        ]
+        if not rows:
+            return None
+        if target.startswith("%"):
+            chosen = next((r for r in rows if r[0] == target), None)
+        else:
+            chosen = next((r for r in rows if r[1] == "1"), rows[0])
+        if chosen is None:
+            return None
+        return chosen[2].strip() or None
 
     def pane_id(self, session: str) -> str | None:
         """``#{pane_id}`` — the pane's globally-unique id (e.g. ``%5``), or None.
@@ -133,15 +159,15 @@ class TmuxIO:
         across ``respawn-pane`` (same pane, new process), so restart + resume keep
         targeting the right pane.
         """
-        return self._display(session, "#{pane_id}")
+        return self._pane_field(session, "#{pane_id}")
 
     def pane_current_command(self, session: str) -> str | None:
         """``#{pane_current_command}`` — the pane's foreground command (e.g. ``node``)."""
-        return self._display(session, "#{pane_current_command}")
+        return self._pane_field(session, "#{pane_current_command}")
 
     def pane_current_path(self, session: str) -> str | None:
         """``#{pane_current_path}`` — the pane's working directory."""
-        return self._display(session, "#{pane_current_path}")
+        return self._pane_field(session, "#{pane_current_path}")
 
     def session_exists(self, session: str) -> bool:
         """True iff a session named EXACTLY ``session`` is live.

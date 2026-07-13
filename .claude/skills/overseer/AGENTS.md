@@ -72,14 +72,23 @@ conformance checks, or any other repo.
    tmux window" and grabbed a separate session), (b) splits THAT window
    (`tmuxio.split_window_top` targeting `$TMUX_PANE`, idempotent via a pane titled
    `overseer-daemon`) to run `overseerd` in a TOP pane while focus stays on the
-   bottom pane, and (c) runs `Supervisor.adopt_sessions`. **`adopt` is the ONE
-   sanctioned bare-topic-name match** — it links an EXISTING worker session whose
-   NAME equals an active plan topic, but only under three guards that make it safe
-   (cwd inside a fleet repo via `path_in_repo`, a claude/codex worker via
-   `signals.pane_is_worker`, AND the name is an ACTIVE discovered topic in that
-   repo). It maps to the bare session name (`tmux == session`), never
-   double-adds, and is a deliberate one-shot opt-in — NOT the per-tick auto-link
-   of invariant 5, which stays repo-qualified. Keep that distinction.
+   bottom pane, and (c) runs `Supervisor.adopt_sessions`. **`adopt` matches the
+   `claude -n <topic>` input-box BORDER name** (`signals.parse_border_topic`
+   parses `─── <topic> ──` from the capture) — NOT the tmux session name (those
+   are generic: `livespec`, `livespec1`) and NOT the `#{pane_title}` terminal
+   title (Claude Code DRIFTS that to a generated task summary; matching it was the
+   original adopt bug). It links an EXISTING worker session whose border topic is
+   an active plan topic, under three guards (cwd inside a fleet repo via
+   `path_in_repo`, a claude/codex worker via `signals.pane_is_worker` — which now
+   also accepts `bun`, since codex runs through bun, AND the border topic is an
+   ACTIVE discovered topic in that repo). A session launched WITHOUT `-n` shows a
+   pure-rule border → skipped; a codex/bun session renders no `─── <topic> ──`
+   border → not adopted yet (a known gap needing a codex-specific topic signal).
+   It maps to the bare session name (`tmux == session`), never double-adds, and is
+   a deliberate one-shot opt-in — NOT the per-tick auto-link of invariant 5, which
+   stays repo-qualified. Keep that distinction. (Per-session pane reads —
+   `pane_id`/`pane_current_command`/`pane_current_path` — go through `list-panes`,
+   not the flaky-for-detached-sessions `display-message`.)
 
 ## Load-bearing mechanics + gotchas
 

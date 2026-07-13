@@ -296,9 +296,10 @@ def test_pane_is_claude_and_shell():
 
 
 def test_pane_is_worker_claude_or_codex():
-    # The adopt guard recognizes BOTH runtimes (claude + codex), plus the older
-    # `node` wrapper — but never a bare shell / empty / unrelated command.
-    for cmd in ("claude", "codex", "node", "Claude", "CODEX", "claude-wrapper", "my-codex"):
+    # The adopt guard recognizes BOTH runtimes: claude (+ the older `node`
+    # wrapper) and codex (which runs through `bun`) — but never a bare shell /
+    # empty / unrelated command.
+    for cmd in ("claude", "codex", "node", "bun", "Claude", "CODEX", "claude-wrapper", "my-codex"):
         assert signals.pane_is_worker(cmd) is True, cmd
     for cmd in (None, "", "   ", "zsh", "bash", "sudo", "vim"):
         assert signals.pane_is_worker(cmd) is False, cmd
@@ -329,3 +330,77 @@ def test_is_idle_input_rejects_prose_around_empty_prompt():
     # Guard: an empty `❯` between ordinary prose lines (no box borders) is NOT idle.
     prose = "● Read 1 file\n❯ \nSome narration line.\n"
     assert signals.is_idle_input(prose) is False
+
+
+# --------------------------------------------------------------------------- #
+# parse_border_topic — the `claude -n <topic>` input-box border as the adopt key.
+# --------------------------------------------------------------------------- #
+
+
+def _claude_capture(*, topic=None):
+    """A realistic idle capture; ``topic`` renders the `-n` TITLED top border."""
+    rule = "─" * 40
+    top = rule if topic is None else (("─" * 20) + f" {topic} ──")
+    return f"● prior response\n{top}\n❯ \n{rule}\n  Opus | /r | Ctx: 55% left\n  ? for shortcuts\n"
+
+
+def test_parse_border_topic_reads_the_n_title():
+    assert (
+        signals.parse_border_topic(_claude_capture(topic="driver-hook-body")) == "driver-hook-body"
+    )
+
+
+def test_parse_border_topic_none_for_pure_rule_border():
+    # A session started WITHOUT `-n` shows a pure-rule border → no topic.
+    assert signals.parse_border_topic(_claude_capture()) is None
+
+
+def test_parse_border_topic_none_for_codex_ui():
+    # Codex renders a pure `───` rule and a `› ` prompt (no titled border).
+    codex = (
+        "• Working (2m • esc to interrupt)\n"
+        + ("─" * 40)
+        + "\n› Find and fix a bug\n"
+        + "  gpt-5.5 high · /data/projects/livespec · Context 77% left · some-branch\n"
+    )
+    assert signals.parse_border_topic(codex) is None
+
+
+def test_parse_border_topic_ignores_border_not_above_prompt():
+    # A titled-border-looking line in scrolled page content — NOT the input box's
+    # top border immediately above the `❯` — must NOT be matched (the real box
+    # here has a pure-rule border, i.e. no `-n`).
+    filler = "\n".join(f"line {i}" for i in range(30))
+    capture = f"{('─' * 20)} decoy ──\n{filler}\n" + _claude_capture()
+    assert signals.parse_border_topic(capture) is None
+
+
+def test_parse_border_topic_returns_bottom_most_border():
+    top = ("─" * 20) + " upper ──"
+    capture = f"● x\n{top}\n" + _claude_capture(topic="lower")
+    assert signals.parse_border_topic(capture) == "lower"
+
+
+def test_parse_border_topic_multi_word_title():
+    assert signals.parse_border_topic(_claude_capture(topic="two words")) == "two words"
+
+
+def test_parse_border_topic_finds_box_after_long_output():
+    # Anchoring to the `❯` box (not a bounded tail scan) finds the topic even
+    # after a long streamed response above the input box.
+    filler = "\n".join(f"output line {i}" for i in range(40))
+    capture = filler + "\n" + _claude_capture(topic="deep-topic")
+    assert signals.parse_border_topic(capture) == "deep-topic"
+
+
+def test_parse_border_topic_no_false_match_from_titled_border_in_content():
+    # A `── active-topic ──` line sitting in transcript content (above the real,
+    # unnamed input box) must not leak a topic — the bottom-most `❯` box wins.
+    capture = (
+        "Model quotes another session's border:\n"
+        + ("─" * 12)
+        + " ledger-status-conformance ──\n"
+        + "…and continues talking about it.\n"
+        + _claude_capture()  # the REAL box: pure-rule border, no -n
+    )
+    assert signals.parse_border_topic(capture) is None

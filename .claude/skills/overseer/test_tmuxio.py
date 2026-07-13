@@ -48,35 +48,67 @@ def test_capture_pane_empty_on_error():
 
 
 def test_pane_current_command_strips_and_nones():
-    io, fake = _io(stdout="node\n")
+    # Reliable read via list-panes (not the flaky display-message); the row is
+    # `#{pane_id}\t#{pane_active}\t<field>`.
+    io, fake = _io(stdout="%1\t1\tnode\n")
     assert io.pane_current_command("s") == "node"
     assert fake.calls[0]["argv"] == [
         "tmux",
-        "display-message",
-        "-p",
+        "list-panes",
         "-t",
         "s",
-        "#{pane_current_command}",
+        "-F",
+        "#{pane_id}\t#{pane_active}\t#{pane_current_command}",
     ]
-    io2, _ = _io(stdout="   \n")  # whitespace-only → None
+    io2, _ = _io(stdout="%1\t1\t   \n")  # whitespace-only field → None
     assert io2.pane_current_command("s") is None
     io3, _ = _io(returncode=1)
     assert io3.pane_current_command("s") is None
 
 
 def test_pane_current_path_format():
-    io, fake = _io(stdout="/data/projects/livespec\n")
+    io, fake = _io(stdout="%1\t1\t/data/projects/livespec\n")
     assert io.pane_current_path("s") == "/data/projects/livespec"
-    assert fake.calls[0]["argv"][-1] == "#{pane_current_path}"
+    assert fake.calls[0]["argv"][-1] == "#{pane_id}\t#{pane_active}\t#{pane_current_path}"
 
 
 def test_pane_id_format():
     # RB3: resolve the exact pane id to target instead of the prefix-prone name.
-    io, fake = _io(stdout="%5\n")
+    io, fake = _io(stdout="%5\t1\t%5\n")
     assert io.pane_id("s") == "%5"
-    assert fake.calls[0]["argv"] == ["tmux", "display-message", "-p", "-t", "s", "#{pane_id}"]
+    assert fake.calls[0]["argv"] == [
+        "tmux",
+        "list-panes",
+        "-t",
+        "s",
+        "-F",
+        "#{pane_id}\t#{pane_active}\t#{pane_id}",
+    ]
     io2, _ = _io(returncode=1)  # session gone → None (fail-soft)
     assert io2.pane_id("s") is None
+
+
+def test_pane_field_pane_id_target_filters_exact_pane():
+    # A PANE-ID target selects THAT pane's field, not the active/first (RB3).
+    io, _ = _io(stdout="%1\t0\tzsh\n%5\t1\tnode\n")
+    assert io.pane_current_command("%5") == "node"
+    assert io.pane_current_command("%1") == "zsh"
+
+
+def test_pane_field_session_target_picks_active_pane():
+    # A SESSION-NAME target selects the active pane (pane_active == 1).
+    io, _ = _io(stdout="%1\t0\tzsh\n%5\t1\tnode\n")
+    assert io.pane_current_command("s") == "node"
+
+
+def test_pane_field_pane_id_not_present_is_none():
+    io, _ = _io(stdout="%1\t1\tnode\n")
+    assert io.pane_current_command("%9") is None
+
+
+def test_pane_field_empty_output_is_none():
+    io, _ = _io(stdout="")
+    assert io.pane_current_command("s") is None
 
 
 def test_session_exists_is_exact_membership_not_prefix():
