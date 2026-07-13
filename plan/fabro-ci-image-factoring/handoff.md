@@ -81,12 +81,51 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State (fresh-session entry point, 2026-07-13). CURRENT FOCUS: the
-Observability completion track (section below) — front-loaded, maintainer-directed,
-driven by this session, running parallel to the image work.** The plan is anchored by
-the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase children
-`.1`–`.8` (`.8` = Phase 5, the closing efficiency report, added 2026-07-12).
-Done so far:
+**State (fresh-session entry point, updated 2026-07-13 SESSION-END).** The plan is
+anchored by the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase
+children `.1`–`.8` (`.8` = Phase 5, the closing efficiency report).
+
+**THIS SESSION (2026-07-13) LANDED — read before picking up:**
+- **Item 3 (Observability track — in-sandbox prepare-step timing) DONE + ACCEPTED
+  LIVE.** `livespec-step-timer` wrapper (WI-A `livespec-dev-tooling-bot`,
+  `livespec-dev-tooling` #352, in image v0.42.0) + 8 `workflow.toml` shims (WI-B
+  `bd-ib-l7c`, orchestrator #554). A real golden-master dispatch emitted all 8
+  `prepare.*` spans to the `fabro-sandbox` dataset (empty before) with real
+  durations. WI-A, WI-B, and P-factory `livespec-3lev.2` are CLOSED. See the
+  Observability completion track section.
+- **Item 4a (Codex agent-activity telemetry) GROOMED + FILED; build GATED.**
+  Children `bd-ib-98c.1` (fabro ACP node/turn emitter — OUTWARD-FACING upstream
+  Fabro) + `bd-ib-98c.2` (receiver-side dataset/scrub — ours). Scoped against the
+  code: wire format = `http/json` (CONFIRMED by reading the stale `otel.rs`), so
+  the speculated receiver-protobuf step is DROPPED. Build is fully gated on the
+  outward-facing upstream Fabro exporter (`bd-ib-i4r`) + `fabro-token-refresh`
+  coordination — surface before opening any PR. Detail:
+  `livespec-orchestrator-beads-fabro` `plan/codex-factory-telemetry/handoff.md`.
+- **Phase 1 PR1 (baked layered images) DONE + MERGED.** `base → python →
+  python-rust` layer split + digest-pinned FROM-chain matrix build + layer-set-aware
+  pin-lockstep parser (`livespec-dev-tooling` #354, release 0.43.0). Chain verified
+  building locally + in CI. Full state + the PR2/PR3 coupling are in the Phase 1
+  section.
+
+**NEXT ACTIONS (ranked; pick one):**
+1. **Phase 1 PR2/PR3 (consumer switches) — RECOMMENDED next.** FIRST make
+   `livespec-dev-tooling`'s `.github/actions/bump-pin-rewrite/action.yml`
+   **prefix-preserving** for the fabro docker pin (it currently rewrites to the BARE
+   release `v<X.Y.Z>`, which drops the new `python-`/`python-rust-` layer prefix and
+   breaks the pin on the next release — resolves the autodiscovery-vs-manual-pin
+   open decision as keep-autodiscovery-make-it-prefix-aware; note the rewrite lives
+   in an `action.yml` heredoc with no unit-test harness). THEN switch
+   `livespec-orchestrator-beads-fabro` `workflow.toml` `docker=` → `…:python-v<X.Y.Z>`
+   and `livespec-console-beads-fabro` → `…:python-rust-v<X.Y.Z>` (+ DELETE the
+   console's per-run `rustup`). Accept each via a real dispatch. Detail: Phase 1 section.
+2. **Item 4a exporter** — surface the OUTWARD-FACING upstream Fabro exporter
+   re-derivation (`bd-ib-i4r` + `bd-ib-98c.1`, re-derive `otel.rs` vs current Fabro
+   `0.289.0`) to the maintainer; coordinate wire-format/naming with the
+   `fabro-token-refresh` thread. NOT autonomously buildable past the PR gate.
+3. **Phase 0 (local-runner shadow lane)** — design gate PASSED, implementation
+   BANKED pending an explicit host-mutation go (unchanged this session).
+
+**Prior state (still current):**
 - **P-host (`.1`) — MET.** Host + per-container metrics (`hostmetrics` +
   `docker_stats`) flow to the **`livespec-host-metrics`** dataset (`agent-activity`
   Honeycomb env) via `otel-collector` PR #3 (commit `417e5d8`, marker `0.6`),
