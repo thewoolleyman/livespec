@@ -31,13 +31,18 @@ means the session already certified it is done, so it supersedes any re-warn.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import os
+import shlex
 import sys
 import time
+import traceback
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import IO
 
 import registry
 import signals
@@ -219,6 +224,12 @@ class Supervisor:
             topic = row.get("topic")
             if not isinstance(repo, str) or not isinstance(topic, str):
                 return True  # fail-soft: never drop a row we can't evaluate
+            if not registry.repo_root_present(repo):
+                # Repo root itself unreachable (unmounted / mid-move) — KEEP the row
+                # and surface, so a transient outage does not permanently drop it and
+                # lose its custom overrides on the auto-link re-add (B6).
+                self._surface(f"repo root missing for {repo}::{topic}; keeping mapping row")
+                return True
             if registry.archived_or_gone(repo, topic):
                 self._log(f"archive-GC dropping mapping row {repo}::{topic}")
                 return False
@@ -229,7 +240,7 @@ class Supervisor:
     def auto_link(self, track: registry.Track) -> registry.Track | None:
         """Link a live session to an unassigned discovered plan — safely.
 
-        A link is created ONLY when a session named ``<repo-slug>:<topic>``
+        A link is created ONLY when a session named ``<repo-slug>--<topic>``
         exists AND its ``#{pane_current_path}`` resolves inside the row's repo.
         Never by topic name alone (blocker #8): two repos sharing a topic must
         not cross-link. Returns the new mapped Track, or None if not linked.
@@ -251,10 +262,20 @@ class Supervisor:
         self._log(f"auto-linked live session {session} → {track.repo}::{track.topic}")
         return linked
 
-    def build_rows(self) -> list[registry.Track]:
-        """Discovery ⋈ mapping after archive-GC + auto-link (the tick's row set)."""
+    def build_rows(self, *, act: bool = True) -> list[registry.Track]:
+        """Discovery ⋈ mapping (the tick's row set).
+
+        When ``act`` (the daemon loop) this runs archive-GC + auto-link, both of
+        which MUTATE the store. When NOT ``act`` (the ``list`` command, advertised
+        read-only) it does NEITHER — it just joins discovery against the current
+        mapping, so `list` cannot silently rewrite / GC / re-link the store out
+        from under a running daemon (adversarial code review 2026-07-13, blocker
+        B6).
+        """
         watch = self._resolve_watch()
         discovered = registry.discover_plans(watch)
+        if not act:
+            return registry.join(discovered, registry.read_mapping(self.store_path))
         self.archive_gc()
         rows = registry.join(discovered, registry.read_mapping(self.store_path))
         linked_any = False
@@ -299,6 +320,39 @@ class Supervisor:
         second = signals.strip_ansi(self.tmux.capture_pane(session))
         return first == second
 
+    def _pane_is_managed_claude(self, session: str, repo: str) -> bool:
+        """True iff ``session``'s pane is a live Claude TUI whose cwd is inside ``repo``.
+
+        The identity gate for EVERY act (inject / restart). ``pane_is_claude`` and
+        ``path_in_repo`` exist and are tested, but the shipped daemon wired them
+        only into auto-link and the restart poll, NOT the act path — so a tracked
+        Claude that had exited to a shell (the pane retains the dead TUI's idle-box
+        frame) would get the wrap-up pasted INTO THE SHELL, where the
+        ``sha256sum … > .overseer-ready`` line executes and FORGES a hash-valid
+        marker (adversarial code review 2026-07-13, blocker B3 = Codex #1). Gating
+        every act on process identity + cwd closes that, and hardens B1's residual
+        (a name that resolved to the wrong session would fail the cwd check).
+        """
+        if not signals.pane_is_claude(self.tmux.pane_current_command(session)):
+            return False
+        return signals.path_in_repo(self.tmux.pane_current_path(session), repo)
+
+    def _void_ready_marker(self, track: registry.Track) -> None:
+        """Delete a track's ready marker AND clear its injection stamp (round closed).
+
+        Used both after a successful restart and when a track that had a valid ready
+        marker is next seen BUSY or BLOCKED — i.e. the session began NEW work, or a
+        human resumed the pane, AFTER certifying. Voiding the certification on the
+        FILESYSTEM (not merely in memory) makes it durable across a daemon restart,
+        so a freshly-started daemon cannot respawn-kill a session a human has since
+        taken over (adversarial code review 2026-07-13, blocker B4).
+        """
+        try:
+            signals.ready_marker_path(track.repo, track.topic).unlink(missing_ok=True)
+        except OSError as exc:
+            self._log(f"could not delete ready marker for {track.repo}::{track.topic}: {exc}")
+        registry.clear_injection_stamp(track.repo, track.topic, self.stamp_path)
+
     def evaluate(self, track: registry.Track, *, act: bool) -> RowView:
         """Derive a track's status and (when ``act``) perform its side effects.
 
@@ -317,6 +371,12 @@ class Supervisor:
 
         if not self.tmux.session_exists(session):
             return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="session-gone")
+
+        # Identity gate (B3): the mapped session exists, but before reading its pane
+        # for any ACT we confirm it is really OUR Claude in OUR repo — never
+        # keystroke into a shell / wrong session / human split-pane.
+        if not self._pane_is_managed_claude(session, repo):
+            return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="not-claude")
 
         capture = self.tmux.capture_pane(session)
         busy = signals.is_busy(capture)
@@ -339,9 +399,18 @@ class Supervisor:
         # a changing pane is treated as `working` and skipped this tick.
         if busy:
             status = "working"
+            if act and ready:
+                # The session started NEW work after certifying done — void the
+                # now-contradicted certification durably (B4).
+                self._void_ready_marker(track)
+                ready = False
+                self._log(f"voided ready marker for {repo}::{topic} (busy after certifying)")
         elif gate or blocked is not None:
             status = "blocked:human"
             if act:
+                if ready:
+                    self._void_ready_marker(track)
+                    ready = False
                 detail = blocked if blocked else "structured gate on pane"
                 self._surface(f"{repo}::{topic} blocked on human: {detail}")
         elif not idle:
@@ -394,36 +463,76 @@ class Supervisor:
             threshold=track.ctx_threshold, handoff=handoff, repo=track.repo, topic=track.topic
         )
         if state.count == 0:
+            # Stamp BEFORE the paste (design) so a marker the session writes has
+            # mtime > stamp. If the paste/submit FAILS, clear the stamp and do NOT
+            # advance count — the round never opened, so the next tick retries
+            # instead of the wrap-up being accounted as sent (B5).
             registry.write_injection_stamp(track.repo, track.topic, self.now(), self.stamp_path)
-            self._submit_prompt(session, message)
-            state.count = 1
-            state.ctx_at_last = eff_ctx
-            self._log(f"injected wrap-up into {track.repo}::{track.topic} (ctx {eff_ctx}%)")
+            if self._submit_prompt(session, message):
+                state.count = 1
+                state.ctx_at_last = eff_ctx
+                self._log(f"injected wrap-up into {track.repo}::{track.topic} (ctx {eff_ctx}%)")
+            else:
+                registry.clear_injection_stamp(track.repo, track.topic, self.stamp_path)
+                self._surface(f"{track.repo}::{track.topic} wrap-up injection failed; will retry")
         elif state.count == 1 and state.ctx_at_last is not None and eff_ctx < state.ctx_at_last:
-            self._submit_prompt(session, message)  # stamp preserved from the first inject
-            state.count = 2
-            state.ctx_at_last = eff_ctx
-            self._log(f"re-sent wrap-up into {track.repo}::{track.topic} (ctx {eff_ctx}%)")
+            if self._submit_prompt(session, message):  # stamp preserved from the first inject
+                state.count = 2
+                state.ctx_at_last = eff_ctx
+                self._log(f"re-sent wrap-up into {track.repo}::{track.topic} (ctx {eff_ctx}%)")
+            else:
+                self._surface(f"{track.repo}::{track.topic} wrap-up re-send failed")
 
     def _do_restart(self, track: registry.Track, session: str) -> None:
-        """Atomic restart interlock: respawn → wait Claude → resume → delete marker."""
-        self.tmux.respawn_pane(session, track.repo, f"claude -n {track.topic}")
-        for _ in range(_RESTART_POLL_MAX):
-            if signals.pane_is_claude(self.tmux.pane_current_command(session)):
-                break
-            self.sleep(_RESTART_POLL_INTERVAL)
+        """Atomic restart interlock: respawn → wait Claude → resume → close the round.
+
+        Every tmux step is a HARD GATE (B5). If ``respawn-pane`` fails, or the
+        pane never becomes a live Claude, the daemon SURFACES the failure and
+        RETURNS WITHOUT deleting the ready marker — so the session's certification
+        is preserved and the restart is retried, never silently destroyed. The
+        marker is voided (and the injection stamp cleared — B4) only once the
+        respawn is confirmed; the resume-submit result is surfaced but does not
+        block voiding, because the fresh Claude IS up (a stale marker would else
+        re-restart and kill it, and B3's identity gate already blocks re-acting on
+        a non-Claude pane).
+        """
+        if not self.tmux.respawn_pane(session, track.repo, self._launch_command(track)):
+            self._surface(
+                f"{track.repo}::{track.topic} restart respawn FAILED; keeping ready marker"
+            )
+            return
+        if not self._await_claude(session):
+            self._surface(
+                f"{track.repo}::{track.topic} respawned pane never became Claude; keeping ready marker"
+            )
+            return
         resume = track.resume or default_resume(track.repo, track.topic)
-        self._submit_prompt(session, resume)
-        try:
-            signals.ready_marker_path(track.repo, track.topic).unlink(missing_ok=True)
-        except OSError as exc:
-            self._log(f"could not delete ready marker for {track.repo}::{track.topic}: {exc}")
+        if not self._submit_prompt(session, resume):
+            self._surface(f"{track.repo}::{track.topic} resume line not submitted after restart")
+        self._void_ready_marker(track)
         self._inject.pop(_key(track.repo, track.topic), None)
         self._log(f"restarted {track.repo}::{track.topic} (session {session})")
 
-    def _submit_prompt(self, session: str, text: str) -> None:
+    @staticmethod
+    def _launch_command(track: registry.Track) -> str:
+        """``claude -n <topic>`` with the topic shell-quoted (defensive, B-nit)."""
+        return f"claude -n {shlex.quote(track.topic)}"
+
+    def _await_claude(self, session: str) -> bool:
+        """Poll ``#{pane_current_command}`` until it is a live Claude TUI, bounded.
+
+        Never scrape the ``❯`` prompt glyph (ambiguous shell/Claude); wait on the
+        process identity (design). Returns False if it never became Claude.
+        """
+        for _ in range(_RESTART_POLL_MAX):
+            if signals.pane_is_claude(self.tmux.pane_current_command(session)):
+                return True
+            self.sleep(_RESTART_POLL_INTERVAL)
+        return False
+
+    def _submit_prompt(self, session: str, text: str) -> bool:
         """Bracketed-paste a payload, then submit it — re-sending Enter until the
-        input box clears.
+        input box clears. Returns True iff the paste LANDED and the box CLEARED.
 
         The paste is atomic (never fragments — blocker #2). A SINGLE Enter is
         enough on a steady idle session, but a freshly-`respawn`-ed session is
@@ -435,14 +544,22 @@ class Supervisor:
         submitted); re-send up to `_SUBMIT_MAX_ENTERS` times. An extra Enter on an
         already-empty prompt is a harmless no-op (Claude never submits an empty
         message).
+
+        Returning a bool (B5): callers must know whether the payload actually
+        went in. A failed ``bracketed_paste`` is a hard False — WITHOUT it the box
+        would still read empty and a never-delivered wrap-up/resume would be
+        counted as sent (the paste-failure false-success the maintainer flagged).
         """
-        self.tmux.bracketed_paste(session, text)
+        if not self.tmux.bracketed_paste(session, text):
+            self._log(f"bracketed paste FAILED for session {session}")
+            return False
         self.sleep(_RESTART_POLL_INTERVAL)
         for _ in range(_SUBMIT_MAX_ENTERS):
             self.tmux.send_keys(session, "Enter")
             self.sleep(_SUBMIT_POLL)
             if signals.input_box_ready(self.tmux.capture_pane(session)):
-                return
+                return True
+        return False
 
     # ----------------------------------------------------------------- #
     # Reboot recovery (startup-only, never per-tick).
@@ -452,7 +569,7 @@ class Supervisor:
         """Recreate any mapped session that is not currently live (design).
 
         Run ONCE at daemon startup: a fresh overseer reads the mapping, and for
-        each row whose ``<repo-slug>:<topic>`` session is gone, creates the
+        each row whose ``<repo-slug>--<topic>`` session is gone, creates the
         session, launches ``claude -n <topic>`` in the repo, and pastes the
         resume line. Not a per-tick action (a session the user deliberately
         kills should not be revived every 10s). Returns the recovered names.
@@ -463,20 +580,28 @@ class Supervisor:
             if self.tmux.session_exists(session):
                 continue
             self.tmux.new_session(session, track.repo)
-            self._do_launch(track, session)
-            recovered.append(session)
-            self._log(f"reboot-recovery recreated {session} for {track.repo}::{track.topic}")
+            if self._do_launch(track, session):
+                recovered.append(session)
+                self._log(f"reboot-recovery recreated {session} for {track.repo}::{track.topic}")
+            else:
+                self._surface(
+                    f"reboot-recovery FAILED to launch {session} for {track.repo}::{track.topic}"
+                )
         return recovered
 
-    def _do_launch(self, track: registry.Track, session: str) -> None:
-        """Launch ``claude -n <topic>`` into ``session`` and paste the resume line."""
-        self.tmux.respawn_pane(session, track.repo, f"claude -n {track.topic}")
-        for _ in range(_RESTART_POLL_MAX):
-            if signals.pane_is_claude(self.tmux.pane_current_command(session)):
-                break
-            self.sleep(_RESTART_POLL_INTERVAL)
+    def _do_launch(self, track: registry.Track, session: str) -> bool:
+        """Launch ``claude -n <topic>`` into ``session`` and paste the resume line.
+
+        Returns True iff respawn succeeded, the pane became a live Claude, and the
+        resume line submitted — so callers (`recover`, `start`) can surface a
+        failure rather than silently claim a launch happened (B5).
+        """
+        if not self.tmux.respawn_pane(session, track.repo, self._launch_command(track)):
+            return False
+        if not self._await_claude(session):
+            return False
         resume = track.resume or default_resume(track.repo, track.topic)
-        self._submit_prompt(session, resume)
+        return self._submit_prompt(session, resume)
 
     # ----------------------------------------------------------------- #
     # Table rendering.
@@ -519,25 +644,78 @@ class Supervisor:
 
     def tick(self, *, act: bool = True) -> list[RowView]:
         """One loop iteration: build rows, evaluate each, render the table."""
-        views = [self.evaluate(track, act=act) for track in self.build_rows()]
+        views = [self.evaluate(track, act=act) for track in self.build_rows(act=act)]
         self.render(views)
         return views
+
+    # ----------------------------------------------------------------- #
+    # Singleton daemon lock (per store).
+    # ----------------------------------------------------------------- #
+
+    def _singleton_lock_path(self) -> Path:
+        store = (
+            Path(self.store_path) if self.store_path is not None else registry.DEFAULT_STORE_PATH
+        )
+        return Path(str(store) + ".daemon.lock")
+
+    def _acquire_singleton_lock(self) -> IO[str] | None:
+        """Non-blocking flock on a per-store lockfile; None if another daemon holds it.
+
+        Two overseer daemons on the same store double-inject and double-restart —
+        B's ``respawn-pane -k`` can kill the fresh session A just resumed
+        (adversarial code review 2026-07-13, blocker B6 = Codex #3). Keyed to the
+        store path so a scratch-store live-exercise run never contends with the
+        real daemon. Fail-soft: on any OSError, return None (treat as contended).
+        """
+        path = self._singleton_lock_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            handle = path.open("w", encoding="utf-8")
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return None
+        return handle
+
+    @staticmethod
+    def _release_singleton_lock(handle: IO[str] | None) -> None:
+        if handle is not None:
+            with contextlib.suppress(OSError):
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            handle.close()
 
     def run(
         self, *, interval: float = LOOP_INTERVAL_SECONDS, once: bool = False, recover: bool = False
     ) -> None:
-        """Run the poll loop. ``once`` runs a single tick (live-exercise/testing)."""
-        if recover:
-            self.recover_missing_sessions()
-        while True:
-            try:
-                self.tick(act=True)
-            except KeyboardInterrupt:
-                self._log("interrupted; exiting")
-                return
-            if once:
-                return
-            self.sleep(interval)
+        """Run the poll loop. ``once`` runs a single tick (live-exercise/testing).
+
+        Holds a per-store singleton lock for its whole lifetime (B6) and wraps each
+        tick in a broad except so one bad input (an unreadable ``plan/`` dir, a
+        malformed store) is logged and the loop CONTINUES supervising the other
+        tracks rather than dying (B7). ``KeyboardInterrupt``/``SystemExit`` still
+        propagate (they are BaseException, not caught here).
+        """
+        lock = self._acquire_singleton_lock()
+        if lock is None:
+            self._surface(
+                f"another overseer daemon holds {self._singleton_lock_path()}; refusing to start"
+            )
+            return
+        try:
+            if recover:
+                self.recover_missing_sessions()
+            while True:
+                try:
+                    self.tick(act=True)
+                except KeyboardInterrupt:
+                    self._log("interrupted; exiting")
+                    return
+                except Exception:
+                    self._log("tick error (continuing):\n" + traceback.format_exc())
+                if once:
+                    return
+                self.sleep(interval)
+        finally:
+            self._release_singleton_lock(lock)
 
 
 # --------------------------------------------------------------------------- #
@@ -603,14 +781,20 @@ def _cmd_remove(args: argparse.Namespace) -> int:
 
 
 def _cmd_start(args: argparse.Namespace) -> int:
-    """Surface-only, user-initiated launch. The daemon never invokes this."""
+    """Surface-only, user-initiated launch. The daemon never invokes this.
+
+    Guarded (B8): if the session already runs a LIVE Claude, ``start`` does NOT
+    ``respawn-pane -k`` it (that would kill a mid-work session with no interlock —
+    the exact "never force-kill mid-work" violation the whole design exists to
+    prevent, reachable via a repeated bottom-pane ``start``). It just upserts the
+    mapping and reports. ``--force`` is required to actually respawn a live one.
+    """
     repo = os.path.normpath(args.repo)
     topic = args.topic
     session = registry.tmux_id(repo, topic)
+    force = getattr(args, "force", False)
     io = tmuxio.TmuxIO()
     sup = Supervisor(tmux=io, store_path=getattr(args, "store", None), stamp_path=None)
-    if not io.session_exists(session):
-        io.new_session(session, repo)
     track = registry.Track(
         topic=topic,
         repo=repo,
@@ -618,7 +802,22 @@ def _cmd_start(args: argparse.Namespace) -> int:
         handoff=default_handoff(repo, topic),
         resume=default_resume(repo, topic),
     )
-    sup._do_launch(track, session)
+    if (
+        io.session_exists(session)
+        and signals.pane_is_claude(io.pane_current_command(session))
+        and not force
+    ):
+        _upsert(getattr(args, "store", None), track)
+        print(
+            f"{repo}::{topic}: session {session} already runs a live Claude — mapping upserted, "
+            f"NOT respawned. Pass --force to respawn (kills the running session)."
+        )
+        return 0
+    if not io.session_exists(session):
+        io.new_session(session, repo)
+    if not sup._do_launch(track, session):
+        print(f"start FAILED to launch {repo}::{topic} in tmux session {session}", file=sys.stderr)
+        return 1
     _upsert(getattr(args, "store", None), track)
     print(f"started {repo}::{topic} in tmux session {session}")
     return 0
@@ -684,6 +883,11 @@ def main(argv: list[str] | None = None) -> int:
     _add_store_args(p_start)
     p_start.add_argument("repo")
     p_start.add_argument("topic")
+    p_start.add_argument(
+        "--force",
+        action="store_true",
+        help="respawn even if the session already runs a live Claude (kills it)",
+    )
     p_start.set_defaults(func=_cmd_start)
 
     args = parser.parse_args(argv)

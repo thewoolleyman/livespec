@@ -41,7 +41,9 @@ def test_make_unassigned():
 
 def test_repo_slug_and_tmux_id_are_repo_qualified():
     assert registry.repo_slug("/data/projects/livespec") == "livespec"
-    assert registry.tmux_id("/data/projects/livespec", "collector") == "livespec:collector"
+    # B1: separator is tmux-legal `--` (a `:` is sanitized to `_` by tmux and never
+    # round-trips).
+    assert registry.tmux_id("/data/projects/livespec", "collector") == "livespec--collector"
 
 
 # --------------------------------------------------------------------------- #
@@ -325,3 +327,43 @@ def test_injection_stamp_fail_soft_on_garbage(tmp_path):
     stamp = tmp_path / "stamps.json"
     stamp.write_text("not json at all", encoding="utf-8")
     assert registry.read_injection_stamp("/r", "t", stamp) is None
+
+
+def test_archived_or_gone_active_wins_over_same_named_archive(tmp_path):
+    # B6: an ACTIVE plan whose topic ALSO exists under plan/archive/ must NOT be
+    # reported archived (else its mapping is GC-dropped every tick).
+    repo = tmp_path / "repo"
+    (repo / "plan" / "collector").mkdir(parents=True)
+    (repo / "plan" / "archive" / "collector").mkdir(parents=True)
+    assert registry.archived_or_gone(str(repo), "collector") is False
+    # truly archived (no active dir) → True
+    (repo / "plan" / "old").mkdir()  # keep plan/ around
+    (repo / "plan" / "archive" / "gone").mkdir(parents=True)
+    assert registry.archived_or_gone(str(repo), "gone") is True
+    # plan dir simply missing under an existing repo → gone
+    assert registry.archived_or_gone(str(repo), "never-existed") is True
+
+
+def test_repo_root_present(tmp_path):
+    assert registry.repo_root_present(str(tmp_path)) is True
+    assert registry.repo_root_present(str(tmp_path / "nope")) is False
+
+
+def test_clear_injection_stamp(tmp_path):
+    stamp = tmp_path / "stamps.json"
+    registry.write_injection_stamp("/r", "t", 123.5, stamp)
+    assert registry.read_injection_stamp("/r", "t", stamp) == 123.5
+    registry.clear_injection_stamp("/r", "t", stamp)
+    assert registry.read_injection_stamp("/r", "t", stamp) is None
+    # clearing an absent stamp is a no-op (no crash)
+    registry.clear_injection_stamp("/r", "t", stamp)
+
+
+def test_write_rows_is_atomic_and_skips_when_unchanged(tmp_path):
+    # B6: rewrite_mapping skips the write entirely when no row is dropped.
+    store = tmp_path / "map.jsonl"
+    registry.append_mapping(registry.Track(topic="a", repo="/r", tmux="r--a"), store)
+    before = store.stat().st_mtime_ns
+    dropped = registry.rewrite_mapping(lambda _row: True, store)  # keep all
+    assert dropped == 0
+    assert store.stat().st_mtime_ns == before  # unchanged → not rewritten

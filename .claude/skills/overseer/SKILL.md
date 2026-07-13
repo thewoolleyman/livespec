@@ -13,8 +13,9 @@ description: >-
   filesystem (`.overseer-ready`/`.overseer-blocked` markers), never pane text.
   Surface-only: the daemon NEVER auto-spawns a session. The overseer does NO
   track work, never polls tracked sessions on a timer, never hand-codes.
-  LOCAL-ONLY to this repo, RETAINED until the console cockpit replaces it — not
-  part of the plugin, not synced.
+  LOCAL-ONLY to this repo and usable only from it — a PERMANENT, human-supervised
+  ALTERNATE to autonomous mode (not a stopgap): not part of the plugin, spec,
+  template, or fleet, and not synced.
 ---
 
 # Overseer — thin bottom pane for the deterministic multi-track supervisor
@@ -28,12 +29,22 @@ design defeats. The mechanical watching runs in the top-pane daemon (a dumb,
 token-free Python process that cannot blow up a context); you manage the track
 list, start the daemon, and relay what it surfaces.
 
-> **Why this skill is RETAINED, not deleted.** There is **no replacement yet**
-> for the manual coordinator. Its coordination function is replaced only once
-> the **console operator-cockpit** (the Control Plane / operator cockpit — TUI
-> at minimum, ideally a GUI) is **built via the factory**. Until that console
-> exists, this skill IS the coordination layer — keep it, keep it thin, keep
-> improving it.
+> **A permanent alternate to autonomous mode.** The overseer is one of two
+> standing ways to keep livespec work moving, and it is NOT a stopgap for the
+> other:
+>
+> - **Autonomous mode** — the Beads/Dolt + Fabro **Dispatcher** (the dark
+>   factory) polls the ledger and runs *ready work-items* unattended in Fabro
+>   sandboxes, gated by `just check` + `/livespec:doctor`. No human in the loop
+>   per item.
+> - **The overseer (this skill)** — a **human-supervised** coordinator that keeps
+>   several *interactive plan tracks* moving in parallel across tmux sessions,
+>   automating only the context-% wrap-up + clean-restart mechanics while the
+>   human stays the driver of the work.
+>
+> They are **peers**: reach for the overseer when a person is actively steering
+> multiple tracks and wants the restart automation without ceding the work to the
+> factory. Keep this skill, keep it thin, keep improving it.
 
 ---
 
@@ -106,7 +117,7 @@ one). Each maps to a real `supervisor.py` subcommand:
   current discovery ⋈ mapping table **once, read-only** (no injection, no
   restart). A snapshot without waiting for a daemon tick.
 - **`add <repo> <topic>`** — map a discovered plan to a watched session. The
-  repo-qualified tmux id `<repo-slug>:<topic>` is derived automatically; the
+  repo-qualified tmux id `<repo-slug>--<topic>` is derived automatically; the
   handoff and resume line default to the plan's `handoff.md`. Replaces any
   existing row for that `(repo, topic)`.
 - **`remove <repo> <topic>`** / **`unassign <repo> <topic>`** — drop the mapping
@@ -170,7 +181,7 @@ track list itself is re-**discovered** from each repo's `plan/` dir every tick,
 so it is never stale.
 
 - **After a reboot or crash**, start the daemon with `--recover`: it reads the
-  mapping and, for each row whose `<repo-slug>:<topic>` session is gone,
+  mapping and, for each row whose `<repo-slug>--<topic>` session is gone,
   recreates the tmux session, relaunches `claude -n <topic>` in the repo, and
   pastes the resume line. Recovery is startup-only — a session the maintainer
   deliberately killed is not revived every tick.
@@ -242,11 +253,12 @@ summarizes:
 
 ---
 
-## This skill is local-only and RETAINED
+## This skill is local-only and permanent
 
-It lives at `.claude/skills/overseer/` in *this* repo and is **not** part of the
-livespec plugin, the spec, the copier template, or any fleet-propagated surface
-— do not add it to manifests, conformance checks, or other repos. It is
-**RETAINED** as the coordination layer and improved in place until the console
-operator-cockpit (built via the factory) replaces it; only then is deleting it
-on the table.
+It lives at `.claude/skills/overseer/` in *this* repo and is usable **only from
+this repo**. It is **not** part of the livespec plugin, the spec, the copier
+template, or any fleet-propagated surface — do not add it to manifests,
+conformance checks, or other repos. It is a **permanent, human-supervised
+alternate to autonomous mode** (the Beads/Dolt + Fabro Dispatcher), not a stopgap
+awaiting replacement: the two coexist as standing peers (see the callout near the
+top of this file). Maintain it in place — keep it thin, keep it correct.

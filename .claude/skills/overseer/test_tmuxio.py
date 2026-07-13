@@ -70,12 +70,17 @@ def test_pane_current_path_format():
     assert fake.calls[0]["argv"][-1] == "#{pane_current_path}"
 
 
-def test_session_exists_uses_has_session():
-    io, fake = _io(returncode=0)
-    assert io.session_exists("s") is True
-    assert fake.calls[0]["argv"] == ["tmux", "has-session", "-t", "s"]
-    io2, _ = _io(returncode=1)
-    assert io2.session_exists("s") is False
+def test_session_exists_is_exact_membership_not_prefix():
+    # B1: session_exists uses EXACT list-sessions membership, not the prefix-prone
+    # `has-session -t <name>` (which matches `foobar` for target `foo`).
+    io, fake = _io(stdout="foo\nbar\n")
+    assert io.session_exists("foo") is True
+    assert fake.calls[0]["argv"] == ["tmux", "list-sessions", "-F", "#{session_name}"]
+    # a longer session sharing the prefix must NOT satisfy the exact target
+    io2, _ = _io(stdout="foobar\n")
+    assert io2.session_exists("foo") is False
+    io3, _ = _io(returncode=1)  # no server / error → not live
+    assert io3.session_exists("foo") is False
 
 
 def test_list_sessions_parses_lines():
@@ -99,19 +104,25 @@ def test_send_keys_argv():
 
 def test_bracketed_paste_loads_then_pastes_with_stdin():
     io, fake = _io()
-    assert io.bracketed_paste("livespec:t", "line1\nline2") is True
+    assert io.bracketed_paste("livespec--t", "line1\nline2") is True
     # First call loads the buffer from stdin; second pastes bracketed + deletes.
-    assert fake.calls[0]["argv"] == ["tmux", "load-buffer", "-b", "overseer-inject", "-"]
+    load_argv = fake.calls[0]["argv"]
+    assert load_argv[:3] == ["tmux", "load-buffer", "-b"]
+    buffer_name = load_argv[3]
+    # B6: the buffer name is UNIQUE per paste (pid + counter), not the fixed global.
+    assert buffer_name.startswith("overseer-inject-")
+    assert load_argv[4] == "-"
     assert fake.calls[0]["input"] == "line1\nline2"
+    # the SAME unique buffer is pasted then deleted.
     assert fake.calls[1]["argv"] == [
         "tmux",
         "paste-buffer",
         "-b",
-        "overseer-inject",
+        buffer_name,
         "-p",
         "-d",
         "-t",
-        "livespec:t",
+        "livespec--t",
     ]
 
 

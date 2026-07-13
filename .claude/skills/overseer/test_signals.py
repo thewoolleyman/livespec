@@ -303,3 +303,20 @@ def test_path_in_repo():
     assert signals.path_in_repo("/data/projects/livespec-other", repo) is False
     assert signals.path_in_repo("/somewhere/else", repo) is False
     assert signals.path_in_repo(None, repo) is False
+
+
+def test_is_idle_input_accepts_renamed_titled_border():
+    # B2: `claude -n <topic>` renders the session name INTO the top border
+    # (`─── mytopic ──`), which is NOT a pure rule. is_idle_input must still detect
+    # the idle box, else every daemon-renamed session becomes unmanageable.
+    rule = "─" * 40
+    titled = ("─" * 20) + " mytopic ──"
+    renamed = f"● prior\n{titled}\n❯ \n{rule}\n  Opus | /r | Ctx: 40% left\n  ? for shortcuts\n"
+    assert signals.is_idle_input(renamed) is True
+    assert signals.input_box_ready(renamed) is True
+
+
+def test_is_idle_input_rejects_prose_around_empty_prompt():
+    # Guard: an empty `❯` between ordinary prose lines (no box borders) is NOT idle.
+    prose = "● Read 1 file\n❯ \nSome narration line.\n"
+    assert signals.is_idle_input(prose) is False

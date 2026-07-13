@@ -167,7 +167,23 @@ def is_structured_gate(capture_text: str) -> bool:
 # (verified live 2026-07-13 — NOT a `╭─╮` rounded box with `? for shortcuts`).
 # We detect that structural shape: it is stable across idle and busy and is
 # independent of the footer-hint wording and the spinner glyph.
-_RULE_RE = re.compile(r"^[─—━]{10,}$")
+#
+# The border MAY carry an embedded title. `claude -n <topic>` renders the session
+# name INTO the top border (`─── mytopic ──` — verified live 2026-07-13), so the
+# top border is NOT a pure rule; a pure-rule-only match would make EVERY session
+# the daemon itself launches (all of `start` / `--recover` / post-restart, which
+# always pass `-n <topic>`) read as never-idle → never injected/restarted again →
+# run to autocompact, the exact failure the overseer exists to prevent (adversarial
+# code review 2026-07-13, blocker B2). So a border is: starts with ≥3 rule chars
+# AND ends with ≥2 rule chars (a pure rule satisfies this too). That is tight
+# enough that ordinary wrapped prose / tool output — which does not both start and
+# end with box-drawing rule chars — is not mistaken for a border.
+_BORDER_RE = re.compile(r"^[─—━]{3,}.*[─—━]{2,}$")
+
+
+def _is_border(line: str) -> bool:
+    """True if ``line`` is a box border: a pure rule OR a rule with an embedded title."""
+    return _BORDER_RE.match(line) is not None
 
 
 def _is_empty_prompt(line: str) -> bool:
@@ -176,21 +192,22 @@ def _is_empty_prompt(line: str) -> bool:
 
 
 def _input_box_present(text: str) -> bool:
-    """True if an EMPTY `❯` prompt sits between two horizontal rule lines.
+    """True if an EMPTY `❯` prompt sits between two box-border lines.
 
-    Scans the non-empty lines and requires an empty `❯` with a rule line
-    immediately before and after it. The empty-prompt requirement means a box
-    that already holds typed/pasted input is NOT treated as idle (the daemon
-    must never inject over existing input). A numbered-option gate (`❯ 1.`) is
-    not empty and not rule-bracketed, so it is excluded here (and by
-    :func:`is_structured_gate`).
+    Scans the non-empty lines and requires an empty `❯` with a border line
+    immediately before and after it. The border above MAY carry the `-n <topic>`
+    title (`─── mytopic ──`); the border below is a pure rule. The empty-prompt
+    requirement means a box that already holds typed/pasted input is NOT treated
+    as idle (the daemon must never inject over existing input). A numbered-option
+    gate (`❯ 1.`) is not empty and not border-bracketed, so it is excluded here
+    (and by :func:`is_structured_gate`).
     """
     ne = [stripped for raw in text.splitlines() if (stripped := strip_ansi(raw).strip())]
     for i, line in enumerate(ne):
         if not _is_empty_prompt(line):
             continue
-        above = i >= 1 and _RULE_RE.match(ne[i - 1]) is not None
-        below = i + 1 < len(ne) and _RULE_RE.match(ne[i + 1]) is not None
+        above = i >= 1 and _is_border(ne[i - 1])
+        below = i + 1 < len(ne) and _is_border(ne[i + 1])
         if above and below:
             return True
     return False
