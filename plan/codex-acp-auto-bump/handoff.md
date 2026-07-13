@@ -1,10 +1,11 @@
 # Handoff — codex-acp version auto-bump (factory-gated freshness)
 
 **State (SHIPPED, 2026-07-13).** All code is built and merged across both owning
-repos. Only **two maintainer-gated finalization steps** remain: an App
-permission grant and one credentialed force-accept, after which epic
-`livespec-3lev.4` (the last Phase 1 deliverable) closes. This document is a
-self-sufficient resume anchor — whoever picks this up can run the accept and
+repos. The App permission grant is **DONE** (2026-07-13 —
+`Commit statuses: Read & write` granted and approved on the installation). The
+**only remaining maintainer-gated step** is one credentialed force-accept, after
+which epic `livespec-3lev.4` (the last Phase 1 deliverable) closes. This document
+is a self-sufficient resume anchor — whoever picks this up can run the accept and
 close the epic from here alone. See `design.md` beside this file for the
 architecture and the corrected mechanics.
 
@@ -86,20 +87,23 @@ built by a Claude agent for this reason.
 
 ## REMAINING — the only open items (maintainer-gated)
 
-The maintainer chose "merge all + force accept." Steps 1–3 below are all that is
-left; run them in order.
+The maintainer chose "merge all + force accept." Step 1 (App permission grant) is
+**DONE** (2026-07-13); steps 2–3 below are all that remains; run them in order.
 
-### 1. App permission grant (MAINTAINER — App-owner only)
+### 1. App permission grant — ✅ DONE (2026-07-13)
 
-Add commit-status write to the `livespec-pr-bot` GitHub App:
+On 2026-07-13, `Commit statuses: Read & write` was added to the
+`livespec-pr-bot` GitHub App's default repository permissions, and the permission
+update was **approved on the installation** (the installation covers
+`livespec-dev-tooling` plus the other fleet repos). Verified on the installation
+page, which now shows the App holding "Read and write access to code, commit
+statuses, pull requests, and workflows" (plus Read access to metadata). So the
+gate's cross-repo status callback can now post the `codex-acp-golden-master`
+commit status to `livespec-dev-tooling` — it will no longer 403.
 
-1. `github.com/settings/apps/livespec-pr-bot` → **Repository permissions** →
-   **Commit statuses** → **Read & write** → **Save**.
-2. Approve the new permission on the **dev-tooling** install.
-
-Until this is granted, the gate's status callback **403s** — which is safe:
-fail-closed means the bump PR simply stays open for a human. Nothing merges an
-unverified version.
+(For the record, the original to-do was: `github.com/settings/apps/livespec-pr-bot`
+→ **Repository permissions** → **Commit statuses** → **Read & write** → **Save**,
+then approve the new permission on the installation.)
 
 ### 2. Force-accept — exercise the gate end-to-end (credentialed / costly — surface before firing)
 
@@ -139,6 +143,18 @@ real accept.
 
 After the force-accept is journaled, close epic `livespec-3lev.4` — the last
 Phase 1 (`fabro-ci-image-factoring`) deliverable. This closes Phase 1.
+
+## Follow-ups (non-blocking)
+
+- **dev-tooling `contracts.md` `workflows: write` drift.** While granting the
+  commit-status permission (step 1), it was observed that the `livespec-pr-bot`
+  App **already holds `Workflows: Read & write`** (added earlier for the
+  cross-repo bump-pin `uses:`-ref automation). But dev-tooling's
+  `SPECIFICATION/contracts.md` §"GitHub App auth model" enumerates only
+  `contents: write`, `pull-requests: write`, `metadata: read` (and now
+  `statuses: write` via v025) — it does **not** list `workflows: write`. A minor
+  future `contracts.md` sweep should add `workflows: write` to that permission
+  list to end this pre-existing drift. **Not blocking this epic.**
 
 ## Cross-references
 
