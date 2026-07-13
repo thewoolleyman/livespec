@@ -504,14 +504,20 @@ So the auto-heal-loud gate is kept ORCHESTRATOR-LOCAL (self-hosted, no cross-rep
 dependency). No template change, no per-repo justfile/lefthook edits, no
 installed-plugin dispatcher-resolution mechanism — all avoided.
 
-## Operational note for future PR-driving sessions in this repo
+## Operational note — auto-merge on green is intended, and fix-forward is the flow
 
-`livespec-orchestrator-beads-fabro` (and, observed, the fleet generally) AUTO-MERGES
-green PRs via `app/livespec-pr-bot` within ~1 min of CI passing. Independent review
-must therefore happen BEFORE opening the PR, or the PR must be opened as a DRAFT to
-hold auto-merge — leaving a normal PR open does NOT hold it. This session's #566
-merged mid-review; the review still added value as the source of the #568
-fix-forward, but a draft-first flow would have caught B1/B2 pre-merge.
+Every fleet impl-plugin repo's `.github/workflows/auto-enable-merge.yml` rebase-
+auto-merges any non-draft, un-`do-not-merge` PR the moment CI goes green (via
+`app/livespec-pr-bot`). Per `.ai/agent-disciplines.md` §"Auto-enable-merge opt-out
+for review-before-merge dispatches", this is DELIBERATE, load-bearing autonomy that
+keeps the release train + factory unattended, and it is NEVER to be disabled to
+obtain a review gate. So fix-forward IS the intended model ("test in production"):
+this session's #566 auto-merged on green and shipped B1/B2 in 0.28.0, and #568
+corrected them in 0.28.1 — the flow working as designed, not a miss. Pre-merge
+review is the EXCEPTION, reserved for a PR you specifically must review before it
+merges (e.g. a factory-repair PR the broken factory can't carry itself); for those,
+open the PR as a DRAFT or apply the `do-not-merge` label — a normal open PR does not
+hold the merge.
 
 ## Still OPEN on this track (unchanged by SESSION 4)
 
