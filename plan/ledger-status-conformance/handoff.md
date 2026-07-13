@@ -40,6 +40,17 @@
 > left for the `gastownhall/beads` maintainer); beads #4536 still unreleased
 > (`main` 230 ahead of v1.1.0). See "## SESSION 6" at the bottom.
 >
+> **SESSION 7 (2026-07-13):** the bd-guard now EMITS a `bd.invoke` OTel span per
+> host `bd` call to Honeycomb (livespec env, `bd-guard` dataset) — a live "many
+> callers / 0 guard-induced failures" proof surface + drift detection, answering
+> "why not use Honeycomb observability?". Landed: collector HTTP receiver
+> (`otel-collector` `95e57a1`), guard emit (`livespec-orchestrator-beads-fabro`
+> PR #580 / `e30ada0`), routing to the livespec env (`otel-collector` `f741249`);
+> host reinstalled. Built a Honeycomb board + two checkpoint triggers
+> (telemetry-stalled; raw-op detected). Also healed fresh livespec drift (4
+> `open`->`backlog`, 0 drift). Flip-to-`fail` stays gated. See "## SESSION 7" at
+> the bottom.
+>
 > _Original seed note:_ spun off 2026-07-12 from the `autonomous-mode` track
 > (during an attempt to factory-dispatch a `livespec-dev-tooling` work-item). Does
 > NOT block autonomous-mode.
@@ -644,3 +655,89 @@ with `export LIVESPEC_BD_GUARD_MODE=fail` (host-wide) once offenders are clean.
 3. **beads release carrying #4536** — pure wait (nothing to run). When beads cuts a
    release with #4536: bump the `bd` pin, make the store `create_work_item`
    single-step (`bd create --status`), and retire the store two-step + the guard.
+
+## SESSION 7 (2026-07-13) — bd-guard telemetry: bd.invoke spans to Honeycomb (livespec env) + board + checkpoints
+
+**Read after SESSION 6.** This session answered "why not use Honeycomb
+observability?" by BUILDING it: the host bd-guard wrapper now emits one
+`bd.invoke` OTel span per call to Honeycomb, giving a live, queryable "many
+callers / 0 guard-induced failures" proof surface plus drift detection —
+superseding the earlier ad-hoc execsnoop/harness approach. The warn-mode guard
+is UNCHANGED in behavior (flip-to-`fail` still gated on the maintainer);
+telemetry is additive, default-on, and fail-open.
+
+## The instrument (all landed + live)
+
+```
+any bd caller -> /usr/local/bin/bd (guard: enforce warn/fail + capture exit/duration)
+   -> curl OTLP/HTTP -> local OTel collector 127.0.0.1:4319
+   -> traces/bd_guard pipeline (filter service.name=bd-guard)
+   -> livespec Honeycomb env -> bd-guard dataset
+```
+
+| Change | Repo / commit | What |
+|---|---|---|
+| OTLP/HTTP receiver on 127.0.0.1:4319 | `thewoolleyman/otel-collector` `95e57a1` | curl cannot speak gRPC (4317); added an HTTP door so the shell guard can POST spans. |
+| Guard emits `bd.invoke` per call | `livespec-orchestrator-beads-fabro` PR #580 (`e30ada0`) | Default-on (`LIVESPEC_BD_GUARD_OTLP=off` disables), fail-open, runs bd in the FOREGROUND to capture exit+duration (TTY/signals preserved), fires a detached `setsid` OTLP span via `bd-guard-emit.py`. |
+| Route bd.invoke -> livespec env | `thewoolleyman/otel-collector` `f741249` | Two filter processors split the otlp trace stream by service.name: bd-guard -> new `traces/bd_guard` pipeline -> livespec env (its own ingest key); everything else -> agent-activity. |
+
+Host: `sudo bd-guard/install.sh` reinstalled the telemetry guard + laid down
+`/usr/local/bin/bd-guard-emit.py`. Passthrough intact (`bd --version` -> 1.0.5).
+Rollback unchanged (`sudo bd-guard/rollback.sh`).
+
+## Proof captured (live, first 24h window)
+
+69 `bd.invoke` spans from 4 distinct caller processes — `python3` (39, the
+factory dispatcher + store), `op` (23, the 1Password env-wrapper path), `zsh`
+(4), `bash` (3). Outcome: 68/69 `exit 0`; the ONLY non-zero is the 1 intentional
+guarded bogus-id probe (`update`, exit 1, `guard.warned=true`). Real factory work
+(`create`, `config`, `list`, `update`, `close`, `dep`, `note`) all passed through
+cleanly. Latency P50 327ms / P95 1187ms. This IS the "many callers, 0
+guard-induced failures" evidence; it accumulates as real traffic runs.
+
+## Board + checkpoints (Honeycomb, livespec env)
+
+- **Board** `bd-guard — host bd telemetry`:
+  https://ui.honeycomb.io/thewoolleyweb/environments/livespec/board/j2MHvDsuWry
+  (volume; calls-by-caller; outcome exit_code x guard.warned x subcommand; raw
+  non-conformant ops; latency — filters: caller / subcommand / guard.warned /
+  exit_code).
+- **Trigger** `bd-guard telemetry stalled (no bd.invoke in 1h)` (`VrKJu9hrgr`,
+  `COUNT < 1` over 60m) — the DATA-RECEIVED checkpoint: fires if the pipeline
+  stops delivering spans.
+- **Trigger** `bd-guard: raw non-conformant bd op detected` (`nak9miYrs14`,
+  `guard.warned=true COUNT > 0` over 60m) — fires when a raw
+  `--claim`/`reopen`/non-lifecycle-`--status` op passes through (the drift
+  source). Both notify the two team emails.
+
+## Secret handling
+
+The livespec ingest key (`HONEYCOMB_INGEST_KEY_LIVESPEC`) was added to the
+collector's gitignored, mode-600 `.env` (value never echoed; consistent with the
+agent-activity key already there); only `config.yaml` + `.env.example` are
+committed. This couples the collector to that key (it will not start without it)
+— documented in `.env.example`.
+
+## Also this session
+
+Healed fresh livespec drift: `ledger-normalize` remapped 4 `open` -> `backlog`
+(`9z8h.1, 2ua9, nj7d, vuy3`); livespec ledger-check back to 0 status-conformance
+drift. (Continuous-churn model: the set had turned over from the SESSION-6 six.)
+
+## Known limitation (minor, non-blocking)
+
+`bd-guard-emit.py` derives `bd.subcommand` as the first non-flag argv token, so
+`bd -C <dir> <cmd>` mis-attributes the `-C` PATH as the subcommand (a few board
+rows show `bd.subcommand=/data/projects/...`). Cosmetic; the full argv is in
+`bd.argv` and the real op in `bd.caller.cmd`. Fixable by skipping
+`-C`/`--directory` + its value in the derivation.
+
+## Still OPEN on this track
+
+1. Flip guard to `fail` — GATED on the maintainer, now data-driven: watch the
+   board / the raw-op trigger until raw callers are enumerated + fixed, then
+   `export LIVESPEC_BD_GUARD_MODE=fail`.
+2. beads #4738 (`status.default`) upstream review/merge -> fleet `.beads/`
+   adoption. (Developed a merge conflict; left for the gastownhall maintainer.)
+3. beads release carrying #4536 -> bump pin, single-step store, retire the
+   two-step + eventually the guard.
