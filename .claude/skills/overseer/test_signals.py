@@ -295,6 +295,15 @@ def test_pane_is_claude_and_shell():
     assert signals.pane_is_shell("node") is False
 
 
+def test_pane_is_worker_claude_or_codex():
+    # The adopt guard recognizes BOTH runtimes (claude + codex), plus the older
+    # `node` wrapper — but never a bare shell / empty / unrelated command.
+    for cmd in ("claude", "codex", "node", "Claude", "CODEX", "claude-wrapper", "my-codex"):
+        assert signals.pane_is_worker(cmd) is True, cmd
+    for cmd in (None, "", "   ", "zsh", "bash", "sudo", "vim"):
+        assert signals.pane_is_worker(cmd) is False, cmd
+
+
 def test_path_in_repo():
     repo = "/data/projects/livespec"
     assert signals.path_in_repo("/data/projects/livespec", repo) is True  # equal

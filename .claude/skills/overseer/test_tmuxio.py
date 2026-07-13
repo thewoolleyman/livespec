@@ -169,6 +169,54 @@ def test_new_session_argv():
     ]
 
 
+def test_split_window_top_argv_and_pane_id():
+    # The two-pane bootstrap: split THIS pane's window, new pane ABOVE (-b -v),
+    # keep focus (-d), print the new pane id (-P -F). Target is the skill's own
+    # $TMUX_PANE — never a session grabbed by name.
+    io, fake = _io(stdout="%47\n")
+    assert io.split_window_top("%20", "/data/projects/livespec", "overseerd") == "%47"
+    assert fake.calls[0]["argv"] == [
+        "tmux",
+        "split-window",
+        "-v",
+        "-b",
+        "-d",
+        "-P",
+        "-F",
+        "#{pane_id}",
+        "-t",
+        "%20",
+        "-c",
+        "/data/projects/livespec",
+        "overseerd",
+    ]
+    io2, _ = _io(returncode=1)  # split failed → None (fail-soft)
+    assert io2.split_window_top("%20", "/tmp", "overseerd") is None
+    io3, _ = _io(stdout="   \n")  # empty pane id → None
+    assert io3.split_window_top("%20", "/tmp", "overseerd") is None
+
+
+def test_set_pane_title_argv():
+    io, fake = _io()
+    assert io.set_pane_title("%47", "overseer-daemon") is True
+    assert fake.calls[0]["argv"] == [
+        "tmux",
+        "select-pane",
+        "-t",
+        "%47",
+        "-T",
+        "overseer-daemon",
+    ]
+
+
+def test_window_pane_titles_parses_and_fail_soft():
+    io, fake = _io(stdout="overseer-daemon\nzsh\n\n")
+    assert io.window_pane_titles("%20") == ["overseer-daemon", "zsh"]
+    assert fake.calls[0]["argv"] == ["tmux", "list-panes", "-t", "%20", "-F", "#{pane_title}"]
+    io2, _ = _io(returncode=1)
+    assert io2.window_pane_titles("%20") == []
+
+
 # --------------------------------------------------------------------------- #
 # Fail-soft: a missing tmux binary never crashes the caller.
 # --------------------------------------------------------------------------- #

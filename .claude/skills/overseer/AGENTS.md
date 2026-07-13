@@ -61,10 +61,25 @@ conformance checks, or any other repo.
    Do NOT regress to a hand-maintained plan list.
 5. **Cross-repo by construction.** Rows are repo-scoped; tmux session ids are
    repo-qualified `<repo-slug>--<topic>` (tmux names are global; plan topics are
-   unique only per repo). Never hardcode `/data/projects/livespec`. Auto-link a
-   live session to a discovered plan ONLY when the repo-qualified session exists
-   AND its `#{pane_current_path}` resolves inside the row's repo — never by topic
-   name alone.
+   unique only per repo). Never hardcode `/data/projects/livespec`. The daemon's
+   per-tick `auto_link` links a live session to a discovered plan ONLY when the
+   repo-qualified session exists AND its `#{pane_current_path}` resolves inside the
+   row's repo — never by topic name alone.
+6. **Two-pane bootstrap + `adopt` (the `/overseer` startup, 2026-07-13).** The
+   skill runs the `overseer-start` executable FIRST. It (a) detects the skill's
+   OWN pane via `$TMUX_PANE` (Claude Code inherits it — do NOT re-derive tmux
+   membership by hand; that improvisation is what falsely reported "not inside a
+   tmux window" and grabbed a separate session), (b) splits THAT window
+   (`tmuxio.split_window_top` targeting `$TMUX_PANE`, idempotent via a pane titled
+   `overseer-daemon`) to run `overseerd` in a TOP pane while focus stays on the
+   bottom pane, and (c) runs `Supervisor.adopt_sessions`. **`adopt` is the ONE
+   sanctioned bare-topic-name match** — it links an EXISTING worker session whose
+   NAME equals an active plan topic, but only under three guards that make it safe
+   (cwd inside a fleet repo via `path_in_repo`, a claude/codex worker via
+   `signals.pane_is_worker`, AND the name is an ACTIVE discovered topic in that
+   repo). It maps to the bare session name (`tmux == session`), never
+   double-adds, and is a deliberate one-shot opt-in — NOT the per-tick auto-link
+   of invariant 5, which stays repo-qualified. Keep that distinction.
 
 ## Load-bearing mechanics + gotchas
 

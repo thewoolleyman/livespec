@@ -277,6 +277,57 @@ class Supervisor:
         self._log(f"auto-linked live session {session} → {track.repo}::{track.topic}")
         return linked
 
+    def adopt_sessions(self) -> list[registry.Track]:
+        """Adopt existing worker sessions whose NAME matches an active plan topic.
+
+        A one-shot bootstrap pass (run by the `/overseer` skill at startup, after
+        the daemon pane is up). For each live tmux session S: adopt it ONLY when
+        (a) its ``#{pane_current_path}`` resolves inside a FLEET repo (the
+        watch-set), (b) it runs a claude/codex worker (``signals.pane_is_worker``),
+        AND (c) its NAME equals an ACTIVE plan topic in that repo (a discovered
+        ``plan/<name>/`` with a ``handoff.md``). The mapping's ``tmux`` field is
+        the bare session name S — the EXISTING session already holding the work —
+        NOT the repo-qualified ``tmux_id`` the daemon would spawn. A ``(repo,
+        topic)`` already mapped is left untouched (no double-add). Returns the
+        adopted Tracks.
+
+        Distinct from :meth:`auto_link`, which links only the repo-qualified
+        ``<repo-slug>--<topic>`` session the daemon itself launches; adopt is the
+        opt-in "pick up the worker sessions I already have running" convenience,
+        with the extra fleet-dir + worker-command + active-topic guards making the
+        bare-name match safe.
+        """
+        watch = self._resolve_watch()
+        active: dict[str, set[str]] = {}
+        for repo, topic, _ in registry.discover_plans(watch):
+            active.setdefault(repo, set()).add(topic)
+        existing = {(t.repo, t.topic) for t in registry.read_mapping(self.store_path)}
+        adopted: list[registry.Track] = []
+        for session in self.tmux.list_sessions():
+            path = self.tmux.pane_current_path(session)
+            repo = next((r for r in watch if signals.path_in_repo(path, r)), None)
+            if repo is None:
+                continue
+            if not signals.pane_is_worker(self.tmux.pane_current_command(session)):
+                continue
+            topic = session
+            if topic not in active.get(repo, set()):
+                continue
+            if (repo, topic) in existing:
+                continue
+            track = registry.Track(
+                topic=topic,
+                repo=repo,
+                tmux=session,
+                handoff=default_handoff(repo, topic),
+                resume=default_resume(repo, topic),
+            )
+            registry.append_mapping(track, self.store_path, added_at=_iso_now())
+            existing.add((repo, topic))
+            adopted.append(track)
+            self._log(f"adopted session {session} → {repo}::{topic}")
+        return adopted
+
     def build_rows(self, *, act: bool = True) -> list[registry.Track]:
         """Discovery ⋈ mapping (the tick's row set).
 
@@ -850,6 +901,14 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_adopt(args: argparse.Namespace) -> int:
+    adopted = _build_supervisor().adopt_sessions()
+    for track in adopted:
+        print(f"adopted {track.tmux} → {track.repo}::{track.topic}")
+    print(f"adopted {len(adopted)} existing session(s)")
+    return 0
+
+
 def _cmd_add(args: argparse.Namespace) -> int:
     repo = os.path.normpath(args.repo)
     track = registry.Track(
@@ -954,6 +1013,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_list = sub.add_parser("list", help="print the current joined table once (read-only)")
     p_list.set_defaults(func=_cmd_list)
+
+    p_adopt = sub.add_parser(
+        "adopt", help="adopt existing worker sessions matching active plan topics"
+    )
+    p_adopt.set_defaults(func=_cmd_adopt)
 
     p_add = sub.add_parser("add", help="add a (repo, topic) mapping row")
     _add_track_args(p_add)
