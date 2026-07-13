@@ -59,6 +59,42 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-13 (cont. 10): console epic FULLY CLOSED — drain live-verified `completed`; ONLY maintainer-gated Stage-2 remains
+
+Continuation of cont.9 (same session). Closed out the drain (#3) after a live
+re-verify exposed a second missing arg, and CLOSED the epic.
+
+### The drain needed THREE arg fixes (not one) — all merged + live-verified
+The cont.9 drain fix (`["drain"]`→`["loop"]`, PR #202) and the maintainer-approved
+`--budget 50` (PR #204) were BOTH necessary but still insufficient. A live drain
+re-verify through the TUI still landed `failed`; root cause: the drain port was
+constructed with `["loop"]` ONLY — the `--repo` at the adjacent `main.rs` call site
+belongs to the **drive** port, not the drain — so it ran `dispatcher.py loop
+--budget 50` with NO `--repo` (which `loop` also requires). Fixed by passing
+`--repo <drive_repo_arg>` in the drain base args (**PR #205**, `7375a10`). Final
+argv: `["loop","--repo",<path>,"--budget","50"]` (+`["--mode","autonomous"]` when
+armed). **Lesson: verify the drain LIVE, not just via the unit test — the argv the
+port builds ≠ what I assumed.**
+- **LIVE-VERIFIED:** after the #205 rebuild, `:`+`drain`+Enter persists a
+  `factory.drain_requested` command that lands **status=completed** (was `failed`);
+  backing `dispatcher.py loop --repo <orch> --budget 50` runs (shadow,
+  `(nothing dispatched)`, exit 0).
+- **`livespec-console-beads-fabro-stl7hn` (#3) CLOSED; epic
+  `livespec-console-beads-fabro-7ja55l` CLOSED.** All 3 cockpit bugs done +
+  live-verified (valve mid-session, palette submit, drain). Console PRs #202, #204,
+  #205 merged; console primary clean on `master` (`7375a10`).
+
+### ONLY remaining item — Stage 2 (maintainer-gated), the MVP acceptance
+The cockpit is operator-ready and the valve/palette/drain paths are all proven live.
+**RESUME = Stage 2 only:** accept `bd-ib-86k` (parked in `acceptance`) through the
+running TUI with the maintainer on the valve (`c`), then dispatch + observe
+`bd-ib-e0t` through the TUI. MVP "done" (livespec-core `livespec-bvuy4w` / I2) =
+multiple real items end-to-end SOLELY through the live TUI with the maintainer on
+the valves. Cockpit LEFT RUNNING: tmux `console-autonomous-mode` (112×28, new binary,
+fresh store `<scratchpad>/console-store3.sqlite`, orchestrator cwd).
+- Reap: core worktree `docs-autonomous-mode-cont10` (this update) after its PR
+  merges. All console fix worktrees already reaped.
+
 ## SESSION UPDATE — 2026-07-13 (cont. 9): all 3 console cockpit bugs FIXED via Codex sub-agents, MERGED (PR #202) + LIVE-VERIFIED through the running TUI; Stage-2 UNBLOCKED (maintainer-gated)
 
 Fresh Claude (Opus) session resumed cont.8's console epic. Maintainer directive
