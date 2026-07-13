@@ -59,6 +59,80 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-13 (cont. 8): all 3 cont.7 TUI blockers CONFIRMED real console bugs (root-caused in code) + FILED as a console epic; Stage 2 gated on them
+
+Fresh Claude (Opus) session resumed the thread via
+`/livespec-orchestrator-beads-fabro:plan autonomous-mode`. cont.7 (Codex driver)
+had left three TUI blockers documented-but-**UNFILED**, two SUSPECTED to be
+Codex/tmux artifacts. This session **re-verified live under Claude tmux driving
+AND root-caused all three IN CODE** on `livespec-console-beads-fabro` master:
+**all three are real console bugs; none is a Codex/tmux artifact.** Filed them as
+a console epic + 3 children, `related`-edge-linked, prose-linked to the core
+anchor `livespec-bvuy4w`. **Stage 2 (the live-TUI acceptance) is BLOCKED until
+these land.**
+
+### CONFIRMED root causes (all in livespec-console-beads-fabro, master 2026-07-13)
+- **#1 (CRITICAL PATH) — live effects never apply until the operator QUITS.**
+  `run_terminal_loop` (`crates/console-tui/src/lib.rs`) buffers each
+  `TuiRuntimeEffect` into a `Vec` and only RETURNS it on quit
+  (`effects.push(effect); if should_quit { return Ok(effects); }`).
+  `run_store_backed_tui_session` (`crates/console-cli/src/lib.rs`) persists +
+  executes them (`persist_tui_runtime_effects` → `handle_pending_*_commands`)
+  only AFTER `run_tui` returns. The interactive loop holds NO store handle, so it
+  structurally cannot persist per-keypress. **REPRODUCED LIVE:** `m`→Enter closed
+  the set-admission modal but the console `commands` table stayed 0 and the
+  orchestrator ledger did not change. This is THE blocker to a live cockpit.
+- **#2 — command palette can't submit.** `enter_input` (console-tui lib.rs
+  ~line 415) returns `None` for `TuiOverlay::CommandPalette`, so Enter never maps
+  to `Confirm`; `:drain` can't submit by construction (+ the #1 flush-on-quit).
+- **#3 — drain calls a nonexistent dispatcher subcommand.**
+  `crates/console-cli/src/main.rs:116` & `:166` pass `&["drain"]`, but the
+  orchestrator `dispatcher.py` exposes only `{ledger-check, ledger-normalize,
+  spec-check, janitor-check, dispatch, loop}`. Fix: `&["drain"]` → `&["loop"]`
+  (the drain port already appends `--mode autonomous`, matching `loop`). NOTE:
+  cont.7's #3 was RIGHT; my initial "stale" hypothesis was wrong (I hadn't yet
+  found the `&["drain"]` literal).
+
+### FILED (console tenant; `related`-edge-linked to the epic; prose-linked to core `livespec-bvuy4w`)
+- Epic **`livespec-console-beads-fabro-7ja55l`** [backlog] — "Console cockpit
+  live-operation — valve/palette/drain effects must apply mid-session".
+- **`livespec-console-beads-fabro-4rgoa5`** [pending-approval] — #1 live
+  per-effect persist+execute (CRITICAL PATH; architecture change; may want a
+  short design note before dispatch).
+- **`livespec-console-beads-fabro-a3luug`** [pending-approval] — #2 palette
+  Enter→Confirm mapping.
+- **`livespec-console-beads-fabro-stl7hn`** [pending-approval] — #3 drain argv
+  `loop`-not-`drain`.
+- All: `origin: freeform`, `gap_id: null`; verified schema-valid
+  (`list_work_items` parses the tenant; the epic's RELATED shows all 3). These
+  are console-Rust → scoped **sub-agent** fixes (worktree → Rust RGR → PR →
+  driver review), **NOT the factory** (console Fabro sandbox has no Rust) — the
+  established Stage-1 pattern. #2/#3 are small and may land in #1's PR.
+
+### Stage-2 orchestrator items — unchanged this session
+- `bd-ib-86k`: still **ACCEPTANCE** (do NOT CLI-accept; TUI acceptance is the
+  proof).
+- `bd-ib-e0t`: still **READY** (next Stage-2 candidate).
+
+### RESUME ORDER (fresh session)
+1. **Groom + fix the console epic `livespec-console-beads-fabro-7ja55l`** — start
+   with #1 (`livespec-console-beads-fabro-4rgoa5`, the architecture fix). Console-
+   Rust → scoped sub-agents, NOT the factory.
+2. **Re-verify live:** after the fixes land + the cockpit rebuilds, drive a SAFE
+   reversible valve (`set-admission`/`set-acceptance`) through the RUNNING TUI and
+   confirm the `commands` row + orchestrator-ledger change appear MID-SESSION (no
+   quit). Cockpit tmux `console-autonomous-mode` (112×28) is launched from the
+   orchestrator cwd; store overridden via
+   `LIVESPEC_CONSOLE_STORE_PATH=<scratch>/console-store.sqlite`.
+3. **Then Stage 2:** accept `bd-ib-86k` through the TUI (maintainer on the valve),
+   then dispatch + observe `bd-ib-e0t` through the TUI. MVP "done" = multiple real
+   items end-to-end SOLELY through the live TUI with the maintainer on the valves.
+
+### Reap
+- core worktree `docs-autonomous-mode-cont8` (this handoff update) — reap after
+  its PR merges. Cockpit LEFT RUNNING (tmux `console-autonomous-mode`, 112×28). No
+  new console/orchestrator worktrees this session (ledger-only writes).
+
 ## SESSION UPDATE — 2026-07-13 (cont. 7): Stage 2 partially advanced; TUI operator path BLOCKED under Codex driving
 
 Fresh Codex session resumed from cont.6 with the maintainer explicitly switching
