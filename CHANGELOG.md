@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/thewoolleyman/livespec/compare/v0.10.1...v0.10.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* **overseer:** overseer-start refuses outside a Claude Code session ([50ad613](https://github.com/thewoolleyman/livespec/commit/50ad613a94cc4578e97fe761ca9ff18ee51bda1a))
+
 ## [0.10.1](https://github.com/thewoolleyman/livespec/compare/v0.10.0...v0.10.1) (2026-07-13)
 
 
