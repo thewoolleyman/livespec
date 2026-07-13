@@ -1,5 +1,5 @@
 {
   "name": "livespec",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "Lives-as-spec core: the livespec contract plus its reference artifacts — harness-neutral driving prose (prose/), reference spec-side CLIs (scripts/bin/), schemas, and built-in templates. The interactive /livespec:* commands ship with a Driver plugin; for Claude Code install livespec@livespec-driver-claude alongside this core."
 }
