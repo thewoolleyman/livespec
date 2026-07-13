@@ -70,7 +70,7 @@ dev = [
 # SPECIFICATION/contracts.md §"`livespec_runtime.cross_repo` contract
 # surface". Bump-pin PRs follow the same shape as livespec-dev-tooling.
 [tool.uv.sources]
-livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.42.0" }
+livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.43.0" }
 livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.git", tag = "v0.9.2" }
 
 # ---------------------------------------------------------------------------
