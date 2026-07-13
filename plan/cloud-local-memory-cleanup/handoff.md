@@ -83,8 +83,8 @@ ephemeral. Do not add a cross-repo check in `livespec-dev-tooling` that reads
 downstream repos; read `.ai/no-circular-dependency.md` before designing any
 fleet-wide enforcement surface.
 
-## Resume Command
+## Resume Path
 
 ```text
-/livespec-orchestrator-beads-fabro:plan cloud-local-memory-cleanup
+plan/cloud-local-memory-cleanup/handoff.md
 ```
