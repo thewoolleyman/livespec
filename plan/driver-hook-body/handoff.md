@@ -30,14 +30,18 @@ this file alone via the read-first chain below — no chat history required.
   `no_shadow_ledger.py` copies drifted (claude `.claude-plugin/hooks/…` vs codex
   `livespec/hooks/…`) and the byte-identity contract (livespec core `contracts.md`
   §"Driver-shipped hooks") is unenforced.
+- **Design note:** `plan/driver-hook-body/research/importable-main-slice-design.md`.
+  Read this after the ledger items above; it records the importable-`main()` entry form,
+  in-process coverage split, byte-identity boundary, verifier direction, and recommended
+  grooming order.
 
 ## The next action
 
-**GROOM `livespec-9z8h` into ready, dependency-layered slices — DESIGN-FIRST.** The
-importable-`main()` refactor is NOVEL: it is NOT in the `livespec-runtime` template (runtime
-has no subprocess-tested script-hooks), so the entry-form + test shape must be designed
-before slicing (a research note under `plan/driver-hook-body/research/` is the place for
-that design). Then DRIVE host-side:
+**Run the `groom` operation on `livespec-9z8h` into ready, dependency-layered slices, using
+the design note from the read-first chain as the design input.** The design note records the
+importable-`main()` entry form, the in-process coverage/subprocess smoke split, the cross-repo
+byte-identity boundary, the no-circular-dependency constraint for the verifier, and the
+recommended slice order. Then DRIVE host-side:
 
 - **HOST-SIDE, not factory-safe** — touches `.github/workflows/` (the factory GitHub App
   token lacks `workflows` permission; proven repeatedly in the fleet-check-coverage epic).
@@ -45,7 +49,9 @@ that design). Then DRIVE host-side:
   green CI → review-the-merged-commit + fix-forward.
 - **Independent Fable NO-BLOCKERS review before ratifying each slice** (fleet discipline).
 - **Byte-identical hook bodies** across both Drivers — never edit one copy unilaterally
-  (that deepens the drift); change the canonical body + both copies together, guarded by the
+  (that deepens the drift). The current design narrows byte-identity to declared neutral
+  bodies, currently `no_shadow_ledger.py`; runtime-specific hooks share behavior, not bytes.
+  Change the canonical neutral body + both copies together, guarded by the consumer-side
   Conformance Pattern Verifier.
 
 ## Context / gotchas (from the fleet-check-coverage epic that surfaced this)
@@ -57,8 +63,10 @@ that design). Then DRIVE host-side:
 - `livespec-driver-codex` has a stale `justfile` comment (~line 299) saying
   `file_lloc_hard_gate` is "DELIBERATELY NOT set" while `pyproject.toml` has it `true` —
   fold the 1-line comment fix into this epic's Driver-justfile rework.
-- All 4 repos already pin `livespec-dev-tooling` v0.43.2 (the fleet-check-coverage
-  `.claude/skills/` narrowing) and are master-CI green.
+- Re-check the Driver pins before grooming: the primary `livespec-driver-claude` checkout
+  currently shows `livespec-dev-tooling` v0.40.0, and `livespec-driver-codex` shows v0.43.0.
+  The prior handoff's "all 4 repos v0.43.2" statement is therefore not safe as an input
+  unless the implementation worktree is on a newer branch.
 
 ## Golden rules
 
