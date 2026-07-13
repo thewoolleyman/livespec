@@ -170,8 +170,15 @@ conformance checks, or any other repo.
     `livespec_dev_tooling.config` (`source_tree_prefixes` /
     `target_dirs`), none of which include `.claude/skills/` — so
     `check-claude-md-coverage` and the style checks never reach here.
-- **Run the beside-tests explicitly** — they are NOT part of the product
-  `tests/` tree:
+- **ALWAYS run the beside-tests before pushing ANY change to this folder — they
+  are the ONLY gate on it.** This folder is outside the product discipline, so
+  `just check`, the pre-push hook, and CI do NOT run these tests (pytest
+  `testpaths = ["tests"]` never collects them; nothing in the justfile or
+  `.github/` references `skills/overseer/`). A broken overseer change will merge
+  green with NOTHING having exercised its behavior — that is exactly how a
+  critical regression once reached master here (the auto-merge landed a green PR
+  whose overseer bug no gate caught). So running them is a **hard pre-push step
+  for the developer**, not optional:
 
   ```bash
   uv run pytest .claude/skills/overseer/ -q
@@ -179,6 +186,9 @@ conformance checks, or any other repo.
 
   (`conftest.py` puts the folder on `sys.path` so `import registry` / `import
   signals` / `import tmuxio` resolve when pytest collects the beside-tests.)
+  Deliberately kept lightweight (a manual pre-push run, no CI wiring) to preserve
+  the "outside the product gates" design — the discipline lives here, in the
+  developer's hands, not in a gate.
 - **Adding a `.py` here?** Keep it stdlib-only. The ruff `**` exclude covers new
   files automatically, but new beside-tests must be run manually (they will not
   be collected by `just check`'s product suite).
@@ -209,6 +219,19 @@ Per "done means exercised live", drive the shipped behavior end-to-end:
 The daemon's diagnostics + `overseer[SURFACE]:` alerts go to stderr; redirect
 them to a log under `tmp/overseer/` (maintainer-owned scratch root — use a
 scoped subdir, never `rm` the root).
+
+**Exercise timing-sensitive behavior with a CONTINUOUS loop, not hand-spaced
+`--once` ticks.** A live-exercise that runs single `daemon --once` ticks by hand,
+waiting for the pane to look idle between each, silently avoids the real loop's
+timing and can pass while a continuous daemon fails. That is exactly how the RB1
+regression slipped through a first live re-test: the "void the ready marker when
+busy" logic raced the certifying turn's own busy tail (final streaming + stop
+hooks keep the pane busy 10-60s AFTER the marker is written), which only a real
+continuous loop hits. Drive at least the inject→certify→restart cycle under a
+bounded continuous run — e.g. `timeout 90 python3 supervisor.py daemon --interval
+5 --repos-only --repos <scratch> --store <scratch> 2> <log>` — and confirm the
+event log shows `injected → restarted` with NO spurious `voided … marker` line in
+between.
 
 ## Pointers
 
