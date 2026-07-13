@@ -32,6 +32,14 @@
 > radius, show the exact install + rollback commands, and ask the maintainer to
 > confirm before running it. See "## SESSION 5" at the bottom.
 >
+> **SESSION 6 (2026-07-13):** SESSION 5's designated next action is DONE — the
+> BD guard is INSTALLED on the host in warn mode (maintainer-confirmed) and
+> verified live end-to-end (passthrough intact; warn/fail/reopen behaviors
+> correct; 8-member survey through the guard = 0 drift). Fleet 0 drift + master
+> CI green on both repos. beads #4738 developed a merge conflict (upstream moved;
+> left for the `gastownhall/beads` maintainer); beads #4536 still unreleased
+> (`main` 230 ahead of v1.1.0). See "## SESSION 6" at the bottom.
+>
 > _Original seed note:_ spun off 2026-07-12 from the `autonomous-mode` track
 > (during an attempt to factory-dispatch a `livespec-dev-tooling` work-item). Does
 > NOT block autonomous-mode.
@@ -565,3 +573,74 @@ confirmation prompt: install in warn mode now, inspect first, or defer.
 2. beads #4738 (`status.default`) review/merge → then fleet `.beads/` adoption.
 3. Wait for a beads release carrying #4536 → bump pin, single-step store, retire
    the two-step + the guard.
+
+## SESSION 6 (2026-07-13) — BD guard INSTALLED in warn mode + verified live
+
+**Read this after SESSION 5.** SESSION 5's designated NEXT ACTION — the
+maintainer-gated BD guard host install — was CONFIRMED by the maintainer and
+EXECUTED this session. The guard is now installed in warn mode and verified
+end-to-end. The track's reactive layer remains green; the only still-open items
+are external/upstream (beads #4738, #4536 release).
+
+## Landed this session
+
+| What | Where | State |
+|---|---|---|
+| BD guard host install (warn mode) | host `/usr/local/bin/bd` | ✅ DONE + live-verified |
+
+**What was done.** `sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/install.sh`
+ran cleanly: it relocated the real `bd` (v1.0.5, 135 MB ELF) to
+`/usr/local/bin/bd-real` and installed the 10 KB guard shell wrapper at
+`/usr/local/bin/bd` (sentinel `bd-guard-wrapper-sentinel` present, verified).
+Default mode is warn (`LIVESPEC_BD_GUARD_MODE` unset); `LIVESPEC_BD_PATH` stays
+unset so BOTH raw and store callers fall back to `/usr/local/bin/bd` = the guard.
+
+**Live verification (all passed).**
+- Passthrough: `bd --version` → `1.0.5` through the wrapper; `bd list` OK through
+  the guard against the real backend.
+- Hermetic behavior (installed wrapper, `LIVESPEC_BD_REAL=/bin/echo` stub, zero
+  beads side effects): raw `--claim` → WARN + passthrough (exit 0, default warn);
+  `--claim` with `MODE=fail` → WARN + BLOCK (exit 3, no passthrough); conformant
+  `--status active` → no warn + passthrough; `--status in_progress` → WARN
+  (suggests `active`) + passthrough; `bd reopen` → WARN + passthrough; `bd create`
+  (out of scope) → no warn + passthrough.
+- Real stack intact: re-ran the 8-member survey THROUGH the guarded path → 0
+  status-conformance fails on every member (the guard does not break the
+  dispatcher).
+
+**Rollback (one command, verified working in SESSION 3):**
+`sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/rollback.sh`.
+
+## Current state snapshot (verified 2026-07-13)
+
+| Signal | State |
+|---|---|
+| Fleet ledger drift | 0 status-conformance fails across all 8 members |
+| Master CI (`livespec`, `livespec-orchestrator-beads-fabro`) | both green |
+| BD guard on host | INSTALLED (warn mode) |
+| beads #4738 (`status.default`) | OPEN but now `CONFLICTING`/`DIRTY` — upstream `main` moved under it; still awaiting the `gastownhall/beads` maintainer |
+| beads #4536 (`bd create --status`) | merged, still in NO release; `main` is 230 commits ahead of latest release (v1.1.0, 2026-07-04) |
+
+## Next steps (observation phase)
+
+The guard is in warn mode — it now PRINTS a `livespec bd-guard: …` warning to
+stderr whenever any caller runs a raw `bd update --claim` / `--status
+<non-lifecycle>` / `bd reopen`. The observation phase: watch those warnings
+surface across sessions, fix the raw-claim callers they name, then flip to block
+with `export LIVESPEC_BD_GUARD_MODE=fail` (host-wide) once offenders are clean.
+
+## Still OPEN on this track
+
+1. ~~Host install of the BD guard in warn mode~~ **DONE this session** (warn mode,
+   verified). Remaining guard step: observe warn-mode offenders, fix raw-claim
+   callers, then flip `LIVESPEC_BD_GUARD_MODE=fail`.
+2. **beads #4738 (`status.default`)** — developed a merge conflict (upstream moved).
+   LEFT AS-IS: upstream-blocked with no `gastownhall/beads` review activity, so
+   rebasing now is speculative (would likely re-conflict). Rebase the fork branch
+   (`feat/create-default-status-config`, worktree
+   `/home/ubuntu/.worktrees/beads/feat-create-default-status-config`) onto
+   `gastownhall/beads:main` when the upstream maintainer engages. Then adopt
+   `status.default = backlog` in each fleet tenant's `.beads/` config.
+3. **beads release carrying #4536** — pure wait (nothing to run). When beads cuts a
+   release with #4536: bump the `bd` pin, make the store `create_work_item`
+   single-step (`bd create --status`), and retire the store two-step + the guard.
