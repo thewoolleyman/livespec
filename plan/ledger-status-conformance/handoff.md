@@ -254,3 +254,122 @@ ANY tenant's drift surfaces without needing a dispatch:
   (`livespec-orchestrator-beads-fabro`).
 - Discipline: "Fix the gate, not the bypass" — the fix is create-time correctness +
   a fleet-hygiene surface, never skipping `ledger-check` or weakening the lifecycle.
+
+---
+
+# SESSION 2 (2026-07-12 → 13) — enforcement gate + bd guard wrapper + root-cause
+
+**Read this section first; it supersedes the older sections where they conflict.**
+This session extended the thread from "detect + auto-fix + upstream-prevent" into a
+tool-boundary enforcement design after live exercise revealed the drift is
+CONTINUOUS, not one-time.
+
+## Landed this session (all merged unless noted)
+
+| What | Repo | PR / state |
+|---|---|---|
+| Reflector `file_new` two-step fix | `livespec-orchestrator-beads-fabro` | #535 merged (`ea1e441`) |
+| Auto-fix: `ledger-normalize` cmd + generalize remap (`open`→`backlog`, `in_progress`→`active`) | `livespec-orchestrator-beads-fabro` | #537 merged (`9ea4f1a`) — live-exercised |
+| Detect: `needs-attention-internal` Signal 5 | `livespec` core | #1107 merged |
+| Pre-push conformance gate (detect-and-fail prototype) | `livespec-orchestrator-beads-fabro` | #548 merged (`0fb66ed`) — `ledger-normalize --gate`, `check-ledger-conformance-live` recipe, always-run lefthook `ledger-conformance` cmd, fail-soft |
+| Handoff updates | `livespec` core | #1101, #1104, #1110 merged |
+| beads `status.default` config | `gastownhall/beads` (external) | **#4738 DRAFT — awaiting maintainer's Fable/Codex adversarial review** |
+| bd guard wrapper (warn-first) | `livespec-orchestrator-beads-fabro` | **DISPATCHED this session — branch `feat/bd-guard-wrapper-warn-first`, PR left OPEN for review, NOT installed on host** |
+
+## ROOT CAUSE (definitively established via `bd history`)
+
+The drift is NOT from our code paths (we fixed the ONE buggy one — the reflector;
+the store already did the two-step correctly). It is CONTINUOUS churn from **raw /
+native `bd` usage by active sessions**, which our code cannot intercept:
+- **`open`** ← raw `bd create` bypassing the store (dev-tooling opens had no
+  `origin:`/rank fingerprint). The bare-create→open case can only be neutralized by
+  the tenant `status.default` (our draft #4738) — NOT by the `--status` flag (raw
+  callers don't pass flags).
+- **`in_progress`** ← raw `bd update --claim` (the natural beads "start work"
+  command; sets `in_progress`). Proven: `livespec-3lev.2` sat at `backlog` for hours
+  then a raw claim flipped it to `in_progress`. **NOTHING upstream fixes this** —
+  `status.default` only touches creates. The **guard wrapper is the only mechanism
+  that can prevent the raw-claim drift.**
+- Possible minor contributor: the store two-step is non-atomic, so an interrupted
+  create can strand an item at `open` (single-step `bd create --status` would kill
+  this sliver, once beads releases the flag).
+
+## BEADS VERSION FACTS (verified live — settle any confusion)
+
+- Installed/pinned `bd` = **v1.0.5** (`/usr/local/bin/bd`; `LIVESPEC_BD_PATH` is
+  UNSET → falls back to it). **No `create --status`.**
+- The `--status` flag is PR #4536, merged to beads `main` 2026-07-05 but **in NO
+  tagged release/pre-release**: v1.1.0 is 23 commits behind it; rc.1/rc.2 are older
+  still; v1.0.5 is 278 behind. There is NO canonical tag to pin to.
+- **DECISION (maintainer): stay on canonical v1.0.5; do NOT build/pin from a fork —
+  we gain little (store already lands conformant via the two-step). Wait for beads
+  to cut a release with #4536 ("should be soon").** Once released: bump the pin,
+  make the store single-step, and adopt `status.default`.
+
+## DECISIONS made this session
+
+1. **Do NOT dilute the livespec lifecycle** (rejected `in_progress`≡`active`). The
+   lifecycle is LEDGER-AGNOSTIC — beads is one impl of many; never bend the generic
+   contract to a beads idiosyncrasy. Fix upstream or guard the boundary. This is a
+   core architecture principle for this thread.
+2. **Fleet gate = auto-heal-LOUD** (not detect-and-fail). Live exercise showed
+   `open`/`in_progress` appear CONTINUOUSLY (multiple active sessions creating +
+   claiming; watched `3lev.2` flip `open`→`in_progress` between two commands). On a
+   SHARED tenant, detect-and-fail blocks any session on any other session's fresh
+   transient item → constant cross-session friction. So the fleet gate should
+   auto-normalize the two definitionally-safe transient states (`open`→`backlog`,
+   `in_progress`→`active`), **PRINT each remap** (loud, not hidden — this answers the
+   original "no silent DB writes" objection), and block ONLY on residual
+   (deferred/hooked/ad-hoc → human lane decision). **CONFIRMED, NOT YET BUILT.**
+3. **bd guard wrapper (warn-first → fail)** as the version-independent stopgap that
+   covers what no beads flag can — raw usage across ALL callers. Warn-first rollout
+   (observe offenders, don't break), then flip to fail. DISPATCHED (see below).
+
+## OPEN WORKSTREAMS / NEXT ACTIONS (for the new session)
+
+1. **bd guard wrapper** — a background agent is building it in
+   `livespec-orchestrator-beads-fabro` (branch `feat/bd-guard-wrapper-warn-first`).
+   SCOPE this build: guards the EXPLICIT bad-status ops only — `bd update --status
+   <non-lifecycle>` and `bd update --claim` (→ warn/fail); passes everything else
+   (incl. `create`) through transparently. Create-guarding is deliberately OUT (a
+   single-command wrapper on v1.0.5 can't tell the store's two-step from a raw
+   create; that half is the normalizer + `status.default`). Deliverables: wrapper +
+   codified installer + rollback + hermetic tests; **NOT installed on host** (host
+   swap is maintainer-gated). **CHECK the PR when the agent reports; review; then
+   the maintainer runs the installer in `warn` mode, observes offenders, fixes the
+   raw-claim callers, then flips `LIVESPEC_BD_GUARD_MODE=fail`.** Host swap replaces
+   `/usr/local/bin/bd` → moves real to `/usr/local/bin/bd-real` — blast radius is
+   fleet-wide; one-command rollback required.
+2. **Fleet gate → auto-heal-loud** — change the merged prototype gate (`--gate` /
+   `check-ledger-conformance-live` in `livespec-orchestrator-beads-fabro`) from
+   detect-and-fail to auto-heal-loud (heal the 2 safe transient states + print each,
+   block only on residual), then ROLL OUT to all tenant-bearing fleet repos (each
+   needs the lefthook `ledger-conformance` command + a recipe resolving its
+   `.livespec.jsonc` `credential_wrapper` + the dispatcher path — note non-orchestrator
+   repos invoke the dispatcher via the INSTALLED plugin, not local source; that
+   resolution is an unsolved rollout detail).
+3. **beads #4738 (`status.default`) review** — DRAFT, awaiting the maintainer's
+   independent Fable + Codex adversarial review. Branch
+   `feat/create-default-status-config` (`56adee21b`) is checked out in
+   `/data/projects/beads`. After review passes + any fixes: `gh pr ready 4738
+   --repo gastownhall/beads`. Then (once merged + released) adopt `status.default =
+   backlog` in each fleet tenant's `.beads/` config (the holistic create-side
+   prevention).
+4. **Wait for beads release with #4536**, then: bump the `bd` pin, make the store
+   `create_work_item` single-step (`bd create --status`), retire the two-step + the
+   interrupted-two-step sliver.
+5. **Tenant currently NOT clean** — expect fresh `open`/`in_progress` items on any
+   survey (it's live churn). Heal on demand with
+   `with-livespec-env.sh -- python3 <orch>/.claude-plugin/scripts/bin/dispatcher.py
+   ledger-normalize --project-root /data/projects/<repo>` (dry-run first).
+
+## Layered end-state (how the pieces fit)
+
+- **Prevent (source):** store two-step (done) + reflector fix (done) + guard wrapper
+  (raw claims, in progress) + `status.default` (raw creates, upstream, draft).
+- **Detect:** `needs-attention-internal` Signal 5 (done) + the pre-push gate (done,
+  → auto-heal-loud).
+- **Heal:** `ledger-normalize` (done) — the safety net for anything that slips past
+  prevention (bypass, pre-wrapper, `bd-real` direct use).
+The guard wrapper + `status.default` are STOPGAP/durable prevention; both retire or
+simplify once beads ships proper custom-status handling upstream.
