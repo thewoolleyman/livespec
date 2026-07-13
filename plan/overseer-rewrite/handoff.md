@@ -1,144 +1,156 @@
-# Handoff — overseer: DONE (correctness + invocation surface); HOLD before archive
+# Handoff — overseer `adopt` is BROKEN (wrong match key); two-pane split works
 
-**Status (2026-07-13):** ALL BUILD/REVIEW/SIMPLIFICATION WORK IS DONE + ON
-`master`. The deterministic overseer daemon is built, all 15 adversarial-review
-findings are fixed (release 0.9.4), and the operator/invocation surface has now
-been de-gold-plated to the intended internal-skill shape (**PR #1158**, merge
-commit `dc18a44`) and live-exercised against the real fleet. The ONLY thing left
-is the maintainer's OWN exploratory testing. **Owning session:** livespec core,
-"overseer-rewrite". This handoff is self-sufficient.
+**Status (2026-07-13):** The two-pane bootstrap (`overseer-start` splitting its
+OWN window) WORKS and is live-proven. But the **`adopt` pass is BROKEN**: it
+found ZERO of the maintainer's real worker sessions. The prior session
+misimplemented the match key AND tested against a synthetic session that matched
+its own wrong interpretation instead of the maintainer's REAL sessions. This
+handoff carries the exact root cause, the real-session test oracle, and the
+testing discipline the fresh session MUST follow. **Owning session:** livespec
+core, "overseer-rewrite". **HOLD on archive still stands.**
 
-## Bottom line
+## THE FAILURE (what the maintainer hit)
 
-The overseer is a deterministic tmux-supervising daemon (top pane,
-`.claude/skills/overseer/supervisor.py`) + a thin interactive `/overseer` skill
-(bottom pane), local-only in **livespec**. It watches each tracked session's
-context %, injects a wrap-up at threshold, and — once the session certifies "done"
-via an out-of-band `.overseer-ready` marker — atomically restarts it fresh, renamed
-to the plan topic. It is a **PERMANENT human-supervised alternate to autonomous
-mode**. The core logic is CORRECT and the invocation surface is now MINIMAL. Full
-design: `design.md` beside this file.
+The maintainer ran `/overseer` in the `livespec-overseer` tmux session. The
+daemon top pane came up fine (split works), but **adopt detected NONE of the
+existing tmux sessions** — including the ones running claude/codex on plan topics
+that SHOULD have been auto-tracked. Absolute failure of the adopt requirement.
 
-## Simplification landed (2026-07-13, PR #1158 — `refactor(overseer):`)
+## ROOT CAUSE A — adopt matches the wrong thing (the primary bug)
 
-Per `design.md` §"Simplification requirements (2026-07-13)", the invocation/config
-surface was stripped to the intended shape WITHOUT regressing any correctness fix
-(the state machine was untouched):
+`Supervisor.adopt_sessions` (in `.claude/skills/overseer/supervisor.py`, merged in
+PR #1177) matches **`topic == the tmux SESSION NAME`**. That is WRONG. The
+maintainer launches each worker with **`claude -n <topic>`** (or the codex
+equivalent), which sets the **terminal/pane TITLE** to the topic — NOT the tmux
+session name. The tmux session names are generic (`livespec`, `livespec1`,
+`livespec-autonomous-mode`); the TOPIC lives in `#{pane_title}` as
+`<status-glyph> <topic>`.
 
-1. **`/overseer` skill is the sole operator surface** — no manual `python3 …`
-   path.
-2. **Daemon is a DEDICATED self-invokable executable `overseerd`** (maintainer
-   correction 2026-07-13 — a dedicated daemon executable must NOT carry a
-   positional `daemon` subcommand; the file IS the daemon). `overseerd` (shebang
-   `#!/usr/bin/env -S uv run --script --no-project` + `chmod +x`) sits beside
-   `supervisor.py`, takes NO args/options/subcommands, and calls
-   `supervisor.run_daemon()`. `supervisor.py` reverts to a **plain module** (no
-   shebang, not executable) holding the logic + `run_daemon()` + the track CLI
-   (`list`/`add`/`remove`/`unassign`/`start`, no `daemon` subcommand); the skill
-   invokes it as `uv run --no-project python …/supervisor.py <cmd>`. `overseerd`
-   pins its own dir onto `sys.path` so `import supervisor`/siblings resolve from
-   any cwd, and the manifest is resolved relative to the module file — path
-   discovery "just works" from any cwd. Stdlib-only stays load-bearing (a
-   third-party import would break the `--no-project` launch).
-3. **Hard-coded store + stamp paths** (`~/.livespec-overseer.jsonl`,
-   `~/.livespec-overseer-stamps.json`). Removed `--store`/`--stamp`.
-4. **Removed `--repos`/`--repos-only`/`--manifest`** — the watch-set is the whole
-   fleet read from `.livespec-fleet-manifest.jsonc`, no per-run override. (The
-   `Supervisor` dataclass keeps `store_path`/`stamp_path`/`watch_repos`/
-   `manifest_path` injectable, but ONLY the beside-tests inject them — they
-   redirect `registry.DEFAULT_STORE_PATH` for CLI isolation now that `--store` is
-   gone.)
-5. **Track subcommands take `--repo`/`--topic` KEYWORD flags** (required); the
-   skill prompts for whichever the maintainer omits and accepts natural-language
-   drivers (add/remove/unassign/start).
-6. **`daemon` takes no required args.**
-7. **Original operator model preserved** — discovery-driven list, JSONL =
-   mapping-only, surface-only (never auto-spawn), thin bottom-pane skill.
+**Real evidence (captured live 2026-07-13 via `tmux list-panes -t <s> -F ...`):**
 
-**Open question — RESOLVED by the maintainer (2026-07-13):** with no `--repos`
-escape hatch, a developer live-exercises against the **real fleet** (option
-"Real-fleet exercise"); it is safe because the daemon is surface-only (nothing is
-touched unless a real track crosses threshold AND certifies AND is idle), and the
-fake-tmux beside-tests remain the primary gate. Do NOT re-introduce `--repos`.
+| tmux session | `#{pane_title}` | cmd | cwd | topic (glyph-stripped) | active plan in cwd-repo? | adopt? |
+|---|---|---|---|---|---|---|
+| `livespec` | `✳ driver-hook-body` | claude | /data/projects/livespec | driver-hook-body | YES | **ADOPT → tmux=`livespec`** |
+| `livespec1` | `✳ codex-acp-auto-bump` | claude | /data/projects/livespec | codex-acp-auto-bump | YES | **ADOPT → `livespec1`** |
+| `livespec2` | `✳ ledger-status-conformance` | claude | /data/projects/livespec | ledger-status-conformance | YES | **ADOPT → `livespec2`** |
+| `livespec4` | `⠂ overseer-rewrite` | claude | /data/projects/livespec | overseer-rewrite | YES | **ADOPT → `livespec4`** |
+| `livespec-autonomous-mode` | `✳ console-autonomous-mode` | claude | /data/projects/livespec | console-autonomous-mode | NO (not a plan in livespec) | skip |
+| `livespec3` | `⠹ livespec` | bun | /data/projects/livespec | livespec | NO (not a topic) | skip |
+| `resume2`, `vps-info` | `✳ Claude Code` | claude | (outside fleet) | — | — | skip |
+| `openclaw-info` | `✳ Review bench …` | claude | /data/projects/fabro | — | — | skip |
 
-**Validation (PR #1158):** `uv run pytest .claude/skills/overseer/ -q` → **108
-green** (106 baseline + 2 new: `test_cli_surface_has_no_config_knobs`,
-`test_daemon_takes_no_required_args`). Full `just check` (63 targets) green in
-pre-commit + pre-push. Live-exercised: the merged shebang CLI rendered the real
-**20-track** fleet table read-only (`supervisor.py list`, `act=False`, zero
-mutation) from the primary checkout. `SKILL.md`/`AGENTS.md` updated for the shebang
-launch, keyword flags + prompting, fixed paths + fleet-only watch-set, and the
-real-fleet live-exercise model.
+**The fix:** adopt must match by the **pane TITLE**, stripped of the leading
+status glyph + whitespace (e.g. `✳ driver-hook-body` → `driver-hook-body`;
+`⠂ overseer-rewrite` → `overseer-rewrite`), compared against the ACTIVE plan
+topics in the pane's cwd-repo — and map to the **tmux SESSION holding that pane**
+(`tmux == session`). The three guards stay: (a) cwd inside a fleet repo, (b)
+running a claude/codex worker, (c) the glyph-stripped title is an active topic in
+that repo. Guard (c) naturally rejects `✳ Claude Code`, `⠹ livespec`, etc.
 
-## What is DONE — the correctness core (do NOT regress; all on `master` @ 0.9.4)
+**TEST ORACLE — a correct adopt against the CURRENT real fleet MUST adopt exactly
+these 4** (verify by name; the set may drift, so always re-derive it live):
+`livespec→driver-hook-body`, `livespec1→codex-acp-auto-bump`,
+`livespec2→ledger-status-conformance`, `livespec4→overseer-rewrite`.
+Active livespec plan topics right now: autonomous-mode, cloud-local-memory-cleanup,
+codex-acp-auto-bump, collector-otel-rename, driver-hook-body,
+fabro-ci-image-factoring, factory-safe-by-default, greenfield-install-experience,
+ledger-status-conformance, overseer-rewrite.
 
-Two adversarial CODE-review rounds found and fixed **15** findings:
-- **8 blockers** (PR #1138): B1 tmux `--` naming + exact `session_exists`; B2
-  title-tolerant idle; B3 pane-identity gate; B4 marker/round lifecycle; B5
-  failure propagation; B6 store atomicity/locking/read-only-`list`/singleton +
-  per-op buffer + active-wins GC; B7 fail-soft loop; B8 `start` guard.
-- **7 fix-re-review findings** (PR #1142): RB1 (critical — grace-based marker void),
-  RB2 round re-certify, RB3 pane-id targeting, RB4 `start` fail-closed, Codex #1
-  identity TOCTOU re-check, Codex #3 `new_session`-failure guard. **Codex #2 kept**
-  (documented tradeoff — voiding the marker on a failed resume-submit).
-- **AGENTS.md rule** (PR #1144): ALWAYS run the beside-tests before pushing folder
-  changes (they are the ONLY gate on this folder — CI does NOT run them); exercise
-  timing behavior with a CONTINUOUS loop (now covered deterministically by the
-  beside-tests).
+## ROOT CAUSE B — flaky `display-message` read (latent, must fix too)
 
-## Read-first chain
+`tmuxio.pane_current_command` / `pane_current_path` / `pane_id` all read via
+`tmux display-message -p -t <session> '#{...}'`. **That returns EMPTY for most
+DETACHED sessions** (verified live: a system-wide loop returned empty
+window/title/cmd/path for ~19 of 21 sessions, while a single retry sometimes
+returned a value — it is inconsistent). **`tmux list-panes -t <session> -F
+'#{...}'` (first/active pane) is RELIABLE** — it returned the real cmd/path/title
+for every session, every time. So even after fixing the match key, adopt (and
+likely the daemon's per-tick `auto_link` / identity gate / ctx reads) will still
+intermittently see `None` and skip real sessions.
 
-1. `design.md` §"Simplification requirements (2026-07-13)" — the spec the PR #1158
-   work implemented.
-2. `design.md` §"Adversarial review (2026-07-12)" + §"Live-exercise corrections
-   (2026-07-13)" — why the CORE mechanics are shaped as they are (do not regress).
-3. `.claude/skills/overseer/supervisor.py`, `registry.py`, `signals.py`,
-   `tmuxio.py` — the code (all correctness + simplification landed).
-4. `.claude/skills/overseer/SKILL.md` — the operator surface (uv shebang + keyword
-   flags + prompting).
-5. `.claude/skills/overseer/AGENTS.md` — maintenance invariants + the B1–B8/RB fix
-   rationale + the invocation-surface invariant.
-6. `.claude/skills/overseer/marker-protocol.md` — the wrap-up + marker contract.
+**The fix:** switch tmuxio's per-session pane reads to `list-panes -t <session>
+-F '#{...}'` (take the active/first pane), and add a `pane_title(session)`
+accessor the same way. INVESTIGATE whether the daemon's other display-message
+readers are affected the same way and fix them consistently (this may be why the
+daemon has only ever been "validated" against fresh/attached scratch sessions,
+never the maintainer's real detached ones).
 
-## Verified environment facts (trust these)
+## Worker-detection nuance (codex runs as `bun`)
 
-- `command tmux` = tmux 3.5a (bypass the zsh alias). `claude` at
-  `/home/ubuntu/.local/bin/claude`. `env` is uutils coreutils (supports `-S`).
-  `uv run --script --no-project` runs the daemon isolated (no project/dep sync)
-  and resolves the stdlib-only sibling imports. Statusline emits `Ctx: N% left`
-  LAST — a narrow pane / very long path truncates it → daemon reads unknown and
-  degrades safely (fail-closed).
-- **Beside-tests are the ONLY gate on this folder** — `uv run pytest
-  .claude/skills/overseer/ -q`; `just check`/pre-push/CI do NOT run them
-  (`testpaths = ["tests"]`; no justfile/CI reference to `skills/overseer/`). RUN
-  THEM before every push per the AGENTS.md rule.
-- **PRs AUTO-MERGE on CI-green** (`app/livespec-pr-bot`). CI green does NOT
-  exercise this folder, so it only ever means the product/plugin is unbroken. Do
-  the beside-tests + live exercise BEFORE pushing.
-- **SAFETY:** the daemon is surface-only — it never touches a session unless a
-  track crosses threshold AND certifies AND is idle. The maintainer runs ~20 real
-  sessions/tracks.
+A claude session's `#{pane_current_command}` is `claude`. A **codex** session's is
+**`bun`** (codex-cli runs through bun) — e.g. `livespec3` above is `cmd=bun`.
+`signals.pane_is_worker` currently accepts `{node, claude, codex}` — it is MISSING
+`bun`. Add it (the strong title==active-topic + in-fleet-repo guards keep a stray
+non-codex `bun` app like `openbrain` out). VERIFY live what a real codex session's
+`pane_current_command` actually is before finalizing (it was `bun` here).
 
-## Guardrails
+## What ALREADY WORKS (do NOT rebuild — merged in PR #1177, release 0.10.0)
 
-- Repo mutations: worktree → PR → rebase-merge; never commit on the primary;
-  never `--no-verify` (`mise exec -- git …`). Only touch your own worktree.
-- Run `uv run pytest .claude/skills/overseer/ -q` before every push (the only gate).
+- **`overseer-start`** two-pane bootstrap: reads `$TMUX_PANE` (Claude Code DOES
+  inherit it), splits its OWN window (`tmux split-window -v -b -d -P -F
+  '#{pane_id}' -t $TMUX_PANE`), runs `overseerd` in a TOP pane titled
+  `overseer-daemon`, keeps focus on the bottom pane, idempotent via the pane
+  title, never grabs another session. PROVEN live, including in the maintainer's
+  own `livespec-overseer` session (it currently has a `%NN title=overseer-daemon`
+  daemon pane + the `%20` claude bottom pane). This part is CORRECT — keep it.
+- `tmuxio.split_window_top` / `set_pane_title` / `window_pane_titles`;
+  `signals.pane_is_worker`; the `adopt` subcommand + `Supervisor.adopt_sessions`
+  skeleton; SKILL.md runs `overseer-start` first. Only the adopt MATCH KEY (title
+  vs session name) + the flaky read + the missing `bun` are wrong.
 
-## Definition of DONE
+## Verified environment facts (trust these; re-verify only if suspicious)
 
-Everything the code/review/simplification side requires is DONE: all 15 review
-findings landed (0.9.4), and the invocation/config surface now matches `design.md`
-§"Simplification requirements" (PR #1158) — `/overseer`-only operation, uv-shebang
-self-invokable daemon, hard-coded store/stamp, fleet-only watch-set, `--repo`/
-`--topic` keyword flags with prompting, argless `daemon` — with the 108
-beside-tests green and a real-fleet read-only render confirming discovery + the
-table.
+- `command tmux` = tmux 3.5a (bypass the zsh alias). Claude Code's bash inherits
+  `$TMUX`/`$TMUX_PANE`. `claude -n <topic>` sets `#{pane_title}` to
+  `<status-glyph> <topic>` (glyphs seen: `✳ `, `⠂ `, `⠹ `, `⠇ `).
+- **`list-panes -t <session> -F` is the reliable per-session read; `display-message
+  -t <session>` is flaky for detached sessions** (Root Cause B).
+- `overseerd` uv shebang works with a NORMAL `$HOME` (warm `~/.cache/uv`). Do NOT
+  isolate a test with `HOME=<empty dir>` — that cold-rebuilds uv's cache and HANGS
+  (a long red herring last time). To isolate the store instead, inject
+  `store_path=` on the `Supervisor` dataclass (tests do this) or symlink
+  `~/.cache` into the scratch HOME.
+- **Beside-tests are the ONLY code gate on this folder:** `uv run pytest
+  .claude/skills/overseer/ -q` (currently 115 green). CI does NOT run them. Run
+  them before every push.
+- The maintainer has an overseer daemon RUNNING in `livespec-overseer` (holds the
+  singleton lock). A second daemon will refuse to start. Work around it (test the
+  adopt logic directly / against a scratch store) or coordinate.
 
-**Archive is BLOCKED on the maintainer.** Do NOT move this thread to
-`plan/archive/overseer-rewrite/` until the maintainer confirms they have
-exploratory-tested the overseer themselves and gives the go-ahead. Until then the
-thread stays active as the resume point.
+## Testing discipline the fresh session MUST follow (the lesson)
+
+The prior session's fatal mistake: it "proved" adopt by creating a SYNTHETIC tmux
+session literally NAMED as a topic — i.e. it tested its own WRONG interpretation,
+not the maintainer's real setup. NEVER do that. Instead:
+
+1. **System-wide census FIRST.** `tmux list-sessions` + `list-panes -t <s> -F
+   '#{pane_title} #{pane_current_command} #{pane_current_path}'` for EVERY session.
+   Understand how the REAL sessions surface their topic (the pane title) before
+   writing any match logic.
+2. **Test against the REAL sessions, not synthetic ones.** Run adopt against the
+   live fleet and assert it produces the TEST ORACLE set above (re-derived live).
+   A synthetic session may only be added to cover a case the real fleet lacks —
+   never as the primary proof.
+3. **Exploratory-test THREE times**, end-to-end, that adopt assigns the real
+   matching sessions and the daemon table then shows them assigned — BEFORE
+   handing back to the maintainer. Clean up any test writes (restore
+   `~/.livespec-overseer.jsonl`).
+4. Beside-tests green + the three live runs, THEN hand back. Never ask the
+   maintainer to manually test unverified behavior.
+
+## Files to change (all under `.claude/skills/overseer/`)
+
+- `supervisor.py` — `adopt_sessions`: match glyph-stripped `pane_title` against
+  active topics; map to the session; keep the 3 guards + no-double-add.
+- `tmuxio.py` — add `pane_title(session)`; switch per-session pane reads to
+  `list-panes -t <session> -F` (reliable). Consider a single `pane_facts(session)`
+  that returns (title, cmd, path) in one reliable call.
+- `signals.py` — `pane_is_worker`: add `bun` (codex). Add a glyph-strip helper
+  (e.g. `strip_title_glyph`) or do it in supervisor.
+- Beside-tests — update the adopt tests to the title-based match (FakeTmux needs a
+  `pane_title` + titles carrying a leading glyph); test the flaky-read fix.
+- SKILL.md / AGENTS.md — update the adopt description (match by the
+  `claude -n <topic>` pane title, not the session name).
 
 ## Resume command
 
