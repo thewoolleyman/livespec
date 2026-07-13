@@ -1,115 +1,68 @@
-# Handoff — driver-hook-body
+# Handoff — driver-hook-body ✅ COMPLETE (2026-07-13)
 
-The single resumable entry point for the **driver-hook-body** thread: refactor both
-Driver plugins' shipped hooks from "runs-on-import" to an importable `main()` so their
-logic is testable IN-PROCESS for REAL per-file coverage — co-designed with the
-byte-identity single-sourcing contract and full aggregate/coverage/types CI parity across
-both Drivers. Spans 4 repos: `livespec-driver-claude`, `livespec-driver-codex`,
-`livespec-dev-tooling`, `livespec` (core). A fresh session executes the next action from
-this file alone via the read-first chain below — no chat history required.
+The **driver-hook-body** thread is **DONE**. Epic `livespec-9z8h` is CLOSED
+(completed). Both Driver plugins now ship importable `main() -> int` hooks with
+real per-file coverage, co-designed with byte-identity single-sourcing of the
+neutral `no_shadow_ledger.py` and full aggregate/coverage/types CI parity across
+both Drivers. Status is authoritative in the ledger — `bd -C /data/projects/livespec
+show livespec-9z8h` (via `/usr/local/bin/with-livespec-env.sh -- bd …`).
 
-## State — S1 ✅ + S2 ✅ DONE (2026-07-13). Next: S3 + S4 (both READY).
+## What shipped (all 9 slices merged + live-exercised — master CI green on each)
 
-Epic `livespec-9z8h` was groomed into **6 dependency-layered slices**, filed in the
-**core tenant** (the epic stays OPEN as the narrative umbrella; `livespec-uvgi` and
-`livespec-tawm` were closed as subsumed). Status is READ LIVE from the ledger — the
-ready/blocked notes below are the point-in-time shape at grooming, not a stored source of
-truth. Re-derive with `bd -C /data/projects/livespec ready` (via the credential wrapper
-`/usr/local/bin/with-livespec-env.sh -- bd …`).
+| Slice | Repo | Landing | Release |
+|---|---|---|---|
+| S1 `livespec-pxj9` | `livespec` | core `contracts.md` §"Driver-shipped hooks" amended (permit `.py`, importable-`main()` SHOULD, byte-identity narrowed to the neutral body) — revise v164, PR #1181 | — |
+| S2 `livespec-8zxu` | `livespec-dev-tooling` | `CANONICAL_NO_SHADOW_LEDGER_BODY` + Verifier + installer + `neutral_hook_body_path` role key — PR #367/#369 | v0.44.0 |
+| S3+S5 `livespec-nj7d`+`livespec-2ua9` | `livespec-driver-claude` | hooks `.sh`→`.py` importable+fail-open, `no_shadow_ledger.py` canonical byte-identical, own-spec ratified (Fable NO-BLOCKERS, history/v005), 100% hook coverage, full CI parity — combined PR #161 | 0.2.3 |
+| S4 `livespec-8wea` | `livespec-driver-codex` | Codex hooks importable — PR #136 | — |
+| S6 `livespec-vuy3` | `livespec-driver-codex` | Codex full CI parity — PR #141 | — |
+| S7 `livespec-9z8h.1` | `livespec` | core adopt dev-tooling v0.45.0 (+CI job, orchestrator pin) — PR #1197 | 0.10.3 |
+| S8 `livespec-9z8h.2` | `livespec-orchestrator-git-jsonl` | adopt v0.45.0 (cross-repo backstop) — PR #271 | — |
+| S9 `livespec-9z8h.3` | `livespec-dev-tooling` | `check-skill-invocation-paths` Driver-aware (auto-detect `$LIVESPEC_CORE_ROOT` model) — PR #377 | v0.46.1 |
 
-| Slice | Ledger id | Repo | Tier | Blocked by |
-|---|---|---|---|---|
-| S1 core-spec amendment | `livespec-pxj9` | `livespec` | spec-change (propose-change→revise) | — (READY) |
-| S2 dev-tooling byte-identity concern | `livespec-8zxu` | `livespec-dev-tooling` | factory | S1 |
-| S3 Claude Driver hook refactor + own-spec + coverage | `livespec-nj7d` | `livespec-driver-claude` | factory, host-side | S1, S2 |
-| S4 Codex Driver hook refactor + stale-comment + coverage | `livespec-8wea` | `livespec-driver-codex` | factory, host-side | S2 |
-| S5 Claude Driver aggregate reorder + CI wiring | `livespec-2ua9` | `livespec-driver-claude` | host-side (workflows) | S3 |
-| S6 Codex Driver aggregate reorder + CI wiring | `livespec-vuy3` | `livespec-driver-codex` | host-side (workflows) | S4 |
+**Scope grew from the planned 4 repos to 6** as two things surfaced during
+execution (both maintainer-approved):
 
-Layering: **S1 → (S2, S3); S2 → (S3, S4); S3 → S5; S4 → S6.** **S1 + S2 are CLOSED** (merged + released — see "Done so far"); **S3 (`livespec-nj7d`) and S4 (`livespec-8wea`) are now READY** and run in parallel (independent repos, no shared files). S5/S6 unblock after S3/S4.
+- **S7 + S8**: adopting the S2 canonical check in core activated core's
+  `doctor-wiring-completeness-cross-repo` backstop, which required core's one
+  lagging `cross_repo_targets` sibling (`livespec-orchestrator-git-jsonl`) to
+  adopt v0.45.0 too. Blast radius was verified BOUNDED (git-jsonl has no
+  `cross_repo_targets` → no cascade).
+- **S9**: freshness bumps wired canonical checks into `livespec-driver-claude`'s
+  justfile ahead of the work, leaving its LOCAL `just check` red (masked CI-green
+  by a narrower matrix). One, `check-skill-invocation-paths`, was structurally
+  incompatible with the Driver's `$LIVESPEC_CORE_ROOT` SKILL.md invocation model.
+  Maintainer chose "fix the gate" (option A) → dev-tooling made the check
+  Driver-aware. S3+S5 then landed as ONE combined PR (neither could push green
+  alone).
 
-## Done so far (S1 + S2)
+## Follow-ups filed (NOT part of this epic — separate items)
 
-- **S1 (`livespec-pxj9`, CLOSED)** — core `SPECIFICATION/contracts.md` §"Driver-shipped hooks" amended via revise **v164** (PR `thewoolleyman/livespec#1181`): `.py` hooks permitted, importable-`main()` discipline (SHOULD), byte-identity narrowed to the neutral `no_shadow_ledger.py`, no-drift pointed at a consumer-side dev-tooling Verifier. Independent Fable review + maintainer approval.
-- **S2 (`livespec-8zxu`, CLOSED)** — `livespec-dev-tooling` byte-identity machinery, **released v0.44.0**:
-  - Code (PR `livespec-dev-tooling#367`): `CANONICAL_NO_SHADOW_LEDGER_BODY` (the `main()`-refactored neutral body) + `install_no_shadow_ledger` (`just install-no-shadow-ledger`) + `checks/no_shadow_ledger_body_identical` Verifier (imports the constant, byte-compares the consumer's configured `neutral_hook_body_path`, no-ops when absent) + the `neutral_hook_body_path` role key + justfile aggregate + CI-matrix wiring. Single-commit Red-Green-Replay, `just check` green.
-  - Spec (PR `livespec-dev-tooling#369`, revise **v024**): documents the Verifier's five slots + role key in dev-tooling `contracts.md`. Independent Fable NO-BLOCKERS review (2 blocker-fix rounds — the drift-sweep also surfaced + named the previously-undocumented `install_worktree_pack`).
-  - **Follow-ups filed in the `livespec-dev-tooling` tenant** (not blocking): `livespec-dev-tooling-okz` (Verifier compares decoded text, not bytes — switch to `read_bytes`), `-ckb` (commit-refuse-check H3 doesn't document its worktree-pack + vendored-copies arms), `-zbo` (justfile `install-worktree-pack` comment says "tracked" but the pack is gitignored).
+- `livespec-dev-tooling-u0x` — bump-pin/`justfile-canonical-reconcile` can wire a
+  canonical check the consumer's PINNED dev-tooling lacks (pin-skew), AND
+  canonical-check adoption needs HOST-SIDE CI-job + backstop-ordered merges the
+  freshness bot can't do → recurring red freshness PRs.
+- `livespec-dev-tooling-30g` — `red_green_replay._IMPL_PREFIXES` omits
+  `.claude-plugin/hooks/`, so Driver hook `.py` can't use the Red→Green pair shape
+  (falls back to the first-class `TDD-Suite-Green-*` shape; enhancement, not a bug).
 
-## The next action
+## Open, UNOWNED, separate concern (surfaced, deliberately not absorbed)
 
-**Drive S3 (`livespec-nj7d`, `livespec-driver-claude`) and S4 (`livespec-8wea`,
-`livespec-driver-codex`) — the two Driver hook refactors — in parallel** (independent repos,
-no shared files). Read each slice's full scope from `bd show <id>` first. Each Driver:
+dev-tooling **v0.46.0** (from parallel work) added a NEW canonical check
+`local_memory_drift_audit`, repeating the same fleet-wide adoption obligation:
+red freshness PRs `livespec#1199` and `livespec-orchestrator-git-jsonl#273` need
+the same "cherry-pick bump + add CI job + ordered merge" treatment S7/S8 gave
+v0.45.0. Separate, likely parallel-owned — see `livespec-dev-tooling-u0x` for the
+systemic root cause.
 
-1. **Bump its `livespec-dev-tooling` pin to v0.44.0** (carries the Verifier + constant + installer + role key).
-2. **Make its `no_shadow_ledger.py` byte-identical to `CANONICAL_NO_SHADOW_LEDGER_BODY`.** Declare the
-   `neutral_hook_body_path` role key in the Driver's `pyproject.toml [tool.livespec_dev_tooling]`
-   (Claude: `.claude-plugin/hooks/no_shadow_ledger.py`; Codex: `livespec/hooks/no_shadow_ledger.py`),
-   then either run `just install-no-shadow-ledger` to write the canonical body OR hand-apply the
-   `main()`-refactor and let the check confirm identity. Wire `check-no-shadow-ledger-body-identical`
-   into the Driver's `just check` aggregate (and CI matrix — HOST-SIDE, see S5/S6).
-3. **Convert the Driver's other run-on-import hooks to importable `main()`** for real per-file coverage.
-   Claude: the two `.sh` hooks (`block-auto-memory.sh` / `warn-plan-persistence.sh`) → `.py` invoked
-   `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/<name>.py"` — this needs the **Claude Driver's OWN-spec
-   propose-change** (its `spec.md` §Purpose + `contracts.md` §"Hook bundle" still say "POSIX shell
-   scripts"; independent Fable NO-BLOCKERS review before ratifying). Codex: normalize the existing
-   `main()` entries, remove internal `sys.exit()` calls, keep footgun/apply_patch coverage.
-4. **Test split**: in-process `main()` tests (monkeypatched stdin/stdout/cwd/env) + one subprocess
-   smoke per hook (declared in `subprocess_spawn_allowlist`); add coverage config; keep fail-open posture.
+## Golden rules (retained for reference)
 
-S4 also fixes the stale `livespec-driver-codex` justfile comment (§"Resolved design-checks"). Then
-**S5 (`livespec-2ua9`) unblocks after S3, S6 (`livespec-vuy3`) after S4** — the `just check` aggregate
-reorder + full CI wiring (HOST-SIDE: `.github/workflows/`, maintainer creds; Driver PRs auto-merge on
-green CI → review-the-merged-commit + fix-forward).
+- Status is READ live from the ledger, never stored here.
+- Independent Fable review before every spec ratification (S1, S3 own-spec: both
+  NO-BLOCKERS).
+- HOST-SIDE workflow edits use maintainer creds; the fleet auto-merges on green
+  (`app/livespec-pr-bot` re-enables auto-merge even after `--disable-auto`) →
+  review-the-merged-commit + fix-forward is the operative model.
 
-### Driving disciplines (all slices)
-
-- **HOST-SIDE, not factory-safe** — S5/S6 touch `.github/workflows/` (the factory GitHub App
-  token lacks `workflows` permission). Author via scoped agents in worktrees under maintainer
-  creds; Driver PRs auto-merge on green CI → review-the-merged-commit + fix-forward.
-- **Independent Fable NO-BLOCKERS review before ratifying each spec change** (S1 core spec;
-  S3 folds in the Claude Driver's OWN spec propose-change) — fleet discipline, never self-waived.
-- **Byte-identical hook bodies** across both Drivers — the canonical source-of-truth is the
-  dev-tooling packaged constant `CANONICAL_NO_SHADOW_LEDGER_BODY` (S2), mirroring the
-  concern-#1 commit-refuse `CANONICAL_HOOK_BODY` precedent. Change the constant + both Driver
-  copies together, guarded by the consumer-side Conformance Verifier. Never edit one copy
-  unilaterally (that deepens the drift).
-- **Delegate the heavy authoring to codex subagents** in worktrees (self-contained briefs,
-  never `--no-verify`, halt on hook failure); keep the main session for plan/dispatch/synthesis.
-
-## Resolved design-checks (grooming inputs — no longer open)
-
-- **Pins**: S2 released **`livespec-dev-tooling` v0.44.0** (the Verifier + `CANONICAL_NO_SHADOW_LEDGER_BODY` + `install_no_shadow_ledger` + `neutral_hook_body_path` role key). Both Drivers were on v0.43.2 pre-S2; **S3/S4 MUST bump each Driver's pin to v0.44.0** to consume the Verifier.
-- **`.sh`→`.py` is a spec change** against BOTH livespec core (`contracts.md` §"Driver-shipped
-  hooks") AND the Claude Driver's own spec (`spec.md` §Purpose + `contracts.md` §"Hook bundle"
-  say "POSIX shell scripts"). → S1 (core) + the own-spec propose-change inside S3.
-- **Byte-identity source = dev-tooling packaged constant** (self-resolved). No reusable
-  verifier exists; the concern-#1 commit-refuse hook is the precedent (`CANONICAL_HOOK_BODY`
-  + `primary_checkout_commit_refuse_hook_installed` importing-and-comparing it). Core is NOT a
-  Python dep of the Drivers, so "core-as-reference" would force a fragile cross-repo file read.
-- **Stale `livespec-driver-codex` justfile comment** (lines ~298–311): claims
-  `file_lloc_hard_gate` "DELIBERATELY NOT set" and `check-aggregate-completeness` "DELIBERATELY
-  NOT wired… Drivers outside universal-propagation (2026-07-12)" — both false/superseded by the
-  2026-07-13 full-parity decision. → rewritten in S6 (and the file_lloc note in S4).
-
-## Read-first chain (for a fresh session)
-
-- **Epic anchor `livespec-9z8h`** [EPIC, open] — `bd -C /data/projects/livespec show livespec-9z8h`;
-  its latest comment narrates the 6 slices + layering.
-- **Full unified scope + rationale**: the DECISION comment on the CLOSED `livespec-uvgi`
-  (`bd -C /data/projects/livespec show livespec-uvgi`) — the wall analysis + the 4 workstreams.
-- **Design note**: `plan/driver-hook-body/research/importable-main-slice-design.md` — the
-  importable-`main()` entry form, in-process/subprocess coverage split, byte-identity boundary,
-  verifier direction, recommended order.
-- Each slice's full scope + acceptance lives on its ledger record (`bd show <id>`).
-
-## Golden rules
-
-- Status is READ live from the ledger (`bd show <id>` / `bd ready`), never stored here.
-- HOST-SIDE (workflows-permission wall) — author host-side under review, never `--no-verify`.
-- Independent Fable review before every spec ratification.
-- Rotate this handoff before ~50% context; refresh current state + next action, print the
-  resume command as the last line.
-
-**Resume command:** `/livespec-orchestrator-beads-fabro:plan driver-hook-body`
+**No resume action — thread complete.** Any further work rides the separate
+follow-up items above, not this thread.
