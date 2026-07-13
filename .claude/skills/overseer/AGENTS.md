@@ -66,10 +66,17 @@ conformance checks, or any other repo.
    repo-qualified session exists AND its `#{pane_current_path}` resolves inside the
    row's repo — never by topic name alone.
 6. **Two-pane bootstrap + `adopt` (the `/overseer` startup, 2026-07-13).** The
-   skill runs the `overseer-start` executable FIRST. It (a) detects the skill's
-   OWN pane via `$TMUX_PANE` (Claude Code inherits it — do NOT re-derive tmux
-   membership by hand; that improvisation is what falsely reported "not inside a
-   tmux window" and grabbed a separate session), (b) splits THAT window
+   skill runs the `overseer-start` executable FIRST — and ONLY the skill does:
+   it is skill-invoked (by Claude's Bash tool), never a standalone launcher, and
+   does NOT start Claude (it splits the daemon pane beside the SAME Claude session
+   that ran `/overseer`, which then resumes in the bottom pane). So it REFUSES
+   before splitting unless `$CLAUDECODE` is set (the marker Claude Code exports in
+   every Bash-tool shell) — a hand-run from a plain terminal would otherwise leave
+   a daemon pane + a bare-shell bottom pane (no Claude), the exact broken state
+   that guard prevents. It (a) detects the skill's OWN pane via `$TMUX_PANE`
+   (Claude Code inherits it — do NOT re-derive tmux membership by hand; that
+   improvisation is what falsely reported "not inside a tmux window" and grabbed a
+   separate session), (b) splits THAT window
    (`tmuxio.split_window_top` targeting `$TMUX_PANE`, idempotent via a pane titled
    `overseer-daemon`) to run `overseerd` in a TOP pane while focus stays on the
    bottom pane, and (c) runs `Supervisor.adopt_sessions`. **`adopt` matches the

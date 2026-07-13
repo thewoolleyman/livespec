@@ -73,8 +73,13 @@ tmux signals and those markers. See `marker-protocol.md`.
 ## Starting the daemon + adopting sessions (run the bootstrap FIRST)
 
 **The FIRST thing you do when `/overseer` starts is run the bootstrap** — do NOT
-hand-craft any tmux command, and do NOT target another session by name. From your
-interactive (BOTTOM) pane — the Claude session where `/overseer` is running — run:
+hand-craft any tmux command, and do NOT target another session by name. This
+script is invoked BY the skill (you, via the Bash tool), never typed by a human at
+a terminal: it splits the daemon pane beside the SAME Claude session that ran
+`/overseer` and that session resumes in the bottom pane — it does NOT launch
+Claude, so running it from a bare shell would leave a bare-shell bottom pane. From
+your interactive (BOTTOM) pane — the Claude session where `/overseer` is running —
+run:
 
 ```bash
 .claude/skills/overseer/overseer-start
@@ -82,6 +87,11 @@ interactive (BOTTOM) pane — the Claude session where `/overseer` is running �
 
 That one command (a self-invokable `uv` script) does everything deterministically:
 
+0. **Verifies it is running under Claude Code** via `$CLAUDECODE` (set in every
+   Claude Code Bash-tool shell). If unset it prints a refusal pointing back to
+   `/overseer` and exits non-zero WITHOUT splitting — so a stray hand-run from a
+   plain terminal fails loudly instead of leaving a daemon pane + bare-shell bottom
+   pane. (This is why it is skill-invoked-only; it is not a standalone launcher.)
 1. **Detects your own pane** via `$TMUX_PANE`, which this Claude session inherits.
    If `$TMUX_PANE` is unset it prints `not inside a tmux pane` and exits non-zero —
    only then is the session genuinely not in tmux; start it inside a tmux session

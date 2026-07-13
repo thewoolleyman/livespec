@@ -1,7 +1,14 @@
 #!/usr/bin/env -S uv run --script --no-project
 """overseer-start — bootstrap the overseer two-pane setup from the /overseer skill.
 
-Run from the interactive Claude (bottom) pane. It:
+This is the skill's bootstrap script — invoked BY the `/overseer` skill (via
+Claude's Bash tool) from inside the interactive Claude (bottom) pane. It is NOT a
+standalone launcher and does NOT start Claude: it splits the daemon pane beside
+the SAME Claude session that ran `/overseer`, and that session simply resumes in
+the bottom pane. Run by hand from a plain shell it would leave a bare-shell bottom
+pane (no Claude), so it REFUSES unless `$CLAUDECODE` marks a Claude Code session
+(the /overseer entry point). It:
+  0. verifies it is running under Claude Code ($CLAUDECODE set), else refuses;
   1. detects the current tmux pane via $TMUX_PANE (Claude Code inherits it);
   2. splits THIS window to create a TOP pane running `overseerd` (focus stays on
      the bottom Claude pane; idempotent via a titled daemon pane);
@@ -27,6 +34,23 @@ _DAEMON_PANE_TITLE = "overseer-daemon"
 
 
 def main() -> int:
+    # 0. Refuse unless run BY the /overseer skill inside a Claude Code session.
+    # `$CLAUDECODE=1` is set in every shell Claude Code spawns for its Bash tool
+    # (and their children) — so it is present when the skill invokes this script,
+    # and absent when a human types it in a plain terminal. Without it the bottom
+    # pane is not a Claude session that will resume after the split, so splitting
+    # would leave a bare-shell bottom pane (no Claude) — the broken state this
+    # guard prevents. Refuse BEFORE splitting so no half-set-up state is created.
+    if not os.environ.get("CLAUDECODE"):
+        print(
+            "overseer-start: this is the /overseer skill's bootstrap, not a standalone "
+            "command. Run /overseer inside a Claude session that is running in a tmux "
+            "pane — it splits the daemon pane beside THAT session; it does NOT launch "
+            "Claude. Refusing to run outside Claude Code ($CLAUDECODE unset).",
+            file=sys.stderr,
+        )
+        return 1
+
     pane = os.environ.get("TMUX_PANE")
     if not pane:
         print(
@@ -60,4 +84,5 @@ def main() -> int:
     return 0
 
 
-raise SystemExit(main())
+if __name__ == "__main__":
+    raise SystemExit(main())
