@@ -2,8 +2,12 @@
 
 ## OPERATING DIRECTIVES (standing — maintainer-declared 2026-07-12)
 1. **Hand off at 50% context.** When driver/overseer context passes ~50%, STOP
-   at a clean boundary and hand off to a fresh session (land the plan + write a
-   resume prompt) — do not push past it.
+   at a clean boundary and hand off to a fresh session by LANDING THE PLAN IN
+   THIS HANDOFF DOCUMENT — do not push past it. **The hand-off artifact is THIS
+   file's path (`plan/autonomous-mode/handoff.md`); the maintainer resumes by
+   opening it. NEVER write a separate prose resume prompt — it is a banned,
+   redundant duplicate of the handoff (maintainer-declared 2026-07-13, "Never
+   ever do that").** Hand off by pointing at the path, nothing more.
 2. **Delegate to sub-agents / the Fabro factory to preserve driver context.** Do
    the heavy lifting (repairs, authoring, multi-file work, live-run iteration
    where feasible) in scoped sub-agents or the factory; keep the driver session
