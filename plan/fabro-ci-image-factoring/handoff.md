@@ -86,6 +86,28 @@ anchored by the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phas
 children `.1`–`.8` (`.8` = Phase 5, the closing efficiency report).
 
 **THIS SESSION (2026-07-13) LANDED — read before picking up:**
+- **Phase 1 PR2/PR3 (consumer image switches) DONE + ACCEPTED LIVE (later 2026-07-13).**
+  Prereq **`livespec-dev-tooling` #358** shipped the **prefix-preserving** fabro docker
+  pin rewrite as a typed, unit-tested module
+  (`livespec_dev_tooling.cross_repo.fabro_image_pin_rewrite`, dispatched from the
+  `bump-pin-rewrite` composite action), released in **v0.43.2** — so release fan-outs
+  now PRESERVE the `<layer>-` prefix (rewrite only `vX.Y.Z`) instead of flattening to a
+  bare tag. Then **PR-2** (`livespec-orchestrator-beads-fabro` #564) →
+  `docker = …:python-v0.43.2`, and **PR-3** (`livespec-console-beads-fabro` #196) →
+  `…:python-rust-v0.43.1` + **DELETED** the per-run `rustup` prepare step. ACCEPTS:
+  PR-2 via a real **golden-master factory dispatch** (item `e2egreet-1xv`, run
+  `01KXCVM7PBRF7X8PWZWK0T3G41`) whose sandbox plan+instance pulled
+  `ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2` and ran
+  implement→review→pr→janitor green in-sandbox, merged PR #1, asserted
+  `greet("Ada")=="Hello, Ada!"`; PR-3 via an in-image build proving the baked
+  `python-rust` image runs as **root** with `cargo`/`clippy`/`rustfmt` 1.92.0 at
+  `/root/.cargo/bin` and `cargo fmt --check` + `cargo clippy --workspace` clean on the
+  real console workspace with NO rustup (the golden-master fixture is Python, so this
+  is the console's dedicated Rust-path proof). En route: repaired the live `:v0.43.x`
+  **bare-tag 404** on both consumers (the bump-pin fan-out had flattened them onto a
+  never-published bare tag — layered releases publish only `<layer>-` tags) and healed
+  a blocking ledger drift (`bd-ib-2q0 open→backlog`). Journaled on `livespec-3lev.4`,
+  which stays OPEN pending the Codex fix (NEXT ACTION #1).
 - **Item 3 (Observability track — in-sandbox prepare-step timing) DONE + ACCEPTED
   LIVE.** `livespec-step-timer` wrapper (WI-A `livespec-dev-tooling-bot`,
   `livespec-dev-tooling` #352, in image v0.42.0) + 8 `workflow.toml` shims (WI-B
@@ -108,16 +130,20 @@ children `.1`–`.8` (`.8` = Phase 5, the closing efficiency report).
   section.
 
 **NEXT ACTIONS (ranked; pick one):**
-1. **Phase 1 PR2/PR3 (consumer switches) — RECOMMENDED next.** FIRST make
-   `livespec-dev-tooling`'s `.github/actions/bump-pin-rewrite/action.yml`
-   **prefix-preserving** for the fabro docker pin (it currently rewrites to the BARE
-   release `v<X.Y.Z>`, which drops the new `python-`/`python-rust-` layer prefix and
-   breaks the pin on the next release — resolves the autodiscovery-vs-manual-pin
-   open decision as keep-autodiscovery-make-it-prefix-aware; note the rewrite lives
-   in an `action.yml` heredoc with no unit-test harness). THEN switch
-   `livespec-orchestrator-beads-fabro` `workflow.toml` `docker=` → `…:python-v<X.Y.Z>`
-   and `livespec-console-beads-fabro` → `…:python-rust-v<X.Y.Z>` (+ DELETE the
-   console's per-run `rustup`). Accept each via a real dispatch. Detail: Phase 1 section.
+1. **Finish Phase 1 — orchestrator Codex version-less adapter — RECOMMENDED next.**
+   Drop `@0.16.0` from `CODEX_IMPLEMENTER_ADAPTER` in
+   `livespec-orchestrator-beads-fabro`'s
+   `.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_fabro_argv.py:51`
+   so `npx -y @zed-industries/codex-acp` resolves the **baked** codex-acp global (the
+   `python`/`python-rust` images bake `@zed-industries/codex-acp@0.16.0` — VERIFIED by
+   `docker run … npm ls -g`), eliminating the per-run `npx` adapter refetch for
+   Codex-driven runs (the Claude adapter is already version-less, so this makes Codex
+   match). Product `.py` → Red-Green-Replay. Accept via a **Codex-provider** dispatch
+   (the golden-master defaults to Claude; run the factory with the Codex adapter, or
+   `fabro run --input acp_adapter=…`) confirming the adapter resolves the baked global
+   with no per-run refetch. This is the LAST Phase 1 (`.4`) deliverable — close `.4`
+   once it lands + is accepted. (PR2/PR3 consumer switches + the prefix-preserving
+   rewrite are DONE + accepted — see LANDED above.)
 2. **Item 4a exporter** — surface the OUTWARD-FACING upstream Fabro exporter
    re-derivation (`bd-ib-i4r` + `bd-ib-98c.1`, re-derive `otel.rs` vs current Fabro
    `0.289.0`) to the maintainer; coordinate wire-format/naming with the
@@ -619,22 +645,35 @@ pilot repo shadow lane.
   (`base-`/`python-`/`python-rust-` `sha-<short>` + `-v<X.Y.Z>`); dropped the stale
   uv pre-warm; the `livespec-step-timer` (item-3) COPY moved to `base`. Verified:
   full chain built locally + in CI (toolchain resolves), `just check` green.
-- **PR2/PR3 — consumer switches — REMAINING, with a bump-pin COUPLING to fix
-  first.** Switch `livespec-orchestrator-beads-fabro` `workflow.toml` `docker=`
-  → `…:python-v<X.Y.Z>` and `livespec-console-beads-fabro` →
-  `…:python-rust-v<X.Y.Z>` (+ DELETE the console's per-run `rustup`). **BUT** the
-  `fabro_sandbox_docker_image` pin IS covered by the release fan-out's bump-pin
-  automation (contrary to the older "manual pins" note below), and
-  `.github/actions/bump-pin-rewrite/action.yml` rewrites the pin's tag to the
-  BARE release `$TAG` (`v<X.Y.Z>`) — which DROPS the new `python-`/`python-rust-`
-  layer prefix, breaking the pin on the next release. So PR2/PR3 must be preceded
-  (or accompanied) by making that rewrite **prefix-preserving** (replace only the
-  `v<version>` portion, keep whatever `<layer>-` prefix precedes it) — a
-  `livespec-dev-tooling` change. This resolves the "autodiscovery-vs-manual-pin"
-  open decision as: KEEP autodiscovery, make it layer-prefix-aware. The rewrite
-  logic lives in an `action.yml` heredoc (no package-module test harness — note
-  the testing gap). Also still pending: the orchestrator Codex version-less fix
-  (`bd-ib-s7e` now closed, so unblocked).
+- **Prefix-preserving bump-pin rewrite — DONE + MERGED** (`livespec-dev-tooling`
+  #358, in release v0.43.2). The `fabro_sandbox_docker_image` pin IS covered by the
+  release fan-out's bump-pin automation, and `.github/actions/bump-pin-rewrite/action.yml`
+  previously rewrote the pin's tag to the BARE release `$TAG`, DROPPING the new
+  `python-`/`python-rust-` layer prefix and breaking the pin on every release. The
+  rewrite tag logic was **extracted into a typed, unit-tested module**
+  (`livespec_dev_tooling.cross_repo.fabro_image_pin_rewrite`, mirroring the
+  `justfile_canonical_reconcile` precedent; the composite action's docker case
+  dispatches it via `uv run … python -m …`) that preserves the `<layer>-` prefix and
+  rewrites only `vX.Y.Z`. Resolves the "autodiscovery-vs-manual-pin" open decision as
+  KEEP-autodiscovery-make-it-layer-prefix-aware, and closes the testing gap.
+- **PR2/PR3 — consumer switches — DONE + MERGED + ACCEPTED LIVE (later 2026-07-13).**
+  **PR-2** (`livespec-orchestrator-beads-fabro` #564): `workflow.toml` `docker=` →
+  `…:python-v0.43.2`; accepted by a real golden-master factory dispatch (sandbox
+  pulled `python-v0.43.2`, green implement→review→pr→janitor, merged PR, greeting
+  asserted — run `01KXCVM7PBRF7X8PWZWK0T3G41`). **PR-3** (`livespec-console-beads-fabro`
+  #196): `docker=` → `…:python-rust-v0.43.1` + **DELETED** the per-run `rustup` step;
+  accepted by an in-image build (baked `python-rust` runs as root with
+  cargo/clippy/rustfmt 1.92.0 at `/root/.cargo/bin`; `cargo fmt --check` + `cargo
+  clippy --workspace` clean on the real console workspace, no rustup — the console's
+  Rust-path proof, since the golden-master fixture is Python). Both switched from the
+  broken **bare** `:v0.43.x` (HTTP 404) tags — the bump-pin fan-out had flattened them
+  onto never-published bare tags before the prefix-preserving rewrite landed; the
+  rebased switches now carry the `<layer>-` prefix that future fan-outs preserve.
+  **STILL REMAINING for Phase 1 (`.4`):** the orchestrator Codex version-less adapter
+  fix — drop `@0.16.0` from `CODEX_IMPLEMENTER_ADAPTER` in `_dispatcher_fabro_argv.py`
+  so `npx` resolves the baked `codex-acp@0.16.0` global (verified baked). Product `.py`
+  → RGR; accept via a Codex-provider dispatch. Close `.4` once it lands. See NEXT
+  ACTION #1.
 
 **Deliverables**
 - `base / python / python-rust` layered Dockerfiles + matrix build in
