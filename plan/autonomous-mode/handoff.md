@@ -59,6 +59,70 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-13 (cont. 9): all 3 console cockpit bugs FIXED via Codex sub-agents, MERGED (PR #202) + LIVE-VERIFIED through the running TUI; Stage-2 UNBLOCKED (maintainer-gated)
+
+Fresh Claude (Opus) session resumed cont.8's console epic. Maintainer directive
+this session: **"run as much as you can in codex subagents/subprocesses."** So the
+heavy lifting (the console-Rust fixes + coverage close-out) was done by **Codex
+`--write` subprocesses** (`codex-companion.mjs task`) run inside a worktree; the
+driver kept git/hook/PR/merge plumbing + the live TUI verification.
+
+### DONE — the cont.8 console epic `livespec-console-beads-fabro-7ja55l`, all 3 bugs
+Landed as ONE PR (the bugs share `console-tui/src/lib.rs`; the work-items blessed
+co-landing). **livespec-console-beads-fabro PR #202** merged (`cdbba4c`), CI-green.
+- **#1 (`-4rgoa5`, CRITICAL PATH) — CLOSED, LIVE-VERIFIED.** Codex introduced a
+  `TuiRuntimeEffectSink` trait (defined in `console-tui`, respecting crate dep
+  direction; implemented in `console-cli` as `StoreBackedTuiRuntimeEffectSink`) that
+  persists each effect + runs the pending factory/work-item/config handlers
+  IMMEDIATELY after the keypress. Sink returns `Applied` (immediate) vs `Deferred`
+  (legacy flush); only `Deferred` is returned by the loop → no double-apply; `Quit`
+  still terminates; legacy `run_interactive_tui` delegates through a
+  `DeferredTuiRuntimeEffectSink` (preview path unchanged).
+- **#2 (`-a3luug`) — CLOSED, LIVE-VERIFIED.** Command-palette Enter now maps to
+  `Confirm` (was `None`), so `:drain`/palette commands submit.
+- **#3 (`-stl7hn`) — argv fix MERGED but item stays OPEN.** `["drain"]`→`["loop"]`
+  landed, but the LIVE drain still fails: `dispatcher.py loop` REQUIRES `--budget`
+  (argparse `required=True`) and the console drain port builds
+  `["loop","--repo",<path>]` (+`--mode autonomous`) with NO `--budget`. The argv fix
+  was necessary but insufficient. See "MAINTAINER DECISION NEEDED" below.
+
+### LIVE-VERIFY (the epic's done-criterion — MET)
+Cockpit rebuilt (`cargo build --release`) + relaunched in tmux
+`console-autonomous-mode` (112×28) from the orchestrator cwd, fresh store
+(`LIVESPEC_CONSOLE_STORE_PATH=<scratchpad>/console-store.sqlite`). Drove the
+**set-admission valve** on a safe reversible item (`bd-ib-ss7rkr`) THROUGH the
+running TUI (`m` → Down → Enter): the console `commands` table gained a row
+`work_item.set_admission_requested` `payload {"policy":"auto"}` **status=completed**
+AND the orchestrator ledger label flipped `admission:manual`→`admission:auto` —
+**MID-SESSION, no quit** — then reverted to `manual` (a 2nd live valve proof). This
+is exactly cont.7/cont.8's blocker #1 symptom (empty `commands` table on Enter) now
+WORKING. Bug #2 also verified live: `:` + `drain` + Enter persisted a
+`factory.drain_requested` command (pre-fix Enter was a no-op); it landed `status=failed`,
+which is the #3 `--budget` gap surfaced live. Fleet state left as found.
+
+### MAINTAINER DECISION NEEDED — #3 drain `--budget`
+What `--budget` should an operator-initiated console drain pass? `drive.py`'s
+single-item dispatch uses `budget=1` WITH `--item`; a queue drain has no `--item`
+and should process multiple ready items, so budget likely needs a larger cap
+(ready-item count or a fixed sensible cap), not 1. Recommended next step: a scoped
+console sub-agent adds `--budget <N>` (+ keeps `--parallel 1`, shadow default for
+non-armed) to `DispatcherFactoryDrainPort`, then re-verify a live drain. Tracked on
+`-stl7hn`; epic `-7ja55l` stays OPEN until that live drain succeeds.
+
+### RESUME ORDER (fresh session)
+1. **Stage 2 — the MVP dogfooding acceptance (maintainer-gated).** Cockpit is
+   operator-ready + LEFT RUNNING (new binary, tmux `console-autonomous-mode`, 112×28,
+   fresh scratchpad store). Accept `bd-ib-86k` (parked in `acceptance`) THROUGH the
+   TUI with the maintainer on the valve (`c`), then dispatch + observe `bd-ib-e0t`
+   through the TUI. MVP "done" = multiple real items end-to-end SOLELY through the
+   live TUI with the maintainer on the valves. The valve path is now PROVEN live
+   (this session), so Stage-2 is unblocked.
+2. **Close out #3/epic:** scoped console sub-agent adds the drain `--budget` (see
+   decision above), re-verify a live drain, then close `-stl7hn` + epic `-7ja55l`.
+3. Reap: core worktree `docs-autonomous-mode-cont9` (this update) after its PR
+   merges. Console worktree `fix-cockpit-live-effects` already reaped (PR #202
+   merged). Cockpit LEFT RUNNING.
+
 ## SESSION UPDATE — 2026-07-13 (cont. 8): all 3 cont.7 TUI blockers CONFIRMED real console bugs (root-caused in code) + FILED as a console epic; Stage 2 gated on them
 
 Fresh Claude (Opus) session resumed the thread via
