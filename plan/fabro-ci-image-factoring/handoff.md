@@ -130,20 +130,22 @@ children `.1`–`.8` (`.8` = Phase 5, the closing efficiency report).
   section.
 
 **NEXT ACTIONS (ranked; pick one):**
-1. **Finish Phase 1 — orchestrator Codex version-less adapter — RECOMMENDED next.**
-   Drop `@0.16.0` from `CODEX_IMPLEMENTER_ADAPTER` in
-   `livespec-orchestrator-beads-fabro`'s
-   `.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_fabro_argv.py:51`
-   so `npx -y @zed-industries/codex-acp` resolves the **baked** codex-acp global (the
-   `python`/`python-rust` images bake `@zed-industries/codex-acp@0.16.0` — VERIFIED by
-   `docker run … npm ls -g`), eliminating the per-run `npx` adapter refetch for
-   Codex-driven runs (the Claude adapter is already version-less, so this makes Codex
-   match). Product `.py` → Red-Green-Replay. Accept via a **Codex-provider** dispatch
-   (the golden-master defaults to Claude; run the factory with the Codex adapter, or
-   `fabro run --input acp_adapter=…`) confirming the adapter resolves the baked global
-   with no per-run refetch. This is the LAST Phase 1 (`.4`) deliverable — close `.4`
-   once it lands + is accepted. (PR2/PR3 consumer switches + the prefix-preserving
-   rewrite are DONE + accepted — see LANDED above.)
+1. **Finish Phase 1 — codex-acp version auto-bump (factory-gated) — RECOMMENDED next.**
+   The originally-planned "drop `@0.16.0` → version-less" fix was **investigated
+   and abandoned (2026-07-13)**: in-image testing disproved its premise — `npx -y`
+   (pinned OR version-less) already uses the baked `codex-acp@0.16.0` global with
+   **no per-run download**, so version-less is a no-op that also removes a
+   load-bearing credential-projection pin (silent-drift risk; `bd-ib-ss7rkr`). The
+   maintainer's chosen direction (2026-07-13): **keep the pin, make it self-updating**
+   via a scheduled bump PR **gated by a real Codex-provider golden-master** (the gate
+   IS the credential-projection re-verification). Full design drafted at
+   **`plan/codex-acp-auto-bump/design.md`** (single-source-of-truth = the image's
+   `CODEX_ACP_VERSION`; orchestrator uses `npx --no-install` baked global; extended
+   freshness scan → candidate image → cross-repo Codex-mode golden-master gate →
+   merge). Awaiting maintainer review of that design; then build. This is the LAST
+   Phase 1 (`.4`) deliverable — close `.4` once it lands + is accepted. (PR2/PR3
+   consumer switches + the prefix-preserving rewrite are DONE + accepted — see LANDED
+   above.)
 2. **Item 4a exporter** — surface the OUTWARD-FACING upstream Fabro exporter
    re-derivation (`bd-ib-i4r` + `bd-ib-98c.1`, re-derive `otel.rs` vs current Fabro
    `0.289.0`) to the maintainer; coordinate wire-format/naming with the
