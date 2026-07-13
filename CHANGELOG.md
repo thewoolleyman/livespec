@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.3](https://github.com/thewoolleyman/livespec/compare/v0.10.2...v0.10.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **overseer:** adopt via the Claude session registry, continuously ([b7db9ad](https://github.com/thewoolleyman/livespec/commit/b7db9adac67719a15ea8381bd1f843bda64695d8))
+
 ## [0.10.2](https://github.com/thewoolleyman/livespec/compare/v0.10.1...v0.10.2) (2026-07-13)
 
 
