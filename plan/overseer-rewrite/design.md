@@ -483,3 +483,65 @@ factory), NOT a stopgap awaiting the console cockpit: the two are standing peers
 autonomous mode runs ready work-items unattended through the ledger, while the
 overseer keeps interactive plan tracks moving in parallel under a human driver.
 Maintain it in place.
+
+## Simplification requirements — de-gold-plate the invocation/config surface (2026-07-13)
+
+The correctness core (the 15 review findings, all fixed + on master) is sound. But
+the OPERATOR / INVOCATION surface was built over-configurable and mis-shaped — it
+exposes `--store` / `--stamp` / `--repos` / `--repos-only` flags, positional
+`repo`/`topic` args, is driven by `python3 supervisor.py …`, and was demoed
+against "scratch repos." That is WRONG for an internal, fleet-config-driven skill.
+Maintainer-declared (2026-07-13). Correct it to the intended shape — WITHOUT
+regressing any correctness fix (B1–B8, RB1–4, Codex #1/#3; Codex #2 kept):
+
+1. **Invoked ONLY via the `/overseer` skill** from a Claude session in the
+   livespec repo. There is **no supported manual `python3 …/supervisor.py` usage
+   path**. The skill is THE operator surface.
+
+2. **The daemon is a self-invokable script run via `uv`, NOT `python3`.** Give the
+   entrypoint a proper shebang that runs it through `uv` (repo standard —
+   `uv run`), make it executable (`chmod +x`), and have the skill launch it
+   directly (e.g. `.claude/skills/overseer/supervisor.py daemon`), never
+   `python3 …`. NOTE the CLAUDE.md plugin rule (`python3 "${CLAUDE_PLUGIN_ROOT}/…"`)
+   does NOT apply here — this is a LOCAL host-only skill, not a distributed plugin
+   script, so uv + shebang is correct. Confirm the shebang resolves the
+   stdlib-only sibling imports (`import registry` / `signals` / `tmuxio`) when run
+   as an executable script.
+
+3. **Hard-code the store + stamp paths.** `~/.livespec-overseer.jsonl` and
+   `~/.livespec-overseer-stamps.json` are FIXED. Remove the `--store` and
+   `--stamp` CLI flags entirely — not configurable, no gold-plating. (Keep the
+   `Supervisor` dataclass fields injectable for the beside-tests ONLY; the CLI
+   never exposes them.)
+
+4. **Remove `--repos` / `--repos-only`. The watch-set is the fleet, period.** The
+   daemon watches ALL fleet members + adopters read directly from
+   `.livespec-fleet-manifest.jsonc`. There is NO repo override and NO "scratch
+   repo." To watch another repo you add it to the fleet manifest (as a member or
+   adopter). (Keep `watch_repos` injectable on the dataclass for tests only.)
+
+5. **Subcommands take `--repo` / `--topic` KEYWORD flags, not positional**, and
+   they are first-class arguments of the `/overseer` SKILL. When a needed
+   `--repo`/`--topic` is omitted, the skill **prompts** for it. The skill also
+   accepts natural-language / textual drivers to add + manage tracks (add /
+   remove / unassign / start) — the original bottom-pane textual-command
+   requirement, which must NOT be lost.
+
+6. **The `daemon` subcommand takes no required args** — everything optional with
+   sensible defaults (`--interval` default; no repos/store/stamp). `overseer
+   daemon` with no args = watch the whole fleet with the hard-coded paths.
+
+7. **Preserve the original operator model** (from the pre-existing design, which
+   the maintainer confirmed must survive): discovery-driven track list from each
+   watched fleet repo's `plan/`, the JSONL store as mapping-only, surface-only
+   (never auto-spawn), and the thin bottom-pane skill that starts the daemon,
+   drives textual commands, and surfaces blocked/danger tracks with a
+   recommendation.
+
+**Open question for the implementer (resolve with the maintainer):** with no
+`--repos` escape hatch, how does a DEVELOPER live-exercise a change without
+touching the maintainer's real fleet sessions? The beside-tests (fake tmux) remain
+the primary correctness gate; the surface-only design keeps a real-fleet run safe
+(nothing is touched unless a track crosses threshold AND certifies AND is idle).
+Options: a throwaway fleet-manifest entry, or accept controlled real-fleet
+exercise. Do NOT re-introduce a `--repos` flag to solve this.
