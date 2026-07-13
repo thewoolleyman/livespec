@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/thewoolleyman/livespec/compare/v0.9.6...v0.10.0) (2026-07-13)
+
+
+### Features
+
+* **overseer:** overseer-start two-pane bootstrap + adopt existing worker sessions ([82c41a9](https://github.com/thewoolleyman/livespec/commit/82c41a9807ad3f4eb81106dcb882a8f48bf897c8))
+
 ## [0.9.6](https://github.com/thewoolleyman/livespec/compare/v0.9.5...v0.9.6) (2026-07-13)
 
 
