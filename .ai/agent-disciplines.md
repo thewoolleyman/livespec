@@ -56,6 +56,23 @@ branches have been removed, and the primary checkout is verified clean on
 `master`. Opening a PR, pushing a branch, or leaving the primary checkout behind
 remote `master` is not landed.
 
+## Maintainer-gated actions are prompts, not blockers
+
+When a resumed handoff names a maintainer-gated action, do not treat that state
+as blocked or inactive. Treat it as the next actionable step that requires an
+explicit maintainer confirmation before execution.
+
+The agent MUST:
+
+1. State the recommended action first.
+2. Explain the blast radius in plain language.
+3. Provide the exact command or operation that would run.
+4. Ask for confirmation before executing.
+5. Offer defer/inspect alternatives only after the recommendation.
+
+A final recap must not say "nothing to do" while a maintainer-gated action
+remains. The correct state is "ready for maintainer confirmation."
+
 ## Overseer / long-running-coordinator discipline
 
 A long-running **manual coordinator** — an overseer session that dispatches and

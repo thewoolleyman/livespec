@@ -25,6 +25,13 @@
 > `needs-attention-internal` Signal 5 + on-demand `ledger-normalize`. See
 > "## SESSION 4" at the bottom.
 >
+> **SESSION 5 (2026-07-13):** the next-action discipline was corrected: a
+> maintainer-gated host install is NOT a blocker or "nothing to do"; it is a
+> confirmation prompt. The NEXT ACTION on this track is to recommend installing
+> the BD guard in warn mode, explain the host-wide `/usr/local/bin/bd` blast
+> radius, show the exact install + rollback commands, and ask the maintainer to
+> confirm before running it. See "## SESSION 5" at the bottom.
+>
 > _Original seed note:_ spun off 2026-07-12 from the `autonomous-mode` track
 > (during an attempt to factory-dispatch a `livespec-dev-tooling` work-item). Does
 > NOT block autonomous-mode.
@@ -519,9 +526,42 @@ merges (e.g. a factory-repair PR the broken factory can't carry itself); for tho
 open the PR as a DRAFT or apply the `do-not-merge` label — a normal open PR does not
 hold the merge.
 
-## Still OPEN on this track (unchanged by SESSION 4)
+## SESSION 5 (2026-07-13) — next action is a maintainer confirmation prompt
 
-1. Host install of the bd guard (maintainer-gated).
+This session corrected the handoff/agent-discipline failure mode that treated
+"maintainer-gated" as "blocked / nothing to do." The repo-level rule now says a
+maintainer-gated action is the next actionable step that requires explicit
+confirmation, not a dead end.
+
+## NEXT ACTION — recommend BD guard install in warn mode
+
+Ask the maintainer to confirm this action before executing it:
+
+```bash
+sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/install.sh
+```
+
+Plain-language blast radius: this is a host-wide change to the `bd` executable.
+The installer moves the real `/usr/local/bin/bd` to `/usr/local/bin/bd-real` and
+installs the guard wrapper at `/usr/local/bin/bd`. Default mode is warn, so the
+guard prints warnings for non-lifecycle `bd update --status <bad-status>`,
+`bd update --claim`, and `bd reopen`; it should not block commands unless
+`LIVESPEC_BD_GUARD_MODE=fail` is set.
+
+Rollback command if the host change misbehaves:
+
+```bash
+sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/rollback.sh
+```
+
+Do NOT close this track as blocked merely because the install is
+maintainer-gated. The correct next session response is a recommended
+confirmation prompt: install in warn mode now, inspect first, or defer.
+
+## Still OPEN on this track
+
+1. Host install of the BD guard in warn mode (maintainer confirmation required;
+   this is the immediate next action).
 2. beads #4738 (`status.default`) review/merge → then fleet `.beads/` adoption.
 3. Wait for a beads release carrying #4536 → bump pin, single-step store, retire
    the two-step + the guard.
