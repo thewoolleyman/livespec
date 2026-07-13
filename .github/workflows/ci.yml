@@ -205,6 +205,13 @@ jobs:
           - check-tools
           - check-doctor-static
           - check-primary-checkout-commit-refuse-hook-installed
+          # Byte-identity sibling of the commit-refuse check above: reads
+          # the `neutral_hook_body_path` role key from pyproject.toml (a
+          # config surface, no .py source), so it lives in the always-run
+          # metadata matrix. Core declares NO neutral_hook_body_path (no
+          # Driver hook body of its own), so the check no-ops here — it is
+          # wired so CI provably runs the whole canonical aggregate.
+          - check-no-shadow-ledger-body-identical
           # Tool-backed-check completeness meta-check. Parses the justfile
           # + workflow matrices — repo-metadata, no .py source — so it
           # lives in the always-run check-metadata matrix. Both-surfaces
