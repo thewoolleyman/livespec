@@ -44,6 +44,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import IO
 
+import claude_sessions
 import registry
 import signals
 import tmuxio
@@ -203,6 +204,11 @@ class Supervisor:
     out: object = None  # writable stream for the table (default: sys.stdout)
     now: Callable[[], float] = time.time
     sleep: Callable[[float], None] = time.sleep
+    # Claude session-registry adoption seams (default: real ~/.claude/sessions + /proc;
+    # the beside-tests inject a tmp registry dir + fake /proc readers).
+    sessions_dir: str | os.PathLike[str] | None = None
+    ppid_of: Callable[[int], int | None] = claude_sessions.proc_ppid
+    starttime_of: Callable[[int], str | None] = claude_sessions.proc_starttime
     _inject: dict[tuple[str, str], _InjectState] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
@@ -278,51 +284,57 @@ class Supervisor:
         return linked
 
     def adopt_sessions(self) -> list[registry.Track]:
-        """Adopt existing worker sessions by their ``claude -n <topic>`` border name.
+        """Adopt live Claude sessions whose registry name matches an active plan topic.
 
-        A one-shot bootstrap pass (run by the `/overseer` skill at startup, after
-        the daemon pane is up). For each live tmux session S: adopt it ONLY when
-        (a) its ``#{pane_current_path}`` resolves inside a FLEET repo (the
-        watch-set), (b) it runs a claude/codex worker (``signals.pane_is_worker``),
-        AND (c) the topic parsed from its input-box TITLED border
-        (``signals.parse_border_topic``) is an ACTIVE plan topic in that repo (a
-        discovered ``plan/<topic>/`` with a ``handoff.md``). The mapping's ``tmux``
-        field is the bare session name S — the EXISTING session already holding the
-        work — NOT the repo-qualified ``tmux_id`` the daemon would spawn. A
-        ``(repo, topic)`` already mapped is left untouched (no double-add).
-        Returns the adopted Tracks.
+        Run at `/overseer` startup AND every daemon tick (so a session that is
+        renamed, un-blocks a prompt, or is launched later is picked up within one
+        interval — not only at bootstrap). It reads Claude Code's own session
+        registry (:mod:`claude_sessions`, ``~/.claude/sessions/<pid>.json``) rather
+        than scraping the pane: each live session reports its display ``name`` and
+        ``cwd`` in a file keyed by the claude PID, which :mod:`claude_sessions`
+        joins to the owning tmux session by walking that PID up to a tmux pane PID.
+        This is screen-independent, so it works while a session is showing a prompt
+        (the exact case the old input-box-border scrape missed), and it reflects a
+        runtime ``/rename`` — the maintainer's sessions run
+        ``claude --dangerously-skip-permissions`` with NO ``-n`` in argv, so the
+        name lives only in that registry.
 
-        The match key is the ``claude -n <topic>`` display name that Claude Code
-        renders into the input box's top border as ``─── <topic> ──``, NOT the
-        tmux session name (those are generic — ``livespec``, ``livespec1``) and
-        NOT the ``#{pane_title}`` terminal title (Claude Code DRIFTS that to a
-        generated task summary). A session started without ``-n`` shows a
-        pure-rule border and is skipped. A codex/bun session renders a different
-        UI with no such titled border, so it yields no topic and is not adopted
-        yet (a known gap; codex would need its own topic signal).
+        A session is adopted ONLY when (a) its registry ``cwd`` resolves inside a
+        FLEET repo (the watch-set) AND (b) its ``name`` is an ACTIVE plan topic in
+        that repo (a discovered ``plan/<topic>/`` with a ``handoff.md``). Registry
+        membership already proves it is a live Claude process, so no worker-command
+        guard is needed. The mapping's ``tmux`` field is the bare session name
+        holding the work — NOT the repo-qualified ``tmux_id`` the daemon would
+        spawn. A ``(repo, topic)`` already mapped is left untouched (no double-add).
+        Returns the newly-adopted Tracks.
 
-        Distinct from :meth:`auto_link`, which links only the repo-qualified
-        ``<repo-slug>--<topic>`` session the daemon itself launches; adopt is the
-        opt-in "pick up the worker sessions I already have running" convenience,
-        with the fleet-dir + worker-command + active-topic-border guards making it
-        safe.
+        Codex sessions are NOT in Claude's registry, so they are not adopted (a
+        documented gap; codex would need its own session store read). Distinct from
+        :meth:`auto_link`, which links only the repo-qualified ``<repo-slug>--<topic>``
+        session the daemon itself launches.
         """
         watch = self._resolve_watch()
         active: dict[str, set[str]] = {}
         for repo, topic, _ in registry.discover_plans(watch):
             active.setdefault(repo, set()).add(topic)
         existing = {(t.repo, t.topic) for t in registry.read_mapping(self.store_path)}
+        sessions_dir = (
+            self.sessions_dir
+            if self.sessions_dir is not None
+            else claude_sessions.default_sessions_dir()
+        )
+        mapped = claude_sessions.map_named_sessions(
+            sessions_dir,
+            self.tmux.pane_pid_sessions(),
+            ppid_of=self.ppid_of,
+            starttime_of=self.starttime_of,
+        )
         adopted: list[registry.Track] = []
-        for session in self.tmux.list_sessions():
-            path = self.tmux.pane_current_path(session)
-            repo = next((r for r in watch if signals.path_in_repo(path, r)), None)
+        for session, name, cwd in mapped:
+            repo = next((r for r in watch if signals.path_in_repo(cwd, r)), None)
             if repo is None:
                 continue
-            if not signals.pane_is_worker(self.tmux.pane_current_command(session)):
-                continue
-            topic = signals.parse_border_topic(self.tmux.capture_pane(session))
-            if topic is None:
-                continue
+            topic = name
             if topic not in active.get(repo, set()):
                 continue
             if (repo, topic) in existing:
@@ -343,18 +355,23 @@ class Supervisor:
     def build_rows(self, *, act: bool = True) -> list[registry.Track]:
         """Discovery ⋈ mapping (the tick's row set).
 
-        When ``act`` (the daemon loop) this runs archive-GC + auto-link, both of
-        which MUTATE the store. When NOT ``act`` (the ``list`` command, advertised
-        read-only) it does NEITHER — it just joins discovery against the current
-        mapping, so `list` cannot silently rewrite / GC / re-link the store out
-        from under a running daemon (adversarial code review 2026-07-13, blocker
-        B6).
+        When ``act`` (the daemon loop) this runs archive-GC + registry adoption +
+        auto-link, all of which MUTATE the store. When NOT ``act`` (the ``list``
+        command, advertised read-only) it does NONE — it just joins discovery
+        against the current mapping, so `list` cannot silently rewrite / GC /
+        adopt / re-link the store out from under a running daemon (adversarial code
+        review 2026-07-13, blocker B6).
         """
         watch = self._resolve_watch()
         discovered = registry.discover_plans(watch)
         if not act:
             return registry.join(discovered, registry.read_mapping(self.store_path))
         self.archive_gc()
+        # Continuous adoption (not just at bootstrap): pick up any live Claude
+        # session whose registry name is now an active topic — so a session that
+        # was mid-prompt, renamed, or launched after startup is tracked within one
+        # tick rather than being missed forever.
+        self.adopt_sessions()
         rows = registry.join(discovered, registry.read_mapping(self.store_path))
         linked_any = False
         for row in rows:

@@ -79,23 +79,30 @@ conformance checks, or any other repo.
    separate session), (b) splits THAT window
    (`tmuxio.split_window_top` targeting `$TMUX_PANE`, idempotent via a pane titled
    `overseer-daemon`) to run `overseerd` in a TOP pane while focus stays on the
-   bottom pane, and (c) runs `Supervisor.adopt_sessions`. **`adopt` matches the
-   `claude -n <topic>` input-box BORDER name** (`signals.parse_border_topic`
-   parses `─── <topic> ──` from the capture) — NOT the tmux session name (those
-   are generic: `livespec`, `livespec1`) and NOT the `#{pane_title}` terminal
-   title (Claude Code DRIFTS that to a generated task summary; matching it was the
-   original adopt bug). It links an EXISTING worker session whose border topic is
-   an active plan topic, under three guards (cwd inside a fleet repo via
-   `path_in_repo`, a claude/codex worker via `signals.pane_is_worker` — which now
-   also accepts `bun`, since codex runs through bun, AND the border topic is an
-   ACTIVE discovered topic in that repo). A session launched WITHOUT `-n` shows a
-   pure-rule border → skipped; a codex/bun session renders no `─── <topic> ──`
-   border → not adopted yet (a known gap needing a codex-specific topic signal).
-   It maps to the bare session name (`tmux == session`), never double-adds, and is
-   a deliberate one-shot opt-in — NOT the per-tick auto-link of invariant 5, which
-   stays repo-qualified. Keep that distinction. (Per-session pane reads —
-   `pane_id`/`pane_current_command`/`pane_current_path` — go through `list-panes`,
-   not the flaky-for-detached-sessions `display-message`.)
+   bottom pane, and (c) runs `Supervisor.adopt_sessions`. **`adopt` matches each
+   live Claude session's registry `name`** — NOT the tmux session name (those are
+   generic: `livespec`, `livespec1`), NOT the `#{pane_title}` terminal title
+   (Claude DRIFTS it to a task summary), and NOT a screen-scrape of the input-box
+   border (which vanishes whenever the pane shows a prompt — the failure that
+   retired the border scrape). Claude Code writes each session's display `name` +
+   `cwd` (+ live `status`) to `~/.claude/sessions/<pid>.json`; the maintainer's
+   sessions run `claude --dangerously-skip-permissions` and are renamed at runtime,
+   so the name is ONLY in that registry, never argv. `claude_sessions.py` reads the
+   registry (keeping live PIDs — alive AND `/proc` start-time == recorded
+   `procStart`, defeating PID reuse) and joins each to its tmux session by walking
+   the claude PID up to a tmux pane PID (`tmuxio.pane_pid_sessions`). A session is
+   adopted when its registry `cwd` is in a fleet repo AND its `name` is an ACTIVE
+   discovered topic there; registry membership already proves it is a Claude
+   process, so there is no worker-command guard. **Adopt runs EVERY tick** (in
+   `build_rows(act=True)`), not just at bootstrap — so a session that was mid-prompt,
+   renamed, or launched later is picked up within one interval (the fix for "the
+   daemon never re-adopted after the prompt cleared"). It maps to the bare session
+   name (`tmux == session`), never double-adds, and — distinct from invariant 5's
+   `auto_link`, which links only the repo-qualified `<repo-slug>--<topic>` sessions
+   the daemon itself launches. Codex sessions are NOT in Claude's registry, so they
+   are not adopted (a documented gap; codex would need its own session-store read).
+   (Per-session pane reads — `pane_id`/`pane_current_command`/`pane_current_path` —
+   go through `list-panes`, not the flaky-for-detached-sessions `display-message`.)
 
 ## Load-bearing mechanics + gotchas
 
