@@ -55,13 +55,16 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
-## SESSION UPDATE — 2026-07-13 (cont. 6): Stage-1 cockpit-readiness — Findings A–G; A–F MERGED + verified live; G in flight; Stage 2 next
+## SESSION UPDATE — 2026-07-13 (cont. 6): Stage-1 cockpit-readiness COMPLETE — Findings A–G ALL MERGED + verified live; Stage 2 next
 
 Fresh session resumed from cont.5. Drove Stage-1 cockpit-readiness to near-completion:
 **all four cont.5 findings PLUS three NEW findings surfaced by live dogfooding (E, F,
-G) are fixed — A–F MERGED, G in flight.** The cockpit now LAUNCHES clean, OBSERVES
-real work correctly, FITS at 112, and shows a unified Attention view. **RESUME: merge
-G → relaunch → Stage 2 (groom `86k`+`e0t` → drive through the TUI).**
+G) are fixed — **A–G ALL MERGED + verified live.** The cockpit LAUNCHES clean, OBSERVES
+real work correctly, FITS at 112, shows a unified Attention view, and its Detail pane
+scrolls to the true wrapped bottom. **Stage 1 (cockpit-readiness) is COMPLETE. RESUME:
+Stage 2 — groom `86k`+`e0t` → drive them end-to-end through the TUI with the maintainer
+on the valves.** The cockpit is LEFT RUNNING in tmux `console-autonomous-mode` (112×28,
+fresh scratchpad store).
 
 ### DONE — all fixes in `livespec-console-beads-fabro`, via scoped sub-agents (Stage-1 = sub-agents, NOT the factory: Fabro sandbox has no Rust)
 - **A (P1, resolver flattened layout) — MERGED** console PR #187 (`2ea64f8`). A
@@ -99,13 +102,18 @@ G → relaunch → Stage 2 (groom `86k`+`e0t` → drive through the TUI).**
   §"needs-attention" already mandated the unified inbox; code just wasn't wired.
   Follow-up test PR #198 CLOSED (it locked the logical-line-count clamp invariant that
   Finding G must change).
-- **G (P2, NEW — Detail scroll clamp) — IN FLIGHT** (`finding-g-scroll-clamp`). Proven
-  live at 112×16: the Detail scroll clamps SHORT on WRAPPING details.
-  `AttentionDetail::rendered_line_count()` = `4 + actions + 1 + timeline.len()`
-  (LOGICAL), but long `evt:...` ids wrap + timeline entries render multi-line, so the
-  actual wrapped render is ~2.5× longer; `max_offset = detail_content_len - 1` (logical)
-  caps below the true bottom. The scrollbar already uses the exact wrapped count (F's
-  `Paragraph::line_count`) — they disagree. Fix: make the clamp wrapped-aware. PR pending.
+- **G (P2, NEW — Detail scroll clamp) — MERGED** console PR #199 (`911fa66`). Proven
+  live at 112×16: the Detail scroll clamped SHORT on WRAPPING details — the reducer used
+  `AttentionDetail::rendered_line_count()` (LOGICAL: `4 + actions + 1 + timeline.len()`),
+  but long `evt:...` ids wrap + timeline entries render multi-line, so the wrapped render
+  is ~2.5× longer and the clamp capped below the true bottom. Fix makes the RENDER the
+  single authority: `render_scrollable_detail` returns the wrapped max
+  (`content_rows − viewport` from the same `Paragraph::line_count` that sizes the
+  scrollbar), stored into `TuiInteractionState.detail_max_scroll` each frame
+  (measure-on-render, clamp-on-next-input); the superseded logical-count path
+  (`detail_content_len`/`rendered_line_count`) was REMOVED, not papered over.
+  **Verified live post-merge:** at 112×16 the Detail scrolls to the last timeline line
+  (`Source completeness finding`), where pre-G it stranded at ~line 8.
 
 ### COCKPIT STATE — verified live at 112×28 from the orchestrator cwd (NO override)
 Launch: `mise exec -- cargo build --release`, then FROM
@@ -115,12 +123,14 @@ Launch: `mise exec -- cargo build --release`, then FROM
 tmux session `console-autonomous-mode` pinned 112×28. Verified: header `repo:
 livespec-orchestrator-beads-fabro` ✓; Repos observed → 1 ✓; Attention → 6 unified
 (blocked work-item + stale-branch + 3 plan-reviews + prune-history), correct repos ✓;
-pane-focus ✓; Detail scroll works but clamps early on wrapping (G).
-- **Benign staleness:** the work-item entry's Detail shows the OLD `Repo:
-  livespec-console-beads-fabro` from a work-item snapshot persisted BEFORE the fix
-  (fresh needs-attention items show the correct repo). Self-heals; clear
-  `tmp/livespec-console.sqlite` (under the orchestrator cwd) on relaunch for full
-  consistency.
+pane-focus ✓; Detail scroll reaches the true wrapped bottom (G) ✓.
+- **Store staleness RESOLVED via a fresh store.** An earlier run showed the work-item
+  Detail with the OLD `Repo: livespec-console-beads-fabro` (a work-item snapshot
+  persisted BEFORE the fix). Relaunching with a FRESH store made every repo label
+  correct. `tmp/` is maintainer-owned scratch → do NOT `rm` it; instead relaunch with
+  `env LIVESPEC_CONSOLE_STORE_PATH=<scratchpad>/console-store.sqlite` (a fresh file
+  outside `tmp/`) for a clean re-ingest. The default store path is
+  `tmp/livespec-console.sqlite` (relative to the launch cwd), overridable by that env.
 
 ### DECISIONS (maintainer, 2026-07-13)
 - **Unify the Attention view** (surface needs-attention items alongside valve-
@@ -132,26 +142,37 @@ pane-focus ✓; Detail scroll works but clamps early on wrapping (G).
   assertion; `e0t` = point post-merge janitor worktrees at `~/.worktrees` + teardown.
   Groom REAL backlog (maintainer's chosen sourcing).
 
-### OPEN WORKTREES to reap (all merged; agents exited) — reap at a clean boundary; do NOT reap while `finding-g` is active
-console: `fix-cockpit-finding-a-resolver-layout`, `fix-cockpit-findings-b-d-tui-scroll`,
-`fix-cockpit-finding-e-python-exec`, `fix-cockpit-finding-f-detail-nav-scroll`,
-`fix-cockpit-finding-c-repo-dimension` (+ `finding-g` after it merges). core:
-`docs-autonomous-mode-cont6` (this update).
+### OPEN WORKTREES — reaped this session (all 6 cockpit-fix worktrees merged; agents exited)
+console `fix-cockpit-finding-{a-resolver-layout, b-d-tui-scroll, e-python-exec,
+f-detail-nav-scroll, c-repo-dimension, g-detail-scroll-clamp}` — reaped. core
+`docs-autonomous-mode-cont6-gdone` (this update) — reap after its PR merges.
 
-### RESUME ORDER (fresh session)
-1. **Merge G's PR** when `finding-g-scroll-clamp` reports (verify the Detail scroll
-   reaches the true wrapped bottom + scrollbar agrees) → rebuild → relaunch
-   `console-autonomous-mode` (112×28, orchestrator cwd; clear `tmp/livespec-console.sqlite`)
-   → confirm the Detail scroll reaches the bottom.
-2. **Stage 2 (the MVP dogfooding acceptance):** present `86k`/`e0t` for the maintainer's
-   grooming cut → `ready`; dispatch each through the TUI (`:` drain / `a` autonomous);
-   observe in Lanes; drive the valve loop (accept via `c`) with the maintainer as
-   human-in-the-loop in `orchestrator-autonomous-mode`. **VERIFY valve-targeting hits
-   the orchestrator tenant** (the `gu4` `--repo` id→path fix + E's python3-drive + C's
-   tenant label should make it correct — confirm live on a safe item first).
-3. Reap the merged worktrees (list above).
-4. That live proof (multiple real items end-to-end SOLELY through the TUI, maintainer on
+### RESUME ORDER (fresh session) — Stage 1 is DONE; go straight to Stage 2
+1. **Stage 2 (the MVP dogfooding acceptance).** The cockpit is operator-ready and LEFT
+   RUNNING (tmux `console-autonomous-mode`, 112×28, fresh scratchpad store; if it needs
+   relaunch, use `env LIVESPEC_CONSOLE_STORE_PATH=<scratchpad>/console-store.sqlite
+   /usr/local/bin/with-livespec-env.sh -- … serve` from the orchestrator cwd — Finding A
+   removed the plugin-root override). Present `86k`/`e0t` for the maintainer's grooming
+   cut → `ready`; dispatch each through the TUI (`:` drain / `a` autonomous); observe in
+   Lanes; drive the valve loop (accept via `c`) with the maintainer as human-in-the-loop
+   in `orchestrator-autonomous-mode`. **FIRST verify valve-targeting hits the orchestrator
+   tenant** — the `gu4` `--repo` id→path fix + E's python3-drive + C's tenant label
+   should make it correct, but confirm live on a safe item before real accepts (the
+   maintainer-declared "done means exercised live, incl. every cross-boundary shape").
+2. That live proof (multiple real items end-to-end SOLELY through the TUI, maintainer on
    the valves) = MVP "done" (I2).
+
+### CARRY-OVER FINDINGS (not blocking; log for Stage 2 / follow-up)
+- **Valve-targeting is UNVERIFIED end-to-end.** E (python3 `drive.py`) + C (tenant
+  label = cwd basename) + `gu4` (id→path) should make `drive --repo` hit the orchestrator
+  tenant, but no valve has been exercised live through the TUI yet. Verify on a safe item
+  first (the `set-acceptance`/`set-admission` policy valves, or a reversible one).
+- **Minor cosmetic (console-tui, optional):** needs-attention items render their operator
+  command in the Detail "Attach:" slot, which reads slightly off for non-`fabro`
+  commands (e.g. a `codex exec … plan` handoff). A dedicated field would be a small
+  console-tui polish; not filed.
+- **Scrollbar thumb** at max Detail scroll sits slightly above the very bottom edge
+  (content bottom IS reached; functional). Cosmetic only.
 
 ## SESSION UPDATE — 2026-07-12 (cont. 5): TUI-DOGFOODING phase OPENED; cockpit is NOT operator-ready — 4 blocking findings; two-stage acceptance
 
