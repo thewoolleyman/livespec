@@ -115,6 +115,29 @@ unattended with **zero spurious marker voids** (RB1 proof) and stable pane-id
 `%39` across restarts (RB3 proof); all scratch state removed; real sessions
 untouched.
 
+## Current status (2026-07-13) — ALL FIXED + LANDED; HOLD before archive
+
+- **All 15 review findings are fixed and on `master`** (release **0.9.4**): the 8
+  blockers via **PR #1138** (auto-merged green by `app/livespec-pr-bot`), the 7
+  fix-re-review findings via **PR #1142**. Codex #2 intentionally kept (documented
+  tradeoff). Both PRs auto-merged on CI-green — note CI does NOT exercise this
+  folder, so "green" only ever meant the product/plugin was unbroken, never that
+  the overseer works; the review was an out-of-band human/agent pass.
+- **Beside-tests are the ONLY gate on this folder** (not `just check`/CI). **PR
+  #1144** added an AGENTS.md rule: ALWAYS run `uv run pytest
+  .claude/skills/overseer/ -q` before pushing any change here, and exercise
+  timing behavior with a CONTINUOUS loop (the RB1 lesson).
+- **Final master-artifact validation done** (against the merged code on the
+  primary checkout): a deterministic restart tick restarted the session
+  (`respawn` by pane `%41`, PID changed, marker consumed, resume line pasted →
+  `RESUMED`); the blocked-marker path was also exercised live (a session with an
+  emptied fixture correctly wrote `.overseer-blocked` and the daemon suppressed
+  restart). All scratch state removed; the 20 real sessions untouched.
+- **HOLD — do NOT archive or close this plan thread.** Maintainer instruction
+  (2026-07-13): the overseer stays as-is until the maintainer has done their OWN
+  exploratory testing and gives the go-ahead. Only THEN archive to
+  `plan/archive/overseer-rewrite/`.
+
 ## Read-first chain (before acting)
 
 1. `design.md` — full design + "Adversarial review (2026-07-12)" (design
@@ -143,10 +166,15 @@ untouched.
 
 ## Definition of DONE
 
-Both original remaining tasks passed; the 8 code-review blockers are fixed
-(PR #1138) + re-validated live; and the fix re-review returns NO-BLOCKERS (or its
-blockers are fixed + re-reviewed). Then merge PR #1138, refresh the primary, and
-archive this plan thread (`plan/archive/overseer-rewrite/`).
+Everything the code/review side requires is DONE: both original remaining tasks
+passed; all 15 review findings (8 blockers + 7 fix-re-review) are fixed, landed on
+`master` (0.9.4), and validated live; the AGENTS.md test-before-push rule is added
+(PR #1144). The ONLY thing left is the maintainer's own exploratory testing.
+
+**Archive is BLOCKED on the maintainer.** Do NOT move this thread to
+`plan/archive/overseer-rewrite/` until the maintainer confirms they have
+exploratory-tested the overseer themselves and gives the go-ahead. Until then the
+thread stays active as the resume point.
 
 ## Resume command
 
