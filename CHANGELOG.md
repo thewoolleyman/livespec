@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.3](https://github.com/thewoolleyman/livespec/compare/v0.9.2...v0.9.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **overseer:** resolve 8 adversarial code-review blockers + reframe as permanent ([8d05e7f](https://github.com/thewoolleyman/livespec/commit/8d05e7f6581bcd1031a2ba03371105b3bd628f51))
+
 ## [0.9.2](https://github.com/thewoolleyman/livespec/compare/v0.9.1...v0.9.2) (2026-07-12)
 
 
