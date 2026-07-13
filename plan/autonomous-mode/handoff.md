@@ -55,7 +55,7 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
-## SESSION UPDATE — 2026-07-12 (cont. 5): TUI-DOGFOODING phase OPENED; cockpit is NOT operator-ready — 3 blocking findings; two-stage acceptance
+## SESSION UPDATE — 2026-07-12 (cont. 5): TUI-DOGFOODING phase OPENED; cockpit is NOT operator-ready — 4 blocking findings; two-stage acceptance
 
 **Supersedes the "I2 = flip-and-accept" framing.** The maintainer (2026-07-12)
 directed that the MVP is NOT done until I (the driver) drive MULTIPLE real
@@ -97,7 +97,7 @@ orchestrator tenant — see Finding C). ALWAYS rebuild first (`just tui` runs
 `cargo build --release`); the cockpit can silently run a STALE binary (the
 pre-existing session ran a days-old build via the now-removed interim PATH shims).
 
-### THREE BLOCKING FINDINGS (Stage-1 cockpit fixes — all console-Rust)
+### FOUR BLOCKING FINDINGS (Stage-1 cockpit fixes — all console-Rust)
 - **A (P1 — cockpit unusable out-of-box): the resolver rejects the installed
   marketplace-cache plugin layout.** `crates/console-cli/src/backing_cli.rs`
   `validate_plugin_root` requires the SOURCE layout
@@ -119,10 +119,24 @@ pre-existing session ran a days-old build via the now-removed interim PATH shims
   that tenant's cwd (header flipped 5→4 unavailable — `orchestrator` dropped — when
   relaunched from the orchestrator checkout; confirms `gkh`'s fix works there). So
   the "fleet" view is not fleet-wide for work-items. Settle the intended model.
+- **D (P2 — no scroll affordances; acute at 112×28): overflowing pane content is
+  UNREACHABLE.** The TUI has NO scroll machinery (`crates/console-tui/src/lib.rs`:
+  no `ListState`/`StatefulWidget`/`.scroll(offset)`/scrollbar; panes render as
+  stateless `List`/`Paragraph` with `Wrap { trim: true }`). Content past a pane's
+  edge is clipped: lists render from the TOP and do NOT scroll to the selection
+  (selecting an off-screen item leaves it invisible); a wrapped `Paragraph` (Detail)
+  taller than the pane clips; a wide single-line field (header) truncates. Arrow
+  keys don't rescue it — up/down move a selection with NO scroll-to-selection,
+  left/right switch views / step in-out of the content pane (NO horizontal scroll).
+  So on the pinned 112×28 (where overflow is the norm) the operator literally cannot
+  see clipped rows/text. FIX: stateful lists that scroll to keep the selection
+  visible + a scroll offset + scrollbar on content panes; responsive
+  abbreviate/scroll for wide single-line content. Same family as Finding B but
+  broader (every overflow-capable pane).
 
 ### TWO-STAGE ACCEPTANCE (the honest structure)
 - **Stage 1 (prerequisite — SUB-AGENTS, not the factory):** fix A (the P1
-  blocker), B, and settle C. All are console-Rust → the Fabro factory can't build
+  blocker), B, D, and settle C. All are console-Rust → the Fabro factory can't build
   them (the `d6f` sandbox-Rust wall). Route: scoped sub-agents (worktree → Rust
   RGR → PR → driver review). Only when the cockpit LAUNCHES clean + OBSERVES real
   work + FITS at 112 is it operator-usable.
@@ -147,7 +161,8 @@ pre-existing session ran a days-old build via the now-removed interim PATH shims
 ### RESUME ORDER (fresh session)
 1. **File + fix Finding A (P1)** via a scoped sub-agent (resolver accepts the
    installed-cache flattened layout) → unblocks `just tui` on a normal host. Then
-   B (header at 112), then settle C.
+   B (header fits/degrades at 112) and D (add scroll affordances — stateful
+   scroll-to-selection lists + scroll offset + scrollbar), then settle C.
 2. Rebuild + relaunch the cockpit cleanly (no override once A lands) in
    `console-autonomous-mode` (112×28), from the tenant cwd you want to drive.
 3. **Stage 2:** drive multiple real orchestrator-tenant Python items end-to-end
