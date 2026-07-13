@@ -37,7 +37,9 @@ class FakeTmux:
         self.on_paste = None  # callback(session, text) for stamp-before-paste checks
         self.paste_ok = True  # set False to model a failed bracketed paste (B5)
         self.respawn_ok = True  # set False to model a failed respawn (B5)
+        self.new_session_ok = True  # set False to model a failed new-session (Codex #3)
         self._cap_idx = {}
+        self._cmd_idx = {}
 
     def serve(self, session, repo, capture=None, cmd="node"):
         """Register ``session`` as a live Claude TUI whose cwd is inside ``repo``.
@@ -57,6 +59,13 @@ class FakeTmux:
         self.calls.append(("exists", session))
         return session in self.sessions
 
+    def pane_id(self, session):
+        # Model pane-id resolution (RB3): return the session name itself as the
+        # "pane id" for a live session (so target == name and the canned dicts,
+        # keyed by name, still resolve), or None if the session is gone.
+        self.calls.append(("pane_id", session))
+        return session if session in self.sessions else None
+
     def capture_pane(self, session):
         self.calls.append(("capture", session))
         val = self.panes.get(session, "")
@@ -73,7 +82,14 @@ class FakeTmux:
 
     def pane_current_command(self, session):
         self.calls.append(("cmd", session))
-        return self.cmds.get(session)
+        val = self.cmds.get(session)
+        # A list models a CHANGING command across successive calls (e.g. the
+        # identity re-check sees the pane after it exited to a shell — Codex #1).
+        if isinstance(val, list):
+            i = min(self._cmd_idx.get(session, 0), len(val) - 1) if val else 0
+            self._cmd_idx[session] = i + 1
+            return val[i] if val else None
+        return val
 
     def pane_current_path(self, session):
         self.calls.append(("path", session))
@@ -103,6 +119,8 @@ class FakeTmux:
 
     def new_session(self, name, cwd):
         self.calls.append(("new", name, cwd))
+        if not self.new_session_ok:
+            return False  # model a failed new-session (session NOT created)
         self.sessions.add(name)
         return True
 
@@ -159,6 +177,11 @@ def _mapped_track(repo, topic, session):
         handoff=supervisor.default_handoff(str(repo), topic),
         resume=supervisor.default_resume(str(repo), topic),
     )
+
+
+def _key_for(repo, topic):
+    """The normalized in-memory inject-state key the supervisor uses."""
+    return supervisor._key(str(repo), topic)
 
 
 def _sup(tmp_path, fake, **kwargs):
@@ -250,6 +273,22 @@ def test_claude_pane_in_wrong_repo_is_not_claude(tmp_path):
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "not-claude"
     assert not fake.has("paste")
+
+
+def test_identity_rechecked_before_acting_catches_shell(tmp_path):
+    """Codex re-review #1: identity passes the TOP gate but the pane exits to a
+    shell during the capture+settle window — the re-check immediately before
+    acting must catch it (not-claude, no paste). The fake returns `node` at the
+    top gate then `zsh` at the re-check."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40))  # idle, low ctx → would inject
+    fake.cmds[session] = ["node", "zsh"]  # claude at top gate, shell at the re-check
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "not-claude"
+    assert not fake.has("paste")  # never pasted into the shell
 
 
 # --------------------------------------------------------------------------- #
@@ -405,22 +444,65 @@ def test_no_restart_when_busy_even_with_valid_marker(tmp_path):
     assert not fake.has("respawn")
 
 
-def test_busy_after_certifying_voids_ready_marker(tmp_path):
-    """B4: a valid ready marker followed by NEW work (busy) is voided durably —
-    the marker file is deleted and the stamp cleared — so a later idle tick (or a
-    fresh daemon) cannot respawn-kill a session a human has resumed."""
+def test_fresh_marker_survives_busy_certifying_tail(tmp_path):
+    """RB1: a YOUNG ready marker (age < grace) seen busy is the certifying turn's
+    OWN tail (final streaming + stop hooks) — it must NOT be voided, else the
+    restart never fires. now()=1000, stamp=990, marker mtime=995 → age 5s < grace."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture="esc to interrupt\n  Ctx: 30% left\n")  # busy tail
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 990.0, sup.stamp_path)
+    marker = _arm_ready_marker(repo, topic, mtime=995.0)
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert marker.exists()  # NOT voided — it is the certifying tail
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) == 990.0
+
+
+def test_stale_marker_voided_when_busy_past_grace(tmp_path):
+    """RB1/B4: an OLD ready marker (age > grace) seen busy means the session
+    genuinely resumed work after certifying — void it durably (marker + stamp +
+    inject state). now()=1000, stamp=700, marker mtime=800 → age 200s > grace."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo, capture="esc to interrupt\n  Ctx: 30% left\n")  # busy again
     sup = _sup(tmp_path, fake)
-    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
-    marker = _arm_ready_marker(repo, topic, mtime=1001.0)
+    registry.write_injection_stamp(str(repo), topic, 700.0, sup.stamp_path)
+    marker = _arm_ready_marker(repo, topic, mtime=800.0)
 
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "working"
-    assert not marker.exists()  # certification voided
+    assert not marker.exists()  # certification voided (stale)
     assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) is None
+
+
+def test_void_resets_inject_state_so_round_can_recertify(tmp_path):
+    """RB2: after a void, the in-memory inject state is popped, so the NEXT
+    threshold crossing opens a fresh count==0 round that writes a new stamp — else
+    the cleared stamp + stuck count==1 would wedge the track (never re-certifies)."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    track = _mapped_track(repo, topic, session)
+    # Round 1: inject (count=1, stamp written) on an idle low-ctx pane.
+    fake.serve(session, repo, capture=_idle_capture(ctx=40))
+    sup.evaluate(track, act=True)
+    assert sup._inject[_key_for(repo, topic)].count == 1
+    # Session resumes work with a STALE marker → void (age > grace) → state popped.
+    registry.write_injection_stamp(str(repo), topic, 700.0, sup.stamp_path)
+    _arm_ready_marker(repo, topic, mtime=800.0)
+    fake.panes[session] = "esc to interrupt\n  Ctx: 30% left\n"  # busy
+    sup.evaluate(track, act=True)
+    assert _key_for(repo, topic) not in sup._inject  # inject state popped
+    # Next idle low-ctx tick opens a FRESH round: new stamp written, re-injected.
+    fake.panes[session] = _idle_capture(ctx=35)
+    sup.evaluate(track, act=True)
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) == 1000.0
 
 
 def test_no_restart_when_not_idle(tmp_path):
@@ -636,6 +718,22 @@ def test_recover_recreates_missing_mapped_session(tmp_path):
     assert ("new", session, str(repo)) in fake.calls
     assert ("respawn", session, str(repo), f"claude -n {topic}") in fake.calls
     assert supervisor.default_resume(str(repo), topic) in fake.paste_texts()
+
+
+def test_recover_skips_when_new_session_fails(tmp_path):
+    """Codex re-review #3: if `new-session` fails to create the exact session,
+    recovery must NOT proceed to `_do_launch`/`respawn` (which could target a
+    prefix-matched live sibling) — it surfaces and skips."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # session absent
+    fake.new_session_ok = False  # new-session fails to create it
+    sup = _sup(tmp_path, fake)
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    recovered = sup.recover_missing_sessions()
+    assert recovered == []
+    assert not fake.has("respawn")  # never respawned a prefix-matched sibling
 
 
 # --------------------------------------------------------------------------- #

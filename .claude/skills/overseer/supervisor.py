@@ -87,6 +87,21 @@ _SETTLE_DELAY = 0.6
 _SUBMIT_MAX_ENTERS = 8
 _SUBMIT_POLL = 0.5
 
+# Grace window before a ready marker is voided on a busy/blocked observation. The
+# wrap-up protocol makes the session write `.overseer-ready` as the LAST tool
+# action of its turn, then the turn's TAIL keeps the pane busy for a while (final
+# text streaming + stop hooks, e.g. `(running stop hooks… 1/3 · 24s …)`). Voiding
+# on ANY busy would destroy that legitimate certification before the pane ever
+# goes idle, breaking the restart in the common case (adversarial code re-review
+# 2026-07-13, blocker RB1). So a marker is voided on busy/blocked ONLY once it is
+# OLDER than this grace — old enough that the busy cannot be the certifying turn's
+# own tail, i.e. the session genuinely resumed work (or a human took over). The
+# restart path itself needs no grace: the tail is busy → not idle → restart simply
+# waits, then fires when the pane settles idle. Residual (documented): a human who
+# takes over AND goes idle WITHIN the grace of a fresh marker could still be
+# restarted; a longer takeover is protected.
+_MARKER_VOID_GRACE = 120.0
+
 
 # --------------------------------------------------------------------------- #
 # The wrap-up message + resume line. Single-sourced here so Build C's
@@ -305,8 +320,8 @@ class Supervisor:
             return current
         return state.last_ctx
 
-    def _pane_settled(self, session: str) -> bool:
-        """True if two captures ~``_SETTLE_DELAY`` apart are identical.
+    def _pane_settled(self, target: str) -> bool:
+        """True if two captures ~``_SETTLE_DELAY`` apart are identical (``target`` = pane id).
 
         A single capture cannot distinguish active token-streaming from idle —
         the live Claude TUI renders no persistent busy spinner while streaming
@@ -315,13 +330,13 @@ class Supervisor:
         changing pane is treated as busy (`working`) and skipped this tick —
         over-firing busy is the safe direction.
         """
-        first = signals.strip_ansi(self.tmux.capture_pane(session))
+        first = signals.strip_ansi(self.tmux.capture_pane(target))
         self.sleep(_SETTLE_DELAY)
-        second = signals.strip_ansi(self.tmux.capture_pane(session))
+        second = signals.strip_ansi(self.tmux.capture_pane(target))
         return first == second
 
-    def _pane_is_managed_claude(self, session: str, repo: str) -> bool:
-        """True iff ``session``'s pane is a live Claude TUI whose cwd is inside ``repo``.
+    def _pane_is_managed_claude(self, target: str, repo: str) -> bool:
+        """True iff ``target``'s pane is a live Claude TUI whose cwd is inside ``repo``.
 
         The identity gate for EVERY act (inject / restart). ``pane_is_claude`` and
         ``path_in_repo`` exist and are tested, but the shipped daemon wired them
@@ -332,26 +347,57 @@ class Supervisor:
         marker (adversarial code review 2026-07-13, blocker B3 = Codex #1). Gating
         every act on process identity + cwd closes that, and hardens B1's residual
         (a name that resolved to the wrong session would fail the cwd check).
+
+        ``target`` is the resolved pane id (RB3), so the identity read is of the
+        exact pane, never a prefix-matched sibling.
         """
-        if not signals.pane_is_claude(self.tmux.pane_current_command(session)):
+        if not signals.pane_is_claude(self.tmux.pane_current_command(target)):
             return False
-        return signals.path_in_repo(self.tmux.pane_current_path(session), repo)
+        return signals.path_in_repo(self.tmux.pane_current_path(target), repo)
 
     def _void_ready_marker(self, track: registry.Track) -> None:
-        """Delete a track's ready marker AND clear its injection stamp (round closed).
+        """Delete a track's ready marker, clear its stamp, AND reset its inject state.
 
-        Used both after a successful restart and when a track that had a valid ready
-        marker is next seen BUSY or BLOCKED — i.e. the session began NEW work, or a
-        human resumed the pane, AFTER certifying. Voiding the certification on the
-        FILESYSTEM (not merely in memory) makes it durable across a daemon restart,
-        so a freshly-started daemon cannot respawn-kill a session a human has since
-        taken over (adversarial code review 2026-07-13, blocker B4).
+        Used both after a successful restart and when a certified track genuinely
+        resumes work. Voiding on the FILESYSTEM (marker + stamp) makes it durable
+        across a daemon restart. It ALSO pops the in-memory ``_inject`` state
+        (mirroring ``_do_restart``): without that, the cleared stamp + a stuck
+        ``count==1`` would leave the round unable to re-certify — the next
+        threshold crossing would only re-send (not re-stamp), so a fresh marker
+        gets ``injection_stamp=None`` and never validates, wedging the track
+        (adversarial code re-review 2026-07-13, blocker RB2). Popping reopens a
+        clean ``count==0`` round that writes a new stamp on the next crossing.
         """
         try:
             signals.ready_marker_path(track.repo, track.topic).unlink(missing_ok=True)
         except OSError as exc:
             self._log(f"could not delete ready marker for {track.repo}::{track.topic}: {exc}")
         registry.clear_injection_stamp(track.repo, track.topic, self.stamp_path)
+        self._inject.pop(_key(track.repo, track.topic), None)
+
+    def _void_if_stale(self, track: registry.Track, ready: bool) -> bool:
+        """Void a ready marker on a busy/blocked tick ONLY if it is past the grace.
+
+        Returns the (possibly cleared) ``ready`` flag. A marker younger than
+        ``_MARKER_VOID_GRACE`` is the certifying turn's own busy tail and is LEFT
+        intact (RB1); an older one means the session resumed work after certifying,
+        so it is voided.
+        """
+        if not ready:
+            return ready
+        marker = signals.ready_marker_path(track.repo, track.topic)
+        try:
+            age = self.now() - marker.stat().st_mtime
+        except OSError:
+            return ready  # unreadable → leave it; ready_marker_valid already gates
+        if age > _MARKER_VOID_GRACE:
+            self._void_ready_marker(track)
+            self._log(
+                f"voided stale ready marker for {track.repo}::{track.topic} "
+                f"(age {age:.0f}s > {_MARKER_VOID_GRACE:.0f}s grace; session resumed work)"
+            )
+            return False
+        return ready
 
     def evaluate(self, track: registry.Track, *, act: bool) -> RowView:
         """Derive a track's status and (when ``act``) perform its side effects.
@@ -372,13 +418,23 @@ class Supervisor:
         if not self.tmux.session_exists(session):
             return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="session-gone")
 
+        # Resolve the pane id ONCE and target every subsequent pane op by it (RB3).
+        # A pane id is exact and never prefix/fnmatch-matched, so if the tracked
+        # session dies mid-tick the ops fail-soft instead of a bare `-t <name>`
+        # falling back to a live SIBLING session (e.g. dead `livespec--overseer`
+        # resolving to live `livespec--overseer-rewrite`) and, worst case,
+        # `respawn-pane -k` killing it. Stable across respawn.
+        target = self.tmux.pane_id(session)
+        if target is None:
+            return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="session-gone")
+
         # Identity gate (B3): the mapped session exists, but before reading its pane
         # for any ACT we confirm it is really OUR Claude in OUR repo — never
         # keystroke into a shell / wrong session / human split-pane.
-        if not self._pane_is_managed_claude(session, repo):
+        if not self._pane_is_managed_claude(target, repo):
             return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="not-claude")
 
-        capture = self.tmux.capture_pane(session)
+        capture = self.tmux.capture_pane(target)
         busy = signals.is_busy(capture)
         gate = signals.is_structured_gate(capture)
         idle = signals.is_idle_input(capture)
@@ -399,34 +455,38 @@ class Supervisor:
         # a changing pane is treated as `working` and skipped this tick.
         if busy:
             status = "working"
-            if act and ready:
-                # The session started NEW work after certifying done — void the
-                # now-contradicted certification durably (B4).
-                self._void_ready_marker(track)
-                ready = False
-                self._log(f"voided ready marker for {repo}::{topic} (busy after certifying)")
+            if act:
+                # Void the certification ONLY if it is past the grace — a young
+                # marker is the certifying turn's own busy tail and must survive
+                # (RB1); an old one means the session resumed work after certifying.
+                ready = self._void_if_stale(track, ready)
         elif gate or blocked is not None:
             status = "blocked:human"
             if act:
-                if ready:
-                    self._void_ready_marker(track)
-                    ready = False
+                ready = self._void_if_stale(track, ready)
                 detail = blocked if blocked else "structured gate on pane"
                 self._surface(f"{repo}::{topic} blocked on human: {detail}")
         elif not idle:
             # Pane present but not a verified idle-input state and not busy —
             # a transient/settling capture. Wait; never act.
             status = "settling"
-        elif act and not self._pane_settled(session):
+        elif act and not self._pane_settled(target):
             # One frame looks idle, but the pane is actively changing (streaming).
             status = "working"
+        elif act and not self._pane_is_managed_claude(target, repo):
+            # TOCTOU re-check (Codex re-review #1): the identity gate ran at the top
+            # of the tick, but capturing + the settle delay opened a window in which
+            # the pane could have exited to a shell (or cd'd out of the repo). Re-
+            # verify identity IMMEDIATELY before any act, so a wrap-up is never
+            # pasted into — nor a respawn aimed at — a pane no longer proven ours.
+            status = "not-claude"
         elif ready:
             status = "restarting"
             if act:
-                self._do_restart(track, session)
+                self._do_restart(track, target)
         elif eff_ctx is not None and eff_ctx <= threshold:
             if act:
-                self._maybe_inject(track, session, eff_ctx, handoff)
+                self._maybe_inject(track, target, eff_ctx, handoff)
             if eff_ctx <= DANGER_CTX_REMAINING and not ready:
                 status = "danger"
                 if act:
@@ -447,15 +507,14 @@ class Supervisor:
             note=blocked if blocked else None,
         )
 
-    def _maybe_inject(
-        self, track: registry.Track, session: str, eff_ctx: int, handoff: str
-    ) -> None:
+    def _maybe_inject(self, track: registry.Track, target: str, eff_ctx: int, handoff: str) -> None:
         """Inject the wrap-up once per round; re-send once if ctx keeps dropping.
 
-        The injection stamp is written BEFORE the paste (design) so any ready
-        marker the session subsequently writes has ``mtime > stamp`` and thus
-        certifies. On the re-send the stamp is NOT rewritten — that would
-        invalidate a marker already written in response to the first injection.
+        ``target`` is the resolved pane id (RB3). The injection stamp is written
+        BEFORE the paste (design) so any ready marker the session subsequently
+        writes has ``mtime > stamp`` and thus certifies. On the re-send the stamp
+        is NOT rewritten — that would invalidate a marker already written in
+        response to the first injection.
         """
         key = _key(track.repo, track.topic)
         state = self._inject.setdefault(key, _InjectState())
@@ -468,7 +527,7 @@ class Supervisor:
             # advance count — the round never opened, so the next tick retries
             # instead of the wrap-up being accounted as sent (B5).
             registry.write_injection_stamp(track.repo, track.topic, self.now(), self.stamp_path)
-            if self._submit_prompt(session, message):
+            if self._submit_prompt(target, message):
                 state.count = 1
                 state.ctx_at_last = eff_ctx
                 self._log(f"injected wrap-up into {track.repo}::{track.topic} (ctx {eff_ctx}%)")
@@ -476,15 +535,17 @@ class Supervisor:
                 registry.clear_injection_stamp(track.repo, track.topic, self.stamp_path)
                 self._surface(f"{track.repo}::{track.topic} wrap-up injection failed; will retry")
         elif state.count == 1 and state.ctx_at_last is not None and eff_ctx < state.ctx_at_last:
-            if self._submit_prompt(session, message):  # stamp preserved from the first inject
+            if self._submit_prompt(target, message):  # stamp preserved from the first inject
                 state.count = 2
                 state.ctx_at_last = eff_ctx
                 self._log(f"re-sent wrap-up into {track.repo}::{track.topic} (ctx {eff_ctx}%)")
             else:
                 self._surface(f"{track.repo}::{track.topic} wrap-up re-send failed")
 
-    def _do_restart(self, track: registry.Track, session: str) -> None:
+    def _do_restart(self, track: registry.Track, target: str) -> None:
         """Atomic restart interlock: respawn → wait Claude → resume → close the round.
+
+        ``target`` is the resolved pane id (RB3), STABLE across the respawn.
 
         Every tmux step is a HARD GATE (B5). If ``respawn-pane`` fails, or the
         pane never becomes a live Claude, the daemon SURFACES the failure and
@@ -494,45 +555,48 @@ class Supervisor:
         respawn is confirmed; the resume-submit result is surfaced but does not
         block voiding, because the fresh Claude IS up (a stale marker would else
         re-restart and kill it, and B3's identity gate already blocks re-acting on
-        a non-Claude pane).
+        a non-Claude pane). ``_void_ready_marker`` also pops the in-memory inject
+        state (RB2), so the redundant explicit pop below is belt-and-suspenders.
         """
-        if not self.tmux.respawn_pane(session, track.repo, self._launch_command(track)):
+        if not self.tmux.respawn_pane(target, track.repo, self._launch_command(track)):
             self._surface(
                 f"{track.repo}::{track.topic} restart respawn FAILED; keeping ready marker"
             )
             return
-        if not self._await_claude(session):
+        if not self._await_claude(target):
             self._surface(
                 f"{track.repo}::{track.topic} respawned pane never became Claude; keeping ready marker"
             )
             return
         resume = track.resume or default_resume(track.repo, track.topic)
-        if not self._submit_prompt(session, resume):
+        if not self._submit_prompt(target, resume):
             self._surface(f"{track.repo}::{track.topic} resume line not submitted after restart")
         self._void_ready_marker(track)
         self._inject.pop(_key(track.repo, track.topic), None)
-        self._log(f"restarted {track.repo}::{track.topic} (session {session})")
+        self._log(f"restarted {track.repo}::{track.topic} (pane {target})")
 
     @staticmethod
     def _launch_command(track: registry.Track) -> str:
         """``claude -n <topic>`` with the topic shell-quoted (defensive, B-nit)."""
         return f"claude -n {shlex.quote(track.topic)}"
 
-    def _await_claude(self, session: str) -> bool:
+    def _await_claude(self, target: str) -> bool:
         """Poll ``#{pane_current_command}`` until it is a live Claude TUI, bounded.
 
-        Never scrape the ``❯`` prompt glyph (ambiguous shell/Claude); wait on the
-        process identity (design). Returns False if it never became Claude.
+        ``target`` is the resolved pane id. Never scrape the ``❯`` prompt glyph
+        (ambiguous shell/Claude); wait on the process identity (design). Returns
+        False if it never became Claude.
         """
         for _ in range(_RESTART_POLL_MAX):
-            if signals.pane_is_claude(self.tmux.pane_current_command(session)):
+            if signals.pane_is_claude(self.tmux.pane_current_command(target)):
                 return True
             self.sleep(_RESTART_POLL_INTERVAL)
         return False
 
-    def _submit_prompt(self, session: str, text: str) -> bool:
+    def _submit_prompt(self, target: str, text: str) -> bool:
         """Bracketed-paste a payload, then submit it — re-sending Enter until the
         input box clears. Returns True iff the paste LANDED and the box CLEARED.
+        ``target`` is the resolved pane id (RB3).
 
         The paste is atomic (never fragments — blocker #2). A SINGLE Enter is
         enough on a steady idle session, but a freshly-`respawn`-ed session is
@@ -550,14 +614,14 @@ class Supervisor:
         would still read empty and a never-delivered wrap-up/resume would be
         counted as sent (the paste-failure false-success the maintainer flagged).
         """
-        if not self.tmux.bracketed_paste(session, text):
-            self._log(f"bracketed paste FAILED for session {session}")
+        if not self.tmux.bracketed_paste(target, text):
+            self._log(f"bracketed paste FAILED for pane {target}")
             return False
         self.sleep(_RESTART_POLL_INTERVAL)
         for _ in range(_SUBMIT_MAX_ENTERS):
-            self.tmux.send_keys(session, "Enter")
+            self.tmux.send_keys(target, "Enter")
             self.sleep(_SUBMIT_POLL)
-            if signals.input_box_ready(self.tmux.capture_pane(session)):
+            if signals.input_box_ready(self.tmux.capture_pane(target)):
                 return True
         return False
 
@@ -580,6 +644,16 @@ class Supervisor:
             if self.tmux.session_exists(session):
                 continue
             self.tmux.new_session(session, track.repo)
+            # Require the EXACT session to now exist before launching (Codex
+            # re-review #3): if `new-session` failed, `_do_launch`'s pane-id
+            # resolution + `respawn-pane` would target the bare name, which could
+            # prefix-match a live sibling and replace IT. Fail-soft: surface + skip.
+            if not self.tmux.session_exists(session):
+                self._surface(
+                    f"reboot-recovery: new-session did not create {session} "
+                    f"for {track.repo}::{track.topic}; skipping"
+                )
+                continue
             if self._do_launch(track, session):
                 recovered.append(session)
                 self._log(f"reboot-recovery recreated {session} for {track.repo}::{track.topic}")
@@ -592,16 +666,21 @@ class Supervisor:
     def _do_launch(self, track: registry.Track, session: str) -> bool:
         """Launch ``claude -n <topic>`` into ``session`` and paste the resume line.
 
-        Returns True iff respawn succeeded, the pane became a live Claude, and the
-        resume line submitted — so callers (`recover`, `start`) can surface a
-        failure rather than silently claim a launch happened (B5).
+        ``session`` is the (just-created or existing) session NAME; the pane id is
+        resolved from it and every pane op targets that id (RB3). Returns True iff
+        respawn succeeded, the pane became a live Claude, and the resume line
+        submitted — so callers (`recover`, `start`) can surface a failure rather
+        than silently claim a launch happened (B5).
         """
-        if not self.tmux.respawn_pane(session, track.repo, self._launch_command(track)):
+        target = self.tmux.pane_id(session)
+        if target is None:
             return False
-        if not self._await_claude(session):
+        if not self.tmux.respawn_pane(target, track.repo, self._launch_command(track)):
+            return False
+        if not self._await_claude(target):
             return False
         resume = track.resume or default_resume(track.repo, track.topic)
-        return self._submit_prompt(session, resume)
+        return self._submit_prompt(target, resume)
 
     # ----------------------------------------------------------------- #
     # Table rendering.
@@ -802,19 +881,32 @@ def _cmd_start(args: argparse.Namespace) -> int:
         handoff=default_handoff(repo, topic),
         resume=default_resume(repo, topic),
     )
-    if (
-        io.session_exists(session)
-        and signals.pane_is_claude(io.pane_current_command(session))
-        and not force
-    ):
-        _upsert(getattr(args, "store", None), track)
-        print(
-            f"{repo}::{topic}: session {session} already runs a live Claude — mapping upserted, "
-            f"NOT respawned. Pass --force to respawn (kills the running session)."
-        )
-        return 0
+    if io.session_exists(session) and not force:
+        # Fail CLOSED (RB4): refuse to respawn-kill an existing session unless we
+        # POSITIVELY know it is not a live Claude. An unreadable
+        # `pane_current_command` (None) might be a live Claude mid-work, so treat
+        # unknown like Claude — a genuinely dead shell reports its shell name
+        # positively, so failing closed on None costs nothing.
+        cmd = io.pane_current_command(session)
+        if cmd is None or signals.pane_is_claude(cmd):
+            _upsert(getattr(args, "store", None), track)
+            print(
+                f"{repo}::{topic}: session {session} already running (or its identity is "
+                f"unreadable) — mapping upserted, NOT respawned. Pass --force to respawn "
+                f"(kills the running session)."
+            )
+            return 0
     if not io.session_exists(session):
         io.new_session(session, repo)
+        # Require the EXACT session to exist before launching (Codex re-review #3):
+        # a failed `new-session` must not let `_do_launch` respawn a prefix-matched
+        # sibling.
+        if not io.session_exists(session):
+            print(
+                f"start FAILED: could not create tmux session {session} for {repo}::{topic}",
+                file=sys.stderr,
+            )
+            return 1
     if not sup._do_launch(track, session):
         print(f"start FAILED to launch {repo}::{topic} in tmux session {session}", file=sys.stderr)
         return 1

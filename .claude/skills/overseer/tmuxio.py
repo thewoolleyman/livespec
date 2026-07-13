@@ -121,6 +121,20 @@ class TmuxIO:
         value = (completed.stdout or "").strip()
         return value or None
 
+    def pane_id(self, session: str) -> str | None:
+        """``#{pane_id}`` — the pane's globally-unique id (e.g. ``%5``), or None.
+
+        Resolved from the (exact-verified) session name once per tick; the daemon
+        then targets every subsequent pane op by this id, NOT the name. A pane id
+        is exact and is NEVER prefix/fnmatch-matched, so if the tracked session
+        dies mid-tick the id simply fails-soft (no match) instead of a bare ``-t
+        <name>`` falling back to a live sibling session and acting on the wrong one
+        (adversarial code re-review 2026-07-13, blocker RB3). The id is STABLE
+        across ``respawn-pane`` (same pane, new process), so restart + resume keep
+        targeting the right pane.
+        """
+        return self._display(session, "#{pane_id}")
+
     def pane_current_command(self, session: str) -> str | None:
         """``#{pane_current_command}`` — the pane's foreground command (e.g. ``node``)."""
         return self._display(session, "#{pane_current_command}")

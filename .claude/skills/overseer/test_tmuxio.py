@@ -70,6 +70,15 @@ def test_pane_current_path_format():
     assert fake.calls[0]["argv"][-1] == "#{pane_current_path}"
 
 
+def test_pane_id_format():
+    # RB3: resolve the exact pane id to target instead of the prefix-prone name.
+    io, fake = _io(stdout="%5\n")
+    assert io.pane_id("s") == "%5"
+    assert fake.calls[0]["argv"] == ["tmux", "display-message", "-p", "-t", "s", "#{pane_id}"]
+    io2, _ = _io(returncode=1)  # session gone → None (fail-soft)
+    assert io2.pane_id("s") is None
+
+
 def test_session_exists_is_exact_membership_not_prefix():
     # B1: session_exists uses EXACT list-sessions membership, not the prefix-prone
     # `has-session -t <name>` (which matches `foobar` for target `foo`).
