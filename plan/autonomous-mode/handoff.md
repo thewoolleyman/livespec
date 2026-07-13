@@ -59,6 +59,102 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-13 (cont. 7): Stage 2 partially advanced; TUI operator path BLOCKED under Codex driving
+
+Fresh Codex session resumed from cont.6 with the maintainer explicitly switching
+from Claude to Codex as the driver. I preserved the cockpit tmux session
+(`console-autonomous-mode`) and first tried to prove the required TUI operator path.
+That path is **blocked**: keyboard input reaches the console TUI, but modal/command
+submission did not execute through the running tmux-driven session.
+
+### WHAT ADVANCED
+- `bd-ib-86k` and `bd-ib-e0t` were checked in the
+  `livespec-orchestrator-beads-fabro` ledger. Both were small, dependency-free
+  backlog items already suitable as Stage-2 factory candidates; no split-grooming
+  was needed.
+- Both were moved to `ready`, assigned to `fabro`, and labelled
+  `admission:auto` in the `livespec-orchestrator-beads-fabro` tenant. The known
+  shared-Dolt `backup_export` warning appeared during `bd update`; per
+  `.ai/beads-gaps-workarounds.md`, it is non-fatal.
+- Because TUI dispatch was blocked, I used the documented narrow CLI fallback to
+  keep one real factory proof moving, and I did **not** silently count that as the
+  MVP TUI acceptance.
+- `bd-ib-86k` was dispatched via
+  `drive.py --repo /data/projects/livespec-orchestrator-beads-fabro --action
+  impl:bd-ib-86k --json`.
+- Fabro run `01KXCYZJQQ5SP4S9HVSC1Z20YG` implemented the test-only hardening in
+  `livespec-orchestrator-beads-fabro`: dispatcher-level tests now assert
+  `cost_gate_after_verdict` is invoked exactly once from both the single-item
+  dispatch finalize path and the loop finalize path.
+- The sandbox ran the focused pytest and `mise exec -- just check`; the full
+  60-target enforcement aggregate passed with 100% coverage.
+- `livespec-orchestrator-beads-fabro` PR #571 merged:
+  `https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/571`
+  (`35497667b14441ea8efd817a9e5221a90f232dca`).
+- The dispatcher pulled the primary checkout, ran the post-merge janitor
+  successfully, removed its janitor worktree, recorded `ledger-complete`, and
+  parked `bd-ib-86k` in `acceptance` under `ai-then-human`.
+- `bd-ib-e0t` remains `ready` / `fabro` / `admission:auto`; it was intentionally
+  **not** dispatched because the TUI operator path is still the acceptance target
+  and is currently blocked.
+
+### TUI BLOCKERS PROVEN LIVE
+- **Valve modal confirm does not execute.** On a safe currently selected
+  attention item (`bd-ib-ss7rkr`), pressing `m` opened the "Set admission
+  work-item" modal with target `bd-ib-ss7rkr` and mode `manual`. Pressing Enter
+  closed the modal, but the ledger did not change and the console SQLite
+  `commands` table stayed empty. This means valve staging is visible, but
+  confirmation did not persist or invoke the backing command.
+- **Command palette submit does not execute.** Pressing `:` opened the command
+  palette and typed input appeared (`:drain`), but Enter and Ctrl-M did not submit
+  the command; the `commands` table stayed empty. This blocks TUI-driven drain /
+  dispatch workflows from this Codex/tmux driving path.
+- **Drain wiring appears wrong even if submit is fixed.** Code inspection in
+  `livespec-console-beads-fabro` showed the command palette's drain request calls
+  the resolved dispatcher with argv `["drain"]`, but
+  `livespec-orchestrator-beads-fabro`'s `dispatcher.py` exposes
+  `{ledger-check, ledger-normalize, spec-check, janitor-check, dispatch, loop}` and
+  no `drain` subcommand. This is a console/orchestrator contract mismatch to fix
+  before counting `:drain` as a real operator control.
+
+### CODEX-SPECIFIC OBSERVATIONS
+- The Codex ACP implementer did perform the `bd-ib-86k` implementation inside the
+  Fabro sandbox. During that run, Codex hit a namespace failure while using its
+  `apply_patch` helper (`bwrap: No permissions to create new namespace`). It
+  recovered by using a one-off edit path inside the sandbox, so it did not block
+  the item, but it is a real Codex-in-Fabro environment mismatch to track.
+- The Fabro workflow was not Codex-only end to end: implementation used Codex ACP,
+  while the review stage still used the Claude review adapter. That did not block
+  this item, but it matters if the acceptance criterion becomes "Codex-only
+  factory."
+
+### CURRENT STATE
+- `livespec-orchestrator-beads-fabro` primary checkout is clean on `master` and
+  includes PR #571.
+- `bd-ib-86k`: parked in `acceptance`; awaits human acceptance. Do **not** accept
+  it via CLI and count that as TUI proof.
+- `bd-ib-e0t`: `ready`; still available as the next real Stage-2 candidate once
+  the TUI submit/valve path is fixed.
+- `console-autonomous-mode`: cockpit still running at the pinned 112×28 size.
+  The command palette may still show the typed `:drain` overlay from the failed
+  submit proof; press Esc or relaunch with a fresh store before the next proof if
+  needed.
+
+### RESUME ORDER
+1. Fix or file the console TUI submit/confirm blocker in
+   `livespec-console-beads-fabro`: modal Enter must enqueue/execute the backing
+   valve command, and command-palette Enter/Ctrl-M must submit exactly once.
+2. Fix or file the console/orchestrator drain contract mismatch:
+   `livespec-console-beads-fabro` currently calls `dispatcher.py drain`, while
+   `livespec-orchestrator-beads-fabro` exposes `loop`/`dispatch`, not `drain`.
+3. Re-prove a safe valve action through the live TUI against the
+   `livespec-orchestrator-beads-fabro` tenant before accepting `bd-ib-86k`.
+4. Once the valve proof works, accept `bd-ib-86k` through the TUI with the
+   maintainer as human-in-the-loop, then dispatch and observe `bd-ib-e0t`
+   through the TUI.
+5. MVP remains **not done** until multiple real items complete end-to-end through
+   the live console TUI with the maintainer on the valves.
+
 ## SESSION UPDATE — 2026-07-13 (cont. 6): Stage-1 cockpit-readiness COMPLETE — Findings A–G ALL MERGED + verified live; Stage 2 next
 
 Fresh session resumed from cont.5. Drove Stage-1 cockpit-readiness to near-completion:
