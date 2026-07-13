@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/thewoolleyman/livespec/compare/v0.10.0...v0.10.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **overseer:** adopt matches the claude -n border topic, not the session name ([79d59ee](https://github.com/thewoolleyman/livespec/commit/79d59ee0a8b440855395a34c5777ffba5e44c174))
+
 ## [0.10.0](https://github.com/thewoolleyman/livespec/compare/v0.9.6...v0.10.0) (2026-07-13)
 
 
