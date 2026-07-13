@@ -1,9 +1,56 @@
 # Design — codex-acp version auto-bump (factory-gated freshness)
 
-**Status:** design **APPROVED — all architecture decisions resolved by the
-maintainer 2026-07-13** (see §"Decisions"). No code written yet; the
-build-ready handoff is `handoff.md` beside this file, and building is the
-next-session priority. Spin-off from `fabro-ci-image-factoring` Phase 1 (epic
+## Build outcome (2026-07-13)
+
+**SHIPPED — all code merged; two maintainer-gated finalization steps remain.**
+The full pipeline is built and merged across both owning repos:
+
+- `livespec-orchestrator-beads-fabro` (released **0.30.0**): PR-A **#572**
+  (version-less adapter `npx --no-install @zed-industries/codex-acp`), PR-C gate
+  **#574** (`repository_dispatch` trigger + `--codex-acp-version` overlay +
+  commit-status callback), PR-C-followup **#579** (green gate → enable the
+  dev-tooling bump PR's auto-merge).
+- `livespec-dev-tooling`: PR-B **#371** — propose `964cd49` + ratify contracts
+  **v025** `2f1962c` + code `81b7da3` (autodiscovery walker + `codex_acp_pin_rewrite`
+  + composite-action arm + `no_auto_merge` bump-PR mode + freshness scan over
+  npm + cross-repo dispatch). `just check` 54 green; Red-Green-Replay trailers
+  present. (Ratified as v025, rebuilt from v024 after a concurrent v024 —
+  neutral-shared-hook-body — landed on dev-tooling master first.)
+
+Two design mechanics were **corrected during build** (both disproven or refined
+against the shipped world; the prose below reflects the corrected forms):
+
+1. **Merge gate is FAIL-CLOSED, not a branch-protection required check.** An
+   independent Fable review plus the build confirmed a required status check is
+   unimplementable here: GitHub scopes required status checks to the *base
+   branch*, so requiring the cross-repo `codex-acp-golden-master` status would
+   deadlock every unrelated dev-tooling PR, and it would fail dev-tooling's own
+   §"branch_protection_alignment check" (a required check with no matching
+   `ci.yml` job). The ratified mechanism: the bump PR is opened **without
+   auto-merge**, and only a **green** gate run enables its auto-merge (via the
+   App's contents + pull-requests write); a red/errored gate leaves the PR open
+   for a human. The cross-repo commit status is **informational**, never a
+   required check.
+2. **Topology is the OPTION-3 runtime overlay, and the golden-master was
+   already Codex-mode.** No candidate *image* is built or overridden; the gate
+   overlays the version at runtime with an `npm install -g
+   @zed-industries/codex-acp@<ver>` prepare-step. The golden-master already
+   dispatches through the Codex implementer adapter (the Dispatcher loop always
+   routes implementer nodes to Codex), so PR-C added **no provider switch** —
+   only the candidate-version overlay + the `repository_dispatch` handler + the
+   status callback.
+
+Remaining (maintainer-gated): (a) add `Commit statuses: write` to the
+`livespec-pr-bot` App and approve on the dev-tooling install — the gate callback
+403s until then, fail-closed so bump PRs simply stay open; (b) the credentialed
+force-accept exercising the gate end-to-end; (c) close epic `livespec-3lev.4`.
+See `handoff.md` for the exact resume procedure.
+
+---
+
+**Status (original design, retained for the record):** design **APPROVED — all
+architecture decisions resolved by the maintainer 2026-07-13** (see
+§"Decisions"). Spin-off from `fabro-ci-image-factoring` Phase 1 (epic
 `livespec-3lev.4`); **supersedes** that plan's "orchestrator Codex
 version-less adapter" NEXT ACTION, whose premise was disproven (see §"Why not
 version-less").
@@ -95,22 +142,35 @@ that gate (and to `bd-ib-ss7rkr`), not a manual TODO.
    autodiscovery **pin format** for the `CODEX_ACP_VERSION` Dockerfile ARG with
    an **external** source (`zed-industries/codex-acp`, queried via
    `gh release view` / `npm view`, not a fleet release).
-2. **Bump PR** (`livespec-dev-tooling`). Rewrites `CODEX_ACP_VERSION`; the
-   existing `fabro-sandbox-image.yml` builds a **candidate image** on the PR
-   (immutable `…-sha-<short>` layer tags — no release needed to test).
+2. **Bump PR** (`livespec-dev-tooling`). Rewrites `CODEX_ACP_VERSION` and
+   **dispatches** the cross-repo gate. The PR is opened in a `no_auto_merge`
+   bump-PR mode — auto-merge is deliberately NOT enabled at open time, so the PR
+   cannot merge until the gate turns it on (fail-closed; see step 4). **No
+   candidate image is built** — the gate overlays the new version at runtime
+   (OPTION 3, see step 3), so there is no per-PR image build to wait on.
 3. **Factory gate** (`livespec-orchestrator-beads-fabro`, triggered
    cross-repo). The dev-tooling PR **dispatches** (the existing
-   `repository_dispatch` fan-out) an orchestrator job that runs a **Codex-mode
-   golden-master** against the **candidate** sandbox image. The golden-master
-   already provisions Codex credentials (`require_codex_auth_file` /
-   `provision_codex_auth`); run with the Codex adapter it exercises the real
+   `repository_dispatch` fan-out) an orchestrator job that runs the **Codex-mode
+   golden-master** with a **runtime version overlay** — an `npm install -g
+   @zed-industries/codex-acp@<ver>` prepare-step installs the candidate version
+   into the released sandbox image at run start (OPTION 3; no candidate *image*
+   tag is built or overridden). The golden-master already dispatches through the
+   Codex implementer adapter and already provisions Codex credentials
+   (`require_codex_auth_file` / `provision_codex_auth`), so it exercises the real
    `project_codex_auth_snapshot` credential projection end-to-end (green
    implement→review→pr→janitor, merged PR, greeting asserted). The job posts a
-   **commit status** back to the dev-tooling PR's head sha.
-4. **Merge gate** (`livespec-dev-tooling`). Branch protection requires that
-   live-Codex status green. Merge → release → the new image bakes the new
-   codex-acp → the orchestrator (`--no-install` baked global) picks it up with
-   no pin to sync.
+   **commit status** (`codex-acp-golden-master`, success|failure) back to the
+   dev-tooling PR's head sha via the `livespec-pr-bot` App token.
+4. **Merge gate** (FAIL-CLOSED, cross-repo). The commit status is
+   **informational only — NOT a branch-protection required check** (a required
+   check is unimplementable here: GitHub scopes required checks to the base
+   branch, so it would deadlock every unrelated PR, and it violates dev-tooling's
+   §"branch_protection_alignment check"). Instead, the gate itself **enables the
+   bump PR's auto-merge** only on a **green** run — using the App's
+   contents + pull-requests write (PR-C-followup #579). A **red or errored** gate
+   leaves the PR open for a human; nothing merges an unverified version. On green
+   the PR auto-merges → release → the new image bakes the new codex-acp → the
+   orchestrator (`--no-install` baked global) picks it up with no pin to sync.
 
 ### No-Circular-Dependency compliance
 
@@ -124,20 +184,32 @@ image builder) must never read INTO the orchestrator:
   **consumer→producer** read (it uses the producer's baked artifact),
   cycle-free.
 
-### Golden-master Codex mode — the two additions it needs
+### Golden-master Codex mode — what PR-C actually added
 
-The golden-master (`orchestrator-image/acceptance-live-golden-master.sh`) today
-dispatches with the **default Claude** adapter and pulls the **released**
-sandbox image from the orchestrator's `workflow.toml`. Two bounded additions:
+**Correction (build finding).** The golden-master
+(`orchestrator-image/acceptance-live-golden-master.sh`) was **already
+Codex-mode**: it dispatches via the Dispatcher loop (`dispatcher.py`), which
+always routes implementer nodes to the Codex implementer adapter. There is **no
+"default Claude" adapter to switch off**, so PR-C added **no provider switch**.
+It also pulls the **released** sandbox image from the orchestrator's
+`workflow.toml`, and — per the OPTION-3 topology — that image is **not
+overridden**; the candidate version is layered onto it at runtime. PR-C's real
+additions were:
 
-- **Provider selection.** A `--provider codex` (or `--input acp_adapter=<codex>`)
-  path so the dispatch runs the Codex implementer adapter. Codex credential
-  provisioning already exists; this just routes the implementer nodes to it.
-- **Candidate-image override.** A way to point the *sandbox* image at the
-  candidate tag (`…:python-sha-<short>` from step 2) instead of the released
-  pin in `workflow.toml` — e.g. an env/flag the Dispatcher's per-dispatch
-  overlay honors. **Open mechanic** (see below): confirm the Dispatcher overlay
-  can override `[environments.livespec-ci.image] docker`.
+- **Candidate-version runtime overlay.** A `--codex-acp-version <ver>` flag whose
+  value is installed at run start via an `npm install -g
+  @zed-industries/codex-acp@<ver>` prepare-step **inside the released image**
+  (OPTION 3). This replaces the abandoned "candidate-image override" idea — no
+  `…:python-sha-<short>` image tag is built or pointed at; the released image is
+  reused and the version is overlaid. No Dispatcher `[environments.…image]
+  docker` override is needed.
+- **`repository_dispatch` handler + status callback.** The gate is wired as a
+  `repository_dispatch` handler (event_type `codex-acp-golden-master`) that reads
+  the `codex_acp_version` from the payload, runs the golden-master with the
+  overlay, and posts the `codex-acp-golden-master` commit status back to the
+  dev-tooling PR's head sha via the `livespec-pr-bot` App token. On a green run a
+  follow-up step (#579) enables the bump PR's auto-merge (the fail-closed merge
+  gate — see §"The auto-bump pipeline" step 4).
 
 ## Alternatives considered
 
@@ -169,20 +241,24 @@ safety.
    weekly and opens a factory-gated bump PR on *any* new `zed-industries/codex-acp`
    release (not batched/N-behind). Cost is bounded — codex-acp releases are
    infrequent, and each bump is one ~5–10 min gated Codex dispatch.
-3. **Gate topology → EXTEND the existing golden-master.** Add a Codex-provider
-   switch + a candidate-image override to `acceptance-live-golden-master.sh`
-   rather than a new dedicated workflow. Reuse the proven harness; least new
-   surface.
+3. **Gate topology → EXTEND the existing golden-master.** Reuse the proven
+   harness (`acceptance-live-golden-master.sh`) rather than a new dedicated
+   workflow; least new surface. **(Refined during build:** the golden-master was
+   already Codex-mode, so NO provider switch was added; and the "candidate-image
+   override" was replaced by the OPTION-3 runtime version overlay — a
+   `--codex-acp-version` flag + `npm install -g …@<ver>` prepare-step on the
+   released image, no candidate image built. See §"Golden-master Codex mode".)
 4. **Build priority → NEXT.** Building this is the next-session priority (the
    last Phase 1 / `livespec-3lev.4` deliverable — closes Phase 1).
 
-### Still to verify during build (not a maintainer decision)
+### Resolved during build (was: "still to verify")
 
-- **Candidate-image override mechanic** — confirm the Dispatcher's per-dispatch
-  overlay can point `[environments.livespec-ci.image] docker` at the candidate
-  `…:python-sha-<short>` tag for the test run (the one unverified mechanic).
-  Fallback if it can't: a test-only `workflow.toml` or an env the overlay
-  honors. See `handoff.md` for the build steps.
+- **Candidate-image override mechanic — RESOLVED by dropping it.** The build
+  chose the OPTION-3 runtime overlay instead of overriding
+  `[environments.livespec-ci.image] docker`: the released image is reused and the
+  candidate version is layered on via an `npm install -g …@<ver>` prepare-step
+  (the `--codex-acp-version` flag). No Dispatcher image override was needed, so
+  the one unverified mechanic became moot. See §"Golden-master Codex mode".
 
 ## Cross-references
 
