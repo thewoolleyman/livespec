@@ -1,3 +1,15 @@
+> **ARCHIVED 2026-07-14 — merged into `fabro-ci-image-factoring`.** This was a
+> sub-plan spun off from `fabro-ci-image-factoring` Phase 1 (`livespec-3lev.4`),
+> but it is really the last slice of that track: the code is **built + merged +
+> released** (orchestrator 0.30.0, `livespec-dev-tooling` 0.45.0), and the only
+> remaining work — the **live accept** — is blocked by that track's own **Phase 0**
+> (a `[self-hosted, livespec-orchestrator]` runner is not registered). So it will
+> be finished as part of `fabro-ci-image-factoring`, not as a standalone plan. The
+> remaining accept item + the three accept options + the ready resume commands are
+> carried forward in `plan/fabro-ci-image-factoring/handoff.md`; this document is
+> retained here as the detailed build/decision record. Do not resume this as a
+> separate track.
+
 # Handoff — codex-acp version auto-bump (factory-gated freshness)
 
 **State (code SHIPPED; force-accept BLOCKED at preflight, 2026-07-13).** All code

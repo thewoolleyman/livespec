@@ -81,9 +81,12 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State (fresh-session entry point, updated 2026-07-13 SESSION-END).** The plan is
-anchored by the **beads epic `livespec-3lev`** (`livespec` tenant) with per-phase
-children `.1`–`.8` (`.8` = Phase 5, the closing efficiency report).
+**State (fresh-session entry point, updated 2026-07-14 — codex-acp sub-plan
+consolidated into this track).** The plan is anchored by the **beads epic
+`livespec-3lev`** (`livespec` tenant) with per-phase children `.1`–`.8` (`.8` =
+Phase 5, the closing efficiency report). The images half is essentially done; the
+CI-onto-local-runner half and the codex-acp live accept both funnel through **one
+banked decision: Phase 0 (stand up the self-hosted runner — host mutation).**
 
 **THIS SESSION (2026-07-13) LANDED — read before picking up:**
 - **Phase 1 PR2/PR3 (consumer image switches) DONE + ACCEPTED LIVE (later 2026-07-13).**
@@ -107,7 +110,22 @@ children `.1`–`.8` (`.8` = Phase 5, the closing efficiency report).
   **bare-tag 404** on both consumers (the bump-pin fan-out had flattened them onto a
   never-published bare tag — layered releases publish only `<layer>-` tags) and healed
   a blocking ledger drift (`bd-ib-2q0 open→backlog`). Journaled on `livespec-3lev.4`,
-  which stays OPEN pending the Codex fix (NEXT ACTION #1).
+  which stays OPEN pending the codex-acp auto-bump live accept (below).
+- **codex-acp version auto-bump — BUILT + MERGED + RELEASED (later 2026-07-13); only
+  the live accept remains, blocked on Phase 0.** After the design was drafted, a later
+  session built the whole automation: `livespec-orchestrator-beads-fabro` **0.30.0**
+  (PR-A #572 version-less `npx --no-install` adapter; PR-C #574 gate workflow with
+  `repository_dispatch` + `--codex-acp-version` overlay + `codex-acp-golden-master`
+  status callback; #579 green-gate → enable bump-PR auto-merge) and
+  `livespec-dev-tooling` **0.45.0** (PR-B #371: `contracts.md` **v025** + the 6th
+  autodiscovery pin format + `codex_acp_pin_rewrite` + the npm freshness scan). App
+  `statuses:write` granted; independent Fable review **NO-BLOCKERS**. The ONLY
+  unfinished piece is the **live accept**, BLOCKED on a
+  `[self-hosted, livespec-orchestrator]` runner (`gh api …/actions/runners` →
+  `total_count: 0`) — i.e. **Phase 0**. The former standalone sub-plan is now
+  **archived** at `plan/archive/codex-acp-auto-bump/` (design + full build/decision
+  record incl. the three accept options + ready resume commands); its remainder is
+  folded into NEXT ACTIONS below.
 - **Item 3 (Observability track — in-sandbox prepare-step timing) DONE + ACCEPTED
   LIVE.** `livespec-step-timer` wrapper (WI-A `livespec-dev-tooling-bot`,
   `livespec-dev-tooling` #352, in image v0.42.0) + 8 `workflow.toml` shims (WI-B
@@ -129,29 +147,33 @@ children `.1`–`.8` (`.8` = Phase 5, the closing efficiency report).
   building locally + in CI. Full state + the PR2/PR3 coupling are in the Phase 1
   section.
 
-**NEXT ACTIONS (ranked; pick one):**
-1. **Finish Phase 1 — codex-acp version auto-bump (factory-gated) — RECOMMENDED next.**
-   The originally-planned "drop `@0.16.0` → version-less" fix was **investigated
-   and abandoned (2026-07-13)**: in-image testing disproved its premise — `npx -y`
-   (pinned OR version-less) already uses the baked `codex-acp@0.16.0` global with
-   **no per-run download**, so version-less is a no-op that also removes a
-   load-bearing credential-projection pin (silent-drift risk; `bd-ib-ss7rkr`). The
-   maintainer's chosen direction (2026-07-13): **keep the pin, make it self-updating**
-   via a scheduled bump PR **gated by a real Codex-provider golden-master** (the gate
-   IS the credential-projection re-verification). Full design drafted at
-   **`plan/codex-acp-auto-bump/design.md`** (single-source-of-truth = the image's
-   `CODEX_ACP_VERSION`; orchestrator uses `npx --no-install` baked global; extended
-   freshness scan → candidate image → cross-repo Codex-mode golden-master gate →
-   merge). Awaiting maintainer review of that design; then build. This is the LAST
-   Phase 1 (`.4`) deliverable — close `.4` once it lands + is accepted. (PR2/PR3
-   consumer switches + the prefix-preserving rewrite are DONE + accepted — see LANDED
-   above.)
-2. **Item 4a exporter** — surface the OUTWARD-FACING upstream Fabro exporter
+**NEXT ACTIONS (ranked):**
+1. **Phase 0 — stand up the local self-hosted runner — THE LINCHPIN DECISION (needs
+   your explicit host-mutation go).** Design gate PASSED (4 dual adversarial-review
+   rounds, PRs #1084–#1087); implementation is a HOST MUTATION on this shared,
+   multi-tenant host, banked pending authorization. It is now the **single gate on
+   everything remaining**: (a) it unblocks the **codex-acp auto-bump live accept**
+   (the gate workflow `acceptance-live-golden-master.yml` targets exactly a
+   `[self-hosted, livespec-orchestrator]` runner, and none is registered), closing the
+   last Phase 1 (`.4`) item; and (b) it unblocks the entire **CI-onto-local-runner
+   move — Phase 2 → Phase 3 → Phase 5.** See the "Phase 0 design gate" section below
+   for the deliverables + 11 isolation exit-tests. Everything image-side is already
+   done; this is the next real go/no-go.
+2. **codex-acp auto-bump — live accept (blocked on Phase 0; last Phase 1 `.4` item).**
+   Code is released and in use — only the live-exercise accept remains. The full
+   automated accept needs the Phase 0 runner (throwaway bump PR →
+   `codex-acp-golden-master` dispatch → gate → status → auto-merge; ready resume
+   commands in the archived handoff). A **LOCAL partial accept** is available anytime
+   WITHOUT the runner: `cd /data/projects/livespec-orchestrator-beads-fabro &&
+   /usr/local/bin/with-livespec-env.sh -- just acceptance-live-golden-master -- --run
+   --build-image --codex-acp-version 0.16.0` — verifies the `npx --no-install` adapter
+   + version overlay + credential projection (`bd-ib-ss7rkr`), but NOT the cross-repo
+   plumbing (workflow-only). Journal on `livespec-3lev.4`, then close it. Detail:
+   `plan/archive/codex-acp-auto-bump/handoff.md` §REMAINING.
+3. **Item 4a exporter** — surface the OUTWARD-FACING upstream Fabro exporter
    re-derivation (`bd-ib-i4r` + `bd-ib-98c.1`, re-derive `otel.rs` vs current Fabro
    `0.289.0`) to the maintainer; coordinate wire-format/naming with the
    `fabro-token-refresh` thread. NOT autonomously buildable past the PR gate.
-3. **Phase 0 (local-runner shadow lane)** — design gate PASSED, implementation
-   BANKED pending an explicit host-mutation go (unchanged this session).
 
 **Prior state (still current):**
 - **P-host (`.1`) — MET.** Host + per-container metrics (`hostmetrics` +
