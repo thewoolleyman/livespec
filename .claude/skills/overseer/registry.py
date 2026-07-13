@@ -36,6 +36,7 @@ __all__ = [
     "DEFAULT_STAMP_PATH",
     "DEFAULT_STORE_PATH",
     "Track",
+    "add_notified_band",
     "append_mapping",
     "archived_or_gone",
     "clear_injection_stamp",
@@ -43,6 +44,7 @@ __all__ = [
     "join",
     "read_injection_stamp",
     "read_mapping",
+    "read_notified_bands",
     "remove_mapping",
     "repo_root_present",
     "repo_slug",
@@ -163,7 +165,12 @@ class Track:
     handoff: str | None = None
     resume: str | None = None
     epic: str | None = None
-    ctx_threshold: int = DEFAULT_CTX_THRESHOLD
+    # None = NO per-track override → inherit the daemon-wide default warn
+    # threshold (``Supervisor.warn_percent``, itself defaulting to
+    # ``DEFAULT_CTX_THRESHOLD``). An int is an explicit per-track override that
+    # wins over the daemon default. Serialized only when set (the row omits the
+    # key when None) so a bare row means "no override".
+    ctx_threshold: int | None = None
     pinned_session_id: str | None = None
     assigned: bool = True
 
@@ -272,8 +279,13 @@ def _track_from_row(row: dict[str, object]) -> Track | None:
     if not isinstance(topic, str) or not isinstance(repo, str):
         _warn(f"skipping row missing topic/repo: {row!r}")
         return None
-    threshold = row.get("ctx_threshold", DEFAULT_CTX_THRESHOLD)
-    ctx_threshold = threshold if isinstance(threshold, int) else DEFAULT_CTX_THRESHOLD
+    # A per-track override is present ONLY if the row carries an int
+    # ``ctx_threshold``; a missing (or non-int) value means "no override" → None,
+    # so the daemon-wide default applies. Do NOT default to DEFAULT_CTX_THRESHOLD
+    # at read time — that would make a bare row indistinguishable from a row that
+    # pinned the current default, defeating the daemon-wide ``--warn-percent``.
+    threshold = row.get("ctx_threshold")
+    ctx_threshold = threshold if isinstance(threshold, int) else None
 
     def _opt_str(key: str) -> str | None:
         value = row.get(key)
@@ -303,16 +315,21 @@ def read_mapping(store_path: str | os.PathLike[str] | None = None) -> list[Track
 
 
 def _track_to_row(track: Track) -> dict[str, object]:
-    return {
+    row: dict[str, object] = {
         "topic": track.topic,
         "repo": track.repo,
         "tmux": track.tmux,
         "handoff": track.handoff,
         "resume": track.resume,
         "epic": track.epic,
-        "ctx_threshold": track.ctx_threshold,
         "pinned_session_id": track.pinned_session_id,
     }
+    # OMIT ``ctx_threshold`` when there is no per-track override (None): a row
+    # WITHOUT the key means "inherit the daemon default"; include it only for an
+    # explicit int override.
+    if track.ctx_threshold is not None:
+        row["ctx_threshold"] = track.ctx_threshold
+    return row
 
 
 def append_mapping(
@@ -638,13 +655,29 @@ def read_injection_stamp(
     topic: str,
     stamp_path: str | os.PathLike[str] | None = None,
 ) -> float | None:
-    """Read the injection stamp (epoch seconds) for a track, or None if unset."""
+    """Read a track's injection-round timestamp (epoch seconds), or None if unset.
+
+    The per-key sidecar value is the dict shape ``{"at": <float>, "bands": [...]}``
+    — this returns the ``at`` member (the round-open timestamp the certification
+    check compares a ready marker's mtime against). BACK-COMPAT: a legacy bare
+    float value (the pre-escalation shape) is still accepted and returned as-is.
+    None if the key is absent, the dict lacks an ``at``, or the value is unusable.
+    """
     data = _read_stamp_data(_stamp_store(stamp_path))
     value = data.get(_stamp_key(repo, topic))
     if value is None:
         return None
+    if isinstance(value, dict):
+        at = value.get("at")
+        if at is None:
+            return None
+        try:
+            return float(at)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            _warn(f"non-numeric injection stamp for {repo}::{topic}")
+            return None
     try:
-        return float(value)  # type: ignore[arg-type]
+        return float(value)  # type: ignore[arg-type]  # legacy bare-float value
     except (TypeError, ValueError):
         _warn(f"non-numeric injection stamp for {repo}::{topic}")
         return None
@@ -656,16 +689,77 @@ def write_injection_stamp(
     ts: float,
     stamp_path: str | os.PathLike[str] | None = None,
 ) -> None:
-    """Persist the injection stamp (epoch seconds) for a track.
+    """Open a fresh injection round for a track: stamp ``at`` and RESET its bands.
 
-    Read-modify-write under the stamp-sidecar lock (so a concurrent writer cannot
-    lose another track's stamp — B6) and via an atomic replace (so a crash cannot
-    truncate the sidecar — B6). Fail-soft on OSError (B7).
+    Sets the per-key value to ``{"at": float(ts), "bands": []}`` — a NEW round, so
+    any previously-notified escalation bands are cleared (a genuinely fresh round
+    must be able to re-warn every band). Read-modify-write under the stamp-sidecar
+    lock (so a concurrent writer cannot lose another track's value — B6) and via an
+    atomic replace (so a crash cannot truncate the sidecar — B6). Fail-soft on
+    OSError (B7).
     """
     path = _stamp_store(stamp_path)
     with _file_lock(path):
         data = _read_stamp_data(path)
-        data[_stamp_key(repo, topic)] = float(ts)
+        data[_stamp_key(repo, topic)] = {"at": float(ts), "bands": []}
+        _atomic_write(path, json.dumps(data, indent=2, sort_keys=True) + "\n")
+
+
+def read_notified_bands(
+    repo: str,
+    topic: str,
+    stamp_path: str | os.PathLike[str] | None = None,
+) -> list[int]:
+    """The escalation bands already notified this round for a track.
+
+    Reads the ``bands`` member of the dict-shaped sidecar value. Empty for a
+    legacy bare-float value, an absent key, or an unusable value — so a track with
+    no recorded bands is treated as "nothing notified yet".
+    """
+    data = _read_stamp_data(_stamp_store(stamp_path))
+    value = data.get(_stamp_key(repo, topic))
+    if not isinstance(value, dict):
+        return []
+    bands = value.get("bands")
+    if not isinstance(bands, list):
+        return []
+    return [b for b in bands if isinstance(b, int)]
+
+
+def add_notified_band(
+    repo: str,
+    topic: str,
+    band: int,
+    stamp_path: str | os.PathLike[str] | None = None,
+) -> None:
+    """Record ``band`` as notified this round (idempotent; preserves ``at``).
+
+    Read-modify-write under the same stamp-sidecar lock + atomic replace as
+    :func:`write_injection_stamp`. If the current value is a legacy bare float, it
+    is upgraded to the dict shape with that float preserved as ``at``; if it is
+    already a dict, its ``at`` (and any existing bands) are preserved. Appending an
+    already-recorded band is a no-op (idempotent). Fail-soft on OSError (B7).
+    """
+    path = _stamp_store(stamp_path)
+    with _file_lock(path):
+        data = _read_stamp_data(path)
+        key = _stamp_key(repo, topic)
+        value = data.get(key)
+        if isinstance(value, dict):
+            entry: dict[str, object] = dict(value)  # preserve at + existing bands
+        elif value is None:
+            entry = {}
+        else:
+            try:
+                entry = {"at": float(value)}  # legacy bare-float → dict, preserving at
+            except (TypeError, ValueError):
+                entry = {}
+        bands_raw = entry.get("bands")
+        bands = [b for b in bands_raw if isinstance(b, int)] if isinstance(bands_raw, list) else []
+        if band not in bands:
+            bands.append(band)
+        entry["bands"] = bands
+        data[key] = entry
         _atomic_write(path, json.dumps(data, indent=2, sort_keys=True) + "\n")
 
 

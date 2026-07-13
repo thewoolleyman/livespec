@@ -10,6 +10,8 @@ archive-GC dropping an archived row, ctx-unknown never injecting — PLUS the
 failure propagation, marker/round lifecycle, read-only list, and the start guard.
 """
 
+import importlib.machinery
+import importlib.util
 import io as _io
 import json
 import os
@@ -361,21 +363,117 @@ def test_idle_above_threshold_does_nothing(tmp_path):
     assert not fake.has("paste")
 
 
-def test_resend_once_when_ctx_keeps_dropping(tmp_path):
+def _wrapup_count(fake):
+    return len([t for t in fake.paste_texts() if "Wrap up for a clean session restart" in t])
+
+
+def test_escalates_one_paste_per_band_as_ctx_drops(tmp_path):
+    """Part 2: warn ONCE at the threshold, then once more each time remaining
+    crosses a lower 10%-band (40, 30, 20, 10) — each band at most once. Feeding
+    ctx exactly at each band yields exactly one NEW wrap-up paste per band; a
+    re-tick at the same low ctx (all bands already notified) adds none."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo)
+    sup = _sup(tmp_path, fake)  # warn_percent default 45
+    track = _mapped_track(repo, topic, session)
+    counts = []
+    for ctx in (45, 40, 30, 20, 10):
+        fake.panes[session] = _idle_capture(ctx=ctx)
+        sup.evaluate(track, act=True)
+        counts.append(_wrapup_count(fake))
+    assert counts == [1, 2, 3, 4, 5]  # one new paste per band crossed
+    # Same low ctx again: every band already notified → no further paste.
+    fake.panes[session] = _idle_capture(ctx=10)
+    sup.evaluate(track, act=True)
+    assert _wrapup_count(fake) == 5
+
+
+def test_multi_band_drop_coalesces_to_one_paste_marks_all(tmp_path):
+    """Part 2: several bands crossed in ONE tick coalesce into a SINGLE wrap-up
+    paste, yet ALL crossed bands are marked notified so none re-fires; a later,
+    lower tick fires only the newly-crossed band."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=18))  # crosses 45,40,30,20 at once
     sup = _sup(tmp_path, fake)
     track = _mapped_track(repo, topic, session)
-    fake.panes[session] = _idle_capture(ctx=40)
-    sup.evaluate(track, act=True)  # first inject
-    fake.panes[session] = _idle_capture(ctx=30)
-    sup.evaluate(track, act=True)  # re-send (ctx dropped)
-    fake.panes[session] = _idle_capture(ctx=28)
-    sup.evaluate(track, act=True)  # capped: no third inject
-    wrapups = [t for t in fake.paste_texts() if "Wrap up for a clean session restart" in t]
-    assert len(wrapups) == 2
+    view = sup.evaluate(track, act=True)
+    assert _wrapup_count(fake) == 1  # coalesced into ONE message
+    assert set(registry.read_notified_bands(str(repo), topic, sup.stamp_path)) == {45, 40, 30, 20}
+    assert view.status == "danger"  # 18 <= DANGER_CTX_REMAINING (20)
+    # A still-lower tick fires only the new band (10), once.
+    fake.panes[session] = _idle_capture(ctx=8)
+    sup.evaluate(track, act=True)
+    assert _wrapup_count(fake) == 2
+    assert set(registry.read_notified_bands(str(repo), topic, sup.stamp_path)) == {
+        45,
+        40,
+        30,
+        20,
+        10,
+    }
+
+
+def test_bands_are_durable_across_daemon_restart(tmp_path):
+    """Part 2 durability: a band recorded in the sidecar is NOT re-injected after a
+    daemon RESTART — simulated by a FRESH Supervisor (empty in-memory state) built
+    on the SAME stamp_path. Escalation state lives in the durable sidecar."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    stamp_path = str(tmp_path / "stamps.json")
+    store_path = str(tmp_path / "map.jsonl")
+    track = _mapped_track(repo, topic, session)
+
+    fake1 = FakeTmux()
+    fake1.serve(session, repo, capture=_idle_capture(ctx=40))
+    sup1 = supervisor.Supervisor(
+        tmux=fake1,
+        store_path=store_path,
+        stamp_path=stamp_path,
+        out=_io.StringIO(),
+        now=lambda: 1000.0,
+        sleep=lambda _s: None,
+    )
+    sup1.evaluate(track, act=True)
+    assert set(registry.read_notified_bands(str(repo), topic, stamp_path)) == {45, 40}
+    assert fake1.has("paste")
+
+    # "Restart": a brand-new Supervisor on the SAME sidecar, same ctx.
+    fake2 = FakeTmux()
+    fake2.serve(session, repo, capture=_idle_capture(ctx=40))
+    sup2 = supervisor.Supervisor(
+        tmux=fake2,
+        store_path=store_path,
+        stamp_path=stamp_path,
+        out=_io.StringIO(),
+        now=lambda: 2000.0,
+        sleep=lambda _s: None,
+    )
+    sup2.evaluate(track, act=True)
+    assert not fake2.has("paste")  # bands 45+40 already notified → no re-spam
+
+
+def test_cleared_round_re_warns_all_bands(tmp_path):
+    """Part 2: clearing the injection stamp (as a restart does) resets BOTH the
+    round timestamp and the notified bands, so a fresh round re-warns from the top
+    band again."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40))
+    sup = _sup(tmp_path, fake)
+    track = _mapped_track(repo, topic, session)
+    sup.evaluate(track, act=True)
+    assert set(registry.read_notified_bands(str(repo), topic, sup.stamp_path)) == {45, 40}
+    # Clear the round (mirrors _void_ready_marker / restart) → bands reset.
+    registry.clear_injection_stamp(str(repo), topic, sup.stamp_path)
+    assert registry.read_notified_bands(str(repo), topic, sup.stamp_path) == []
+    sup.evaluate(track, act=True)  # fresh round → re-warns the crossed bands again
+    assert _wrapup_count(fake) == 2  # a second wrap-up in the new round
+    assert set(registry.read_notified_bands(str(repo), topic, sup.stamp_path)) == {45, 40}
 
 
 def test_danger_surfaces_below_danger_line(tmp_path):
@@ -386,6 +484,53 @@ def test_danger_surfaces_below_danger_line(tmp_path):
     sup = _sup(tmp_path, fake)
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "danger"
+
+
+# --------------------------------------------------------------------------- #
+# Part 1: daemon-wide warn_percent vs. per-track ctx_threshold override.
+# --------------------------------------------------------------------------- #
+
+
+def test_warn_percent_default_applies_to_track_without_override(tmp_path):
+    """Supervisor(warn_percent=30): a track with ctx_threshold=None inherits the
+    daemon-wide default, so it stays idle at ctx 40 (> 30) and warns at ctx 30."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40))  # 40 > warn_percent 30
+    sup = _sup(tmp_path, fake, warn_percent=30)
+    track = _mapped_track(repo, topic, session)  # ctx_threshold defaults to None
+    assert track.ctx_threshold is None
+    view = sup.evaluate(track, act=True)
+    assert view.status == "idle"
+    assert not fake.has("paste")
+    # Drop to the daemon-wide threshold → warns.
+    fake.panes[session] = _idle_capture(ctx=30)
+    view = sup.evaluate(track, act=True)
+    assert view.status == "warned"
+    assert fake.has("paste")
+
+
+def test_explicit_ctx_threshold_overrides_warn_percent(tmp_path):
+    """A per-track ctx_threshold=60 warns at 60 REGARDLESS of the daemon-wide
+    warn_percent (30 here): ctx 55 warns even though 55 > 30 would not under the
+    daemon default."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=55))
+    sup = _sup(tmp_path, fake, warn_percent=30)
+    track = registry.Track(
+        topic=topic,
+        repo=str(repo),
+        tmux=session,
+        handoff=supervisor.default_handoff(str(repo), topic),
+        resume=supervisor.default_resume(str(repo), topic),
+        ctx_threshold=60,
+    )
+    view = sup.evaluate(track, act=True)
+    assert view.status == "warned"  # 55 <= 60 override, despite warn_percent 30
+    assert fake.has("paste")
 
 
 # --------------------------------------------------------------------------- #
@@ -477,18 +622,19 @@ def test_stale_marker_voided_when_busy_past_grace(tmp_path):
 
 
 def test_void_resets_inject_state_so_round_can_recertify(tmp_path):
-    """RB2: after a void, the in-memory inject state is popped, so the NEXT
-    threshold crossing opens a fresh count==0 round that writes a new stamp — else
-    the cleared stamp + stuck count==1 would wedge the track (never re-certifies)."""
+    """RB2: after a void, the in-memory inject state is popped AND the durable stamp
+    + notified bands are cleared, so the NEXT threshold crossing opens a fresh round
+    that writes a new stamp — else the wedged round would never re-certify."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     sup = _sup(tmp_path, fake)
     track = _mapped_track(repo, topic, session)
-    # Round 1: inject (count=1, stamp written) on an idle low-ctx pane.
+    # Round 1: inject (stamp written, a band recorded) on an idle low-ctx pane.
     fake.serve(session, repo, capture=_idle_capture(ctx=40))
     sup.evaluate(track, act=True)
-    assert sup._inject[_key_for(repo, topic)].count == 1
+    assert _key_for(repo, topic) in sup._inject  # in-memory last_ctx tracked
+    assert registry.read_notified_bands(str(repo), topic, sup.stamp_path)  # a band recorded
     # Session resumes work with a STALE marker → void (age > grace) → state popped.
     registry.write_injection_stamp(str(repo), topic, 700.0, sup.stamp_path)
     _arm_ready_marker(repo, topic, mtime=800.0)
@@ -1008,6 +1154,55 @@ def test_run_daemon_uses_fleet_defaults(monkeypatch):
     assert seen["args"] == (supervisor.LOOP_INTERVAL_SECONDS, False, False)
 
 
+def test_run_daemon_threads_warn_percent(monkeypatch):
+    """run_daemon(warn_percent=N) sets the built Supervisor's warn_percent field;
+    None falls back to registry.DEFAULT_CTX_THRESHOLD."""
+    seen: list[int] = []
+
+    class _Sup:
+        warn_percent = registry.DEFAULT_CTX_THRESHOLD
+
+        def run(self, *, interval, once, recover):
+            seen.append(self.warn_percent)
+
+    monkeypatch.setattr(supervisor, "_build_supervisor", lambda: _Sup())
+    assert supervisor.run_daemon(warn_percent=30) == 0
+    assert seen == [30]
+    assert supervisor.run_daemon() == 0  # None → the built-in default
+    assert seen == [30, registry.DEFAULT_CTX_THRESHOLD]
+
+
+def _load_overseerd():
+    path = Path(supervisor.__file__).resolve().parent / "overseerd"
+    loader = importlib.machinery.SourceFileLoader("overseerd_exe", str(path))
+    spec = importlib.util.spec_from_loader("overseerd_exe", loader)
+    assert spec is not None
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)  # the __main__ guard keeps this side-effect-free
+    return mod
+
+
+def test_overseerd_threads_and_validates_warn_percent(monkeypatch):
+    """The overseerd executable parses --warn-percent (int in [1, 99]) and threads
+    it into run_daemon; a missing flag passes None; out-of-range / non-int argv is
+    rejected by argparse (SystemExit)."""
+    mod = _load_overseerd()
+    seen: dict[str, object] = {}
+
+    def _fake_run(warn_percent=None):
+        seen["wp"] = warn_percent
+        return 0
+
+    monkeypatch.setattr(mod.supervisor, "run_daemon", _fake_run)
+    assert mod.main(["--warn-percent", "30"]) == 0
+    assert seen["wp"] == 30
+    assert mod.main([]) == 0
+    assert seen["wp"] is None
+    for bad in (["--warn-percent", "0"], ["--warn-percent", "100"], ["--warn-percent", "x"]):
+        with pytest.raises(SystemExit):
+            mod.main(bad)
+
+
 def test_overseerd_executable_is_the_daemon_entrypoint():
     """The dedicated `overseerd` executable sits beside supervisor.py, is
     executable, carries the uv self-invoking shebang, and delegates to
@@ -1020,7 +1215,7 @@ def test_overseerd_executable_is_the_daemon_entrypoint():
     assert body.startswith(
         "#!/usr/bin/env -S uv run --script --no-project\n"
     ), "overseerd must carry the uv self-invoking shebang on line 1"
-    assert "supervisor.run_daemon()" in body, "overseerd must delegate to run_daemon()"
+    assert "supervisor.run_daemon(" in body, "overseerd must delegate to run_daemon()"
 
 
 def test_wrapup_message_has_required_placeholders_filled():

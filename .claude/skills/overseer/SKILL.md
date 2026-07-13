@@ -116,11 +116,25 @@ That one command (a self-invokable `uv` script) does everything deterministicall
   each tick). Its **stderr → `tmp/overseer/daemon.log`** — the channel this bottom
   pane reads to relay blocked/danger alerts. `overseer-start`'s own progress
   (pane created, sessions adopted) prints to its stderr as it runs.
-- `overseerd` itself takes **no arguments** — it watches the whole fleet with the
-  fixed store/stamp paths and the default loop interval, and does not auto-recover
-  dead sessions at startup (surface-only: it never auto-spawns; re-launching a
-  mapped-but-dead session is a deliberate `start` — below). Path discovery is
-  self-contained, so it works from any cwd.
+- `overseerd` takes one optional argument, **`--warn-percent N`** — the
+  daemon-wide default remaining-context % at which the FIRST wrap-up fires
+  (default **45**). `overseer-start` accepts the same `--warn-percent N` and
+  threads it into the `overseerd` launch command
+  (`.claude/skills/overseer/overseerd --warn-percent N 2> tmp/overseer/daemon.log`).
+  `N` is an int in `[1, 99]`; a per-track `ctx_threshold` override in the mapping
+  still wins over this default. Aside from `--warn-percent`, `overseerd` watches
+  the whole fleet with the fixed store/stamp paths and the default loop interval,
+  and does not auto-recover dead sessions at startup (surface-only: it never
+  auto-spawns; re-launching a mapped-but-dead session is a deliberate `start` —
+  below). Path discovery is self-contained, so it works from any cwd.
+- **Escalating, spam-proof wrap-ups.** Once a track drops to/below the warn
+  threshold the daemon injects the wrap-up ONCE, then once more each time
+  remaining crosses a lower 10%-band (40, 30, 20, 10) — each band at most once.
+  The crossed bands + the round timestamp are tracked in a DURABLE sidecar, so a
+  daemon restart never re-spams a band already sent; multiple bands crossed in one
+  tick coalesce into a single message. The escalation stops when the session wraps
+  up (writes its ready marker) or is restarted (which resets the round so the bands
+  can fire again next round).
 
 **The watch-set + the list.** The daemon watches every fleet-manifest repo
 (fleet members + adopters) that has a local checkout with a `plan/` dir — read

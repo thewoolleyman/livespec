@@ -79,8 +79,28 @@ def test_append_read_roundtrip(tmp_path):
     assert alpha.epic == "livespec-0001"
     assert alpha.pinned_session_id == "sess-1"
     assert alpha.assigned is True
-    # A row without an explicit threshold defaults.
-    assert tracks[1].ctx_threshold == registry.DEFAULT_CTX_THRESHOLD
+    # A row without an explicit threshold has NO per-track override → None (so the
+    # daemon-wide default applies at evaluate time), NOT DEFAULT_CTX_THRESHOLD.
+    assert tracks[1].ctx_threshold is None
+
+
+def test_ctx_threshold_none_is_omitted_explicit_int_roundtrips(tmp_path):
+    """A track with no override (ctx_threshold=None) serializes a row WITHOUT the
+    key and reads back None; an explicit int serializes the key and round-trips."""
+    store = tmp_path / "map.jsonl"
+    registry.append_mapping(Track(topic="nooverride", repo="/r", tmux="r--nooverride"), store)
+    registry.append_mapping(
+        Track(topic="pinned", repo="/r", tmux="r--pinned", ctx_threshold=60), store
+    )
+
+    rows = [json.loads(line) for line in store.read_text().splitlines() if line.strip()]
+    assert "ctx_threshold" not in rows[0]  # None → key omitted
+    assert rows[1]["ctx_threshold"] == 60  # explicit int → key present
+
+    tracks = registry.read_mapping(store)
+    by_topic = {t.topic: t for t in tracks}
+    assert by_topic["nooverride"].ctx_threshold is None
+    assert by_topic["pinned"].ctx_threshold == 60
 
 
 def test_read_mapping_fail_soft_on_malformed_lines(tmp_path):
@@ -360,6 +380,50 @@ def test_clear_injection_stamp(tmp_path):
     assert registry.read_injection_stamp("/r", "t", stamp) is None
     # clearing an absent stamp is a no-op (no crash)
     registry.clear_injection_stamp("/r", "t", stamp)
+
+
+def test_injection_stamp_dict_shape_bands_roundtrip(tmp_path):
+    """Part 2: the sidecar value is {"at": <float>, "bands": [...]}. write opens a
+    fresh round (at set, bands reset); add_notified_band appends idempotently and
+    preserves at; a re-write resets the bands for the new round."""
+    stamp = tmp_path / "stamps.json"
+    registry.write_injection_stamp("/r", "t", 500.0, stamp)
+    assert registry.read_injection_stamp("/r", "t", stamp) == 500.0
+    assert registry.read_notified_bands("/r", "t", stamp) == []  # fresh round: no bands
+
+    registry.add_notified_band("/r", "t", 45, stamp)
+    registry.add_notified_band("/r", "t", 40, stamp)
+    registry.add_notified_band("/r", "t", 45, stamp)  # duplicate → idempotent no-op
+    assert registry.read_notified_bands("/r", "t", stamp) == [45, 40]
+    assert registry.read_injection_stamp("/r", "t", stamp) == 500.0  # `at` preserved
+
+    registry.write_injection_stamp("/r", "t", 600.0, stamp)  # a NEW round resets bands
+    assert registry.read_notified_bands("/r", "t", stamp) == []
+    assert registry.read_injection_stamp("/r", "t", stamp) == 600.0
+
+
+def test_clear_injection_stamp_resets_at_and_bands(tmp_path):
+    """Part 2: clear deletes the key entirely → both `at` and `bands` reset."""
+    stamp = tmp_path / "stamps.json"
+    registry.write_injection_stamp("/r", "t", 500.0, stamp)
+    registry.add_notified_band("/r", "t", 45, stamp)
+    registry.clear_injection_stamp("/r", "t", stamp)
+    assert registry.read_injection_stamp("/r", "t", stamp) is None
+    assert registry.read_notified_bands("/r", "t", stamp) == []
+
+
+def test_injection_stamp_legacy_bare_float_backcompat(tmp_path):
+    """Part 2 back-compat: a pre-escalation sidecar stores a BARE float per key.
+    read_injection_stamp still returns it, read_notified_bands is empty, and
+    add_notified_band UPGRADES the value to the dict shape preserving the float
+    as `at`."""
+    stamp = tmp_path / "stamps.json"
+    stamp.write_text(json.dumps({"/r\tt": 321.0}), encoding="utf-8")  # legacy bare-float value
+    assert registry.read_injection_stamp("/r", "t", stamp) == 321.0
+    assert registry.read_notified_bands("/r", "t", stamp) == []
+    registry.add_notified_band("/r", "t", 45, stamp)
+    assert registry.read_injection_stamp("/r", "t", stamp) == 321.0  # `at` preserved on upgrade
+    assert registry.read_notified_bands("/r", "t", stamp) == [45]
 
 
 def test_write_rows_is_atomic_and_skips_when_unchanged(tmp_path):

@@ -19,6 +19,7 @@ grabbed a separate `livespec-overseerd` session instead of splitting its own
 window). The only tmux target here is the skill's OWN pane ($TMUX_PANE).
 """
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -33,7 +34,36 @@ import tmuxio  # noqa: E402
 _DAEMON_PANE_TITLE = "overseer-daemon"
 
 
-def main() -> int:
+def _daemon_command(warn_percent: int | None) -> str:
+    """The `overseerd` launch command for the daemon top pane.
+
+    When ``warn_percent`` is given it is threaded through to the daemon as
+    ``--warn-percent N`` (the daemon-wide first-wrap-up threshold); stderr is
+    redirected to the daemon log the bottom pane reads for alerts.
+    """
+    base = ".claude/skills/overseer/overseerd"
+    if warn_percent is not None:
+        base += f" --warn-percent {warn_percent}"
+    return base + " 2> tmp/overseer/daemon.log"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="overseer-start",
+        description="the /overseer skill's two-pane bootstrap",
+    )
+    parser.add_argument(
+        "--warn-percent",
+        type=int,
+        default=None,
+        metavar="N",
+        help=(
+            "daemon-wide default remaining-context %% at which the first wrap-up "
+            "fires (default 45); passed through to overseerd"
+        ),
+    )
+    args = parser.parse_args(argv)
+
     # 0. Refuse unless run BY the /overseer skill inside a Claude Code session.
     # `$CLAUDECODE=1` is set in every shell Claude Code spawns for its Bash tool
     # (and their children) — so it is present when the skill invokes this script,
@@ -68,7 +98,7 @@ def main() -> int:
         print("overseer-start: daemon pane already present in this window; leaving it.", file=sys.stderr)
     else:
         (core / "tmp" / "overseer").mkdir(parents=True, exist_ok=True)
-        command = ".claude/skills/overseer/overseerd 2> tmp/overseer/daemon.log"
+        command = _daemon_command(args.warn_percent)
         new_pane = io.split_window_top(pane, str(core), command)
         if new_pane is None:
             print("overseer-start: FAILED to split the window for the daemon pane.", file=sys.stderr)
