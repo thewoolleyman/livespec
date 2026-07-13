@@ -194,14 +194,15 @@ class RowView:
 class _InjectState:
     """Per-track wrap-up bookkeeping (in-memory; reset on restart/recovery).
 
-    ``count`` caps injections at 2 (first + one re-send). ``ctx_at_last`` is the
-    remaining-% at the last injection, so a re-send fires only if ctx kept
-    dropping. ``last_ctx`` is the last KNOWN remaining-% (used when a tick reads
-    ctx as unknown — design: keep last known, unknown never triggers).
+    Only ``last_ctx`` remains here: the last KNOWN remaining-% (used by
+    :meth:`Supervisor._effective_ctx` when a tick reads ctx as unknown — design:
+    keep last known, and unknown never triggers a crossing). The injection-round
+    timestamp and the set of already-notified escalation bands are now DURABLE, in
+    the injection-stamp sidecar (``registry.read_injection_stamp`` /
+    ``read_notified_bands`` / ``add_notified_band``), so a daemon restart never
+    re-spams a band it already sent — they are no longer in-memory here.
     """
 
-    count: int = 0
-    ctx_at_last: int | None = None
     last_ctx: int | None = None
 
 
@@ -225,6 +226,10 @@ class Supervisor:
     watch_repos: list[str] | None = None
     manifest_path: str | os.PathLike[str] | None = None
     extra_repos: list[str] = field(default_factory=list)
+    # Daemon-wide default warn threshold (remaining-% at which the FIRST wrap-up
+    # fires) for any track WITHOUT a per-track ``ctx_threshold`` override. Set from
+    # ``overseerd --warn-percent`` via ``run_daemon``; a track's own override wins.
+    warn_percent: int = registry.DEFAULT_CTX_THRESHOLD
     out: object = None  # writable stream for the table (default: sys.stdout)
     now: Callable[[], float] = time.time
     sleep: Callable[[float], None] = time.sleep
@@ -466,14 +471,14 @@ class Supervisor:
         """Delete a track's ready marker, clear its stamp, AND reset its inject state.
 
         Used both after a successful restart and when a certified track genuinely
-        resumes work. Voiding on the FILESYSTEM (marker + stamp) makes it durable
+        resumes work. ``clear_injection_stamp`` deletes the sidecar key, resetting
+        BOTH the round's ``at`` and its notified bands — so after a void (or a
+        restart) the round fully resets and every escalation band can fire again in
+        the next round. Voiding on the FILESYSTEM (marker + stamp) makes it durable
         across a daemon restart. It ALSO pops the in-memory ``_inject`` state
-        (mirroring ``_do_restart``): without that, the cleared stamp + a stuck
-        ``count==1`` would leave the round unable to re-certify — the next
-        threshold crossing would only re-send (not re-stamp), so a fresh marker
-        gets ``injection_stamp=None`` and never validates, wedging the track
-        (adversarial code re-review 2026-07-13, blocker RB2). Popping reopens a
-        clean ``count==0`` round that writes a new stamp on the next crossing.
+        (mirroring ``_do_restart``) so the stale ``last_ctx`` does not linger; the
+        next threshold crossing opens a clean round that writes a new stamp
+        (adversarial code re-review 2026-07-13, blocker RB2).
         """
         try:
             signals.ready_marker_path(track.repo, track.topic).unlink(missing_ok=True)
@@ -552,7 +557,9 @@ class Supervisor:
         stamp = registry.read_injection_stamp(repo, topic, self.stamp_path)
         ready = signals.ready_marker_valid(repo, topic, stamp)
 
-        threshold = track.ctx_threshold
+        # A per-track override (an int ``ctx_threshold``) wins; otherwise inherit
+        # the daemon-wide default (``warn_percent``, set from ``--warn-percent``).
+        threshold = track.ctx_threshold if track.ctx_threshold is not None else self.warn_percent
 
         # Precedence, top to bottom. Single-capture `busy` and the human gates
         # are checked first. For an apparently-idle track that would ACT
@@ -592,7 +599,7 @@ class Supervisor:
                 self._do_restart(track, target)
         elif eff_ctx is not None and eff_ctx <= threshold:
             if act:
-                self._maybe_inject(track, target, eff_ctx)
+                self._maybe_inject(track, target, eff_ctx, threshold)
             if eff_ctx <= DANGER_CTX_REMAINING and not ready:
                 status = "danger"
                 if act:
@@ -613,38 +620,45 @@ class Supervisor:
             note=blocked if blocked else None,
         )
 
-    def _maybe_inject(self, track: registry.Track, target: str, eff_ctx: int) -> None:
-        """Inject the wrap-up once per round; re-send once if ctx keeps dropping.
+    def _maybe_inject(
+        self, track: registry.Track, target: str, eff_ctx: int, threshold: int
+    ) -> None:
+        """Escalating, spam-proof wrap-up injection: warn once per crossed band.
 
-        ``target`` is the resolved pane id (RB3). The injection stamp is written
-        BEFORE the paste (design) so any ready marker the session subsequently
-        writes has ``mtime > stamp`` and thus certifies. On the re-send the stamp
-        is NOT rewritten — that would invalidate a marker already written in
-        response to the first injection.
+        The bands are the effective ``threshold`` plus each lower 10%-band below it
+        (40 / 30 / 20 / 10). A band fires at most ONCE per round: the set of
+        already-notified bands is DURABLE (the injection-stamp sidecar), so a
+        daemon restart never re-spams a band it already sent. Multiple bands crossed
+        in one tick coalesce into a SINGLE message but mark ALL of them notified.
+
+        ``target`` is the resolved pane id (RB3). The round's ``at`` stamp is
+        written ONLY when OPENING the round (the first band of the round) — a
+        re-warn at a lower band does NOT rewrite it, so a ready marker the session
+        writes still has ``mtime > at`` and certifies, and re-warns never reset the
+        notified bands. On a paste failure that OPENED the round, the just-opened
+        round is rolled back (stamp cleared) so the next tick retries cleanly (B5).
         """
-        key = _key(track.repo, track.topic)
-        state = self._inject.setdefault(key, _InjectState())
-        message = wrapup_message(remaining=eff_ctx, repo=track.repo, topic=track.topic)
-        if state.count == 0:
+        repo, topic = track.repo, track.topic
+        bands = sorted({threshold} | {b for b in (40, 30, 20, 10) if b < threshold}, reverse=True)
+        notified = set(registry.read_notified_bands(repo, topic, self.stamp_path))
+        due = [b for b in bands if eff_ctx <= b and b not in notified]
+        if not due:
+            return
+        opened_now = registry.read_injection_stamp(repo, topic, self.stamp_path) is None
+        if opened_now:
             # Stamp BEFORE the paste (design) so a marker the session writes has
-            # mtime > stamp. If the paste/submit FAILS, clear the stamp and do NOT
-            # advance count — the round never opened, so the next tick retries
-            # instead of the wrap-up being accounted as sent (B5).
-            registry.write_injection_stamp(track.repo, track.topic, self.now(), self.stamp_path)
-            if self._submit_prompt(target, message):
-                state.count = 1
-                state.ctx_at_last = eff_ctx
-                self._log(f"injected wrap-up into {track.repo}::{track.topic} (ctx {eff_ctx}%)")
-            else:
-                registry.clear_injection_stamp(track.repo, track.topic, self.stamp_path)
-                self._surface(f"{track.repo}::{track.topic} wrap-up injection failed; will retry")
-        elif state.count == 1 and state.ctx_at_last is not None and eff_ctx < state.ctx_at_last:
-            if self._submit_prompt(target, message):  # stamp preserved from the first inject
-                state.count = 2
-                state.ctx_at_last = eff_ctx
-                self._log(f"re-sent wrap-up into {track.repo}::{track.topic} (ctx {eff_ctx}%)")
-            else:
-                self._surface(f"{track.repo}::{track.topic} wrap-up re-send failed")
+            # mtime > at. Only on opening — a re-warn preserves the round's at.
+            registry.write_injection_stamp(repo, topic, self.now(), self.stamp_path)
+        message = wrapup_message(remaining=eff_ctx, repo=repo, topic=topic)
+        if self._submit_prompt(target, message):
+            for b in due:
+                registry.add_notified_band(repo, topic, b, self.stamp_path)
+            self._log(f"injected wrap-up into {repo}::{topic} (ctx {eff_ctx}%, bands {due})")
+        else:
+            if opened_now:
+                # Roll back the just-opened round so the next tick retries cleanly.
+                registry.clear_injection_stamp(repo, topic, self.stamp_path)
+            self._surface(f"{repo}::{topic} wrap-up injection failed; will retry")
 
     def _do_restart(self, track: registry.Track, target: str) -> None:
         """Atomic restart interlock: respawn → wait Claude → resume → close the round.
@@ -955,19 +969,28 @@ def _upsert(track: registry.Track) -> None:
     registry.append_mapping(track, None, added_at=_iso_now())
 
 
-def run_daemon() -> int:
+def run_daemon(warn_percent: int | None = None) -> int:
     """Start the fleet daemon with fixed defaults — the ``overseerd`` entrypoint.
 
-    Called by the dedicated ``overseerd`` executable, which takes NO arguments:
-    watch every fleet member (discovered from the manifest, resolved relative to
-    THIS file so it works from any cwd), with the hard-coded store + stamp paths
-    and the default loop interval. ``recover=False`` keeps the daemon a pure
+    Called by the dedicated ``overseerd`` executable: watch every fleet member
+    (discovered from the manifest, resolved relative to THIS file so it works from
+    any cwd), with the hard-coded store + stamp paths and the default loop
+    interval. ``warn_percent`` (from ``overseerd --warn-percent N``) is the
+    daemon-wide default remaining-% at which the first wrap-up fires; None means
+    the built-in ``registry.DEFAULT_CTX_THRESHOLD``. A per-track ``ctx_threshold``
+    override still wins over it. ``recover=False`` keeps the daemon a pure
     surface-only watcher — it never auto-spawns/revives a session at startup;
     (re)launching a mapped-but-dead session is a deliberate ``start`` via the
     skill. This function does not return (the loop runs until the process is
     killed); the ``int`` is a formality so ``overseerd`` can ``raise SystemExit``.
     """
-    _build_supervisor().run(interval=LOOP_INTERVAL_SECONDS, once=False, recover=False)
+    supervisor = _build_supervisor()
+    # Set the field after building (rather than threading it through
+    # `_build_supervisor`) so the daemon keeps its single no-arg builder.
+    supervisor.warn_percent = (
+        warn_percent if warn_percent is not None else registry.DEFAULT_CTX_THRESHOLD
+    )
+    supervisor.run(interval=LOOP_INTERVAL_SECONDS, once=False, recover=False)
     return 0
 
 

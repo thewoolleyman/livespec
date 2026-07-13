@@ -18,6 +18,7 @@ Path discovery is self-contained so it "just works" from any working directory:
     defaults.
 """
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -29,4 +30,35 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import supervisor  # noqa: E402  (intentional: after the sys.path pin above)
 
-raise SystemExit(supervisor.run_daemon())
+
+def _warn_percent(value: str) -> int:
+    """argparse type: an int in [1, 99] (a remaining-context percent)."""
+    ivalue = int(value)  # raises ValueError → argparse surfaces a clear error
+    if not 1 <= ivalue <= 99:
+        raise argparse.ArgumentTypeError(
+            f"--warn-percent must be an integer in [1, 99], got {ivalue}"
+        )
+    return ivalue
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="overseerd",
+        description="the livespec overseer daemon (watches the whole fleet)",
+    )
+    parser.add_argument(
+        "--warn-percent",
+        type=_warn_percent,
+        default=None,
+        metavar="N",
+        help=(
+            "daemon-wide default remaining-context %% at which the first wrap-up "
+            "fires (default 45); a per-track override still wins"
+        ),
+    )
+    args = parser.parse_args(argv)
+    return supervisor.run_daemon(warn_percent=args.warn_percent)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -31,7 +31,9 @@ def test_refuses_outside_claude_code(monkeypatch, capsys):
     mod = _load()
     monkeypatch.delenv("CLAUDECODE", raising=False)
     monkeypatch.setenv("TMUX_PANE", "%9")  # in tmux, but not a Claude session
-    assert mod.main() == 1
+    # main([]) — pass an explicit empty argv so argparse does not read pytest's own
+    # sys.argv (main now parses `--warn-percent`); no flags → the guards still run.
+    assert mod.main([]) == 1
     err = capsys.readouterr().err
     assert "/overseer" in err
     assert "$CLAUDECODE" in err
@@ -43,7 +45,7 @@ def test_claude_code_guard_precedes_tmux_check(monkeypatch, capsys):
     mod = _load()
     monkeypatch.delenv("CLAUDECODE", raising=False)
     monkeypatch.delenv("TMUX_PANE", raising=False)
-    assert mod.main() == 1
+    assert mod.main([]) == 1
     err = capsys.readouterr().err
     assert "Refusing to run outside Claude Code" in err
     assert "TMUX_PANE" not in err
@@ -56,7 +58,28 @@ def test_allows_when_claude_code_marker_present(monkeypatch, capsys):
     mod = _load()
     monkeypatch.setenv("CLAUDECODE", "1")
     monkeypatch.delenv("TMUX_PANE", raising=False)
-    assert mod.main() == 1
+    assert mod.main([]) == 1
     err = capsys.readouterr().err
     assert "$TMUX_PANE unset" in err  # reached the tmux check
     assert "Refusing to run outside Claude Code" not in err  # NOT the guard
+
+
+def test_daemon_command_threads_warn_percent():
+    # Part 1: --warn-percent N is appended to the overseerd launch command; without
+    # it the command is unchanged (default threshold applies inside overseerd).
+    mod = _load()
+    assert mod._daemon_command(None) == (
+        ".claude/skills/overseer/overseerd 2> tmp/overseer/daemon.log"
+    )
+    assert mod._daemon_command(30) == (
+        ".claude/skills/overseer/overseerd --warn-percent 30 2> tmp/overseer/daemon.log"
+    )
+
+
+def test_warn_percent_arg_parses(monkeypatch):
+    # main([--warn-percent, N]) parses the flag; with $CLAUDECODE unset the guard
+    # still short-circuits (return 1), proving the flag doesn't break arg parsing.
+    mod = _load()
+    monkeypatch.delenv("CLAUDECODE", raising=False)
+    monkeypatch.delenv("TMUX_PANE", raising=False)
+    assert mod.main(["--warn-percent", "25"]) == 1
