@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.6](https://github.com/thewoolleyman/livespec/compare/v0.9.5...v0.9.6) (2026-07-13)
+
+
+### Refactoring
+
+* **overseer:** dedicated overseerd daemon executable; supervisor.py a plain module ([b7cd693](https://github.com/thewoolleyman/livespec/commit/b7cd693cf396b88fb969bde0587adbbf4c1374c3))
+
 ## [0.9.5](https://github.com/thewoolleyman/livespec/compare/v0.9.4...v0.9.5) (2026-07-13)
 
 
