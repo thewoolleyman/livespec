@@ -48,6 +48,19 @@ conformance checks, or any other repo.
    review). If you ever find yourself parsing a "the session says it's done"
    sentinel out of a pane capture, stop — that is the exact anti-pattern the
    marker protocol replaced.
+
+   **The overseer NEVER touches files under `plan/`.** It touches ONLY its own
+   config (the mapping store, the injection-stamp sidecar, the fleet manifest)
+   and temp files (`<repo>/tmp/overseer/<topic>/`). A session's `handoff.md` and
+   everything else under `plan/<topic>/` is the SESSION's own workflow — the
+   overseer never reads, writes, or hashes it. Discovery enumerates `plan/*/`
+   DIRECTORIES only; the resume line *points* the session at the conventional
+   `plan/<topic>/handoff.md` but never opens it; markers live under `tmp/`, never
+   `plan/`. The daemon `git check-ignore`-validates each watched repo's
+   `tmp/overseer/` at startup (`Supervisor.unignored_tmp_repos`) and REFUSES to
+   run if any is not gitignored, so a marker can never dirty a tracked tree. If
+   you ever add code that opens, writes, or stats a FILE under `plan/`, stop —
+   that violates this invariant.
 2. **The overseer stays thin.** The interactive bottom pane never does track
    work inline and never polls the tracked sessions from the Claude pane on a
    timer. Watching is the daemon's job.
@@ -155,10 +168,13 @@ conformance checks, or any other repo.
   that structural shape (glyph/hint-independent); require the prompt EMPTY so the
   daemon never injects over existing input; gate with not-busy + not-gate.
 - **Marker-file certification (`signals.ready_marker_valid` /
-  `blocked_marker`).** The restart interlock fires ONLY when: an injection stamp
-  exists for this round, the `.overseer-ready` file exists, its mtime is strictly
-  newer than the injection stamp, AND its contents equal the daemon's own
-  SHA-256 of the on-disk `handoff.md`. Any missing/unreadable file ⇒ False
+  `blocked_marker`).** Markers live under `<repo>/tmp/overseer/<topic>/` (the
+  repo's gitignored temp dir — NEVER under `plan/`). The restart interlock fires
+  ONLY when: an injection stamp exists for this round, the `.overseer-ready` file
+  exists, AND its mtime is strictly newer than the injection stamp. **Presence +
+  freshness only — the marker's CONTENTS are NOT inspected** (no handoff hash):
+  the handoff and everything under `plan/` is the session's own business, which
+  the overseer must never read or hash. Any missing/unreadable file ⇒ False
   (fail-closed). The daemon writes the injection stamp BEFORE pasting the wrap-up
   (so a subsequent marker has `mtime > stamp`) and DELETES the marker as it
   restarts (so it can never re-trigger). The full contract is in
@@ -174,8 +190,8 @@ conformance checks, or any other repo.
   mis-timed "shell is back" could type `claude …` into the still-live session.
   Wait for the fresh TUI by polling `#{pane_current_command}` → `node`/`claude`
   (`signals.pane_is_claude`), never by scraping `❯`. The abrupt kill is safe:
-  the interlock already proved the handoff is written and the ready marker
-  exists.
+  the interlock already proved this round's ready marker exists (the session
+  certified it is at a clean stopping point).
 - **`claude -n <topic>`** sets the session's display name in the prompt box, the
   `--resume` picker, AND the terminal title (which tmux surfaces) — a cleaner
   equivalent of typing `/rename`. The shipped restart passes `-n <topic>` and

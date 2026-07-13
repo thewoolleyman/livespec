@@ -10,7 +10,6 @@ archive-GC dropping an archived row, ctx-unknown never injecting — PLUS the
 failure propagation, marker/round lifecycle, read-only list, and the start guard.
 """
 
-import hashlib
 import io as _io
 import json
 import os
@@ -234,7 +233,9 @@ def test_structured_gate_suppresses_injection(tmp_path):
 def test_blocked_marker_suppresses_injection(tmp_path):
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
-    signals.blocked_marker_path(str(repo), topic).write_text("waiting on schema call\n")
+    blocked = signals.blocked_marker_path(str(repo), topic)
+    blocked.parent.mkdir(parents=True, exist_ok=True)  # <repo>/tmp/overseer/<topic>/
+    blocked.write_text("waiting on schema call\n")
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=40))  # idle+low ctx but blocked marker
     sup = _sup(tmp_path, fake)
@@ -306,7 +307,7 @@ def test_warned_writes_stamp_before_pasting(tmp_path):
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=40))  # below default threshold 50
+    fake.serve(session, repo, capture=_idle_capture(ctx=40))  # below default threshold 45
     stamp_path = str(tmp_path / "stamps.json")
     seen = []
     fake.on_paste = lambda _s, _t: seen.append(
@@ -393,10 +394,15 @@ def test_danger_surfaces_below_danger_line(tmp_path):
 
 
 def _arm_ready_marker(repo, topic, *, mtime=1001.0):
-    handoff = repo / "plan" / topic / "handoff.md"
-    digest = hashlib.sha256(handoff.read_bytes()).hexdigest()
+    """Write a valid ready marker at its TEMP path (mkdir the parent first).
+
+    The marker now lives at ``<repo>/tmp/overseer/<topic>/.overseer-ready`` — its
+    parent dir does not exist yet, so create it. Certification is presence +
+    freshness only, so the contents need not be a hash of anything.
+    """
     marker = signals.ready_marker_path(str(repo), topic)
-    marker.write_text(digest + "\n")
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("ready\n")
     os.utime(marker, (mtime, mtime))
     return marker
 
@@ -418,22 +424,6 @@ def test_restart_fires_when_marker_valid_notbusy_idle(tmp_path):
     # the ready marker was deleted AND the injection stamp cleared (round closed, B4)
     assert not marker.exists()
     assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) is None
-
-
-def test_no_restart_when_marker_hash_mismatch(tmp_path):
-    repo, topic = _make_plan(tmp_path)
-    session = registry.tmux_id(str(repo), topic)
-    fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=30))
-    sup = _sup(tmp_path, fake)
-    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
-    marker = signals.ready_marker_path(str(repo), topic)
-    marker.write_text("deadbeef\n")  # wrong contents → invalid
-    os.utime(marker, (1001.0, 1001.0))
-
-    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert view.status != "restarting"
-    assert not fake.has("respawn")
 
 
 def test_no_restart_when_busy_even_with_valid_marker(tmp_path):
@@ -876,6 +866,38 @@ def test_run_loop_survives_a_tick_exception(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# Startup gate: tmp/overseer/ MUST be gitignored, else the daemon refuses to start.
+# --------------------------------------------------------------------------- #
+
+
+def test_run_refuses_when_tmp_not_gitignored(tmp_path):
+    """New startup gate: if a watched repo's tmp/overseer/ is NOT gitignored, the
+    daemon surfaces 'refusing to start' and returns from run() BEFORE ticking — the
+    overseer writes markers there and must never dirty a tracked tree."""
+    repo, _topic = _make_plan(tmp_path)
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)], gitignore_check=lambda _r: False)
+    assert sup.unignored_tmp_repos() == [os.path.normpath(str(repo))]
+    ticked: list[bool] = []
+    sup.tick = lambda *, act: ticked.append(act)  # type: ignore[assignment]  # spy
+    sup.run(once=True)  # refuses before acquiring the lock or ticking
+    assert ticked == []  # NO tick ran
+
+
+def test_run_proceeds_when_tmp_gitignored(tmp_path):
+    """Counterpart: when every watched repo's tmp/overseer/ IS gitignored the gate
+    passes and run(once=True) performs a single normal act=True tick."""
+    repo, _topic = _make_plan(tmp_path)
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake, watch_repos=[str(repo)], gitignore_check=lambda _r: True)
+    assert sup.unignored_tmp_repos() == []
+    ticked: list[bool] = []
+    sup.tick = lambda *, act: ticked.append(act)  # type: ignore[assignment]  # spy
+    sup.run(once=True)
+    assert ticked == [True]  # proceeded to exactly one act=True tick
+
+
+# --------------------------------------------------------------------------- #
 # CLI mapping edits.
 # --------------------------------------------------------------------------- #
 
@@ -1002,13 +1024,16 @@ def test_overseerd_executable_is_the_daemon_entrypoint():
 
 
 def test_wrapup_message_has_required_placeholders_filled():
-    msg = supervisor.wrapup_message(
-        threshold=50, handoff="/r/plan/t/handoff.md", repo="/r", topic="t"
-    )
-    assert "under 50%" in msg
-    assert "/r/plan/t/handoff.md" in msg
-    assert "/r/plan/t/.overseer-ready" in msg
-    assert "/r/plan/t/.overseer-blocked" in msg
+    # New signature: remaining=/repo=/topic= (threshold + handoff dropped). The
+    # message quotes the CURRENT remaining-% and the TEMP marker dir under
+    # <repo>/tmp/overseer/<topic>/ — never a path under plan/.
+    msg = supervisor.wrapup_message(remaining=40, repo="/r", topic="t")
+    assert "% of your context remaining" in msg
+    assert "40% of your context remaining" in msg
+    assert "/r/tmp/overseer/t/.overseer-ready" in msg
+    assert "/r/tmp/overseer/t/.overseer-blocked" in msg
+    # The markers moved OUT of plan/: the old plan-based marker path is absent.
+    assert "/r/plan/t/.overseer-ready" not in msg
 
 
 def test_streaming_pane_is_working_not_idle(tmp_path):
@@ -1029,7 +1054,7 @@ def test_streaming_pane_is_working_not_idle(tmp_path):
     registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "working"
-    assert not fake.has("paste")  # never injected despite ctx 40 <= 50
+    assert not fake.has("paste")  # never injected despite ctx 40 <= 45
 
 
 def test_settled_idle_pane_still_injects(tmp_path):

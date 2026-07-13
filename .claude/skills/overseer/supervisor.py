@@ -35,6 +35,7 @@ import contextlib
 import fcntl
 import os
 import shlex
+import subprocess
 import sys
 import time
 import traceback
@@ -110,24 +111,27 @@ _MARKER_VOID_GRACE = 120.0
 # --------------------------------------------------------------------------- #
 
 WRAPUP_TEMPLATE = """\
-Your context is now under {n}%. Wrap up for a clean session restart:
- 1. Update {handoff} so a FRESH session can resume from it alone
-    (read-first chain present, concrete next action, resume command printed).
+You only have {n}% of your context remaining. Wrap up for a clean session restart:
+ 1. Get your OWN work to a clean, resumable stopping point — your session owns its
+    handoff and everything under plan/; the overseer never touches those.
  2. Stop every background sub-agent and subprocess you started.
- 3. ONLY when genuinely at a clean stopping point with the handoff ready,
-    WRITE the ready marker (do not merely print it), then stop:
-        sha256sum {handoff} | cut -d' ' -f1 > {repo}/plan/{topic}/.overseer-ready
+ 3. ONLY when genuinely at a clean stopping point, WRITE the ready marker (do not
+    merely print it), then stop:
+        mkdir -p {marker_dir} && : > {marker_dir}/.overseer-ready
  If instead you are blocked on a human decision, write:
-        echo "<one-line summary>" > {repo}/plan/{topic}/.overseer-blocked"""
+        mkdir -p {marker_dir} && echo "<one-line summary>" > {marker_dir}/.overseer-blocked"""
 
 
-def wrapup_message(*, threshold: int, handoff: str, repo: str, topic: str) -> str:
-    """The exact wrap-up text injected when a track crosses its ctx threshold.
+def wrapup_message(*, remaining: int, repo: str, topic: str) -> str:
+    """The exact wrap-up text injected when a track crosses a ctx warn band.
 
-    ``threshold`` fills ``{N}`` (the "under N%"); ``handoff`` is the absolute
-    handoff path; ``repo``/``topic`` build the marker paths the session writes.
+    ``remaining`` fills ``{n}`` (the CURRENT remaining-context percent, so an
+    escalating re-warn reflects the live value); ``repo``/``topic`` build the
+    TEMP marker dir (``<repo>/tmp/overseer/<topic>/``) the session writes into —
+    never anything under ``plan/``.
     """
-    return WRAPUP_TEMPLATE.format(n=threshold, handoff=handoff, repo=repo, topic=topic)
+    marker_dir = str(signals.marker_dir(repo, topic))
+    return WRAPUP_TEMPLATE.format(n=remaining, marker_dir=marker_dir)
 
 
 def default_handoff(repo: str, topic: str) -> str:
@@ -138,6 +142,26 @@ def default_handoff(repo: str, topic: str) -> str:
 def default_resume(repo: str, topic: str) -> str:
     """The first prompt pasted into a (re)started session: read the handoff."""
     return f"read {default_handoff(repo, topic)} and follow it"
+
+
+def default_gitignore_check(repo: str) -> bool:
+    """True iff ``<repo>/tmp/overseer/`` is gitignored in ``repo``.
+
+    ``git -C <repo> check-ignore -q tmp/overseer`` exits 0 when the path is
+    ignored, 1 when it is not, 128 on error — so only a 0 means "ignored". The
+    daemon refuses to start unless every watched repo passes, because the overseer
+    writes its markers there and must never dirty a tracked tree. Fail-soft to
+    False (treated as "not ignored" → refuse) on any spawn error.
+    """
+    try:
+        completed = subprocess.run(  # noqa: S603 (fixed argv, no shell)
+            ["git", "-C", repo, "check-ignore", "-q", "tmp/overseer"],
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    return completed.returncode == 0
 
 
 def _key(repo: str, topic: str) -> tuple[str, str]:
@@ -209,6 +233,9 @@ class Supervisor:
     sessions_dir: str | os.PathLike[str] | None = None
     ppid_of: Callable[[int], int | None] = claude_sessions.proc_ppid
     starttime_of: Callable[[int], str | None] = claude_sessions.proc_starttime
+    # Startup gate: `<repo>/tmp/overseer/` MUST be gitignored (the overseer only
+    # writes temp files, never tracked ones). Injectable so tests fake the check.
+    gitignore_check: Callable[[str], bool] = default_gitignore_check
     _inject: dict[tuple[str, str], _InjectState] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
@@ -423,8 +450,8 @@ class Supervisor:
         only into auto-link and the restart poll, NOT the act path — so a tracked
         Claude that had exited to a shell (the pane retains the dead TUI's idle-box
         frame) would get the wrap-up pasted INTO THE SHELL, where the
-        ``sha256sum … > .overseer-ready`` line executes and FORGES a hash-valid
-        marker (adversarial code review 2026-07-13, blocker B3 = Codex #1). Gating
+        ``… > .overseer-ready`` marker line executes and FORGES a valid
+        certification (adversarial code review 2026-07-13, blocker B3 = Codex #1). Gating
         every act on process identity + cwd closes that, and hardens B1's residual
         (a name that resolved to the wrong session would fail the cwd check).
 
@@ -522,9 +549,8 @@ class Supervisor:
         current_ctx = signals.parse_ctx_remaining(capture)
         eff_ctx = self._effective_ctx(key, current_ctx)
 
-        handoff = track.handoff or default_handoff(repo, topic)
         stamp = registry.read_injection_stamp(repo, topic, self.stamp_path)
-        ready = signals.ready_marker_valid(repo, topic, handoff, stamp)
+        ready = signals.ready_marker_valid(repo, topic, stamp)
 
         threshold = track.ctx_threshold
 
@@ -566,7 +592,7 @@ class Supervisor:
                 self._do_restart(track, target)
         elif eff_ctx is not None and eff_ctx <= threshold:
             if act:
-                self._maybe_inject(track, target, eff_ctx, handoff)
+                self._maybe_inject(track, target, eff_ctx)
             if eff_ctx <= DANGER_CTX_REMAINING and not ready:
                 status = "danger"
                 if act:
@@ -587,7 +613,7 @@ class Supervisor:
             note=blocked if blocked else None,
         )
 
-    def _maybe_inject(self, track: registry.Track, target: str, eff_ctx: int, handoff: str) -> None:
+    def _maybe_inject(self, track: registry.Track, target: str, eff_ctx: int) -> None:
         """Inject the wrap-up once per round; re-send once if ctx keeps dropping.
 
         ``target`` is the resolved pane id (RB3). The injection stamp is written
@@ -598,9 +624,7 @@ class Supervisor:
         """
         key = _key(track.repo, track.topic)
         state = self._inject.setdefault(key, _InjectState())
-        message = wrapup_message(
-            threshold=track.ctx_threshold, handoff=handoff, repo=track.repo, topic=track.topic
-        )
+        message = wrapup_message(remaining=eff_ctx, repo=track.repo, topic=track.topic)
         if state.count == 0:
             # Stamp BEFORE the paste (design) so a marker the session writes has
             # mtime > stamp. If the paste/submit FAILS, clear the stamp and do NOT
@@ -842,6 +866,20 @@ class Supervisor:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
             handle.close()
 
+    def unignored_tmp_repos(self) -> list[str]:
+        """Watched repos whose ``tmp/overseer/`` is NOT gitignored (present roots only).
+
+        The overseer writes its markers under each track's ``<repo>/tmp/overseer/``;
+        if that path is not gitignored, a marker would dirty the tracked tree — the
+        exact thing the overseer must never do. A transiently-absent repo root is
+        skipped (not a violation), mirroring the GC's ``repo_root_present`` guard.
+        """
+        return [
+            repo
+            for repo in self._resolve_watch()
+            if registry.repo_root_present(repo) and not self.gitignore_check(repo)
+        ]
+
     def run(
         self, *, interval: float = LOOP_INTERVAL_SECONDS, once: bool = False, recover: bool = False
     ) -> None:
@@ -853,6 +891,15 @@ class Supervisor:
         tracks rather than dying (B7). ``KeyboardInterrupt``/``SystemExit`` still
         propagate (they are BaseException, not caught here).
         """
+        offenders = self.unignored_tmp_repos()
+        if offenders:
+            self._surface(
+                "refusing to start: tmp/overseer/ is NOT gitignored in "
+                + ", ".join(offenders)
+                + " — add `tmp/` to each repo's .gitignore (the overseer writes markers "
+                "there and must never dirty a tracked tree)"
+            )
+            return
         lock = self._acquire_singleton_lock()
         if lock is None:
             self._surface(

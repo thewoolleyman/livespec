@@ -2,12 +2,13 @@
 
 Run: ``uv run pytest .claude/skills/overseer/ -q``. ``import signals`` resolves
 via conftest.py. The two adversarial-critical behaviors are tested hard:
-``parse_ctx_remaining`` anchoring (design blocker #5) and the three-way
-``ready_marker_valid`` certification (design blockers #1,#3,#4).
+``parse_ctx_remaining`` anchoring (design blocker #5) and the
+``ready_marker_valid`` certification (presence + freshness only — the marker's
+contents are no longer inspected; markers live under ``<repo>/tmp/overseer/``).
 """
 
-import hashlib
 import os
+from pathlib import Path
 
 import pytest
 import signals
@@ -176,88 +177,78 @@ def test_is_idle_input_false_for_blank_pane():
 # --------------------------------------------------------------------------- #
 
 
-def _setup_track(tmp_path, *, handoff_bytes=b"HANDOFF v1\ncontent\n"):
+def _setup_track(tmp_path):
+    """A watched track: a repo with the session's own ``plan/<topic>/`` dir.
+
+    The overseer's markers live under ``<repo>/tmp/overseer/<topic>/`` (created by
+    the marker-writing helpers), NEVER under ``plan/`` — the ``plan/`` dir here is
+    only the session's own workflow tree, which the overseer never touches.
+    """
     repo = tmp_path / "repo"
     topic = "mytopic"
-    plan_topic = repo / "plan" / topic
-    plan_topic.mkdir(parents=True)
-    handoff = plan_topic / "handoff.md"
-    handoff.write_bytes(handoff_bytes)
-    return repo, topic, handoff
+    (repo / "plan" / topic).mkdir(parents=True)
+    return repo, topic
 
 
 def _write_marker(repo, topic, contents, *, mtime):
+    """Write the ready marker at its TEMP path, creating the parent dir first.
+
+    The marker now lives at ``<repo>/tmp/overseer/<topic>/.overseer-ready``, whose
+    parent does not exist yet — so the helper mkdirs it. ``contents`` is arbitrary:
+    ``ready_marker_valid`` inspects presence + mtime only, never the bytes.
+    """
     marker = signals.ready_marker_path(str(repo), topic)
+    marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(contents, encoding="utf-8")
     os.utime(marker, (mtime, mtime))
     return marker
 
 
-def test_ready_marker_valid_true_only_when_all_three_hold(tmp_path):
-    repo, topic, handoff = _setup_track(tmp_path)
-    digest = hashlib.sha256(handoff.read_bytes()).hexdigest()
-    _write_marker(repo, topic, digest + "\n", mtime=1001.0)  # newer than stamp
-    assert (
-        signals.ready_marker_valid(str(repo), topic, str(handoff), injection_stamp=1000.0) is True
-    )
+def test_marker_paths_are_under_tmp_overseer(tmp_path):
+    """The markers resolve under ``<repo>/tmp/overseer/<topic>/`` and NOT plan/."""
+    repo = str(tmp_path / "repo")
+    topic = "mytopic"
+    expected_dir = Path(repo) / "tmp" / "overseer" / topic
+    assert signals.marker_dir(repo, topic) == expected_dir
+    assert signals.ready_marker_path(repo, topic) == expected_dir / ".overseer-ready"
+    assert signals.blocked_marker_path(repo, topic) == expected_dir / ".overseer-blocked"
+    # The overseer never writes under a session's plan/ tree.
+    assert "plan" not in signals.ready_marker_path(repo, topic).parts
+    assert "plan" not in signals.blocked_marker_path(repo, topic).parts
+
+
+def test_ready_marker_valid_true_when_stamp_marker_and_mtime_hold(tmp_path):
+    # The three surviving conditions: injection_stamp present, marker exists, and
+    # its mtime is strictly newer than the stamp. Content is irrelevant.
+    repo, topic = _setup_track(tmp_path)
+    _write_marker(repo, topic, "x", mtime=1001.0)  # newer than stamp
+    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=1000.0) is True
+
+
+def test_ready_marker_valid_is_presence_and_freshness_only(tmp_path):
+    """A marker with ARBITRARY content (not a hash of anything) validates purely on
+    presence + freshness — the overseer never inspects the marker's bytes."""
+    repo, topic = _setup_track(tmp_path)
+    _write_marker(repo, topic, "totally arbitrary not-a-hash payload\n", mtime=1001.0)
+    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=1000.0) is True
 
 
 def test_ready_marker_valid_false_when_marker_missing(tmp_path):
-    repo, topic, handoff = _setup_track(tmp_path)
-    assert (
-        signals.ready_marker_valid(str(repo), topic, str(handoff), injection_stamp=1000.0) is False
-    )
+    repo, topic = _setup_track(tmp_path)
+    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=1000.0) is False
 
 
 def test_ready_marker_valid_false_when_mtime_not_newer_than_stamp(tmp_path):
-    repo, topic, handoff = _setup_track(tmp_path)
-    digest = hashlib.sha256(handoff.read_bytes()).hexdigest()
-    _write_marker(repo, topic, digest + "\n", mtime=999.0)  # OLDER than the stamp
-    assert (
-        signals.ready_marker_valid(str(repo), topic, str(handoff), injection_stamp=1000.0) is False
-    )
-
-
-def test_ready_marker_valid_false_when_contents_mismatch_handoff_hash(tmp_path):
-    repo, topic, handoff = _setup_track(tmp_path)
-    _write_marker(repo, topic, "deadbeef" * 8 + "\n", mtime=1001.0)  # wrong hash
-    assert (
-        signals.ready_marker_valid(str(repo), topic, str(handoff), injection_stamp=1000.0) is False
-    )
+    repo, topic = _setup_track(tmp_path)
+    _write_marker(repo, topic, "x", mtime=999.0)  # OLDER than the stamp
+    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=1000.0) is False
 
 
 def test_ready_marker_valid_false_when_injection_stamp_is_none(tmp_path):
-    repo, topic, handoff = _setup_track(tmp_path)
-    digest = hashlib.sha256(handoff.read_bytes()).hexdigest()
-    _write_marker(repo, topic, digest + "\n", mtime=1001.0)
+    repo, topic = _setup_track(tmp_path)
+    _write_marker(repo, topic, "x", mtime=1001.0)
     # No injection this round → any pre-existing marker is not certified.
-    assert signals.ready_marker_valid(str(repo), topic, str(handoff), injection_stamp=None) is False
-
-
-def test_ready_marker_invalidated_when_handoff_changes_after_marker(tmp_path):
-    """The hash binds to the CURRENT on-disk handoff: a valid marker goes
-    invalid if the handoff is subsequently edited without re-writing it."""
-    repo, topic, handoff = _setup_track(tmp_path)
-    digest = hashlib.sha256(handoff.read_bytes()).hexdigest()
-    _write_marker(repo, topic, digest + "\n", mtime=1001.0)
-    assert (
-        signals.ready_marker_valid(str(repo), topic, str(handoff), injection_stamp=1000.0) is True
-    )
-    handoff.write_bytes(b"HANDOFF v2 - edited after the marker\n")  # hash now differs
-    assert (
-        signals.ready_marker_valid(str(repo), topic, str(handoff), injection_stamp=1000.0) is False
-    )
-
-
-def test_ready_marker_valid_false_when_handoff_unreadable(tmp_path):
-    repo, topic, handoff = _setup_track(tmp_path)
-    digest = hashlib.sha256(handoff.read_bytes()).hexdigest()
-    _write_marker(repo, topic, digest + "\n", mtime=1001.0)
-    missing_handoff = tmp_path / "repo" / "plan" / topic / "does-not-exist.md"
-    assert (
-        signals.ready_marker_valid(str(repo), topic, str(missing_handoff), injection_stamp=1000.0)
-        is False
-    )
+    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=None) is False
 
 
 # --------------------------------------------------------------------------- #
@@ -266,16 +257,19 @@ def test_ready_marker_valid_false_when_handoff_unreadable(tmp_path):
 
 
 def test_blocked_marker_returns_contents_or_none(tmp_path):
-    repo, topic, _handoff = _setup_track(tmp_path)
+    repo, topic = _setup_track(tmp_path)
     assert signals.blocked_marker(str(repo), topic) is None  # absent
     marker = signals.blocked_marker_path(str(repo), topic)
+    marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text("waiting on a human decision about schema\n", encoding="utf-8")
     assert signals.blocked_marker(str(repo), topic) == "waiting on a human decision about schema"
 
 
 def test_blocked_marker_empty_file_is_present_not_none(tmp_path):
-    repo, topic, _handoff = _setup_track(tmp_path)
-    signals.blocked_marker_path(str(repo), topic).write_text("", encoding="utf-8")
+    repo, topic = _setup_track(tmp_path)
+    marker = signals.blocked_marker_path(str(repo), topic)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("", encoding="utf-8")
     # Presence (not content) is the signal → empty string, never None.
     assert signals.blocked_marker(str(repo), topic) == ""
 

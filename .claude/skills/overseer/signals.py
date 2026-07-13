@@ -17,7 +17,6 @@ direction).
 
 from __future__ import annotations
 
-import hashlib
 import os
 import re
 from pathlib import Path
@@ -29,6 +28,7 @@ __all__ = [
     "is_busy",
     "is_idle_input",
     "is_structured_gate",
+    "marker_dir",
     "pane_is_claude",
     "pane_is_shell",
     "parse_ctx_remaining",
@@ -246,35 +246,47 @@ def input_box_ready(capture_text: str) -> bool:
 # --------------------------------------------------------------------------- #
 
 
+def marker_dir(repo: str, topic: str) -> Path:
+    """``<repo>/tmp/overseer/<topic>/`` — the overseer's per-track TEMP dir.
+
+    The markers live under the repo's ``tmp/`` (gitignored, maintainer-owned
+    scratch), NOT under ``plan/``: the overseer NEVER touches files inside a
+    session's ``plan/<topic>/`` tree — that is the session's own workflow. The
+    daemon validates each watched repo's ``tmp/overseer/`` is gitignored at
+    startup (else it refuses to start).
+    """
+    return Path(repo) / "tmp" / "overseer" / topic
+
+
 def ready_marker_path(repo: str, topic: str) -> Path:
-    """``<repo>/plan/<topic>/.overseer-ready``."""
-    return Path(repo) / "plan" / topic / ".overseer-ready"
+    """``<repo>/tmp/overseer/<topic>/.overseer-ready``."""
+    return marker_dir(repo, topic) / ".overseer-ready"
 
 
 def blocked_marker_path(repo: str, topic: str) -> Path:
-    """``<repo>/plan/<topic>/.overseer-blocked``."""
-    return Path(repo) / "plan" / topic / ".overseer-blocked"
+    """``<repo>/tmp/overseer/<topic>/.overseer-blocked``."""
+    return marker_dir(repo, topic) / ".overseer-blocked"
 
 
 def ready_marker_valid(
     repo: str,
     topic: str,
-    handoff_path: str | os.PathLike[str],
     injection_stamp: float | None,
 ) -> bool:
-    """The load-bearing restart certification. True only when ALL hold:
+    """The restart certification. True only when ALL hold:
 
     1. an injection stamp exists for this round (``injection_stamp`` is not
        None) — without a recorded injection there is no round to certify,
-    2. the ``.overseer-ready`` marker file EXISTS,
+    2. the ``.overseer-ready`` marker file EXISTS, AND
     3. its mtime is strictly newer than ``injection_stamp`` (this round, not a
-       stale marker), AND
-    4. its stripped contents equal the SHA-256 hex of the current on-disk
-       ``handoff.md`` (proving the session actually updated the handoff).
+       stale marker from a prior wrap-up).
 
-    Any missing/unreadable file → False (fail-closed). A file write cannot be
-    forged by prompt-echo, cannot scroll off, and cannot line-wrap, so the
-    pane-text blockers all dissolve here.
+    Presence + freshness only — the marker's CONTENTS are not inspected: the
+    handoff and everything else under ``plan/`` is the session's own business,
+    which the overseer must never read or hash. A file write cannot be forged by
+    prompt-echo, cannot scroll off, and cannot line-wrap, so the pane-text
+    blockers all dissolve here; any missing/unreadable marker → False
+    (fail-closed).
     """
     if injection_stamp is None:
         return False
@@ -282,13 +294,9 @@ def ready_marker_valid(
     try:
         if not marker.is_file():
             return False
-        if marker.stat().st_mtime <= injection_stamp:
-            return False
-        expected = hashlib.sha256(Path(handoff_path).read_bytes()).hexdigest()
-        actual = marker.read_text(encoding="utf-8").strip()
+        return marker.stat().st_mtime > injection_stamp
     except OSError:
         return False
-    return actual == expected
 
 
 def blocked_marker(repo: str, topic: str) -> str | None:

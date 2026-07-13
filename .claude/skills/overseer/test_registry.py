@@ -149,23 +149,26 @@ def _make_plan(repo, topic, *, with_handoff=True):
     return plan_topic
 
 
-def test_discover_plans_excludes_archive_and_handoffless(tmp_path):
+def test_discover_plans_excludes_archive(tmp_path):
     repo = tmp_path / "repo"
     _make_plan(repo, "topic-a")
     _make_plan(repo, "topic-b")
-    _make_plan(repo, "no-handoff", with_handoff=False)  # excluded: no handoff.md
-    # An archived plan (under plan/archive/) must be excluded.
+    # Directory existence IS the track now — a plan/<topic>/ dir with NO handoff.md
+    # is still discovered (the handoff path is only a conventional pointer).
+    _make_plan(repo, "no-handoff", with_handoff=False)
+    # An archived plan (under plan/archive/) must still be excluded.
     archived = repo / "plan" / "archive" / "old-topic"
     archived.mkdir(parents=True)
     (archived / "handoff.md").write_text("old\n", encoding="utf-8")
-    # A stray file directly under plan/ must be ignored.
+    # A stray FILE directly under plan/ must be ignored (only child DIRS are tracks).
     (repo / "plan" / "README.md").write_text("x\n", encoding="utf-8")
 
     triples = registry.discover_plans([repo])
     topics = [topic for _repo, topic, _handoff in triples]
-    assert topics == ["topic-a", "topic-b"]
-    # Handoff path is absolute and points at the topic's handoff.md.
-    assert triples[0][2].endswith("/repo/plan/topic-a/handoff.md")
+    # Every plan/<topic>/ dir is a track (sorted); the literal 'archive' dir excluded.
+    assert topics == ["no-handoff", "topic-a", "topic-b"]
+    # The handoff path is the conventional <topic>/handoff.md pointer (need not exist).
+    assert triples[0][2].endswith("/repo/plan/no-handoff/handoff.md")
 
 
 def test_discover_plans_fail_soft_on_missing_plan_dir(tmp_path):
