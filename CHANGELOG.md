@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.4](https://github.com/thewoolleyman/livespec/compare/v0.10.3...v0.10.4) (2026-07-13)
+
+
+### Bug Fixes
+
+* **overseer:** stop touching plan/ — markers to tmp/, drop the handoff hash ([d2ddafe](https://github.com/thewoolleyman/livespec/commit/d2ddafe5feb4d8c070a12b8b0b39c57b4db80073))
+
 ## [0.10.3](https://github.com/thewoolleyman/livespec/compare/v0.10.2...v0.10.3) (2026-07-13)
 
 
