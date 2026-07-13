@@ -27,6 +27,29 @@ launches the next session") at the agent-instruction layer. If the session
 advanced the track materially, also refresh the handoff file itself (and the
 ledger state it points at) before printing the resume command.
 
+## Planning-lane continuation rule
+
+A plan thread's handoff is executable coordination, not a suggestion to stop.
+When a resumed handoff names a next action, execute that action automatically
+unless the user explicitly asked only for status, review, or analysis. This
+includes chaining to another livespec-orchestrator operation such as `groom`,
+`capture-work-item`, `propose-change`, or `drive` when the handoff names it.
+
+Do not stop merely because a handoff file was refreshed, validated, committed,
+or merged. Keep going until the active operation is genuinely blocked, the
+thread closes, the work reaches a handoff-rotation boundary, or the user's
+newest message redirects the session. For a planning thread, `groom` stays in
+the maintainer-side planning lane and is not factory-dispatched; ready
+implementation work that `groom` produces is what routes to the factory.
+
+When the maintainer asks to **land** an instruction, plan artifact, or code
+change, "land" means the full repository mutation protocol has completed:
+branch work is merged to the owning repository's `master`, the primary checkout
+has been fast-forwarded to the merged `origin/master`, temporary worktrees and
+branches have been removed, and the primary checkout is verified clean on
+`master`. Opening a PR, pushing a branch, or leaving the primary checkout behind
+remote `master` is not landed.
+
 ## Overseer / long-running-coordinator discipline
 
 A long-running **manual coordinator** — an overseer session that dispatches and
