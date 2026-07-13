@@ -14,6 +14,17 @@
 > "## SESSION 3" at the bottom. Host install of the guard remains maintainer-gated
 > (warn → observe → flip to `fail`).
 >
+> **SESSION 4 (2026-07-13):** the fleet gate is now AUTO-HEAL-LOUD, and the
+> fleet-wide ROLLOUT was CLOSED as not-worth-doing (maintainer-declared). The
+> orchestrator's pre-push gate was converted from detect-and-fail to auto-heal-loud
+> (`livespec-orchestrator-beads-fabro` PRs #566 + fix-forward #568, release 0.28.1).
+> A rollout to other tenant repos was investigated and DECLINED: the No-Circular-
+> Dependency directive forbids the two drift-prone upstream repos (`livespec` core,
+> `livespec-dev-tooling`) from carrying it, the eligible downstream repos don't
+> drift, and "catch drift without a dispatch" is already met fleet-wide by
+> `needs-attention-internal` Signal 5 + on-demand `ledger-normalize`. See
+> "## SESSION 4" at the bottom.
+>
 > _Original seed note:_ spun off 2026-07-12 from the `autonomous-mode` track
 > (during an attempt to factory-dispatch a `livespec-dev-tooling` work-item). Does
 > NOT block autonomous-mode.
@@ -443,10 +454,68 @@ ever desired: gate on `[ -r "$WRAPPER_TARGET" ]` or distinguish grep exit 2.
    observe warn-mode offenders, fix raw-claim callers, then
    `export LIVESPEC_BD_GUARD_MODE=fail`. One-command rollback: `sudo
    bd-guard/rollback.sh` (now actually works).
-2. **Fleet gate → auto-heal-loud + rollout** (SESSION-2 workstream 2, not built):
-   convert the merged detect-and-fail prototype gate to auto-heal-loud; roll out to
-   all tenant repos (the installed-plugin dispatcher-resolution detail is unsolved).
+2. ~~**Fleet gate → auto-heal-loud + rollout**~~ **RESOLVED (SESSION 4).**
+   Gate CONVERTED to auto-heal-loud (`livespec-orchestrator-beads-fabro` #566 +
+   fix #568, release 0.28.1). Fleet-wide rollout DECLINED — see "## SESSION 4".
 3. **beads #4738 review/merge** → then adopt `status.default = backlog` in each
    tenant's `.beads/` config.
 4. **Wait for a beads release carrying #4536** → bump the `bd` pin, make the store
    `create_work_item` single-step, retire the two-step + the guard.
+
+---
+
+# SESSION 4 (2026-07-13) — fleet gate → auto-heal-loud; rollout CLOSED
+
+**Read this after SESSION 3.** This session resolved SESSION-2 workstream 2
+("Fleet gate → auto-heal-loud + rollout"): the gate was converted, and the
+fleet-wide rollout was investigated and DECLINED.
+
+## Landed (all merged, `livespec-orchestrator-beads-fabro`, released 0.28.1)
+
+| What | PR | Notes |
+|---|---|---|
+| Gate → auto-heal-loud (detect-and-fail → heal-in-place) | #566 | The pre-push `ledger-normalize --gate` now HEALS the two safe transient remaps (`open`→`backlog`, `in_progress`→`active`) in place, PRINTS each write (loud), and blocks ONLY on residual status-conformance drift a remap can't map. Pure-impl change (the pre-push gate is NOT codified in the orchestrator SPECIFICATION; only the unrelated "Dispatch-time baseline conformance gate" is). |
+| Fix-forward: 2 review blockers | #568 | Independent Fable review (post-open, because this repo AUTO-MERGES green PRs — #566 merged ~1 min after CI green, before the review finished) found: **B1** a partial heal-write left already-written remaps UNPRINTED (silent DB write — violated the loud guarantee); **B2** the gate RELOADED the live tenant for residual, so a concurrent session's fresh mappable item in the heal window false-blocked the push with a wrong remedy. Fixed: apply+print each remap one at a time; compute residual over the in-memory PROJECTION of the initial snapshot (no reload window), filtered to status-conformance findings. |
+
+Both PRs: TDD Red→Green single commit, full `just check` green (100% cov), live
+pre-push gate exercised CLEAN against the orchestrator's real tenant on push.
+
+## Rollout DECLINED (maintainer-declared 2026-07-13) — the reasoning
+
+A terrain map (all fleet tenants) showed "roll out to all tenant repos" buys very
+little, because the eligible set and the drift-prone set are disjoint:
+
+- **The two drift-prone repos are architecturally EXCLUDED.** `livespec` core and
+  `livespec-dev-tooling` are UPSTREAM of `livespec-orchestrator-beads-fabro` (which
+  owns the dispatcher the gate runs). The No-Circular-Dependency directive
+  (`.ai/no-circular-dependency.md`) forbids an upstream repo's hook from invoking
+  the downstream orchestrator dispatcher. So the gate cannot go where the drift is.
+- **The eligible downstream repos don't drift.** The drivers, `livespec-runtime`,
+  `livespec-console-beads-fabro`, `livespec-orchestrator-git-jsonl` showed 0
+  status-conformance drift in every survey (no raw `bd create`/`--claim` traffic).
+- **"Catch drift without a dispatch" is already met fleet-wide** by the local
+  `needs-attention-internal` **Signal 5** scan — legitimately, because it reads the
+  dispatcher from the sibling clone as LOCAL maintainer tooling (not a committed CI
+  coupling), so it covers even the excluded upstream repos — plus on-demand
+  `ledger-normalize`. Prevention across all repos is the bd-guard wrapper
+  (host-install pending) + upstream `status.default`.
+
+So the auto-heal-loud gate is kept ORCHESTRATOR-LOCAL (self-hosted, no cross-repo
+dependency). No template change, no per-repo justfile/lefthook edits, no
+installed-plugin dispatcher-resolution mechanism — all avoided.
+
+## Operational note for future PR-driving sessions in this repo
+
+`livespec-orchestrator-beads-fabro` (and, observed, the fleet generally) AUTO-MERGES
+green PRs via `app/livespec-pr-bot` within ~1 min of CI passing. Independent review
+must therefore happen BEFORE opening the PR, or the PR must be opened as a DRAFT to
+hold auto-merge — leaving a normal PR open does NOT hold it. This session's #566
+merged mid-review; the review still added value as the source of the #568
+fix-forward, but a draft-first flow would have caught B1/B2 pre-merge.
+
+## Still OPEN on this track (unchanged by SESSION 4)
+
+1. Host install of the bd guard (maintainer-gated).
+2. beads #4738 (`status.default`) review/merge → then fleet `.beads/` adoption.
+3. Wait for a beads release carrying #4536 → bump pin, single-step store, retire
+   the two-step + the guard.
