@@ -151,7 +151,27 @@ conformance checks, or any other repo.
 - **Stdlib-only Python, host-only.** No third-party imports; four modules
   (`registry.py`, `signals.py`, `tmuxio.py`, `supervisor.py`) plus beside-tests.
   Precedent for host-only Python under `.claude/`:
-  `.claude/hooks/livespec_footgun_guard.py`.
+  `.claude/hooks/livespec_footgun_guard.py`. Stdlib-only is now **load-bearing
+  for the invocation surface too**: `supervisor.py` carries a
+  `#!/usr/bin/env -S uv run --script --no-project` shebang, so it runs with an
+  isolated interpreter and **no dependencies** — a third-party import would break
+  the shebang launch (there is no project sync to satisfy it).
+- **Invocation surface (2026-07-13 de-gold-plating).** The `/overseer` skill is
+  the SOLE operator surface; there is no supported `python3 …/supervisor.py`
+  path. `supervisor.py` is a self-invokable `uv` script — the shebang above,
+  `chmod +x`, launched directly (`.claude/skills/overseer/supervisor.py daemon`).
+  When run as an executable, Python puts the script's own dir on `sys.path[0]`,
+  so `import registry` / `signals` / `tmuxio` resolve (verified). The CLI carries
+  **no config knobs**: store (`~/.livespec-overseer.jsonl`) and injection-stamp
+  (`~/.livespec-overseer-stamps.json`) paths are hard-coded via the `registry`
+  defaults, and the watch-set is the whole fleet read from
+  `.livespec-fleet-manifest.jsonc` — no `--store` / `--stamp` / `--repos` /
+  `--repos-only` / `--manifest`. The `Supervisor` dataclass keeps `store_path` /
+  `stamp_path` / `watch_repos` / `manifest_path` injectable, but **only the
+  beside-tests inject them** (they redirect `registry.DEFAULT_STORE_PATH` for CLI
+  isolation) — the CLI never exposes them. Track subcommands take `--repo` /
+  `--topic` KEYWORD flags (the skill prompts for whichever the maintainer omits);
+  `daemon` needs no args.
 - **Deliberately OUTSIDE the product gates.** The folder is excluded from every
   product Python gate, by four concrete config facts (the design's "PR #1109 /
   dev-tooling `.claude/` universe exemption" labels are paraphrase for these):
@@ -201,37 +221,46 @@ conformance checks, or any other repo.
 
 ## How to exercise it live
 
-Per "done means exercised live", drive the shipped behavior end-to-end:
+The **beside-tests are the primary, complete gate** for the acting mechanics
+(inject → certify → restart, archive-GC, reboot recovery, and the RB1 marker /
+round timing) — they drive a FAKE tmux deterministically, so they own that
+coverage. Run them first (see "Build / toolchain facts"). Since the CLI no longer
+has a `--repos` / `--store` escape hatch, there is no scratch-repo sandbox: live
+exercise runs against the **real fleet** (maintainer decision 2026-07-13). That
+is safe because the daemon is **surface-only** — nothing is touched unless a real
+track crosses threshold AND certifies (`.overseer-ready`) AND is idle.
 
-1. Two or three real tracks across **at least two repos** (proves the cross-repo,
-   repo-qualified path, not just the same-repo happy path).
-2. Start the daemon (`python3 .claude/skills/overseer/supervisor.py daemon 2>
-   tmp/overseer/daemon.log`) and confirm the live `Topic · Repo · tmux · Ctx% ·
-   Status` table renders and refreshes.
-3. Force a **threshold crossing** on one track (a low `--stamp`/threshold or a
-   genuinely heavy track), watch the daemon inject the wrap-up, have that session
-   write `.overseer-ready`, and watch a **real auto-restart + rename** (the
-   `respawn-pane -k` → `claude -n <topic>` → pasted resume line).
-4. Verify **archive-GC** (archive a plan under `plan/archive/` and confirm its
-   mapping row drops) and **reboot recovery** (kill a mapped session, restart the
-   daemon with `--recover`, confirm the session is recreated from the mapping).
+For a change to the invocation / config surface (this file's usual subject), the
+end-to-end check is the discovery + render path, exercised safely read-only:
+
+1. Run a **read-only render** against the real fleet:
+   `.claude/skills/overseer/supervisor.py list` — it calls `tick(act=False)`, so
+   it discovers every fleet-manifest repo's `plan/*/`, joins the mapping, and
+   prints the `Topic · Repo · tmux · Ctx% · Status` table **without injecting or
+   restarting anything**. This exercises the whole reshaped CLI (no-flags launch,
+   fixed store path, fleet-only watch-set) with zero mutation risk.
+2. Optionally observe a **brief live daemon**
+   (`.claude/skills/overseer/supervisor.py daemon 2> tmp/overseer/daemon.log`,
+   stopped after a render or two) to confirm the loop renders and refreshes.
+   Surface-only means it will not act on any real session unless that session is
+   genuinely at threshold + certified + idle.
 
 The daemon's diagnostics + `overseer[SURFACE]:` alerts go to stderr; redirect
 them to a log under `tmp/overseer/` (maintainer-owned scratch root — use a
 scoped subdir, never `rm` the root).
 
-**Exercise timing-sensitive behavior with a CONTINUOUS loop, not hand-spaced
-`--once` ticks.** A live-exercise that runs single `daemon --once` ticks by hand,
-waiting for the pane to look idle between each, silently avoids the real loop's
-timing and can pass while a continuous daemon fails. That is exactly how the RB1
-regression slipped through a first live re-test: the "void the ready marker when
-busy" logic raced the certifying turn's own busy tail (final streaming + stop
-hooks keep the pane busy 10-60s AFTER the marker is written), which only a real
-continuous loop hits. Drive at least the inject→certify→restart cycle under a
-bounded continuous run — e.g. `timeout 90 python3 supervisor.py daemon --interval
-5 --repos-only --repos <scratch> --store <scratch> 2> <log>` — and confirm the
-event log shows `injected → restarted` with NO spurious `voided … marker` line in
-between.
+**Timing-sensitive behavior (the RB1 lesson) is covered by the beside-tests, not
+a hand-driven loop.** The regression that once slipped through a live re-test —
+the "void the ready marker when busy" logic racing the certifying turn's own busy
+tail (final streaming + stop hooks keep the pane busy 10–60s AFTER the marker is
+written) — is now pinned by deterministic fake-tmux tests
+(`test_fresh_marker_survives_busy_certifying_tail`,
+`test_stale_marker_voided_when_busy_past_grace`,
+`test_void_resets_inject_state_so_round_can_recertify`). Do NOT try to reproduce
+it by manufacturing a threshold crossing on a real working session — the daemon
+exercises the full inject → certify → restart cycle live only when a real track
+naturally reaches it (its steady-state job); the deterministic tests own that
+coverage, and hand-spaced `--once` ticks would mask the timing anyway.
 
 ## Pointers
 

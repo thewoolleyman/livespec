@@ -72,74 +72,96 @@ tmux signals and those markers. See `marker-protocol.md`.
 ## Starting the daemon (top pane)
 
 In the TOP pane, from the livespec core repo root, run the daemon with its
-stderr sent to a log the bottom pane can read:
+stderr sent to a log the bottom pane can read. The daemon is a **self-invokable
+`uv` script** (its shebang runs it through `uv run --script --no-project`, so it
+executes directly — no `python3`, no project sync):
 
 ```bash
 mkdir -p tmp/overseer
-python3 .claude/skills/overseer/supervisor.py daemon 2> tmp/overseer/daemon.log
+.claude/skills/overseer/supervisor.py daemon 2> tmp/overseer/daemon.log
 ```
 
 - The daemon's **stdout is the live table** (it clears the screen each tick).
 - Its **stderr carries `overseer:` logs and `overseer[SURFACE]:` alerts** — the
   channel this bottom pane reads to relay blocked/danger tracks.
 
-Useful daemon flags (all optional):
+The daemon takes **no required arguments** — `daemon` alone watches the whole
+fleet with the fixed store paths. Its only flags are optional loop knobs:
 
 | Flag | Effect |
 |---|---|
 | `--interval <seconds>` | Loop cadence (default 10). |
 | `--once` | Run a single tick and exit (live-exercise / testing). |
 | `--recover` | At startup, recreate any mapped session that is not currently live (reboot / crash recovery — see below). |
-| `--repos <a,b>` | Watch these extra off-manifest repo paths in addition to the manifest set. |
-| `--repos-only` | Watch ONLY `--repos` (ignore the fleet manifest entirely). |
-| `--manifest <path>` | Fleet manifest path (default: core's `.livespec-fleet-manifest.jsonc`). |
-| `--store <path>` | Mapping-store path (default `~/.livespec-overseer.jsonl`). |
-| `--stamp <path>` | Injection-stamp sidecar (default `~/.livespec-overseer-stamps.json`). |
 
-**The watch-set + the list.** By default the daemon watches every fleet-manifest
-repo (fleet members + adopters) that has a local checkout with a `plan/` dir,
-plus any `--repos`. For each watched repo it discovers `plan/*/` (excluding
-`plan/archive/**`) and shows **one row per unarchived plan topic** — including
-plans with **no session** (status `unassigned`, flagged ready to start). The
-row's tmux, Ctx%, and lifecycle status come from the JSONL mapping ⋈ the live
-pane. Table statuses you will see: `unassigned`, `idle`, `working`,
-`settling`, `warned`, `danger`, `restarting`, `blocked:human`, `session-gone`.
+There are **no watch-set / store / stamp knobs** on the CLI (they were removed
+2026-07-13). The watch-set is the whole fleet, the store + injection-stamp paths
+are fixed — see "Fixed paths + fleet-only watch-set" below.
+
+**The watch-set + the list.** The daemon watches every fleet-manifest repo
+(fleet members + adopters) that has a local checkout with a `plan/` dir — read
+from core's `.livespec-fleet-manifest.jsonc`, with no per-run override. For each
+watched repo it discovers `plan/*/` (excluding `plan/archive/**`) and shows
+**one row per unarchived plan topic** — including plans with **no session**
+(status `unassigned`, flagged ready to start). The row's tmux, Ctx%, and
+lifecycle status come from the JSONL mapping ⋈ the live pane. Table statuses you
+will see: `unassigned`, `idle`, `working`, `settling`, `warned`, `danger`,
+`restarting`, `blocked:human`, `session-gone`.
 
 ---
 
 ## The command vocabulary (bottom pane → CLI subcommands)
 
-The bottom pane manages the track list by running one-shot subcommands against
-the **same store the daemon reads** (share `--store` if you pass a non-default
-one). Each maps to a real `supervisor.py` subcommand:
+**You (the `/overseer` skill) are the sole operator surface.** The maintainer
+drives you in natural language ("start the ledger-status track", "unassign the
+overseer plan", "show me the table"); you translate that into one-shot
+`supervisor.py` subcommands. The repo + topic are **first-class arguments** of
+every track command: when the maintainer's request omits one, **prompt for it**
+(one clickable question, recommend-first) rather than guessing — then pass both
+as `--repo` / `--topic` keyword flags. There is no manual `python3 …` path; run
+the self-invokable script directly.
 
-- **`list`** — `python3 .claude/skills/overseer/supervisor.py list` — print the
-  current discovery ⋈ mapping table **once, read-only** (no injection, no
-  restart). A snapshot without waiting for a daemon tick.
-- **`add <repo> <topic>`** — map a discovered plan to a watched session. The
-  repo-qualified tmux id `<repo-slug>--<topic>` is derived automatically; the
-  handoff and resume line default to the plan's `handoff.md`. Replaces any
-  existing row for that `(repo, topic)`.
-- **`remove <repo> <topic>`** / **`unassign <repo> <topic>`** — drop the mapping
-  row (synonyms). The plan reverts to `unassigned`; the tmux session is **never
-  force-killed** — surface-only.
-- **`start <repo> <topic>`** — the **SURFACE-ONLY, user-initiated launch**:
-  create the tmux session if missing, launch `claude -n <topic>` in the repo,
-  paste the resume line, and map it. **The daemon NEVER auto-spawns a session** —
-  starting a plan is a deliberate act (the maintainer, or this one-word command).
+- **`list`** — `.claude/skills/overseer/supervisor.py list` — print the current
+  discovery ⋈ mapping table **once, read-only** (no injection, no restart). A
+  snapshot without waiting for a daemon tick.
+- **`add --repo <repo> --topic <topic>`** — map a discovered plan to a watched
+  session. The repo-qualified tmux id `<repo-slug>--<topic>` is derived
+  automatically; the handoff and resume line default to the plan's `handoff.md`.
+  Replaces any existing row for that `(repo, topic)`.
+- **`remove --repo <repo> --topic <topic>`** / **`unassign --repo <repo> --topic
+  <topic>`** — drop the mapping row (synonyms). The plan reverts to `unassigned`;
+  the tmux session is **never force-killed** — surface-only.
+- **`start --repo <repo> --topic <topic>`** — the **SURFACE-ONLY, user-initiated
+  launch**: create the tmux session if missing, launch `claude -n <topic>` in the
+  repo, paste the resume line, and map it. **The daemon NEVER auto-spawns a
+  session** — starting a plan is a deliberate act (the maintainer, via you). Pass
+  `--force` only to respawn a session that is already running a live Claude
+  (kills it) — otherwise `start` upserts the mapping and leaves the session
+  alone.
 
-`add`/`remove`/`unassign`/`start` all default the store to
-`~/.livespec-overseer.jsonl`, the same file the daemon watches.
+### Fixed paths + fleet-only watch-set (no CLI knobs)
+
+The invocation surface has **no** `--store` / `--stamp` / `--repos` /
+`--repos-only` / `--manifest` flags (removed 2026-07-13 as gold-plating). They
+are fixed by construction:
+
+- **Mapping store** — always `~/.livespec-overseer.jsonl` (the file the daemon
+  watches; every track subcommand reads/writes it).
+- **Injection-stamp sidecar** — always `~/.livespec-overseer-stamps.json`.
+- **Watch-set** — always the whole fleet from core's
+  `.livespec-fleet-manifest.jsonc`. To bring another repo under watch, add it to
+  the fleet manifest (as a member or adopter); there is no per-run repo override.
 
 ---
 
 ## Your job as the bottom pane
 
 1. **Start the daemon** in the top pane (above) and confirm the table renders.
-2. **Manage the track list** — take the maintainer's plain-text commands
-   (`list` / `add` / `remove` / `unassign` / `start`) and run the matching
-   subcommand. Adding a plan puts it under the daemon's watch; `start` launches
-   a session for it (deliberately, never automatically).
+2. **Manage the track list** — take the maintainer's natural-language request
+   (`list` / `add` / `remove` / `unassign` / `start`), resolve the repo + topic
+   (prompt for whichever is omitted, recommend-first), and run the matching
+   subcommand with `--repo` / `--topic`. Adding a plan puts it under the daemon's
+   watch; `start` launches a session for it (deliberately, never automatically).
 3. **Surface what the daemon reports.** The daemon writes two kinds of alert to
    its stderr log (`tmp/overseer/daemon.log`), each prefixed `overseer[SURFACE]:`:
    - **`blocked:human`** — a tracked session hit a structured gate (permission

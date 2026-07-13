@@ -759,25 +759,38 @@ def test_run_loop_survives_a_tick_exception(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def test_cli_add_remove_roundtrip(tmp_path):
-    store = str(tmp_path / "map.jsonl")
+def _isolate_store(tmp_path, monkeypatch):
+    """Redirect the hard-coded mapping store at a tmp file.
+
+    The de-gold-plated CLI (2026-07-13) no longer exposes ``--store``; the path is
+    fixed to ``registry.DEFAULT_STORE_PATH``. Tests point that module default at a
+    tmp file so a CLI ``main([...])`` never writes into the developer's real
+    ``~/.livespec-overseer.jsonl``.
+    """
+    store = tmp_path / "map.jsonl"
+    monkeypatch.setattr(registry, "DEFAULT_STORE_PATH", store)
+    return store
+
+
+def test_cli_add_remove_roundtrip(tmp_path, monkeypatch):
+    store = _isolate_store(tmp_path, monkeypatch)
     repo = str(tmp_path / "repo")
-    assert supervisor.main(["add", "--store", store, repo, "alpha"]) == 0
+    assert supervisor.main(["add", "--repo", repo, "--topic", "alpha"]) == 0
     rows = registry.read_mapping(store)
     assert [(r.topic, r.tmux) for r in rows] == [("alpha", registry.tmux_id(repo, "alpha"))]
 
-    assert supervisor.main(["add", "--store", store, repo, "alpha"]) == 0
+    assert supervisor.main(["add", "--repo", repo, "--topic", "alpha"]) == 0
     assert len(registry.read_mapping(store)) == 1
 
-    assert supervisor.main(["remove", "--store", store, repo, "alpha"]) == 0
+    assert supervisor.main(["remove", "--repo", repo, "--topic", "alpha"]) == 0
     assert registry.read_mapping(store) == []
 
 
-def test_cli_unassign_is_remove(tmp_path):
-    store = str(tmp_path / "map.jsonl")
+def test_cli_unassign_is_remove(tmp_path, monkeypatch):
+    store = _isolate_store(tmp_path, monkeypatch)
     repo = str(tmp_path / "repo")
-    supervisor.main(["add", "--store", store, repo, "beta"])
-    assert supervisor.main(["unassign", "--store", store, repo, "beta"]) == 0
+    supervisor.main(["add", "--repo", repo, "--topic", "beta"])
+    assert supervisor.main(["unassign", "--repo", repo, "--topic", "beta"]) == 0
     assert registry.read_mapping(store) == []
 
 
@@ -786,12 +799,12 @@ def test_start_refuses_running_claude_without_force(tmp_path, monkeypatch):
     it — it upserts the mapping and reports; only --force respawns."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
-    store = str(tmp_path / "map.jsonl")
+    store = _isolate_store(tmp_path, monkeypatch)
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture())
 
     monkeypatch.setattr(supervisor.tmuxio, "TmuxIO", lambda: fake)
-    rc = supervisor.main(["start", "--store", store, str(repo), topic])
+    rc = supervisor.main(["start", "--repo", str(repo), "--topic", topic])
     assert rc == 0
     assert not fake.has("respawn")  # the live session was NOT killed
     # but the mapping was upserted
@@ -802,14 +815,51 @@ def test_start_force_respawns_running_claude(tmp_path, monkeypatch):
     """B8: --force DOES respawn a running session (the explicit escape hatch)."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
-    store = str(tmp_path / "map.jsonl")
+    _isolate_store(tmp_path, monkeypatch)
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture())
 
     monkeypatch.setattr(supervisor.tmuxio, "TmuxIO", lambda: fake)
-    rc = supervisor.main(["start", "--force", "--store", store, str(repo), topic])
+    rc = supervisor.main(["start", "--force", "--repo", str(repo), "--topic", topic])
     assert rc == 0
     assert fake.has("respawn")
+
+
+def test_cli_surface_has_no_config_knobs(tmp_path, monkeypatch):
+    """The de-gold-plated CLI (2026-07-13): the removed --store/--stamp/--repos/
+    --repos-only/--manifest flags and the old positional repo/topic are all
+    rejected; --repo/--topic are required keyword flags."""
+    _isolate_store(tmp_path, monkeypatch)
+    repo = str(tmp_path / "repo")
+    # Removed watch-set / store / stamp knobs are unrecognized now.
+    removed = (
+        ["add", "--store", str(tmp_path / "x"), "--repo", repo, "--topic", "t"],
+        ["add", "--repo", repo, "--topic", "t", "--stamp", str(tmp_path / "x")],
+        ["daemon", "--repos", repo],
+        ["daemon", "--repos-only"],
+        ["daemon", "--manifest", str(tmp_path / "m.jsonc")],
+        ["list", "--store", str(tmp_path / "x")],
+    )
+    for argv in removed:
+        with pytest.raises(SystemExit):
+            supervisor.main(argv)
+    # The old positional form is gone; --repo and --topic are required.
+    for argv in (["add", repo, "t"], ["add", "--repo", repo], ["start", "--topic", "t"]):
+        with pytest.raises(SystemExit):
+            supervisor.main(argv)
+
+
+def test_daemon_takes_no_required_args(monkeypatch):
+    """`daemon` runs argless: no watch-set/store/stamp flags, defaults applied."""
+    seen: dict[str, object] = {}
+
+    class _RunOnlySup:
+        def run(self, *, interval, once, recover):
+            seen["args"] = (interval, once, recover)
+
+    monkeypatch.setattr(supervisor, "_build_supervisor", lambda: _RunOnlySup())
+    assert supervisor.main(["daemon"]) == 0
+    assert seen["args"] == (supervisor.LOOP_INTERVAL_SECONDS, False, False)
 
 
 def test_wrapup_message_has_required_placeholders_filled():

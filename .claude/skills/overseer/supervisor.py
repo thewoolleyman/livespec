@@ -1,3 +1,4 @@
+#!/usr/bin/env -S uv run --script --no-project
 """supervisor.py — the overseer daemon: poll loop, state machine, table, CLI.
 
 Stdlib-only, host-only (see ``registry.py`` header — the whole skill folder is
@@ -807,32 +808,35 @@ def _default_manifest() -> Path:
     return Path(__file__).resolve().parents[3] / ".livespec-fleet-manifest.jsonc"
 
 
-def _supervisor_from_args(args: argparse.Namespace) -> Supervisor:
-    extra = [r for r in (args.repos.split(",") if getattr(args, "repos", None) else []) if r]
-    watch = extra if getattr(args, "repos_only", False) else None
-    return Supervisor(
-        store_path=getattr(args, "store", None),
-        stamp_path=getattr(args, "stamp", None),
-        watch_repos=watch,
-        manifest_path=(None if watch is not None else getattr(args, "manifest", None)),
-        extra_repos=extra,
-    )
+def _build_supervisor() -> Supervisor:
+    """Build the daemon's ``Supervisor`` for the CLI — with NO tunable surface.
+
+    The invocation surface carries no watch-set / store / stamp knobs (they were
+    de-gold-plated 2026-07-13): the watch-set is the whole fleet, read from the
+    core repo's ``.livespec-fleet-manifest.jsonc``, and the mapping store + the
+    injection-stamp sidecar are the hard-coded ``registry`` defaults
+    (``~/.livespec-overseer.jsonl`` / ``~/.livespec-overseer-stamps.json``). The
+    ``Supervisor`` dataclass keeps ``store_path`` / ``stamp_path`` / ``watch_repos``
+    injectable, but ONLY the beside-tests inject them — never the CLI.
+    """
+    return Supervisor(manifest_path=_default_manifest())
 
 
-def _upsert(store_path: object, track: registry.Track) -> None:
-    """Replace any existing (repo, topic) mapping row, then append (one row each)."""
-    registry.remove_mapping(track.repo, track.topic, store_path)
-    registry.append_mapping(track, store_path, added_at=_iso_now())
+def _upsert(track: registry.Track) -> None:
+    """Replace any existing (repo, topic) mapping row in the hard-coded store, then
+    append (one row each)."""
+    registry.remove_mapping(track.repo, track.topic, None)
+    registry.append_mapping(track, None, added_at=_iso_now())
 
 
 def _cmd_daemon(args: argparse.Namespace) -> int:
-    sup = _supervisor_from_args(args)
+    sup = _build_supervisor()
     sup.run(interval=args.interval, once=args.once, recover=args.recover)
     return 0
 
 
 def _cmd_list(args: argparse.Namespace) -> int:
-    sup = _supervisor_from_args(args)
+    sup = _build_supervisor()
     sup.tick(act=False)  # read-only render: no injection/restart
     return 0
 
@@ -846,15 +850,13 @@ def _cmd_add(args: argparse.Namespace) -> int:
         handoff=default_handoff(repo, args.topic),
         resume=default_resume(repo, args.topic),
     )
-    _upsert(getattr(args, "store", None), track)
+    _upsert(track)
     print(f"added mapping {repo}::{args.topic} (tmux {track.tmux})")
     return 0
 
 
 def _cmd_remove(args: argparse.Namespace) -> int:
-    removed = registry.remove_mapping(
-        os.path.normpath(args.repo), args.topic, getattr(args, "store", None)
-    )
+    removed = registry.remove_mapping(os.path.normpath(args.repo), args.topic, None)
     print(f"removed {removed} mapping row(s) for {args.repo}::{args.topic}")
     return 0
 
@@ -873,7 +875,7 @@ def _cmd_start(args: argparse.Namespace) -> int:
     session = registry.tmux_id(repo, topic)
     force = getattr(args, "force", False)
     io = tmuxio.TmuxIO()
-    sup = Supervisor(tmux=io, store_path=getattr(args, "store", None), stamp_path=None)
+    sup = Supervisor(tmux=io)
     track = registry.Track(
         topic=topic,
         repo=repo,
@@ -889,7 +891,7 @@ def _cmd_start(args: argparse.Namespace) -> int:
         # positively, so failing closed on None costs nothing.
         cmd = io.pane_current_command(session)
         if cmd is None or signals.pane_is_claude(cmd):
-            _upsert(getattr(args, "store", None), track)
+            _upsert(track)
             print(
                 f"{repo}::{topic}: session {session} already running (or its identity is "
                 f"unreadable) — mapping upserted, NOT respawned. Pass --force to respawn "
@@ -910,15 +912,20 @@ def _cmd_start(args: argparse.Namespace) -> int:
     if not sup._do_launch(track, session):
         print(f"start FAILED to launch {repo}::{topic} in tmux session {session}", file=sys.stderr)
         return 1
-    _upsert(getattr(args, "store", None), track)
+    _upsert(track)
     print(f"started {repo}::{topic} in tmux session {session}")
     return 0
 
 
-def _add_store_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--store", default=None, help="mapping store path (default: ~/.livespec-overseer.jsonl)"
-    )
+def _add_track_args(parser: argparse.ArgumentParser) -> None:
+    """The shared ``--repo`` / ``--topic`` keyword flags for the track subcommands.
+
+    Keyword (not positional) so the ``/overseer`` skill is the operator surface:
+    it prompts for whichever is omitted and passes both. Required here so a stray
+    bare invocation fails loudly rather than acting on a half-specified track.
+    """
+    parser.add_argument("--repo", required=True, help="repo checkout path the plan lives in")
+    parser.add_argument("--topic", required=True, help="plan topic (the plan/<topic>/ dir name)")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -927,19 +934,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    def _watch_args(p: argparse.ArgumentParser) -> None:
-        _add_store_args(p)
-        p.add_argument("--stamp", default=None, help="injection-stamp sidecar path")
-        p.add_argument("--manifest", default=str(_default_manifest()), help="fleet manifest path")
-        p.add_argument("--repos", default=None, help="comma-separated extra repo paths")
-        p.add_argument(
-            "--repos-only",
-            action="store_true",
-            help="watch ONLY --repos (ignore the manifest)",
-        )
-
-    p_daemon = sub.add_parser("daemon", help="run the poll loop + live table")
-    _watch_args(p_daemon)
+    # daemon / list carry NO watch-set / store / stamp knobs: the watch-set is the
+    # whole fleet (the core repo's manifest) and the store + stamp are hard-coded
+    # (see `_build_supervisor`). `daemon` needs no required args.
+    p_daemon = sub.add_parser("daemon", help="run the poll loop + live table (whole fleet)")
     p_daemon.add_argument("--interval", type=float, default=LOOP_INTERVAL_SECONDS)
     p_daemon.add_argument("--once", action="store_true", help="run a single tick and exit")
     p_daemon.add_argument(
@@ -948,33 +946,24 @@ def main(argv: list[str] | None = None) -> int:
     p_daemon.set_defaults(func=_cmd_daemon)
 
     p_list = sub.add_parser("list", help="print the current joined table once (read-only)")
-    _watch_args(p_list)
     p_list.set_defaults(func=_cmd_list)
 
     p_add = sub.add_parser("add", help="add a (repo, topic) mapping row")
-    _add_store_args(p_add)
-    p_add.add_argument("repo")
-    p_add.add_argument("topic")
+    _add_track_args(p_add)
     p_add.set_defaults(func=_cmd_add)
 
     p_remove = sub.add_parser("remove", help="remove a (repo, topic) mapping row")
-    _add_store_args(p_remove)
-    p_remove.add_argument("repo")
-    p_remove.add_argument("topic")
+    _add_track_args(p_remove)
     p_remove.set_defaults(func=_cmd_remove)
 
     # unassign is a synonym for remove: drop the mapping so the plan reverts to
     # `unassigned` (never force-kills the session — surface-only).
     p_unassign = sub.add_parser("unassign", help="detach a plan's mapping (revert to unassigned)")
-    _add_store_args(p_unassign)
-    p_unassign.add_argument("repo")
-    p_unassign.add_argument("topic")
+    _add_track_args(p_unassign)
     p_unassign.set_defaults(func=_cmd_remove)
 
     p_start = sub.add_parser("start", help="surface-only: launch a session for a plan and map it")
-    _add_store_args(p_start)
-    p_start.add_argument("repo")
-    p_start.add_argument("topic")
+    _add_track_args(p_start)
     p_start.add_argument(
         "--force",
         action="store_true",
