@@ -55,6 +55,108 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-12 (cont. 5): TUI-DOGFOODING phase OPENED; cockpit is NOT operator-ready — 3 blocking findings; two-stage acceptance
+
+**Supersedes the "I2 = flip-and-accept" framing.** The maintainer (2026-07-12)
+directed that the MVP is NOT done until I (the driver) drive MULTIPLE real
+cross-repo work-items end-to-end SOLELY through the live console TUI, dropping the
+maintainer in as the human-in-the-loop. I had NOT been dogfooding the TUI at all
+(everything ran via `dispatcher.py`/`bd`/`gh`/sub-agents) — a miss against
+standing directive #3. First real dogfooding immediately proved the cockpit is not
+yet operator-usable.
+
+### DOGFOODING mechanics (LOCKED, maintainer-declared 2026-07-12)
+- **I (this driver session) operate the console TUI DIRECTLY** via `tmux
+  send-keys`/`capture-pane` — NO separate loop session. Every operator-steering
+  action (dispatch → observe → valve → accept → observe-merge → close) goes
+  through the TUI; a step I can't do in the TUI is a USABILITY HOLE (log + fix),
+  never a silent CLI fallback.
+- **Two distinct top-level TMUX sessions, exact names:** `console-autonomous-mode`
+  (my operator cockpit — runs the console TUI) and `orchestrator-autonomous-mode`
+  (the human-in-the-loop seat). These are separate tmux SESSIONS, not panes.
+- **All Claude sessions start with `claude --dangerously-skip-permissions`.** The
+  human seat is a `--dangerously-skip-permissions` Claude session NAMED
+  `orchestrator-autonomous-mode`, run inside the `orchestrator-autonomous-mode`
+  tmux session; I spin it up when a step needs the maintainer, who attaches to it.
+- **`console-autonomous-mode` pinned to 112×28** (`tmux set-window-option -t
+  console-autonomous-mode window-size manual` + `resize-window -x 112 -y 28`) —
+  derived from the maintainer's Samsung Fold: narrowest width 114 (portrait) +
+  landscape height, with a safety margin. Pinning also FORCES small-screen UI
+  usability. Maintainer may attach/detach/resize freely (won't disrupt driving);
+  the pin neutralizes resize. Use `/usr/bin/tmux` (the zsh alias shadows `tmux`).
+
+### COCKPIT LAUNCH currently needs a WORKAROUND (Finding A is why)
+Shipped `just tui` does NOT launch on a normal host. Interim launch used:
+```
+/usr/local/bin/with-livespec-env.sh -- \
+  env LIVESPEC_CONSOLE_ORCHESTRATOR_PLUGIN_ROOT=/data/projects/livespec-orchestrator-beads-fabro \
+  /data/projects/livespec-console-beads-fabro/target/release/livespec-console-beads-fabro serve
+```
+run FROM the orchestrator checkout cwd (so the work-items adapter observes the
+orchestrator tenant — see Finding C). ALWAYS rebuild first (`just tui` runs
+`cargo build --release`); the cockpit can silently run a STALE binary (the
+pre-existing session ran a days-old build via the now-removed interim PATH shims).
+
+### THREE BLOCKING FINDINGS (Stage-1 cockpit fixes — all console-Rust)
+- **A (P1 — cockpit unusable out-of-box): the resolver rejects the installed
+  marketplace-cache plugin layout.** `crates/console-cli/src/backing_cli.rs`
+  `validate_plugin_root` requires the SOURCE layout
+  `<root>/.claude-plugin/scripts/bin/needs_attention.py`, but the installed cache
+  is FLATTENED `<root>/scripts/bin/…`. So `just tui` dies loudly ("orchestrator
+  plugin root …/cache/…/<sha> is missing …/.claude-plugin/scripts/bin/needs_attention.py").
+  The `003` resolver "fails loudly" (its designed behavior) against a VALID
+  installed plugin. FIX: accept BOTH layouts (source `.claude-plugin/scripts/bin/`
+  AND flattened cache `scripts/bin/`). Same fragility 3 sub-agents hit in `just
+  check`; now a hard LAUNCH crash. Root cause the retired `consolebin/` PATH shims
+  had papered over.
+- **B (P2 — small-screen UX): the header truncates at 112 cols.** `d6f`'s
+  `sources: N unavailable (…)` segment pushes the header past 112; repo/autonomous/
+  view/attention get cut off (observed `… | sources: 5 unavailable (dispatcher,
+  fabro, github, livespec, orchestrator) | rep`). Header must fit/degrade
+  gracefully at 112 (abbreviate or drop lower-priority fields, not truncate mid).
+- **C (P2 — design clarity): observation is CWD-scoped.** The work-items
+  (orchestrator) adapter observes a tenant only when the cockpit is launched FROM
+  that tenant's cwd (header flipped 5→4 unavailable — `orchestrator` dropped — when
+  relaunched from the orchestrator checkout; confirms `gkh`'s fix works there). So
+  the "fleet" view is not fleet-wide for work-items. Settle the intended model.
+
+### TWO-STAGE ACCEPTANCE (the honest structure)
+- **Stage 1 (prerequisite — SUB-AGENTS, not the factory):** fix A (the P1
+  blocker), B, and settle C. All are console-Rust → the Fabro factory can't build
+  them (the `d6f` sandbox-Rust wall). Route: scoped sub-agents (worktree → Rust
+  RGR → PR → driver review). Only when the cockpit LAUNCHES clean + OBSERVES real
+  work + FITS at 112 is it operator-usable.
+- **Stage 2 (the actual dogfooding acceptance):** with a usable cockpit, drive
+  MULTIPLE real **orchestrator-tenant Python** work-items (factory-buildable)
+  end-to-end SOLELY through the TUI, dropping the maintainer in via
+  `orchestrator-autonomous-mode` for human valves/decisions. That live proof =
+  MVP "done."
+
+### WHERE THE BLOCKING WORK LIVES (dependency map)
+- MVP done (`plan/autonomous-mode/`) ← **I2 / Stage-2 dogfooding** ← **Stage-1
+  cockpit fixes A/B/C** (NEW, UNFILED; live in the **livespec-console-beads-fabro**
+  repo; cockpit-readiness theme — epic `g06` is CLOSED, so file a NEW epic/items).
+  **Finding A is the critical-path blocker.**
+- Stage-1 items are console-Rust → the FACTORY route for them is blocked by epic
+  **`3lev` / `plan/fabro-ci-image-factoring/`** ("drop per-run rustup / bake Rust
+  into the console sandbox image"). Stage 1 sidesteps this via sub-agents; the
+  factory route only matters if Stage-1 fixes must ALSO go through the cockpit.
+- The **factory OTel trace-egress gap** (also `3lev`, P-factory) leaves the
+  dispatcher/fabro layer unobservable in Honeycomb — a Stage-2 confidence risk.
+
+### RESUME ORDER (fresh session)
+1. **File + fix Finding A (P1)** via a scoped sub-agent (resolver accepts the
+   installed-cache flattened layout) → unblocks `just tui` on a normal host. Then
+   B (header at 112), then settle C.
+2. Rebuild + relaunch the cockpit cleanly (no override once A lands) in
+   `console-autonomous-mode` (112×28), from the tenant cwd you want to drive.
+3. **Stage 2:** drive multiple real orchestrator-tenant Python items end-to-end
+   through the TUI; maintainer as human-in-the-loop in `orchestrator-autonomous-mode`.
+- Reap: core `docs-plan-autonomous-mode-dogfood` (this update). Cockpit left
+  running (override-launched from the orchestrator cwd).
+
+---
+
 ## SESSION UPDATE — 2026-07-12 (cont. 4): `fz4` DONE+proven-live; console cockpit-readiness all-but-`ecu` landed; `ecu` in flight → then I2
 
 Driver session `autonomous-mode`. Cleared the `fz4` top priority AND drove the
