@@ -570,6 +570,33 @@ pilot repo shadow lane.
 
 ### Phase 1 — Baked layered images
 
+**Progress (2026-07-13):**
+- **PR1 — the layer split — DONE + MERGED** (`livespec-dev-tooling` #354, in
+  release 0.43.0). Split the single Dockerfile into `base → python →
+  python-rust` layer Dockerfiles; `fabro_image_pin_lockstep.py` now reads the
+  obligated ARG pins across the SET of layer files (RGR); `fabro-sandbox-image.yml`
+  builds the chain `FROM` the digest-pinned prior layer via an ephemeral local
+  registry, publishing layer-prefixed immutable tags
+  (`base-`/`python-`/`python-rust-` `sha-<short>` + `-v<X.Y.Z>`); dropped the stale
+  uv pre-warm; the `livespec-step-timer` (item-3) COPY moved to `base`. Verified:
+  full chain built locally + in CI (toolchain resolves), `just check` green.
+- **PR2/PR3 — consumer switches — REMAINING, with a bump-pin COUPLING to fix
+  first.** Switch `livespec-orchestrator-beads-fabro` `workflow.toml` `docker=`
+  → `…:python-v<X.Y.Z>` and `livespec-console-beads-fabro` →
+  `…:python-rust-v<X.Y.Z>` (+ DELETE the console's per-run `rustup`). **BUT** the
+  `fabro_sandbox_docker_image` pin IS covered by the release fan-out's bump-pin
+  automation (contrary to the older "manual pins" note below), and
+  `.github/actions/bump-pin-rewrite/action.yml` rewrites the pin's tag to the
+  BARE release `$TAG` (`v<X.Y.Z>`) — which DROPS the new `python-`/`python-rust-`
+  layer prefix, breaking the pin on the next release. So PR2/PR3 must be preceded
+  (or accompanied) by making that rewrite **prefix-preserving** (replace only the
+  `v<version>` portion, keep whatever `<layer>-` prefix precedes it) — a
+  `livespec-dev-tooling` change. This resolves the "autodiscovery-vs-manual-pin"
+  open decision as: KEEP autodiscovery, make it layer-prefix-aware. The rewrite
+  logic lives in an `action.yml` heredoc (no package-module test harness — note
+  the testing gap). Also still pending: the orchestrator Codex version-less fix
+  (`bd-ib-s7e` now closed, so unblocked).
+
 **Deliverables**
 - `base / python / python-rust` layered Dockerfiles + matrix build in
   `fabro-sandbox-image.yml` (builds STAY GitHub-hosted/trusted-builder).
