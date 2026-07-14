@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.4](https://github.com/thewoolleyman/livespec/compare/v0.11.3...v0.11.4) (2026-07-14)
+
+
+### Bug Fixes
+
+* **overseer:** never restart a session that has not declared itself ready ([61b4d65](https://github.com/thewoolleyman/livespec/commit/61b4d6596a6a6942cff77099e3e6a475bf85bdb9))
+
 ## [0.11.3](https://github.com/thewoolleyman/livespec/compare/v0.11.2...v0.11.3) (2026-07-14)
 
 
