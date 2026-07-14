@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/thewoolleyman/livespec/compare/v0.11.0...v0.11.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* **overseer:** default warn/restart threshold back to 50% remaining ([069e9e1](https://github.com/thewoolleyman/livespec/commit/069e9e19b559bbfb583fbfc5acdd2c047180ab48))
+
 ## [0.11.0](https://github.com/thewoolleyman/livespec/compare/v0.10.4...v0.11.0) (2026-07-13)
 
 
