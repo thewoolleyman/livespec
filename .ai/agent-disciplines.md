@@ -126,6 +126,45 @@ so a manual coordinator MUST rotate-and-delegate or it degrades into
 ineffectiveness. The same constraint binds any future long-running
 multi-session coordination, whatever drives it.
 
+## Tracked-session discipline — the overseer wrap-up contract
+
+This binds YOU when your session is a **track** supervised by the overseer daemon
+(`.claude/skills/overseer/`) — i.e. you are running a plan thread and a wrap-up
+message is pasted into your pane at a context threshold. It is the other half of
+the contract; the daemon's half is `marker-protocol.md`.
+
+- **You WILL be restarted — the restart is NOT conditional on your cooperation.**
+  When you stop, the daemon respawns your pane into a fresh session and hands it
+  exactly one prompt: `read <repo>/plan/<topic>/handoff.md and follow it`. Writing
+  `.overseer-ready` makes that restart IMMEDIATE; withholding it does not prevent
+  the restart, it only means you are force-restarted later from a handoff you
+  never refreshed.
+- **`plan/<topic>/handoff.md` is the ONLY artifact you hand forward.** Never leave
+  your resume state in a scratchpad file, a `/tmp` path, or this transcript — the
+  next session inherits NONE of it. If your real pending work has drifted from what
+  the handoff says, **REWRITE the handoff**. That file is yours to own; the overseer
+  never reads or writes it.
+- **Write exactly ONE of the two markers, always.** Done and clean →
+  `.overseer-ready`. Genuinely stopped on a HUMAN decision you cannot make →
+  `.overseer-blocked` (one-line reason); a blocked track is surfaced to the
+  maintainer and never auto-restarted. **"Neither" is not a valid outcome.**
+  Choosing which marker fits is yours; declining both is not.
+- **Never reason your way out of certifying.** A session once did exactly that: it
+  judged the resume line pointed at a stale handoff (because it had stashed its
+  live handoff in a scratchpad), refused to write either marker, explained itself in
+  prose, and stopped — wedging its track idle at 13% **forever**. The right move was
+  to rewrite the handoff and certify. If the resume path looks wrong, FIX THE
+  HANDOFF; the marker is not the place to register an objection.
+- **Stop your background work first.** Terminate every sub-agent and
+  `run_in_background` shell you started BEFORE writing the marker — their durable
+  state (worktrees, branches, the ledger) survives, and a restart with live
+  background processes is an incomplete handoff.
+
+(Maintainer-declared 2026-07-14, after the refusal above wedged a live track and
+the daemon — then holding a "never force-kill" rule — left it stalled forever. The
+daemon now force-restarts a stalled idle track regardless; this discipline is what
+keeps the restart CLEAN rather than merely forced.)
+
 ## Factory-dispatch over inline implementation
 
 The fleet is built around a **dark factory**: ready, factory-safe implementation
@@ -235,6 +274,14 @@ named section before acting; do not rely on this summary alone.
   lean by `tail`-capturing panes and delegating heavy authoring to sub-agents.
   Detail: this file §"Overseer / long-running-coordinator discipline" and the
   local `.claude/skills/overseer/SKILL.md`.
+- **Tracked-session wrap-up contract (overseer)** — if the overseer daemon pastes
+  a wrap-up into your pane, you WILL be restarted whether or not you cooperate;
+  `plan/<topic>/handoff.md` is the ONLY artifact the fresh session inherits (never
+  a scratchpad), and you MUST write exactly one of `.overseer-ready` /
+  `.overseer-blocked` — "neither" is not a valid outcome. If the resume path looks
+  stale, REWRITE the handoff; never withhold the marker to register an objection.
+  Detail: this file §"Tracked-session discipline — the overseer wrap-up contract"
+  and `.claude/skills/overseer/marker-protocol.md`.
 - **Factory-dispatch over inline implementation** — ready, factory-safe impl
   work-items are dispatched via `/livespec-orchestrator-beads-fabro:orchestrate`
   (Codex/Fabro sandbox), never hand-coded inline in Claude; inline Claude is for

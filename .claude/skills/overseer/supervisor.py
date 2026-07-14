@@ -20,12 +20,22 @@ detected FIRST so injection is suppressed there):
     working        is_busy                              → leave alone
     blocked:human  is_structured_gate OR .overseer-blocked → surface; suppress inject
     restarting     ready_marker_valid AND idle-input     → respawn + resume + delete marker
+    restarting     idle-stall past grace (danger, no marker) → FORCE respawn + resume
     warned/danger  ctx ≤ threshold AND idle-input        → stamp-then-paste wrap-up (danger surfaces)
     idle           ctx > threshold                       → leave alone
     settling       pane present but not verified idle     → wait
 
 ``restarting`` is checked BEFORE ``warned`` on purpose: a valid ready marker
 means the session already certified it is done, so it supersedes any re-warn.
+
+The auto-restart is NON-NEGOTIABLE (maintainer 2026-07-14): a warned session that
+STALLS idle at/below the danger line WITHOUT ever writing ``.overseer-ready`` (it
+refused, crashed, ran out of context, or autocompacted) is FORCE-restarted after
+a short idle-stall grace — the daemon's whole job is to keep the track moving, so
+a missing certification can never wedge a track forever. This is NOT the "never
+force-kill mid-work" case: the machine reaches the force-restart ONLY on a
+verified idle+settled pane (never busy), so files/worktrees are at a stopping
+point and survive ``respawn-pane -k``.
 """
 
 from __future__ import annotations
@@ -65,8 +75,11 @@ __all__ = [
 LOOP_INTERVAL_SECONDS = 10
 
 # The "danger" line, expressed in REMAINING-context percent: ~20% left ≈ 80%
-# used. At/below this with no valid ready marker the daemon SURFACES the stall
-# to the human — it NEVER force-kills a session mid-work (design).
+# used. At/below this with no valid ready marker the daemon SURFACES the stall to
+# the human AND — once the pane has been continuously idle-stalled here for
+# ``_STALL_RESTART_GRACE`` — FORCE-RESTARTS it (the non-negotiable auto-restart,
+# maintainer 2026-07-14). It still never force-kills a session mid-WORK: the
+# force-restart is reached only on a VERIFIED idle+settled pane, never a busy one.
 DANGER_CTX_REMAINING = 20
 
 # Bounded wait for a respawned pane to become a live Claude TUI before pasting
@@ -104,6 +117,23 @@ _SUBMIT_POLL = 0.5
 # restarted; a longer takeover is protected.
 _MARKER_VOID_GRACE = 120.0
 
+# Idle-stall force-restart grace. The auto-restart is NON-NEGOTIABLE (maintainer
+# 2026-07-14): a session warned to wrap up that then STALLS idle at/below the
+# danger line WITHOUT ever writing ``.overseer-ready`` (it refused, crashed, ran
+# out of context, or autocompacted) MUST still be restarted — the whole point of
+# the overseer is to keep the track moving, and a missing certification can never
+# be allowed to wedge a track forever. The daemon force-restarts such a track once
+# it has been CONTINUOUSLY idle+settled at/below danger for this long. The grace
+# (≈9 loop ticks) both lets a late ``.overseer-ready`` still win the clean marker
+# path first and gives the human a beat to intervene; it is measured from when the
+# idle-danger stall BEGAN (``danger_idle_since``, reset the instant the session
+# resumes work), so it counts only a genuine stall, never a brief idle dip between
+# wrap-up steps. This is NOT the "never force-kill mid-work" case: the state
+# machine reaches the force-restart ONLY on a VERIFIED idle+settled pane (never
+# busy — a busy pane is `working` and skipped), so files/worktrees are at a
+# stopping point and survive ``respawn-pane -k``.
+_STALL_RESTART_GRACE = 90.0
+
 
 # --------------------------------------------------------------------------- #
 # The wrap-up message + resume line. Single-sourced here so Build C's
@@ -111,15 +141,29 @@ _MARKER_VOID_GRACE = 120.0
 # --------------------------------------------------------------------------- #
 
 WRAPUP_TEMPLATE = """\
-You only have {n}% of your context remaining. Wrap up for a clean session restart:
- 1. Get your OWN work to a clean, resumable stopping point — your session owns its
-    handoff and everything under plan/; the overseer never touches those.
+You only have {n}% of your context remaining. Wrap up for a clean session restart.
+
+You WILL be restarted. That is automatic and NOT conditional on your cooperation.
+When you stop, this pane is respawned into a fresh session handed exactly ONE prompt:
+    read {handoff} and follow it
+So {handoff} is the ONLY thing the next session inherits. Do NOT leave your resume
+state anywhere else (a scratchpad file, this transcript) — it will be LOST. If your
+real pending work has drifted from what that file says, REWRITE that file to
+describe the actual next step.
+
+ 1. Bring your OWN work to a clean, resumable stopping point, and UPDATE {handoff}
+    to match. Your session owns its handoff and everything under plan/; the overseer
+    never reads or writes those.
  2. Stop every background sub-agent and subprocess you started.
- 3. ONLY when genuinely at a clean stopping point, WRITE the ready marker (do not
-    merely print it), then stop:
+ 3. Then WRITE the ready marker (do not merely print it) and stop:
         mkdir -p {marker_dir} && : > {marker_dir}/.overseer-ready
- If instead you are blocked on a human decision, write:
-        mkdir -p {marker_dir} && echo "<one-line summary>" > {marker_dir}/.overseer-blocked"""
+    It certifies you are done, and restarts you IMMEDIATELY.
+ If instead you are blocked on a HUMAN decision you cannot make yourself, write this
+ one instead and stop — a blocked track is surfaced to the human, never auto-restarted:
+        mkdir -p {marker_dir} && echo "<one-line summary>" > {marker_dir}/.overseer-blocked
+
+Write ONE of the two markers. Declining to write either does NOT prevent the restart —
+it only means you get force-restarted later, from a handoff you never refreshed."""
 
 
 def wrapup_message(*, remaining: int, repo: str, topic: str) -> str:
@@ -128,10 +172,23 @@ def wrapup_message(*, remaining: int, repo: str, topic: str) -> str:
     ``remaining`` fills ``{n}`` (the CURRENT remaining-context percent, so an
     escalating re-warn reflects the live value); ``repo``/``topic`` build the
     TEMP marker dir (``<repo>/tmp/overseer/<topic>/``) the session writes into —
-    never anything under ``plan/``.
+    never anything under ``plan/`` — and the ``plan/<topic>/handoff.md`` path the
+    restart will resume FROM.
+
+    The message states plainly that the restart is NOT conditional on the session's
+    cooperation (invariant 7) and that the handoff is the only inherited artifact.
+    A tracked session once REFUSED to certify — reasoning that the resume line
+    pointed at a handoff which no longer matched its real pending work, which it had
+    stashed in a scratchpad — and thereby wedged its track idle at 13% forever. The
+    correct response to that drift is to REWRITE the handoff, not to withhold the
+    marker; naming the handoff path here makes that unambiguous. Constructing the
+    path is pure string work (``default_handoff``): the overseer POINTS at the
+    handoff, exactly as the resume line does, and never opens it.
     """
     marker_dir = str(signals.marker_dir(repo, topic))
-    return WRAPUP_TEMPLATE.format(n=remaining, marker_dir=marker_dir)
+    return WRAPUP_TEMPLATE.format(
+        n=remaining, marker_dir=marker_dir, handoff=default_handoff(repo, topic)
+    )
 
 
 def default_handoff(repo: str, topic: str) -> str:
@@ -194,16 +251,21 @@ class RowView:
 class _InjectState:
     """Per-track wrap-up bookkeeping (in-memory; reset on restart/recovery).
 
-    Only ``last_ctx`` remains here: the last KNOWN remaining-% (used by
+    ``last_ctx`` is the last KNOWN remaining-% (used by
     :meth:`Supervisor._effective_ctx` when a tick reads ctx as unknown — design:
-    keep last known, and unknown never triggers a crossing). The injection-round
-    timestamp and the set of already-notified escalation bands are now DURABLE, in
-    the injection-stamp sidecar (``registry.read_injection_stamp`` /
-    ``read_notified_bands`` / ``add_notified_band``), so a daemon restart never
-    re-spams a band it already sent — they are no longer in-memory here.
+    keep last known, and unknown never triggers a crossing). ``danger_idle_since``
+    tracks when the current CONTINUOUS idle-stall at/below the danger line began,
+    driving the NON-NEGOTIABLE force-restart (``_STALL_RESTART_GRACE``); it is reset
+    to None the moment the session is not idle-stalled (resumed work / certified /
+    recovered context). The injection-round timestamp and the set of
+    already-notified escalation bands are DURABLE, in the injection-stamp sidecar
+    (``registry.read_injection_stamp`` / ``read_notified_bands`` /
+    ``add_notified_band``), so a daemon restart never re-spams a band it already
+    sent — they are not in-memory here.
     """
 
     last_ctx: int | None = None
+    danger_idle_since: float | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -601,15 +663,25 @@ class Supervisor:
             if act:
                 self._maybe_inject(track, target, eff_ctx, threshold)
             if eff_ctx <= DANGER_CTX_REMAINING and not ready:
-                status = "danger"
-                if act:
-                    self._surface(
-                        f"{repo}::{topic} won't wrap up (ctx {eff_ctx}% left, no ready marker)"
-                    )
+                status = self._danger_or_force_restart(
+                    track, target, key, eff_ctx, warned=stamp is not None, act=act
+                )
             else:
                 status = "warned"
         else:
             status = "idle"
+
+        # The idle-stall force-restart clock accrues ONLY across a CONTINUOUS
+        # idle-danger stall. Any OTHER resolved state (working, blocked, warned
+        # above danger, idle) means the session is not stalled, so reset it — a
+        # brief idle dip must never count toward the non-negotiable force-restart.
+        # ``restarting`` is excluded so a FAILED force-restart retries promptly
+        # instead of resetting its own grace (a SUCCESSFUL restart already popped
+        # the state), and ``danger`` is excluded because that IS the accruing stall.
+        if act and status not in ("danger", "restarting"):
+            st = self._inject.get(key)
+            if st is not None:
+                st.danger_idle_since = None
 
         return RowView(
             topic=topic,
@@ -619,6 +691,65 @@ class Supervisor:
             status=status,
             note=blocked if blocked else None,
         )
+
+    def _danger_or_force_restart(
+        self,
+        track: registry.Track,
+        target: str,
+        key: tuple[str, str],
+        eff_ctx: int,
+        *,
+        warned: bool,
+        act: bool,
+    ) -> str:
+        """A warned track STALLED idle at/below the danger line with no ready marker.
+
+        The auto-restart is NON-NEGOTIABLE (maintainer 2026-07-14): the daemon's
+        whole job is to keep the track moving, so a session that never certifies —
+        because it refused, crashed, ran out of context, or autocompacted — is
+        FORCE-restarted rather than surfaced-and-left-forever (the old "danger →
+        surface only, never force-kill" behavior, which wedged a real track
+        indefinitely — the exact bug this fixes). Reached ONLY from the idle branch
+        of :meth:`evaluate`, so the pane is already verified idle + settled +
+        managed-Claude + no valid marker — i.e. at a stopping point, NOT mid-work;
+        ``respawn-pane -k`` replaces the process while every file / worktree / commit
+        on disk survives, and the resume line points the fresh session back at
+        ``plan/<topic>/handoff.md``.
+
+        The force-restart fires once the track has been continuously idle-stalled
+        for ``_STALL_RESTART_GRACE`` (measured from ``danger_idle_since``, first set
+        the tick the stall is observed and reset by :meth:`evaluate` whenever the
+        session is not idle-stalled). The grace lets a late ``.overseer-ready`` still
+        win the clean marker path first and gives the human a beat to intervene.
+        ``warned`` (an injection stamp exists) guards that a wrap-up was actually
+        delivered before we force a restart — if the pane is so broken the wrap-up
+        never landed, we keep surfacing rather than respawn into a broken tmux.
+        Returns the row status: ``restarting`` when the force-restart fires, else
+        ``danger``.
+        """
+        repo, topic = track.repo, track.topic
+        if not act:
+            return "danger"
+        state = self._inject.setdefault(key, _InjectState())
+        if state.danger_idle_since is None:
+            state.danger_idle_since = self.now()
+        stalled = self.now() - state.danger_idle_since
+        if warned and stalled >= _STALL_RESTART_GRACE:
+            self._surface(
+                f"{repo}::{topic} stalled idle at ctx {eff_ctx}% with no ready marker "
+                f"for {stalled:.0f}s — force-restarting (auto-restart is non-negotiable)"
+            )
+            self._do_restart(track, target, certified=False)
+            return "restarting"
+        detail = (
+            f"force-restart in {_STALL_RESTART_GRACE - stalled:.0f}s"
+            if warned
+            else "awaiting wrap-up delivery"
+        )
+        self._surface(
+            f"{repo}::{topic} won't wrap up (ctx {eff_ctx}% left, no ready marker); {detail}"
+        )
+        return "danger"
 
     def _maybe_inject(
         self, track: registry.Track, target: str, eff_ctx: int, threshold: int
@@ -660,31 +791,37 @@ class Supervisor:
                 registry.clear_injection_stamp(repo, topic, self.stamp_path)
             self._surface(f"{repo}::{topic} wrap-up injection failed; will retry")
 
-    def _do_restart(self, track: registry.Track, target: str) -> None:
+    def _do_restart(self, track: registry.Track, target: str, *, certified: bool = True) -> None:
         """Atomic restart interlock: respawn → wait Claude → resume → close the round.
 
         ``target`` is the resolved pane id (RB3), STABLE across the respawn.
 
+        Shared by BOTH restart callers: the marker path (``certified=True`` — the
+        session wrote a valid ``.overseer-ready``) and the idle-stall FORCE path
+        (``certified=False`` — a warned track that never certified, per
+        :meth:`_danger_or_force_restart`). The respawn + resume mechanics are
+        identical; ``certified`` only changes the failure-surface wording (there is
+        no marker to "keep" on the force path). ``_void_ready_marker``'s unlink is
+        ``missing_ok``, so the force path (no marker on disk) still clears the round
+        — stamp + notified bands + in-memory state — cleanly.
+
         Every tmux step is a HARD GATE (B5). If ``respawn-pane`` fails, or the
         pane never becomes a live Claude, the daemon SURFACES the failure and
-        RETURNS WITHOUT deleting the ready marker — so the session's certification
-        is preserved and the restart is retried, never silently destroyed. The
-        marker is voided (and the injection stamp cleared — B4) only once the
-        respawn is confirmed; the resume-submit result is surfaced but does not
-        block voiding, because the fresh Claude IS up (a stale marker would else
-        re-restart and kill it, and B3's identity gate already blocks re-acting on
-        a non-Claude pane). ``_void_ready_marker`` also pops the in-memory inject
-        state (RB2), so the redundant explicit pop below is belt-and-suspenders.
+        RETURNS WITHOUT closing the round — so a valid certification is preserved and
+        the restart is retried, never silently destroyed. The round is closed (and
+        the injection stamp cleared — B4) only once the respawn is confirmed; the
+        resume-submit result is surfaced but does not block closing, because the
+        fresh Claude IS up (a stale marker would else re-restart and kill it, and
+        B3's identity gate already blocks re-acting on a non-Claude pane).
+        ``_void_ready_marker`` also pops the in-memory inject state (RB2), so the
+        redundant explicit pop below is belt-and-suspenders.
         """
+        keep = "keeping ready marker" if certified else "will retry next tick"
         if not self.tmux.respawn_pane(target, track.repo, self._launch_command(track)):
-            self._surface(
-                f"{track.repo}::{track.topic} restart respawn FAILED; keeping ready marker"
-            )
+            self._surface(f"{track.repo}::{track.topic} restart respawn FAILED; {keep}")
             return
         if not self._await_claude(target):
-            self._surface(
-                f"{track.repo}::{track.topic} respawned pane never became Claude; keeping ready marker"
-            )
+            self._surface(f"{track.repo}::{track.topic} respawned pane never became Claude; {keep}")
             return
         resume = track.resume or default_resume(track.repo, track.topic)
         if not self._submit_prompt(target, resume):
@@ -695,8 +832,17 @@ class Supervisor:
 
     @staticmethod
     def _launch_command(track: registry.Track) -> str:
-        """``claude -n <topic>`` with the topic shell-quoted (defensive, B-nit)."""
-        return f"claude -n {shlex.quote(track.topic)}"
+        """The (re)start command: ``claude --dangerously-skip-permissions -n <topic>``.
+
+        ``--dangerously-skip-permissions`` is REQUIRED (maintainer 2026-07-14): a
+        (re)started track must resume AUTONOMOUSLY. Without it the fresh session
+        stalls on the first permission prompt and the whole point of the
+        auto-restart — an unattended, hands-off resume — is lost. ``-n <topic>``
+        (topic shell-quoted, defensive) sets the session's display name; the resume
+        line (read the handoff) is pasted AFTER launch, since a ``claude "<prompt>"``
+        argv only pre-fills without submitting.
+        """
+        return f"claude --dangerously-skip-permissions -n {shlex.quote(track.topic)}"
 
     def _await_claude(self, target: str) -> bool:
         """Poll ``#{pane_current_command}`` until it is a live Claude TUI, bounded.
@@ -752,8 +898,9 @@ class Supervisor:
 
         Run ONCE at daemon startup: a fresh overseer reads the mapping, and for
         each row whose ``<repo-slug>--<topic>`` session is gone, creates the
-        session, launches ``claude -n <topic>`` in the repo, and pastes the
-        resume line. Not a per-tick action (a session the user deliberately
+        session, launches ``claude --dangerously-skip-permissions -n <topic>`` in
+        the repo (:meth:`_launch_command`), and pastes the resume line. Not a
+        per-tick action (a session the user deliberately
         kills should not be revived every 10s). Returns the recovered names.
         """
         recovered: list[str] = []
@@ -782,7 +929,7 @@ class Supervisor:
         return recovered
 
     def _do_launch(self, track: registry.Track, session: str) -> bool:
-        """Launch ``claude -n <topic>`` into ``session`` and paste the resume line.
+        """Launch ``claude --dangerously-skip-permissions -n <topic>`` and paste the resume line.
 
         ``session`` is the (just-created or existing) session NAME; the pane id is
         resolved from it and every pane op targets that id (RB3). Returns True iff

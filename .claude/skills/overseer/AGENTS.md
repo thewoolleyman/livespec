@@ -64,9 +64,15 @@ conformance checks, or any other repo.
 2. **The overseer stays thin.** The interactive bottom pane never does track
    work inline and never polls the tracked sessions from the Claude pane on a
    timer. Watching is the daemon's job.
-3. **Surface-only.** The daemon NEVER auto-spawns a session. Launching a plan is
-   a deliberate act (`start`, user-initiated). A discovered plan with no session
-   shows as `unassigned`, flagged ready to start — never started automatically.
+3. **Surface-only for UNASSIGNED plans.** The daemon NEVER auto-spawns a session
+   for a plan that has none. Launching a plan is a deliberate act (`start`,
+   user-initiated); a discovered plan with no session shows as `unassigned`,
+   flagged ready to start — never started automatically. This scopes the FIRST
+   launch ONLY. It does **not** weaken invariant 7: an ALREADY-TRACKED session
+   that is warned and then stalls IS restarted automatically and non-negotiably.
+   Restarting a tracked session is the daemon's core job — it is not an
+   auto-spawn, and "surface-only" must never be cited to justify leaving a
+   stalled track wedged.
 4. **Discovery-driven list; JSONL = mapping only.** The track list is
    re-discovered from each watched repo's `plan/*/` every tick. The JSONL store
    (`~/.livespec-overseer.jsonl`) holds ONLY facts that cannot be rederived from
@@ -116,6 +122,47 @@ conformance checks, or any other repo.
    are not adopted (a documented gap; codex would need its own session-store read).
    (Per-session pane reads — `pane_id`/`pane_current_command`/`pane_current_path` —
    go through `list-panes`, not the flaky-for-detached-sessions `display-message`.)
+7. **The auto-restart is NON-NEGOTIABLE (maintainer-declared 2026-07-14).** The
+   overseer's entire reason to exist is: watch a tracked session's context, make
+   it wrap up, then **exit it, restart it with a fresh context, and re-kick it
+   from its handoff — unattended**. Those are REQUIREMENTS, not best-effort:
+
+   - **(a) exit + restart** — realized as the ATOMIC `respawn-pane -k` (kill the
+     pane's process and launch the new one in a single tmux op), NOT a `/exit`
+     followed by a scrape for the shell prompt. The `❯` glyph is ambiguously BOTH
+     the Claude idle prompt and the zsh prompt, so a mis-timed "the shell is
+     back" would type into the still-live session.
+   - **(b) `claude --dangerously-skip-permissions -n <topic>`** — BOTH flags are
+     required (`Supervisor._launch_command`). Without
+     `--dangerously-skip-permissions` the fresh session stalls on its first
+     permission prompt and the restart is NOT autonomous, which defeats the whole
+     mechanism; `-n <topic>` re-assigns the session name from the plan topic.
+   - **(c) the resume line** — `read <repo>/plan/<topic>/handoff.md and follow it`,
+     bracketed-pasted AND verify-submitted once the fresh TUI is up
+     (`default_resume` + `_submit_prompt`). A `claude "<prompt>"` argv only
+     PRE-FILLS the box without submitting — which is why the resume line is pasted
+     after launch rather than passed on the command line.
+
+   **A missing certification MUST NOT wedge a track.** The `.overseer-ready` marker
+   is the FAST path (certify → restart immediately) — it is **never a veto**. A
+   warned session that stalls idle at/below `DANGER_CTX_REMAINING` without ever
+   certifying — because it refused, crashed, ran out of context, or autocompacted —
+   is **FORCE-restarted** once it has been continuously idle-stalled for
+   `_STALL_RESTART_GRACE` (`Supervisor._danger_or_force_restart`). This REPLACED the
+   original "danger → surface to the human, NEVER force-kill" behavior, which wedged
+   a real track idle at 13% **forever** because the session reasoned its way out of
+   writing the marker. If you ever make the restart conditional on the tracked
+   session's cooperation again, you have reintroduced that exact bug.
+
+   **This is NOT a mid-work kill — that safety rail still holds.** The force-restart
+   is reachable ONLY from the idle branch of `evaluate`, so the pane is already
+   verified not-busy, `_pane_settled` (two captures apart), identity-gated Claude,
+   NOT at a structured gate, and NOT `.overseer-blocked`. A BUSY pane is `working`
+   and is never touched; a human-gated pane is `blocked:human` and is never
+   restarted. `respawn-pane -k` replaces the PROCESS — every file, worktree, and
+   commit on disk survives it. The stall clock (`_InjectState.danger_idle_since`)
+   resets the instant the session resumes work, so only a genuine, continuous stall
+   ever accrues toward the grace.
 
 ## Load-bearing mechanics + gotchas
 
@@ -179,26 +226,46 @@ conformance checks, or any other repo.
   (so a subsequent marker has `mtime > stamp`) and DELETES the marker as it
   restarts (so it can never re-trigger). The full contract is in
   `marker-protocol.md`; keep it and `supervisor.py`'s `WRAPUP_TEMPLATE` in sync.
+  **The marker is the FAST path, not a VETO** (invariant 7): it buys an IMMEDIATE
+  restart, but withholding it only delays one — a warned track that stalls idle at
+  danger without certifying is force-restarted after `_STALL_RESTART_GRACE`. Never
+  reshape this into "no marker ⇒ no restart."
+- **Idle-stall force-restart (`_danger_or_force_restart` + `_STALL_RESTART_GRACE`).**
+  The fallback that makes invariant 7 true. Reached only from the idle branch, so
+  the pane is already not-busy + settled + identity-gated + not-gated + not-blocked;
+  `_InjectState.danger_idle_since` timestamps when the CONTINUOUS idle-danger stall
+  began and `evaluate` resets it on any non-stall status, so a brief idle dip never
+  accrues. Guarded on `warned` (an injection stamp exists ⇒ the wrap-up actually
+  LANDED): if the pane is so broken that every wrap-up paste fails, the round is
+  rolled back and the daemon keeps surfacing rather than respawning into a broken
+  tmux. Restart failures keep the grace (so the next tick retries promptly) rather
+  than resetting it.
 - **State precedence.** `working` and `blocked:human` are evaluated FIRST, so an
   injection/keystroke is suppressed while a pane is busy or showing a structured
   gate (permission prompt / picker) — never keystroke into a gate. `restarting`
   is checked before `warned` (a valid ready marker supersedes any re-warn).
 - **Atomic restart via `respawn-pane -k`, proven by `#{pane_current_command}`.**
   Restart replaces the pane's process in one step (`respawn-pane -k -c <repo>
-  'claude -n <topic>'`) — NEVER `/exit` then screen-scrape a shell prompt. The
-  `❯` glyph is ambiguously BOTH the Claude idle prompt and the zsh prompt, so a
-  mis-timed "shell is back" could type `claude …` into the still-live session.
-  Wait for the fresh TUI by polling `#{pane_current_command}` → `node`/`claude`
-  (`signals.pane_is_claude`), never by scraping `❯`. The abrupt kill is safe:
-  the interlock already proved this round's ready marker exists (the session
-  certified it is at a clean stopping point).
-- **`claude -n <topic>`** sets the session's display name in the prompt box, the
-  `--resume` picker, AND the terminal title (which tmux surfaces) — a cleaner
-  equivalent of typing `/rename`. The shipped restart passes `-n <topic>` and
-  then pastes the resume line as the first prompt (a `claude "<prompt>"` argv
-  only pre-fills, no auto-submit — which is why the resume line is pasted after
-  launch, not passed on the command line). Related `claude` flags to know:
-  `--session-id` and `--resume`.
+  'claude --dangerously-skip-permissions -n <topic>'`) — NEVER `/exit` then
+  screen-scrape a shell prompt. The `❯` glyph is ambiguously BOTH the Claude idle
+  prompt and the zsh prompt, so a mis-timed "shell is back" could type `claude …`
+  into the still-live session. Wait for the fresh TUI by polling
+  `#{pane_current_command}` → `node`/`claude` (`signals.pane_is_claude`), never by
+  scraping `❯`. The abrupt kill is safe on BOTH restart paths, for the same
+  underlying reason — the pane is at a stopping point, and the kill destroys only
+  the PROCESS (files, worktrees, and commits on disk survive): on the marker path
+  the session explicitly certified it; on the force path the daemon proved the pane
+  was continuously idle + settled for the whole grace, i.e. not mid-work.
+- **`claude --dangerously-skip-permissions -n <topic>`** is the launch command
+  (`_launch_command`), and BOTH flags are load-bearing.
+  `--dangerously-skip-permissions` makes the restarted session AUTONOMOUS — without
+  it the fresh session stalls on its first permission prompt and the auto-restart
+  silently accomplishes nothing (invariant 7b). `-n <topic>` sets the session's
+  display name in the prompt box, the `--resume` picker, AND the terminal title
+  (which tmux surfaces) — a cleaner equivalent of typing `/rename`. The resume line
+  is then pasted as the first prompt (a `claude "<prompt>"` argv only pre-fills, no
+  auto-submit — which is why it is pasted after launch, not passed on the command
+  line). Related `claude` flags to know: `--session-id` and `--resume`.
 
 ## Build / toolchain facts
 

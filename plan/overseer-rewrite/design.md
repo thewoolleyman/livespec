@@ -12,10 +12,16 @@ top-pane supervisor daemon** (plain Python) that keeps multiple parallel
 livespec plan tracks moving across tmux sessions. Each track is a Claude Code
 session running a plan thread in some repo. The daemon watches every tracked
 session's **context %**, and when a session crosses a threshold it injects a
-wrap-up instruction; the session updates its own `handoff.md`, certifies it is
-at a clean stopping point by printing a **sentinel line**, and the daemon then
-**restarts that session with a fresh context** (renamed to the plan topic) and
-pastes the resume line as the first prompt. The list of tracks is
+wrap-up instruction; the session updates its own `handoff.md` and certifies it is
+at a clean stopping point by writing an out-of-band **`.overseer-ready` marker
+file** (the original design said "printing a sentinel line" — the adversarial
+review replaced that with marker files, since pane text cannot certify), and the
+daemon then **restarts that session with a fresh context** (renamed to the plan
+topic) and pastes the resume line as the first prompt.
+
+**The restart is NON-NEGOTIABLE.** Certifying only makes it IMMEDIATE. A warned
+session that stalls idle at the danger line without ever certifying is
+**force-restarted** anyway — see §"The certification protocol". The list of tracks is
 **auto-discovered** from each watched repo's `plan/` directory; a persistent
 `~/.livespec-overseer.jsonl` stores only the durable **topic↔tmux-session
 mapping** needed for crash/reboot recovery.
@@ -141,9 +147,9 @@ and `blocked:human` are detected BEFORE any injection can occur.
 | `blocked:human` | structured-gate UI (permission prompt / picker) on the pane, or a `.overseer-blocked` marker file | show in table; surface to the bottom pane; **suppress injection** (never keystroke into a gate) |
 | `idle` | verified idle-input state, ctx above threshold | leave alone |
 | `warned` | ctx `left ≤ threshold` (default 50) **and** verified idle-input state | record an injection stamp, then **bracketed-paste** the wrap-up once; re-send once if ctx keeps climbing |
-| `ready → restart` | fresh **`.overseer-ready` marker** (mtime > injection stamp, contents = daemon's `sha256sum` of the on-disk handoff) **and** no busy markers **and** verified idle-input | `respawn-pane -k -c <repo> 'claude -n <topic>'` → wait for `pane_current_command` transition → bracketed-paste resume line → delete marker → `working` |
+| `ready → restart` | fresh **`.overseer-ready` marker** (mtime > injection stamp; presence + freshness ONLY — contents are never inspected) **and** no busy markers **and** verified idle-input | `respawn-pane -k -c <repo> 'claude --dangerously-skip-permissions -n <topic>'` → wait for `pane_current_command` transition → bracketed-paste + verify-submit the resume line → delete marker → `working` |
 | (removed) | `<repo>/plan/<topic>/` archived or gone | drop the mapping row; note it |
-| danger | ctx ≈80% with no ready marker | **surface to the human; NEVER force-kill a session mid-work** |
+| `danger → FORCE restart` | ctx ≤ ~20% left, **no** ready marker, and the pane has been continuously **idle + settled** there past `_STALL_RESTART_GRACE` | **surface to the human AND force-restart** — identical respawn + resume mechanics as the row above. The auto-restart is NON-NEGOTIABLE (2026-07-14). Still **never force-kills a session mid-WORK**: a `working` (busy) pane and a `blocked:human` pane are both exempt |
 
 ### Signal sources (what is trusted from where)
 
@@ -217,9 +223,42 @@ message — role-aware, so it distinguishes session output from injected user
 input. Kept as a cross-check only; the marker file is authoritative because the
 transcript format is internal and unstable.)
 
-**Guards.** If ctx keeps climbing with no ready marker, re-send the wrap-up once
-after a few minutes; at a danger line (~80%) still with no marker, surface
-"track X won't wrap up" to the human rather than force-kill.
+**Guards.** If ctx keeps climbing with no ready marker, re-warn on each lower
+escalation band (each fires at most once per round, durably).
+
+**The restart is NON-NEGOTIABLE — superseding this section's original guard
+(2026-07-14).** This design originally ended the escalation at the danger line
+(~20% left) by *surfacing* "track X won't wrap up" to the human **rather than
+force-killing**. That was wrong, and it failed in exactly the way a
+judgment-holding session can make it fail: a tracked session reached 13% left,
+was warned, decided the resume line pointed at a handoff that no longer described
+its real pending work (which it had stashed in a scratchpad instead of in
+`plan/<topic>/handoff.md`), and therefore **refused to write either marker** —
+explaining its reasoning in prose and stopping. The daemon, holding "never
+force-kill", surfaced the stall and left the track wedged **forever**. The whole
+purpose of the overseer — keep the track moving by restarting it — was defeated
+by the tracked session declining to cooperate.
+
+So the marker is now a **fast path, not a veto**. A warned track that stalls
+**idle** at/below the danger line without certifying is **force-restarted** once it
+has been continuously idle + settled there for `_STALL_RESTART_GRACE`, running the
+identical respawn + resume mechanics as the certified path. Two things make this
+safe, and they are exactly the residue of the original guard worth keeping:
+
+- **"Never force-kill mid-work" still holds** — because *mid-work means busy*. The
+  force-restart is reachable only from the idle branch: not-busy, `_pane_settled`
+  across two captures, identity-gated Claude, not at a structured gate, and not
+  `.overseer-blocked`. A busy pane is `working` and is never touched; a
+  human-gated pane is never restarted. The stall clock resets the instant the
+  session resumes work, so only a genuine continuous stall accrues.
+- **`respawn-pane -k` kills a PROCESS, not WORK** — every file, worktree, commit,
+  and branch on disk survives it. The only thing a session can actually lose by
+  being force-restarted is resume state it chose to keep *outside*
+  `plan/<topic>/handoff.md` — which is why the wrap-up now states plainly that the
+  restart is coming regardless and that the handoff is the ONLY inherited artifact.
+
+The human still gets the `danger` surface; they simply no longer have to *act* on
+it for the track to move.
 
 ## Context-% reading (anchored, fail-closed)
 
