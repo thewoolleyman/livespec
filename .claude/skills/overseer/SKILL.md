@@ -2,24 +2,29 @@
 name: overseer
 description: >-
   Keep multiple parallel livespec tracks moving via a TWO-PANE model: a
-  deterministic top-pane daemon (`overseerd`) that watches every tracked
-  tmux session's context %, injects a wrap-up at threshold, and atomically
-  restarts the session — immediately once it certifies done, or by FORCE once it
-  has stalled idle at the danger line without certifying (the auto-restart is
-  NON-NEGOTIABLE: exit + `claude --dangerously-skip-permissions -n <topic>` +
-  re-kick from `plan/<topic>/handoff.md`) — and this THIN bottom pane, the
-  interactive Claude overseer, which starts the daemon, manages the
-  discovery-driven auto-managed track list via a JSONL topic↔tmux mapping
-  (`add`/`remove`/`unassign`/`start`), and SURFACES the blocked/danger tracks
-  the daemon reports, each WITH a recommendation. The list is discovered from
-  each watched repo's `plan/` dir; certification is OUT-OF-BAND on the
-  filesystem (`.overseer-ready`/`.overseer-blocked` markers), never pane text.
-  The daemon never auto-spawns a session for an UNASSIGNED plan (first launch is
-  deliberate) and never force-kills a BUSY one. The overseer does NO
-  track work, never polls tracked sessions on a timer, never hand-codes.
-  LOCAL-ONLY to this repo and usable only from it — a PERMANENT, human-supervised
-  ALTERNATE to autonomous mode (not a stopgap): not part of the plugin, spec,
-  template, or fleet, and not synced.
+  deterministic top-pane daemon (`overseerd`) that watches every tracked tmux
+  session's context %, injects an ESCALATING wrap-up at threshold, and
+  atomically restarts a session ONLY once that session declares itself `ready`
+  (exit + `claude --dangerously-skip-permissions -n <topic>` + re-kick from
+  `plan/<topic>/handoff.md`) — THE CARDINAL RULE: the daemon NEVER restarts a
+  session that has not declared itself ready, because only the session knows
+  whether it is safe to kill; one that declares nothing is REPORTED as not
+  responding and left alone — and this THIN bottom pane, the interactive Claude
+  overseer, which starts the daemon, manages the discovery-driven auto-managed
+  track list via a JSONL topic↔tmux mapping (`add`/`remove`/`unassign`/`start`),
+  and RELAYS the tracks the daemon reports as non-blocking text naming the tmux
+  session + pane to go to. NOTIFY, NEVER BLOCK: a question may only be asked by
+  the actor that OWNS the decision, so the overseer never raises a blocking
+  prompt for a TRACK's decision (answer that in the track's own pane); it prompts
+  only for decisions it owns (add/remove/unassign/start, threshold). The list is
+  discovered from each watched repo's `plan/` dir; declaration is OUT-OF-BAND on
+  the filesystem — ONE `.overseer-state` file valued `ready` / `blocked: <reason>`
+  / `winding-down` — never pane text. The daemon never auto-spawns a session for
+  an UNASSIGNED plan (first launch is deliberate) and never force-kills any
+  session. The overseer does NO track work, never polls tracked sessions on a
+  timer, never hand-codes. LOCAL-ONLY to this repo and usable only from it — a
+  PERMANENT, human-supervised ALTERNATE to autonomous mode (not a stopgap): not
+  part of the plugin, spec, template, or fleet, and not synced.
 ---
 
 # Overseer — thin bottom pane for the deterministic multi-track supervisor
@@ -60,23 +65,34 @@ Two panes in the overseer's own tmux window:
   logic) — a stdlib Python process that both *acts* and *renders the table*. No
   LLM, no tokens. Every ~10s it
   discovers plans, joins the JSONL mapping, reads each tracked session's live
-  pane + marker files, injects wrap-ups, restarts certified-done sessions
-  (and FORCE-restarts ones that stall idle at the danger line without ever
-  certifying — the restart is non-negotiable), and
+  pane + its one state file, injects escalating wrap-ups, restarts the sessions
+  that have declared themselves `ready`, reports the ones that have not, and
   reprints the live `Topic · Repo · tmux · Ctx% · Status` table (re-rendered
   from live captures each tick, so it can never freeze on a stale snapshot).
 - **BOTTOM pane = this interactive Claude overseer** (thin) — starts the daemon,
-  takes plain-text commands to manage the track list, and surfaces the daemon's
-  blocked/danger alerts to the maintainer WITH a recommendation. It does NO
-  track work.
+  takes plain-text commands to manage the track list, and RELAYS the daemon's
+  track reports to the maintainer as non-blocking text, each naming where to go
+  and carrying a recommendation. It does NO track work.
 
 **All semantic judgment lives in the tracked session's own LLM**, expressed
-out-of-band via marker files; the daemon only pattern-matches deterministic
-tmux signals and those markers — the force-restart included, which fires on a
-purely mechanical rule (idle + settled + at the danger line + past the grace) and
-never on a judgment about whether the session's WORK is done. A session's marker
-decides *when* it is restarted and *from what*; it never decides *whether*. See
-`marker-protocol.md`.
+out-of-band via its ONE state file; the daemon only pattern-matches deterministic
+tmux signals and that file.
+
+> **THE CARDINAL RULE (maintainer-declared 2026-07-14): the daemon NEVER restarts
+> a session that has not declared itself `ready`.** A session's own `ready`
+> declaration is the SOLE authorization for a restart — the daemon never infers it
+> from a timer, from idleness, or from how low the context has fallen. **"Idle +
+> settled" is NOT "at a safe stopping point"**: a session can be idle while a
+> background build runs, while a sub-agent works, or while it waits on a human in
+> another pane. Only the session knows, so only the session may say so. A session
+> that declares nothing is **reported to you as not responding and left alone** —
+> that is a bug in the SESSION, never a licence for the daemon to guess. (This
+> replaced a previously-shipped timer-based force-restart, which was a severe bug.)
+
+The session declares itself by writing ONE line to ONE file
+(`<repo>/tmp/overseer/<topic>/.overseer-state`), valued `ready`,
+`blocked: <one-line reason>`, or `winding-down` (the "I heard you, wrapping up
+now" ACK). See `marker-protocol.md`.
 
 ---
 
@@ -140,11 +156,15 @@ That one command (a self-invokable `uv` script) does everything deterministicall
 - **Escalating, spam-proof wrap-ups.** Once a track drops to/below the warn
   threshold the daemon injects the wrap-up ONCE, then once more each time
   remaining crosses a lower 10%-band (40, 30, 20, 10) — each band at most once.
-  The crossed bands + the round timestamp are tracked in a DURABLE sidecar, so a
-  daemon restart never re-spams a band already sent; multiple bands crossed in one
-  tick coalesce into a single message. The escalation stops when the session wraps
-  up (writes its ready marker) or is restarted (which resets the round so the bands
-  can fire again next round).
+  The message **sharpens** with the band: a SUGGESTION to start wrapping up above
+  30% remaining, an insistent "STOP AND WIND DOWN NOW" at 30 / 20 / 10. With the
+  old force-restart gone, this escalation is the daemon's ONLY lever. The crossed
+  bands + the round timestamp are tracked in a DURABLE sidecar, so a daemon restart
+  never re-spams a band already sent; multiple bands crossed in one tick coalesce
+  into a single message. Re-warns STOP as soon as the session acknowledges with
+  `winding-down` (the daemon never keystrokes into a session that is actively
+  wrapping up), and the round resets on a restart so the bands can fire again in
+  the next round.
 
 **The watch-set + the list.** The daemon watches every fleet-manifest repo
 (fleet members + adopters) that has a local checkout with a `plan/` dir — read
@@ -153,8 +173,25 @@ watched repo it discovers `plan/*/` (excluding `plan/archive/**`) and shows
 **one row per unarchived plan topic** — including plans with **no session**
 (status `unassigned`, flagged ready to start). The row's tmux, Ctx%, and
 lifecycle status come from the JSONL mapping ⋈ the live pane. Table statuses you
-will see: `unassigned`, `idle`, `working`, `settling`, `warned`, `danger`,
-`restarting`, `blocked:human`, `session-gone`.
+will see:
+
+| Status | Meaning |
+|---|---|
+| `unassigned` | a discovered plan with no session — startable, never auto-started |
+| `idle` | at an empty prompt, context above its warn threshold |
+| `working` | busy — actively generating, or a live background shell under its pane |
+| `settling` | the pane is present but not yet a verified idle state; wait |
+| `warned` | at/below the warn threshold, wrap-up injected, nothing declared yet |
+| `winding-down` | the session ACKed the wrap-up and is wrapping up; re-warns suppressed |
+| `danger` | at/below **20%** remaining with **nothing declared** — reported loudly, **never acted on** |
+| `restarting` | the session declared `ready`; the daemon is respawning + re-kicking it |
+| `blocked:human` | a structured gate on the pane, or a `blocked: <reason>` declaration |
+| `session-gone` | the mapped tmux session no longer exists |
+| `not-claude` | the mapped pane is not a live Claude in that repo — never keystroked |
+
+A `danger` row is a **report, not a decision the daemon will make for you**: the
+overseer will not restart an undeclared session, so a `danger` track sits there
+until a human acts. See "Your job as the bottom pane" below.
 
 ---
 
@@ -192,8 +229,8 @@ keyword flags. (`<cmd>` is one of `list` / `add` / `remove` / `unassign` /
   `claude --dangerously-skip-permissions -n <topic>` in the repo, paste the resume
   line, and map it. **The daemon NEVER auto-spawns a session for an unassigned
   plan** — the FIRST launch of a plan is a deliberate act (the maintainer, via
-  you). That scopes first launches only: an already-tracked session that stalls IS
-  restarted automatically (see `danger` below). Pass
+  you). An already-tracked session is restarted automatically, but ONLY once it
+  declares itself `ready` (the cardinal rule above). Pass
   `--force` only to respawn a session that is already running a live Claude
   (kills it) — otherwise `start` upserts the mapping and leaves the session
   alone.
@@ -221,42 +258,72 @@ are fixed by construction:
    (prompt for whichever is omitted, recommend-first), and run the matching
    subcommand with `--repo` / `--topic`. Adding a plan puts it under the daemon's
    watch; `start` launches a session for it (deliberately, never automatically).
-3. **Surface what the daemon reports.** The daemon writes two kinds of alert to
-   its stderr log (`tmp/overseer/daemon.log`), each prefixed `overseer[SURFACE]:`:
+3. **RELAY what the daemon reports — as text, never as a blocking prompt.** The
+   daemon writes its track alerts to its stderr log (`tmp/overseer/daemon.log`),
+   each prefixed `overseer[SURFACE]:` and each naming the plan topic, its repo,
+   the tmux **session** and **pane**, and a copy-pasteable
+   `tmux switch-client -t <session>` jump command. Three kinds concern a track:
    - **`blocked:human`** — a tracked session hit a structured gate (permission
-     prompt / picker) or wrote a `.overseer-blocked` marker. The daemon never
-     keystrokes into it.
-   - **`danger`** — a track is at ~20% context left with no ready marker and
-     won't wrap up. The daemon surfaces the stall AND, once the pane has been
-     continuously **idle**-stalled there past the grace, **force-restarts it** —
-     the auto-restart is non-negotiable, so a session that never certifies still
-     gets restarted (`claude --dangerously-skip-permissions -n <topic>`, then the
-     resume line into `plan/<topic>/handoff.md`). It still **never force-kills a
-     session mid-WORK**: a busy pane is `working` and is left alone, and a
-     `blocked:human` pane is never restarted. So relay a `danger` as "this track
-     stalled and is being auto-restarted in Ns", not as a decision to make —
-     intervene only if the maintainer wants to stop it.
-   Relay each to the maintainer **with an explicit recommendation** in plain
-   language, one clickable question at a time (recommend-first). Reading this log
-   when re-engaged or when the maintainer checks in is not timer-polling — you
-   never poll the tracked sessions themselves.
+     prompt / picker) or declared `blocked: <reason>`. The daemon never keystrokes
+     into it and never restarts it.
+   - **`danger`** — a track is at/below ~20% context left and has declared
+     **nothing**. The daemon **reports it and does nothing else**: it will NOT
+     restart a session that has not declared itself ready. Relay it as "this track
+     is not responding to the wrap-up protocol; a human must go look at it," with
+     its session + pane + jump command. (It is a **defect in that session** — it was
+     told, escalatingly, exactly what to write.)
+   - **malformed state file** — the session wrote a value that is not one of
+     `ready` / `blocked` / `winding-down`. It is treated as **no declaration** and
+     reported; relay it the same way.
+
+   **NOTIFY, NEVER BLOCK — this is a hard rule.** A question may only be asked by
+   the actor that **OWNS** the decision. A tracked session's decision belongs to
+   that session and is **already displayed in its own pane**, so you MUST NOT
+   re-ask it here: **never raise `AskUserQuestion` (or any blocking prompt) for a
+   track's decision.** Relay it as plain, non-blocking text — with the session,
+   pane, and jump command — and let the maintainer answer **in the tracked
+   session's own pane**. (This is not a style preference: re-asking created a
+   duplicate surface. The maintainer answered in the tracked pane, the overseer's
+   modal stayed blocking forever, and the whole console wedged on it — a single
+   point of failure.) It self-heals: the daemon re-derives `blocked:human` from the
+   live pane each tick, so once the human answers in the tracked pane, the alert
+   simply stops.
+
+   Include an explicit recommendation in plain language with each relayed track.
+   Reading this log when re-engaged or when the maintainer checks in is not
+   timer-polling — you never poll the tracked sessions themselves.
 4. **Supervise, don't do.** You manage the list and relay; the daemon does the
    mechanics; each tracked session's own LLM does its track work in its own
-   context and certifies its state via markers.
+   context and declares its state in its one state file.
 
 ---
 
-## Maintainer-owned gates (surface WITH a recommendation; don't freeze)
+## Maintainer-owned gates — ask ONLY about decisions YOU own
 
-Decide-and-inform beats ask-and-wait for anything reversible or clearly within
-established intent — make the call and tell the maintainer what you did.
-**Genuinely surface** (explicit recommendation, plain language, the maintainer's
-preferred ONE clickable picker at a time) only genuine gates: a `groom` cut, a
-backlog promotion / `pending-approval` approval, a `/livespec:*` spec
-ratification, an irreversible / outward-facing action the maintainer has not
-pre-authorized, or the exit gate. Never freeze the whole loop on one track's
-question — the daemon keeps the other tracks moving regardless; present the
-decision and let the rest continue.
+**The ownership test comes first, before any question of style:** a question may
+only be asked by the actor that **OWNS** the decision, and you must **never block
+on a question you do not own**.
+
+- **You OWN it** → a clickable `AskUserQuestion` is correct: add / remove /
+  unassign / start a track, a warn-threshold change, your own exit gate, or an
+  irreversible / outward-facing action of YOURS the maintainer has not
+  pre-authorized. Nobody else can answer these, so asking is the only way they get
+  answered.
+- **A TRACK owns it** → **never** `AskUserQuestion`. The tracked session's own
+  question is already up in its own pane; relay it as non-blocking text with the
+  session, pane, and jump command, and let the maintainer answer it **there**. This
+  covers `blocked:human`, a `danger` non-responder, a malformed state file, and any
+  decision that belongs to the track's own work (a `groom` cut, a backlog promotion
+  or `pending-approval` approval, a `/livespec:*` spec ratification, that track's
+  irreversible actions). Re-asking any of these here duplicates a surface that
+  already exists — and the duplicate blocks.
+
+Within what you DO own: decide-and-inform beats ask-and-wait for anything
+reversible or clearly within established intent — make the call and tell the
+maintainer what you did; keep genuine gates to an explicit recommendation, plain
+language, ONE clickable picker at a time. And **never freeze the loop on any one
+track** — the daemon keeps the other tracks moving regardless; report and let the
+rest continue.
 
 ---
 
@@ -313,11 +380,13 @@ summarizes:
   leaves live background sessions running is INCOMPLETE. Verify none remain
   before declaring the handoff done. (This does NOT stop the daemon or the
   tracked sessions — only the bottom pane's own spawned helpers.)
-- **Maintainer-interaction style.** One clear, CLICKABLE choice at a time
-  (`AskUserQuestion`), plain language, no jargon, recommended option first;
-  define every domain term inside the question. Never dump a prose wall of
-  decisions — walk the maintainer through them one by one; say the plain-language
-  bottom line first, then detail.
+- **Maintainer-interaction style — for the decisions YOU own.** One clear,
+  CLICKABLE choice at a time (`AskUserQuestion`), plain language, no jargon,
+  recommended option first; define every domain term inside the question. Never
+  dump a prose wall of decisions — walk the maintainer through them one by one; say
+  the plain-language bottom line first, then detail. **For a decision a TRACK owns,
+  do not use a picker at all** — relay it as non-blocking text naming the session,
+  pane, and jump command (see "Maintainer-owned gates" above).
 
 ---
 
@@ -338,9 +407,10 @@ summarizes:
   *editing* the overseer: the architecture invariants that must not regress, the
   load-bearing tmux/marker mechanics + gotchas, the build/toolchain facts, and
   how to exercise it live.
-- **`marker-protocol.md`** (beside this file) — the wrap-up + `.overseer-ready` /
-  `.overseer-blocked` marker contract: what the daemon injects at threshold, what
-  a tracked session must WRITE, and what the restart interlock validates.
+- **`marker-protocol.md`** (beside this file) — the escalating wrap-up + the ONE
+  state-file contract: the cardinal rule, what the daemon injects at each band,
+  the three values a tracked session may WRITE (`ready` / `blocked: <reason>` /
+  `winding-down`), and what the restart interlock validates.
 
 ---
 

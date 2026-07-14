@@ -12,18 +12,18 @@ top-pane supervisor daemon** (plain Python) that keeps multiple parallel
 livespec plan tracks moving across tmux sessions. Each track is a Claude Code
 session running a plan thread in some repo. The daemon watches every tracked
 session's **context %**, and when a session crosses a threshold it injects a
-wrap-up instruction; the session updates its own `handoff.md` and certifies it is
-at a clean stopping point by writing an out-of-band **`.overseer-ready` marker
-file** (the original design said "printing a sentinel line" — the adversarial
-review replaced that with marker files, since pane text cannot certify), and the
-daemon then **restarts that session with a fresh context** (renamed to the plan
-topic) and pastes the resume line as the first prompt.
+wrap-up instruction; the session updates its own `handoff.md` and declares it is
+at a clean stopping point by writing an out-of-band **state file** (the original
+design said "printing a sentinel line" — the adversarial review replaced that with
+a filesystem declaration, since pane text cannot certify), and the daemon then
+**restarts that session with a fresh context** (renamed to the plan topic) and
+pastes the resume line as the first prompt.
 
-**The restart is NON-NEGOTIABLE.** Certifying only makes it IMMEDIATE. A warned
-session that stalls idle at the danger line without ever certifying is
-**force-restarted** anyway — see §"The certification protocol". The list of tracks is
-**auto-discovered** from each watched repo's `plan/` directory; a persistent
-`~/.livespec-overseer.jsonl` stores only the durable **topic↔tmux-session
+**The session's `ready` declaration is the SOLE authorization for that restart —
+the daemon never restarts a session that has not declared itself ready** (the
+cardinal rule; see the next section, which GOVERNS this document). The list of
+tracks is **auto-discovered** from each watched repo's `plan/` directory; a
+persistent `~/.livespec-overseer.jsonl` stores only the durable **topic↔tmux-session
 mapping** needed for crash/reboot recovery.
 
 The load-bearing idea: **the tracked session's own LLM makes every semantic
@@ -31,6 +31,87 @@ judgment** ("am I done? is the handoff good? are my sub-agents stopped?") and
 expresses it as a machine-readable token; **Python only pattern-matches the
 token** plus a deterministic busy-marker cross-check. No semantic inference in
 Python, and no overseer-LLM context spent watching.
+
+## THE CARDINAL RULE + notify-never-block (2026-07-14) — THE CURRENT DESIGN
+
+**Read this section first. Where anything else in this document disagrees with it,
+THIS section and the shipped `signals.py` / `supervisor.py` govern.** The rest of
+the document is preserved as the design's history — including the reasoning for a
+force-restart that this section REMOVES — because the repo records *why* a design
+changed, not only what it is now.
+
+Three changes, maintainer-declared 2026-07-14.
+
+### 1. The daemon NEVER restarts a session that has not declared itself `ready`
+
+The session's own `ready` declaration is the **SOLE** authorization for a restart.
+The previously-shipped **timer-based force-restart** of an idle stalled session
+(`_danger_or_force_restart` / `_STALL_RESTART_GRACE`) is **REMOVED** — it was a
+severe bug, and it is deleted from the code.
+
+**Why, plainly: a timer cannot know whether a session is safe to kill.** "Idle +
+settled" is NOT "at a safe stopping point" — a session can be idle while a
+background build runs, while a sub-agent works, or while it waits on a human in
+another pane. The pane looks the same in all of those cases. Only the session
+knows, so only the session may authorize the restart.
+
+A session that declares **nothing** is **reported to the human as not responding**
+(`Supervisor._alert_non_responder`) and otherwise **left alone**. That is a bug in
+the SESSION — it received an escalating wrap-up telling it exactly what to write —
+never a licence for the daemon to guess on its behalf.
+
+The restart **mechanics** are unchanged: `respawn-pane -k` → `claude
+--dangerously-skip-permissions -n <topic>` → paste + verify-submit
+`read <repo>/plan/<topic>/handoff.md and follow it` → clear the round. Only the
+**trigger** changed. The abrupt kill is safe *because* of the declaration.
+
+### 2. ONE tri-state state file replaces the two marker files
+
+`.overseer-ready` and `.overseer-blocked` are GONE. There is now ONE file —
+`<repo>/tmp/overseer/<topic>/.overseer-state` — whose first non-empty line is
+`<token>` or `<token>: <detail>`, with exactly three legal tokens:
+
+| Value | Meaning | Daemon's response |
+|---|---|---|
+| `ready` | at a clean stopping point — restart me | **The SOLE restart authorization.** Counts only if its mtime is newer than this round's injection stamp |
+| `blocked: <one-line reason>` | needs a human decision the session cannot make | reported with its tmux coordinates; **never** restarted, **never** keystroked into |
+| `winding-down` | the ACK — "I got the wrap-up and am wrapping up now"; written IMMEDIATELY on receipt, before anything else | a FRESH ack suppresses further re-warns (never keystroke into a session that is actively wrapping up); a STALE one (older than `_ACK_STALE_AFTER`, 900s) resumes the escalation but STILL authorizes no act |
+
+**Why one file:** two files carried a built-in ambiguity — nothing stopped BOTH
+existing at once, and their precedence was incidental rather than designed. One
+file with a **value** makes that unrepresentable. A malformed / typo'd token is
+**surfaced** and treated as **no declaration** (fail-closed).
+
+### 3. Escalating wrap-up, and NOTIFY-NEVER-BLOCK
+
+- **The wrap-up escalates by 10% band.** A SUGGESTION at 50 / 40; INSISTENT
+  ("STOP AND WIND DOWN NOW") at 30 / 20 / 10 (`_INSIST_AT = 30`). Each band fires
+  at most once per round, durably. With the force-restart gone, **this escalation
+  IS the daemon's only lever**, so it has to actually sharpen — re-sending
+  identical text five times is repetition, not escalation.
+- **Notify, never block.** The interactive bottom-pane overseer must **NEVER** use
+  a blocking prompt (`AskUserQuestion`) to relay a decision it does not own. A
+  tracked session's decision belongs to that session and is already displayed in
+  ITS pane; re-asking it in the overseer created a **duplicate surface** — the
+  maintainer answered in the tracked session's pane, the overseer's modal stayed
+  blocking, and the whole console wedged on it (a single point of failure). The
+  rule: **a question may only be asked by the actor that OWNS the decision, and the
+  overseer must never block on a question it does not own.** Track decisions →
+  reported as non-blocking text, answered by the operator in the tracked session's
+  own pane. Overseer-OWNED decisions (add / remove / unassign / start a track, a
+  threshold) → `AskUserQuestion` is still right, since nobody else can answer them.
+  This self-heals: the daemon re-derives `blocked:human` from the live pane each
+  tick, so when the human answers in the tracked pane the alert simply stops.
+- **Every track-scoped alert names WHERE to act** (`Supervisor._alert`): the plan
+  topic, its repo, the tmux SESSION and PANE, and a copy-pasteable
+  `tmux switch-client -t <session>` jump command. Previously an alert said only
+  `repo::topic` — which told the operator WHAT was stuck but not WHERE to go. This
+  is load-bearing for notify-never-block: because the overseer never prompts on a
+  track's behalf, the alert line is the operator's ONLY handover, so it must be
+  self-sufficient.
+
+**Row statuses.** `winding-down` joins the set. **`danger` now means "at/below 20%
+remaining, declared nothing"** → reported loudly, **never acted on**.
 
 ## Why rewrite — the current skill and its history
 
@@ -140,16 +221,20 @@ Signals come from the trusted channels in "### Signal sources" below, NOT from
 raw whole-pane text. **State precedence is evaluated top-to-bottom** — `working`
 and `blocked:human` are detected BEFORE any injection can occur.
 
+(Corrected 2026-07-14 to the shipped state machine — see §"THE CARDINAL RULE +
+notify-never-block", which governs.)
+
 | State | Trigger | Daemon action |
 |---|---|---|
 | `unassigned` | discovered, no session in mapping | show + flag *ready to start*; **never** auto-start |
-| `working` | busy markers on the pane (`esc to interrupt` / `Waiting for N background` / `N shell`) | leave alone; **suppress injection** |
-| `blocked:human` | structured-gate UI (permission prompt / picker) on the pane, or a `.overseer-blocked` marker file | show in table; surface to the bottom pane; **suppress injection** (never keystroke into a gate) |
+| `working` | busy markers on the pane, or a live background shell under the pane's process | leave alone; **suppress injection** |
+| `blocked:human` | structured-gate UI (permission prompt / picker) on the pane, or a `blocked: <reason>` state-file value | show in table; REPORT it to the bottom pane with its tmux session + pane + jump command; **suppress injection** (never keystroke into a gate); **never restart** |
 | `idle` | verified idle-input state, ctx above threshold | leave alone |
-| `warned` | ctx `left ≤ threshold` (default 50) **and** verified idle-input state | record an injection stamp, then **bracketed-paste** the wrap-up once; re-send once if ctx keeps climbing |
-| `ready → restart` | fresh **`.overseer-ready` marker** (mtime > injection stamp; presence + freshness ONLY — contents are never inspected) **and** no busy markers **and** verified idle-input | `respawn-pane -k -c <repo> 'claude --dangerously-skip-permissions -n <topic>'` → wait for `pane_current_command` transition → bracketed-paste + verify-submit the resume line → delete marker → `working` |
+| `warned` | ctx `left ≤ threshold` (default 50) **and** verified idle-input state, nothing declared | record an injection stamp, then **bracketed-paste** the ESCALATING wrap-up — once per crossed 10%-band, suggesting above 30% and INSISTING at 30/20/10 |
+| `winding-down` | a FRESH `winding-down` ACK (≤ `_ACK_STALE_AFTER`, 900s) | wait; **suppress re-warns** (never keystroke into a session that is actively wrapping up). A stale ACK resumes the escalation but still authorizes no act |
+| `ready → restart` | a fresh **`ready`** state-file value (mtime > injection stamp) **and** no busy markers **and** verified idle-input **and** a settled, identity-gated pane | `respawn-pane -k -c <repo> 'claude --dangerously-skip-permissions -n <topic>'` → wait for `pane_current_command` transition → bracketed-paste + verify-submit the resume line → clear the round (state file + stamp + bands) |
 | (removed) | `<repo>/plan/<topic>/` archived or gone | drop the mapping row; note it |
-| `danger → FORCE restart` | ctx ≤ ~20% left, **no** ready marker, and the pane has been continuously **idle + settled** there past `_STALL_RESTART_GRACE` | **surface to the human AND force-restart** — identical respawn + resume mechanics as the row above. The auto-restart is NON-NEGOTIABLE (2026-07-14). Still **never force-kills a session mid-WORK**: a `working` (busy) pane and a `blocked:human` pane are both exempt |
+| `danger` | ctx ≤ ~20% left and the session has declared **NOTHING** | **REPORT it to the human — loudly, with its tmux session, pane, and jump command — and do NOTHING ELSE.** The daemon NEVER restarts a session that has not declared itself ready (the cardinal rule): a timer cannot know whether a session is safe to kill. A non-responding session is a bug in the SESSION; a human must act |
 
 ### Signal sources (what is trusted from where)
 
@@ -157,7 +242,7 @@ and `blocked:human` are detected BEFORE any injection can occur.
 - **structured gate** — the pane's distinctive numbered-option permission/picker UI.
 - **idle-input** — a *verified* normal input state: prompt box present AND no busy markers AND no structured gate. "Not busy" alone is NOT idle-input.
 - **ctx %** — the anchored last-status-row parse (see "Context-% reading"); fail-closed to *unknown* on no-match.
-- **readiness / blocked** — **filesystem marker files** (`.overseer-ready` / `.overseer-blocked`), NOT printed pane text (adversarial review: pane text is echo/scroll/wrap-corrupted and cannot certify "asserts X now").
+- **the session's own declaration** (`ready` / `blocked: <reason>` / `winding-down`) — the ONE **filesystem state file** `<repo>/tmp/overseer/<topic>/.overseer-state`, NOT printed pane text (adversarial review: pane text is echo/scroll/wrap-corrupted and cannot certify "asserts X now"). Originally two presence-marker files; collapsed to one valued file 2026-07-14.
 - **process identity** — `#{pane_current_command}` (shell vs `node`/claude) and `#{pane_current_path}` (which repo), for restart proof and auto-link — never the `❯` glyph.
 
 ## The certification protocol (the heart of the design)
@@ -185,7 +270,13 @@ verified idle-input state (see "Signal sources"), the daemon records an
 **injection stamp** (a timestamp/nonce in a sidecar) and **bracketed-pastes**
 (`tmux load-buffer` + `paste-buffer -p`, never line-by-line `send-keys`, so the
 multi-line body can't fragment into separate submitted prompts — blocker #2) one
-wrap-up message:
+wrap-up message.
+
+The block below is the **ORIGINAL 2026-07-12 draft**, kept for the record. The
+SHIPPED wrap-up is escalating, names the ONE state file, and demands an immediate
+`winding-down` ACK — it lives verbatim in `marker-protocol.md` (single-sourced from
+`supervisor.py`), and the interlock below has since dropped the handoff-hash in
+favour of token + freshness:
 
 ```
 Your context is now under {N}%. Wrap up for a clean session restart:
@@ -226,39 +317,50 @@ transcript format is internal and unstable.)
 **Guards.** If ctx keeps climbing with no ready marker, re-warn on each lower
 escalation band (each fires at most once per round, durably).
 
-**The restart is NON-NEGOTIABLE — superseding this section's original guard
-(2026-07-14).** This design originally ended the escalation at the danger line
-(~20% left) by *surfacing* "track X won't wrap up" to the human **rather than
-force-killing**. That was wrong, and it failed in exactly the way a
-judgment-holding session can make it fail: a tracked session reached 13% left,
-was warned, decided the resume line pointed at a handoff that no longer described
-its real pending work (which it had stashed in a scratchpad instead of in
+**Two corrections to this section (2026-07-14) — the second REVERSES the first.**
+Recorded in order, because the sequence is the lesson.
+
+**(a) The failure that started it.** A tracked session reached 13% left, was
+warned, decided the resume line pointed at a handoff that no longer described its
+real pending work (which it had stashed in a scratchpad instead of in
 `plan/<topic>/handoff.md`), and therefore **refused to write either marker** —
 explaining its reasoning in prose and stopping. The daemon, holding "never
-force-kill", surfaced the stall and left the track wedged **forever**. The whole
-purpose of the overseer — keep the track moving by restarting it — was defeated
-by the tracked session declining to cooperate.
+force-kill", surfaced the stall and left the track wedged. The overseer's whole
+purpose — keep the track moving by restarting it — was defeated by the tracked
+session declining to cooperate.
 
-So the marker is now a **fast path, not a veto**. A warned track that stalls
-**idle** at/below the danger line without certifying is **force-restarted** once it
-has been continuously idle + settled there for `_STALL_RESTART_GRACE`, running the
-identical respawn + resume mechanics as the certified path. Two things make this
-safe, and they are exactly the residue of the original guard worth keeping:
+**(b) The first fix — a timer-based force-restart — was itself a severe bug, and
+is REMOVED.** That fix made the marker "a fast path, not a veto": a warned track
+that stalled **idle** at/below the danger line without certifying was
+**force-restarted** once it had been continuously idle + settled there for a grace
+(`_danger_or_force_restart` / `_STALL_RESTART_GRACE`). Its safety argument was
+that *mid-work means busy*, so an idle + settled pane cannot be mid-work.
 
-- **"Never force-kill mid-work" still holds** — because *mid-work means busy*. The
-  force-restart is reachable only from the idle branch: not-busy, `_pane_settled`
-  across two captures, identity-gated Claude, not at a structured gate, and not
-  `.overseer-blocked`. A busy pane is `working` and is never touched; a
-  human-gated pane is never restarted. The stall clock resets the instant the
-  session resumes work, so only a genuine continuous stall accrues.
-- **`respawn-pane -k` kills a PROCESS, not WORK** — every file, worktree, commit,
-  and branch on disk survives it. The only thing a session can actually lose by
-  being force-restarted is resume state it chose to keep *outside*
-  `plan/<topic>/handoff.md` — which is why the wrap-up now states plainly that the
-  restart is coming regardless and that the handoff is the ONLY inherited artifact.
+**That argument is false, and it is the crux of the current design.** "Idle +
+settled" is NOT "at a safe stopping point": a session can be idle while a
+background build runs, while a sub-agent works, or while it waits on a human in
+another pane. The pane looks identical in every one of those cases, so **a timer
+cannot know whether a session is safe to kill.** Only the session knows.
 
-The human still gets the `danger` surface; they simply no longer have to *act* on
-it for the track to move.
+**(c) The current rule — the cardinal rule.** The session's own `ready` declaration
+is the SOLE authorization for a restart; the daemon never restarts an undeclared
+session, and the force path is deleted from the code. A session that declares
+nothing is **reported to the human as not responding** and left alone — that is a
+bug in the SESSION, never a licence for the daemon to guess.
+
+What survives from (b) is the diagnosis of (a), not its remedy: the session's
+refusal WAS the defect, so the response is to make the session declare — an
+escalating wrap-up (suggest → INSIST at 30/20/10), a `winding-down` ACK it must
+write immediately, and a wrap-up message that states honestly that `ready` is the
+only thing that restarts it and that `plan/<topic>/handoff.md` is the only artifact
+it can hand forward (so the correct answer to drift is to REWRITE the handoff, not
+to withhold the declaration). And one thing from (b) remains simply true: **
+`respawn-pane -k` kills a PROCESS, not WORK** — every file, worktree, commit, and
+branch on disk survives it — which is why the abrupt kill is safe *once the session
+has declared itself ready*.
+
+See §"THE CARDINAL RULE + notify-never-block (2026-07-14)", which governs this
+document.
 
 ## Context-% reading (anchored, fail-closed)
 
@@ -303,8 +405,8 @@ is primary.)
   by polling `#{pane_current_command}` (→ `node`) and/or the welcome banner (not
   the prompt glyph), **bracketed-paste** the row's resume line (`load-buffer` +
   `paste-buffer -p`, so a multi-line resume can't fragment into separate
-  prompts), and finally **delete the `.overseer-ready` marker** so the restart
-  can't re-trigger. (`claude "<prompt>"` only pre-fills, no auto-submit — which
+  prompts), and finally **clear the round** (delete the state file, the injection
+  stamp, and the notified bands) so the declaration can't re-trigger. (`claude "<prompt>"` only pre-fills, no auto-submit — which
   is why the resume line is pasted after launch, not passed as an argv.)
 - **Reboot recovery (a new strength).** A fresh overseer reads
   `~/.livespec-overseer.jsonl`, recreates any missing
@@ -421,12 +523,13 @@ Tests for the host-only Python live beside it (they are not part of the product
 
 ## Open / deferred (non-blocking)
 
-- **`.overseer-blocked` marker as a standing convention.** Whether to bake
-  "write `.overseer-blocked` when you stop to ask the human" into tracked-session
-  handoffs for airtight blocked-detection, vs. accepting the cosmetic
-  prose-question gap (a prose question with no marker shows as `idle` in the
-  table; the restart stays safe regardless, since restart requires the
-  `.overseer-ready` marker). Decide in Phase 4.
+- ~~**`.overseer-blocked` marker as a standing convention.**~~ **RESOLVED
+  (2026-07-14):** a tracked session's handoff MAY bake in "when you stop to ask the
+  human a question, write `blocked: <one-line reason>` to the state file" — it is
+  offered as an OPTIONAL convention in `marker-protocol.md`, not mandated. The
+  residual prose-question gap stays cosmetic (a prose question with no declaration
+  shows as `idle`), and the restart is safe regardless, since a restart requires a
+  fresh `ready`.
 - **`%Complete` cadence.** Reading epic `%Complete` needs the credential wrapper
   + tenant; keep it off the fast ~10s loop (slow refresh or on-demand from the
   bottom pane) to avoid hammering beads.

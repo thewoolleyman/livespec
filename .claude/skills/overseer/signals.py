@@ -8,8 +8,8 @@ so it is unit-testable with no tmux — the actual ``tmux capture-pane`` +
 The load-bearing correctness fact (see design.md, adversarial review): a pane's
 text stream cannot carry a trustworthy "the session asserts X now" signal —
 prompt-echo, model quotation, scroll, and line-wrap all corrupt it. So the
-readiness/blocked *certification* is out-of-band on the filesystem
-(``.overseer-ready`` / ``.overseer-blocked`` marker files), and pane text is
+session's self-declared *state* is out-of-band on the filesystem (the ONE
+``.overseer-state`` file: ``ready`` / ``blocked`` / ``winding-down``), and pane text is
 trusted ONLY for the busy / idle / gate signals, which are not echo-forgeable
 in a harmful direction (a false "busy" merely suppresses action — the safe
 direction).
@@ -19,11 +19,15 @@ from __future__ import annotations
 
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 __all__ = [
-    "blocked_marker",
-    "blocked_marker_path",
+    "STATE_BLOCKED",
+    "STATE_READY",
+    "STATE_TOKENS",
+    "STATE_WINDING_DOWN",
+    "TrackState",
     "input_box_ready",
     "is_busy",
     "is_idle_input",
@@ -33,9 +37,11 @@ __all__ = [
     "pane_is_shell",
     "parse_ctx_remaining",
     "path_in_repo",
-    "ready_marker_path",
-    "ready_marker_valid",
+    "read_state",
+    "ready_valid",
+    "state_path",
     "strip_ansi",
+    "valid_token",
 ]
 
 
@@ -258,61 +264,96 @@ def marker_dir(repo: str, topic: str) -> Path:
     return Path(repo) / "tmp" / "overseer" / topic
 
 
-def ready_marker_path(repo: str, topic: str) -> Path:
-    """``<repo>/tmp/overseer/<topic>/.overseer-ready``."""
-    return marker_dir(repo, topic) / ".overseer-ready"
+# The three values of the SINGLE indicator file. One file with a VALUE — never a
+# set of separate presence-markers: two files (`.overseer-ready` + `.overseer-blocked`)
+# carried a built-in ambiguity, because nothing stopped BOTH existing and their
+# precedence was incidental rather than designed (maintainer 2026-07-14).
+STATE_READY = "ready"
+STATE_BLOCKED = "blocked"
+STATE_WINDING_DOWN = "winding-down"
+STATE_TOKENS = (STATE_READY, STATE_BLOCKED, STATE_WINDING_DOWN)
 
 
-def blocked_marker_path(repo: str, topic: str) -> Path:
-    """``<repo>/tmp/overseer/<topic>/.overseer-blocked``."""
-    return marker_dir(repo, topic) / ".overseer-blocked"
+def state_path(repo: str, topic: str) -> Path:
+    """``<repo>/tmp/overseer/<topic>/.overseer-state`` — the ONE indicator file."""
+    return marker_dir(repo, topic) / ".overseer-state"
 
 
-def ready_marker_valid(
+@dataclass(frozen=True, kw_only=True)
+class TrackState:
+    """A tracked session's self-declared state — parsed from the one indicator file.
+
+    ``token`` is the raw lowercased first word (may be INVALID — use
+    :func:`valid_token` before trusting it, so a typo'd value is surfaced as
+    malformed rather than silently ignored). ``detail`` is the optional free text
+    after a ``:`` (e.g. the one-line reason on ``blocked``). ``mtime`` powers the
+    this-round freshness check.
+    """
+
+    token: str
+    detail: str
+    mtime: float
+
+
+def valid_token(token: str) -> bool:
+    """True iff ``token`` is one of the three declared states."""
+    return token in STATE_TOKENS
+
+
+def read_state(repo: str, topic: str) -> TrackState | None:
+    """Parse ``.overseer-state``; None when absent or unreadable (fail-closed).
+
+    Format — the first non-empty line is ``<token>`` or ``<token>: <detail>``::
+
+        ready
+        blocked: waiting on the schema call
+        winding-down
+
+    A file write cannot be forged by prompt-echo, cannot scroll off, and cannot
+    line-wrap, so all the pane-text blockers dissolve here. The token is returned
+    verbatim (lowercased) even when unknown, so the daemon can SURFACE a malformed
+    value instead of silently treating it as "no state".
+    """
+    path = state_path(repo, topic)
+    try:
+        if not path.is_file():
+            return None
+        raw = path.read_text(encoding="utf-8")
+        mtime = path.stat().st_mtime
+    except OSError:
+        return None
+    line = next((ln.strip() for ln in raw.splitlines() if ln.strip()), "")
+    token, _, detail = line.partition(":")
+    return TrackState(token=token.strip().lower(), detail=detail.strip(), mtime=mtime)
+
+
+def ready_valid(
     repo: str,
     topic: str,
     injection_stamp: float | None,
 ) -> bool:
-    """The restart certification. True only when ALL hold:
+    """The restart authorization — the ONLY thing that may restart a session.
 
-    1. an injection stamp exists for this round (``injection_stamp`` is not
-       None) — without a recorded injection there is no round to certify,
-    2. the ``.overseer-ready`` marker file EXISTS, AND
+    True only when ALL hold:
+
+    1. an injection stamp exists for this round (``injection_stamp`` is not None) —
+       without a recorded injection there is no round to certify,
+    2. the state file declares exactly ``ready``, AND
     3. its mtime is strictly newer than ``injection_stamp`` (this round, not a
-       stale marker from a prior wrap-up).
+       stale declaration from a prior wrap-up).
 
-    Presence + freshness only — the marker's CONTENTS are not inspected: the
-    handoff and everything else under ``plan/`` is the session's own business,
-    which the overseer must never read or hash. A file write cannot be forged by
-    prompt-echo, cannot scroll off, and cannot line-wrap, so the pane-text
-    blockers all dissolve here; any missing/unreadable marker → False
-    (fail-closed).
+    The daemon NEVER infers readiness. A session that is merely idle — however long,
+    however low on context — is NOT ready: "idle + settled" is not "safe to kill" (a
+    session can be idle while a background build runs, while a sub-agent works, or
+    while it waits on a human in another pane). Only the session knows, so only the
+    session may say so. Any absent/unreadable/other-valued file → False (fail-closed).
     """
     if injection_stamp is None:
         return False
-    marker = ready_marker_path(repo, topic)
-    try:
-        if not marker.is_file():
-            return False
-        return marker.stat().st_mtime > injection_stamp
-    except OSError:
+    state = read_state(repo, topic)
+    if state is None or state.token != STATE_READY:
         return False
-
-
-def blocked_marker(repo: str, topic: str) -> str | None:
-    """The stripped contents of ``.overseer-blocked`` if present, else None.
-
-    Presence (not content) is the blocked signal, so an existing-but-empty
-    marker returns ``""`` (not None); only an absent/unreadable marker returns
-    None.
-    """
-    marker = blocked_marker_path(repo, topic)
-    try:
-        if not marker.is_file():
-            return None
-        return marker.read_text(encoding="utf-8").strip()
-    except OSError:
-        return None
+    return state.mtime > injection_stamp
 
 
 # --------------------------------------------------------------------------- #
