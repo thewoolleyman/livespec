@@ -133,37 +133,56 @@ This binds YOU when your session is a **track** supervised by the overseer daemo
 message is pasted into your pane at a context threshold. It is the other half of
 the contract; the daemon's half is `marker-protocol.md`.
 
-- **You WILL be restarted — the restart is NOT conditional on your cooperation.**
-  When you stop, the daemon respawns your pane into a fresh session and hands it
-  exactly one prompt: `read <repo>/plan/<topic>/handoff.md and follow it`. Writing
-  `.overseer-ready` makes that restart IMMEDIATE; withholding it does not prevent
-  the restart, it only means you are force-restarted later from a handoff you
-  never refreshed.
+- **You are restarted ONLY when YOU declare yourself `ready` — and that is the
+  cardinal rule, not a courtesy.** The daemon NEVER restarts a session that has not
+  declared itself ready, because a timer cannot know whether you are safe to kill:
+  "idle + settled" is not "at a safe stopping point" (you can be idle while a
+  background build runs, while a sub-agent works, or while you wait on a human in
+  another pane). Only YOU know. When you declare `ready` and stop, the daemon
+  respawns your pane into a fresh session and hands it exactly one prompt:
+  `read <repo>/plan/<topic>/handoff.md and follow it`.
+- **Write exactly ONE of THREE values to ONE file, always.** The file is
+  `<repo>/tmp/overseer/<topic>/.overseer-state` (never anything under `plan/`); its
+  first line is one of:
+  - `winding-down` — the ACK: "I got the wrap-up and am wrapping up now." **Write
+    this IMMEDIATELY on receiving the wrap-up, before anything else.** It stops the
+    daemon re-warning you while you wrap up.
+  - `ready` — "I am at a clean stopping point; restart me." This is the ONLY thing
+    that restarts you.
+  - `blocked: <one-line reason>` — "I need a human decision I cannot make myself."
+    The track is reported to the maintainer (who answers **in your pane**) and is
+    never restarted.
+
+  The normal sequence is therefore TWO writes: `winding-down` on arrival, then
+  `ready` (or `blocked: …`) when you actually stop. A value that is none of the
+  three is treated as **no declaration** and reported as malformed.
 - **`plan/<topic>/handoff.md` is the ONLY artifact you hand forward.** Never leave
   your resume state in a scratchpad file, a `/tmp` path, or this transcript — the
   next session inherits NONE of it. If your real pending work has drifted from what
   the handoff says, **REWRITE the handoff**. That file is yours to own; the overseer
   never reads or writes it.
-- **Write exactly ONE of the two markers, always.** Done and clean →
-  `.overseer-ready`. Genuinely stopped on a HUMAN decision you cannot make →
-  `.overseer-blocked` (one-line reason); a blocked track is surfaced to the
-  maintainer and never auto-restarted. **"Neither" is not a valid outcome.**
-  Choosing which marker fits is yours; declining both is not.
-- **Never reason your way out of certifying.** A session once did exactly that: it
-  judged the resume line pointed at a stale handoff (because it had stashed its
-  live handoff in a scratchpad), refused to write either marker, explained itself in
-  prose, and stopped — wedging its track idle at 13% **forever**. The right move was
-  to rewrite the handoff and certify. If the resume path looks wrong, FIX THE
-  HANDOFF; the marker is not the place to register an objection.
+- **Declining to declare does NOT buy you a reprieve — it wedges your own track.**
+  You will not be killed; you will be **reported to a human as not responding**, and
+  your track will then **sit there** until a person intervenes. That is a chore you
+  handed to the maintainer and a defect in YOU: you were told, escalatingly, exactly
+  what to write. Declaring is mandatory.
+- **Never reason your way out of declaring.** A session once did exactly that: it
+  judged the resume line pointed at a stale handoff (because it had stashed its live
+  handoff in a scratchpad), refused to write anything, explained itself in prose, and
+  stopped — wedging its track idle at 13%. The right move was to rewrite the handoff
+  and declare `ready`. If the resume path looks wrong, FIX THE HANDOFF; the state
+  file is not the place to register an objection.
 - **Stop your background work first.** Terminate every sub-agent and
-  `run_in_background` shell you started BEFORE writing the marker — their durable
+  `run_in_background` shell you started BEFORE declaring `ready` — their durable
   state (worktrees, branches, the ledger) survives, and a restart with live
-  background processes is an incomplete handoff.
+  background processes is an incomplete handoff. (A live background shell also reads
+  as BUSY to the daemon, so it would not restart you anyway.)
 
-(Maintainer-declared 2026-07-14, after the refusal above wedged a live track and
-the daemon — then holding a "never force-kill" rule — left it stalled forever. The
-daemon now force-restarts a stalled idle track regardless; this discipline is what
-keeps the restart CLEAN rather than merely forced.)
+(Maintainer-declared 2026-07-14. The refusal above wedged a live track, and the
+first fix — a timer-based force-restart of any stalled idle session — was itself a
+severe bug: the daemon cannot know whether an idle session is safe to kill, so it
+must never guess. The authorization is yours alone; this discipline is what makes
+you exercise it.)
 
 ## Factory-dispatch over inline implementation
 
@@ -275,13 +294,17 @@ named section before acting; do not rely on this summary alone.
   Detail: this file §"Overseer / long-running-coordinator discipline" and the
   local `.claude/skills/overseer/SKILL.md`.
 - **Tracked-session wrap-up contract (overseer)** — if the overseer daemon pastes
-  a wrap-up into your pane, you WILL be restarted whether or not you cooperate;
-  `plan/<topic>/handoff.md` is the ONLY artifact the fresh session inherits (never
-  a scratchpad), and you MUST write exactly one of `.overseer-ready` /
-  `.overseer-blocked` — "neither" is not a valid outcome. If the resume path looks
-  stale, REWRITE the handoff; never withhold the marker to register an objection.
-  Detail: this file §"Tracked-session discipline — the overseer wrap-up contract"
-  and `.claude/skills/overseer/marker-protocol.md`.
+  a wrap-up into your pane, you are restarted ONLY when you declare yourself
+  `ready`; the daemon never restarts an undeclared session (only you know whether
+  you are safe to kill). ACK immediately with `winding-down`, then write exactly one
+  of `ready` / `blocked: <reason>` / `winding-down` to the ONE state file
+  `<repo>/tmp/overseer/<topic>/.overseer-state`. `plan/<topic>/handoff.md` is the
+  ONLY artifact the fresh session inherits (never a scratchpad) — if the resume path
+  looks stale, REWRITE the handoff; never withhold the declaration to register an
+  objection. Declaring nothing does not kill you and does not save you: it gets you
+  reported to a human as not responding and wedges your own track. Detail: this file
+  §"Tracked-session discipline — the overseer wrap-up contract" and
+  `.claude/skills/overseer/marker-protocol.md`.
 - **Factory-dispatch over inline implementation** — ready, factory-safe impl
   work-items are dispatched via `/livespec-orchestrator-beads-fabro:orchestrate`
   (Codex/Fabro sandbox), never hand-coded inline in Claude; inline Claude is for

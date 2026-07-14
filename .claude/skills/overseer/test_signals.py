@@ -190,88 +190,84 @@ def _setup_track(tmp_path):
     return repo, topic
 
 
-def _write_marker(repo, topic, contents, *, mtime):
-    """Write the ready marker at its TEMP path, creating the parent dir first.
+def _declare(repo, topic, value, *, mtime):
+    """The session writes its ONE state file, creating the parent TEMP dir first.
 
-    The marker now lives at ``<repo>/tmp/overseer/<topic>/.overseer-ready``, whose
-    parent does not exist yet — so the helper mkdirs it. ``contents`` is arbitrary:
-    ``ready_marker_valid`` inspects presence + mtime only, never the bytes.
+    The single indicator lives at ``<repo>/tmp/overseer/<topic>/.overseer-state``, whose
+    parent does not exist yet — so the helper mkdirs it.
     """
-    marker = signals.ready_marker_path(str(repo), topic)
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(contents, encoding="utf-8")
-    os.utime(marker, (mtime, mtime))
-    return marker
+    path = signals.state_path(str(repo), topic)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(value, encoding="utf-8")
+    os.utime(path, (mtime, mtime))
+    return path
 
 
-def test_marker_paths_are_under_tmp_overseer(tmp_path):
-    """The markers resolve under ``<repo>/tmp/overseer/<topic>/`` and NOT plan/."""
+def test_state_path_is_under_tmp_overseer_never_plan(tmp_path):
+    """The ONE indicator file resolves under ``<repo>/tmp/overseer/<topic>/``, not plan/."""
     repo = str(tmp_path / "repo")
     topic = "mytopic"
     expected_dir = Path(repo) / "tmp" / "overseer" / topic
     assert signals.marker_dir(repo, topic) == expected_dir
-    assert signals.ready_marker_path(repo, topic) == expected_dir / ".overseer-ready"
-    assert signals.blocked_marker_path(repo, topic) == expected_dir / ".overseer-blocked"
+    assert signals.state_path(repo, topic) == expected_dir / ".overseer-state"
     # The overseer never writes under a session's plan/ tree.
-    assert "plan" not in signals.ready_marker_path(repo, topic).parts
-    assert "plan" not in signals.blocked_marker_path(repo, topic).parts
+    assert "plan" not in signals.state_path(repo, topic).parts
 
 
-def test_ready_marker_valid_true_when_stamp_marker_and_mtime_hold(tmp_path):
-    # The three surviving conditions: injection_stamp present, marker exists, and
-    # its mtime is strictly newer than the stamp. Content is irrelevant.
+def test_read_state_parses_token_and_detail(tmp_path):
+    """`<token>` or `<token>: <detail>` — the detail carries a blocked reason."""
     repo, topic = _setup_track(tmp_path)
-    _write_marker(repo, topic, "x", mtime=1001.0)  # newer than stamp
-    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=1000.0) is True
+    _declare(repo, topic, "ready\n", mtime=1001.0)
+    st = signals.read_state(str(repo), topic)
+    assert st is not None and st.token == "ready" and st.detail == ""
+
+    _declare(repo, topic, "blocked: waiting on the schema call\n", mtime=1002.0)
+    st = signals.read_state(str(repo), topic)
+    assert st is not None and st.token == "blocked"
+    assert st.detail == "waiting on the schema call"
+
+    _declare(repo, topic, "  WINDING-DOWN  \n", mtime=1003.0)  # tolerant: case + whitespace
+    st = signals.read_state(str(repo), topic)
+    assert st is not None and st.token == "winding-down"
 
 
-def test_ready_marker_valid_is_presence_and_freshness_only(tmp_path):
-    """A marker with ARBITRARY content (not a hash of anything) validates purely on
-    presence + freshness — the overseer never inspects the marker's bytes."""
+def test_read_state_none_when_absent_and_token_validity(tmp_path):
     repo, topic = _setup_track(tmp_path)
-    _write_marker(repo, topic, "totally arbitrary not-a-hash payload\n", mtime=1001.0)
-    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=1000.0) is True
+    assert signals.read_state(str(repo), topic) is None  # absent → None (fail-closed)
+    for good in signals.STATE_TOKENS:
+        assert signals.valid_token(good) is True
+    assert signals.valid_token("redy") is False  # a typo is NOT a state
+    # A malformed value is still RETURNED (so the daemon can surface it), just invalid.
+    _declare(repo, topic, "redy\n", mtime=1001.0)
+    st = signals.read_state(str(repo), topic)
+    assert st is not None and st.token == "redy" and signals.valid_token(st.token) is False
 
 
-def test_ready_marker_valid_false_when_marker_missing(tmp_path):
+def test_ready_valid_only_on_a_fresh_ready_declaration(tmp_path):
+    """`ready` is the SOLE restart authorization, and only when it is THIS round's."""
     repo, topic = _setup_track(tmp_path)
-    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=1000.0) is False
+    _declare(repo, topic, "ready\n", mtime=1001.0)  # newer than the stamp
+    assert signals.ready_valid(str(repo), topic, injection_stamp=1000.0) is True
 
 
-def test_ready_marker_valid_false_when_mtime_not_newer_than_stamp(tmp_path):
+def test_ready_valid_false_when_absent_stale_unstamped_or_other_value(tmp_path):
+    """Fail-closed on every path that is not an unambiguous, this-round `ready`."""
     repo, topic = _setup_track(tmp_path)
-    _write_marker(repo, topic, "x", mtime=999.0)  # OLDER than the stamp
-    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=1000.0) is False
-
-
-def test_ready_marker_valid_false_when_injection_stamp_is_none(tmp_path):
-    repo, topic = _setup_track(tmp_path)
-    _write_marker(repo, topic, "x", mtime=1001.0)
-    # No injection this round → any pre-existing marker is not certified.
-    assert signals.ready_marker_valid(str(repo), topic, injection_stamp=None) is False
-
-
-# --------------------------------------------------------------------------- #
-# blocked_marker.
-# --------------------------------------------------------------------------- #
-
-
-def test_blocked_marker_returns_contents_or_none(tmp_path):
-    repo, topic = _setup_track(tmp_path)
-    assert signals.blocked_marker(str(repo), topic) is None  # absent
-    marker = signals.blocked_marker_path(str(repo), topic)
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text("waiting on a human decision about schema\n", encoding="utf-8")
-    assert signals.blocked_marker(str(repo), topic) == "waiting on a human decision about schema"
-
-
-def test_blocked_marker_empty_file_is_present_not_none(tmp_path):
-    repo, topic = _setup_track(tmp_path)
-    marker = signals.blocked_marker_path(str(repo), topic)
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text("", encoding="utf-8")
-    # Presence (not content) is the signal → empty string, never None.
-    assert signals.blocked_marker(str(repo), topic) == ""
+    # 1. Nothing declared at all — the severe-bug case: idleness is NEVER readiness.
+    assert signals.ready_valid(str(repo), topic, injection_stamp=1000.0) is False
+    # 2. Declared `ready`, but STALE (older than this round's injection stamp).
+    _declare(repo, topic, "ready\n", mtime=999.0)
+    assert signals.ready_valid(str(repo), topic, injection_stamp=1000.0) is False
+    # 3. Fresh `ready`, but NO injection this round → nothing to certify.
+    _declare(repo, topic, "ready\n", mtime=1001.0)
+    assert signals.ready_valid(str(repo), topic, injection_stamp=None) is False
+    # 4. The other two values are NOT readiness — one file, so they REPLACE `ready`.
+    for other in ("blocked: needs a human", "winding-down"):
+        _declare(repo, topic, other + "\n", mtime=1001.0)
+        assert signals.ready_valid(str(repo), topic, injection_stamp=1000.0) is False
+    # 5. A typo'd value is not readiness either.
+    _declare(repo, topic, "redy\n", mtime=1001.0)
+    assert signals.ready_valid(str(repo), topic, injection_stamp=1000.0) is False
 
 
 # --------------------------------------------------------------------------- #

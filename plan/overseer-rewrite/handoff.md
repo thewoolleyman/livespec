@@ -1,99 +1,104 @@
-# Handoff — the overseer auto-restart is NON-NEGOTIABLE (fixed, and now proven live)
+# Handoff — the overseer never restarts a session that has not declared itself ready
 
-**Status (2026-07-14): DONE + merged + LIVE-EXERCISED.** The daemon now FORCE-restarts
-a tracked session that stalls idle at the danger line without certifying, and the
-(re)start command carries `--dangerously-skip-permissions` so the resumed session is
-actually autonomous. The fix has since been **exercised end-to-end on a real stalled
-track** (evidence below), which closes the "done means rolled out and exercised live"
-leg. **HOLD on archive still stands** — this thread is complete but kept per the
-maintainer's standing hold. **Owning session:** livespec core, "overseer-rewrite".
+**Status (2026-07-14): the CURRENT design.** It SUPERSEDES the "non-negotiable
+force-restart" that briefly shipped earlier the same day (PRs #1219 / #1221) — that
+force-restart was itself a **severe bug** and has been removed. **HOLD on archive still
+stands.** **Owning session:** livespec core, "overseer-rewrite".
 
-## Live-exercise evidence (2026-07-14) — the fix worked on a real track
+## THE CARDINAL RULE
 
-The very stall that motivated the fix was then resolved BY the fix, unattended.
-`tmp/overseer/daemon.log` recorded the full sequence against the real
-`overseer-rewrite` track:
+**The daemon NEVER restarts a session that has not declared itself `ready`.**
 
-```
-overseer[SURFACE]: …::overseer-rewrite won't wrap up (ctx 13% left, no ready marker); force-restart in 90s
-… (countdown ticks: 78s, 65s, 53s, 41s, 28s, 16s, 4s)
-overseer[SURFACE]: …::overseer-rewrite stalled idle at ctx 13% with no ready marker for 98s — force-restarting (auto-restart is non-negotiable)
-overseer: restarted /data/projects/livespec::overseer-rewrite (pane %6)
-```
+A timer cannot know whether a session is safe to kill. **"idle + settled" is NOT "at a
+safe stopping point"**: a session can sit at an empty prompt while a background build
+runs, while a sub-agent works, or while it waits on a human in another pane. Only the
+session knows — so only the session may authorize the restart.
 
-All three primary requirements fired: the wedged session was **exited**, **restarted**
-as `claude --dangerously-skip-permissions -n overseer-rewrite`, and **re-kicked** with
-`read …/plan/overseer-rewrite/handoff.md and follow it`. The fresh session that came up
-in pane `%6` (tmux `livespec4`) confirmed its own identity and wrote this section — i.e.
-the restarted session IS the evidence. Before the fix, this identical stall wedged the
-track forever.
+A session that declares nothing is **reported** to the human as not responding and is
+**left alone**. That is a bug in the SESSION, never a licence for the daemon to guess.
 
-## The bug (maintainer-reported 2026-07-14)
+The restart *mechanics* remain fully automatic and unchanged — `respawn-pane -k` →
+`claude --dangerously-skip-permissions -n <topic>` → paste `read
+<repo>/plan/<topic>/handoff.md and follow it`. Only the *trigger* changed: it is now
+solely the session's own declaration.
 
-Session `livespec4` (topic `overseer-rewrite`) sat **idle at 13% context**, correctly
-rendered as `danger` by the daemon, and was **never restarted**. Two independent root
-causes:
+## What went wrong (the history, so it is not repeated)
 
-1. **The restart was conditional on the tracked session's cooperation.** The daemon
-   restarted only on a valid `.overseer-ready` marker; at the danger line with no
-   marker it merely SURFACED the stall ("never force-kill a session mid-work" — the
-   original design's explicit guard). That session had **refused to write either
-   marker**: its real pending work had drifted away from
-   `plan/overseer-rewrite/handoff.md` (it had stashed its live handoff in a `/tmp`
-   scratchpad), so it reasoned that certifying would resume the next session from a
-   stale document — and it stopped, un-certified, explaining itself in prose. The
-   track wedged **forever**. A session holding semantic judgment could therefore veto
-   the one mechanic the overseer exists to perform.
-2. **The launch command never passed `--dangerously-skip-permissions`.**
-   `_launch_command` returned `claude -n <topic>`, so even a *successful* restart
-   would have come up requiring permission prompts — i.e. not autonomous, silently
-   defeating the point.
+1. **The original wedge.** A session at 13% refused to write a marker (its real handoff
+   was stashed in a scratchpad, so it judged the resume path stale) and sat idle
+   forever. A real bug — but the correct fix was the *wrap-up text*: tell the session
+   the handoff is the ONLY artifact it hands forward, so drift is fixed by REWRITING it.
+2. **The overcorrection (removed).** A timer-based force-restart was layered on top: a
+   warned track idle at the danger line for 90s was killed and relaunched. This
+   **guessed** that idle meant safe. It was proven unsafe almost immediately — a session
+   with a live `Bash(run_in_background)` build reads exactly like an idle one, so the
+   force-restart would `respawn-pane -k` it and destroy the running work. That was only
+   the *first* such case; there is no reliable way for the daemon to enumerate the rest.
+   Maintainer-declared a **severe bug**; removed.
 
-## The fix
+If you ever find yourself re-adding `_danger_or_force_restart`, `_STALL_RESTART_GRACE`,
+or `danger_idle_since` — stop. That is this bug returning.
 
-- **`_danger_or_force_restart` + `_STALL_RESTART_GRACE` (90s).** The marker is now a
-  **fast path, not a veto**. A warned track that stays continuously **idle + settled**
-  at/below `DANGER_CTX_REMAINING` (20% left) without certifying is **force-restarted**
-  after the grace, running the *identical* respawn + resume mechanics as the certified
-  path. `_InjectState.danger_idle_since` timestamps when the stall began, and
-  `evaluate` resets it on any non-stall status, so only a genuine *continuous* stall
-  accrues toward the grace. Guarded on `warned` (an injection stamp exists ⇒ the
-  wrap-up actually landed), so a pane too broken to receive the wrap-up is surfaced
-  rather than respawned into.
-- **`_launch_command` → `claude --dangerously-skip-permissions -n <topic>`.**
-- **`WRAPUP_TEMPLATE` rewritten** to tell the session plainly that it WILL be
-  restarted regardless, that `plan/<topic>/handoff.md` is the ONLY artifact the fresh
-  session inherits (so drift is fixed by REWRITING the handoff, never by withholding
-  the marker), and that it must write exactly ONE of the two markers — "neither" is
-  not a valid outcome.
-- **Encoded as REQUIREMENTS**, per the maintainer: `.claude/skills/overseer/AGENTS.md`
-  **invariant 7** (the three restart requirements + "a missing certification must not
-  wedge a track"), `marker-protocol.md` §"The restart is NON-NEGOTIABLE", `SKILL.md`,
-  this thread's `design.md`, and a new `.ai/agent-disciplines.md` §"Tracked-session
-  discipline — the overseer wrap-up contract" (the other half of the contract: what a
-  supervised session owes).
+## The ONE tri-state indicator file
 
-## Why this is NOT the "never force-kill mid-work" regression
+`.overseer-ready` + `.overseer-blocked` are **gone**. Two presence-markers carried a
+built-in ambiguity: nothing stopped BOTH existing, and their precedence was incidental
+rather than designed. There is now **one file with a VALUE**, which makes the ambiguity
+unrepresentable — writing one value REPLACES the other.
 
-**"Mid-work" means BUSY.** The force-restart is reachable ONLY from the idle branch of
-`evaluate` — the pane is already proven not-busy, `_pane_settled` across two captures,
-identity-gated Claude, NOT at a structured gate, and NOT `.overseer-blocked`. A busy
-pane stays `working` and is never touched; a human-gated pane is never restarted (a
-human gate is the one thing that still suppresses the restart). And `respawn-pane -k`
-kills a **process**, not work: every file, worktree, commit, and branch on disk
-survives it. The only thing a session can actually lose by being force-restarted is
-resume state it chose to keep OUTSIDE its handoff — which the wrap-up now explicitly
-forbids.
+`<repo>/tmp/overseer/<topic>/.overseer-state`; the first non-empty line is `<token>` or
+`<token>: <detail>`:
+
+| value | meaning | daemon |
+|---|---|---|
+| `ready` | at a clean stopping point — restart me | **the SOLE restart authorization** (and only if its mtime is newer than this round's injection stamp) |
+| `blocked: <one-line reason>` | needs a human decision the session cannot make | surfaced with coordinates; never restarted, never keystroked |
+| `winding-down` | ACK: got the wrap-up, wrapping up now | a FRESH ack suppresses re-warns (never keystroke into a session already wrapping up); a STALE one (older than `_ACK_STALE_AFTER`, 900s) resumes escalation but STILL never authorizes an act |
+
+A malformed/typo'd token is **surfaced** and treated as no declaration (fail-closed) —
+never silently ignored, never read as readiness.
+
+## Escalating wrap-up (the lever, now that nothing is force-killed)
+
+Fires once per 10% band, durably (50/40/30/20/10):
+
+- **50 / 40 — suggestion:** *"You are down to N% of your context. Please start wrapping up…"*
+- **30 / 20 / 10 — insistent:** *"STOP AND WIND DOWN NOW…"* (`_INSIST_AT = 30`)
+
+Re-sending identical text five times is repetition, not escalation; with no
+force-restart, this escalation IS the lever, so it must actually sharpen.
+
+## Notify, never block (the wedged-console bug)
+
+**A question may only be asked by the actor that OWNS the decision, and the overseer
+must never block on a question it does not own.**
+
+The interactive bottom pane used to relay a *tracked session's* blocked-gate as its own
+`AskUserQuestion` modal. That duplicated the decision surface: the maintainer answered
+in the tracked session's own pane, and the overseer's modal stayed blocking forever —
+wedging the entire console (a single point of failure for the whole fleet view).
+
+- **Track decisions** → the tracked session owns them and already displays them in its
+  own pane. The overseer reports them as **non-blocking text** and never re-asks.
+- **Overseer-owned decisions** (`add` / `remove` / `unassign` / `start`) →
+  `AskUserQuestion` is still fine; nobody else can answer them.
+
+This self-heals: the daemon re-derives `blocked:human` from the live pane every tick, so
+when the human answers in the tracked pane the alert simply stops.
+
+**Every track alert now names WHERE to act** — plan topic, repo, tmux **session**,
+**pane**, and a copy-pasteable `tmux switch-client -t <session>` jump command.
+`repo::topic` alone said WHAT was stuck but not WHERE to go.
 
 ## Where the code lives
 
-`.claude/skills/overseer/` — `supervisor.py` (`_danger_or_force_restart`,
-`_STALL_RESTART_GRACE`, `_InjectState.danger_idle_since`, `_launch_command`,
-`_do_restart(certified=…)`, `WRAPUP_TEMPLATE`), beside-tests (**164 green**),
-`AGENTS.md` / `marker-protocol.md` / `SKILL.md`.
+`.claude/skills/overseer/` — `signals.py` (`state_path`, `read_state`, `ready_valid`,
+`STATE_*`, `TrackState`), `supervisor.py` (`wrapup_message` + the two escalation heads,
+`_alert`, `_alert_non_responder`, `_clear_state`, and `_do_restart` — which has exactly
+ONE caller, guarded by `elif ready:`), beside-tests (**164 green**).
 
 **The beside-tests are the ONLY gate on this folder** — it sits outside every product
-gate (ruff / pyright / coverage / import-linter all exclude it, and `just check` never
+gate (ruff / pyright / coverage / import-linter all exclude it; `just check` never
 collects it), so a broken change here merges green with nothing having exercised it.
 ALWAYS run before pushing:
 
@@ -103,20 +108,12 @@ uv run pytest .claude/skills/overseer/ -q
 
 ## Resume command
 
-**Nothing to resume — the fix is complete, merged, and now live-exercised.** A later
-commit (`50648c7`) additionally taught the daemon that a live background shell reads
-BUSY rather than idle (so a session with a `run_in_background` command is never
-force-restarted out from under its own work) and made `overseer-start` self-heal the
-split. If you pick this thread up again, the live follow-ups are:
+**Nothing to resume — the redesign is complete and merged.** Open items:
 
-- **Codex adoption (documented gap — the one genuinely open item).** Codex sessions are
-  not in Claude's session registry (`~/.claude/sessions/<pid>.json`), so
-  `adopt_sessions` cannot see them. The entry point would be a codex session-store
-  reader feeding the same `adopt_sessions` guard. Note the *busy* signal already covers
-  Codex (`claude_sessions.has_active_subshell` is a process-tree check, runtime-
-  agnostic); it is only ADOPTION that is Claude-only.
-- **A running daemon must be restarted to pick up new code** (standing operational rule,
-  not an open task). `overseerd` is a long-lived process in the `livespec-overseer` top
-  pane; it keeps running whatever code it started with. After any merge here, restart
-  that pane's daemon. As of 2026-07-14 the running daemon already carries current code —
-  it is the one that executed the force-restart above.
+- **Codex adoption (documented gap).** Codex sessions are not in Claude's session
+  registry (`~/.claude/sessions/<pid>.json`), so `adopt_sessions` cannot see them. The
+  *busy* signal already covers Codex (`has_active_subshell` is a runtime-agnostic
+  process-tree walk); it is only ADOPTION that is Claude-only.
+- **A running daemon must be restarted to pick up new code** (standing operational
+  rule). `overseerd` is long-lived in the `livespec-overseer` top pane and keeps running
+  whatever code it started with.

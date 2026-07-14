@@ -94,9 +94,9 @@ def _file_lock(target: str | os.PathLike[str]) -> Iterator[None]:
 DEFAULT_CTX_THRESHOLD = 50
 
 # The durable mapping store and the injection-stamp sidecar both live beside
-# the maintainer's home dir (NOT inside any governed repo — the marker files
-# `.overseer-ready`/`.overseer-blocked` are the only overseer state that lives
-# inside a governed plan dir). Both paths are parameterizable so tests can point
+# the maintainer's home dir (NOT inside any governed repo — the single
+# `.overseer-state` file, under the repo's gitignored `tmp/`, is the only overseer
+# state that lives inside a governed repo). Both paths are parameterizable so tests can point
 # them at a tmp_path.
 DEFAULT_STORE_PATH = Path.home() / ".livespec-overseer.jsonl"
 DEFAULT_STAMP_PATH = Path.home() / ".livespec-overseer-stamps.json"
@@ -623,8 +623,8 @@ def archived_or_gone(repo: str, topic: str) -> bool:
 
 
 # --------------------------------------------------------------------------- #
-# Injection-stamp sidecar: the per-track timestamp the certification check
-# compares the `.overseer-ready` marker's mtime against.
+# Injection-stamp sidecar: the per-track timestamp the restart-authorization check
+# compares the `.overseer-state` file's mtime against (a `ready` must be THIS round's).
 # --------------------------------------------------------------------------- #
 
 

@@ -10,6 +10,7 @@ archive-GC dropping an archived row, ctx-unknown never injecting — PLUS the
 failure propagation, marker/round lifecycle, read-only list, and the start guard.
 """
 
+import contextlib
 import importlib.machinery
 import importlib.util
 import io as _io
@@ -253,9 +254,7 @@ def test_structured_gate_suppresses_injection(tmp_path):
 def test_blocked_marker_suppresses_injection(tmp_path):
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
-    blocked = signals.blocked_marker_path(str(repo), topic)
-    blocked.parent.mkdir(parents=True, exist_ok=True)  # <repo>/tmp/overseer/<topic>/
-    blocked.write_text("waiting on schema call\n")
+    _declare(repo, topic, "blocked: waiting on schema call")
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=40))  # idle+low ctx but blocked marker
     sup = _sup(tmp_path, fake)
@@ -338,7 +337,7 @@ def test_warned_writes_stamp_before_pasting(tmp_path):
     sup = _sup(tmp_path, fake)
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "warned"
-    assert fake.paste_texts() and "Wrap up for a clean session restart" in fake.paste_texts()[0]
+    assert fake.paste_texts() and _WRAPUP_SENTINEL in fake.paste_texts()[0]
     assert seen == [1000.0]  # stamp written BEFORE the paste, at now()==1000.0
     assert ("keys", session, "Enter") in fake.calls
 
@@ -383,8 +382,13 @@ def test_idle_above_threshold_does_nothing(tmp_path):
     assert not fake.has("paste")
 
 
+# A phrase from the SHARED wrap-up body, so it matches BOTH tones (the gentle
+# suggestion at 50/40 and the insistent shutdown demand at 30/20/10).
+_WRAPUP_SENTINEL = "Declare your state by writing ONE line"
+
+
 def _wrapup_count(fake):
-    return len([t for t in fake.paste_texts() if "Wrap up for a clean session restart" in t])
+    return len([t for t in fake.paste_texts() if _WRAPUP_SENTINEL in t])
 
 
 def test_escalates_one_paste_per_band_as_ctx_drops(tmp_path):
@@ -560,18 +564,23 @@ def test_explicit_ctx_threshold_overrides_warn_percent(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def _arm_ready_marker(repo, topic, *, mtime=1001.0):
-    """Write a valid ready marker at its TEMP path (mkdir the parent first).
+def _declare(repo, topic, value, *, mtime=1001.0):
+    """Write the session's ONE state file with ``value`` (e.g. "ready", "blocked: x").
 
-    The marker now lives at ``<repo>/tmp/overseer/<topic>/.overseer-ready`` — its
-    parent dir does not exist yet, so create it. Certification is presence +
-    freshness only, so the contents need not be a hash of anything.
+    The single indicator lives at ``<repo>/tmp/overseer/<topic>/.overseer-state`` — its
+    parent dir does not exist yet, so create it. One file with a VALUE: there is no way
+    to be simultaneously `ready` and `blocked`, which is the whole point.
     """
-    marker = signals.ready_marker_path(str(repo), topic)
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text("ready\n")
-    os.utime(marker, (mtime, mtime))
-    return marker
+    path = signals.state_path(str(repo), topic)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{value}\n")
+    os.utime(path, (mtime, mtime))
+    return path
+
+
+def _arm_ready_marker(repo, topic, *, mtime=1001.0):
+    """The session declares `ready` — the ONLY thing that authorizes a restart."""
+    return _declare(repo, topic, signals.STATE_READY, mtime=mtime)
 
 
 def test_restart_fires_when_marker_valid_notbusy_idle(tmp_path):
@@ -677,16 +686,12 @@ def test_no_bg_shell_allows_restart(tmp_path):
     ) in fake.calls
 
 
-def test_bg_shell_suppresses_the_idle_stall_force_restart(tmp_path):
-    """THE INTERACTION GUARD between the two fixes — the reason they must ship together.
-
-    A session at the danger line whose pane LOOKS idle, with no ready marker, but with a
-    live background shell (a `Bash(run_in_background)` build/test still running) must NEVER
-    be force-restarted: the bg-shell check makes it `busy` ⇒ `working`, which outranks the
-    danger branch, so the non-negotiable force-restart is never reached and the stall clock
-    never accrues. Without the bg-shell check, the force-restart would `respawn-pane -k` a
-    session with live background work — the one way the force-restart could destroy real
-    work rather than just a process."""
+def test_bg_shell_at_danger_is_working_and_never_restarted(tmp_path):
+    """A session deep in the danger band whose pane LOOKS idle, but which has a live
+    background shell (a `Bash(run_in_background)` build/test still running), reads
+    `working` — never `danger`, never restarted. This is the concrete case proving why
+    the daemon may not equate "idle + settled" with "safe to kill": the pane text is
+    indistinguishable from idle, yet real work is in flight."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
@@ -694,18 +699,11 @@ def test_bg_shell_suppresses_the_idle_stall_force_restart(tmp_path):
     fake.pane_pid_map[session] = 100
     children = {100: [200], 200: [300]}
     comms = {200: "node", 300: "bash"}  # a LIVE background shell under the pane process
-    clock = {"t": 1000.0}
-    sup = _clock_sup(
-        tmp_path, fake, clock, children_of=lambda pid: children.get(pid, []), comm_of=comms.get
-    )
-    track = _mapped_track(repo, topic, session)
-
-    sup.evaluate(track, act=True)
-    clock["t"] = 1000.0 + supervisor._STALL_RESTART_GRACE + 100  # WAY past the grace
-    view = sup.evaluate(track, act=True)
+    sup = _sup(tmp_path, fake, children_of=lambda pid: children.get(pid, []), comm_of=comms.get)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "working"  # bg shell ⇒ busy; the danger branch is never reached
+    assert view.note == "background shell"
     assert not fake.has("respawn")  # the live background work was NOT killed
-    assert sup._inject[_key_for(repo, topic)].danger_idle_since is None  # stall clock reset
 
 
 def test_bg_shell_sets_background_shell_note(tmp_path):
@@ -862,175 +860,164 @@ def test_renamed_session_is_idle_and_restarts(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# The NON-NEGOTIABLE auto-restart (maintainer 2026-07-14).
+# THE CARDINAL RULE + the ONE tri-state indicator file (maintainer 2026-07-14).
 #
-# A warned session that STALLS idle at/below the danger line without ever writing
-# `.overseer-ready` (it refused, crashed, ran out of context, or autocompacted)
-# MUST still be restarted — the old "danger → surface only, never force-kill"
-# behavior wedged a real track at 13% forever. The force-restart is reached ONLY
-# on a verified idle+settled pane (never busy), so it is not a mid-work kill.
+# The daemon NEVER restarts a session that has not declared itself `ready`. It never
+# infers readiness from a timer or from idleness — "idle + settled" is NOT "safe to
+# kill". A session that declares nothing is REPORTED, never killed.
 # --------------------------------------------------------------------------- #
 
 
-def _clock_sup(tmp_path, fake, clock, **kwargs):
-    """A Supervisor on a MUTABLE clock, so the idle-stall grace can be advanced."""
-    return supervisor.Supervisor(
-        tmux=fake,
-        store_path=str(tmp_path / "map.jsonl"),
-        stamp_path=str(tmp_path / "stamps.json"),
-        out=_io.StringIO(),
-        now=lambda: clock["t"],
-        sleep=lambda _s: None,
-        **kwargs,
-    )
-
-
-def test_launch_command_passes_dangerously_skip_permissions(tmp_path):
-    """A (re)started track must resume AUTONOMOUSLY. Without
-    `--dangerously-skip-permissions` the fresh session stalls on its first
-    permission prompt and the whole point of the auto-restart is lost; `-n <topic>`
-    re-assigns the session name from the plan topic."""
-    repo, topic = _make_plan(tmp_path)
-    track = _mapped_track(repo, topic, registry.tmux_id(str(repo), topic))
-    assert (
-        supervisor.Supervisor._launch_command(track)
-        == f"claude --dangerously-skip-permissions -n {topic}"
-    )
-
-
-def test_danger_stall_force_restarts_after_grace(tmp_path):
-    """THE BUG: an idle session at danger that never certifies must be force-restarted.
-
-    Tick 1 opens the stall (warn + start the grace clock); within the grace it stays
-    `danger`; once continuously idle-stalled past `_STALL_RESTART_GRACE` the daemon
-    FORCE-restarts it — respawn with `--dangerously-skip-permissions -n <topic>`,
-    then paste the resume line pointing at plan/<topic>/handoff.md — and closes the
-    round so it cannot re-fire."""
+def test_idle_at_danger_with_no_declaration_is_never_restarted(tmp_path):
+    """THE regression guard for the severe bug. A session idle at 13%, warned, wide past
+    any plausible timeout, having declared NOTHING, must be SURFACED and left alone —
+    never respawned. A timer cannot know a session is safe to kill."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=13))  # idle, <= DANGER, NO marker
-    clock = {"t": 1000.0}
-    sup = _clock_sup(tmp_path, fake, clock)
+    fake.serve(session, repo, capture=_idle_capture(ctx=13))  # idle, deep in danger, no state
+    sup = _sup(tmp_path, fake)
     track = _mapped_track(repo, topic, session)
 
-    # Tick 1: enter the idle-danger stall — wrap-up injected, grace clock starts.
-    assert sup.evaluate(track, act=True).status == "danger"
-    assert not fake.has("respawn")
-
-    # Still WITHIN the grace: still danger, still no restart.
-    clock["t"] = 1000.0 + supervisor._STALL_RESTART_GRACE - 1
-    assert sup.evaluate(track, act=True).status == "danger"
-    assert not fake.has("respawn")
-
-    # PAST the grace: the non-negotiable force-restart fires.
-    clock["t"] = 1000.0 + supervisor._STALL_RESTART_GRACE + 1
-    view = sup.evaluate(track, act=True)
-    assert view.status == "restarting"
-    assert (
-        "respawn",
-        session,
-        str(repo),
-        f"claude --dangerously-skip-permissions -n {topic}",
-    ) in fake.calls
-    assert supervisor.default_resume(str(repo), topic) in fake.paste_texts()
-    # Round closed: stamp cleared + in-memory state popped → cannot re-restart.
-    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) is None
-    assert _key_for(repo, topic) not in sup._inject
+    for _ in range(20):  # tick and tick and tick — it must NEVER escalate to a kill
+        view = sup.evaluate(track, act=True)
+    assert view.status == "danger"
+    assert not fake.has("respawn")  # the session was NOT killed
+    assert not signals.state_path(str(repo), topic).exists()  # daemon wrote nothing
 
 
-def test_danger_stall_clock_resets_when_session_resumes_work(tmp_path):
-    """The grace counts only a CONTINUOUS idle stall. A session that resumes work
-    (goes busy) mid-grace resets the clock, so it is NOT force-restarted the instant
-    it next goes idle — it earns a fresh full grace. Over-firing the restart on a
-    session that is still working is the unsafe direction."""
+def test_restart_fires_only_on_a_declared_ready(tmp_path):
+    """`ready` is the SOLE authorization. Declared → restarted immediately; the state
+    file is then cleared so it cannot re-trigger."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=13))
-    clock = {"t": 1000.0}
-    sup = _clock_sup(tmp_path, fake, clock)
-    track = _mapped_track(repo, topic, session)
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    state = _declare(repo, topic, "ready", mtime=1001.0)
 
-    sup.evaluate(track, act=True)  # tick 1: stall clock starts at 1000
-    assert sup._inject[_key_for(repo, topic)].danger_idle_since == 1000.0
-
-    # The session RESUMES WORK before the grace elapses → the clock resets.
-    clock["t"] = 1000.0 + supervisor._STALL_RESTART_GRACE - 5
-    fake.panes[session] = "esc to interrupt\n  Ctx: 13% left\n"  # busy
-    assert sup.evaluate(track, act=True).status == "working"
-    assert sup._inject[_key_for(repo, topic)].danger_idle_since is None
-
-    # Idle again PAST the original window: a FRESH grace starts — no restart yet.
-    clock["t"] = 1000.0 + supervisor._STALL_RESTART_GRACE + 2
-    fake.panes[session] = _idle_capture(ctx=13)
-    assert sup.evaluate(track, act=True).status == "danger"
-    assert not fake.has("respawn")
-
-
-def test_no_force_restart_when_wrapup_was_never_delivered(tmp_path):
-    """The force-restart requires the wrap-up to have actually LANDED (an injection
-    stamp exists). If the pane is so broken that every wrap-up paste fails, the stamp
-    is rolled back, so the daemon keeps surfacing rather than respawning into a broken
-    tmux — even long past the grace."""
-    repo, topic = _make_plan(tmp_path)
-    session = registry.tmux_id(str(repo), topic)
-    fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=13))
-    fake.paste_ok = False  # every wrap-up paste FAILS → the round is rolled back
-    clock = {"t": 1000.0}
-    sup = _clock_sup(tmp_path, fake, clock)
-    track = _mapped_track(repo, topic, session)
-
-    sup.evaluate(track, act=True)
-    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) is None
-
-    clock["t"] = 1000.0 + supervisor._STALL_RESTART_GRACE + 100  # WAY past the grace
-    assert sup.evaluate(track, act=True).status == "danger"
-    assert not fake.has("respawn")
-
-
-def test_blocked_marker_suppresses_force_restart(tmp_path):
-    """A `.overseer-blocked` track is genuinely waiting on a HUMAN: it outranks the
-    danger branch, so it is surfaced as blocked and NEVER force-restarted, however
-    low its context or however long it sits. The force-restart must not steamroll a
-    human gate."""
-    repo, topic = _make_plan(tmp_path)
-    session = registry.tmux_id(str(repo), topic)
-    blocked = signals.blocked_marker_path(str(repo), topic)
-    blocked.parent.mkdir(parents=True, exist_ok=True)
-    blocked.write_text("waiting on a human decision\n")
-    fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=10))  # idle, DEEP in danger
-    clock = {"t": 1000.0}
-    sup = _clock_sup(tmp_path, fake, clock)
-    track = _mapped_track(repo, topic, session)
-
-    sup.evaluate(track, act=True)
-    clock["t"] = 1000.0 + supervisor._STALL_RESTART_GRACE + 100  # way past the grace
-    view = sup.evaluate(track, act=True)
-    assert view.status == "blocked:human"
-    assert not fake.has("respawn")
-
-
-def test_valid_ready_marker_still_wins_the_clean_restart_path(tmp_path):
-    """The marker path is unchanged and still PREEMPTS the stall grace: a session that
-    certifies is restarted IMMEDIATELY (no waiting out the grace). The force-restart is
-    the fallback for a session that never certifies, not a replacement."""
-    repo, topic = _make_plan(tmp_path)
-    session = registry.tmux_id(str(repo), topic)
-    fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=13))  # idle + in the danger band
-    clock = {"t": 1000.0}
-    sup = _clock_sup(tmp_path, fake, clock)
-    track = _mapped_track(repo, topic, session)
-    registry.write_injection_stamp(str(repo), topic, 990.0, sup.stamp_path)
-    _arm_ready_marker(repo, topic, mtime=995.0)  # certified THIS round
-
-    # No clock advance at all — the marker restarts it on the very first tick.
-    view = sup.evaluate(track, act=True)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "restarting"
     assert fake.has("respawn")
+    assert supervisor.default_resume(str(repo), topic) in fake.paste_texts()
+    assert not state.exists()  # round closed
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) is None
+
+
+def test_winding_down_ack_suppresses_the_rewarn(tmp_path):
+    """A fresh `winding-down` ACK buys patience: the session heard us and is wrapping up,
+    so the daemon stops re-warning — it must never keystroke into a session that is
+    actively winding down. It is NOT restarted either (only `ready` does that)."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=13))  # would otherwise be `danger`
+    sup = _sup(tmp_path, fake)  # now() == 1000.0
+    _declare(repo, topic, "winding-down", mtime=1000.0)  # fresh ACK
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "winding-down"
+    assert not fake.has("paste")  # no re-warn pasted into a session that is wrapping up
+    assert not fake.has("respawn")  # an ACK is not a restart authorization
+
+
+def test_stale_winding_down_ack_resumes_escalation_but_still_never_acts(tmp_path):
+    """An ACK must not become an infinite stall. Past `_ACK_STALE_AFTER` the daemon
+    resumes escalating and reports the track — but it STILL never kills it. The
+    escalation is louder words, never a restart."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=13))
+    err = _io.StringIO()
+    sup = _sup(tmp_path, fake)  # now() == 1000.0
+    _declare(repo, topic, "winding-down", mtime=1000.0 - supervisor._ACK_STALE_AFTER - 1)
+
+    with contextlib.redirect_stderr(err):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "danger"  # the stale ACK no longer protects it
+    assert fake.has("paste")  # escalation resumed
+    assert not fake.has("respawn")  # but STILL never killed
+    # The report must NOT conflate "hung mid-wrap-up" with "ignored us" — they need
+    # different fixes, and this session DID acknowledge.
+    out = err.getvalue()
+    assert "ACKNOWLEDGED the wrap-up" in out
+    assert "declared NOTHING" not in out
+
+
+def test_blocked_declaration_is_surfaced_and_never_restarted(tmp_path):
+    """`blocked` carries its one-line reason into the row, and the track is never
+    keystroked or restarted — a human gate is the one thing the daemon must not touch."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=13))
+    sup = _sup(tmp_path, fake)
+    _declare(repo, topic, "blocked: waiting on the schema call")
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "blocked:human"
+    assert view.note == "waiting on the schema call"
+    assert not fake.has("paste")
+    assert not fake.has("respawn")
+
+
+def test_one_file_cannot_be_both_ready_and_blocked(tmp_path):
+    """The reason for ONE file with a VALUE: with two presence-markers, both could exist
+    and the precedence was incidental. A single file makes the ambiguity unrepresentable
+    — writing `blocked` REPLACES `ready`, so the track is blocked, full stop."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    _declare(repo, topic, "ready", mtime=1001.0)
+    _declare(repo, topic, "blocked: changed my mind", mtime=1002.0)  # same file, overwritten
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "blocked:human"
+    assert not fake.has("respawn")  # the superseded `ready` cannot restart it
+
+
+def test_malformed_state_value_is_surfaced_and_never_restarts(tmp_path):
+    """A typo'd value must be REPORTED, not silently ignored — and must never be read as
+    readiness (fail-closed)."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    err = _io.StringIO()
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    _declare(repo, topic, "redy", mtime=1001.0)  # typo
+
+    with contextlib.redirect_stderr(err):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert not fake.has("respawn")  # a typo is NOT a restart authorization
+    assert "MALFORMED state file" in err.getvalue()
+    assert view.note is not None and "redy" in view.note
+
+
+def test_every_track_alert_names_the_tmux_session_and_pane(tmp_path):
+    """Operator-facing alerts must say WHERE to act: `repo::topic` alone told the
+    maintainer WHAT was stuck but not WHERE to go. Every track alert carries the tmux
+    session, the pane, and a copy-pasteable jump command."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=13))  # danger, nothing declared
+    err = _io.StringIO()
+    sup = _sup(tmp_path, fake)
+
+    with contextlib.redirect_stderr(err):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    out = err.getvalue()
+    assert topic in out
+    assert f"tmux session '{session}'" in out
+    assert f"pane {session}" in out  # FakeTmux models the pane id as the session name
+    assert f"tmux switch-client -t {session}" in out  # the jump command
 
 
 # --------------------------------------------------------------------------- #
@@ -1561,28 +1548,44 @@ def test_overseerd_executable_is_the_daemon_entrypoint():
     assert "supervisor.run_daemon(" in body, "overseerd must delegate to run_daemon()"
 
 
-def test_wrapup_message_has_required_placeholders_filled():
-    # The message quotes the CURRENT remaining-% and the TEMP marker dir under
-    # <repo>/tmp/overseer/<topic>/ — never a MARKER path under plan/.
+def test_wrapup_message_names_the_one_state_file_and_all_three_values():
+    """The wrap-up must hand the session the SINGLE state file and all three legal
+    values, plus the handoff it will be resumed from. Only tmp/ paths — never a state
+    file under plan/."""
     msg = supervisor.wrapup_message(remaining=40, repo="/r", topic="t")
-    assert "% of your context remaining" in msg
-    assert "40% of your context remaining" in msg
-    assert "/r/tmp/overseer/t/.overseer-ready" in msg
-    assert "/r/tmp/overseer/t/.overseer-blocked" in msg
-    # The markers moved OUT of plan/: the old plan-based marker path is absent.
-    assert "/r/plan/t/.overseer-ready" not in msg
-
-
-def test_wrapup_message_states_the_restart_is_unconditional():
-    """The wrap-up must tell the session (a) it WILL be restarted regardless, and
-    (b) that plan/<topic>/handoff.md is the ONLY artifact the fresh session
-    inherits — so drift is fixed by REWRITING the handoff, never by withholding the
-    marker. A session that stashed its real handoff in a scratchpad and then refused
-    to certify is what wedged a track idle at 13% forever."""
-    msg = supervisor.wrapup_message(remaining=13, repo="/r", topic="t")
+    assert "40%" in msg
+    assert "/r/tmp/overseer/t/.overseer-state" in msg  # the ONE indicator file
+    for token in ("winding-down", "ready", "blocked:"):
+        assert token in msg
     assert "/r/plan/t/handoff.md" in msg  # the resume target is named explicitly
-    assert "WILL be restarted" in msg  # not conditional on cooperation
-    assert "does NOT prevent the restart" in msg  # declining only delays it
+    assert "/r/plan/t/.overseer-state" not in msg  # never under plan/
+    # The retired two-file protocol is GONE from the message.
+    assert ".overseer-ready" not in msg
+    assert ".overseer-blocked" not in msg
+
+
+def test_wrapup_message_says_only_the_session_authorizes_the_restart():
+    """The cardinal rule must be in the message the session actually reads: it is
+    restarted only when IT says `ready`, and writing nothing gets it reported — not
+    killed. (The old text promised an unconditional force-restart; that was the bug.)"""
+    msg = supervisor.wrapup_message(remaining=13, repo="/r", topic="t")
+    assert "ONLY when YOU say so" in msg
+    assert "never kills a session" in msg
+    assert "not responding" in msg  # writing nothing ⇒ reported to a human
+
+
+def test_wrapup_escalates_from_suggestion_to_insistence():
+    """The maintainer's escalation: a SUGGESTION while there is still room (50/40),
+    turning INSISTENT at 30/20/10. Re-sending identical text five times is repetition,
+    not escalation — and with no force-restart, this escalation IS the lever."""
+    for gentle in (50, 40):
+        msg = supervisor.wrapup_message(remaining=gentle, repo="/r", topic="t")
+        assert "Please start wrapping up" in msg
+        assert "STOP AND WIND DOWN NOW" not in msg
+    for insistent in (30, 20, 10):
+        msg = supervisor.wrapup_message(remaining=insistent, repo="/r", topic="t")
+        assert "STOP AND WIND DOWN NOW" in msg
+        assert "Please start wrapping up" not in msg
 
 
 def test_streaming_pane_is_working_not_idle(tmp_path):
