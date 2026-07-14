@@ -32,13 +32,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Phase 2 prerequisite proof: the runner POOL actually runs jobs in PARALLEL.
+  # livespec's real CI is a ~60-job per-target matrix, and each ephemeral runner
+  # takes exactly ONE job, so the slot count IS the CI parallelism. Before ci.yml
+  # can be cut over, we must see many jobs run CONCURRENTLY on distinct runners —
+  # not serialize through one. Each job prints the runner that took it; distinct
+  # runner names across overlapping timestamps is the proof.
+  slot-parallelism:
+    name: slot ${{ matrix.slot }}
+    runs-on: [self-hosted, local-ci]
+    container:
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    permissions:
+      contents: read
+    steps:
+      - name: Which runner took me, and when
+        run: |
+          echo "runner=$RUNNER_NAME slot=${{ matrix.slot }}"
+          echo "start=$(date -Is)"
+          sleep 20
+          echo "end=$(date -Is)"
+
   # Fast, reliable proof that the runner + rootless-podman container +
   # agent/job isolation + host-service denial all hold in a REAL job.
   mechanism-and-isolation:
     name: mechanism + live isolation
     runs-on: [self-hosted, local-ci]
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
     permissions:
       contents: read
     steps:
@@ -80,7 +105,7 @@ jobs:
     needs: [mechanism-and-isolation]
     runs-on: [self-hosted, local-ci]
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
     permissions:
       contents: read
     env:
