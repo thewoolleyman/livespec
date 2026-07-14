@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.5](https://github.com/thewoolleyman/livespec/compare/v0.11.4...v0.11.5) (2026-07-14)
+
+
+### Bug Fixes
+
+* **overseer:** the daemon owns 'what needs attention'; the bottom pane is not a status display ([818a5e7](https://github.com/thewoolleyman/livespec/commit/818a5e7762c03f4d70c40757de7abb1ceec0af42))
+
 ## [0.11.4](https://github.com/thewoolleyman/livespec/compare/v0.11.3...v0.11.4) (2026-07-14)
 
 
