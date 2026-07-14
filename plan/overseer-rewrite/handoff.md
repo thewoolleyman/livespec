@@ -1,17 +1,34 @@
-# Handoff — the overseer auto-restart is NON-NEGOTIABLE (bug fixed)
+# Handoff — the overseer auto-restart is NON-NEGOTIABLE (fixed, and now proven live)
 
-**Status (2026-07-14): DONE + merged (livespec core, branch
-`overseer-force-restart-stall`).** The daemon now FORCE-restarts a tracked session
-that stalls idle at the danger line without certifying, and the (re)start command
-carries `--dangerously-skip-permissions` so the resumed session is actually
-autonomous. **HOLD on archive still stands** — this thread is complete but kept per
-the maintainer's standing hold. **Owning session:** livespec core, "overseer-rewrite".
+**Status (2026-07-14): DONE + merged + LIVE-EXERCISED.** The daemon now FORCE-restarts
+a tracked session that stalls idle at the danger line without certifying, and the
+(re)start command carries `--dangerously-skip-permissions` so the resumed session is
+actually autonomous. The fix has since been **exercised end-to-end on a real stalled
+track** (evidence below), which closes the "done means rolled out and exercised live"
+leg. **HOLD on archive still stands** — this thread is complete but kept per the
+maintainer's standing hold. **Owning session:** livespec core, "overseer-rewrite".
+
+## Live-exercise evidence (2026-07-14) — the fix worked on a real track
+
+The very stall that motivated the fix was then resolved BY the fix, unattended.
+`tmp/overseer/daemon.log` recorded the full sequence against the real
+`overseer-rewrite` track:
+
+```
+overseer[SURFACE]: …::overseer-rewrite won't wrap up (ctx 13% left, no ready marker); force-restart in 90s
+… (countdown ticks: 78s, 65s, 53s, 41s, 28s, 16s, 4s)
+overseer[SURFACE]: …::overseer-rewrite stalled idle at ctx 13% with no ready marker for 98s — force-restarting (auto-restart is non-negotiable)
+overseer: restarted /data/projects/livespec::overseer-rewrite (pane %6)
+```
+
+All three primary requirements fired: the wedged session was **exited**, **restarted**
+as `claude --dangerously-skip-permissions -n overseer-rewrite`, and **re-kicked** with
+`read …/plan/overseer-rewrite/handoff.md and follow it`. The fresh session that came up
+in pane `%6` (tmux `livespec4`) confirmed its own identity and wrote this section — i.e.
+the restarted session IS the evidence. Before the fix, this identical stall wedged the
+track forever.
 
 ## The bug (maintainer-reported 2026-07-14)
-
-The overseer's three PRIMARY requirements — (1) exit the stalled session, (2) restart
-it with `claude --dangerously-skip-permissions`, renamed from the plan topic, and
-(3) re-kick it from `plan/<topic>/handoff.md` — were **failing hard** on a live track.
 
 Session `livespec4` (topic `overseer-rewrite`) sat **idle at 13% context**, correctly
 rendered as `danger` by the daemon, and was **never restarted**. Two independent root
@@ -72,7 +89,7 @@ forbids.
 
 `.claude/skills/overseer/` — `supervisor.py` (`_danger_or_force_restart`,
 `_STALL_RESTART_GRACE`, `_InjectState.danger_idle_since`, `_launch_command`,
-`_do_restart(certified=…)`, `WRAPUP_TEMPLATE`), beside-tests (**151 green**),
+`_do_restart(certified=…)`, `WRAPUP_TEMPLATE`), beside-tests (**164 green**),
 `AGENTS.md` / `marker-protocol.md` / `SKILL.md`.
 
 **The beside-tests are the ONLY gate on this folder** — it sits outside every product
@@ -86,13 +103,20 @@ uv run pytest .claude/skills/overseer/ -q
 
 ## Resume command
 
-**Nothing to resume — the fix is complete and merged.** If you pick this thread up
-again, the live follow-ups are:
+**Nothing to resume — the fix is complete, merged, and now live-exercised.** A later
+commit (`50648c7`) additionally taught the daemon that a live background shell reads
+BUSY rather than idle (so a session with a `run_in_background` command is never
+force-restarted out from under its own work) and made `overseer-start` self-heal the
+split. If you pick this thread up again, the live follow-ups are:
 
-- **A running daemon must be restarted to pick up new code.** `overseerd` is a
-  long-lived process in the `livespec-overseer` top pane; it keeps running whatever
-  code it started with. After any merge here, restart that pane's daemon.
-- **Codex adoption (documented gap).** Codex sessions are not in Claude's session
-  registry (`~/.claude/sessions/<pid>.json`), so `adopt_sessions` cannot see them.
-  The entry point would be a codex session-store reader feeding the same
-  `adopt_sessions` guard.
+- **Codex adoption (documented gap — the one genuinely open item).** Codex sessions are
+  not in Claude's session registry (`~/.claude/sessions/<pid>.json`), so
+  `adopt_sessions` cannot see them. The entry point would be a codex session-store
+  reader feeding the same `adopt_sessions` guard. Note the *busy* signal already covers
+  Codex (`claude_sessions.has_active_subshell` is a process-tree check, runtime-
+  agnostic); it is only ADOPTION that is Claude-only.
+- **A running daemon must be restarted to pick up new code** (standing operational rule,
+  not an open task). `overseerd` is a long-lived process in the `livespec-overseer` top
+  pane; it keeps running whatever code it started with. After any merge here, restart
+  that pane's daemon. As of 2026-07-14 the running daemon already carries current code —
+  it is the one that executed the force-restart above.
