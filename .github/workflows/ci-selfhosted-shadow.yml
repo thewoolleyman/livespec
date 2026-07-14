@@ -32,12 +32,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Phase 2 prerequisite proof: the runner POOL actually runs jobs in PARALLEL.
-  # livespec's real CI is a ~60-job per-target matrix, and each ephemeral runner
-  # takes exactly ONE job, so the slot count IS the CI parallelism. Before ci.yml
-  # can be cut over, we must see many jobs run CONCURRENTLY on distinct runners —
-  # not serialize through one. Each job prints the runner that took it; distinct
-  # runner names across overlapping timestamps is the proof.
+  # Proves the runner POOL actually runs jobs in PARALLEL. The real CI is a ~60-job
+  # per-target matrix, and each ephemeral runner takes exactly ONE job, so the slot
+  # count IS the CI parallelism: before the real matrix can move here, many jobs must
+  # be seen running CONCURRENTLY on distinct runners rather than serializing through
+  # one. Each job prints the runner that took it; distinct runner names across
+  # overlapping timestamps is the proof.
   slot-parallelism:
     name: slot ${{ matrix.slot }}
     runs-on: [self-hosted, local-ci]
