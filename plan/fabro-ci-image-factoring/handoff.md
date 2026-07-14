@@ -84,9 +84,13 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 **State (fresh-session entry point, updated 2026-07-14 — codex-acp sub-plan
 consolidated into this track).** The plan is anchored by the **beads epic
 `livespec-3lev`** (`livespec` tenant) with per-phase children `.1`–`.8` (`.8` =
-Phase 5, the closing efficiency report). The images half is essentially done; the
-CI-onto-local-runner half and the codex-acp live accept both funnel through **one
-banked decision: Phase 0 (stand up the self-hosted runner — host mutation).**
+Phase 5, the closing efficiency report). The images half is essentially done, and
+**Phase 0 (the local self-hosted runner) is now DONE — authorized, proven live, and
+landed 2026-07-14 (the linchpin is cleared; see SESSION 2026-07-14 below).** So the two
+things that were gated on Phase 0 are now the actionable next steps: the **codex-acp
+FULL automation accept** (`.4`'s last item — adapt the orchestrator gate workflow to the
+now-live `[self-hosted, local-ci]` runner class, then fire the bump-PR flow) and **Phase 2
+(`.5`) — cut CI over to the local runner + baked image**. See NEXT ACTIONS below.
 
 **SESSION 2026-07-14 LANDED — read first:**
 - **Phase 0 (local-runner shadow lane) — AUTHORIZED, FINISHED, PROVEN LIVE + LANDED (2026-07-14) —
