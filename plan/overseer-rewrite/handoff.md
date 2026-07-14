@@ -106,14 +106,33 @@ ALWAYS run before pushing:
 uv run pytest .claude/skills/overseer/ -q
 ```
 
+## Rolled out and live-exercised (2026-07-14)
+
+The running daemon carries this code and was exercised against the real fleet:
+
+- `blocked:human` alerts now render with their coordinates, e.g.
+  `autonomous-mode (livespec) — blocked on human: structured gate on pane — answer it IN
+  THAT PANE [tmux session 'livespec-autonomous-mode' pane %66] — jump: tmux switch-client
+  -t livespec-autonomous-mode` — a NON-BLOCKING report, so the console cannot wedge on it.
+- The escalating wrap-up was delivered to this very track at the 50% band, and this
+  session ACKed with `winding-down` and then declared `ready` — the protocol dogfooded
+  end-to-end by the session that wrote it.
+
 ## Resume command
 
-**Nothing to resume — the redesign is complete and merged.** Open items:
+**Nothing to resume — the redesign is complete, merged, and live-exercised.** Open items:
 
 - **Codex adoption (documented gap).** Codex sessions are not in Claude's session
   registry (`~/.claude/sessions/<pid>.json`), so `adopt_sessions` cannot see them. The
   *busy* signal already covers Codex (`has_active_subshell` is a runtime-agnostic
   process-tree walk); it is only ADOPTION that is Claude-only.
-- **A running daemon must be restarted to pick up new code** (standing operational
-  rule). `overseerd` is long-lived in the `livespec-overseer` top pane and keeps running
-  whatever code it started with.
+- **A running daemon must be restarted to pick up new code** (standing operational rule,
+  NOT an open task). `overseerd` is long-lived in the `livespec-overseer` top pane and
+  keeps running whatever code it started with. As of 2026-07-14 the running daemon
+  already carries current code — do not restart it just because you read this line.
+- **The overseer console's BOTTOM pane may need relaunching** (maintainer-facing). Its
+  interactive Claude exited, leaving a bare `zsh`; the daemon was restored as a titled
+  top split, so supervision is live regardless. To restore the interactive pane: run
+  `claude --dangerously-skip-permissions` in the bottom pane, then `/overseer` —
+  `overseer-start` is idempotent on the `overseer-daemon` pane title, so it will not
+  double-start the daemon.
