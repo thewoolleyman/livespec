@@ -89,6 +89,24 @@ CI-onto-local-runner half and the codex-acp live accept both funnel through **on
 banked decision: Phase 0 (stand up the self-hosted runner — host mutation).**
 
 **SESSION 2026-07-14 LANDED — read first:**
+- **Phase 0 (local-runner shadow lane) — AUTHORIZED, FINISHED, PROVEN LIVE + LANDED (2026-07-14) —
+  THE LINCHPIN IS CLEARED.** Maintainer authorized the host mutation 2026-07-14; ~90% was pre-built on
+  the dormant `phase0-selfhosted-shadow-lane` branch, and this session finished + proved + landed it
+  (via a scoped, supervised sub-agent). LIVE PROOF: run
+  https://github.com/thewoolleyman/livespec/actions/runs/29302201778 — both jobs green; an ephemeral
+  `[self-hosted, local-ci]` runner mints via JIT → online → runs IN-CONTAINER on the baked image
+  (agent/job PID+user-ns isolated) → AUTO-DEREGISTERS (id rotation 38→44); isolation suite
+  **13 pass / 0 fail / 3 skip**; fork-PR approval gate = `all_external_contributors` (strictest);
+  `just check` green on the runner. LANDED: livespec **#1223** (non-gating shadow workflow —
+  `push:[ci-shadow/**]` only, read-scoped token, container via hooks, sibling repos cloned INSIDE the
+  container, NOT a host mount) + livespec-dev-tooling **#385** (runner/supervisor/exit-test tooling
+  relocated to its permanent `ci-runner/` home) — both merged green; **#386** (parameterize the
+  exit-test IMG → `python-v0.43.2`) pending. Host end-state: `ci-runner-supervisor.service`
+  active+enabled, one idle ephemeral runner. Journaled on `livespec-3lev.3` (functionally COMPLETE;
+  stays ledger-OPEN only because `.1` P-host is open — same gate as `.4`). Phase-2 follow-ons on `.5`
+  (durable npm-shim/HOME fix at the image/hook layer; bump the shadow/CI image tag
+  `v0.38.1`→`python-v0.43.2`; runner-slot count ~18; T10 cache-tiering). **This UNBLOCKS the codex-acp
+  FULL automation accept AND Phase 2→3→5.**
 - **codex-acp LOCAL partial accept (Option 2) — DONE + GREEN + journaled on `.4`.**
   Ran `just acceptance-live-golden-master -- --run --build-image --codex-acp-version
   0.16.0` (orchestrator, under the 1Password wrapper): `=== live golden-master PROOF
@@ -197,17 +215,24 @@ banked decision: Phase 0 (stand up the self-hosted runner — host mutation).**
   section.
 
 **NEXT ACTIONS (ranked):**
-1. **Phase 0 — stand up the local self-hosted runner — THE LINCHPIN DECISION (needs
-   your explicit host-mutation go).** Design gate PASSED (4 dual adversarial-review
-   rounds, PRs #1084–#1087); implementation is a HOST MUTATION on this shared,
-   multi-tenant host, banked pending authorization. It is now the **single gate on
-   everything remaining**: (a) it unblocks the **codex-acp auto-bump live accept**
-   (the gate workflow `acceptance-live-golden-master.yml` targets exactly a
-   `[self-hosted, livespec-orchestrator]` runner, and none is registered), closing the
-   last Phase 1 (`.4`) item; and (b) it unblocks the entire **CI-onto-local-runner
-   move — Phase 2 → Phase 3 → Phase 5.** See the "Phase 0 design gate" section below
-   for the deliverables + 11 isolation exit-tests. Everything image-side is already
-   done; this is the next real go/no-go.
+1. **Phase 0 — DONE (2026-07-14): local self-hosted runner PROVEN LIVE + LANDED.** The linchpin is
+   cleared (see SESSION 2026-07-14 above + `livespec-3lev.3`). No host mutation remains — the runner
+   supervisor + JIT + agent/job-isolation + shadow lane are live and merged. The two newly-unblocked
+   fronts (both were gated ONLY on Phase 0):
+   - **codex-acp FULL automation accept** (`.4`'s remaining item). A `[self-hosted, local-ci]`
+     ephemeral-runner + JIT/supervisor pattern now exists on this host. Adapt the orchestrator's
+     `acceptance-live-golden-master.yml` gate (it targets `[self-hosted, livespec-orchestrator]`) to
+     this runner class (register a matching label, or reuse the same supervisor), then fire the
+     throwaway bump-PR → `codex-acp-golden-master` dispatch → gate → status → auto-merge (ready
+     resume commands in `plan/archive/codex-acp-auto-bump/handoff.md` §REMAINING). Closes `.4`.
+   - **Phase 2 (`.5`) — cut CI over to the local runner + baked image** (per-job disposition table +
+     drop `actions/cache` + merge-gate fallback), carrying the Phase-2 follow-ons journaled on `.5`
+     (durable npm-shim/HOME fix at the image/hook layer; image-tag bump `v0.38.1`→`python-v0.43.2`
+     for the drift-collapse goal; runner-slot count ~18 for the full matrix; T10 cache-tiering).
+   NOTE: `.3` (Phase 0) + `.4` (Phase 1) are functionally COMPLETE but stay ledger-OPEN because both
+   are blocked-by the intentionally-open `.1` (P-host). `.1`'s own remaining items (runner-liveness
+   alert `.1`(b); cache prune `.1`(c)) are now Phase-0-UNBLOCKED (a runner exists). Clean close path:
+   finish `.1`(b)+(c) → close `.1` (unblocks `.3`+`.4`), OR drop the now-spurious `.1→.3/.4` edges.
 2. **codex-acp auto-bump — FULL automated accept (blocked on Phase 0; last Phase 1 `.4`
    item).** The **LOCAL partial accept is now DONE + GREEN** (SESSION 2026-07-14 above) —
    the `npx --no-install` adapter + `@0.16.0` overlay + credential projection are
