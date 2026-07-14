@@ -180,6 +180,7 @@ jobs:
         target:
           - check-claude-md-coverage
           - check-heading-coverage
+          - check-local-memory-drift-audit
           - check-vendor-manifest
           - check-no-direct-tool-invocation
           # check-no-direct-destructive-cli greps the agent-facing trees
