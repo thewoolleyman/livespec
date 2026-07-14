@@ -65,6 +65,215 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-14 (cont. 15): BOTH spec amendments DRIVEN autonomously (O0 + W2); FOUR Fable blockers caught; THREE cont.14 facts CORRECTED; a REVIEW-GATE INTEGRITY hole found
+
+Maintainer direction this session: *"you go ahead and drive the propose change and
+revise autonomously, move the plan forward."* The accept was therefore
+maintainer-DELEGATED; the mandatory independent Fable review was NOT waived and was
+held by the driver.
+
+### STATUS AT HAND-OFF — neither amendment is ratified yet
+
+| | Repo | Proposal (merged, inert) | Fable review | Ratified? |
+|---|---|---|---|---|
+| **O0** `bd-ib-mjbcqf` | `livespec-orchestrator-beads-fabro` | PR #620 (`8955488`), topic `retire-mode-flag`; blocker fixes in PR #625 (`3e40138`) | round 1: **2 blockers**, both fixed; round 2 IN FLIGHT | **NO** |
+| **W2** `livespec-console-beads-fabro-l3tx33` | `livespec-console-beads-fabro` | PR #227 (`f48e0b7`), topic `console-dispatcher-settings-rebaseline` | round 1: **2 blockers**; fixes IN FLIGHT | **NO** |
+
+A merged proposal is INERT — it changes no behavior until a `/livespec:revise`
+accept consumes it. **RESUME = finish the review rounds, then drive the two revise
+accepts.** Both authoring agents were briefed to STOP at "proposal merged"; the
+revise execution is theirs to run once cleared, but the DECISION to accept is the
+driver's (maintainer-delegated).
+
+### ⚠ THREE cont.14 FACTS ARE WRONG — corrected here
+
+1. **The cockpit tmux session `console-autonomous-mode` is ALIVE, not "GONE".**
+   cont.14's CORRECTION #1 is itself stale. It is running and rendering the
+   Attention view (it even surfaces `Resolve human-needed block for work-item…`,
+   i.e. the W2 gate). No relaunch needed.
+2. **`livespec-impl-beads-efj` is CLOSED/completed (2026-06-14), NOT "parked" — and
+   Fabro cost IS OBSERVABLE TODAY.** Close reason: *"CC-token-derived cost wired into
+   the spend cap (PR #45 merged); y0m fail-closed refusal lifts + cap_value live;
+   verified against real session-6 carrier telemetry."* Observability came from Claude
+   Code's own OTel token telemetry, NOT a fabro upgrade; `_dispatcher_cost.py:380-386`
+   confirms `derived_cost_micros_by_work_item` is now the PRIMARY observed-cost source,
+   with fabro's (still-null) `total_usd_micros` demoted to corroboration.
+   **Consequence:** cont.14 decision 2's stated RATIONALE — *"since Fabro cost is
+   currently UNOBSERVABLE … anyone enabling `LIVESPEC_COST_MODE=enforce` would then
+   have found EVERY dispatch refusing"* — is **now FALSE**. The DECISION it justified
+   (the cost gate keys warn-vs-refuse on `--item` PRESENCE) still STANDS unchanged, and
+   the O0 contract text is unaffected. But the premise has expired, which makes
+   **`LIVESPEC_COST_MODE=enforce` a genuinely live option for the maintainer** — a
+   decision that was NOT folded into this ratification.
+3. **cont.14's recommended `cross_repo_targets` follow-up would NOT have worked — do
+   not file it as written.** The vendored runtime
+   (`livespec_runtime/cross_repo/types.py:74-80`) degrades a
+   `SiblingWorkItemDependency` to `RefStatus.UNKNOWN` when **EITHER** the
+   `sibling_status_lookup` callback is absent **OR** `repo` is missing from the
+   manifest — and *"v1 ships no runtime-side sibling-walking surface; consumers wire
+   local-clone reading through the callback."* **No live code in EITHER
+   `livespec-orchestrator-beads-fabro` OR `livespec-console-beads-fabro` wires that
+   callback** (the orchestrator's only hits are in archived design notes + spec
+   history; the console has zero). So adding a `cross_repo_targets` block fixes only
+   one of two independent causes and the edge **still fails open** — it would have
+   bought the APPEARANCE of enforcement, not enforcement.
+   **The real safeguard already in place:** W3–W6 sit at `pending-approval` behind a
+   manual human valve. The residual risk is narrow and HUMAN: a maintainer approving
+   W3/W6 before orchestrator O10 (`bd-ib-wx4lbd`) lands. Treat it as a discipline
+   note, not a config gap.
+
+### ⚠ REVIEW-GATE INTEGRITY HOLE — a verdict lost to silence reads as success
+
+**BOTH Fable reviewers went IDLE without delivering their verdict.** Each had to be
+explicitly asked for it; both then produced REAL blockers (2 each). In a supervised
+session this cost only a round-trip. **In an unattended factory run, silence would
+have read as a clean pass** — and a review gate whose verdict can be lost to silence
+is not a gate.
+
+**RECOMMENDATION (not filed — maintainer's call):** any harness that treats an
+independent review as a precondition MUST require an EXPLICIT verdict artifact and
+treat its ABSENCE as a hard FAIL, never as a pass. Prompt-level "please report your
+verdict" is not sufficient; the absence must be mechanically fatal. This is the same
+class as the `pin-freshness` blindness named in cont.14 §F1: the safety net fails
+silent, and nobody is looking.
+
+### O0 — the Fable review's TWO blockers (round 1), and how they were disposed
+
+**CLEARED on review:** the cost-gate SEVERITY LEVER. The proposal contracts the
+`--item`-keyed verdict PLUS the `LIVESPEC_COST_MODE` lever semantics (`report` =
+default, derives/journals but NEVER refuses; `enforce` applies the refusal;
+unset/unrecognized → `report`). The reviewer judged this *"legitimate, not a smuggled
+relaxation"* — faithful to shipped `resolve_cost_mode` (`_dispatcher_cost.py:125-137`)
+and to decision 2's own reasoning. **A blanket "no `--item` = fail-closed" contract
+would have been the ERROR** — falsified by the shipped `report` default. (The O0
+author caught this BEFORE the review, correcting the driver's own brief.)
+
+**BLOCKER 1 — the proposal silently STRENGTHENED the gate in three ways while
+claiming to "preserve today's semantics exactly."** Verified in
+`livespec-orchestrator-beads-fabro`
+`.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/`:
+- `_dispatcher_cost_wave.py:38-40` — only `green` outcomes are gated at all
+  (`if outcome.status != "green": continue`). **A run that launched, BURNED SPEND, and
+  FAILED is never cost-observed.**
+- `_dispatcher_cost_wave.py:41-44` — an unresolvable run id journals
+  `cost-gate-skipped` and continues, **fail-OPEN**, even under `enforce` with no
+  `--item`. The `gate_wave` docstring (`_dispatcher_cost.py:349-352`) literally calls
+  it "fail-open."
+- `_dispatcher_cost_wave.py:87-88` — `report` mode short-circuits to
+  `_report_decision` (`:134-151`), forcing `severity="report"` / `refuse=False`;
+  **the keyed verdict is never DERIVED.**
+
+**DISPOSITION (driver, without a maintainer round-trip — the rule of record answers
+it):** SCOPE THE CONTRACT TO TODAY'S COVERAGE. cont.14 decision 2 locked only the
+verdict KEYING and says "preserves today's semantics EXACTLY"; it is **SILENT on gate
+coverage**, and silence means do not change it. Ratifying a stronger gate would have
+handed O2's implementer a contract they would faithfully violate in three ways with
+**no work-item filed for any of them**. The ratified text now names the fail-open
+disposition EXPLICITLY rather than papering over it.
+
+**BLOCKER 2 — a miscitation that is NOT mechanically catchable.** The lever paragraph
+cited §"Closed-item integrity" (`constraints.md:278`, a different section that never
+mentions the lever) instead of `contracts.md` §"Closed-item-integrity check"
+(`:1793`, lever text `:1802`). **`doctor-no-cross-spec-reference` PASSED on the wrong
+citation both times** — a bare citation resolves if the heading exists ANYWHERE in the
+tree. **Lesson: citation fidelity is enforced ONLY by review, never mechanically.**
+
+Both fixed in PR #625, plus two non-blocking items (the CLI grammar marked
+NON-exhaustive so operational flags — `--workflow`, `--fabro-bin`, `--janitor`,
+`--journal`, `--poll-attempts`, `--poll-interval-seconds`, `--no-close-on-merge`,
+`--skip-ledger-check`, `dispatcher.py:303-330` — don't trip a future gap-detection
+false positive; and the dry-run read-only guarantee scoped to the WORK-ITEM store).
+
+### NEW WORK-ITEM — `bd-ib-0s5` (the three cost-gate weaknesses, filed rather than smuggled)
+`livespec-orchestrator-beads-fabro` tenant, under epic `bd-ib-24j5uy`.
+Spec-change-tier: `blocked` / `blocked_reason: needs-human`, `admission: manual`,
+`acceptance: human-only`, rank `aM`. Tracks CLOSING the three weaknesses above (which
+requires a spec amendment first, since the ratified text now describes them).
+**A fifth acceptance criterion was added on filing:** the `gate_wave` docstring's
+stated rationale for green-only gating (`_dispatcher_cost.py:341-345`:
+*"failed/blocked runs either never launched … or have no meaningful cost yet"*) is
+**falsified by the exact counterexample** — the run that launched, spent, then failed.
+The amendment must correct or explicitly reaffirm it so code and spec agree on WHY.
+
+### W2 — the Fable review's TWO blockers (round 1); the design decision UPHELD
+
+The reviewer **reimplemented the `console-spec-check` extraction from
+`crates/console-spec-check/src/lib.rs`** and re-derived every number independently
+rather than trusting the author. All mechanics VERIFIED: 10/10 replace-targets
+verbatim and unique; clause-count pins digit-for-digit (spec.md 15→14, contracts.md
+39→56, constraints.md 19→20, non-functional-requirements.md 52 unchanged, **total
+125→142**); all **52** new gap-ids id-for-id (30/9/5/8) with the **35** dead ones
+confirmed dead; registry 22→24; 0 unlinked, 0 untested.
+
+**BLOCKER 1 — the spec would have contradicted itself six lines apart.** Adding a
+sixth `work_item.*` command falsifies the RETAINED sentence at live
+`livespec-console-beads-fabro` `SPECIFICATION/contracts.md:401-402`: *"The five
+`work_item.*` commands are the Work-item Lifecycle context's vocabulary."* The
+proposal EXPLICITLY instructed the revise pass not to fix it. The author's defending
+note was factually correct — but **the note lives in the proposal file, which does NOT
+survive ratification. The naked self-contradiction WOULD.** Fix harmonizes three
+siblings: `contracts.md:401-402`, `spec.md:287-289` (the `## Bounded Contexts`
+Work-item Lifecycle bullet), and `contracts.md:533-535` (the TUI Contract's "five
+human-valve and policy-edit commands" count). `contracts.md:533` IS a clause line →
+gap-ids re-harvest.
+
+**BLOCKER 2 — the re-baseline carried only TWO of the THREE console surfaces the
+ratified authority obligates.** `livespec-orchestrator-beads-fabro`'s ratified
+§"Control surface and audit" says *"Three console surfaces follow from this ownership
+split, and the console MUST carry all three"*: (1) per-setting write commands, (2)
+**the factory-drain launcher argv** — *"invokes the Dispatcher `loop` with NO per-run
+policy flag … The launcher MUST NOT pass a policy-arming argument"*, (3) ordinary
+recorded Settings writes. The proposal contracted #1 and #3; **#2 appeared NOWHERE,
+not even scoped out.** Every candidate clause governs settings WRITES — and a per-run
+arming flag writes no setting, which is exactly why the authority names it a distinct
+third surface. cont.12 calls the drain argv breaking leg 2 of 3, "the breaking one."
+**W1 fixed the shipped CODE, but the SPEC binds FUTURE code: as proposed, nothing
+would forbid reintroducing the policy-arming drain argument that broke the cockpit.**
+
+**DESIGN DECISION UPHELD — KEEP the two parameterized write commands**
+(`config.dispatcher_setting_set` + `work_item.set_dispatcher_override_requested`), NOT
+six named ones. The reviewer mapped every setting to its console command: no setting
+has TWO commands, no overridable setting has NONE (`auto_approve_ready` → the
+established `set-admission`, `acceptance_mode` → `set-acceptance`, the other three →
+the new override command, `wip_cap` → global write only, override rejected). It does
+NOT defeat the mechanical completeness check (which compares the orchestrator's
+DECLARED key surface against Settings rows / TUI help / `docs/settings.md` —
+orthogonal to command-type count) and in fact STRENGTHENS its premise: "a key the
+orchestrator adds needs no console spec change."
+
+### TWO things to name to the maintainer AT ACCEPT (neither is a blocker)
+- **Clear-to-inherit asymmetry.** The new override command clears via a null `value`,
+  but `set-admission:` / `set-acceptance:` offer no label REMOVAL — so **two of the
+  five overridable settings can never be un-overridden** back to inherit-global from
+  the console. The ratified text does not require clearability, so it is not a
+  blocker — but it should be named now, not discovered later.
+- **A deliberate semantic change, not a rename.** "An absent key MUST be treated as
+  disabled" becomes "an unreadable surface MUST degrade to a named not-observed
+  finding rather than an assumed value." Correct under the ownership split — but it IS
+  a behavior change.
+
+### ACCEPT-TIME TRAPS (carry these into the revise)
+- **Backtick footgun (W2).** The new Scenario 10 H2 contains a LITERAL backtick
+  (`wip_cap`). The revise MUST write the literal backtick into
+  `tests/heading-coverage.json` or the link breaks and the accept commit fails.
+- **W2 needs SIX `resulting_files[]` paths, not five** —
+  `crates/console-spec-check/src/tests.rs` (the per-file clause-count pins) is a
+  REQUIRED co-edit alongside `tests/heading-coverage.json`, or the accept fails.
+- **Per-file decision entries.** One decision per proposed-change FILE,
+  `proposal_topic` == the file STEM (`retire-mode-flag` /
+  `console-dispatcher-settings-rebaseline`), never a `## Proposal:` section name — a
+  mismatch silently exits 3.
+- `livespec-console-beads-fabro`'s `tests/heading-coverage.json` is **SCENARIO-keyed,
+  not heading-keyed** (unlike `livespec` core), so the co-edit is driven by scenarios
+  + gap-ids, not by the H2 delta.
+
+### REAP
+Worktrees to reap after their PRs merge: `livespec` core
+`docs-autonomous-mode-cont15` (this update). The O0 and W2 authoring worktrees were
+already removed by their agents. Do NOT reap while other sessions have live worktrees
+(`docs-console-tui-usage` in `livespec-console-beads-fabro` belongs to another
+session — leave it).
+
 ## SESSION UPDATE — 2026-07-14 (cont. 14): the impl epic is CUT + APPROVED + FILED; FOUR new maintainer decisions locked (`--mode`/"shadow" RETIRED); the stalled fan-out RE-DIAGNOSED (cont.13's diagnosis is WRONG)
 
 Fresh Claude (Opus) session, running CONCURRENTLY with the cont.13 session (which
