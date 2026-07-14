@@ -138,6 +138,73 @@ supersedes cont.13 where they conflict (three corrections below).
   `drive.py --action <id>`, so a `set-config:` action rides it with **zero new port
   code**.
 
+### FILED — the epic IDs (both tenants). THIS IS THE RESUME ANCHOR.
+**`livespec-orchestrator-beads-fabro` — epic `bd-ib-24j5uy`** + 11 children:
+
+| | id | status | depends_on |
+|---|---|---|---|
+| O0 spec amendment (`--mode shadow`) | `bd-ib-mjbcqf` | **blocked / needs-human** | — |
+| O1 the six settings + precedence | `bd-ib-jha4vw` | pending-approval | — |
+| O2 retire autonomous mode (BREAKING) | `bd-ib-mqunvm` | pending-approval | O0 |
+| O3 retire needs-human LLM resolver | `bd-ib-vntx65` | pending-approval | — |
+| O4 `blocked`/needs-human ledger write | `bd-ib-vevrol` | pending-approval | — |
+| O5 real AI acceptance pass | `bd-ib-4cfhsw` | pending-approval | O1 |
+| O6 AI-fail→auto-rework + cap | `bd-ib-fewdsx` | pending-approval | O4, O5 |
+| O7 SPIKE: Fabro conditions ← inputs? | `bd-ib-lmnxrm` | pending-approval | — |
+| O8 review gate BLOCKING | `bd-ib-6ytmik` | pending-approval | O4, O7 |
+| O9 journal every auto-disposition | `bd-ib-vp3pwe` | pending-approval | O1 |
+| O10 API-configurable surface + config actions | `bd-ib-wx4lbd` | pending-approval | O1 |
+
+**`livespec-console-beads-fabro` — epic `livespec-console-beads-fabro-yvikqp`** + 6 children:
+
+| | id | status |
+|---|---|---|
+| W1 un-break drain launcher | `livespec-console-beads-fabro-2whpbd` | **DONE** (PR #222, `cf9c8ec`, CI green) |
+| W2 console spec re-baseline | `livespec-console-beads-fabro-l3tx33` | **blocked / needs-human** |
+| W3 config port → orchestrator API | `livespec-console-beads-fabro-636m46` | pending-approval (→ W2, + orch O10) |
+| W4 `TuiView::Settings` surface | `livespec-console-beads-fabro-j3ts23` | pending-approval (→ W3) |
+| W5 per-item valves + help + README | `livespec-console-beads-fabro-2ctzhm` | pending-approval (→ W3) |
+| W6 completeness check | `livespec-console-beads-fabro-zmunjo` | pending-approval (→ W3, W4, + orch O10) |
+
+**⚠ TWO items are `blocked`/needs-human BY DESIGN, and they gate the epic.** O0 and W2 are
+SPEC-CHANGE-TIER: `contracts.md:881`/`:1398` require such work to route to
+`/livespec:propose-change` → independent Fable review → maintainer `/livespec:revise`, and
+NEVER to the factory. The ledger's intake Definition-of-Ready deliberately routes them to
+blocked/needs-human (`autonomously_verifiable=false`, `admission: manual`,
+`acceptance: human-only`) so a Fabro sandbox structurally cannot drive a ratification.
+**This is correct-by-design, not a filing failure.** O2 depends on O0, and W3–W6 all depend
+on W2 — so **a maintainer must drive BOTH spec amendments before the bulk of the epic can
+dispatch.** That is the immediate human gate on this track.
+
+**⚠ The cross-tenant dependency edge is ADVISORY, not blocking.** W3 and W6 carry a real
+typed `{"kind": "sibling_work_item", "repo": "livespec-orchestrator-beads-fabro",
+"work_item_id": "bd-ib-wx4lbd"}` edge (schema variant
+`livespec_runtime.cross_repo.types.SiblingWorkItemDependency`, riding beads
+`metadata.non_local_depends_on`). BUT `SiblingWorkItemDependency.repo` must match a key in
+`.livespec.jsonc`'s `cross_repo_targets` block, and `livespec-console-beads-fabro` HAS NO
+SUCH BLOCK — so the runtime resolves it to `UNKNOWN`, and `UNKNOWN` does NOT block
+readiness. **Until a `cross_repo_targets` entry is added, a human MUST NOT admit W3/W6
+before orchestrator O10 lands.** Recommended follow-up: add the block.
+
+### SIDE FINDINGS from the filing passes (none introduced by this work)
+- **BUG — the shipped `list-work-items --json` DROPS MERGE EVIDENCE.**
+  `livespec-orchestrator-beads-fabro` `commands/list_work_items.py:176-180` projects only
+  3 of `AuditRecord`'s 5 fields, silently omitting **`merge_sha` and `pr_number`**. The data
+  IS stored and read back correctly through the store read-map, but any consumer trusting
+  the JSON surface for merge evidence never sees it — and the CONSOLE ingests exactly that
+  surface. Worth filing as its own bug.
+- **`just check` does NOT validate LIVE ledger records.** Its work-item checks force
+  `LIVESPEC_BEADS_FAKE=1` (an empty hermetic tenant), so they pass trivially. Running the
+  live tier explicitly surfaced pre-existing hygiene findings: orchestrator tenant —
+  `bd-ib-a89` carries status `open` (outside the livespec lifecycle: a REAL
+  status-conformance error) and ~8 old records closed without a `resolution`; console tenant
+  — **62 violations** (57 closed-without-resolution, 5 `resolution=completed` lacking an
+  `AuditRecord`). A ledger-hygiene backfill is worth its own item.
+- **`livespec-console-beads-fabro` has NO `work_item_merge_evidence` check at all** — that
+  check lives in the orchestrator and walks the ORCHESTRATOR tenant. The console's
+  `just check` has no ledger-validating target whatsoever. Adding one would be red on day
+  one without the backfill above.
+
 ### THE APPROVED CUT (maintainer approved "as drafted", 2026-07-14) — 17 items
 **`livespec-orchestrator-beads-fabro` (10):** O0 spec amendment retiring the
 contracted `--mode shadow` (`contracts.md:228`) → propose-change → **independent Fable
