@@ -42,7 +42,7 @@ injects into any runner, self-hosted included.
 | ↳ `Install pinned binaries via mise` | **DELETE-STEP** (or no-op) | Tools are baked into the image; `mise install` finds everything present. Keep as a cheap no-op or drop. |
 | `check-metadata` matrix (~30 `just <target>`) | **MOVE** | Repo-metadata checks. Full-history needs (`check-red-green-replay`, `check-check-coverage-incremental`, `check-agents-ai-references-resolve`) are satisfied by the Phase 0 full-history clone. |
 | ↳ `Restore uv download cache` | **DELETE-STEP** | As above. |
-| ↳ `Clone sibling repos for cross-repo wiring check` (only `check-doctor-static`) | **DELETE-STEP** | The local runner is co-located with the real sibling clones under `/data/projects`; point `check-doctor-static` at them (Path A) instead of shallow-cloning to `$RUNNER_TEMP`. Simpler AND more faithful than CI's clone-to-temp hack. |
+| ↳ `Clone sibling repos for cross-repo wiring check` (only `check-doctor-static`) | **KEEP** (~~DELETE-STEP~~ — **CORRECTED**) | ~~Point `check-doctor-static` at the on-host `/data/projects` clones.~~ **That would BREAK the containment and must not be done.** This row was written before the runner existed; the runner as BUILT executes jobs inside a rootless container that is PID/user/mount-namespace-isolated with **NO host mount** — `/data/projects` is unreachable from a job, by design, and reaching it would mean bind-mounting the host workspace (which also holds the Dolt data dir and the maintainer's checkouts) into code that a fork PR could influence. Keep cloning the **public** siblings fresh inside the container (as the shadow lane already does): no secrets, no host filesystem, still Path A. |
 | ↳ `Install commit-refuse hook` (only `check-primary-checkout-commit-refuse-hook-installed`) | **MOVE** (keep) | Installs the hook from the package; runs fine on the local runner. |
 | `export-telemetry` | **STAY-HOSTED** | Needs `secrets.HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC` + `GH_TOKEN` (Actions API read) + `github.run_id`. push/merge_group-only, so it never affects PR feedback latency; keeping the ingest secret off the local runner preserves secret-isolation. |
 | `ci-green` | **STAY-HOSTED** | Pure GitHub-expression gate (`needs: [check-python, check-metadata]`, fails if any `needs.*.result` failed). Branch protection requires ONLY this context. It does zero work, must aggregate BOTH lanes, and must stay reportable even if the local host is down — so it belongs on GitHub, not a scarce local slot. |
@@ -68,13 +68,30 @@ None of these belong on the unprivileged, secret-isolated local runner:
 ## The Phase 2 mechanical transformation (for `livespec`)
 
 For each **MOVE** job in `ci.yml`:
-1. `runs-on: ubuntu-latest` → the self-hosted runner label.
+1. `runs-on: ubuntu-latest` → the self-hosted runner label, plus a
+   `container:` on the baked image (the SAME tag the Fabro sandbox runs — that
+   sameness is the whole drift-collapse point).
 2. Delete the `actions/cache@v4` (uv) step.
-3. Delete the `check-doctor-static` clone-siblings-to-temp step; set the
-   sibling-clones root to the on-host `/data/projects` (or the manifest
-   paths) so Path A stays active.
+3. **KEEP** the `check-doctor-static` clone-siblings step, cloning the public
+   siblings inside the container. (The original step 3 said to delete it and point
+   at the on-host `/data/projects`; that is **corrected** — see the table above.
+   The job container has no host mount, by design.)
 4. Keep `uv sync` (it hits the hot local cache) and the `just <target>` step.
-5. Leave `export-telemetry` and `ci-green` on `ubuntu-latest`.
+5. Add `mise trust` (a fresh container does not trust the repo `.mise.toml`) and
+   set `MISE_NOT_FOUND_AUTO_INSTALL=0` so a missing shim fails fast instead of
+   busy-looping — both learned live in the shadow lane.
+6. Leave `export-telemetry` and `ci-green` on `ubuntu-latest`.
+
+**Prerequisites that had to be true first (learned live, not on paper):**
+- **The runner pool must be genuinely multi-runner.** The slot count IS the CI
+  parallelism (each ephemeral runner takes exactly one job). At one slot the whole
+  matrix serializes. Raising it surfaced two latent bugs — the credential wrapper's
+  `env -i` scrub silently discarding the unit's `Environment=` config, and every
+  runner sharing one runner root and so destroying each other's sessions. Both are
+  fixed in `livespec-dev-tooling` `ci-runner/`; verified by a 12-job matrix running
+  12-concurrent on 12 distinct runners.
+- **The image tag must be the factory's**, not a stale pin, or "CI == sandbox" is
+  not actually true and the drift the epic exists to collapse survives.
 
 ## Merge-gate fallback (Phase 2 deliverable — designed, not just named)
 
