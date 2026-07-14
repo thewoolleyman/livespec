@@ -191,6 +191,32 @@ explicitly marked `manual` now HOLDS at `pending-approval` even with
 precedence and follows directly from "global defaults, but allow per-item overrides",
 but it is a deliberate reversal and is now normative in the proposal.
 
+#### DECISION (maintainer-declared 2026-07-14) — `human-only` acceptance: the AI ADVISES, it never DECIDES
+The maintainer asked the sharp question: *"If the acceptance is human only, how could
+an AI ever do anything with it?"* The answer, and the RULE OF RECORD:
+
+> Under `acceptance_mode: human-only` the AI acceptance pass **still RUNS** — that is
+> what satisfies the existing "no release with zero verification" floor
+> (`contracts.md` §"Post-merge acceptance": *"every acceptance carries at least one AI
+> pass"*) — but it is **ADVISORY: it INFORMS, it never DECIDES.** It reads the merged
+> diff against the acceptance criteria + telemetry and produces **findings**. It CANNOT
+> accept, reject, or rework.
+> **`human-only` means "no AI DECIDES this", NOT "no AI READS this."**
+
+Consequence — the **AI-FAIL → auto-rework route is MODE-SCOPED**, applying ONLY to
+`ai-only` and `ai-then-human`. Under `human-only` a FAILING pass surfaces as an
+advisory **finding** and the item **STAYS PARKED** in `acceptance`; the human keeps the
+accept / `reject (rework)` / `reject (re-groom)` decision. Rationale: **an auto-rework
+IS the AI deciding**, exactly what `human-only` reserves to the human — unscoped, the
+machine could repeatedly bounce an item the human explicitly claimed, stripping their
+accept-vs-reject call. (Maintainer chose option A, "stay parked; advisory only", over
+option B "auto-rework regardless of mode"; B would also have forced amending the
+zero-verification floor.)
+
+Landed: **`livespec-orchestrator-beads-fabro` PR #601** scopes the FAIL route in all
+four places it appeared (the A.3 contract clause, the D.10 Scenario-25 addition, the
+D.11 replacement scenario, and the Summary) and adds the `human-only` carve-out.
+
 ### THE CROSS-REPO EPIC (per "drive multi-repo work as one epic")
 - **`livespec-orchestrator-beads-fabro` (spec + API + impl):** retire Full
   autonomous mode (§"Full autonomous mode", Scenarios 33–37, two-factor arming);
@@ -210,12 +236,20 @@ but it is a deliberate reversal and is now normative in the proposal.
 
 ### RESUME ORDER (fresh session)
 1. ~~**Author the orchestrator spec proposal**~~ — **DONE 2026-07-14.** Filed as
-   `SPECIFICATION/proposed_changes/dispatcher-policy-settings.md`,
-   **`livespec-orchestrator-beads-fabro` PR #599**
-   (https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/599),
-   auto-merge armed. The `proposed_changes/` queue was verified EMPTY first.
-   **INDEPENDENT FABLE REVIEW: 3 rounds, NINE blockers raised, all fixed, final
-   verdict NO-BLOCKERS** — the maintainer's ratification precondition is MET.
+   `SPECIFICATION/proposed_changes/dispatcher-policy-settings.md` in
+   `livespec-orchestrator-beads-fabro`, across FOUR merged PRs:
+   **#599** (the proposal) → **#600** (over-broad safe-defaults scenario + the REQUIRED
+   design-record citation) → **#601** (scope AI-fail auto-rework to the AI-dispositive
+   modes; the `human-only` advisory carve-out). The `proposed_changes/` queue was
+   verified EMPTY first. **INDEPENDENT FABLE REVIEW: 5 rounds, TEN blockers raised,
+   all fixed.** Re-run a final Fable pass on the CURRENT file before the accept if you
+   want a fresh NO-BLOCKERS verdict on record (the last verdict predates #601).
+   **The review is what made this safe — do not skip it.** Its catches included: a
+   misattributed design-record cross-reference the proposal would have RATIFIED; a
+   dangling reference to the deleted heading that the driver's OWN drift-sweep grep
+   hid (a broken exclusion filter — never trust a single sweep); the BREAKING console
+   drain leg; and TWO instances of the same class of error — a blanket claim falsified
+   by per-item labels (the safe-defaults scenario, and the `human-only` × AI-FAIL cell).
 2. **NEXT — the maintainer's `/livespec:revise` ACCEPT** on topic
    `dispatcher-policy-settings` (spec ratification keeps its designed human gate;
    ONE decision, per-file, topic == file stem). Two things to confirm at accept
