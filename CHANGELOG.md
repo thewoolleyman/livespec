@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.3](https://github.com/thewoolleyman/livespec/compare/v0.11.2...v0.11.3) (2026-07-14)
+
+
+### Bug Fixes
+
+* **overseer:** a live background shell reads BUSY, never idle; overseer-start self-heals the split ([50648c7](https://github.com/thewoolleyman/livespec/commit/50648c76d46145e45ff5ad724f837c07ee667e60))
+
 ## [0.11.2](https://github.com/thewoolleyman/livespec/compare/v0.11.1...v0.11.2) (2026-07-14)
 
 
