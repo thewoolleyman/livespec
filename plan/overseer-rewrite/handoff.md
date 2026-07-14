@@ -130,9 +130,25 @@ The running daemon carries this code and was exercised against the real fleet:
   NOT an open task). `overseerd` is long-lived in the `livespec-overseer` top pane and
   keeps running whatever code it started with. As of 2026-07-14 the running daemon
   already carries current code — do not restart it just because you read this line.
-- **The overseer console's BOTTOM pane may need relaunching** (maintainer-facing). Its
-  interactive Claude exited, leaving a bare `zsh`; the daemon was restored as a titled
-  top split, so supervision is live regardless. To restore the interactive pane: run
-  `claude --dangerously-skip-permissions` in the bottom pane, then `/overseer` —
-  `overseer-start` is idempotent on the `overseer-daemon` pane title, so it will not
-  double-start the daemon.
+- **The overseer console's BOTTOM pane was RESTORED (2026-07-14) — no longer an open
+  item.** Its interactive Claude had exited, leaving a bare `zsh`, so the daemon's alerts
+  reached only `tmp/overseer/daemon.log` and nothing relayed them to the human. It was
+  relaunched by the documented remedy (`claude --dangerously-skip-permissions` in the
+  bottom pane, then `/overseer`), and the idempotence held as designed: `overseer-start`
+  found the existing `overseer-daemon` pane title and did NOT double-start the daemon —
+  the live daemon kept its PID, unrestarted. Keep the remedy in mind if the pane exits
+  again; do NOT run it while the console is already up.
+
+## The protocol, dogfooded a second time (2026-07-14)
+
+This session WAS the restart. The previous `overseer-rewrite` session declared `ready`;
+the daemon restarted it on that declaration ALONE (`overseer: restarted
+/data/projects/livespec::overseer-rewrite (pane %1)`) and `_clear_state` wiped the file.
+Re-verified while resuming, so a future reader need not re-derive it:
+
+- **No "nothing to resume" restart loop is possible.** `ready_valid` requires an
+  injection stamp *from this round*, so a fresh session that declares `ready` with no
+  wrap-up pending is never restarted. Declaring readiness is always safe.
+- **Notify-never-block is holding live.** The restored console relayed both blocked
+  tracks as NON-BLOCKING text with full coordinates (repo, tmux session, pane, jump
+  command) and raised no `AskUserQuestion` on any track's behalf.
