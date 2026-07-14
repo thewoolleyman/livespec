@@ -90,6 +90,20 @@ For each **MOVE** job in `ci.yml`:
   runner sharing one runner root and so destroying each other's sessions. Both are
   fixed in `livespec-dev-tooling` `ci-runner/`; verified by a 12-job matrix running
   12-concurrent on 12 distinct runners.
+- **Concurrent container teardown must not race.** Every slot shares ONE rootless
+  podman, and `podman network prune` walks the GLOBAL container database to find
+  in-use networks (the `--filter label=` narrows only what it DELETES, not what it
+  SCANS). So one job's `docker rm` makes another job's prune fail — "no container
+  with ID *(the other job's id)* found in database" — and although the job's own
+  work has already passed, the failed "Stop containers" step still reds it. Fixed
+  in `livespec-dev-tooling` by a `docker` shim (`ci-runner/dockershim/`) that
+  readers-writer-locks prune against removal and leaves pull/start/exec unlocked,
+  so the matrix stays parallel. Evidence: 8/12 and 10/12 RED before, 48/48 green
+  across four consecutive rounds after.
+- **A single green matrix run proves nothing.** The teardown bug is a RACE: it
+  passed 12/12 once *before* failing 8/12. Re-run the shadow matrix several times
+  before believing the pool. It is committed as the standing regression harness
+  precisely because both concurrency bugs above passed every single-slot check.
 - **The image tag must be the factory's**, not a stale pin, or "CI == sandbox" is
   not actually true and the drift the epic exists to collapse survives.
 

@@ -32,13 +32,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Proves the runner POOL actually runs jobs in PARALLEL. The real CI is a ~60-job
+  # per-target matrix, and each ephemeral runner takes exactly ONE job, so the slot
+  # count IS the CI parallelism: before the real matrix can move here, many jobs must
+  # be seen running CONCURRENTLY on distinct runners rather than serializing through
+  # one. Each job prints the runner that took it; distinct runner names across
+  # overlapping timestamps is the proof.
+  #
+  # It is also the standing REGRESSION HARNESS for the class of runner bug that is
+  # structurally invisible at one slot, because it takes two jobs to trigger:
+  #   * every slot sharing one runner root, so the runners clobber each other's
+  #     session and jobs stall in `queued`;
+  #   * every slot sharing one rootless podman, so one job's `docker rm` makes
+  #     another job's `docker network prune` fail in teardown ("no container with
+  #     ID <the other job's id> found in database").
+  # Both were real, both passed every single-slot check, and the second is a RACE:
+  # it once passed 12/12 before failing 8/12. So a single green run of this matrix
+  # proves nothing — re-run it several times over. Expect 12/12 every time; anything
+  # less means the runner pool is not safe to carry a merge gate.
+  slot-parallelism:
+    name: slot ${{ matrix.slot }}
+    runs-on: [self-hosted, local-ci]
+    container:
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    permissions:
+      contents: read
+    steps:
+      - name: Which runner took me, and when
+        run: |
+          echo "runner=$RUNNER_NAME slot=${{ matrix.slot }}"
+          echo "start=$(date -Is)"
+          sleep 20
+          echo "end=$(date -Is)"
+
   # Fast, reliable proof that the runner + rootless-podman container +
   # agent/job isolation + host-service denial all hold in a REAL job.
   mechanism-and-isolation:
     name: mechanism + live isolation
     runs-on: [self-hosted, local-ci]
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
     permissions:
       contents: read
     steps:
@@ -80,7 +117,7 @@ jobs:
     needs: [mechanism-and-isolation]
     runs-on: [self-hosted, local-ci]
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:v0.38.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
     permissions:
       contents: read
     env:

@@ -277,17 +277,48 @@ technical is blocked by it. See NEXT ACTIONS.
   building locally + in CI. Full state + the PR2/PR3 coupling are in the Phase 1
   section.
 
-**NEXT ACTIONS (ranked) — REWRITTEN 2026-07-14 after the codex-acp accept went green:**
+**NEXT ACTIONS (ranked) — REWRITTEN 2026-07-14 after the codex-acp accept went green;
+NEXT ACTION #1 REWRITTEN AGAIN 2026-07-14 after the runner pool was made concurrency-safe:**
 
-1. **Phase 2 (`.5`) — cut CI over to the local runner + baked image.** THE actionable next
-   step; nothing blocks it. Per-job disposition table for `livespec`'s ~40-job CI matrix
-   (move / stay-GitHub-hosted / delete), moved jobs run in the baked image on
-   `[self-hosted, local-ci]`, drop `actions/cache` (caches are local now), and DESIGN the
-   merge-gate fallback so a down host cannot silently stall merges for 24h. Carry the
-   Phase-2 follow-ons already journaled on `.5`: the durable npm-shim/HOME fix at the
-   image/hook layer; the shadow/CI image-tag bump `v0.38.1` → `python-v0.43.2` (the
-   drift-collapse goal); runner-slot count ≈18 for the full matrix; T10 cache-tiering.
-   Read `phase2-ci-disposition-livespec.md` first.
+1. **Phase 2b (`.5`) — cut `ci.yml` over to the local runner + baked image.** THE actionable
+   next step. The *prerequisite* half (Phase 2a — make the runner pool actually able to carry
+   a matrix) is **DONE and proven**; what remains is the `ci.yml` edit itself. Read
+   `phase2-ci-disposition-livespec.md` first — its per-job table (MOVE / STAY-HOSTED /
+   DELETE-STEP) is the whole design, and one row in it was **corrected**: do NOT point
+   `check-doctor-static` at the on-host `/data/projects` (the job container has no host
+   mount, by design — keep cloning the public siblings inside the container).
+
+   **Still to do:** move `setup` / `check-python` / `check-metadata` to
+   `[self-hosted, local-ci]` in the baked image; keep `export-telemetry` + `ci-green` on
+   `ubuntu-latest` (secrets, and the gate must stay reportable when the host is down); delete
+   the `actions/cache` uv steps (caches are local-disk); add `mise trust` +
+   `MISE_NOT_FOUND_AUTO_INSTALL=0` per the shadow lane; implement the merge-gate fallback (a
+   repo Actions *variable* holding the runner label, flippable to `ubuntu-latest`) so a down
+   host cannot silently stall merges for 24h. Carry the remaining follow-ons journaled on
+   `.5`: the durable npm-shim/HOME fix at the image/hook layer, and T10 cache-tiering.
+
+   **Phase 2a — DONE 2026-07-14 (do not redo).** Raising the pool from 1 slot to 18 exposed
+   THREE bugs, every one of them invisible at a single slot, all now fixed and merged in
+   `livespec-dev-tooling` (#393, #397):
+   - the credential wrapper's `env -i` scrub **silently discarding** the supervisor unit's
+     systemd `Environment=` config (so the slot count never left its default of 1) — config
+     now passes as ARGUMENTS, which survive the scrub;
+   - every runner sharing ONE runner root, so they clobbered each other's session files and
+     jobs stalled in `queued` — each instance now has its own root, with `bin`/`externals`
+     **hard-linked** (they must NOT be symlinks: `Runner.Listener` resolves its root from its
+     own executable path, so a symlink sends it back to the shared install);
+   - concurrent container **teardown** racing: all slots share one rootless podman, and
+     `podman network prune` scans the GLOBAL container DB, so one job's `docker rm` made
+     another job's prune fail. Fixed by a `docker` shim
+     (`livespec-dev-tooling` `ci-runner/dockershim/`) that readers-writer-locks prune against
+     removal while leaving pull/start/exec unlocked.
+   Also done: the shadow/CI image tag bumped `v0.38.1` → `python-v0.43.2` (the factory's own
+   tag — without it "CI == sandbox" is simply false), and `just check` **passes in-image on
+   that tag on the local runner**. Proof: 12 jobs, 12 distinct runners, same start second;
+   48/48 green across four consecutive matrix rounds (it was 8/12 and 10/12 RED before the
+   shim). The 12-job matrix is committed in `ci-selfhosted-shadow.yml` as the standing
+   regression harness — **re-run it several times, not once**: the teardown bug is a race that
+   passed 12/12 once before failing 8/12.
 
 2. **LEDGER HYGIENE (not technical) — unblock `.3` + `.4` so they can close.** Both are
    functionally COMPLETE and live-exercised, but `bd close` refuses: "blocked by open issues
