@@ -179,20 +179,76 @@ interleaved INTO the canonical alphabetical block, which `check-aggregate-comple
 forbids (`failure_mode: out_of_order_canonical_slugs`). **Every bump PR is born
 failing.** There are now **13** stalled PRs (not 11), and the orchestrator is receiving
 NO upstream releases.
-Confirmed root cause — **TWO DISAGREEING SOURCES OF TRUTH** for "canonical check slugs":
-- `livespec` core ships `templates/orchestrator-plugin/canonical-slugs.yml`, whose
-  line 42 DOES list `check-no-shadow-ledger-body-identical`.
-- `livespec-dev-tooling`'s `aggregate_completeness` canonical list does NOT contain it
-  (zero references in the entire repo).
-- `check-local-memory-drift-audit` is in **NEITHER** canonical list yet still reaches
-  the orchestrator's justfile — so a THIRD path injects it (suspected: the bump
-  rewrites `.copier-answers.yml` `_commit`, and a `copier update` re-renders the
-  templated `justfile`).
-A read-only investigator was dispatched to prove the mechanism, settle which repo OWNS
-the canon (respecting the No-Circular-Dependency Directive — `livespec-dev-tooling`
-must NEVER read into a consumer), and report the blast radius across sibling repos.
-**Note:** the two failing checks are NOT identical — the newest PRs fail
-`check-aggregate-completeness`, but #578 fails `check-ci-matrix-completeness`.
+**ROOT CAUSE — PROVEN (a VERSION SKEW in the bump-pin Action).** Two earlier guesses
+in this very section were WRONG and are retracted: there is **no** "two disagreeing
+sources of truth", **no** third injection path, and **no** copier re-render. (My
+"dev-tooling doesn't ship these checks" claim came from a BAD GREP — I searched the
+HYPHENATED slug, but the modules are UNDERSCORED filenames. Both checks
+`livespec_dev_tooling/checks/local_memory_drift_audit.py` and
+`.../no_shadow_ledger_body_identical.py` DO exist. **Lesson: a zero-hit grep is not a
+finding.**) The canonical list has exactly ONE source of truth —
+`livespec-dev-tooling`'s `canonical_checks.py::canonical_check_slugs()`, derived by a
+filesystem walk of `checks/*.py`. `livespec` core's
+`templates/orchestrator-plugin/canonical-slugs.yml` is a generated, guarded, and
+CURRENTLY-CORRECT projection of it. **Do not touch core's YAML.**
+
+The actual bug: `livespec-dev-tooling`'s composite Action
+(`.github/actions/bump-pin-rewrite/action.yml:308-334`) has a step "Reconcile
+canonical check wiring" that computes the canonical slug set from `livespec-dev-tooling`
+**@ MASTER** — the support checkout in `reusable-bump-pin-from-dispatch.yml:148-152`
+carries **NO `ref:`**, so it defaults to master — while the consumer's
+`check-aggregate-completeness` computes the SAME set from `livespec-dev-tooling`
+**@ THE CONSUMER'S PINNED TAG** (v0.43.2 on the orchestrator = 47 slugs; master = 49).
+Master is ahead of every pin, so the reconcile injects slugs the PINNED checker does not
+recognize → interleaved extras → **red by construction**. The set-difference
+`master − v0.43.2` is EXACTLY the two offending slugs. Proven against bump commit
+`762d229` (PR #598), which touches only `.livespec.jsonc` + `justfile` — no copier, no
+template render.
+
+**SECOND DEFECT (must also be fixed):** the reconcile rewrites the `justfile` but NEVER
+`.github/workflows/ci.yml`. So a *dev-tooling* bump (which DOES advance the pin, making
+the injected slugs legitimately canonical) instead fails **`check-ci-matrix-completeness`**
+— CI's hand-maintained matrix is short the new entry. That is why #578 fails a DIFFERENT
+check than #598: same root cause, two signatures, keyed on which pin the PR bumps.
+
+**BLAST RADIUS — this is FLEET-WIDE, not an orchestrator problem.** ~45 stalled bump PRs:
+`livespec-orchestrator-beads-fabro` (15), `livespec-orchestrator-git-jsonl` (12),
+`livespec-driver-codex` (12), and **`livespec` CORE ITSELF (3, incl. #1236)** — core
+cannot land its own dev-tooling bump, which is WHY its projection lags master by one
+slug. (`livespec-driver-claude`'s 3 red PRs are a SEPARATE, different stall —
+`check-all-declared` / `check-doctor-static` — investigate independently.
+`livespec-console-beads-fabro` is NOT affected.)
+
+**THE FIX — two changes, BOTH confined to `livespec-dev-tooling`; NO RELEASE NEEDED.**
+1. Kill the skew in `.github/actions/bump-pin-rewrite/action.yml`: add a `uv sync
+   --all-groups` after the `uv lock` step (the consumer venv is synced BEFORE the pin
+   rewrite and never re-synced), and change line 333 to resolve canonical slugs from the
+   CONSUMER'S env — `uv run python -m livespec_dev_tooling.canonical_checks --json`
+   (drop `--project .livespec-dev-tooling`). Then the reconcile and the gate agree BY
+   CONSTRUCTION at whatever the consumer pins. (`--json` exists as far back as v0.43.2,
+   the oldest fleet pin.) This also fixes a THIRD latent bug: the `Re-stamp
+   canonical-slugs projection` step currently stamps against the stale venv.
+2. Add a `ci.yml` canonical reconcile (new `cross_repo/ci_yaml_canonical_reconcile.py`,
+   mirroring the existing, unit-tested `justfile_canonical_reconcile`) inserting each
+   newly-adopted slug alphabetically into the `strategy.matrix.target` list that already
+   contains `check-aggregate-completeness`, EXCLUDING `world_gate_check_slugs()`. Fail
+   LOUD (`::error::`) if no such matrix is found — never open a red-by-construction PR.
+
+**NO RELEASE IS NEEDED, and this constrains the fix:** the composite Action + Python
+modules load from the UNPINNED master checkout, so a merge to `livespec-dev-tooling`
+master takes effect on the very NEXT dispatch. But the reusable *workflow YAML* runs at
+the consumer shim's PINNED ref, so a fix requiring a workflow-YAML edit WOULD need a
+release + a shim bump — delivered by the very fan-out that is stalled (chicken-and-egg).
+**Keep the fix inside the composite Action + the Python modules.**
+
+**CLEANUP after the fix lands:** the existing PRs carry the poisoned bump commit and
+CANNOT be salvaged by a rerun (the reusable workflow's Stale-SHA rerun guard refuses
+`gh run rerun` once the default branch has moved). Close them and issue a fresh
+`sibling-released` repository_dispatch per repo, or let `pin-freshness.yml` re-open them.
+
+**Do NOT** add a lever/skip/exemption to `check-aggregate-completeness` or
+`check-ci-matrix-completeness` — both gates are correctly diagnosing a real
+inconsistency; the PRODUCER of the inconsistency is the bug.
 
 ## SESSION UPDATE — 2026-07-14 (cont. 13): SPEC RATIFIED (v034) — Full autonomous mode RETIRED; NEXT = the impl epic
 
