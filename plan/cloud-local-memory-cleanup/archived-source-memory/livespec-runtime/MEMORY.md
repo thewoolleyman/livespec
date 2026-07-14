@@ -1,0 +1,6 @@
+- [Worktree-PR-merge-cleanup discipline](feedback_worktree_discipline.md) — every change to a livespec-governed repo lands via worktree → PR → merge → cleanup; never leave dirty state, never ask "should I commit?"
+- [Be more autonomous, ask fewer questions](feedback_be_more_autonomous.md) — when a directive implicitly answers the next pending question, just execute; don't re-prompt for the obvious answer.
+- [Upstream livespec repo is bare](reference_livespec_repo_is_bare.md) — `/data/projects/livespec` has `core.bare = true`; sync via `git fetch origin master:master`, not `git pull --rebase`.
+- [Beads tenant access](reference_beads_tenant_access.md) — wrap bd/orchestrator calls in `with-livespec-env.sh` to inject the tenant password (dolt-server :3307).
+- [Draft, don't materialize propose-change](feedback_draft_dont_materialize_propose_change.md) — for a maintainer-owned revise gate, surface a validated findings draft; don't run propose-change to write the on-disk proposed_changes file.
+- [bd auto-backup denial is by design](reference_bd_autobackup_denial_by_design.md) — hourly systemd dolt-backup.timer does real backups; never file an item for the warning
