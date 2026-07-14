@@ -81,18 +81,59 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State (fresh-session entry point, updated 2026-07-14 — codex-acp sub-plan
-consolidated into this track).** The plan is anchored by the **beads epic
-`livespec-3lev`** (`livespec` tenant) with per-phase children `.1`–`.8` (`.8` =
-Phase 5, the closing efficiency report). The images half is essentially done, and
-**Phase 0 (the local self-hosted runner) is now DONE — authorized, proven live, and
-landed 2026-07-14 (the linchpin is cleared; see SESSION 2026-07-14 below).** So the two
-things that were gated on Phase 0 are now the actionable next steps: the **codex-acp
-FULL automation accept** (`.4`'s last item — adapt the orchestrator gate workflow to the
-now-live `[self-hosted, local-ci]` runner class, then fire the bump-PR flow) and **Phase 2
-(`.5`) — cut CI over to the local runner + baked image**. See NEXT ACTIONS below.
+**State (fresh-session entry point, updated 2026-07-14 — Phases 0 AND 1 are now
+functionally DONE).** The plan is anchored by the **beads epic `livespec-3lev`**
+(`livespec` tenant) with per-phase children `.1`–`.8` (`.8` = Phase 5, the closing
+efficiency report). **Phase 0 (the local self-hosted runner) and Phase 1 (baked layered
+images + the codex-acp auto-bump automation) are BOTH functionally COMPLETE and
+live-exercised** — the codex-acp gate went fully GREEN end-to-end on 2026-07-14 (see
+SESSION 2026-07-14 below), which was Phase 1's last deliverable. A SECOND, PRIVILEGED
+runner trust tier (the on-demand gate runner) was built and proven en route, because the
+contained CI runner provably cannot host the golden-master gate.
+
+**So the actionable next step is now simply Phase 2 (`.5`) — cut CI over to the local
+runner + baked image.** The only loose end is a LEDGER-HYGIENE one: `.3` and `.4` cannot
+`bd close` because both are blocked-by the intentionally-open `.1` (P-host). Nothing
+technical is blocked by it. See NEXT ACTIONS.
 
 **SESSION 2026-07-14 LANDED — read first:**
+- **codex-acp FULL automation accept — GREEN + EXERCISED LIVE. PHASE 1 IS FUNCTIONALLY DONE.**
+  Gate run
+  [29312105686](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/actions/runs/29312105686):
+  all 7 steps green. The whole chain, end to end — `repository_dispatch` → the gate supervisor mints
+  ONE single-use PRIVILEGED runner (none idled before; back to `total_count=0` after) → overlay
+  `testing @0.16.0 (build-image)` → **credential projection proven** (`CODEX auth.json present (4714
+  bytes)` + projection into the sandbox, re-verifying `bd-ib-ss7rkr`) → Codex drove the throwaway repo
+  `livespec-e2e-z18clnco` to a MERGED PR #1 → `asserted greeting: Hello, Ada!` → `=== live
+  golden-master PROOF COMPLETE ===` → cross-repo status `codex-acp-golden-master=success` posted to
+  dev-tooling → **the FAIL-CLOSED merge gate proved itself**: the vehicle PR carried `do-not-merge`
+  (the auto-enable-merge workflow's opt-out) so the GATE was the only thing that could enable
+  auto-merge — and it did, and the PR merged. Journaled on `livespec-3lev.4`.
+  **FOUR latent defects were found by ACTUALLY RUNNING IT** — the gate shipped in #574, was reviewed,
+  released, and had NEVER ONCE EXECUTED (no runner existed), so all four were invisible to
+  merge + CI-green + review. This is the "done means exercised live" discipline earning its keep:
+  (1) orchestrator **#605** — `with-livespec-env.sh -- just …` dies `env: 'just': No such file or
+  directory` (exit 127) on ANY host: the wrapper's `env -i` scrub pins PATH to secure_path and `just`
+  is mise-managed (its `OPENV_PRESERVE_VARS` hook cannot help — it captures AFTER sudo resets the
+  env); (2) orchestrator **#607** — same family: the scrub also drops `MISE_TRUSTED_CONFIG_PATHS`, so
+  the host-side greeting assertion failed `not trusted` even though the merged program was CORRECT;
+  (3) dev-tooling **#389** — the gate's root-running Docker containers leave root-owned `__pycache__`
+  in the runner workspace, so the NEXT run's `actions/checkout` (unprivileged) dies EACCES — a reused
+  workspace on a privileged runner poisons itself; fixed at the source (ephemeral runner ⇒ ephemeral
+  workspace); (4) dev-tooling **#391** — NOT a defect but a TRAP, now documented where it bites: the
+  repo's blanket `auto-enable-merge` workflow enables auto-merge for any non-draft PR authored by
+  `thewoolleyman`, so the FIRST (PAT-authored) accept vehicle #388 merged on green CI while the gate's
+  status was `failure`. That was an unrepresentative TEST VEHICLE, **not** a design hole — the real
+  bump PR is App-authored (`livespec-pr-bot[bot]`) on `chore/freshness-bump-*`, matching neither
+  enable path (the App path is scoped to `release-please--*`), so only the gate can enable its
+  auto-merge. The design **is** fail-closed (verified by reading both workflows) and #391 records the
+  invariant in `auto-enable-merge.yml` so widening the allowlist cannot silently defeat the gate.
+  **HONEST GAP:** npm `latest` for codex-acp is `0.16.0` — exactly what the image bakes — so no real
+  bump existed to ride and the overlay's version-OVERRIDE arithmetic is still unproven (it installed
+  the version already baked). The unproven surface was the AUTOMATION, and that is now fully proven;
+  the override gets exercised by the first genuine bump.
+  **`.4` STILL CANNOT `bd close`** — blocked-by the intentionally-open `.1` (P-host). NOT forced. See
+  NEXT ACTIONS.
 - **The PRIVILEGED gate-runner lane (second trust tier) — BUILT + PROVISIONED + PROVEN
   (2026-07-14, maintainer-authorized).** Investigating NEXT ACTION #1 found it was
   UNIMPLEMENTABLE as written: the golden-master gate needs Docker (root-equivalent), the host
@@ -236,7 +277,40 @@ now-live `[self-hosted, local-ci]` runner class, then fire the bump-PR flow) and
   building locally + in CI. Full state + the PR2/PR3 coupling are in the Phase 1
   section.
 
-**NEXT ACTIONS (ranked):**
+**NEXT ACTIONS (ranked) — REWRITTEN 2026-07-14 after the codex-acp accept went green:**
+
+1. **Phase 2 (`.5`) — cut CI over to the local runner + baked image.** THE actionable next
+   step; nothing blocks it. Per-job disposition table for `livespec`'s ~40-job CI matrix
+   (move / stay-GitHub-hosted / delete), moved jobs run in the baked image on
+   `[self-hosted, local-ci]`, drop `actions/cache` (caches are local now), and DESIGN the
+   merge-gate fallback so a down host cannot silently stall merges for 24h. Carry the
+   Phase-2 follow-ons already journaled on `.5`: the durable npm-shim/HOME fix at the
+   image/hook layer; the shadow/CI image-tag bump `v0.38.1` → `python-v0.43.2` (the
+   drift-collapse goal); runner-slot count ≈18 for the full matrix; T10 cache-tiering.
+   Read `phase2-ci-disposition-livespec.md` first.
+
+2. **LEDGER HYGIENE (not technical) — unblock `.3` + `.4` so they can close.** Both are
+   functionally COMPLETE and live-exercised, but `bd close` refuses: "blocked by open issues
+   [livespec-3lev.1]". `.1` (P-host) is deliberately open for its remaining follow-ons, and
+   its own note already says its "gating role over Phases 0-1 [is] DISCHARGED". Both of `.1`'s
+   remaining items are now Phase-0-UNBLOCKED (a runner exists): `.1`(b) runner-liveness alert,
+   `.1`(c) cache budget/prune. Clean close path: finish `.1`(b)+(c) → close `.1` → `.3` and `.4`
+   close with it. OR drop the now-spurious `.1→.3/.4` edges. **Do NOT `bd close --force`** —
+   the edges are the record of why these were sequenced, and the maintainer owns that call.
+
+3. **Item 4a exporter** — surface the OUTWARD-FACING upstream Fabro exporter re-derivation
+   (`bd-ib-i4r` + `bd-ib-98c.1`, re-derive `otel.rs` vs current Fabro `0.289.0`) to the
+   maintainer; coordinate wire-format/naming with the `fabro-token-refresh` thread. NOT
+   autonomously buildable past the PR gate. (Phase 5's factory half still depends on it.)
+
+4. **Known, separate issue surfaced by the green gate run — NOT fixed, NOT blocking.**
+   The in-sandbox post-merge janitor reported `janitor-env-degraded`: it could not run because
+   the golden-master's e2e target justfile has no `install-commit-refuse-hooks` recipe. It is
+   reported `warn`, the merge was confirmed on the remote, and the item still closed green — so
+   the factory's post-merge janitor gate is silently NOT executing inside the golden-master
+   sandbox. Worth its own look (orchestrator-side).
+
+**(historical — superseded by the above, kept for the reasoning trail)**
 1. **Phase 0 — DONE (2026-07-14): local self-hosted runner PROVEN LIVE + LANDED.** The linchpin is
    cleared (see SESSION 2026-07-14 above + `livespec-3lev.3`). No host mutation remains — the runner
    supervisor + JIT + agent/job-isolation + shadow lane are live and merged. The two newly-unblocked
