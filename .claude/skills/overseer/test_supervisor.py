@@ -11,6 +11,7 @@ failure propagation, marker/round lifecycle, read-only list, and the start guard
 """
 
 import contextlib
+import datetime
 import importlib.machinery
 import importlib.util
 import io as _io
@@ -44,6 +45,7 @@ class FakeTmux:
         self.cmds = {}
         self.paths = {}
         self.calls = []
+        self.window_name = None  # last name written by the attention badge
         self.on_paste = None  # callback(session, text) for stamp-before-paste checks
         self.paste_ok = True  # set False to model a failed bracketed paste (B5)
         self.respawn_ok = True  # set False to model a failed respawn (B5)
@@ -150,9 +152,19 @@ class FakeTmux:
         self.sessions.add(name)
         return True
 
+    def rename_window(self, pane, name):
+        # The attention badge on the tmux WINDOW name (`overseer` → `overseer(2!)`) —
+        # the only overseer surface visible from a session the operator is attached to.
+        self.calls.append(("rename_window", pane, name))
+        self.window_name = name
+        return True
+
     # test helpers ---------------------------------------------------- #
     def paste_texts(self):
         return [c[2] for c in self.calls if c[0] == "paste"]
+
+    def renames(self):
+        return [c[2] for c in self.calls if c[0] == "rename_window"]
 
     def has(self, method):
         return any(c[0] == method for c in self.calls)
@@ -1661,3 +1673,249 @@ def test_submit_prompt_single_enter_when_already_ready(tmp_path):
     assert sup._submit_prompt(session, "hello") is True
     enters = [c for c in fake.calls if c[0] == "keys" and c[2] == "Enter"]
     assert len(enters) == 1
+
+
+# --------------------------------------------------------------------------- #
+# The `NEEDS YOU` attention block (the daemon owns "what needs attention?").
+#
+# The bottom pane is an LLM: it prints text ONCE and that text then ages silently,
+# so it reported tracks that had been resolved for minutes. Current state therefore
+# belongs to the daemon's re-rendered table, which is free and cannot go stale.
+# --------------------------------------------------------------------------- #
+
+
+def _render_of(sup, views):
+    """Render VIEWS and return what the daemon printed (the table + attention block)."""
+    sup.render(views)
+    return sup.out.getvalue()
+
+
+def test_attention_block_lists_a_blocked_track_with_its_jump_command(tmp_path):
+    """The block must be a SUFFICIENT handover on its own: what is stuck, and where to go."""
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    views = [
+        supervisor.RowView(
+            topic="autonomous-mode",
+            repo="/data/projects/livespec",
+            tmux="livespec-autonomous-mode",
+            ctx=41,
+            status="blocked:human",
+            note="waiting on a cost-gate decision",
+        )
+    ]
+    out = _render_of(sup, views)
+    assert "NEEDS YOU (1):" in out
+    assert "autonomous-mode" in out
+    assert "waiting on a cost-gate decision" in out
+    assert "jump: tmux switch-client -t livespec-autonomous-mode" in out
+
+
+def test_attention_block_says_nothing_when_every_track_is_healthy(tmp_path):
+    """An empty block must SAY it is empty — silence is ambiguous with a broken render."""
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    views = [
+        supervisor.RowView(topic="a", repo="/r", tmux="s1", ctx=80, status="idle"),
+        supervisor.RowView(topic="b", repo="/r", tmux="s2", ctx=60, status="working"),
+    ]
+    out = _render_of(sup, views)
+    assert "NEEDS YOU: nothing" in out
+
+
+def test_attention_block_excludes_unassigned_plans(tmp_path):
+    """`unassigned` is startable, not stuck — and there are dozens. Including them would
+    bury the rows that genuinely want the operator, which is the bug this block fixes."""
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    views = [
+        supervisor.RowView(topic=f"plan{i}", repo="/r", tmux=None, ctx=None, status="unassigned")
+        for i in range(20)
+    ] + [supervisor.RowView(topic="stuck", repo="/r", tmux="s", ctx=9, status="danger")]
+    out = _render_of(sup, views)
+    assert "NEEDS YOU (1):" in out  # the ONE danger row, not 21
+    assert "stuck" in out.split("NEEDS YOU")[1]
+    assert "plan0" not in out.split("NEEDS YOU")[1]
+
+
+def test_attention_block_includes_a_malformed_state_file(tmp_path):
+    """A malformed declaration has no status of its own (it rides on the note) and is
+    fail-closed — it needs a human, so it must appear in the block."""
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    views = [
+        supervisor.RowView(
+            topic="t", repo="/r", tmux="s", ctx=50, status="idle", note="BAD state file: 'redy'"
+        )
+    ]
+    out = _render_of(sup, views)
+    assert "NEEDS YOU (1):" in out
+    assert "BAD state file" in out
+
+
+def test_needs_attention_predicate_covers_every_attention_status():
+    """Guards the membership test itself, so a new attention status cannot be added to the
+    tuple without the block picking it up."""
+    for status in supervisor.ATTENTION_STATUSES:
+        row = supervisor.RowView(topic="t", repo="/r", tmux="s", ctx=1, status=status)
+        assert supervisor.needs_attention(row) is True
+    for status in ("idle", "working", "warned", "winding-down", "settling", "unassigned"):
+        row = supervisor.RowView(topic="t", repo="/r", tmux="s", ctx=99, status=status)
+        assert supervisor.needs_attention(row) is False
+
+
+# --------------------------------------------------------------------------- #
+# The log is an EVENT HISTORY: timestamped, and edge-triggered (not per-tick).
+# --------------------------------------------------------------------------- #
+
+
+def test_alert_is_edge_triggered_not_repeated_every_tick(tmp_path):
+    """A track blocked overnight used to log ~3,000 identical lines, burying the history
+    the bottom pane reads to answer "what happened?". One line per condition ENTERED."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=50))
+    _declare(repo, topic, "blocked: needs a human")
+    sup = _sup(tmp_path, fake)
+    track = _mapped_track(repo, topic, session)
+
+    err = _io.StringIO()
+    with contextlib.redirect_stderr(err):
+        for _ in range(5):  # five ticks of the SAME unchanged condition
+            assert sup.evaluate(track, act=True).status == "blocked:human"
+    surfaced = [ln for ln in err.getvalue().splitlines() if "overseer[SURFACE]" in ln]
+    assert len(surfaced) == 1, surfaced
+
+
+def test_alert_re_arms_after_the_track_recovers(tmp_path):
+    """Edge-triggering must not SWALLOW a genuine re-entry: once a track goes healthy, the
+    next time it goes bad it reports afresh."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    # 90% remaining: comfortably above the warn threshold, so the recovered tick is a
+    # plain `idle` (at 50% it would be `warned` — still healthy, but a noisier assertion).
+    fake.serve(session, repo, capture=_idle_capture(ctx=90))
+    sup = _sup(tmp_path, fake)
+    track = _mapped_track(repo, topic, session)
+
+    err = _io.StringIO()
+    with contextlib.redirect_stderr(err):
+        state = _declare(repo, topic, "blocked: first")
+        assert sup.evaluate(track, act=True).status == "blocked:human"
+        state.unlink()  # the human answered → the track is healthy again
+        assert sup.evaluate(track, act=True).status == "idle"
+        _declare(repo, topic, "blocked: first")  # blocks AGAIN on the same reason
+        assert sup.evaluate(track, act=True).status == "blocked:human"
+    surfaced = [ln for ln in err.getvalue().splitlines() if "overseer[SURFACE]" in ln]
+    assert len(surfaced) == 2, surfaced  # entered, recovered, entered again
+
+
+def test_alert_reports_again_when_the_reason_changes(tmp_path):
+    """Edge-triggering is on the CONDITION, not merely on the status: a track that stays
+    blocked for a DIFFERENT reason is a new event and must be reported."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=50))
+    sup = _sup(tmp_path, fake)
+    track = _mapped_track(repo, topic, session)
+
+    err = _io.StringIO()
+    with contextlib.redirect_stderr(err):
+        _declare(repo, topic, "blocked: reason one")
+        sup.evaluate(track, act=True)
+        _declare(repo, topic, "blocked: reason two")
+        sup.evaluate(track, act=True)
+    surfaced = [ln for ln in err.getvalue().splitlines() if "overseer[SURFACE]" in ln]
+    assert len(surfaced) == 2, surfaced
+    assert "reason one" in surfaced[0]
+    assert "reason two" in surfaced[1]
+
+
+def test_log_lines_are_timestamped(tmp_path):
+    """The bottom pane answers "WHEN did this happen?" from the log, so every line must
+    carry its own time — the alert lines used to carry none."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=50))
+    _declare(repo, topic, "blocked: x")
+    sup = _sup(tmp_path, fake)
+
+    err = _io.StringIO()
+    with contextlib.redirect_stderr(err):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    line = next(ln for ln in err.getvalue().splitlines() if "overseer[SURFACE]" in ln)
+    stamp = line.split(" overseer[SURFACE]")[0]
+    # Parses as the ISO-8601 instant the daemon stamps its table with.
+    assert datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+
+
+# --------------------------------------------------------------------------- #
+# The tmux window-name badge (the only surface visible from ANOTHER session).
+# --------------------------------------------------------------------------- #
+
+
+def test_window_name_is_badged_with_the_attention_count(tmp_path):
+    """tmux renders the window name in the status bar of whatever session the operator is
+    attached to — so a track that wants them is seen without switching panes."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=50))
+    _declare(repo, topic, "blocked: needs you")
+    sup = _sup(tmp_path, fake, own_pane="%7", manifest_path=None, watch_repos=[str(repo)])
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path, added_at="t")
+
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.tick(act=True)
+    assert fake.window_name == "overseer(1!)"
+
+
+def test_window_name_drops_the_badge_when_nothing_needs_attention(tmp_path):
+    """The badge must CLEAR, or it becomes another stale indicator — the very bug."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=90))  # healthy
+    sup = _sup(tmp_path, fake, own_pane="%7", manifest_path=None, watch_repos=[str(repo)])
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path, added_at="t")
+
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.tick(act=True)
+    assert fake.window_name == "overseer"
+
+
+def test_window_name_is_only_rewritten_when_the_count_changes(tmp_path):
+    """A tmux call every tick for an unchanged name is pure noise."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=50))
+    _declare(repo, topic, "blocked: x")
+    sup = _sup(tmp_path, fake, own_pane="%7", manifest_path=None, watch_repos=[str(repo)])
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path, added_at="t")
+
+    with contextlib.redirect_stderr(_io.StringIO()):
+        for _ in range(4):
+            sup.tick(act=True)
+    assert fake.renames() == ["overseer(1!)"]  # written ONCE, not four times
+
+
+def test_read_only_list_never_renames_the_window(tmp_path):
+    """`list` is advertised read-only, so printing a table must not rename the
+    maintainer's window as a side effect."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=50))
+    _declare(repo, topic, "blocked: x")
+    sup = _sup(tmp_path, fake, own_pane="%7", manifest_path=None, watch_repos=[str(repo)])
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path, added_at="t")
+
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.tick(act=False)
+    assert fake.renames() == []
+    assert fake.window_name is None

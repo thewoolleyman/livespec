@@ -63,16 +63,44 @@ Two panes in the overseer's own tmux window:
 
 - **TOP pane = the daemon** (`overseerd`, which runs the `supervisor.py` daemon
   logic) — a stdlib Python process that both *acts* and *renders the table*. No
-  LLM, no tokens. Every ~10s it
+  LLM, no tokens. It gets **2/3 of the window height**, because it is the surface
+  that answers "what needs my attention?". Every ~10s it
   discovers plans, joins the JSONL mapping, reads each tracked session's live
   pane + its one state file, injects escalating wrap-ups, restarts the sessions
   that have declared themselves `ready`, reports the ones that have not, and
   reprints the live `Topic · Repo · tmux · Ctx% · Status` table (re-rendered
-  from live captures each tick, so it can never freeze on a stale snapshot).
+  from live captures each tick, so it can never freeze on a stale snapshot) —
+  followed by the **`NEEDS YOU` block** (below).
 - **BOTTOM pane = this interactive Claude overseer** (thin) — starts the daemon,
-  takes plain-text commands to manage the track list, and RELAYS the daemon's
-  track reports to the maintainer as non-blocking text, each naming where to go
-  and carrying a recommendation. It does NO track work.
+  takes plain-text commands to manage the track list, and ANSWERS THE
+  MAINTAINER'S QUESTIONS from the daemon's log. It does NO track work, and it is
+  **NOT a status display** (see "The table is state; the log is history" below).
+
+## The table is state; the log is history — NEVER answer the first from the second
+
+**THE STALENESS RULE (maintainer-declared 2026-07-14): the bottom pane must never
+present itself as a live view of what needs attention.** You are an LLM. You print
+text ONCE, and from that instant it is a frozen transcript that ages silently while
+the fleet moves on. The bottom pane once printed "two tracks want you" and sat there
+while both were resolved minutes later — the maintainer read a dead report as current.
+This is the *frozen-snapshot* failure the design already fixed **for the top pane**
+(re-render every tick, stamp it) and never applied here.
+
+So the two surfaces have strictly separate jobs, and you must not confuse them:
+
+| Question | Surface | Why |
+|---|---|---|
+| **"What needs attention *right now*?"** | the **top pane's `NEEDS YOU` block** | rebuilt every tick from live captures, so a track the maintainer resolves DISAPPEARS from it; costs no tokens, so it can refresh forever |
+| **"What *happened*, and *when*?"** | **`tmp/overseer/daemon.log`** — read it and answer | an append-only event history; the thing an LLM is actually good for |
+
+- **Point the maintainer at the top pane** for current state. Do not re-render the
+  table into your transcript "for convenience" — that manufactures a second, decaying
+  copy of a surface that is already correct and free.
+- **If you DO state anything about current state** (they asked you directly, or you
+  ran `list`), you MUST **timestamp it and label it a point-in-time read**, and say the
+  top pane is the live one. An unstamped status claim from this pane is the bug.
+- **Never** answer "what needs attention?" by tailing the log. The log is *history*:
+  it records that a track *entered* a condition, never that it is *still in* it.
 
 **All semantic judgment lives in the tracked session's own LLM**, expressed
 out-of-band via its ONE state file; the daemon only pattern-matches deterministic
@@ -193,6 +221,35 @@ A `danger` row is a **report, not a decision the daemon will make for you**: the
 overseer will not restart an undeclared session, so a `danger` track sits there
 until a human acts. See "Your job as the bottom pane" below.
 
+### The `NEEDS YOU` block — the answer to "what needs attention?"
+
+Under the table the daemon prints the rows a human must actually go act on —
+`blocked:human`, `danger`, `session-gone`, `not-claude`, and any malformed state file —
+each with its jump command:
+
+```
+NEEDS YOU (1):
+  ! autonomous-mode (livespec) — blocked:human — waiting on a cost-gate decision
+      jump: tmux switch-client -t livespec-autonomous-mode
+```
+
+…and, when the fleet is clean, `NEEDS YOU: nothing — every tracked session is healthy.`
+
+`unassigned` rows are deliberately excluded: a discovered plan with no session is
+*startable*, not *stuck*, and there are dozens of them — they were burying the handful
+of rows that genuinely wanted the operator, which is why this block exists. It refreshes
+with the tick, so a resolved track vanishes from it on its own.
+
+### The window-name badge
+
+The daemon also badges the attention count onto its tmux **window name** (`overseer` →
+`overseer(2!)`), pinning it with `automatic-rename off`. This is the ONLY overseer
+surface visible **without looking at the overseer window** — tmux renders the window name
+in the status bar of whatever session the maintainer is attached to, so a track that wants
+them is noticed while they are heads-down elsewhere. It clears back to `overseer` when
+nothing needs attention (a badge that could not clear would just be one more stale
+indicator).
+
 ---
 
 ## The command vocabulary (bottom pane → track-management CLI)
@@ -258,11 +315,32 @@ are fixed by construction:
    (prompt for whichever is omitted, recommend-first), and run the matching
    subcommand with `--repo` / `--topic`. Adding a plan puts it under the daemon's
    watch; `start` launches a session for it (deliberately, never automatically).
-3. **RELAY what the daemon reports — as text, never as a blocking prompt.** The
-   daemon writes its track alerts to its stderr log (`tmp/overseer/daemon.log`),
-   each prefixed `overseer[SURFACE]:` and each naming the plan topic, its repo,
-   the tmux **session** and **pane**, and a copy-pasteable
-   `tmux switch-client -t <session>` jump command. Three kinds concern a track:
+3. **ANSWER FROM THE LOG — as text, never as a blocking prompt.** `tmp/overseer/daemon.log`
+   is the daemon's **event history**, and knowing it is a core part of your job: it is how
+   you answer "why did that track restart?", "when did X block?", "has the daemon been
+   injecting wrap-ups?". Its format:
+
+   ```
+   2026-07-14T08:47:32Z overseer: <diagnostic>              # routine daemon bookkeeping
+   2026-07-14T08:47:32Z overseer[SURFACE]: <alert>          # something the operator may care about
+   ```
+
+   - Every line is **ISO-8601 timestamped** — so you can always answer *when*.
+   - `overseer:` lines are diagnostics (adopted a session, auto-linked, voided a stale
+     declaration, archive-GC'd a row, restarted a track).
+   - `overseer[SURFACE]:` lines are operator alerts. A **track-scoped** one names the plan
+     topic, its repo, the tmux **session** and **pane**, and a copy-pasteable
+     `tmux switch-client -t <session>` jump command. A **daemon-level** one (failed paste,
+     respawn failure, singleton-lock refusal, gitignore refusal) has no track coordinates.
+   - Alerts are **EDGE-TRIGGERED**: one line when a track *enters* a condition (or its
+     reason changes), **not** one per tick. So a line means "this started happening at
+     that time" — it does **NOT** mean the track is still in that state now. To know
+     whether it *still* is, read the top pane's `NEEDS YOU` block. (Alerts used to repeat
+     every tick, which buried the history under thousands of identical lines *and* invited
+     exactly the stale-report bug above.)
+   - The log is truncated when the daemon starts, so it covers the current daemon's life.
+
+   Three kinds of track alert concern you:
    - **`blocked:human`** — a tracked session hit a structured gate (permission
      prompt / picker) or declared `blocked: <reason>`. The daemon never keystrokes
      into it and never restarts it.
@@ -289,9 +367,11 @@ are fixed by construction:
    live pane each tick, so once the human answers in the tracked pane, the alert
    simply stops.
 
-   Include an explicit recommendation in plain language with each relayed track.
+   Include an explicit recommendation in plain language with each relayed track, and
+   **stamp anything you say about current state** (see the staleness rule above).
    Reading this log when re-engaged or when the maintainer checks in is not
-   timer-polling — you never poll the tracked sessions themselves.
+   timer-polling — you never poll the tracked sessions themselves, and you never put
+   yourself on a timer to re-render a table the top pane already renders for free.
 4. **Supervise, don't do.** You manage the list and relay; the daemon does the
    mechanics; each tracked session's own LLM does its track work in its own
    context and declares its state in its one state file.
