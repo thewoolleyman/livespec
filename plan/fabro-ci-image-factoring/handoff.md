@@ -121,6 +121,21 @@ banked decision: Phase 0 (stand up the self-hosted runner — host mutation).**
   the Rust fabro binary can't SIGPIPE-panic (exit 101) the whole accept when the host fabro
   server's version RPC is slow (it was blocking THIS accept deterministically under the
   busy shared server).
+- **P-host `.1`(a) — resource-health triggers WIRED (bonus; NOT Phase-0-gated).** Continuing
+  the plan while Phase 0 stays banked: the one P-host follow-on that was NOT Phase-0-blocked —
+  the Honeycomb resource-health trigger — is now live. Its only open input (the alert-destination
+  decision) resolved trivially: the team has just 2 notification recipients, both email, so it
+  routes to the maintainer email (`jKw2EyfLJ3W`). Created in the **agent-activity** env /
+  **`livespec-host-metrics`** dataset, hardware-derived thresholds, each 2×15-min sustained,
+  wired to the maintainer email, both **Not Triggered**: **`bEVsU9BQw22`** RAM-available floor
+  (`AVG(system.memory.usage state=free) < 8 GiB` — the BINDING signal, swap=0; free RAM runs
+  56-69 GiB so it can't spuriously fire) + **`HheaBTJgKBz`** disk-free floor
+  (`AVG(system.filesystem.usage.free mountpoint=/) < 20 GiB` — hygiene). DEFERRED: the sustained
+  CPU-idle-near-0 signal (needs a derived host-CPU-util%; the dataset carries only cumulative
+  `system.cpu.time.*` + load-avg, and bare load-avg is rejected by the plan) — lowest priority
+  (the load test showed CPU oversubscription degrades gracefully). Journaled on `livespec-3lev.1`.
+  CLEANUP: one disabled junk trigger **`D6EmkCAF8DM`** remains (the Honeycomb MCP surface has NO
+  delete_trigger) — inert (disabled, no recipients), renamed "ABANDONED … safe to delete via UI".
 
 **THIS SESSION (2026-07-13) LANDED — read before picking up:**
 - **Phase 1 PR2/PR3 (consumer image switches) DONE + ACCEPTED LIVE (later 2026-07-13).**
@@ -215,9 +230,12 @@ banked decision: Phase 0 (stand up the self-hosted runner — host mutation).**
   Honeycomb env) via `otel-collector` PR #3 (commit `417e5d8`, marker `0.6`),
   verified live. The "multi-day baseline" was over-engineered and is **dead** (a
   load test confirmed the headroom); P-host **no longer gates Phases 0–1**.
-  Follow-ons (non-blocking): wire the Honeycomb resource trigger at conservative
-  hardware thresholds (needs an alert-destination decision), runner-liveness
-  alert (waits for Phase 0), cache budget/prune.
+  Follow-ons: the Honeycomb resource triggers are now **WIRED** (2026-07-14) —
+  RAM-available floor `bEVsU9BQw22` + disk-free floor `HheaBTJgKBz`, hardware
+  thresholds, maintainer-email recipient, both Not Triggered (see SESSION
+  2026-07-14 above + `livespec-3lev.1` journal). Still non-blocking-pending:
+  the sustained-CPU signal (deferred — needs a derived host-CPU-util%),
+  runner-liveness alert (waits for Phase 0), cache budget/prune (Phase-0-coupled).
 - **Designs drafted** (read these companion docs before implementing a phase):
   `phase0-runner-containment-design.md`, `phase1-layered-image-design.md`,
   `phase2-ci-disposition-livespec.md`.
