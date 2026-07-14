@@ -38,7 +38,7 @@ tracked tree; the daemon `git check-ignore`-validates each watched repo's
 ## What the daemon injects at threshold
 
 When a tracked session's **remaining context** falls to or below its threshold
-(`ctx_threshold`, default 45%) AND the pane is in a verified idle-input state,
+(`ctx_threshold`, default 50%) AND the pane is in a verified idle-input state,
 the daemon records an **injection stamp** (an epoch-seconds timestamp in the
 sidecar `~/.livespec-overseer-stamps.json`, keyed by `(repo, topic)`) and then
 **bracketed-pastes** this wrap-up message:

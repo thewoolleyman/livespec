@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
         metavar="N",
         help=(
             "daemon-wide default remaining-context %% at which the first wrap-up "
-            "fires (default 45); a per-track override still wins"
+            "fires (default 50); a per-track override still wins"
         ),
     )
     args = parser.parse_args(argv)
