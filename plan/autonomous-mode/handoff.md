@@ -65,6 +65,143 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-14 (cont. 12): acceptance-model redesign RE-LOCKED — "master switch" REPLACED by THREE INDEPENDENT dispatcher settings + a general API⇒Settings⇒docs principle; NEXT = author the orchestrator spec proposal
+
+Fresh Claude (Opus) session resumed cont.11 to file the acceptance-model epic. In
+the design-convergence dialogue the maintainer **REPLACED cont.11's single
+"autonomous master switch" with a cleaner orthogonal model** and added a general
+config-surface principle. **This section is the authoritative LOCKED design;
+where it differs from cont.11 below, THIS wins.** RESUME = author the
+`livespec-orchestrator-beads-fabro` spec proposal per this design → independent
+Fable review → maintainer accept → impl epic.
+
+### THE RE-LOCKED DESIGN (maintainer-declared 2026-07-14, cont. 12)
+**"Full autonomous mode" is RETIRED OUTRIGHT** — removes the monolithic
+`dispatcher.autonomous_mode` config key, the `--mode autonomous` flag + two-factor
+dangerous arming, AND Scenarios 33–37. It is replaced by **independent
+`dispatcher.*` settings**, each a **global default** that a **per-item ledger
+label overrides**, each settable via the **orchestrator API AND the console**:
+
+| # | Meaning | Config key | Values | Safe default |
+|---|---|---|---|---|
+| 1 | automatically mark items ready | `dispatcher.auto_approve_ready` | `true`/`false` | **`false`** |
+| 2 | merge a past-cap failing review anyway | `dispatcher.merge_on_review_cap` | `true`/`false` | **`false`** (→ escalate) |
+| 3 | acceptance mode | `dispatcher.acceptance_mode` | `ai-only`/`ai-then-human`/`human-only` | **`ai-then-human`** |
+| 4 | review fix-round cap (inner, pre-merge) | `dispatcher.review_fix_cap` | int | **`3`** (the 2→3 bump = the default) |
+| 5 | acceptance-rework cap (outer, post-merge) | `dispatcher.acceptance_rework_cap` | int | **`2`** |
+| 6 | WIP cap (existing; now API-settable) | `dispatcher.wip_cap` | int | `5` (unchanged) |
+
+Names are provisional (maintainer said "meaningful names"); adjust only with
+maintainer sign-off. Config keys are `dispatcher.*` (siblings of the existing
+`wip_cap`/`fabro_bin`).
+
+### The behaviors these settings gate
+- **Real post-merge AI acceptance pass** (replaces the hardcoded
+  `{"confirmed": true}` stub in `_dispatcher_completion.py`): read-and-judge the
+  merged diff vs. acceptance criteria + watch telemetry → **pass/fail**. Every
+  acceptance carries ≥1 AI pass ("no release with zero verification" floor kept).
+  - `ai-only`: AI pass PASS → `done`.
+  - `ai-then-human`: AI pass PASS → **park** in `acceptance` for the human `accept`
+    (`c`) valve.
+  - `human-only`: park for the human; AI pass runs advisory.
+- **AI-acceptance FAIL → auto-rework** back into the factory (fix-forward → `active`,
+  re-merge, re-accept) with **NO human for a fail** — bounded by
+  `acceptance_rework_cap` (the OUTER loop). Exceeding the cap → `blocked`/needs-human.
+- **In-factory review becomes BLOCKING.** A still-blocking review at `review_fix_cap`
+  (the INNER loop): if `merge_on_review_cap=true` → ship the PR anyway (escape
+  hatch); else (default) → **escalate to `blocked`/needs-human** (a TERMINAL state
+  — NOT eligible for auto-approve, so no infinite loop). Cited design record:
+  `contracts.md` maintainer quote "…if the review gate is automated, pushing it all
+  to production."
+- **Two SEPARATE caps, both configurable** (#4 inner review loop, #5 outer
+  acceptance loop). The review cap terminates at `blocked` (no loop); the
+  acceptance cap is the one that prevents an infinite post-merge rework loop.
+- **`needs-human` ALWAYS escalates to a human** — retiring autonomous mode DROPS
+  its riskiest behavior (the LLM *guessing* human decisions on `needs-human`
+  blocks; old Scenario 35). Spec-change-tier (design-human-gated) items are NEVER
+  auto-approved regardless of `auto_approve_ready` (the old Scenario 36 substance,
+  preserved as setting #1's exception).
+
+### GENERAL PRINCIPLE (new contract, maintainer-declared cont. 12)
+**Anything configurable via the orchestrator API MUST appear in THREE places, in
+lockstep:** (1) a row under console **Settings**, (2) the TUI **inline/context
+help**, (3) the **settings doc** (Markdown in the app's repo docs). Propose a
+**mechanical completeness check** (dev-tooling/doctor) that FAILS if an
+API-configurable key is missing from Settings or the settings doc — the
+enforcement that keeps the principle real. Consequence: Settings surfaces ALL
+API-configurable dispatcher knobs (incl. `wip_cap`), not just #1–#3.
+
+### Console UX (LOCKED — maintainer asked me to design it, approved the mockup)
+- **Global defaults → a NEW first-class "Settings" left-nav**, two levels:
+  `Settings` → sub-menu `Dispatcher settings` (first & only item for now) → the
+  settings rows. Enter/Space toggles a bool / cycles an enum / edits an int; the
+  write persists to the orchestrator's `.livespec.jsonc` via a new orchestrator
+  API action. Ships with its own **docs page + context-specific help**.
+- **Per-item overrides → the EXISTING item valves** (`set-admission`/`set-acceptance`
+  + a NEW per-item review-cap override), acting on the selected work-item (a
+  per-item label that beats the global default for that one item).
+- Mockup (approved):
+  ```
+  ┌─ Views ──────┐┌─ Settings ▸ Dispatcher settings ──────────────┐
+  │ Attention    ││ Auto-approve ready          [ off ]           │
+  │ Lanes        ││ Merge on review cap         [ off ]           │
+  │ Repos        ││ Acceptance mode        [ ai-then-human ]      │
+  │▶Settings     ││ Review fix cap              [ 3 ]             │
+  │              ││ Acceptance rework cap       [ 2 ]             │
+  │              ││ WIP cap                     [ 5 ]             │
+  └──────────────┘└────────────────────────────────────────────────┘
+  ```
+
+### CONFIRMED (all locked with the maintainer this session)
+Retire Full autonomous mode outright (A: yes); global defaults + per-item override
+(B: yes, both controllable in the console); uniform per-item override for ALL
+settings; drop auto-resolve-needs-human; all defaults SAFE (#3 default
+`ai-then-human`); the two configurable caps; the API⇒Settings⇒help⇒docs principle
++ mechanical check; `wip_cap` API-settable + in Settings; console Settings nav +
+mockup + docs.
+
+### THE CROSS-REPO EPIC (per "drive multi-repo work as one epic")
+- **`livespec-orchestrator-beads-fabro` (spec + API + impl):** retire Full
+  autonomous mode (§"Full autonomous mode", Scenarios 33–37, two-factor arming);
+  add the six `dispatcher.*` settings (global-default + per-item-override) to
+  `contracts.md` §"Dispatcher admission, WIP cap, and post-merge acceptance" (or a
+  new §"Dispatcher policy settings"); real AI acceptance pass + AI-fail→auto-rework
+  + `acceptance_rework_cap`→escalate; review gate blocking + configurable
+  `review_fix_cap`; new scenarios replacing 33–37; the general API⇒Settings⇒docs
+  contract; the orchestrator API config-write surface; `tests/heading-coverage.json`
+  co-edits for every H2 change.
+- **`livespec-console-beads-fabro` (Settings surface + docs):** first-class
+  Settings left-nav → Dispatcher settings sub-menu; read/display + write the
+  settings via the orchestrator API; the new per-item review-cap override valve;
+  docs page + context-specific help; the mechanical completeness check (whichever
+  side owns it — likely dev-tooling reading the console+orchestrator surfaces, per
+  the No-Circular-Dependency Directive).
+
+### RESUME ORDER (fresh session)
+1. **Author the `livespec-orchestrator-beads-fabro` spec proposal** per THE
+   RE-LOCKED DESIGN above (`/livespec:propose-change` against the orchestrator
+   SPECIFICATION). → **INDEPENDENT FABLE REVIEW** (maintainer's hard rule;
+   NO-BLOCKERS is a precondition) → surface to maintainer → **revise/accept**
+   (spec ratification keeps its human gate). Verify the empty `proposed_changes/`
+   queue first (was empty this session).
+2. **File the impl epic + children** via the groom/capture consent seam (both
+   repos, cross-repo-linked).
+3. **Then re-run Stage-2 the CORRECT way** (from cont.11): a supervised dispatch
+   that parks in `acceptance`, maintainer accepts via the TUI `c` valve.
+
+### STATE / REAP
+- Core primary clean on master `a2203ca` (master advanced from the stale-snapshot
+  `670ef50` via the fabro-ci-image-factoring track — unrelated).
+- Orchestrator primary clean on master; CI green (a `chore/bump-livespec-v0.11.0`
+  deps-bump PR branch has red CI — NOT master; check separately).
+- Cockpit tmux `console-autonomous-mode` still running; autonomous DISARMED.
+- Reap core worktree `docs-autonomous-mode-dispatcher-settings` (this update)
+  after its PR merges. cont.11's `docs-autonomous-mode-acceptance-model` already
+  merged (not present in worktree list).
+- Side items from cont.11 (unchanged): `bd-ib-86k` parked in `acceptance`;
+  `bd-ib-e0t`+`bd-ib-jz62h3` auto-closed on the stub (maintainer to decide
+  keep/review/reverse); cockpit bugs to file in `livespec-console-beads-fabro`.
+
 ## SESSION UPDATE — 2026-07-14 (cont. 11): Stage-2 live-dispatched via the TUI — which EXPOSED the acceptance-model gap; acceptance-model REDESIGN LOCKED + data-validated; NEXT = file the orchestrator epic
 
 Fresh Claude (Opus) session. Drove the **first real armed dispatch through the
