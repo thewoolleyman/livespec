@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/thewoolleyman/livespec/compare/v0.11.1...v0.11.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* **overseer:** force-restart a stalled track — the auto-restart is non-negotiable ([23e9c71](https://github.com/thewoolleyman/livespec/commit/23e9c7117b55acf8a4fbcb97c2d7b12894771eb3))
+
 ## [0.11.1](https://github.com/thewoolleyman/livespec/compare/v0.11.0...v0.11.1) (2026-07-14)
 
 
