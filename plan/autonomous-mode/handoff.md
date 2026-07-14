@@ -65,6 +65,135 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-14 (cont. 14): the impl epic is CUT + APPROVED + FILED; FOUR new maintainer decisions locked (`--mode`/"shadow" RETIRED); the stalled fan-out RE-DIAGNOSED (cont.13's diagnosis is WRONG)
+
+Fresh Claude (Opus) session, running CONCURRENTLY with the cont.13 session (which
+drove the v034 revise as PR #603). **We collided on this file** — cont.13 landed on
+master while this session was working. Both sections are kept: cont.13 is
+authoritative on the RATIFICATION; this one is authoritative on the IMPL EPIC and
+supersedes cont.13 where they conflict (three corrections below).
+
+### CORRECTIONS to cont.13 (it is stale/wrong on these three)
+1. **The cockpit tmux session `console-autonomous-mode` is GONE**, not "still
+   running". It did not survive. Relaunch it (`just tui` from the console checkout)
+   before any TUI-driven work.
+2. **`bd-ib-e0t` and `bd-ib-jz62h3` are now CLOSED** — no longer open side items
+   awaiting a keep/review/reverse call.
+3. **The stalled-fan-out diagnosis is WRONG** — see §F1 below. It is NOT "one
+   conformance fix"; there is no master defect at all.
+
+### FOUR NEW MAINTAINER DECISIONS — locked 2026-07-14 (cont. 14)
+1. **`--mode` is RETIRED ENTIRELY; the run-mode term "shadow" is KILLED.** `loop`
+   now **drains the ranked queue BY DEFAULT** (honoring `--budget` + `wip_cap`); a
+   new **`--dry-run`** flag plans without dispatching. The maintainer volunteered
+   that they always hated "shadow" ("nonintuitive, don't know what it means").
+   **CAVEAT — `--mode` carried THREE jobs and the spec retires only ONE.** Besides
+   arming, it also switched queue-drain SCOPE (`_dispatcher_loop_selection.py:82-84`
+   — today `shadow` returns `[]` unless `--item`) and keyed the cost gate
+   (`_dispatcher_cost.py:108,210`). Both are re-homed by decisions 1 and 2. **Do NOT
+   "just delete the flag."**
+2. **The fail-closed cost gate keys on `--item` PRESENCE, not on a mode.** No
+   `--item` = unattended queue drain = **FAIL-CLOSED** on unobservable cost;
+   `loop --item <id>` = human hand-picked = **WARN**. This preserves today's
+   semantics EXACTLY (`_dispatcher_cost.py:104-106`: *"In `shadow` (explicit
+   `--item`, human present) the same condition is a warn"*). **This CORRECTS the
+   literal text of the option the maintainer first picked** ("a real run is always
+   fail-closed"), which would have flipped hand-picked dispatch from warn→refuse —
+   and since Fabro cost is currently UNOBSERVABLE (parked item
+   `livespec-impl-beads-efj`), anyone enabling `LIVESPEC_COST_MODE=enforce` would
+   then have found EVERY dispatch refusing. Raised and re-decided explicitly, per the
+   `wip_cap` lesson that literal option text becomes the rule of record.
+3. **"Shadow ledger" STAYS.** Maintainer-confirmed: "a completely different use of
+   the term. It is fine and appropriate." Only the RUN MODE dies. Leave
+   `contracts.md:961` §"The two seams and the no-shadow-ledger rule", `:972`
+   "shadows the ledger", and the `check-no-shadow-ledger-body-identical` gate alone.
+4. **The three NEW per-item overrides are RAW LEDGER LABELS, not typed fields.**
+   `merge-on-review-cap:`, `review-fix-cap:`, `acceptance-rework-cap:`, read directly
+   in the effective-policy resolver. Rationale: `admission_policy` /
+   `acceptance_policy` are typed fields in the **vendored** `livespec_runtime` types,
+   so typed siblings would force a livespec-core change + re-vendor — and the pin
+   fan-out is STALLED, so no upstream release can even reach the orchestrator. This
+   keeps the epic inside TWO repos.
+
+### THREE FINDINGS cont.13 did not have (the gap is BIGGER than "add six keys")
+- **The `needs-human` LLM resolver is now SPEC-FORBIDDEN.**
+  `_dispatcher_needs_human.py` (~330 lines) shells out to a real `claude -p` resolver
+  and routes a `blocked` item back to `ready` on a confident verdict (call site
+  `_dispatcher_loop_selection.py:151`). Ratified `contracts.md:1443-1445` now says the
+  OPPOSITE: *"The Dispatcher MUST NOT auto-resolve a `blocked_reason: needs-human`
+  item; it MUST surface every such item to a human."* That module's core behavior must
+  be **RETIRED, not adapted**.
+- **There is NO `blocked` / `blocked_reason: needs-human` ledger write ANYWHERE.**
+  `bounce_blocked` (`_dispatcher_completion.py:212-274`) and
+  `bounce_non_convergence_to_backlog` (:147-209) both write `status="backlog"`. BOTH
+  new cap-escalations (review cap, acceptance-rework cap) depend on this path, so it
+  must be **BUILT FIRST**. It is the hidden prerequisite of the whole epic.
+- **The console's config WRITE path is now non-conformant.** The console already
+  writes `.livespec.jsonc` DIRECTLY (`LivespecJsoncArmingPort`,
+  `console-application/src/lib.rs:2895-2941`), bypassing the orchestrator. Ratified
+  `contracts.md:1454-1459`: the orchestrator OWNS setting state and *"the console only
+  commands and observes, and holds no setting state of its own."* That writer must be
+  DELETED. Happily this is also the CHEAPER path: the console's existing
+  `DispatcherOrchestratorActionPort` (`:1345-1363`) already shells
+  `drive.py --action <id>`, so a `set-config:` action rides it with **zero new port
+  code**.
+
+### THE APPROVED CUT (maintainer approved "as drafted", 2026-07-14) — 17 items
+**`livespec-orchestrator-beads-fabro` (10):** O0 spec amendment retiring the
+contracted `--mode shadow` (`contracts.md:228`) → propose-change → **independent Fable
+review** → revise; O1 the six `dispatcher.*` settings + effective-policy resolution
+with **per-item-label-beats-global** precedence (INVERTS today); O2 retire autonomous
+mode + `--mode`→`--dry-run` + re-home drain scope and the cost gate (**BREAKING —
+lockstep with console W1**); O3 retire the needs-human LLM resolver; O4 build the
+`blocked`/`needs-human` ledger write (**blocks O6 + O8**); O5 the real post-merge AI
+acceptance pass (replace the `{"confirmed": true}` stub at
+`_dispatcher_completion.py:118-120`); O6 AI-fail→auto-rework + `acceptance_rework_cap`
+(needs a NEW persisted per-item failure counter — none exists); **O7 SPIKE — can Fabro
+edge conditions read a workflow input?** (TODAY NO condition does — every guard uses
+only `outcome` / `preferred_label` / `node_visit_count`; this **GATES O8**); O8 review
+gate becomes BLOCKING + `review_fix_cap` / `merge_on_review_cap`; O9 journal every
+auto-disposition; O10 declare the API-configurable-key surface + `drive.py` config
+read/write actions.
+
+**`livespec-console-beads-fabro` (6):** W1 **un-break the drain launcher** (delete the
+`--mode autonomous` append at `console-application/src/lib.rs:1226-1229`) — landed
+FIRST + standalone; W2 console spec re-baseline; W3 generalize the config port to
+read/write via the **orchestrator API** + delete the direct-JSONC writer; W4
+`TuiView::Settings` nav + six rows + Detail help, delete the dangerous-arming confirm
++ `a` key; W5 per-item override valves + context-specific help + README rewrite; W6 the
+mechanical API⇒Settings⇒docs completeness check (console-side, per the
+No-Circular-Dependency Directive).
+
+**Sequencing note on W1.** It is a pure removal and is safe to land BEFORE the
+orchestrator drops the flag. Known + ACCEPTED interim behavior: between W1 and O2 a
+drain dispatches NOTHING (the orchestrator's `loop` still defaults to the old
+named-items-only mode). That is identical to today's unarmed-drain behavior, and
+autonomous is DISARMED, so nothing regresses in practice.
+
+### F1 — the stalled pin fan-out: cont.13's DIAGNOSIS IS WRONG
+cont.13 (and cont.12) say "ONE conformance fix unblocks all 11", implying a master
+defect. **There is no master defect** — orchestrator master is GREEN and does not
+contain the offending slugs anywhere in its tree. The real mechanism: **the bump
+commits THEMSELVES inject two check recipes into the consumer's `justfile`**,
+interleaved INTO the canonical alphabetical block, which `check-aggregate-completeness`
+forbids (`failure_mode: out_of_order_canonical_slugs`). **Every bump PR is born
+failing.** There are now **13** stalled PRs (not 11), and the orchestrator is receiving
+NO upstream releases.
+Confirmed root cause — **TWO DISAGREEING SOURCES OF TRUTH** for "canonical check slugs":
+- `livespec` core ships `templates/orchestrator-plugin/canonical-slugs.yml`, whose
+  line 42 DOES list `check-no-shadow-ledger-body-identical`.
+- `livespec-dev-tooling`'s `aggregate_completeness` canonical list does NOT contain it
+  (zero references in the entire repo).
+- `check-local-memory-drift-audit` is in **NEITHER** canonical list yet still reaches
+  the orchestrator's justfile — so a THIRD path injects it (suspected: the bump
+  rewrites `.copier-answers.yml` `_commit`, and a `copier update` re-renders the
+  templated `justfile`).
+A read-only investigator was dispatched to prove the mechanism, settle which repo OWNS
+the canon (respecting the No-Circular-Dependency Directive — `livespec-dev-tooling`
+must NEVER read into a consumer), and report the blast radius across sibling repos.
+**Note:** the two failing checks are NOT identical — the newest PRs fail
+`check-aggregate-completeness`, but #578 fails `check-ci-matrix-completeness`.
+
 ## SESSION UPDATE — 2026-07-14 (cont. 13): SPEC RATIFIED (v034) — Full autonomous mode RETIRED; NEXT = the impl epic
 
 The spec side is **DONE**. The maintainer delegated the accept ("you revise it for
