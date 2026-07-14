@@ -59,6 +59,123 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-14 (cont. 11): Stage-2 live-dispatched via the TUI — which EXPOSED the acceptance-model gap; acceptance-model REDESIGN LOCKED + data-validated; NEXT = file the orchestrator epic
+
+Fresh Claude (Opus) session. Drove the **first real armed dispatch through the
+live TUI** (not the CLI fallback) — which surfaced a foundational gap in the
+factory's acceptance model. Maintainer + I worked the redesign to a LOCKED,
+data-validated state. **RESUME = file the orchestrator acceptance-model epic
+(spec proposal → Fable review → revise, then impl children); the design below is
+final.**
+
+### What happened — real TUI dispatch worked, but auto-closed items with NO human
+- Relaunched the cockpit on the orchestrator tenant (tmux `console-autonomous-mode`,
+  fresh store); proved the valve write-path live (set-admission auto→manual→auto on
+  `bd-ib-86k`, ledger reflected mid-session, reverted).
+- Hit + worked around real cockpit bugs to dispatch (file as
+  `livespec-console-beads-fabro` bugs — list at bottom): **stale store → drain
+  falsely rejects "no ready work"** (fixed by moving the default store aside — the
+  `LIVESPEC_CONSOLE_STORE_PATH` override is STRIPPED by the `sudo` in the wrapper);
+  **`:drain` idempotency key is a CONSTANT** (`budget=1:parallel=1`) so only ONE
+  drain runs per store — a shadow-first drain permanently deduped the armed drain
+  (recovered via fresh store + arm-BEFORE-first-drain).
+- Armed autonomous via the TUI (the "dangerous" type-repo-name confirm) + `:drain`
+  → real `dispatcher.py loop --mode autonomous`. It dispatched **`bd-ib-e0t` AND
+  swept in `bd-ib-jz62h3`** (was pending-approval; the armed ADMISSION collapse
+  auto-approved it), implemented both (Fabro/Fable, RGR, CI-green), merged (PRs
+  #590/#589) and **AUTO-CLOSED both with no human valve**.
+
+### The gap (root-caused via research agent — livespec-orchestrator-beads-fabro)
+Full autonomous mode's **acceptance collapse** auto-accepts the DEFAULT
+`ai-then-human` → `done`, skipping the human. Facts:
+- Acceptance is a POST-MERGE dispatcher step (`_dispatcher_completion.py`), OUTSIDE
+  the Fabro graph (implement→janitor→review→pr).
+- The "AI acceptance" is a STUB — hardcoded `{"confirmed": true}`
+  (`_dispatcher_completion.py:118-120`), no LLM, no diff/criteria review, no
+  telemetry, cannot fail. Spec (`contracts.md` §post-merge acceptance; scenarios
+  25/34/36) DESCRIBES a real "read-and-judge + telemetry" pass — code stubs it
+  (spec↔code drift).
+- No AI-fail→factory plumbing; only the human `reject` valve exits `acceptance`
+  (`reject:rework`→active, `reject:regroom`→git-revert+backlog; `_drive_valves.py`).
+- In-factory `review` node is ADVISORY (ship-on-cap): review↔review_fix capped at 2
+  rounds, still-"fix" at cap ships anyway (`workflow.fabro:283-285`). Janitor
+  (`just check`) is the ONLY hard gate.
+
+### THE LOCKED REDESIGN (maintainer-declared 2026-07-14)
+The console **autonomous toggle is a MASTER SWITCH** over three levers:
+
+| | Autonomous OFF (supervised, default) | Autonomous ON (unattended) |
+|---|---|---|
+| Acceptance | `ai-then-human` (AI pass → PARK → human accepts) | `ai-only` (AI pass → done) |
+| Review non-converge at cap | GATE → escalate to human | ship-anyway (a lever) |
+| Admission | per-item | forced auto (except spec-change-tier items) |
+
+Four changes + a lever + a cap bump:
+1. **In-factory review becomes blocking (mode-gated).** Supervised: still-"fix" at
+   cap → `escalate` (needs-human), not `pr`. Governed by the review-gate lever.
+2. **Build the real post-merge AI acceptance review** — replace the hardcoded
+   confirm with an AI pass judging merged diff vs. acceptance criteria (+ telemetry)
+   → pass/fail. Implements the stubbed spec.
+3. **AI-acceptance-fail → back to the factory** (auto-rework; no human for a fail).
+4. **Console autonomous toggle = acceptance-MODE switch:** ON→`ai-only`,
+   OFF→`ai-then-human`. Stop framing as "collapse." `human-only` stays a backend
+   knob, NOT surfaced in the console (maintainer won't use it).
+- **Review-gate lever** tied to the toggle: OFF→gate(escalate-to-human),
+  ON→ship-anyway (escape hatch for a misbehaving reviewer). OPEN detail: purely
+  derived from the toggle vs. ALSO independently settable in supervised mode.
+- **Cap 2→3 fix rounds** (`workflow.fabro` guard `<3`→`<4`; `review_fix`
+  `max_visits 3`→`4`) — folded into change #1.
+
+**DATA-VALIDATED** (mined from Fabro run logs this session — Honeycomb CANNOT
+answer; the review verdict isn't instrumented): ship-on-cap = **2 of 91 gate-era
+PRs = 2.2%** across 150 `implement-work-item` runs (gate introduced 2026-06-30).
+So making review blocking will NOT stall the factory; the mitigations are optional.
+The two ship-on-cap PRs: `bd-ib-9t1`→#455, `bd-ib-kg7`→#494 (both dispatcher
+decompositions, 2026-07-11).
+
+### Levers control-surface (for the epic)
+Lever STATE lives in the ORCHESTRATOR, never the console: admission/acceptance =
+per-item ledger labels (`set-admission`/`set-acceptance` valves; default
+admission=manual, acceptance=ai-then-human); autonomous = `.livespec.jsonc`
+`dispatcher.autonomous_mode` (+ per-run `--mode`, two-factor). Controllable from
+BOTH the console (`m/n/a/p/c/r/:drain`) AND the CLI (`drive.py --action …`,
+`dispatcher.py loop --mode …`) — the console shells out to the same CLIs. The
+in-factory review lever doesn't exist yet (hardcoded) — change #1 builds it.
+
+### LANDED this session
+- **`livespec-orchestrator-beads-fabro` PR #595 merged** — noted the four
+  instrumentation attributes (`review.verdict`, `review.fix_rounds`,
+  `review.hit_cap`, `pr.shipped_on_cap`) into the obs-fix track
+  `plan/codex-factory-telemetry/handoff.md` (they answer the ship-on-cap question
+  directly in Honeycomb once emitted).
+
+### RESUME ORDER (fresh session)
+1. **File the orchestrator acceptance-model epic.** (a) SPEC proposal
+   (`/livespec:propose-change` against `livespec-orchestrator-beads-fabro`
+   SPECIFICATION): revise scenario 34 (autonomous=`ai-only` w/ a REAL AI gate, not
+   a collapse), scenario 25 (real verify+surface), review-escalate-on-cap + lever +
+   cap=3, the AI-acceptance-review contract (`contracts.md` §post-merge). →
+   **INDEPENDENT FABLE REVIEW** (maintainer's hard rule) → revise. (b) Impl epic +
+   children (review routing escalate+cap=3+lever; real AI acceptance review;
+   AI-fail→rework; console toggle semantics) via the groom/capture consent seam.
+2. Then re-run Stage-2 the CORRECT way: a supervised (non-autonomous) dispatch that
+   parks in `acceptance`, maintainer accepts via the TUI `c` valve.
+
+### SIDE ITEMS (not lost)
+- `bd-ib-86k` still parked in `acceptance` (CLI-dispatched cont.7) — the only
+  human-valve-able item; the live human-accept proof AFTER the redesign.
+- `bd-ib-e0t` + `bd-ib-jz62h3` auto-closed on the STUB (merged, CI-green,
+  legitimate); jz62h3 bypassed the human approve gate (swept in). Maintainer to
+  decide keep/review/reverse.
+- Cockpit bugs to file (`livespec-console-beads-fabro`): stale-store drain
+  false-reject; `LIVESPEC_CONSOLE_STORE_PATH` stripped by sudo; drain idempotency
+  (one drain/store); armed drain blocks cockpit ~40min synchronously; console
+  observes at launch only (no live refresh); stale autonomous header after arming.
+- Autonomous mode DISARMED; orchestrator primary clean on master. Cockpit tmux
+  `console-autonomous-mode` left running.
+- Reap core worktree `docs-autonomous-mode-acceptance-model` (this update) after
+  its PR merges.
+
 ## SESSION UPDATE — 2026-07-13 (cont. 10): console epic FULLY CLOSED — drain live-verified `completed`; ONLY maintainer-gated Stage-2 remains
 
 Continuation of cont.9 (same session). Closed out the drain (#3) after a live
