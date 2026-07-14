@@ -1,0 +1,1 @@
+- [work-item-state-machine L2 migration](l2-migration-work-item-state-machine.md) — DONE (statuses + rank backfill, PR #69); also records the 1Password wrapper for tenant-touching bd commands
