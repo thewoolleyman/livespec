@@ -154,11 +154,42 @@ API-configurable dispatcher knobs (incl. `wip_cap`), not just #1–#3.
 
 ### CONFIRMED (all locked with the maintainer this session)
 Retire Full autonomous mode outright (A: yes); global defaults + per-item override
-(B: yes, both controllable in the console); uniform per-item override for ALL
-settings; drop auto-resolve-needs-human; all defaults SAFE (#3 default
-`ai-then-human`); the two configurable caps; the API⇒Settings⇒help⇒docs principle
-+ mechanical check; `wip_cap` API-settable + in Settings; console Settings nav +
-mockup + docs.
+(B: yes, both controllable in the console); per-item override for ALL settings
+**EXCEPT `wip_cap`** (see the CORRECTION below); drop auto-resolve-needs-human; all
+defaults SAFE (#3 default `ai-then-human`); the two configurable caps; the
+API⇒Settings⇒help⇒docs principle + mechanical check; `wip_cap` API-settable + in
+Settings; console Settings nav + mockup + docs.
+
+#### CORRECTION / ADDENDUM (2026-07-14, cont. 12 authoring session) — `wip_cap` is NOT per-item overridable
+An earlier draft of this section said "uniform per-item override for ALL settings".
+That is **too literal and must not be read as intent.** The maintainer picked the
+option labeled "All six per-item overridable", whose option TEXT explicitly noted
+"`wip_cap` presumably still excluded as nonsensical per-item". The RULE OF RECORD is
+therefore:
+
+> **Every dispatcher setting is per-item overridable EXCEPT `dispatcher.wip_cap`.**
+> `wip_cap` is a per-repo CONCURRENCY CEILING (max items `active` at once), so a
+> per-item value is structurally meaningless. The three policy settings
+> (`auto_approve_ready`, `merge_on_review_cap`, `acceptance_mode`) AND both numeric
+> caps (`review_fix_cap`, `acceptance_rework_cap`) each carry a per-item override
+> label.
+
+This correction is load-bearing: per `livespec-orchestrator-beads-fabro`
+`SPECIFICATION/contracts.md` §"Intent preservation", THE CITED DESIGN RECORD (this
+file) is the TIEBREAKER over the shipped spec when the two conflict. Left uncorrected,
+the literal "ALL settings" wording here would silently OUTRANK the spec's `wip_cap`
+carve-out in any future conflict. **Flagged for maintainer confirmation at accept
+time** — the exclusion follows from the option text they chose, not from words they
+typed themselves.
+
+**Semantic inversion to be aware of (deliberate, and a REVERSAL of observed
+behavior):** retired Full autonomous mode OVERRODE a stored per-item `manual` label
+(that is how `bd-ib-jz62h3` was swept in and auto-approved in cont.11). The new model
+INVERTS that precedence — **a per-item label BEATS the global default** — so an item
+explicitly marked `manual` now HOLDS at `pending-approval` even with
+`auto_approve_ready` on. Only an UNLABELED item inherits the global. This is the safer
+precedence and follows directly from "global defaults, but allow per-item overrides",
+but it is a deliberate reversal and is now normative in the proposal.
 
 ### THE CROSS-REPO EPIC (per "drive multi-repo work as one epic")
 - **`livespec-orchestrator-beads-fabro` (spec + API + impl):** retire Full
@@ -178,26 +209,52 @@ mockup + docs.
   the No-Circular-Dependency Directive).
 
 ### RESUME ORDER (fresh session)
-1. **Author the `livespec-orchestrator-beads-fabro` spec proposal** per THE
-   RE-LOCKED DESIGN above (`/livespec:propose-change` against the orchestrator
-   SPECIFICATION). → **INDEPENDENT FABLE REVIEW** (maintainer's hard rule;
-   NO-BLOCKERS is a precondition) → surface to maintainer → **revise/accept**
-   (spec ratification keeps its human gate). Verify the empty `proposed_changes/`
-   queue first (was empty this session).
-2. **File the impl epic + children** via the groom/capture consent seam (both
-   repos, cross-repo-linked).
-3. **Then re-run Stage-2 the CORRECT way** (from cont.11): a supervised dispatch
+1. ~~**Author the orchestrator spec proposal**~~ — **DONE 2026-07-14.** Filed as
+   `SPECIFICATION/proposed_changes/dispatcher-policy-settings.md`,
+   **`livespec-orchestrator-beads-fabro` PR #599**
+   (https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/599),
+   auto-merge armed. The `proposed_changes/` queue was verified EMPTY first.
+   **INDEPENDENT FABLE REVIEW: 3 rounds, NINE blockers raised, all fixed, final
+   verdict NO-BLOCKERS** — the maintainer's ratification precondition is MET.
+2. **NEXT — the maintainer's `/livespec:revise` ACCEPT** on topic
+   `dispatcher-policy-settings` (spec ratification keeps its designed human gate;
+   ONE decision, per-file, topic == file stem). Two things to confirm at accept
+   time: (a) the `wip_cap` per-item exclusion (see the CORRECTION above); (b) the
+   per-item-beats-global precedence INVERSION. The revise pass applies a
+   FOUR-file change (`spec.md`, `constraints.md`, `contracts.md`, `scenarios.md`)
+   plus the `../tests/heading-coverage.json` co-edit — the proposal spells out
+   every edit, incl. the full drift sweep.
+3. **File the impl epic + children** via the groom/capture consent seam (both
+   repos, cross-repo-linked). MUST include the **3 BREAKING console legs** (below).
+4. **Then re-run Stage-2 the CORRECT way** (from cont.11): a supervised dispatch
    that parks in `acceptance`, maintainer accepts via the TUI `c` valve.
 
+### ⚠ BREAKING cross-repo legs the retirement creates (found by the Fable review)
+Retiring `--mode autonomous` **breaks the live cockpit** unless the console changes
+in lockstep. THREE `livespec-console-beads-fabro` legs, all must land with the
+orchestrator change:
+1. `factory.autonomous_mode_enable_requested` / `_disable_requested` commands →
+   replaced by per-setting write commands.
+2. **The factory-drain launcher argv (the breaking one).** The console drain passes
+   `["--mode","autonomous"]` when armed (cont.11 LIVE-VERIFIED the argv). Once the
+   Dispatcher drops the flag, argparse REJECTS it → **every armed drain lands
+   `failed`.** The console MUST stop passing it (no per-run arming flag exists any
+   more; the Dispatcher reads the `dispatcher.*` settings from `.livespec.jsonc`).
+3. The TUI dangerous-arming confirm (type-the-repo-name) retires with the mode.
+
 ### STATE / REAP
-- Core primary clean on master `a2203ca` (master advanced from the stale-snapshot
-  `670ef50` via the fabro-ci-image-factoring track — unrelated).
-- Orchestrator primary clean on master; CI green (a `chore/bump-livespec-v0.11.0`
-  deps-bump PR branch has red CI — NOT master; check separately).
+- Core primary clean on master; orchestrator primary clean on master, CI green.
 - Cockpit tmux `console-autonomous-mode` still running; autonomous DISARMED.
-- Reap core worktree `docs-autonomous-mode-dispatcher-settings` (this update)
-  after its PR merges. cont.11's `docs-autonomous-mode-acceptance-model` already
-  merged (not present in worktree list).
+- Reap core worktree `docs-autonomous-mode-cont12-addendum` (this update) after its
+  PR merges, and orchestrator worktree `spec-dispatcher-policy-settings` after
+  PR #599 merges. cont.12's `docs-autonomous-mode-dispatcher-settings` already
+  reaped (PR #1218 merged).
+- **NEW side finding — the pin fan-out is STALLED.**
+  `livespec-orchestrator-beads-fabro` has **11 stale open deps-bump PRs** (livespec
+  v0.10.1→v0.11.1; dev-tooling v0.44.0→v0.46.1), and they ALL fail the SAME check:
+  **`check-aggregate-completeness`**. Master CI is green, so this is not a broken
+  master — but the orchestrator is receiving NO upstream releases. ONE conformance
+  fix unblocks the entire queue. Recommend folding it into the epic.
 - Side items from cont.11 (unchanged): `bd-ib-86k` parked in `acceptance`;
   `bd-ib-e0t`+`bd-ib-jz62h3` auto-closed on the stub (maintainer to decide
   keep/review/reverse); cockpit bugs to file in `livespec-console-beads-fabro`.
