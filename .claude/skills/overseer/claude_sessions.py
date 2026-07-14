@@ -38,7 +38,10 @@ from pathlib import Path
 __all__ = [
     "ClaudeSession",
     "default_sessions_dir",
+    "has_active_subshell",
     "map_named_sessions",
+    "proc_children",
+    "proc_comm",
     "proc_ppid",
     "proc_starttime",
     "read_live_sessions",
@@ -111,9 +114,73 @@ def proc_starttime(pid: int) -> str | None:
     return fields[19]
 
 
+# Shells a background command runs as (a Bash(run_in_background) subprocess of the
+# session runtime). Persistent helpers (MCP servers) are `node`, never shells.
+_SHELL_COMMS = frozenset({"sh", "bash", "zsh", "dash", "fish", "ksh", "tcsh", "csh"})
+
+
+def proc_comm(pid: int) -> str | None:
+    """``/proc/<pid>/comm`` (the process's command name), or None if unreadable."""
+    try:
+        return (
+            Path(f"/proc/{pid}/comm").read_text(encoding="utf-8", errors="replace").strip() or None
+        )
+    except OSError:
+        return None
+
+
+def proc_children(pid: int) -> list[int]:
+    """Direct child PIDs of ``pid`` via ``/proc/<pid>/task/<pid>/children`` ([] on error)."""
+    try:
+        data = Path(f"/proc/{pid}/task/{pid}/children").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    out: list[int] = []
+    for token in data.split():
+        try:
+            out.append(int(token))
+        except ValueError:
+            pass
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # Pure functions over injected data (fully testable with fakes).
 # --------------------------------------------------------------------------- #
+
+
+def has_active_subshell(
+    root_pid: int,
+    *,
+    children_of: Callable[[int], list[int]] = proc_children,
+    comm_of: Callable[[int], str | None] = proc_comm,
+    max_nodes: int = 512,
+) -> bool:
+    """True if any DESCENDANT of ``root_pid`` is a shell — a background command shell.
+
+    ``root_pid`` is the tmux pane's process (the login shell); its descendants are
+    the session runtime (claude/codex/node/bun) and that runtime's own children. A
+    Claude/Codex ``Bash(run_in_background)`` command runs as a shell subprocess of
+    the runtime, so a descendant shell means the session has ACTIVE BACKGROUND WORK
+    and is not idle — even when the pane shows an empty prompt. Persistent helpers
+    (MCP servers, node) are not shells and are ignored. ``root_pid`` ITSELF (the
+    login shell) is excluded — only its descendants count. Runtime-agnostic. The
+    walk is bounded (``max_nodes``) with a visited-set, so a cycle or a huge tree
+    fails soft to False rather than spinning. The ``/proc`` readers are injected so
+    the beside-tests drive it with fakes and never touch real ``/proc``.
+    """
+    seen: set[int] = set()
+    stack = list(children_of(root_pid))
+    while stack and len(seen) < max_nodes:
+        pid = stack.pop()
+        if pid in seen:
+            continue
+        seen.add(pid)
+        comm = comm_of(pid)
+        if comm is not None and comm.lower() in _SHELL_COMMS:
+            return True
+        stack.extend(children_of(pid))
+    return False
 
 
 def read_live_sessions(

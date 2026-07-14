@@ -300,6 +300,14 @@ class Supervisor:
     sessions_dir: str | os.PathLike[str] | None = None
     ppid_of: Callable[[int], int | None] = claude_sessions.proc_ppid
     starttime_of: Callable[[int], str | None] = claude_sessions.proc_starttime
+    # Background-subshell detection seams (default: real /proc; the beside-tests
+    # inject fake process-tree readers). A tracked session sitting at an empty
+    # prompt but with a `Bash(run_in_background)` command still running has a
+    # DESCENDANT shell under its pane process — that means active background work,
+    # so the session is BUSY, not idle (never respawn-pane -k a session with live
+    # background work).
+    children_of: Callable[[int], list[int]] = claude_sessions.proc_children
+    comm_of: Callable[[int], str | None] = claude_sessions.proc_comm
     # Startup gate: `<repo>/tmp/overseer/` MUST be gitignored (the overseer only
     # writes temp files, never tracked ones). Injectable so tests fake the check.
     gitignore_check: Callable[[str], bool] = default_gitignore_check
@@ -609,7 +617,17 @@ class Supervisor:
             return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="not-claude")
 
         capture = self.tmux.capture_pane(target)
-        busy = signals.is_busy(capture)
+        # A pane can show an empty prompt yet still be running a
+        # `Bash(run_in_background)` command — that command runs as a DESCENDANT
+        # shell of the pane's process. A descendant shell ⇒ active background work
+        # ⇒ the session is BUSY (suppresses both injection AND restart), even
+        # though the pane text looks idle. Runtime-agnostic (walks the process
+        # tree, independent of any Claude-specific registry).
+        pane_pid = self.tmux.pane_pid(session)
+        bg_shell = pane_pid is not None and claude_sessions.has_active_subshell(
+            pane_pid, children_of=self.children_of, comm_of=self.comm_of
+        )
+        busy = signals.is_busy(capture) or bg_shell
         gate = signals.is_structured_gate(capture)
         idle = signals.is_idle_input(capture)
         blocked = signals.blocked_marker(repo, topic)
@@ -623,6 +641,11 @@ class Supervisor:
         # the daemon-wide default (``warn_percent``, set from ``--warn-percent``).
         threshold = track.ctx_threshold if track.ctx_threshold is not None else self.warn_percent
 
+        # The row note defaults to the blocked-marker text (if any); the busy
+        # branch overrides it to "background shell" when a live background shell is
+        # the SOLE reason the pane isn't idle, so the operator can see WHY.
+        note: str | None = blocked if blocked else None
+
         # Precedence, top to bottom. Single-capture `busy` and the human gates
         # are checked first. For an apparently-idle track that would ACT
         # (restart / inject), the daemon first confirms the pane is SETTLED
@@ -630,6 +653,8 @@ class Supervisor:
         # a changing pane is treated as `working` and skipped this tick.
         if busy:
             status = "working"
+            if bg_shell and not signals.is_busy(capture):
+                note = "background shell"
             if act:
                 # Void the certification ONLY if it is past the grace — a young
                 # marker is the certifying turn's own busy tail and must survive
@@ -689,7 +714,7 @@ class Supervisor:
             tmux=session,
             ctx=eff_ctx,
             status=status,
-            note=blocked if blocked else None,
+            note=note,
         )
 
     def _danger_or_force_restart(

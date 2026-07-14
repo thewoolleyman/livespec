@@ -209,6 +209,21 @@ conformance checks, or any other repo.
   (`Supervisor._pane_settled`) before injecting/restarting an apparently-idle
   track: two captures `_SETTLE_DELAY` apart that DIFFER ⇒ actively working ⇒
   treated as `working` and skipped. Over-firing busy is the SAFE direction.
+- **Background-shell detection (`claude_sessions.has_active_subshell`) — process
+  tree, NOT pane text.** A session can sit at an empty `❯` prompt while a
+  `Bash(run_in_background)` command runs — the pane looks idle but the session is
+  working; restarting it (`respawn-pane -k`) would kill live background work. So
+  `busy` is ALSO true when the tmux pane's process (`tmuxio.pane_pid`) has a
+  DESCENDANT shell (`sh`/`bash`/`zsh`/…): a background command runs as a shell
+  subprocess of the runtime, while persistent helpers (MCP servers) are `node`,
+  never shells. This is deterministic and runtime-agnostic (Claude AND Codex —
+  Codex is not in Claude's session registry, so a process-tree check is the only
+  signal that covers it). The `/proc` readers (`proc_children`/`proc_comm`) are
+  injected into `Supervisor` (`children_of`/`comm_of`) so the beside-tests fake
+  them. When a background shell is the SOLE reason a track isn't idle, the row
+  `note` is `"background shell"` so the operator sees why. (Claude's registry also
+  carries a `status: "shell"`, but that is Claude-only; the process check is the
+  cross-runtime one.)
 - **Idle-input detection (`signals.is_idle_input`).** The real idle prompt is an
   EMPTY `❯` between two horizontal rule lines (`────…`), statusline + hint below
   — NOT a `╭─╮` box with `? for shortcuts` (verified live 2026-07-13). Detect
