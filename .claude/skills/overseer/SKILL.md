@@ -118,7 +118,7 @@ That one command (a self-invokable `uv` script) does everything deterministicall
   (pane created, sessions adopted) prints to its stderr as it runs.
 - `overseerd` takes one optional argument, **`--warn-percent N`** — the
   daemon-wide default remaining-context % at which the FIRST wrap-up fires
-  (default **45**). `overseer-start` accepts the same `--warn-percent N` and
+  (default **50**). `overseer-start` accepts the same `--warn-percent N` and
   threads it into the `overseerd` launch command
   (`.claude/skills/overseer/overseerd --warn-percent N 2> tmp/overseer/daemon.log`).
   `N` is an int in `[1, 99]`; a per-track `ctx_threshold` override in the mapping

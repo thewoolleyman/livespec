@@ -91,7 +91,7 @@ def _file_lock(target: str | os.PathLike[str]) -> Iterator[None]:
 # The default remaining-context threshold (percent LEFT) at which the first
 # wrap-up is injected. Overridable per-daemon via `overseerd --warn-percent` and
 # per-track via a mapping-store override.
-DEFAULT_CTX_THRESHOLD = 45
+DEFAULT_CTX_THRESHOLD = 50
 
 # The durable mapping store and the injection-stamp sidecar both live beside
 # the maintainer's home dir (NOT inside any governed repo — the marker files

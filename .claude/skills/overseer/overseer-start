@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         metavar="N",
         help=(
             "daemon-wide default remaining-context %% at which the first wrap-up "
-            "fires (default 45); passed through to overseerd"
+            "fires (default 50); passed through to overseerd"
         ),
     )
     args = parser.parse_args(argv)

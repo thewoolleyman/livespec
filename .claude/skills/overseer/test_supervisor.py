@@ -309,7 +309,9 @@ def test_warned_writes_stamp_before_pasting(tmp_path):
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=40))  # below default threshold 45
+    fake.serve(
+        session, repo, capture=_idle_capture(ctx=40)
+    )  # below the default warn threshold (50)
     stamp_path = str(tmp_path / "stamps.json")
     seen = []
     fake.on_paste = lambda _s, _t: seen.append(
@@ -376,7 +378,7 @@ def test_escalates_one_paste_per_band_as_ctx_drops(tmp_path):
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo)
-    sup = _sup(tmp_path, fake)  # warn_percent default 45
+    sup = _sup(tmp_path, fake)  # warn_percent = the default (50)
     track = _mapped_track(repo, topic, session)
     counts = []
     for ctx in (45, 40, 30, 20, 10):
@@ -398,7 +400,7 @@ def test_multi_band_drop_coalesces_to_one_paste_marks_all(tmp_path):
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=18))  # crosses 45,40,30,20 at once
-    sup = _sup(tmp_path, fake)
+    sup = _sup(tmp_path, fake, warn_percent=45)  # explicit threshold: decouple from the default
     track = _mapped_track(repo, topic, session)
     view = sup.evaluate(track, act=True)
     assert _wrapup_count(fake) == 1  # coalesced into ONE message
@@ -436,6 +438,7 @@ def test_bands_are_durable_across_daemon_restart(tmp_path):
         out=_io.StringIO(),
         now=lambda: 1000.0,
         sleep=lambda _s: None,
+        warn_percent=45,  # explicit threshold: decouple from the default
     )
     sup1.evaluate(track, act=True)
     assert set(registry.read_notified_bands(str(repo), topic, stamp_path)) == {45, 40}
@@ -451,6 +454,7 @@ def test_bands_are_durable_across_daemon_restart(tmp_path):
         out=_io.StringIO(),
         now=lambda: 2000.0,
         sleep=lambda _s: None,
+        warn_percent=45,  # explicit threshold: decouple from the default
     )
     sup2.evaluate(track, act=True)
     assert not fake2.has("paste")  # bands 45+40 already notified → no re-spam
@@ -464,7 +468,7 @@ def test_cleared_round_re_warns_all_bands(tmp_path):
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=40))
-    sup = _sup(tmp_path, fake)
+    sup = _sup(tmp_path, fake, warn_percent=45)  # explicit threshold: decouple from the default
     track = _mapped_track(repo, topic, session)
     sup.evaluate(track, act=True)
     assert set(registry.read_notified_bands(str(repo), topic, sup.stamp_path)) == {45, 40}
@@ -1249,7 +1253,7 @@ def test_streaming_pane_is_working_not_idle(tmp_path):
     registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "working"
-    assert not fake.has("paste")  # never injected despite ctx 40 <= 45
+    assert not fake.has("paste")  # never injected despite ctx 40 <= the default 50
 
 
 def test_settled_idle_pane_still_injects(tmp_path):
