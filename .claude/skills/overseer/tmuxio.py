@@ -306,14 +306,52 @@ class TmuxIO:
         return self._ok(self._call(["select-pane", "-t", pane, "-T", title]))
 
     def select_layout_even(self, pane: str) -> bool:
-        """``tmux select-layout -t <pane> even-vertical`` — restack the window 50/50.
+        """``tmux select-layout -t <pane> even-vertical`` — restack the window evenly.
 
-        A fresh ``split-window`` already lands 50/50, but a THIRD pane that was
-        opened and later closed leaves tmux's rows redistributed unevenly. Running
-        this on every ``overseer-start`` self-heals the daemon/interactive split
-        back to even heights (targeting ``pane`` targets its window).
+        A THIRD pane that was opened and later closed leaves tmux's rows
+        redistributed unevenly. Running this on every ``overseer-start`` normalizes
+        the window (targeting ``pane`` targets its window) BEFORE
+        :meth:`set_pane_height_percent` gives the daemon its share — so the resize
+        starts from a known stack rather than whatever a stray pane left behind.
         """
         return self._ok(self._call(["select-layout", "-t", pane, "even-vertical"]))
+
+    def pane_by_title(self, pane: str, title: str) -> str | None:
+        """The pane id in PANE's window whose title is TITLE (``None`` if absent).
+
+        The idempotent-path counterpart of :meth:`window_pane_titles`: that answers
+        "is the daemon pane here?", this answers "which pane IS it?" — needed to
+        target the daemon pane for a resize when ``overseer-start`` re-runs and did
+        not create it (so never held its id).
+        """
+        completed = self._call(["list-panes", "-t", pane, "-F", "#{pane_id}\t#{pane_title}"])
+        if not self._ok(completed):
+            return None
+        for line in (completed.stdout or "").splitlines():
+            pane_id, _, pane_title = line.partition("\t")
+            if pane_title.strip() == title:
+                return pane_id.strip() or None
+        return None
+
+    def set_pane_height_percent(self, pane: str, percent: int) -> bool:
+        """``tmux resize-pane -t <pane> -y <percent>%`` — size PANE to a share of its window.
+
+        Percentage sizes are a tmux feature (verified on 3.5a), so the split does not
+        have to be recomputed in rows against a window height that changes whenever the
+        terminal is resized.
+        """
+        return self._ok(self._call(["resize-pane", "-t", pane, "-y", f"{percent}%"]))
+
+    def rename_window(self, pane: str, name: str) -> bool:
+        """Rename PANE's window to NAME, and PIN the name (``automatic-rename off``).
+
+        Pinning is part of renaming, not an optional extra: tmux otherwise re-derives a
+        window's name from its foreground command on the next tick and silently
+        overwrites NAME. Both steps must succeed for the rename to hold.
+        """
+        if not self._ok(self._call(["rename-window", "-t", pane, name])):
+            return False
+        return self._ok(self._call(["set-window-option", "-t", pane, "automatic-rename", "off"]))
 
     def window_pane_titles(self, pane: str) -> list[str]:
         """Every pane title in PANE's window (``[]`` on error) — the idempotency read."""

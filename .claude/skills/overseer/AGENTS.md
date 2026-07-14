@@ -213,9 +213,63 @@ conformance checks, or any other repo.
    declaration** (fail-closed, `signals.valid_token`); do not "helpfully" coerce or
    fuzzy-match it. If you ever add a second signal file, stop — you are re-creating
    the ambiguity this collapsed.
+10. **The DAEMON owns "what needs attention"; the bottom pane must never be a status
+    display (maintainer-declared 2026-07-14).** Current state is rendered ONLY by the
+    daemon — the table plus its `NEEDS YOU` block (`Supervisor._attention_lines`,
+    `needs_attention`, `ATTENTION_STATUSES`) — because that render is rebuilt from live
+    captures every tick and costs no tokens, so it *cannot* go stale and *can* refresh
+    forever. An LLM pane can do neither: it prints text ONCE, and that text then ages
+    silently.
+
+    **This is the frozen-snapshot failure (history #2) recurring in the other pane.** The
+    bottom pane printed "two tracks want you", went idle, and kept showing it while both
+    were resolved minutes later; the maintainer acted on a dead report. The original fix
+    (re-render each tick + stamp it) had only ever been applied to the top pane.
+
+    The split that resolves it — and that you must not blur:
+
+    - **The table is STATE** (what is true *now*; self-correcting — a resolved track
+      disappears from the block on the next tick).
+    - **The log is HISTORY** (`tmp/overseer/daemon.log`; what happened and *when*). The
+      bottom pane SHOULD know it and its format — answering questions from it is its job
+      (maintainer 2026-07-14: "it should still know about the log and its format so it can
+      answer questions with its data"). What it must not do is answer *"what needs
+      attention?"* from it.
+
+    Consequences that are load-bearing, not cosmetic:
+
+    - **Every log line is timestamped** (`_log` / `_surface` prefix `_iso_now()`) — a
+      history you cannot date cannot answer "when?".
+    - **Track alerts are EDGE-TRIGGERED** (`_alert`'s `_alerted` dict; re-armed in
+      `evaluate` when the row goes healthy). Re-emitting an unchanged alert every tick
+      buried the history under thousands of identical lines (a track blocked overnight →
+      ~3,000) *and* made `tail`ing the log look like a current-state read, which is the
+      bug. If you make alerts repeat per-tick again, you have reintroduced it.
+    - **The badge must be able to CLEAR.** `_refresh_window_name` drops back to `overseer`
+      when the count is 0 — a badge that could only be set would be one more stale
+      indicator.
+    - **`unassigned` is not attention.** It is startable, not stuck, and it outnumbers the
+      real rows ~10:1; including it re-buries the signal.
+
+    If you find yourself putting the bottom pane on a timer to keep it fresh, STOP: that
+    burns tokens forever to duplicate a surface that is already correct and free, and it
+    walks back into history #1 (the context-blowing inline worker). The answer is fewer
+    LLM refreshes, not more.
 
 ## Load-bearing mechanics + gotchas
 
+- **Pane sizing + the window badge (`tmuxio.set_pane_height_percent` / `rename_window`).**
+  The daemon pane gets **2/3** of the window (`overseer-start`'s
+  `_DAEMON_PANE_HEIGHT_PERCENT = 66`) because it carries the table + `NEEDS YOU` block —
+  the surfaces that answer "what needs my attention?"; the bottom pane is a command
+  prompt and needs less. `overseer-start` normalizes the stack (`select_layout_even`)
+  and THEN resizes, resolving the daemon pane **by title** (`pane_by_title`) so the
+  idempotent re-run path — where the pane already existed and its id was never held —
+  resizes it too. Percentage sizes (`resize-pane -y 66%`) are a real tmux feature
+  (verified on 3.5a), so the split survives a terminal resize without recomputing rows.
+  **`rename_window` MUST also set `automatic-rename off`** — tmux otherwise re-derives a
+  window's name from its foreground command on the next tick and silently overwrites the
+  badge; pinning is part of renaming, not an optional extra.
 - **`command tmux` semantics (`tmuxio.py`).** Every tmux call is
   `subprocess.run([...], shell=False)` with an argv LIST — no shell is spawned,
   so a user's zsh `tmux` function shim is bypassed (the `command tmux` effect).

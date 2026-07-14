@@ -33,6 +33,11 @@ import tmuxio  # noqa: E402
 
 _DAEMON_PANE_TITLE = "overseer-daemon"
 
+# The daemon pane's share of the window height. It carries the live table AND the
+# `NEEDS YOU` block — the surfaces that actually answer "what needs my attention?" —
+# so it gets the room; the bottom pane is a command prompt (maintainer 2026-07-14).
+_DAEMON_PANE_HEIGHT_PERCENT = 66
+
 
 def _daemon_command(warn_percent: int | None) -> str:
     """The `overseerd` launch command for the daemon top pane.
@@ -106,9 +111,17 @@ def main(argv: list[str] | None = None) -> int:
         io.set_pane_title(new_pane, _DAEMON_PANE_TITLE)
         print(f"overseer-start: started overseerd in top pane {new_pane}.", file=sys.stderr)
 
-    # 1b. Restack the window 50/50 (self-heals an uneven split — e.g. after a
-    # stray third pane was opened and closed, redistributing rows unevenly).
+    # 1b. Normalize the stack (self-heals an uneven split — e.g. after a stray third
+    # pane was opened and closed, redistributing rows), THEN give the daemon its share.
+    # The daemon pane is the one that must be readable: it carries the live table AND
+    # the `NEEDS YOU` block, which is where the operator learns what wants them. The
+    # bottom pane is a command prompt and needs far less room. Resolve the daemon pane
+    # BY TITLE rather than reusing `new_pane`, so the idempotent re-run path (where the
+    # pane already existed and we never held its id) resizes it too.
     io.select_layout_even(pane)
+    daemon_pane = io.pane_by_title(pane, _DAEMON_PANE_TITLE)
+    if daemon_pane is not None:
+        io.set_pane_height_percent(daemon_pane, _DAEMON_PANE_HEIGHT_PERCENT)
 
     # 2. Adopt existing worker sessions that match active plan topics.
     adopted = supervisor._build_supervisor().adopt_sessions()

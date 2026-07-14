@@ -95,6 +95,19 @@ LOOP_INTERVAL_SECONDS = 10
 # the session knows, so only the session may authorize the restart.
 DANGER_CTX_REMAINING = 20
 
+# The statuses that mean "a human must go look at this track". They are the membership
+# test for the `NEEDS YOU` block the daemon renders under its table, and for the tmux
+# window-name badge — the two surfaces that answer "what needs attention?".
+#
+# `unassigned` is deliberately NOT here: a discovered plan with no session is startable,
+# not stuck, and there are dozens of them — including them would bury the handful of rows
+# that genuinely want the operator, which is the exact failure this block exists to fix.
+ATTENTION_STATUSES = ("blocked:human", "danger", "session-gone", "not-claude")
+
+# The tmux window name the daemon owns; it badges an attention count onto it
+# (`overseer` → `overseer(2!)`).
+WINDOW_NAME = "overseer"
+
 # Bounded wait for a respawned pane to become a live Claude TUI before pasting
 # the resume line (poll #{pane_current_command} → node/claude; never scrape ❯).
 _RESTART_POLL_MAX = 30
@@ -279,6 +292,19 @@ class RowView:
     note: str | None = None
 
 
+def needs_attention(row: RowView) -> bool:
+    """True if ROW is a track a human must go look at (the ``NEEDS YOU`` membership test).
+
+    A malformed state file is matched on the NOTE rather than the status, because it does
+    not have a status of its own: ``evaluate`` reports it by hanging a ``BAD state file``
+    note on whatever status the track otherwise has. It is fail-closed (treated as no
+    declaration) and needs a human, so it belongs in the block.
+    """
+    if row.status in ATTENTION_STATUSES:
+        return True
+    return bool(row.note and row.note.startswith("BAD state file"))
+
+
 @dataclass
 class _InjectState:
     """Per-track wrap-up bookkeeping (in-memory; reset on restart/recovery).
@@ -338,7 +364,19 @@ class Supervisor:
     # Startup gate: `<repo>/tmp/overseer/` MUST be gitignored (the overseer only
     # writes temp files, never tracked ones). Injectable so tests fake the check.
     gitignore_check: Callable[[str], bool] = default_gitignore_check
+    # The daemon's OWN pane (its `$TMUX_PANE`, inherited because `overseerd` is launched
+    # inside the top pane). Used only to badge the attention count onto the tmux WINDOW
+    # name — the one overseer surface visible from a session the operator is attached to.
+    # None (not in tmux, or a test) simply disables the badge.
+    own_pane: str | None = None
     _inject: dict[tuple[str, str], _InjectState] = field(default_factory=dict, init=False)
+    # Edge-trigger memory for `_alert`: track key → the last alert line emitted for it.
+    # Keeps the log an EVENT HISTORY (one line per condition entered) instead of the same
+    # line re-emitted every tick. Re-armed in `evaluate` when the track goes healthy.
+    _alerted: dict[tuple[str, str], str] = field(default_factory=dict, init=False)
+    # Last window name written, so the badge is only re-sent when the count CHANGES
+    # (a tmux call every tick for an unchanged name is pure noise).
+    _window_name: str | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         if self.out is None:
@@ -349,7 +387,7 @@ class Supervisor:
     # ----------------------------------------------------------------- #
 
     def _log(self, message: str) -> None:
-        print(f"overseer: {message}", file=sys.stderr)
+        print(f"{_iso_now()} overseer: {message}", file=sys.stderr)
 
     def _surface(self, message: str) -> None:
         """Surface a DAEMON-level alert to the operator (stderr; the bottom pane reads it).
@@ -357,7 +395,7 @@ class Supervisor:
         For anything scoped to a TRACK, use :meth:`_alert` instead — it guarantees the
         tmux coordinates the operator needs in order to act.
         """
-        print(f"overseer[SURFACE]: {message}", file=sys.stderr)
+        print(f"{_iso_now()} overseer[SURFACE]: {message}", file=sys.stderr)
 
     def _alert(
         self,
@@ -379,10 +417,25 @@ class Supervisor:
         the overseer NEVER prompts on a track's behalf, this line is the operator's ONLY
         handover, so it MUST be self-sufficient. Every new track-scoped alert goes
         through here — never a bare ``_surface`` with an f-string of ``repo::topic``.
+
+        EDGE-TRIGGERED: emitted when a track ENTERS a condition (or the condition's text
+        changes), NOT once per tick. The log is the daemon's EVENT HISTORY — the surface
+        the bottom pane reads to answer "what happened, and when?" — while CURRENT state
+        is owned by the re-rendered table + its ``NEEDS YOU`` block. Re-emitting an
+        unchanged alert every tick buried that history in thousands of identical lines (a
+        track blocked overnight logged ~3,000 of them) and answered a question the table
+        already answers better. The re-arm is in :meth:`evaluate`: when a track returns to
+        a healthy status its entry is dropped, so the NEXT time it goes bad it reports
+        again.
         """
         where = f"tmux session '{session}' pane {pane}" if session else "no live tmux session"
         jump = f" — jump: tmux switch-client -t {session}" if session else ""
-        self._surface(f"{topic} ({registry.repo_slug(repo)}) — {message} [{where}]{jump}")
+        line = f"{topic} ({registry.repo_slug(repo)}) — {message} [{where}]{jump}"
+        key = _key(repo, topic)
+        if self._alerted.get(key) == line:
+            return
+        self._alerted[key] = line
+        self._surface(line)
 
     # ----------------------------------------------------------------- #
     # Watch-set + discovery ⋈ mapping.
@@ -804,7 +857,7 @@ class Supervisor:
         else:
             status = "idle"
 
-        return RowView(
+        view = RowView(
             topic=topic,
             repo=repo,
             tmux=session,
@@ -812,6 +865,12 @@ class Supervisor:
             status=status,
             note=note,
         )
+        # Re-arm the edge-triggered alert once the track is healthy again, so the NEXT
+        # time it goes bad it reports afresh rather than being suppressed as a duplicate
+        # of the condition it was in hours ago.
+        if act and not needs_attention(view):
+            self._alerted.pop(key, None)
+        return view
 
     def _alert_non_responder(
         self,
@@ -1112,18 +1171,71 @@ class Supervisor:
             lines.append("  ".join(cell.ljust(widths[j]) for j, cell in enumerate(cells)))
             if i == 0:
                 lines.append("  ".join("-" * widths[j] for j in range(len(header))))
+        lines.extend(self._attention_lines(rows))
         # Clear scrollback + screen + home, then the table.
         self.out.write("\x1b[3J\x1b[2J\x1b[H" + "\n".join(lines) + "\n")
         self.out.flush()
+
+    def _attention_lines(self, rows: list[RowView]) -> list[str]:
+        """The ``NEEDS YOU`` block: the rows a human must act on, and where to go.
+
+        THIS is the answer to "what needs attention?", and it lives here — in the daemon's
+        re-rendered table — for two reasons that the bottom pane cannot satisfy:
+
+        - it inherits the tick's refresh, so a track the operator resolves DISAPPEARS from
+          it on the next render (it can never go stale, which is the whole bug: an LLM
+          pane prints text ONCE and that text then ages silently); and
+        - it costs no tokens, so it can refresh forever.
+
+        The table alone was not enough: dozens of `unassigned` rows buried the two that
+        actually wanted the operator. This filters to exactly those, and carries the same
+        jump command `_alert` does, so the block is a sufficient handover on its own.
+        """
+        attention = [row for row in rows if needs_attention(row)]
+        lines = [""]
+        if not attention:
+            lines.append("NEEDS YOU: nothing — every tracked session is healthy.")
+            return lines
+        lines.append(f"NEEDS YOU ({len(attention)}):")
+        for row in attention:
+            detail = f" — {row.note}" if row.note else ""
+            lines.append(f"  ! {row.topic} ({registry.repo_slug(row.repo)}) — {row.status}{detail}")
+            if row.tmux:
+                lines.append(f"      jump: tmux switch-client -t {row.tmux}")
+        return lines
+
+    def _refresh_window_name(self, attention: int) -> None:
+        """Badge the attention count onto the tmux WINDOW name (``overseer`` → ``overseer(2!)``).
+
+        The only overseer surface visible WITHOUT looking at the overseer window: tmux
+        renders the window name in the status bar of whatever session the operator is
+        currently attached to. So a track that wants them is noticed while they are heads-
+        down in a different session — no pane switch, no polling, no tokens.
+
+        Only written when the count CHANGES, and a no-op when the daemon is not in tmux
+        (``own_pane`` unset).
+        """
+        pane = self.own_pane
+        if not pane:
+            return
+        name = f"{WINDOW_NAME}({attention}!)" if attention else WINDOW_NAME
+        if name == self._window_name:
+            return
+        if self.tmux.rename_window(pane, name):
+            self._window_name = name
 
     # ----------------------------------------------------------------- #
     # Tick + loop.
     # ----------------------------------------------------------------- #
 
     def tick(self, *, act: bool = True) -> list[RowView]:
-        """One loop iteration: build rows, evaluate each, render the table."""
+        """One loop iteration: build rows, evaluate each, render the table + attention block."""
         views = [self.evaluate(track, act=act) for track in self.build_rows(act=act)]
         self.render(views)
+        # Only the DAEMON badges the window. `list` is advertised read-only, so it must
+        # not rename the maintainer's window as a side effect of printing a table.
+        if act:
+            self._refresh_window_name(sum(1 for view in views if needs_attention(view)))
         return views
 
     # ----------------------------------------------------------------- #
@@ -1239,8 +1351,13 @@ def _build_supervisor() -> Supervisor:
     (``~/.livespec-overseer.jsonl`` / ``~/.livespec-overseer-stamps.json``). The
     ``Supervisor`` dataclass keeps ``store_path`` / ``stamp_path`` / ``watch_repos``
     injectable, but ONLY the beside-tests inject them — never the CLI.
+
+    ``own_pane`` is read from the environment rather than passed: ``overseerd`` runs
+    INSIDE the daemon pane, so tmux has already exported that pane's id as ``$TMUX_PANE``.
+    It is used only to badge the attention count onto the window name, so when it is
+    absent (not under tmux) the badge simply never fires.
     """
-    return Supervisor(manifest_path=_default_manifest())
+    return Supervisor(manifest_path=_default_manifest(), own_pane=os.environ.get("TMUX_PANE"))
 
 
 def _upsert(track: registry.Track) -> None:
