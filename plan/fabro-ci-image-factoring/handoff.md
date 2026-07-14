@@ -93,6 +93,24 @@ now-live `[self-hosted, local-ci]` runner class, then fire the bump-PR flow) and
 (`.5`) — cut CI over to the local runner + baked image**. See NEXT ACTIONS below.
 
 **SESSION 2026-07-14 LANDED — read first:**
+- **The PRIVILEGED gate-runner lane (second trust tier) — BUILT + PROVISIONED + PROVEN
+  (2026-07-14, maintainer-authorized).** Investigating NEXT ACTION #1 found it was
+  UNIMPLEMENTABLE as written: the golden-master gate needs Docker (root-equivalent), the host
+  Codex credential + `fabro` binary, and the operator's 1Password secrets — all DENIED by the
+  Phase 0 containment, so the `local-ci` runner can never run it and relabelling would have been
+  unsafe. Maintainer chose the **on-demand privileged runner**: NO privileged runner idles; a
+  supervisor mints ONE single-use JIT runner only for a queued run of the gate workflow on a
+  write-gated event (`repository_dispatch`/`workflow_dispatch`) on master — so a fork PR never gets
+  one (a discrimination the runner LABEL alone cannot make). LIVE: `gate-runner-supervisor.service`
+  active + watching; trust-boundary exit tests **11 pass / 0 fail / 0 skip** (incl. a fork PR whose
+  head branch is literally `master`, and zero registered runners when nothing is queued); the
+  contained CI lane untouched + healthy. Orchestrator fork-PR approval tightened
+  `first_time_contributors` → `all_external_contributors` (it is a PUBLIC repo). Landed in
+  `livespec-dev-tooling` **#387** (`ci-runner/gate-runner/`), which also repairs a Phase 0
+  **recreatability defect**: the committed `ci-runner-supervisor.service` carried
+  `NoNewPrivileges=true` (+ a kernel/namespace block the host does not run) and **could not boot** —
+  that flag blocks the 1Password wrapper's `sudo -n` escalation; the committed file now matches what
+  actually runs. **BLOCKED on ONE maintainer click** to close `.4` — see NEXT ACTION #1.
 - **Phase 0 (local-runner shadow lane) — AUTHORIZED, FINISHED, PROVEN LIVE + LANDED (2026-07-14) —
   THE LINCHPIN IS CLEARED.** Maintainer authorized the host mutation 2026-07-14; ~90% was pre-built on
   the dormant `phase0-selfhosted-shadow-lane` branch, and this session finished + proved + landed it
@@ -223,12 +241,31 @@ now-live `[self-hosted, local-ci]` runner class, then fire the bump-PR flow) and
    cleared (see SESSION 2026-07-14 above + `livespec-3lev.3`). No host mutation remains — the runner
    supervisor + JIT + agent/job-isolation + shadow lane are live and merged. The two newly-unblocked
    fronts (both were gated ONLY on Phase 0):
-   - **codex-acp FULL automation accept** (`.4`'s remaining item). A `[self-hosted, local-ci]`
-     ephemeral-runner + JIT/supervisor pattern now exists on this host. Adapt the orchestrator's
-     `acceptance-live-golden-master.yml` gate (it targets `[self-hosted, livespec-orchestrator]`) to
-     this runner class (register a matching label, or reuse the same supervisor), then fire the
-     throwaway bump-PR → `codex-acp-golden-master` dispatch → gate → status → auto-merge (ready
-     resume commands in `plan/archive/codex-acp-auto-bump/handoff.md` §REMAINING). Closes `.4`.
+   - **codex-acp FULL automation accept** (`.4`'s remaining item). **CORRECTED 2026-07-14 — the
+     earlier instruction here was WRONG and is superseded.** It said to adapt the orchestrator's
+     `acceptance-live-golden-master.yml` gate onto the `[self-hosted, local-ci]` runner class
+     ("register a matching label, or reuse the same supervisor"). **That is not implementable, and
+     relabelling would have been unsafe.** The gate drives Docker (root-equivalent here), reads the
+     host Codex credential + `fabro` binary, and needs the operator's 1Password secrets — every one
+     of which the Phase 0 containment deliberately DENIES (`ci-runner` is in none of
+     `docker`/`sudo`/`dolt`; the sanitize hook strips the docker socket). A label cannot grant a
+     runner privileges it was built not to have.
+     **What was actually built (maintainer-authorized 2026-07-14): a SECOND, PRIVILEGED trust tier
+     — the on-demand gate runner.** No privileged runner idles; a supervisor mints ONE single-use
+     JIT runner only for a queued run of the gate workflow on a write-access-gated event
+     (`repository_dispatch`/`workflow_dispatch`) on master, so a fork PR can never obtain one — a
+     discrimination the runner LABEL alone cannot make. Live: `gate-runner-supervisor.service`
+     active + watching; trust-boundary exit tests **11 pass / 0 fail / 0 skip**; orchestrator
+     fork-PR approval tightened `first_time_contributors` → `all_external_contributors`. Design:
+     `phase0-runner-containment-design.md` §"Second trust tier — the privileged gate runner";
+     implementation: `livespec-dev-tooling` **#387** (`ci-runner/gate-runner/`).
+     **REMAINING to close `.4`:** (a) a MAINTAINER CLICK — add
+     `livespec-orchestrator-beads-fabro` to the `thewoolleyman-ci-runners` App installation
+     (`https://github.com/settings/installations/146033367`) so `generate-jitconfig` works there
+     (`administration: write`; no other grant needed — public-repo run polling already works); then
+     (b) fire the throwaway bump-PR → `codex-acp-golden-master` dispatch → gate → status →
+     auto-merge (ready resume commands in `plan/archive/codex-acp-auto-bump/handoff.md`
+     §REMAINING).
    - **Phase 2 (`.5`) — cut CI over to the local runner + baked image** (per-job disposition table +
      drop `actions/cache` + merge-gate fallback), carrying the Phase-2 follow-ons journaled on `.5`
      (durable npm-shim/HOME fix at the image/hook layer; image-tag bump `v0.38.1`→`python-v0.43.2`

@@ -278,6 +278,14 @@ isolated).
 
 ## Trusted-event routing — a positive allowlist invariant
 
+> **Scope (2026-07-14).** This section governs the **contained CI lane** — which
+> events may reach the unprivileged `[self-hosted, local-ci]` runner. It is *not*
+> a statement about every self-hosted runner on the host. The **privileged gate
+> runner** is a second trust tier with a different boundary, and it deliberately
+> inverts the rule below: `repository_dispatch` / `workflow_dispatch` are the
+> **only** events allowed to reach it, precisely because they are the two that a
+> fork cannot trigger. See §"Second trust tier — the privileged gate runner".
+
 Routing is a **deny-by-default allowlist**, not a per-job convention. A
 self-hosted label is allowed **only** for:
 
@@ -317,6 +325,100 @@ self-hosted-labeled job is reachable from a forbidden trigger; (b) an honest tes
 fork PR does not trigger any self-hosted-labeled job — but this can only test an
 *honest* fork; the adversarial-YAML case is carried by the approval gate +
 containment, not by routing.
+
+## Second trust tier — the privileged gate runner (2026-07-14)
+
+Everything above contains the **CI lane** by confining the runner. That
+containment is exactly why the CI lane **cannot** run the orchestrator's live
+golden-master gate
+(`livespec-orchestrator-beads-fabro/.github/workflows/acceptance-live-golden-master.yml`).
+
+The gate does what the operator does by hand: it drives **Docker** (the DinD
+orchestrator container plus volumes — and docker-group membership on this host is
+root-equivalent), reads the host **Codex credential** (`~/.codex/auth.json`), runs
+the host **`fabro`** binary, and needs four 1Password secrets — including an
+org-scoped token that **creates and deletes GitHub repos**. The contained lane
+denies every one of those by construction (`ci-runner` in none of
+`docker`/`sudo`/`dolt`; the sanitize hook strips the docker socket; host-loopback
+services unreachable from the job container).
+
+So a relabel is not available, and neither is confinement. **The gate runner is
+privileged, and its containment moves from "confine the runner" to "control what
+may reach it."**
+
+### The boundary: on-demand, trigger-verified minting
+
+**No privileged runner idles.** Nothing is registered and nothing listens; a job
+cannot claim a runner that does not exist. The supervisor polls the gate repo and
+mints exactly one single-use JIT runner only for a **queued** run that passes
+every check:
+
+| Check | Required value | Why it is load-bearing |
+|---|---|---|
+| `run.path` | the gate workflow | No other workflow in the repo can obtain privileged compute. |
+| `run.event` | `repository_dispatch` **or** `workflow_dispatch` | Both require a token/actor with **write** access; **neither is reachable from a fork**. |
+| `run.head_branch` | `master` | The code executed is reviewed, merged code. (`repository_dispatch` always uses the default branch; this pins the `workflow_dispatch` path to it too.) |
+
+A fork PR's run carries `event == "pull_request"`, so it never matches: it queues
+harmlessly and expires with no runner minted.
+
+**This is a discrimination the runner LABEL alone cannot make.** A label is merely
+a request any workflow may write — a fork controls its own workflow YAML and can
+ask for any label it likes. The supervisor instead inspects the *workflow identity
+and the event* **before** granting compute. That is why the boundary lives in the
+minter, not in the routing `if:`.
+
+**Why this inverts the CI lane's rule and is still sound.** §"Trusted-event
+routing" forbids self-hosted labels on `repository_dispatch`/`workflow_dispatch`
+for workflows "that could checkout, download, interpret, or execute
+fork-controlled content." The gate does none of that: on both events it runs
+**master's** workflow file against a **master** checkout. The dispatch
+`client_payload` is supplied by a write-scoped token, and its one interpolated
+field reaches the shell through an `env:` binding (`CODEX_ACP_VERSION: ${{ ... }}`)
+and is used quoted — not inlined into the script body, so it is a parameter, not
+an injection point. The two rules are therefore consistent: *fork-reachable events
+must never reach a privileged runner, and only write-gated events may.*
+
+Belt-and-braces: `livespec-orchestrator-beads-fabro`'s fork-PR approval policy was
+tightened from `first_time_contributors` to **`all_external_contributors`**
+(2026-07-14), matching `livespec`. It is a **public** repo, so this matters: under
+the old setting a *returning* outside contributor's fork PR ran with no human
+approval.
+
+### Identity: the operator, deliberately
+
+`gate-runner@.service` runs as **`ubuntu`** — the operator. The gate workflow is
+*specified* against the operator's environment (`$HOME/.fabro/bin/fabro`,
+`~/.codex/auth.json`, `with-livespec-env.sh`, the `/data/projects` checkouts).
+
+A dedicated user would buy **no** isolation: it would still need the `docker`
+group, and docker-group membership is root-equivalent. It *would*, however, force
+duplicating the host Codex subscription credential — copying a secret to gain
+nothing. The trust boundary is the trigger check above, not the uid.
+
+### Exit tests (all must pass)
+
+`livespec-dev-tooling/ci-runner/gate-runner/trigger-surface-exit-tests.sh` —
+**11 pass / 0 fail / 0 skip** on the live host (2026-07-14). It proves the trust
+filter mints for the two write-gated events and refuses everything else, including:
+
+- a fork `pull_request` whose head branch is literally named **`master`** — the
+  *event* check, not the branch check, is what stops it;
+- a trusted event on a **different** workflow (`ci.yml`);
+- with nothing queued, **zero** privileged runners are registered on the gate repo;
+- the polkit bridge is narrow — `ci-sup` cannot start any unit outside
+  `gate-runner@*.service`.
+
+### GitHub-side prerequisite
+
+The `thewoolleyman-ci-runners` App (installation `146033367`) must include
+`livespec-orchestrator-beads-fabro` (`administration: write`, what
+`generate-jitconfig` needs). This is a **maintainer click** — a PAT cannot modify
+an App installation. No `Actions: Read` grant is needed: the gate repo is public,
+so its workflow-run list is readable with the existing installation token
+(verified HTTP 200 cross-repo).
+
+**Implementation:** `livespec-dev-tooling/ci-runner/gate-runner/` (PR #387).
 
 ## Supervisor + registration credential (a Kind-2 secret)
 
