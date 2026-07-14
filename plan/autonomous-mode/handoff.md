@@ -8,6 +8,12 @@
    opening it. NEVER write a separate prose resume prompt — it is a banned,
    redundant duplicate of the handoff (maintainer-declared 2026-07-13, "Never
    ever do that").** Hand off by pointing at the path, nothing more.
+   **Whenever you have less than ~50% context remaining, wrap up and hand off,
+   and make the path `plan/autonomous-mode/handoff.md` the LAST line of your
+   turn's text output — every turn in that low-context regime, not only the
+   final one** (maintainer-declared 2026-07-14). It is the standing wrap-up cue
+   that the session is at/near the hand-off boundary, so the maintainer can
+   resume straight from that path without hunting for it.
 2. **Delegate to sub-agents / the Fabro factory to preserve driver context.** Do
    the heavy lifting (repairs, authoring, multi-file work, live-run iteration
    where feasible) in scoped sub-agents or the factory; keep the driver session
