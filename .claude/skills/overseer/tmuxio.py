@@ -161,6 +161,16 @@ class TmuxIO:
         """
         return self._pane_field(session, "#{pane_id}")
 
+    def pane_pid(self, session: str) -> int | None:
+        """``#{pane_pid}`` — the pane's process PID (the login shell), or None."""
+        value = self._pane_field(session, "#{pane_pid}")
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            return None
+
     def pane_current_command(self, session: str) -> str | None:
         """``#{pane_current_command}`` — the pane's foreground command (e.g. ``node``)."""
         return self._pane_field(session, "#{pane_current_command}")
@@ -294,6 +304,16 @@ class TmuxIO:
     def set_pane_title(self, pane: str, title: str) -> bool:
         """``tmux select-pane -t <pane> -T <title>`` — tag a pane (idempotency)."""
         return self._ok(self._call(["select-pane", "-t", pane, "-T", title]))
+
+    def select_layout_even(self, pane: str) -> bool:
+        """``tmux select-layout -t <pane> even-vertical`` — restack the window 50/50.
+
+        A fresh ``split-window`` already lands 50/50, but a THIRD pane that was
+        opened and later closed leaves tmux's rows redistributed unevenly. Running
+        this on every ``overseer-start`` self-heals the daemon/interactive split
+        back to even heights (targeting ``pane`` targets its window).
+        """
+        return self._ok(self._call(["select-layout", "-t", pane, "even-vertical"]))
 
     def window_pane_titles(self, pane: str) -> list[str]:
         """Every pane title in PANE's window (``[]`` on error) — the idempotency read."""

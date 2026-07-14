@@ -106,6 +106,10 @@ def main(argv: list[str] | None = None) -> int:
         io.set_pane_title(new_pane, _DAEMON_PANE_TITLE)
         print(f"overseer-start: started overseerd in top pane {new_pane}.", file=sys.stderr)
 
+    # 1b. Restack the window 50/50 (self-heals an uneven split — e.g. after a
+    # stray third pane was opened and closed, redistributing rows unevenly).
+    io.select_layout_even(pane)
+
     # 2. Adopt existing worker sessions that match active plan topics.
     adopted = supervisor._build_supervisor().adopt_sessions()
     for track in adopted:

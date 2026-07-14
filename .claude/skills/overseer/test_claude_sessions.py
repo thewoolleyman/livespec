@@ -89,3 +89,75 @@ def test_proc_readers_on_this_process():
     # A PID that cannot exist → fail-soft None (never raises).
     assert claude_sessions.proc_ppid(2**30) is None
     assert claude_sessions.proc_starttime(2**30) is None
+
+
+# --------------------------------------------------------------------------- #
+# has_active_subshell: a DESCENDANT shell ⇒ active background work ⇒ not idle.
+# --------------------------------------------------------------------------- #
+
+
+def _tree(children, comms):
+    """A pair of fake /proc readers over a static process tree."""
+    return (lambda pid: children.get(pid, [])), comms.get
+
+
+def test_has_active_subshell_true_when_direct_child_is_shell():
+    # root 100 → node runtime (200) + a background-command shell (300, zsh).
+    children_of, comm_of = _tree({100: [200, 300]}, {200: "node", 300: "zsh"})
+    assert (
+        claude_sessions.has_active_subshell(100, children_of=children_of, comm_of=comm_of) is True
+    )
+
+
+def test_has_active_subshell_false_when_descendants_are_only_non_shells():
+    # root 100 → node runtime (200) → an MCP server (300, node). No shell anywhere.
+    children_of, comm_of = _tree({100: [200], 200: [300]}, {200: "node", 300: "node"})
+    assert (
+        claude_sessions.has_active_subshell(100, children_of=children_of, comm_of=comm_of) is False
+    )
+
+
+def test_has_active_subshell_true_for_deep_shell():
+    # A shell nested two levels down: 100 → 200 (node) → 300 (bash).
+    children_of, comm_of = _tree({100: [200], 200: [300]}, {200: "node", 300: "bash"})
+    assert (
+        claude_sessions.has_active_subshell(100, children_of=children_of, comm_of=comm_of) is True
+    )
+
+
+def test_has_active_subshell_false_when_no_children():
+    assert (
+        claude_sessions.has_active_subshell(
+            100, children_of=lambda _pid: [], comm_of=lambda _pid: None
+        )
+        is False
+    )
+
+
+def test_has_active_subshell_root_itself_is_not_counted():
+    # root_pid (the login shell) is itself a shell but has NO descendants → False:
+    # only DESCENDANTS count, never root itself.
+    children_of, comm_of = _tree({}, {100: "zsh"})
+    assert (
+        claude_sessions.has_active_subshell(100, children_of=children_of, comm_of=comm_of) is False
+    )
+
+
+def test_has_active_subshell_cycle_is_fail_soft():
+    # A cycle among non-shells must TERMINATE (visited-set) and return False, no hang.
+    children_of, comm_of = _tree({100: [200], 200: [100]}, {100: "node", 200: "node"})
+    assert (
+        claude_sessions.has_active_subshell(100, children_of=children_of, comm_of=comm_of) is False
+    )
+
+
+def test_proc_comm_and_children_on_this_process():
+    # The real /proc readers, exercised against THIS process (safe, always present).
+    comm = claude_sessions.proc_comm(os.getpid())
+    assert comm is not None and comm != ""
+    children = claude_sessions.proc_children(os.getpid())
+    assert isinstance(children, list)
+    assert all(isinstance(pid, int) for pid in children)
+    # A PID that cannot exist → fail-soft (None / []), never raises.
+    assert claude_sessions.proc_comm(2**30) is None
+    assert claude_sessions.proc_children(2**30) == []

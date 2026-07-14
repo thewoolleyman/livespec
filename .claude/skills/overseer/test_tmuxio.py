@@ -241,6 +241,14 @@ def test_set_pane_title_argv():
     ]
 
 
+def test_select_layout_even_argv():
+    io, fake = _io()
+    assert io.select_layout_even("%20") is True
+    assert fake.calls[0]["argv"] == ["tmux", "select-layout", "-t", "%20", "even-vertical"]
+    io2, _ = _io(returncode=1)  # fail-soft
+    assert io2.select_layout_even("%20") is False
+
+
 def test_window_pane_titles_parses_and_fail_soft():
     io, fake = _io(stdout="overseer-daemon\nzsh\n\n")
     assert io.window_pane_titles("%20") == ["overseer-daemon", "zsh"]

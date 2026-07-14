@@ -28,6 +28,12 @@ def _isolate_cwd(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
 
+# A pid that cannot exist, so the real ``claude_sessions.proc_children`` reader
+# fails soft to ``[]`` → no descendant, no subshell. FakeTmux.pane_pid returns
+# this by default so bg-shell detection is inert unless a test opts in.
+_NO_SUBSHELL_PID = 2**30
+
+
 class FakeTmux:
     """Injectable stand-in for tmuxio.TmuxIO — canned reads, recorded writes."""
 
@@ -42,6 +48,11 @@ class FakeTmux:
         self.respawn_ok = True  # set False to model a failed respawn (B5)
         self.new_session_ok = True  # set False to model a failed new-session (Codex #3)
         self.pane_pids = {}  # {pane_pid: session} for the registry→tmux adopt join
+        # Per-session pane PID (the login shell) fed to has_active_subshell. Defaults
+        # to a NONEXISTENT pid so the real /proc reader returns [] → NO subshell,
+        # keeping every legacy test's bg_shell False unless it opts in by setting a
+        # pane pid here AND injecting fake children_of/comm_of on the Supervisor.
+        self.pane_pid_map = {}
         self._cap_idx = {}
         self._cmd_idx = {}
 
@@ -72,6 +83,13 @@ class FakeTmux:
         # keyed by name, still resolve), or None if the session is gone.
         self.calls.append(("pane_id", session))
         return session if session in self.sessions else None
+
+    def pane_pid(self, session):
+        # The pane's login-shell PID. Default is a nonexistent pid (real
+        # proc_children → []), so bg_shell is False unless a test sets a pid here
+        # and injects a fake process tree via the Supervisor's children_of/comm_of.
+        self.calls.append(("pane_pid", session))
+        return self.pane_pid_map.get(session, _NO_SUBSHELL_PID)
 
     def capture_pane(self, session):
         self.calls.append(("capture", session))
@@ -592,6 +610,145 @@ def test_no_restart_when_busy_even_with_valid_marker(tmp_path):
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "working"
     assert not fake.has("respawn")
+
+
+# --------------------------------------------------------------------------- #
+# Background subshell: a live `Bash(run_in_background)` command shell under the
+# pane process ⇒ BUSY, suppressing BOTH injection and restart (never respawn -k
+# a session with live background work), even when the pane text looks idle.
+# --------------------------------------------------------------------------- #
+
+
+def test_bg_shell_suppresses_restart(tmp_path):
+    """Idle-looking pane + VALID ready marker, but a descendant shell in the
+    process tree (a live `Bash(run_in_background)` command) ⇒ status `working`
+    and NO respawn: the bg-shell makes it busy, so the atomic restart is
+    suppressed and the live background work is protected."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))  # empty box → textually idle
+    fake.pane_pid_map[session] = 100  # the pane's login-shell PID
+    # 100 → 200 (node runtime) → 300 (node MCP server) + 400 (a bg-command shell).
+    children = {100: [200], 200: [300, 400]}
+    comms = {200: "node", 300: "node", 400: "zsh"}
+    sup = _sup(
+        tmp_path,
+        fake,
+        children_of=lambda pid: children.get(pid, []),
+        comm_of=comms.get,
+    )
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    marker = _arm_ready_marker(repo, topic, mtime=1001.0)  # valid + fresh
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"  # bg-shell ⇒ busy ⇒ NOT restarted
+    assert view.note == "background shell"  # operator sees WHY it isn't idle
+    assert not fake.has("respawn")  # the live background work is protected
+    assert marker.exists()  # a fresh marker is untouched by the busy void check
+
+
+def test_no_bg_shell_allows_restart(tmp_path):
+    """The counterpart: identical idle pane + valid ready marker, but NO descendant
+    shell (only node/MCP) ⇒ the restart proceeds (`restarting`, respawn issued)."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    fake.pane_pid_map[session] = 100
+    children = {100: [200], 200: [300]}
+    comms = {200: "node", 300: "node"}  # node runtime + MCP server, no shell
+    sup = _sup(
+        tmp_path,
+        fake,
+        children_of=lambda pid: children.get(pid, []),
+        comm_of=comms.get,
+    )
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    _arm_ready_marker(repo, topic, mtime=1001.0)
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "restarting"
+    assert (
+        "respawn",
+        session,
+        str(repo),
+        f"claude --dangerously-skip-permissions -n {topic}",
+    ) in fake.calls
+
+
+def test_bg_shell_suppresses_the_idle_stall_force_restart(tmp_path):
+    """THE INTERACTION GUARD between the two fixes — the reason they must ship together.
+
+    A session at the danger line whose pane LOOKS idle, with no ready marker, but with a
+    live background shell (a `Bash(run_in_background)` build/test still running) must NEVER
+    be force-restarted: the bg-shell check makes it `busy` ⇒ `working`, which outranks the
+    danger branch, so the non-negotiable force-restart is never reached and the stall clock
+    never accrues. Without the bg-shell check, the force-restart would `respawn-pane -k` a
+    session with live background work — the one way the force-restart could destroy real
+    work rather than just a process."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=13))  # idle-LOOKING, deep in danger
+    fake.pane_pid_map[session] = 100
+    children = {100: [200], 200: [300]}
+    comms = {200: "node", 300: "bash"}  # a LIVE background shell under the pane process
+    clock = {"t": 1000.0}
+    sup = _clock_sup(
+        tmp_path, fake, clock, children_of=lambda pid: children.get(pid, []), comm_of=comms.get
+    )
+    track = _mapped_track(repo, topic, session)
+
+    sup.evaluate(track, act=True)
+    clock["t"] = 1000.0 + supervisor._STALL_RESTART_GRACE + 100  # WAY past the grace
+    view = sup.evaluate(track, act=True)
+    assert view.status == "working"  # bg shell ⇒ busy; the danger branch is never reached
+    assert not fake.has("respawn")  # the live background work was NOT killed
+    assert sup._inject[_key_for(repo, topic)].danger_idle_since is None  # stall clock reset
+
+
+def test_bg_shell_sets_background_shell_note(tmp_path):
+    """When a bg shell is the SOLE reason a pane isn't idle (pane text is idle, no
+    blocked marker), the `working` row carries the note `background shell`."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))  # idle, high ctx (no inject)
+    fake.pane_pid_map[session] = 100
+    children = {100: [200]}
+    comms = {200: "bash"}  # a bg-command shell directly under the pane process
+    sup = _sup(
+        tmp_path,
+        fake,
+        children_of=lambda pid: children.get(pid, []),
+        comm_of=comms.get,
+    )
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert view.note == "background shell"
+
+
+def test_textually_busy_pane_has_no_background_shell_note(tmp_path):
+    """The note is `background shell` ONLY when a bg shell is the SOLE reason. A
+    TEXTUALLY busy pane (spinner) is `working` with NO note, even when a descendant
+    shell is also present — the note guard is `bg_shell and not is_busy(capture)`."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_busy_capture(ctx=40))  # actively generating
+    fake.pane_pid_map[session] = 100
+    children = {100: [200]}
+    comms = {200: "zsh"}
+    sup = _sup(
+        tmp_path,
+        fake,
+        children_of=lambda pid: children.get(pid, []),
+        comm_of=comms.get,
+    )
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert view.note is None
 
 
 def test_fresh_marker_survives_busy_certifying_tail(tmp_path):
