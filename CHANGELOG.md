@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/thewoolleyman/livespec/compare/v0.11.8...v0.12.0) (2026-07-15)
+
+
+### Features
+
+* **overseer:** reorder table columns — Status leads (Status · Topic · tmux · Ctx% · Repo) ([6a41f30](https://github.com/thewoolleyman/livespec/commit/6a41f30c1fe1f83c1b25508ec5e979b28091a898))
+
 ## [0.11.8](https://github.com/thewoolleyman/livespec/compare/v0.11.7...v0.11.8) (2026-07-15)
 
 
