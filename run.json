@@ -267,7 +267,7 @@
     "kind": "running"
   },
   "status_updated_at": "2026-07-15T19:31:24.914762525Z",
-  "last_event_at": "2026-07-15T19:31:26.616351085Z",
+  "last_event_at": "2026-07-15T19:31:32.121117291Z",
   "pending_control": null,
   "checkpoints": [
     {
@@ -306,9 +306,9 @@
       "diff": {}
     },
     {
-      "seq": 0,
+      "seq": 28,
       "checkpoint": {
-        "timestamp": "2026-07-15T19:31:26.888918572Z",
+        "timestamp": "2026-07-15T19:31:32.112251874Z",
         "current_node": "emit",
         "completed_nodes": [
           "start",
@@ -316,20 +316,20 @@
         ],
         "node_retries": {},
         "context_values": {
-          "internal.run_id": "01KXKM66CSJESV3APCVK81YZW2",
-          "graph.goal": "prove whether a condition string template-expands inputs",
-          "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684",
-          "internal.node_visit_count": 1,
-          "internal.work_dir": "/workspace/livespec",
-          "failure_signature": "",
           "outcome": "succeeded",
+          "thread.start.current_node": "emit",
+          "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684",
+          "failure_signature": "",
+          "graph.goal": "prove whether a condition string template-expands inputs",
+          "failure_class": "",
+          "internal.node_visit_count": 1,
+          "internal.retry_count.emit": 0,
+          "internal.retry_count.start": 0,
           "internal.fidelity": "compact",
           "current_node": "emit",
           "internal.thread_id": "start",
-          "internal.retry_count.start": 0,
-          "thread.start.current_node": "emit",
-          "internal.retry_count.emit": 0,
-          "failure_class": ""
+          "internal.run_id": "01KXKM66CSJESV3APCVK81YZW2",
+          "internal.work_dir": "/workspace/livespec"
         },
         "node_outcomes": {
           "start": {
@@ -352,9 +352,88 @@
           }
         },
         "next_node_id": "took_input",
+        "git_commit_sha": "a99573aee09efe308022983093adce7f0719e86b",
+        "node_visits": {
+          "emit": 1,
+          "start": 1
+        }
+      },
+      "diff": {
+        "summary": {
+          "files_changed": 0,
+          "additions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    {
+      "seq": 0,
+      "checkpoint": {
+        "timestamp": "2026-07-15T19:31:32.362826942Z",
+        "current_node": "took_input",
+        "completed_nodes": [
+          "start",
+          "emit",
+          "took_input"
+        ],
+        "node_retries": {},
+        "context_values": {
+          "internal.run_id": "01KXKM66CSJESV3APCVK81YZW2",
+          "thread.emit.current_node": "took_input",
+          "graph.goal": "prove whether a condition string template-expands inputs",
+          "internal.retry_count.took_input": 0,
+          "command.output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74",
+          "internal.node_visit_count": 1,
+          "internal.work_dir": "/workspace/livespec",
+          "failure_signature": "",
+          "outcome": "succeeded",
+          "internal.fidelity": "compact",
+          "current_node": "took_input",
+          "internal.thread_id": "emit",
+          "internal.retry_count.start": 0,
+          "thread.start.current_node": "emit",
+          "internal.retry_count.emit": 0,
+          "failure_class": ""
+        },
+        "node_outcomes": {
+          "took_input": {
+            "status": "succeeded",
+            "context_updates": {
+              "command.output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74"
+            },
+            "notes": "Script completed: echo RESULT_TOOK_TEMPLATED_EDGE; exit 0",
+            "usage": null,
+            "timing": {
+              "wall_time_ms": 0,
+              "inference_time_ms": 0,
+              "tool_time_ms": 223,
+              "active_time_ms": 223
+            }
+          },
+          "start": {
+            "status": "succeeded",
+            "usage": null
+          },
+          "emit": {
+            "status": "succeeded",
+            "context_updates": {
+              "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684"
+            },
+            "notes": "Script completed: echo emitting; exit 0",
+            "usage": null,
+            "timing": {
+              "wall_time_ms": 0,
+              "inference_time_ms": 0,
+              "tool_time_ms": 257,
+              "active_time_ms": 257
+            }
+          }
+        },
+        "next_node_id": "exit",
         "node_visits": {
           "start": 1,
-          "emit": 1
+          "emit": 1,
+          "took_input": 1
         }
       },
       "diff": {}
@@ -391,7 +470,12 @@
       "first_event_seq": 21,
       "prompt": null,
       "response": null,
-      "completion": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": "Script completed: echo emitting; exit 0",
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:31:26.885317375Z"
+      },
       "provider_used": null,
       "diff": null,
       "script_invocation": {
@@ -399,10 +483,53 @@
         "command": "exec 2>&1\necho emitting; exit 0",
         "language": "shell"
       },
+      "script_timing": {
+        "output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684",
+        "exit_code": 0,
+        "duration_ms": 257,
+        "termination": "exited",
+        "output_bytes": 9,
+        "live_streaming": true
+      },
+      "parallel_results": null,
+      "output": null,
+      "output_bytes": 9,
+      "live_streaming": true,
+      "termination": "exited",
+      "started_at": "2026-07-15T19:31:26.616331609Z",
+      "handler": "command",
+      "timing": {
+        "wall_time_ms": 268,
+        "inference_time_ms": 0,
+        "tool_time_ms": 257,
+        "active_time_ms": 257
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "took_input@1": {
+      "first_event_seq": 31,
+      "prompt": null,
+      "response": null,
+      "completion": null,
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": {
+        "script": "echo RESULT_TOOK_TEMPLATED_EDGE; exit 0",
+        "command": "exec 2>&1\necho RESULT_TOOK_TEMPLATED_EDGE; exit 0",
+        "language": "shell"
+      },
       "script_timing": null,
       "parallel_results": null,
       "output": null,
-      "started_at": "2026-07-15T19:31:26.616331609Z",
+      "started_at": "2026-07-15T19:31:32.119439742Z",
       "handler": "command",
       "usage": {
         "input_tokens": 0,
