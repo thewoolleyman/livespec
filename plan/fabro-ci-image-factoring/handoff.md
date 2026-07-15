@@ -144,6 +144,18 @@ image/hook-layer HOME fix. See NEXT ACTIONS.
   no downloads, no API calls). **Follow-on on `.5`:** the uv cache is STILL per-container-cold
   (a real hot cache needs `UV_CACHE_DIR` at a persistent mount — T10 cache-tiering), and the
   durable fix is an image/hook-layer HOME alignment so the workaround env var can be dropped.
+- **Anonymous-rate-limit CLASS closed (livespec #1258, 2026-07-15).** The `MISE_DATA_DIR`
+  no-op removed the *specific* trigger, but the CLASS remained: GitHub's anonymous REST limit
+  is **60/hr PER IP**, invisible on GitHub-hosted runners (each job a fresh IP) but a landmine
+  on the self-hosted matrix, which shares ONE host IP across all concurrent jobs — so ANY
+  future unauthenticated GitHub-API call (a mise cache miss, a `gh` in some target, a new
+  check) would re-arm it. Defense-in-depth: both matrices now carry
+  `GITHUB_TOKEN`/`GH_TOKEN: ${{ github.token }}` — the per-run, auto-revoked, read-scoped
+  Actions token (NOT a Kind-2 secret; read-only for fork PRs; the same token hosted jobs get),
+  lifting any GitHub-API call to the authenticated (~1000/hr per-repo) limit. `MISE_DATA_DIR`
+  stays the primary (call nothing); the token is the belt-and-suspenders so the shared IP can
+  never hit the anon wall again. **Do NOT** bake a static token into the image/runner — that
+  would be a persistent credential on a public-repo runner. Carried into the Phase 3 template.
 
 **SESSION 2026-07-14 LANDED — read first:**
 - **codex-acp FULL automation accept — GREEN + EXERCISED LIVE. PHASE 1 IS FUNCTIONALLY DONE.**
@@ -344,8 +356,14 @@ NEXT ACTION #1 REWRITTEN AGAIN 2026-07-14 after the runner pool was made concurr
    from ITS OWN workflows (the fleet is non-uniform — different matrices, secrets, release
    wiring). `phase2-ci-disposition-livespec.md` is the TEMPLATE, not a fill-in; carry the
    live-learned pieces forward: `MISE_DATA_DIR=/root/.local/share/mise` (else concurrent
-   `mise install` blows the anon API rate limit), the `CI_RUNNER_LABELS` fallback var, the
-   node-on-PATH npm prelude, `mise trust`, drop `merge_group` where it is dead. The routing
+   `mise install` blows the anon API rate limit), `GITHUB_TOKEN`/`GH_TOKEN: ${{ github.token }}`
+   on every moved matrix job (the shared-IP anon-limit defense-in-depth), the `CI_RUNNER_LABELS`
+   fallback var, the node-on-PATH npm prelude, `mise trust`, drop `merge_group` where it is
+   dead. **Runner-provisioning prerequisite:** the self-hosted runners are registered for
+   `thewoolleyman/livespec` ONLY (supervisor `--repos thewoolleyman/livespec`); each target
+   repo needs runners registered for it — a supervisor/systemd host change (register more repos
+   + bump slots), which is a HOST MUTATION on the shared host and needs explicit maintainer
+   authorization, like Phase 0 did. The routing
    audit's fleet-wide per-PR CI form (deferred from Phase 2) belongs HERE — the surface now
    multiplies across 8 repos, so a per-PR check catches a routing mistake at PR time in every
    repo. NB: the `check-doctor-static` sibling-clone row is **corrected** in the disposition
