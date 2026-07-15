@@ -1,0 +1,15 @@
+digraph PositiveControlProof {
+    graph [goal="prove the condition engine routes on an in-scope key"]
+    start [shape=Mdiamond, label="Start"]
+    exit  [shape=Msquare, label="Exit"]
+
+    emit          [label="emit",          shape=parallelogram, script="echo emitting; exit 0"]
+    took_input    [label="took_input",    shape=parallelogram, script="echo RESULT_TOOK_CONDITIONED_EDGE; exit 0"]
+    took_fallback [label="took_fallback", shape=parallelogram, script="echo RESULT_TOOK_FALLBACK_EDGE; exit 0"]
+
+    start -> emit
+    emit -> took_input    [label="outcome-guarded", condition="outcome=succeeded"]
+    emit -> took_fallback [label="fallback"]
+    took_input    -> exit
+    took_fallback -> exit
+}
