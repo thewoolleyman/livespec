@@ -120,24 +120,53 @@ The running daemon carries this code and was exercised against the real fleet:
 
 ## Resume command
 
-**Nothing to resume — the redesign is complete, merged, and live-exercised.** Open items:
+**The redesign + the display and detection-accuracy fixes are complete, merged, and
+live-exercised.** The daemon in the `livespec-overseer` top pane runs current code
+(respawned onto master `00d26ef`, 2026-07-15). The ONE open ENGINEERING item is Codex
+detection.
 
-- **Codex adoption (documented gap).** Codex sessions are not in Claude's session
-  registry (`~/.claude/sessions/<pid>.json`), so `adopt_sessions` cannot see them. The
-  *busy* signal already covers Codex (`has_active_subshell` is a runtime-agnostic
-  process-tree walk); it is only ADOPTION that is Claude-only.
-- **A running daemon must be restarted to pick up new code** (standing operational rule,
-  NOT an open task). `overseerd` is long-lived in the `livespec-overseer` top pane and
-  keeps running whatever code it started with. As of 2026-07-14 the running daemon
-  already carries current code — do not restart it just because you read this line.
-- **The overseer console's BOTTOM pane was RESTORED (2026-07-14) — no longer an open
-  item.** Its interactive Claude had exited, leaving a bare `zsh`, so the daemon's alerts
-  reached only `tmp/overseer/daemon.log` and nothing relayed them to the human. It was
-  relaunched by the documented remedy (`claude --dangerously-skip-permissions` in the
-  bottom pane, then `/overseer`), and the idempotence held as designed: `overseer-start`
-  found the existing `overseer-daemon` pane title and did NOT double-start the daemon —
-  the live daemon kept its PID, unrestarted. Keep the remedy in mind if the pane exits
-  again; do NOT run it while the console is already up.
+### NEXT = Codex detection (the one open feature)
+
+The daemon cannot see a Codex session at all: it discovers the plan (shows `unassigned`)
+but cannot map the running Codex session to it. This is deeper than adoption — FOUR daemon
+signals assume Claude, and Codex needs each:
+
+1. **Adoption.** `adopt_sessions` reads Claude's registry (`~/.claude/sessions/<pid>.json`:
+   name→topic, cwd→repo, pid→tmux). Codex is not there. Codex DOES keep a store
+   (`~/.codex/sessions/`, `~/.codex/session_index.jsonl`), and a live codex process's cwd
+   is readable via `/proc/<pid>/cwd` — BUT the index's `thread_name` values are
+   `"Codex Companion Task: …"`, NOT plan topics like `shell-logic-hardening`. So there is
+   **no clean topic↔session join** the way Claude's registry `name` gives one. That is the
+   hard part to design (candidate: manual `add` targeting the bare session; or a
+   cwd+recency heuristic; or a Codex-side naming convention).
+2. **Identity gate.** `_pane_is_managed_claude` accepts only `node`/`claude`; Codex is
+   `bun`/`codex`, so a mapped Codex session reads `not-claude`. Needs a `pane_is_codex`
+   and a Codex-aware identity so it shows as a tracked Codex session.
+3. **Busy.** Already covered — the process-tree shell-walk (`has_active_subshell`) is the
+   runtime-agnostic FALLBACK used precisely when there is NO Claude registry entry (Codex).
+4. **Ctx% + restart.** Codex's statusline is not `Ctx: N% left` (ctx reads unknown → no
+   wrap-up), and restart is `claude -n <topic>` — a Codex session must be MONITORED-ONLY
+   (never restarted with the claude command).
+
+Recommendation: scope this as its own focused piece (a plan thread), not a quick patch.
+
+### Standing operational notes (NOT open tasks)
+
+- **A running daemon must be restarted to pick up new code.** `overseerd` is long-lived in
+  the top pane and keeps whatever code it started with. As of 2026-07-15 it already carries
+  master `00d26ef` — do not restart it just because you read this line.
+- **The console BOTTOM pane remedy** (if its interactive Claude exits to a bare `zsh`):
+  run `claude --dangerously-skip-permissions` in it, then `/overseer` — `overseer-start` is
+  idempotent on the `overseer-daemon` pane title, so it will not double-start the daemon.
+  Do NOT run it while the console is already up.
+
+### Related work-item (NOT overseer)
+
+- **`livespec-p9s0`** (livespec core ledger, P1) — the pin "staleness" root cause: the
+  cross-repo wiring check reads a sibling's LOCAL clone `HEAD` (not `origin`, no fetch), so
+  stale local clones under `/data/projects/` flap the check with drift that does not exist
+  on `origin/master`. Decide the durable fix (read the canonical branch fetched; and/or
+  keep local clones fresh; and the orphaned-repo angle). Not an overseer change.
 
 ## The protocol, dogfooded a second time (2026-07-14)
 
