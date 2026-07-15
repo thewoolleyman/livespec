@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.8](https://github.com/thewoolleyman/livespec/compare/v0.11.7...v0.11.8) (2026-07-15)
+
+
+### Bug Fixes
+
+* **overseer:** treat Claude 'shell' status as busy — root-cause fix for idle-with-live-background-shell ([00d26ef](https://github.com/thewoolleyman/livespec/commit/00d26ef74cb57804c53ed695d707b5f817f30e7f))
+
 ## [0.11.7](https://github.com/thewoolleyman/livespec/compare/v0.11.6...v0.11.7) (2026-07-15)
 
 
