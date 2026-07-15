@@ -1,8 +1,16 @@
 # Per-target matrix CI. Python-code checks gate on whether the changeset
 # contains any `.py` files; repo-metadata checks always run.
 #
-# Master pushes and merge_group events bypass the gate (they always run
-# the full aggregate as the merge-queue safety net).
+# Master pushes bypass the change-detection gate (they always run the full
+# aggregate as the post-merge safety net).
+#
+# The check-python / check-metadata matrices run in the SAME baked image the
+# Fabro sandbox uses, on the local self-hosted runner — so "green in CI" and
+# "green in sandbox" are the same environment (plan/fabro-ci-image-factoring).
+# runs-on resolves from the repo variable CI_RUNNER_LABELS, defaulting to the
+# self-hosted label; set it to '["ubuntu-latest"]' to reroute to GitHub-hosted
+# when the local host is down (the merge-gate fallback). setup / ci-green /
+# export-telemetry stay ubuntu-latest so the gate is reportable host-down.
 #
 # Direct tool invocations (ruff, pyright, pytest, python3) in `run:` lines
 # are forbidden by check-no-direct-tool-invocation; every step delegates
@@ -12,10 +20,11 @@ name: CI
 
 # uv occasionally fails when the PyPI file CDN (files.pythonhosted.org)
 # drops a wheel download mid-stream ("broken pipe"). UV_HTTP_RETRIES
-# makes uv retry the fetch in-process instead of failing the job.
-# Combined with the ~/.cache/uv actions/cache step (keyed on uv.lock)
-# every uv-sync job uses below, an unchanged lock installs from cache
-# and never contacts PyPI at all.
+# makes uv retry the fetch in-process instead of failing the job. On the
+# self-hosted lane the matrices' `uv sync` hits the persistent local-disk
+# ~/.cache/uv (a hot dir surviving across ephemeral jobs — NOT actions/cache,
+# which was deleted in the Phase-2 cutover), so an unchanged lock installs
+# from cache and never contacts PyPI at all.
 env:
   UV_HTTP_RETRIES: "5"
   # The plugin-currency staleness gate's severity lever (design D2,
@@ -28,7 +37,6 @@ on:
   pull_request:
   push:
     branches: [master]
-  merge_group:
 
 jobs:
   setup:
@@ -89,7 +97,17 @@ jobs:
   check-python:
     name: ${{ matrix.target }}
     needs: setup
-    runs-on: ubuntu-latest
+    # Local self-hosted runner in the baked sandbox image (fallback: set the
+    # CI_RUNNER_LABELS repo variable to '["ubuntu-latest"]'). The container is
+    # the SAME tag the Fabro sandbox runs — that sameness collapses the
+    # green-in-CI / red-in-sandbox drift this epic exists to remove.
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}
+    container:
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
+    env:
+      # Baked tools are already present; a missing shim must fail fast, never
+      # busy-loop on auto-install under the container-hooks HOME.
+      MISE_NOT_FOUND_AUTO_INSTALL: "0"
     strategy:
       fail-fast: false
       matrix:
@@ -150,17 +168,16 @@ jobs:
         if: needs.setup.outputs.py_changed == 'true'
         uses: actions/checkout@v4
 
-      - name: Install pinned binaries via mise
+      # Tools are baked into the image; `mise install` is a near-no-op that
+      # just confirms the pinned versions. A fresh container does not TRUST the
+      # repo .mise.toml, so `mise trust` is required for the shims to resolve.
+      # (Replaces the GitHub-hosted mise-action install + the actions/cache uv
+      # restore — the local runner's persistent ~/.cache/uv is the cache now.)
+      - name: mise trust + install (baked tools — install is a near-no-op)
         if: needs.setup.outputs.py_changed == 'true'
-        uses: jdx/mise-action@v2
-
-      - name: Restore uv download cache
-        if: needs.setup.outputs.py_changed == 'true'
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
-          restore-keys: uv-${{ runner.os }}-
+        run: |
+          mise trust
+          mise install
 
       - name: Install Python dev deps via uv
         if: needs.setup.outputs.py_changed == 'true'
@@ -168,12 +185,28 @@ jobs:
 
       - name: just ${{ matrix.target }}
         if: needs.setup.outputs.py_changed == 'true'
-        run: just ${{ matrix.target }}
+        run: |
+          # pyright (check-types) shells out to `npm`; under the container-hooks
+          # HOME the mise npm shim busy-loops (no node registered for that HOME).
+          # Put the image's real node/npm — derived from the shim's own location,
+          # never a hardcoded image path — ahead of the shim on PATH. Harmless
+          # for the non-npm targets. (Durable image/hook-layer fix: Phase-2
+          # follow-on on livespec-3lev.5.)
+          shims_dir="$(dirname "$(command -v npm)")"
+          node_bin="$(cd "$shims_dir/../installs/node/latest/bin" 2>/dev/null && pwd || ls -d "$shims_dir/../installs/node"/*/bin 2>/dev/null | head -1)"
+          [ -n "$node_bin" ] && export PATH="$node_bin:$PATH"
+          just ${{ matrix.target }}
 
   check-metadata:
     name: ${{ matrix.target }}
     needs: setup
-    runs-on: ubuntu-latest
+    # Same baked image + self-hosted routing as check-python (fallback via the
+    # CI_RUNNER_LABELS repo variable).
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}
+    container:
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
+    env:
+      MISE_NOT_FOUND_AUTO_INSTALL: "0"
     strategy:
       fail-fast: false
       matrix:
@@ -277,15 +310,14 @@ jobs:
               "$RUNNER_TEMP/sibling-clones/$sibling"
           done
 
-      - name: Install pinned binaries via mise
-        uses: jdx/mise-action@v2
-
-      - name: Restore uv download cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
-          restore-keys: uv-${{ runner.os }}-
+      # Baked tools; `mise install` is a near-no-op, `mise trust` is required
+      # for the shims to resolve in a fresh container. (Replaces mise-action +
+      # the actions/cache uv restore — the local runner's ~/.cache/uv is the
+      # cache now.)
+      - name: mise trust + install (baked tools — install is a near-no-op)
+        run: |
+          mise trust
+          mise install
 
       - name: Install Python dev deps via uv
         run: uv sync --all-groups
@@ -321,7 +353,14 @@ jobs:
           # warning. Harmless for the other metadata legs — they do not
           # read this var.
           LIVESPEC_FAIL_IF_CI_MATRIX_GAPS_EXIST: "true"
-        run: just ${{ matrix.target }}
+        run: |
+          # Put the image's real node/npm ahead of the mise shim on PATH (see
+          # check-python) — harmless for the pure-Python metadata targets, and
+          # keeps the two matrices' step template uniform.
+          shims_dir="$(dirname "$(command -v npm)")"
+          node_bin="$(cd "$shims_dir/../installs/node/latest/bin" 2>/dev/null && pwd || ls -d "$shims_dir/../installs/node"/*/bin 2>/dev/null | head -1)"
+          [ -n "$node_bin" ] && export PATH="$node_bin:$PATH"
+          just ${{ matrix.target }}
 
   # Closed-loop CI telemetry: export this run's per-job timings to Honeycomb
   # (dataset github-ci) and FAIL if Honeycomb does not accept them. The run
