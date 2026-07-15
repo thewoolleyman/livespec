@@ -1209,25 +1209,26 @@ class Supervisor:
     # ----------------------------------------------------------------- #
 
     def render(self, rows: Iterable[RowView]) -> None:
-        """Clear the screen and print the live ``Topic · Repo · tmux · Ctx% · Status`` table.
+        """Clear the screen and print the live ``Status · Topic · tmux · Ctx% · Repo`` table.
 
         Re-rendered from live captures every tick, and stamped with the current
         wall-clock time, so a ``/clear``-orphaned pane can never freeze on a
-        stale "all idle" snapshot (the second historical failure mode).
+        stale "all idle" snapshot (the second historical failure mode). Status leads
+        (maintainer 2026-07-15): it is the column the operator scans first.
         """
         rows = list(rows)
         lines: list[str] = []
         lines.append(f"overseer — {_iso_now()} — {len(rows)} track(s)")
-        header = ("Topic", "Repo", "tmux", "Ctx%", "Status")
+        header = ("Status", "Topic", "tmux", "Ctx%", "Repo")
         table = [header]
         for row in rows:
             table.append(
                 (
+                    row.status if not row.note else f"{row.status} ({row.note})",
                     row.topic,
-                    registry.repo_slug(row.repo),
                     row.tmux or "—",
                     "—" if row.ctx is None else f"{row.ctx}%",
-                    row.status if not row.note else f"{row.status} ({row.note})",
+                    registry.repo_slug(row.repo),
                 )
             )
         widths = [max(len(r[i]) for r in table) for i in range(len(header))]

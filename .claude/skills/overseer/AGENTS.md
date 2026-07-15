@@ -519,7 +519,7 @@ end-to-end check is the discovery + render path, exercised safely read-only:
 1. Run a **read-only render** against the real fleet:
    `uv run --no-project python .claude/skills/overseer/supervisor.py list` — it
    calls `tick(act=False)`, so it discovers every fleet-manifest repo's `plan/*/`,
-   joins the mapping, and prints the `Topic · Repo · tmux · Ctx% · Status` table
+   joins the mapping, and prints the `Status · Topic · tmux · Ctx% · Repo` table
    **without injecting or restarting anything**. This exercises the whole reshaped
    surface (module invocation, fixed store path, fleet-only watch-set) with zero
    mutation risk.
