@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/thewoolleyman/livespec/compare/v0.12.0...v0.13.0) (2026-07-15)
+
+
+### Features
+
+* **overseer:** color-code the live table rows by status ([3be261b](https://github.com/thewoolleyman/livespec/commit/3be261bf047138f93fdecc6d06f46649744fb834))
+
 ## [0.12.0](https://github.com/thewoolleyman/livespec/compare/v0.11.8...v0.12.0) (2026-07-15)
 
 
