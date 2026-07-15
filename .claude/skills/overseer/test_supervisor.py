@@ -1090,8 +1090,8 @@ def test_auto_link_creates_mapping_when_cwd_in_repo(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def _write_session(sessions_dir, pid, *, name, cwd, proc_start="pt"):
-    payload = {"pid": pid, "name": name, "cwd": str(cwd), "procStart": proc_start, "status": "idle"}
+def _write_session(sessions_dir, pid, *, name, cwd, proc_start="pt", status="idle"):
+    payload = {"pid": pid, "name": name, "cwd": str(cwd), "procStart": proc_start, "status": status}
     (sessions_dir / f"{pid}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
@@ -1104,6 +1104,96 @@ def _adopt_sup(tmp_path, fake, sessions_dir, ppid, starttimes, **kwargs):
         starttime_of=starttimes.get,
         **kwargs,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Claude registry `status` as the authoritative busy signal (bug fixes,
+# 2026-07-15). It GOVERNS busy-ness for an adopted Claude session: it sees
+# in-process sub-agents the shell-walk misses (false-idle), and it ignores a
+# trivial lingering background shell the shell-walk over-flags (false-working).
+# The shell-walk stays the runtime-agnostic FALLBACK for a session with no
+# registry entry (Codex).
+# --------------------------------------------------------------------------- #
+
+
+def test_registry_busy_marks_working_despite_idle_pane(tmp_path):
+    """A session running an in-process sub-agent looks idle — no spinner, no descendant
+    shell — but Claude reports itself `busy`. That self-report must mark it `working`."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))  # pane looks idle, high ctx
+    sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "busy"}  # Claude's own live self-report
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert view.note == "sub-agent (Claude busy)"
+
+
+def test_registry_waiting_ignores_a_lingering_background_shell(tmp_path):
+    """A backgrounded `sleep`/poll leaves a descendant shell, but when Claude reports the
+    session `waiting` (at a user prompt) that trivial shell must NOT mask it as working —
+    the false-positive `working (background shell)` bug."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))  # idle pane, high ctx
+    fake.pane_pid_map[session] = 100
+    children = {100: [200]}
+    comms = {200: "zsh"}  # a lingering background `sleep` shell
+    sup = _sup(tmp_path, fake, children_of=lambda pid: children.get(pid, []), comm_of=comms.get)
+    sup._claude_status = {session: "waiting"}  # Claude: at a user prompt, not busy
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "idle"  # NOT "working"
+    assert view.note is None
+
+
+def test_no_registry_status_still_counts_background_shell(tmp_path):
+    """A session with NO Claude registry entry (Codex / unmapped) falls back to the
+    runtime-agnostic shell-walk — a background shell still marks it working."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))
+    fake.pane_pid_map[session] = 100
+    children = {100: [200]}
+    comms = {200: "bash"}
+    sup = _sup(tmp_path, fake, children_of=lambda pid: children.get(pid, []), comm_of=comms.get)
+    sup._claude_status = {}  # no registry entry for this session
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert view.note == "background shell"
+
+
+def test_registry_busy_with_background_shell_notes_background_shell(tmp_path):
+    """A genuinely-busy Claude session that ALSO has a background command keeps the
+    `background shell` note (the shell counts when Claude confirms it is busy)."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))
+    fake.pane_pid_map[session] = 100
+    children = {100: [200]}
+    comms = {200: "bash"}
+    sup = _sup(tmp_path, fake, children_of=lambda pid: children.get(pid, []), comm_of=comms.get)
+    sup._claude_status = {session: "busy"}
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert view.note == "background shell"
+
+
+def test_refresh_claude_status_populates_the_map_from_registry(tmp_path):
+    """`build_rows` recomputes `{tmux: status}` from the registry ⋈ tmux each tick, so
+    `evaluate` can read a live session's status without a per-track registry read."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    _write_session(sessions_dir, 100, name="topic", cwd="/r", status="busy")
+    fake = FakeTmux()
+    fake.pane_pids[50] = "sA"  # pane PID 50 → tmux session sA
+    ppid = {100: 50, 50: 1}  # claude 100 → pane 50
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, ppid, {100: "pt"})
+    sup._refresh_claude_status()
+    assert sup._claude_status == {"sA": "busy"}
 
 
 def test_adopt_sessions_links_by_registry_name(tmp_path):

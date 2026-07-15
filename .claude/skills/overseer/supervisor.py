@@ -377,6 +377,12 @@ class Supervisor:
     # Last window name written, so the badge is only re-sent when the count CHANGES
     # (a tmux call every tick for an unchanged name is pure noise).
     _window_name: str | None = field(default=None, init=False)
+    # `{tmux_session: claude_registry_status}` for this tick, recomputed at the top of
+    # every `build_rows`. Claude's own live self-report ("busy"/"idle"/"waiting") is an
+    # AUTHORITATIVE busy signal that catches in-process sub-agents the process-tree walk
+    # cannot see. Empty for Codex sessions (not in Claude's registry) and in direct-
+    # `evaluate` beside-tests that don't set it.
+    _claude_status: dict[str, str] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         if self.out is None:
@@ -529,13 +535,8 @@ class Supervisor:
         for repo, topic, _ in registry.discover_plans(watch):
             active.setdefault(repo, set()).add(topic)
         existing = {(t.repo, t.topic) for t in registry.read_mapping(self.store_path)}
-        sessions_dir = (
-            self.sessions_dir
-            if self.sessions_dir is not None
-            else claude_sessions.default_sessions_dir()
-        )
         mapped = claude_sessions.map_named_sessions(
-            sessions_dir,
+            self._sessions_dir(),
             self.tmux.pane_pid_sessions(),
             ppid_of=self.ppid_of,
             starttime_of=self.starttime_of,
@@ -563,6 +564,30 @@ class Supervisor:
             self._log(f"adopted session {session} → {repo}::{topic}")
         return adopted
 
+    def _sessions_dir(self) -> str | os.PathLike[str]:
+        """The Claude session-registry dir (injected override, else the real ``~/.claude``)."""
+        return (
+            self.sessions_dir
+            if self.sessions_dir is not None
+            else claude_sessions.default_sessions_dir()
+        )
+
+    def _refresh_claude_status(self) -> None:
+        """Recompute this tick's ``{tmux_session: claude_status}`` map (read-only).
+
+        Runs at the top of every ``build_rows`` — including the read-only ``list`` path —
+        so ``evaluate`` can fold Claude's own ``status: "busy"`` self-report into its busy
+        check. It reads only the registry + ``/proc`` (no store mutation), so it is safe on
+        the read-only path. Fail-soft: any read error yields an empty map (no session
+        marked busy from this signal), never a raised exception.
+        """
+        self._claude_status = claude_sessions.status_by_tmux_session(
+            self._sessions_dir(),
+            self.tmux.pane_pid_sessions(),
+            ppid_of=self.ppid_of,
+            starttime_of=self.starttime_of,
+        )
+
     def build_rows(self, *, act: bool = True) -> list[registry.Track]:
         """Discovery ⋈ mapping (the tick's row set).
 
@@ -573,6 +598,7 @@ class Supervisor:
         adopt / re-link the store out from under a running daemon (adversarial code
         review 2026-07-13, blocker B6).
         """
+        self._refresh_claude_status()
         watch = self._resolve_watch()
         discovered = registry.discover_plans(watch)
         if not act:
@@ -735,7 +761,22 @@ class Supervisor:
         bg_shell = pane_pid is not None and claude_sessions.has_active_subshell(
             pane_pid, children_of=self.children_of, comm_of=self.comm_of
         )
-        busy = signals.is_busy(capture) or bg_shell
+        # Claude's own live self-report GOVERNS busy-ness for an adopted Claude session.
+        # It is both MORE accurate than the process-tree shell-walk — it is `busy` while an
+        # in-process sub-agent (Task tool) runs, which spawns no descendant shell so
+        # `bg_shell` misses it — and LESS over-broad: a lingering `sleep`/poll shell must
+        # not mask an at-prompt session (`idle`/`waiting`) as "working". The shell-walk
+        # (`bg_shell`) stays as the runtime-agnostic FALLBACK for a session with NO registry
+        # entry (Codex) or one Claude confirms is `busy`. Its original job — blocking a
+        # force-restart of a live background build — is moot now that the cardinal rule
+        # forbids restart without a `ready` declaration; its residual job is injection
+        # suppression, which Claude's own status serves better. `claude_status is None`
+        # means "not an adopted Claude session" (Codex / unmapped).
+        claude_status = self._claude_status.get(session)
+        registry_busy = claude_status == "busy"
+        shell_counts = claude_status is None or registry_busy
+        bg_work = bg_shell and shell_counts
+        busy = signals.is_busy(capture) or bg_work or registry_busy
         gate = signals.is_structured_gate(capture)
         idle = signals.is_idle_input(capture)
         current_ctx = signals.parse_ctx_remaining(capture)
@@ -790,8 +831,13 @@ class Supervisor:
         # a changing pane is treated as `working` and skipped this tick.
         if busy:
             status = "working"
-            if bg_shell and not signals.is_busy(capture):
+            if bg_work and not signals.is_busy(capture):
                 note = "background shell"
+            elif registry_busy and not bg_shell and not signals.is_busy(capture):
+                # The pane looks idle and there is no descendant shell, but Claude reports
+                # itself busy — an in-process sub-agent. Show WHY, or the operator would
+                # read the idle-looking pane and distrust the `working` status.
+                note = "sub-agent (Claude busy)"
             if act:
                 # Void the certification ONLY if it is past the grace — a young
                 # marker is the certifying turn's own busy tail and must survive

@@ -152,3 +152,33 @@ Re-verified while resuming, so a future reader need not re-derive it:
 - **Notify-never-block is holding live.** The restored console relayed both blocked
   tracks as NON-BLOCKING text with full coordinates (repo, tmux session, pane, jump
   command) and raised no `AskUserQuestion` on any track's behalf.
+
+## Detection-accuracy bug fixes (2026-07-15)
+
+Three live bugs found while the maintainer exercised the fleet, all in the daemon's
+session-detection signals. All fixed; the beside-tests pin each.
+
+1. **`NEEDS YOU` coordinates were unlabeled.** The block printed `autonomous-mode
+   (livespec)` — named WHAT was stuck but the tmux session to jump to had to be inferred.
+   Fixed: each row now leads with `topic: … | tmux: … | repo: …` (PR #1258, merged).
+
+2. **False-idle: a session running an in-process sub-agent read as `idle`.** The busy
+   check was `is_busy(pane) or has_active_subshell(pane)`. A Task-tool sub-agent runs
+   INSIDE the `claude`/`node` process — it spawns no descendant shell (so the shell-walk
+   misses it) and need not repaint the pane (so `is_busy` misses it). Fix: fold Claude's
+   own registry `status: "busy"` (from `~/.claude/sessions/<pid>.json`) into the busy
+   check.
+
+3. **False-working: a lingering background `sleep`/poll shell masked an at-prompt
+   session as `working (background shell)`.** `has_active_subshell` flags ANY descendant
+   shell; a backgrounded `sleep 120` is a descendant shell but not real work. Fix: for an
+   adopted Claude session, its registry `status` GOVERNS — when Claude reports
+   `idle`/`waiting` the shell-walk is ignored for that session.
+
+The unifying fix (bugs 2+3): **Claude's registry `status` is the authoritative busy
+signal for an adopted Claude session** — more accurate than the process-tree shell-walk
+(catches sub-agents) and less over-broad (ignores trivial background shells). The
+shell-walk stays as the runtime-agnostic FALLBACK for Codex (not in Claude's registry).
+Its original job — blocking a force-restart of a live background build — is moot now that
+the cardinal rule forbids restart without a `ready` declaration. See `AGENTS.md`
+§"Load-bearing mechanics" (the registry-`status` and background-shell bullets).
