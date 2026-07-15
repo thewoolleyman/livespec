@@ -105,8 +105,16 @@ jobs:
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
     env:
-      # Baked tools are already present; a missing shim must fail fast, never
-      # busy-loop on auto-install under the container-hooks HOME.
+      # The image installs the pinned tools under /root (build-time HOME), but
+      # container-hooks run steps with a DIFFERENT HOME — so mise's default data
+      # dir ($HOME/.local/share/mise) is empty and `mise install` would RE-fetch
+      # every tool. At matrix scale that means dozens of concurrent UNauthed
+      # GitHub-API installs, which blow the anonymous rate limit and red the run
+      # (proven live). Point mise at the baked data dir so `mise install` is a
+      # true no-op — no downloads, no API calls. (Durable image/hook-layer fix:
+      # Phase-2 follow-on on livespec-3lev.5.)
+      MISE_DATA_DIR: /root/.local/share/mise
+      # A missing shim must fail fast, never busy-loop on auto-install.
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
     strategy:
       fail-fast: false
@@ -206,6 +214,9 @@ jobs:
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2
     env:
+      # Point mise at the baked data dir so `mise install` is a no-op (see
+      # check-python — avoids the concurrent-install rate-limit failure).
+      MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
     strategy:
       fail-fast: false
