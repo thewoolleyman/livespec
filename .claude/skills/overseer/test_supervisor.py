@@ -1706,7 +1706,9 @@ def test_attention_block_lists_a_blocked_track_with_its_jump_command(tmp_path):
     ]
     out = _render_of(sup, views)
     assert "NEEDS YOU (1):" in out
-    assert "autonomous-mode" in out
+    # LABELED coordinates, tmux INCLUDED — the operator must not have to guess which
+    # unlabeled token is the topic vs the repo vs the session to jump to.
+    assert "topic: autonomous-mode | tmux: livespec-autonomous-mode | repo: livespec" in out
     assert "waiting on a cost-gate decision" in out
     assert "jump: tmux switch-client -t livespec-autonomous-mode" in out
 

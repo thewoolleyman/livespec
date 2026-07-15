@@ -1190,6 +1190,11 @@ class Supervisor:
         The table alone was not enough: dozens of `unassigned` rows buried the two that
         actually wanted the operator. This filters to exactly those, and carries the same
         jump command `_alert` does, so the block is a sufficient handover on its own.
+
+        Each row's coordinates are LABELED (`topic: … | tmux: … | repo: …`) so the operator
+        never has to guess which unlabeled token is which — a bare `autonomous-mode
+        (livespec)` said WHAT but the tmux session (WHERE to go) had to be inferred from the
+        jump line (maintainer 2026-07-14).
         """
         attention = [row for row in rows if needs_attention(row)]
         lines = [""]
@@ -1199,7 +1204,8 @@ class Supervisor:
         lines.append(f"NEEDS YOU ({len(attention)}):")
         for row in attention:
             detail = f" — {row.note}" if row.note else ""
-            lines.append(f"  ! {row.topic} ({registry.repo_slug(row.repo)}) — {row.status}{detail}")
+            coords = f"topic: {row.topic} | tmux: {row.tmux or '—'} | repo: {registry.repo_slug(row.repo)}"
+            lines.append(f"  ! {coords} — {row.status}{detail}")
             if row.tmux:
                 lines.append(f"      jump: tmux switch-client -t {row.tmux}")
         return lines
