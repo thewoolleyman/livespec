@@ -115,6 +115,43 @@ _CLAUDE_BUSY_STATUSES = frozenset({"busy", "shell"})
 # (`overseer` → `overseer(2!)`).
 WINDOW_NAME = "overseer"
 
+# Live-table row color (TTY-only; see `Supervisor.render`). The operator scans the
+# table by hue: each row is tinted by its STATUS so the handful that want a human
+# stand out from the background of `unassigned` plans. Color is a whole-LINE
+# affordance — the ANSI codes wrap the already-padded row, never a cell, so column
+# alignment (widths computed on plain-text `len`) is preserved. Emitted ONLY to a
+# TTY (`render` gates on `out.isatty()`), so piped `list` output and the
+# beside-tests' `StringIO` stay plain text.
+#
+#   green  = actively working (working / winding-down / restarting / settling)
+#   yellow = idle, waiting on a human (`blocked:human`), or low on context
+#            (`warned` / `danger`)
+#   red    = broken: the session is gone or the pane is no longer Claude
+#   default (uncolored — terminal white/gray) = `unassigned`, and any unmapped status
+_ANSI_RESET = "\x1b[0m"
+_ANSI_GREEN = "\x1b[32m"
+_ANSI_YELLOW = "\x1b[33m"
+_ANSI_RED = "\x1b[31m"
+_STATUS_COLOR = {
+    "working": _ANSI_GREEN,
+    "winding-down": _ANSI_GREEN,
+    "restarting": _ANSI_GREEN,
+    "settling": _ANSI_GREEN,
+    "idle": _ANSI_YELLOW,
+    "warned": _ANSI_YELLOW,
+    "danger": _ANSI_YELLOW,
+    "blocked:human": _ANSI_YELLOW,
+    "session-gone": _ANSI_RED,
+    "not-claude": _ANSI_RED,
+}
+
+
+def _row_color(status: str) -> str:
+    """The ANSI SGR prefix a row with STATUS is tinted with, or ``""`` for the
+    terminal default (``unassigned`` and any unmapped status)."""
+    return _STATUS_COLOR.get(status, "")
+
+
 # Bounded wait for a respawned pane to become a live Claude TUI before pasting
 # the resume line (poll #{pane_current_command} → node/claude; never scrape ❯).
 _RESTART_POLL_MAX = 30
@@ -1215,6 +1252,12 @@ class Supervisor:
         wall-clock time, so a ``/clear``-orphaned pane can never freeze on a
         stale "all idle" snapshot (the second historical failure mode). Status leads
         (maintainer 2026-07-15): it is the column the operator scans first.
+
+        Each data row is tinted by its status (``_row_color``) so the operator can
+        scan the list by hue — green working, yellow idle/waiting, red broken. The
+        color wraps the WHOLE padded line (never a cell), so alignment is untouched,
+        and is emitted ONLY to a TTY (``out.isatty()``): piped ``list`` output and the
+        beside-tests' ``StringIO`` stay plain. The header + separator stay uncolored.
         """
         rows = list(rows)
         lines: list[str] = []
@@ -1232,10 +1275,18 @@ class Supervisor:
                 )
             )
         widths = [max(len(r[i]) for r in table) for i in range(len(header))]
+        isatty = getattr(self.out, "isatty", None)
+        use_color = bool(isatty) and isatty()
         for i, cells in enumerate(table):
-            lines.append("  ".join(cell.ljust(widths[j]) for j, cell in enumerate(cells)))
+            line = "  ".join(cell.ljust(widths[j]) for j, cell in enumerate(cells))
             if i == 0:
+                lines.append(line)
                 lines.append("  ".join("-" * widths[j] for j in range(len(header))))
+                continue
+            # table[i] for i >= 1 is the projection of rows[i - 1]; tint by its raw
+            # status (not the note-decorated cell text).
+            color = _row_color(rows[i - 1].status) if use_color else ""
+            lines.append(f"{color}{line}{_ANSI_RESET}" if color else line)
         lines.extend(self._attention_lines(rows))
         # Clear scrollback + screen + home, then the table.
         self.out.write("\x1b[3J\x1b[2J\x1b[H" + "\n".join(lines) + "\n")
