@@ -46,6 +46,7 @@ __all__ = [
     "proc_starttime",
     "read_live_sessions",
     "resolve_tmux_session",
+    "status_by_tmux_session",
 ]
 
 # A claude PID's parent chain is a handful deep (claude → shell → tmux pane);
@@ -60,6 +61,7 @@ class ClaudeSession:
     pid: int
     name: str
     cwd: str
+    status: str  # Claude's own live self-report: "busy" / "idle" / "waiting" (or "" if absent)
 
 
 def default_sessions_dir() -> Path:
@@ -211,13 +213,18 @@ def read_live_sessions(
         name = data.get("name")
         cwd = data.get("cwd")
         proc_start = data.get("procStart")
+        status = data.get("status")
         if not isinstance(pid, int) or not isinstance(name, str) or not isinstance(cwd, str):
             continue
         if not name or not cwd or proc_start is None:
             continue
         if starttime_of(pid) != str(proc_start):
             continue  # dead PID, or reused by an unrelated process
-        out.append(ClaudeSession(pid=pid, name=name, cwd=cwd))
+        out.append(
+            ClaudeSession(
+                pid=pid, name=name, cwd=cwd, status=status if isinstance(status, str) else ""
+            )
+        )
     return out
 
 
@@ -272,3 +279,34 @@ def map_named_sessions(
             continue
         mapped.append((tmux_session, session.name, session.cwd))
     return mapped
+
+
+def status_by_tmux_session(
+    sessions_dir: str | os.PathLike[str],
+    pane_pid_to_session: dict[int, str],
+    *,
+    ppid_of: Callable[[int], int | None] = proc_ppid,
+    starttime_of: Callable[[int], str | None] = proc_starttime,
+) -> dict[str, str]:
+    """``{tmux_session: status}`` for every live named Claude session held in tmux.
+
+    Claude Code writes a live ``status`` (``busy`` / ``idle`` / ``waiting``) into each
+    session's registry file. This is an AUTHORITATIVE busy signal for an adopted Claude
+    session — it is TRUE while the session runs an in-process sub-agent (Task tool), which
+    :func:`has_active_subshell` cannot see (a sub-agent spawns no descendant shell) and a
+    single pane capture can miss. The daemon folds ``status == "busy"`` into its busy
+    check so a sub-agent-running session is never mis-read as idle.
+
+    Same join as :func:`map_named_sessions` (registry ⋈ tmux by PID walk); keyed by the
+    tmux session so the daemon can look up a track's session in O(1). When two live
+    sessions resolve to the same tmux session (should not happen in practice) the last
+    wins, matching the sorted-file iteration order.
+    """
+    out: dict[str, str] = {}
+    for session in read_live_sessions(sessions_dir, starttime_of=starttime_of):
+        tmux_session = resolve_tmux_session(
+            session.pid, pane_pid_to_session=pane_pid_to_session, ppid_of=ppid_of
+        )
+        if tmux_session is not None:
+            out[tmux_session] = session.status
+    return out

@@ -12,8 +12,8 @@ import os
 import claude_sessions
 
 
-def _write(directory, pid, *, name, cwd, proc_start):
-    payload = {"pid": pid, "name": name, "cwd": cwd, "procStart": proc_start, "status": "idle"}
+def _write(directory, pid, *, name, cwd, proc_start, status="idle"):
+    payload = {"pid": pid, "name": name, "cwd": cwd, "procStart": proc_start, "status": status}
     (directory / f"{pid}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
@@ -80,6 +80,35 @@ def test_map_named_sessions_joins_only_live_in_tmux(tmp_path):
         tmp_path, pane_pid_to_session, ppid_of=ppid.get, starttime_of=starttimes.get
     )
     assert mapped == [("sA", "alpha", "/r/a")]
+
+
+def test_read_live_sessions_carries_the_status_field(tmp_path):
+    _write(tmp_path, 100, name="alpha", cwd="/r/a", proc_start="111", status="busy")
+    live = claude_sessions.read_live_sessions(tmp_path, starttime_of={100: "111"}.get)
+    assert [(s.name, s.status) for s in live] == [("alpha", "busy")]
+
+
+def test_read_live_sessions_missing_status_defaults_empty(tmp_path):
+    # A registry file with no `status` key must not crash the read; status defaults to "".
+    (tmp_path / "100.json").write_text(
+        json.dumps({"pid": 100, "name": "alpha", "cwd": "/r/a", "procStart": "111"}),
+        encoding="utf-8",
+    )
+    live = claude_sessions.read_live_sessions(tmp_path, starttime_of={100: "111"}.get)
+    assert live[0].status == ""
+
+
+def test_status_by_tmux_session_keys_status_by_tmux(tmp_path):
+    _write(tmp_path, 100, name="alpha", cwd="/r/a", proc_start="111", status="busy")
+    _write(tmp_path, 300, name="gamma", cwd="/r/c", proc_start="333", status="busy")  # not in tmux
+    starttimes = {100: "111", 300: "333"}
+    ppid = {100: 50, 50: 1, 300: 60, 60: 1}
+    pane_pid_to_session = {50: "sA"}  # only 100's chain reaches a pane PID
+
+    status = claude_sessions.status_by_tmux_session(
+        tmp_path, pane_pid_to_session, ppid_of=ppid.get, starttime_of=starttimes.get
+    )
+    assert status == {"sA": "busy"}  # gamma omitted (not held in any tmux pane)
 
 
 def test_proc_readers_on_this_process():

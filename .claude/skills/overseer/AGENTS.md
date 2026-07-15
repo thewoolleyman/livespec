@@ -313,21 +313,33 @@ conformance checks, or any other repo.
   (`Supervisor._pane_settled`) before injecting/restarting an apparently-idle
   track: two captures `_SETTLE_DELAY` apart that DIFFER ⇒ actively working ⇒
   treated as `working` and skipped. Over-firing busy is the SAFE direction.
-- **Background-shell detection (`claude_sessions.has_active_subshell`) — process
-  tree, NOT pane text.** A session can sit at an empty `❯` prompt while a
-  `Bash(run_in_background)` command runs — the pane looks idle but the session is
-  working; restarting it (`respawn-pane -k`) would kill live background work. So
-  `busy` is ALSO true when the tmux pane's process (`tmuxio.pane_pid`) has a
-  DESCENDANT shell (`sh`/`bash`/`zsh`/…): a background command runs as a shell
-  subprocess of the runtime, while persistent helpers (MCP servers) are `node`,
-  never shells. This is deterministic and runtime-agnostic (Claude AND Codex —
-  Codex is not in Claude's session registry, so a process-tree check is the only
-  signal that covers it). The `/proc` readers (`proc_children`/`proc_comm`) are
-  injected into `Supervisor` (`children_of`/`comm_of`) so the beside-tests fake
-  them. When a background shell is the SOLE reason a track isn't idle, the row
-  `note` is `"background shell"` so the operator sees why. (Claude's registry also
-  carries a `status: "shell"`, but that is Claude-only; the process check is the
-  cross-runtime one.)
+- **Claude registry `status` GOVERNS busy for an adopted Claude session
+  (`claude_sessions.status_by_tmux_session`; 2026-07-15).** Claude Code writes a live
+  `status` (`busy` / `idle` / `waiting`) into each session's registry file
+  (`~/.claude/sessions/<pid>.json`). For a session the daemon has adopted, that
+  self-report is the AUTHORITATIVE busy signal, recomputed each tick into
+  `Supervisor._claude_status` (`{tmux_session: status}`) by `_refresh_claude_status`
+  and read in `evaluate`. It fixed two symmetric detection bugs the shell-walk alone
+  could not:
+  - **false-idle (sub-agent).** A session running an in-process sub-agent (Task tool)
+    spawns NO descendant shell and need not repaint the pane, so `has_active_subshell`
+    AND `is_busy` both miss it — but Claude reports `status: "busy"`, so the daemon
+    marks it `working` (note `"sub-agent (Claude busy)"`).
+  - **false-working (lingering background shell).** A backgrounded `sleep`/poll leaves a
+    descendant shell forever; the shell-walk flagged every such session as
+    `working (background shell)` even when it was idle at a user prompt. When Claude
+    reports `idle`/`waiting`, the daemon now IGNORES the shell-walk for that session.
+- **Background-shell detection (`claude_sessions.has_active_subshell`) — the
+  runtime-agnostic FALLBACK.** A descendant shell (`sh`/`bash`/`zsh`/…) under the pane
+  process still marks a session busy — but ONLY for a session with no Claude registry
+  entry (Codex) or one Claude confirms is `busy` (`shell_counts` in `evaluate`). This is
+  the only busy signal that covers Codex (not in Claude's registry). Its ORIGINAL job —
+  blocking a force-restart of a live `Bash(run_in_background)` build — is moot now that
+  the cardinal rule forbids restart without a `ready` declaration; for Claude the more
+  accurate registry status supersedes it. The `/proc` readers
+  (`proc_children`/`proc_comm`) are injected (`children_of`/`comm_of`) so the beside-tests
+  fake them. When a background shell is the SOLE reason a track isn't idle, the row `note`
+  is `"background shell"`.
 - **Idle-input detection (`signals.is_idle_input`).** The real idle prompt is an
   EMPTY `❯` between two horizontal rule lines (`────…`), statusline + hint below
   — NOT a `╭─╮` box with `? for shortcuts` (verified live 2026-07-13). Detect
