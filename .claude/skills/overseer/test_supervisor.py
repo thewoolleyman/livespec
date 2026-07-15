@@ -223,11 +223,11 @@ def _key_for(repo, topic):
 
 
 def _sup(tmp_path, fake, **kwargs):
+    kwargs.setdefault("out", _io.StringIO())
     return supervisor.Supervisor(
         tmux=fake,
         store_path=str(tmp_path / "map.jsonl"),
         stamp_path=str(tmp_path / "stamps.json"),
-        out=_io.StringIO(),
         now=lambda: 1000.0,
         sleep=lambda _s: None,
         **kwargs,
@@ -1898,6 +1898,117 @@ def test_needs_attention_predicate_covers_every_attention_status():
     for status in ("idle", "working", "warned", "winding-down", "settling", "unassigned"):
         row = supervisor.RowView(topic="t", repo="/r", tmux="s", ctx=99, status=status)
         assert supervisor.needs_attention(row) is False
+
+
+# --------------------------------------------------------------------------- #
+# Row color: the operator scans the live table by hue. Green = working, yellow =
+# idle/waiting-on-human, red = broken, default (uncolored) = unassigned. Color is
+# TTY-only, so it never corrupts piped `list` output or the beside-tests' plain
+# StringIO — the render gates on `out.isatty()`.
+# --------------------------------------------------------------------------- #
+
+_GREEN = "\x1b[32m"
+_YELLOW = "\x1b[33m"
+_RED = "\x1b[31m"
+_RESET = "\x1b[0m"
+
+
+class _TtyOut:
+    """A StringIO-alike that reports as a TTY, so `render` emits ANSI color (the
+    real daemon writes to a tmux pane, which is a TTY). Duck-typed on purpose —
+    the overseer only calls `write` / `flush` / `isatty`, and tests read via
+    `getvalue`."""
+
+    def __init__(self):
+        self._buf = _io.StringIO()
+
+    def write(self, text):
+        return self._buf.write(text)
+
+    def flush(self):
+        self._buf.flush()
+
+    def isatty(self):
+        return True
+
+    def getvalue(self):
+        return self._buf.getvalue()
+
+
+def _row_line(out, topic):
+    """The single rendered line for TOPIC (the data row, not the header)."""
+    return next(ln for ln in out.splitlines() if topic in ln and "Topic" not in ln)
+
+
+def test_tty_render_tints_working_rows_green(tmp_path):
+    sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
+    view = supervisor.RowView(topic="wk", repo="/r", tmux="s", ctx=50, status="working")
+    line = _row_line(_render_of(sup, [view]), "wk")
+    assert line.startswith(_GREEN)
+    assert line.endswith(_RESET)
+
+
+def test_tty_render_tints_idle_and_waiting_rows_yellow(tmp_path):
+    """Idle and `blocked:human` (waiting on a human decision) both read yellow — a
+    human should glance at them (maintainer feature request 2026-07-15)."""
+    for status in ("idle", "blocked:human", "warned", "danger"):
+        sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
+        view = supervisor.RowView(topic="yl", repo="/r", tmux="s", ctx=15, status=status)
+        line = _row_line(_render_of(sup, [view]), "yl")
+        assert line.startswith(_YELLOW), status
+        assert line.endswith(_RESET), status
+
+
+def test_tty_render_tints_broken_rows_red(tmp_path):
+    for status in ("session-gone", "not-claude"):
+        sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
+        view = supervisor.RowView(topic="br", repo="/r", tmux="s", ctx=None, status=status)
+        line = _row_line(_render_of(sup, [view]), "br")
+        assert line.startswith(_RED), status
+
+
+def test_tty_render_leaves_unassigned_rows_uncolored(tmp_path):
+    """`unassigned` is background noise, not a track that wants attention — it keeps
+    the terminal default color, never a tint."""
+    sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
+    view = supervisor.RowView(topic="un", repo="/r", tmux=None, ctx=None, status="unassigned")
+    line = _row_line(_render_of(sup, [view]), "un")
+    assert "\x1b[3" not in line  # no SGR color introducer at all
+
+
+def test_tty_render_leaves_header_and_separator_uncolored(tmp_path):
+    sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
+    view = supervisor.RowView(topic="wk", repo="/r", tmux="s", ctx=50, status="working")
+    out = _render_of(sup, [view])
+    header = next(ln for ln in out.splitlines() if "Status" in ln and "Topic" in ln)
+    assert "\x1b[3" not in header
+
+
+def test_non_tty_render_is_plain_text(tmp_path):
+    """A StringIO (and any piped `list`) is not a TTY, so no color leaks into it —
+    this is what keeps every existing `row.split()` assertion valid."""
+    sup = _sup(tmp_path, FakeTmux())  # default out is a plain StringIO
+    view = supervisor.RowView(topic="wk", repo="/r", tmux="s", ctx=50, status="working")
+    line = _row_line(_render_of(sup, [view]), "wk")
+    assert "\x1b[3" not in line
+    assert line.split() == ["working", "wk", "s", "50%", "r"]
+
+
+def test_color_wraps_the_whole_line_so_alignment_is_preserved(tmp_path):
+    """The ANSI codes wrap the padded line, never a cell — so once stripped, a green
+    working row aligns to the same columns as an uncolored one."""
+    sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
+    views = [
+        supervisor.RowView(topic="alpha", repo="/r", tmux="s1", ctx=50, status="working"),
+        supervisor.RowView(topic="beta", repo="/r", tmux="s2", ctx=None, status="unassigned"),
+    ]
+    out = _render_of(sup, views)
+    green = _row_line(out, "alpha")
+    plain = _row_line(out, "beta")
+    stripped = green[len(_GREEN) : -len(_RESET)]
+    # Both data rows share the Topic column start, proving the color did not shift
+    # the padded columns.
+    assert stripped.index("alpha") == plain.index("beta")
 
 
 # --------------------------------------------------------------------------- #

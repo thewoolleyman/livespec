@@ -270,6 +270,19 @@ conformance checks, or any other repo.
   **`rename_window` MUST also set `automatic-rename off`** — tmux otherwise re-derives a
   window's name from its foreground command on the next tick and silently overwrites the
   badge; pinning is part of renaming, not an optional extra.
+- **Row color is a TTY-only, whole-LINE affordance (`_row_color` / `_STATUS_COLOR`;
+  2026-07-15).** `render` tints each DATA row by its raw status so the operator scans
+  the list by hue — green = actively working (`working`/`winding-down`/`restarting`/
+  `settling`), yellow = idle / waiting on a human (`blocked:human`) / low on context
+  (`warned`/`danger`), red = broken (`session-gone`/`not-claude`), default (uncolored,
+  terminal white/gray) = `unassigned` and any unmapped status. Two invariants keep it
+  safe: (a) the ANSI codes wrap the **already-padded whole line**, never a cell, so the
+  column widths — still computed on plain-text `len` — stay aligned; and (b) color is
+  emitted **only to a TTY** (`render` gates on `out.isatty()`), so a piped
+  `supervisor.py list` and the beside-tests' plain `StringIO` get NO escape codes and
+  every `row.split()` assertion stays valid. The header + separator are never tinted.
+  If you add a status token, add it to `_STATUS_COLOR` too (an unmapped status is legal
+  — it just renders in the default color).
 - **`command tmux` semantics (`tmuxio.py`).** Every tmux call is
   `subprocess.run([...], shell=False)` with an argv LIST — no shell is spawned,
   so a user's zsh `tmux` function shim is bypassed (the `command tmux` effect).

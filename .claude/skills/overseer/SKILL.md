@@ -167,9 +167,12 @@ That one command (a self-invokable `uv` script) does everything deterministicall
    yet (a known gap).
 
 - The daemon's **stdout is the live table** in the top pane (it clears + re-renders
-  each tick). Its **stderr → `tmp/overseer/daemon.log`** — the channel this bottom
-  pane reads to relay blocked/danger alerts. `overseer-start`'s own progress
-  (pane created, sessions adopted) prints to its stderr as it runs.
+  each tick). Each data row is **color-coded by status** so the operator scans by hue:
+  green = working, yellow = idle / waiting on a human / low on context, red = broken
+  (`session-gone` / `not-claude`), default (white/gray) = `unassigned`. (Color is
+  TTY-only, so a piped `list` stays plain.) Its **stderr → `tmp/overseer/daemon.log`**
+  — the channel this bottom pane reads to relay blocked/danger alerts. `overseer-start`'s
+  own progress (pane created, sessions adopted) prints to its stderr as it runs.
 - `overseerd` takes one optional argument, **`--warn-percent N`** — the
   daemon-wide default remaining-context % at which the FIRST wrap-up fires
   (default **50**). `overseer-start` accepts the same `--warn-percent N` and
