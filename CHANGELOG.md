@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.6](https://github.com/thewoolleyman/livespec/compare/v0.11.5...v0.11.6) (2026-07-15)
+
+
+### Bug Fixes
+
+* **overseer:** label the NEEDS YOU coordinates and include the tmux session ([3afbeda](https://github.com/thewoolleyman/livespec/commit/3afbeda104b9c061928a94a81b419e772d294d15))
+
 ## [0.11.5](https://github.com/thewoolleyman/livespec/compare/v0.11.4...v0.11.5) (2026-07-14)
 
 
