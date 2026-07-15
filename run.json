@@ -267,7 +267,7 @@
     "kind": "running"
   },
   "status_updated_at": "2026-07-15T19:31:52.639323746Z",
-  "last_event_at": "2026-07-15T19:32:00.077159695Z",
+  "last_event_at": "2026-07-15T19:32:06.149778993Z",
   "pending_control": null,
   "checkpoints": [
     {
@@ -367,9 +367,9 @@
       }
     },
     {
-      "seq": 0,
+      "seq": 38,
       "checkpoint": {
-        "timestamp": "2026-07-15T19:32:00.757254566Z",
+        "timestamp": "2026-07-15T19:32:06.149641917Z",
         "current_node": "took_fallback",
         "completed_nodes": [
           "start",
@@ -378,38 +378,24 @@
         ],
         "node_retries": {},
         "context_values": {
-          "thread.start.current_node": "emit",
-          "internal.retry_count.emit": 0,
-          "failure_signature": "",
-          "internal.retry_count.start": 0,
-          "outcome": "succeeded",
-          "thread.emit.current_node": "took_fallback",
-          "internal.retry_count.took_fallback": 0,
-          "internal.run_id": "01KXKM71PM7ETJF2MY6QWQE1MH",
-          "failure_class": "",
-          "current_node": "took_fallback",
-          "internal.node_visit_count": 1,
           "command.output": "blob://sha256/96fbdc266f8138b9aeca0b92a15e50d79f8a6d132fdd45b975bb8d454e8e1eb9",
-          "internal.work_dir": "/workspace/livespec",
-          "internal.thread_id": "emit",
+          "internal.retry_count.emit": 0,
+          "internal.node_visit_count": 1,
+          "failure_class": "",
+          "internal.retry_count.took_fallback": 0,
+          "outcome": "succeeded",
+          "graph.goal": "prove whether a condition string template-expands inputs",
+          "internal.retry_count.start": 0,
+          "thread.emit.current_node": "took_fallback",
+          "internal.run_id": "01KXKM71PM7ETJF2MY6QWQE1MH",
           "internal.fidelity": "compact",
-          "graph.goal": "prove whether a condition string template-expands inputs"
+          "internal.work_dir": "/workspace/livespec",
+          "thread.start.current_node": "emit",
+          "failure_signature": "",
+          "current_node": "took_fallback",
+          "internal.thread_id": "emit"
         },
         "node_outcomes": {
-          "took_fallback": {
-            "status": "succeeded",
-            "context_updates": {
-              "command.output": "blob://sha256/96fbdc266f8138b9aeca0b92a15e50d79f8a6d132fdd45b975bb8d454e8e1eb9"
-            },
-            "notes": "Script completed: echo RESULT_TOOK_FALLBACK_EDGE; exit 0",
-            "usage": null,
-            "timing": {
-              "wall_time_ms": 0,
-              "inference_time_ms": 0,
-              "tool_time_ms": 650,
-              "active_time_ms": 650
-            }
-          },
           "emit": {
             "status": "succeeded",
             "context_updates": {
@@ -427,19 +413,87 @@
           "start": {
             "status": "succeeded",
             "usage": null
+          },
+          "took_fallback": {
+            "status": "succeeded",
+            "context_updates": {
+              "command.output": "blob://sha256/96fbdc266f8138b9aeca0b92a15e50d79f8a6d132fdd45b975bb8d454e8e1eb9"
+            },
+            "notes": "Script completed: echo RESULT_TOOK_FALLBACK_EDGE; exit 0",
+            "usage": null,
+            "timing": {
+              "wall_time_ms": 0,
+              "inference_time_ms": 0,
+              "tool_time_ms": 650,
+              "active_time_ms": 650
+            }
           }
         },
         "next_node_id": "exit",
+        "git_commit_sha": "57897f6b0dc823ecee25b390a0d28aa6ab6e5185",
         "node_visits": {
+          "emit": 1,
           "start": 1,
-          "took_fallback": 1,
-          "emit": 1
+          "took_fallback": 1
         }
       },
-      "diff": {}
+      "diff": {
+        "summary": {
+          "files_changed": 0,
+          "additions": 0,
+          "deletions": 0
+        }
+      }
     }
   ],
-  "conclusion": null,
+  "conclusion": {
+    "timestamp": "2026-07-15T19:32:06.198480840Z",
+    "status": "succeeded",
+    "timing": {
+      "wall_time_ms": 13523,
+      "inference_time_ms": 0,
+      "tool_time_ms": 992,
+      "active_time_ms": 992
+    },
+    "final_git_commit_sha": "57897f6b0dc823ecee25b390a0d28aa6ab6e5185",
+    "stages": [
+      {
+        "stage_id": "start",
+        "stage_label": "start",
+        "timing": {
+          "wall_time_ms": 0,
+          "inference_time_ms": 0,
+          "tool_time_ms": 0,
+          "active_time_ms": 0
+        },
+        "retries": 0
+      },
+      {
+        "stage_id": "emit",
+        "stage_label": "emit",
+        "timing": {
+          "wall_time_ms": 355,
+          "inference_time_ms": 0,
+          "tool_time_ms": 342,
+          "active_time_ms": 342
+        },
+        "retries": 0
+      },
+      {
+        "stage_id": "took_fallback",
+        "stage_label": "took_fallback",
+        "timing": {
+          "wall_time_ms": 676,
+          "inference_time_ms": 0,
+          "tool_time_ms": 650,
+          "active_time_ms": 650
+        },
+        "retries": 0
+      }
+    ],
+    "total_retries": 0,
+    "diff": {}
+  },
   "sandbox": {
     "kind": "ready",
     "plan": {
@@ -466,67 +520,6 @@
   "superseded_by": null,
   "pending_interviews": {},
   "stages": {
-    "took_fallback@1": {
-      "first_event_seq": 31,
-      "prompt": null,
-      "response": null,
-      "completion": null,
-      "provider_used": null,
-      "diff": null,
-      "script_invocation": {
-        "script": "echo RESULT_TOOK_FALLBACK_EDGE; exit 0",
-        "command": "exec 2>&1\necho RESULT_TOOK_FALLBACK_EDGE; exit 0",
-        "language": "shell"
-      },
-      "script_timing": null,
-      "parallel_results": null,
-      "output": null,
-      "started_at": "2026-07-15T19:32:00.075648008Z",
-      "handler": "command",
-      "usage": {
-        "input_tokens": 0,
-        "output_tokens": 0,
-        "total_tokens": 0,
-        "reasoning_tokens": 0,
-        "cache_read_tokens": 0,
-        "cache_write_tokens": 0
-      },
-      "state": "running"
-    },
-    "start@1": {
-      "first_event_seq": 17,
-      "prompt": null,
-      "response": null,
-      "completion": {
-        "outcome": "succeeded",
-        "notes": null,
-        "failure_reason": null,
-        "timestamp": "2026-07-15T19:31:54.345613157Z"
-      },
-      "provider_used": null,
-      "diff": null,
-      "script_invocation": null,
-      "script_timing": null,
-      "parallel_results": null,
-      "output": null,
-      "started_at": "2026-07-15T19:31:54.345498122Z",
-      "handler": "start",
-      "timing": {
-        "wall_time_ms": 0,
-        "inference_time_ms": 0,
-        "tool_time_ms": 0,
-        "active_time_ms": 0
-      },
-      "usage": {
-        "input_tokens": 0,
-        "output_tokens": 0,
-        "total_tokens": 0,
-        "reasoning_tokens": 0,
-        "cache_read_tokens": 0,
-        "cache_write_tokens": 0
-      },
-      "state": "succeeded"
-    },
     "emit@1": {
       "first_event_seq": 21,
       "prompt": null,
@@ -564,6 +557,122 @@
         "inference_time_ms": 0,
         "tool_time_ms": 342,
         "active_time_ms": 342
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "exit@1": {
+      "first_event_seq": 41,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": null,
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:32:06.149778993Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": null,
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:32:06.149756763Z",
+      "handler": "exit",
+      "timing": {
+        "wall_time_ms": 0,
+        "inference_time_ms": 0,
+        "tool_time_ms": 0,
+        "active_time_ms": 0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "took_fallback@1": {
+      "first_event_seq": 31,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": "Script completed: echo RESULT_TOOK_FALLBACK_EDGE; exit 0",
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:32:00.752377895Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": {
+        "script": "echo RESULT_TOOK_FALLBACK_EDGE; exit 0",
+        "command": "exec 2>&1\necho RESULT_TOOK_FALLBACK_EDGE; exit 0",
+        "language": "shell"
+      },
+      "script_timing": {
+        "output": "blob://sha256/96fbdc266f8138b9aeca0b92a15e50d79f8a6d132fdd45b975bb8d454e8e1eb9",
+        "exit_code": 0,
+        "duration_ms": 650,
+        "termination": "exited",
+        "output_bytes": 26,
+        "live_streaming": true
+      },
+      "parallel_results": null,
+      "output": null,
+      "output_bytes": 26,
+      "live_streaming": true,
+      "termination": "exited",
+      "started_at": "2026-07-15T19:32:00.075648008Z",
+      "handler": "command",
+      "timing": {
+        "wall_time_ms": 676,
+        "inference_time_ms": 0,
+        "tool_time_ms": 650,
+        "active_time_ms": 650
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "start@1": {
+      "first_event_seq": 17,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": null,
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:31:54.345613157Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": null,
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:31:54.345498122Z",
+      "handler": "start",
+      "timing": {
+        "wall_time_ms": 0,
+        "inference_time_ms": 0,
+        "tool_time_ms": 0,
+        "active_time_ms": 0
       },
       "usage": {
         "input_tokens": 0,
