@@ -89,23 +89,94 @@ images + the codex-acp auto-bump automation), AND Phase 2 (livespec `ci.yml` cut
 the self-hosted runner + baked image) are all functionally COMPLETE and live-exercised.**
 Phase 2's cutover is proven GREEN end-to-end on master (see SESSION 2026-07-15 below).
 
-**Phase 3 (fleet fan-out) is now UNDERWAY — `livespec-driver-claude` is the first target
-(maintainer chose "a Python repo first"), and it is HARD-GATED on ONE maintainer click.**
-driver-claude's per-job disposition is fully re-derived (see SESSION 2026-07-15 (cont.)
-below) but no runner can be minted for it until it is added to the `thewoolleyman-ci-runners`
-GitHub App installation — an OWNER-ONLY UI action (the `repo`-scoped `gh` token 403s on the
-`PUT /user/installations/.../repositories/...` API path). **→ The click:**
-https://github.com/settings/installations/146033367 → "Repository access" → add
-`thewoolleyman/livespec-driver-claude` → Save. After that, the rest is autonomous (supervisor
-`--repos` edit + restart when livespec CI is quiescent → verify runners register → cutover PR →
-verify green live). Loose ends: (a) the same LEDGER-HYGIENE one — `.3`/`.4` are
-blocked-by the intentionally-open `.1` (P-host), and `.5` (Phase 2) is in turn blocked-by
-`.3`/`.4`, so all three are functionally done but ledger-OPEN; nothing technical is
-blocked; (b) two NON-blocking Phase-2 performance follow-ons journaled on `.5` — the uv
-cache is still per-container-cold, and the mise-data-dir workaround wants a durable
-image/hook-layer HOME fix. See NEXT ACTIONS.
+**Phase 3 (fleet fan-out) is UNDERWAY — 2 of 8 repos cut over (`livespec` pilot +
+`livespec-driver-claude`); the full add-a-repo procedure is now PROVEN and the remaining 6
+are mechanical repetition of it.** The maintainer-only App-installation gate is CLEARED for
+ALL 8 fleet repos in one pass (granted via the authenticated browser 2026-07-16 — no further
+clicks needed for any Phase-3 repo). The runner-slot model was reduced from 18→**9 per repo**
+(maintainer-chosen 2026-07-16) so the common 2-repo CI overlap caps at one-per-core on the
+18-core host. driver-claude's cutover is MERGED + proven green live (livespec-driver-claude
+#183, 59 pass / 0 fail, on its own 9 self-hosted runners). See SESSION 2026-07-16 below for
+the PROVEN 3-STEP add-a-repo procedure, the mint-leak + orphan-runner gotchas, and the
+remaining-repo plan.
 
-**SESSION 2026-07-15 (cont.) — Phase 3 START (driver-claude) + routing-check hardening:**
+**Actionable next step — fan the cutover out to the remaining 6 fleet repos** using the proven
+3-step procedure (App-scope DONE for all 8; per repo: provision instance dirs at 9 slots →
+add to supervisor `--repos` → cut over ci.yml → verify green live). Recommended batching:
+provision + add the 4 straightforward Python repos (`livespec-driver-codex`,
+`livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`, `livespec-runtime`) in ONE
+supervisor restart, then cut over each ci.yml SERIALLY (one matrix firing at a time avoids
+re-oversubscribing). Two need special handling: `livespec-console-beads-fabro` is RUST (its
+cutover uses the `python-rust` image, not `python-v0.43.2`, and a different check set), and
+`livespec-orchestrator-beads-fabro` hosts the PRIVILEGED gate-runner lane — adding a contained
+`local-ci` lane onto that host is a trust-tier decision to surface before doing it. Loose ends:
+(a) the LEDGER-HYGIENE one — `.3`/`.4` blocked-by the intentionally-open `.1` (P-host),
+`.5` blocked-by `.3`/`.4`; all functionally done but ledger-OPEN; nothing technical blocked;
+(b) two NON-blocking Phase-2 perf follow-ons on `.5` (per-container-cold uv cache; durable
+mise-data-dir HOME fix); (c) NEW recreatability gap — the supervisor's installed `--repos`
+list + `--slots 9` DIVERGE from the dev-tooling source unit; the 3-step add-repo procedure is
+not yet ONE recreatable artifact (see SESSION 2026-07-16). See NEXT ACTIONS.
+
+**SESSION 2026-07-16 — Phase 3: all 8 App grants + driver-claude cut over LIVE + slots→9.**
+- **ALL 8 fleet repos granted in the `thewoolleyman-ci-runners` App installation (one pass,
+  via the authenticated browser — no more clicks for any Phase-3 repo).** The API path is
+  owner-only (the `repo`-scoped `gh` token 403s "You do not have permission to modify this
+  app"), so this is genuinely a browser/UI action. Verified server-side: `GET
+  /installation/repositories` → `repository_selection=selected`, 8 repos.
+- **driver-claude cutover MERGED + PROVEN GREEN LIVE (livespec-driver-claude #183; 59 pass /
+  0 fail).** Its `check` matrix + `check-doctor-static` + `check-red-green-replay` ran in
+  `ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2` on driver-claude's own
+  self-hosted runners; `ci-green` + `export-telemetry` stayed `ubuntu-latest`; `merge_group`
+  dropped. One container-safety fix beyond the livespec template: `check-doctor-static`
+  derives `LIVESPEC_CORE_PLUGIN_ROOT` from `$GITHUB_WORKSPACE` (the in-container mount), NOT the
+  `github.workspace` context (a HOST path in container jobs). Routing verified PASS by
+  `check-self-hosted-routing` (driver-claude's pin caught up to v0.12.0, so the check is in its
+  matrix and self-validated the cutover).
+- **PROVEN 3-STEP ADD-A-REPO PROCEDURE (adding a repo to the self-hosted pool needs all three —
+  the App grant ALONE is NOT enough):**
+  1. **App-installation scope** — add the repo at `github.com/settings/installations/146033367`
+     (browser; owner-only). DONE for all 8.
+  2. **Provision per-instance runner roots** —
+     `sudo env CI_RUNNER_REPOSLUGS="thewoolleyman-<repo>" CI_RUNNER_SLOTS=9 bash
+     /data/projects/livespec-dev-tooling/ci-runner/provision-ci-runner.sh` (idempotent; creates
+     `/home/ci-runner/runners/<reposlug>-<n>/` with hard-linked bin/externals). **SKIPPING THIS
+     IS WHAT CAUSED THE MINT-LEAK** (below).
+  3. **Supervisor `--repos`** — edit `/etc/systemd/system/ci-runner-supervisor.service`
+     ExecStart `--repos "<space-separated repos>"`, `daemon-reload`, `restart` WHEN the host is
+     quiescent (no CI jobs running — a restart with `KillMode=control-group` would red in-flight
+     jobs). Then verify the repo's 9 runners come `online` (journal: "√ Connected to GitHub").
+- **GOTCHA #1 — the mint-leak.** Adding driver-claude to `--repos` WITHOUT step 2 made the
+  runner units fail instantly (`ExecStartPre rm -rf .../_work` → `status=200/CHDIR`, the
+  instance dir did not exist), and the supervisor's tight re-mint loop registered **752
+  offline runners in ~30s** (each `generate-jitconfig` registers before the process dies).
+  Fix: revert `--repos`, `reset-failed` the units, delete the 752 via
+  `DELETE /repos/<repo>/actions/runners/<id>` (paginate + `xargs -P 5`), run step 2, re-add.
+  Offline registrations are harmless to job assignment (jobs go to `online` runners) but must
+  be cleaned. **Prevention: always run steps 2→3 in order.**
+- **GOTCHA #2 — slot reduction orphans high-numbered runners.** Reducing `--slots` 18→9 and
+  restarting does NOT stop the old slots 10–18 units (they are independent systemd units, not
+  supervisor children). After a reduction, `systemctl stop runner@<reposlug>-{10..18}.service`
+  for each repo, then `reset-failed`. (Adding a repo has no such issue — its slots 1–9 start
+  fresh.)
+- **SLOT MODEL → 9 per repo (maintainer-chosen).** The 2-repo overlap (livespec +
+  driver-claude, both firing full matrices) hit 36 concurrent jobs on 18 cores (load ~71;
+  survived — 0 failures, memory fine). GitHub PERSONAL-account runners are repo-scoped (no
+  shared pool without a GitHub org), so "18 slots × N repos" can't fit 18 cores as the fan-out
+  grows. `--slots 9` caps the COMMON 2-repo overlap at 18 = one-per-core; rarer 3+ overlaps
+  briefly oversubscribe and the resource-health gate throttles. Cost: each repo's matrix
+  parallelism halves (CI ~2× slower per repo), livespec included. Applied + both lanes verified
+  at 9 online runners each (18 total); all stale registrations cleaned.
+- **RECREATABILITY GAP (follow-up).** The installed supervisor unit now carries a growing
+  `--repos` list + `--slots 9` that DIVERGE from the dev-tooling source
+  (`ci-runner/supervisor/ci-runner-supervisor.service`, still `--repos livespec --slots 18`),
+  and the 3-step add-repo procedure is not captured as ONE recreatable artifact. Proper fix: a
+  committed host-config (repos + slots) that drives BOTH the instance-dir provisioning and the
+  supervisor `--repos`, so "which repos this host serves" is recreatable — not hand-edited
+  systemd state. File as a `livespec-dev-tooling` work-item citing this session.
+
+**SESSION 2026-07-15 (cont.) — Phase 3 START (driver-claude) + routing-check hardening
+[SUPERSEDED by SESSION 2026-07-16 — the App-installation click is DONE and driver-claude is cut
+over; kept for the reasoning trail]:**
 - **Phase 3 fan-out began at `livespec-driver-claude` (first target). HARD-GATED on a
   maintainer click; disposition fully re-derived.** The driver-claude cutover is ready to
   drive the moment its runners exist, but runner provisioning is blocked: the
