@@ -89,14 +89,65 @@ images + the codex-acp auto-bump automation), AND Phase 2 (livespec `ci.yml` cut
 the self-hosted runner + baked image) are all functionally COMPLETE and live-exercised.**
 Phase 2's cutover is proven GREEN end-to-end on master (see SESSION 2026-07-15 below).
 
-**So the actionable next step is now Phase 3 — fan the Phase-2 cutover out to the other
-fleet members**, re-deriving each repo's per-job disposition from ITS OWN workflows (the
-fleet is non-uniform). Loose ends: (a) the same LEDGER-HYGIENE one — `.3`/`.4` are
+**Phase 3 (fleet fan-out) is now UNDERWAY — `livespec-driver-claude` is the first target
+(maintainer chose "a Python repo first"), and it is HARD-GATED on ONE maintainer click.**
+driver-claude's per-job disposition is fully re-derived (see SESSION 2026-07-15 (cont.)
+below) but no runner can be minted for it until it is added to the `thewoolleyman-ci-runners`
+GitHub App installation — an OWNER-ONLY UI action (the `repo`-scoped `gh` token 403s on the
+`PUT /user/installations/.../repositories/...` API path). **→ The click:**
+https://github.com/settings/installations/146033367 → "Repository access" → add
+`thewoolleyman/livespec-driver-claude` → Save. After that, the rest is autonomous (supervisor
+`--repos` edit + restart when livespec CI is quiescent → verify runners register → cutover PR →
+verify green live). Loose ends: (a) the same LEDGER-HYGIENE one — `.3`/`.4` are
 blocked-by the intentionally-open `.1` (P-host), and `.5` (Phase 2) is in turn blocked-by
 `.3`/`.4`, so all three are functionally done but ledger-OPEN; nothing technical is
 blocked; (b) two NON-blocking Phase-2 performance follow-ons journaled on `.5` — the uv
 cache is still per-container-cold, and the mise-data-dir workaround wants a durable
 image/hook-layer HOME fix. See NEXT ACTIONS.
+
+**SESSION 2026-07-15 (cont.) — Phase 3 START (driver-claude) + routing-check hardening:**
+- **Phase 3 fan-out began at `livespec-driver-claude` (first target). HARD-GATED on a
+  maintainer click; disposition fully re-derived.** The driver-claude cutover is ready to
+  drive the moment its runners exist, but runner provisioning is blocked: the
+  `thewoolleyman-ci-runners` GitHub App (the one the supervisor uses to mint JIT runner
+  tokens) is **"selected repositories"** scope, covering only `thewoolleyman/livespec` +
+  `thewoolleyman/livespec-orchestrator-beads-fabro` (verified read-only via
+  `GET /installation/repositories`). `generate-jitconfig` would 403/404 for driver-claude
+  until it is added. I attempted the API path (`PUT /user/installations/146033367/repositories/1265579339`)
+  and it 403'd — "You do not have permission to modify this app" — so this is genuinely an
+  **owner-only UI click** (same gate the codex-acp provisioning hit). **→ THE CLICK:**
+  https://github.com/settings/installations/146033367 → "Repository access" → add
+  `livespec-driver-claude` → Save.
+  - **driver-claude's disposition (non-uniform vs livespec — re-derived from its OWN ci.yml):**
+    it has a SINGLE `check` matrix (~54 targets) rather than livespec's split python/metadata,
+    plus two dedicated own-jobs (`check-doctor-static`, which checks out livespec CORE at the
+    pinned ref inside the container; `check-red-green-replay`, full history). **MOVE → self-hosted:**
+    the `check` matrix (incl. `check-e2e-cli`, which runs the hermetic `LIVESPEC_E2E_HARNESS=mock`
+    tier — NO API key, so it moves cleanly), `check-doctor-static`, `check-red-green-replay`.
+    **STAY-HOSTED:** `ci-green` (sole branch-protection context; verified — only required check)
+    and `export-telemetry` (Honeycomb ingest secret, push-only). **Drop** the vestigial
+    `merge_group:` trigger (verified `required_merge_queue: null` — no merge queue). Carry the
+    live-learned template forward: `MISE_DATA_DIR=/root/.local/share/mise`, `github.token` on
+    every moved job, the `CI_RUNNER_LABELS` fallback var (unset ⇒ defaults to self-hosted — NB
+    neither livespec NOR driver-claude has the var set, which is correct), node-on-PATH npm
+    prelude, `mise trust`.
+  - **POST-CLICK SEQUENCE (autonomous):** (1) edit the supervisor systemd unit's `--repos` to
+    `"thewoolleyman/livespec thewoolleyman/livespec-driver-claude"` and restart WHEN livespec CI
+    is quiescent (host mutation, authorized); (2) verify driver-claude runners register; (3) open
+    the cutover PR and verify green LIVE on the fresh runners (the "done means live-exercised"
+    bar); (4) advance the ledger + this handoff.
+- **Routing-check hardening — `livespec-dev-tooling` #413 (auto-merge REBASE armed, 55/57 green
+  at hand-off).** The fleet-wide `check-self-hosted-routing` guard (0.48.0) parsed the top-level
+  trigger key only as an unquoted `on:`, so a workflow quoting the key (`"on":` / `'on':` —
+  legitimate, YAML 1.1 reads bare `on` as boolean `true`) had its triggers read as EMPTY: a
+  forbidden trigger under a quoted key + a `local-ci` runner went UNDETECTED (a false negative in
+  a security-adjacent guard). The T9 shell backstop already handled the quoted forms; this brings
+  the static Python check to parity. Fix: broadened `_TOP_ON_LINE` to
+  `^(?P<q>["']?)on(?P=q):(?P<value>.*)$` (re.IGNORECASE) — optionally-quoted, matching-quote,
+  case-insensitive. Red-Green-Replay: one check-level + two parser-level tests, all failing pre-fix.
+  NB driver-claude's dev-tooling pin PREDATES 0.48.0, so `check-self-hosted-routing` is not yet in
+  its CI matrix — it will land on the next pin bump (auto-reconciled); until then T9 at the
+  supervisor is driver-claude's routing backstop.
 
 **SESSION 2026-07-15 LANDED — read first:**
 - **Phase 2 (`.5`) — livespec `ci.yml` CUT OVER to the self-hosted runner + baked image —
@@ -359,14 +410,20 @@ NEXT ACTION #1 REWRITTEN AGAIN 2026-07-14 after the runner pool was made concurr
    `mise install` blows the anon API rate limit), `GITHUB_TOKEN`/`GH_TOKEN: ${{ github.token }}`
    on every moved matrix job (the shared-IP anon-limit defense-in-depth), the `CI_RUNNER_LABELS`
    fallback var, the node-on-PATH npm prelude, `mise trust`, drop `merge_group` where it is
-   dead. **Runner-provisioning prerequisite:** the self-hosted runners are registered for
-   `thewoolleyman/livespec` ONLY (supervisor `--repos thewoolleyman/livespec`); each target
-   repo needs runners registered for it — a supervisor/systemd host change (register more repos
-   + bump slots), which is a HOST MUTATION on the shared host and needs explicit maintainer
-   authorization, like Phase 0 did. The routing
+   dead. **Runner-provisioning prerequisite (TWO parts, learned live at the driver-claude
+   start — SESSION 2026-07-15 (cont.)):** (i) a **maintainer-only App-installation click** —
+   the `thewoolleyman-ci-runners` App is "selected repositories" scope, so EACH target repo
+   must first be added to it at https://github.com/settings/installations/146033367 (the
+   `repo`-scoped `gh` token 403s on the API path; it is owner-only UI), else
+   `generate-jitconfig` 403/404s for that repo; THEN (ii) the supervisor/systemd host change —
+   the self-hosted runners are registered for `thewoolleyman/livespec` ONLY (supervisor
+   `--repos thewoolleyman/livespec`); add each target repo to `--repos` (+ bump slots if
+   needed) and restart WHEN livespec CI is quiescent — a HOST MUTATION on the shared host that
+   needs explicit maintainer authorization, like Phase 0 did. The routing
    audit's fleet-wide per-PR CI form (deferred from Phase 2) belongs HERE — the surface now
    multiplies across 8 repos, so a per-PR check catches a routing mistake at PR time in every
-   repo. NB: the `check-doctor-static` sibling-clone row is **corrected** in the disposition
+   repo (its `"on":`-quoted-key false negative is now fixed — `livespec-dev-tooling` #413). NB:
+   the `check-doctor-static` sibling-clone row is **corrected** in the disposition
    doc — do NOT point it at the on-host `/data/projects` (the job container has no host mount,
    by design — keep cloning the public siblings inside the container).
 
