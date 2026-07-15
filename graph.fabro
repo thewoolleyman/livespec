@@ -1,0 +1,15 @@
+digraph RuntimeInputProof {
+    graph [goal="prove whether an edge condition can read a workflow input at runtime"]
+    start [shape=Mdiamond, label="Start"]
+    exit  [shape=Msquare, label="Exit"]
+
+    emit          [label="emit",          shape=parallelogram, script="echo emitting; exit 0"]
+    took_input    [label="took_input",    shape=parallelogram, script="echo RESULT_TOOK_INPUT_EDGE; exit 0"]
+    took_fallback [label="took_fallback", shape=parallelogram, script="echo RESULT_TOOK_FALLBACK_EDGE; exit 0"]
+
+    start -> emit
+    emit -> took_input    [label="input-guarded", condition="inputs.branch=yes"]
+    emit -> took_fallback [label="fallback"]
+    took_input    -> exit
+    took_fallback -> exit
+}

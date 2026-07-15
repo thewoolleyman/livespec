@@ -1,0 +1,296 @@
+{
+  "title": "prove whether an edge condition can read a workflow input at runtime",
+  "spec": {
+    "run_id": "01KXKM87QDZFG6Q8RH2MBW8VET",
+    "settings": {
+      "project": {
+        "name": null,
+        "description": null,
+        "metadata": {}
+      },
+      "workflow": {
+        "name": null,
+        "description": null,
+        "graph": "workflow.fabro",
+        "metadata": {}
+      },
+      "run": {
+        "goal": {
+          "type": "inline",
+          "value": "prove whether an edge condition can read a workflow input at runtime"
+        },
+        "working_dir": null,
+        "metadata": {},
+        "inputs": {
+          "branch": "yes"
+        },
+        "model": {
+          "provider": "anthropic",
+          "name": "claude-sonnet-4-6",
+          "fallbacks": [],
+          "controls": {
+            "reasoning_effort": null,
+            "speed": null
+          }
+        },
+        "git": {
+          "author": null
+        },
+        "prepare": {
+          "commands": [],
+          "timeout_ms": 300000
+        },
+        "execution": {
+          "mode": "normal",
+          "approval": "auto"
+        },
+        "checkpoint": {
+          "exclude_globs": [],
+          "skip_git_hooks": false
+        },
+        "clone": {
+          "enabled": true
+        },
+        "run_branch": {
+          "enabled": true,
+          "push": true
+        },
+        "meta_branch": {
+          "enabled": true,
+          "push": true
+        },
+        "environment": {
+          "id": "default",
+          "provider": "docker",
+          "image": {
+            "docker": "buildpack-deps:noble",
+            "dockerfile": null
+          },
+          "resources": {
+            "cpu": 2,
+            "memory": "4GB",
+            "disk": null
+          },
+          "network": {
+            "mode": "allow_all",
+            "allow": []
+          },
+          "lifecycle": {
+            "preserve": false,
+            "stop_on_terminal": true,
+            "auto_stop": null
+          },
+          "labels": {},
+          "volumes": [],
+          "env": {}
+        },
+        "notifications": {},
+        "interviews": {
+          "provider": null,
+          "slack": null
+        },
+        "agent": {
+          "fabro_tools": false,
+          "permissions": null,
+          "mcps": {}
+        },
+        "hooks": [],
+        "scm": {
+          "provider": null,
+          "owner": null,
+          "repository": null,
+          "github": null
+        },
+        "pull_request": null,
+        "artifacts": {
+          "include": []
+        },
+        "integrations": {
+          "github": {
+            "permissions": {}
+          }
+        }
+      }
+    },
+    "graph": {
+      "name": "RuntimeInputProof",
+      "nodes": {
+        "start": {
+          "id": "start",
+          "attrs": {
+            "label": {
+              "String": "Start"
+            },
+            "shape": {
+              "String": "Mdiamond"
+            }
+          }
+        },
+        "took_fallback": {
+          "id": "took_fallback",
+          "attrs": {
+            "script": {
+              "String": "echo RESULT_TOOK_FALLBACK_EDGE; exit 0"
+            },
+            "label": {
+              "String": "took_fallback"
+            },
+            "shape": {
+              "String": "parallelogram"
+            }
+          }
+        },
+        "took_input": {
+          "id": "took_input",
+          "attrs": {
+            "label": {
+              "String": "took_input"
+            },
+            "script": {
+              "String": "echo RESULT_TOOK_INPUT_EDGE; exit 0"
+            },
+            "shape": {
+              "String": "parallelogram"
+            }
+          }
+        },
+        "exit": {
+          "id": "exit",
+          "attrs": {
+            "label": {
+              "String": "Exit"
+            },
+            "shape": {
+              "String": "Msquare"
+            }
+          }
+        },
+        "emit": {
+          "id": "emit",
+          "attrs": {
+            "shape": {
+              "String": "parallelogram"
+            },
+            "script": {
+              "String": "echo emitting; exit 0"
+            },
+            "label": {
+              "String": "emit"
+            }
+          }
+        }
+      },
+      "edges": [
+        {
+          "from": "start",
+          "to": "emit",
+          "attrs": {}
+        },
+        {
+          "from": "emit",
+          "to": "took_input",
+          "attrs": {
+            "label": {
+              "String": "input-guarded"
+            },
+            "condition": {
+              "String": "inputs.branch=yes"
+            }
+          }
+        },
+        {
+          "from": "emit",
+          "to": "took_fallback",
+          "attrs": {
+            "label": {
+              "String": "fallback"
+            }
+          }
+        },
+        {
+          "from": "took_input",
+          "to": "exit",
+          "attrs": {}
+        },
+        {
+          "from": "took_fallback",
+          "to": "exit",
+          "attrs": {}
+        }
+      ],
+      "attrs": {
+        "goal": {
+          "String": "prove whether an edge condition can read a workflow input at runtime"
+        }
+      }
+    },
+    "graph_source": "digraph RuntimeInputProof {\n    graph [goal=\"prove whether an edge condition can read a workflow input at runtime\"]\n    start [shape=Mdiamond, label=\"Start\"]\n    exit  [shape=Msquare, label=\"Exit\"]\n\n    emit          [label=\"emit\",          shape=parallelogram, script=\"echo emitting; exit 0\"]\n    took_input    [label=\"took_input\",    shape=parallelogram, script=\"echo RESULT_TOOK_INPUT_EDGE; exit 0\"]\n    took_fallback [label=\"took_fallback\", shape=parallelogram, script=\"echo RESULT_TOOK_FALLBACK_EDGE; exit 0\"]\n\n    start -> emit\n    emit -> took_input    [label=\"input-guarded\", condition=\"inputs.branch=yes\"]\n    emit -> took_fallback [label=\"fallback\"]\n    took_input    -> exit\n    took_fallback -> exit\n}\n",
+    "workflow_slug": "runtime_input",
+    "source_directory": "/data/projects/livespec",
+    "provenance": {
+      "server": {
+        "version": "0.254.0"
+      },
+      "client": {
+        "user_agent": "fabro-cli/0.254.0",
+        "name": "fabro-cli",
+        "version": "0.254.0"
+      },
+      "subject": {
+        "kind": "user",
+        "identity": {
+          "issuer": "fabro:dev",
+          "subject": "dev"
+        },
+        "login": "dev",
+        "auth_method": "dev_token"
+      }
+    },
+    "manifest_blob": "d2ae00429509cd6f4f14e66111874405ada96bcc9193687f58b2ef4489414d2d",
+    "definition_blob": "96e940b8944b5e65174d8be8359d9aa6cbab0133db7e9fcff9d65846d3094706",
+    "git": {
+      "origin_url": "https://github.com/thewoolleyman/livespec",
+      "branch": "master",
+      "sha": "d27650663e2cca917bf58f919d9a9c1afb8e2c39",
+      "dirty": "dirty",
+      "push_outcome": {
+        "type": "not_attempted"
+      }
+    }
+  },
+  "start": null,
+  "status": {
+    "kind": "starting"
+  },
+  "status_updated_at": "2026-07-15T19:32:25.623774889Z",
+  "last_event_at": "2026-07-15T19:32:30.459776776Z",
+  "pending_control": null,
+  "checkpoints": [],
+  "conclusion": null,
+  "sandbox": {
+    "kind": "ready",
+    "plan": {
+      "provider": "docker",
+      "image": "buildpack-deps:noble"
+    },
+    "instance": {
+      "provider": "docker",
+      "image": "buildpack-deps:noble",
+      "runtime": {
+        "id": "c5d34bb49968d9084dbb05aea29079f34b19ff9cacafcbdc3d0437849e224e0e",
+        "working_directory": "/workspace/livespec",
+        "repo_cloned": true,
+        "clone_origin_url": "https://github.com/thewoolleyman/livespec",
+        "clone_branch": "master",
+        "workspace_root": "/workspace",
+        "repos_root": "/repos",
+        "primary_repo_path": "/repos/thewoolleyman/livespec",
+        "primary_repo_link": "/workspace/livespec"
+      }
+    }
+  },
+  "pull_request": null,
+  "superseded_by": null,
+  "pending_interviews": {},
+  "stages": {}
+}
