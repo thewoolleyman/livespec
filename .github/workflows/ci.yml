@@ -116,6 +116,18 @@ jobs:
       MISE_DATA_DIR: /root/.local/share/mise
       # A missing shim must fail fast, never busy-loop on auto-install.
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
+      # Defense-in-depth against GitHub's anonymous REST limit. The anon limit
+      # is 60/hr PER IP; on GitHub-hosted runners every job had its own fresh IP
+      # so it was unreachable, but the self-hosted matrix shares ONE host IP, so
+      # any UNauthenticated GitHub-API call (mise on a cache miss, gh in a
+      # target, a future check) is shared across all concurrent jobs and blows
+      # the limit. `github.token` is the per-run, auto-revoked, read-scoped
+      # Actions token every hosted job already gets — NOT a Kind-2 secret — and
+      # lifts any GitHub-API call to the authenticated (~1000/hr per-repo) limit.
+      # MISE_DATA_DIR above already makes mise itself call nothing; this is the
+      # belt-and-suspenders so the shared IP can never hit the anon wall again.
+      GITHUB_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
     strategy:
       fail-fast: false
       matrix:
@@ -218,6 +230,10 @@ jobs:
       # check-python — avoids the concurrent-install rate-limit failure).
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
+      # Authenticate any residual GitHub-API call so the shared-IP host never
+      # hits the anonymous 60/hr limit (see check-python for the rationale).
+      GITHUB_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
     strategy:
       fail-fast: false
       matrix:
