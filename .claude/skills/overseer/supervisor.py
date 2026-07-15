@@ -104,6 +104,13 @@ DANGER_CTX_REMAINING = 20
 # that genuinely want the operator, which is the exact failure this block exists to fix.
 ATTENTION_STATUSES = ("blocked:human", "danger", "session-gone", "not-claude")
 
+# Claude's registry `status` values (`~/.claude/sessions/<pid>.json`) that mean the session
+# is doing work — the AUTHORITATIVE busy signal for an adopted Claude session. `busy` =
+# actively generating / running an in-process sub-agent; `shell` = at the prompt with a live
+# `Bash(run_in_background)` command (Claude's own background-work signal). `idle` / `waiting`
+# are NOT here (at a prompt, nothing running / waiting for the human).
+_CLAUDE_BUSY_STATUSES = frozenset({"busy", "shell"})
+
 # The tmux window name the daemon owns; it badges an attention count onto it
 # (`overseer` → `overseer(2!)`).
 WINDOW_NAME = "overseer"
@@ -772,11 +779,22 @@ class Supervisor:
         # forbids restart without a `ready` declaration; its residual job is injection
         # suppression, which Claude's own status serves better. `claude_status is None`
         # means "not an adopted Claude session" (Codex / unmapped).
+        # Claude's own live self-report is AUTHORITATIVE for an adopted Claude session,
+        # and its vocabulary maps cleanly onto busy-ness (`~/.claude/sessions/<pid>.json`
+        # `status`): `busy` = actively generating / running an in-process sub-agent (which
+        # spawns no descendant shell, so the process-walk misses it); `shell` = at the
+        # prompt with a live `Bash(run_in_background)` command — Claude's OWN, accurate
+        # background-work signal; `waiting` = at a gate/prompt for the human; `idle` =
+        # nothing pending. So for a session we have adopted we IGNORE the process-tree
+        # shell-walk entirely and trust `status`: it is strictly better than the walk,
+        # which both MISSED sub-agents (false-idle) and false-fired on lingering/transient
+        # shells (false-working). `has_active_subshell` (`bg_shell`) remains ONLY the
+        # runtime-agnostic FALLBACK for a session with no registry entry (Codex).
+        # `claude_status is None` ⇒ not an adopted Claude session.
         claude_status = self._claude_status.get(session)
-        registry_busy = claude_status == "busy"
-        shell_counts = claude_status is None or registry_busy
-        bg_work = bg_shell and shell_counts
-        busy = signals.is_busy(capture) or bg_work or registry_busy
+        claude_busy = claude_status in _CLAUDE_BUSY_STATUSES
+        codex_fallback = claude_status is None and bg_shell
+        busy = signals.is_busy(capture) or claude_busy or codex_fallback
         gate = signals.is_structured_gate(capture)
         idle = signals.is_idle_input(capture)
         current_ctx = signals.parse_ctx_remaining(capture)
@@ -831,13 +849,13 @@ class Supervisor:
         # a changing pane is treated as `working` and skipped this tick.
         if busy:
             status = "working"
-            if bg_work and not signals.is_busy(capture):
-                note = "background shell"
-            elif registry_busy and not bg_shell and not signals.is_busy(capture):
-                # The pane looks idle and there is no descendant shell, but Claude reports
-                # itself busy — an in-process sub-agent. Show WHY, or the operator would
-                # read the idle-looking pane and distrust the `working` status.
-                note = "sub-agent (Claude busy)"
+            # When the PANE itself looks idle, the row note explains WHY it is `working`,
+            # or the operator would read the idle-looking pane and distrust the status.
+            if not signals.is_busy(capture):
+                if claude_status == "shell" or codex_fallback:
+                    note = "background shell"  # a live `Bash(run_in_background)` command
+                elif claude_status == "busy":
+                    note = "sub-agent (Claude busy)"  # in-process sub-agent, no shell
             if act:
                 # Void the certification ONLY if it is past the grace — a young
                 # marker is the certifying turn's own busy tail and must survive
