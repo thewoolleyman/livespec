@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.7](https://github.com/thewoolleyman/livespec/compare/v0.11.6...v0.11.7) (2026-07-15)
+
+
+### Bug Fixes
+
+* **overseer:** Claude registry status governs busy — fixes false-idle + false-working ([2bd6a1d](https://github.com/thewoolleyman/livespec/commit/2bd6a1dac0a95d399466babfca3b9a328ba92f6a))
+
 ## [0.11.6](https://github.com/thewoolleyman/livespec/compare/v0.11.5...v0.11.6) (2026-07-15)
 
 
