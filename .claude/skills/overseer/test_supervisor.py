@@ -1107,12 +1107,15 @@ def _adopt_sup(tmp_path, fake, sessions_dir, ppid, starttimes, **kwargs):
 
 
 # --------------------------------------------------------------------------- #
-# Claude registry `status` as the authoritative busy signal (bug fixes,
-# 2026-07-15). It GOVERNS busy-ness for an adopted Claude session: it sees
-# in-process sub-agents the shell-walk misses (false-idle), and it ignores a
-# trivial lingering background shell the shell-walk over-flags (false-working).
-# The shell-walk stays the runtime-agnostic FALLBACK for a session with no
-# registry entry (Codex).
+# Claude registry `status` is the AUTHORITATIVE busy signal for an adopted
+# Claude session (2026-07-15). Its vocabulary maps cleanly: `busy` (generating /
+# in-process sub-agent) and `shell` (live `Bash(run_in_background)`) mean working;
+# `idle` / `waiting` (at a prompt) mean not-working. For an adopted session the
+# process-tree shell-walk is IGNORED — `status` sees sub-agents the walk missed
+# (false-idle) and its `shell` value is a more accurate background-work signal than
+# the walk, which false-fired on lingering/transient shells (false-working). The
+# walk stays ONLY the runtime-agnostic FALLBACK for a session with no registry
+# entry (Codex).
 # --------------------------------------------------------------------------- #
 
 
@@ -1130,27 +1133,43 @@ def test_registry_busy_marks_working_despite_idle_pane(tmp_path):
     assert view.note == "sub-agent (Claude busy)"
 
 
-def test_registry_waiting_ignores_a_lingering_background_shell(tmp_path):
-    """A backgrounded `sleep`/poll leaves a descendant shell, but when Claude reports the
-    session `waiting` (at a user prompt) that trivial shell must NOT mask it as working —
-    the false-positive `working (background shell)` bug."""
+def test_registry_shell_marks_working_with_background_shell_note(tmp_path):
+    """Claude reports `shell` when a live `Bash(run_in_background)` command is running while
+    the pane sits at the prompt — the daemon must show `working (background shell)`, so a
+    real background dispatch is never mis-read as idle."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))  # pane at the prompt
+    sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "shell"}  # Claude: a live background command
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert view.note == "background shell"
+
+
+def test_adopted_claude_ignores_the_process_tree_shell_walk(tmp_path):
+    """For an adopted Claude session the registry `status` is authoritative and the
+    process-tree shell-walk is IGNORED: a lingering `sleep`/poll shell must not mask an
+    at-prompt (`waiting`) session as working — the false-positive `working (background
+    shell)` bug. (Claude would report `shell`, not `waiting`, if the shell were live work.)"""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=73))  # idle pane, high ctx
     fake.pane_pid_map[session] = 100
     children = {100: [200]}
-    comms = {200: "zsh"}  # a lingering background `sleep` shell
+    comms = {200: "zsh"}  # a descendant shell the process-walk would flag
     sup = _sup(tmp_path, fake, children_of=lambda pid: children.get(pid, []), comm_of=comms.get)
-    sup._claude_status = {session: "waiting"}  # Claude: at a user prompt, not busy
+    sup._claude_status = {session: "waiting"}  # Claude: at a user prompt, not working
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert view.status == "idle"  # NOT "working"
+    assert view.status == "idle"  # NOT "working" — the process-walk is ignored for Claude
     assert view.note is None
 
 
-def test_no_registry_status_still_counts_background_shell(tmp_path):
+def test_no_registry_status_falls_back_to_process_shell_walk(tmp_path):
     """A session with NO Claude registry entry (Codex / unmapped) falls back to the
-    runtime-agnostic shell-walk — a background shell still marks it working."""
+    runtime-agnostic process-tree shell-walk — a background shell still marks it working."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
@@ -1159,27 +1178,30 @@ def test_no_registry_status_still_counts_background_shell(tmp_path):
     children = {100: [200]}
     comms = {200: "bash"}
     sup = _sup(tmp_path, fake, children_of=lambda pid: children.get(pid, []), comm_of=comms.get)
-    sup._claude_status = {}  # no registry entry for this session
+    sup._claude_status = {}  # no registry entry for this session (Codex)
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "working"
     assert view.note == "background shell"
 
 
-def test_registry_busy_with_background_shell_notes_background_shell(tmp_path):
-    """A genuinely-busy Claude session that ALSO has a background command keeps the
-    `background shell` note (the shell counts when Claude confirms it is busy)."""
+def test_registry_idle_is_idle_even_with_a_stray_descendant_shell(tmp_path):
+    """`idle` (nothing pending) is not working; the process-walk is ignored for an adopted
+    Claude session, so a stray descendant shell cannot flip it to working."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=73))
     fake.pane_pid_map[session] = 100
-    children = {100: [200]}
-    comms = {200: "bash"}
-    sup = _sup(tmp_path, fake, children_of=lambda pid: children.get(pid, []), comm_of=comms.get)
-    sup._claude_status = {session: "busy"}
+    sup = _sup(
+        tmp_path,
+        fake,
+        children_of=lambda pid: {100: [200]}.get(pid, []),
+        comm_of={200: "bash"}.get,
+    )
+    sup._claude_status = {session: "idle"}
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert view.status == "working"
-    assert view.note == "background shell"
+    assert view.status == "idle"
+    assert view.note is None
 
 
 def test_refresh_claude_status_populates_the_map_from_registry(tmp_path):

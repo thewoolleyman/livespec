@@ -180,5 +180,16 @@ signal for an adopted Claude session** — more accurate than the process-tree s
 (catches sub-agents) and less over-broad (ignores trivial background shells). The
 shell-walk stays as the runtime-agnostic FALLBACK for Codex (not in Claude's registry).
 Its original job — blocking a force-restart of a live background build — is moot now that
-the cardinal rule forbids restart without a `ready` declaration. See `AGENTS.md`
-§"Load-bearing mechanics" (the registry-`status` and background-shell bullets).
+the cardinal rule forbids restart without a `ready` declaration.
+
+4. **Correction (`shell` status): the first cut of the bug-2/3 fix was incomplete.** It
+   folded only `status: "busy"` into the busy check and made every other status IGNORE the
+   shell-walk — which then mis-read a session at the prompt with a live
+   `Bash(run_in_background)` command (Claude reports `status: "shell"`) as **idle**.
+   Surfaced live on `autonomous-mode` (a running `drive.py` dispatch) and
+   `livespec-orchestrator-beads-fabro`. Root-cause fix: the registry status is
+   AUTHORITATIVE and its full vocabulary maps cleanly —
+   `_CLAUDE_BUSY_STATUSES = {"busy", "shell"}` are working, `idle`/`waiting` are not; the
+   process-tree shell-walk is IGNORED for an adopted Claude session and kept ONLY as the
+   Codex fallback. See `AGENTS.md` §"Load-bearing mechanics" (the registry-`status` and
+   background-shell bullets).
