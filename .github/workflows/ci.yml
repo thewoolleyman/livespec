@@ -239,8 +239,10 @@ jobs:
       matrix:
         target:
           - check-claude-md-coverage
+          - check-handoff-dispatch-routing
           - check-heading-coverage
           - check-local-memory-drift-audit
+          - check-self-hosted-routing
           - check-vendor-manifest
           - check-no-direct-tool-invocation
           # check-no-direct-destructive-cli greps the agent-facing trees
