@@ -223,6 +223,7 @@ jobs:
       matrix:
         target:
           - check-claude-md-coverage
+          - check-handoff-dispatch-routing
           - check-heading-coverage
           - check-local-memory-drift-audit
           - check-vendor-manifest

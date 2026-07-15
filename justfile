@@ -179,6 +179,7 @@ check:
         check-file-lloc
         check-fleet-marketplace-relative-sources
         check-global-writes
+        check-handoff-dispatch-routing
         check-heading-coverage
         check-keyword-only-args
         check-local-memory-drift-audit
@@ -1053,3 +1054,6 @@ check-no-shadow-ledger-body-identical:
 
 check-local-memory-drift-audit:
     uv run python -m livespec_dev_tooling.checks.local_memory_drift_audit
+
+check-handoff-dispatch-routing:
+    uv run python -m livespec_dev_tooling.checks.handoff_dispatch_routing
