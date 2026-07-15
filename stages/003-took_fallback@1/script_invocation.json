@@ -1,0 +1,5 @@
+{
+  "script": "echo RESULT_TOOK_FALLBACK_EDGE; exit 0",
+  "command": "exec 2>&1\necho RESULT_TOOK_FALLBACK_EDGE; exit 0",
+  "language": "shell"
+}
