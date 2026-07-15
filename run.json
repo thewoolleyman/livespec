@@ -1,0 +1,296 @@
+{
+  "title": "prove a numeric visit-count guard against a template-baked cap input (mirrors O8)",
+  "spec": {
+    "run_id": "01KXKMC7244RDBNRYDG6Y4EPXZ",
+    "settings": {
+      "project": {
+        "name": null,
+        "description": null,
+        "metadata": {}
+      },
+      "workflow": {
+        "name": null,
+        "description": null,
+        "graph": "workflow.fabro",
+        "metadata": {}
+      },
+      "run": {
+        "goal": {
+          "type": "inline",
+          "value": "prove a numeric visit-count guard against a template-baked cap input (mirrors O8)"
+        },
+        "working_dir": null,
+        "metadata": {},
+        "inputs": {
+          "cap": 5
+        },
+        "model": {
+          "provider": "anthropic",
+          "name": "claude-sonnet-4-6",
+          "fallbacks": [],
+          "controls": {
+            "reasoning_effort": null,
+            "speed": null
+          }
+        },
+        "git": {
+          "author": null
+        },
+        "prepare": {
+          "commands": [],
+          "timeout_ms": 300000
+        },
+        "execution": {
+          "mode": "normal",
+          "approval": "auto"
+        },
+        "checkpoint": {
+          "exclude_globs": [],
+          "skip_git_hooks": false
+        },
+        "clone": {
+          "enabled": true
+        },
+        "run_branch": {
+          "enabled": true,
+          "push": true
+        },
+        "meta_branch": {
+          "enabled": true,
+          "push": true
+        },
+        "environment": {
+          "id": "default",
+          "provider": "docker",
+          "image": {
+            "docker": "buildpack-deps:noble",
+            "dockerfile": null
+          },
+          "resources": {
+            "cpu": 2,
+            "memory": "4GB",
+            "disk": null
+          },
+          "network": {
+            "mode": "allow_all",
+            "allow": []
+          },
+          "lifecycle": {
+            "preserve": false,
+            "stop_on_terminal": true,
+            "auto_stop": null
+          },
+          "labels": {},
+          "volumes": [],
+          "env": {}
+        },
+        "notifications": {},
+        "interviews": {
+          "provider": null,
+          "slack": null
+        },
+        "agent": {
+          "fabro_tools": false,
+          "permissions": null,
+          "mcps": {}
+        },
+        "hooks": [],
+        "scm": {
+          "provider": null,
+          "owner": null,
+          "repository": null,
+          "github": null
+        },
+        "pull_request": null,
+        "artifacts": {
+          "include": []
+        },
+        "integrations": {
+          "github": {
+            "permissions": {}
+          }
+        }
+      }
+    },
+    "graph": {
+      "name": "NumericCapProof",
+      "nodes": {
+        "start": {
+          "id": "start",
+          "attrs": {
+            "label": {
+              "String": "Start"
+            },
+            "shape": {
+              "String": "Mdiamond"
+            }
+          }
+        },
+        "emit": {
+          "id": "emit",
+          "attrs": {
+            "script": {
+              "String": "echo emitting; exit 0"
+            },
+            "shape": {
+              "String": "parallelogram"
+            },
+            "label": {
+              "String": "emit"
+            }
+          }
+        },
+        "under_cap": {
+          "id": "under_cap",
+          "attrs": {
+            "label": {
+              "String": "under_cap"
+            },
+            "shape": {
+              "String": "parallelogram"
+            },
+            "script": {
+              "String": "echo RESULT_UNDER_CAP; exit 0"
+            }
+          }
+        },
+        "at_cap": {
+          "id": "at_cap",
+          "attrs": {
+            "label": {
+              "String": "at_cap"
+            },
+            "script": {
+              "String": "echo RESULT_AT_CAP; exit 0"
+            },
+            "shape": {
+              "String": "parallelogram"
+            }
+          }
+        },
+        "exit": {
+          "id": "exit",
+          "attrs": {
+            "label": {
+              "String": "Exit"
+            },
+            "shape": {
+              "String": "Msquare"
+            }
+          }
+        }
+      },
+      "edges": [
+        {
+          "from": "start",
+          "to": "emit",
+          "attrs": {}
+        },
+        {
+          "from": "emit",
+          "to": "under_cap",
+          "attrs": {
+            "condition": {
+              "String": "context.internal.node_visit_count < 5"
+            },
+            "label": {
+              "String": "under"
+            }
+          }
+        },
+        {
+          "from": "emit",
+          "to": "at_cap",
+          "attrs": {
+            "label": {
+              "String": "atcap"
+            }
+          }
+        },
+        {
+          "from": "under_cap",
+          "to": "exit",
+          "attrs": {}
+        },
+        {
+          "from": "at_cap",
+          "to": "exit",
+          "attrs": {}
+        }
+      ],
+      "attrs": {
+        "goal": {
+          "String": "prove a numeric visit-count guard against a template-baked cap input (mirrors O8)"
+        }
+      }
+    },
+    "graph_source": "digraph NumericCapProof {\n    graph [goal=\"prove a numeric visit-count guard against a template-baked cap input (mirrors O8)\"]\n    start [shape=Mdiamond, label=\"Start\"]\n    exit  [shape=Msquare, label=\"Exit\"]\n\n    emit      [label=\"emit\",      shape=parallelogram, script=\"echo emitting; exit 0\"]\n    under_cap [label=\"under_cap\", shape=parallelogram, script=\"echo RESULT_UNDER_CAP; exit 0\"]\n    at_cap    [label=\"at_cap\",    shape=parallelogram, script=\"echo RESULT_AT_CAP; exit 0\"]\n\n    start -> emit\n    emit -> under_cap [label=\"under\", condition=\"context.internal.node_visit_count < {{ inputs.cap }}\"]\n    emit -> at_cap    [label=\"atcap\"]\n    under_cap -> exit\n    at_cap    -> exit\n}\n",
+    "workflow_slug": "numeric_cap",
+    "source_directory": "/data/projects/livespec",
+    "provenance": {
+      "server": {
+        "version": "0.254.0"
+      },
+      "client": {
+        "user_agent": "fabro-cli/0.254.0",
+        "name": "fabro-cli",
+        "version": "0.254.0"
+      },
+      "subject": {
+        "kind": "user",
+        "identity": {
+          "issuer": "fabro:dev",
+          "subject": "dev"
+        },
+        "login": "dev",
+        "auth_method": "dev_token"
+      }
+    },
+    "manifest_blob": "d3d907a5538ca33d1e1d4895dd3d3ea4b6a1895e916e1738244b2b48b9758159",
+    "definition_blob": "1d9c2cd41d59342e72502a0cf27909c19d9baee5d329326998aeb214af71f1ab",
+    "git": {
+      "origin_url": "https://github.com/thewoolleyman/livespec",
+      "branch": "master",
+      "sha": "d27650663e2cca917bf58f919d9a9c1afb8e2c39",
+      "dirty": "dirty",
+      "push_outcome": {
+        "type": "not_attempted"
+      }
+    }
+  },
+  "start": null,
+  "status": {
+    "kind": "starting"
+  },
+  "status_updated_at": "2026-07-15T19:34:36.157427643Z",
+  "last_event_at": "2026-07-15T19:35:25.751321476Z",
+  "pending_control": null,
+  "checkpoints": [],
+  "conclusion": null,
+  "sandbox": {
+    "kind": "ready",
+    "plan": {
+      "provider": "docker",
+      "image": "buildpack-deps:noble"
+    },
+    "instance": {
+      "provider": "docker",
+      "image": "buildpack-deps:noble",
+      "runtime": {
+        "id": "13f071d7f74b83dde3a9cf3db6930514bc3b2ed7fde835e3818f3b9b7dbebe75",
+        "working_directory": "/workspace/livespec",
+        "repo_cloned": true,
+        "clone_origin_url": "https://github.com/thewoolleyman/livespec",
+        "clone_branch": "master",
+        "workspace_root": "/workspace",
+        "repos_root": "/repos",
+        "primary_repo_path": "/repos/thewoolleyman/livespec",
+        "primary_repo_link": "/workspace/livespec"
+      }
+    }
+  },
+  "pull_request": null,
+  "superseded_by": null,
+  "pending_interviews": {},
+  "stages": {}
+}
