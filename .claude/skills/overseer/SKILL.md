@@ -225,13 +225,16 @@ until a human acts. See "Your job as the bottom pane" below.
 
 Under the table the daemon prints the rows a human must actually go act on —
 `blocked:human`, `danger`, `session-gone`, `not-claude`, and any malformed state file —
-each with its jump command:
+each with **labeled coordinates** (`topic: … | tmux: … | repo: …`) and its jump command:
 
 ```
 NEEDS YOU (1):
-  ! autonomous-mode (livespec) — blocked:human — waiting on a cost-gate decision
+  ! topic: autonomous-mode | tmux: livespec-autonomous-mode | repo: livespec — blocked:human — waiting on a cost-gate decision
       jump: tmux switch-client -t livespec-autonomous-mode
 ```
+
+The coordinates are labeled so the operator never has to guess which unlabeled token is
+the plan topic, which is the tmux session to jump to, and which is the repo.
 
 …and, when the fleet is clean, `NEEDS YOU: nothing — every tracked session is healthy.`
 
