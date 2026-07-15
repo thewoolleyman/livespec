@@ -267,7 +267,7 @@
     "kind": "running"
   },
   "status_updated_at": "2026-07-15T19:35:27.284231209Z",
-  "last_event_at": "2026-07-15T19:35:30.105896616Z",
+  "last_event_at": "2026-07-15T19:35:35.508219903Z",
   "pending_control": null,
   "checkpoints": [
     {
@@ -306,9 +306,9 @@
       "diff": {}
     },
     {
-      "seq": 0,
+      "seq": 28,
       "checkpoint": {
-        "timestamp": "2026-07-15T19:35:30.187242010Z",
+        "timestamp": "2026-07-15T19:35:35.475403453Z",
         "current_node": "emit",
         "completed_nodes": [
           "start",
@@ -316,20 +316,20 @@
         ],
         "node_retries": {},
         "context_values": {
-          "graph.goal": "prove a numeric visit-count guard against a template-baked cap input (mirrors O8)",
+          "thread.start.current_node": "emit",
+          "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684",
+          "current_node": "emit",
           "failure_signature": "",
+          "graph.goal": "prove a numeric visit-count guard against a template-baked cap input (mirrors O8)",
           "internal.fidelity": "compact",
           "failure_class": "",
-          "internal.run_id": "01KXKMC7244RDBNRYDG6Y4EPXZ",
-          "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684",
-          "internal.thread_id": "start",
-          "current_node": "emit",
           "internal.node_visit_count": 1,
-          "internal.work_dir": "/workspace/livespec",
-          "outcome": "succeeded",
           "internal.retry_count.emit": 0,
           "internal.retry_count.start": 0,
-          "thread.start.current_node": "emit"
+          "internal.thread_id": "start",
+          "internal.run_id": "01KXKMC7244RDBNRYDG6Y4EPXZ",
+          "internal.work_dir": "/workspace/livespec",
+          "outcome": "succeeded"
         },
         "node_outcomes": {
           "emit": {
@@ -352,7 +352,86 @@
           }
         },
         "next_node_id": "under_cap",
+        "git_commit_sha": "0a99bcb2b79fb9d4548d055fcd416518ecd11ea2",
         "node_visits": {
+          "start": 1,
+          "emit": 1
+        }
+      },
+      "diff": {
+        "summary": {
+          "files_changed": 0,
+          "additions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    {
+      "seq": 0,
+      "checkpoint": {
+        "timestamp": "2026-07-15T19:35:36.928414776Z",
+        "current_node": "under_cap",
+        "completed_nodes": [
+          "start",
+          "emit",
+          "under_cap"
+        ],
+        "node_retries": {},
+        "context_values": {
+          "graph.goal": "prove a numeric visit-count guard against a template-baked cap input (mirrors O8)",
+          "failure_signature": "",
+          "thread.emit.current_node": "under_cap",
+          "internal.fidelity": "compact",
+          "failure_class": "",
+          "internal.retry_count.under_cap": 0,
+          "internal.run_id": "01KXKMC7244RDBNRYDG6Y4EPXZ",
+          "command.output": "blob://sha256/30542ab316b78cf47da073f69ec3d64274a2bf71a3b72be14cdce3b3d20eb3a1",
+          "internal.thread_id": "emit",
+          "current_node": "under_cap",
+          "internal.node_visit_count": 1,
+          "internal.work_dir": "/workspace/livespec",
+          "outcome": "succeeded",
+          "internal.retry_count.emit": 0,
+          "internal.retry_count.start": 0,
+          "thread.start.current_node": "emit"
+        },
+        "node_outcomes": {
+          "under_cap": {
+            "status": "succeeded",
+            "context_updates": {
+              "command.output": "blob://sha256/30542ab316b78cf47da073f69ec3d64274a2bf71a3b72be14cdce3b3d20eb3a1"
+            },
+            "notes": "Script completed: echo RESULT_UNDER_CAP; exit 0",
+            "usage": null,
+            "timing": {
+              "wall_time_ms": 0,
+              "inference_time_ms": 0,
+              "tool_time_ms": 1387,
+              "active_time_ms": 1387
+            }
+          },
+          "emit": {
+            "status": "succeeded",
+            "context_updates": {
+              "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684"
+            },
+            "notes": "Script completed: echo emitting; exit 0",
+            "usage": null,
+            "timing": {
+              "wall_time_ms": 0,
+              "inference_time_ms": 0,
+              "tool_time_ms": 319,
+              "active_time_ms": 319
+            }
+          },
+          "start": {
+            "status": "succeeded",
+            "usage": null
+          }
+        },
+        "next_node_id": "exit",
+        "node_visits": {
+          "under_cap": 1,
           "start": 1,
           "emit": 1
         }
@@ -425,7 +504,12 @@
       "first_event_seq": 21,
       "prompt": null,
       "response": null,
-      "completion": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": "Script completed: echo emitting; exit 0",
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:35:30.183440175Z"
+      },
       "provider_used": null,
       "diff": null,
       "script_invocation": {
@@ -447,6 +531,39 @@
       "live_streaming": true,
       "termination": "exited",
       "started_at": "2026-07-15T19:35:29.751516338Z",
+      "handler": "command",
+      "timing": {
+        "wall_time_ms": 431,
+        "inference_time_ms": 0,
+        "tool_time_ms": 319,
+        "active_time_ms": 319
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "under_cap@1": {
+      "first_event_seq": 31,
+      "prompt": null,
+      "response": null,
+      "completion": null,
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": {
+        "script": "echo RESULT_UNDER_CAP; exit 0",
+        "command": "exec 2>&1\necho RESULT_UNDER_CAP; exit 0",
+        "language": "shell"
+      },
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:35:35.477386473Z",
       "handler": "command",
       "usage": {
         "input_tokens": 0,
