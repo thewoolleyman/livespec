@@ -1802,6 +1802,28 @@ def _render_of(sup, views):
     return sup.out.getvalue()
 
 
+def test_table_header_column_order(tmp_path):
+    """Column order is Status · Topic · tmux · Ctx% · Repo — Status leads, the column the
+    operator scans first (maintainer 2026-07-15)."""
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    out = _render_of(sup, [])
+    header = next(ln for ln in out.splitlines() if "Status" in ln and "Topic" in ln)
+    assert header.split() == ["Status", "Topic", "tmux", "Ctx%", "Repo"]
+
+
+def test_table_row_cells_follow_the_header_order(tmp_path):
+    """A rendered row places each value under its (reordered) header."""
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    view = supervisor.RowView(
+        topic="mytopic", repo="/data/projects/livespec", tmux="sess", ctx=42, status="idle"
+    )
+    out = _render_of(sup, [view])
+    row = next(ln for ln in out.splitlines() if "mytopic" in ln)
+    assert row.split() == ["idle", "mytopic", "sess", "42%", "livespec"]
+
+
 def test_attention_block_lists_a_blocked_track_with_its_jump_command(tmp_path):
     """The block must be a SUFFICIENT handover on its own: what is stuck, and where to go."""
     fake = FakeTmux()

@@ -68,7 +68,7 @@ Two panes in the overseer's own tmux window:
   discovers plans, joins the JSONL mapping, reads each tracked session's live
   pane + its one state file, injects escalating wrap-ups, restarts the sessions
   that have declared themselves `ready`, reports the ones that have not, and
-  reprints the live `Topic · Repo · tmux · Ctx% · Status` table (re-rendered
+  reprints the live `Status · Topic · tmux · Ctx% · Repo` table (re-rendered
   from live captures each tick, so it can never freeze on a stale snapshot) —
   followed by the **`NEEDS YOU` block** (below).
 - **BOTTOM pane = this interactive Claude overseer** (thin) — starts the daemon,
