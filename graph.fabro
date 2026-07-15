@@ -1,0 +1,15 @@
+digraph NumericCapProof {
+    graph [goal="prove a numeric visit-count guard against a template-baked cap input (mirrors O8)"]
+    start [shape=Mdiamond, label="Start"]
+    exit  [shape=Msquare, label="Exit"]
+
+    emit      [label="emit",      shape=parallelogram, script="echo emitting; exit 0"]
+    under_cap [label="under_cap", shape=parallelogram, script="echo RESULT_UNDER_CAP; exit 0"]
+    at_cap    [label="at_cap",    shape=parallelogram, script="echo RESULT_AT_CAP; exit 0"]
+
+    start -> emit
+    emit -> under_cap [label="under", condition="context.internal.node_visit_count < {{ inputs.cap }}"]
+    emit -> at_cap    [label="atcap"]
+    under_cap -> exit
+    at_cap    -> exit
+}
