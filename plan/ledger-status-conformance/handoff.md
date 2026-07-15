@@ -1,5 +1,83 @@
 # Ledger status-conformance cleanup + beads create-status adoption — plan handoff (livespec core)
 
+> **SESSION 9 (2026-07-15) — ✅ THE GUARD IS FLIPPED TO `fail`, LIVE-VERIFIED. THE TRACK'S GOAL IS ACHIEVED. Do NOT re-do the flip.**
+>
+> The bd-guard now BLOCKS (enforces) host-wide in `fail` mode — the long-pending
+> final step of this whole track. This session the maintainer demanded an
+> independent **Codex + Fable adversarial review** to PROVE the flip would be
+> incident-free BEFORE flipping. The reviews found **3 real defects** that 34h of
+> clean telemetry never would have — the flip *as previously documented* (`export
+> LIVESPEC_BD_GUARD_MODE=fail`) would have been a **SILENT NO-OP**:
+>   1. that `export` is **scrubbed** by the credential wrapper
+>      (`with-livespec-env.sh` does `env -i` / sudo `env_reset`) → never reached bd;
+>   2. fail-mode blocks emitted **no telemetry** (exit 3 before the emit) → invisible;
+>   3. `bd --format json update … --claim` **bypassed** the parser.
+>   Plus 2 more argv-detectable non-lifecycle channels were unguarded: `bd ready
+>   --claim` (→ in_progress) and `bd defer <id>` (→ deferred).
+>
+> **ALL FIXED + MERGED in `livespec-orchestrator-beads-fabro`** (both auto-merged, CI green):
+>   - **PR #621** — host-wide mode **FILE** (`/usr/local/etc/livespec-bd-guard.mode`,
+>     survives the env scrub) + emit-a-span-on-block + `--format` skip.
+>   - **PR #628** — guard `bd ready --claim` + `bd defer`; harden the mode-file
+>     read (a `fail` with no trailing newline used to silently degrade to warn).
+>   Re-verified clean: Codex **SAFE** (no bypass across 12 flag prefixes, no
+>   false-positive); Fable verified all fixes real vs the live wrapper/collector/
+>   trigger/upstream bd source; plus my own **15/15** hermetic sweep.
+>
+> **INSTALLED + FLIPPED on the host, LIVE-PROVEN end-to-end (~05:25 UTC 2026-07-15):**
+>   `sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/install.sh`
+>   refreshed the wrapper + seeded the mode file = warn; then the flip. A `bd
+>   update <bogus> --claim` **through the real credential-wrapper path returned
+>   exit 3** and emitted a `guard.mode=fail / guard.warned=true / exit_code=3`
+>   span; `bd --version` + `bd list` passed (exit 0). B1 (reaches callers) + B2
+>   (observable) both proven live.
+>
+> **THE HOST-WIDE FLIP MECHANISM — THIS is the runbook; the old `export …=fail` is DEAD (scrubbed):**
+> ```
+> block:   echo fail | sudo tee /usr/local/etc/livespec-bd-guard.mode
+> revert:  echo warn | sudo tee /usr/local/etc/livespec-bd-guard.mode
+> full rollback (remove guard entirely):
+>          sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/rollback.sh
+> ```
+> Current mode: **`fail`**. Guard blocks 5 channels: `update --claim`, `update
+> --status <non-lifecycle>`, `reopen`, `ready --claim`, `defer`. Everything else
+> (create / list / show / close / dep / config / conformant `--status` / …) passes.
+>
+> **ONLY REMAINING WORK — post-flip observation (LOW effort, mostly passive):**
+>   - The Honeycomb trigger **`nak9miYrs14`** (`guard.warned=true COUNT>0`, emails
+>     both team addrs) now means **"a raw op was BLOCKED."** Watch it + the board
+>     https://ui.honeycomb.io/thewoolleyweb/environments/livespec/board/j2MHvDsuWry
+>   - Query fail-mode blocks: `livespec` env, `bd-guard` dataset, filter
+>     `guard.mode=fail AND guard.warned=true`, breakdown `bd.caller.cmd` +
+>     `guard.op` + `bd.subcommand`.
+>   - **IF a genuinely LEGIT workflow appears blocked** (a real caller, not a
+>     probe): decide — fix that caller to use a lifecycle status, OR if it is a
+>     legit pattern the guard should not touch, **revert to warn** (`echo warn |
+>     sudo tee …`) and reassess. Baseline through the flip: **0 legit guarded-op
+>     callers EVER** (only a test probe + one invalid `--status done`), so a
+>     surprise is unlikely.
+>   - **IGNORE** the one flip-probe I generated — `bd.caller.cmd` containing
+>     `zzz-flip-probe-DELETEME --claim` (my deliberate exit-3 test; it tripped the
+>     trigger once — benign).
+>
+> **HOUSEKEEPING:**
+>   - **This handoff edit is UNCOMMITTED** on the livespec primary checkout (a
+>     `plan/` doc; working tree shows `plan/ledger-status-conformance/handoff.md`
+>     modified). Commit via a normal `docs(plan):` worktree PR when convenient.
+>   - Orchestrator worktree `fix-bd-guard-flip-hardening` (PR #621) reaped this
+>     session; `fix-bd-guard-ready-defer` (PR #628) self-reaped by its executor;
+>     `chore-cross-track-handoffs` belongs to ANOTHER session — untouched.
+>   - The hourly readiness `/loop` cron is **retired** (the flip happened; its
+>     "wait for 24h" premise is moot). Do NOT re-arm it.
+>
+> **EXTERNAL / UPSTREAM (unchanged, pure wait — not this session's work):** beads
+> #4738 (`status.default`) awaiting the gastownhall maintainer; a beads release
+> carrying #4536 (`bd create --status`) → then bump the pin, single-step the
+> store, and eventually RETIRE the guard (it is a stopgap).
+>
+> Everything below is prior-session history (SESSIONS 1–8) — the flip they were
+> all building toward is now DONE.
+
 > **Status: DRIVEN — all in-fleet work COMPLETE (2026-07-12 session).** Scopes
 > 1–3 are landed; the one external piece (beads `status.default` PR #4738) is
 > OPEN for upstream review. See "## Session close" for final states and the small
