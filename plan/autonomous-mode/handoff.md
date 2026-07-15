@@ -65,6 +65,40 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-15 (cont. 17): W2 RATIFIED + CLOSED; O1 admitted → dispatched → MERGED → ACCEPTED (first code child DONE via the factory); next wave O2/O3/O4/O7 admitted (all oversized → groom before dispatch); a TUI-dispatch interim finding
+
+Continuation of cont.16. Maintainer direction this session: confirm/finish W2, then — after O1 merged — *"accept O1 autonomously, don't ask me unless there are blockers, then admit the next wave."* Both spec gates are now down AND the epic's first code child is fully done, carried mostly autonomously by the factory.
+
+### W2 (console spec re-baseline) — RATIFIED + CLOSED
+- **Ratified `SPECIFICATION/history/v022/`** in `livespec-console-beads-fabro` (PR #230, merge `b23e8b4`, driven by a peer session; triple-verified). Consumed the proposal; six co-edited files (four spec files + `tests/heading-coverage.json` + `crates/console-spec-check/src/tests.rs`, clause counts 15/57/22/52=146); registry 22→25 with literal `wip_cap` backticks preserved; `just check` exit 0; all 12 CI checks green.
+- **Work-item `livespec-console-beads-fabro-l3tx33` CLOSED** well-formed: `resolution:completed` LABEL (console-tenant convention — the top-level `resolution` field reads None there; the label is the carrier, copied from the well-formed W1 `livespec-console-beads-fabro-2whpbd`), full `metadata.audit` AuditRecord (`merge_sha b23e8b44c283fd2785154d28791dc6ca413b1667`, `pr_number 230`, `files_changed` = the six substantive deliverables, `verification_timestamp`, `commits`), stale `blocked-reason:needs-human` removed, existing metadata (rank aE, `acceptance_criteria` byte-identical, epic linkage) intact. **Unblocks console W3–W6** (still held behind the admission valve).
+
+### O1 (`bd-ib-jha4vw`) — FULLY DONE via the factory (the epic's first code child)
+The whole admit → dispatch → implement → merge → accept loop ran, mostly autonomously:
+- **Admitted** `pending-approval → ready` via the **console TUI cockpit** (dogfooded): launched an orchestrator-tenant cockpit pane (`tmux console-autonomous-mode:orch` — the console binary run from the orchestrator checkout so it targets that tenant), selected O1's approve item, pressed `p` → confirm modal `Target: bd-ib-jha4vw` → Enter.
+- **Dispatched** `ready → active` via **CLI** `drive.py --action impl:bd-ib-jha4vw` (the TUI can't dispatch in the interim — see the finding below).
+- Factory `ImplementWorkItem` run `01KXK4B4F2XB` implemented it; **post-merge janitor green**.
+- **MERGED**: PR #642 (`feat: add dispatcher policy setting coverage`), merge_sha `43b399c`, on `livespec-orchestrator-beads-fabro` master; **release 0.32.0** cut off it.
+- Parked in `acceptance` (`ai-then-human`); **live-exercise evidence** gathered by a delegated sub-agent — all six acceptance properties PASS on the merged code, journaled as a `bd note` on the item. The real resolver lives in `commands/_dispatcher_policy_settings.py` (re-exported via `commands/_dispatcher_valves.py`) + `intake_dor.py`. **ACCEPTED** via `drive.py --action accept:bd-ib-jha4vw` → **done** (the accept was maintainer-DELEGATED this session, with the 2026-07-04 live-exercise-evidence rule satisfied).
+
+### ⚠ TUI-DISPATCH INTERIM FINDING (dogfooding)
+The console TUI CANNOT dispatch a ready work-item in the current **W1↔O2 interim**: the `:` queue drain no-ops because shipped `candidates()` (`_dispatcher_loop_selection.py:80-84`) returns `[]` without `--item` and without `--mode autonomous`, and W1 already removed the `--mode autonomous` append from the console drain launcher; AND the TUI exposes no per-item dispatch valve (only approve/accept/reject/set-admission/set-acceptance + the queue drain). This is the cont.14 "known + accepted interim" sharpened: **per-item dispatch is CLI-only until O2 lands.** It is **resolved when O2 ships** (O2 makes the queue drain functional by default), so it is covered by an already-planned child — no new work-item was filed. The CLI per-item path `drive.py --action impl:<id>` (hand-picked = cost-gate WARN, not fail-closed) is the correct interim escape. Admission (the approve valve) IS cleanly TUI-drivable — that was dogfooded for O1; the CLI was used for the bulk wave admission below as an announced fast-forward efficiency choice, not a silent fallback.
+
+### NEXT WAVE ADMITTED — O2/O3/O4/O7 → ready (dispatch DEFERRED behind grooming)
+- Admitted via the approve valve (all green): O2 `bd-ib-mqunvm`, O3 `bd-ib-vntx65`, O4 `bd-ib-vevrol`, O7 `bd-ib-lmnxrm`. They sit safely in the ready queue — the shipped queue drain no-ops, so nothing auto-dispatches them.
+- **ALL FOUR are OVERSIZED** (O2=3142, O3=1786, O4=1958, O7=2150 chars; the factory's sizing warning fires >1500 chars: "heavy items exceed one unattended ACP turn; consider splitting"). Per the maintainer, **groom the oversized ones before dispatch** — O2 especially (BREAKING: retire Full autonomous mode, `--mode`→`--dry-run`, lockstep with console W1). Grooming is a **maintainer-owned cut** (`/groom` drafts; the maintainer owns the cut). **NOTE:** O1 (3271 chars) was also oversized and completed fine in one run, so oversized is a WARNING, not a hard blocker.
+
+### RESUME (fresh session)
+1. **Groom the oversized ready wave** (O2/O3/O4/O7) — maintainer-owned cut — then dispatch (`drive.py --action impl:<id>` per item; or, once O2 lands, the queue drain works). O2 first is natural (it fixes the TUI drain no-op AND is the breaking change lockstep with console W1).
+2. **After O1 done, O5/O9/O10** (depend on O1) become admittable — admit + dispatch when ready.
+3. **FLAG ROLLOUT (cont.16 decision 2) now applies** — O1 (the config reader) landed, so the six `dispatcher.*` settings are now READ. Adopted order: enable **`auto_approve_ready` first** (low risk — removes only the manual admission click; review + acceptance still gate); keep **`merge_on_review_cap = false`**; keep **`acceptance_mode = ai-then-human`** until O5's real post-merge AI acceptance is proven LIVE. These settings live per-repo in the consumer's `.livespec.jsonc` under `livespec-orchestrator-beads-fabro.dispatcher` (no `dispatcher.*` block is set today).
+4. **Console W3–W6** remain held behind admission (depend on W2 [done] + orchestrator O10 for the W3/W6 advisory cross-tenant edge).
+
+### STATE / REAP
+- Orchestrator cockpit TUI running in `tmux console-autonomous-mode:orch` (launched this session); the console-tenant cockpit is in `console-autonomous-mode:1`. Leave or kill as desired.
+- No worktrees were created by this session's driver. Sub-agents did their own cleanup: `W2-author` (drove the W2 revise-accept + ledger close), `o1-evidence` (live-exercise evidence), `w2-accept` (correctly no-op'd on finding W2 already landed), `handoff-writer-16` (cont.16 doc). The background O1 dispatch task completed exit 0.
+- Ledger snapshot at hand-off: O0 done, O1 done, O2/O3/O4/O7 ready (ungroomed), O5/O6/O8/O9/O10 pending-approval, `bd-ib-0s5` blocked.
+
 ## SESSION UPDATE — 2026-07-15 (cont. 16): BOTH spec amendments CLEARED — O0 RATIFIED (v036); W2 NO-BLOCKERS after 3 rounds; SEVEN Fable blockers caught (three were defects in the driver's OWN briefs); TWO maintainer decisions locked (HOLD O2; phased flag rollout)
 
 Continuation of cont.15. The maintainer's standing direction held: *"drive the propose
