@@ -267,7 +267,7 @@
     "kind": "running"
   },
   "status_updated_at": "2026-07-15T19:31:24.914762525Z",
-  "last_event_at": "2026-07-15T19:31:32.121117291Z",
+  "last_event_at": "2026-07-15T19:31:36.361921491Z",
   "pending_control": null,
   "checkpoints": [
     {
@@ -367,9 +367,9 @@
       }
     },
     {
-      "seq": 0,
+      "seq": 38,
       "checkpoint": {
-        "timestamp": "2026-07-15T19:31:32.362826942Z",
+        "timestamp": "2026-07-15T19:31:36.361803912Z",
         "current_node": "took_input",
         "completed_nodes": [
           "start",
@@ -378,42 +378,24 @@
         ],
         "node_retries": {},
         "context_values": {
-          "internal.run_id": "01KXKM66CSJESV3APCVK81YZW2",
-          "thread.emit.current_node": "took_input",
-          "graph.goal": "prove whether a condition string template-expands inputs",
-          "internal.retry_count.took_input": 0,
-          "command.output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74",
-          "internal.node_visit_count": 1,
           "internal.work_dir": "/workspace/livespec",
-          "failure_signature": "",
-          "outcome": "succeeded",
-          "internal.fidelity": "compact",
           "current_node": "took_input",
-          "internal.thread_id": "emit",
           "internal.retry_count.start": 0,
+          "failure_signature": "",
+          "internal.thread_id": "emit",
+          "command.output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74",
+          "internal.run_id": "01KXKM66CSJESV3APCVK81YZW2",
+          "outcome": "succeeded",
+          "failure_class": "",
+          "internal.retry_count.took_input": 0,
+          "thread.emit.current_node": "took_input",
+          "internal.node_visit_count": 1,
           "thread.start.current_node": "emit",
+          "graph.goal": "prove whether a condition string template-expands inputs",
           "internal.retry_count.emit": 0,
-          "failure_class": ""
+          "internal.fidelity": "compact"
         },
         "node_outcomes": {
-          "took_input": {
-            "status": "succeeded",
-            "context_updates": {
-              "command.output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74"
-            },
-            "notes": "Script completed: echo RESULT_TOOK_TEMPLATED_EDGE; exit 0",
-            "usage": null,
-            "timing": {
-              "wall_time_ms": 0,
-              "inference_time_ms": 0,
-              "tool_time_ms": 223,
-              "active_time_ms": 223
-            }
-          },
-          "start": {
-            "status": "succeeded",
-            "usage": null
-          },
           "emit": {
             "status": "succeeded",
             "context_updates": {
@@ -427,19 +409,91 @@
               "tool_time_ms": 257,
               "active_time_ms": 257
             }
+          },
+          "start": {
+            "status": "succeeded",
+            "usage": null
+          },
+          "took_input": {
+            "status": "succeeded",
+            "context_updates": {
+              "command.output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74"
+            },
+            "notes": "Script completed: echo RESULT_TOOK_TEMPLATED_EDGE; exit 0",
+            "usage": null,
+            "timing": {
+              "wall_time_ms": 0,
+              "inference_time_ms": 0,
+              "tool_time_ms": 223,
+              "active_time_ms": 223
+            }
           }
         },
         "next_node_id": "exit",
+        "git_commit_sha": "999d4deb30c7384a36e43995af7d3b6150f2b41f",
         "node_visits": {
           "start": 1,
           "emit": 1,
           "took_input": 1
         }
       },
-      "diff": {}
+      "diff": {
+        "summary": {
+          "files_changed": 0,
+          "additions": 0,
+          "deletions": 0
+        }
+      }
     }
   ],
-  "conclusion": null,
+  "conclusion": {
+    "timestamp": "2026-07-15T19:31:36.407646475Z",
+    "status": "succeeded",
+    "timing": {
+      "wall_time_ms": 11453,
+      "inference_time_ms": 0,
+      "tool_time_ms": 480,
+      "active_time_ms": 480
+    },
+    "final_git_commit_sha": "999d4deb30c7384a36e43995af7d3b6150f2b41f",
+    "stages": [
+      {
+        "stage_id": "start",
+        "stage_label": "start",
+        "timing": {
+          "wall_time_ms": 0,
+          "inference_time_ms": 0,
+          "tool_time_ms": 0,
+          "active_time_ms": 0
+        },
+        "retries": 0
+      },
+      {
+        "stage_id": "emit",
+        "stage_label": "emit",
+        "timing": {
+          "wall_time_ms": 268,
+          "inference_time_ms": 0,
+          "tool_time_ms": 257,
+          "active_time_ms": 257
+        },
+        "retries": 0
+      },
+      {
+        "stage_id": "took_input",
+        "stage_label": "took_input",
+        "timing": {
+          "wall_time_ms": 240,
+          "inference_time_ms": 0,
+          "tool_time_ms": 223,
+          "active_time_ms": 223
+        },
+        "retries": 0
+      }
+    ],
+    "total_retries": 0,
+    "diff": {}
+  },
   "sandbox": {
     "kind": "ready",
     "plan": {
@@ -518,7 +572,12 @@
       "first_event_seq": 31,
       "prompt": null,
       "response": null,
-      "completion": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": "Script completed: echo RESULT_TOOK_TEMPLATED_EDGE; exit 0",
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:31:32.359870942Z"
+      },
       "provider_used": null,
       "diff": null,
       "script_invocation": {
@@ -526,11 +585,27 @@
         "command": "exec 2>&1\necho RESULT_TOOK_TEMPLATED_EDGE; exit 0",
         "language": "shell"
       },
-      "script_timing": null,
+      "script_timing": {
+        "output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74",
+        "exit_code": 0,
+        "duration_ms": 223,
+        "termination": "exited",
+        "output_bytes": 27,
+        "live_streaming": true
+      },
       "parallel_results": null,
       "output": null,
+      "output_bytes": 27,
+      "live_streaming": true,
+      "termination": "exited",
       "started_at": "2026-07-15T19:31:32.119439742Z",
       "handler": "command",
+      "timing": {
+        "wall_time_ms": 240,
+        "inference_time_ms": 0,
+        "tool_time_ms": 223,
+        "active_time_ms": 223
+      },
       "usage": {
         "input_tokens": 0,
         "output_tokens": 0,
@@ -539,7 +614,7 @@
         "cache_read_tokens": 0,
         "cache_write_tokens": 0
       },
-      "state": "running"
+      "state": "succeeded"
     },
     "start@1": {
       "first_event_seq": 17,
@@ -559,6 +634,40 @@
       "output": null,
       "started_at": "2026-07-15T19:31:26.616064018Z",
       "handler": "start",
+      "timing": {
+        "wall_time_ms": 0,
+        "inference_time_ms": 0,
+        "tool_time_ms": 0,
+        "active_time_ms": 0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "exit@1": {
+      "first_event_seq": 41,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": null,
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:31:36.361921491Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": null,
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:31:36.361904290Z",
+      "handler": "exit",
       "timing": {
         "wall_time_ms": 0,
         "inference_time_ms": 0,
