@@ -267,7 +267,7 @@
     "kind": "running"
   },
   "status_updated_at": "2026-07-15T19:31:03.806220469Z",
-  "last_event_at": "2026-07-15T19:31:10.918971057Z",
+  "last_event_at": "2026-07-15T19:31:16.556324993Z",
   "pending_control": null,
   "checkpoints": [
     {
@@ -367,9 +367,9 @@
       }
     },
     {
-      "seq": 0,
+      "seq": 38,
       "checkpoint": {
-        "timestamp": "2026-07-15T19:31:11.230836964Z",
+        "timestamp": "2026-07-15T19:31:16.556119058Z",
         "current_node": "took_input",
         "completed_nodes": [
           "start",
@@ -378,28 +378,24 @@
         ],
         "node_retries": {},
         "context_values": {
-          "internal.retry_count.took_input": 0,
           "internal.node_visit_count": 1,
-          "internal.fidelity": "compact",
-          "thread.emit.current_node": "took_input",
           "internal.work_dir": "/workspace/livespec",
-          "graph.goal": "prove whether a condition string template-expands inputs",
-          "internal.thread_id": "emit",
-          "failure_class": "",
-          "failure_signature": "",
-          "internal.run_id": "01KXKM5GEDPNYKGP24E8J3F0SV",
-          "thread.start.current_node": "emit",
           "internal.retry_count.start": 0,
+          "thread.start.current_node": "emit",
+          "internal.fidelity": "compact",
           "command.output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74",
           "outcome": "succeeded",
-          "internal.retry_count.emit": 0,
-          "current_node": "took_input"
+          "internal.retry_count.took_input": 0,
+          "thread.emit.current_node": "took_input",
+          "current_node": "took_input",
+          "failure_class": "",
+          "failure_signature": "",
+          "graph.goal": "prove whether a condition string template-expands inputs",
+          "internal.run_id": "01KXKM5GEDPNYKGP24E8J3F0SV",
+          "internal.thread_id": "emit",
+          "internal.retry_count.emit": 0
         },
         "node_outcomes": {
-          "start": {
-            "status": "succeeded",
-            "usage": null
-          },
           "took_input": {
             "status": "succeeded",
             "context_updates": {
@@ -427,19 +423,77 @@
               "tool_time_ms": 198,
               "active_time_ms": 198
             }
+          },
+          "start": {
+            "status": "succeeded",
+            "usage": null
           }
         },
         "next_node_id": "exit",
+        "git_commit_sha": "106ab32129a3a1772d37c3560b5f6577f6401e79",
         "node_visits": {
-          "took_input": 1,
           "start": 1,
-          "emit": 1
+          "emit": 1,
+          "took_input": 1
         }
       },
-      "diff": {}
+      "diff": {
+        "summary": {
+          "files_changed": 0,
+          "additions": 0,
+          "deletions": 0
+        }
+      }
     }
   ],
-  "conclusion": null,
+  "conclusion": {
+    "timestamp": "2026-07-15T19:31:16.616043367Z",
+    "status": "succeeded",
+    "timing": {
+      "wall_time_ms": 12759,
+      "inference_time_ms": 0,
+      "tool_time_ms": 491,
+      "active_time_ms": 491
+    },
+    "final_git_commit_sha": "106ab32129a3a1772d37c3560b5f6577f6401e79",
+    "stages": [
+      {
+        "stage_id": "start",
+        "stage_label": "start",
+        "timing": {
+          "wall_time_ms": 0,
+          "inference_time_ms": 0,
+          "tool_time_ms": 0,
+          "active_time_ms": 0
+        },
+        "retries": 0
+      },
+      {
+        "stage_id": "emit",
+        "stage_label": "emit",
+        "timing": {
+          "wall_time_ms": 212,
+          "inference_time_ms": 0,
+          "tool_time_ms": 198,
+          "active_time_ms": 198
+        },
+        "retries": 0
+      },
+      {
+        "stage_id": "took_input",
+        "stage_label": "took_input",
+        "timing": {
+          "wall_time_ms": 307,
+          "inference_time_ms": 0,
+          "tool_time_ms": 293,
+          "active_time_ms": 293
+        },
+        "retries": 0
+      }
+    ],
+    "total_retries": 0,
+    "diff": {}
+  },
   "sandbox": {
     "kind": "ready",
     "plan": {
@@ -514,33 +568,6 @@
       },
       "state": "succeeded"
     },
-    "took_input@1": {
-      "first_event_seq": 31,
-      "prompt": null,
-      "response": null,
-      "completion": null,
-      "provider_used": null,
-      "diff": null,
-      "script_invocation": {
-        "script": "echo RESULT_TOOK_TEMPLATED_EDGE; exit 0",
-        "command": "exec 2>&1\necho RESULT_TOOK_TEMPLATED_EDGE; exit 0",
-        "language": "shell"
-      },
-      "script_timing": null,
-      "parallel_results": null,
-      "output": null,
-      "started_at": "2026-07-15T19:31:10.917386632Z",
-      "handler": "command",
-      "usage": {
-        "input_tokens": 0,
-        "output_tokens": 0,
-        "total_tokens": 0,
-        "reasoning_tokens": 0,
-        "cache_read_tokens": 0,
-        "cache_write_tokens": 0
-      },
-      "state": "running"
-    },
     "start@1": {
       "first_event_seq": 17,
       "prompt": null,
@@ -559,6 +586,88 @@
       "output": null,
       "started_at": "2026-07-15T19:31:05.633608242Z",
       "handler": "start",
+      "timing": {
+        "wall_time_ms": 0,
+        "inference_time_ms": 0,
+        "tool_time_ms": 0,
+        "active_time_ms": 0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "took_input@1": {
+      "first_event_seq": 31,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": "Script completed: echo RESULT_TOOK_TEMPLATED_EDGE; exit 0",
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:31:11.225463378Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": {
+        "script": "echo RESULT_TOOK_TEMPLATED_EDGE; exit 0",
+        "command": "exec 2>&1\necho RESULT_TOOK_TEMPLATED_EDGE; exit 0",
+        "language": "shell"
+      },
+      "script_timing": {
+        "output": "blob://sha256/afd9b58f84685c00cff2293463ebbe9672de33b35299113a2b8474fd2b136c74",
+        "exit_code": 0,
+        "duration_ms": 293,
+        "termination": "exited",
+        "output_bytes": 27,
+        "live_streaming": true
+      },
+      "parallel_results": null,
+      "output": null,
+      "output_bytes": 27,
+      "live_streaming": true,
+      "termination": "exited",
+      "started_at": "2026-07-15T19:31:10.917386632Z",
+      "handler": "command",
+      "timing": {
+        "wall_time_ms": 307,
+        "inference_time_ms": 0,
+        "tool_time_ms": 293,
+        "active_time_ms": 293
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "exit@1": {
+      "first_event_seq": 41,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": null,
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:31:16.556324993Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": null,
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:31:16.556307500Z",
+      "handler": "exit",
       "timing": {
         "wall_time_ms": 0,
         "inference_time_ms": 0,
