@@ -36,14 +36,24 @@ iso_to_nanos() { date -u -d "$1" +%s%N; }   # GNU date (ubuntu runners)
 hex32() { printf '%032x' "$1"; }            # 16-byte trace id
 hex16() { printf '%016x' "$1"; }            # 8-byte span id
 
-run_json="$(gh run view "$RUN_ID" --repo "$REPO" \
-  --json databaseId,headSha,headBranch,event,displayTitle,conclusion,createdAt,startedAt,updatedAt,jobs)"
+# The run JSON embeds EVERY job object (each with its steps, urls, timestamps), so at
+# this workflow's ~50+ jobs it is ~80 KB and growing. It MUST NOT reach jq as a
+# command-line argument (`--argjson run "$run_json"`): execve() counts argv+envp TOGETHER
+# against ARG_MAX, and GitHub Actions injects a large environment, so a run_json this big
+# on argv tips the total over the limit and fails E2BIG / "Argument list too long" — the
+# failure that turned master red once the job count grew (it passes in a small local env,
+# which is why it lurked). Stage it in a temp file and feed jq via file input /
+# `--slurpfile`, which read from the file and never touch argv.
+run_json_file="$(mktemp)"
+gh run view "$RUN_ID" --repo "$REPO" \
+  --json databaseId,headSha,headBranch,event,displayTitle,conclusion,createdAt,startedAt,updatedAt,jobs \
+  > "$run_json_file"
 
 trace_id="$(hex32 "$RUN_ID")"
 run_span_id="$(hex16 "$RUN_ID")"
-run_start="$(iso_to_nanos "$(jq -r '.startedAt // .createdAt' <<<"$run_json")")"
-run_end="$(iso_to_nanos "$(jq -r '.updatedAt' <<<"$run_json")")"
-run_concl="$(jq -r '.conclusion // ""' <<<"$run_json")"
+run_start="$(iso_to_nanos "$(jq -r '.startedAt // .createdAt' "$run_json_file")")"
+run_end="$(iso_to_nanos "$(jq -r '.updatedAt' "$run_json_file")")"
+run_concl="$(jq -r '.conclusion // ""' "$run_json_file")"
 run_code=2; [ "$run_concl" = "success" ] && run_code=1
 
 WORKFLOW_NAME="${WORKFLOW_NAME:-}"   # optional: github.workflow, for per-workflow triggers
@@ -53,7 +63,8 @@ run_span="$(jq -nc \
   --arg start "$run_start" --arg end "$run_end" \
   --arg repo "$REPO" --argjson run_id "$RUN_ID" --argjson code "$run_code" \
   --arg workflow "$WORKFLOW_NAME" \
-  --argjson run "$run_json" '
+  --slurpfile runs "$run_json_file" '
+  ($runs[0]) as $run |
   {traceId:$trace, spanId:$span, name:"ci.run", kind:1,
    startTimeUnixNano:$start, endTimeUnixNano:$end,
    attributes:[
@@ -93,9 +104,14 @@ while IFS=$'\t' read -r jid jname jconcl jstart_iso jend_iso; do
      ],
      status:{code:$code}}')"
   job_spans="$(jq -c ". + [$span]" <<<"$job_spans")"
-done < <(jq -r '.jobs[] | [.databaseId, .name, (.conclusion // ""), (.startedAt // ""), (.completedAt // "")] | @tsv' <<<"$run_json")
+done < <(jq -r '.jobs[] | [.databaseId, .name, (.conclusion // ""), (.startedAt // ""), (.completedAt // "")] | @tsv' "$run_json_file")
 
 payload_file="$(mktemp)"
+# `run_span` is a single span and `job_spans` are TRIMMED spans (~5 attributes each,
+# a few hundred bytes/job, ~20 KB total at current scale) — small enough that argv+envp
+# stays under ARG_MAX, so `--argjson` is safe here (unlike the raw `run_json` above). If
+# this workflow's job count grows enough that `job_spans` approaches that budget, stage
+# it in a temp file and slurp it the same way.
 jq -nc \
   --argjson run "$run_span" --argjson jobs "$job_spans" \
   --arg svc "$DATASET" --arg ns "$NAMESPACE" \
