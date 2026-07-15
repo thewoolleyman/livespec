@@ -81,20 +81,69 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State (fresh-session entry point, updated 2026-07-14 — Phases 0 AND 1 are now
+**State (fresh-session entry point, updated 2026-07-15 — Phases 0, 1 AND 2 are now
 functionally DONE).** The plan is anchored by the **beads epic `livespec-3lev`**
 (`livespec` tenant) with per-phase children `.1`–`.8` (`.8` = Phase 5, the closing
-efficiency report). **Phase 0 (the local self-hosted runner) and Phase 1 (baked layered
-images + the codex-acp auto-bump automation) are BOTH functionally COMPLETE and
-live-exercised** — the codex-acp gate went fully GREEN end-to-end on 2026-07-14 (see
-SESSION 2026-07-14 below), which was Phase 1's last deliverable. A SECOND, PRIVILEGED
-runner trust tier (the on-demand gate runner) was built and proven en route, because the
-contained CI runner provably cannot host the golden-master gate.
+efficiency report). **Phase 0 (the local self-hosted runner), Phase 1 (baked layered
+images + the codex-acp auto-bump automation), AND Phase 2 (livespec `ci.yml` cut over to
+the self-hosted runner + baked image) are all functionally COMPLETE and live-exercised.**
+Phase 2's cutover is proven GREEN end-to-end on master (see SESSION 2026-07-15 below).
 
-**So the actionable next step is now simply Phase 2 (`.5`) — cut CI over to the local
-runner + baked image.** The only loose end is a LEDGER-HYGIENE one: `.3` and `.4` cannot
-`bd close` because both are blocked-by the intentionally-open `.1` (P-host). Nothing
-technical is blocked by it. See NEXT ACTIONS.
+**So the actionable next step is now Phase 3 — fan the Phase-2 cutover out to the other
+fleet members**, re-deriving each repo's per-job disposition from ITS OWN workflows (the
+fleet is non-uniform). Loose ends: (a) the same LEDGER-HYGIENE one — `.3`/`.4` are
+blocked-by the intentionally-open `.1` (P-host), and `.5` (Phase 2) is in turn blocked-by
+`.3`/`.4`, so all three are functionally done but ledger-OPEN; nothing technical is
+blocked; (b) two NON-blocking Phase-2 performance follow-ons journaled on `.5` — the uv
+cache is still per-container-cold, and the mise-data-dir workaround wants a durable
+image/hook-layer HOME fix. See NEXT ACTIONS.
+
+**SESSION 2026-07-15 LANDED — read first:**
+- **Phase 2 (`.5`) — livespec `ci.yml` CUT OVER to the self-hosted runner + baked image —
+  DONE + PROVEN GREEN END-TO-END ON MASTER.** Master run
+  [29393042872](https://github.com/thewoolleyman/livespec/actions/runs/29393042872): overall
+  success; **63/66 jobs ran in `ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.43.2`
+  on `[self-hosted, local-ci]`** (both the `check-python` and `check-metadata` matrices,
+  including the npm-sensitive `check-types`), while `setup` / `export-telemetry` / `ci-green`
+  correctly stayed `ubuntu-latest` (the gate stays reportable host-down; export-telemetry
+  keeps the ingest secret off the runner). Landed in livespec **#1255** (auto-merged on green;
+  two commits — the cutover, then the rate-limit fix below).
+  - **Routing shape:** `runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}`
+    on both matrices — the self-hosted label is literally visible (so the audit can see it) and
+    the repo variable is the **merge-gate fallback**: set `CI_RUNNER_LABELS='["ubuntu-latest"]'`
+    to reroute both matrices to GitHub-hosted (still in the public baked image) when the host is
+    down; unset restores self-hosted. Runner-liveness detection is P-host's job (`.1`).
+  - **Dropped the dead `merge_group:` trigger** (no merge queue is configured — empty rulesets,
+    branch protection requires only `ci-green`; verified live). Keeping it would have been the
+    exact routing hole T9 forbids. Re-add it WITH hosted routing only if a merge queue is adopted.
+  - **Deleted the `actions/cache` uv steps + replaced `mise-action` with `mise trust`/`install`**
+    (baked tools); added the node-on-PATH npm-shim prelude.
+- **The security decision that reshaped this (maintainer, 2026-07-15): the approval gate is the
+  load-bearing boundary; the routing audit is defense-in-depth.** Forking canNOT be disabled on
+  public repos (GitHub offers it for private repos only); the fork-PR approval policy is already
+  at the strictest tier (`all_external_contributors`), so a stranger's fork PR runs NOTHING on
+  the runner without a maintainer click. So the T9 routing audit was fixed the **cheap** way now
+  and the **fleet-wide per-PR CI check is deferred to Phase 3** (where the surface multiplies).
+  Going private was rejected: the plugin is distributed via the public `livespec` repo
+  (marketplace source), so private would break `/plugin install`.
+- **T9 routing audit CORRECTED first (blocked the cutover) — `livespec-dev-tooling` #401
+  (merged).** T9 (`ci-runner/isolation-exit-tests.sh`, the trusted-event routing audit) grepped
+  the WHOLE workflow file as flat text, so (a) it FALSE-FAILED the shadow lane on a *comment*
+  mentioning `merge_group`, and (b) no correctly-routed `ci.yml` could pass it. Fixed to strip
+  comments and evaluate the real `on:` trigger block; verified the live shadow lane passes, a
+  routed `ci.yml` passes, and a negative control (merge_group kept on a self-hosted job) still
+  fails. Per `.ai/ci-gate-discipline.md` the gate was fixed, not bypassed.
+- **ONE live-exercise defect found by actually running the matrix (the "done means exercised
+  live" discipline earning its keep):** the FIRST cutover run RED-failed all `check-metadata`
+  jobs uniformly — `mise install` re-fetched lefthook/just/uv and ~71 concurrent UNauthenticated
+  jobs blew GitHub's anon API rate limit (403 on `uv@0.9.26`). Root cause: the baked tools (which
+  MATCH livespec's `.mise.toml` exactly) live under `/root/.local/share/mise` (build HOME=/root),
+  but container-hooks run steps with a different HOME, so mise's data dir is empty. The shadow
+  lane hid it (ONE job + a `GH_TOKEN`); the 12-slot harness only slept. Fix: `MISE_DATA_DIR=
+  /root/.local/share/mise` on both matrices → `mise install` is a true no-op (verified in-image,
+  no downloads, no API calls). **Follow-on on `.5`:** the uv cache is STILL per-container-cold
+  (a real hot cache needs `UV_CACHE_DIR` at a persistent mount — T10 cache-tiering), and the
+  durable fix is an image/hook-layer HOME alignment so the workaround env var can be dropped.
 
 **SESSION 2026-07-14 LANDED — read first:**
 - **codex-acp FULL automation accept — GREEN + EXERCISED LIVE. PHASE 1 IS FUNCTIONALLY DONE.**
@@ -280,22 +329,28 @@ technical is blocked by it. See NEXT ACTIONS.
 **NEXT ACTIONS (ranked) — REWRITTEN 2026-07-14 after the codex-acp accept went green;
 NEXT ACTION #1 REWRITTEN AGAIN 2026-07-14 after the runner pool was made concurrency-safe:**
 
-1. **Phase 2b (`.5`) — cut `ci.yml` over to the local runner + baked image.** THE actionable
-   next step. The *prerequisite* half (Phase 2a — make the runner pool actually able to carry
-   a matrix) is **DONE and proven**; what remains is the `ci.yml` edit itself. Read
-   `phase2-ci-disposition-livespec.md` first — its per-job table (MOVE / STAY-HOSTED /
-   DELETE-STEP) is the whole design, and one row in it was **corrected**: do NOT point
-   `check-doctor-static` at the on-host `/data/projects` (the job container has no host
-   mount, by design — keep cloning the public siblings inside the container).
+1. **Phase 2b (`.5`) — livespec `ci.yml` cutover — DONE + PROVEN GREEN ON MASTER
+   (2026-07-15; do not redo).** Landed in livespec **#1255**; master run
+   [29393042872](https://github.com/thewoolleyman/livespec/actions/runs/29393042872) green
+   with 63/66 jobs in-image on `[self-hosted, local-ci]`. See SESSION 2026-07-15 above for
+   the routing shape, the `CI_RUNNER_LABELS` fallback var, the merge_group removal, and the
+   T9 fix (`livespec-dev-tooling` #401). **NON-blocking follow-ons journaled on `.5`:** (a)
+   the uv cache is per-container-COLD — a real hot cache needs `UV_CACHE_DIR` at a persistent
+   mount (T10 cache-tiering); (b) the `MISE_DATA_DIR=/root/...` workaround wants a durable
+   image/hook-layer HOME alignment so it can be dropped.
 
-   **Still to do:** move `setup` / `check-python` / `check-metadata` to
-   `[self-hosted, local-ci]` in the baked image; keep `export-telemetry` + `ci-green` on
-   `ubuntu-latest` (secrets, and the gate must stay reportable when the host is down); delete
-   the `actions/cache` uv steps (caches are local-disk); add `mise trust` +
-   `MISE_NOT_FOUND_AUTO_INSTALL=0` per the shadow lane; implement the merge-gate fallback (a
-   repo Actions *variable* holding the runner label, flippable to `ubuntu-latest`) so a down
-   host cannot silently stall merges for 24h. Carry the remaining follow-ons journaled on
-   `.5`: the durable npm-shim/HOME fix at the image/hook layer, and T10 cache-tiering.
+   **NEW actionable next step — Phase 3 (fleet fan-out).** Apply the Phase-1 image pin + the
+   Phase-2 cutover to the other 7 fleet members, RE-DERIVING each repo's per-job disposition
+   from ITS OWN workflows (the fleet is non-uniform — different matrices, secrets, release
+   wiring). `phase2-ci-disposition-livespec.md` is the TEMPLATE, not a fill-in; carry the
+   live-learned pieces forward: `MISE_DATA_DIR=/root/.local/share/mise` (else concurrent
+   `mise install` blows the anon API rate limit), the `CI_RUNNER_LABELS` fallback var, the
+   node-on-PATH npm prelude, `mise trust`, drop `merge_group` where it is dead. The routing
+   audit's fleet-wide per-PR CI form (deferred from Phase 2) belongs HERE — the surface now
+   multiplies across 8 repos, so a per-PR check catches a routing mistake at PR time in every
+   repo. NB: the `check-doctor-static` sibling-clone row is **corrected** in the disposition
+   doc — do NOT point it at the on-host `/data/projects` (the job container has no host mount,
+   by design — keep cloning the public siblings inside the container).
 
    **Phase 2a — DONE 2026-07-14 (do not redo).** Raising the pool from 1 slot to 18 exposed
    THREE bugs, every one of them invisible at a single slot, all now fixed and merged in
