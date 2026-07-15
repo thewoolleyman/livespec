@@ -258,14 +258,108 @@
       }
     }
   },
-  "start": null,
-  "status": {
-    "kind": "starting"
+  "start": {
+    "start_time": "2026-07-15T19:31:52.637350386Z",
+    "run_branch": "fabro/run/01KXKM71PM7ETJF2MY6QWQE1MH",
+    "base_sha": "d27650663e2cca917bf58f919d9a9c1afb8e2c39"
   },
-  "status_updated_at": "2026-07-15T19:31:46.659743440Z",
-  "last_event_at": "2026-07-15T19:31:50.793576755Z",
+  "status": {
+    "kind": "running"
+  },
+  "status_updated_at": "2026-07-15T19:31:52.639323746Z",
+  "last_event_at": "2026-07-15T19:31:54.346804345Z",
   "pending_control": null,
-  "checkpoints": [],
+  "checkpoints": [
+    {
+      "seq": 20,
+      "checkpoint": {
+        "timestamp": "2026-07-15T19:31:54.346680403Z",
+        "current_node": "start",
+        "completed_nodes": [
+          "start"
+        ],
+        "node_retries": {},
+        "context_values": {
+          "internal.run_id": "01KXKM71PM7ETJF2MY6QWQE1MH",
+          "internal.work_dir": "/workspace/livespec",
+          "internal.node_visit_count": 1,
+          "failure_class": "",
+          "graph.goal": "prove whether a condition string template-expands inputs",
+          "internal.retry_count.start": 0,
+          "internal.thread_id": null,
+          "internal.fidelity": "compact",
+          "failure_signature": "",
+          "outcome": "succeeded",
+          "current_node": "start"
+        },
+        "node_outcomes": {
+          "start": {
+            "status": "succeeded",
+            "usage": null
+          }
+        },
+        "next_node_id": "emit",
+        "node_visits": {
+          "start": 1
+        }
+      },
+      "diff": {}
+    },
+    {
+      "seq": 0,
+      "checkpoint": {
+        "timestamp": "2026-07-15T19:31:54.715380976Z",
+        "current_node": "emit",
+        "completed_nodes": [
+          "start",
+          "emit"
+        ],
+        "node_retries": {},
+        "context_values": {
+          "thread.start.current_node": "emit",
+          "internal.retry_count.emit": 0,
+          "failure_signature": "",
+          "internal.retry_count.start": 0,
+          "outcome": "succeeded",
+          "internal.run_id": "01KXKM71PM7ETJF2MY6QWQE1MH",
+          "failure_class": "",
+          "current_node": "emit",
+          "internal.node_visit_count": 1,
+          "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684",
+          "internal.work_dir": "/workspace/livespec",
+          "internal.thread_id": "start",
+          "internal.fidelity": "compact",
+          "graph.goal": "prove whether a condition string template-expands inputs"
+        },
+        "node_outcomes": {
+          "emit": {
+            "status": "succeeded",
+            "context_updates": {
+              "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684"
+            },
+            "notes": "Script completed: echo emitting; exit 0",
+            "usage": null,
+            "timing": {
+              "wall_time_ms": 0,
+              "inference_time_ms": 0,
+              "tool_time_ms": 342,
+              "active_time_ms": 342
+            }
+          },
+          "start": {
+            "status": "succeeded",
+            "usage": null
+          }
+        },
+        "next_node_id": "took_fallback",
+        "node_visits": {
+          "start": 1,
+          "emit": 1
+        }
+      },
+      "diff": {}
+    }
+  ],
   "conclusion": null,
   "sandbox": {
     "kind": "ready",
@@ -292,5 +386,67 @@
   "pull_request": null,
   "superseded_by": null,
   "pending_interviews": {},
-  "stages": {}
+  "stages": {
+    "start@1": {
+      "first_event_seq": 17,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": null,
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:31:54.345613157Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": null,
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:31:54.345498122Z",
+      "handler": "start",
+      "timing": {
+        "wall_time_ms": 0,
+        "inference_time_ms": 0,
+        "tool_time_ms": 0,
+        "active_time_ms": 0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "emit@1": {
+      "first_event_seq": 21,
+      "prompt": null,
+      "response": null,
+      "completion": null,
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": {
+        "script": "echo emitting; exit 0",
+        "command": "exec 2>&1\necho emitting; exit 0",
+        "language": "shell"
+      },
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:31:54.346781071Z",
+      "handler": "command",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "running"
+    }
+  }
 }
