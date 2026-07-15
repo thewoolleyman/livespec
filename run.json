@@ -258,14 +258,108 @@
       }
     }
   },
-  "start": null,
-  "status": {
-    "kind": "starting"
+  "start": {
+    "start_time": "2026-07-15T19:32:31.532134850Z",
+    "run_branch": "fabro/run/01KXKM87QDZFG6Q8RH2MBW8VET",
+    "base_sha": "d27650663e2cca917bf58f919d9a9c1afb8e2c39"
   },
-  "status_updated_at": "2026-07-15T19:32:25.623774889Z",
-  "last_event_at": "2026-07-15T19:32:30.459776776Z",
+  "status": {
+    "kind": "running"
+  },
+  "status_updated_at": "2026-07-15T19:32:31.532449608Z",
+  "last_event_at": "2026-07-15T19:32:34.981305578Z",
   "pending_control": null,
-  "checkpoints": [],
+  "checkpoints": [
+    {
+      "seq": 20,
+      "checkpoint": {
+        "timestamp": "2026-07-15T19:32:34.981225838Z",
+        "current_node": "start",
+        "completed_nodes": [
+          "start"
+        ],
+        "node_retries": {},
+        "context_values": {
+          "internal.run_id": "01KXKM87QDZFG6Q8RH2MBW8VET",
+          "failure_class": "",
+          "failure_signature": "",
+          "internal.node_visit_count": 1,
+          "internal.thread_id": null,
+          "internal.work_dir": "/workspace/livespec",
+          "internal.retry_count.start": 0,
+          "internal.fidelity": "compact",
+          "current_node": "start",
+          "graph.goal": "prove whether an edge condition can read a workflow input at runtime",
+          "outcome": "succeeded"
+        },
+        "node_outcomes": {
+          "start": {
+            "status": "succeeded",
+            "usage": null
+          }
+        },
+        "next_node_id": "emit",
+        "node_visits": {
+          "start": 1
+        }
+      },
+      "diff": {}
+    },
+    {
+      "seq": 0,
+      "checkpoint": {
+        "timestamp": "2026-07-15T19:32:35.261002514Z",
+        "current_node": "emit",
+        "completed_nodes": [
+          "start",
+          "emit"
+        ],
+        "node_retries": {},
+        "context_values": {
+          "internal.retry_count.emit": 0,
+          "failure_class": "",
+          "failure_signature": "",
+          "outcome": "succeeded",
+          "internal.work_dir": "/workspace/livespec",
+          "graph.goal": "prove whether an edge condition can read a workflow input at runtime",
+          "internal.thread_id": "start",
+          "internal.run_id": "01KXKM87QDZFG6Q8RH2MBW8VET",
+          "current_node": "emit",
+          "internal.retry_count.start": 0,
+          "thread.start.current_node": "emit",
+          "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684",
+          "internal.node_visit_count": 1,
+          "internal.fidelity": "compact"
+        },
+        "node_outcomes": {
+          "start": {
+            "status": "succeeded",
+            "usage": null
+          },
+          "emit": {
+            "status": "succeeded",
+            "context_updates": {
+              "command.output": "blob://sha256/a88616b053eec0fabb61f13619bac71b1e39c560ffb6f25bbbae86019f9b4684"
+            },
+            "notes": "Script completed: echo emitting; exit 0",
+            "usage": null,
+            "timing": {
+              "wall_time_ms": 0,
+              "inference_time_ms": 0,
+              "tool_time_ms": 260,
+              "active_time_ms": 260
+            }
+          }
+        },
+        "next_node_id": "took_fallback",
+        "node_visits": {
+          "emit": 1,
+          "start": 1
+        }
+      },
+      "diff": {}
+    }
+  ],
   "conclusion": null,
   "sandbox": {
     "kind": "ready",
@@ -292,5 +386,67 @@
   "pull_request": null,
   "superseded_by": null,
   "pending_interviews": {},
-  "stages": {}
+  "stages": {
+    "start@1": {
+      "first_event_seq": 17,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": null,
+        "failure_reason": null,
+        "timestamp": "2026-07-15T19:32:34.981097298Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": null,
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:32:34.980985819Z",
+      "handler": "start",
+      "timing": {
+        "wall_time_ms": 0,
+        "inference_time_ms": 0,
+        "tool_time_ms": 0,
+        "active_time_ms": 0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
+    },
+    "emit@1": {
+      "first_event_seq": 21,
+      "prompt": null,
+      "response": null,
+      "completion": null,
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": {
+        "script": "echo emitting; exit 0",
+        "command": "exec 2>&1\necho emitting; exit 0",
+        "language": "shell"
+      },
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-07-15T19:32:34.981283016Z",
+      "handler": "command",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "running"
+    }
+  }
 }

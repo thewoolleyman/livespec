@@ -1,0 +1,5 @@
+{
+  "script": "echo emitting; exit 0",
+  "command": "exec 2>&1\necho emitting; exit 0",
+  "language": "shell"
+}
