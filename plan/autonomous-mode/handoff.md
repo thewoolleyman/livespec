@@ -65,6 +65,167 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-15 (cont. 16): BOTH spec amendments CLEARED — O0 RATIFIED (v036); W2 NO-BLOCKERS after 3 rounds; SEVEN Fable blockers caught (three were defects in the driver's OWN briefs); TWO maintainer decisions locked (HOLD O2; phased flag rollout)
+
+Continuation of cont.15. The maintainer's standing direction held: *"drive the propose
+change and revise autonomously, move the plan forward."* The accept was
+maintainer-DELEGATED; the mandatory independent Fable review was held by the driver and
+NOT waived. Both spec gates that block the whole epic are now down.
+
+### STATUS — the two spec amendments
+
+| | Repo | Proposal PRs | Review | Ratified |
+|---|---|---|---|---|
+| **O0** `bd-ib-mjbcqf` | `livespec-orchestrator-beads-fabro` | #620 → #625 → #626 | 3 rounds, **3 blockers**, final **NO BLOCKERS** | **YES — `SPECIFICATION/history/v036/` (PR #627, `c445ddb`)**; ledger CLOSED with audit evidence |
+| **W2** `livespec-console-beads-fabro-l3tx33` | `livespec-console-beads-fabro` | #227 → #228 → #229 | 3 rounds, **3 blockers**, final **NO BLOCKERS** | **NOT YET — accept GO given, IN FLIGHT.** Verified at cont.16 write time: origin/master tip is `1434a27` (the final `chore(spec):` proposal-edit, NOT a revise-accept); `proposed_changes/console-dispatcher-settings-rebaseline.md` is STILL present; history tops out at `v021`. When it lands it becomes `v022`. |
+
+**O0 is fully DONE and live-verified on merged master (not merely reported):**
+`history/v036/` exists on origin/master; `proposed_changes/` consumed back to
+`.gitkeep`; `grep -rn "shadow" SPECIFICATION/ --exclude-dir=history` returns EXACTLY the
+two protected no-shadow-ledger hits (`contracts.md:963` heading, `:974` phrase) and
+nothing else; `--mode` has ZERO occurrences across all four live spec files. The ledger
+close copied the shape of a sibling closed item (`bd-ib-asp`): `resolution:completed`,
+`metadata.audit` carrying `merge_sha`/`pr_number`/`verification_timestamp`, stale
+`blocked-reason:needs-human` label removed, existing metadata (`acceptance_criteria`,
+`rank`) preserved.
+
+**W2 final text** (PR #229, `1434a27`): counts spec.md 15 / contracts.md 57 /
+constraints.md 22 / non-functional-requirements.md 52 = **146**; **58** newly bound
+gap-ids, **37** dead, registry 22→25; all independently re-derived by the reviewer
+reimplementing the gate extraction. Accept mechanics for the record: ONE decision per
+FILE, `proposal_topic` = stem `console-dispatcher-settings-rebaseline`, **SIX**
+`resulting_files[]` (four spec files + `../tests/heading-coverage.json` +
+`../crates/console-spec-check/src/tests.rs`).
+
+### THE SEVEN FABLE BLOCKERS (why the gate is non-waivable) — and the THREE that were the driver's own fault
+
+Across the two proposals the independent Fable gate caught seven blockers before
+ratification. **Three originated in the DRIVER'S briefs, not the authors':**
+
+1. **O0 R1 — a fail-closed rule falsified by a non-default env lever.** The driver's
+   brief said "no `--item` ⇒ fail-closed"; the shipped `LIVESPEC_COST_MODE` defaults to
+   `report`, which NEVER refuses. A blanket fail-closed contract would have contradicted
+   shipped behavior on day one. (The O0 author actually caught this BEFORE the review;
+   the review then found the proposal had SILENTLY STRENGTHENED gate coverage three more
+   ways while claiming "preserves today's semantics exactly" — scoped back to today's
+   coverage, with the three real weaknesses filed as `bd-ib-0s5`.)
+2. **W2 R1 — a required co-edit the driver's brief omitted.**
+   `crates/console-spec-check/src/tests.rs` pins per-file clause counts; the accept FAILS
+   without refreshing them. Five `resulting_files[]` became six.
+3. **W2 R2 — an instruction that would have FABRICATED test coverage.** The driver told
+   the author to bind the drain-argv clause to Scenario 2; the reviewer READ that test
+   and found it asserts nothing about the invocation argv — binding there would have
+   satisfied the gate while claiming coverage that does not exist. The W2 author had
+   already REFUSED the instruction and filed its own Scenario 16, and separately caught a
+   second fabricated-coverage trap (re-binding would have falsified Scenario 11's "fully
+   covered" claim). Both departures were reviewer-confirmed correct.
+
+The recurring defect class, now named precisely: **a claim that is TRUE at authoring
+time but expires at ratification.** Two shapes seen — (a) a universal falsified by a
+per-item label / non-default mode / non-default env lever; (b) change-relative or
+self-referential prose ("this proposal", "the design record", a work-item id, a retired
+flag, "this is the change") nested inside RATIFIED-BOUND text, which a faithful revise
+transcribes into permanent contract text. A third, cross-repo shape surfaced in
+W2 R2→R3: **a NEGATIVE claim about a sibling-owned surface** ("is NOT a `drive`
+action-id command") is future-HOSTAGE — it gets falsified by the likeliest place the
+sibling lands the feature; the POSITIVE form ("maps onto the published override action")
+is future-PROOF. Prefer positive assertions about surfaces another repo owns.
+
+### ⚠ REVIEW-GATE INTEGRITY HOLE (carried from cont.15, REINFORCED) — a verdict lost to silence reads as a pass
+
+BOTH Fable reviewers, in EVERY round, went idle WITHOUT delivering their verdict; each
+had to be explicitly asked. Every time, a real verdict (often with blockers) was
+waiting. In this supervised session it cost only a round-trip. **In an unattended
+factory run, silence reads as a clean pass, and all seven blockers would have ratified
+permanently.** Same failure shape as cont.14 §F1's pin-freshness blindness: the safety
+net fails silent and nobody looks. **RECOMMENDATION (maintainer's call, not filed): any
+harness treating an independent review as a precondition MUST require an explicit verdict
+artifact and treat its ABSENCE as a hard FAIL — never a pass.**
+
+### TWO MAINTAINER DECISIONS LOCKED THIS SESSION (2026-07-15)
+
+**1. HOLD O2 — do NOT auto-approve it into the factory.** O0's close cleared O2's
+(`bd-ib-mqunvm`) only blocking dependency, but O2 rests at `pending-approval` (NOT
+`ready`), because it carries no `admission:` label and the ratified safe default
+`dispatcher.auto_approve_ready = false` applies (no `dispatcher.*` block is set in
+`livespec-orchestrator-beads-fabro`'s `.livespec.jsonc`). The ONLY thing between O2 and
+the ready queue is a human valve:
+`/livespec-orchestrator-beads-fabro:drive --action approve:bd-ib-mqunvm`. The maintainer
+delegated the spec propose/revise work but reserves factory ADMISSION; the safe default
+exists precisely so a human admits. **O2 stays held for the maintainer's explicit
+approve.**
+
+**2. Phased flag rollout — NOT all three at once.** The maintainer asked whether to turn
+on all three automatic flags. Findings, verified by reading:
+   - **They live PER REPO**, in each consumer project's own `.livespec.jsonc`
+     (`dispatcher.*`, siblings of `wip_cap`/`fabro_bin`) — the Dispatcher reads the block
+     of whatever `--repo` it drains. NOT one orchestrator-global place. The ratified
+     `livespec-orchestrator-beads-fabro` `SPECIFICATION/contracts.md` §"Dispatcher policy
+     settings" states this ("in the consumer project's `.livespec.jsonc`").
+   - **NOTHING READS THEM YET.** `auto_approve_ready` / `merge_on_review_cap` /
+     `acceptance_mode` (and both caps) appear in ZERO shipped non-test files; the config
+     reader knows only `fabro_bin`/`wip_cap`. The consuming code is child **O1**,
+     unimplemented. The shipped Dispatcher still keys on the retired `--mode autonomous`
+     path. **Setting the flags today is a no-op.**
+   - **All three ON = re-assembling "Full autonomous mode"** — the exact monolith cont.12
+     decomposed into orthogonal safe-defaulted settings. Adopted rollout order once O1
+     lands: enable **`auto_approve_ready` first** (low risk — only removes the manual
+     admission click; review + acceptance still gate); **keep `merge_on_review_cap =
+     false`** (highest risk — `true` ships code its own in-factory review still says is
+     broken; contradicts the maintainer's own "don't push it all to production"
+     design-record quote); **keep `acceptance_mode = ai-then-human`** until child O5's REAL
+     post-merge AI acceptance pass is not merely merged but PROVEN LIVE (per the 2026-07-04
+     rule born from the `approve:` surface's first real use catching a wrong-tenant bug —
+     `ai-only` removes exactly that human check).
+
+### NEW/CARRIED WORK-ITEMS
+
+- **`bd-ib-0s5`** (`livespec-orchestrator-beads-fabro`, epic `bd-ib-24j5uy`,
+  spec-change-tier, `blocked`/needs-human) — the three cost-gate coverage weaknesses
+  (failed runs ungated `_dispatcher_cost_wave.py:38-40`; unresolvable run id fail-open
+  `:41-44`; report mode never derives the keyed verdict `:87-88`), plus a fifth
+  acceptance criterion to correct/reaffirm the `gate_wave` green-only docstring rationale
+  (`_dispatcher_cost.py:341-345`), which is falsified by the launched-spent-then-failed
+  run. VERIFIED still open.
+- **After W2 ratifies:** close `livespec-console-beads-fabro-l3tx33` with merge evidence
+  (copy a sibling closed-item shape), which unblocks W3–W6.
+
+### CROSS-REPO FINDING worth carrying — the heading-coverage tier keyword sets DIVERGE
+
+The scenario-heading TODO-reason "tier acknowledgement" check is implemented TWICE with
+DIFFERENT keyword sets: `livespec-console-beads-fabro`'s Rust
+`console-spec-check::acknowledges_top_of_pyramid_tier()` accepts `top-of-pyramid` |
+`integration` | `acceptance`; the shared `livespec-dev-tooling`
+`checks/_heading_coverage_tier_resolution.py` (which `livespec-orchestrator-beads-fabro`
+runs via its pin) accepts `tier` | `integration` | `e2e` | `consumer` | `pyramid`. They
+overlap ONLY on `integration`; bare `pyramid` does NOT satisfy the console. A TODO reason
+copied from one repo can silently FAIL the other's accept. The driver over-generalized a
+lesson from O0 onto W2 here and was corrected by the W2 author verifying per-repo — an
+instance of the standing "the fleet is non-uniform; verify per-repo state" discipline.
+
+### REAP / STATE
+
+- `livespec` core: reap worktree `docs-autonomous-mode-cont16` (this update) and cont.15's
+  `docs-autonomous-mode-cont15` if still present, after their PRs merge. Do NOT reap
+  worktrees other sessions own (e.g. `docs-console-tui-usage` in
+  `livespec-console-beads-fabro`).
+- The O0 and W2 authoring/fix worktrees were removed by their own agents.
+- Cockpit tmux `console-autonomous-mode` is ALIVE (cont.14's "GONE" was already corrected
+  in cont.15). Autonomous behavior remains DISARMED — the flags are unread and O2 is
+  unapproved.
+
+### RESUME (fresh session)
+
+1. **Confirm W2 ratified** (it was in-flight at cont.16 write): a new `history/v022/` in
+   `livespec-console-beads-fabro`, `proposed_changes/` consumed, `just check` green. Then
+   close `livespec-console-beads-fabro-l3tx33` with merge evidence → unblocks W3–W6.
+2. **Surface O2 to the maintainer for the `approve:` valve** (decision 1 above). Then the
+   epic's code children can begin: `livespec-orchestrator-beads-fabro` O1 (the six
+   settings + effective-policy resolver — the PREREQUISITE that makes every other child's
+   config readable) is the natural first, then O2/O3/O4 and the rest per the cont.14
+   dependency table.
+3. The flag rollout (decision 2) applies only AFTER O1 lands.
+
 ## SESSION UPDATE — 2026-07-14 (cont. 15): BOTH spec amendments DRIVEN autonomously (O0 + W2); FOUR Fable blockers caught; THREE cont.14 facts CORRECTED; a REVIEW-GATE INTEGRITY hole found
 
 Maintainer direction this session: *"you go ahead and drive the propose change and
