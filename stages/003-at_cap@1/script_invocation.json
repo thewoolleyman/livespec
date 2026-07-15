@@ -1,0 +1,5 @@
+{
+  "script": "echo RESULT_AT_CAP; exit 0",
+  "command": "exec 2>&1\necho RESULT_AT_CAP; exit 0",
+  "language": "shell"
+}
