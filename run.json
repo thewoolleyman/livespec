@@ -1,0 +1,296 @@
+{
+  "title": "prove whether a condition string template-expands inputs",
+  "spec": {
+    "run_id": "01KXKM71PM7ETJF2MY6QWQE1MH",
+    "settings": {
+      "project": {
+        "name": null,
+        "description": null,
+        "metadata": {}
+      },
+      "workflow": {
+        "name": null,
+        "description": null,
+        "graph": "workflow.fabro",
+        "metadata": {}
+      },
+      "run": {
+        "goal": {
+          "type": "inline",
+          "value": "prove whether a condition string template-expands inputs"
+        },
+        "working_dir": null,
+        "metadata": {},
+        "inputs": {
+          "want": "failed"
+        },
+        "model": {
+          "provider": "anthropic",
+          "name": "claude-sonnet-4-6",
+          "fallbacks": [],
+          "controls": {
+            "reasoning_effort": null,
+            "speed": null
+          }
+        },
+        "git": {
+          "author": null
+        },
+        "prepare": {
+          "commands": [],
+          "timeout_ms": 300000
+        },
+        "execution": {
+          "mode": "normal",
+          "approval": "auto"
+        },
+        "checkpoint": {
+          "exclude_globs": [],
+          "skip_git_hooks": false
+        },
+        "clone": {
+          "enabled": true
+        },
+        "run_branch": {
+          "enabled": true,
+          "push": true
+        },
+        "meta_branch": {
+          "enabled": true,
+          "push": true
+        },
+        "environment": {
+          "id": "default",
+          "provider": "docker",
+          "image": {
+            "docker": "buildpack-deps:noble",
+            "dockerfile": null
+          },
+          "resources": {
+            "cpu": 2,
+            "memory": "4GB",
+            "disk": null
+          },
+          "network": {
+            "mode": "allow_all",
+            "allow": []
+          },
+          "lifecycle": {
+            "preserve": false,
+            "stop_on_terminal": true,
+            "auto_stop": null
+          },
+          "labels": {},
+          "volumes": [],
+          "env": {}
+        },
+        "notifications": {},
+        "interviews": {
+          "provider": null,
+          "slack": null
+        },
+        "agent": {
+          "fabro_tools": false,
+          "permissions": null,
+          "mcps": {}
+        },
+        "hooks": [],
+        "scm": {
+          "provider": null,
+          "owner": null,
+          "repository": null,
+          "github": null
+        },
+        "pull_request": null,
+        "artifacts": {
+          "include": []
+        },
+        "integrations": {
+          "github": {
+            "permissions": {}
+          }
+        }
+      }
+    },
+    "graph": {
+      "name": "TemplateConditionProof",
+      "nodes": {
+        "start": {
+          "id": "start",
+          "attrs": {
+            "label": {
+              "String": "Start"
+            },
+            "shape": {
+              "String": "Mdiamond"
+            }
+          }
+        },
+        "exit": {
+          "id": "exit",
+          "attrs": {
+            "shape": {
+              "String": "Msquare"
+            },
+            "label": {
+              "String": "Exit"
+            }
+          }
+        },
+        "emit": {
+          "id": "emit",
+          "attrs": {
+            "label": {
+              "String": "emit"
+            },
+            "script": {
+              "String": "echo emitting; exit 0"
+            },
+            "shape": {
+              "String": "parallelogram"
+            }
+          }
+        },
+        "took_input": {
+          "id": "took_input",
+          "attrs": {
+            "label": {
+              "String": "took_input"
+            },
+            "shape": {
+              "String": "parallelogram"
+            },
+            "script": {
+              "String": "echo RESULT_TOOK_TEMPLATED_EDGE; exit 0"
+            }
+          }
+        },
+        "took_fallback": {
+          "id": "took_fallback",
+          "attrs": {
+            "shape": {
+              "String": "parallelogram"
+            },
+            "script": {
+              "String": "echo RESULT_TOOK_FALLBACK_EDGE; exit 0"
+            },
+            "label": {
+              "String": "took_fallback"
+            }
+          }
+        }
+      },
+      "edges": [
+        {
+          "from": "start",
+          "to": "emit",
+          "attrs": {}
+        },
+        {
+          "from": "emit",
+          "to": "took_input",
+          "attrs": {
+            "condition": {
+              "String": "outcome=failed"
+            },
+            "label": {
+              "String": "templated"
+            }
+          }
+        },
+        {
+          "from": "emit",
+          "to": "took_fallback",
+          "attrs": {
+            "label": {
+              "String": "fallback"
+            }
+          }
+        },
+        {
+          "from": "took_input",
+          "to": "exit",
+          "attrs": {}
+        },
+        {
+          "from": "took_fallback",
+          "to": "exit",
+          "attrs": {}
+        }
+      ],
+      "attrs": {
+        "goal": {
+          "String": "prove whether a condition string template-expands inputs"
+        }
+      }
+    },
+    "graph_source": "digraph TemplateConditionProof {\n    graph [goal=\"prove whether a condition string template-expands inputs\"]\n    start [shape=Mdiamond, label=\"Start\"]\n    exit  [shape=Msquare, label=\"Exit\"]\n\n    emit          [label=\"emit\",          shape=parallelogram, script=\"echo emitting; exit 0\"]\n    took_input    [label=\"took_input\",    shape=parallelogram, script=\"echo RESULT_TOOK_TEMPLATED_EDGE; exit 0\"]\n    took_fallback [label=\"took_fallback\", shape=parallelogram, script=\"echo RESULT_TOOK_FALLBACK_EDGE; exit 0\"]\n\n    start -> emit\n    emit -> took_input    [label=\"templated\", condition=\"outcome={{ inputs.want }}\"]\n    emit -> took_fallback [label=\"fallback\"]\n    took_input    -> exit\n    took_fallback -> exit\n}\n",
+    "workflow_slug": "tmpl_condition",
+    "source_directory": "/data/projects/livespec",
+    "provenance": {
+      "server": {
+        "version": "0.254.0"
+      },
+      "client": {
+        "user_agent": "fabro-cli/0.254.0",
+        "name": "fabro-cli",
+        "version": "0.254.0"
+      },
+      "subject": {
+        "kind": "user",
+        "identity": {
+          "issuer": "fabro:dev",
+          "subject": "dev"
+        },
+        "login": "dev",
+        "auth_method": "dev_token"
+      }
+    },
+    "manifest_blob": "d9d44ebe48e5c89582f729a2af35dec19ed4c6b8f543848b2c797eb85a6246ac",
+    "definition_blob": "24333e11f3c5180657aac0bf02844e9f50a6c4f389069f5954308cb26b405c5a",
+    "git": {
+      "origin_url": "https://github.com/thewoolleyman/livespec",
+      "branch": "master",
+      "sha": "d27650663e2cca917bf58f919d9a9c1afb8e2c39",
+      "dirty": "dirty",
+      "push_outcome": {
+        "type": "not_attempted"
+      }
+    }
+  },
+  "start": null,
+  "status": {
+    "kind": "starting"
+  },
+  "status_updated_at": "2026-07-15T19:31:46.659743440Z",
+  "last_event_at": "2026-07-15T19:31:50.793576755Z",
+  "pending_control": null,
+  "checkpoints": [],
+  "conclusion": null,
+  "sandbox": {
+    "kind": "ready",
+    "plan": {
+      "provider": "docker",
+      "image": "buildpack-deps:noble"
+    },
+    "instance": {
+      "provider": "docker",
+      "image": "buildpack-deps:noble",
+      "runtime": {
+        "id": "0a8885916fdb9c7b9f2c455669db4d97334e541fe9c0f743e9960631b75291ef",
+        "working_directory": "/workspace/livespec",
+        "repo_cloned": true,
+        "clone_origin_url": "https://github.com/thewoolleyman/livespec",
+        "clone_branch": "master",
+        "workspace_root": "/workspace",
+        "repos_root": "/repos",
+        "primary_repo_path": "/repos/thewoolleyman/livespec",
+        "primary_repo_link": "/workspace/livespec"
+      }
+    }
+  },
+  "pull_request": null,
+  "superseded_by": null,
+  "pending_interviews": {},
+  "stages": {}
+}
