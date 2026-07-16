@@ -87,7 +87,11 @@ stateDiagram-v2
 
     state cCtx <<choice>>
     cCtx --> cBand: eff_ctx ≤ threshold
-    cCtx --> idle: above threshold
+    cCtx --> cRoom: above threshold
+
+    state cRoom <<choice>>
+    cRoom --> idle_ctx_left: free to continue
+    cRoom --> idle: Claude 'waiting' / prior declaration
 
     state cBand <<choice>>
     cBand --> winding_down: fresh ACK
@@ -101,6 +105,15 @@ stateDiagram-v2
     warned: warned  ·  injects escalating wrap-up
     danger: danger  ·  alerts NOT RESPONDING, never restarts
     winding_down: winding-down  ·  ACK, stop re-warning
+    idle_ctx_left: idle-with-context-left  ·  one keep-going nudge
+
+    note right of idle_ctx_left
+      One "keep going" nudge per idle episode. The daemon WRITES the
+      idle-with-context-left marker to edge-trigger the nudge (its only
+      self-authored token) and clears it when the session next goes
+      non-idle, re-arming a later episode. A session genuinely waiting on
+      a human writes `blocked: &lt;reason&gt;` instead.
+    end note
 
     note right of restarting
       THE CARDINAL RULE: a respawn is reachable ONLY via a fresh
@@ -123,7 +136,12 @@ surfaced as a row note and treated as **no declaration** (fail-closed) — it
 changes no branch. Two act-only guards are folded for clarity: `cStream →
 working` (drawn) skips a tick when an "idle" frame is still streaming, and an
 identical post-settle identity re-check (not drawn) routes a pane that has
-exited to a shell straight to `not_claude`.
+exited to a shell straight to `not_claude`. The `cRoom` choice guards the
+`idle-with-context-left` nudge: an idle session ABOVE threshold reaches it, and
+takes the `idle_ctx_left` leg only when it is not `waiting` on a human and has
+made no declaration of its own (or already carries the marker — so the nudge is
+sent once, not every tick); otherwise it is a plain `idle` leaf. See invariant 9
+for the marker's edge-triggered lifecycle.
 
 ## Architecture invariants that must not regress
 
@@ -289,8 +307,10 @@ exited to a shell straight to `not_claude`.
      respawn failure, the singleton-lock refusal, the gitignore refusal).
 9. **ONE state file with a VALUE — never two presence-markers.** The declaration is
    `<repo>/tmp/overseer/<topic>/.overseer-state`, whose first non-empty line is
-   `<token>` or `<token>: <detail>`, with exactly three legal tokens (`ready`,
-   `blocked`, `winding-down` — `signals.STATE_TOKENS`). The predecessor pair
+   `<token>` or `<token>: <detail>`. There are **three SESSION-written tokens**
+   (`ready`, `blocked`, `winding-down` — `signals.STATE_TOKENS`) plus **one
+   DAEMON-written token** (`idle-with-context-left` — `signals._DAEMON_TOKENS`);
+   `signals.valid_token` accepts either set. The predecessor pair
    `.overseer-ready` + `.overseer-blocked` is GONE: two presence-markers carried a
    built-in ambiguity — nothing stopped BOTH existing, and their precedence was
    incidental rather than designed. One file with a value makes that state
@@ -298,6 +318,23 @@ exited to a shell straight to `not_claude`.
    declaration** (fail-closed, `signals.valid_token`); do not "helpfully" coerce or
    fuzzy-match it. If you ever add a second signal file, stop — you are re-creating
    the ambiguity this collapsed.
+
+   **`idle-with-context-left` is the ONE token the daemon writes to itself, and it
+   never authorizes a restart.** It is a marker, not a declaration: when a session
+   goes idle while still ABOVE the wind-down threshold and is not waiting on a human
+   (and has made no `ready`/`blocked`/`winding-down` declaration of its own), the
+   daemon sends exactly ONE "keep going, don't stop with context left" nudge and
+   stamps this token so it does not re-nudge every tick. It is EDGE-TRIGGERED: the
+   nudge fires once per idle episode, and the daemon CLEARS the token the moment the
+   session goes non-idle again (busy / gate / blocked branches call
+   `_clear_idle_nudge_state`), re-arming a fresh nudge for a later episode. The
+   clear only unlinks the file when it still holds `idle-with-context-left`, so it
+   can never clobber a session's own `ready`/`blocked`/`winding-down`. This is NOT a
+   crack in the cardinal rule (invariant 7): the marker gates a text NUDGE, never a
+   respawn — the sole restart trigger is still a session-written `ready`. The
+   nudge's own text tells the session it may instead write `blocked: <reason>` if it
+   is genuinely waiting on a human (the escape hatch for a YOLO-mode session that can
+   only say so in prose).
 10. **The DAEMON owns "what needs attention"; the bottom pane must never be a status
     display (maintainer-declared 2026-07-14).** Current state is rendered ONLY by the
     daemon — the table plus its `NEEDS YOU` block (`Supervisor._attention_lines`,
@@ -358,8 +395,9 @@ exited to a shell straight to `not_claude`.
 - **Row color is a TTY-only, whole-LINE affordance (`_row_color` / `_STATUS_COLOR`;
   2026-07-15).** `render` tints each DATA row by its raw status so the operator scans
   the list by hue — green = actively working (`working`/`winding-down`/`restarting`/
-  `settling`), yellow = idle / waiting on a human (`blocked:human`) / low on context
-  (`warned`/`danger`), red = broken (`session-gone`/`not-claude`), default (uncolored,
+  `settling`), yellow = idle (`idle`/`idle-with-context-left`) / waiting on a human
+  (`blocked:human`) / low on context (`warned`/`danger`), red = broken
+  (`session-gone`/`not-claude`), default (uncolored,
   terminal white/gray) = `unassigned` and any unmapped status. Two invariants keep it
   safe: (a) the ANSI codes wrap the **already-padded whole line**, never a cell, so the
   column widths — still computed on plain-text `len` — stay aligned; and (b) color is
@@ -492,8 +530,12 @@ exited to a shell straight to `not_claude`.
   prompt / picker) — never keystroke into a gate. Then `settling` / identity
   re-check, then `restarting` (a fresh `ready`), then the threshold branch
   (`winding-down` on a fresh ACK, else `danger` at/below 20%, else `warned`), else
-  `idle`. `restarting` is checked BEFORE `warned`: a fresh `ready` means the session
-  already declared it is done, so it supersedes any re-warn.
+  the idle branch. `restarting` is checked BEFORE `warned`: a fresh `ready` means the
+  session already declared it is done, so it supersedes any re-warn. The idle branch
+  itself splits: an idle session still ABOVE threshold, not `waiting` on a human, and
+  carrying no session declaration (or already holding the marker) becomes
+  `idle-with-context-left` and gets ONE keep-going nudge; anything else is plain
+  `idle` (see invariant 9 for the marker lifecycle).
 - **Atomic restart via `respawn-pane -k`, proven by `#{pane_current_command}`.**
   Restart replaces the pane's process in one step (`respawn-pane -k -c <repo>
   'claude --dangerously-skip-permissions -n <topic>'`) — NEVER `/exit` then

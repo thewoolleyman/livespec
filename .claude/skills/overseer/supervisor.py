@@ -77,6 +77,7 @@ __all__ = [
     "RowView",
     "Supervisor",
     "default_resume",
+    "idle_nudge_message",
     "main",
     "wrapup_message",
 ]
@@ -138,6 +139,7 @@ _STATUS_COLOR = {
     "restarting": _ANSI_GREEN,
     "settling": _ANSI_GREEN,
     "idle": _ANSI_YELLOW,
+    "idle-with-context-left": _ANSI_YELLOW,
     "warned": _ANSI_YELLOW,
     "danger": _ANSI_YELLOW,
     "blocked:human": _ANSI_YELLOW,
@@ -288,6 +290,48 @@ def default_handoff(repo: str, topic: str) -> str:
 def default_resume(repo: str, topic: str) -> str:
     """The first prompt pasted into a (re)started session: read the handoff."""
     return f"read {default_handoff(repo, topic)} and follow it"
+
+
+_IDLE_NUDGE = """\
+You are idle at {n}% context — ABOVE the {threshold}% wind-down line, so you have room to
+keep going. Do NOT stop, and do NOT offer to stop, while you are above {threshold}%.
+
+Pick your work back up and continue — your task is in
+    {handoff}
+Keep going until you are near {threshold}%; the overseer will then send the wind-down.
+
+The overseer has marked your track `idle-with-context-left` in
+    {state_file}
+That marker clears as soon as you take another turn (the daemon clears it when it sees you
+working again); you may also `rm {state_file}` yourself.
+
+If you are NOT free to continue — you are WAITING ON A HUMAN (you asked a question or hit a
+decision you cannot make, and cannot raise a prompt, e.g. Codex in YOLO mode) — then say so
+out-of-band so the operator is alerted, INSTEAD of sitting idle:
+    echo 'blocked: <one-line reason>' > {state_file}"""
+
+
+def idle_nudge_message(*, remaining: int, threshold: int, repo: str, topic: str) -> str:
+    """The single "keep going" nudge injected into an idle session that still has context
+    left (``remaining`` > ``threshold``).
+
+    The inverse of :func:`wrapup_message`: instead of "wind down", it says "you have room,
+    do not stop above the wind-down line". It is sent at most ONCE per idle episode — the
+    ``idle-with-context-left`` marker the daemon writes edge-triggers it, and that marker
+    clears when the session next goes non-idle, re-arming a fresh nudge for the next
+    episode.
+
+    It also carries the out-of-band escape for the case the daemon cannot see: a session
+    genuinely WAITING on a human that expressed it only in prose (Codex in YOLO mode cannot
+    raise a structured gate) is told to declare ``blocked: <reason>`` — the existing token —
+    so the operator is alerted rather than the track being nudged to keep going.
+    """
+    return _IDLE_NUDGE.format(
+        n=remaining,
+        threshold=threshold,
+        handoff=default_handoff(repo, topic),
+        state_file=str(signals.state_path(repo, topic)),
+    )
 
 
 def default_gitignore_check(repo: str) -> bool:
@@ -759,6 +803,67 @@ class Supervisor:
             return False
         return ready
 
+    def _write_idle_nudge_state(self, track: registry.Track) -> None:
+        """Write the daemon-owned ``idle-with-context-left`` marker to the state file.
+
+        Called ONLY after the nudge paste lands, and ONLY when the file had no session
+        declaration (guarded in :meth:`evaluate`), so it can never overwrite a ``ready`` /
+        ``blocked`` / ``winding-down``. It edge-triggers the single-prompt-per-episode rule
+        and drives the row's ``idle-with-context-left`` status.
+        """
+        path = signals.state_path(track.repo, track.topic)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(signals.STATE_IDLE_WITH_CONTEXT_LEFT + "\n", encoding="utf-8")
+        except OSError as exc:
+            self._log(f"could not write idle-nudge marker for {track.repo}::{track.topic}: {exc}")
+
+    def _clear_idle_nudge_state(self, track: registry.Track) -> None:
+        """Clear the ``idle-with-context-left`` marker when the session leaves the idle
+        episode (it went non-idle / took a turn) — re-arming a fresh nudge next episode.
+
+        Re-reads the file immediately before unlinking and removes it ONLY if it is still
+        the daemon's own marker, so a ``ready`` / ``blocked`` the session wrote in the same
+        tick is never clobbered. Unlike :meth:`_clear_state` it touches neither the
+        injection stamp nor the in-memory inject state — the nudge opens no round.
+        """
+        current = signals.read_state(track.repo, track.topic)
+        if current is None or current.token != signals.STATE_IDLE_WITH_CONTEXT_LEFT:
+            return
+        try:
+            signals.state_path(track.repo, track.topic).unlink(missing_ok=True)
+        except OSError as exc:
+            self._log(f"could not clear idle-nudge marker for {track.repo}::{track.topic}: {exc}")
+
+    def _nudge_idle_with_context(
+        self, track: registry.Track, target: str, eff_ctx: int, threshold: int
+    ) -> None:
+        """Send the single "keep going" nudge to an idle session that still has context
+        left, and — only if the paste lands — write the ``idle-with-context-left`` marker
+        so it fires at most ONCE per idle episode.
+
+        The inverse of :meth:`_maybe_inject`: it fires ABOVE the threshold to keep a session
+        from stopping early, not below it to wind one down. The marker is written AFTER a
+        successful submit (as ``_maybe_inject`` marks its bands only on success), so a
+        failed paste re-nudges next tick rather than silently marking the episode handled.
+        """
+        repo, topic = track.repo, track.topic
+        message = idle_nudge_message(remaining=eff_ctx, threshold=threshold, repo=repo, topic=topic)
+        if self._submit_prompt(target, message):
+            self._write_idle_nudge_state(track)
+            self._log(
+                f"nudged idle-with-context-left {repo}::{topic} "
+                f"(ctx {eff_ctx}% > threshold {threshold}%)"
+            )
+        else:
+            self._alert(
+                repo=repo,
+                topic=topic,
+                session=self._session_of(track),
+                pane=target,
+                message="idle-with-context-left nudge FAILED (paste did not land); will retry",
+            )
+
     def evaluate(self, track: registry.Track, *, act: bool) -> RowView:
         """Derive a track's status and (when ``act``) perform its side effects.
 
@@ -898,10 +1003,16 @@ class Supervisor:
                 # marker is the certifying turn's own busy tail and must survive
                 # (RB1); an old one means the session resumed work after certifying.
                 ready = self._void_if_stale(track, ready)
+                # The session took a turn — clear any idle-with-context-left nudge marker
+                # so the NEXT idle-with-context episode re-nudges (re-arm on non-idle).
+                self._clear_idle_nudge_state(track)
         elif gate or blocked is not None:
             status = "blocked:human"
             if act:
                 ready = self._void_if_stale(track, ready)
+                # A gate / block is also "non-idle" — drop a stale nudge marker (safe: the
+                # helper re-reads and leaves a session-written `blocked` untouched).
+                self._clear_idle_nudge_state(track)
                 detail = blocked if blocked else "structured gate on pane"
                 # The decision belongs to the TRACKED session, which is already showing
                 # it in its own pane. The overseer NOTIFIES and hands over coordinates;
@@ -956,7 +1067,26 @@ class Supervisor:
             else:
                 status = "warned"
         else:
-            status = "idle"
+            # Idle at an empty prompt with the context ABOVE the wind-down threshold. If
+            # the session has declared nothing, nudge it ONCE this episode to keep going
+            # rather than stop early (the inverse of the wrap-up). The daemon-written
+            # `idle-with-context-left` marker makes it single-prompt; it clears when the
+            # session next goes non-idle, re-arming a fresh nudge for the next episode.
+            nudged_already = (
+                declared is not None and declared.token == signals.STATE_IDLE_WITH_CONTEXT_LEFT
+            )
+            has_context_left = eff_ctx is not None and eff_ctx > threshold
+            # Claude's own `waiting` = at a gate/prompt for the human. Even when no
+            # structured gate is visible in the capture (it scrolled, or it is a prose
+            # question a YOLO session cannot raise as a prompt), that IS "a blocking
+            # question for the human" — so it must NOT be nudged to keep going.
+            waiting_on_human = claude_status == "waiting"
+            if has_context_left and not waiting_on_human and (declared is None or nudged_already):
+                status = "idle-with-context-left"
+                if act and not nudged_already:
+                    self._nudge_idle_with_context(track, target, eff_ctx, threshold)
+            else:
+                status = "idle"
 
         view = RowView(
             topic=topic,
