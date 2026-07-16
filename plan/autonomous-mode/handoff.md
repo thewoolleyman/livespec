@@ -65,6 +65,56 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-16 (cont. 18): O2/O3/O4/O7 wave COMPLETE — all four dispatched → merged → accepted via the factory (epic now 6/11 children done); O4 concurrent-dispatch conflict recovered; O7 closed off-lifecycle; O2 retired Full autonomous mode (dispatcher now DRAINS BY DEFAULT); next wave O5/O6/O8/O9/O10 PAUSED per maintainer
+
+Continuation of cont.17. Maintainer direction this session: *"do 1, accept it autonomously… then proceed to admit the next wave"* → *"Accept O7 — I'll drive the valve"* → *"groom them autonomously and dispatch them autonomously; keep working unless blocking / needs-input."* The whole O2/O3/O4/O7 wave was groomed, dispatched, merged, and accepted — mostly autonomously via the Fabro factory. At the phase boundary the maintainer chose **PAUSE + HAND OFF** rather than continue into the deeper-machinery wave.
+
+### THE WAVE — O2/O3/O4/O7 all DONE (epic `bd-ib-24j5uy` now 6/11 children done: O0, O1, O2, O3, O4, O7)
+- **O3 `bd-ib-vntx65`** ("retire needs-human resolver") — merged PR #659 (`5e8c2d9`); DELETED `_dispatcher_needs_human.py` (362-LOC LLM resolver) and unwired it; a needs-human item now PARKS `blocked`/`needs-human` (surfaced to needs-attention) with no LLM resolver. Accepted with 6/6 live-evidence criteria (needs-human tests 5 pass, scenarios 33/34/36 5 pass, 1206-test regression sweep clean). **done.**
+- **O4 `bd-ib-vevrol`** ("build the `blocked` / `blocked_reason: needs-human` dispatcher-level ledger write path") — the NEW write path O3's retirement leaves room for: `escalate_needs_human_block()` (`commands/_dispatcher_blocked.py`) → `update_work_item_blocked_state()` writes status=`blocked` + `blocked-reason:needs-human` + `admission:manual`; the human valve `resolve-blocked:<id>:<ready|backlog>` is the ONLY way out. Merged PR **#667** (`3ebc82a`), 165 tests pass. Accepted with 6/6 criteria. **done.**
+- **O2 `bd-ib-mqunvm`** ("retire Full autonomous mode", BREAKING) — merged PR **#669** (`0cef76a`), **release 0.37.0**. Accepted with 9/9 criteria incl. the cross-repo console lockstep. **done.** OPERATING-MODEL SHIFT — see below.
+- **O7 `bd-ib-lmnxrm`** (fabro input-condition spike) — closed OFF-LIFECYCLE — see below. **done.**
+
+### O2 OPERATING-MODEL SHIFT — the dispatcher now DRAINS BY DEFAULT
+- **`--mode` is GONE.** The `loop` subparser now has `--budget`(required) / `--parallel` / `--dry-run` / `--item`; passing `--mode` is an unrecognized-arg error. Every `autonomous` / `--mode` / `args.mode` symbol retired repo-wide (grep = 0).
+- **Bare `loop` drains the full ranked ready queue** (sliced `[:budget]`, then `admit_and_select(enforce_cap=True)` = wip_cap). `--item <id>` filters to that id. `--dry-run` journals the picked set and returns BEFORE any ledger mutation / Fabro launch.
+- Cost gate re-keyed off mode onto `--item` presence (`_dispatcher_cost_gate.py:123` `unattended = not (args.items or args.item)`): hand-picked `--item` WARNs; a bulk unattended drain with unobservable cost REFUSES.
+- `drive.py build_dispatcher_argv` now emits `loop --repo … --budget 1 --parallel 1 --item <ref> --json` (no `--mode shadow`) — matches the O0 amendment `contracts.md:228`.
+- **CONSEQUENCE for the next wave:** because the drain is now the default, a bare `loop` (or enabling `auto_approve_ready` and then draining) would fan-out-dispatch EVERY ready item at once → concurrent-dispatch conflicts (the O3/O4 failure, at scale). **Dispatch the next wave PER-ITEM via `drive.py --action impl:<id>` (which uses `--item`), NEVER a bare drain.**
+- **Cross-repo lockstep VERIFIED in-lockstep:** `livespec-console-beads-fabro` dropped its `--mode autonomous` drain append (commits `cf9c8ec` / `34ece63`); its drain now builds `loop --repo <path> --budget 50` (`crates/console-cli/src/main.rs:114-118`, `crates/console-application/src/lib.rs:1186-1205`), valid against O2's new drain-by-default CLI.
+
+### O4 CONCURRENT-DISPATCH CONFLICT — recovered; the lesson
+O3 and O4 are two halves of ONE restructuring (O3 *retires* the resolver `_dispatcher_needs_human.py`; O4 *builds* its replacement write path) but were dispatched CONCURRENTLY. O4's branch was cut from a base predating O3's merge, so it MODIFIED the file O3 DELETED → a modify/delete conflict; O4's first PR **#661** could not merge (`mergeStateStatus` DIRTY, no checks run). **Recovery (per-item, autonomous):** closed PR #661 + deleted its branch, reset O4 `active → ready` (`bd update -s ready` — the store maps livespec status straight onto the beads name), re-dispatched `impl:bd-ib-vevrol` against post-O3 master → clean merge PR #667. **LESSON: sequentially-coupled items need a `depends_on` edge so the factory serializes them; never dispatch two items that touch the same module concurrently.** (`is_dispatch_candidate` gates on the ready-lane, so an `active` item silently NO-OPs a re-dispatch — reset it to `ready` first.)
+
+### O7 CLOSED OFF-LIFECYCLE — the accept valve cannot fire on a research item
+O7's deliverable was a hand-committed research doc (verdict "YES via template-baking", PR **#658** / `ff54299`), NOT a factory code PR — so it never entered `acceptance`, and the `accept:` valve hard-requires `status == "acceptance"` (`_drive_valves.py::_accept_item`). Maintainer chose *"close it done now."* Closed via the STORE close-in-place path (`store.append_work_item` on a `dataclasses.replace(o7, status="done", resolution="completed", reason=…, audit=AuditRecord(merge_sha="ff542999…", pr_number=658, …))`) — NOT raw `bd`, so full metadata (rank + audit + acceptance_criteria + notes) is preserved. **LESSON: a research/design item whose output is a merged doc terminates via store close-in-place with a manual AuditRecord, not the accept valve.**
+
+### CONSOLE INERT-TOGGLE FINDING — TO FILE on the console settings epic (non-blocking)
+o2-evidence surfaced (non-blocking): `livespec-console-beads-fabro` still carries the full autonomous-mode arming surface (the `a` keybind + type-to-confirm modal + `autonomous: on/off` header + `set_autonomous_mode_in_jsonc` / `read_autonomous_mode_from_jsonc`, `crates/console-application/src/lib.rs:2708-2709, 2913, 2936`) that writes `livespec-orchestrator-beads-fabro.dispatcher.autonomous_mode` — a key O2 NO LONGER READS (grep = 0). The toggle is now INERT (writes an unread key; header on/off with no effect). Not an O2 defect (an unread key is inert, unlike the fixed `--mode` append that would have broken every drain). **FILE this cleanup on the sibling console CONTROL-PLANE settings epic** (retire the single autonomous-mode toggle in favor of the six `dispatcher.*` settings). Also recorded in O2's `bd note`.
+
+### NEXT WAVE — O5/O6/O8/O9/O10 (pending-approval; PAUSED per maintainer)
+All five are `pending-approval`, with NO hard `depends_on` edges (all admittable now) and all oversized (1902–2482 chars — WARNING only; O1/O2/O3/O4 all cleared oversizing). Titles:
+- **O10 `bd-ib-wx4lbd`** — API-configurable-key surface + `drive.py` config read/write actions (FOUNDATIONAL — the config surface the other settings build on).
+- **O5 `bd-ib-4cfhsw`** — real post-merge AI acceptance pass (replace the hardcoded `confirmed: True` stub). *Gate for enabling `acceptance_mode = ai-only` in the flag rollout.*
+- **O8 `bd-ib-6ytmik`** — review gate becomes BLOCKING + configurable `review_fix_cap` / `merge_on_review_cap` (exactly what the O7 spike advises — template-time input baking).
+- **O6 `bd-ib-fewdsx`** — AI-acceptance FAIL → auto-rework, bounded by `acceptance_rework_cap` (builds on O5).
+- **O9 `bd-ib-vp3pwe`** — journal every auto-disposition, naming its governing setting (cross-cutting; last).
+**Proposed dependency order (per-item dispatch, confirm file-overlap before each): O10 → O5 + O8 → O6 → O9.** Dispatching BUILDS the machinery but does NOT activate behavior — activation is the flag rollout below.
+
+### FLAG ROLLOUT (cont.16 decision 2) — still pending; activation gated
+Enable `auto_approve_ready` FIRST (low risk — removes only the manual admission click; review + acceptance still gate); keep `merge_on_review_cap = false`; keep `acceptance_mode = ai-then-human` until O5's real AI acceptance is proven LIVE. Settings live per-repo in the consumer's `.livespec.jsonc` under `livespec-orchestrator-beads-fabro.dispatcher` (no `dispatcher.*` block is set today). **CAUTION post-O2:** `auto_approve_ready` + drain-by-default means a drain would fan-out ALL ready items — sequence per-item.
+
+### RESUME (fresh session)
+1. **Next wave O5/O6/O8/O9/O10** — admit + dispatch PER-ITEM in the proposed order (O10 first). Approve-then-`impl:` each; accept each with live-exercise evidence. NEVER bare-drain (drain-by-default fans out).
+2. **FILE the console inert-toggle cleanup** on the console settings epic (cites above).
+3. **Flag rollout** when ready (`auto_approve_ready` first; `acceptance_mode` gated on O5 proven live).
+4. **Console W3–W6** remain held behind admission (depend on W2 [done] + orchestrator O10 for the W3/W6 advisory cross-tenant edge).
+
+### STATE / REAP
+- Ledger: O0/O1/O2/O3/O4/O7 done; O5/O6/O8/O9/O10 pending-approval; EPIC `bd-ib-24j5uy` backlog; `bd-ib-0s5` blocked (separate needs-human). Master CI GREEN (release 0.37.0 cut off O2).
+- No worktrees created by this driver session. Factory dispatches ran in Fabro sandboxes (self-cleaned). Sub-agents (`o2-evidence` / `o3-evidence` / `o4-evidence` / `o7-spike`) idle/available — harmless.
+- **Untracked stray** `.playwright-mcp/` in the `livespec-orchestrator-beads-fabro` primary working tree — NOT created by this session; left untouched (surface to maintainer to remove or ignore).
+
 ## SESSION UPDATE — 2026-07-15 (cont. 17): W2 RATIFIED + CLOSED; O1 admitted → dispatched → MERGED → ACCEPTED (first code child DONE via the factory); next wave O2/O3/O4/O7 admitted (all oversized → groom before dispatch); a TUI-dispatch interim finding
 
 Continuation of cont.16. Maintainer direction this session: confirm/finish W2, then — after O1 merged — *"accept O1 autonomously, don't ask me unless there are blockers, then admit the next wave."* Both spec gates are now down AND the epic's first code child is fully done, carried mostly autonomously by the factory.
