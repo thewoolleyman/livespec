@@ -24,6 +24,7 @@ from pathlib import Path
 
 __all__ = [
     "STATE_BLOCKED",
+    "STATE_IDLE_WITH_CONTEXT_LEFT",
     "STATE_READY",
     "STATE_TOKENS",
     "STATE_WINDING_DOWN",
@@ -264,14 +265,23 @@ def marker_dir(repo: str, topic: str) -> Path:
     return Path(repo) / "tmp" / "overseer" / topic
 
 
-# The three values of the SINGLE indicator file. One file with a VALUE — never a
-# set of separate presence-markers: two files (`.overseer-ready` + `.overseer-blocked`)
+# The values of the SINGLE indicator file. One file with a VALUE — never a set of
+# separate presence-markers: two files (`.overseer-ready` + `.overseer-blocked`)
 # carried a built-in ambiguity, because nothing stopped BOTH existing and their
 # precedence was incidental rather than designed (maintainer 2026-07-14).
+#
+# `STATE_TOKENS` are the three the SESSION declares (used verbatim in the session-facing
+# wrap-up + malformed-token messages). `STATE_IDLE_WITH_CONTEXT_LEFT` is the ONE token the
+# DAEMON writes itself — the "I nudged this idle-with-context-left session to keep going
+# this episode" marker (single-prompt edge-trigger). It is kept OUT of `STATE_TOKENS` so
+# the session-facing text still lists only the three a session should write, but
+# `valid_token` accepts it so the daemon's own marker is never surfaced as malformed.
 STATE_READY = "ready"
 STATE_BLOCKED = "blocked"
 STATE_WINDING_DOWN = "winding-down"
+STATE_IDLE_WITH_CONTEXT_LEFT = "idle-with-context-left"
 STATE_TOKENS = (STATE_READY, STATE_BLOCKED, STATE_WINDING_DOWN)
+_DAEMON_TOKENS = (STATE_IDLE_WITH_CONTEXT_LEFT,)
 
 
 def state_path(repo: str, topic: str) -> Path:
@@ -296,8 +306,10 @@ class TrackState:
 
 
 def valid_token(token: str) -> bool:
-    """True iff ``token`` is one of the three declared states."""
-    return token in STATE_TOKENS
+    """True iff ``token`` is a recognized state — a session-declared one
+    (:data:`STATE_TOKENS`) OR the daemon-written idle-with-context-left marker.
+    Only genuinely unrecognized (typo'd) tokens are surfaced as malformed."""
+    return token in STATE_TOKENS or token in _DAEMON_TOKENS
 
 
 def read_state(repo: str, topic: str) -> TrackState | None:

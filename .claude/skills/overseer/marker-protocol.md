@@ -12,8 +12,10 @@ share, and the reference a tracked session's own `handoff.md` points at.
 
 (The file is still named `marker-protocol.md` for its existing cross-references.
 There is no longer a *marker* — a file whose mere presence is the signal. There
-is one **state file** carrying one of three **values**; see "Why ONE file with a
-value" below.)
+is one **state file** carrying one **value**: one of three the tracked session
+writes to declare itself, plus one (`idle-with-context-left`) the daemon writes
+to ITSELF to remember it has already sent a keep-going nudge. See "Why ONE file
+with a value" below, and "The keep-going nudge" for the daemon-written one.)
 
 ## THE CARDINAL RULE — the daemon never restarts a session that has not declared itself ready
 
@@ -165,11 +167,66 @@ a session that is told an untruth ("you will be restarted regardless") will
 reason its way around it. Naming the handoff path is still POINTING at it,
 exactly as the resume line does; the overseer never opens it.
 
+## The keep-going nudge — what the daemon injects when a session idles WITH context left
+
+The wrap-up above fires when context runs LOW. The opposite failure is a session
+that stops EARLY — it finishes a chunk, goes idle while still comfortably ABOVE
+its wind-down threshold, and (often) prints an offer to "restart with a fresh
+context". That wastes the context it still has. The daemon closes that gap with a
+single **keep-going nudge**, the inverse of the wrap-up.
+
+When a tracked session is idle, still **above** its `ctx_threshold`, **not**
+waiting on a human (its Claude registry status is not `waiting`), and has made
+**no** `ready` / `blocked` / `winding-down` declaration of its own, the daemon:
+
+1. bracketed-pastes ONE nudge message telling it to keep going (below), and
+2. writes `idle-with-context-left` to the state file **as a note to itself**, so
+   it does not re-nudge the same idle episode every tick.
+
+The nudge message (`supervisor.py`'s `_IDLE_NUDGE` / `idle_nudge_message`):
+
+```
+You are idle at {n}% context — ABOVE the {threshold}% wind-down line, so you have room to
+keep going. Do NOT stop, and do NOT offer to stop, while you are above {threshold}%.
+
+Pick your work back up and continue — your task is in
+    {handoff}
+Keep going until you are near {threshold}%; the overseer will then send the wind-down.
+
+The overseer has marked your track `idle-with-context-left` in
+    {state_file}
+That marker clears as soon as you take another turn (the daemon clears it when it sees you
+working again); you may also `rm {state_file}` yourself.
+
+If you are NOT free to continue — you are WAITING ON A HUMAN (you asked a question or hit a
+decision you cannot make, and cannot raise a prompt, e.g. Codex in YOLO mode) — then say so
+out-of-band so the operator is alerted, INSTEAD of sitting idle:
+    echo 'blocked: <one-line reason>' > {state_file}
+```
+
+`idle-with-context-left` is the ONE token the **daemon** writes; a tracked session
+never writes it. It authorizes **nothing** — it gates only the once-per-episode
+nudge, never a restart (the cardinal rule is intact: only a session-written
+`ready` restarts anything). It is **edge-triggered and self-clearing**: the daemon
+CLEARS it the moment the session goes non-idle again (the `busy` / `gate` /
+`blocked` branches of `evaluate` call `_clear_idle_nudge_state`), which re-arms a
+fresh nudge should the session idle-with-context-left again later. The clear only
+removes the file when it still holds `idle-with-context-left`, so it can never
+clobber a `ready` / `blocked` / `winding-down` the session wrote in the meantime.
+
+The nudge's escape hatch is the existing `blocked:` token: a session that is
+genuinely waiting on a human but can only say so in prose (Codex in YOLO mode
+cannot raise a structured question) is told to write `blocked: <reason>`, which
+surfaces the track to the operator instead of leaving it to be nudged onward. See
+"Handoffs may adopt the `blocked:` convention" below.
+
 ## What a tracked session must WRITE
 
 ONE file — `<repo>/tmp/overseer/<topic>/.overseer-state` (the repo's gitignored
 temp dir, NEVER under `plan/`). Its **first non-empty line** is `<token>` or
-`<token>: <detail>`, and there are exactly **three legal tokens**:
+`<token>: <detail>`, and there are exactly **three tokens a session writes**
+(a fourth, `idle-with-context-left`, is written only by the daemon — see "The
+keep-going nudge" above):
 
 - **`ready`** — "I am at a clean stopping point; restart me." **This is the SOLE
   restart authorization.** It counts only if its mtime is **newer than this

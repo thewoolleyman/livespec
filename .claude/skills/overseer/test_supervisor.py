@@ -383,15 +383,97 @@ def test_ctx_unknown_never_injects(tmp_path):
     assert not fake.has("paste")
 
 
-def test_idle_above_threshold_does_nothing(tmp_path):
+def test_idle_above_threshold_nudges_once_to_keep_going(tmp_path):
+    """A session idle at an empty prompt with context ABOVE the threshold and no
+    declaration is nudged ONCE this episode to keep going (the inverse of the wrap-up)
+    and marked `idle-with-context-left`; a second idle tick does NOT re-nudge."""
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=73))  # well above threshold
     sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "idle"}
+    track = _mapped_track(repo, topic, session)
+
+    view = sup.evaluate(track, act=True)
+    assert view.status == "idle-with-context-left"
+    assert _nudge_count(fake) == 1  # nudged once
+    assert _wrapup_count(fake) == 0  # a keep-going nudge, NOT a wind-down wrap-up
+    # The daemon wrote its own marker to the single state file.
+    state = signals.read_state(str(repo), topic)
+    assert state is not None and state.token == signals.STATE_IDLE_WITH_CONTEXT_LEFT
+
+    # Still idle with the marker present → single prompt: NOT re-nudged.
+    view = sup.evaluate(track, act=True)
+    assert view.status == "idle-with-context-left"
+    assert _nudge_count(fake) == 1
+
+
+def test_nudge_re_arms_after_the_session_takes_a_turn(tmp_path):
+    """Single prompt per EPISODE: after a nudge, the session going non-idle (busy) clears
+    the marker, so idling with context left AGAIN re-nudges."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))
+    sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "idle"}
+    track = _mapped_track(repo, topic, session)
+
+    assert sup.evaluate(track, act=True).status == "idle-with-context-left"
+    assert _nudge_count(fake) == 1
+
+    # The session takes a turn (Claude busy) → the marker is cleared (re-arm on non-idle).
+    sup._claude_status = {session: "busy"}
+    assert sup.evaluate(track, act=True).status == "working"
+    assert signals.read_state(str(repo), topic) is None  # marker gone
+
+    # Idle again with context left → a FRESH nudge (a new episode).
+    sup._claude_status = {session: "idle"}
+    assert sup.evaluate(track, act=True).status == "idle-with-context-left"
+    assert _nudge_count(fake) == 2
+
+
+def test_claude_waiting_is_not_nudged(tmp_path):
+    """A session Claude reports as `waiting` (at a gate/prompt for the human) is NOT nudged
+    even above threshold — it is a blocking question for the human, not free to continue."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))
+    sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "waiting"}
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert view.status == "idle"
-    assert not fake.has("paste")
+    assert _nudge_count(fake) == 0
+
+
+def test_nudge_never_overwrites_a_session_declaration(tmp_path):
+    """The daemon writes `idle-with-context-left` ONLY when the file is empty — a session
+    that declared `blocked` (the Codex waiting-on-human-in-prose escape) is never nudged
+    and its declaration is never clobbered."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))
+    sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "idle"}
+    _declare(repo, topic, "blocked: waiting on a human decision (asked in prose)")
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "blocked:human"
+    assert _nudge_count(fake) == 0
+    state = signals.read_state(str(repo), topic)  # the declaration survived untouched
+    assert state is not None and state.token == signals.STATE_BLOCKED
+
+
+def test_nudge_marker_is_not_an_attention_status():
+    """`idle-with-context-left` is the daemon handling it, not a human hand-off — it must
+    NOT appear in the NEEDS YOU block."""
+    view = supervisor.RowView(
+        topic="t", repo="/r", tmux="s", ctx=73, status="idle-with-context-left"
+    )
+    assert supervisor.needs_attention(view) is False
 
 
 # A phrase from the SHARED wrap-up body, so it matches BOTH tones (the gentle
@@ -401,6 +483,14 @@ _WRAPUP_SENTINEL = "Declare your state by writing ONE line"
 
 def _wrapup_count(fake):
     return len([t for t in fake.paste_texts() if _WRAPUP_SENTINEL in t])
+
+
+# A phrase unique to the idle-with-context-left "keep going" nudge (never in the wrap-up).
+_NUDGE_SENTINEL = "do NOT offer to stop"
+
+
+def _nudge_count(fake):
+    return len([t for t in fake.paste_texts() if _NUDGE_SENTINEL in t])
 
 
 def test_escalates_one_paste_per_band_as_ctx_drops(tmp_path):
@@ -540,13 +630,14 @@ def test_warn_percent_default_applies_to_track_without_override(tmp_path):
     track = _mapped_track(repo, topic, session)  # ctx_threshold defaults to None
     assert track.ctx_threshold is None
     view = sup.evaluate(track, act=True)
-    assert view.status == "idle"
-    assert not fake.has("paste")
-    # Drop to the daemon-wide threshold → warns.
+    # Above the inherited threshold (40 > 30) → a keep-going NUDGE, not a wind-down warn.
+    assert view.status == "idle-with-context-left"
+    assert _wrapup_count(fake) == 0
+    # Drop to the daemon-wide threshold → warns (wind-down wrap-up).
     fake.panes[session] = _idle_capture(ctx=30)
     view = sup.evaluate(track, act=True)
     assert view.status == "warned"
-    assert fake.has("paste")
+    assert _wrapup_count(fake) == 1
 
 
 def test_explicit_ctx_threshold_overrides_warn_percent(tmp_path):
@@ -1200,7 +1291,9 @@ def test_registry_idle_is_idle_even_with_a_stray_descendant_shell(tmp_path):
     )
     sup._claude_status = {session: "idle"}
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert view.status == "idle"
+    # Not "working" — the process-walk is ignored for Claude. (Idle above threshold with
+    # no declaration is now nudged to keep going: `idle-with-context-left`, still not busy.)
+    assert view.status == "idle-with-context-left"
     assert view.note is None
 
 
@@ -1370,7 +1463,8 @@ def test_tick_builds_unassigned_and_mapped_rows(tmp_path):
 
     views = sup.tick(act=True)
     by_topic = {v.topic: v for v in views}
-    assert by_topic["mapped"].status == "idle"
+    # Idle at 73% (above threshold) with no declaration → nudged to keep going.
+    assert by_topic["mapped"].status == "idle-with-context-left"
     assert by_topic["unmapped"].status == "unassigned"
     assert by_topic["unmapped"].tmux is None
 
@@ -1951,7 +2045,7 @@ def test_tty_render_tints_working_rows_green(tmp_path):
 def test_tty_render_tints_idle_and_waiting_rows_yellow(tmp_path):
     """Idle and `blocked:human` (waiting on a human decision) both read yellow — a
     human should glance at them (maintainer feature request 2026-07-15)."""
-    for status in ("idle", "blocked:human", "warned", "danger"):
+    for status in ("idle", "idle-with-context-left", "blocked:human", "warned", "danger"):
         sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
         view = supervisor.RowView(topic="yl", repo="/r", tmux="s", ctx=15, status=status)
         line = _row_line(_render_of(sup, [view]), "yl")
@@ -2041,8 +2135,9 @@ def test_alert_re_arms_after_the_track_recovers(tmp_path):
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
-    # 90% remaining: comfortably above the warn threshold, so the recovered tick is a
-    # plain `idle` (at 50% it would be `warned` — still healthy, but a noisier assertion).
+    # 90% remaining: comfortably above the warn threshold, so the recovered tick is
+    # healthy — `idle-with-context-left` (idle with room, so nudged to keep going). It is
+    # NOT an attention status, so the edge-triggered alert still re-arms.
     fake.serve(session, repo, capture=_idle_capture(ctx=90))
     sup = _sup(tmp_path, fake)
     track = _mapped_track(repo, topic, session)
@@ -2052,7 +2147,7 @@ def test_alert_re_arms_after_the_track_recovers(tmp_path):
         state = _declare(repo, topic, "blocked: first")
         assert sup.evaluate(track, act=True).status == "blocked:human"
         state.unlink()  # the human answered → the track is healthy again
-        assert sup.evaluate(track, act=True).status == "idle"
+        assert sup.evaluate(track, act=True).status == "idle-with-context-left"
         _declare(repo, topic, "blocked: first")  # blocks AGAIN on the same reason
         assert sup.evaluate(track, act=True).status == "blocked:human"
     surfaced = [ln for ln in err.getvalue().splitlines() if "overseer[SURFACE]" in ln]
