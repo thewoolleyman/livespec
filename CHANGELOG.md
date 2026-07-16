@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/thewoolleyman/livespec/compare/v0.13.0...v0.14.0) (2026-07-16)
+
+
+### Features
+
+* **overseer:** nudge an idle session that still has context left to keep going ([02a1634](https://github.com/thewoolleyman/livespec/commit/02a1634be878b1428aaaf3e91d42e529a7032d57))
+
 ## [0.13.0](https://github.com/thewoolleyman/livespec/compare/v0.12.0...v0.13.0) (2026-07-15)
 
 
