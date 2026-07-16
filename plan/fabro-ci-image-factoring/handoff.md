@@ -92,9 +92,14 @@ Phase 2's cutover is proven GREEN end-to-end on master (see SESSION 2026-07-15 b
 **Phase 3 (fleet fan-out) is UNDERWAY — the RUNNER POOL now serves 6 of 8 repos (54 runners:
 9 × 6, all online, zero orphans), and 3 of 8 repos are cut over + MERGED + PROVEN GREEN LIVE
 (`livespec` pilot, `livespec-driver-claude`, `livespec-driver-codex`).** driver-codex's cutover
-merged as [#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168) — **59 pass / 0
-fail** on its own 9 self-hosted runners in `python-v0.43.2` (see below for the one real defect its
-live run surfaced, which merge + CI-green + review could not). The maintainer-only App-installation gate
+merged as [#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168) and is proven
+GREEN END-TO-END ON MASTER: run
+[29483319101](https://github.com/thewoolleyman/livespec-driver-codex/actions/runs/29483319101) —
+**60/60 jobs pass**, with the lane split exactly as designed on a real `push: master` event: **58
+jobs on `[self-hosted, local-ci]`** in `python-v0.43.2` (the whole `check` matrix +
+`check-doctor-static` + `check-red-green-replay`) and **2 on `ubuntu-latest`**
+(`export-telemetry`, `ci-green`). See below for the one real defect its live run surfaced, which
+merge + CI-green + review could not. The maintainer-only App-installation gate
 is CLEARED for ALL 8 fleet repos (granted via the authenticated browser 2026-07-16), and the
 2026-07-16 (cont.) session CONFIRMED the grants work end-to-end: all 4 newly-added repos minted
 JIT runners with zero 403s. The runner-slot model is **9 per repo** (maintainer-chosen
