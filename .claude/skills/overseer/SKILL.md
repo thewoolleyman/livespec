@@ -218,7 +218,8 @@ will see:
 | `danger` | at/below **20%** remaining with **nothing declared** — reported loudly, **never acted on** |
 | `restarting` | the session declared `ready`; the daemon is respawning + re-kicking it |
 | `blocked:human` | a structured gate on the pane, or a `blocked: <reason>` declaration |
-| `session-gone` | the mapped tmux session no longer exists |
+| `session-gone` | the mapped tmux session no longer exists AND no live Claude session for the topic is running |
+| `live-outside-tmux` | the mapped tmux session is gone, but a live Claude session for this topic is running in a NON-tmux terminal (e.g. a bare SSH shell) — alive and working, but the daemon cannot capture/inject/respawn it. **Informational, not an alarm** (not in `NEEDS YOU`) |
 | `not-claude` | the mapped pane is not a live Claude in that repo — never keystroked |
 
 A `danger` row is a **report, not a decision the daemon will make for you**: the

@@ -1198,6 +1198,83 @@ def _adopt_sup(tmp_path, fake, sessions_dir, ppid, starttimes, **kwargs):
 
 
 # --------------------------------------------------------------------------- #
+# live-outside-tmux: the mapped tmux session is gone, but a live Claude session
+# for the topic is running in a NON-tmux terminal (e.g. a bare SSH shell) — alive
+# and working but unmanageable, so NOT the alarming `session-gone`.
+# --------------------------------------------------------------------------- #
+
+
+def test_missing_session_with_live_out_of_tmux_claude_is_live_outside_tmux(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # mapped tmux session NOT added → session_exists False; no panes
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    # A live registry session named for the topic, cwd in the repo, whose pid walks up
+    # to NO tmux pane (pane_pids empty, ppid chain terminates) → running outside tmux.
+    _write_session(sessions_dir, 100, name=topic, cwd=str(repo), status="busy")
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {100: "pt"})
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "live-outside-tmux"
+    assert view.note is not None
+    assert "OUTSIDE tmux" in view.note
+    assert "busy" in view.note  # the session's own self-reported status is surfaced
+    assert not fake.has("capture")  # there is no pane to read
+
+
+def test_missing_session_without_any_live_claude_is_still_session_gone(tmp_path):
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    # A live registry session exists, but for a DIFFERENT topic — this track is gone.
+    _write_session(sessions_dir, 100, name="some-other-topic", cwd=str(repo), status="busy")
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {100: "pt"})
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "session-gone"
+
+
+def test_missing_session_with_the_claude_in_a_different_tmux_is_session_gone(tmp_path):
+    """A live session for the topic that DOES resolve to a tmux session is a re-mapping
+    concern, not out-of-tmux — it stays `session-gone` (this fix is scoped to no-tmux)."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # the mapped `session` is gone...
+    fake.pane_pids = {4242: "some-other-tmux"}  # ...but the claude pid resolves to a live pane
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    _write_session(sessions_dir, 100, name=topic, cwd=str(repo), status="busy")
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {100: 4242}, {100: "pt"})
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "session-gone"
+
+
+def test_live_outside_tmux_is_not_an_attention_status():
+    """It is informational — the work is fine, just unmanageable — so it must NOT land
+    in the NEEDS YOU block."""
+    view = supervisor.RowView(
+        topic="t",
+        repo="/r",
+        tmux="s",
+        ctx=None,
+        status="live-outside-tmux",
+        note="live Claude session (pid 100) running OUTSIDE tmux — daemon cannot manage it",
+    )
+    assert supervisor.needs_attention(view) is False
+    assert "live-outside-tmux" not in supervisor.ATTENTION_STATUSES
+
+
+def test_tty_render_leaves_live_outside_tmux_uncolored(tmp_path):
+    """`live-outside-tmux` is informational, not an alarm — it keeps the terminal
+    default color (never red like `session-gone`)."""
+    sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
+    view = supervisor.RowView(topic="lo", repo="/r", tmux="s", ctx=None, status="live-outside-tmux")
+    line = _row_line(_render_of(sup, [view]), "lo")
+    assert "\x1b[3" not in line  # no SGR color introducer at all
+
+
+# --------------------------------------------------------------------------- #
 # Claude registry `status` is the AUTHORITATIVE busy signal for an adopted
 # Claude session (2026-07-15). Its vocabulary maps cleanly: `busy` (generating /
 # in-process sub-agent) and `shell` (live `Bash(run_in_background)`) mean working;

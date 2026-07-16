@@ -864,6 +864,40 @@ class Supervisor:
                 message="idle-with-context-left nudge FAILED (paste did not land); will retry",
             )
 
+    def _live_session_outside_tmux(
+        self, repo: str, topic: str
+    ) -> claude_sessions.ClaudeSession | None:
+        """The live Claude registry session for ``(repo, topic)`` running OUTSIDE any
+        tmux pane, or None.
+
+        Separates a genuinely gone track from one whose mapped tmux session died while a
+        Claude session for the same plan kept working in a NON-tmux terminal (e.g. a bare
+        SSH shell). It reads the SAME registry ``adopt_sessions`` uses
+        (:func:`claude_sessions.read_live_sessions` — every live named session, tmux or
+        not), matches a session whose ``name`` is the topic and whose ``cwd`` is in the
+        repo, and returns it ONLY when it does not resolve to any tmux pane
+        (:func:`claude_sessions.resolve_tmux_session` is None). A session that resolves to
+        a DIFFERENT tmux session is deliberately NOT returned — that is a re-mapping
+        concern, not an out-of-tmux one. Such an out-of-tmux session is alive and doing
+        work but UNMANAGEABLE by the daemon (no pane to capture / inject / respawn), so
+        ``evaluate`` reports it as the informational ``live-outside-tmux`` rather than the
+        alarming ``session-gone``.
+        """
+        pane_pids = self.tmux.pane_pid_sessions()
+        for live in claude_sessions.read_live_sessions(
+            self._sessions_dir(), starttime_of=self.starttime_of
+        ):
+            if live.name != topic or not signals.path_in_repo(live.cwd, repo):
+                continue
+            if (
+                claude_sessions.resolve_tmux_session(
+                    live.pid, pane_pid_to_session=pane_pids, ppid_of=self.ppid_of
+                )
+                is None
+            ):
+                return live
+        return None
+
     def evaluate(self, track: registry.Track, *, act: bool) -> RowView:
         """Derive a track's status and (when ``act``) perform its side effects.
 
@@ -881,6 +915,24 @@ class Supervisor:
         key = _key(repo, topic)
 
         if not self.tmux.session_exists(session):
+            # The mapped TMUX session is gone — but the work may not be. A Claude
+            # session for the same plan can keep running in a NON-tmux terminal (a bare
+            # SSH shell), which the tmux-only daemon cannot capture, inject, or respawn.
+            # Distinguish that live-but-unmanageable case from a genuinely gone track so
+            # the operator is not falsely alarmed that finished-looking work was lost.
+            live = self._live_session_outside_tmux(repo, topic)
+            if live is not None:
+                note = f"live Claude session (pid {live.pid}) running OUTSIDE tmux — daemon cannot manage it"
+                if live.status:
+                    note += f"; self-reported status {live.status}"
+                return RowView(
+                    topic=topic,
+                    repo=repo,
+                    tmux=session,
+                    ctx=None,
+                    status="live-outside-tmux",
+                    note=note,
+                )
             return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="session-gone")
 
         # Resolve the pane id ONCE and target every subsequent pane op by it (RB3).
