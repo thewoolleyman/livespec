@@ -89,33 +89,160 @@ images + the codex-acp auto-bump automation), AND Phase 2 (livespec `ci.yml` cut
 the self-hosted runner + baked image) are all functionally COMPLETE and live-exercised.**
 Phase 2's cutover is proven GREEN end-to-end on master (see SESSION 2026-07-15 below).
 
-**Phase 3 (fleet fan-out) is UNDERWAY — 2 of 8 repos cut over (`livespec` pilot +
-`livespec-driver-claude`); the full add-a-repo procedure is now PROVEN and the remaining 6
-are mechanical repetition of it.** The maintainer-only App-installation gate is CLEARED for
-ALL 8 fleet repos in one pass (granted via the authenticated browser 2026-07-16 — no further
-clicks needed for any Phase-3 repo). The runner-slot model was reduced from 18→**9 per repo**
-(maintainer-chosen 2026-07-16) so the common 2-repo CI overlap caps at one-per-core on the
-18-core host. driver-claude's cutover is MERGED + proven green live (livespec-driver-claude
-#183, 59 pass / 0 fail, on its own 9 self-hosted runners). See SESSION 2026-07-16 below for
-the PROVEN 3-STEP add-a-repo procedure, the mint-leak + orphan-runner gotchas, and the
-remaining-repo plan.
+**Phase 3 (fleet fan-out) is UNDERWAY — the RUNNER POOL now serves 6 of 8 repos (54 runners:
+9 × 6, all online, zero orphans). 2 of 8 repos are cut over + MERGED (`livespec` pilot,
+`livespec-driver-claude`); `livespec-driver-codex` is cut over and IN REVIEW
+([#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168), NOT yet merged — see
+below for its live-run result and the one real defect it surfaced).** The maintainer-only App-installation gate
+is CLEARED for ALL 8 fleet repos (granted via the authenticated browser 2026-07-16), and the
+2026-07-16 (cont.) session CONFIRMED the grants work end-to-end: all 4 newly-added repos minted
+JIT runners with zero 403s. The runner-slot model is **9 per repo** (maintainer-chosen
+2026-07-16). See SESSION 2026-07-16 (cont.) below for the fork-PR approval SECURITY REPAIR (a
+live gap on the already-cut-over driver-claude), the stale-base worktree gotcha, and the
+per-repo disposition facts already gathered for the remaining repos.
 
-**Actionable next step — fan the cutover out to the remaining 6 fleet repos** using the proven
-3-step procedure (App-scope DONE for all 8; per repo: provision instance dirs at 9 slots →
-add to supervisor `--repos` → cut over ci.yml → verify green live). Recommended batching:
-provision + add the 4 straightforward Python repos (`livespec-driver-codex`,
-`livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`, `livespec-runtime`) in ONE
-supervisor restart, then cut over each ci.yml SERIALLY (one matrix firing at a time avoids
-re-oversubscribing). Two need special handling: `livespec-console-beads-fabro` is RUST (its
-cutover uses the `python-rust` image, not `python-v0.43.2`, and a different check set), and
+**Actionable next step — cut over the remaining 3 provisioned Python repos, SERIALLY**
+(`livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`, `livespec-runtime`). Their runners
+are ALREADY provisioned + online and their fork-PR approval is ALREADY tightened, so each is now
+a ci.yml-only change: derive the disposition from the repo's OWN workflow, apply the template,
+verify green live. Fire ONE matrix at a time (each is ~58 jobs through 9 slots ≈ 10 min; two at
+once re-oversubscribes). Then the two GATED repos: `livespec-console-beads-fabro` is RUST (uses
+the `python-rust` image, not `python-v0.43.2`, and a different check set) and
 `livespec-orchestrator-beads-fabro` hosts the PRIVILEGED gate-runner lane — adding a contained
-`local-ci` lane onto that host is a trust-tier decision to surface before doing it. Loose ends:
-(a) the LEDGER-HYGIENE one — `.3`/`.4` blocked-by the intentionally-open `.1` (P-host),
-`.5` blocked-by `.3`/`.4`; all functionally done but ledger-OPEN; nothing technical blocked;
-(b) two NON-blocking Phase-2 perf follow-ons on `.5` (per-container-cold uv cache; durable
-mise-data-dir HOME fix); (c) NEW recreatability gap — the supervisor's installed `--repos`
-list + `--slots 9` DIVERGE from the dev-tooling source unit; the 3-step add-repo procedure is
-not yet ONE recreatable artifact (see SESSION 2026-07-16). See NEXT ACTIONS.
+`local-ci` lane onto that host is a trust-tier decision to SURFACE to the maintainer before
+doing it. Loose ends: (a) the LEDGER-HYGIENE one — `.3`/`.4` blocked-by the intentionally-open
+`.1` (P-host), `.5` blocked-by `.3`/`.4`; all functionally done but ledger-OPEN; nothing
+technical blocked; (b) two NON-blocking Phase-2 perf follow-ons on `.5` (per-container-cold uv
+cache; durable mise-data-dir HOME fix); (c) the recreatability gap is now FILED as
+**`livespec-dev-tooling-s2t`** (P1) — the installed supervisor `--repos`/`--slots` diverge from
+the committed source unit. See NEXT ACTIONS.
+
+**Per-repo disposition facts already verified (2026-07-16 cont.) — reuse, do not re-derive.**
+All of `livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`, `livespec-runtime`,
+`livespec-console-beads-fabro`: **no merge queue** (zero rulesets, `required_merge_queue: null`)
+and **`ci-green` is the SOLE required context** — so in every one, the `merge_group:` trigger is
+DEAD and must be dropped (keeping it is the exact routing hole the T9 audit forbids), and
+`ci-green` MUST stay `ubuntu-latest` so the gate is reportable host-down. Job-shape notes:
+- **`livespec-dev-tooling`** mirrors livespec's split (`setup` + `check-python` +
+  `check-metadata`), PLUS a **`check-fleet-conformance` job that mints an App token via
+  `actions/create-github-app-token@v1` — that job STAYS HOSTED** (App-token minting is on the
+  disposition template's stay-hosted list).
+- **`livespec-orchestrator-git-jsonl`** adds two jobs beyond the usual set: `e2e-cli` (runs the
+  hermetic `LIVESPEC_E2E_HARNESS: mock` tier) and `acceptance` (`just acceptance`). Both are
+  SECRET-FREE, so both move cleanly.
+- **`livespec-runtime`** is the plainest: `setup` / `check-python` / `check-metadata` /
+  `check-doctor-static` / `export-telemetry` / `ci-green`.
+
+**SESSION 2026-07-16 (cont.) — pool extended to 6 repos + a fork-PR approval SECURITY REPAIR +
+driver-codex cut over.**
+- **SECURITY REPAIR (the load-bearing finding of this session) — fork-PR approval was NOT at the
+  strictest tier on repos that already had, or were about to get, self-hosted runners.** The
+  2026-07-15 security decision records that "the approval gate is the load-bearing boundary" for
+  self-hosted runners on PUBLIC repos (forking cannot be disabled on public repos). Audit found
+  `all_external_contributors` on only `livespec` + `livespec-orchestrator-beads-fabro`; the rest
+  sat at **`first_time_contributors`** — including **`livespec-driver-claude`, which was ALREADY
+  CUT OVER on 2026-07-16 with 9 live runners**. That was a REAL live gap, not a theoretical one:
+  once runners are registered to a repo, a fork PR can **edit its own `ci.yml` to target
+  `[self-hosted, local-ci]`** and reach the host REGARDLESS of what master's workflow says — the
+  approval gate is the only thing in the way, and `first_time_contributors` lets a RETURNING
+  contributor run without a maintainer click. **Tightened to `all_external_contributors` on all 5
+  runner-bearing repos** (driver-claude + the 4 newly-provisioned), verified server-side. **This
+  is now a MANDATORY step of the add-a-repo procedure — do it BEFORE registering runners** (see
+  the 4-STEP procedure below). `livespec-console-beads-fabro` is still `first_time_contributors`
+  but has NO runners (no exposure); tighten it AS PART OF its cutover.
+- **The add-a-repo procedure is really FOUR steps, not three** (the 3-step version in the session
+  below is superseded — it omitted the security step):
+  1. **App-installation scope** — `github.com/settings/installations/146033367` (browser;
+     owner-only). DONE for all 8; CONFIRMED working (all 4 new repos minted with zero 403s).
+  2. **Tighten fork-PR approval to `all_external_contributors`** —
+     `gh api -X PUT repos/thewoolleyman/<repo>/actions/permissions/fork-pr-contributor-approval
+     -f approval_policy=all_external_contributors`. **Before runners exist**, since registration
+     is what creates the exposure.
+  3. **Provision per-instance runner roots** — `sudo env
+     CI_RUNNER_REPOSLUGS="<space-separated slugs>" CI_RUNNER_SLOTS=9 bash
+     /data/projects/livespec-dev-tooling/ci-runner/provision-ci-runner.sh` (idempotent; accepts
+     MULTIPLE slugs in one pass — all 4 were provisioned in a single invocation).
+  4. **Supervisor `--repos`** — edit `/etc/systemd/system/ci-runner-supervisor.service`,
+     `daemon-reload`, `restart` while quiescent; verify 9 online per repo.
+- **Pool is now 6 repos × 9 = 54 runners, all online, zero orphans.** Added
+  `livespec-driver-codex`, `livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`,
+  `livespec-runtime` in ONE provisioning pass + ONE supervisor restart (host was quiescent: 0
+  in-progress runs). No mint-leak — steps 3→4 in order, exactly as the gotcha below prescribes.
+  **Restart-orphan note (a MILDER cousin of GOTCHA #2):** the restart killed the 9 in-flight
+  listeners for `livespec` + `livespec-driver-claude`, orphaning their registrations as
+  `offline`; the supervisor immediately re-minted 9 fresh online ones each. Harmless to job
+  assignment, but 18 stale registrations were deleted to keep the pool clean. **Expect this on
+  EVERY supervisor restart** — sweep offline registrations afterward.
+- **Host health under the first 6-repo load: NO breach.** 67 GiB RAM available (floor is 8 GiB),
+  351 GB disk free (floor 20 GiB — note the ordered disk doubling has LANDED: 678 GB total),
+  swap 0, load ~32 on 18 cores = the graceful oversubscription the 2026-07-12 load test predicted.
+- **`livespec-driver-codex` cut over — PR
+  [#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168).** Moved: the `check`
+  matrix (~56 targets), `check-doctor-static`, `check-red-green-replay` → `[self-hosted,
+  local-ci]` in `python-v0.43.2`. Stayed hosted: `ci-green` (sole branch-protection context) +
+  `export-telemetry` (Honeycomb ingest secret). Dropped the dead `merge_group`. Carried the full
+  live-learned template (`MISE_DATA_DIR`, `github.token` on every moved job, `$GITHUB_WORKSPACE`
+  for `LIVESPEC_CORE_PLUGIN_ROOT`, node-on-PATH npm prelude, `mise trust`, `actions/cache`
+  deleted). Repo-specific finding: **`check-codex-skill-picker` moves cleanly** — its recipe
+  self-skips in CI unless `LIVESPEC_REQUIRE_CODEX_TUI_PICKER=1`, so it needs no Codex CLI on the
+  runner.
+- **The routing audit was NEGATIVE-CONTROLLED, not just run.** `check-self-hosted-routing` passes
+  on the cutover (exit 0) AND re-adding `merge_group` alongside the self-hosted jobs fails it
+  (exit 1, `"workflow routes a forbidden trigger to a local-ci self-hosted job"`) — so the guard
+  is genuinely validating rather than vacuously passing. Worth repeating on each remaining repo.
+- **ONE latent defect found by actually running the matrix (the "done means exercised live"
+  discipline earning its keep AGAIN — this is the 2nd cutover in a row where the live run found a
+  bug that merge + CI-green + review could not).** driver-codex's first cutover run came back
+  **55 pass / 4 fail**: `check-hooks`, `check-coverage`, `check-per-file-coverage` (all three run
+  `pytest tests/hooks/`) + `ci-green` reporting them. All three shared ONE root cause, and it was
+  **a real pre-existing test defect the container merely EXPOSED — not a cutover bug** (it passes
+  on driver-codex's GitHub-hosted master).
+  - **Root cause:** `tests/hooks/test_block_auto_memory.py`'s `_run_guard_subprocess` scrubbed the
+    subprocess env to `{"PATH": ...}` — **no HOME**. The guard
+    (`livespec/hooks/block_auto_memory.py`) derives the directory it protects from `Path.home()`,
+    which falls back to the **passwd entry** when `HOME` is absent, while the module's
+    `_MEMORIES_PATH` expectation is built from the TEST process's `$HOME`. When those disagree the
+    guard watches a different directory than the test targets, matches nothing, and emits NO
+    decision — the deny assertion then fails on empty stdout.
+  - **Why it hid:** the two agree wherever `HOME` == the passwd home — GitHub-hosted runners
+    (`/home/runner`), a plain `docker run` as root (`/root`), and a maintainer laptop. The CI
+    **container hooks run steps with `HOME=/github/home` while passwd still says `/root`**, so the
+    mismatch only becomes real on the self-hosted lane.
+  - **Fixed at the source, not bypassed** (`chore(test):` commit on the cutover PR): pass
+    `HOME=str(Path.home())` into the subprocess env. Verified IN THE BAKED IMAGE with a clean
+    before/after — `HOME=/github/home`: unfixed **1 failed/107 passed** → fixed **108 passed**;
+    `HOME=/root`: **108 passed** both ways. NB the temptation was to set `HOME` in the workflow
+    (a second env-var workaround beside `MISE_DATA_DIR`); that would have masked a genuine
+    test-isolation bug that bites anyone whose `HOME` != passwd home.
+  - **Fleet sweep done — this one is driver-codex-SPECIFIC.** The defect needs BOTH ingredients (a
+    scrubbed subprocess env AND a home-derived expectation); grepping all 6 clones found the pair
+    only in driver-codex. (`livespec-dev-tooling` has a `env = {"PATH"...}` string hit, but it is a
+    plain dict literal in a unit test about env scrubbing — no subprocess, no HOME dependence.)
+    The CLASS is still worth watching on each remaining cutover: **any test whose behavior depends
+    on `HOME` can pass hosted and fail in-container.** This is the same HOME misalignment the
+    `MISE_DATA_DIR` workaround exists for, and further evidence for the `.5` follow-on to align
+    HOME at the image/hook layer.
+- **RGR gotcha for test-only fixes (worth knowing before the next repo):** a tests-only staged tree
+  whose tests PASS is rejected as `test-passed-at-red` **if the subject is `feat:`/`fix:`** — those
+  prefixes DECLARE a behavior change, so the test must fail first. A passing test-only cleanup must
+  use a non-`feat:`/`fix:` prefix (`chore(test):`) to take the green-verified leg — branch 3 of the
+  `red_green_replay` decision tree. This is the designed taxonomy, not a bypass.
+- **GOTCHA #3 (NEW — cost real rework this session): never branch a worktree from LOCAL `master`.**
+  `git fetch` + `git worktree add -b <br> <path> master` branches from the STALE LOCAL ref, not
+  the fetched one. driver-codex's local master was **9 commits behind** origin, so the first
+  cutover was authored against a base whose CI matrix LACKED `check-self-hosted-routing` and
+  whose justfile lacked the recipe (the confusing symptom: "the matrix lists the check but `just`
+  says no such recipe"). **Always `git worktree add -b <branch> <path> origin/master`** (and
+  `git pull --ff-only origin master` on the primary first). This is the worktree-flow corollary of
+  the repo's existing "read canonical committed state via `git show origin/master`" discipline.
+- **RECREATABILITY GAP now FILED: `livespec-dev-tooling-s2t`** (P1 bug). The divergence WIDENED
+  this session — installed unit is now `--repos "<6 repos>" --slots 9` while the committed source
+  (`ci-runner/supervisor/ci-runner-supervisor.service`) still says `--repos thewoolleyman/livespec
+  --slots 18`, so a host rebuilt from source would serve ONE repo at 18 slots. The item proposes
+  one committed host-config (repo list + slot count) driving BOTH the instance-dir provisioning
+  and the supervisor `--repos`, making the step-3→4 ordering structural instead of a documented
+  gotcha. The installed unit's slot-model comment was refreshed in place (it still claimed a
+  "2-repo overlap"), but that is a band-aid on hand-edited state, not the fix.
 
 **SESSION 2026-07-16 — Phase 3: all 8 App grants + driver-claude cut over LIVE + slots→9.**
 - **ALL 8 fleet repos granted in the `thewoolleyman-ci-runners` App installation (one pass,
