@@ -922,6 +922,37 @@ class Supervisor:
                 return live
         return None
 
+    def _no_managed_pane_row(self, *, repo: str, topic: str, session: str) -> RowView:
+        """The row for a track with NO live managed pane: ``live-outside-tmux`` or ``session-gone``.
+
+        The single home for "this track has no pane we can drive". Reached two ways —
+        the mapped tmux session is gone, or it survives but its Claude exited to a
+        shell — which must answer identically: both are the same fact about the track,
+        and only the tmux housekeeping differs. Keeping one path also keeps the
+        live-outside-tmux fallback from being wired into just one of them (it was, and
+        the shell case reported a live session as ``not-claude``).
+
+        A Claude for the same plan may still be running in a NON-tmux terminal (a bare
+        SSH shell): alive and working, but unmanageable by this tmux-only daemon (no
+        pane to capture / inject / respawn). That is the informational
+        ``live-outside-tmux``, NOT the alarming ``session-gone`` — the operator should
+        not be told finished-looking work was lost when it is merely out of reach.
+        """
+        live = self._live_session_outside_tmux(repo, topic)
+        if live is not None:
+            note = f"live Claude session (pid {live.pid}) running OUTSIDE tmux — daemon cannot manage it"
+            if live.status:
+                note += f"; self-reported status {live.status}"
+            return RowView(
+                topic=topic,
+                repo=repo,
+                tmux=session,
+                ctx=None,
+                status="live-outside-tmux",
+                note=note,
+            )
+        return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="session-gone")
+
     def evaluate(self, track: registry.Track, *, act: bool) -> RowView:
         """Derive a track's status and (when ``act``) perform its side effects.
 
@@ -944,20 +975,7 @@ class Supervisor:
             # SSH shell), which the tmux-only daemon cannot capture, inject, or respawn.
             # Distinguish that live-but-unmanageable case from a genuinely gone track so
             # the operator is not falsely alarmed that finished-looking work was lost.
-            live = self._live_session_outside_tmux(repo, topic)
-            if live is not None:
-                note = f"live Claude session (pid {live.pid}) running OUTSIDE tmux — daemon cannot manage it"
-                if live.status:
-                    note += f"; self-reported status {live.status}"
-                return RowView(
-                    topic=topic,
-                    repo=repo,
-                    tmux=session,
-                    ctx=None,
-                    status="live-outside-tmux",
-                    note=note,
-                )
-            return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="session-gone")
+            return self._no_managed_pane_row(repo=repo, topic=topic, session=session)
 
         # Resolve the pane id ONCE and target every subsequent pane op by it (RB3).
         # A pane id is exact and never prefix/fnmatch-matched, so if the tracked
@@ -967,12 +985,28 @@ class Supervisor:
         # `respawn-pane -k` killing it. Stable across respawn.
         target = self.tmux.pane_id(session)
         if target is None:
-            return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="session-gone")
+            return self._no_managed_pane_row(repo=repo, topic=topic, session=session)
 
         # Identity gate (B3): the mapped session exists, but before reading its pane
         # for any ACT we confirm it is really OUR Claude in OUR repo — never
         # keystroke into a shell / wrong session / human split-pane.
         if not self._pane_is_managed_claude(target, repo):
+            # WHY this splits rather than reporting a flat `not-claude`: the gate above
+            # is an ACT guard (never keystroke into a pane not proven ours) and stays
+            # exactly that. But its answer is not a row STATUS — "not our Claude" has
+            # two causes the operator must not confuse:
+            #   (a) our Claude EXITED, leaving the pane at a bare shell — the ordinary
+            #       end of a track's life, and
+            #   (b) the mapping points at a genuinely FOREIGN pane (another program, a
+            #       Claude in a different repo) — a real mis-mapping to go fix.
+            # Reporting both as `not-claude` left finished tracks sitting red in
+            # NEEDS YOU claiming a live tmux mapping (livespec1, live 2026-07-16), and
+            # skipped the live-outside-tmux fallback entirely — hiding a Claude that
+            # was alive in a non-tmux terminal behind an alarm. A shell pane routes to
+            # the SAME no-managed-pane path the missing-session branch uses, so the two
+            # cannot drift; only (b) keeps the `not-claude` alarm.
+            if signals.pane_is_shell(self.tmux.pane_current_command(target)):
+                return self._no_managed_pane_row(repo=repo, topic=topic, session=session)
             return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="not-claude")
 
         capture = self.tmux.capture_pane(target)

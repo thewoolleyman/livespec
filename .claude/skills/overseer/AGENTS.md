@@ -61,8 +61,8 @@ stateDiagram-v2
     state "evaluate(track) — one tick" as tick
 
     tick --> unassigned: is_unassigned
-    tick --> cGone: mapped session gone
-    tick --> not_claude: not our Claude
+    tick --> cGone: no managed pane
+    tick --> not_claude: foreign pane
     tick --> cBusy: live and ours
 
     state cGone <<choice>>
@@ -134,13 +134,32 @@ ACKs) `→ restarting` (session declares `ready`) `→` a fresh `working` after 
 respawn — each arrow driven by the SESSION's own declaration, never a daemon
 guess. `unassigned` / `session_gone` / `live_outside_tmux` / `not_claude` are
 structural pre-checks (no live managed pane to read); `settling` is a one-tick
-"wait and re-read". The `cGone` choice splits the missing-tmux-session case: when
-the mapped tmux session is gone but a live Claude registry session for the topic
-is running with NO tmux pane (a bare SSH shell), the row is the informational
+"wait and re-read". The `cGone` choice splits the no-managed-pane case: when there
+is no pane the daemon can drive but a live Claude registry session for the topic is
+running with NO tmux pane (a bare SSH shell), the row is the informational
 `live-outside-tmux` (alive, but the daemon cannot capture/inject/respawn it) — NOT
 the alarming `session-gone`, and it is kept out of the `NEEDS YOU` block. A live
 session that resolves to a DIFFERENT tmux session stays `session-gone` (re-mapping
 is a separate concern; `_live_session_outside_tmux`).
+
+**`cGone` is reached TWO ways, and they must answer identically
+(`_no_managed_pane_row`; 2026-07-16).** Either the mapped tmux session is gone, or
+it survives but its Claude **exited to a bare shell** — the ordinary end of a
+track's life. Both are the same fact about the track (no pane to drive), so both
+route through the one helper; only tmux housekeeping differs. **`not_claude` is
+therefore narrower than "not our Claude"** — it means the mapping points at a
+genuinely FOREIGN pane (another program, a Claude in a different repo): a real
+mis-mapping to go fix. Do not widen it back. The identity gate
+(`_pane_is_managed_claude`) is unchanged and still governs every ACT — the split is
+about what the operator is TOLD, never about relaxing the gate; a shell pane is
+still never pasted into. **Why it matters:** reporting an exited-to-shell track as
+`not_claude` left finished tracks sitting red in `NEEDS YOU` claiming a live tmux
+mapping (found live 2026-07-16: `fabro-ci-image-factoring` → `livespec1`, a bare
+zsh), and it skipped the live-outside-tmux fallback entirely — hiding a Claude that
+was alive outside tmux behind an alarm. The one-tick TOCTOU re-check before acting
+still reports the flat `not_claude`: it is a transient race guard ("no longer proven
+ours" is exactly right there), and the next tick re-enters at the top gate and
+renders the settled label.
 
 Reading notes: `threshold` = the track's `ctx_threshold` override, else the
 daemon-wide `warn_percent` (default 50). A malformed `.overseer-state` token is
