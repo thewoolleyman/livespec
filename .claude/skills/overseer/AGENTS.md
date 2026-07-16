@@ -420,6 +420,17 @@ for the marker's edge-triggered lifecycle.
   every `row.split()` assertion stays valid. The header + separator are never tinted.
   If you add a status token, add it to `_STATUS_COLOR` too (an unmapped status is legal
   — it just renders in the default color).
+- **Session-authored notes are ELIDED on EVERY surface (`_elide`; 2026-07-16).** A note
+  is SESSION-authored free text — a `blocked:` reason or the live-outside-tmux detail —
+  that can be arbitrarily long AND multi-line, and a raw 705-byte `blocked:` value once
+  blew the whole Status column out (the table sizes each column to its widest cell) and
+  broke row alignment. `_elide` flattens the note to one line (`" ".join(split())`,
+  collapsing newlines) and truncates with an ellipsis, applied at THREE call sites so no
+  surface can be overrun: the table Status cell (`_MAX_NOTE_IN_TABLE`, 48 — tightest,
+  because the column width is load-bearing), and the `NEEDS YOU` block line + the
+  edge-triggered `_alert` daemon.log line (both `_MAX_REASON_IN_ALERT`, 160 — a longer
+  preview, since the FULL reason is in the tracked pane the line's jump command points
+  at). Never render `row.note` raw onto any surface — route it through `_elide`.
 - **`command tmux` semantics (`tmuxio.py`).** Every tmux call is
   `subprocess.run([...], shell=False)` with an argv LIST — no shell is spawned,
   so a user's zsh `tmux` function shim is bypassed (the `command tmux` effect).

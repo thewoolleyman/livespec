@@ -2183,6 +2183,79 @@ def test_color_wraps_the_whole_line_so_alignment_is_preserved(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# The Status-cell note is elided so a session-authored value (a long `blocked:`
+# reason) cannot blow up the column width or break the row (maintainer 2026-07-16).
+# --------------------------------------------------------------------------- #
+
+
+def test_render_elides_an_over_long_note_so_the_table_does_not_blow_up(tmp_path):
+    """A `blocked:` reason can be arbitrarily long; the Status cell must flatten + truncate
+    it with an ellipsis so it never blows up the column (a 705-byte completion summary
+    written to a state file broke the live table)."""
+    sup = _sup(tmp_path, FakeTmux())
+    huge = "arc COMPLETE " + "x" * 500
+    view = supervisor.RowView(topic="el", repo="/r", tmux="s", ctx=50, status="working", note=huge)
+    out = _render_of(sup, [view])
+    line = _row_line(out, "el")
+    assert line.startswith("working (")
+    assert "…" in line
+    assert "x" * 500 not in out  # the raw blob never reaches the table
+    assert max(len(ln) for ln in out.splitlines()) < 160  # no cell blows the line up
+
+
+def test_render_flattens_a_multiline_note_onto_one_row(tmp_path):
+    """A newline in the note must not split the row across lines — it is collapsed to spaces."""
+    sup = _sup(tmp_path, FakeTmux())
+    view = supervisor.RowView(
+        topic="ml", repo="/r", tmux="s", ctx=50, status="working", note="alpha\nbeta\ngamma"
+    )
+    line = _row_line(_render_of(sup, [view]), "ml")
+    assert "working (alpha beta gamma)" in line
+
+
+def test_render_leaves_a_short_note_intact(tmp_path):
+    """Elision only fires past the cap — a normal `working (background shell)` note renders
+    verbatim, no ellipsis."""
+    sup = _sup(tmp_path, FakeTmux())
+    view = supervisor.RowView(
+        topic="sh", repo="/r", tmux="s", ctx=50, status="working", note="background shell"
+    )
+    line = _row_line(_render_of(sup, [view]), "sh")
+    assert "working (background shell)" in line
+    assert "…" not in line
+
+
+def test_needs_you_block_elides_an_over_long_reason(tmp_path):
+    """The NEEDS YOU block embeds the reason too; a huge `blocked:` reason is capped there
+    (the full text is in the pane the jump command points at)."""
+    sup = _sup(tmp_path, FakeTmux())
+    huge = "blocked reason " + "y" * 400
+    view = supervisor.RowView(
+        topic="bh", repo="/r", tmux="s", ctx=None, status="blocked:human", note=huge
+    )
+    needs = _render_of(sup, [view]).split("NEEDS YOU")[1]
+    assert "…" in needs
+    assert "y" * 400 not in needs
+    assert "jump: tmux switch-client -t s" in needs  # the pane pointer is still there
+
+
+def test_blocked_human_alert_caps_an_over_long_reason(tmp_path, capsys):
+    """The edge-triggered `_alert` (daemon.log line) also caps the reason — a 705-byte
+    `blocked:` dump must not become a 705-byte log line."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    _declare(repo, topic, "blocked: " + "y" * 400)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40))
+    sup = _sup(tmp_path, fake)
+    sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    err = capsys.readouterr().err
+    assert "blocked on human:" in err
+    assert "…" in err
+    assert "y" * 400 not in err
+
+
+# --------------------------------------------------------------------------- #
 # The log is an EVENT HISTORY: timestamped, and edge-triggered (not per-tick).
 # --------------------------------------------------------------------------- #
 
