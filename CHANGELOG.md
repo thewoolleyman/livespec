@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/thewoolleyman/livespec/compare/v0.15.0...v0.15.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **overseer:** a pane that exited to a shell is session-gone, not not-claude ([d7cbadb](https://github.com/thewoolleyman/livespec/commit/d7cbadbb7ff5f35b081a8362554368429a01c6bd))
+
 ## [0.15.0](https://github.com/thewoolleyman/livespec/compare/v0.14.0...v0.15.0) (2026-07-16)
 
 
