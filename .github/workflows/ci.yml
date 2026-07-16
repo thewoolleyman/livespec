@@ -243,6 +243,7 @@ jobs:
           - check-heading-coverage
           - check-local-memory-drift-audit
           - check-self-hosted-routing
+          - check-source-trees-scoped-to-consumer
           - check-vendor-manifest
           - check-no-direct-tool-invocation
           # check-no-direct-destructive-cli greps the agent-facing trees
