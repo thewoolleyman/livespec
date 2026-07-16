@@ -93,9 +93,12 @@ when the human answers in the tracked pane the alert simply stops.
 ## Where the code lives
 
 `.claude/skills/overseer/` — `signals.py` (`state_path`, `read_state`, `ready_valid`,
-`STATE_*`, `TrackState`), `supervisor.py` (`wrapup_message` + the two escalation heads,
+`STATE_*` incl. `STATE_IDLE_WITH_CONTEXT_LEFT` / `_DAEMON_TOKENS`, `TrackState`),
+`supervisor.py` (`wrapup_message` + the two escalation heads, `idle_nudge_message` +
+`_nudge_idle_with_context` / `_write_idle_nudge_state` / `_clear_idle_nudge_state`,
+`_live_session_outside_tmux`, `_elide` + `_MAX_NOTE_IN_TABLE` / `_MAX_REASON_IN_ALERT`,
 `_alert`, `_alert_non_responder`, `_clear_state`, and `_do_restart` — which has exactly
-ONE caller, guarded by `elif ready:`), beside-tests (**164 green**).
+ONE caller, guarded by `elif ready:`), beside-tests (**209 green**).
 
 **The beside-tests are the ONLY gate on this folder** — it sits outside every product
 gate (ruff / pyright / coverage / import-linter all exclude it; `just check` never
@@ -118,43 +121,117 @@ The running daemon carries this code and was exercised against the real fleet:
   session ACKed with `winding-down` and then declared `ready` — the protocol dogfooded
   end-to-end by the session that wrote it.
 
+## Shipped 2026-07-16 (all merged to master + live-exercised)
+
+Three daemon improvements landed this day, each restarted into the live
+`livespec-overseer` daemon and exercised against the real fleet:
+
+- **idle-with-context-left nudge (PR #1282).** A session idle ABOVE its wind-down
+  threshold, not waiting on a human, undeclared → the daemon sends ONE "keep going, do
+  not stop with context left" nudge and stamps a daemon-written `idle-with-context-left`
+  marker (the FIRST daemon-authored token), edge-triggered and self-clearing when the
+  session goes non-idle. The cardinal rule is intact — the marker gates a text nudge,
+  never a respawn. **Live evidence:** `nudged idle-with-context-left …::codex-factory-
+  telemetry (ctx 58% > threshold 50%)` fired on a real fleet session; marker written then
+  auto-cleared when it resumed. See `marker-protocol.md` §"The keep-going nudge",
+  `AGENTS.md` invariant 9.
+- **live-outside-tmux (PR #1286).** A mapped tmux session gone BUT a live Claude registry
+  session for the topic running OUTSIDE tmux (a bare SSH shell) → the informational
+  `live-outside-tmux` (`_live_session_outside_tmux`), NOT the alarming `session-gone`, and
+  kept out of `NEEDS YOU`. **Live evidence:** `fabro-ci-image-factoring` showed
+  `live-outside-tmux` while its SSH session was alive, and correctly fell back to
+  `session-gone` once that session exited.
+- **Note elision on every surface (PR #1286).** A session wrote a 705-byte `blocked:`
+  reason that blew up the Status column (sized to its widest cell) and dumped into the
+  alert + `NEEDS YOU`. `_elide` flattens + truncates the note at all three sites: the
+  table Status cell (`_MAX_NOTE_IN_TABLE`, 48) and the `NEEDS YOU` line + `_alert`
+  daemon.log line (`_MAX_REASON_IN_ALERT`, 160). Full reason stays in the pane the jump
+  command points at. See `AGENTS.md` render bullet.
+
 ## Resume command
 
-**The redesign + the display and detection-accuracy fixes are complete, merged, and
-live-exercised.** The daemon in the `livespec-overseer` top pane runs current code
-(respawned onto master `00d26ef`, 2026-07-15). The ONE open ENGINEERING item is Codex
-detection.
+**The redesign, the display / detection-accuracy fixes, and the 2026-07-16 trio above are
+complete, merged, and live-exercised.** The daemon in the `livespec-overseer` top pane
+was respawned onto master carrying all of them (2026-07-16). The ONE open ENGINEERING
+item is **Codex detection — now BUILD-READY** (design below); pick it up in a fresh
+focused session.
 
-### NEXT = Codex detection (the one open feature)
+### NEXT = Codex detection — BUILD-READY design (de-risked 2026-07-16)
 
-The daemon cannot see a Codex session at all: it discovers the plan (shows `unassigned`)
-but cannot map the running Codex session to it. This is deeper than adoption — FOUR daemon
-signals assume Claude, and Codex needs each:
+The daemon cannot see a Codex session: it discovers the plan (shows `unassigned`) but
+cannot map the running Codex session to it. The previous note called the topic↔session
+join "the hard part … no clean join." **That is now SOLVED** — the join is clean and
+exact (verified live 2026-07-16), so this is ready to build. Do it as its own focused
+session (a new worktree/PR), not inline.
 
-1. **Adoption.** `adopt_sessions` reads Claude's registry (`~/.claude/sessions/<pid>.json`:
-   name→topic, cwd→repo, pid→tmux). Codex is not there. Codex DOES keep a store
-   (`~/.codex/sessions/`, `~/.codex/session_index.jsonl`), and a live codex process's cwd
-   is readable via `/proc/<pid>/cwd` — BUT the index's `thread_name` values are
-   `"Codex Companion Task: …"`, NOT plan topics like `shell-logic-hardening`. So there is
-   **no clean topic↔session join** the way Claude's registry `name` gives one. That is the
-   hard part to design (candidate: manual `add` targeting the bare session; or a
-   cwd+recency heuristic; or a Codex-side naming convention).
-2. **Identity gate.** `_pane_is_managed_claude` accepts only `node`/`claude`; Codex is
-   `bun`/`codex`, so a mapped Codex session reads `not-claude`. Needs a `pane_is_codex`
-   and a Codex-aware identity so it shows as a tracked Codex session.
-3. **Busy.** Already covered — the process-tree shell-walk (`has_active_subshell`) is the
-   runtime-agnostic FALLBACK used precisely when there is NO Claude registry entry (Codex).
-4. **Ctx% + restart.** Codex's statusline is not `Ctx: N% left` (ctx reads unknown → no
-   wrap-up), and restart is `claude -n <topic>` — a Codex session must be MONITORED-ONLY
-   (never restarted with the claude command).
+**The clean join (verified live):** a running codex process holds its rollout file OPEN,
+and the rollout filename embeds the session id, which `session_index.jsonl` maps to the
+`thread_name` = the plan topic.
 
-Recommendation: scope this as its own focused piece (a plan thread), not a quick patch.
+1. Enumerate running codex processes (`/proc/<pid>/comm == "codex"`; the binary is
+   `…/@openai/codex-linux-x64/…/bin/codex --dangerously-bypass-approvals-and-sandbox`).
+2. `/proc/<pid>/cwd` → the repo; scan `/proc/<pid>/fd/` for the open
+   `rollout-<ts>-<id>.jsonl` → extract `<id>`.
+3. `<id>` → `~/.codex/session_index.jsonl` → `thread_name`. (The rollout file's first
+   payload also carries `cwd`, as a cross-check.)
+4. If `thread_name` matches a discovered `plan/<topic>/` in that repo → adoptable.
+5. Walk `<pid>` up to a tmux pane PID → the tmux session (reuse
+   `claude_sessions.resolve_tmux_session`).
+
+Verified: pid in `livespec-dev-tooling` → open rollout id `019f6a11` → thread_name
+`rop-sweep-library-checks` → real `plan/rop-sweep-library-checks/`; likewise
+`rop-sweep-consumer-cleanup` in `livespec-orchestrator-beads-fabro`. Some threads are
+`"Codex Companion Task: …"` (sub-agent / one-shot codex runs), NOT plan topics — those
+simply fail step 4 and are correctly ignored, so the companion-task noise filters itself.
+
+**The four signals — what v1 needs:**
+
+1. **Adoption (NEW).** A `codex_sessions.py` mirroring `claude_sessions.py`:
+   `read_live_codex_sessions(...) -> [CodexSession(pid, cwd, thread_name)]` composing the
+   pid→open-fd→id→thread_name join, and a `map_codex_sessions` joining to tmux (reuse
+   `resolve_tmux_session`). Then `Supervisor.adopt_codex_sessions` (or fold into
+   `adopt_sessions`): for each live codex session whose `thread_name` is an ACTIVE plan
+   topic in a fleet repo and not already mapped → append a mapping that RECORDS THE
+   RUNTIME (claude vs codex) so `evaluate` can branch (see §4).
+2. **Identity gate (CHANGE).** `_pane_is_managed_claude` / `signals.pane_is_claude` accept
+   only `node`/`claude`. Add a Codex identity (`pane_is_codex` → `bun`/`codex`) and let the
+   gate accept the mapped session's runtime — a Codex-mapped session whose pane is
+   `bun`/`codex` is valid, not `not-claude`.
+3. **Busy (MOSTLY DONE).** The process-tree shell-walk (`has_active_subshell`) is the
+   runtime-agnostic FALLBACK the daemon already uses when `claude_status is None` — exactly
+   the Codex case (Codex is not in Claude's registry). Likely already fires for a busy
+   codex; VERIFY live (a codex running a tool spawns subprocesses).
+4. **Ctx% + restart (SAFETY-CRITICAL).** Codex has no `Ctx: N% left` statusline →
+   `parse_ctx_remaining` returns unknown → no wrap-up, no ctx-band (fail-closed, fine).
+   **The restart path MUST be gated Claude-only.** `_do_restart` launches
+   `claude --dangerously-skip-permissions -n <topic>`; running that against a Codex pane
+   would replace the codex session with a claude one — destructive and wrong. A Codex track
+   is MONITOR-ONLY: the `ready` branch of `evaluate` must NOT reach `_do_restart` for a
+   codex-runtime track. Gate on the mapping's runtime marker, and TEST it explicitly (a
+   Codex track that declares `ready` must NOT restart). This is the one place a bug is
+   dangerous — get it right.
+
+**A Codex track** then adopts and shows `working` / `idle` / `blocked:human` like a Claude
+track (busy via the shell-walk; `blocked:` via the state file if the codex session writes
+one — the idle-nudge's `blocked:` escape already applies). It never gets the wrap-up (ctx
+unknown) and is NEVER restarted.
+
+**Code + tests + docs:** new `codex_sessions.py` + beside-tests; `supervisor.py` changes
+(adopt, identity gate, restart gate) + beside-tests; `AGENTS.md` (a Codex-adoption
+invariant + the monitor-only restart gate) and `SKILL.md`. Beside-tests are the ONLY gate:
+`uv run pytest .claude/skills/overseer/ -q`. **Secrets caution:** rollout `.jsonl` files
+contain session content — read only the filename (for the id) and the first payload's
+`cwd`; never dump rollout bodies.
 
 ### Standing operational notes (NOT open tasks)
 
 - **A running daemon must be restarted to pick up new code.** `overseerd` is long-lived in
-  the top pane and keeps whatever code it started with. As of 2026-07-15 it already carries
-  master `00d26ef` — do not restart it just because you read this line.
+  the top pane and keeps whatever code it started with. As of 2026-07-16 it was respawned
+  onto master carrying the idle-nudge + live-outside-tmux + note-elision trio — do not
+  restart it just because you read this line. (Restart is `respawn-pane -k` on the daemon
+  pane with `.claude/skills/overseer/overseerd 2>> tmp/overseer/daemon.log`; the stderr
+  redirect is REQUIRED — `_log`/`_surface` write to stderr, and the bottom pane reads that
+  daemon.log.)
 - **The console BOTTOM pane remedy** (if its interactive Claude exits to a bare `zsh`):
   run `claude --dangerously-skip-permissions` in it, then `/overseer` — `overseer-start` is
   idempotent on the `overseer-daemon` pane title, so it will not double-start the daemon.
