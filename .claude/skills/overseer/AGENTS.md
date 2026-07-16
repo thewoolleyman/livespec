@@ -40,6 +40,92 @@ under `.claude/skills/overseer/` in this repo only and is usable only from it. D
 NOT add it to the plugin, the spec, the copier template, fleet manifests,
 conformance checks, or any other repo.
 
+## The evaluate() state machine
+
+`Supervisor.evaluate(track)` re-classifies each tracked session **from scratch
+every tick** into exactly one status. Its only inputs are the pane capture, the
+parsed `Ctx: N% left`, Claude's registry `status`, and the out-of-band
+`.overseer-state` file (`ready` / `blocked` / `winding-down`, all
+**session-written**). It is a **precedence cascade** — the FIRST matching guard
+wins — not a persistent FSM: a session moves between statuses only by changing
+those inputs (its own work, its own declaration, its context dropping). The
+side-effects in each terminal state, and the two guards marked `(act)`, fire
+ONLY when `act=True` (the daemon loop); the read-only `list` path (`act=False`)
+classifies without acting and falls straight through the `(act)` guards.
+
+```mermaid
+stateDiagram-v2
+    direction TB
+
+    [*] --> tick
+    state "evaluate(track) — one tick" as tick
+
+    tick --> unassigned: is_unassigned
+    tick --> session_gone: session missing / pane id None
+    tick --> not_claude: not our Claude in our repo
+    tick --> cBusy: live and ours
+
+    state cBusy <<choice>>
+    cBusy --> working: busy (spinner / Claude busy / shell / bg subshell)
+    cBusy --> cGate: not busy
+
+    state cGate <<choice>>
+    cGate --> blocked_human: structured gate OR state-file 'blocked'
+    cGate --> cIdle: neither
+
+    state cIdle <<choice>>
+    cIdle --> settling: not a verified empty idle prompt
+    cIdle --> cStream: empty idle prompt
+
+    state cStream <<choice>>
+    cStream --> working: pane still streaming (act)
+    cStream --> cId: settled (two equal captures)
+
+    state cId <<choice>>
+    cId --> not_claude: identity changed / exited to shell (act)
+    cId --> cReady: still ours
+
+    state cReady <<choice>>
+    cReady --> restarting: fresh session 'ready' (ready_valid)
+    cReady --> cCtx: no valid ready
+
+    state cCtx <<choice>>
+    cCtx --> cBand: eff_ctx ≤ threshold
+    cCtx --> idle: eff_ctx > threshold or unknown
+
+    state cBand <<choice>>
+    cBand --> winding_down: fresh 'winding-down' ACK
+    cBand --> danger: eff_ctx ≤ 20
+    cBand --> warned: otherwise
+
+    working: working (voids stale ready)
+    blocked_human: blocked:human (alerts operator; voids stale ready)
+    restarting: restarting (_do_restart — the ONLY restart path)
+    warned: warned (injects escalating wrap-up)
+    danger: danger (alerts NOT RESPONDING — never restarts)
+
+    note right of restarting
+      THE CARDINAL RULE — 'restarting' is the sole path to a respawn,
+      reachable ONLY via a fresh session-written 'ready' (ready_valid needs
+      an injection stamp from THIS round and mtime > stamp). The daemon never
+      infers readiness from idleness, a timer, or how low ctx has fallen.
+    end note
+
+    note left of idle
+      threshold = the track's ctx_threshold override, else warn_percent (50).
+      A malformed .overseer-state token is surfaced as a row note and treated
+      as NO declaration (fail-closed); it changes no branch above.
+    end note
+```
+
+Every branch is a leaf: the tick ends there and the next tick re-enters
+`evaluate()` from the top. The cross-tick lifecycle a session actually walks is
+`working → … → warned` (daemon injects the wrap-up) `→ winding-down` (session
+ACKs) `→ restarting` (session declares `ready`) `→` a fresh `working` after the
+respawn — each arrow driven by the SESSION's own declaration, never a daemon
+guess. `unassigned` / `session_gone` / `not_claude` are structural pre-checks
+(no live managed pane to read); `settling` is a one-tick "wait and re-read".
+
 ## Architecture invariants that must not regress
 
 1. **The supervisor owns mechanics only.** Semantic judgment ("am I done / am I
