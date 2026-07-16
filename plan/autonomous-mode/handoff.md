@@ -65,6 +65,79 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-16 (cont. 19): orchestrator epic O0–O10 ALL DONE (O5/O6/O8/O9/O10 finished this session; O9 live-exercised + accepted) — BUT the MVP is NOT done: the CONSOLE half + docs + binary release + Stage-2 acceptance were LOST in a compaction and remain; a new verbatim-requirements capture landed so they are never lost again
+
+**Read this first — a correction, not a victory lap.** A compaction mid-session
+dropped the console-side and documentation requirements from the resuming driver's
+context. The driver finished the orchestrator machinery (epic `bd-ib-24j5uy`
+children O0–O10, all done) and WRONGLY treated that as "MVP done." The maintainer
+caught it: *"I don't know why you think you are done. I gave you tons of
+requirements to write docs, and other things, and none of it is done."* The full
+requirement set was recovered VERBATIM from the session transcripts and is now
+captured durably at **`plan/autonomous-mode/research/additional-requirements-messages.md`**
+— every future session MUST read that file; it is the authoritative, un-paraphrased
+requirement list.
+
+### DONE this session (orchestrator side — epic `bd-ib-24j5uy`, all 11 original children)
+- **O10 `bd-ib-wx4lbd`**, **O5 `bd-ib-4cfhsw`**, **O8 `bd-ib-6ytmik`**,
+  **O6 `bd-ib-fewdsx`**, **O9 `bd-ib-vp3pwe`** — each dispatched per-item via the
+  factory, merged, and accepted with live-exercise evidence. O0–O4/O7 were already
+  done (cont.18). The six `dispatcher.*` settings, the API + `drive.py` config
+  actions, the retirement of `--mode`, the real AI acceptance pass, the caps, and
+  auto-disposition journaling are all shipped on `livespec-orchestrator-beads-fabro`
+  master (release 0.41.3).
+- **O9 needed a real live exercise, not just a merge.** An independent review agent
+  correctly flagged that O9's shipped auto-disposition journaling had NEVER fired in
+  production (its own auto-rework ran on pre-merge code, 4s before the merge). The
+  driver then ran the genuine post-merge completion on post-merge code: a real
+  `{"stage":"auto-disposition","disposition":"ai-fail-auto-rework",
+  "governing_settings":["acceptance_mode","acceptance_rework_cap"]}` record landed in
+  the production journal and was read back via the shipped read surface, before the
+  accept. **Lesson reinforced: "done = exercised live," never merge+CI+AI-accept.**
+- **12th child `bd-ib-0s5`** (cost-gate coverage weaknesses) is BLOCKED /
+  design-human-gated (needs a spec amendment first) — NOT one of the "eleven
+  children" and not autonomously closeable. The orchestrator epic is functionally
+  realized on O0–O10; do NOT mark it accepted while treating the console half as the
+  epic's remaining scope (they are a SIBLING epic — see below).
+
+### NOT DONE — the CONSOLE half + docs + release + acceptance (the real remaining MVP)
+Per the verbatim requirements doc, the outstanding work all lives in
+`thewoolleyman/livespec-console-beads-fabro` (a DIFFERENT beads tenant; console epic
+`livespec-console-beads-fabro-yvikqp`) plus a cross-repo acceptance:
+- **W3 `livespec-console-beads-fabro-636m46`** — config port → orchestrator API;
+  DELETE the direct-`.livespec.jsonc` writer. FOUNDATIONAL (W4/W5/W6 depend on it).
+  Unblocked now that O10 has landed.
+- **W4 `livespec-console-beads-fabro-j3ts23`** — the `TuiView::Settings` first-class
+  left-nav surface (+ delete the retiring autonomous-mode arming surface).
+- **W5 `livespec-console-beads-fabro-2ctzhm`** — per-item override valves +
+  context-specific help + README rewrite + the **settings docs page (Markdown)**.
+- **W6 `livespec-console-beads-fabro-zmunjo`** — the mechanical API⇒Settings⇒docs
+  completeness check (fails if any API-configurable key is missing from Settings or
+  the settings doc).
+- **W7 (TO FILE) — NEW requirement 2026-07-16:** the TUI must let the operator
+  SELECT an individual work-item and MOVE IT TO ANY STATUS (today it can only select
+  LANES, not individual items — e.g. there is no way to move an item to `ready`).
+- **Console standalone binary via release-please/CI** — NOT DONE (no release
+  workflow, no published releases). "Not a real deliverable until it's published on
+  the version schedule via release please."
+- **Stage-2 — the MVP acceptance:** drive multiple real fleet work-items end-to-end
+  SOLELY through the live TUI, parking in `acceptance`, maintainer accepting via the
+  TUI. This is the final acceptance and is gated on the console half existing.
+
+### RESUME (this is now the plan of record)
+1. **Read `research/additional-requirements-messages.md` first.** It is the verbatim,
+   authoritative requirement set (with a status matrix).
+2. **Drive the console half via scoped sub-agents** (NOT the Fabro factory — the
+   sandbox has no Rust; this is the cont.6 Stage-1 pattern). Dependency order:
+   **W3 → W4 + W5 → W6**; fold **W7** (item selection + move-to-any-status) into the
+   W4/W5 selection+valves work; file W7 first.
+3. **Console binary release-please/CI pipeline** — independent; can run in parallel.
+4. **Then Stage-2** end-to-end acceptance through the live TUI (`console-autonomous-mode`
+   tmux), dropping the maintainer in via the `orchestrator-autonomous-mode` session
+   for any human-in-the-loop input.
+5. Do NOT present for acceptance until ALL of the above is finished and self-validated
+   (standing maintainer directive, repeated 2026-07-13 and 2026-07-16).
+
 ## SESSION UPDATE — 2026-07-16 (cont. 18): O2/O3/O4/O7 wave COMPLETE — all four dispatched → merged → accepted via the factory (epic now 6/11 children done); O4 concurrent-dispatch conflict recovered; O7 closed off-lifecycle; O2 retired Full autonomous mode (dispatcher now DRAINS BY DEFAULT); next wave O5/O6/O8/O9/O10 PAUSED per maintainer
 
 Continuation of cont.17. Maintainer direction this session: *"do 1, accept it autonomously… then proceed to admit the next wave"* → *"Accept O7 — I'll drive the valve"* → *"groom them autonomously and dispatch them autonomously; keep working unless blocking / needs-input."* The whole O2/O3/O4/O7 wave was groomed, dispatched, merged, and accepted — mostly autonomously via the Fabro factory. At the phase boundary the maintainer chose **PAUSE + HAND OFF** rather than continue into the deeper-machinery wave.
