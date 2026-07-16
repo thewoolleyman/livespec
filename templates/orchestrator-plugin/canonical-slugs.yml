@@ -55,6 +55,7 @@
 - check-rop-pipeline-shape
 - check-self-hosted-routing
 - check-skill-invocation-paths
+- check-source-trees-scoped-to-consumer
 - check-supervisor-discipline
 - check-tests-mirror-pairing
 - check-tests-no-subprocess-spawn
