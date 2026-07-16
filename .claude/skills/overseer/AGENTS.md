@@ -49,9 +49,9 @@ parsed `Ctx: N% left`, Claude's registry `status`, and the out-of-band
 **session-written**). It is a **precedence cascade** — the FIRST matching guard
 wins — not a persistent FSM: a session moves between statuses only by changing
 those inputs (its own work, its own declaration, its context dropping). The
-side-effects in each terminal state, and the two guards marked `(act)`, fire
-ONLY when `act=True` (the daemon loop); the read-only `list` path (`act=False`)
-classifies without acting and falls straight through the `(act)` guards.
+per-state side-effects (after the `·`) and the `(act)` guard fire ONLY when
+`act=True` (the daemon loop); the read-only `list` path (`act=False`) classifies
+without acting.
 
 ```mermaid
 stateDiagram-v2
@@ -61,60 +61,51 @@ stateDiagram-v2
     state "evaluate(track) — one tick" as tick
 
     tick --> unassigned: is_unassigned
-    tick --> session_gone: session missing / pane id None
-    tick --> not_claude: not our Claude in our repo
+    tick --> session_gone: session / pane gone
+    tick --> not_claude: not our Claude
     tick --> cBusy: live and ours
 
     state cBusy <<choice>>
-    cBusy --> working: busy (spinner / Claude busy / shell / bg subshell)
+    cBusy --> working: busy
     cBusy --> cGate: not busy
 
     state cGate <<choice>>
-    cGate --> blocked_human: structured gate OR state-file 'blocked'
+    cGate --> blocked_human: gate or 'blocked'
     cGate --> cIdle: neither
 
     state cIdle <<choice>>
-    cIdle --> settling: not a verified empty idle prompt
+    cIdle --> settling: not idle-prompt
     cIdle --> cStream: empty idle prompt
 
     state cStream <<choice>>
-    cStream --> working: pane still streaming (act)
-    cStream --> cId: settled (two equal captures)
-
-    state cId <<choice>>
-    cId --> not_claude: identity changed / exited to shell (act)
-    cId --> cReady: still ours
+    cStream --> working: still streaming (act)
+    cStream --> cReady: settled
 
     state cReady <<choice>>
-    cReady --> restarting: fresh session 'ready' (ready_valid)
+    cReady --> restarting: fresh 'ready'
     cReady --> cCtx: no valid ready
 
     state cCtx <<choice>>
     cCtx --> cBand: eff_ctx ≤ threshold
-    cCtx --> idle: eff_ctx > threshold or unknown
+    cCtx --> idle: above threshold
 
     state cBand <<choice>>
-    cBand --> winding_down: fresh 'winding-down' ACK
+    cBand --> winding_down: fresh ACK
     cBand --> danger: eff_ctx ≤ 20
     cBand --> warned: otherwise
 
-    working: working (voids stale ready)
-    blocked_human: blocked:human (alerts operator; voids stale ready)
-    restarting: restarting (_do_restart — the ONLY restart path)
-    warned: warned (injects escalating wrap-up)
-    danger: danger (alerts NOT RESPONDING — never restarts)
+    working: working  ·  voids stale ready
+    blocked_human: blocked:human  ·  alerts operator
+    settling: settling  ·  wait, re-read next tick
+    restarting: restarting  ·  _do_restart (ONLY restart path)
+    warned: warned  ·  injects escalating wrap-up
+    danger: danger  ·  alerts NOT RESPONDING, never restarts
+    winding_down: winding-down  ·  ACK, stop re-warning
 
     note right of restarting
-      THE CARDINAL RULE — 'restarting' is the sole path to a respawn,
-      reachable ONLY via a fresh session-written 'ready' (ready_valid needs
-      an injection stamp from THIS round and mtime > stamp). The daemon never
-      infers readiness from idleness, a timer, or how low ctx has fallen.
-    end note
-
-    note left of idle
-      threshold = the track's ctx_threshold override, else warn_percent (50).
-      A malformed .overseer-state token is surfaced as a row note and treated
-      as NO declaration (fail-closed); it changes no branch above.
+      THE CARDINAL RULE: a respawn is reachable ONLY via a fresh
+      session-written 'ready'. The daemon never infers it from
+      idleness, a timer, or how low ctx has fallen.
     end note
 ```
 
@@ -125,6 +116,14 @@ ACKs) `→ restarting` (session declares `ready`) `→` a fresh `working` after 
 respawn — each arrow driven by the SESSION's own declaration, never a daemon
 guess. `unassigned` / `session_gone` / `not_claude` are structural pre-checks
 (no live managed pane to read); `settling` is a one-tick "wait and re-read".
+
+Reading notes: `threshold` = the track's `ctx_threshold` override, else the
+daemon-wide `warn_percent` (default 50). A malformed `.overseer-state` token is
+surfaced as a row note and treated as **no declaration** (fail-closed) — it
+changes no branch. Two act-only guards are folded for clarity: `cStream →
+working` (drawn) skips a tick when an "idle" frame is still streaming, and an
+identical post-settle identity re-check (not drawn) routes a pane that has
+exited to a shell straight to `not_claude`.
 
 ## Architecture invariants that must not regress
 
