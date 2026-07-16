@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0](https://github.com/thewoolleyman/livespec/compare/v0.14.0...v0.15.0) (2026-07-16)
+
+
+### Features
+
+* **overseer:** distinguish a live-outside-tmux session from session-gone ([44e26dd](https://github.com/thewoolleyman/livespec/commit/44e26dd503272a2e11d25ec967bd4d4b8452d42a))
+
+
+### Bug Fixes
+
+* **overseer:** elide over-long session-authored notes on every surface ([12d044f](https://github.com/thewoolleyman/livespec/commit/12d044fba0b08eca1087736992fb6593f047b351))
+
 ## [0.14.0](https://github.com/thewoolleyman/livespec/compare/v0.13.0...v0.14.0) (2026-07-16)
 
 
