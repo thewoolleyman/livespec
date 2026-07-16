@@ -201,20 +201,53 @@ simply fail step 4 and are correctly ignored, so the companion-task noise filter
    runtime-agnostic FALLBACK the daemon already uses when `claude_status is None` — exactly
    the Codex case (Codex is not in Claude's registry). Likely already fires for a busy
    codex; VERIFY live (a codex running a tool spawns subprocesses).
-4. **Ctx% + restart (SAFETY-CRITICAL).** Codex has no `Ctx: N% left` statusline →
-   `parse_ctx_remaining` returns unknown → no wrap-up, no ctx-band (fail-closed, fine).
-   **The restart path MUST be gated Claude-only.** `_do_restart` launches
-   `claude --dangerously-skip-permissions -n <topic>`; running that against a Codex pane
-   would replace the codex session with a claude one — destructive and wrong. A Codex track
-   is MONITOR-ONLY: the `ready` branch of `evaluate` must NOT reach `_do_restart` for a
+4. **Ctx% + restart (SAFETY-CRITICAL).** **The restart path MUST be gated Claude-only.**
+   `_do_restart` launches `claude --dangerously-skip-permissions -n <topic>`; running that
+   against a Codex pane would replace the codex session with a claude one — destructive and
+   wrong. The `ready` branch of `evaluate` must NOT reach the CURRENT `_do_restart` for a
    codex-runtime track. Gate on the mapping's runtime marker, and TEST it explicitly (a
-   Codex track that declares `ready` must NOT restart). This is the one place a bug is
-   dangerous — get it right.
+   Codex track that declares `ready` must NOT restart it as claude). This is the one place a
+   bug is dangerous — get it right.
+
+   **Two corrections to this item's earlier reading — see
+   `research/codex-ctx-and-restart-evidence.md` for the live evidence.** Both EXPAND what a
+   Codex track can do; neither weakens the gate above, which stands as written.
+
+   - **Ctx% IS readable — it does not need the statusline.** True: Codex renders no
+     `Ctx: N% left`, so `parse_ctx_remaining` finds nothing. But ctx comes from the ROLLOUT
+     FILE THIS DESIGN ALREADY OPENS: its `token_count` events carry
+     `last_token_usage.total_tokens` + `model_context_window`, so
+     `ctx_left% = 1 − total_tokens / model_context_window` (verified: 35.8% left on a live
+     session). Read the LAST such record. This is a BETTER source than the Claude path — a
+     number from a file, not a regex over rendered terminal text. It matters because the
+     wrap-up is the daemon's core lever now that nothing is force-killed: a wrap-up-less
+     Codex track is a passenger that runs to exhaustion and wedges exactly like the original
+     bug. With ctx readable, a Codex track gets the escalation and declares
+     `ready`/`winding-down` like any other. (`token_count` payloads are counters, not
+     conversation content — parse those, ignore every other record type, per the secrets
+     caution below.)
+   - **Restart is POSSIBLE, so monitor-only is a v1 SCOPE CALL, not a property of Codex.**
+     `codex resume [SESSION_ID] [PROMPT]` takes *"Session id (UUID) or session name"* plus an
+     optional prompt, so the analogue is
+     `codex resume <topic> "read <repo>/plan/<topic>/handoff.md and follow it"` — cleaner
+     than the Claude path twice over: the kick is an ARGUMENT (no `send-keys` paste, no
+     paste-race), and `resume` reattaches the SAME named session so `thread_name` (hence
+     adoptability) survives by construction. The durable shape is therefore
+     **runtime-dispatched restart** — the gate SELECTS the command for the track's runtime —
+     with v1 free to leave the codex arm unimplemented. Identical safety today, without
+     baking "never" into the design.
+
+   **Precondition worth stating up front:** the index is sparse — only **67 of 259** rollout
+   files appear in `session_index.jsonl`, because only NAMED sessions are indexed; an
+   unnamed session carries no topic anywhere. Step 4 already fails those closed, so it costs
+   nothing, but it means Codex adoption depends on a naming convention exactly as Claude's
+   does via `claude -n <topic>`.
 
 **A Codex track** then adopts and shows `working` / `idle` / `blocked:human` like a Claude
 track (busy via the shell-walk; `blocked:` via the state file if the codex session writes
-one — the idle-nudge's `blocked:` escape already applies). It never gets the wrap-up (ctx
-unknown) and is NEVER restarted.
+one — the idle-nudge's `blocked:` escape already applies). Per the corrections above it CAN
+get the wrap-up (ctx is readable from the rollout); whether v1 also restarts it is the open
+scope call — until that arm exists, it is never restarted.
 
 **Code + tests + docs:** new `codex_sessions.py` + beside-tests; `supervisor.py` changes
 (adopt, identity gate, restart gate) + beside-tests; `AGENTS.md` (a Codex-adoption
